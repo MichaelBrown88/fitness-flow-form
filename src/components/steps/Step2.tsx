@@ -78,10 +78,13 @@ const Step2 = () => {
             placeholder="10"
             className="mt-1"
           />
+          <p className="text-sm text-muted-foreground mt-1">
+            Fat around internal organs – lower is better (1-12 healthy, 13+ indicates excess).
+          </p>
         </div>
 
         <div>
-          <Label htmlFor="segmentalDistribution">Segmental Muscle/Fat Distribution (Optional)</Label>
+          <Label htmlFor="segmentalDistribution">Coach Notes (optional)</Label>
           <Textarea
             id="segmentalDistribution"
             value={formData.segmentalDistribution}
@@ -89,6 +92,9 @@ const Step2 = () => {
             placeholder="Enter notes about muscle and fat distribution across body segments..."
             className="mt-1 min-h-[100px]"
           />
+          <p className="text-sm text-muted-foreground mt-1">
+            Internal notes for coaches – will be used for coach PDF / backend logic, not shown as client-facing wording.
+          </p>
         </div>
       </div>
     </div>

@@ -26,11 +26,30 @@ export interface FormData {
   footPosition: string;
 
   // Step 4 - Movement & Mobility
-  overheadSquatIssues: string[];
-  lungeTestLeft: string;
-  lungeTestRight: string;
-  overheadReach: string;
-  shoulderMobilityNotes: string;
+  // Overhead Squat
+  overheadSquatKneeAlignment: string;
+  overheadSquatTorsoLean: string;
+  overheadSquatHipShift: string;
+  overheadSquatDepth: string;
+  overheadSquatFootHeel: string;
+  overheadSquatNotes: string;
+  
+  // Lunge Test
+  lungeLeftKneeAlignment: string;
+  lungeLeftBalance: string;
+  lungeLeftTorso: string;
+  lungeRightKneeAlignment: string;
+  lungeRightBalance: string;
+  lungeRightTorso: string;
+  lungeTestNotes: string;
+  
+  // Overhead Reach
+  overheadReachResult: string;
+  shoulderMobilityRating: string;
+  overheadReachNotes: string;
+  
+  // Ankle Mobility
+  ankleMobilityRating: string;
   ankleMobilityNotes: string;
 
   // Step 5 - Strength & Endurance
@@ -75,11 +94,23 @@ const initialFormData: FormData = {
   kyphosisLordosis: false,
   kneeAlignment: '',
   footPosition: '',
-  overheadSquatIssues: [],
-  lungeTestLeft: '',
-  lungeTestRight: '',
-  overheadReach: '',
-  shoulderMobilityNotes: '',
+  overheadSquatKneeAlignment: '',
+  overheadSquatTorsoLean: '',
+  overheadSquatHipShift: '',
+  overheadSquatDepth: '',
+  overheadSquatFootHeel: '',
+  overheadSquatNotes: '',
+  lungeLeftKneeAlignment: '',
+  lungeLeftBalance: '',
+  lungeLeftTorso: '',
+  lungeRightKneeAlignment: '',
+  lungeRightBalance: '',
+  lungeRightTorso: '',
+  lungeTestNotes: '',
+  overheadReachResult: '',
+  shoulderMobilityRating: '',
+  overheadReachNotes: '',
+  ankleMobilityRating: '',
   ankleMobilityNotes: '',
   pushupReps: '',
   plankHold: '',

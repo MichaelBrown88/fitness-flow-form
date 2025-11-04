@@ -29,6 +29,9 @@ const Step3 = () => {
                 Forward Head Posture
               </Label>
             </div>
+            <p className="text-sm text-muted-foreground ml-6">
+              Head positioned forward of shoulders when viewed from the side.
+            </p>
 
             <div className="flex items-center space-x-2">
               <Checkbox
@@ -42,6 +45,9 @@ const Step3 = () => {
                 Rounded Shoulders
               </Label>
             </div>
+            <p className="text-sm text-muted-foreground ml-6">
+              Shoulders roll forward, upper back looks hunched.
+            </p>
 
             <div className="flex items-center space-x-2">
               <Checkbox
@@ -55,6 +61,9 @@ const Step3 = () => {
                 Anterior Pelvic Tilt
               </Label>
             </div>
+            <p className="text-sm text-muted-foreground ml-6">
+              Pelvis tilts forward, creating an exaggerated lower back arch.
+            </p>
 
             <div className="flex items-center space-x-2">
               <Checkbox
@@ -68,6 +77,9 @@ const Step3 = () => {
                 Kyphosis/Lordosis
               </Label>
             </div>
+            <p className="text-sm text-muted-foreground ml-6">
+              Excessive upper back rounding (kyphosis) and/or lower back curve (lordosis).
+            </p>
           </div>
         </div>
 
@@ -88,6 +100,9 @@ const Step3 = () => {
                 <SelectItem value="hyperextension">Hyperextension</SelectItem>
               </SelectContent>
             </Select>
+            <p className="text-sm text-muted-foreground mt-1">
+              Valgus = knees collapsing inward toward each other. Varus = knees bowing outward. Hyperextension = knees pushed back too far.
+            </p>
           </div>
 
           <div>
@@ -107,6 +122,9 @@ const Step3 = () => {
                 <SelectItem value="high-arch">High Arch</SelectItem>
               </SelectContent>
             </Select>
+            <p className="text-sm text-muted-foreground mt-1">
+              Overpronation = foot rolls inward excessively. Underpronation/supination = weight stays on outer edge of foot.
+            </p>
           </div>
         </div>
       </div>

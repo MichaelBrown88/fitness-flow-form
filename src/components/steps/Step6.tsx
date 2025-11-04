@@ -32,6 +32,9 @@ const Step6 = () => {
               <SelectItem value="beep-test">Beep Test (Shuttle Run)</SelectItem>
             </SelectContent>
           </Select>
+          <p className="text-sm text-muted-foreground mt-1">
+            VO2 Max = maximum oxygen uptake during intense exercise. Cooper Test = distance covered in 12 minutes.
+          </p>
         </div>
 
         <div>
@@ -64,7 +67,7 @@ const Step6 = () => {
         </div>
 
         <div>
-          <Label htmlFor="cardioNotes">Interpretation & Notes</Label>
+          <Label htmlFor="cardioNotes">Coach Notes (optional)</Label>
           <Textarea
             id="cardioNotes"
             value={formData.cardioNotes}
@@ -72,6 +75,9 @@ const Step6 = () => {
             placeholder="Interpretation of results, observations, limitations, or recommendations..."
             className="mt-1 min-h-[100px]"
           />
+          <p className="text-sm text-muted-foreground mt-1">
+            Internal notes for coaches – will be used for coach PDF / backend logic, not shown as client-facing wording.
+          </p>
         </div>
       </div>
     </div>
