@@ -63,8 +63,6 @@ const Step1 = () => {
               <SelectContent>
                 <SelectItem value="male">Male</SelectItem>
                 <SelectItem value="female">Female</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
-                <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -80,10 +78,8 @@ const Step1 = () => {
               <SelectValue placeholder="Select coach" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="coach-john">Coach John</SelectItem>
-              <SelectItem value="coach-sarah">Coach Sarah</SelectItem>
-              <SelectItem value="coach-mike">Coach Mike</SelectItem>
-              <SelectItem value="coach-lisa">Coach Lisa</SelectItem>
+              <SelectItem value="Coach Mike">Coach Mike</SelectItem>
+              <SelectItem value="Coach Selina">Coach Selina</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -102,21 +98,21 @@ const Step1 = () => {
 
         <div>
           <Label className="mb-3 block">Client Goals *</Label>
-          <div className="space-y-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {goalOptions.map((goal) => (
-              <div key={goal.id} className="flex items-center space-x-2">
+              <label key={goal.id} htmlFor={goal.id} className="flex items-center space-x-2 cursor-pointer">
                 <Checkbox
                   id={goal.id}
                   checked={formData.clientGoals?.includes(goal.id)}
                   onCheckedChange={() => toggleGoal(goal.id)}
                 />
-                <Label htmlFor={goal.id} className="font-normal cursor-pointer">
-                  {goal.label}
-                </Label>
-              </div>
+                <span className="text-sm">{goal.label}</span>
+              </label>
             ))}
           </div>
         </div>
+
+        {/* Sessions per Week input removed; selection happens on results page only */}
       </div>
     </div>
   );

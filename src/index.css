@@ -36,7 +36,7 @@ All colors MUST be HSL.
     --input: 0 0% 89%;
     --ring: 0 0% 9%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
     --sidebar-background: 0 0% 98%;
 
@@ -56,41 +56,44 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 0 0% 9%;
+    /* Dark neon palette */
+    --background: 220 18% 10%;
     --foreground: 0 0% 98%;
 
-    --card: 0 0% 9%;
+    --card: 220 16% 14%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 0 0% 9%;
+    --popover: 220 16% 14%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
+    /* Neon brand for CTAs (blue) */
+    --primary: 200 95% 60%; /* neon blue */
+    --primary-foreground: 0 0% 8%; /* near black text on neon */
 
-    --secondary: 0 0% 15%;
+    --secondary: 220 12% 20%;
     --secondary-foreground: 0 0% 98%;
 
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 65%;
+    --muted: 220 12% 18%;
+    --muted-foreground: 220 8% 70%;
 
-    --accent: 0 0% 15%;
+    --accent: 220 12% 22%;
     --accent-foreground: 0 0% 98%;
 
-    --destructive: 0 63% 31%;
+    --destructive: 0 63% 45%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 20%;
-    --input: 0 0% 20%;
-    --ring: 0 0% 83%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 220 12% 22%;
+    --input: 220 12% 22%;
+    --ring: 200 95% 60%;
+
+    --sidebar-background: 220 15% 12%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 0 0% 98%;
+    --sidebar-primary-foreground: 220 15% 12%;
+    --sidebar-accent: 220 12% 20%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 220 10% 22%;
+    --sidebar-ring: 0 0% 98%;
   }
 }
 
@@ -101,5 +104,47 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+    letter-spacing: 0.01em;
   }
+}
+
+/* Design Utilities */
+@layer components {
+  .app-bg {
+    background:
+      radial-gradient(1200px 600px at 50% -200px, hsl(var(--card)) 0%, transparent 60%),
+      radial-gradient(600px 600px at 0% 0%, hsl(var(--card)) 0%, transparent 40%),
+      radial-gradient(600px 600px at 100% 0%, hsl(var(--card)) 0%, transparent 40%),
+      hsl(var(--background));
+  }
+
+  .glass {
+    @apply bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60 border border-border rounded-xl shadow-md;
+  }
+
+  .chip {
+    @apply rounded-full px-3 py-1.5 text-sm border transition-all;
+  }
+
+  .hero {
+    background:
+      radial-gradient(900px 420px at 20% -120px, hsla(200,95%,60%,0.20), transparent 60%),
+      radial-gradient(800px 520px at 120% -100px, hsla(210,90%,60%,0.12), transparent 55%),
+      linear-gradient(180deg, #07101c 0%, #0b1422 60%, transparent 100%);
+    color: white;
+  }
+
+  /* Motion */
+  @keyframes fade-in-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fade-in-up { animation: fade-in-up 320ms ease-out both; }
+
+  @keyframes scale-in {
+    from { opacity: 0; transform: scale(0.98); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .animate-scale-in { animation: scale-in 260ms ease-out both; }
 }

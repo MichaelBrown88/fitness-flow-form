@@ -92,9 +92,6 @@ const Step2 = () => {
             placeholder="Enter notes about muscle and fat distribution across body segments..."
             className="mt-1 min-h-[100px]"
           />
-          <p className="text-sm text-muted-foreground mt-1">
-            Internal notes for coaches – will be used for coach PDF / backend logic, not shown as client-facing wording.
-          </p>
         </div>
       </div>
     </div>

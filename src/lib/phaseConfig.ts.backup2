@@ -1,0 +1,779 @@
+import type { FormData } from '@/contexts/FormContext';
+
+export type PhaseId = 'P1' | 'P2' | 'P3' | 'P4' | 'P5';
+
+export type FieldType = 'text' | 'number' | 'select' | 'textarea' | 'choice' | 'multiselect' | 'parq';
+
+export interface PhaseField {
+  id: keyof FormData;
+  type: FieldType;
+  label: string;
+  description?: string;
+  placeholder?: string;
+  tooltip?: string;
+  options?: { value: string; label: string }[];
+  required?: boolean;
+  readOnly?: boolean;
+  conditional?: {
+    showWhen: {
+      field: string;
+      value: string;
+    };
+  };
+}
+
+export interface PhaseSection {
+  id: string;
+  title: string;
+  description?: string;
+  instructions?: {
+    clientInstructions: string;
+    coachNotes: string;
+  };
+  fields: PhaseField[];
+}
+
+export interface PhaseDefinition {
+  id: PhaseId;
+  title: string;
+  summary: string;
+  gateHint?: string;
+  fields?: PhaseField[];
+  sections?: PhaseSection[];
+  gatedWarning?: (formData: FormData) => string | null;
+}
+
+export interface IntakeField extends PhaseField {
+  id: keyof FormData;
+  type: FieldType;
+  label: string;
+  placeholder?: string;
+  required?: boolean;
+}
+
+export const intakeFields: IntakeField[] = [
+  {
+    id: 'fullName',
+    type: 'text',
+    label: 'Client Name',
+    placeholder: 'e.g., Jordan Smith',
+    required: true,
+    tooltip: 'Enter your client\'s full legal name for records'
+  },
+  {
+    id: 'contactEmail',
+    type: 'text',
+    label: 'Contact Email',
+    placeholder: 'client@email.com',
+    tooltip: 'Email address for sending assessment results and updates'
+  },
+  {
+    id: 'age',
+    type: 'number',
+    label: 'Age',
+    placeholder: 'e.g., 34',
+    tooltip: 'Client\'s age in years - affects exercise recommendations'
+  },
+  {
+    id: 'gender',
+    type: 'select',
+    label: 'Gender',
+    options: [
+      { value: 'female', label: 'Female' },
+      { value: 'male', label: 'Male' },
+    ],
+    tooltip: 'Biological sex affects body composition norms and exercise guidelines'
+  },
+  {
+    id: 'assignedCoach',
+    type: 'select',
+    label: 'Assigned Coach',
+    options: [
+      { value: 'Coach Selina', label: 'Coach Selina' },
+      { value: 'Coach Mike', label: 'Coach Mike' },
+    
+    ],
+    tooltip: 'Who will be leading this client\'s training sessions'
+  },
+  {
+    id: 'clientGoals',
+    type: 'multiselect',
+    label: 'Client Goals',
+    required: true,
+    description: 'Select all goals that apply to this client',
+    tooltip: 'Client\'s main fitness objectives - multiple selections allowed',
+    options: [
+      { value: 'build-muscle', label: 'Build muscle' },
+      { value: 'build-strength', label: 'Build strength' },
+      { value: 'lose-weight', label: 'Lose weight' },
+      { value: 'improve-fitness', label: 'Improve fitness' },
+      { value: 'general-health', label: 'General health and wellbeing' },
+    ],
+  },
+];
+
+export const phaseDefinitions: PhaseDefinition[] = [
+  {
+    id: 'P1',
+    title: 'Health Screening & Body Composition',
+    summary: 'Check for health risks and measure body composition.',
+    gateHint: 'If health risks are identified, we\'ll pause before cardio testing.',
+    sections: [
+      {
+        id: 'health-screening',
+        title: 'Health Screening',
+        description: 'Assess exercise safety and identify potential health risks.',
+        instructions: {
+          clientInstructions: 'Please answer the PAR-Q+ questionnaire honestly. Your safety is our priority.',
+          coachNotes: 'Review PAR-Q+ responses carefully. If any concerns are identified, consult with a medical professional before proceeding with exercise testing.'
+        },
+        fields: [
+          {
+            id: 'parqQuestionnaire',
+            type: 'parq',
+            label: 'PAR-Q Questionnaire',
+            required: true,
+            description: 'Complete the Physical Activity Readiness Questionnaire',
+          },
+        ],
+      },
+      {
+        id: 'screening-notes',
+        title: 'Additional Screening Notes',
+        description: 'Document any additional health conditions or concerns.',
+        fields: [
+          {
+            id: 'parqNotes',
+            type: 'textarea',
+            label: 'Additional Screening Notes',
+            placeholder: 'Document any additional health conditions, medications, or concerns mentioned.',
+            tooltip: 'Record details about any health issues, pain, or medications that could affect training.'
+          },
+        ],
+      },
+      {
+        id: 'body-composition',
+        title: 'Body Composition Assessment',
+        description: 'Measure body weight, fat percentage, and muscle mass.',
+        instructions: {
+          clientInstructions: 'Please remove shoes, heavy clothing, and jewelry before stepping on the scale. Stand still during the body composition scan.',
+          coachNotes: 'Ensure accurate measurements by calibrating equipment and following proper protocols. Record all readings immediately.'
+        },
+        fields: [
+      {
+        id: 'inbodyWeightKg',
+        type: 'number',
+        label: 'Body Weight',
+        placeholder: 'kg (e.g., 78.4)',
+        required: true,
+        description: 'Measured weight from body composition scan',
+        tooltip: 'Total body weight in kilograms, typically measured with professional body composition equipment.'
+      },
+      {
+        id: 'inbodyBodyFatPct',
+        type: 'number',
+        label: 'Body Fat Percentage',
+        placeholder: '% (e.g., 24.2)',
+        description: 'Percentage of body weight that is fat',
+        tooltip: 'Shows what percentage of total weight is body fat. Healthy ranges vary by age and gender.'
+      },
+      {
+        id: 'visceralFatLevel',
+        type: 'number',
+        label: 'Visceral Fat Rating',
+        description: 'Abdominal fat risk level (1-20 scale)',
+        placeholder: 'e.g., 8',
+        tooltip: 'Fat stored around organs in the abdomen. Higher numbers indicate increased health risk. >10 is concerning.'
+      },
+      {
+        id: 'skeletalMuscleMassKg',
+        type: 'number',
+        label: 'Muscle Mass',
+        placeholder: 'kg (e.g., 32.5)',
+        description: 'Total lean muscle weight',
+        tooltip: 'How much of your body weight is made up of muscle tissue. Important for metabolism and strength.'
+      },
+      {
+        id: 'segmentalLeanImbalancePct',
+        type: 'number',
+        label: 'Muscle Balance',
+        description: 'Largest left/right muscle difference',
+        placeholder: '% (e.g., 6.5)',
+        tooltip: 'Checks if muscles are evenly developed between left and right sides. Large imbalances may indicate compensation patterns.'
+      },
+    ],
+    gatedWarning: (formData) => {
+      if (formData.parqPositive === 'yes') {
+        return 'Health concerns identified. We\'ll skip intense cardio testing until cleared by a medical professional.';
+      }
+      return null;
+    },
+  },
+  {
+    id: 'P2',
+    title: 'Posture & Movement Assessment',
+    summary: 'Evaluate standing posture and movement quality patterns.',
+    sections: [
+      {
+        id: 'posture-assessment',
+        title: 'Posture Assessment',
+        description: 'Comprehensive standing posture evaluation.',
+        instructions: {
+          clientInstructions: 'Stand naturally with feet shoulder-width apart, looking straight ahead. Keep arms relaxed at your sides.',
+          coachNotes: 'Observe from front, side, and back. Note any asymmetries, compensations, or areas of tension. Look for forward head posture, rounded shoulders, spinal curves, pelvic tilt, and knee alignment.'
+        },
+        fields: [
+          {
+            id: 'postureSeverity',
+            type: 'select',
+            label: 'Overall Posture Quality',
+            description: 'Rate the overall alignment from head to toe',
+            tooltip: 'Consider the entire postural chain - head position, shoulder alignment, spinal curves, hip positioning, and knee alignment.',
+            options: [
+              { value: '1', label: 'Excellent alignment' },
+              { value: '2', label: 'Minor deviations only' },
+              { value: '3', label: 'Moderate compensations' },
+              { value: '4', label: 'Significant issues' },
+              { value: '5', label: 'Severe postural problems' },
+            ],
+          },
+          {
+            id: 'postureHeadOverall',
+            type: 'select',
+            label: 'Head & Neck Alignment',
+            description: 'How is the head positioned relative to the spine?',
+            tooltip: 'Check if the head is centered over the shoulders and spine. Forward head posture often indicates desk/screen work compensation.',
+            options: [
+              { value: 'neutral', label: 'Head centered over spine' },
+              { value: 'forward-head', label: 'Forward head posture' },
+              { value: 'tilted', label: 'Head tilted to one side' },
+              { value: 'chin-tucked', label: 'Chin excessively tucked' },
+            ],
+          },
+          {
+            id: 'postureShouldersOverall',
+            type: 'select',
+            label: 'Shoulder & Upper Back',
+            description: 'How do the shoulders and upper back appear?',
+            tooltip: 'Look for shoulder height symmetry, scapular positioning, and thoracic spine curvature. Rounded shoulders often indicate weak upper back muscles.',
+            options: [
+              { value: 'neutral', label: 'Shoulders level and back' },
+              { value: 'rounded', label: 'Rounded shoulders forward' },
+              { value: 'elevated', label: 'One shoulder elevated' },
+              { value: 'winged-scapula', label: 'Scapula winging visible' },
+            ],
+          },
+          {
+            id: 'postureBackOverall',
+            type: 'select',
+            label: 'Spinal Alignment',
+            description: 'How does the spinal curvature look?',
+            tooltip: 'Check for normal cervical and lumbar curves. Excessive thoracic kyphosis or flat back may indicate compensatory patterns.',
+            options: [
+              { value: 'neutral', label: 'Normal spinal curves' },
+              { value: 'flat-back', label: 'Flat lower back' },
+              { value: 'excessive-curve', label: 'Excessive thoracic curve' },
+              { value: 'scoliosis', label: 'Lateral spinal curve' },
+            ],
+          },
+          {
+            id: 'postureHipsOverall',
+            type: 'select',
+            label: 'Hip & Pelvic Position',
+            description: 'How are the hips and pelvis aligned?',
+            tooltip: 'Check for pelvic tilt (anterior/posterior), hip height symmetry, and overall pelvic positioning. Uneven hips may cause spinal compensation.',
+            options: [
+              { value: 'neutral', label: 'Hips level and neutral' },
+              { value: 'anterior-tilt', label: 'Pelvis tilted forward' },
+              { value: 'posterior-tilt', label: 'Pelvis tilted backward' },
+              { value: 'hip-hike', label: 'One hip elevated' },
+            ],
+          },
+          {
+            id: 'postureKneesOverall',
+            type: 'select',
+            label: 'Knee & Lower Leg Alignment',
+            description: 'How do the knees and lower legs appear?',
+            tooltip: 'Look for knee alignment, tibial torsion, and overall lower extremity positioning. Knee valgus or varus may indicate hip or ankle issues.',
+            options: [
+              { value: 'neutral', label: 'Knees straight and aligned' },
+              { value: 'valgus', label: 'Knees bow inward' },
+              { value: 'varus', label: 'Knees bow outward' },
+              { value: 'hyperextended', label: 'Knees hyperextended back' },
+            ],
+          },
+        ],
+      },
+      {
+        id: 'squat-assessment',
+        title: 'Overhead Squat Assessment',
+        description: 'Comprehensive movement quality assessment during squat pattern.',
+        instructions: {
+          clientInstructions: 'Stand with feet shoulder-width apart, arms extended overhead with elbows locked. Squat down as low as comfortable while keeping arms overhead.',
+          coachNotes: 'Watch for compensations throughout the movement. Note shoulder mobility, torso lean, depth achieved, hip stability, knee tracking, foot position, and lumbar control. Stop if pain occurs.'
+        },
+        fields: [
+          {
+            id: 'ohsShoulderMobility',
+            type: 'select',
+            label: 'Shoulder Mobility',
+            description: 'Can client maintain arms overhead without compensation?',
+            tooltip: 'Arms should stay vertical without shrugging shoulders or arching excessively. Limited shoulder mobility may cause compensatory movement patterns.',
+            options: [
+              { value: 'full-range', label: 'Full range - arms stay vertical' },
+              { value: 'compensated', label: 'Shoulders shrug or arch' },
+              { value: 'limited', label: 'Cannot maintain overhead position' },
+            ],
+          },
+          {
+            id: 'ohsTorsoLean',
+            type: 'select',
+            label: 'Torso Lean',
+            description: 'Does the torso remain upright or lean excessively?',
+            tooltip: 'Torso should stay relatively vertical. Excessive forward lean may indicate tight hip flexors, weak posterior chain, or poor squat mechanics.',
+            options: [
+              { value: 'upright', label: 'Torso stays upright' },
+              { value: 'moderate-lean', label: 'Moderate forward lean' },
+              { value: 'excessive-lean', label: 'Heavy forward lean' },
+            ],
+          },
+          {
+            id: 'ohsSquatDepth',
+            type: 'select',
+            label: 'Squat Depth',
+            description: 'How deep can the client squat while maintaining form?',
+            tooltip: 'Assess the lowest point reached. Limited depth may indicate mobility restrictions or strength limitations.',
+            options: [
+              { value: 'full-depth', label: 'Below parallel (full depth)' },
+              { value: 'parallel', label: 'To parallel' },
+              { value: 'quarter-depth', label: 'Quarter squat only' },
+              { value: 'no-depth', label: 'Minimal movement' },
+            ],
+          },
+          {
+            id: 'ohsHipShift',
+            type: 'select',
+            label: 'Hip Shift',
+            description: 'Do hips stay level or shift during movement?',
+            tooltip: 'Hips should move symmetrically. Uneven hip movement may indicate strength imbalances or mobility restrictions.',
+            options: [
+              { value: 'level', label: 'Hips stay level' },
+              { value: 'slight-shift', label: 'Minor hip shift' },
+              { value: 'significant-shift', label: 'One hip hikes up' },
+            ],
+          },
+          {
+            id: 'ohsKneeAlignment',
+            type: 'select',
+            label: 'Knee Tracking',
+            description: 'How do knees move relative to toes?',
+            tooltip: 'Knees should track in line with toes. Inward collapse (valgus) often indicates weak glutes or tight hip flexors.',
+            options: [
+              { value: 'neutral', label: 'Knees track straight over toes' },
+              { value: 'valgus', label: 'Knees collapse inward' },
+              { value: 'varus', label: 'Knees bow outward' },
+            ],
+          },
+          {
+            id: 'ohsFeetPosition',
+            type: 'select',
+            label: 'Feet Position',
+            description: 'How do feet behave during the movement?',
+            tooltip: 'Feet should stay planted and stable. Rolling in/out may indicate ankle mobility issues or compensation patterns.',
+            options: [
+              { value: 'stable', label: 'Feet stay planted and stable' },
+              { value: 'roll-in', label: 'Feet roll inward' },
+              { value: 'roll-out', label: 'Feet roll outward' },
+              { value: 'heels-lift', label: 'Heels lift off ground' },
+            ],
+          },
+          {
+            id: 'ohsLumbarControl',
+            type: 'select',
+            label: 'Lumbar Control',
+            description: 'How does the lower back behave?',
+            tooltip: 'Maintain neutral spine position. Excessive arching indicates weak core, rounding indicates tight hip flexors.',
+            options: [
+              { value: 'neutral', label: 'Maintains neutral spine' },
+              { value: 'excessive-arch', label: 'Lower back arches' },
+              { value: 'rounding', label: 'Back rounds excessively' },
+            ],
+          },
+        ],
+      },
+      {
+        id: 'hinge-assessment',
+        title: 'Hinge Movement Assessment',
+        description: 'Posterior chain mobility and control during hip hinge.',
+        instructions: {
+          clientInstructions: 'Stand with feet hip-width apart, slight bend in knees. Push hips back while keeping back straight, reaching hands toward the floor.',
+          coachNotes: 'Assess hinge mechanics and balance. Look for back rounding, hip mobility limitations, and balance control. This tests posterior chain strength and mobility.'
+        },
+        fields: [
+          {
+            id: 'hingeQuality',
+            type: 'select',
+            label: 'Hinge Movement Quality',
+            description: 'How well does the client perform a basic hinge?',
+            tooltip: 'Romanian Deadlift assessment: Client bends at hips while keeping back straight. Tests posterior chain mobility and control.',
+            options: [
+              { value: 'excellent', label: 'Smooth, controlled movement' },
+              { value: 'good', label: 'Minor compensations' },
+              { value: 'fair', label: 'Noticeable rounding or stiffness' },
+              { value: 'poor', label: 'Significant issues with form' },
+            ],
+          },
+          {
+            id: 'hingeBalance',
+            type: 'select',
+            label: 'Hinge Balance & Stability',
+            description: 'Is the hinge movement balanced?',
+            tooltip: 'Checks if the client can maintain balance during the hinge movement without excessive leaning.',
+            options: [
+              { value: 'stable', label: 'Maintains balance throughout' },
+              { value: 'slight-wobble', label: 'Minor balance adjustments' },
+              { value: 'unstable', label: 'Significant balance issues' },
+            ],
+          },
+        ],
+      },
+      {
+        id: 'lunge-assessment',
+        title: 'Lunge Assessment',
+        description: 'Single-leg stability and movement quality during lunges.',
+        instructions: {
+          clientInstructions: 'Step forward into a lunge position with one foot, lowering until both knees are bent at 90 degrees. Keep torso upright.',
+          coachNotes: 'Test each leg separately. Watch for knee tracking over toes, balance stability, torso lean, and symmetry between sides. This reveals single-leg strength and stability issues.'
+        },
+        fields: [
+          {
+            id: 'lungeLeftKneeAlignment',
+            type: 'select',
+            label: 'Left Lunge Knee Tracking',
+            description: 'How does left knee move in forward lunge?',
+            tooltip: 'Forward lunge assessment: Client steps forward into lunge position. Check if knee tracks over toes.',
+            options: [
+              { value: 'tracks-straight', label: 'Knee tracks straight over toes' },
+              { value: 'caves-inward', label: 'Knee caves inward (valgus)' },
+              { value: 'bows-outward', label: 'Knee bows outward (varus)' },
+            ],
+          },
+          {
+            id: 'lungeLeftBalance',
+            type: 'select',
+            label: 'Left Lunge Balance',
+            description: 'How stable is the left leg in lunge?',
+            tooltip: 'Assesses single-leg stability and balance during the lunge movement.',
+            options: [
+              { value: 'stable', label: 'Solid balance and control' },
+              { value: 'slight-wobble', label: 'Minor balance adjustments needed' },
+              { value: 'unstable', label: 'Significant balance issues' },
+            ],
+          },
+          {
+            id: 'lungeLeftTorso',
+            type: 'select',
+            label: 'Left Lunge Torso Position',
+            description: 'How does torso behave in left lunge?',
+            tooltip: 'Checks if the torso stays upright or leans excessively forward during the lunge.',
+            options: [
+              { value: 'upright', label: 'Torso stays upright' },
+              { value: 'mild-lean', label: 'Slight forward lean' },
+              { value: 'excessive-lean', label: 'Significant forward lean' },
+            ],
+          },
+          {
+            id: 'lungeRightKneeAlignment',
+            type: 'select',
+            label: 'Right Lunge Knee Tracking',
+            description: 'How does right knee move in forward lunge?',
+            tooltip: 'Forward lunge assessment: Client steps forward into lunge position. Check if knee tracks over toes.',
+            options: [
+              { value: 'tracks-straight', label: 'Knee tracks straight over toes' },
+              { value: 'caves-inward', label: 'Knee caves inward (valgus)' },
+              { value: 'bows-outward', label: 'Knee bows outward (varus)' },
+            ],
+          },
+          {
+            id: 'lungeRightBalance',
+            type: 'select',
+            label: 'Right Lunge Balance',
+            description: 'How stable is the right leg in lunge?',
+            tooltip: 'Assesses single-leg stability and balance during the lunge movement.',
+            options: [
+              { value: 'stable', label: 'Solid balance and control' },
+              { value: 'slight-wobble', label: 'Minor balance adjustments needed' },
+              { value: 'unstable', label: 'Significant balance issues' },
+            ],
+          },
+          {
+            id: 'lungeRightTorso',
+            type: 'select',
+            label: 'Right Lunge Torso Position',
+            description: 'How does torso behave in right lunge?',
+            tooltip: 'Checks if the torso stays upright or leans excessively forward during the lunge.',
+            options: [
+              { value: 'upright', label: 'Torso stays upright' },
+              { value: 'mild-lean', label: 'Slight forward lean' },
+              { value: 'excessive-lean', label: 'Significant forward lean' },
+            ],
+          },
+        ],
+      },
+      {
+        id: 'hip-mobility',
+        title: 'Hip Mobility Assessment',
+        description: 'Hip flexor flexibility and mobility testing.',
+        instructions: {
+          clientInstructions: 'Lie on your back with knees bent. Pull one knee to your chest while keeping the other leg flat on the ground.',
+          coachNotes: 'Modified Thomas Test: If the opposite thigh lifts off the table, hip flexors are tight. This indicates limited hip mobility that may affect squat depth and running mechanics.'
+        },
+        fields: [
+          {
+            id: 'modifiedThomasResult',
+            type: 'select',
+            label: 'Hip Flexor Flexibility',
+            description: 'Do hips show good range of motion?',
+            tooltip: 'Modified Thomas Test: Lie on back and pull one knee to chest. If opposite thigh lifts, hip flexors are tight.',
+            options: [
+              { value: 'pass', label: 'Good hip mobility' },
+              { value: 'fail-thigh-lift', label: 'Tight hip flexors (thigh lifts off table)' },
+            ],
+          },
+        ],
+      },
+      {
+        id: 'shoulder-mobility',
+        title: 'Shoulder Mobility Assessment',
+        description: 'Upper body mobility and overhead positioning test.',
+        instructions: {
+          clientInstructions: 'Stand with your back against a wall, feet 6 inches from wall. Try to raise both arms overhead while maintaining contact with the wall.',
+          coachNotes: 'Tests shoulder mobility and thoracic extension. Limited mobility may indicate tight shoulders, poor thoracic mobility, or postural issues affecting overhead movements.'
+        },
+        fields: [
+          {
+            id: 'shoulderMobilityReach',
+            type: 'select',
+            label: 'Overhead Reach Test',
+            description: 'Can client reach arms overhead with good form?',
+            tooltip: 'Client stands with back to wall, attempts to raise arms overhead while maintaining contact. Tests shoulder mobility and thoracic extension.',
+            options: [
+              { value: 'full-reach', label: 'Full overhead reach maintained' },
+              { value: 'partial-reach', label: 'Partial reach with compensations' },
+              { value: 'no-reach', label: 'Cannot reach overhead without arching' },
+            ],
+          },
+        ],
+      },
+      {
+        id: 'movement-notes',
+        title: 'Movement Assessment Notes',
+        description: 'Record observations and additional movement patterns.',
+        fields: [
+          {
+            id: 'ohsNotes',
+            type: 'textarea',
+            label: 'Movement Assessment Notes',
+            placeholder: 'Record observations from all movement assessments.',
+            tooltip: 'Document any compensations, asymmetries, or concerns noted during movement screening.'
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'P3',
+    title: 'Core Stability & Balance',
+    summary: 'Assess core endurance and single-leg balance stability.',
+    fields: [
+      {
+        id: 'plankHoldSeconds',
+        type: 'number',
+        label: 'Forearm Plank Hold (seconds)',
+        description: 'Maximum time client can hold proper plank position',
+        placeholder: 'e.g., 45',
+        tooltip: 'Client holds forearm plank with straight body line, no sagging hips or piked shoulders. Stop when form breaks.',
+      },
+      {
+        id: 'singleLegStanceLeftGrade',
+        type: 'select',
+        label: 'Left Single-Leg Stance (30 seconds)',
+        description: 'Balance quality while standing on left leg for 30 seconds',
+        tooltip: 'Client stands on left leg with eyes open, hands on hips. Grade ability to maintain balance without touching down or using support.',
+        options: [
+          { value: 'excellent', label: 'Perfect balance, no wobble (25-30 sec)' },
+          { value: 'good', label: 'Minor adjustments needed (15-24 sec)' },
+          { value: 'fair', label: 'Moderate wobble, some adjustments (5-14 sec)' },
+          { value: 'poor', label: 'Significant instability (<5 sec)' },
+        ],
+      },
+      {
+        id: 'singleLegStanceRightGrade',
+        type: 'select',
+        label: 'Right Single-Leg Stance (30 seconds)',
+        description: 'Balance quality while standing on right leg for 30 seconds',
+        tooltip: 'Client stands on right leg with eyes open, hands on hips. Grade ability to maintain balance without touching down or using support.',
+        options: [
+          { value: 'excellent', label: 'Perfect balance, no wobble (25-30 sec)' },
+          { value: 'good', label: 'Minor adjustments needed (15-24 sec)' },
+          { value: 'fair', label: 'Moderate wobble, some adjustments (5-14 sec)' },
+          { value: 'poor', label: 'Significant instability (<5 sec)' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'P4',
+    title: 'Cardiovascular Fitness',
+    summary: 'Assess cardiovascular fitness with appropriate testing method.',
+    fields: [
+      {
+        id: 'cardioTestType',
+        type: 'select',
+        label: 'Recommended Cardio Test',
+        description: 'Test type selected based on client profile and fitness level',
+        tooltip: 'Treadmill test for higher fitness levels, step test for beginners or those with joint concerns.',
+        options: [
+          { value: 'treadmill', label: 'Ebbeling Treadmill Test' },
+          { value: 'step', label: 'YMCA Step Test' },
+        ],
+        required: true,
+      },
+      {
+        id: 'cardioFinalHeartRate',
+        type: 'number',
+        label: 'Final Steady-State Heart Rate (bpm)',
+        placeholder: 'e.g., 148',
+      },
+      {
+        id: 'cardioVo2MaxEstimate',
+        type: 'number',
+        label: 'Estimated VO₂max',
+        placeholder: 'e.g., 32',
+      },
+      {
+        id: 'cardioMedicationFlag',
+        type: 'select',
+        label: 'HR-Limiting Medication?',
+        options: [
+          { value: 'no', label: 'No' },
+          { value: 'yes', label: 'Yes' },
+        ],
+      },
+      {
+        id: 'cardioTestInstructions',
+        type: 'textarea',
+        label: 'Test Protocol Instructions',
+        description: 'Auto-generated instructions for the selected cardio test',
+        tooltip: 'These instructions are automatically populated based on test selection. Read them to the client and follow exactly.',
+        readOnly: true,
+      },
+      {
+        id: 'cardioNotes',
+        type: 'textarea',
+        label: 'Cardio Assessment Notes',
+        placeholder: 'Record RPE, observed response, HR recovery, or any modifications made.',
+        tooltip: 'Document client feedback, any issues during testing, and overall response to exercise.',
+      },
+    ],
+  },
+  {
+    id: 'P5',
+    title: 'Strength & Power',
+    summary: 'Capture upper body, grip, and functional lower body capacity.',
+    sections: [
+      {
+        id: 'strength-power',
+        title: 'Strength & Power Assessment',
+        description: 'Upper and lower body strength evaluation.',
+        instructions: {
+          clientInstructions: 'For push-ups: Start in plank position, lower chest to ground then push back up. For squats: Stand with feet shoulder-width, squat down keeping chest up, then stand.',
+          coachNotes: 'Use proper form modifications if needed. Count completed reps in 1 minute. This assesses relative strength and muscular endurance. Modify push-ups to knees if necessary.'
+        },
+        fields: [
+          {
+            id: 'pushupTest',
+            type: 'select',
+            label: 'Push-up Capacity (1 minute)',
+            description: 'How many push-ups can be performed in 1 minute?',
+            tooltip: 'Modified push-ups allowed. Assesses upper body strength and endurance. Modify to knee push-ups if needed.',
+            options: [
+              { value: 'excellent', label: '30+ push-ups' },
+              { value: 'good', label: '20-29 push-ups' },
+              { value: 'fair', label: '10-19 push-ups' },
+              { value: 'poor', label: '5-9 push-ups' },
+              { value: 'very-poor', label: '0-4 push-ups' },
+            ],
+          },
+          {
+            id: 'squatTest',
+            type: 'select',
+            label: 'Squat Capacity (1 minute)',
+            description: 'How many bodyweight squats in 1 minute?',
+            tooltip: 'Air squats with good form. Assesses lower body strength and endurance.',
+            options: [
+              { value: 'excellent', label: '50+ squats' },
+              { value: 'good', label: '35-49 squats' },
+              { value: 'fair', label: '20-34 squats' },
+              { value: 'poor', label: '10-19 squats' },
+              { value: 'very-poor', label: '0-9 squats' },
+            ],
+          },
+        ],
+      },
+      {
+        id: 'grip-strength',
+        title: 'Grip Strength Assessment',
+        description: 'Measure hand and forearm strength.',
+        instructions: {
+          clientInstructions: 'Squeeze the dynamometer as hard as you can for 3-5 seconds. We\'ll test both hands.',
+          coachNotes: 'Use proper grip positioning. Record the highest reading from 2-3 attempts per hand. Note any pain or discomfort.'
+        },
+        fields: [
+      {
+        id: 'gripLeftKg',
+        type: 'number',
+        label: 'Grip Strength Left (kg)',
+        placeholder: 'e.g., 24',
+            tooltip: 'Measure with dominant hand first. Use dynamometer for accurate readings.'
+      },
+      {
+        id: 'gripRightKg',
+        type: 'number',
+        label: 'Grip Strength Right (kg)',
+        placeholder: 'e.g., 26',
+            tooltip: 'Measure with non-dominant hand. Compare bilateral strength differences.'
+      },
+      {
+        id: 'dynamometerForce',
+        type: 'number',
+        label: 'Peak Dynamometer Force (optional)',
+        placeholder: 'e.g., 450',
+            tooltip: 'Advanced measurement using specialized equipment for more precise readings.'
+      },
+        ],
+      },
+      {
+        id: 'functional-strength',
+        title: 'Functional Strength Assessment',
+        description: 'Measure functional lower body capacity.',
+        instructions: {
+          clientInstructions: 'Sit in a chair with feet flat on the ground. Stand up fully, then sit back down. Repeat as quickly as possible.',
+          coachNotes: 'Use a standard chair height. Count complete stand-ups in 30 seconds. Ensure full extension and proper form.'
+        },
+        fields: [
+          {
+            id: 'chairStandReps',
+            type: 'number',
+            label: '30-sec Chair Stand Reps',
+            placeholder: 'e.g., 9',
+            tooltip: 'Functional test measuring lower body strength and power. Higher reps indicate better functional capacity.'
+          },
+        ],
+      },
+    ],
+  },
+];
+
+// End of phase definitions
+

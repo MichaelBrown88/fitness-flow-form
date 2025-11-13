@@ -11,7 +11,7 @@ const Step6 = () => {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-semibold text-foreground mb-2">Cardio Fitness</h2>
-        <p className="text-muted-foreground">Cardiovascular fitness assessment</p>
+        <p className="text-muted-foreground">Choose Step Test or 3-min Treadmill and record heart rates.</p>
       </div>
 
       <div className="space-y-4">
@@ -25,46 +25,117 @@ const Step6 = () => {
               <SelectValue placeholder="Select test type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="vo2-max">VO2 Max Test</SelectItem>
-              <SelectItem value="cooper-test">Cooper 12-Min Run Test</SelectItem>
-              <SelectItem value="step-test">Step Test</SelectItem>
-              <SelectItem value="rockport-walk">Rockport Walk Test</SelectItem>
-              <SelectItem value="beep-test">Beep Test (Shuttle Run)</SelectItem>
+              <SelectItem value="step-test">Step Test (3 minutes)</SelectItem>
+              <SelectItem value="treadmill-3min">Treadmill (3 minutes)</SelectItem>
             </SelectContent>
           </Select>
-          <p className="text-sm text-muted-foreground mt-1">
-            VO2 Max = maximum oxygen uptake during intense exercise. Cooper Test = distance covered in 12 minutes.
-          </p>
         </div>
 
+        {formData.cardioTestType === 'step-test' && (
+          <div className="space-y-4 border border-border rounded-md p-4">
+            <div className="text-sm text-muted-foreground">
+              Standardized YMCA-style: 12" step, 96 bpm (24 steps/min) for 3 minutes.
+            </div>
+            <div className="grid md:grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="stepTestImmediateHr">Immediate HR (bpm) *</Label>
+                <Input
+                  id="stepTestImmediateHr"
+                  type="number"
+                  value={formData.stepTestImmediateHr}
+                  onChange={(e) => updateFormData({ stepTestImmediateHr: e.target.value })}
+                  placeholder="e.g., 140"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="stepTestRecoveryIntervalSec">Recovery Interval (sec)</Label>
+                <Input
+                  id="stepTestRecoveryIntervalSec"
+                  type="number"
+                  value={formData.stepTestRecoveryIntervalSec}
+                  onChange={(e) => updateFormData({ stepTestRecoveryIntervalSec: e.target.value })}
+                  placeholder="60"
+                  className="mt-1"
+                />
+              </div>
         <div>
-          <Label htmlFor="testResult">Test Result *</Label>
+                <Label htmlFor="stepTestRecoveryHr">Recovery HR (bpm) *</Label>
           <Input
-            id="testResult"
-            value={formData.testResult}
-            onChange={(e) => updateFormData({ testResult: e.target.value })}
-            placeholder="Enter result (e.g., 45 ml/kg/min, 2500m, etc.)"
+                  id="stepTestRecoveryHr"
+                  type="number"
+                  value={formData.stepTestRecoveryHr}
+                  onChange={(e) => updateFormData({ stepTestRecoveryHr: e.target.value })}
+                  placeholder="e.g., 110"
             className="mt-1"
           />
-          <p className="text-sm text-muted-foreground mt-1">
-            Enter the numeric result with appropriate units
-          </p>
+              </div>
+            </div>
         </div>
+        )}
 
+        {formData.cardioTestType === 'treadmill-3min' && (
+          <div className="space-y-4 border border-border rounded-md p-4">
+            <div className="text-sm text-muted-foreground">
+              3 minutes at a set speed (0% incline). Record immediate and 1-min recovery heart rates.
+            </div>
+            <div className="grid md:grid-cols-4 gap-4">
+              <div className="md:col-span-2">
+                <Label htmlFor="treadmillSpeed">Speed *</Label>
+                <Input
+                  id="treadmillSpeed"
+                  type="number"
+                  step="0.1"
+                  value={formData.treadmillSpeed}
+                  onChange={(e) => updateFormData({ treadmillSpeed: e.target.value })}
+                  placeholder="e.g., 5.0"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="treadmillSpeedUnit">Unit</Label>
+                <Select
+                  value={formData.treadmillSpeedUnit}
+                  onValueChange={(value) => updateFormData({ treadmillSpeedUnit: value })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="mph" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="mph">mph</SelectItem>
+                    <SelectItem value="kmh">km/h</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="treadmillImmediateHr">Immediate HR (bpm) *</Label>
+                <Input
+                  id="treadmillImmediateHr"
+                  type="number"
+                  value={formData.treadmillImmediateHr}
+                  onChange={(e) => updateFormData({ treadmillImmediateHr: e.target.value })}
+                  placeholder="e.g., 150"
+                  className="mt-1"
+                />
+              </div>
         <div>
-          <Label htmlFor="heartRateRecovery">Heart Rate Recovery (bpm)</Label>
+                <Label htmlFor="treadmillRecoveryHr">1-min Recovery HR (bpm) *</Label>
           <Input
-            id="heartRateRecovery"
+                  id="treadmillRecoveryHr"
             type="number"
-            value={formData.heartRateRecovery}
-            onChange={(e) => updateFormData({ heartRateRecovery: e.target.value })}
-            placeholder="120"
+                  value={formData.treadmillRecoveryHr}
+                  onChange={(e) => updateFormData({ treadmillRecoveryHr: e.target.value })}
+                  placeholder="e.g., 120"
             className="mt-1"
           />
-          <p className="text-sm text-muted-foreground mt-1">
-            Heart rate 1 minute after exercise completion
-          </p>
+              </div>
+            </div>
         </div>
+        )}
+
+        {/* Notes */}
 
         <div>
           <Label htmlFor="cardioNotes">Coach Notes (optional)</Label>
@@ -75,9 +146,6 @@ const Step6 = () => {
             placeholder="Interpretation of results, observations, limitations, or recommendations..."
             className="mt-1 min-h-[100px]"
           />
-          <p className="text-sm text-muted-foreground mt-1">
-            Internal notes for coaches – will be used for coach PDF / backend logic, not shown as client-facing wording.
-          </p>
         </div>
       </div>
     </div>

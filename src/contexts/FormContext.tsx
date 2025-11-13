@@ -1,40 +1,64 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 export interface FormData {
-  // Step 1 - Client Information
-  fullName: string;
-  age: string;
+  /** Client Profile */
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  dateOfBirth: string;
   gender: string;
+  heightCm: string;
   assignedCoach: string;
-  contactEmail: string;
-  clientGoals: string[];
+  activityLevel: string;
+  sleepDuration: string;
+  sleepQuality: string;
+  sleepConsistency: string;
 
-  // Step 2 - Body Composition
-  height: string;
-  weight: string;
-  bodyFat: string;
-  skeletalMuscleMass: string;
-  visceralFat: string;
-  segmentalDistribution: string;
+  /** Phase 1 — Foundational Health & Body Comp */
+  parqQuestionnaire: string;
+  parq1: string;
+  parq2: string;
+  parq3: string;
+  parq4: string;
+  parq5: string;
+  parq6: string;
+  parq7: string;
+  parq8: string;
+  parq9: string;
+  parq10: string;
+  parq11: string;
+  parq12: string;
+  parq13: string;
+  parqNotes: string;
+  inbodyWeightKg: string;
+  inbodyBodyFatPct: string;
+  visceralFatLevel: string;
+  skeletalMuscleMassKg: string;
+  segmentalLeanImbalancePct: string;
 
-  // Step 3 - Posture Analysis
-  forwardHeadPosture: boolean;
-  roundedShoulders: boolean;
-  anteriorPelvicTilt: boolean;
-  kyphosisLordosis: boolean;
-  kneeAlignment: string;
-  footPosition: string;
-
-  // Step 4 - Movement & Mobility
-  // Overhead Squat
-  overheadSquatKneeAlignment: string;
-  overheadSquatTorsoLean: string;
-  overheadSquatHipShift: string;
-  overheadSquatDepth: string;
-  overheadSquatFootHeel: string;
-  overheadSquatNotes: string;
-  
-  // Lunge Test
+  /** Phase 2 — Posture & Movement Quality */
+  postureSeverity: string;
+  postureForwardHead: string;
+  postureRoundedShoulders: string;
+  postureHeadOverall: string;
+  postureShouldersOverall: string;
+  postureBackOverall: string;
+  postureHipsOverall: string;
+  postureKneesOverall: string;
+  ohsKneeAlignment: string;
+  ohsHeelBehavior: string;
+  ohsLumbarControl: string;
+  ohsShoulderMobility: string;
+  ohsTorsoLean: string;
+  ohsSquatDepth: string;
+  ohsHipShift: string;
+  ohsFeetPosition: string;
+  ohsNotes: string;
+  modifiedThomasResult: string;
+  hingeQuality: string;
+  hingeBalance: string;
+  hingeNotes: string;
   lungeLeftKneeAlignment: string;
   lungeLeftBalance: string;
   lungeLeftTorso: string;
@@ -42,27 +66,35 @@ export interface FormData {
   lungeRightBalance: string;
   lungeRightTorso: string;
   lungeTestNotes: string;
-  
-  // Overhead Reach
-  overheadReachResult: string;
-  shoulderMobilityRating: string;
-  overheadReachNotes: string;
-  
-  // Ankle Mobility
-  ankleMobilityRating: string;
-  ankleMobilityNotes: string;
+  shoulderMobilityReach: string;
+  movementNotes: string;
+  pushupTest: string;
+  squatTest: string;
 
-  // Step 5 - Strength & Endurance
-  pushupReps: string;
-  plankHold: string;
-  wallSit: string;
-  strengthNotes: string;
+  /** Phase 3 — Core Stability & Endurance */
+  plankHoldSeconds: string;
+  sidePlankLeftSeconds: string;
+  sidePlankRightSeconds: string;
+  singleLegStanceLeftGrade: string;
+  singleLegStanceRightGrade: string;
 
-  // Step 6 - Cardio Fitness
+  /** Phase 4 — Cardiovascular Fitness */
   cardioTestType: string;
-  testResult: string;
-  heartRateRecovery: string;
+  cardioMedicationFlag: string;
+  cardioFinalHeartRate: string;
+  cardioVo2MaxEstimate: string;
+  cardioTestInstructions: string;
   cardioNotes: string;
+
+  /** Phase 5 — Strength & Power */
+  pushupMaxReps: string;
+  gripLeftKg: string;
+  gripRightKg: string;
+  chairStandReps: string;
+  dynamometerForce: string;
+
+  /** Phase 6 — Assessment Complete */
+  assessmentComplete: string;
 }
 
 interface FormContextType {
@@ -76,30 +108,59 @@ interface FormContextType {
 const FormContext = createContext<FormContextType | undefined>(undefined);
 
 const initialFormData: FormData = {
-  fullName: '',
-  age: '',
+  firstName: '',
+  lastName: '',
+  email: '',
+  phone: '',
+  dateOfBirth: '',
   gender: '',
+  heightCm: '',
   assignedCoach: '',
-  contactEmail: '',
-  clientGoals: [],
-  height: '',
-  weight: '',
-  bodyFat: '',
-  skeletalMuscleMass: '',
-  visceralFat: '',
-  segmentalDistribution: '',
-  forwardHeadPosture: false,
-  roundedShoulders: false,
-  anteriorPelvicTilt: false,
-  kyphosisLordosis: false,
-  kneeAlignment: '',
-  footPosition: '',
-  overheadSquatKneeAlignment: '',
-  overheadSquatTorsoLean: '',
-  overheadSquatHipShift: '',
-  overheadSquatDepth: '',
-  overheadSquatFootHeel: '',
-  overheadSquatNotes: '',
+  activityLevel: '',
+  sleepDuration: '',
+  sleepQuality: '',
+  sleepConsistency: '',
+  parqQuestionnaire: '',
+  parq1: '',
+  parq2: '',
+  parq3: '',
+  parq4: '',
+  parq5: '',
+  parq6: '',
+  parq7: '',
+  parq8: '',
+  parq9: '',
+  parq10: '',
+  parq11: '',
+  parq12: '',
+  parq13: '',
+  parqNotes: '',
+  inbodyWeightKg: '',
+  inbodyBodyFatPct: '',
+  visceralFatLevel: '',
+  skeletalMuscleMassKg: '',
+  segmentalLeanImbalancePct: '',
+  postureSeverity: '',
+  postureForwardHead: '',
+  postureRoundedShoulders: '',
+  postureHeadOverall: '',
+  postureShouldersOverall: '',
+  postureBackOverall: '',
+  postureHipsOverall: '',
+  postureKneesOverall: '',
+  ohsKneeAlignment: '',
+  ohsHeelBehavior: '',
+  ohsLumbarControl: '',
+  ohsShoulderMobility: '',
+  ohsTorsoLean: '',
+  ohsSquatDepth: '',
+  ohsHipShift: '',
+  ohsFeetPosition: '',
+  ohsNotes: '',
+  modifiedThomasResult: '',
+  hingeQuality: '',
+  hingeBalance: '',
+  hingeNotes: '',
   lungeLeftKneeAlignment: '',
   lungeLeftBalance: '',
   lungeLeftTorso: '',
@@ -107,25 +168,33 @@ const initialFormData: FormData = {
   lungeRightBalance: '',
   lungeRightTorso: '',
   lungeTestNotes: '',
-  overheadReachResult: '',
-  shoulderMobilityRating: '',
-  overheadReachNotes: '',
-  ankleMobilityRating: '',
-  ankleMobilityNotes: '',
-  pushupReps: '',
-  plankHold: '',
-  wallSit: '',
-  strengthNotes: '',
-  cardioTestType: '',
-  testResult: '',
-  heartRateRecovery: '',
+  shoulderMobilityReach: '',
+  movementNotes: '',
+  pushupTest: '',
+  squatTest: '',
+  plankHoldSeconds: '',
+  sidePlankLeftSeconds: '',
+  sidePlankRightSeconds: '',
+  singleLegStanceLeftGrade: '',
+  singleLegStanceRightGrade: '',
+  cardioTestType: 'treadmill',
+  cardioMedicationFlag: '',
+  cardioFinalHeartRate: '',
+  cardioVo2MaxEstimate: '',
+  cardioTestInstructions: '',
   cardioNotes: '',
+  pushupMaxReps: '',
+  gripLeftKg: '',
+  gripRightKg: '',
+  chairStandReps: '',
+  dynamometerForce: '',
+  assessmentComplete: '',
 };
 
 export const FormProvider = ({ children }: { children: ReactNode }) => {
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 7;
+  const totalSteps = 5;
 
   const updateFormData = (data: Partial<FormData>) => {
     setFormData((prev) => ({ ...prev, ...data }));
@@ -140,6 +209,7 @@ export const FormProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useFormContext = () => {
   const context = useContext(FormContext);
   if (!context) {
