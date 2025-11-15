@@ -256,35 +256,35 @@ const ParQQuestionnaire: React.FC = () => {
             />
           </div>
         ) : (
-          <div className="space-y-3">
-            <button
-              onClick={() => handleAnswer('no')}
-              className={`w-full p-4 text-left border rounded-lg transition-all ${
-                currentAnswer === 'no'
-                  ? 'border-green-500 bg-green-50 text-green-700'
-                  : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-medium">No</span>
-                {currentAnswer === 'no' && <Check className="h-5 w-5 text-green-600" />}
-              </div>
-            </button>
+        <div className="space-y-3">
+          <button
+            onClick={() => handleAnswer('no')}
+            className={`w-full p-4 text-left border rounded-lg transition-all ${
+              currentAnswer === 'no'
+                ? 'border-green-500 bg-green-50 text-green-700'
+                : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="font-medium">No</span>
+              {currentAnswer === 'no' && <Check className="h-5 w-5 text-green-600" />}
+            </div>
+          </button>
 
-            <button
-              onClick={() => handleAnswer('yes')}
-              className={`w-full p-4 text-left border rounded-lg transition-all ${
-                currentAnswer === 'yes'
-                  ? 'border-red-500 bg-red-50 text-red-700'
-                  : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-medium">Yes</span>
-                {currentAnswer === 'yes' && <Check className="h-5 w-5 text-red-600" />}
-              </div>
-            </button>
-          </div>
+          <button
+            onClick={() => handleAnswer('yes')}
+            className={`w-full p-4 text-left border rounded-lg transition-all ${
+              currentAnswer === 'yes'
+                ? 'border-red-500 bg-red-50 text-red-700'
+                : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="font-medium">Yes</span>
+              {currentAnswer === 'yes' && <Check className="h-5 w-5 text-red-600" />}
+            </div>
+          </button>
+        </div>
         )}
       </div>
 

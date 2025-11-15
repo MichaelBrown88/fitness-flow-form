@@ -16,7 +16,7 @@ import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Check, ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightIcon, Info } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
-import { intakeFields, phaseDefinitions, type PhaseField, type PhaseSection } from '@/lib/phaseConfig';
+import { phaseDefinitions, type PhaseField, type PhaseSection } from '@/lib/phaseConfig';
 import ParQQuestionnaire from './ParQQuestionnaire';
 
 type FieldValue = string | string[];
@@ -196,20 +196,32 @@ const PhaseFormContent = () => {
   const [recentlyCompletedSections, setRecentlyCompletedSections] = useState<Set<string>>(new Set());
 
   const totalPhases = phaseDefinitions.length;
-  const activePhase = phaseDefinitions[activePhaseIdx] || {
-    id: 'empty',
-    title: 'No Phases Available',
-    summary: 'Phase definitions are currently being loaded or configured.',
-    sections: []
-  };
+  const activePhase = useMemo(() => {
+    return phaseDefinitions[activePhaseIdx] || {
+      id: 'empty',
+      title: 'No Phases Available',
+      summary: 'Phase definitions are currently being loaded or configured.',
+      sections: []
+    };
+  }, [activePhaseIdx]);
+
+  // Debug: verify the phases loaded at runtime
+  useEffect(() => {
+    console.log('[Assessment] phases loaded:', phaseDefinitions.map(p => ({ id: p.id, title: p.title })));
+  }, []);
+  useEffect(() => {
+    console.log('[Assessment] activePhaseIdx:', activePhaseIdx, 'activePhase:', activePhase?.id, activePhase?.title);
+  }, [activePhaseIdx, activePhase]);
 
   // Check if intake fields are completed (all fields filled)
   const isIntakeCompleted = useCallback(() => {
-    return intakeFields.every(field => {
+    const p0Sections = phaseDefinitions[0]?.sections ?? [];
+    const p0Fields = p0Sections.flatMap(section => section.fields ?? []);
+    if (p0Fields.length === 0) return false;
+
+    return p0Fields.every(field => {
       const value = formData[field.id];
-      if (Array.isArray(value)) {
-        return value.length > 0;
-      }
+      if (Array.isArray(value)) return value.length > 0;
       return value !== undefined && value !== null && value !== '';
     });
   }, [formData]);
@@ -225,6 +237,30 @@ const PhaseFormContent = () => {
     });
   }, [formData]);
 
+  // Determine if a given phase is completed (all fields in all sections filled).
+  const isPhaseCompleted = useCallback((phaseIdx: number) => {
+    const phase = phaseDefinitions[phaseIdx];
+    if (!phase) return false;
+    const sections = phase.sections ?? [];
+    if (sections.length === 0) return true; // empty phase counts as completed/unlocked
+    return sections.every(section =>
+      section.fields.every(field => {
+        const value = formData[field.id];
+        if (Array.isArray(value)) return value.length > 0;
+        return value !== undefined && value !== null && value !== '';
+      })
+    );
+  }, [formData]);
+
+  // Compute the furthest phase index the user can navigate to (completed chain unlocks next).
+  const maxUnlockedPhaseIdx = useMemo(() => {
+    let idx = 0;
+    while (idx < totalPhases - 1 && isPhaseCompleted(idx)) {
+      idx += 1;
+    }
+    return idx;
+  }, [totalPhases, isPhaseCompleted]);
+
   // Get all sections for current phase (no longer including intake globally)
   const getAllSections = useCallback(() => {
     const sections: SectionType[] = [];
@@ -235,7 +271,7 @@ const PhaseFormContent = () => {
     }
 
     return sections;
-  }, [activePhase.sections]);
+  }, [activePhase]);
 
   // Initialize sections - first section of each phase starts expanded
   useEffect(() => {
@@ -250,11 +286,20 @@ const PhaseFormContent = () => {
     setExpandedSections(newExpandedSections);
   }, [activePhaseIdx, getAllSections]);
 
+  // Auto-skip phases that have no sections (e.g., placeholder phases)
+  useEffect(() => {
+    if ((activePhase.sections?.length ?? 0) === 0 && activePhaseIdx < totalPhases - 1) {
+      const timeout = setTimeout(() => setActivePhaseIdx(prev => prev + 1), 250);
+      return () => clearTimeout(timeout);
+    }
+  }, [activePhase, activePhaseIdx, totalPhases]);
+
   // Auto-advance sections and phases when completed (only for real-time completion)
   useEffect(() => {
     // Special handling for Phase 0 (Client Profile) completion - advance to Phase 1
-    if (activePhaseIdx === 0 && isIntakeCompleted() && !recentlyCompletedSections.has('intake')) {
-      setRecentlyCompletedSections(prev => new Set(prev).add('intake'));
+    const p0FirstSectionId = phaseDefinitions[0]?.sections?.[0]?.id ?? 'phase0';
+    if (activePhaseIdx === 0 && isIntakeCompleted() && !recentlyCompletedSections.has(p0FirstSectionId)) {
+      setRecentlyCompletedSections(prev => new Set(prev).add(p0FirstSectionId));
       setTimeout(() => setActivePhaseIdx(1), 1500);
       return;
     }
@@ -297,7 +342,7 @@ const PhaseFormContent = () => {
       }, 1500); // 1.5 second delay
     }
 
-    // Special handling for PAR-Q completion - advance to next section within Phase 1
+    // Special handling for PAR-Q completion - advance to next section or next phase
     if (currentSection.id === 'health-screening' && formData.parqQuestionnaire === 'completed' && !wasRecentlyCompleted) {
       setRecentlyCompletedSections(prev => new Set(prev).add('health-screening'));
       setTimeout(() => {
@@ -308,6 +353,11 @@ const PhaseFormContent = () => {
             ...prev,
             [nextSection.id]: true
           }));
+        } else {
+          // No next section in this phase; move to the next phase
+          if (activePhaseIdx < totalPhases - 1) {
+            setActivePhaseIdx(prev => prev + 1);
+          }
         }
       }, 1500);
     }
@@ -386,7 +436,7 @@ const PhaseFormContent = () => {
       }));
     } else {
       // No previous section in current phase, move to previous phase
-      if (activePhaseIdx > 0) {
+    if (activePhaseIdx > 0) {
         setActivePhaseIdx((prev) => prev - 1);
       }
     }
@@ -394,7 +444,7 @@ const PhaseFormContent = () => {
 
   const handleViewResults = () => {
     if (allAssessmentsCompleted) {
-      setActivePhaseIdx(5); // Go to results phase (P6)
+      setActivePhaseIdx(6); // Go to results phase (P7)
     }
   };
 
@@ -412,7 +462,7 @@ const PhaseFormContent = () => {
 
   const renderSection = (section: SectionType, index: number, allSections: SectionType[]) => {
     const isExpanded = expandedSections[section.id] || false;
-    const isCompleted = section.id === 'intake' ? isIntakeCompleted() : isSectionCompleted(section);
+    const isCompleted = isSectionCompleted(section);
 
       return (
       <Collapsible
@@ -429,21 +479,21 @@ const PhaseFormContent = () => {
         }`}>
           <CollapsibleTrigger asChild>
             <button className="w-full px-6 py-4 text-left hover:bg-slate-50 transition-colors cursor-pointer">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-3">
-                  <h3 className="text-lg font-semibold text-slate-900">{section.title}</h3>
-                    {isCompleted && (
-                      <div className="flex items-center gap-1 text-green-600">
-                        <Check className="h-4 w-4" />
-                        <span className="text-xs font-medium">Completed</span>
-                      </div>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-3">
+                      <h3 className="text-lg font-semibold text-slate-900">{section.title}</h3>
+                      {isCompleted && (
+                        <div className="flex items-center gap-1 text-green-600">
+                          <Check className="h-4 w-4" />
+                          <span className="text-xs font-medium">Completed</span>
+                        </div>
+                      )}
+                    </div>
+                    {'description' in section && section.description && (
+                      <p className="text-sm text-slate-600">{section.description}</p>
                     )}
                   </div>
-                  {'description' in section && section.description && (
-                    <p className="text-sm text-slate-600">{section.description}</p>
-                  )}
-                </div>
                 <div className="flex items-center gap-2">
                   {!isExpanded && section.fields.length > 0 && (
                     <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">
@@ -599,8 +649,8 @@ const PhaseFormContent = () => {
         <nav className="flex flex-wrap gap-2">
           {phaseDefinitions.map((phase, idx) => {
             const isActive = idx === activePhaseIdx;
-            const isCompleted = idx < activePhaseIdx;
-            const isDisabled = idx > activePhaseIdx;
+            const isCompleted = isPhaseCompleted(idx) && idx <= maxUnlockedPhaseIdx;
+            const isDisabled = idx > maxUnlockedPhaseIdx;
 
             return (
               <button
@@ -647,8 +697,8 @@ const PhaseFormContent = () => {
       <section className="space-y-6">
         {renderAllSections()}
 
-        {/* Show navigation buttons for phases 2-5 */}
-        {activePhaseIdx > 1 && activePhaseIdx < totalPhases - 1 && (
+        {/* Show navigation buttons when the phase has content and we are not on the final phase */}
+        {(activePhase.sections?.length ?? 0) > 0 && activePhaseIdx < totalPhases - 1 && (
           <div className="flex items-center justify-between border-t border-slate-100 pt-6">
             <Button
               variant="outline"

@@ -2,21 +2,34 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 export interface FormData {
   /** Client Profile */
-  firstName: string;
-  lastName: string;
+  fullName: string;
   email: string;
   phone: string;
   dateOfBirth: string;
   gender: string;
-  heightCm: string;
   assignedCoach: string;
   activityLevel: string;
   sleepDuration: string;
   sleepQuality: string;
   sleepConsistency: string;
+  stressLevel: string;
+  workHoursPerDay: string;
+  nutritionHabits: string;
+  hydrationHabits: string;
+  stepsPerDay: string;
+  sedentaryHours: string;
+  caffeineCupsPerDay: string;
+  alcoholFrequency: string;
+  lastCaffeineIntake: string;
 
   /** Phase 1 — Foundational Health & Body Comp */
   parqQuestionnaire: string;
+  /** Phase 2 — Health Screening Vitals/Medications */
+  restingHeartRate: string;
+  restingBPSystolic: string;
+  restingBPDiastolic: string;
+  medicationsFlag: string;
+  medicationsNotes: string;
   parq1: string;
   parq2: string;
   parq3: string;
@@ -54,10 +67,13 @@ export interface FormData {
   ohsSquatDepth: string;
   ohsHipShift: string;
   ohsFeetPosition: string;
+  ohsFootKneeBehavior: string;
   ohsNotes: string;
   modifiedThomasResult: string;
   hingeQuality: string;
   hingeBalance: string;
+  hingeDepth: string;
+  hingeBackRounding: string;
   hingeNotes: string;
   lungeLeftKneeAlignment: string;
   lungeLeftBalance: string;
@@ -67,19 +83,22 @@ export interface FormData {
   lungeRightTorso: string;
   lungeTestNotes: string;
   shoulderMobilityReach: string;
+  mobilityHip: string;
+  mobilityShoulder: string;
+  mobilityAnkle: string;
   movementNotes: string;
   pushupTest: string;
   squatTest: string;
 
   /** Phase 3 — Core Stability & Endurance */
   plankHoldSeconds: string;
-  sidePlankLeftSeconds: string;
-  sidePlankRightSeconds: string;
+  plankDurationSeconds: string;
   singleLegStanceLeftGrade: string;
   singleLegStanceRightGrade: string;
 
   /** Phase 4 — Cardiovascular Fitness */
   cardioTestType: string;
+  cardioTestSelected: string;
   cardioMedicationFlag: string;
   cardioFinalHeartRate: string;
   cardioVo2MaxEstimate: string;
@@ -88,13 +107,16 @@ export interface FormData {
 
   /** Phase 5 — Strength & Power */
   pushupMaxReps: string;
+  squatsOneMinuteReps: string;
+  pushupsOneMinuteReps: string;
   gripLeftKg: string;
   gripRightKg: string;
   chairStandReps: string;
   dynamometerForce: string;
 
   /** Phase 6 — Assessment Complete */
-  assessmentComplete: string;
+  coachReport: string;
+  clientReport: string;
 }
 
 interface FormContextType {
@@ -108,19 +130,31 @@ interface FormContextType {
 const FormContext = createContext<FormContextType | undefined>(undefined);
 
 const initialFormData: FormData = {
-  firstName: '',
-  lastName: '',
+  fullName: '',
   email: '',
   phone: '',
   dateOfBirth: '',
   gender: '',
-  heightCm: '',
   assignedCoach: '',
   activityLevel: '',
   sleepDuration: '',
   sleepQuality: '',
   sleepConsistency: '',
+  stressLevel: '',
+  workHoursPerDay: '',
+  nutritionHabits: '',
+  hydrationHabits: '',
+  stepsPerDay: '',
+  sedentaryHours: '',
+  caffeineCupsPerDay: '',
+  alcoholFrequency: '',
+  lastCaffeineIntake: '',
   parqQuestionnaire: '',
+  restingHeartRate: '',
+  restingBPSystolic: '',
+  restingBPDiastolic: '',
+  medicationsFlag: '',
+  medicationsNotes: '',
   parq1: '',
   parq2: '',
   parq3: '',
@@ -156,10 +190,13 @@ const initialFormData: FormData = {
   ohsSquatDepth: '',
   ohsHipShift: '',
   ohsFeetPosition: '',
+  ohsFootKneeBehavior: '',
   ohsNotes: '',
   modifiedThomasResult: '',
   hingeQuality: '',
   hingeBalance: '',
+  hingeDepth: '',
+  hingeBackRounding: '',
   hingeNotes: '',
   lungeLeftKneeAlignment: '',
   lungeLeftBalance: '',
@@ -169,26 +206,32 @@ const initialFormData: FormData = {
   lungeRightTorso: '',
   lungeTestNotes: '',
   shoulderMobilityReach: '',
+  mobilityHip: '',
+  mobilityShoulder: '',
+  mobilityAnkle: '',
   movementNotes: '',
   pushupTest: '',
   squatTest: '',
   plankHoldSeconds: '',
-  sidePlankLeftSeconds: '',
-  sidePlankRightSeconds: '',
+  plankDurationSeconds: '',
   singleLegStanceLeftGrade: '',
   singleLegStanceRightGrade: '',
-  cardioTestType: 'treadmill',
+  cardioTestType: '',
+  cardioTestSelected: '',
   cardioMedicationFlag: '',
   cardioFinalHeartRate: '',
   cardioVo2MaxEstimate: '',
   cardioTestInstructions: '',
   cardioNotes: '',
   pushupMaxReps: '',
+  squatsOneMinuteReps: '',
+  pushupsOneMinuteReps: '',
   gripLeftKg: '',
   gripRightKg: '',
   chairStandReps: '',
   dynamometerForce: '',
-  assessmentComplete: '',
+  coachReport: '',
+  clientReport: '',
 };
 
 export const FormProvider = ({ children }: { children: ReactNode }) => {
