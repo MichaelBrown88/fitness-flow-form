@@ -953,8 +953,8 @@ const PhaseFormContent = () => {
           </div>
         )}
 
-        {/* Final phase - Assessment Complete */}
-        {activePhaseIdx === totalPhases - 1 && (
+        {/* Results phase - Assessment Complete */}
+        {activePhase?.id === 'P6' && (
           <div className="space-y-8 border-t border-slate-100 pt-6">
             <div className="space-y-6">
               <div className="flex flex-wrap items-center justify-between gap-3">

@@ -1,6 +1,6 @@
 import type { FormData } from '@/contexts/FormContext';
 
-export type PhaseId = 'P0' | 'P1' | 'P2' | 'P3' | 'P4' | 'P5' | 'P6';
+export type PhaseId = 'P0' | 'P1' | 'P2' | 'P3' | 'P4' | 'P5' | 'P6' | 'P7';
 
 export type FieldType = 'text' | 'number' | 'select' | 'textarea' | 'choice' | 'multiselect' | 'parq' | 'email' | 'tel' | 'date' | 'time';
 
@@ -81,83 +81,7 @@ export const phaseDefinitions = [
           { id: 'assignedCoach' as keyof FormData, type: 'select' as FieldType, label: 'Assigned Coach', required: true, options: [{ value: 'coach-mike', label: 'Coach Mike' }, { value: 'coach-selina', label: 'Coach Selina' }] },
         ],
       },
-      {
-        id: 'goals',
-        title: 'Goals',
-        description: 'Select primary goals to personalise the plan and reports.',
-        instructions: {
-          clientInstructions: 'Choose all that apply. You can adjust goals later.',
-          coachNotes: 'Use goals to prioritise phases and coaching focus.'
-        },
-        fields: [
-          {
-            id: 'clientGoals' as keyof FormData,
-            type: 'multiselect' as FieldType,
-            label: 'Client Goals',
-            placeholder: 'Select one or more goals',
-            tooltip: 'Select multiple goals. The roadmap and recommendations will prioritise toward these.',
-            options: [
-              { value: 'build-muscle', label: 'Build muscle' },
-              { value: 'weight-loss', label: 'Weight loss' },
-              { value: 'build-strength', label: 'Build strength' },
-              { value: 'improve-fitness', label: 'Improve fitness' },
-              { value: 'general-health', label: 'General health' },
-            ],
-          },
-          {
-            id: 'goalLevelWeightLoss' as keyof FormData,
-            type: 'select' as FieldType,
-            label: 'Weight loss target level',
-            tooltip: 'Select the ambition level to guide our pacing and milestones.',
-            options: [
-              { value: 'health-minimum', label: 'Minimum for good health' },
-              { value: 'average', label: 'Average target' },
-              { value: 'above-average', label: 'Above average (recommended)' },
-              { value: 'elite', label: 'Go all the way (long-term)' },
-            ],
-            conditional: { showWhen: { field: 'clientGoals', includes: 'weight-loss' } },
-          },
-          {
-            id: 'goalLevelMuscle' as keyof FormData,
-            type: 'select' as FieldType,
-            label: 'Muscle gain target level',
-            tooltip: 'Ambition level for muscular development.',
-            options: [
-              { value: 'health-minimum', label: 'Minimum visible change' },
-              { value: 'average', label: 'Average (noticeable)' },
-              { value: 'above-average', label: 'Above average (recommended)' },
-              { value: 'elite', label: 'Go all the way (long-term)' },
-            ],
-            conditional: { showWhen: { field: 'clientGoals', includes: 'build-muscle' } },
-          },
-          {
-            id: 'goalLevelStrength' as keyof FormData,
-            type: 'select' as FieldType,
-            label: 'Strength target level',
-            tooltip: 'Ambition level for strength standards.',
-            options: [
-              { value: 'health-minimum', label: 'Solid base (health & function)' },
-              { value: 'average', label: 'Average lifter' },
-              { value: 'above-average', label: 'Advanced ratios (recommended)' },
-              { value: 'elite', label: 'Competition-leaning (long-term)' },
-            ],
-            conditional: { showWhen: { field: 'clientGoals', includes: 'build-strength' } },
-          },
-          {
-            id: 'goalLevelFitness' as keyof FormData,
-            type: 'select' as FieldType,
-            label: 'Fitness target level',
-            tooltip: 'Ambition level for endurance/VO₂.',
-            options: [
-              { value: 'health-minimum', label: 'Comfortable daily fitness' },
-              { value: 'average', label: 'Recreational runner/cyclist' },
-              { value: 'above-average', label: 'Strong recreational (recommended)' },
-              { value: 'elite', label: 'Competitive endurance (long-term)' },
-            ],
-            conditional: { showWhen: { field: 'clientGoals', includes: 'improve-fitness' } },
-          },
-        ],
-      },
+      // Goals moved to final phase P7
     ],
   },
   {
@@ -241,19 +165,19 @@ export const phaseDefinitions = [
           coachNotes: 'Record: Weight, SMM, BFM, BF%, BMI, VFL, WHR, TBW (L), Segmental lean mass (kg for 5 regions), BMR, Score.'
         },
         fields: [
-          // SECTION 1 — BODY COMPOSITION (Primary)
+          // Order aligned to InBody 270 printout (approximate)
+          // Body Composition (top)
           { id: 'inbodyWeightKg' as keyof FormData, type: 'number' as FieldType, label: 'Weight (kg)', placeholder: 'e.g., 78.2', tooltip: 'Baseline for trend tracking. Never used alone as a progress metric.' },
           { id: 'skeletalMuscleMassKg' as keyof FormData, type: 'number' as FieldType, label: 'Skeletal Muscle Mass (kg)', placeholder: 'e.g., 36.4', tooltip: 'Core metabolic/strength indicator. Low SMM → prioritise hypertrophy and protein targets.' },
           { id: 'bodyFatMassKg' as keyof FormData, type: 'number' as FieldType, label: 'Body Fat Mass (kg)', placeholder: 'e.g., 21.3', tooltip: 'Used to set specific fat-loss targets and timelines.' },
           { id: 'inbodyBodyFatPct' as keyof FormData, type: 'number' as FieldType, label: 'Body Fat (%)', placeholder: 'e.g., 18.5', tooltip: 'Primary health risk indicator (Men >25% / Women >32% = high risk).' },
+          // Obesity / Hydration
           { id: 'inbodyBmi' as keyof FormData, type: 'number' as FieldType, label: 'BMI', placeholder: 'e.g., 24.8', tooltip: 'Included for familiarity; not used for decisions.' },
-
-          // SECTION 2 — INTERNAL HEALTH INDICATORS
-          { id: 'visceralFatLevel' as keyof FormData, type: 'number' as FieldType, label: 'Visceral Fat Level', placeholder: 'e.g., 9', tooltip: 'InBody 270: 12+ high risk; 10–11 borderline; <10 healthy.' },
-          { id: 'waistHipRatio' as keyof FormData, type: 'number' as FieldType, label: 'Waist-to-Hip Ratio (WHR)', placeholder: 'e.g., 0.92', tooltip: 'Men: <0.90 low, 0.90–0.99 moderate, ≥1.00 high. Women: <0.80 low, 0.80–0.89 moderate, ≥0.90 high.' },
           { id: 'totalBodyWaterL' as keyof FormData, type: 'number' as FieldType, label: 'Total Body Water (L)', placeholder: 'e.g., 41.0', tooltip: 'Hydration context only on 270. Use for scan-to-scan consistency.' },
+          { id: 'waistHipRatio' as keyof FormData, type: 'number' as FieldType, label: 'Waist-to-Hip Ratio (WHR)', placeholder: 'e.g., 0.92', tooltip: 'Men: <0.90 low, 0.90–0.99 moderate, ≥1.00 high. Women: <0.80 low, 0.80–0.89 moderate, ≥0.90 high.' },
+          { id: 'visceralFatLevel' as keyof FormData, type: 'number' as FieldType, label: 'Visceral Fat Level', placeholder: 'e.g., 9', tooltip: 'InBody 270: 12+ high risk; 10–11 borderline; <10 healthy.' },
 
-          // SECTION 3 — SEGMENTAL LEAN ANALYSIS (kg only)
+          // Segmental Lean Analysis (kg only)
           { id: 'segmentalArmRightKg' as keyof FormData, type: 'number' as FieldType, label: 'Right arm lean (kg)', placeholder: 'e.g., 3.2', tooltip: 'Use left/right kg to detect imbalances (≥10% significant).' },
           { id: 'segmentalArmLeftKg' as keyof FormData, type: 'number' as FieldType, label: 'Left arm lean (kg)', placeholder: 'e.g., 3.1' },
           { id: 'segmentalLegRightKg' as keyof FormData, type: 'number' as FieldType, label: 'Right leg lean (kg)', placeholder: 'e.g., 9.7' },
@@ -514,6 +438,87 @@ export const phaseDefinitions = [
             type: 'textarea' as FieldType,
             label: 'Client report',
             placeholder: 'Plain-language summary for the client...',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'P7',
+    title: 'Goals & Planning',
+    summary: 'Set ambitions after we understand your baseline.',
+    sections: [
+      {
+        id: 'goals',
+        title: 'Goals',
+        description: 'Select your goals and ambition level. Recommendations use your baseline data.',
+        instructions: {
+          clientInstructions: 'Choose all that apply. Then pick the ambition level for each selected goal.',
+          coachNotes: 'Use levels to calibrate targets and timelines.'
+        },
+        fields: [
+          {
+            id: 'clientGoals' as keyof FormData,
+            type: 'multiselect' as FieldType,
+            label: 'Client Goals',
+            placeholder: 'Select one or more goals',
+            tooltip: 'Select multiple goals. The roadmap and recommendations will prioritise toward these.',
+            options: [
+              { value: 'build-muscle', label: 'Build muscle' },
+              { value: 'weight-loss', label: 'Weight loss' },
+              { value: 'build-strength', label: 'Build strength' },
+              { value: 'improve-fitness', label: 'Improve fitness' },
+              { value: 'general-health', label: 'General health' },
+            ],
+          },
+          {
+            id: 'goalLevelWeightLoss' as keyof FormData,
+            type: 'select' as FieldType,
+            label: 'Weight loss target level',
+            tooltip: 'Ambition level calibrated to your height/weight.',
+            options: [
+              { value: 'health-minimum', label: 'Minimum for good health' },
+              { value: 'average', label: 'Average target' },
+              { value: 'above-average', label: 'Above average (recommended)' },
+              { value: 'elite', label: 'Go all the way (long-term)' },
+            ],
+            conditional: { showWhen: { field: 'clientGoals', includes: 'weight-loss' } },
+          },
+          {
+            id: 'goalLevelMuscle' as keyof FormData,
+            type: 'select' as FieldType,
+            label: 'Muscle gain target level',
+            options: [
+              { value: 'health-minimum', label: 'Minimum visible change' },
+              { value: 'average', label: 'Average (noticeable)' },
+              { value: 'above-average', label: 'Above average (recommended)' },
+              { value: 'elite', label: 'Go all the way (long-term)' },
+            ],
+            conditional: { showWhen: { field: 'clientGoals', includes: 'build-muscle' } },
+          },
+          {
+            id: 'goalLevelStrength' as keyof FormData,
+            type: 'select' as FieldType,
+            label: 'Strength target level',
+            options: [
+              { value: 'health-minimum', label: 'Solid base (health & function)' },
+              { value: 'average', label: 'Average lifter' },
+              { value: 'above-average', label: 'Advanced ratios (recommended)' },
+              { value: 'elite', label: 'Competition-leaning (long-term)' },
+            ],
+            conditional: { showWhen: { field: 'clientGoals', includes: 'build-strength' } },
+          },
+          {
+            id: 'goalLevelFitness' as keyof FormData,
+            type: 'select' as FieldType,
+            label: 'Fitness target level',
+            options: [
+              { value: 'health-minimum', label: 'Comfortable daily fitness' },
+              { value: 'average', label: 'Recreational runner/cyclist' },
+              { value: 'above-average', label: 'Strong recreational (recommended)' },
+              { value: 'elite', label: 'Competitive endurance (long-term)' },
+            ],
+            conditional: { showWhen: { field: 'clientGoals', includes: 'improve-fitness' } },
           },
         ],
       },
