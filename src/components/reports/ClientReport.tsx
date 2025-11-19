@@ -180,19 +180,24 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
           )}
         </section>
       )}
-      <section className="space-y-4">
-        <h3 className="text-xl font-semibold text-slate-900">Your Fitness Summary</h3>
-        <div className="flex items-center gap-6">
-          <div className={`flex h-24 w-24 items-center justify-center rounded-full border-4 ${circleColor(scores.overall)}`}>
-            <span className="text-2xl font-bold">{scores.overall}</span>
+      <section className="space-y-6">
+        <h3 className="text-xl font-semibold text-slate-900 text-center">Your Fitness Summary</h3>
+        <div className="flex flex-col items-center gap-5">
+          {/* Overall score centered and prominent */}
+          <div className="flex flex-col items-center">
+            <div className={`flex h-28 w-28 items-center justify-center rounded-full border-4 ${circleColor(scores.overall)}`}>
+              <span className="text-3xl font-bold">{scores.overall}</span>
+            </div>
+            <span className="mt-2 text-sm font-medium text-slate-700">Overall score</span>
           </div>
-          <div className="flex items-center gap-4">
+          {/* Category circles centered under overall */}
+          <div className="flex flex-wrap items-center justify-center gap-4">
             {orderedCats.map((cat) => (
               <div key={cat.id} className="flex flex-col items-center">
                 <div className={`flex h-14 w-14 items-center justify-center rounded-full border-4 ${circleColor(cat.score)}`}>
                   <span className="text-sm font-semibold">{cat.score}</span>
                 </div>
-                <span className="mt-2 w-20 truncate text-center text-xs text-slate-600">{niceLabel(cat.id)}</span>
+                <span className="mt-2 w-24 truncate text-center text-xs text-slate-600">{niceLabel(cat.id)}</span>
               </div>
             ))}
           </div>
@@ -272,19 +277,50 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
 
       <section className="space-y-2">
         <h3 className="text-xl font-semibold text-slate-900">Milestones</h3>
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-slate-600">Preview at:</span>
-            <input type="range" min={5} max={26} step={5} value={Math.min(26, Math.max(5, weeksByCategory['bodyComp'] ? 10 : 5))} readOnly />
-            <div className="text-sm text-slate-700">5 / 10 / 20 / 26 weeks</div>
-          </div>
-          <ul className="mt-3 list-disc pl-5 text-sm text-slate-700 space-y-1.5">
-            <li>5 weeks: better energy, improved movement quality, early strength gains.</li>
-            <li>10 weeks: noticeable changes; strength +5–10%; if fat loss, ~3–5 kg down with adherence.</li>
-            <li>20 weeks: significant progress; strength +10–20%; if building muscle, +2–4 kg; if fat loss, ~6–10+ kg.</li>
-            <li>26 weeks: well on your way; compounded improvements across posture, mobility, strength and cardio.</li>
-          </ul>
-        </div>
+        {(() => {
+          const primaryGoal = (goals && goals[0]) || '';
+          const goalLabel =
+            primaryGoal === 'weight-loss' ? 'weight-loss'
+            : primaryGoal === 'build-muscle' ? 'muscle gain'
+            : primaryGoal === 'build-strength' ? 'strength'
+            : primaryGoal === 'improve-fitness' ? 'fitness'
+            : 'goals';
+          const headlineIssues = focusAreas.slice(0, 3);
+          return (
+            <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-5 shadow-sm">
+              <p className="text-sm text-slate-700">
+                From day one we’ll start addressing {headlineIssues.length ? headlineIssues.join(', ') : 'key limiters'} that could be holding you back.
+                At the same time we’ll build a plan that moves you steadily toward your {goalLabel}.
+              </p>
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <div className="rounded-lg border border-slate-200 bg-white p-4">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Weeks 1–4</div>
+                  <div className="mt-1 text-sm text-slate-800">
+                    You’ll move better and feel more stable. Sessions feel “right” as posture and mobility improve; energy and recovery lift.
+                  </div>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-white p-4">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Weeks 5–10</div>
+                  <div className="mt-1 text-sm text-slate-800">
+                    Noticeable change: early strength increases, better HR recovery, and visible momentum toward your {goalLabel}.
+                  </div>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-white p-4">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Weeks 11–20</div>
+                  <div className="mt-1 text-sm text-slate-800">
+                    Significant shift: stronger lifts, better pace, or visible body composition changes others begin to notice.
+                  </div>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-white p-4">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">~{Math.max(20, maxWeeks)} weeks</div>
+                  <div className="mt-1 text-sm text-slate-800">
+                    You’re well on your way—clearly resembling the person you set out to become, with momentum to keep elevating.
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </section>
 
       <section className="space-y-2">
