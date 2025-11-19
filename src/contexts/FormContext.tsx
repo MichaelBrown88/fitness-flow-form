@@ -9,6 +9,12 @@ export interface FormData {
   gender: string;
   assignedCoach: string;
   clientGoals: string[];
+  // Goal target details
+  weightLossTargetKg: string;
+  muscleGainTargetKg: string;
+  strengthTargetLift: string;
+  strengthTarget1RMKg: string;
+  fitnessTargetVo2: string;
   activityLevel: string;
   sleepDuration: string;
   sleepQuality: string;
@@ -165,6 +171,12 @@ const initialFormData: FormData = {
   gender: '',
   assignedCoach: '',
   clientGoals: [],
+  // Goal target details
+  weightLossTargetKg: '',
+  muscleGainTargetKg: '',
+  strengthTargetLift: '',
+  strengthTarget1RMKg: '',
+  fitnessTargetVo2: '',
   activityLevel: '',
   sleepDuration: '',
   sleepQuality: '',

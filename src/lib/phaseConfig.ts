@@ -20,6 +20,7 @@ export interface PhaseField {
       value?: string;
       notValue?: string;
       exists?: boolean;
+      includes?: string;
     };
   };
 }
@@ -102,6 +103,24 @@ export const phaseDefinitions = [
               { value: 'general-health', label: 'General health' },
             ],
           },
+        ],
+      },
+      {
+        id: 'goals-detail',
+        title: 'Goal Targets',
+        description: 'Quantify success to set realistic timelines.',
+        instructions: {
+          clientInstructions: 'Optional but helpful for planning realistic timelines.',
+          coachNotes: 'Use conservative weekly rates: fat loss ~0.5 kg/wk, muscle gain ~0.1–0.25 kg/wk.'
+        },
+        fields: [
+          { id: 'weightLossTargetKg' as keyof FormData, type: 'number' as FieldType, label: 'Weight loss target (kg)', placeholder: 'e.g., 8', tooltip: 'How many kilograms would you like to lose?', conditional: { showWhen: { field: 'clientGoals', includes: 'weight-loss' } } },
+          { id: 'muscleGainTargetKg' as keyof FormData, type: 'number' as FieldType, label: 'Muscle gain target (kg)', placeholder: 'e.g., 3', tooltip: 'How many kilograms of muscle would you like to gain?', conditional: { showWhen: { field: 'clientGoals', includes: 'build-muscle' } } },
+          { id: 'strengthTargetLift' as keyof FormData, type: 'select' as FieldType, label: 'Strength target lift', options: [
+            { value: 'squat', label: 'Squat' }, { value: 'bench', label: 'Bench press' }, { value: 'deadlift', label: 'Deadlift' }, { value: 'overhead-press', label: 'Overhead press' }
+          ], tooltip: 'Which primary lift would you like to focus on?', conditional: { showWhen: { field: 'clientGoals', includes: 'build-strength' } } },
+          { id: 'strengthTarget1RMKg' as keyof FormData, type: 'number' as FieldType, label: 'Target 1RM (kg)', placeholder: 'e.g., 120', tooltip: 'Target 1-rep max in kilograms for the chosen lift.', conditional: { showWhen: { field: 'clientGoals', includes: 'build-strength' } } },
+          { id: 'fitnessTargetVo2' as keyof FormData, type: 'number' as FieldType, label: 'Target VO₂max (ml/kg/min)', placeholder: 'e.g., 42', tooltip: 'Optional: a VO₂max target to work toward.', conditional: { showWhen: { field: 'clientGoals', includes: 'improve-fitness' } } },
         ],
       },
     ],

@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import type { FormData } from '@/contexts/FormContext';
 import type { ScoreSummary, RoadmapPhase } from '@/lib/scoring';
 
 type BodyCompInterp = { timeframeWeeks: string };
@@ -29,7 +30,7 @@ const CATEGORY_COLOR: Record<string, string> = {
   posture: 'bg-rose-500',
 };
 
-export default function ClientReport({ scores, roadmap, goals, bodyComp }: { scores: ScoreSummary; roadmap: RoadmapPhase[]; goals?: string[]; bodyComp?: BodyCompInterp }) {
+export default function ClientReport({ scores, roadmap, goals, bodyComp, formData }: { scores: ScoreSummary; roadmap: RoadmapPhase[]; goals?: string[]; bodyComp?: BodyCompInterp; formData?: FormData }) {
   const [sessionsPerWeek, setSessionsPerWeek] = useState<number>(3);
   const sessionFactor = useMemo(() => (sessionsPerWeek === 5 ? 0.75 : sessionsPerWeek === 4 ? 0.85 : 1.0), [sessionsPerWeek]);
   const orderedCats = useMemo(
@@ -38,9 +39,23 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp }: { sco
   );
   const weeksByCategory: Record<string, number> = useMemo(() => {
     const map: Record<string, number> = {};
+    // Goal-based baseline horizons (conservative)
+    const weightLossTarget = parseFloat(formData?.weightLossTargetKg || '0');
+    const muscleGainTarget = parseFloat(formData?.muscleGainTargetKg || '0');
+    const fatLossWeeks = weightLossTarget > 0 ? Math.ceil(weightLossTarget / 0.5) : 16; // 0.5 kg/wk
+    const muscleWeeks = muscleGainTarget > 0 ? Math.ceil(muscleGainTarget / 0.2) : 16; // 0.2 kg/wk midpoint
+    const cardioWeeks = 12; // aerobic base build
+    const mobilityWeeks = 6; // quicker wins
+    const postureWeeks = 6; // quicker wins
+
     for (const cat of orderedCats) {
-      const match = roadmap.find(p => p.title.toLowerCase().includes(cat.title.toLowerCase().split(' ')[0]));
-      map[cat.id] = Math.round(((match?.weeks ?? (cat.id === 'posture' || cat.id === 'mobility' ? 4 : 3)) * sessionFactor));
+      let base = 12;
+      if (cat.id === 'bodyComp') base = Math.max(12, Math.max(fatLossWeeks, muscleWeeks));
+      if (cat.id === 'strength') base = muscleWeeks;
+      if (cat.id === 'cardio') base = cardioWeeks;
+      if (cat.id === 'mobility') base = mobilityWeeks;
+      if (cat.id === 'posture') base = postureWeeks;
+      map[cat.id] = Math.round(base * sessionFactor);
     }
     return map;
   }, [orderedCats, roadmap, sessionFactor]);
@@ -120,14 +135,31 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp }: { sco
                   <span className="text-xs text-slate-500">{weeks} weeks</span>
                 </div>
                 <div className="h-3 w-full rounded bg-slate-100">
-                  <div className={`h-3 rounded ${color}`} style={{ width: `${Math.min(100, (weeks / 16) * 100)}%` }} />
+                  <div className={`h-3 rounded ${color}`} style={{ width: `${Math.min(100, (weeks / 26) * 100)}%` }} />
                 </div>
               </div>
             );
           })}
           <div className="mt-2 flex justify-between text-[10px] text-slate-500">
-            <span>0</span><span>4</span><span>8</span><span>12</span><span>16+w</span>
+            <span>0</span><span>5</span><span>10</span><span>20</span><span>26+w</span>
           </div>
+        </div>
+      </section>
+
+      <section className="space-y-2">
+        <h3 className="text-xl font-semibold text-slate-900">Milestones</h3>
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-slate-600">Preview at:</span>
+            <input type="range" min={5} max={26} step={5} value={Math.min(26, Math.max(5, weeksByCategory['bodyComp'] ? 10 : 5))} readOnly />
+            <div className="text-sm text-slate-700">5 / 10 / 20 / 26 weeks</div>
+          </div>
+          <ul className="mt-3 list-disc pl-5 text-sm text-slate-700 space-y-1.5">
+            <li>5 weeks: better energy, improved movement quality, early strength gains.</li>
+            <li>10 weeks: noticeable changes; strength +5–10%; if fat loss, ~3–5 kg down with adherence.</li>
+            <li>20 weeks: significant progress; strength +10–20%; if building muscle, +2–4 kg; if fat loss, ~6–10+ kg.</li>
+            <li>26 weeks: well on your way; compounded improvements across posture, mobility, strength and cardio.</li>
+          </ul>
         </div>
       </section>
 

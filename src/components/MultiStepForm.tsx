@@ -55,6 +55,13 @@ const FieldControl = ({ field }: { field: PhaseField }) => {
     if (showWhen.notValue !== undefined) {
       ok = ok && dependentValue !== showWhen.notValue;
     }
+    if (showWhen.includes !== undefined) {
+      if (Array.isArray(dependentValue)) {
+        ok = ok && (dependentValue as string[]).includes(showWhen.includes);
+      } else {
+        ok = false;
+      }
+    }
     return ok;
   };
 
@@ -337,6 +344,13 @@ const PhaseFormContent = () => {
     }
     if (showWhen.notValue !== undefined) {
       ok = ok && dependentValue !== showWhen.notValue;
+    }
+    if (showWhen.includes !== undefined) {
+      if (Array.isArray(dependentValue)) {
+        ok = ok && (dependentValue as string[]).includes(showWhen.includes);
+      } else {
+        ok = false;
+      }
     }
     return ok;
   }, [formData]);
@@ -945,6 +959,7 @@ const PhaseFormContent = () => {
                     roadmap={roadmap}
                     goals={Array.isArray(formData.clientGoals) ? formData.clientGoals : []}
                     bodyComp={bodyCompInterp ? { timeframeWeeks: bodyCompInterp.timeframeWeeks } : undefined}
+                    formData={formData}
                   />
                 ) : (
                   <CoachReport plan={plan} scores={scores} bodyComp={bodyCompInterp} />
