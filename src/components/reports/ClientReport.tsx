@@ -350,7 +350,7 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
         </div>
       </section>
 
-      {/* Sample Workout - tailored to flagged issues and goals */}
+      {/* Sample Workout - (relocated to end) */}
       {(() => {
         const g0 = (goals && goals[0]) || '';
         const warmup: string[] = [];
@@ -408,43 +408,7 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
           : g0 === 'improve-fitness' ? 'Primary block — Cardio fitness'
           : 'Primary block';
         const correctivesTitle = 'Correctives — addressing your main concerns';
-        return (
-          <section className="space-y-2">
-            <h3 className="text-xl font-semibold text-slate-900">Sample workout</h3>
-            <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <h4 className="text-sm font-semibold text-slate-900">{correctivesTitle}</h4>
-                  <ul className="mt-2 list-disc pl-5 text-sm text-slate-700 space-y-1">
-                    {warmup.length === 0 && <li>Dynamic mobility targeting hips/shoulders/ankles as needed</li>}
-                    {warmup.map((w, i) => <li key={`wu-${i}`}>{w}</li>)}
-                    {activation.map((a, i) => <li key={`act-${i}`}>{a}</li>)}
-                  </ul>
-                </div>
-                <div>
-                  <h4 className="text-sm font-semibold text-slate-900">{goalBlockTitle}</h4>
-                  <ul className="mt-2 list-disc pl-5 text-sm text-slate-700 space-y-1">
-                    {main.map((m, i) => <li key={`main-${i}`}>{m}</li>)}
-                    {accessories.length > 0 && <li className="mt-2 font-medium text-slate-800">Accessories</li>}
-                    {accessories.map((a, i) => <li key={`acc-${i}`}>{a}</li>)}
-                    {finisher.length > 0 && <li className="mt-2 font-medium text-slate-800">Finisher</li>}
-                    {finisher.map((f, i) => <li key={`fin-${i}`}>{f}</li>)}
-                  </ul>
-                </div>
-              </div>
-              <div className="mt-3 grid gap-3 md:grid-cols-2">
-                <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
-                  <h5 className="text-xs font-semibold text-slate-800">Daily movement</h5>
-                  <p className="mt-1 text-xs text-slate-700">Walks between sessions help recovery and fat‑loss; aim for short breaks and a daily step goal.</p>
-                </div>
-                <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
-                  <h5 className="text-xs font-semibold text-slate-800">Progression</h5>
-                  <p className="mt-1 text-xs text-slate-700">We’ll increase volume/intensity as movement improves—technique first, load follows.</p>
-                </div>
-              </div>
-            </div>
-          </section>
-        );
+        return null;
       })()}
 
       <section className="space-y-2">
@@ -507,6 +471,120 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
           </ul>
         </div>
       </section>
+
+      {/* Sample Workout - last section, with brackets to show purpose and step target */}
+      {(() => {
+        const g0 = (goals && goals[0]) || '';
+        const warmup: string[] = [];
+        const activation: string[] = [];
+        const main: string[] = [];
+        const accessories: string[] = [];
+        const finisher: string[] = [];
+        // Flags for bracket tags
+        const add = (arr: string[], text: string, tag?: string) => arr.push(tag ? `${text} (${tag})` : text);
+        // Correctives
+        if (formData?.mobilityHip && formData.mobilityHip !== 'good' || focusAreas.find(f => f.toLowerCase().includes('hip mobility'))) {
+          add(warmup, '90/90 hip switches 2 x 6/side', 'hip mobility');
+          add(warmup, 'Hip flexor stretch 2 x 45s/side', 'hip mobility');
+        }
+        if (formData?.mobilityShoulder && formData.mobilityShoulder !== 'good' || focusAreas.find(f => f.toLowerCase().includes('shoulder mobility'))) {
+          add(warmup, 'PVC shoulder dislocates 2 x 8', 'shoulder mobility');
+          add(warmup, 'Wall slides 2 x 8', 'shoulder mobility');
+        }
+        if (formData?.mobilityAnkle && formData.mobilityAnkle !== 'good' || focusAreas.find(f => f.toLowerCase().includes('ankle mobility'))) {
+          add(warmup, 'Knee-to-wall ankle mobilisations 2 x 8/side', 'ankle mobility');
+        }
+        if ((formData?.postureBackOverall && formData.postureBackOverall !== 'neutral') || focusAreas.find(f => f.toLowerCase().includes('spinal'))) {
+          add(warmup, 'T‑spine extensions over foam roller 2 x 8', 'posture');
+        }
+        if (focusAreas.find(f => f.toLowerCase().includes('knee alignment'))) {
+          add(activation, 'Mini‑band lateral walks 2 x 10 steps/side', 'knee tracking');
+          add(activation, 'Split squat knee tracking drill 2 x 8/side', 'knee tracking');
+        }
+        if (focusAreas.find(f => f.toLowerCase().includes('core endurance'))) {
+          add(activation, 'Dead bug 2 x 8/side', 'core stability');
+          add(activation, 'Front plank 2 x 30–45s', 'core stability');
+        }
+        // Goal-driven main
+        if (g0 === 'weight-loss') {
+          add(main, 'Goblet squat 3–4 x 8–12', 'strength base');
+          add(main, 'DB bench press 3–4 x 8–12', 'strength base');
+          add(main, '1‑arm row 3–4 x 8–12/side', 'strength base');
+          add(accessories, 'Hip hinge (RDL) 3 x 8–10', 'posterior chain');
+          add(accessories, 'Walking lunge 2–3 x 8/side', 'single‑leg stability');
+          add(finisher, 'Zone 2 cardio 15–20 min (bike/row/treadmill)', 'body comp');
+        } else if (g0 === 'build-muscle') {
+          add(main, 'Back squat 4 x 6–8', 'hypertrophy');
+          add(main, 'Bench press 4 x 6–8', 'hypertrophy');
+          add(main, 'Chest‑supported row 4 x 8–10', 'hypertrophy');
+          add(accessories, 'Romanian deadlift 3 x 8–10', 'posterior chain');
+          add(accessories, 'Lateral raise 3 x 12–15', 'deltoids');
+          add(accessories, 'Face pulls 3 x 12–15', 'scapular control');
+          add(finisher, 'Optional: easy 10–15 min Zone 2', 'recovery');
+        } else if (g0 === 'build-strength') {
+          add(main, 'Back squat 5 x 3 @ RPE 7–8', 'strength');
+          add(main, 'Bench press 5 x 3 @ RPE 7–8', 'strength');
+          add(main, 'Deadlift 3 x 3 @ RPE 7–8', 'strength');
+          add(accessories, 'Paused squat 3 x 3–5', 'technique');
+          add(accessories, 'Row variation 3 x 6–8', 'upper back');
+          add(finisher, 'Breathing/box‑breathing 5 min', 'recovery');
+        } else if (g0 === 'improve-fitness') {
+          add(main, 'Tempo intervals: 6 x 2 min hard / 2 min easy', 'cardio fitness');
+          add(main, 'Zone 2 steady 20–30 min (alt days)', 'cardio base');
+          add(accessories, 'Split squat 3 x 8/side', 'single‑leg strength');
+          add(accessories, 'Pushups 3 x 8–12', 'upper body endurance');
+          add(accessories, 'Row 3 x 8–12', 'upper back');
+          add(finisher, 'Optional strides / hill repeats', 'form & turnover');
+        } else {
+          add(main, 'Circuit: Goblet squat 10, Pushups 8–12, 1‑arm row 10/side, Hip hinge 10', 'general conditioning');
+          add(finisher, 'Walk 10–15 min cooldown', 'recovery');
+        }
+        // Daily step target
+        const stepsNow = parseFloat(formData?.stepsPerDay || '0');
+        let stepTarget = '7000–9000';
+        if (!isNaN(stepsNow)) {
+          if (stepsNow < 4000) stepTarget = '5000–7000';
+          else if (stepsNow < 7000) stepTarget = '7000–9000';
+          else stepTarget = '8000–10000';
+        }
+        return (
+          <section className="space-y-2">
+            <h3 className="text-xl font-semibold text-slate-900">Sample workout</h3>
+            <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-900">Correctives — addressing your main concerns</h4>
+                  <ul className="mt-2 list-disc pl-5 text-sm text-slate-700 space-y-1">
+                    {warmup.length === 0 && <li>Dynamic mobility targeting hips/shoulders/ankles as needed</li>}
+                    {warmup.map((w, i) => <li key={`wu-${i}`}>{w}</li>)}
+                    {activation.map((a, i) => <li key={`act-${i}`}>{a}</li>)}
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-900">{goalBlockTitle}</h4>
+                  <ul className="mt-2 list-disc pl-5 text-sm text-slate-700 space-y-1">
+                    {main.map((m, i) => <li key={`main-${i}`}>{m}</li>)}
+                    {accessories.length > 0 && <li className="mt-2 font-medium text-slate-800">Accessories</li>}
+                    {accessories.map((a, i) => <li key={`acc-${i}`}>{a}</li>)}
+                    {finisher.length > 0 && <li className="mt-2 font-medium text-slate-800">Finisher</li>}
+                    {finisher.map((f, i) => <li key={`fin-${i}`}>{f}</li>)}
+                  </ul>
+                </div>
+              </div>
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                  <h5 className="text-xs font-semibold text-slate-800">Daily movement</h5>
+                  <p className="mt-1 text-xs text-slate-700">Daily steps target: {stepTarget} per day. Short walk breaks between sessions boost recovery and fat‑loss.</p>
+                </div>
+                <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                  <h5 className="text-xs font-semibold text-slate-800">Progression</h5>
+                  <p className="mt-1 text-xs text-slate-700">We’ll increase volume/intensity as movement improves—technique first, load follows.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+        );
+      })()}
 
       {/* Removed explicit expected timeframe to keep end date obscure */}
     </div>
