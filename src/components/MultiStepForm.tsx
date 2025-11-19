@@ -129,6 +129,34 @@ const FieldControl = ({ field }: { field: PhaseField }) => {
                 ))}
               </SelectContent>
             </Select>
+            {/* Dynamic helper for weight-loss target level */}
+            {field.id === ('goalLevelWeightLoss' as keyof FormData) && (
+              <div className="mt-2 text-xs text-slate-600">
+                {(() => {
+                  const heightCm = parseFloat(String(formData.heightCm || '0'));
+                  const weightKg = parseFloat(String(formData.inbodyWeightKg || '0'));
+                  const h = isNaN(heightCm) ? 0 : heightCm / 100;
+                  const wBMI = (bmi: number) => (h > 0 ? (bmi * h * h) : 0);
+                  const t25 = wBMI(25);
+                  const t23 = wBMI(23);
+                  const t22 = wBMI(22);
+                  if (h <= 0) {
+                    return <div>Enter height to see specific targets for your build.</div>;
+                  }
+                  return (
+                    <ul className="list-disc pl-4 space-y-0.5">
+                      <li>Minimum for good health ≈ {t25 > 0 ? `${t25.toFixed(1)} kg` : '—'} (BMI 25)</li>
+                      <li>Average ≈ {t23 > 0 ? `${((t25 + t22) / 2).toFixed(1)} kg` : '—'} (midpoint)</li>
+                      <li>Above average (recommended) ≈ {t23 > 0 ? `${t23.toFixed(1)} kg` : '—'} (BMI 23)</li>
+                      <li>Elite (long-term) ≈ {t22 > 0 ? `${t22.toFixed(1)} kg` : '—'} (BMI 22)</li>
+                      {weightKg > 0 && t25 > 0 && weightKg > t25 && (
+                        <li>Current is ~{(weightKg - t25).toFixed(1)} kg above the healthy range upper bound.</li>
+                      )}
+                    </ul>
+                  );
+                })()}
+              </div>
+            )}
           </div>
         );
       case 'multiselect': {
