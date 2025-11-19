@@ -125,6 +125,41 @@ const FieldControl = ({ field }: { field: PhaseField }) => {
           </div>
         );
       case 'multiselect': {
+        // Special tab-like multi toggle for goals
+        if ((field.id as string) === 'clientGoals' && field.options) {
+          const selected = Array.isArray(value) ? (value as string[]) : [];
+          const toggle = (val: string) => {
+            if (selected.includes(val)) {
+              handleChange(selected.filter(v => v !== val));
+            } else {
+              handleChange([...selected, val]);
+            }
+          };
+          return (
+            <div className="mt-3">
+              <div className="inline-flex flex-wrap gap-2">
+                {field.options.map(opt => {
+                  const isActive = selected.includes(opt.value);
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => toggle(opt.value)}
+                      className={`rounded-md px-3 py-1.5 text-sm font-medium border transition ${
+                        isActive
+                          ? 'border-slate-900 bg-slate-900 text-white'
+                          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                      }`}
+                      aria-pressed={isActive}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        }
         const selected = Array.isArray(value) ? (value as string[]) : [];
         const selectedLabels = field.options
           ?.filter(option => selected.includes(option.value))
@@ -901,7 +936,7 @@ const PhaseFormContent = () => {
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                 {reportView === 'client' ? (
-                  <ClientReport scores={scores} roadmap={roadmap} />
+                  <ClientReport scores={scores} roadmap={roadmap} goals={Array.isArray(formData.clientGoals) ? formData.clientGoals : []} />
                 ) : (
                   <CoachReport plan={plan} scores={scores} bodyComp={bodyCompInterp} />
                 )}

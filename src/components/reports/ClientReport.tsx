@@ -2,9 +2,21 @@ import React from 'react';
 import type { ScoreSummary, RoadmapPhase } from '@/lib/scoring';
 import RoadmapTimeline from './RoadmapTimeline';
 
-export default function ClientReport({ scores, roadmap }: { scores: ScoreSummary; roadmap: RoadmapPhase[] }) {
+export default function ClientReport({ scores, roadmap, goals }: { scores: ScoreSummary; roadmap: RoadmapPhase[]; goals?: string[] }) {
   return (
     <div className="space-y-8">
+      {goals && goals.length > 0 && (
+        <section className="space-y-2">
+          <h3 className="text-xl font-semibold text-slate-900">Your Goals</h3>
+          <div className="flex flex-wrap gap-2">
+            {goals.map((g, i) => (
+              <span key={`${g}-${i}`} className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                {g.replace('-', ' ')}
+              </span>
+            ))}
+          </div>
+        </section>
+      )}
       <section className="space-y-2">
         <h3 className="text-xl font-semibold text-slate-900">Your Fitness Summary</h3>
         <div className="rounded-lg border border-slate-200 p-4 bg-white shadow-sm">

@@ -67,30 +67,48 @@ export function generateCoachPlan(form: FormData, scores: ScoreSummary): CoachPl
   const issues: string[] = [];
   const blocks: CoachPlan['movementBlocks'] = [];
 
+  // Helper to avoid duplicate blocks by title
+  const addBlock = (title: string, objectives: string[], exercises: typeof EXERCISES[keyof typeof EXERCISES]) => {
+    if (!blocks.find(b => b.title === title)) {
+      blocks.push({ title, objectives, exercises });
+    }
+  };
+
+  // Incorporate client goals
+  const goals = Array.isArray((form as any).clientGoals) ? (form as any).clientGoals as string[] : [];
+  goals.forEach((g) => {
+    if (g === 'weight-loss') {
+      issues.push('Primary goal: Weight loss');
+      addBlock('Aerobic base for fat loss', ['Increase weekly calorie burn', 'Improve HR recovery'], EXERCISES.cardioBase);
+    }
+    if (g === 'build-muscle' || g === 'build-strength') {
+      issues.push(g === 'build-muscle' ? 'Primary goal: Build muscle' : 'Primary goal: Build strength');
+      addBlock('Strength & hypertrophy base', ['Progressive overload', 'Compound movement proficiency'], EXERCISES.strengthBase);
+      addBlock('Core endurance', ['Increase stiffness & postural control'], EXERCISES.coreEndurance);
+    }
+    if (g === 'improve-fitness') {
+      issues.push('Primary goal: Improve fitness');
+      addBlock('Aerobic base', ['Build aerobic capacity', 'Improve HR recovery'], EXERCISES.cardioBase);
+    }
+    if (g === 'general-health') {
+      issues.push('Primary goal: General health');
+      addBlock('Daily posture hygiene', ['Reduce prolonged flexion', 'Reinforce neutral alignment'], EXERCISES.posture);
+      addBlock('Aerobic base', ['2–3x/week cardio', 'Promote active lifestyle'], EXERCISES.cardioBase);
+    }
+  });
+
   // Posture/alignment issues
   if (form.postureBackOverall === 'increased-kyphosis') {
     issues.push('Increased thoracic kyphosis');
-    blocks.push({
-      title: 'T-spine extension & scapular control',
-      objectives: ['Improve thoracic extension', 'Reinforce scapular retraction'],
-      exercises: EXERCISES.kyphosis,
-    });
+    addBlock('T-spine extension & scapular control', ['Improve thoracic extension', 'Reinforce scapular retraction'], EXERCISES.kyphosis);
   }
   if (form.postureBackOverall === 'increased-lordosis') {
     issues.push('Anterior pelvic tilt / lordosis');
-    blocks.push({
-      title: 'Pelvic control & deep core activation',
-      objectives: ['Improve posterior pelvic tilt control', 'Enhance core stiffness'],
-      exercises: EXERCISES.lordosis,
-    });
+    addBlock('Pelvic control & deep core activation', ['Improve posterior pelvic tilt control', 'Enhance core stiffness'], EXERCISES.lordosis);
   }
   if (form.postureKneesOverall === 'valgus-knee') {
     issues.push('Knee valgus tendency');
-    blocks.push({
-      title: 'Hip abduction strength & knee tracking',
-      objectives: ['Strengthen glute med', 'Improve knee-over-toes control'],
-      exercises: EXERCISES.kneeValgus,
-    });
+    addBlock('Hip abduction strength & knee tracking', ['Strengthen glute med', 'Improve knee-over-toes control'], EXERCISES.kneeValgus);
   }
 
   // Mobility issues
@@ -99,66 +117,38 @@ export function generateCoachPlan(form: FormData, scores: ScoreSummary): CoachPl
     const mobIssues = mob?.weaknesses || [];
     if (mobIssues.find(w => w.toLowerCase().includes('hip'))) {
       issues.push('Hip mobility limitations');
-      blocks.push({
-        title: 'Hip mobility',
-        objectives: ['Increase hip ER/IR and extension'],
-        exercises: EXERCISES.mobilityHip,
-      });
+      addBlock('Hip mobility', ['Increase hip ER/IR and extension'], EXERCISES.mobilityHip);
     }
     if (mobIssues.find(w => w.toLowerCase().includes('shoulder'))) {
       issues.push('Shoulder mobility limitations');
-      blocks.push({
-        title: 'Shoulder mobility',
-        objectives: ['Improve shoulder flexion and ER'],
-        exercises: EXERCISES.mobilityShoulder,
-      });
+      addBlock('Shoulder mobility', ['Improve shoulder flexion and ER'], EXERCISES.mobilityShoulder);
     }
     if (mobIssues.find(w => w.toLowerCase().includes('ankle'))) {
       issues.push('Ankle mobility limitations');
-      blocks.push({
-        title: 'Ankle mobility',
-        objectives: ['Increase dorsiflexion ROM'],
-        exercises: EXERCISES.mobilityAnkle,
-      });
+      addBlock('Ankle mobility', ['Increase dorsiflexion ROM'], EXERCISES.mobilityAnkle);
     }
   }
 
   // Cardio base
   if ((scores.categories.find(c => c.id === 'cardio')?.score || 0) < 70) {
     issues.push('Cardiorespiratory capacity below target');
-    blocks.push({
-      title: 'Aerobic base',
-      objectives: ['Build aerobic capacity', 'Improve HR recovery'],
-      exercises: EXERCISES.cardioBase,
-    });
+    addBlock('Aerobic base', ['Build aerobic capacity', 'Improve HR recovery'], EXERCISES.cardioBase);
   }
 
   // Core/strength
   if ((scores.categories.find(c => c.id === 'strength')?.score || 0) < 70) {
     issues.push('Strength & endurance below target');
-    blocks.push({
-      title: 'Strength & core',
-      objectives: ['Improve core endurance', 'Build foundational strength'],
-      exercises: [...EXERCISES.coreEndurance, ...EXERCISES.strengthBase],
-    });
+    addBlock('Strength & core', ['Improve core endurance', 'Build foundational strength'], [...EXERCISES.coreEndurance, ...EXERCISES.strengthBase]);
   }
 
   // General posture block if alignment OK but habitual posture poor
   if ((scores.categories.find(c => c.id === 'posture')?.score || 0) < 70) {
-    blocks.unshift({
-      title: 'Daily posture hygiene',
-      objectives: ['Reduce prolonged flexion', 'Reinforce neutral alignment'],
-      exercises: EXERCISES.posture,
-    });
+    blocks.unshift({ title: 'Daily posture hygiene', objectives: ['Reduce prolonged flexion', 'Reinforce neutral alignment'], exercises: EXERCISES.posture });
   }
 
   // Fallback if no blocks
   if (blocks.length === 0) {
-    blocks.push({
-      title: 'Performance maintenance',
-      objectives: ['Maintain strengths', 'Prevent regression'],
-      exercises: EXERCISES.strengthBase,
-    });
+    blocks.push({ title: 'Performance maintenance', objectives: ['Maintain strengths', 'Prevent regression'], exercises: EXERCISES.strengthBase });
   }
 
   return { keyIssues: issues, movementBlocks: blocks };

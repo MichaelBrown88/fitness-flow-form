@@ -79,6 +79,31 @@ export const phaseDefinitions = [
           { id: 'assignedCoach' as keyof FormData, type: 'select' as FieldType, label: 'Assigned Coach', required: true, options: [{ value: 'coach-mike', label: 'Coach Mike' }, { value: 'coach-selina', label: 'Coach Selina' }] },
         ],
       },
+      {
+        id: 'goals',
+        title: 'Goals',
+        description: 'Select primary goals to personalise the plan and reports.',
+        instructions: {
+          clientInstructions: 'Choose all that apply. You can adjust goals later.',
+          coachNotes: 'Use goals to prioritise phases and coaching focus.'
+        },
+        fields: [
+          {
+            id: 'clientGoals' as keyof FormData,
+            type: 'multiselect' as FieldType,
+            label: 'Client Goals',
+            placeholder: 'Select one or more goals',
+            tooltip: 'Select multiple goals. The roadmap and recommendations will prioritise toward these.',
+            options: [
+              { value: 'build-muscle', label: 'Build muscle' },
+              { value: 'weight-loss', label: 'Weight loss' },
+              { value: 'build-strength', label: 'Build strength' },
+              { value: 'improve-fitness', label: 'Improve fitness' },
+              { value: 'general-health', label: 'General health' },
+            ],
+          },
+        ],
+      },
     ],
   },
   {

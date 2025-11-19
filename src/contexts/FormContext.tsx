@@ -8,6 +8,7 @@ export interface FormData {
   dateOfBirth: string;
   gender: string;
   assignedCoach: string;
+  clientGoals: string[];
   activityLevel: string;
   sleepDuration: string;
   sleepQuality: string;
@@ -163,6 +164,7 @@ const initialFormData: FormData = {
   dateOfBirth: '',
   gender: '',
   assignedCoach: '',
+  clientGoals: [],
   activityLevel: '',
   sleepDuration: '',
   sleepQuality: '',
