@@ -16,6 +16,11 @@ export interface FormData {
   strengthTargetLift: string;
   strengthTarget1RMKg: string;
   fitnessTargetVo2: string;
+  // Goal level intents
+  goalLevelWeightLoss: string;
+  goalLevelMuscle: string;
+  goalLevelStrength: string;
+  goalLevelFitness: string;
   activityLevel: string;
   sleepDuration: string;
   sleepQuality: string;
@@ -179,6 +184,10 @@ const initialFormData: FormData = {
   strengthTargetLift: '',
   strengthTarget1RMKg: '',
   fitnessTargetVo2: '',
+  goalLevelWeightLoss: '',
+  goalLevelMuscle: '',
+  goalLevelStrength: '',
+  goalLevelFitness: '',
   activityLevel: '',
   sleepDuration: '',
   sleepQuality: '',

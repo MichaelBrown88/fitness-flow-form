@@ -77,18 +77,47 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
     const heightM = (parseFloat(formData?.heightCm || '0') || 0) / 100;
     const healthyMin = heightM > 0 ? 22 * heightM * heightM : 0;
     const healthyMax = heightM > 0 ? 25 * heightM * heightM : 0;
-    const fatLossTarget = healthyMax > 0 && weightKg > healthyMax ? (weightKg - healthyMax) : 0;
-    const fatLossWeeks = fatLossTarget > 0 ? Math.ceil(fatLossTarget / 0.5) : 16; // 0.5 kg/wk
-    const muscleWeeks = 16; // recommend multi-block horizon
-    const cardioWeeks = 12; // aerobic base build
+    // Weight loss level logic
+    const levelWL = formData?.goalLevelWeightLoss || '';
+    let wlTarget = 0;
+    if (healthyMax > 0 && weightKg > healthyMax) {
+      if (levelWL === 'health-minimum') wlTarget = weightKg - healthyMax;
+      else if (levelWL === 'average') wlTarget = weightKg - ((healthyMax + healthyMin) / 2 || healthyMax);
+      else if (levelWL === 'above-average' || levelWL === 'elite') wlTarget = weightKg - healthyMin;
+      else wlTarget = weightKg - healthyMax;
+      if (wlTarget < 0) wlTarget = 0;
+    }
+    const fatLossRate = 0.5;
+    const fatLossWeeks = wlTarget > 0 ? Math.ceil(wlTarget / fatLossRate) : 16;
+    // Muscle gain level logic
+    const levelMG = formData?.goalLevelMuscle || '';
+    const muscleTargetKg =
+      levelMG === 'health-minimum' ? 1.5 :
+      levelMG === 'average' ? 2.0 :
+      levelMG === 'above-average' ? 3.0 :
+      levelMG === 'elite' ? 4.0 : 2.0;
+    const muscleRate = sessionsPerWeek >= 5 ? 0.22 : sessionsPerWeek === 4 ? 0.18 : 0.15;
+    const muscleWeeks = Math.ceil(muscleTargetKg / muscleRate);
+    // Strength level logic
+    const levelST = formData?.goalLevelStrength || '';
+    const strengthPct =
+      levelST === 'health-minimum' ? 10 :
+      levelST === 'average' ? 15 :
+      levelST === 'above-average' ? 20 :
+      levelST === 'elite' ? 30 : 15;
+    const pctPerBlock = sessionsPerWeek >= 5 ? 4 : sessionsPerWeek === 4 ? 3 : 2.5; // % per ~5 weeks
+    const strengthWeeks = Math.ceil(strengthPct / pctPerBlock) * 5;
+    // Fitness level logic
+    const levelFT = formData?.goalLevelFitness || '';
+    const cardioWeeks = levelFT === 'elite' ? 20 : levelFT === 'above-average' ? 16 : 12;
     const mobilityWeeks = 6; // quicker wins
     const postureWeeks = 6; // quicker wins
 
     for (const cat of orderedCats) {
       let base = 12;
       if (cat.id === 'bodyComp') base = Math.max(12, Math.max(fatLossWeeks, muscleWeeks));
-      if (cat.id === 'strength') base = muscleWeeks;
-      if (cat.id === 'cardio') base = cardioWeeks;
+      if (cat.id === 'strength') base = Math.max(12, strengthWeeks);
+      if (cat.id === 'cardio') base = Math.max(12, cardioWeeks);
       if (cat.id === 'mobility') base = mobilityWeeks;
       if (cat.id === 'posture') base = postureWeeks;
       map[cat.id] = Math.round(base * sessionFactor);
