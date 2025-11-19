@@ -2,7 +2,7 @@ import type { FormData } from '@/contexts/FormContext';
 
 export type PhaseId = 'P0' | 'P1' | 'P2' | 'P3' | 'P4' | 'P5' | 'P6';
 
-export type FieldType = 'text' | 'number' | 'select' | 'textarea' | 'choice' | 'multiselect' | 'parq' | 'email' | 'tel' | 'date';
+export type FieldType = 'text' | 'number' | 'select' | 'textarea' | 'choice' | 'multiselect' | 'parq' | 'email' | 'tel' | 'date' | 'time';
 
 export interface PhaseField {
   id: keyof FormData;
@@ -17,7 +17,9 @@ export interface PhaseField {
   conditional?: {
     showWhen: {
       field: string;
-      value: string;
+      value?: string;
+      notValue?: string;
+      exists?: boolean;
     };
   };
 }
@@ -94,36 +96,36 @@ export const phaseDefinitions = [
           coachNotes: 'Use to set volume and recovery strategies.'
         },
         fields: [
-          { id: 'activityLevel' as keyof FormData, type: 'select' as FieldType, label: 'Activity Level', required: true, options: [
+          { id: 'activityLevel' as keyof FormData, type: 'select' as FieldType, label: 'Activity Level', required: true, tooltip: 'How active are you outside dedicated workouts? (daily movement, job activity, errands).', options: [
             { value: 'sedentary', label: 'Sedentary' },
             { value: 'lightly-active', label: 'Lightly Active' },
             { value: 'moderately-active', label: 'Moderately Active' },
             { value: 'very-active', label: 'Very Active' },
             { value: 'extremely-active', label: 'Extremely Active' },
           ]},
-          { id: 'sedentaryHours' as keyof FormData, type: 'number' as FieldType, label: 'Sedentary hours', placeholder: 'e.g., 8' },
-          { id: 'workHoursPerDay' as keyof FormData, type: 'number' as FieldType, label: 'Work hours', placeholder: 'e.g., 9' },
-          { id: 'sleepQuality' as keyof FormData, type: 'select' as FieldType, label: 'Sleep quality', options: [
+          { id: 'stepsPerDay' as keyof FormData, type: 'number' as FieldType, label: 'Average steps per day', placeholder: 'e.g., 6500', tooltip: 'Typical daily steps over the last 1–2 weeks (watch/phone estimate is fine).' },
+          { id: 'sedentaryHours' as keyof FormData, type: 'number' as FieldType, label: 'Sedentary hours', placeholder: 'e.g., 8', tooltip: 'Approximate hours spent sitting or inactive on a typical day.' },
+          { id: 'workHoursPerDay' as keyof FormData, type: 'number' as FieldType, label: 'Work hours', placeholder: 'e.g., 9', tooltip: 'Typical hours worked per day. Helps tailor training volume and recovery.' },
+          { id: 'sleepQuality' as keyof FormData, type: 'select' as FieldType, label: 'Sleep quality', tooltip: 'Coach framing: overall restfulness and continuity (uninterrupted sleep, fewer awakenings, feel rested). Not deep sleep %, just perceived quality.', options: [
             { value: 'poor', label: 'Poor' }, { value: 'fair', label: 'Fair' }, { value: 'good', label: 'Good' }, { value: 'excellent', label: 'Excellent' }
           ]},
-          { id: 'sleepDuration' as keyof FormData, type: 'select' as FieldType, label: 'Sleep Duration', options: [
+          { id: 'sleepDuration' as keyof FormData, type: 'select' as FieldType, label: 'Sleep Duration', tooltip: 'Average total hours of sleep per night over the last 1–2 weeks.', options: [
             { value: 'less-than-5', label: '<5h' }, { value: '5-6', label: '5-6h' }, { value: '6-7', label: '6-7h' }, { value: '7-8', label: '7-8h' }, { value: '8-9', label: '8-9h' }, { value: 'more-than-9', label: '>9h' }
           ]},
-          { id: 'sleepConsistency' as keyof FormData, type: 'select' as FieldType, label: 'Sleep schedule consistency', options: [
+          { id: 'sleepConsistency' as keyof FormData, type: 'select' as FieldType, label: 'Sleep schedule consistency', tooltip: 'How consistent are bedtime and wake times across the week.', options: [
             { value: 'very-inconsistent', label: 'Very inconsistent' }, { value: 'inconsistent', label: 'Inconsistent' }, { value: 'consistent', label: 'Consistent' }, { value: 'very-consistent', label: 'Very consistent' }
           ]},
-          { id: 'stressLevel' as keyof FormData, type: 'select' as FieldType, label: 'Stress levels', options: [
+          { id: 'stressLevel' as keyof FormData, type: 'select' as FieldType, label: 'Stress levels', tooltip: 'Perceived day-to-day stress (work, life load). Helps modulate training intensity.', options: [
             { value: 'very-low', label: 'Very low' }, { value: 'low', label: 'Low' }, { value: 'moderate', label: 'Moderate' }, { value: 'high', label: 'High' }, { value: 'very-high', label: 'Very high' }
           ]},
-          { id: 'nutritionHabits' as keyof FormData, type: 'select' as FieldType, label: 'Nutrition habits', options: [
+          { id: 'nutritionHabits' as keyof FormData, type: 'select' as FieldType, label: 'Nutrition habits', tooltip: 'Overall food quality and consistency (protein, whole foods, balanced meals).', options: [
             { value: 'poor', label: 'Poor' }, { value: 'fair', label: 'Fair' }, { value: 'good', label: 'Good' }, { value: 'excellent', label: 'Excellent' }
           ]},
-          { id: 'hydrationHabits' as keyof FormData, type: 'select' as FieldType, label: 'Hydration habits', options: [
+          { id: 'hydrationHabits' as keyof FormData, type: 'select' as FieldType, label: 'Hydration habits', tooltip: 'Typical daily water/fluid intake and consistency.', options: [
             { value: 'poor', label: 'Poor' }, { value: 'fair', label: 'Fair' }, { value: 'good', label: 'Good' }, { value: 'excellent', label: 'Excellent' }
           ]},
-          { id: 'caffeineCupsPerDay' as keyof FormData, type: 'number' as FieldType, label: 'Caffeine intake (cups per day)', placeholder: 'e.g., 2' },
-          { id: 'lastCaffeineIntake' as keyof FormData, type: 'text' as FieldType, label: 'Last caffeine intake', placeholder: 'e.g., 2:00 PM' },
-          { id: 'stepsPerDay' as keyof FormData, type: 'number' as FieldType, label: 'Average steps per day', placeholder: 'e.g., 6500' },
+          { id: 'caffeineCupsPerDay' as keyof FormData, type: 'number' as FieldType, label: 'Caffeine intake (cups per day)', placeholder: 'e.g., 2', tooltip: 'Average number of caffeinated drinks per day (coffee, tea, energy drinks).' },
+          { id: 'lastCaffeineIntake' as keyof FormData, type: 'time' as FieldType, label: 'Time of last caffeine intake', tooltip: 'Time of your most recent caffeine serving (helps with sleep timing).', conditional: { showWhen: { field: 'caffeineCupsPerDay', exists: true, notValue: '0' } } },
         ],
       }
     ],
@@ -153,18 +155,35 @@ export const phaseDefinitions = [
       },
       {
         id: 'body-comp',
-        title: 'Inbody Scan',
-        description: 'Body composition scan results.',
+        title: 'InBody 270 Scan',
+        description: 'Collect the 12 primary markers from the InBody 270 for clear decisions.',
         instructions: {
           clientInstructions: 'Stand still on the machine as instructed.',
-          coachNotes: 'Record primary metrics from scan.'
+          coachNotes: 'Record: Weight, SMM, BFM, BF%, BMI, VFL, WHR, TBW (L), Segmental lean mass (kg for 5 regions), BMR, Score.'
         },
         fields: [
-          { id: 'inbodyWeightKg' as keyof FormData, type: 'number' as FieldType, label: 'Weight (kg)', placeholder: 'e.g., 78.2' },
-          { id: 'inbodyBodyFatPct' as keyof FormData, type: 'number' as FieldType, label: 'Body Fat (%)', placeholder: 'e.g., 18.5' },
-          { id: 'skeletalMuscleMassKg' as keyof FormData, type: 'number' as FieldType, label: 'Skeletal Muscle Mass (kg)', placeholder: 'e.g., 36.4' },
-          { id: 'visceralFatLevel' as keyof FormData, type: 'number' as FieldType, label: 'Visceral Fat Level', placeholder: 'e.g., 9' },
-          { id: 'segmentalLeanImbalancePct' as keyof FormData, type: 'number' as FieldType, label: 'Segmental Lean Imbalance (%)', placeholder: 'e.g., 3' },
+          // SECTION 1 — BODY COMPOSITION (Primary)
+          { id: 'inbodyWeightKg' as keyof FormData, type: 'number' as FieldType, label: 'Weight (kg)', placeholder: 'e.g., 78.2', tooltip: 'Baseline for trend tracking. Never used alone as a progress metric.' },
+          { id: 'skeletalMuscleMassKg' as keyof FormData, type: 'number' as FieldType, label: 'Skeletal Muscle Mass (kg)', placeholder: 'e.g., 36.4', tooltip: 'Core metabolic/strength indicator. Low SMM → prioritise hypertrophy and protein targets.' },
+          { id: 'bodyFatMassKg' as keyof FormData, type: 'number' as FieldType, label: 'Body Fat Mass (kg)', placeholder: 'e.g., 21.3', tooltip: 'Used to set specific fat-loss targets and timelines.' },
+          { id: 'inbodyBodyFatPct' as keyof FormData, type: 'number' as FieldType, label: 'Body Fat (%)', placeholder: 'e.g., 18.5', tooltip: 'Primary health risk indicator (Men >25% / Women >32% = high risk).' },
+          { id: 'inbodyBmi' as keyof FormData, type: 'number' as FieldType, label: 'BMI', placeholder: 'e.g., 24.8', tooltip: 'Included for familiarity; not used for decisions.' },
+
+          // SECTION 2 — INTERNAL HEALTH INDICATORS
+          { id: 'visceralFatLevel' as keyof FormData, type: 'number' as FieldType, label: 'Visceral Fat Level', placeholder: 'e.g., 9', tooltip: 'InBody 270: 12+ high risk; 10–11 borderline; <10 healthy.' },
+          { id: 'waistHipRatio' as keyof FormData, type: 'number' as FieldType, label: 'Waist-to-Hip Ratio (WHR)', placeholder: 'e.g., 0.92', tooltip: 'Men: <0.90 low, 0.90–0.99 moderate, ≥1.00 high. Women: <0.80 low, 0.80–0.89 moderate, ≥0.90 high.' },
+          { id: 'totalBodyWaterL' as keyof FormData, type: 'number' as FieldType, label: 'Total Body Water (L)', placeholder: 'e.g., 41.0', tooltip: 'Hydration context only on 270. Use for scan-to-scan consistency.' },
+
+          // SECTION 3 — SEGMENTAL LEAN ANALYSIS (kg only)
+          { id: 'segmentalArmRightKg' as keyof FormData, type: 'number' as FieldType, label: 'Right arm lean (kg)', placeholder: 'e.g., 3.2', tooltip: 'Use left/right kg to detect imbalances (≥10% significant).' },
+          { id: 'segmentalArmLeftKg' as keyof FormData, type: 'number' as FieldType, label: 'Left arm lean (kg)', placeholder: 'e.g., 3.1' },
+          { id: 'segmentalLegRightKg' as keyof FormData, type: 'number' as FieldType, label: 'Right leg lean (kg)', placeholder: 'e.g., 9.7' },
+          { id: 'segmentalLegLeftKg' as keyof FormData, type: 'number' as FieldType, label: 'Left leg lean (kg)', placeholder: 'e.g., 9.1' },
+          { id: 'segmentalTrunkKg' as keyof FormData, type: 'number' as FieldType, label: 'Trunk lean (kg)', placeholder: 'e.g., 28.5' },
+
+          // SECTION 4 — METABOLIC BASELINE
+          { id: 'bmrKcal' as keyof FormData, type: 'number' as FieldType, label: 'BMR (kcal)', placeholder: 'e.g., 1620', tooltip: 'Set calorie targets; typically rises with higher SMM.' },
+          { id: 'inbodyScore' as keyof FormData, type: 'number' as FieldType, label: 'InBody Score', placeholder: 'e.g., 78', tooltip: 'Client-friendly marker that improves as fat ↓ and muscle ↑.' },
         ]
       }
     ],
@@ -187,9 +206,10 @@ export const phaseDefinitions = [
             id: 'postureHeadOverall' as keyof FormData,
             type: 'select' as FieldType,
             label: 'Head and neck alignment',
+            tooltip: 'Forward head means the head juts forward; neutral means stacked over shoulders.',
             options: [
               { value: 'neutral', label: 'Neutral' },
-              { value: 'forward-head', label: 'Forward head posture' },
+              { value: 'forward-head', label: 'Forward head posture (head juts forward)' },
               { value: 'tilted', label: 'Head tilted to one side' },
               { value: 'chin-tucked', label: 'Chin excessively tucked' },
             ],
@@ -198,11 +218,12 @@ export const phaseDefinitions = [
             id: 'postureShouldersOverall' as keyof FormData,
             type: 'select' as FieldType,
             label: 'Shoulder and upper back',
+            tooltip: 'Winged scapula means the shoulder blade sticks out from the rib cage.',
             options: [
               { value: 'neutral', label: 'Neutral' },
               { value: 'rounded', label: 'Rounded shoulders' },
               { value: 'elevated', label: 'One shoulder elevated' },
-              { value: 'winged-scapula', label: 'Scapula winging' },
+              { value: 'winged-scapula', label: 'Scapula winging (shoulder blade sticks out)' },
             ],
           },
           {
@@ -211,22 +232,32 @@ export const phaseDefinitions = [
             label: 'Back and spine',
             options: [
               { value: 'neutral', label: 'Neutral' },
-              { value: 'increased-kyphosis', label: 'Increased kyphosis' },
-              { value: 'increased-lordosis', label: 'Increased lordosis' },
-              { value: 'scoliosis', label: 'Scoliosis' },
-              { value: 'flat-back', label: 'Flat back' },
+              { value: 'increased-kyphosis', label: 'Increased kyphosis (upper back rounded)' },
+              { value: 'increased-lordosis', label: 'Increased lordosis (excess lower-back arch)' },
+              { value: 'scoliosis', label: 'Scoliosis (side-to-side curve)' },
+              { value: 'flat-back', label: 'Flat back (reduced curves)' },
             ],
           },
           {
             id: 'postureHipsOverall' as keyof FormData,
             type: 'select' as FieldType,
-            label: 'Hips and knees',
+            label: 'Hips alignment',
+            tooltip: 'Anterior tilt means pelvis tilts forward; posterior tilt means pelvis tilts backward.',
             options: [
               { value: 'neutral', label: 'Neutral' },
-              { value: 'anterior-tilt', label: 'Anterior pelvic tilt' },
-              { value: 'posterior-tilt', label: 'Posterior pelvic tilt' },
-              { value: 'valgus-knee', label: 'Knee valgus' },
-              { value: 'varus-knee', label: 'Knee varus' },
+              { value: 'anterior-tilt', label: 'Anterior pelvic tilt (pelvis forward)' },
+              { value: 'posterior-tilt', label: 'Posterior pelvic tilt (pelvis backward)' },
+            ],
+          },
+          {
+            id: 'postureKneesOverall' as keyof FormData,
+            type: 'select' as FieldType,
+            label: 'Knees alignment',
+            tooltip: 'Valgus means knees cave inward; varus means knees bow outward.',
+            options: [
+              { value: 'neutral', label: 'Neutral' },
+              { value: 'valgus-knee', label: 'Knee valgus (knees cave inward)' },
+              { value: 'varus-knee', label: 'Knee varus (knees bow outward)' },
             ],
           },
         ],
@@ -254,8 +285,11 @@ export const phaseDefinitions = [
           { id: 'ohsHipShift' as keyof FormData, type: 'select' as FieldType, label: 'Hip shift', options: [
             { value: 'none', label: 'None' }, { value: 'left', label: 'Left' }, { value: 'right', label: 'Right' }
           ]},
-          { id: 'ohsFootKneeBehavior' as keyof FormData, type: 'select' as FieldType, label: 'Foot and knee behaviour', options: [
-            { value: 'stable', label: 'Stable' }, { value: 'pronation/valgus', label: 'Pronation/valgus' }, { value: 'supination/varus', label: 'Supination/varus' }
+          { id: 'ohsKneeAlignment' as keyof FormData, type: 'select' as FieldType, label: 'Knee alignment', tooltip: 'Valgus = knees cave in; Varus = knees bow out.', options: [
+            { value: 'stable', label: 'Stable' }, { value: 'valgus', label: 'Valgus (knees cave in)' }, { value: 'varus', label: 'Varus (knees bow out)' }
+          ]},
+          { id: 'ohsFeetPosition' as keyof FormData, type: 'select' as FieldType, label: 'Foot behaviour', tooltip: 'Pronation = foot rolls inward; Supination = foot rolls outward.', options: [
+            { value: 'stable', label: 'Stable' }, { value: 'pronation', label: 'Pronation (rolls inward)' }, { value: 'supination', label: 'Supination (rolls outward)' }
           ]},
         ],
       },
@@ -288,20 +322,20 @@ export const phaseDefinitions = [
           { id: 'lungeLeftBalance' as keyof FormData, type: 'select' as FieldType, label: 'Left side balance', options: [
             { value: 'excellent', label: 'Excellent' }, { value: 'good', label: 'Good' }, { value: 'fair', label: 'Fair' }, { value: 'poor', label: 'Poor' }
           ]},
-          { id: 'lungeLeftKneeAlignment' as keyof FormData, type: 'select' as FieldType, label: 'Left side knee tracking', options: [
-            { value: 'tracks-straight', label: 'Tracks straight' }, { value: 'caves-inward', label: 'Caves inward' }, { value: 'bows-outward', label: 'Bows outward' }
+          { id: 'lungeLeftKneeAlignment' as keyof FormData, type: 'select' as FieldType, label: 'Left side knee tracking', tooltip: 'Valgus = caves inward; Varus = bows outward.', options: [
+            { value: 'tracks-straight', label: 'Tracks straight' }, { value: 'caves-inward', label: 'Caves inward (valgus)' }, { value: 'bows-outward', label: 'Bows outward (varus)' }
           ]},
-          { id: 'lungeLeftTorso' as keyof FormData, type: 'select' as FieldType, label: 'Left side hips', options: [
-            { value: 'neutral', label: 'Neutral' }, { value: 'anterior-tilt', label: 'Anterior tilt' }, { value: 'posterior-tilt', label: 'Posterior tilt' }
+          { id: 'lungeLeftTorso' as keyof FormData, type: 'select' as FieldType, label: 'Left side hips', tooltip: 'Anterior tilt = pelvis forward; Posterior tilt = pelvis backward.', options: [
+            { value: 'neutral', label: 'Neutral' }, { value: 'anterior-tilt', label: 'Anterior tilt (pelvis forward)' }, { value: 'posterior-tilt', label: 'Posterior tilt (pelvis backward)' }
           ]},
           { id: 'lungeRightBalance' as keyof FormData, type: 'select' as FieldType, label: 'Right side balance', options: [
             { value: 'excellent', label: 'Excellent' }, { value: 'good', label: 'Good' }, { value: 'fair', label: 'Fair' }, { value: 'poor', label: 'Poor' }
           ]},
-          { id: 'lungeRightKneeAlignment' as keyof FormData, type: 'select' as FieldType, label: 'Right side knee tracking', options: [
-            { value: 'tracks-straight', label: 'Tracks straight' }, { value: 'caves-inward', label: 'Caves inward' }, { value: 'bows-outward', label: 'Bows outward' }
+          { id: 'lungeRightKneeAlignment' as keyof FormData, type: 'select' as FieldType, label: 'Right side knee tracking', tooltip: 'Valgus = caves inward; Varus = bows outward.', options: [
+            { value: 'tracks-straight', label: 'Tracks straight' }, { value: 'caves-inward', label: 'Caves inward (valgus)' }, { value: 'bows-outward', label: 'Bows outward (varus)' }
           ]},
-          { id: 'lungeRightTorso' as keyof FormData, type: 'select' as FieldType, label: 'Right side hips', options: [
-            { value: 'neutral', label: 'Neutral' }, { value: 'anterior-tilt', label: 'Anterior tilt' }, { value: 'posterior-tilt', label: 'Posterior tilt' }
+          { id: 'lungeRightTorso' as keyof FormData, type: 'select' as FieldType, label: 'Right side hips', tooltip: 'Anterior tilt = pelvis forward; Posterior tilt = pelvis backward.', options: [
+            { value: 'neutral', label: 'Neutral' }, { value: 'anterior-tilt', label: 'Anterior tilt (pelvis forward)' }, { value: 'posterior-tilt', label: 'Posterior tilt (pelvis backward)' }
           ]},
         ]
       },
@@ -358,21 +392,24 @@ export const phaseDefinitions = [
       {
         id: 'fitness-assessment',
         title: 'Fitness assessment',
-        description: 'Choose the test to run.',
+        description: 'Choose test; follow steps for timing and measures.',
         instructions: {
           clientInstructions: 'Follow coach instructions during the test.',
-          coachNotes: 'Select appropriate test.'
+          coachNotes: 'Select appropriate test and record HR at specified times.'
         },
         fields: [
           { id: 'cardioTestSelected' as keyof FormData, type: 'select' as FieldType, label: 'Select test', options: [
             { value: 'ymca-step', label: 'YMCA step test' },
             { value: 'treadmill', label: 'Treadmill test' },
           ]},
+          // Simplified fields common to both tests
+          { id: 'cardioRestingHr' as keyof FormData, type: 'number' as FieldType, label: 'Resting Heart Rate (bpm)', tooltip: 'Measure after 5 minutes seated rest before the test.' },
+          { id: 'cardioPost1MinHr' as keyof FormData, type: 'number' as FieldType, label: '1-min Post-Test HR (HR₆₀, bpm)', tooltip: 'Record heart rate exactly 60s after test completion. See test instructions below.' },
+            ],
+          },
         ],
       },
-    ],
-  },
-  {
+      {
     id: 'P6',
     title: 'Results',
     summary: 'Review results and create reports.',
@@ -387,7 +424,7 @@ export const phaseDefinitions = [
           coachNotes: 'Summarize findings and next steps.'
         },
         fields: [
-          {
+      {
             id: 'coachReport' as keyof FormData,
             type: 'textarea' as FieldType,
             label: 'Coaches report',

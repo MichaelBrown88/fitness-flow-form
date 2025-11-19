@@ -17,61 +17,42 @@ const parqQuestions: ParQQuestion[] = [
   {
     id: 'parq1',
     question: 'Has your doctor ever said that you have a heart condition and that you should only do physical activity recommended by a doctor?',
-    tooltip: 'Heart conditions require medical clearance before starting exercise programs.',
+    tooltip: 'If yes, obtain medical clearance and follow physician guidelines before exercise.',
   },
   {
     id: 'parq2',
     question: 'Do you feel pain in your chest when you do physical activity?',
-    tooltip: 'Chest pain during exercise is a serious symptom that requires medical evaluation.',
+    tooltip: 'Chest pain during exercise requires medical evaluation before continuing.',
   },
   {
     id: 'parq3',
     question: 'In the past month, have you had chest pain when you were not doing physical activity?',
-    tooltip: 'Chest pain at rest requires immediate medical attention.',
+    tooltip: 'Chest pain at rest may indicate a serious condition; seek medical advice.',
   },
   {
     id: 'parq4',
     question: 'Do you lose your balance because of dizziness or do you ever lose consciousness?',
-    tooltip: 'Dizziness or loss of consciousness indicates potential cardiovascular or neurological issues.',
+    tooltip: 'Dizziness or fainting may indicate cardiovascular or neurological issues.',
   },
   {
     id: 'parq5',
-    question: 'Do you have a bone or joint problem (for example, back, knee or hip) that could be made worse by a change in your physical activity?',
-    tooltip: 'Joint problems may require modified exercise programs.',
+    question: 'Do you have a bone or joint problem that could be worsened by a change in your physical activity?',
+    tooltip: 'Existing joint problems may require exercise modifications.',
   },
   {
     id: 'parq6',
     question: 'Is your doctor currently prescribing drugs (for example, water pills) for your blood pressure or heart condition?',
-    tooltip: 'Certain medications for heart conditions require exercise modifications.',
+    tooltip: 'Certain medications can affect exercise response; adjust programs accordingly.',
   },
   {
     id: 'parq7',
-    question: 'Do you know of any other reason why you should not take part in physical activity?',
-    tooltip: 'Any other medical conditions that might affect exercise safety.',
+    question: 'Do you know of any other reason why you should not do physical activity?',
+    tooltip: 'Any medical reason that makes exercise unsafe without clearance.',
   },
-  {
-    id: 'parq8',
-    question: 'Have you had any major surgery in the past 3 months?',
-    tooltip: 'Recent surgery may require medical clearance before resuming physical activity.',
-  },
-  {
-    id: 'parq9',
-    question: 'Do you have any cuts, sores, or infections on your feet?',
-    tooltip: 'Foot conditions may affect exercise participation and require medical attention.',
-  },
-  {
-    id: 'parq10',
-    question: 'Do you have any eye conditions that might affect your ability to exercise safely?',
-    tooltip: 'Vision problems may impact balance and coordination during exercise.',
-  },
-  {
-    id: 'parq11',
-    question: 'Are you over 65 years of age and not accustomed to vigorous exercise?',
-    tooltip: 'Age-related considerations for exercise safety and progression.',
-  },
+  // Female-specific
   {
     id: 'parq12',
-    question: 'Are you pregnant or have you given birth in the last 6 months?',
+    question: 'Are you currently pregnant?',
     tooltip: 'Pregnancy requires specific exercise guidelines and modifications.',
     conditional: {
       showWhen: { field: 'gender', value: 'female' }
@@ -79,17 +60,11 @@ const parqQuestions: ParQQuestion[] = [
   },
   {
     id: 'parq13',
-    question: 'Do you have any conditions that might be affected by pregnancy?',
-    tooltip: 'Certain conditions may be affected by hormonal changes during pregnancy.',
+    question: 'Have you given birth in the last 6 months?',
+    tooltip: 'Recent birth may require modified return-to-exercise protocols.',
     conditional: {
       showWhen: { field: 'gender', value: 'female' }
     }
-  },
-  {
-    id: 'parqNotes',
-    question: 'Additional Screening Notes',
-    tooltip: 'Document any additional health conditions, medications, or concerns mentioned.',
-    isNotes: true
   },
 ];
 
@@ -118,9 +93,8 @@ const ParQQuestionnaire: React.FC = () => {
     formData[question.id as keyof typeof formData] === 'yes'
   );
 
-  // Mark PAR-Q as complete when all required questions are answered (notes are optional)
+  // Mark PAR-Q as complete when all required questions are answered
   const allQuestionsAnswered = visibleQuestions
-    .filter(question => !question.isNotes) // Exclude notes from required check
     .every(question => formData[question.id as keyof typeof formData] !== '');
 
   useEffect(() => {
@@ -129,13 +103,6 @@ const ParQQuestionnaire: React.FC = () => {
       updateFormData({ parqQuestionnaire: 'completed' });
     }
   }, [allQuestionsAnswered, updateFormData]);
-
-  // Also mark as complete when user reaches the notes question (if all required questions are done)
-  useEffect(() => {
-    if (currentQuestion?.isNotes && allQuestionsAnswered && formData.parqQuestionnaire !== 'completed') {
-      updateFormData({ parqQuestionnaire: 'completed' });
-    }
-  }, [currentQuestion?.isNotes, allQuestionsAnswered, formData.parqQuestionnaire, updateFormData]);
 
   useEffect(() => {
     // Auto-advance to next question when answered (but not for notes)
@@ -226,7 +193,7 @@ const ParQQuestionnaire: React.FC = () => {
         </div>
         <div className="w-full bg-slate-200 rounded-full h-2">
           <div
-            className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+            className="bg-slate-900 h-2 rounded-full transition-all duration-300"
             style={{ width: `${((currentQuestionIndex + 1) / visibleQuestions.length) * 100}%` }}
           />
         </div>

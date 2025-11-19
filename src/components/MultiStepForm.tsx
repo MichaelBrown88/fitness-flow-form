@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { FormProvider, useFormContext, type FormData } from '@/contexts/FormContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,10 @@ import { Check, ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronR
 import AppShell from '@/components/layout/AppShell';
 import { phaseDefinitions, type PhaseField, type PhaseSection } from '@/lib/phaseConfig';
 import ParQQuestionnaire from './ParQQuestionnaire';
+import { computeScores, buildRoadmap } from '@/lib/scoring';
+import { generateCoachPlan, generateBodyCompInterpretation } from '@/lib/recommendations';
+import ClientReport from '@/components/reports/ClientReport';
+import CoachReport from '@/components/reports/CoachReport';
 
 type FieldValue = string | string[];
 
@@ -41,7 +45,17 @@ const FieldControl = ({ field }: { field: PhaseField }) => {
 
     const { showWhen } = field.conditional;
     const dependentValue = formData[showWhen.field as keyof FormData];
-    return dependentValue === showWhen.value;
+    let ok = true;
+    if (showWhen.exists !== undefined) {
+      ok = ok && (dependentValue !== undefined && dependentValue !== null && String(dependentValue).trim() !== '');
+    }
+    if (showWhen.value !== undefined) {
+      ok = ok && dependentValue === showWhen.value;
+    }
+    if (showWhen.notValue !== undefined) {
+      ok = ok && dependentValue !== showWhen.notValue;
+    }
+    return ok;
   };
 
   if (!shouldShow()) {
@@ -141,11 +155,11 @@ const FieldControl = ({ field }: { field: PhaseField }) => {
                     <SelectItem
                       key={option.value}
                       value={option.value}
-                      className={isSelected ? 'bg-blue-50 text-blue-700' : ''}
+                      className={isSelected ? 'bg-slate-100 text-slate-800' : ''}
                     >
                       <div className="flex items-center gap-2">
                         <div className={`w-4 h-4 border rounded flex items-center justify-center ${
-                          isSelected ? 'bg-blue-500 border-blue-500' : 'border-gray-300'
+                          isSelected ? 'bg-slate-900 border-slate-900' : 'border-gray-300'
                         }`}>
                           {isSelected && <span className="text-white text-xs">✓</span>}
                         </div>
@@ -166,6 +180,26 @@ const FieldControl = ({ field }: { field: PhaseField }) => {
       }
       case 'parq':
         return <ParQQuestionnaire />;
+      case 'time':
+        return (
+          <Input
+            type="time"
+            placeholder={field.placeholder}
+            value={(value as string) ?? ''}
+            onChange={(event) => handleChange(event.target.value)}
+            className="mt-3"
+          />
+        );
+      case 'date':
+        return (
+          <Input
+            type="date"
+            placeholder={field.placeholder}
+            value={(value as string) ?? ''}
+            onChange={(event) => handleChange(event.target.value)}
+            className="mt-3"
+          />
+        );
       case 'number':
       case 'text':
       default:
@@ -194,6 +228,8 @@ const PhaseFormContent = () => {
   const [activePhaseIdx, setActivePhaseIdx] = useState(0);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [recentlyCompletedSections, setRecentlyCompletedSections] = useState<Set<string>>(new Set());
+  const phaseRefs = useRef<Record<number, HTMLButtonElement | null>>({});
+  const [reportView, setReportView] = useState<'client' | 'coach'>('client');
 
   const totalPhases = phaseDefinitions.length;
   const activePhase = useMemo(() => {
@@ -203,6 +239,32 @@ const PhaseFormContent = () => {
       summary: 'Phase definitions are currently being loaded or configured.',
       sections: []
     };
+  }, [activePhaseIdx]);
+
+  // Precompute reports data when needed
+  const scores = useMemo(() => computeScores(formData), [formData]);
+  const roadmap = useMemo(() => buildRoadmap(scores), [scores]);
+  const plan = useMemo(() => generateCoachPlan(formData, scores), [formData, scores]);
+  const bodyCompInterp = useMemo(() => generateBodyCompInterpretation(formData), [formData]);
+  const handlePrint = useCallback(() => window.print(), []);
+  const handleShare = useCallback(async () => {
+    const shareData = {
+      title: reportView === 'client' ? 'Client Report' : 'Coach Report',
+      text: 'Assessment report generated from Fitness Assessment.',
+      url: window.location.href,
+    };
+    try {
+      const navWithShare = navigator as Navigator & { share?: (data: ShareData) => Promise<void> };
+      if (navWithShare.share) await navWithShare.share(shareData as ShareData);
+    } catch (_e) { /* noop */ }
+  }, [reportView]);
+
+  // Smoothly scroll active phase chip into view
+  useEffect(() => {
+    const el = phaseRefs.current[activePhaseIdx];
+    if (el && typeof el.scrollIntoView === 'function') {
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
   }, [activePhaseIdx]);
 
   // Debug: verify the phases loaded at runtime
@@ -226,18 +288,37 @@ const PhaseFormContent = () => {
     });
   }, [formData]);
 
-  // Check if a section is completed (all fields filled, not just required)
+  // Determine if a field should be shown (matches FieldControl logic)
+  const isFieldVisible = useCallback((field: PhaseField) => {
+    if (!('conditional' in field) || !field.conditional || !field.conditional.showWhen) return true;
+    const { showWhen } = field.conditional;
+    const dependentValue = formData[showWhen.field as keyof FormData];
+    let ok = true;
+    if (showWhen.exists !== undefined) {
+      ok = ok && (dependentValue !== undefined && dependentValue !== null && String(dependentValue).trim() !== '');
+    }
+    if (showWhen.value !== undefined) {
+      ok = ok && dependentValue === showWhen.value;
+    }
+    if (showWhen.notValue !== undefined) {
+      ok = ok && dependentValue !== showWhen.notValue;
+    }
+    return ok;
+  }, [formData]);
+
+  // Check if a section is completed (all visible fields filled)
   const isSectionCompleted = useCallback((section: PhaseSection) => {
     return section.fields.every(field => {
+      if (!isFieldVisible(field)) return true; // hidden fields do not block completion
       const value = formData[field.id];
       if (Array.isArray(value)) {
         return value.length > 0;
       }
       return value !== undefined && value !== null && value !== '';
     });
-  }, [formData]);
+  }, [formData, isFieldVisible]);
 
-  // Determine if a given phase is completed (all fields in all sections filled).
+  // Determine if a given phase is completed (all visible fields in all sections filled).
   const isPhaseCompleted = useCallback((phaseIdx: number) => {
     const phase = phaseDefinitions[phaseIdx];
     if (!phase) return false;
@@ -245,12 +326,13 @@ const PhaseFormContent = () => {
     if (sections.length === 0) return true; // empty phase counts as completed/unlocked
     return sections.every(section =>
       section.fields.every(field => {
+        if (!isFieldVisible(field)) return true;
         const value = formData[field.id];
         if (Array.isArray(value)) return value.length > 0;
         return value !== undefined && value !== null && value !== '';
       })
     );
-  }, [formData]);
+  }, [formData, isFieldVisible]);
 
   // Compute the furthest phase index the user can navigate to (completed chain unlocks next).
   const maxUnlockedPhaseIdx = useMemo(() => {
@@ -312,25 +394,23 @@ const PhaseFormContent = () => {
     const currentSection = allSections.find(section => section.id === expandedSectionId);
     if (!currentSection) return;
 
-    // Check if current section is completed and wasn't recently completed
-    const isSectionCompleted = currentSection.fields?.every(field =>
-      formData[field.id as keyof FormData] !== '' && formData[field.id as keyof FormData] !== undefined
-    ) ?? false;
+    // Check if current section is completed and wasn't recently completed (skip hidden fields)
+    const currentSectionCompleted = isSectionCompleted(currentSection);
 
     const wasRecentlyCompleted = recentlyCompletedSections.has(expandedSectionId);
 
-    if (isSectionCompleted && !wasRecentlyCompleted) {
+    if (currentSectionCompleted && !wasRecentlyCompleted) {
       setRecentlyCompletedSections(prev => new Set(prev).add(expandedSectionId));
 
       const currentIndex = allSections.findIndex(section => section.id === expandedSectionId);
 
       // Add delay before auto-advancing so user can see their input
       setTimeout(() => {
-        // Only expand next section, don't force collapse current section
+        // Expand next section and collapse current to ensure single-open behavior
         if (currentIndex < allSections.length - 1) {
           const nextSection = allSections[currentIndex + 1];
-          setExpandedSections(prev => ({
-            ...prev,
+          setExpandedSections(() => ({
+            [expandedSectionId]: false,
             [nextSection.id]: true
           }));
         } else {
@@ -349,8 +429,8 @@ const PhaseFormContent = () => {
         const currentIndex = allSections.findIndex(section => section.id === expandedSectionId);
         if (currentIndex < allSections.length - 1) {
           const nextSection = allSections[currentIndex + 1];
-          setExpandedSections(prev => ({
-            ...prev,
+          setExpandedSections(() => ({
+            [expandedSectionId]: false,
             [nextSection.id]: true
           }));
         } else {
@@ -361,17 +441,17 @@ const PhaseFormContent = () => {
         }
       }, 1500);
     }
-  }, [formData, expandedSections, activePhaseIdx, totalPhases, getAllSections, isIntakeCompleted, recentlyCompletedSections]);
+  }, [formData, expandedSections, activePhaseIdx, totalPhases, getAllSections, isIntakeCompleted, recentlyCompletedSections, isSectionCompleted]);
 
   // Check if all assessment phases (P1-P5) are completed
   const allAssessmentsCompleted = useMemo(() => {
     // Check if we have data for key assessment fields
     const requiredFields = [
       'parqQuestionnaire', // PAR-Q
-      'postureSeverity', // Posture assessment
-      'pushupTest', // Strength assessment
-      'plankHoldSeconds', // Core assessment
-      'cardioTestType', // Cardio assessment
+      'postureHeadOverall', // Posture assessment
+      'pushupsOneMinuteReps', // Strength assessment
+      'plankDurationSeconds', // Core assessment
+      'cardioTestSelected', // Cardio assessment
     ];
 
     return requiredFields.every(field =>
@@ -437,8 +517,8 @@ const PhaseFormContent = () => {
     } else {
       // No previous section in current phase, move to previous phase
     if (activePhaseIdx > 0) {
-        setActivePhaseIdx((prev) => prev - 1);
-      }
+      setActivePhaseIdx((prev) => prev - 1);
+    }
     }
   };
 
@@ -454,10 +534,15 @@ const PhaseFormContent = () => {
   };
 
   const toggleSection = (sectionId: string) => {
-    setExpandedSections(prev => ({
-      ...prev,
-      [sectionId]: !prev[sectionId]
-    }));
+    setExpandedSections(prev => {
+      const next: Record<string, boolean> = {};
+      const willOpen = !prev[sectionId];
+      Object.keys(prev).forEach(id => {
+        next[id] = false;
+      });
+      next[sectionId] = willOpen;
+      return next;
+    });
   };
 
   const renderSection = (section: SectionType, index: number, allSections: SectionType[]) => {
@@ -479,21 +564,21 @@ const PhaseFormContent = () => {
         }`}>
           <CollapsibleTrigger asChild>
             <button className="w-full px-6 py-4 text-left hover:bg-slate-50 transition-colors cursor-pointer">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-3">
-                      <h3 className="text-lg font-semibold text-slate-900">{section.title}</h3>
-                      {isCompleted && (
-                        <div className="flex items-center gap-1 text-green-600">
-                          <Check className="h-4 w-4" />
-                          <span className="text-xs font-medium">Completed</span>
-                        </div>
-                      )}
-                    </div>
-                    {'description' in section && section.description && (
-                      <p className="text-sm text-slate-600">{section.description}</p>
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-3">
+                  <h3 className="text-lg font-semibold text-slate-900">{section.title}</h3>
+                    {isCompleted && (
+                      <div className="flex items-center gap-1 text-green-600">
+                        <Check className="h-4 w-4" />
+                        <span className="text-xs font-medium">Completed</span>
+                      </div>
                     )}
                   </div>
+                  {'description' in section && section.description && (
+                    <p className="text-sm text-slate-600">{section.description}</p>
+                  )}
+                </div>
                 <div className="flex items-center gap-2">
                   {!isExpanded && section.fields.length > 0 && (
                     <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">
@@ -512,14 +597,6 @@ const PhaseFormContent = () => {
 
           <CollapsibleContent>
             <div className="px-6 pb-6">
-              {'instructions' in section && section.instructions && (
-                <div className="rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900 mb-6">
-                  <div className="font-semibold mb-1">Client Instructions</div>
-                  <p className="text-blue-800 mb-3">{(section as PhaseSection).instructions!.clientInstructions}</p>
-                  <div className="font-semibold mb-1">Coach Notes</div>
-                  <p className="text-blue-800">{(section as PhaseSection).instructions!.coachNotes}</p>
-                </div>
-              )}
               <div className="space-y-6">
                 {(() => {
                   const parqField = section.fields.find(field => field.type === 'parq');
@@ -544,8 +621,8 @@ const PhaseFormContent = () => {
                         {parqField && (
                           <div className="w-full">
                             <FieldControl field={parqField} />
-                          </div>
-                        )}
+                </div>
+              )}
 
                         {/* Lunge assessment - left and right columns */}
                         <div className="grid gap-6 md:grid-cols-2">
@@ -565,12 +642,45 @@ const PhaseFormContent = () => {
 
                         {/* Any remaining fields */}
                         {otherLungeFields.length > 0 && (
-                          <div className="grid gap-6 md:grid-cols-2">
+              <div className="grid gap-6 md:grid-cols-2">
                             {otherLungeFields.map((field: PhaseField) => (
-                              <FieldControl key={field.id} field={field} />
-                            ))}
+                  <FieldControl key={field.id} field={field} />
+                ))}
                           </div>
                         )}
+                      </>
+                    );
+                  }
+
+                  // Special handling for fitness assessment - show dynamic instructions based on selected test
+                  if (section.id === 'fitness-assessment') {
+                    const test = (formData.cardioTestSelected || '').toLowerCase();
+                    const instruction =
+                      test === 'ymca-step'
+                        ? 'Use a 12-inch step at 96 BPM for 3 minutes (Up-Up-Down-Down). At exactly 3:00, stop and stand still. Start a 1-minute timer and record HR at exactly 60s. That value (HR₆₀) is the score.'
+                        : test === 'treadmill'
+                        ? 'Set treadmill to 5.0 km/h at 10% incline. Walk 3 minutes without holding handles. At exactly 3:00, stop, stand on side rails, start a 1-minute timer and record HR at exactly 60s. That value (HR₆₀) is the score.'
+                        : '';
+                    return (
+                      <>
+                        {instruction && (
+                          <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+                            {instruction}
+                          </div>
+                        )}
+                        {/* Render fields as usual */}
+                        <div className="grid gap-6 md:grid-cols-2 mt-2">
+                          {otherFields.map((field: PhaseField, idx: number) => {
+                            const isLast = idx === otherFields.length - 1;
+                            const isOdd = otherFields.length % 2 === 1;
+                            const wrapperClass = isOdd && isLast ? 'md:col-span-2' : '';
+                            return (
+                              <div key={field.id as string} className={wrapperClass}>
+                                <FieldControl field={field} />
+                              </div>
+                            );
+                          })}
+                        </div>
                       </>
                     );
                   }
@@ -584,12 +694,31 @@ const PhaseFormContent = () => {
                         </div>
                       )}
 
-                      {/* Other fields use grid layout */}
+                      {/* Other fields use grid layout; if odd, last spans full width */}
                       {otherFields.length > 0 && (
-              <div className="grid gap-6 md:grid-cols-2">
-                          {otherFields.map((field: PhaseField) => (
-                  <FieldControl key={field.id} field={field} />
-                ))}
+                        <div className="grid gap-6 md:grid-cols-2">
+                          {section.id === 'lifestyle-overview'
+                            ? otherFields.map((field: PhaseField, idx: number) => {
+                                // Make the 3rd sleep question and stress level span full width
+                                const isSleepThird = field.id === ('sleepConsistency' as keyof FormData);
+                                const isStress = field.id === ('stressLevel' as keyof FormData);
+                                const wrapperClass = (isSleepThird || isStress) ? 'md:col-span-2' : '';
+                                return (
+                                  <div key={field.id as string} className={wrapperClass}>
+                                    <FieldControl field={field} />
+                                  </div>
+                                );
+                              })
+                            : otherFields.map((field: PhaseField, idx: number) => {
+                            const isLast = idx === otherFields.length - 1;
+                            const isOdd = otherFields.length % 2 === 1;
+                            const wrapperClass = isOdd && isLast ? 'md:col-span-2' : '';
+                            return (
+                              <div key={field.id as string} className={wrapperClass}>
+                                <FieldControl field={field} />
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                     </>
@@ -646,18 +775,24 @@ const PhaseFormContent = () => {
         </div>
         <Progress value={progressValue} className="h-2 bg-slate-100 rounded-full" />
 
-        <nav className="flex flex-wrap gap-2">
+        <div className="relative">
+          <nav
+            className="flex flex-nowrap gap-2 overflow-x-auto py-1 scroll-smooth"
+            role="tablist"
+            aria-label="Assessment phases"
+          >
           {phaseDefinitions.map((phase, idx) => {
             const isActive = idx === activePhaseIdx;
-            const isCompleted = isPhaseCompleted(idx) && idx <= maxUnlockedPhaseIdx;
-            const isDisabled = idx > maxUnlockedPhaseIdx;
+              const isCompleted = isPhaseCompleted(idx) && idx <= maxUnlockedPhaseIdx;
+              const isDisabled = idx > maxUnlockedPhaseIdx;
 
             return (
               <button
                 key={phase.id}
+                  ref={(el) => { phaseRefs.current[idx] = el; }}
                 onClick={() => !isDisabled && setActivePhaseIdx(idx)}
                 disabled={isDisabled}
-                className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-all ${
+                  className={`flex shrink-0 items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-all ${
                   isActive
                     ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
                     : isCompleted
@@ -666,6 +801,7 @@ const PhaseFormContent = () => {
                     ? 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400'
                     : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
                 }`}
+                  aria-current={isActive ? 'page' : undefined}
               >
                 <span className="text-xs font-semibold">{phase.id}</span>
                 <span
@@ -691,6 +827,9 @@ const PhaseFormContent = () => {
             );
           })}
         </nav>
+          <div className="pointer-events-none absolute left-0 top-0 h-full w-6 bg-gradient-to-r from-slate-50 to-transparent" />
+          <div className="pointer-events-none absolute right-0 top-0 h-full w-6 bg-gradient-to-l from-slate-50 to-transparent" />
+        </div>
       </section>
 
       {/* All sections content */}
@@ -699,26 +838,26 @@ const PhaseFormContent = () => {
 
         {/* Show navigation buttons when the phase has content and we are not on the final phase */}
         {(activePhase.sections?.length ?? 0) > 0 && activePhaseIdx < totalPhases - 1 && (
-          <div className="flex items-center justify-between border-t border-slate-100 pt-6">
-            <Button
-              variant="outline"
-              onClick={handleBack}
-              disabled={activePhaseIdx === 0}
+        <div className="flex items-center justify-between border-t border-slate-100 pt-6">
+          <Button
+            variant="outline"
+            onClick={handleBack}
+            disabled={activePhaseIdx === 0}
               className="flex items-center gap-2"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              Back
-            </Button>
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Back
+          </Button>
 
-            <Button
-              onClick={handleNext}
-              disabled={activePhaseIdx === totalPhases - 1}
-              className="flex items-center gap-2 bg-slate-900 text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
-            >
-              Next Phase
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
+          <Button
+            onClick={handleNext}
+            disabled={activePhaseIdx === totalPhases - 1}
+            className="flex items-center gap-2 bg-slate-900 text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+          >
+            Next Phase
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
         )}
 
         {/* Show "View Results" button when all assessments are completed (anywhere in phases 1-5) */}
@@ -735,23 +874,39 @@ const PhaseFormContent = () => {
 
         {/* Final phase - Assessment Complete */}
         {activePhaseIdx === totalPhases - 1 && (
-          <div className="flex items-center justify-center gap-4 border-t border-slate-100 pt-6">
-            <Button
-              onClick={handleStartNewAssessment}
-              variant="outline"
-              className="flex items-center gap-2"
-            >
-              🔄 Start New Assessment
-            </Button>
-            <Button
-              onClick={() => {
-                // Could trigger report generation or completion action here
-                alert('Assessment Complete! Reports can be generated from this data.');
-              }}
-              className="flex items-center gap-2 bg-green-600 text-white hover:bg-green-700"
-            >
-              📊 Generate Reports
-            </Button>
+          <div className="space-y-8 border-t border-slate-100 pt-6">
+            <div className="space-y-6">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="inline-flex rounded-md border border-slate-200 bg-white p-1">
+                  <button
+                    onClick={() => setReportView('client')}
+                    className={`px-3 py-1.5 text-sm font-medium rounded ${reportView === 'client' ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-50'}`}
+                    aria-pressed={reportView === 'client'}
+                  >
+                    Client Report
+                  </button>
+                  <button
+                    onClick={() => setReportView('coach')}
+                    className={`px-3 py-1.5 text-sm font-medium rounded ${reportView === 'coach' ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-50'}`}
+                    aria-pressed={reportView === 'coach'}
+                  >
+                    Coach Report
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" onClick={handlePrint}>🖨 Print / Download</Button>
+                  <Button variant="outline" onClick={handleShare}>🔗 Share</Button>
+                  <Button variant="outline" onClick={handleStartNewAssessment}>🔄 Restart</Button>
+                </div>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                {reportView === 'client' ? (
+                  <ClientReport scores={scores} roadmap={roadmap} />
+                ) : (
+                  <CoachReport plan={plan} scores={scores} bodyComp={bodyCompInterp} />
+                )}
+              </div>
+            </div>
           </div>
         )}
       </section>

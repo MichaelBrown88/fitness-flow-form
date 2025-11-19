@@ -46,9 +46,19 @@ export interface FormData {
   parqNotes: string;
   inbodyWeightKg: string;
   inbodyBodyFatPct: string;
+  bodyFatMassKg: string;
+  inbodyBmi: string;
   visceralFatLevel: string;
   skeletalMuscleMassKg: string;
-  segmentalLeanImbalancePct: string;
+  totalBodyWaterL: string;
+  waistHipRatio: string;
+  segmentalArmRightKg: string;
+  segmentalArmLeftKg: string;
+  segmentalLegRightKg: string;
+  segmentalLegLeftKg: string;
+  segmentalTrunkKg: string;
+  bmrKcal: string;
+  inbodyScore: string;
 
   /** Phase 2 — Posture & Movement Quality */
   postureSeverity: string;
@@ -99,11 +109,28 @@ export interface FormData {
   /** Phase 4 — Cardiovascular Fitness */
   cardioTestType: string;
   cardioTestSelected: string;
+  cardioRestingHr: string;
+  cardioPost1MinHr: string;
   cardioMedicationFlag: string;
   cardioFinalHeartRate: string;
   cardioVo2MaxEstimate: string;
   cardioTestInstructions: string;
   cardioNotes: string;
+  ymcaStepHeight: string;
+  ymcaMetronomeBpm: string;
+  ymcaPreTestHeartRate: string;
+  ymcaPost1MinHeartRate: string;
+  ymcaRecoveryHeartRate1: string;
+  ymcaRpe: string;
+  ymcaNotes: string;
+  treadmillProtocol: string;
+  treadmillIncline: string;
+  treadmillSpeed: string;
+  treadmillDurationMin: string;
+  treadmillFinalHeartRate: string;
+  treadmillRpe: string;
+  treadmillTerminationReason: string;
+  treadmillNotes: string;
 
   /** Phase 5 — Strength & Power */
   pushupMaxReps: string;
@@ -171,9 +198,19 @@ const initialFormData: FormData = {
   parqNotes: '',
   inbodyWeightKg: '',
   inbodyBodyFatPct: '',
+  bodyFatMassKg: '',
+  inbodyBmi: '',
   visceralFatLevel: '',
   skeletalMuscleMassKg: '',
-  segmentalLeanImbalancePct: '',
+  totalBodyWaterL: '',
+  waistHipRatio: '',
+  segmentalArmRightKg: '',
+  segmentalArmLeftKg: '',
+  segmentalLegRightKg: '',
+  segmentalLegLeftKg: '',
+  segmentalTrunkKg: '',
+  bmrKcal: '',
+  inbodyScore: '',
   postureSeverity: '',
   postureForwardHead: '',
   postureRoundedShoulders: '',
@@ -218,11 +255,28 @@ const initialFormData: FormData = {
   singleLegStanceRightGrade: '',
   cardioTestType: '',
   cardioTestSelected: '',
+  cardioRestingHr: '',
+  cardioPost1MinHr: '',
   cardioMedicationFlag: '',
   cardioFinalHeartRate: '',
   cardioVo2MaxEstimate: '',
   cardioTestInstructions: '',
   cardioNotes: '',
+  ymcaStepHeight: '',
+  ymcaMetronomeBpm: '',
+  ymcaPreTestHeartRate: '',
+  ymcaPost1MinHeartRate: '',
+  ymcaRecoveryHeartRate1: '',
+  ymcaRpe: '',
+  ymcaNotes: '',
+  treadmillProtocol: '',
+  treadmillIncline: '',
+  treadmillSpeed: '',
+  treadmillDurationMin: '',
+  treadmillFinalHeartRate: '',
+  treadmillRpe: '',
+  treadmillTerminationReason: '',
+  treadmillNotes: '',
   pushupMaxReps: '',
   squatsOneMinuteReps: '',
   pushupsOneMinuteReps: '',
