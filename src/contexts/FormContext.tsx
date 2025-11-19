@@ -9,6 +9,7 @@ export interface FormData {
   gender: string;
   assignedCoach: string;
   clientGoals: string[];
+  heightCm: string;
   // Goal target details
   weightLossTargetKg: string;
   muscleGainTargetKg: string;
@@ -171,6 +172,7 @@ const initialFormData: FormData = {
   gender: '',
   assignedCoach: '',
   clientGoals: [],
+  heightCm: '',
   // Goal target details
   weightLossTargetKg: '',
   muscleGainTargetKg: '',

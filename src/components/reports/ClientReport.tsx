@@ -40,10 +40,13 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
   const weeksByCategory: Record<string, number> = useMemo(() => {
     const map: Record<string, number> = {};
     // Goal-based baseline horizons (conservative)
-    const weightLossTarget = parseFloat(formData?.weightLossTargetKg || '0');
-    const muscleGainTarget = parseFloat(formData?.muscleGainTargetKg || '0');
-    const fatLossWeeks = weightLossTarget > 0 ? Math.ceil(weightLossTarget / 0.5) : 16; // 0.5 kg/wk
-    const muscleWeeks = muscleGainTarget > 0 ? Math.ceil(muscleGainTarget / 0.2) : 16; // 0.2 kg/wk midpoint
+    const weightKg = parseFloat(formData?.inbodyWeightKg || '0');
+    const heightM = (parseFloat(formData?.heightCm || '0') || 0) / 100;
+    const healthyMin = heightM > 0 ? 22 * heightM * heightM : 0;
+    const healthyMax = heightM > 0 ? 25 * heightM * heightM : 0;
+    const fatLossTarget = healthyMax > 0 && weightKg > healthyMax ? (weightKg - healthyMax) : 0;
+    const fatLossWeeks = fatLossTarget > 0 ? Math.ceil(fatLossTarget / 0.5) : 16; // 0.5 kg/wk
+    const muscleWeeks = 16; // recommend multi-block horizon
     const cardioWeeks = 12; // aerobic base build
     const mobilityWeeks = 6; // quicker wins
     const postureWeeks = 6; // quicker wins
@@ -73,6 +76,45 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
               </span>
             ))}
           </div>
+          {/* Recommended targets based on your data */}
+          {formData && formData.inbodyWeightKg && formData.heightCm && (
+            <div className="mt-2 rounded border border-slate-200 bg-white p-3 text-xs text-slate-700">
+              {(() => {
+                const weight = parseFloat(formData.inbodyWeightKg || '0');
+                const h = (parseFloat(formData.heightCm || '0') || 0) / 100;
+                const minW = h > 0 ? 22 * h * h : 0;
+                const maxW = h > 0 ? 25 * h * h : 0;
+                const needLoss = maxW > 0 && weight > maxW ? (weight - maxW) : 0;
+                return (
+                  <div className="space-y-1.5">
+                    <div>
+                      <span className="font-medium">Healthy weight range: </span>
+                      {minW && maxW ? `${minW.toFixed(1)}–${maxW.toFixed(1)} kg` : 'n/a'}
+                      {needLoss > 0 && ` (≈${needLoss.toFixed(1)} kg above range)`}
+                    </div>
+                    {goals?.includes('build-muscle') && (
+                      <div>
+                        <span className="font-medium">Muscle gain pace: </span>
+                        ~0.1–0.25 kg/week with consistent training and nutrition.
+                      </div>
+                    )}
+                    {goals?.includes('build-strength') && (
+                      <div>
+                        <span className="font-medium">Strength progression: </span>
+                        ~5–10% in 10 weeks; ~10–20% in 20 weeks (lift-dependent).
+                      </div>
+                    )}
+                    {goals?.includes('improve-fitness') && (
+                      <div>
+                        <span className="font-medium">Cardio improvements: </span>
+                        VO₂max typically improves ~3–7 ml/kg/min over 12–20 weeks.
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
         </section>
       )}
       <section className="space-y-4">
