@@ -415,37 +415,6 @@ export const phaseDefinitions = [
       },
       {
     id: 'P6',
-    title: 'Results',
-    summary: 'Review results and create reports.',
-    gateHint: 'Assessment complete.',
-    sections: [
-      {
-        id: 'assessment-summary',
-        title: 'Results',
-        description: 'Coaches and client reports.',
-        instructions: {
-          clientInstructions: 'Review your results with your coach.',
-          coachNotes: 'Summarize findings and next steps.'
-        },
-        fields: [
-          {
-            id: 'coachReport' as keyof FormData,
-            type: 'textarea' as FieldType,
-            label: 'Coaches report',
-            placeholder: 'Key findings, recommendations, next steps...',
-          },
-          {
-            id: 'clientReport' as keyof FormData,
-            type: 'textarea' as FieldType,
-            label: 'Client report',
-            placeholder: 'Plain-language summary for the client...',
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'P7',
     title: 'Goals & Planning',
     summary: 'Set ambitions after we understand your baseline.',
     sections: [
@@ -520,6 +489,37 @@ export const phaseDefinitions = [
               { value: 'elite', label: 'Competitive endurance (long-term)' },
             ],
             conditional: { showWhen: { field: 'clientGoals', includes: 'improve-fitness' } },
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'P7',
+    title: 'Results',
+    summary: 'Review results and create reports.',
+    gateHint: 'Assessment complete.',
+    sections: [
+      {
+        id: 'assessment-summary',
+        title: 'Results',
+        description: 'Coaches and client reports.',
+        instructions: {
+          clientInstructions: 'Review your results with your coach.',
+          coachNotes: 'Summarize findings and next steps.'
+        },
+        fields: [
+          {
+            id: 'coachReport' as keyof FormData,
+            type: 'textarea' as FieldType,
+            label: 'Coaches report',
+            placeholder: 'Key findings, recommendations, next steps...',
+          },
+          {
+            id: 'clientReport' as keyof FormData,
+            type: 'textarea' as FieldType,
+            label: 'Client report',
+            placeholder: 'Plain-language summary for the client...',
           },
         ],
       },

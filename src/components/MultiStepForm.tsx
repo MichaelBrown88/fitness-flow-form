@@ -605,7 +605,7 @@ const PhaseFormContent = () => {
 
   const handleViewResults = () => {
     if (allAssessmentsCompleted) {
-      setActivePhaseIdx(6); // Go to results phase (P7)
+      setActivePhaseIdx(totalPhases - 1); // Jump to final Results phase
     }
   };
 
@@ -954,7 +954,7 @@ const PhaseFormContent = () => {
         )}
 
         {/* Results phase - Assessment Complete */}
-        {activePhase?.id === 'P6' && (
+        {activePhase?.id === 'P7' && (
           <div className="space-y-8 border-t border-slate-100 pt-6">
             <div className="space-y-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
