@@ -30,6 +30,39 @@ const CATEGORY_COLOR: Record<string, string> = {
   posture: 'bg-rose-500',
 };
 
+const PROGRAM_PHASES = [
+  {
+    key: 'foundation',
+    title: 'Building the Foundation',
+    color: 'bg-slate-800',
+    text: 'Movement quality, posture, breathing, and consistency. Install habits that make progress inevitable.',
+  },
+  {
+    key: 'overload',
+    title: 'Progressive Overload',
+    color: 'bg-indigo-600',
+    text: 'Gradually increase volume, intensity, or density with excellent technique to drive adaptations.',
+  },
+  {
+    key: 'performance',
+    title: 'Performance Development',
+    color: 'bg-sky-600',
+    text: 'Translate base capacity into performance—better pace, higher outputs, stronger lifts.',
+  },
+  {
+    key: 'specialisation',
+    title: 'Specialisation',
+    color: 'bg-emerald-600',
+    text: 'Emphasise your primary goal block (fat loss, hypertrophy, strength, or endurance) based on response.',
+  },
+  {
+    key: 'mastery',
+    title: 'Mastery',
+    color: 'bg-amber-600',
+    text: 'Refine strengths, shore up weak links, and consolidate results for long-term sustainability.',
+  },
+];
+
 export default function ClientReport({ scores, roadmap, goals, bodyComp, formData }: { scores: ScoreSummary; roadmap: RoadmapPhase[]; goals?: string[]; bodyComp?: BodyCompInterp; formData?: FormData }) {
   const [sessionsPerWeek, setSessionsPerWeek] = useState<number>(3);
   const sessionFactor = useMemo(() => (sessionsPerWeek === 5 ? 0.75 : sessionsPerWeek === 4 ? 0.85 : 1.0), [sessionsPerWeek]);
@@ -64,6 +97,7 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
   }, [orderedCats, roadmap, sessionFactor]);
   const strengths = useMemo(() => orderedCats.flatMap(c => c.strengths.map(s => `${niceLabel(c.id)}: ${s}`)), [orderedCats]);
   const focusAreas = useMemo(() => orderedCats.flatMap(c => c.weaknesses.map(w => `${niceLabel(c.id)}: ${w}`)), [orderedCats]);
+  const maxWeeks = useMemo(() => Math.max(...orderedCats.map(c => weeksByCategory[c.id] ?? 0), 0), [orderedCats, weeksByCategory]);
   return (
     <div className="space-y-8">
       {goals && goals.length > 0 && (
@@ -174,7 +208,7 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
               <div key={cat.id}>
                 <div className="mb-1 flex items-center justify-between">
                   <span className="text-sm font-medium text-slate-800">{niceLabel(cat.id)}</span>
-                  <span className="text-xs text-slate-500">{weeks} weeks</span>
+                  <span className="text-xs text-slate-500">~{weeks} weeks</span>
                 </div>
                 <div className="h-3 w-full rounded bg-slate-100">
                   <div className={`h-3 rounded ${color}`} style={{ width: `${Math.min(100, (weeks / 26) * 100)}%` }} />
@@ -185,6 +219,25 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
           <div className="mt-2 flex justify-between text-[10px] text-slate-500">
             <span>0</span><span>5</span><span>10</span><span>20</span><span>26+w</span>
           </div>
+          <div className="mt-3 text-xs text-slate-600">
+            By ~{maxWeeks} weeks you’re well on your way toward your primary goals. Timelines adjust with your weekly sessions and consistency.
+          </div>
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="text-xl font-semibold text-slate-900">Program Phases</h3>
+        <p className="text-sm text-slate-600">These are the phases we’ll move through. The exact timing adapts to your progress and session cadence.</p>
+        <div className="grid gap-3 md:grid-cols-2">
+          {PROGRAM_PHASES.map(phase => (
+            <div key={phase.key} className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+              <div className={`mt-0.5 h-3 w-3 shrink-0 rounded ${phase.color}`} />
+              <div>
+                <h4 className="text-sm font-semibold text-slate-900">{phase.title}</h4>
+                <p className="mt-1 text-xs text-slate-700">{phase.text}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
