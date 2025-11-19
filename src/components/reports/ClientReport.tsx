@@ -127,6 +127,60 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
   const strengths = useMemo(() => orderedCats.flatMap(c => c.strengths.map(s => `${niceLabel(c.id)}: ${s}`)), [orderedCats]);
   const focusAreas = useMemo(() => orderedCats.flatMap(c => c.weaknesses.map(w => `${niceLabel(c.id)}: ${w}`)), [orderedCats]);
   const maxWeeks = useMemo(() => Math.max(...orderedCats.map(c => weeksByCategory[c.id] ?? 0), 0), [orderedCats, weeksByCategory]);
+  // Priority focus (e.g., obesity risk) derived from inputs
+  const priorityFocus: string[] = useMemo(() => {
+    const list: string[] = [];
+    const gender = (formData?.gender || '').toLowerCase();
+    const bf = parseFloat(formData?.inbodyBodyFatPct || '0');
+    const visceral = parseFloat(formData?.visceralFatLevel || '0');
+    const h = (parseFloat(formData?.heightCm || '0') || 0) / 100;
+    const w = parseFloat(formData?.inbodyWeightKg || '0');
+    const healthyMax = h > 0 ? 25 * h * h : 0;
+    if (healthyMax > 0 && w > healthyMax + 3) {
+      list.push('Body composition (urgent): reduce health risk safely');
+    }
+    if ((gender === 'male' && bf > 25) || (gender === 'female' && bf > 32)) {
+      list.push('Elevated body fat %: prioritise fat-loss behaviours');
+    }
+    if (visceral >= 12) {
+      list.push('High visceral fat: cardiometabolic risk—lifestyle focus needed');
+    }
+    return list;
+  }, [formData]);
+  // Lifestyle recommendations from inputs
+  const lifestyleRecs: string[] = useMemo(() => {
+    const items: string[] = [];
+    const sleepQ = (formData?.sleepQuality || '').toLowerCase();
+    const sleepC = (formData?.sleepConsistency || '').toLowerCase();
+    const stress = (formData?.stressLevel || '').toLowerCase();
+    const hydration = (formData?.hydrationHabits || '').toLowerCase();
+    const caffeine = String(formData?.lastCaffeineIntake || '');
+    const steps = parseFloat(formData?.stepsPerDay || '0');
+    const sedentary = parseFloat(formData?.sedentaryHours || '0');
+    if (sleepQ && (sleepQ === 'poor' || sleepQ === 'fair' || sleepC === 'inconsistent' || sleepC === 'very-inconsistent')) {
+      items.push('Sleep: 7–9h target; set a consistent wind‑down and wake time; dark, cool room.');
+    }
+    if (caffeine) {
+      items.push('Caffeine: shift last intake earlier in the day to protect sleep.');
+    }
+    if (stress && (stress === 'high' || stress === 'very-high')) {
+      items.push('Stress: daily 5–10 min breathwork or quiet walk; micro‑breaks in long sittings.');
+    }
+    if (hydration && (hydration === 'poor' || hydration === 'fair')) {
+      items.push('Hydration: 2–3 L/day baseline, more with heat/training; consider electrolytes.');
+    }
+    if (!isNaN(steps) && steps > 0 && steps < 7000) {
+      items.push('Movement: build toward 6–10k steps/day with short walk breaks.');
+    }
+    if (!isNaN(sedentary) && sedentary >= 8) {
+      items.push('Sedentary time: stand and move 2–3 min every 30–45 min.');
+    }
+    const nutrition = (formData?.nutritionHabits || '').toLowerCase();
+    if (nutrition && (nutrition === 'poor' || nutrition === 'fair')) {
+      items.push('Nutrition: protein at each meal, mostly whole foods, regular mealtimes.');
+    }
+    return items;
+  }, [formData]);
   return (
     <div className="space-y-8">
       {goals && goals.length > 0 && (
@@ -226,6 +280,27 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
           )}
         </div>
       </section>
+      {/* Priority Focus & Lifestyle Recommendations */}
+      {(priorityFocus.length > 0 || lifestyleRecs.length > 0) && (
+        <section className="grid gap-4 md:grid-cols-2">
+          {priorityFocus.length > 0 && (
+            <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 shadow-sm">
+              <h4 className="font-semibold text-rose-800">Priority Focus</h4>
+              <ul className="mt-2 list-disc pl-5 text-sm text-rose-900">
+                {priorityFocus.map((p, i) => <li key={i}>{p}</li>)}
+              </ul>
+            </div>
+          )}
+          {lifestyleRecs.length > 0 && (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
+              <h4 className="font-semibold text-emerald-800">Lifestyle Recommendations</h4>
+              <ul className="mt-2 list-disc pl-5 text-sm text-emerald-900">
+                {lifestyleRecs.map((p, i) => <li key={i}>{p}</li>)}
+              </ul>
+            </div>
+          )}
+        </section>
+      )}
 
       <section className="space-y-2">
         <h3 className="text-xl font-semibold text-slate-900">Your Roadmap</h3>
@@ -325,13 +400,21 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
           finisher.push('Walk 10–15 min cooldown');
         }
         // Sample workout section
+        // Headings mapping for clearer presentation
+        const goalBlockTitle =
+          g0 === 'weight-loss' ? 'Primary block — Fat‑loss training'
+          : g0 === 'build-muscle' ? 'Primary block — Hypertrophy'
+          : g0 === 'build-strength' ? 'Primary block — Strength'
+          : g0 === 'improve-fitness' ? 'Primary block — Cardio fitness'
+          : 'Primary block';
+        const correctivesTitle = 'Correctives — addressing your main concerns';
         return (
           <section className="space-y-2">
             <h3 className="text-xl font-semibold text-slate-900">Sample workout</h3>
             <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <h4 className="text-sm font-semibold text-slate-900">Warm‑up & activation</h4>
+                  <h4 className="text-sm font-semibold text-slate-900">{correctivesTitle}</h4>
                   <ul className="mt-2 list-disc pl-5 text-sm text-slate-700 space-y-1">
                     {warmup.length === 0 && <li>Dynamic mobility targeting hips/shoulders/ankles as needed</li>}
                     {warmup.map((w, i) => <li key={`wu-${i}`}>{w}</li>)}
@@ -339,7 +422,7 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
                   </ul>
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-slate-900">Main work</h4>
+                  <h4 className="text-sm font-semibold text-slate-900">{goalBlockTitle}</h4>
                   <ul className="mt-2 list-disc pl-5 text-sm text-slate-700 space-y-1">
                     {main.map((m, i) => <li key={`main-${i}`}>{m}</li>)}
                     {accessories.length > 0 && <li className="mt-2 font-medium text-slate-800">Accessories</li>}
@@ -349,9 +432,16 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
                   </ul>
                 </div>
               </div>
-              <p className="mt-3 text-xs text-slate-600">
-                Exercises are tailored to your flagged areas (e.g., {focusAreas.slice(0, 2).join(', ') || 'mobility/posture/core'}). Programming adjusts as you progress.
-              </p>
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                  <h5 className="text-xs font-semibold text-slate-800">Daily movement</h5>
+                  <p className="mt-1 text-xs text-slate-700">Walks between sessions help recovery and fat‑loss; aim for short breaks and a daily step goal.</p>
+                </div>
+                <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                  <h5 className="text-xs font-semibold text-slate-800">Progression</h5>
+                  <p className="mt-1 text-xs text-slate-700">We’ll increase volume/intensity as movement improves—technique first, load follows.</p>
+                </div>
+              </div>
             </div>
           </section>
         );

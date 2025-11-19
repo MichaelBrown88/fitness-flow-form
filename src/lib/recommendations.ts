@@ -67,6 +67,23 @@ export function generateCoachPlan(form: FormData, scores: ScoreSummary): CoachPl
   const issues: string[] = [];
   const blocks: CoachPlan['movementBlocks'] = [];
 
+  // Body composition priority flags (obesity / high BF% / visceral)
+  const gender = (form.gender || '').toLowerCase();
+  const bf = parseFloat(form.inbodyBodyFatPct || '0');
+  const visceral = parseFloat(form.visceralFatLevel || '0');
+  const h = (parseFloat((form as any).heightCm || '0') || 0) / 100;
+  const w = parseFloat(form.inbodyWeightKg || '0');
+  const healthyMax = h > 0 ? 25 * h * h : 0;
+  if ((gender === 'male' && bf > 25) || (gender === 'female' && bf > 32) || (healthyMax > 0 && w > healthyMax + 3) || visceral >= 12) {
+    issues.push('Body composition priority (health risk)');
+    // Encourage aerobic base + strength base blocks
+    blocks.unshift({
+      title: 'Aerobic base for health',
+      objectives: ['Improve HR recovery', 'Increase daily movement'],
+      exercises: EXERCISES.cardioBase,
+    });
+  }
+
   // Helper to avoid duplicate blocks by title
   const addBlock = (title: string, objectives: string[], exercises: typeof EXERCISES[keyof typeof EXERCISES]) => {
     if (!blocks.find(b => b.title === title)) {
