@@ -145,6 +145,22 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
     if (visceral >= 12) {
       list.push('High visceral fat: cardiometabolic risk—lifestyle focus needed');
     }
+    // Limb imbalance notice for client
+    const armR = parseFloat(formData?.segmentalArmRightKg || '0');
+    const armL = parseFloat(formData?.segmentalArmLeftKg || '0');
+    const legR = parseFloat(formData?.segmentalLegRightKg || '0');
+    const legL = parseFloat(formData?.segmentalLegLeftKg || '0');
+    const pct = (a: number, b: number) => {
+      const hi = Math.max(a, b);
+      const lo = Math.min(a, b);
+      if (hi <= 0) return 0;
+      return Math.abs(hi - lo) / hi * 100;
+    };
+    const armImb = pct(armL, armR);
+    const legImb = pct(legL, legR);
+    if (armImb >= 6 || legImb >= 6) {
+      list.push('Limb imbalance identified: addressed with unilateral work to reduce injury risk.');
+    }
     return list;
   }, [formData]);
   // Lifestyle recommendations from inputs

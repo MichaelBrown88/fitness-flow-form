@@ -83,6 +83,20 @@ export default function CoachReport({ plan, scores, bodyComp }: { plan: CoachPla
         </div>
       </section>
 
+      {plan.segmentalGuidance && plan.segmentalGuidance.length > 0 && (
+        <section className="space-y-2">
+          <h3 className="text-xl font-semibold text-slate-900">Segmental Lean Imbalance Guidance</h3>
+          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <ul className="list-disc pl-5 text-sm text-slate-700 space-y-1">
+              {plan.segmentalGuidance.map((g, i) => <li key={i}>{g}</li>)}
+            </ul>
+            <p className="mt-3 text-xs text-slate-600">
+              Bonus: Keep it simple — bias the weaker side until it catches up. No need for complex overhauls.
+            </p>
+          </div>
+        </section>
+      )}
+
       <section className="space-y-2">
         <h3 className="text-xl font-semibold text-slate-900">Category Scores</h3>
         <div className="grid gap-3 md:grid-cols-2">

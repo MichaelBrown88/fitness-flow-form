@@ -8,6 +8,7 @@ export type CoachPlan = {
     objectives: string[];
     exercises: { name: string; setsReps?: string; notes?: string }[];
   }[];
+  segmentalGuidance?: string[];
 };
 
 export type BodyCompInterpretation = {
@@ -66,6 +67,7 @@ const EXERCISES = {
 export function generateCoachPlan(form: FormData, scores: ScoreSummary): CoachPlan {
   const issues: string[] = [];
   const blocks: CoachPlan['movementBlocks'] = [];
+  const segmentalGuidance: string[] = [];
 
   // Body composition priority flags (obesity / high BF% / visceral)
   const gender = (form.gender || '').toLowerCase();
@@ -146,6 +148,51 @@ export function generateCoachPlan(form: FormData, scores: ScoreSummary): CoachPl
     }
   }
 
+  // Segmental lean imbalance (arms/legs)
+  const armR = parseFloat(form.segmentalArmRightKg || '0');
+  const armL = parseFloat(form.segmentalArmLeftKg || '0');
+  const legR = parseFloat(form.segmentalLegRightKg || '0');
+  const legL = parseFloat(form.segmentalLegLeftKg || '0');
+  const pct = (a: number, b: number) => {
+    const hi = Math.max(a, b);
+    const lo = Math.min(a, b);
+    if (hi <= 0) return 0;
+    return Math.abs(hi - lo) / hi * 100;
+  };
+  const armImb = pct(armL, armR);
+  const legImb = pct(legL, legR);
+  const msgFor = (region: string, diff: number) => {
+    if (diff <= 5) return `${region}: Balanced. No special intervention needed.`;
+    if (diff < 10) return `${region}: Light imbalance (~${diff.toFixed(1)}%). Add 1–2 unilateral movements/week or 1–2 extra sets on the weaker side.`;
+    return `${region}: Significant imbalance (~${diff.toFixed(1)}%). Prioritise unilateral exercises and add 1–2 additional sets to the weaker side until balanced.`;
+  };
+  if (armL > 0 || armR > 0) {
+    segmentalGuidance.push(msgFor('Arms', armImb));
+    if (armImb >= 10) {
+      blocks.push({
+        title: 'Unilateral correction — arms',
+        objectives: ['Reduce side-to-side asymmetry', 'Improve unilateral control'],
+        exercises: [
+          { name: '1‑arm row', setsReps: '3–4 x 8–12/side' },
+          { name: 'Single‑arm DB press', setsReps: '3–4 x 8–12/side' },
+        ],
+      });
+    }
+  }
+  if (legL > 0 || legR > 0) {
+    segmentalGuidance.push(msgFor('Legs', legImb));
+    if (legImb >= 10) {
+      blocks.push({
+        title: 'Unilateral correction — legs',
+        objectives: ['Reduce asymmetry', 'Improve single‑leg stability'],
+        exercises: [
+          { name: 'Split squat', setsReps: '3–4 x 8–12/side' },
+          { name: 'Step‑up', setsReps: '3–4 x 8–12/side' },
+        ],
+      });
+    }
+  }
+
   // Cardio base
   if ((scores.categories.find(c => c.id === 'cardio')?.score || 0) < 70) {
     issues.push('Cardiorespiratory capacity below target');
@@ -168,7 +215,7 @@ export function generateCoachPlan(form: FormData, scores: ScoreSummary): CoachPl
     blocks.push({ title: 'Performance maintenance', objectives: ['Maintain strengths', 'Prevent regression'], exercises: EXERCISES.strengthBase });
   }
 
-  return { keyIssues: issues, movementBlocks: blocks };
+  return { keyIssues: issues, movementBlocks: blocks, segmentalGuidance };
 }
 
 export function generateBodyCompInterpretation(form: FormData): BodyCompInterpretation {
