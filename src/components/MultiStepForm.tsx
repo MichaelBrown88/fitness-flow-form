@@ -435,6 +435,10 @@ const PhaseFormContent = () => {
     const wasRecentlyCompleted = recentlyCompletedSections.has(expandedSectionId);
 
     if (currentSectionCompleted && !wasRecentlyCompleted) {
+      // Do not auto-advance from goals section to allow multiple selections without interruption
+      if (currentSection.id === 'goals') {
+        return;
+      }
       setRecentlyCompletedSections(prev => new Set(prev).add(expandedSectionId));
 
       const currentIndex = allSections.findIndex(section => section.id === expandedSectionId);
@@ -936,7 +940,12 @@ const PhaseFormContent = () => {
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                 {reportView === 'client' ? (
-                  <ClientReport scores={scores} roadmap={roadmap} goals={Array.isArray(formData.clientGoals) ? formData.clientGoals : []} />
+                  <ClientReport
+                    scores={scores}
+                    roadmap={roadmap}
+                    goals={Array.isArray(formData.clientGoals) ? formData.clientGoals : []}
+                    bodyComp={bodyCompInterp ? { timeframeWeeks: bodyCompInterp.timeframeWeeks } : undefined}
+                  />
                 ) : (
                   <CoachReport plan={plan} scores={scores} bodyComp={bodyCompInterp} />
                 )}
