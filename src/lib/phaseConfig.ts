@@ -177,12 +177,12 @@ export const phaseDefinitions = [
           { id: 'waistHipRatio' as keyof FormData, type: 'number' as FieldType, label: 'Waist-to-Hip Ratio (WHR)', placeholder: 'e.g., 0.92', tooltip: 'Men: <0.90 low, 0.90–0.99 moderate, ≥1.00 high. Women: <0.80 low, 0.80–0.89 moderate, ≥0.90 high.' },
           { id: 'visceralFatLevel' as keyof FormData, type: 'number' as FieldType, label: 'Visceral Fat Level', placeholder: 'e.g., 9', tooltip: 'InBody 270: 12+ high risk; 10–11 borderline; <10 healthy.' },
 
-          // Segmental Lean Analysis (kg only)
-          { id: 'segmentalArmRightKg' as keyof FormData, type: 'number' as FieldType, label: 'Right arm lean (kg)', placeholder: 'e.g., 3.2', tooltip: 'Use left/right kg to detect imbalances (≥10% significant).' },
-          { id: 'segmentalArmLeftKg' as keyof FormData, type: 'number' as FieldType, label: 'Left arm lean (kg)', placeholder: 'e.g., 3.1' },
-          { id: 'segmentalLegRightKg' as keyof FormData, type: 'number' as FieldType, label: 'Right leg lean (kg)', placeholder: 'e.g., 9.7' },
-          { id: 'segmentalLegLeftKg' as keyof FormData, type: 'number' as FieldType, label: 'Left leg lean (kg)', placeholder: 'e.g., 9.1' },
+          // Segmental Lean Analysis (kg only) — Trunk, Left arm, Right arm, Left leg, Right leg
           { id: 'segmentalTrunkKg' as keyof FormData, type: 'number' as FieldType, label: 'Trunk lean (kg)', placeholder: 'e.g., 28.5' },
+          { id: 'segmentalArmLeftKg' as keyof FormData, type: 'number' as FieldType, label: 'Left arm lean (kg)', placeholder: 'e.g., 3.1' },
+          { id: 'segmentalArmRightKg' as keyof FormData, type: 'number' as FieldType, label: 'Right arm lean (kg)', placeholder: 'e.g., 3.2', tooltip: 'Use left/right kg to detect imbalances (≥10% significant).' },
+          { id: 'segmentalLegLeftKg' as keyof FormData, type: 'number' as FieldType, label: 'Left leg lean (kg)', placeholder: 'e.g., 9.1' },
+          { id: 'segmentalLegRightKg' as keyof FormData, type: 'number' as FieldType, label: 'Right leg lean (kg)', placeholder: 'e.g., 9.7' },
 
           // SECTION 4 — METABOLIC BASELINE
           { id: 'bmrKcal' as keyof FormData, type: 'number' as FieldType, label: 'BMR (kcal)', placeholder: 'e.g., 1620', tooltip: 'Set calorie targets; typically rises with higher SMM.' },
@@ -362,9 +362,9 @@ export const phaseDefinitions = [
           ]},
         ]
       },
-    ],
-  },
-  {
+            ],
+          },
+          {
     id: 'P4',
     title: 'Muscular strength and endurance',
     summary: 'Basic strength and endurance metrics.',
@@ -384,10 +384,10 @@ export const phaseDefinitions = [
           { id: 'gripLeftKg' as keyof FormData, type: 'number' as FieldType, label: 'Grip strength left (kg)', placeholder: 'e.g., 24' },
           { id: 'gripRightKg' as keyof FormData, type: 'number' as FieldType, label: 'Grip strength right (kg)', placeholder: 'e.g., 26' },
         ]
+          },
+        ],
       },
-    ],
-  },
-  {
+      {
     id: 'P5',
     title: 'Fitness assessment',
     summary: 'Select and run cardio test.',
@@ -427,7 +427,7 @@ export const phaseDefinitions = [
           coachNotes: 'Summarize findings and next steps.'
         },
         fields: [
-      {
+          {
             id: 'coachReport' as keyof FormData,
             type: 'textarea' as FieldType,
             label: 'Coaches report',
