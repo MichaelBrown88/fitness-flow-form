@@ -3,6 +3,13 @@ import type { CoachPlan, BodyCompInterpretation } from '@/lib/recommendations';
 import type { ScoreSummary } from '@/lib/scoring';
 
 export default function CoachReport({ plan, scores, bodyComp }: { plan: CoachPlan; scores: ScoreSummary; bodyComp?: BodyCompInterpretation }) {
+  if (!scores || !scores.categories || scores.categories.length === 0) {
+    return (
+      <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        Results are not available yet. Please complete the assessment steps and try again.
+      </div>
+    );
+  }
   return (
     <div className="space-y-8">
       {bodyComp && (

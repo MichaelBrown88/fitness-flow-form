@@ -64,6 +64,13 @@ const PROGRAM_PHASES = [
 ];
 
 export default function ClientReport({ scores, roadmap, goals, bodyComp, formData }: { scores: ScoreSummary; roadmap: RoadmapPhase[]; goals?: string[]; bodyComp?: BodyCompInterp; formData?: FormData }) {
+  if (!scores || !scores.categories || scores.categories.length === 0) {
+    return (
+      <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        Results are not available yet. Please complete the assessment steps and try again.
+      </div>
+    );
+  }
   const [sessionsPerWeek, setSessionsPerWeek] = useState<number>(3);
   const sessionFactor = useMemo(() => (sessionsPerWeek === 5 ? 0.75 : sessionsPerWeek === 4 ? 0.85 : 1.0), [sessionsPerWeek]);
   const orderedCats = useMemo(

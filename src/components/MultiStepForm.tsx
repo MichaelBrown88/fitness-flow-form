@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { FormProvider, useFormContext, type FormData } from '@/contexts/FormContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +35,30 @@ type SectionType = PhaseSection | IntakeSection;
 
 const labelTextClasses = 'text-sm font-medium text-slate-700';
 const supportTextClasses = 'text-xs text-slate-500 mt-1';
+
+class ReportErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: unknown) {
+    // eslint-disable-next-line no-console
+    console.error('[Results] render error:', error);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          There was a problem rendering the results. Please review inputs or try again.
+        </div>
+      );
+    }
+    return <>{this.props.children}</>;
+  }
+}
 
 const FieldControl = ({ field }: { field: PhaseField }) => {
   const { formData, updateFormData } = useFormContext();
@@ -980,19 +1004,21 @@ const PhaseFormContent = () => {
                   <Button variant="outline" onClick={handleStartNewAssessment}>🔄 Restart</Button>
                 </div>
               </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                {reportView === 'client' ? (
-                  <ClientReport
-                    scores={scores}
-                    roadmap={roadmap}
-                    goals={Array.isArray(formData.clientGoals) ? formData.clientGoals : []}
-                    bodyComp={bodyCompInterp ? { timeframeWeeks: bodyCompInterp.timeframeWeeks } : undefined}
-                    formData={formData}
-                  />
-                ) : (
-                  <CoachReport plan={plan} scores={scores} bodyComp={bodyCompInterp} />
-                )}
-              </div>
+              <ReportErrorBoundary>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  {reportView === 'client' ? (
+                    <ClientReport
+                      scores={scores}
+                      roadmap={roadmap}
+                      goals={Array.isArray(formData.clientGoals) ? formData.clientGoals : []}
+                      bodyComp={bodyCompInterp ? { timeframeWeeks: bodyCompInterp.timeframeWeeks } : undefined}
+                      formData={formData}
+                    />
+                  ) : (
+                    <CoachReport plan={plan} scores={scores} bodyComp={bodyCompInterp} />
+                  )}
+                </div>
+              </ReportErrorBoundary>
             </div>
           </div>
         )}
