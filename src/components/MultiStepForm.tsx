@@ -1020,6 +1020,14 @@ const PhaseFormContent = () => {
           </div>
         </div>
         <Progress value={progressValue} className="h-2 bg-slate-100 rounded-full" />
+        {/* TEMP: Quick-fill personas for faster testing (remove before release) */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-slate-500">Quick fill:</span>
+          <Button variant="outline" size="sm" onClick={() => { quickFill('obese'); }}>Obese</Button>
+          <Button variant="outline" size="sm" onClick={() => { quickFill('muscle'); }}>Muscle</Button>
+          <Button variant="outline" size="sm" onClick={() => { quickFill('cardio'); }}>Cardio</Button>
+          <span className="text-[11px] text-slate-400">(temporary testing aid)</span>
+        </div>
 
         <div className="relative">
           <nav
