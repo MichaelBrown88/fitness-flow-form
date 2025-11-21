@@ -779,6 +779,268 @@ const PhaseFormContent = () => {
     setActivePhaseIdx(totalPhases - 1);
   };
 
+  // Sequential demo fill (simulates user typing; fills many fields one-by-one then navigates to Results)
+  const runDemoSequential = async () => {
+    const profiles: Array<'obese' | 'muscle' | 'cardio'> = ['obese', 'muscle', 'cardio'];
+    const pick = profiles[Math.floor(Math.random() * profiles.length)];
+    // Build a deep copy of the payload from quickFill branches
+    let payload: Partial<FormData> = {};
+    const setPayload = (p: Partial<FormData>) => { payload = p; };
+    if (pick === 'obese') {
+      setPayload({
+        fullName: 'Alex Johnson',
+        email: 'alex.johnson@example.com',
+        phone: '+441234567890',
+        dateOfBirth: '1988-05-15',
+        gender: 'male',
+        assignedCoach: 'coach-mike',
+        activityLevel: 'sedentary',
+        stepsPerDay: '3500',
+        sedentaryHours: '9',
+        workHoursPerDay: '9',
+        sleepQuality: 'fair',
+        sleepDuration: '6-7',
+        sleepConsistency: 'inconsistent',
+        stressLevel: 'high',
+        nutritionHabits: 'fair',
+        hydrationHabits: 'fair',
+        caffeineCupsPerDay: '3',
+        lastCaffeineIntake: '16:00',
+        parqQuestionnaire: 'completed',
+        inbodyScore: '62',
+        heightCm: '175',
+        inbodyWeightKg: '120',
+        inbodyBodyFatPct: '36',
+        bodyFatMassKg: '43',
+        visceralFatLevel: '14',
+        skeletalMuscleMassKg: '32',
+        waistHipRatio: '1.02',
+        totalBodyWaterL: '38',
+        inbodyBmi: '39',
+        segmentalTrunkKg: '30',
+        segmentalArmLeftKg: '3.0',
+        segmentalArmRightKg: '3.5',
+        segmentalLegLeftKg: '9.0',
+        segmentalLegRightKg: '10.0',
+        postureHeadOverall: 'forward-head',
+        postureShouldersOverall: 'rounded',
+        postureBackOverall: 'increased-kyphosis',
+        postureHipsOverall: 'anterior-tilt',
+        postureKneesOverall: 'valgus-knee',
+        ohsShoulderMobility: 'limited',
+        ohsTorsoLean: 'excessive-lean',
+        ohsSquatDepth: 'quarter-depth',
+        ohsHipShift: 'right',
+        ohsKneeAlignment: 'valgus',
+        ohsFeetPosition: 'pronation',
+        hingeDepth: 'fair',
+        hingeBackRounding: 'moderate',
+        lungeLeftBalance: 'fair',
+        lungeLeftKneeAlignment: 'caves-inward',
+        lungeLeftTorso: 'anterior-tilt',
+        lungeRightBalance: 'fair',
+        lungeRightKneeAlignment: 'caves-inward',
+        lungeRightTorso: 'anterior-tilt',
+        mobilityHip: 'fair',
+        mobilityShoulder: 'fair',
+        mobilityAnkle: 'poor',
+        squatsOneMinuteReps: '18',
+        pushupsOneMinuteReps: '8',
+        plankDurationSeconds: '35',
+        gripLeftKg: '28',
+        gripRightKg: '30',
+        cardioTestSelected: 'ymca-step',
+        cardioRestingHr: '78',
+        cardioPost1MinHr: '128',
+        clientGoals: ['weight-loss'],
+        goalLevelWeightLoss: 'above-average',
+      });
+    } else if (pick === 'muscle') {
+      setPayload({
+        fullName: 'Jamie Lee',
+        email: 'jamie.lee@example.com',
+        phone: '+441112223334',
+        dateOfBirth: '1992-09-20',
+        gender: 'female',
+        assignedCoach: 'coach-selina',
+        activityLevel: 'moderately-active',
+        stepsPerDay: '8000',
+        sedentaryHours: '6',
+        workHoursPerDay: '8',
+        sleepQuality: 'good',
+        sleepDuration: '7-8',
+        sleepConsistency: 'consistent',
+        stressLevel: 'moderate',
+        nutritionHabits: 'good',
+        hydrationHabits: 'good',
+        caffeineCupsPerDay: '1',
+        lastCaffeineIntake: '10:30',
+        parqQuestionnaire: 'completed',
+        inbodyScore: '78',
+        heightCm: '168',
+        inbodyWeightKg: '68',
+        inbodyBodyFatPct: '22',
+        bodyFatMassKg: '15',
+        visceralFatLevel: '8',
+        skeletalMuscleMassKg: '28',
+        waistHipRatio: '0.85',
+        totalBodyWaterL: '36',
+        inbodyBmi: '24.1',
+        segmentalTrunkKg: '26',
+        segmentalArmLeftKg: '2.8',
+        segmentalArmRightKg: '3.0',
+        segmentalLegLeftKg: '8.1',
+        segmentalLegRightKg: '8.3',
+        postureHeadOverall: 'neutral',
+        postureShouldersOverall: 'rounded',
+        postureBackOverall: 'neutral',
+        postureHipsOverall: 'neutral',
+        postureKneesOverall: 'neutral',
+        ohsShoulderMobility: 'compensated',
+        ohsTorsoLean: 'moderate-lean',
+        ohsSquatDepth: 'parallel',
+        ohsHipShift: 'none',
+        ohsKneeAlignment: 'stable',
+        ohsFeetPosition: 'stable',
+        hingeDepth: 'good',
+        hingeBackRounding: 'minor',
+        lungeLeftBalance: 'good',
+        lungeLeftKneeAlignment: 'tracks-straight',
+        lungeLeftTorso: 'neutral',
+        lungeRightBalance: 'good',
+        lungeRightKneeAlignment: 'tracks-straight',
+        lungeRightTorso: 'neutral',
+        mobilityHip: 'fair',
+        mobilityShoulder: 'good',
+        mobilityAnkle: 'good',
+        squatsOneMinuteReps: '42',
+        pushupsOneMinuteReps: '28',
+        plankDurationSeconds: '95',
+        gripLeftKg: '30',
+        gripRightKg: '32',
+        cardioTestSelected: 'treadmill',
+        cardioRestingHr: '62',
+        cardioPost1MinHr: '110',
+        clientGoals: ['build-muscle', 'build-strength'],
+        goalLevelMuscle: 'above-average',
+        goalLevelStrength: 'average',
+      });
+    } else {
+      setPayload({
+        fullName: 'Sam Patel',
+        email: 'sam.patel@example.com',
+        phone: '+447700900123',
+        dateOfBirth: '1995-02-10',
+        gender: 'male',
+        assignedCoach: 'coach-mike',
+        activityLevel: 'very-active',
+        stepsPerDay: '10000',
+        sedentaryHours: '5',
+        workHoursPerDay: '8',
+        sleepQuality: 'good',
+        sleepDuration: '7-8',
+        sleepConsistency: 'very-consistent',
+        stressLevel: 'low',
+        nutritionHabits: 'good',
+        hydrationHabits: 'good',
+        caffeineCupsPerDay: '1',
+        lastCaffeineIntake: '09:30',
+        parqQuestionnaire: 'completed',
+        inbodyScore: '82',
+        heightCm: '172',
+        inbodyWeightKg: '70',
+        inbodyBodyFatPct: '16',
+        bodyFatMassKg: '11',
+        visceralFatLevel: '6',
+        skeletalMuscleMassKg: '34',
+        waistHipRatio: '0.84',
+        totalBodyWaterL: '42',
+        inbodyBmi: '23.7',
+        segmentalTrunkKg: '28',
+        segmentalArmLeftKg: '3.1',
+        segmentalArmRightKg: '3.1',
+        segmentalLegLeftKg: '9.2',
+        segmentalLegRightKg: '9.2',
+        postureHeadOverall: 'neutral',
+        postureShouldersOverall: 'neutral',
+        postureBackOverall: 'neutral',
+        postureHipsOverall: 'neutral',
+        postureKneesOverall: 'neutral',
+        ohsShoulderMobility: 'full-range',
+        ohsTorsoLean: 'upright',
+        ohsSquatDepth: 'full-depth',
+        ohsHipShift: 'none',
+        ohsKneeAlignment: 'stable',
+        ohsFeetPosition: 'stable',
+        hingeDepth: 'excellent',
+        hingeBackRounding: 'none',
+        lungeLeftBalance: 'excellent',
+        lungeLeftKneeAlignment: 'tracks-straight',
+        lungeLeftTorso: 'neutral',
+        lungeRightBalance: 'excellent',
+        lungeRightKneeAlignment: 'tracks-straight',
+        lungeRightTorso: 'neutral',
+        mobilityHip: 'good',
+        mobilityShoulder: 'good',
+        mobilityAnkle: 'good',
+        squatsOneMinuteReps: '48',
+        pushupsOneMinuteReps: '35',
+        plankDurationSeconds: '120',
+        gripLeftKg: '34',
+        gripRightKg: '35',
+        cardioTestSelected: 'ymca-step',
+        cardioRestingHr: '56',
+        cardioPost1MinHr: '98',
+        clientGoals: ['improve-fitness'],
+        goalLevelFitness: 'above-average',
+      });
+    }
+    const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+    // Traverse phases/sections to mimic user flow
+    for (let p = 0; p < totalPhases; p++) {
+      const ph = phaseDefinitions[p];
+      if (!ph) continue;
+      if (ph.id === 'P7') break;
+      setActivePhaseIdx(p);
+      await delay(120);
+      const secs = ph.sections ?? [];
+      for (const sec of secs) {
+        setExpandedSections({ [sec.id]: true });
+        await delay(100);
+        for (const f of (sec.fields as ReadonlyArray<PhaseField>)) {
+          // respect conditional visibility
+          if (!isFieldVisible(f)) continue;
+          const key = f.id as keyof FormData;
+          let val = (payload[key] as string) ?? (formData[key] as string) ?? '';
+          if (!val) {
+            if (f.type === 'select' && f.options && f.options.length > 0) {
+              val = f.options[0].value;
+            } else if (f.type === 'number') {
+              val = '1';
+            } else if (f.type === 'date') {
+              val = '1990-01-01';
+            } else if (f.type === 'time') {
+              val = '08:00';
+            } else if (f.type === 'parq') {
+              val = 'completed';
+            } else {
+              val = 'OK';
+            }
+          }
+          updateFormData({ [key]: val } as Partial<FormData>);
+          await delay(60);
+        }
+        // mark section complete to avoid double auto-advance reaction
+        setRecentlyCompletedSections(prev => {
+          const next = new Set(prev);
+          next.add(sec.id);
+          return next;
+        });
+        await delay(80);
+      }
+    }
+    setActivePhaseIdx(totalPhases - 1);
+  };
   const toggleSection = (sectionId: string) => {
     setExpandedSections(prev => {
       const next: Record<string, boolean> = {};
@@ -1020,13 +1282,10 @@ const PhaseFormContent = () => {
           </div>
         </div>
         <Progress value={progressValue} className="h-2 bg-slate-100 rounded-full" />
-        {/* TEMP: Quick-fill personas for faster testing (remove before release) */}
+        {/* TEMP: One-click demo fill (sequential) – remove before release */}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-slate-500">Quick fill:</span>
-          <Button variant="outline" size="sm" onClick={() => { quickFill('obese'); }}>Obese</Button>
-          <Button variant="outline" size="sm" onClick={() => { quickFill('muscle'); }}>Muscle</Button>
-          <Button variant="outline" size="sm" onClick={() => { quickFill('cardio'); }}>Cardio</Button>
-          <span className="text-[11px] text-slate-400">(temporary testing aid)</span>
+          <Button variant="outline" size="sm" onClick={runDemoSequential}>▶︎ Auto‑fill demo persona (sequential)</Button>
+          <span className="text-[11px] text-slate-400">fills each section then jumps to Results</span>
         </div>
 
         <div className="relative">
@@ -1148,11 +1407,8 @@ const PhaseFormContent = () => {
                   </button>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  {/* Temporary quick-fill profiles to speed testing (outside error boundary) */}
-                  <span className="text-xs text-slate-500">Quick fill:</span>
-                  <Button variant="outline" onClick={() => quickFill('obese')}>Obese</Button>
-                  <Button variant="outline" onClick={() => quickFill('muscle')}>Muscle</Button>
-                  <Button variant="outline" onClick={() => quickFill('cardio')}>Cardio</Button>
+                  {/* TEMP: One-click demo fill (outside error boundary) */}
+                  <Button variant="outline" onClick={runDemoSequential}>▶︎ Auto‑fill demo persona</Button>
                   <Button variant="outline" onClick={handlePrint}>🖨 Print / Download</Button>
                   <Button variant="outline" onClick={handleShare}>🔗 Share</Button>
                   <Button variant="outline" onClick={handleStartNewAssessment}>🔄 Restart</Button>
