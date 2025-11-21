@@ -499,30 +499,6 @@ export const phaseDefinitions = [
     title: 'Results',
     summary: 'Review results and create reports.',
     gateHint: 'Assessment complete.',
-    sections: [
-      {
-        id: 'assessment-summary',
-        title: 'Results',
-        description: 'Coaches and client reports.',
-        instructions: {
-          clientInstructions: 'Review your results with your coach.',
-          coachNotes: 'Summarize findings and next steps.'
-        },
-        fields: [
-          {
-            id: 'coachReport' as keyof FormData,
-            type: 'textarea' as FieldType,
-            label: 'Coaches report',
-            placeholder: 'Key findings, recommendations, next steps...',
-          },
-          {
-            id: 'clientReport' as keyof FormData,
-            type: 'textarea' as FieldType,
-            label: 'Client report',
-            placeholder: 'Plain-language summary for the client...',
-          },
-        ],
-      },
-    ],
+    sections: [],
   },
 ];
