@@ -45,7 +45,6 @@ class ReportErrorBoundary extends React.Component<{ children: React.ReactNode },
     return { hasError: true };
   }
   componentDidCatch(error: unknown) {
-    // eslint-disable-next-line no-console
     console.error('[Results] render error:', error);
   }
   render() {
@@ -638,6 +637,148 @@ const PhaseFormContent = () => {
     window.location.reload(); // Simple reset for now - could be more sophisticated
   };
 
+  // Temporary: quick-fill test profiles to speed up report testing
+  const { updateFormData } = useFormContext();
+  const quickFill = (profile: 'obese' | 'muscle' | 'cardio') => {
+    if (profile === 'obese') {
+      updateFormData({
+        parqQuestionnaire: 'completed',
+        heightCm: '175',
+        inbodyWeightKg: '120',
+        inbodyBodyFatPct: '36',
+        bodyFatMassKg: '43',
+        visceralFatLevel: '14',
+        skeletalMuscleMassKg: '32',
+        waistHipRatio: '1.02',
+        totalBodyWaterL: '38',
+        inbodyBmi: '39',
+        segmentalTrunkKg: '30',
+        segmentalArmLeftKg: '3.0',
+        segmentalArmRightKg: '3.5',
+        segmentalLegLeftKg: '9.0',
+        segmentalLegRightKg: '10.0',
+        bmrKcal: '1750',
+        inbodyScore: '62',
+        sleepQuality: 'fair',
+        sleepConsistency: 'inconsistent',
+        stressLevel: 'high',
+        hydrationHabits: 'fair',
+        stepsPerDay: '3500',
+        sedentaryHours: '9',
+        caffeineCupsPerDay: '3',
+        lastCaffeineIntake: '16:00',
+        // assessments minimal
+        postureHeadOverall: 'forward-head',
+        postureBackOverall: 'increased-kyphosis',
+        postureKneesOverall: 'valgus-knee',
+        mobilityHip: 'fair',
+        mobilityShoulder: 'fair',
+        mobilityAnkle: 'poor',
+        pushupsOneMinuteReps: '8',
+        squatsOneMinuteReps: '18',
+        plankDurationSeconds: '35',
+        gripLeftKg: '28',
+        gripRightKg: '30',
+        cardioTestSelected: 'ymca-step',
+        cardioRestingHr: '78',
+        cardioPost1MinHr: '128',
+        clientGoals: ['weight-loss'],
+        goalLevelWeightLoss: 'above-average',
+      });
+    } else if (profile === 'muscle') {
+      updateFormData({
+        parqQuestionnaire: 'completed',
+        heightCm: '180',
+        inbodyWeightKg: '78',
+        inbodyBodyFatPct: '18',
+        bodyFatMassKg: '14',
+        visceralFatLevel: '7',
+        skeletalMuscleMassKg: '36',
+        waistHipRatio: '0.88',
+        totalBodyWaterL: '43',
+        inbodyBmi: '24',
+        segmentalTrunkKg: '29',
+        segmentalArmLeftKg: '3.2',
+        segmentalArmRightKg: '3.3',
+        segmentalLegLeftKg: '9.4',
+        segmentalLegRightKg: '9.6',
+        bmrKcal: '1650',
+        inbodyScore: '78',
+        sleepQuality: 'good',
+        sleepConsistency: 'consistent',
+        stressLevel: 'moderate',
+        hydrationHabits: 'good',
+        stepsPerDay: '8000',
+        sedentaryHours: '6',
+        caffeineCupsPerDay: '2',
+        lastCaffeineIntake: '13:00',
+        postureHeadOverall: 'neutral',
+        postureBackOverall: 'neutral',
+        postureKneesOverall: 'neutral',
+        mobilityHip: 'fair',
+        mobilityShoulder: 'good',
+        mobilityAnkle: 'good',
+        pushupsOneMinuteReps: '28',
+        squatsOneMinuteReps: '42',
+        plankDurationSeconds: '95',
+        gripLeftKg: '36',
+        gripRightKg: '38',
+        cardioTestSelected: 'treadmill',
+        cardioRestingHr: '62',
+        cardioPost1MinHr: '110',
+        clientGoals: ['build-muscle', 'build-strength'],
+        goalLevelMuscle: 'above-average',
+        goalLevelStrength: 'average',
+      });
+    } else if (profile === 'cardio') {
+      updateFormData({
+        parqQuestionnaire: 'completed',
+        heightCm: '172',
+        inbodyWeightKg: '70',
+        inbodyBodyFatPct: '16',
+        bodyFatMassKg: '11',
+        visceralFatLevel: '6',
+        skeletalMuscleMassKg: '34',
+        waistHipRatio: '0.84',
+        totalBodyWaterL: '42',
+        inbodyBmi: '23.7',
+        segmentalTrunkKg: '28',
+        segmentalArmLeftKg: '3.1',
+        segmentalArmRightKg: '3.1',
+        segmentalLegLeftKg: '9.2',
+        segmentalLegRightKg: '9.2',
+        bmrKcal: '1600',
+        inbodyScore: '82',
+        sleepQuality: 'good',
+        sleepConsistency: 'very-consistent',
+        stressLevel: 'low',
+        hydrationHabits: 'good',
+        stepsPerDay: '10000',
+        sedentaryHours: '5',
+        caffeineCupsPerDay: '1',
+        lastCaffeineIntake: '09:30',
+        postureHeadOverall: 'neutral',
+        postureBackOverall: 'neutral',
+        postureKneesOverall: 'neutral',
+        mobilityHip: 'good',
+        mobilityShoulder: 'good',
+        mobilityAnkle: 'good',
+        pushupsOneMinuteReps: '35',
+        squatsOneMinuteReps: '48',
+        plankDurationSeconds: '120',
+        gripLeftKg: '34',
+        gripRightKg: '35',
+        cardioTestSelected: 'ymca-step',
+        cardioRestingHr: '56',
+        cardioPost1MinHr: '98',
+        clientGoals: ['improve-fitness'],
+        goalLevelFitness: 'above-average',
+      });
+    }
+    // Navigate to results for faster iteration
+    setActivePhaseIdx(totalPhases - 1);
+  };
+
   const toggleSection = (sectionId: string) => {
     setExpandedSections(prev => {
       const next: Record<string, boolean> = {};
@@ -998,7 +1139,12 @@ const PhaseFormContent = () => {
                     Coach Report
                   </button>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Temporary quick-fill profiles to speed testing (outside error boundary) */}
+                  <span className="text-xs text-slate-500">Quick fill:</span>
+                  <Button variant="outline" onClick={() => quickFill('obese')}>Obese</Button>
+                  <Button variant="outline" onClick={() => quickFill('muscle')}>Muscle</Button>
+                  <Button variant="outline" onClick={() => quickFill('cardio')}>Cardio</Button>
                   <Button variant="outline" onClick={handlePrint}>🖨 Print / Download</Button>
                   <Button variant="outline" onClick={handleShare}>🔗 Share</Button>
                   <Button variant="outline" onClick={handleStartNewAssessment}>🔄 Restart</Button>
