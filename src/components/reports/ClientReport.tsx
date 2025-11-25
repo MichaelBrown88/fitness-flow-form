@@ -204,14 +204,101 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
     }
     return items;
   }, [formData]);
+  const clientName = (formData?.fullName || '').trim();
+  // High-level nutrition advice (goal + body-comp contextual, non-granular)
+  const nutritionAdvice: string[] = useMemo(() => {
+    const advice: string[] = [];
+    const g = new Set(goals ?? []);
+    const gender = (formData?.gender || '').toLowerCase();
+    const weight = parseFloat(formData?.inbodyWeightKg || '0');
+    const bf = parseFloat(formData?.inbodyBodyFatPct || '0');
+    const highBf =
+      (gender === 'male' && bf > 25) ||
+      (gender === 'female' && bf > 32) ||
+      (!gender && bf > 28.5);
+    const wantsWeightLoss = g.has('weight-loss') || highBf;
+    const wantsMuscle = g.has('build-muscle');
+
+    if (wantsWeightLoss) {
+      advice.push(
+        'Create a gentle calorie deficit with portion control: mostly whole foods, half the plate veg/salad, the rest lean protein and smart carbs.',
+        'Prioritise protein at each meal (palm-sized serving) to stay full while losing fat and protecting muscle.',
+        'Keep most carbs (rice, bread, sweets) around training or earlier in the day; evenings bias more toward protein, fibre, and fluids.',
+        'Use simple food swaps most days (soft drinks → water/zero-cal, fried foods → grilled/baked, sweets → fruit or yoghurt).',
+      );
+    }
+
+    if (wantsMuscle && !highBf) {
+      advice.push(
+        'Aim for a small calorie surplus, not “bulking”: roughly one extra snack or ~150–300 kcal/day on training days.',
+        'Distribute protein evenly across the day (3–4 meals) and include carbs before and after workouts to support performance and recovery.',
+        'Keep most extra calories coming from quality carbs and lean protein rather than heavy fats or desserts.',
+      );
+    } else if (wantsMuscle && highBf) {
+      advice.push(
+        'Because body fat is already elevated, focus first on lean recomposition: high protein, mostly whole foods, and a slight deficit/maintenance instead of a big surplus.',
+      );
+    }
+
+    if (!wantsWeightLoss && !wantsMuscle) {
+      advice.push(
+        'Base most meals on whole foods: lean proteins, colourful veg/fruit, whole grains, and healthy fats.',
+        'Keep a simple structure: 2–3 main meals and 1–2 planned snacks rather than constant grazing.',
+      );
+    }
+
+    // Fallback if nothing was added but weight is known
+    if (advice.length === 0 && weight > 0) {
+      advice.push(
+        'Focus on consistency: mostly whole foods, protein at each meal, and avoid large swings in daily intake.',
+      );
+    }
+
+    return advice;
+  }, [goals, formData]);
   return (
     <div className="space-y-8">
+      <section className="space-y-1">
+        <h2 className="text-xl font-semibold text-slate-900">
+          {clientName ? `${clientName}, your report is ready` : 'Your report is ready'}
+        </h2>
+        <p className="text-sm text-slate-600">
+          Here’s a clear overview of where you are now, what we’ll focus on first, and how we’ll move you toward your goals.
+        </p>
+      </section>
+      <section className="space-y-6">
+        <h3 className="text-xl font-semibold text-slate-900 text-center">Your Fitness Summary</h3>
+        <div className="flex flex-col items-center gap-5">
+          {/* Overall score centered and prominent */}
+          <div className="flex flex-col items-center">
+            <div className={`flex h-28 w-28 items-center justify-center rounded-full border-4 ${circleColor(scores.overall)}`}>
+              <span className="text-3xl font-bold">{scores.overall}</span>
+            </div>
+            <span className="mt-2 text-sm font-medium text-slate-700">Overall score</span>
+          </div>
+          {/* Category circles centered under overall */}
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            {orderedCats.map((cat) => (
+              <div key={cat.id} className="flex flex-col items-center">
+                <div className={`flex h-14 w-14 items-center justify-center rounded-full border-4 ${circleColor(cat.score)}`}>
+                  <span className="text-sm font-semibold">{cat.score}</span>
+                </div>
+                <span className="mt-2 w-24 truncate text-center text-xs text-slate-600">{niceLabel(cat.id)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {goals && goals.length > 0 && (
         <section className="space-y-2">
-          <h3 className="text-xl font-semibold text-slate-900">Your Goals</h3>
+          <h3 className="text-xl font-semibold text-slate-900">Your goals & targets</h3>
           <div className="flex flex-wrap gap-2">
             {goals.map((g, i) => (
-              <span key={`${g}-${i}`} className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+              <span
+                key={`${g}-${i}`}
+                className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700"
+              >
                 {g.replace('-', ' ')}
               </span>
             ))}
@@ -224,7 +311,7 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
                 const h = (parseFloat(formData.heightCm || '0') || 0) / 100;
                 const minW = h > 0 ? 22 * h * h : 0;
                 const maxW = h > 0 ? 25 * h * h : 0;
-                const needLoss = maxW > 0 && weight > maxW ? (weight - maxW) : 0;
+                const needLoss = maxW > 0 && weight > maxW ? weight - maxW : 0;
                 return (
                   <div className="space-y-1.5">
                     <div>
@@ -257,29 +344,6 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
           )}
         </section>
       )}
-      <section className="space-y-6">
-        <h3 className="text-xl font-semibold text-slate-900 text-center">Your Fitness Summary</h3>
-        <div className="flex flex-col items-center gap-5">
-          {/* Overall score centered and prominent */}
-          <div className="flex flex-col items-center">
-            <div className={`flex h-28 w-28 items-center justify-center rounded-full border-4 ${circleColor(scores.overall)}`}>
-              <span className="text-3xl font-bold">{scores.overall}</span>
-            </div>
-            <span className="mt-2 text-sm font-medium text-slate-700">Overall score</span>
-          </div>
-          {/* Category circles centered under overall */}
-          <div className="flex flex-wrap items-center justify-center gap-4">
-            {orderedCats.map((cat) => (
-              <div key={cat.id} className="flex flex-col items-center">
-                <div className={`flex h-14 w-14 items-center justify-center rounded-full border-4 ${circleColor(cat.score)}`}>
-                  <span className="text-sm font-semibold">{cat.score}</span>
-                </div>
-                <span className="mt-2 w-24 truncate text-center text-xs text-slate-600">{niceLabel(cat.id)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       <section className="grid gap-4 md:grid-cols-2">
         <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
@@ -322,6 +386,19 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
               </ul>
             </div>
           )}
+        </section>
+      )}
+
+      {nutritionAdvice.length > 0 && (
+        <section className="space-y-2">
+          <h3 className="text-xl font-semibold text-slate-900">Nutrition focus</h3>
+          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <ul className="list-disc pl-5 text-sm text-slate-700 space-y-1.5">
+              {nutritionAdvice.map((n, i) => (
+                <li key={i}>{n}</li>
+              ))}
+            </ul>
+          </div>
         </section>
       )}
 
@@ -372,67 +449,6 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
           ))}
         </div>
       </section>
-
-      {/* Sample Workout - (relocated to end) */}
-      {(() => {
-        const g0 = (goals && goals[0]) || '';
-        const warmup: string[] = [];
-        const activation: string[] = [];
-        const main: string[] = [];
-        const accessories: string[] = [];
-        const finisher: string[] = [];
-        // Mobility/posture-driven warm-up
-        if (formData?.mobilityHip && formData.mobilityHip !== 'good' || focusAreas.find(f => f.toLowerCase().includes('hip mobility'))) {
-          warmup.push('90/90 hip switches 2 x 6/side', 'Hip flexor stretch 2 x 45s/side');
-        }
-        if (formData?.mobilityShoulder && formData.mobilityShoulder !== 'good' || focusAreas.find(f => f.toLowerCase().includes('shoulder mobility'))) {
-          warmup.push('PVC shoulder dislocates 2 x 8', 'Wall slides 2 x 8');
-        }
-        if (formData?.mobilityAnkle && formData.mobilityAnkle !== 'good' || focusAreas.find(f => f.toLowerCase().includes('ankle mobility'))) {
-          warmup.push('Knee-to-wall ankle mobilisations 2 x 8/side');
-        }
-        if ((formData?.postureBackOverall && formData.postureBackOverall !== 'neutral') || focusAreas.find(f => f.toLowerCase().includes('spinal'))) {
-          warmup.push('T‑spine extensions over foam roller 2 x 8');
-        }
-        if (focusAreas.find(f => f.toLowerCase().includes('knee alignment'))) {
-          activation.push('Mini‑band lateral walks 2 x 10 steps/side', 'Split squat knee tracking drill 2 x 8/side');
-        }
-        if (focusAreas.find(f => f.toLowerCase().includes('core endurance'))) {
-          activation.push('Dead bug 2 x 8/side', 'Front plank 2 x 30–45s');
-        }
-        // Main work driven by primary goal
-        if (g0 === 'weight-loss') {
-          main.push('Goblet squat 3–4 x 8–12', 'DB bench press 3–4 x 8–12', '1‑arm row 3–4 x 8–12/side');
-          accessories.push('Hip hinge (RDL) 3 x 8–10', 'Walking lunge 2–3 x 8/side');
-          finisher.push('Zone 2 cardio 15–20 min (bike/row/treadmill)');
-        } else if (g0 === 'build-muscle') {
-          main.push('Back squat 4 x 6–8', 'Bench press 4 x 6–8', 'Chest‑supported row 4 x 8–10');
-          accessories.push('Romanian deadlift 3 x 8–10', 'Lateral raise 3 x 12–15', 'Face pulls 3 x 12–15');
-          finisher.push('Optional: easy 10–15 min Zone 2');
-        } else if (g0 === 'build-strength') {
-          main.push('Back squat 5 x 3 @ RPE 7–8', 'Bench press 5 x 3 @ RPE 7–8', 'Deadlift 3 x 3 @ RPE 7–8');
-          accessories.push('Paused squat 3 x 3–5', 'Row variation 3 x 6–8');
-          finisher.push('Breathing/box‑breathing 5 min for recovery');
-        } else if (g0 === 'improve-fitness') {
-          main.push('Tempo intervals: 6 x 2 min hard / 2 min easy', 'Zone 2 steady 20–30 min (alt days)');
-          accessories.push('Split squat 3 x 8/side', 'Pushups 3 x 8–12', 'Row 3 x 8–12');
-          finisher.push('Optional strides / short hill repeats (technique focus)');
-        } else {
-          // General health default
-          main.push('Circuit (2–3 rounds): Goblet squat 10, Pushups 8–12, 1‑arm row 10/side, Hip hinge 10');
-          finisher.push('Walk 10–15 min cooldown');
-        }
-        // Sample workout section
-        // Headings mapping for clearer presentation
-        const goalBlockTitle =
-          g0 === 'weight-loss' ? 'Primary block — Fat‑loss training'
-          : g0 === 'build-muscle' ? 'Primary block — Hypertrophy'
-          : g0 === 'build-strength' ? 'Primary block — Strength'
-          : g0 === 'improve-fitness' ? 'Primary block — Cardio fitness'
-          : 'Primary block';
-        const correctivesTitle = 'Correctives — addressing your main concerns';
-        return null;
-      })()}
 
       <section className="space-y-2">
         <h3 className="text-xl font-semibold text-slate-900">Milestones</h3>
@@ -562,6 +578,13 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
           add(main, 'Circuit: Goblet squat 10, Pushups 8–12, 1‑arm row 10/side, Hip hinge 10', 'general conditioning');
           add(finisher, 'Walk 10–15 min cooldown', 'recovery');
         }
+        // Heading for primary goal block
+        const goalBlockTitle =
+          g0 === 'weight-loss' ? 'Primary block — Fat‑loss training'
+          : g0 === 'build-muscle' ? 'Primary block — Hypertrophy'
+          : g0 === 'build-strength' ? 'Primary block — Strength'
+          : g0 === 'improve-fitness' ? 'Primary block — Cardio fitness'
+          : 'Primary block';
         // Daily step target
         const stepsNow = parseFloat(formData?.stepsPerDay || '0');
         let stepTarget = '7000–9000';

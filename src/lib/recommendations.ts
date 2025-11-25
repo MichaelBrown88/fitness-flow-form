@@ -226,7 +226,7 @@ export function generateBodyCompInterpretation(form: FormData): BodyCompInterpre
   const bfm = parseFloat(form.bodyFatMassKg || (weight > 0 && bf > 0 ? ((weight * bf) / 100).toFixed(1) : '0'));
   const visceral = parseFloat(form.visceralFatLevel || '0');
   const whr = parseFloat(form.waistHipRatio || '0');
-  const bmr = parseFloat(form.bmrKcal || '0');
+  let bmr = parseFloat(form.bmrKcal || '0');
   const tbw = parseFloat(form.totalBodyWaterL || '0');
 
   // Segmental kg
@@ -284,7 +284,48 @@ export function generateBodyCompInterpretation(form: FormData): BodyCompInterpre
       : undefined;
 
   // Nutrition suggestions (high-level)
-  const calorieRange = bmr ? `${Math.round(bmr * (highBf ? 1.2 : 1.4))}–${Math.round(bmr * (highBf ? 1.4 : 1.6))} kcal/day` : undefined;
+  // Use InBody BMR if it looks reasonable; otherwise estimate via Mifflin-St Jeor
+  if (bmr < 800 || bmr > 3500) {
+    bmr = 0;
+  }
+  if (!bmr && weight > 0) {
+    const heightCm = parseFloat((form as any).heightCm || '0');
+    // Estimate age from DOB if available
+    let age = 0;
+    if ((form as any).dateOfBirth) {
+      const dob = new Date((form as any).dateOfBirth);
+      if (!Number.isNaN(dob.getTime())) {
+        const today = new Date();
+        age = today.getFullYear() - dob.getFullYear();
+        const m = today.getMonth() - dob.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+      }
+    }
+    if (!age) age = 30;
+    const h = heightCm || (tbw ? (tbw / 0.6) : 0); // very rough fallback if no height
+    if (h > 0) {
+      const s = gender === 'female' ? -161 : 5;
+      bmr = 10 * weight + 6.25 * h - 5 * age + s;
+    } else {
+      // Last-resort estimate
+      bmr = 22 * weight;
+    }
+  }
+
+  let calorieRange: string | undefined;
+  if (bmr) {
+    const maintLow = bmr * 1.4;
+    const maintHigh = bmr * 1.6;
+    if (highBf) {
+      const deficitLow = bmr * 1.2;
+      const deficitHigh = bmr * 1.35;
+      calorieRange = `${Math.round(deficitLow)}–${Math.round(deficitHigh)} kcal/day (fat-loss focus; est. maintenance ${Math.round(maintLow)}–${Math.round(maintHigh)} kcal)`;
+    } else {
+      const perfLow = bmr * 1.5;
+      const perfHigh = bmr * 1.8;
+      calorieRange = `${Math.round(perfLow)}–${Math.round(perfHigh)} kcal/day (performance / lean-gain range; est. maintenance ${Math.round(maintLow)}–${Math.round(maintHigh)} kcal)`;
+    }
+  }
   // Protein from SMM focus: 2.0–2.4 g/kg SMM (client-friendly)
   const proteinTarget = smm ? `${Math.round(smm * 2.0)}–${Math.round(smm * 2.4)} g protein/day (from SMM)` : weight ? `${Math.round(weight * 1.6)}–${Math.round(weight * 2.2)} g protein/day` : undefined;
   const hydration = '2–3 L/day baseline; match sweat losses; add electrolytes if needed';

@@ -1,8 +1,19 @@
 import React from 'react';
 import type { CoachPlan, BodyCompInterpretation } from '@/lib/recommendations';
+import type { FormData } from '@/contexts/FormContext';
 import type { ScoreSummary } from '@/lib/scoring';
 
-export default function CoachReport({ plan, scores, bodyComp }: { plan: CoachPlan; scores: ScoreSummary; bodyComp?: BodyCompInterpretation }) {
+export default function CoachReport({
+  plan,
+  scores,
+  bodyComp,
+  formData,
+}: {
+  plan: CoachPlan;
+  scores: ScoreSummary;
+  bodyComp?: BodyCompInterpretation;
+  formData?: FormData;
+}) {
   if (!scores || !scores.categories || scores.categories.length === 0) {
     return (
       <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
@@ -10,8 +21,23 @@ export default function CoachReport({ plan, scores, bodyComp }: { plan: CoachPla
       </div>
     );
   }
+  const clientName = (formData?.fullName || '').trim();
+  const goals = Array.isArray(formData?.clientGoals) ? (formData!.clientGoals as string[]) : [];
   return (
     <div className="space-y-8">
+      <section className="space-y-1">
+        <h2 className="text-xl font-semibold text-slate-900">
+          {clientName ? `${clientName} — coaching overview` : 'Coaching overview'}
+        </h2>
+        <p className="text-sm text-slate-600">
+          Quick snapshot of this client’s priorities, key findings, and how the program will address them while moving toward their goals.
+        </p>
+        {goals.length > 0 && (
+          <p className="text-xs text-slate-500">
+            <span className="font-semibold">Goals:</span> {goals.map(g => g.replace('-', ' ')).join(', ')}
+          </p>
+        )}
+      </section>
       {bodyComp && (
         <section className="space-y-3">
           <h3 className="text-xl font-semibold text-slate-900">Body Composition Interpretation</h3>
@@ -66,6 +92,22 @@ export default function CoachReport({ plan, scores, bodyComp }: { plan: CoachPla
             {plan.keyIssues.map((i, idx) => <li key={idx}>{i}</li>)}
           </ul>
         )}
+      </section>
+
+      <section className="space-y-2">
+        <h3 className="text-xl font-semibold text-slate-900">How to coach this client</h3>
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm text-sm text-slate-700 space-y-2">
+          <p>
+            Use the blocks below as the backbone of the program. Anchor sessions around the primary block, then layer correctives and
+            aerobic work so we are improving health, movement quality, and performance in parallel.
+          </p>
+          {goals.length > 0 && (
+            <p>
+              Keep language and progress checks tied to their stated goals ({goals.map(g => g.replace('-', ' ')).join(', ')}), so each block
+              is clearly connected to outcomes they care about.
+            </p>
+          )}
+        </div>
       </section>
 
       <section className="space-y-4">

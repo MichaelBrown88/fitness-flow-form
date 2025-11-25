@@ -36,29 +36,6 @@ type SectionType = PhaseSection | IntakeSection;
 const labelTextClasses = 'text-sm font-medium text-slate-700';
 const supportTextClasses = 'text-xs text-slate-500 mt-1';
 
-class ReportErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
-  constructor(props: { children: React.ReactNode }) {
-    super(props);
-    this.state = { hasError: false };
-  }
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
-  componentDidCatch(error: unknown) {
-    console.error('[Results] render error:', error);
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-          There was a problem rendering the results. Please review inputs or try again.
-        </div>
-      );
-    }
-    return <>{this.props.children}</>;
-  }
-}
-
 const FieldControl = ({ field }: { field: PhaseField }) => {
   const { formData, updateFormData } = useFormContext();
 
@@ -443,6 +420,8 @@ const PhaseFormContent = () => {
     return idx;
   }, [totalPhases, isPhaseCompleted]);
 
+  // (moved: auto-navigate to Results when all assessments are completed)
+
   // Get all sections for current phase (no longer including intake globally)
   const getAllSections = useCallback(() => {
     const sections: SectionType[] = [];
@@ -556,17 +535,32 @@ const PhaseFormContent = () => {
       'pushupsOneMinuteReps', // Strength assessment
       'plankDurationSeconds', // Core assessment
       'cardioTestSelected', // Cardio assessment
+      'clientGoals', // Ensure goals were selected before showing results
     ];
 
-    return requiredFields.every(field =>
-      formData[field as keyof FormData] !== '' && formData[field as keyof FormData] !== undefined
-    );
+    return requiredFields.every((field) => {
+      const val = formData[field as keyof FormData] as unknown;
+      if (Array.isArray(val)) return val.length > 0;
+      return val !== '' && val !== undefined && val !== null;
+    });
   }, [formData]);
 
   const progressValue = useMemo(
     () => ((activePhaseIdx + 1) / totalPhases) * 100,
     [activePhaseIdx, totalPhases]
   );
+
+  // Auto-navigate to Results when all assessments are completed
+  useEffect(() => {
+    if (allAssessmentsCompleted && activePhaseIdx < totalPhases - 1) {
+      const t = setTimeout(() => {
+        setActivePhaseIdx(totalPhases - 1);
+        setReportView('client');
+        try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (_e) { /* noop */ }
+      }, 1000);
+      return () => clearTimeout(t);
+    }
+  }, [allAssessmentsCompleted, activePhaseIdx, totalPhases]);
 
   const handleNext = () => {
     const allSections = getAllSections();
@@ -995,6 +989,10 @@ const PhaseFormContent = () => {
         goalLevelFitness: 'above-average',
       });
     }
+    // Slower, readable pacing (tune as needed)
+    const DELAY_PHASE = 2000;
+    const DELAY_SECTION = 1300;
+    const DELAY_FIELD = 900;
     const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
     // Traverse phases/sections to mimic user flow
     for (let p = 0; p < totalPhases; p++) {
@@ -1002,33 +1000,41 @@ const PhaseFormContent = () => {
       if (!ph) continue;
       if (ph.id === 'P7') break;
       setActivePhaseIdx(p);
-      await delay(120);
+      await delay(DELAY_PHASE);
+      try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (_e) { /* noop */ }
       const secs = ph.sections ?? [];
       for (const sec of secs) {
         setExpandedSections({ [sec.id]: true });
-        await delay(100);
+        await delay(DELAY_SECTION);
         for (const f of (sec.fields as ReadonlyArray<PhaseField>)) {
-          // respect conditional visibility
+          // Respect conditional visibility so we only populate fields that would actually be shown
           if (!isFieldVisible(f)) continue;
           const key = f.id as keyof FormData;
-          let val = (payload[key] as string) ?? (formData[key] as string) ?? '';
-          if (!val) {
-            if (f.type === 'select' && f.options && f.options.length > 0) {
-              val = f.options[0].value;
+          // Prefer persona payload, then existing form value
+          let raw: FormData[keyof FormData] | undefined =
+            (payload[key as keyof FormData] as FormData[keyof FormData] | undefined) ??
+            (formData[key as keyof FormData] as FormData[keyof FormData] | undefined);
+          // Populate sensible defaults when missing
+          if (raw === undefined || raw === null || raw === '') {
+            if (f.type === 'multiselect') {
+              raw = f.options && f.options.length > 0 ? [f.options[0].value] : [];
+            } else if (f.type === 'select') {
+              raw = f.options && f.options.length > 0 ? f.options[0].value : '';
             } else if (f.type === 'number') {
-              val = '1';
+              raw = '1';
             } else if (f.type === 'date') {
-              val = '1990-01-01';
+              raw = '1990-01-01';
             } else if (f.type === 'time') {
-              val = '08:00';
+              raw = '08:00';
             } else if (f.type === 'parq') {
-              val = 'completed';
+              raw = 'completed';
             } else {
-              val = 'OK';
+              raw = 'OK';
             }
           }
-          updateFormData({ [key]: val } as Partial<FormData>);
-          await delay(60);
+          // Apply update (support array values for multiselect)
+          updateFormData({ [key]: raw as FormData[keyof FormData] } as Partial<FormData>);
+          await delay(DELAY_FIELD);
         }
         // mark section complete to avoid double auto-advance reaction
         setRecentlyCompletedSections(prev => {
@@ -1036,10 +1042,14 @@ const PhaseFormContent = () => {
           next.add(sec.id);
           return next;
         });
-        await delay(80);
+        await delay(DELAY_SECTION);
       }
     }
+    // Navigate to results and ensure the report is visible
     setActivePhaseIdx(totalPhases - 1);
+    await delay(800);
+    setReportView('client');
+    try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (_e) { /* noop */ }
   };
   const toggleSection = (sectionId: string) => {
     setExpandedSections(prev => {
@@ -1081,6 +1091,11 @@ const PhaseFormContent = () => {
                         <Check className="h-4 w-4" />
                         <span className="text-xs font-medium">Completed</span>
                       </div>
+                    )}
+                    {section.id === 'health-screening' && (
+                      <span className="text-xs rounded bg-slate-100 px-2 py-0.5 text-slate-600">
+                        PAR‑Q: {String(formData.parqQuestionnaire || '—')}
+                      </span>
                     )}
                   </div>
                   {'description' in section && section.description && (
@@ -1414,21 +1429,19 @@ const PhaseFormContent = () => {
                   <Button variant="outline" onClick={handleStartNewAssessment}>🔄 Restart</Button>
                 </div>
               </div>
-              <ReportErrorBoundary>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                  {reportView === 'client' ? (
-                    <ClientReport
-                      scores={scores}
-                      roadmap={roadmap}
-                      goals={Array.isArray(formData.clientGoals) ? formData.clientGoals : []}
-                      bodyComp={bodyCompInterp ? { timeframeWeeks: bodyCompInterp.timeframeWeeks } : undefined}
-                      formData={formData}
-                    />
-                  ) : (
-                    <CoachReport plan={plan} scores={scores} bodyComp={bodyCompInterp} />
-                  )}
-                </div>
-              </ReportErrorBoundary>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                {reportView === 'client' ? (
+                  <ClientReport
+                    scores={scores}
+                    roadmap={roadmap}
+                    goals={Array.isArray(formData.clientGoals) ? formData.clientGoals : []}
+                    bodyComp={bodyCompInterp ? { timeframeWeeks: bodyCompInterp.timeframeWeeks } : undefined}
+                    formData={formData}
+                  />
+                ) : (
+                  <CoachReport plan={plan} scores={scores} bodyComp={bodyCompInterp} formData={formData} />
+                )}
+              </div>
             </div>
           </div>
         )}
