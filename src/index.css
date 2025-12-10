@@ -148,3 +148,39 @@ All colors MUST be HSL.
   }
   .animate-scale-in { animation: scale-in 260ms ease-out both; }
 }
+
+/* Print and PDF styles */
+@media print {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+  
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  [data-pdf-target] {
+    background: white !important;
+    box-shadow: none !important;
+  }
+  
+  /* Ensure all text is visible */
+  * {
+    color: inherit !important;
+  }
+  
+  /* Prevent page breaks in the middle of sections */
+  section {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  
+  /* Ensure proper spacing */
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+}

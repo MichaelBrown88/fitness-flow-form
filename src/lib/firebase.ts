@@ -1,38 +1,42 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getFirestore, type Firestore } from 'firebase/firestore';
+import { getAuth, type Auth } from 'firebase/auth';
+import { getFunctions, type Functions } from 'firebase/functions';
+import { getStorage, type FirebaseStorage } from 'firebase/storage';
 
+// For simplicity, we inline the config directly instead of relying on env vars.
+// These values come from your Firebase web app settings.
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY as string | undefined,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN as string | undefined,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID as string | undefined,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET as string | undefined,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID as string | undefined,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID as string | undefined,
+  apiKey: 'AIzaSyBQ-ebw6zmdtQtJaQs-pjmOxNv-fchQKuc',
+  authDomain: 'assessment-engine-8f633.firebaseapp.com',
+  projectId: 'assessment-engine-8f633',
+  storageBucket: 'assessment-engine-8f633.firebasestorage.app',
+  messagingSenderId: '654489539628',
+  appId: '1:654489539628:web:4118755f55e36b73016d89',
 };
-
-function hasValidConfig(cfg: typeof firebaseConfig): cfg is Required<typeof firebaseConfig> {
-  return Boolean(
-    cfg.apiKey && cfg.authDomain && cfg.projectId && cfg.storageBucket && cfg.messagingSenderId && cfg.appId
-  );
-}
 
 let appInstance: FirebaseApp | null = null;
 
 export function getFirebaseApp(): FirebaseApp {
   if (appInstance) return appInstance;
-  if (!hasValidConfig(firebaseConfig)) {
-    const missing = Object.entries(firebaseConfig)
-      .filter(([, v]) => !v)
-      .map(([k]) => k);
-    const msg = `Firebase config missing: ${missing.join(', ')}. Add VITE_FIREBASE_* values to .env`;
-    throw new Error(msg);
-  }
   appInstance = getApps().length ? getApp() : initializeApp(firebaseConfig);
   return appInstance;
 }
 
 export function getDb(): Firestore {
   return getFirestore(getFirebaseApp());
+}
+
+export function getFirebaseAuth(): Auth {
+  return getAuth(getFirebaseApp());
+}
+
+export function getFirebaseFunctions(): Functions {
+  return getFunctions(getFirebaseApp());
+}
+
+export function getFirebaseStorage(): FirebaseStorage {
+  return getStorage(getFirebaseApp());
 }
 
 export default getFirebaseApp;

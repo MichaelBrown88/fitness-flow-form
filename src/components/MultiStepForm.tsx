@@ -14,14 +14,38 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Check, ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightIcon, Info } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  ChevronRight as ChevronRightIcon,
+  Info,
+  Share2,
+  Download,
+  Copy,
+} from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
 import { phaseDefinitions, type PhaseField, type PhaseSection } from '@/lib/phaseConfig';
 import ParQQuestionnaire from './ParQQuestionnaire';
 import { computeScores, buildRoadmap } from '@/lib/scoring';
 import { generateCoachPlan, generateBodyCompInterpretation } from '@/lib/recommendations';
+import { useAuth } from '@/contexts/AuthContext';
+import { saveCoachAssessment } from '@/services/coachAssessments';
+import { requestShareArtifacts, sendReportEmail, type ShareArtifacts } from '@/services/share';
+import { useToast } from '@/components/ui/use-toast';
 import ClientReport from '@/components/reports/ClientReport';
 import CoachReport from '@/components/reports/CoachReport';
+import { downloadElementAsPdf } from '@/lib/pdf';
+import { generateInteractiveHtml } from '@/lib/htmlExport';
 
 type FieldValue = string | string[];
 
@@ -270,6 +294,26 @@ const FieldControl = ({ field }: { field: PhaseField }) => {
             className="mt-3"
           />
         );
+      case 'email':
+        return (
+          <Input
+            type="email"
+            placeholder={field.placeholder}
+            value={(value as string) ?? ''}
+            onChange={(event) => handleChange(event.target.value)}
+            className="mt-3"
+          />
+        );
+      case 'tel':
+        return (
+          <Input
+            type="tel"
+            placeholder={field.placeholder}
+            value={(value as string) ?? ''}
+            onChange={(event) => handleChange(event.target.value)}
+            className="mt-3"
+          />
+        );
       case 'number':
       case 'text':
       default:
@@ -295,11 +339,25 @@ const FieldControl = ({ field }: { field: PhaseField }) => {
 
 const PhaseFormContent = () => {
   const { formData } = useFormContext();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [activePhaseIdx, setActivePhaseIdx] = useState(0);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [recentlyCompletedSections, setRecentlyCompletedSections] = useState<Set<string>>(new Set());
   const phaseRefs = useRef<Record<number, HTMLButtonElement | null>>({});
   const [reportView, setReportView] = useState<'client' | 'coach'>('client');
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [shareCache, setShareCache] = useState<Record<'client' | 'coach', ShareArtifacts | null>>({
+    client: null,
+    coach: null,
+  });
+  const shareCacheRef = useRef<Record<'client' | 'coach', ShareArtifacts | null>>({
+    client: null,
+    coach: null,
+  });
+  const [shareLoading, setShareLoading] = useState(false);
+  const reportRef = useRef<HTMLDivElement | null>(null);
 
   const totalPhases = phaseDefinitions.length;
   const activePhase = useMemo(() => {
@@ -316,18 +374,422 @@ const PhaseFormContent = () => {
   const roadmap = useMemo(() => buildRoadmap(scores), [scores]);
   const plan = useMemo(() => generateCoachPlan(formData, scores), [formData, scores]);
   const bodyCompInterp = useMemo(() => generateBodyCompInterpretation(formData), [formData]);
-  const handlePrint = useCallback(() => window.print(), []);
-  const handleShare = useCallback(async () => {
-    const shareData = {
-      title: reportView === 'client' ? 'Client Report' : 'Coach Report',
-      text: 'Assessment report generated from Fitness Assessment.',
-      url: window.location.href,
-    };
+  const ensureShareArtifacts = useCallback(async (view: 'client' | 'coach') => {
+    if (!user || !savingId) {
+      throw new Error('Assessment must be saved before sharing.');
+    }
+    // Check ref cache first (avoids stale closure issues)
+    if (shareCacheRef.current[view]) {
+      return shareCacheRef.current[view]!;
+    }
+    const artifacts = await requestShareArtifacts({ assessmentId: savingId, view });
+    shareCacheRef.current[view] = artifacts;
+    setShareCache((prev) => ({ ...prev, [view]: artifacts }));
+    return artifacts;
+  }, [savingId, user]);
+
+  const fetchReportPdfBlob = useCallback(async (view: 'client' | 'coach') => {
+    // Try to get PDF from Cloud Functions first
     try {
+      if (user && savingId) {
+        const artifacts = await ensureShareArtifacts(view);
+        const response = await fetch(artifacts.pdfUrl);
+        if (response.ok) {
+          const blob = await response.blob();
+          return { artifacts, blob };
+        }
+      }
+    } catch (error) {
+      console.warn('Cloud Functions PDF not available, falling back to client-side generation', error);
+    }
+    
+    // Fallback: generate PDF client-side
+    if (!reportRef.current) {
+      throw new Error('Report element not found');
+    }
+    
+    // Generate PDF using html2canvas and jspdf (client-side fallback)
+    const html2canvas = (await import('html2canvas')).default;
+    const jsPDF = (await import('jspdf')).default;
+    
+    // Wait for fonts and images to load
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    const canvasEl = await html2canvas(reportRef.current, {
+      scale: 3, // Higher scale for better quality
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+      scrollX: 0,
+      scrollY: 0,
+      windowWidth: reportRef.current.scrollWidth,
+      windowHeight: reportRef.current.scrollHeight,
+      allowTaint: false,
+      removeContainer: false,
+      imageTimeout: 20000,
+      onclone: (clonedDoc) => {
+        // Ensure all styles are preserved and optimized for PDF
+        const clonedElement = clonedDoc.querySelector(`[data-pdf-target]`) || 
+                             clonedDoc.body.querySelector('.rounded-xl') ||
+                             clonedDoc.body;
+        if (clonedElement) {
+          const el = clonedElement as HTMLElement;
+          el.style.backgroundColor = '#ffffff';
+          el.style.width = `${reportRef.current!.scrollWidth}px`;
+          el.style.height = 'auto';
+          el.style.overflow = 'visible';
+          
+          // Hide interactive elements that shouldn't be in PDF
+          const interactiveElements = clonedDoc.querySelectorAll('button, input[type="range"], .dropdown-menu, .dropdown-trigger');
+          interactiveElements.forEach((el) => {
+            (el as HTMLElement).style.display = 'none';
+          });
+        }
+      },
+    });
+    
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    
+    // A4 dimensions in mm with margins
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 10;
+    const contentWidth = pageWidth - (margin * 2);
+    const contentHeight = pageHeight - (margin * 2);
+    
+    // Calculate dimensions maintaining aspect ratio
+    const imgWidth = contentWidth;
+    const imgHeight = (canvasEl.height * imgWidth) / canvasEl.width;
+    
+    // Split image across pages correctly - no duplication
+    const totalPages = Math.ceil(imgHeight / contentHeight);
+    
+    for (let page = 0; page < totalPages; page++) {
+      if (page > 0) {
+        pdf.addPage();
+      }
+      
+      // Calculate the portion of image for this page
+      const sourceY = (page * contentHeight / imgHeight) * canvasEl.height;
+      const remainingHeight = imgHeight - (page * contentHeight);
+      const pageImageHeight = Math.min(contentHeight, remainingHeight);
+      const sourceHeight = (pageImageHeight / imgHeight) * canvasEl.height;
+      
+      // Create a temporary canvas for this page's portion
+      const pageCanvas = document.createElement('canvas');
+      pageCanvas.width = canvasEl.width;
+      pageCanvas.height = Math.ceil(sourceHeight);
+      const ctx = pageCanvas.getContext('2d');
+      
+      if (ctx && sourceHeight > 0) {
+        // Fill with white background
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+        
+        // Draw the portion of the image
+        ctx.drawImage(
+          canvasEl, 
+          0, sourceY, canvasEl.width, sourceHeight,  // source
+          0, 0, canvasEl.width, sourceHeight        // destination
+        );
+        
+        const pageImgData = pageCanvas.toDataURL('image/png', 1.0);
+        pdf.addImage(pageImgData, 'PNG', margin, margin, imgWidth, pageImageHeight);
+      }
+    }
+    
+    // Add metadata for interactivity
+    pdf.setProperties({
+      title: `${formData.fullName || 'Client'} - ${reportView === 'client' ? 'Client' : 'Coach'} Report`,
+      subject: 'Fitness Assessment Report',
+      author: 'One Fitness',
+      creator: 'One Fitness Assessment Engine',
+    });
+    
+    const blob = pdf.output('blob');
+    return { artifacts: null, blob };
+  }, [ensureShareArtifacts, user, savingId, formData.fullName, reportView]);
+
+  const handlePrint = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+    try {
+      setShareLoading(true);
+      const { blob } = await fetchReportPdfBlob(reportView);
+      const blobUrl = URL.createObjectURL(blob);
+      const printWindow = window.open(blobUrl, '_blank', 'noopener,noreferrer');
+      if (printWindow) {
+        const triggerPrint = () => {
+          printWindow.focus();
+          printWindow.print();
+        };
+        printWindow.addEventListener('load', triggerPrint, { once: true });
+      }
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+    } catch (error) {
+      console.error('Print failed', error);
+      toast({
+        title: 'Unable to open printer dialog',
+        description: 'Download the PDF instead while we retry.',
+        variant: 'destructive',
+      });
+    } finally {
+      setShareLoading(false);
+    }
+  }, [fetchReportPdfBlob, reportView, toast]);
+
+  const handleShare = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+    try {
+      setShareLoading(true);
+      let shareUrl = '';
+      
+      // Try to get share URL from Cloud Functions if available
+      if (user && savingId) {
+        try {
+          const artifacts = await ensureShareArtifacts(reportView);
+          shareUrl = artifacts.shareUrl;
+        } catch (error) {
+          console.warn('Cloud Functions share not available, using current page URL', error);
+        }
+      }
+      
+      // Fallback to current page URL if no share URL available
+      if (!shareUrl) {
+        shareUrl = window.location.href;
+      }
+      
+      const shareData = {
+        title: reportView === 'client' ? 'Client Report' : 'Coach Report',
+        text: 'Assessment report generated from One Fitness.',
+        url: shareUrl,
+      };
       const navWithShare = navigator as Navigator & { share?: (data: ShareData) => Promise<void> };
-      if (navWithShare.share) await navWithShare.share(shareData as ShareData);
-    } catch (_e) { /* noop */ }
-  }, [reportView]);
+      if (navWithShare.share) {
+        await navWithShare.share(shareData as ShareData);
+      } else {
+        // Fallback: copy to clipboard
+        await navigator.clipboard.writeText(shareUrl);
+        toast({
+          title: 'Link copied',
+          description: 'Share link copied to clipboard.',
+        });
+      }
+    } catch (error) {
+      console.error('System share failed', error);
+      toast({
+        title: 'Unable to share right now',
+        description: 'Try copying the link or downloading the PDF instead.',
+        variant: 'destructive',
+      });
+    } finally {
+      setShareLoading(false);
+    }
+  }, [ensureShareArtifacts, reportView, toast, user, savingId]);
+
+  const handleEmailLink = useCallback(async () => {
+    const email = (formData.email || '').trim();
+    if (!email) {
+      toast({
+        title: 'Client email missing',
+        description: 'Add the client email in the intake form to email their report.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (!savingId) return;
+    try {
+      setShareLoading(true);
+      await sendReportEmail({
+        assessmentId: savingId,
+        view: reportView,
+        to: email,
+        clientName: formData.fullName,
+      });
+      toast({
+        title: 'Report emailed',
+        description: `Sent to ${email}`,
+      });
+    } catch (error) {
+      console.error('Failed to email report', error);
+      toast({
+        title: 'Email not sent',
+        description: 'Verify your SendGrid credentials in Firebase functions config.',
+        variant: 'destructive',
+      });
+    } finally {
+      setShareLoading(false);
+    }
+  }, [formData.email, formData.fullName, reportView, savingId, toast]);
+
+  const handleWhatsAppShare = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+    try {
+      setShareLoading(true);
+      const artifacts = await ensureShareArtifacts(reportView);
+      const url = `https://wa.me/?text=${encodeURIComponent(artifacts.whatsappText)}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      console.error('WhatsApp share failed', error);
+      toast({
+        title: 'Unable to share via WhatsApp',
+        description: 'Try copying the share link instead.',
+        variant: 'destructive',
+      });
+    } finally {
+      setShareLoading(false);
+    }
+  }, [ensureShareArtifacts, reportView, toast]);
+
+  const handleSaveToDashboard = useCallback(async () => {
+    if (!user || saving || savingId) return;
+    try {
+      setSaving(true);
+      const id = await saveCoachAssessment(user.uid, user.email, formData, scores.overall);
+      setSavingId(id);
+    } catch (e) {
+      console.error('Failed to save assessment', e);
+    } finally {
+      setSaving(false);
+    }
+  }, [user, saving, savingId, formData, scores.overall]);
+
+  // Auto-save once when we reach the Results phase and have a signed-in coach
+  useEffect(() => {
+    if (activePhase?.id === 'P7' && user && !savingId && !saving) {
+      void handleSaveToDashboard();
+    }
+  }, [activePhase?.id, user, savingId, saving, handleSaveToDashboard]);
+
+  useEffect(() => {
+    shareCacheRef.current = { client: null, coach: null };
+    setShareCache({ client: null, coach: null });
+  }, [savingId]);
+
+  const handleCopyLink = useCallback(async () => {
+    if (typeof navigator === 'undefined' || !('clipboard' in navigator)) {
+      toast({
+        title: 'Clipboard not available',
+        description: 'Use the system share option instead.',
+      });
+      return;
+    }
+    try {
+      setShareLoading(true);
+      let shareUrl = '';
+      
+      // Try to get share URL from Cloud Functions if available
+      if (user && savingId) {
+        try {
+          const artifacts = await ensureShareArtifacts(reportView);
+          shareUrl = artifacts.shareUrl;
+        } catch (error) {
+          console.warn('Cloud Functions share not available, using current page URL', error);
+        }
+      }
+      
+      // Fallback to current page URL
+      if (!shareUrl) {
+        shareUrl = window.location.href;
+      }
+      
+      await (navigator as Navigator & { clipboard: Clipboard }).clipboard.writeText(shareUrl);
+      toast({ description: 'Share link copied to clipboard.' });
+    } catch (error) {
+      console.error('Copy link failed', error);
+      toast({
+        title: 'Unable to copy link',
+        description: 'Use the download or share buttons instead.',
+        variant: 'destructive',
+      });
+    } finally {
+      setShareLoading(false);
+    }
+  }, [ensureShareArtifacts, reportView, toast, user, savingId]);
+
+  const handleDownloadPdf = useCallback(async () => {
+    const safeName = (formData.fullName || 'one-fitness-report')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    const fileName = `${safeName || 'one-fitness-report'}-${reportView}-report.pdf`;
+    try {
+      setShareLoading(true);
+      const { blob } = await fetchReportPdfBlob(reportView);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      toast({
+        title: 'PDF downloaded',
+        description: `Saved as ${fileName}`,
+      });
+    } catch (error) {
+      console.error('Failed to download PDF', error);
+      toast({
+        title: 'Download failed',
+        description: error instanceof Error ? error.message : 'Try again in a moment.',
+        variant: 'destructive',
+      });
+    } finally {
+      setShareLoading(false);
+    }
+  }, [fetchReportPdfBlob, formData.fullName, reportView, toast]);
+
+  const handleDownloadInteractiveHtml = useCallback(async () => {
+    if (reportView !== 'client') {
+      toast({
+        title: 'Interactive HTML available for client report only',
+        description: 'Switch to client report view to download interactive HTML.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    const safeName = (formData.fullName || 'one-fitness-report')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    const fileName = `${safeName || 'one-fitness-report'}-interactive-report.html`;
+    
+    try {
+      setShareLoading(true);
+      const bodyComp = generateBodyCompInterpretation(formData);
+      const htmlBlob = await generateInteractiveHtml({
+        formData,
+        scores,
+        roadmap,
+        bodyComp: bodyComp || undefined,
+        view: 'client',
+      });
+      
+      const url = URL.createObjectURL(htmlBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      
+      toast({
+        title: 'Interactive HTML downloaded',
+        description: `Open ${fileName} in any browser to use sliders and interactive elements.`,
+      });
+    } catch (error) {
+      console.error('Failed to download interactive HTML', error);
+      toast({
+        title: 'Download failed',
+        description: error instanceof Error ? error.message : 'Try again in a moment.',
+        variant: 'destructive',
+      });
+    } finally {
+      setShareLoading(false);
+    }
+  }, [formData, scores, roadmap, reportView, toast]);
 
   // Smoothly scroll active phase chip into view
   useEffect(() => {
@@ -492,7 +954,8 @@ const PhaseFormContent = () => {
         // Expand next section and collapse current to ensure single-open behavior
         if (currentIndex < allSections.length - 1) {
           const nextSection = allSections[currentIndex + 1];
-          setExpandedSections(() => ({
+          setExpandedSections(prev => ({
+            ...prev,
             [expandedSectionId]: false,
             [nextSection.id]: true
           }));
@@ -512,7 +975,8 @@ const PhaseFormContent = () => {
         const currentIndex = allSections.findIndex(section => section.id === expandedSectionId);
         if (currentIndex < allSections.length - 1) {
           const nextSection = allSections[currentIndex + 1];
-          setExpandedSections(() => ({
+          setExpandedSections(prev => ({
+            ...prev,
             [expandedSectionId]: false,
             [nextSection.id]: true
           }));
@@ -637,6 +1101,15 @@ const PhaseFormContent = () => {
     if (profile === 'obese') {
       updateFormData({
         parqQuestionnaire: 'completed',
+        parq1: 'no',
+        parq2: 'no',
+        parq3: 'no',
+        parq4: 'no',
+        parq5: 'no',
+        parq6: 'no',
+        parq7: 'no',
+        parq12: 'no',
+        parq13: 'no',
         heightCm: '175',
         inbodyWeightKg: '120',
         inbodyBodyFatPct: '36',
@@ -682,6 +1155,15 @@ const PhaseFormContent = () => {
     } else if (profile === 'muscle') {
       updateFormData({
         parqQuestionnaire: 'completed',
+        parq1: 'no',
+        parq2: 'no',
+        parq3: 'no',
+        parq4: 'no',
+        parq5: 'no',
+        parq6: 'no',
+        parq7: 'no',
+        parq12: 'no',
+        parq13: 'no',
         heightCm: '180',
         inbodyWeightKg: '78',
         inbodyBodyFatPct: '18',
@@ -727,6 +1209,15 @@ const PhaseFormContent = () => {
     } else if (profile === 'cardio') {
       updateFormData({
         parqQuestionnaire: 'completed',
+        parq1: 'no',
+        parq2: 'no',
+        parq3: 'no',
+        parq4: 'no',
+        parq5: 'no',
+        parq6: 'no',
+        parq7: 'no',
+        parq12: 'no',
+        parq13: 'no',
         heightCm: '172',
         inbodyWeightKg: '70',
         inbodyBodyFatPct: '16',
@@ -801,6 +1292,15 @@ const PhaseFormContent = () => {
         caffeineCupsPerDay: '3',
         lastCaffeineIntake: '16:00',
         parqQuestionnaire: 'completed',
+        parq1: 'no',
+        parq2: 'no',
+        parq3: 'no',
+        parq4: 'no',
+        parq5: 'no',
+        parq6: 'no',
+        parq7: 'no',
+        parq12: 'no',
+        parq13: 'no',
         inbodyScore: '62',
         heightCm: '175',
         inbodyWeightKg: '120',
@@ -870,6 +1370,15 @@ const PhaseFormContent = () => {
         caffeineCupsPerDay: '1',
         lastCaffeineIntake: '10:30',
         parqQuestionnaire: 'completed',
+        parq1: 'no',
+        parq2: 'no',
+        parq3: 'no',
+        parq4: 'no',
+        parq5: 'no',
+        parq6: 'no',
+        parq7: 'no',
+        parq12: 'no',
+        parq13: 'no',
         inbodyScore: '78',
         heightCm: '168',
         inbodyWeightKg: '68',
@@ -940,6 +1449,15 @@ const PhaseFormContent = () => {
         caffeineCupsPerDay: '1',
         lastCaffeineIntake: '09:30',
         parqQuestionnaire: 'completed',
+        parq1: 'no',
+        parq2: 'no',
+        parq3: 'no',
+        parq4: 'no',
+        parq5: 'no',
+        parq6: 'no',
+        parq7: 'no',
+        parq12: 'no',
+        parq13: 'no',
         inbodyScore: '82',
         heightCm: '172',
         inbodyWeightKg: '70',
@@ -1004,7 +1522,7 @@ const PhaseFormContent = () => {
       try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (_e) { /* noop */ }
       const secs = ph.sections ?? [];
       for (const sec of secs) {
-        setExpandedSections({ [sec.id]: true });
+        setExpandedSections(prev => ({ ...prev, [sec.id]: true }));
         await delay(DELAY_SECTION);
         for (const f of (sec.fields as ReadonlyArray<PhaseField>)) {
           // Respect conditional visibility so we only populate fields that would actually be shown
@@ -1148,12 +1666,12 @@ const PhaseFormContent = () => {
               )}
 
                         {/* Lunge assessment - left and right columns */}
-                        <div className="grid gap-6 md:grid-cols-2">
+              <div className="grid gap-6 md:grid-cols-2">
                           <div className="space-y-4">
                             <h4 className="font-medium text-slate-900 border-b border-slate-200 pb-2">Left Leg Assessment</h4>
                             {leftFields.map((field: PhaseField) => (
-                              <FieldControl key={field.id} field={field} />
-                            ))}
+                  <FieldControl key={field.id} field={field} />
+                ))}
                           </div>
                           <div className="space-y-4">
                             <h4 className="font-medium text-slate-900 border-b border-slate-200 pb-2">Right Leg Assessment</h4>
@@ -1423,13 +1941,82 @@ const PhaseFormContent = () => {
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   {/* TEMP: One-click demo fill (outside error boundary) */}
-                  <Button variant="outline" onClick={runDemoSequential}>▶︎ Auto‑fill demo persona</Button>
-                  <Button variant="outline" onClick={handlePrint}>🖨 Print / Download</Button>
-                  <Button variant="outline" onClick={handleShare}>🔗 Share</Button>
-                  <Button variant="outline" onClick={handleStartNewAssessment}>🔄 Restart</Button>
+                  <Button variant="outline" size="sm" onClick={runDemoSequential}>
+                    ▶︎ Auto‑fill demo persona
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        disabled={shareLoading}
+                        aria-label="Share report"
+                      >
+                        <Share2 className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Share</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={handleShare}>
+                        System share
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleEmailLink}>
+                        Email link
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleWhatsAppShare}>
+                        WhatsApp
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleCopyLink}>
+                        <Copy className="mr-2 h-3 w-3" />
+                        Copy link
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        disabled={shareLoading}
+                        aria-label="Download or print report"
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Download</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={handleDownloadPdf}>
+                        Download PDF
+                      </DropdownMenuItem>
+                      {reportView === 'client' && (
+                        <DropdownMenuItem onClick={handleDownloadInteractiveHtml}>
+                          Download Interactive HTML
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem onClick={handlePrint}>
+                        Print
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <Button variant="outline" size="sm" onClick={handleStartNewAssessment}>
+                    🔄 Restart
+                  </Button>
                 </div>
               </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div 
+                ref={reportRef} 
+                data-pdf-target 
+                className="rounded-xl border border-slate-200 bg-white p-6 print:bg-white print:shadow-none"
+                style={{ 
+                  minWidth: '100%',
+                  maxWidth: '100%',
+                  overflow: 'visible',
+                  wordWrap: 'break-word',
+                  boxSizing: 'border-box'
+                }}
+              >
                 {reportView === 'client' ? (
                   <ClientReport
                     scores={scores}

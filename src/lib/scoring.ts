@@ -73,6 +73,12 @@ function scoreCardio(form: FormData): ScoreCategory {
   const rhr = parseFloat(form.cardioRestingHr || '0');
   const hr60 = parseFloat(form.cardioPost1MinHr || '0');
   const dob = form.dateOfBirth;
+  
+  // Check if cardio test was actually performed
+  const hasTest = !!(form.cardioTestSelected && form.cardioTestSelected.trim() !== '');
+  const hasHr60 = !!(form.cardioPost1MinHr && form.cardioPost1MinHr.trim() !== '');
+  const hasRhr = !!(form.cardioRestingHr && form.cardioRestingHr.trim() !== '');
+  
   // Compute age from DOB (YYYY-MM-DD)
   let age = 0;
   if (dob) {
@@ -100,11 +106,13 @@ function scoreCardio(form: FormData): ScoreCategory {
       : v <= 125 ? 'Average'
       : v <= 135 ? 'Below Average'
       : 'Poor';
-  const hr60Rating = test === 'ymca-step' ? rateYmca(hr60) : test === 'treadmill' ? rateTreadmill(hr60) : 'Unknown';
+  const hr60Rating = hasTest && hasHr60
+    ? (test === 'ymca-step' ? rateYmca(hr60) : test === 'treadmill' ? rateTreadmill(hr60) : 'Unknown')
+    : 'Unknown';
 
   // VO2max estimate
   const mhr = age > 0 ? 208 - 0.7 * age : 0;
-  const vo2max = hr60 > 0 && mhr > 0 ? 15.3 * (mhr / hr60) : 0;
+  const vo2max = hasHr60 && hr60 > 0 && mhr > 0 ? 15.3 * (mhr / hr60) : 0;
   const vo2Class =
     vo2max >= 60 ? 'Excellent'
       : vo2max >= 52 ? 'Very Good'
@@ -114,31 +122,34 @@ function scoreCardio(form: FormData): ScoreCategory {
       : vo2max >= 25 ? 'Poor'
       : 'Very Poor';
 
-  // Subscores
-  const recoveryScore =
-    hr60Rating === 'Excellent' ? 40
+  // Subscores - only count if test was performed
+  const recoveryScore = hasTest && hasHr60
+    ? (hr60Rating === 'Excellent' ? 40
       : hr60Rating === 'Very Good' ? 34
       : hr60Rating === 'Good' ? 28
       : hr60Rating === 'Average' ? 22
       : hr60Rating === 'Below Average' ? 14
       : hr60Rating === 'Poor' ? 6
-      : 0;
-  const vo2Score =
-    vo2Class === 'Excellent' ? 40
+      : 0)
+    : 0;
+  const vo2Score = hasTest && hasHr60
+    ? (vo2Class === 'Excellent' ? 40
       : vo2Class === 'Very Good' ? 34
       : vo2Class === 'Good' ? 28
       : vo2Class === 'Average' ? 22
       : vo2Class === 'Below Average' ? 14
       : vo2Class === 'Poor' ? 8
       : vo2Class === 'Very Poor' ? 4
-      : 0;
-  const rhrScore =
-    rhr > 0 && rhr < 55 ? 20
+      : 0)
+    : 0;
+  const rhrScore = hasRhr
+    ? (rhr > 0 && rhr < 55 ? 20
       : rhr <= 64 ? 16
       : rhr <= 74 ? 12
       : rhr <= 84 ? 8
       : rhr >= 85 ? 4
-      : 0;
+      : 0)
+    : 0;
 
   const fitnessScoreRaw = recoveryScore + vo2Score + rhrScore;
   const fitnessScore = clamp(fitnessScoreRaw);
@@ -152,7 +163,9 @@ function scoreCardio(form: FormData): ScoreCategory {
 
   // Recommendation by FitnessScore and VO2 class
   let recommendation = '';
-  if (cardioClass === 'Poor' || vo2Class === 'Very Poor' || vo2Class === 'Poor') {
+  if (!hasTest) {
+    recommendation = 'Cardio assessment not performed.';
+  } else if (cardioClass === 'Poor' || vo2Class === 'Very Poor' || vo2Class === 'Poor') {
     recommendation = 'Low aerobic base – prioritise 3–4 sessions/week of 20–40 minutes Zone 2 walking.';
   } else if (cardioClass === 'Average' || cardioClass === 'Below Average' || vo2Class === 'Below Average' || vo2Class === 'Average') {
     recommendation = 'Moderate aerobic base – 2–3 Zone 2 sessions plus 1 slightly harder conditioning session per week.';
@@ -161,7 +174,7 @@ function scoreCardio(form: FormData): ScoreCategory {
   }
 
   const details: ScoreDetail[] = [
-    { id: 'test', label: 'Test', value: test || '-', score: 100 },
+    { id: 'test', label: 'Test', value: test || '-', score: hasTest ? 100 : 0 },
     { id: 'rhr', label: 'Resting HR', value: rhr || '-', unit: 'bpm', score: rhrScore },
     { id: 'hr60', label: 'HR₆₀ (1-min post)', value: hr60 || '-', unit: 'bpm', score: recoveryScore },
     { id: 'hr60rating', label: 'Recovery rating', value: hr60Rating, score: recoveryScore },
@@ -172,10 +185,11 @@ function scoreCardio(form: FormData): ScoreCategory {
 
   const strengths: string[] = [];
   const weaknesses: string[] = [];
-  if (fitnessScore >= 75) strengths.push('Strong aerobic base');
-  if (recoveryScore < 22) weaknesses.push('HR recovery needs improvement');
-  if (vo2Score < 22) weaknesses.push('VO₂ capacity needs improvement');
-  if (rhrScore < 12) weaknesses.push('Elevated resting HR');
+  // Only add weaknesses if tests were actually performed
+  if (hasTest && fitnessScore >= 75) strengths.push('Strong aerobic base');
+  if (hasTest && hasHr60 && recoveryScore < 22) weaknesses.push('HR recovery needs improvement');
+  if (hasTest && hasHr60 && vo2Score < 22) weaknesses.push('VO₂ capacity needs improvement');
+  if (hasRhr && rhrScore < 12) weaknesses.push('Elevated resting HR');
 
   return { id: 'cardio', title: 'Cardiovascular Fitness', score: Math.round(fitnessScore), details, strengths, weaknesses };
 }
@@ -188,10 +202,16 @@ function scoreStrength(form: FormData): ScoreCategory {
   const gripRight = parseFloat(form.gripRightKg || '0');
   const gripAvg = (gripLeft + gripRight) / 2;
 
-  const pushScore = clamp(pushups * 3); // 33 reps ~ 100
-  const squatScore = clamp(squats * 2.5); // 40 reps ~ 100
-  const plankScore = clamp(plank / 1.2); // 120s ~ 100
-  const gripScore = clamp(gripAvg * 3); // heuristic
+  // Check if fields were actually filled (not skipped)
+  const hasPushups = !!(form.pushupsOneMinuteReps && form.pushupsOneMinuteReps.trim() !== '');
+  const hasSquats = !!(form.squatsOneMinuteReps && form.squatsOneMinuteReps.trim() !== '');
+  const hasPlank = !!(form.plankDurationSeconds && form.plankDurationSeconds.trim() !== '');
+  const hasGrip = !!(form.gripLeftKg && form.gripLeftKg.trim() !== '') || !!(form.gripRightKg && form.gripRightKg.trim() !== '');
+
+  const pushScore = hasPushups ? clamp(pushups * 3) : 0; // 33 reps ~ 100
+  const squatScore = hasSquats ? clamp(squats * 2.5) : 0; // 40 reps ~ 100
+  const plankScore = hasPlank ? clamp(plank / 1.2) : 0; // 120s ~ 100
+  const gripScore = hasGrip ? clamp(gripAvg * 3) : 0; // heuristic
 
   const details: ScoreDetail[] = [
     { id: 'pushups', label: 'Pushups (1-min)', value: pushups || '-', score: Math.round(pushScore) },
@@ -200,35 +220,50 @@ function scoreStrength(form: FormData): ScoreCategory {
     { id: 'grip', label: 'Grip (avg)', value: Math.round(gripAvg) || '-', unit: 'kg', score: Math.round(gripScore) },
   ];
 
-  const score = Math.round(pushScore * 0.3 + squatScore * 0.25 + plankScore * 0.25 + gripScore * 0.2);
+  // Only count filled tests in the overall score
+  const filledTests = [hasPushups, hasSquats, hasPlank, hasGrip].filter(Boolean).length;
+  const score = filledTests > 0
+    ? Math.round((pushScore * 0.3 + squatScore * 0.25 + plankScore * 0.25 + gripScore * 0.2) * (4 / filledTests))
+    : 0;
+
   const strengths = [];
   const weaknesses = [];
-  if (plankScore < 60) weaknesses.push('Core endurance');
-  if (pushScore < 60) weaknesses.push('Upper body endurance');
-  if (squatScore < 60) weaknesses.push('Lower body endurance');
-  if (gripScore < 50) weaknesses.push('Grip strength');
-  if (score >= 75) strengths.push('Overall strength & endurance');
+  // Only add weaknesses if the test was actually performed
+  if (hasPlank && plankScore < 60) weaknesses.push('Core endurance');
+  if (hasPushups && pushScore < 60) weaknesses.push('Upper body endurance');
+  if (hasSquats && squatScore < 60) weaknesses.push('Lower body endurance');
+  if (hasGrip && gripScore < 50) weaknesses.push('Grip strength');
+  if (score >= 75 && filledTests >= 2) strengths.push('Overall strength & endurance');
 
   return { id: 'strength', title: 'Strength & Endurance', score, details, strengths, weaknesses };
 }
 
 function scoreMobility(form: FormData): ScoreCategory {
   const map = (v: string) => (v === 'good' ? 100 : v === 'fair' ? 60 : v === 'poor' ? 30 : 0);
-  const hip = map(form.mobilityHip);
-  const shoulder = map(form.mobilityShoulder);
-  const ankle = map(form.mobilityAnkle);
+  const hasHip = !!(form.mobilityHip && form.mobilityHip.trim() !== '');
+  const hasShoulder = !!(form.mobilityShoulder && form.mobilityShoulder.trim() !== '');
+  const hasAnkle = !!(form.mobilityAnkle && form.mobilityAnkle.trim() !== '');
+  
+  const hip = hasHip ? map(form.mobilityHip) : 0;
+  const shoulder = hasShoulder ? map(form.mobilityShoulder) : 0;
+  const ankle = hasAnkle ? map(form.mobilityAnkle) : 0;
+  
   const details: ScoreDetail[] = [
     { id: 'hip', label: 'Hip mobility', value: form.mobilityHip || '-', score: hip },
     { id: 'shoulder', label: 'Shoulder mobility', value: form.mobilityShoulder || '-', score: shoulder },
     { id: 'ankle', label: 'Ankle mobility', value: form.mobilityAnkle || '-', score: ankle },
   ];
-  const score = Math.round((hip + shoulder + ankle) / 3);
+  
+  const filledTests = [hasHip, hasShoulder, hasAnkle].filter(Boolean).length;
+  const score = filledTests > 0 ? Math.round((hip + shoulder + ankle) / filledTests) : 0;
+  
   const strengths = [];
   const weaknesses = [];
-  if (hip < 60) weaknesses.push('Hip mobility');
-  if (shoulder < 60) weaknesses.push('Shoulder mobility');
-  if (ankle < 60) weaknesses.push('Ankle mobility');
-  if (score >= 75) strengths.push('Overall mobility');
+  // Only add weaknesses if the test was actually performed
+  if (hasHip && hip < 60) weaknesses.push('Hip mobility');
+  if (hasShoulder && shoulder < 60) weaknesses.push('Shoulder mobility');
+  if (hasAnkle && ankle < 60) weaknesses.push('Ankle mobility');
+  if (score >= 75 && filledTests >= 2) strengths.push('Overall mobility');
   return { id: 'mobility', title: 'Mobility', score, details, strengths, weaknesses };
 }
 
@@ -246,11 +281,20 @@ function scorePosture(form: FormData): ScoreCategory {
     'valgus-knee': 40,
     'varus-knee': 40,
   };
-  const head = neutralScore(form.postureHeadOverall);
-  const shoulders = neutralScore(form.postureShouldersOverall);
-  const back = backMap[form.postureBackOverall] ?? 0;
-  const hips = neutralScore(form.postureHipsOverall);
-  const knees = kneesMap[form.postureKneesOverall] ?? 0;
+  
+  // Check if fields were actually filled
+  const hasHead = !!(form.postureHeadOverall && form.postureHeadOverall.trim() !== '');
+  const hasShoulders = !!(form.postureShouldersOverall && form.postureShouldersOverall.trim() !== '');
+  const hasBack = !!(form.postureBackOverall && form.postureBackOverall.trim() !== '');
+  const hasHips = !!(form.postureHipsOverall && form.postureHipsOverall.trim() !== '');
+  const hasKnees = !!(form.postureKneesOverall && form.postureKneesOverall.trim() !== '');
+  
+  const head = hasHead ? neutralScore(form.postureHeadOverall) : 0;
+  const shoulders = hasShoulders ? neutralScore(form.postureShouldersOverall) : 0;
+  const back = hasBack ? (backMap[form.postureBackOverall] ?? 0) : 0;
+  const hips = hasHips ? neutralScore(form.postureHipsOverall) : 0;
+  const knees = hasKnees ? (kneesMap[form.postureKneesOverall] ?? 0) : 0;
+  
   const details: ScoreDetail[] = [
     { id: 'head', label: 'Head/neck', value: form.postureHeadOverall || '-', score: head },
     { id: 'shoulders', label: 'Shoulders', value: form.postureShouldersOverall || '-', score: shoulders },
@@ -258,13 +302,17 @@ function scorePosture(form: FormData): ScoreCategory {
     { id: 'hips', label: 'Hips', value: form.postureHipsOverall || '-', score: hips },
     { id: 'knees', label: 'Knees', value: form.postureKneesOverall || '-', score: knees },
   ];
-  const score = Math.round((head + shoulders + back + hips + knees) / 5);
+  
+  const filledTests = [hasHead, hasShoulders, hasBack, hasHips, hasKnees].filter(Boolean).length;
+  const score = filledTests > 0 ? Math.round((head + shoulders + back + hips + knees) / filledTests) : 0;
+  
   const strengths = [];
   const weaknesses = [];
-  if (back < 60) weaknesses.push('Spinal alignment');
-  if (knees < 60) weaknesses.push('Knee alignment');
-  if (hips < 60) weaknesses.push('Pelvic alignment');
-  if (score >= 75) strengths.push('Overall alignment');
+  // Only add weaknesses if the assessment was actually performed
+  if (hasBack && back < 60) weaknesses.push('Spinal alignment');
+  if (hasKnees && knees < 60) weaknesses.push('Knee alignment');
+  if (hasHips && hips < 60) weaknesses.push('Pelvic alignment');
+  if (score >= 75 && filledTests >= 3) strengths.push('Overall alignment');
   return { id: 'posture', title: 'Alignment & Posture', score, details, strengths, weaknesses };
 }
 

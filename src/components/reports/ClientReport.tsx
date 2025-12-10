@@ -30,6 +30,14 @@ const CATEGORY_COLOR: Record<string, string> = {
   posture: 'bg-rose-500',
 };
 
+const CATEGORY_EXPLANATIONS: Record<string, string> = {
+  bodyComp: "Your body's makeup—muscle, fat, and water. Think of it as the foundation for everything else.",
+  strength: "How strong you are and how long you can sustain effort. This affects daily activities and injury prevention.",
+  cardio: "Your heart and lung capacity. This determines how efficiently your body uses oxygen during activity.",
+  mobility: "How well your joints move through their full range. Better mobility means better movement quality and fewer aches.",
+  posture: "How your body holds itself. Good posture reduces pain, improves breathing, and makes movement more efficient.",
+};
+
 const PROGRAM_PHASES = [
   {
     key: 'foundation',
@@ -64,21 +72,15 @@ const PROGRAM_PHASES = [
 ];
 
 export default function ClientReport({ scores, roadmap, goals, bodyComp, formData }: { scores: ScoreSummary; roadmap: RoadmapPhase[]; goals?: string[]; bodyComp?: BodyCompInterp; formData?: FormData }) {
-  if (!scores || !scores.categories || scores.categories.length === 0) {
-    return (
-      <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-        Results are not available yet. Please complete the assessment steps and try again.
-      </div>
-    );
-  }
   const [sessionsPerWeek, setSessionsPerWeek] = useState<number>(3);
   const sessionFactor = useMemo(() => (sessionsPerWeek === 5 ? 0.75 : sessionsPerWeek === 4 ? 0.85 : 1.0), [sessionsPerWeek]);
   const orderedCats = useMemo(
-    () => CATEGORY_ORDER.map(id => scores.categories.find(c => c.id === (id as any))).filter(Boolean) as ScoreSummary['categories'],
-    [scores.categories]
+    () => scores?.categories ? CATEGORY_ORDER.map(id => scores.categories.find(c => c.id === (id as 'bodyComp' | 'strength' | 'cardio' | 'mobility' | 'posture'))).filter(Boolean) as ScoreSummary['categories'] : [],
+    [scores?.categories]
   );
   const weeksByCategory: Record<string, number> = useMemo(() => {
     const map: Record<string, number> = {};
+    if (!orderedCats.length) return map;
     // Goal-based baseline horizons (conservative)
     const weightKg = parseFloat(formData?.inbodyWeightKg || '0');
     const heightM = (parseFloat(formData?.heightCm || '0') || 0) / 100;
@@ -130,7 +132,7 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
       map[cat.id] = Math.round(base * sessionFactor);
     }
     return map;
-  }, [orderedCats, roadmap, sessionFactor]);
+  }, [orderedCats, sessionFactor, formData?.goalLevelFitness, formData?.goalLevelMuscle, formData?.goalLevelStrength, formData?.goalLevelWeightLoss, formData?.heightCm, formData?.inbodyWeightKg, sessionsPerWeek]);
   const strengths = useMemo(() => orderedCats.flatMap(c => c.strengths.map(s => `${niceLabel(c.id)}: ${s}`)), [orderedCats]);
   const focusAreas = useMemo(() => orderedCats.flatMap(c => c.weaknesses.map(w => `${niceLabel(c.id)}: ${w}`)), [orderedCats]);
   const maxWeeks = useMemo(() => Math.max(...orderedCats.map(c => weeksByCategory[c.id] ?? 0), 0), [orderedCats, weeksByCategory]);
@@ -256,6 +258,76 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
 
     return advice;
   }, [goals, formData]);
+
+  // Calculate "What we'll do first" - immediate actionable steps
+  const immediateActions = useMemo(() => {
+    const actions: string[] = [];
+    // Priority health risks first
+    if (priorityFocus.length > 0) {
+      if (priorityFocus.some(p => p.includes('urgent') || p.includes('health risk'))) {
+        actions.push('Address body composition concerns with structured nutrition and safe training progression');
+      }
+      if (priorityFocus.some(p => p.includes('visceral fat'))) {
+        actions.push('Reduce visceral fat through daily movement (walking) and nutrition adjustments');
+      }
+    }
+    // Movement quality issues
+    const mobilityIssues = focusAreas.filter(f => f.toLowerCase().includes('mobility'));
+    if (mobilityIssues.length > 0) {
+      actions.push(`Improve ${mobilityIssues[0].split(':')[0].toLowerCase()} with targeted mobility drills 3x/week`);
+    }
+    const postureIssues = focusAreas.filter(f => f.toLowerCase().includes('posture'));
+    if (postureIssues.length > 0) {
+      actions.push('Integrate daily posture correctives (5-10 min) to address alignment patterns');
+    }
+    // Strength/endurance gaps
+    const strengthIssues = focusAreas.filter(f => f.toLowerCase().includes('strength') || f.toLowerCase().includes('endurance'));
+    if (strengthIssues.length > 0 && actions.length < 5) {
+      actions.push('Build foundational strength with compound movements 2-3x/week');
+    }
+    // Cardio if needed
+    const cardioIssues = focusAreas.filter(f => f.toLowerCase().includes('cardio'));
+    if (cardioIssues.length > 0 && actions.length < 5) {
+      actions.push('Establish Zone 2 cardio base with 2-3 sessions per week');
+    }
+    // Default if nothing specific
+    if (actions.length === 0) {
+      actions.push('Focus on consistency: 3 training sessions per week with proper form');
+      actions.push('Prioritise protein at each meal and stay hydrated throughout the day');
+    }
+    return actions.slice(0, 5);
+  }, [priorityFocus, focusAreas]);
+
+  // Calculate "Quick wins" - improvements in 2-4 weeks
+  const quickWins = useMemo(() => {
+    const wins: string[] = [];
+    if (orderedCats.some(c => c.id === 'mobility' && c.score < 70)) {
+      wins.push('Mobility: Noticeable improvement in joint range within 2-4 weeks');
+    }
+    if (orderedCats.some(c => c.id === 'posture' && c.score < 70)) {
+      wins.push('Posture: Better alignment and reduced tension within 2-3 weeks');
+    }
+    if (lifestyleRecs.some(l => l.toLowerCase().includes('sleep'))) {
+      wins.push('Energy: Better sleep quality leads to improved recovery and mood');
+    }
+    if (lifestyleRecs.some(l => l.toLowerCase().includes('movement') || l.toLowerCase().includes('steps'))) {
+      wins.push('Daily movement: Increased steps improve energy and recovery');
+    }
+    if (wins.length === 0) {
+      wins.push('Movement quality: Sessions will feel smoother and more controlled');
+      wins.push('Recovery: Better sleep and hydration improve how you feel day-to-day');
+    }
+    return wins.slice(0, 4);
+  }, [orderedCats, lifestyleRecs]);
+
+  if (!scores || !scores.categories || scores.categories.length === 0) {
+    return (
+      <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        Results are not available yet. Please complete the assessment steps and try again.
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       <section className="space-y-1">
@@ -266,8 +338,9 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
           Here’s a clear overview of where you are now, what we’ll focus on first, and how we’ll move you toward your goals.
         </p>
       </section>
+      {/* 1. Here's where you are */}
       <section className="space-y-6">
-        <h3 className="text-xl font-semibold text-slate-900 text-center">Your Fitness Summary</h3>
+        <h2 className="text-2xl font-bold text-slate-900 text-center">Here's where you are</h2>
         <div className="flex flex-col items-center gap-5">
           {/* Overall score centered and prominent */}
           <div className="flex flex-col items-center">
@@ -283,16 +356,62 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
                 <div className={`flex h-14 w-14 items-center justify-center rounded-full border-4 ${circleColor(cat.score)}`}>
                   <span className="text-sm font-semibold">{cat.score}</span>
                 </div>
-                <span className="mt-2 w-24 truncate text-center text-xs text-slate-600">{niceLabel(cat.id)}</span>
+                <span className="mt-2 w-28 text-center text-xs text-slate-600 leading-tight" style={{ wordBreak: 'break-word', hyphens: 'auto' }}>{niceLabel(cat.id)}</span>
               </div>
             ))}
           </div>
         </div>
       </section>
 
+      {/* 2. What this means */}
+      <section className="space-y-4">
+        <h2 className="text-2xl font-bold text-slate-900">What this means</h2>
+        <p className="text-sm text-slate-600">Each category measures a different aspect of your fitness. Here's what they mean:</p>
+        <div className="grid gap-3 md:grid-cols-2">
+          {orderedCats.map((cat) => (
+            <div key={cat.id} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="flex items-center gap-3 mb-2">
+                <div className={`h-10 w-10 rounded-full border-2 ${circleColor(cat.score)} flex items-center justify-center`}>
+                  <span className="text-sm font-semibold">{cat.score}</span>
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900">{niceLabel(cat.id)}</h3>
+              </div>
+              <p className="text-sm text-slate-700">{CATEGORY_EXPLANATIONS[cat.id]}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 3. What needs attention */}
+      {priorityFocus.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-2xl font-bold text-slate-900">What needs attention</h2>
+          <div className="rounded-lg border border-rose-200 bg-rose-50 p-5 shadow-sm">
+            <h3 className="text-lg font-semibold text-rose-800 mb-3">Priority focus</h3>
+            <ul className="list-disc pl-5 text-sm text-rose-900 space-y-2">
+              {priorityFocus.map((p, i) => <li key={i}>{p}</li>)}
+            </ul>
+          </div>
+        </section>
+      )}
+
+      {/* 4. What's working well */}
+      {strengths.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-2xl font-bold text-slate-900">What's working well</h2>
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
+            <p className="text-sm text-emerald-900 mb-3">These are areas where you're already strong. We'll maintain and build on these:</p>
+            <ul className="list-disc pl-5 text-sm text-emerald-900 space-y-2">
+              {strengths.map((s, i) => <li key={i}>{s}</li>)}
+            </ul>
+          </div>
+        </section>
+      )}
+
+      {/* 5. Your goals */}
       {goals && goals.length > 0 && (
-        <section className="space-y-2">
-          <h3 className="text-xl font-semibold text-slate-900">Your goals & targets</h3>
+        <section className="space-y-3">
+          <h2 className="text-2xl font-bold text-slate-900">Your goals</h2>
           <div className="flex flex-wrap gap-2">
             {goals.map((g, i) => (
               <span
@@ -345,65 +464,40 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
         </section>
       )}
 
-      <section className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <h4 className="font-semibold text-slate-900">Areas for Improvement</h4>
-          {focusAreas.length === 0 ? (
-            <p className="mt-2 text-sm text-slate-600">None flagged.</p>
-          ) : (
-            <ul className="mt-2 list-disc pl-5 text-sm text-slate-700">
-              {focusAreas.map((f, i) => <li key={i}>{f}</li>)}
-            </ul>
-          )}
-        </div>
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <h4 className="font-semibold text-slate-900">Areas of Strength</h4>
-          {strengths.length === 0 ? (
-            <p className="mt-2 text-sm text-slate-600">Will be updated as you progress.</p>
-          ) : (
-            <ul className="mt-2 list-disc pl-5 text-sm text-slate-700">
-              {strengths.map((s, i) => <li key={i}>{s}</li>)}
-            </ul>
-          )}
-        </div>
-      </section>
-      {/* Priority Focus & Lifestyle Recommendations */}
-      {(priorityFocus.length > 0 || lifestyleRecs.length > 0) && (
-        <section className="grid gap-4 md:grid-cols-2">
-          {priorityFocus.length > 0 && (
-            <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 shadow-sm">
-              <h4 className="font-semibold text-rose-800">Priority Focus</h4>
-              <ul className="mt-2 list-disc pl-5 text-sm text-rose-900">
-                {priorityFocus.map((p, i) => <li key={i}>{p}</li>)}
-              </ul>
-            </div>
-          )}
-          {lifestyleRecs.length > 0 && (
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
-              <h4 className="font-semibold text-emerald-800">Lifestyle Recommendations</h4>
-              <ul className="mt-2 list-disc pl-5 text-sm text-emerald-900">
-                {lifestyleRecs.map((p, i) => <li key={i}>{p}</li>)}
-              </ul>
-            </div>
-          )}
-        </section>
-      )}
-
-      {nutritionAdvice.length > 0 && (
-        <section className="space-y-2">
-          <h3 className="text-xl font-semibold text-slate-900">Nutrition focus</h3>
-          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <ul className="list-disc pl-5 text-sm text-slate-700 space-y-1.5">
-              {nutritionAdvice.map((n, i) => (
-                <li key={i}>{n}</li>
-              ))}
-            </ul>
+      {/* 6. What we'll do first */}
+      {immediateActions.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-2xl font-bold text-slate-900">What we'll do first</h2>
+          <p className="text-sm text-slate-600">These are the immediate steps we'll take to get you moving in the right direction:</p>
+          <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-5 shadow-sm">
+            <ol className="list-decimal pl-5 text-sm text-indigo-900 space-y-2">
+              {immediateActions.map((action, i) => <li key={i}>{action}</li>)}
+            </ol>
           </div>
         </section>
       )}
 
-      <section className="space-y-2">
-        <h3 className="text-xl font-semibold text-slate-900">Your Roadmap</h3>
+      {/* 7. Quick wins */}
+      {quickWins.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-2xl font-bold text-slate-900">Quick wins</h2>
+          <p className="text-sm text-slate-600">You'll notice improvements in these areas within 2-4 weeks:</p>
+          <div className="grid gap-3 md:grid-cols-2">
+            {quickWins.map((win, i) => (
+              <div key={i} className="rounded-lg border border-amber-200 bg-amber-50 p-4 shadow-sm">
+                <p className="text-sm text-amber-900">{win}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* 8. Your roadmap */}
+
+
+      <section className="space-y-3">
+        <h2 className="text-2xl font-bold text-slate-900">Your roadmap</h2>
+        <p className="text-sm text-slate-600">Adjust the sessions per week to see how it affects your timeline:</p>
         <div className="flex items-center gap-3">
           <span className="text-sm text-slate-600">Sessions/week:</span>
           <input type="range" min={3} max={5} step={1} value={sessionsPerWeek} onChange={(e) => setSessionsPerWeek(parseInt(e.target.value))} />
@@ -434,9 +528,10 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
         </div>
       </section>
 
+      {/* 9. How we'll address it */}
       <section className="space-y-3">
-        <h3 className="text-xl font-semibold text-slate-900">Program Phases</h3>
-        <p className="text-sm text-slate-600">These are the phases we’ll move through. The exact timing adapts to your progress and session cadence.</p>
+        <h2 className="text-2xl font-bold text-slate-900">How we'll address it</h2>
+        <p className="text-sm text-slate-600">These are the phases we'll move through. The exact timing adapts to your progress and session cadence.</p>
         <div className="flex gap-3 overflow-x-auto py-1">
           {PROGRAM_PHASES.map(phase => (
             <div key={phase.key} className="flex min-w-64 shrink-0 items-start gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
@@ -450,8 +545,9 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
         </div>
       </section>
 
-      <section className="space-y-2">
-        <h3 className="text-xl font-semibold text-slate-900">Milestones</h3>
+      {/* 10. What to expect */}
+      <section className="space-y-3">
+        <h2 className="text-2xl font-bold text-slate-900">What to expect</h2>
         {(() => {
           const primaryGoal = (goals && goals[0]) || '';
           const goalLabel =
@@ -498,18 +594,28 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
         })()}
       </section>
 
-      <section className="space-y-2">
-        <h3 className="text-xl font-semibold text-slate-900">How we’ll address it</h3>
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <ul className="list-disc pl-5 text-sm text-slate-700 space-y-1.5">
-            <li>Body comp: nutrition structure (protein at each meal), aerobic base, progressive resistance training.</li>
-            <li>Strength & endurance: compound lifts at appropriate loads, consistent progression, core stability.</li>
-            <li>Cardio fitness: Zone 2 sessions, optional tempo/intervals as recovery allows.</li>
-            <li>Mobility: targeted hip/shoulder/ankle drills in warm-ups; reinforce new range under light load.</li>
-            <li>Posture & alignment: daily posture hygiene, correctives for flagged patterns, ergonomic cues.</li>
-          </ul>
-        </div>
-      </section>
+      {/* 11. Lifestyle support */}
+      {(lifestyleRecs.length > 0 || nutritionAdvice.length > 0) && (
+        <section className="space-y-4">
+          <h2 className="text-2xl font-bold text-slate-900">Lifestyle support</h2>
+          {lifestyleRecs.length > 0 && (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
+              <h3 className="text-lg font-semibold text-emerald-800 mb-3">Daily habits</h3>
+              <ul className="list-disc pl-5 text-sm text-emerald-900 space-y-2">
+                {lifestyleRecs.map((p, i) => <li key={i}>{p}</li>)}
+              </ul>
+            </div>
+          )}
+          {nutritionAdvice.length > 0 && (
+            <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+              <h3 className="text-lg font-semibold text-slate-900 mb-3">Nutrition focus</h3>
+              <ul className="list-disc pl-5 text-sm text-slate-700 space-y-2">
+                {nutritionAdvice.map((n, i) => <li key={i}>{n}</li>)}
+              </ul>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Sample Workout - last section, with brackets to show purpose and step target */}
       {(() => {
@@ -594,8 +700,9 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
           else stepTarget = '8000–10000';
         }
         return (
-          <section className="space-y-2">
-            <h3 className="text-xl font-semibold text-slate-900">Sample workout</h3>
+          <section className="space-y-3">
+            <h2 className="text-2xl font-bold text-slate-900">Sample workout</h2>
+            <p className="text-sm text-slate-600">Here's an example of what a typical session might look like, tailored to your needs:</p>
             <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
               <div className="grid gap-4 md:grid-cols-2">
                 <div>

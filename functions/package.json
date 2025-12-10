@@ -1,0 +1,32 @@
+{
+  "name": "fitness-flow-functions",
+  "private": true,
+  "type": "commonjs",
+  "engines": {
+    "node": "20"
+  },
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rimraf lib",
+    "deploy": "npm run build && firebase deploy --only functions",
+    "lint": "eslint \"src/**/*.{ts,js}\"",
+    "serve": "npm run build && firebase emulators:start --only functions",
+    "start": "ts-node -r tsconfig-paths/register src/index.ts"
+  },
+  "dependencies": {
+    "@sendgrid/mail": "^7.7.0",
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^5.1.1",
+    "pdfkit": "^0.15.0"
+  },
+  "devDependencies": {
+    "@types/pdfkit": "^0.12.7",
+    "eslint": "^9.32.0",
+    "rimraf": "^6.0.1",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.8.3"
+  }
+}
+
