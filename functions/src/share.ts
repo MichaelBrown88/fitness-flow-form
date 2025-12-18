@@ -15,7 +15,13 @@ if (SENDGRID_API_KEY) {
   }
 }
 
-const db = admin.firestore();
+// Lazy initialization to ensure admin.initializeApp() is called first
+function getDb() {
+  if (!admin.apps.length) {
+    admin.initializeApp();
+  }
+  return admin.firestore();
+}
 
 type ShareView = 'client' | 'coach';
 
@@ -32,7 +38,7 @@ function cleanEmail(value: unknown) {
 }
 
 async function ensurePublicReport(coachUid: string, assessmentId: string) {
-  const ref = db.doc(`publicReports/${coachUid}__${assessmentId}`);
+  const ref = getDb().doc(`publicReports/${coachUid}__${assessmentId}`);
   const snap = await ref.get();
   if (!snap.exists) {
     await ensureReportArtifacts({ coachUid, assessmentId });

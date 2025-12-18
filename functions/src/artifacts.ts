@@ -4,13 +4,25 @@ import { STORAGE_REPORT_PREFIX, APP_HOST, SIGNED_URL_TTL_HOURS } from './config'
 import { buildReportPdf } from './pdf';
 import type { AssessmentDoc, PublicReportDoc } from './types';
 
-const db = admin.firestore();
-const bucket = admin.storage().bucket();
+// Lazy initialization to ensure admin.initializeApp() is called first
+function getDb() {
+  if (!admin.apps.length) {
+    admin.initializeApp();
+  }
+  return admin.firestore();
+}
+
+function getBucket() {
+  if (!admin.apps.length) {
+    admin.initializeApp();
+  }
+  return admin.storage().bucket();
+}
 
 const getPublicReportId = (coachUid: string, assessmentId: string) => `${coachUid}__${assessmentId}`;
 
 async function savePdf(buffer: Buffer, path: string) {
-  const file = bucket.file(path);
+  const file = getBucket().file(path);
   await file.save(buffer, {
     contentType: 'application/pdf',
     resumable: false,
@@ -36,7 +48,7 @@ export async function ensureReportArtifacts(params: {
   const assessment =
     params.assessment ??
     ((
-      await db.doc(`coaches/${coachUid}/assessments/${assessmentId}`).get()
+      await getDb().doc(`coaches/${coachUid}/assessments/${assessmentId}`).get()
     ).data() as AssessmentDoc | undefined);
 
   if (!assessment) {
@@ -69,7 +81,7 @@ export async function ensureReportArtifacts(params: {
     },
   };
 
-  await db
+  await getDb()
     .doc(`publicReports/${getPublicReportId(coachUid, assessmentId)}`)
     .set(
       {
@@ -103,7 +115,7 @@ export async function handleAssessmentWrite(
 
 export async function getSignedPdfUrl(path: string) {
   const expires = Date.now() + SIGNED_URL_TTL_HOURS * 60 * 60 * 1000;
-  const [url] = await bucket.file(path).getSignedUrl({
+  const [url] = await getBucket().file(path).getSignedUrl({
     action: 'read',
     expires,
     version: 'v4',

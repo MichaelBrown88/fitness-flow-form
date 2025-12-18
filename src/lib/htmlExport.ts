@@ -18,28 +18,28 @@ export async function generateInteractiveHtml(params: {
   
   // Pre-calculate all derived values that the report needs
   const goals = Array.isArray(formData.clientGoals) ? formData.clientGoals : [];
-  const orderedCats = ['bodyComp','strength','cardio','mobility','posture']
+  const orderedCats = ['bodyComp','strength','cardio','movementQuality','lifestyle']
     .map(id => scores.categories.find(c => c.id === id))
     .filter(Boolean);
   
   // Calculate focus areas and strengths
   const focusAreas = orderedCats.flatMap(cat => 
     (cat?.weaknesses || []).map(w => {
-      const label = cat?.id === 'bodyComp' ? 'Body comp' :
+      const label = cat?.id === 'bodyComp' ? 'Body composition' :
                    cat?.id === 'strength' ? 'Strength & endurance' :
                    cat?.id === 'cardio' ? 'Cardio fitness' :
-                   cat?.id === 'mobility' ? 'Mobility' :
-                   cat?.id === 'posture' ? 'Posture & alignment' : cat?.id || '';
+                   cat?.id === 'movementQuality' ? 'Movement quality' :
+                   cat?.id === 'lifestyle' ? 'Lifestyle' : cat?.id || '';
       return `${label}: ${w}`;
     })
   );
   const strengths = orderedCats.flatMap(cat => 
     (cat?.strengths || []).map(s => {
-      const label = cat?.id === 'bodyComp' ? 'Body comp' :
+      const label = cat?.id === 'bodyComp' ? 'Body composition' :
                    cat?.id === 'strength' ? 'Strength & endurance' :
                    cat?.id === 'cardio' ? 'Cardio fitness' :
-                   cat?.id === 'mobility' ? 'Mobility' :
-                   cat?.id === 'posture' ? 'Posture & alignment' : cat?.id || '';
+                   cat?.id === 'movementQuality' ? 'Movement quality' :
+                   cat?.id === 'lifestyle' ? 'Lifestyle' : cat?.id || '';
       return `${label}: ${s}`;
     })
   );
@@ -218,11 +218,11 @@ export async function generateInteractiveHtml(params: {
     
     function niceLabel(id) {
       const labels = {
-        bodyComp: 'Body comp',
+        bodyComp: 'Body composition',
         strength: 'Strength & endurance',
         cardio: 'Cardio fitness',
-        mobility: 'Mobility',
-        posture: 'Posture & alignment'
+        movementQuality: 'Movement quality',
+        lifestyle: 'Lifestyle'
       };
       return labels[id] || id;
     }
@@ -233,13 +233,21 @@ export async function generateInteractiveHtml(params: {
       return 'border-red-500 bg-red-50 text-red-700';
     }
     
-    const CATEGORY_ORDER = ['bodyComp','strength','cardio','mobility','posture'];
+    const CATEGORY_ORDER = ['bodyComp','strength','cardio','movementQuality','lifestyle'];
     const CATEGORY_COLOR = {
       bodyComp: 'bg-emerald-500',
       strength: 'bg-indigo-500',
       cardio: 'bg-sky-500',
-      mobility: 'bg-amber-500',
-      posture: 'bg-rose-500',
+      movementQuality: 'bg-amber-500',
+      lifestyle: 'bg-purple-500',
+    };
+    
+    const CATEGORY_EXPLANATIONS = {
+      bodyComp: "Your body's makeup—muscle, fat, and water. Think of it as the foundation for everything else.",
+      strength: "How strong you are and how long you can sustain effort. This affects daily activities and injury prevention.",
+      cardio: "Your heart and lung capacity. This determines how efficiently your body uses oxygen during activity.",
+      movementQuality: "How well your joints move and how your body holds itself. Better movement quality means fewer aches and more efficient movement.",
+      lifestyle: "Your daily habits—sleep, stress, nutrition, hydration, and activity. These are the foundation that makes everything else work better.",
     };
     
     const PROGRAM_PHASES = [
@@ -265,20 +273,292 @@ export async function generateInteractiveHtml(params: {
       
       const weeksByCategory = useMemo(() => {
         const result = {};
+        // Goal-based baseline horizons (matching ClientReport logic)
+        const weightKg = parseFloat(formData?.inbodyWeightKg || '0');
+        const heightM = (parseFloat(formData?.heightCm || '0') || 0) / 100;
+        const healthyMin = heightM > 0 ? 22 * heightM * heightM : 0;
+        const healthyMax = heightM > 0 ? 25 * heightM * heightM : 0;
+        const levelWL = formData?.goalLevelWeightLoss || '';
+        let wlTarget = 0;
+        if (healthyMax > 0 && weightKg > healthyMax) {
+          if (levelWL === 'health-minimum') wlTarget = weightKg - healthyMax;
+          else if (levelWL === 'average') wlTarget = weightKg - ((healthyMax + healthyMin) / 2 || healthyMax);
+          else if (levelWL === 'above-average' || levelWL === 'elite') wlTarget = weightKg - healthyMin;
+          else wlTarget = weightKg - healthyMax;
+          if (wlTarget < 0) wlTarget = 0;
+        }
+        const fatLossRate = 0.5;
+        const fatLossWeeks = wlTarget > 0 ? Math.ceil(wlTarget / fatLossRate) : 16;
+        const levelMG = formData?.goalLevelMuscle || '';
+        const muscleTargetKg = levelMG === 'health-minimum' ? 1.5 : levelMG === 'average' ? 2.0 : levelMG === 'above-average' ? 3.0 : levelMG === 'elite' ? 4.0 : 2.0;
+        const muscleRate = sessionsPerWeek >= 5 ? 0.22 : sessionsPerWeek === 4 ? 0.18 : 0.15;
+        const muscleWeeks = Math.ceil(muscleTargetKg / muscleRate);
+        const levelST = formData?.goalLevelStrength || '';
+        const strengthPct = levelST === 'health-minimum' ? 10 : levelST === 'average' ? 15 : levelST === 'above-average' ? 20 : levelST === 'elite' ? 30 : 15;
+        const pctPerBlock = sessionsPerWeek >= 5 ? 4 : sessionsPerWeek === 4 ? 3 : 2.5;
+        const strengthWeeks = Math.ceil(strengthPct / pctPerBlock) * 5;
+        const levelFT = formData?.goalLevelFitness || '';
+        const cardioWeeks = levelFT === 'elite' ? 20 : levelFT === 'above-average' ? 16 : 12;
+        const movementQualityWeeks = 6;
+        
         orderedCats.forEach(cat => {
-          const baseWeeks = cat.score < 50 ? 12 : cat.score < 70 ? 8 : 4;
-          result[cat.id] = Math.round(baseWeeks * sessionFactor);
+          let base = 12;
+          if (cat.id === 'bodyComp') base = Math.max(12, Math.max(fatLossWeeks, muscleWeeks));
+          if (cat.id === 'strength') base = Math.max(12, strengthWeeks);
+          if (cat.id === 'cardio') base = Math.max(12, cardioWeeks);
+          if (cat.id === 'movementQuality') base = movementQualityWeeks;
+          if (cat.id === 'lifestyle') base = 4; // Lifestyle is foundational, quick wins
+          result[cat.id] = Math.round(base / sessionFactor); // FIXED: divide by sessionFactor
         });
         return result;
-      }, [orderedCats, sessionFactor]);
+      }, [orderedCats, sessionFactor, formData, sessionsPerWeek]);
       
       const maxWeeks = useMemo(() => 
         Math.max(...Object.values(weeksByCategory), 0),
         [weeksByCategory]
       );
       
+      // Build comprehensive lifestyle profile
+      const lifestyleProfile = useMemo(() => {
+        const profile = [];
+        const sleepQ = (formData?.sleepQuality || '').toLowerCase();
+        const sleepC = (formData?.sleepConsistency || '').toLowerCase();
+        const sleepD = parseFloat(formData?.sleepDuration || '0');
+        const stress = (formData?.stressLevel || '').toLowerCase();
+        const hydration = (formData?.hydrationHabits || '').toLowerCase();
+        const caffeine = String(formData?.lastCaffeineIntake || '');
+        const caffeineCups = parseFloat(formData?.caffeineCupsPerDay || '0');
+        const steps = parseFloat(formData?.stepsPerDay || '0');
+        const sedentary = parseFloat(formData?.sedentaryHours || '0');
+        const nutrition = (formData?.nutritionHabits || '').toLowerCase();
+        const workHours = parseFloat(formData?.workHoursPerDay || '0');
+        
+        if (sleepQ || sleepC || sleepD > 0) {
+          let sleepStatus = 'Good';
+          let sleepRec = '';
+          if (sleepQ === 'poor' || sleepQ === 'fair' || sleepC === 'inconsistent' || sleepC === 'very-inconsistent') {
+            sleepStatus = 'Needs attention';
+            sleepRec = '7–9h target; consistent wind‑down and wake time; dark, cool room';
+          } else if (sleepD < 7 || sleepD > 9) {
+            sleepStatus = 'Needs adjustment';
+            sleepRec = 'Aim for 7–9 hours consistently';
+          }
+          profile.push({
+            category: 'Sleep',
+            status: sleepStatus,
+            value: sleepD > 0 ? sleepD + 'h, ' + (sleepQ || 'N/A') + ', ' + (sleepC || 'N/A') : (sleepQ || 'N/A') + ', ' + (sleepC || 'N/A'),
+            recommendation: sleepRec || undefined,
+          });
+        }
+        if (stress) {
+          const stressStatus = (stress === 'high' || stress === 'very-high') ? 'High' : stress === 'moderate' ? 'Moderate' : 'Low';
+          profile.push({
+            category: 'Stress',
+            status: stressStatus,
+            value: stress.charAt(0).toUpperCase() + stress.slice(1),
+            recommendation: (stress === 'high' || stress === 'very-high') ? 'Daily 5–10 min breathwork or quiet walk; micro‑breaks in long sittings' : undefined,
+          });
+        }
+        if (hydration) {
+          const hydrationStatus = (hydration === 'poor' || hydration === 'fair') ? 'Needs improvement' : 'Good';
+          profile.push({
+            category: 'Hydration',
+            status: hydrationStatus,
+            value: hydration.charAt(0).toUpperCase() + hydration.slice(1),
+            recommendation: (hydration === 'poor' || hydration === 'fair') ? '2–3 L/day baseline, more with heat/training; consider electrolytes' : undefined,
+          });
+        }
+        if (caffeine || caffeineCups > 0) {
+          let caffeineStatus = 'Good';
+          let caffeineRec = '';
+          if (caffeine) {
+            const hour = parseInt(caffeine.split(':')[0] || '0');
+            if (hour >= 14) {
+              caffeineStatus = 'Too late';
+              caffeineRec = 'Shift last intake earlier (before 2pm) to protect sleep';
+            }
+          }
+          if (caffeineCups > 4) {
+            caffeineStatus = 'High consumption';
+            caffeineRec = caffeineRec ? caffeineRec + '; consider reducing to 2–3 cups/day' : 'Consider reducing to 2–3 cups/day';
+          }
+          profile.push({
+            category: 'Caffeine',
+            status: caffeineStatus,
+            value: caffeineCups > 0 ? caffeineCups + ' cups/day, last at ' + (caffeine || 'N/A') : 'Last at ' + (caffeine || 'N/A'),
+            recommendation: caffeineRec || undefined,
+          });
+        }
+        if (steps > 0 || sedentary > 0) {
+          let movementStatus = 'Good';
+          let movementRec = '';
+          if (steps > 0 && steps < 7000) {
+            movementStatus = 'Needs improvement';
+            movementRec = 'Build toward 6–10k steps/day with short walk breaks';
+          }
+          if (sedentary >= 8) {
+            movementStatus = 'Too sedentary';
+            movementRec = movementRec ? movementRec + '; stand and move 2–3 min every 30–45 min' : 'Stand and move 2–3 min every 30–45 min';
+          }
+          profile.push({
+            category: 'Daily Movement',
+            status: movementStatus,
+            value: steps > 0 ? Math.round(steps).toLocaleString() + ' steps/day, ' + sedentary + 'h sedentary' : sedentary + 'h sedentary',
+            recommendation: movementRec || undefined,
+          });
+        }
+        if (nutrition) {
+          const nutritionStatus = (nutrition === 'poor' || nutrition === 'fair') ? 'Needs improvement' : 'Good';
+          profile.push({
+            category: 'Nutrition',
+            status: nutritionStatus,
+            value: nutrition.charAt(0).toUpperCase() + nutrition.slice(1),
+            recommendation: (nutrition === 'poor' || nutrition === 'fair') ? 'Protein at each meal, mostly whole foods, regular mealtimes' : undefined,
+          });
+        }
+        if (workHours > 0) {
+          const workStatus = workHours > 10 ? 'High workload' : workHours > 8 ? 'Moderate' : 'Balanced';
+          profile.push({
+            category: 'Work-Life Balance',
+            status: workStatus,
+            value: workHours + 'h/day',
+            recommendation: workHours > 10 ? 'Prioritise recovery; schedule training during lower-stress periods' : undefined,
+          });
+        }
+        return profile;
+      }, [formData]);
+
+      // Calculate immediate actions (enhanced with lifestyle)
+      const immediateActions = useMemo(() => {
+        const actions = [];
+        const sleepQ = (formData?.sleepQuality || '').toLowerCase();
+        const sleepC = (formData?.sleepConsistency || '').toLowerCase();
+        const stress = (formData?.stressLevel || '').toLowerCase();
+        const steps = parseFloat(formData?.stepsPerDay || '0');
+        
+        // Lifestyle factors first (they're the foundation)
+        if (sleepQ === 'poor' || sleepQ === 'fair' || sleepC === 'inconsistent' || sleepC === 'very-inconsistent') {
+          actions.push('Establish consistent sleep routine: 7–9h target, same bedtime/wake time, dark cool room');
+        }
+        if (stress === 'high' || stress === 'very-high') {
+          actions.push('Implement daily stress management: 5–10 min breathwork or quiet walk, micro‑breaks every 30–45 min');
+        }
+        if (steps > 0 && steps < 7000) {
+          actions.push('Increase daily movement: build toward 6–10k steps/day with short walk breaks');
+        }
+        
+        // Priority health risks
+        if (priorityFocus.length > 0) {
+          if (priorityFocus.some(p => p.includes('urgent') || p.includes('health risk'))) {
+            actions.push('Address body composition concerns with structured nutrition and safe training progression');
+          }
+          if (priorityFocus.some(p => p.includes('visceral fat'))) {
+            actions.push('Reduce visceral fat through daily movement (walking) and nutrition adjustments');
+          }
+        }
+        const movementQualityIssues = focusAreas.filter(f => f.toLowerCase().includes('movement quality') || f.toLowerCase().includes('mobility') || f.toLowerCase().includes('posture'));
+        if (movementQualityIssues.length > 0 && actions.length < 5) {
+          actions.push('Improve movement quality with targeted mobility and posture drills 3x/week');
+        }
+        const strengthIssues = focusAreas.filter(f => f.toLowerCase().includes('strength') || f.toLowerCase().includes('endurance'));
+        if (strengthIssues.length > 0 && actions.length < 5) {
+          actions.push('Build foundational strength with compound movements 2-3x/week');
+        }
+        const cardioIssues = focusAreas.filter(f => f.toLowerCase().includes('cardio'));
+        if (cardioIssues.length > 0 && actions.length < 5) {
+          actions.push('Establish Zone 2 cardio base with 2-3 sessions per week');
+        }
+        if (actions.length === 0) {
+          actions.push('Focus on consistency: 3 training sessions per week with proper form');
+          actions.push('Prioritise protein at each meal and stay hydrated throughout the day');
+        }
+        return actions.slice(0, 5);
+      }, [priorityFocus, focusAreas, formData]);
+      
+      // Calculate quick wins (enhanced with lifestyle)
+      const quickWins = useMemo(() => {
+        const wins = [];
+        const sleepQ = (formData?.sleepQuality || '').toLowerCase();
+        const sleepC = (formData?.sleepConsistency || '').toLowerCase();
+        const stress = (formData?.stressLevel || '').toLowerCase();
+        const hydration = (formData?.hydrationHabits || '').toLowerCase();
+        const steps = parseFloat(formData?.stepsPerDay || '0');
+        
+        // Lifestyle quick wins first (they're immediate and impactful)
+        if (sleepQ === 'poor' || sleepQ === 'fair' || sleepC === 'inconsistent' || sleepC === 'very-inconsistent') {
+          wins.push('Sleep: Within 1-2 weeks of consistent sleep, you will notice better energy, mood, and recovery');
+        }
+        if (stress === 'high' || stress === 'very-high') {
+          wins.push('Stress management: Daily 5-10 min breathwork or walks reduce tension and improve focus within days');
+        }
+        if (hydration === 'poor' || hydration === 'fair') {
+          wins.push('Hydration: Better hydration improves energy, recovery, and workout performance within a week');
+        }
+        if (steps > 0 && steps < 7000) {
+          wins.push('Daily movement: Increasing steps to 7-8k/day improves energy and recovery within 2 weeks');
+        }
+        
+        // Movement quality quick wins
+        const movementCat = orderedCats.find(c => c.id === 'movementQuality');
+        if (movementCat && movementCat.score < 70 && wins.length < 4) {
+          wins.push('Movement quality: Better joint mobility and posture reduce aches and improve training quality within 2–3 weeks');
+        }
+        
+        // Default if nothing specific
+        if (wins.length === 0) {
+          wins.push('Movement quality: Sessions will feel smoother and more controlled');
+          wins.push('Recovery: Better sleep and hydration improve how you feel day-to-day');
+        }
+        return wins.slice(0, 4);
+      }, [orderedCats, formData]);
+      
+      // Check for PAR-Q medical clearance requirement
+      const needsMedicalClearance = (() => {
+        const parqFields = ['parq1', 'parq2', 'parq3', 'parq4', 'parq5', 'parq6', 'parq7', 'parq8', 'parq9', 'parq10', 'parq11', 'parq12', 'parq13'];
+        return parqFields.some(field => formData[field] === 'yes');
+      })();
+      
+      // Determine primary goal and lifestyle focus
+      const primaryGoal = goals && goals.length > 0 ? goals[0] : 'general-health';
+      const goalLabel = primaryGoal === 'weight-loss' ? 'Weight Loss' : 
+                        primaryGoal === 'build-muscle' ? 'Muscle Gain' :
+                        primaryGoal === 'build-strength' ? 'Strength' :
+                        primaryGoal === 'improve-fitness' ? 'Fitness' : 'General Health';
+      
+      const lifestyleFocus = (() => {
+        const focus = [];
+        const sleepQ = (formData?.sleepQuality || '').toLowerCase();
+        const sleepC = (formData?.sleepConsistency || '').toLowerCase();
+        const stress = (formData?.stressLevel || '').toLowerCase();
+        const hydration = (formData?.hydrationHabits || '').toLowerCase();
+        if (sleepQ === 'poor' || sleepQ === 'fair' || sleepC === 'inconsistent' || sleepC === 'very-inconsistent') focus.push('Sleep');
+        if (stress === 'high' || stress === 'very-high') focus.push('Stress');
+        if (hydration === 'poor' || hydration === 'fair') focus.push('Hydration');
+        return focus;
+      })();
+      
       return (
         <div className="container">
+          {/* Status badges at top */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+            {needsMedicalClearance && (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '9999px', backgroundColor: '#fee2e2', color: '#991b1b', fontSize: '12px', fontWeight: '500', border: '1px solid #fecaca' }}>
+                <span>⚠️</span>
+                <span>Medical clearance recommended</span>
+              </div>
+            )}
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '9999px', backgroundColor: '#e0e7ff', color: '#3730a3', fontSize: '12px', fontWeight: '500', border: '1px solid #c7d2fe' }}>
+              <span>🎯</span>
+              <span>Primary goal: {goalLabel}</span>
+            </div>
+            {lifestyleFocus.length > 0 && (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '9999px', backgroundColor: '#fef3c7', color: '#92400e', fontSize: '12px', fontWeight: '500', border: '1px solid #fde68a' }}>
+                <span>💪</span>
+                <span>Lifestyle focus: {lifestyleFocus.join(', ')}</span>
+              </div>
+            )}
+          </div>
+          
           <div style={{ marginBottom: '32px' }}>
             <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '8px' }}>
               {formData.fullName || 'Client'}, your report is ready
@@ -288,9 +568,26 @@ export async function generateInteractiveHtml(params: {
             </p>
           </div>
           
+          {/* Medical clearance warning */}
+          {needsMedicalClearance && (
+            <div style={{ padding: '16px', borderRadius: '8px', border: '1px solid #fecaca', backgroundColor: '#fef2f2', marginBottom: '32px' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                <span style={{ fontSize: '20px' }}>⚠️</span>
+                <div>
+                  <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#991b1b', marginBottom: '4px' }}>Medical Clearance Required</h3>
+                  <p style={{ fontSize: '14px', color: '#b91c1c' }}>
+                    Based on your PAR-Q responses, please consult with a healthcare professional before starting your training program. 
+                    You can still review your assessment results and plan, but obtain medical clearance before beginning exercise.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* 1. Here's where you are */}
           <section style={{ marginBottom: '32px' }}>
-            <h2 style={{ fontSize: '20px', fontWeight: '600', textAlign: 'center', marginBottom: '20px' }}>
-              Your Fitness Summary
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', textAlign: 'center', marginBottom: '24px' }}>
+              Here's where you are
             </h2>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -336,17 +633,155 @@ export async function generateInteractiveHtml(params: {
               </div>
             </div>
           </section>
-          
+
+          {/* 2. What this means - with visual progress bars */}
+          <section style={{ marginBottom: '32px' }}>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '16px' }}>What this means</h2>
+            <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '16px' }}>Each category measures a different aspect of your fitness:</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '12px' }}>
+              {orderedCats.map(cat => {
+                const scorePercent = Math.min(100, (cat.score / 100) * 100);
+                const colorClass = circleColor(cat.score);
+                const bgColor = cat.score >= 70 ? '#dcfce7' : cat.score >= 50 ? '#fef3c7' : '#fee2e2';
+                const barColor = cat.score >= 70 ? '#22c55e' : cat.score >= 50 ? '#f59e0b' : '#ef4444';
+                return (
+                  <div key={cat.id} style={{ padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: 'white', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div className={colorClass} style={{ 
+                          display: 'flex', 
+                          height: '40px', 
+                          width: '40px', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          borderRadius: '50%', 
+                          borderWidth: '2px',
+                          fontSize: '14px',
+                          fontWeight: '600'
+                        }}>
+                          {cat.score}
+                        </div>
+                        <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b' }}>{niceLabel(cat.id)}</h3>
+                      </div>
+                    </div>
+                    <div style={{ marginBottom: '8px' }}>
+                      <div style={{ height: '8px', width: '100%', borderRadius: '9999px', backgroundColor: '#f1f5f9', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: scorePercent + '%', backgroundColor: barColor, transition: 'width 0.3s' }} />
+                      </div>
+                    </div>
+                    <p style={{ fontSize: '12px', color: '#64748b', lineHeight: '1.5' }}>{CATEGORY_EXPLANATIONS[cat.id]}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* 2.5. Your lifestyle foundation */}
+          {lifestyleProfile.length > 0 && (
+            <section style={{ marginBottom: '32px' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '16px' }}>Your lifestyle foundation</h2>
+              <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '16px' }}>These daily habits are the foundation for everything else. Small improvements here amplify your training results:</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '12px' }}>
+                {lifestyleProfile.map((item, i) => (
+                  <div key={i} style={{
+                    padding: '16px',
+                    borderRadius: '8px',
+                    border: '1px solid ' + (
+                      item.status === 'Good' || item.status === 'Balanced' || item.status === 'Low' || item.status === 'Moderate'
+                        ? '#bbf7d0'
+                        : item.status === 'Needs attention' || item.status === 'Too late' || item.status === 'High' || item.status === 'High workload' || item.status === 'Too sedentary'
+                        ? '#fecaca'
+                        : '#fde68a'
+                    ),
+                    backgroundColor: (
+                      item.status === 'Good' || item.status === 'Balanced' || item.status === 'Low' || item.status === 'Moderate'
+                        ? '#f0fdf4'
+                        : item.status === 'Needs attention' || item.status === 'Too late' || item.status === 'High' || item.status === 'High workload' || item.status === 'Too sedentary'
+                        ? '#fef2f2'
+                        : '#fffbeb'
+                    ),
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b' }}>{item.category}</h3>
+                      <span style={{
+                        fontSize: '12px',
+                        fontWeight: '500',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        backgroundColor: (
+                          item.status === 'Good' || item.status === 'Balanced' || item.status === 'Low' || item.status === 'Moderate'
+                            ? '#d1fae5'
+                            : item.status === 'Needs attention' || item.status === 'Too late' || item.status === 'High' || item.status === 'High workload' || item.status === 'Too sedentary'
+                            ? '#fee2e2'
+                            : '#fef3c7'
+                        ),
+                        color: (
+                          item.status === 'Good' || item.status === 'Balanced' || item.status === 'Low' || item.status === 'Moderate'
+                            ? '#065f46'
+                            : item.status === 'Needs attention' || item.status === 'Too late' || item.status === 'High' || item.status === 'High workload' || item.status === 'Too sedentary'
+                            ? '#991b1b'
+                            : '#92400e'
+                        )
+                      }}>
+                        {item.status}
+                      </span>
+                    </div>
+                    <p style={{ fontSize: '14px', color: '#475569', marginBottom: '8px' }}>{item.value}</p>
+                    {item.recommendation && (
+                      <p style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #e2e8f0' }}>
+                        💡 {item.recommendation}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div style={{ marginTop: '16px', padding: '16px', borderRadius: '8px', border: '1px solid #c7d2fe', backgroundColor: '#eef2ff', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                <p style={{ fontSize: '14px', color: '#312e81' }}>
+                  <strong>Why this matters:</strong> Sleep, stress, hydration, and daily movement directly impact recovery, energy, and how your body responds to training. Optimizing these habits makes every workout more effective and accelerates progress toward your goals.
+                </p>
+              </div>
+            </section>
+          )}
+
+          {/* 3. What needs attention */}
+          {priorityFocus.length > 0 && (
+            <section style={{ marginBottom: '32px' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '12px' }}>What needs attention</h2>
+              <div style={{ padding: '20px', borderRadius: '8px', border: '1px solid #fecaca', backgroundColor: '#fef2f2', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#991b1b', marginBottom: '12px' }}>Priority focus</h3>
+                <ul style={{ paddingLeft: '20px', fontSize: '14px', color: '#7f1d1d', listStyle: 'disc' }}>
+                  {priorityFocus.map((p, i) => <li key={i} style={{ marginBottom: '8px' }}>{p}</li>)}
+                </ul>
+              </div>
+            </section>
+          )}
+
+          {/* 4. What's working well */}
+          {strengths.length > 0 && (
+            <section style={{ marginBottom: '32px' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '12px' }}>What's working well</h2>
+              <div style={{ padding: '20px', borderRadius: '8px', border: '1px solid #bbf7d0', backgroundColor: '#f0fdf4', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                <p style={{ fontSize: '14px', color: '#14532d', marginBottom: '12px' }}>These are areas where you're already strong. We'll maintain and build on these:</p>
+                <ul style={{ paddingLeft: '20px', fontSize: '14px', color: '#14532d', listStyle: 'disc' }}>
+                  {strengths.map((s, i) => <li key={i} style={{ marginBottom: '8px' }}>{s}</li>)}
+                </ul>
+              </div>
+            </section>
+          )}
+
+          {/* 5. Your goals */}
           {goals.length > 0 && (
             <section style={{ marginBottom: '32px' }}>
-              <h3 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '8px' }}>Your goals & targets</h3>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '12px' }}>Your goals</h2>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                 {goals.map((goal, i) => (
                   <span key={i} style={{ 
                     padding: '4px 12px', 
-                    borderRadius: '6px', 
+                    borderRadius: '9999px', 
                     backgroundColor: '#f1f5f9', 
-                    fontSize: '14px',
+                    fontSize: '12px',
+                    fontWeight: '500',
                     color: '#1e293b'
                   }}>
                     {goal.replace('-', ' ')}
@@ -355,66 +790,44 @@ export async function generateInteractiveHtml(params: {
               </div>
             </section>
           )}
-          
-          <section style={{ marginBottom: '32px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
-            <div style={{ padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: 'white', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-              <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b', marginBottom: '8px' }}>Areas for Improvement</h4>
-              {focusAreas.length === 0 ? (
-                <p style={{ fontSize: '14px', color: '#64748b' }}>None flagged.</p>
-              ) : (
-                <ul style={{ marginTop: '8px', paddingLeft: '20px', fontSize: '14px', color: '#475569', listStyle: 'disc' }}>
-                  {focusAreas.map((f, i) => <li key={i} style={{ marginBottom: '4px' }}>{f}</li>)}
-                </ul>
-              )}
-            </div>
-            <div style={{ padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: 'white', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-              <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b', marginBottom: '8px' }}>Areas of Strength</h4>
-              {strengths.length === 0 ? (
-                <p style={{ fontSize: '14px', color: '#64748b' }}>Will be updated as you progress.</p>
-              ) : (
-                <ul style={{ marginTop: '8px', paddingLeft: '20px', fontSize: '14px', color: '#475569', listStyle: 'disc' }}>
-                  {strengths.map((s, i) => <li key={i} style={{ marginBottom: '4px' }}>{s}</li>)}
-                </ul>
-              )}
-            </div>
-          </section>
-          
-          {(priorityFocus.length > 0 || lifestyleRecs.length > 0) && (
-            <section style={{ marginBottom: '32px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
-              {priorityFocus.length > 0 && (
-                <div style={{ padding: '16px', borderRadius: '8px', border: '1px solid #fecaca', backgroundColor: '#fef2f2', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                  <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#991b1b', marginBottom: '8px' }}>Priority Focus</h4>
-                  <ul style={{ marginTop: '8px', paddingLeft: '20px', fontSize: '14px', color: '#7f1d1d', listStyle: 'disc' }}>
-                    {priorityFocus.map((p, i) => <li key={i} style={{ marginBottom: '4px' }}>{p}</li>)}
-                  </ul>
-                </div>
-              )}
-              {lifestyleRecs.length > 0 && (
-                <div style={{ padding: '16px', borderRadius: '8px', border: '1px solid #bbf7d0', backgroundColor: '#f0fdf4', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                  <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#166534', marginBottom: '8px' }}>Lifestyle Recommendations</h4>
-                  <ul style={{ marginTop: '8px', paddingLeft: '20px', fontSize: '14px', color: '#14532d', listStyle: 'disc' }}>
-                    {lifestyleRecs.map((p, i) => <li key={i} style={{ marginBottom: '4px' }}>{p}</li>)}
-                  </ul>
-                </div>
-              )}
-            </section>
-          )}
-          
-          {nutritionAdvice.length > 0 && (
+
+          {/* 6. What we'll do first */}
+          {immediateActions.length > 0 && (
             <section style={{ marginBottom: '32px' }}>
-              <h3 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '8px' }}>Nutrition focus</h3>
-              <div style={{ padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: 'white', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                <ul style={{ paddingLeft: '20px', fontSize: '14px', color: '#475569', listStyle: 'disc' }}>
-                  {nutritionAdvice.map((n, i) => (
-                    <li key={i} style={{ marginBottom: '6px' }}>{n}</li>
-                  ))}
-                </ul>
+              <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '12px' }}>What we'll do first</h2>
+              <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '16px' }}>These are the immediate steps we'll take to get you moving in the right direction:</p>
+              <div style={{ padding: '20px', borderRadius: '8px', border: '1px solid #c7d2fe', backgroundColor: '#eef2ff', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                <ol style={{ paddingLeft: '20px', fontSize: '14px', color: '#312e81', listStyle: 'decimal' }}>
+                  {immediateActions.map((action, i) => <li key={i} style={{ marginBottom: '8px' }}>{action}</li>)}
+                </ol>
               </div>
             </section>
           )}
-          
+
+          {/* 7. Quick wins */}
+          {quickWins.length > 0 && (
+            <section style={{ marginBottom: '32px' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '12px' }}>Quick wins</h2>
+              <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '16px' }}>You'll notice improvements in these areas within 2-4 weeks:</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '12px' }}>
+                {quickWins.map((win, i) => (
+                  <div key={i} style={{ padding: '16px', borderRadius: '8px', border: '1px solid #fde68a', backgroundColor: '#fffbeb', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                    <p style={{ fontSize: '14px', color: '#92400e' }}>{win}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* 8. Your roadmap */}
           <section style={{ marginBottom: '32px' }}>
-            <h3 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '8px' }}>Your Roadmap</h3>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 'bold' }}>Your roadmap</h2>
+              <div style={{ fontSize: '14px', color: '#64748b' }}>
+                <span style={{ fontWeight: '500' }}>Total: ~{maxWeeks} weeks</span> with {sessionsPerWeek} sessions/week
+              </div>
+            </div>
+            <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '16px' }}>Adjust sessions per week to see how it affects your timeline:</p>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
               <span style={{ fontSize: '14px', color: '#64748b' }}>Sessions/week:</span>
               <input 
@@ -464,8 +877,9 @@ export async function generateInteractiveHtml(params: {
             </div>
           </section>
           
+          {/* 9. How we'll address it */}
           <section style={{ marginBottom: '32px' }}>
-            <h3 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '8px' }}>Program Phases</h3>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '12px' }}>How we'll address it</h2>
             <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '16px' }}>These are the phases we'll move through. The exact timing adapts to your progress and session cadence.</p>
             <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '4px' }}>
               {PROGRAM_PHASES.map(phase => (
@@ -491,30 +905,147 @@ export async function generateInteractiveHtml(params: {
             </div>
           </section>
           
-          {bodyComp && bodyComp.timeframeWeeks && (
+          {/* 10. What to expect */}
+          <section style={{ marginBottom: '32px' }}>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '12px' }}>What to expect</h2>
+            {(() => {
+              const primaryGoal = (goals && goals[0]) || '';
+              const goalLabel = primaryGoal === 'weight-loss' ? 'weight-loss' : primaryGoal === 'build-muscle' ? 'muscle gain' : primaryGoal === 'build-strength' ? 'strength' : primaryGoal === 'improve-fitness' ? 'fitness' : 'goals';
+              const headlineIssues = focusAreas.slice(0, 3);
+              return (
+                <div style={{ padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', background: 'linear-gradient(to bottom right, #f8fafc, #ffffff)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                  <p style={{ fontSize: '14px', color: '#475569', marginBottom: '16px' }}>
+                    From day one we'll start addressing {headlineIssues.length ? headlineIssues.join(', ') : 'key limiters'} that could be holding you back.
+                    At the same time we'll build a plan that moves you steadily toward your {goalLabel}.
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '12px' }}>
+                    <div style={{ padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: 'white' }}>
+                      <div style={{ fontSize: '12px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '4px' }}>Weeks 1–4</div>
+                      <div style={{ fontSize: '14px', color: '#1e293b', marginTop: '4px' }}>
+                        You'll move better and feel more stable. Sessions feel "right" as posture and mobility improve; energy and recovery lift.
+                      </div>
+                    </div>
+                    <div style={{ padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: 'white' }}>
+                      <div style={{ fontSize: '12px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '4px' }}>Weeks 5–10</div>
+                      <div style={{ fontSize: '14px', color: '#1e293b', marginTop: '4px' }}>
+                        Noticeable change: early strength increases, better HR recovery, and visible momentum toward your {goalLabel}.
+                      </div>
+                    </div>
+                    <div style={{ padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: 'white' }}>
+                      <div style={{ fontSize: '12px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '4px' }}>Weeks 11–20</div>
+                      <div style={{ fontSize: '14px', color: '#1e293b', marginTop: '4px' }}>
+                        Significant shift: stronger lifts, better pace, or visible body composition changes others begin to notice.
+                      </div>
+                    </div>
+                    <div style={{ padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: 'white' }}>
+                      <div style={{ fontSize: '12px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '4px' }}>~{Math.max(20, maxWeeks)} weeks</div>
+                      <div style={{ fontSize: '14px', color: '#1e293b', marginTop: '4px' }}>
+                        You're well on your way—clearly resembling the person you set out to become, with momentum to keep elevating.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </section>
+
+          {/* 11. Lifestyle support */}
+          {(lifestyleRecs.length > 0 || nutritionAdvice.length > 0) && (
             <section style={{ marginBottom: '32px' }}>
-              <h3 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '12px' }}>Body Composition Timeline</h3>
-              <div style={{ 
-                padding: '16px', 
-                borderRadius: '8px', 
-                border: '1px solid #e2e8f0', 
-                backgroundColor: 'white'
-              }}>
-                <p style={{ fontSize: '14px', color: '#475569' }}>{bodyComp.timeframeWeeks}</p>
+              <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '16px' }}>Lifestyle support</h2>
+              <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '16px' }}>These daily habits are the foundation that makes your training effective. Small, consistent improvements here amplify every workout:</p>
+              {lifestyleRecs.length > 0 && (
+                <div style={{ padding: '20px', borderRadius: '8px', border: '1px solid #bbf7d0', backgroundColor: '#f0fdf4', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', marginBottom: '16px' }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#166534', marginBottom: '12px' }}>Daily habits</h3>
+                  <ul style={{ paddingLeft: '20px', fontSize: '14px', color: '#14532d', listStyle: 'disc' }}>
+                    {lifestyleRecs.map((p, i) => <li key={i} style={{ marginBottom: '8px' }}>{p}</li>)}
+                  </ul>
+                </div>
+              )}
+              {nutritionAdvice.length > 0 && (
+                <div style={{ padding: '20px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: 'white', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#1e293b', marginBottom: '12px' }}>Nutrition focus</h3>
+                  <ul style={{ paddingLeft: '20px', fontSize: '14px', color: '#475569', listStyle: 'disc' }}>
+                    {nutritionAdvice.map((n, i) => <li key={i} style={{ marginBottom: '8px' }}>{n}</li>)}
+                  </ul>
+                </div>
+              )}
+              <div style={{ marginTop: '16px', padding: '16px', borderRadius: '8px', border: '1px solid #c7d2fe', backgroundColor: '#eef2ff', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                <p style={{ fontSize: '14px', color: '#312e81' }}>
+                  <strong>Remember:</strong> Training provides the stimulus, but lifestyle habits (sleep, stress management, hydration, nutrition, daily movement) determine how well your body adapts and recovers. These aren't separate from your fitness goals—they're the glue that ties everything together.
+                </p>
               </div>
             </section>
           )}
-          
+
+          {/* 12. Sample workout */}
           <section style={{ marginBottom: '32px' }}>
-            <h3 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '8px' }}>How we'll address it</h3>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '12px' }}>Sample workout</h2>
+            <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '16px' }}>Here's an example of what a typical session might look like, tailored to your needs:</p>
             <div style={{ padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: 'white', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-              <ul style={{ paddingLeft: '20px', fontSize: '14px', color: '#475569', listStyle: 'disc' }}>
-                <li style={{ marginBottom: '6px' }}>Body comp: nutrition structure (protein at each meal), aerobic base, progressive resistance training.</li>
-                <li style={{ marginBottom: '6px' }}>Strength & endurance: compound lifts at appropriate loads, consistent progression, core stability.</li>
-                <li style={{ marginBottom: '6px' }}>Cardio fitness: Zone 2 sessions, optional tempo/intervals as recovery allows.</li>
-                <li style={{ marginBottom: '6px' }}>Mobility: targeted hip/shoulder/ankle drills in warm-ups; reinforce new range under light load.</li>
-                <li style={{ marginBottom: '6px' }}>Posture & alignment: daily posture hygiene, correctives for flagged patterns, ergonomic cues.</li>
-              </ul>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
+                <div>
+                  <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#1e293b', marginBottom: '8px' }}>Correctives — addressing your main concerns</h4>
+                  <ul style={{ marginTop: '8px', paddingLeft: '20px', fontSize: '14px', color: '#475569', listStyle: 'disc' }}>
+                    <li style={{ marginBottom: '4px' }}>Dynamic mobility targeting hips/shoulders/ankles as needed</li>
+                    {focusAreas.filter(f => f.toLowerCase().includes('mobility') || f.toLowerCase().includes('posture')).slice(0, 3).map((f, i) => (
+                      <li key={i} style={{ marginBottom: '4px' }}>Targeted drills for {f.split(':')[0]}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#1e293b', marginBottom: '8px' }}>
+                    {goals && goals[0] === 'weight-loss' ? 'Primary block — Fat‑loss training' :
+                     goals && goals[0] === 'build-muscle' ? 'Primary block — Hypertrophy' :
+                     goals && goals[0] === 'build-strength' ? 'Primary block — Strength' :
+                     goals && goals[0] === 'improve-fitness' ? 'Primary block — Cardio fitness' : 'Primary block'}
+                  </h4>
+                  <ul style={{ marginTop: '8px', paddingLeft: '20px', fontSize: '14px', color: '#475569', listStyle: 'disc' }}>
+                    {goals && goals[0] === 'weight-loss' ? (
+                      <>
+                        <li style={{ marginBottom: '4px' }}>Goblet squat 3–4 x 8–12 (strength base)</li>
+                        <li style={{ marginBottom: '4px' }}>DB bench press 3–4 x 8–12 (strength base)</li>
+                        <li style={{ marginBottom: '4px' }}>1‑arm row 3–4 x 8–12/side (strength base)</li>
+                        <li style={{ marginBottom: '4px' }}>Zone 2 cardio 15–20 min (body comp)</li>
+                      </>
+                    ) : goals && goals[0] === 'build-muscle' ? (
+                      <>
+                        <li style={{ marginBottom: '4px' }}>Back squat 4 x 6–8 (hypertrophy)</li>
+                        <li style={{ marginBottom: '4px' }}>Bench press 4 x 6–8 (hypertrophy)</li>
+                        <li style={{ marginBottom: '4px' }}>Chest‑supported row 4 x 8–10 (hypertrophy)</li>
+                        <li style={{ marginBottom: '4px' }}>Romanian deadlift 3 x 8–10 (posterior chain)</li>
+                      </>
+                    ) : goals && goals[0] === 'build-strength' ? (
+                      <>
+                        <li style={{ marginBottom: '4px' }}>Back squat 5 x 3 @ RPE 7–8 (strength)</li>
+                        <li style={{ marginBottom: '4px' }}>Bench press 5 x 3 @ RPE 7–8 (strength)</li>
+                        <li style={{ marginBottom: '4px' }}>Deadlift 3 x 3 @ RPE 7–8 (strength)</li>
+                      </>
+                    ) : goals && goals[0] === 'improve-fitness' ? (
+                      <>
+                        <li style={{ marginBottom: '4px' }}>Tempo intervals: 6 x 2 min hard / 2 min easy (cardio fitness)</li>
+                        <li style={{ marginBottom: '4px' }}>Zone 2 steady 20–30 min (cardio base)</li>
+                        <li style={{ marginBottom: '4px' }}>Split squat 3 x 8/side (single‑leg strength)</li>
+                      </>
+                    ) : (
+                      <>
+                        <li style={{ marginBottom: '4px' }}>Circuit: Goblet squat 10, Pushups 8–12, 1‑arm row 10/side, Hip hinge 10 (general conditioning)</li>
+                        <li style={{ marginBottom: '4px' }}>Walk 10–15 min cooldown (recovery)</li>
+                      </>
+                    )}
+                  </ul>
+                </div>
+              </div>
+              <div style={{ marginTop: '12px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '12px' }}>
+                <div style={{ padding: '12px', borderRadius: '6px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
+                  <h5 style={{ fontSize: '12px', fontWeight: '600', color: '#1e293b', marginBottom: '4px' }}>Daily movement</h5>
+                  <p style={{ fontSize: '12px', color: '#475569', marginTop: '4px' }}>Daily steps target: 7000–9000 per day. Short walk breaks between sessions boost recovery and fat‑loss.</p>
+                </div>
+                <div style={{ padding: '12px', borderRadius: '6px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
+                  <h5 style={{ fontSize: '12px', fontWeight: '600', color: '#1e293b', marginBottom: '4px' }}>Progression</h5>
+                  <p style={{ fontSize: '12px', color: '#475569', marginTop: '4px' }}>We'll increase volume/intensity as movement improves—technique first, load follows.</p>
+                </div>
+              </div>
             </div>
           </section>
           

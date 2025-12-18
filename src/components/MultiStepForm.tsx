@@ -46,6 +46,8 @@ import ClientReport from '@/components/reports/ClientReport';
 import CoachReport from '@/components/reports/CoachReport';
 import { downloadElementAsPdf } from '@/lib/pdf';
 import { generateInteractiveHtml } from '@/lib/htmlExport';
+import { useSettings } from '@/hooks/useSettings';
+import { generateDemoData } from '@/lib/demoGenerator';
 
 type FieldValue = string | string[];
 
@@ -339,6 +341,7 @@ const FieldControl = ({ field }: { field: PhaseField }) => {
 
 const PhaseFormContent = () => {
   const { formData } = useFormContext();
+  const { settings } = useSettings();
   const { user } = useAuth();
   const { toast } = useToast();
   const [activePhaseIdx, setActivePhaseIdx] = useState(0);
@@ -358,6 +361,7 @@ const PhaseFormContent = () => {
   });
   const [shareLoading, setShareLoading] = useState(false);
   const reportRef = useRef<HTMLDivElement | null>(null);
+  const [isDemoAssessment, setIsDemoAssessment] = useState(false);
 
   const totalPhases = phaseDefinitions.length;
   const activePhase = useMemo(() => {
@@ -654,11 +658,12 @@ const PhaseFormContent = () => {
   }, [user, saving, savingId, formData, scores.overall]);
 
   // Auto-save once when we reach the Results phase and have a signed-in coach
+  // Skip auto-save for demo assessments
   useEffect(() => {
-    if (activePhase?.id === 'P7' && user && !savingId && !saving) {
+    if (activePhase?.id === 'P7' && user && !savingId && !saving && !isDemoAssessment) {
       void handleSaveToDashboard();
     }
-  }, [activePhase?.id, user, savingId, saving, handleSaveToDashboard]);
+  }, [activePhase?.id, user, savingId, saving, isDemoAssessment, handleSaveToDashboard]);
 
   useEffect(() => {
     shareCacheRef.current = { client: null, coach: null };
@@ -1265,253 +1270,31 @@ const PhaseFormContent = () => {
   };
 
   // Sequential demo fill (simulates user typing; fills many fields one-by-one then navigates to Results)
+  // Uses AI-generated unique demo data
   const runDemoSequential = async () => {
-    const profiles: Array<'obese' | 'muscle' | 'cardio'> = ['obese', 'muscle', 'cardio'];
-    const pick = profiles[Math.floor(Math.random() * profiles.length)];
-    // Build a deep copy of the payload from quickFill branches
-    let payload: Partial<FormData> = {};
-    const setPayload = (p: Partial<FormData>) => { payload = p; };
-    if (pick === 'obese') {
-      setPayload({
-        fullName: 'Alex Johnson',
-        email: 'alex.johnson@example.com',
-        phone: '+441234567890',
-        dateOfBirth: '1988-05-15',
-        gender: 'male',
-        assignedCoach: 'coach-mike',
-        activityLevel: 'sedentary',
-        stepsPerDay: '3500',
-        sedentaryHours: '9',
-        workHoursPerDay: '9',
-        sleepQuality: 'fair',
-        sleepDuration: '6-7',
-        sleepConsistency: 'inconsistent',
-        stressLevel: 'high',
-        nutritionHabits: 'fair',
-        hydrationHabits: 'fair',
-        caffeineCupsPerDay: '3',
-        lastCaffeineIntake: '16:00',
-        parqQuestionnaire: 'completed',
-        parq1: 'no',
-        parq2: 'no',
-        parq3: 'no',
-        parq4: 'no',
-        parq5: 'no',
-        parq6: 'no',
-        parq7: 'no',
-        parq12: 'no',
-        parq13: 'no',
-        inbodyScore: '62',
-        heightCm: '175',
-        inbodyWeightKg: '120',
-        inbodyBodyFatPct: '36',
-        bodyFatMassKg: '43',
-        visceralFatLevel: '14',
-        skeletalMuscleMassKg: '32',
-        waistHipRatio: '1.02',
-        totalBodyWaterL: '38',
-        inbodyBmi: '39',
-        segmentalTrunkKg: '30',
-        segmentalArmLeftKg: '3.0',
-        segmentalArmRightKg: '3.5',
-        segmentalLegLeftKg: '9.0',
-        segmentalLegRightKg: '10.0',
-        postureHeadOverall: 'forward-head',
-        postureShouldersOverall: 'rounded',
-        postureBackOverall: 'increased-kyphosis',
-        postureHipsOverall: 'anterior-tilt',
-        postureKneesOverall: 'valgus-knee',
-        ohsShoulderMobility: 'limited',
-        ohsTorsoLean: 'excessive-lean',
-        ohsSquatDepth: 'quarter-depth',
-        ohsHipShift: 'right',
-        ohsKneeAlignment: 'valgus',
-        ohsFeetPosition: 'pronation',
-        hingeDepth: 'fair',
-        hingeBackRounding: 'moderate',
-        lungeLeftBalance: 'fair',
-        lungeLeftKneeAlignment: 'caves-inward',
-        lungeLeftTorso: 'anterior-tilt',
-        lungeRightBalance: 'fair',
-        lungeRightKneeAlignment: 'caves-inward',
-        lungeRightTorso: 'anterior-tilt',
-        mobilityHip: 'fair',
-        mobilityShoulder: 'fair',
-        mobilityAnkle: 'poor',
-        squatsOneMinuteReps: '18',
-        pushupsOneMinuteReps: '8',
-        plankDurationSeconds: '35',
-        gripLeftKg: '28',
-        gripRightKg: '30',
-        cardioTestSelected: 'ymca-step',
-        cardioRestingHr: '78',
-        cardioPost1MinHr: '128',
-        clientGoals: ['weight-loss'],
-        goalLevelWeightLoss: 'above-average',
-      });
-    } else if (pick === 'muscle') {
-      setPayload({
-        fullName: 'Jamie Lee',
-        email: 'jamie.lee@example.com',
-        phone: '+441112223334',
-        dateOfBirth: '1992-09-20',
-        gender: 'female',
-        assignedCoach: 'coach-selina',
-        activityLevel: 'moderately-active',
-        stepsPerDay: '8000',
-        sedentaryHours: '6',
-        workHoursPerDay: '8',
-        sleepQuality: 'good',
-        sleepDuration: '7-8',
-        sleepConsistency: 'consistent',
-        stressLevel: 'moderate',
-        nutritionHabits: 'good',
-        hydrationHabits: 'good',
-        caffeineCupsPerDay: '1',
-        lastCaffeineIntake: '10:30',
-        parqQuestionnaire: 'completed',
-        parq1: 'no',
-        parq2: 'no',
-        parq3: 'no',
-        parq4: 'no',
-        parq5: 'no',
-        parq6: 'no',
-        parq7: 'no',
-        parq12: 'no',
-        parq13: 'no',
-        inbodyScore: '78',
-        heightCm: '168',
-        inbodyWeightKg: '68',
-        inbodyBodyFatPct: '22',
-        bodyFatMassKg: '15',
-        visceralFatLevel: '8',
-        skeletalMuscleMassKg: '28',
-        waistHipRatio: '0.85',
-        totalBodyWaterL: '36',
-        inbodyBmi: '24.1',
-        segmentalTrunkKg: '26',
-        segmentalArmLeftKg: '2.8',
-        segmentalArmRightKg: '3.0',
-        segmentalLegLeftKg: '8.1',
-        segmentalLegRightKg: '8.3',
-        postureHeadOverall: 'neutral',
-        postureShouldersOverall: 'rounded',
-        postureBackOverall: 'neutral',
-        postureHipsOverall: 'neutral',
-        postureKneesOverall: 'neutral',
-        ohsShoulderMobility: 'compensated',
-        ohsTorsoLean: 'moderate-lean',
-        ohsSquatDepth: 'parallel',
-        ohsHipShift: 'none',
-        ohsKneeAlignment: 'stable',
-        ohsFeetPosition: 'stable',
-        hingeDepth: 'good',
-        hingeBackRounding: 'minor',
-        lungeLeftBalance: 'good',
-        lungeLeftKneeAlignment: 'tracks-straight',
-        lungeLeftTorso: 'neutral',
-        lungeRightBalance: 'good',
-        lungeRightKneeAlignment: 'tracks-straight',
-        lungeRightTorso: 'neutral',
-        mobilityHip: 'fair',
-        mobilityShoulder: 'good',
-        mobilityAnkle: 'good',
-        squatsOneMinuteReps: '42',
-        pushupsOneMinuteReps: '28',
-        plankDurationSeconds: '95',
-        gripLeftKg: '30',
-        gripRightKg: '32',
-        cardioTestSelected: 'treadmill',
-        cardioRestingHr: '62',
-        cardioPost1MinHr: '110',
-        clientGoals: ['build-muscle', 'build-strength'],
-        goalLevelMuscle: 'above-average',
-        goalLevelStrength: 'average',
-      });
-    } else {
-      setPayload({
-        fullName: 'Sam Patel',
-        email: 'sam.patel@example.com',
-        phone: '+447700900123',
-        dateOfBirth: '1995-02-10',
-        gender: 'male',
-        assignedCoach: 'coach-mike',
-        activityLevel: 'very-active',
-        stepsPerDay: '10000',
-        sedentaryHours: '5',
-        workHoursPerDay: '8',
-        sleepQuality: 'good',
-        sleepDuration: '7-8',
-        sleepConsistency: 'very-consistent',
-        stressLevel: 'low',
-        nutritionHabits: 'good',
-        hydrationHabits: 'good',
-        caffeineCupsPerDay: '1',
-        lastCaffeineIntake: '09:30',
-        parqQuestionnaire: 'completed',
-        parq1: 'no',
-        parq2: 'no',
-        parq3: 'no',
-        parq4: 'no',
-        parq5: 'no',
-        parq6: 'no',
-        parq7: 'no',
-        parq12: 'no',
-        parq13: 'no',
-        inbodyScore: '82',
-        heightCm: '172',
-        inbodyWeightKg: '70',
-        inbodyBodyFatPct: '16',
-        bodyFatMassKg: '11',
-        visceralFatLevel: '6',
-        skeletalMuscleMassKg: '34',
-        waistHipRatio: '0.84',
-        totalBodyWaterL: '42',
-        inbodyBmi: '23.7',
-        segmentalTrunkKg: '28',
-        segmentalArmLeftKg: '3.1',
-        segmentalArmRightKg: '3.1',
-        segmentalLegLeftKg: '9.2',
-        segmentalLegRightKg: '9.2',
-        postureHeadOverall: 'neutral',
-        postureShouldersOverall: 'neutral',
-        postureBackOverall: 'neutral',
-        postureHipsOverall: 'neutral',
-        postureKneesOverall: 'neutral',
-        ohsShoulderMobility: 'full-range',
-        ohsTorsoLean: 'upright',
-        ohsSquatDepth: 'full-depth',
-        ohsHipShift: 'none',
-        ohsKneeAlignment: 'stable',
-        ohsFeetPosition: 'stable',
-        hingeDepth: 'excellent',
-        hingeBackRounding: 'none',
-        lungeLeftBalance: 'excellent',
-        lungeLeftKneeAlignment: 'tracks-straight',
-        lungeLeftTorso: 'neutral',
-        lungeRightBalance: 'excellent',
-        lungeRightKneeAlignment: 'tracks-straight',
-        lungeRightTorso: 'neutral',
-        mobilityHip: 'good',
-        mobilityShoulder: 'good',
-        mobilityAnkle: 'good',
-        squatsOneMinuteReps: '48',
-        pushupsOneMinuteReps: '35',
-        plankDurationSeconds: '120',
-        gripLeftKg: '34',
-        gripRightKg: '35',
-        cardioTestSelected: 'ymca-step',
-        cardioRestingHr: '56',
-        cardioPost1MinHr: '98',
-        clientGoals: ['improve-fitness'],
-        goalLevelFitness: 'above-average',
-      });
-    }
+    // Mark this as a demo assessment so it won't be saved
+    setIsDemoAssessment(true);
+    // Generate unique demo data using AI-like algorithms
+    const payload = await generateDemoData();
     // Slower, readable pacing (tune as needed)
     const DELAY_PHASE = 2000;
     const DELAY_SECTION = 1300;
     const DELAY_FIELD = 900;
     const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+    
+    // Collect all fields from all phases to ensure we don't miss any
+    const allFields: Array<{ field: PhaseField; phaseId: string; sectionId: string }> = [];
+    for (let p = 0; p < totalPhases; p++) {
+      const ph = phaseDefinitions[p];
+      if (!ph || ph.id === 'P7') continue;
+      const secs = ph.sections ?? [];
+      for (const sec of secs) {
+        for (const f of (sec.fields as ReadonlyArray<PhaseField>)) {
+          allFields.push({ field: f, phaseId: ph.id, sectionId: sec.id });
+        }
+      }
+    }
+    
     // Traverse phases/sections to mimic user flow
     for (let p = 0; p < totalPhases; p++) {
       const ph = phaseDefinitions[p];
@@ -1525,31 +1308,166 @@ const PhaseFormContent = () => {
         setExpandedSections(prev => ({ ...prev, [sec.id]: true }));
         await delay(DELAY_SECTION);
         for (const f of (sec.fields as ReadonlyArray<PhaseField>)) {
+          const key = f.id as keyof FormData;
+          
+          // Special handling for clientGoals (multiselect) - ensure array is properly set
+          if (key === 'clientGoals') {
+            const goalsValue = (payload[key] as string[] | undefined) ?? (formData[key] as string[] | undefined);
+            if (goalsValue && Array.isArray(goalsValue) && goalsValue.length > 0) {
+              updateFormData({ [key]: goalsValue } as Partial<FormData>);
+              await delay(DELAY_FIELD);
+              
+              // Also fill goal level fields based on selected goals
+              const goalLevelUpdates: Partial<FormData> = {};
+              if (goalsValue.includes('weight-loss') && payload.goalLevelWeightLoss) {
+                goalLevelUpdates.goalLevelWeightLoss = payload.goalLevelWeightLoss as string;
+              }
+              if (goalsValue.includes('build-muscle') && payload.goalLevelMuscle) {
+                goalLevelUpdates.goalLevelMuscle = payload.goalLevelMuscle as string;
+              }
+              if (goalsValue.includes('build-strength') && payload.goalLevelStrength) {
+                goalLevelUpdates.goalLevelStrength = payload.goalLevelStrength as string;
+              }
+              if (goalsValue.includes('improve-fitness') && payload.goalLevelFitness) {
+                goalLevelUpdates.goalLevelFitness = payload.goalLevelFitness as string;
+              }
+              
+              if (Object.keys(goalLevelUpdates).length > 0) {
+                updateFormData(goalLevelUpdates);
+                await delay(DELAY_FIELD);
+              }
+            }
+            continue; // Skip normal processing for this field
+          }
+          
+          // Skip goal level fields - they're handled with clientGoals
+          if (key === 'goalLevelWeightLoss' || key === 'goalLevelMuscle' || key === 'goalLevelStrength' || key === 'goalLevelFitness') {
+            continue;
+          }
+          
+          // Special handling for caffeine fields - ensure lastCaffeineIntake is filled when caffeineCupsPerDay > 0
+          if (key === 'caffeineCupsPerDay') {
+            // Get the value from payload or use existing
+            const caffeineValue = (payload[key] as string | undefined) ?? (formData[key] as string | undefined) ?? '0';
+            const caffeineNum = parseFloat(caffeineValue) || 0;
+            
+            // Update caffeineCupsPerDay
+            updateFormData({ [key]: String(caffeineNum) } as Partial<FormData>);
+            await delay(DELAY_FIELD);
+            
+            // If caffeine > 0, also fill lastCaffeineIntake (if not already filled)
+            if (caffeineNum > 0) {
+              const lastCaffeineValue = (payload.lastCaffeineIntake as string | undefined) ?? 
+                                       (formData.lastCaffeineIntake as string | undefined);
+              if (lastCaffeineValue) {
+                updateFormData({ lastCaffeineIntake: lastCaffeineValue } as Partial<FormData>);
+                await delay(DELAY_FIELD);
+              } else {
+                // Generate a default time if not in payload
+                const hour = Math.floor(8 + Math.random() * 10); // 8-18
+                const minute = [0, 15, 30, 45][Math.floor(Math.random() * 4)];
+                const defaultTime = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+                updateFormData({ lastCaffeineIntake: defaultTime } as Partial<FormData>);
+                await delay(DELAY_FIELD);
+              }
+            } else {
+              // If caffeine is 0, clear lastCaffeineIntake
+              if (formData.lastCaffeineIntake) {
+                updateFormData({ lastCaffeineIntake: '' } as Partial<FormData>);
+                await delay(DELAY_FIELD);
+              }
+            }
+            continue; // Skip normal processing for this field
+          }
+          
+          // Skip lastCaffeineIntake if caffeineCupsPerDay is 0 or not set
+          if (key === 'lastCaffeineIntake') {
+            const caffeineValue = formData.caffeineCupsPerDay || '0';
+            const caffeineNum = parseFloat(caffeineValue) || 0;
+            if (caffeineNum === 0) {
+              continue; // Don't fill lastCaffeineIntake if caffeine is 0
+            }
+          }
+          
           // Respect conditional visibility so we only populate fields that would actually be shown
           if (!isFieldVisible(f)) continue;
-          const key = f.id as keyof FormData;
-          // Prefer persona payload, then existing form value
+          
+          // Special handling for PAR-Q questionnaire - fill each question individually
+          if (f.type === 'parq' && key === 'parqQuestionnaire') {
+            // PAR-Q questions in order (matching ParQQuestionnaire component)
+            const parqQuestionIds: Array<keyof FormData> = ['parq1', 'parq2', 'parq3', 'parq4', 'parq5', 'parq6', 'parq7', 'parq8', 'parq9', 'parq10', 'parq11', 'parq12', 'parq13'];
+            
+            // Filter based on gender (parq12 and parq13 are conditional)
+            const gender = (formData?.gender || '').toLowerCase();
+            const visibleParqIds = parqQuestionIds.filter(id => {
+              if (id === 'parq12' || id === 'parq13') {
+                return gender === 'female';
+              }
+              return true;
+            });
+            
+            // Fill each PAR-Q question one by one so user can see the selection
+            for (const parqId of visibleParqIds) {
+              // Get the answer from payload or use default 'no'
+              const parqAnswer = (payload[parqId] as string | undefined) ?? 'no';
+              
+              // Update the form data for this specific PAR-Q question
+              updateFormData({ [parqId]: parqAnswer } as Partial<FormData>);
+              
+              // Wait longer for PAR-Q questions so user can see each selection
+              await delay(DELAY_FIELD * 1.5);
+            }
+            
+            // After all questions are answered, mark as completed
+            // The ParQQuestionnaire component will detect this automatically
+            continue;
+          }
+          
+          // Prefer AI-generated payload value, then existing form value
           let raw: FormData[keyof FormData] | undefined =
             (payload[key as keyof FormData] as FormData[keyof FormData] | undefined) ??
             (formData[key as keyof FormData] as FormData[keyof FormData] | undefined);
-          // Populate sensible defaults when missing
+          
+          // Populate sensible defaults when missing (ensuring we fill ALL visible fields)
           if (raw === undefined || raw === null || raw === '') {
             if (f.type === 'multiselect') {
               raw = f.options && f.options.length > 0 ? [f.options[0].value] : [];
             } else if (f.type === 'select') {
               raw = f.options && f.options.length > 0 ? f.options[0].value : '';
             } else if (f.type === 'number') {
-              raw = '1';
+              // Generate more realistic defaults based on field context
+              if (key.includes('height') || key.includes('Height')) {
+                raw = '170';
+              } else if (key.includes('weight') || key.includes('Weight')) {
+                raw = '70';
+              } else if (key.includes('steps') || key.includes('Steps')) {
+                raw = '5000';
+              } else if (key.includes('hours') || key.includes('Hours')) {
+                raw = '8';
+              } else if (key.includes('reps') || key.includes('Reps')) {
+                raw = '20';
+              } else if (key.includes('seconds') || key.includes('Seconds') || key.includes('duration')) {
+                raw = '60';
+              } else if (key.includes('kg') || key.includes('Kg')) {
+                raw = '25';
+              } else if (key.includes('hr') || key.includes('Hr') || key.includes('heart')) {
+                raw = '70';
+              } else {
+                raw = '1';
+              }
             } else if (f.type === 'date') {
               raw = '1990-01-01';
             } else if (f.type === 'time') {
               raw = '08:00';
-            } else if (f.type === 'parq') {
-              raw = 'completed';
+            } else if (f.type === 'email') {
+              raw = 'demo@example.com';
+            } else if (f.type === 'tel') {
+              raw = '+441234567890';
             } else {
               raw = 'OK';
             }
           }
+          
           // Apply update (support array values for multiselect)
           updateFormData({ [key]: raw as FormData[keyof FormData] } as Partial<FormData>);
           await delay(DELAY_FIELD);
@@ -1815,11 +1733,15 @@ const PhaseFormContent = () => {
           </div>
         </div>
         <Progress value={progressValue} className="h-2 bg-slate-100 rounded-full" />
-        {/* TEMP: One-click demo fill (sequential) – remove before release */}
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={runDemoSequential}>▶︎ Auto‑fill demo persona (sequential)</Button>
-          <span className="text-[11px] text-slate-400">fills each section then jumps to Results</span>
-        </div>
+        {/* AI-powered demo fill - only shown when enabled in settings */}
+        {settings.demoAutoFillEnabled && (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={runDemoSequential}>
+              ▶︎ Auto‑fill demo persona (AI-generated)
+            </Button>
+            <span className="text-[11px] text-slate-400">fills each section with unique data then jumps to Results</span>
+          </div>
+        )}
 
         <div className="relative">
           <nav
@@ -1940,10 +1862,12 @@ const PhaseFormContent = () => {
                   </button>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  {/* TEMP: One-click demo fill (outside error boundary) */}
-                  <Button variant="outline" size="sm" onClick={runDemoSequential}>
-                    ▶︎ Auto‑fill demo persona
-                  </Button>
+                  {/* AI-powered demo fill - only shown when enabled in settings */}
+                  {settings.demoAutoFillEnabled && (
+                    <Button variant="outline" size="sm" onClick={runDemoSequential}>
+                      ▶︎ Auto‑fill demo persona (AI-generated)
+                    </Button>
+                  )}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button

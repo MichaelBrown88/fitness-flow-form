@@ -10,7 +10,7 @@ export type ScoreDetail = {
 };
 
 export type ScoreCategory = {
-  id: 'bodyComp' | 'cardio' | 'strength' | 'mobility' | 'posture';
+  id: 'bodyComp' | 'cardio' | 'strength' | 'movementQuality' | 'lifestyle';
   title: string;
   score: number; // 0-100
   details: ScoreDetail[];
@@ -238,36 +238,9 @@ function scoreStrength(form: FormData): ScoreCategory {
   return { id: 'strength', title: 'Strength & Endurance', score, details, strengths, weaknesses };
 }
 
-function scoreMobility(form: FormData): ScoreCategory {
-  const map = (v: string) => (v === 'good' ? 100 : v === 'fair' ? 60 : v === 'poor' ? 30 : 0);
-  const hasHip = !!(form.mobilityHip && form.mobilityHip.trim() !== '');
-  const hasShoulder = !!(form.mobilityShoulder && form.mobilityShoulder.trim() !== '');
-  const hasAnkle = !!(form.mobilityAnkle && form.mobilityAnkle.trim() !== '');
-  
-  const hip = hasHip ? map(form.mobilityHip) : 0;
-  const shoulder = hasShoulder ? map(form.mobilityShoulder) : 0;
-  const ankle = hasAnkle ? map(form.mobilityAnkle) : 0;
-  
-  const details: ScoreDetail[] = [
-    { id: 'hip', label: 'Hip mobility', value: form.mobilityHip || '-', score: hip },
-    { id: 'shoulder', label: 'Shoulder mobility', value: form.mobilityShoulder || '-', score: shoulder },
-    { id: 'ankle', label: 'Ankle mobility', value: form.mobilityAnkle || '-', score: ankle },
-  ];
-  
-  const filledTests = [hasHip, hasShoulder, hasAnkle].filter(Boolean).length;
-  const score = filledTests > 0 ? Math.round((hip + shoulder + ankle) / filledTests) : 0;
-  
-  const strengths = [];
-  const weaknesses = [];
-  // Only add weaknesses if the test was actually performed
-  if (hasHip && hip < 60) weaknesses.push('Hip mobility');
-  if (hasShoulder && shoulder < 60) weaknesses.push('Shoulder mobility');
-  if (hasAnkle && ankle < 60) weaknesses.push('Ankle mobility');
-  if (score >= 75 && filledTests >= 2) strengths.push('Overall mobility');
-  return { id: 'mobility', title: 'Mobility', score, details, strengths, weaknesses };
-}
-
-function scorePosture(form: FormData): ScoreCategory {
+function scoreMovementQuality(form: FormData): ScoreCategory {
+  // Combine mobility and posture into Movement Quality
+  const mapMobility = (v: string) => (v === 'good' ? 100 : v === 'fair' ? 60 : v === 'poor' ? 30 : 0);
   const neutralScore = (v: string) => (v === 'neutral' ? 100 : 60);
   const backMap: Record<string, number> = {
     neutral: 100,
@@ -282,13 +255,20 @@ function scorePosture(form: FormData): ScoreCategory {
     'varus-knee': 40,
   };
   
-  // Check if fields were actually filled
+  // Mobility scores
+  const hasHip = !!(form.mobilityHip && form.mobilityHip.trim() !== '');
+  const hasShoulder = !!(form.mobilityShoulder && form.mobilityShoulder.trim() !== '');
+  const hasAnkle = !!(form.mobilityAnkle && form.mobilityAnkle.trim() !== '');
+  const hip = hasHip ? mapMobility(form.mobilityHip) : 0;
+  const shoulder = hasShoulder ? mapMobility(form.mobilityShoulder) : 0;
+  const ankle = hasAnkle ? mapMobility(form.mobilityAnkle) : 0;
+  
+  // Posture scores
   const hasHead = !!(form.postureHeadOverall && form.postureHeadOverall.trim() !== '');
   const hasShoulders = !!(form.postureShouldersOverall && form.postureShouldersOverall.trim() !== '');
   const hasBack = !!(form.postureBackOverall && form.postureBackOverall.trim() !== '');
   const hasHips = !!(form.postureHipsOverall && form.postureHipsOverall.trim() !== '');
   const hasKnees = !!(form.postureKneesOverall && form.postureKneesOverall.trim() !== '');
-  
   const head = hasHead ? neutralScore(form.postureHeadOverall) : 0;
   const shoulders = hasShoulders ? neutralScore(form.postureShouldersOverall) : 0;
   const back = hasBack ? (backMap[form.postureBackOverall] ?? 0) : 0;
@@ -296,24 +276,116 @@ function scorePosture(form: FormData): ScoreCategory {
   const knees = hasKnees ? (kneesMap[form.postureKneesOverall] ?? 0) : 0;
   
   const details: ScoreDetail[] = [
-    { id: 'head', label: 'Head/neck', value: form.postureHeadOverall || '-', score: head },
-    { id: 'shoulders', label: 'Shoulders', value: form.postureShouldersOverall || '-', score: shoulders },
-    { id: 'back', label: 'Back/spine', value: form.postureBackOverall || '-', score: back },
-    { id: 'hips', label: 'Hips', value: form.postureHipsOverall || '-', score: hips },
-    { id: 'knees', label: 'Knees', value: form.postureKneesOverall || '-', score: knees },
+    { id: 'hip', label: 'Hip mobility', value: form.mobilityHip || '-', score: hip },
+    { id: 'shoulder', label: 'Shoulder mobility', value: form.mobilityShoulder || '-', score: shoulder },
+    { id: 'ankle', label: 'Ankle mobility', value: form.mobilityAnkle || '-', score: ankle },
+    { id: 'head', label: 'Head/neck alignment', value: form.postureHeadOverall || '-', score: head },
+    { id: 'shoulders', label: 'Shoulder alignment', value: form.postureShouldersOverall || '-', score: shoulders },
+    { id: 'back', label: 'Spinal alignment', value: form.postureBackOverall || '-', score: back },
+    { id: 'hips', label: 'Pelvic alignment', value: form.postureHipsOverall || '-', score: hips },
+    { id: 'knees', label: 'Knee alignment', value: form.postureKneesOverall || '-', score: knees },
   ];
   
-  const filledTests = [hasHead, hasShoulders, hasBack, hasHips, hasKnees].filter(Boolean).length;
-  const score = filledTests > 0 ? Math.round((head + shoulders + back + hips + knees) / filledTests) : 0;
+  const allScores = [hip, shoulder, ankle, head, shoulders, back, hips, knees].filter(s => s > 0);
+  const score = allScores.length > 0 ? Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length) : 0;
   
   const strengths = [];
   const weaknesses = [];
-  // Only add weaknesses if the assessment was actually performed
+  if (hasHip && hip < 60) weaknesses.push('Hip mobility');
+  if (hasShoulder && shoulder < 60) weaknesses.push('Shoulder mobility');
+  if (hasAnkle && ankle < 60) weaknesses.push('Ankle mobility');
   if (hasBack && back < 60) weaknesses.push('Spinal alignment');
   if (hasKnees && knees < 60) weaknesses.push('Knee alignment');
   if (hasHips && hips < 60) weaknesses.push('Pelvic alignment');
-  if (score >= 75 && filledTests >= 3) strengths.push('Overall alignment');
-  return { id: 'posture', title: 'Alignment & Posture', score, details, strengths, weaknesses };
+  if (score >= 75 && allScores.length >= 4) strengths.push('Overall movement quality');
+  
+  return { id: 'movementQuality', title: 'Movement Quality', score, details, strengths, weaknesses };
+}
+
+function scoreLifestyle(form: FormData): ScoreCategory {
+  // Score lifestyle factors (sleep, stress, hydration, nutrition, activity, recovery)
+  const sleepQ = (form.sleepQuality || '').toLowerCase();
+  const sleepC = (form.sleepConsistency || '').toLowerCase();
+  const sleepD = parseFloat(form.sleepDuration || '0');
+  const stress = (form.stressLevel || '').toLowerCase();
+  const hydration = (form.hydrationHabits || '').toLowerCase();
+  const nutrition = (form.nutritionHabits || '').toLowerCase();
+  const steps = parseFloat(form.stepsPerDay || '0');
+  const sedentary = parseFloat(form.sedentaryHours || '0');
+  
+  // Sleep score (0-100)
+  let sleepScore = 70; // baseline
+  if (sleepQ === 'excellent') sleepScore = 100;
+  else if (sleepQ === 'good') sleepScore = 85;
+  else if (sleepQ === 'fair') sleepScore = 60;
+  else if (sleepQ === 'poor') sleepScore = 40;
+  if (sleepC === 'very-consistent') sleepScore = Math.min(100, sleepScore + 10);
+  else if (sleepC === 'consistent') sleepScore = Math.min(100, sleepScore + 5);
+  else if (sleepC === 'inconsistent') sleepScore = Math.max(0, sleepScore - 10);
+  else if (sleepC === 'very-inconsistent') sleepScore = Math.max(0, sleepScore - 20);
+  
+  // Stress score (inverted - lower stress = higher score)
+  let stressScore = 70;
+  if (stress === 'very-low') stressScore = 100;
+  else if (stress === 'low') stressScore = 85;
+  else if (stress === 'moderate') stressScore = 65;
+  else if (stress === 'high') stressScore = 45;
+  else if (stress === 'very-high') stressScore = 30;
+  
+  // Hydration score
+  let hydrationScore = 70;
+  if (hydration === 'excellent') hydrationScore = 100;
+  else if (hydration === 'good') hydrationScore = 85;
+  else if (hydration === 'fair') hydrationScore = 60;
+  else if (hydration === 'poor') hydrationScore = 40;
+  
+  // Nutrition score
+  let nutritionScore = 70;
+  if (nutrition === 'excellent') nutritionScore = 100;
+  else if (nutrition === 'good') nutritionScore = 85;
+  else if (nutrition === 'fair') nutritionScore = 60;
+  else if (nutrition === 'poor') nutritionScore = 40;
+  
+  // Activity score (based on steps and sedentary time)
+  let activityScore = 70;
+  if (steps > 0) {
+    if (steps >= 10000) activityScore = 100;
+    else if (steps >= 8000) activityScore = 85;
+    else if (steps >= 6000) activityScore = 70;
+    else if (steps >= 4000) activityScore = 55;
+    else activityScore = 40;
+  }
+  if (sedentary >= 10) activityScore = Math.max(30, activityScore - 20);
+  else if (sedentary >= 8) activityScore = Math.max(40, activityScore - 15);
+  
+  // Recovery score (combination of sleep quality and stress)
+  const recoveryScore = Math.round((sleepScore * 0.6 + stressScore * 0.4));
+  
+  const details: ScoreDetail[] = [
+    { id: 'sleep', label: 'Sleep quality', value: sleepQ || '-', score: Math.round(sleepScore) },
+    { id: 'stress', label: 'Stress management', value: stress || '-', score: Math.round(stressScore) },
+    { id: 'hydration', label: 'Hydration', value: hydration || '-', score: Math.round(hydrationScore) },
+    { id: 'nutrition', label: 'Nutrition', value: nutrition || '-', score: Math.round(nutritionScore) },
+    { id: 'activity', label: 'Daily activity', value: steps > 0 ? `${Math.round(steps)} steps` : '-', score: Math.round(activityScore) },
+    { id: 'recovery', label: 'Recovery capacity', value: '-', score: recoveryScore },
+  ];
+  
+  const overallScore = Math.round((sleepScore * 0.25 + stressScore * 0.2 + hydrationScore * 0.15 + nutritionScore * 0.2 + activityScore * 0.2));
+  
+  const strengths = [];
+  const weaknesses = [];
+  if (sleepScore >= 75) strengths.push('Good sleep habits');
+  else weaknesses.push('Sleep quality needs improvement');
+  if (stressScore >= 75) strengths.push('Well-managed stress');
+  else weaknesses.push('Stress management needed');
+  if (hydrationScore >= 75) strengths.push('Good hydration');
+  else weaknesses.push('Hydration needs attention');
+  if (nutritionScore >= 75) strengths.push('Good nutrition habits');
+  else weaknesses.push('Nutrition needs improvement');
+  if (activityScore >= 75) strengths.push('Active lifestyle');
+  else weaknesses.push('Daily activity needs increase');
+  
+  return { id: 'lifestyle', title: 'Lifestyle', score: overallScore, details, strengths, weaknesses };
 }
 
 export function computeScores(form: FormData): ScoreSummary {
@@ -321,8 +393,8 @@ export function computeScores(form: FormData): ScoreSummary {
     scoreBodyComp(form),
     scoreCardio(form),
     scoreStrength(form),
-    scoreMobility(form),
-    scorePosture(form),
+    scoreMovementQuality(form),
+    scoreLifestyle(form),
   ];
   const overall =
     Math.round(
@@ -344,7 +416,7 @@ export function buildRoadmap(scores: ScoreSummary): RoadmapPhase[] {
   const ordered = [...scores.categories].sort((a, b) => a.score - b.score);
   const phases: RoadmapPhase[] = [];
   ordered.forEach((cat, idx) => {
-    const weeks = cat.id === 'posture' || cat.id === 'mobility' ? 4 : 3;
+    const weeks = cat.id === 'movementQuality' ? 4 : 3;
     const focus = cat.weaknesses.length ? cat.weaknesses : [cat.title];
     // Heuristic projected improvement: more for earlier, more for lower scores
     const basePotential = Math.min(100 - cat.score, 30);
