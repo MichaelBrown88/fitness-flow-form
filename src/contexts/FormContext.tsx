@@ -21,6 +21,7 @@ export interface FormData {
   goalLevelMuscle: string;
   goalLevelStrength: string;
   goalLevelFitness: string;
+  goalLevelHealth: string;
   activityLevel: string;
   sleepDuration: string;
   sleepQuality: string;
@@ -188,6 +189,7 @@ const initialFormData: FormData = {
   goalLevelMuscle: '',
   goalLevelStrength: '',
   goalLevelFitness: '',
+  goalLevelHealth: '',
   activityLevel: '',
   sleepDuration: '',
   sleepQuality: '',

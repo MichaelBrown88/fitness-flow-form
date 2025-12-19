@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Sparkles, ChevronDown } from 'lucide-react';
+import { Sparkles, ChevronDown, Menu } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +19,7 @@ export default function AppShell({
   onDemoFill,
   showDemoFill,
   variant = 'default',
+  onMenuToggle,
 }: {
   title: string;
   subtitle?: string;
@@ -27,6 +28,7 @@ export default function AppShell({
   onDemoFill?: () => void;
   showDemoFill?: boolean;
   variant?: 'default' | 'full-width';
+  onMenuToggle?: () => void;
 }) {
   const { user, loading, signOut } = useAuth();
   const initials =
@@ -38,7 +40,17 @@ export default function AppShell({
       <header className="border-b border-slate-200 bg-white sticky top-0 z-50 w-full">
         <div className="flex items-center justify-between h-16 px-6 lg:px-10">
           {/* Left side: Logo */}
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4">
+            {variant === 'full-width' && onMenuToggle && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onMenuToggle}
+                className="lg:hidden h-9 w-9 text-slate-500"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+            )}
             <Link to="/" className="flex items-center gap-3 shrink-0">
               <img
                 src="/Brand_Package_Primary_Logo_Black.svg"

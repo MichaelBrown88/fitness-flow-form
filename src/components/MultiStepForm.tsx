@@ -94,6 +94,8 @@ const SingleFieldFlow = ({
       if (showWhen.includes !== undefined) {
         if (Array.isArray(dependentValue)) {
           ok = ok && (dependentValue as string[]).includes(showWhen.includes);
+        } else if (typeof dependentValue === 'string') {
+          ok = ok && dependentValue === showWhen.includes;
         } else {
           ok = false;
         }
@@ -250,6 +252,8 @@ const FieldControl = ({ field }: { field: PhaseField }) => {
     if (showWhen.includes !== undefined) {
       if (Array.isArray(dependentValue)) {
         ok = ok && (dependentValue as string[]).includes(showWhen.includes);
+      } else if (typeof dependentValue === 'string') {
+        ok = ok && dependentValue === showWhen.includes;
       } else {
         ok = false;
       }
@@ -266,27 +270,19 @@ const FieldControl = ({ field }: { field: PhaseField }) => {
   };
 
   const renderLabel = () => (
-    <div className="flex items-start justify-between gap-4 mb-2">
-      <div className="flex flex-col flex-1">
+    <div className="flex flex-col gap-2 mb-4">
+      <div className="flex items-center justify-between gap-4">
         <label className={labelTextClasses}>{field.label}</label>
-        {field.description && <p className={supportTextClasses}>{field.description}</p>}
       </div>
+      
       {field.tooltip && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className="mt-0.5 h-8 w-8 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
-              aria-label={`More information about ${field.label}`}
-            >
-              <Info className="h-4 w-4" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent className="max-w-xs p-4 rounded-xl shadow-xl border-slate-200">
-            <p className="text-sm leading-relaxed text-slate-600">{field.tooltip}</p>
-          </TooltipContent>
-        </Tooltip>
+        <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-xl flex gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+          <Info className="h-5 w-5 text-indigo-500 shrink-0 mt-0.5" />
+          <p className="text-sm leading-relaxed text-indigo-900 font-medium">{field.tooltip}</p>
+        </div>
       )}
+      
+      {field.description && <p className={supportTextClasses}>{field.description}</p>}
     </div>
   );
 
@@ -454,7 +450,15 @@ const FieldControl = ({ field }: { field: PhaseField }) => {
   );
 };
 
-const PhaseFormContent = ({ demoTrigger }: { demoTrigger?: number }) => {
+const PhaseFormContent = ({ 
+  demoTrigger, 
+  sidebarOpen, 
+  setSidebarOpen 
+}: { 
+  demoTrigger?: number;
+  sidebarOpen: boolean;
+  setSidebarOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
+}) => {
   const { formData, updateFormData } = useFormContext();
   const { settings } = useSettings();
   const { user } = useAuth();
@@ -489,6 +493,9 @@ const PhaseFormContent = ({ demoTrigger }: { demoTrigger?: number }) => {
       sections: []
     };
   }, [activePhaseIdx]);
+
+  // Determine if we are in the results phase
+  const isResultsPhase = activePhase?.id === 'P7';
 
   // Precompute reports data when needed
   const scores = useMemo(() => {
@@ -647,12 +654,10 @@ const PhaseFormContent = ({ demoTrigger }: { demoTrigger?: number }) => {
   const handleShare = useCallback(async () => {
     try {
       setShareLoading(true);
-      let shareUrl = window.location.href;
+      let shareUrl = window.location.origin;
       if (user && savingId) {
-        try {
-          const artifacts = await ensureShareArtifacts(reportView);
-          shareUrl = artifacts.shareUrl;
-        } catch (e) {}
+        const artifacts = await ensureShareArtifacts(reportView);
+        shareUrl = `${window.location.origin}/share/${user.uid}/${savingId}`;
       }
       if (navigator.share) {
         await navigator.share({ title: 'Assessment Report', url: shareUrl });
@@ -700,21 +705,30 @@ const PhaseFormContent = ({ demoTrigger }: { demoTrigger?: number }) => {
   const handleSaveToDashboard = useCallback(async () => {
     if (!user || saving || savingId) return;
     try {
+      console.log('Saving assessment to dashboard...', { uid: user.uid, email: user.email });
       setSaving(true);
       const id = await saveCoachAssessment(user.uid, user.email, formData, scores.overall);
+      console.log('Assessment saved successfully, ID:', id);
       setSavingId(id);
+      toast({ title: 'Assessment Saved', description: 'Available on your dashboard.' });
     } catch (e) {
-      console.error('Save failed', e);
+      console.error('Save failed with error:', e);
+      // Fallback: if it's a network error or permissions, show more detail
+      toast({ 
+        title: 'Save Failed', 
+        description: 'Unable to sync with database. Please ensure you are logged in correctly.', 
+        variant: 'destructive' 
+      });
     } finally {
       setSaving(false);
     }
-  }, [user, saving, savingId, formData, scores.overall]);
+  }, [user, saving, savingId, formData, scores.overall, toast]);
 
   useEffect(() => {
-    if (activePhase?.id === 'P7' && user && !savingId && !saving && !isDemoAssessment) {
+    if (isResultsPhase && user && !savingId && !saving && !isDemoAssessment) {
       void handleSaveToDashboard();
     }
-  }, [activePhase?.id, user, savingId, saving, isDemoAssessment, handleSaveToDashboard]);
+  }, [isResultsPhase, user, savingId, saving, isDemoAssessment, handleSaveToDashboard]);
 
   useEffect(() => {
     shareCacheRef.current = { client: null, coach: null };
@@ -724,21 +738,18 @@ const PhaseFormContent = ({ demoTrigger }: { demoTrigger?: number }) => {
   const handleCopyLink = useCallback(async () => {
     try {
       setShareLoading(true);
-      let shareUrl = window.location.href;
+      let shareUrl = window.location.origin;
       if (user && savingId) {
-        try {
-          const artifacts = await ensureShareArtifacts(reportView);
-          shareUrl = artifacts.shareUrl;
-        } catch (e) {}
+        shareUrl = `${window.location.origin}/share/${user.uid}/${savingId}`;
       }
       await navigator.clipboard.writeText(shareUrl);
-      toast({ description: 'Link copied' });
+      toast({ description: 'Public link copied' });
     } catch (error) {
       toast({ title: 'Copy failed', variant: 'destructive' });
     } finally {
       setShareLoading(false);
     }
-  }, [ensureShareArtifacts, reportView, toast, user, savingId]);
+  }, [user, savingId, toast]);
 
   const handleDownloadPdf = useCallback(async () => {
     const safeName = (formData.fullName || 'report').toLowerCase().replace(/[^a-z0-9]+/g, '-');
@@ -791,10 +802,11 @@ const PhaseFormContent = ({ demoTrigger }: { demoTrigger?: number }) => {
     });
   }, [formData]);
 
-  const isFieldVisible = useCallback((field: PhaseField) => {
+  const isFieldVisible = useCallback((field: PhaseField, customData?: FormData) => {
+    const data = customData || formData;
     if (!('conditional' in field) || !field.conditional || !field.conditional.showWhen) return true;
     const { showWhen } = field.conditional;
-    const dependentValue = formData[showWhen.field as keyof FormData];
+    const dependentValue = data[showWhen.field as keyof FormData];
     let ok = true;
     if (showWhen.exists !== undefined) {
       ok = ok && (dependentValue !== undefined && dependentValue !== null && String(dependentValue).trim() !== '');
@@ -802,8 +814,14 @@ const PhaseFormContent = ({ demoTrigger }: { demoTrigger?: number }) => {
     if (showWhen.value !== undefined) ok = ok && dependentValue === showWhen.value;
     if (showWhen.notValue !== undefined) ok = ok && dependentValue !== showWhen.notValue;
     if (showWhen.includes !== undefined) {
-      if (Array.isArray(dependentValue)) ok = ok && (dependentValue as string[]).includes(showWhen.includes);
-      else ok = false;
+      if (Array.isArray(dependentValue)) {
+        ok = ok && (dependentValue as string[]).includes(showWhen.includes);
+      } else if (typeof dependentValue === 'string') {
+        // Robust fallback: if it's a string, check if it matches exactly
+        ok = ok && dependentValue === showWhen.includes;
+      } else {
+        ok = false;
+      }
     }
     return ok;
   }, [formData]);
@@ -811,6 +829,7 @@ const PhaseFormContent = ({ demoTrigger }: { demoTrigger?: number }) => {
   const isSectionCompleted = useCallback((section: PhaseSection) => {
     return (section.fields as PhaseField[]).every(field => {
       if (!isFieldVisible(field)) return true;
+      if (!field.required) return true; // Only block if required
       const value = formData[field.id];
       if (Array.isArray(value)) return value.length > 0;
       return value !== undefined && value !== null && value !== '';
@@ -825,6 +844,7 @@ const PhaseFormContent = ({ demoTrigger }: { demoTrigger?: number }) => {
     return (sections as PhaseSection[]).every(section =>
       (section.fields as PhaseField[]).every(field => {
         if (!isFieldVisible(field)) return true;
+        if (!field.required) return true; // Only block if required
         const value = formData[field.id];
         if (Array.isArray(value)) return value.length > 0;
         return value !== undefined && value !== null && value !== '';
@@ -833,18 +853,29 @@ const PhaseFormContent = ({ demoTrigger }: { demoTrigger?: number }) => {
   }, [formData, isFieldVisible]);
 
   const maxUnlockedPhaseIdx = useMemo(() => {
-    let idx = 0;
-    while (idx < totalPhases - 1 && isPhaseCompleted(idx)) idx += 1;
-    return idx;
-  }, [totalPhases, isPhaseCompleted]);
+    // ALWAYS allow navigation to any phase as per user request for iPad/Coach flexibility
+    return totalPhases - 1;
+  }, [totalPhases]);
 
   const allAssessmentsCompleted = useMemo(() => {
     const requiredFields = ['parqQuestionnaire', 'postureHeadOverall', 'pushupsOneMinuteReps', 'plankDurationSeconds', 'cardioTestSelected', 'clientGoals'];
-    return requiredFields.every((field) => {
+    const basicsCompleted = requiredFields.every((field) => {
       const val = formData[field as keyof FormData] as unknown;
       if (Array.isArray(val)) return val.length > 0;
       return val !== '' && val !== undefined && val !== null;
     });
+
+    if (!basicsCompleted) return false;
+
+    // CRITICAL: Ensure ambition levels are also filled before enabling results
+    const goals = Array.isArray(formData.clientGoals) ? formData.clientGoals : [];
+    if (goals.includes('weight-loss') && !formData.goalLevelWeightLoss) return false;
+    if (goals.includes('build-muscle') && !formData.goalLevelMuscle) return false;
+    if (goals.includes('build-strength') && !formData.goalLevelStrength) return false;
+    if (goals.includes('improve-fitness') && !formData.goalLevelFitness) return false;
+    if (goals.includes('general-health') && !formData.goalLevelHealth) return false;
+
+    return true;
   }, [formData]);
 
   const canAutoAdvance = useMemo(() => !isReviewMode && !allAssessmentsCompleted, [isReviewMode, allAssessmentsCompleted]);
@@ -919,19 +950,13 @@ const PhaseFormContent = ({ demoTrigger }: { demoTrigger?: number }) => {
 
   useEffect(() => {
     if (!canAutoAdvance) return;
-    if (allAssessmentsCompleted && activePhaseIdx < totalPhases - 1) {
-      const t = setTimeout(() => {
-        setIsReviewMode(false);
-        setReportView('client');
-        setActivePhaseIdx(totalPhases - 1);
-        try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (_e) {}
-      }, 1000);
-      return () => clearTimeout(t);
-    }
+    // Removed auto-advancing to results page to prevent skipping fields (e.g. goal levels)
+    // The coach should manually click "Generate Full Report"
   }, [allAssessmentsCompleted, activePhaseIdx, totalPhases, canAutoAdvance]);
 
   const handleViewResults = () => {
     if (allAssessmentsCompleted) {
+      void handleSaveToDashboard();
       setIsReviewMode(false);
       setReportView('client');
       setActivePhaseIdx(totalPhases - 1);
@@ -948,35 +973,102 @@ const PhaseFormContent = ({ demoTrigger }: { demoTrigger?: number }) => {
     setIsDemoAssessment(true);
     const payload = await generateDemoData();
     const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+    
+    // Reset to beginning
+    setActivePhaseIdx(0);
+    setActiveFieldIdx(0);
+    await delay(1000);
+
     for (let p = 0; p < totalPhases; p++) {
       const ph = phaseDefinitions[p];
       if (!ph || ph.id === 'P7') break;
+      
       setActivePhaseIdx(p);
-      await delay(1500);
-      const secs = ph.sections ?? [];
-      for (const sec of secs) {
+      await delay(1500); // Wait for phase transition animation
+      
+      const sections = ph.sections ?? [];
+      for (const sec of sections) {
         setExpandedSections({ [sec.id]: true });
-        await delay(1000);
-        const sectionVisibleFields = (sec.fields as PhaseField[]).filter(f => isFieldVisible(f));
-        for (let i = 0; i < sectionVisibleFields.length; i++) {
-          const f = sectionVisibleFields[i];
-          const key = f.id;
-          setActiveFieldIdx(i);
-          let raw: any = payload[key] ?? formData[key];
-          if (!raw) {
-            if (f.type === 'multiselect') raw = [];
-            else if (f.type === 'select') raw = f.options?.[0]?.value || '';
-            else raw = f.type === 'number' ? '0' : 'OK';
+        await delay(1200); // Let coach see the section expand
+        
+        // Loop through all fields in section, but re-calculate visibility each step
+        // to ensure we don't skip fields that become visible after an input
+        let fieldIdx = 0;
+        let finishedSection = false;
+        
+        // Track unique steps to correctly calculate count
+        let stepsCalculated: PhaseField[][] = [];
+        
+        while (!finishedSection) {
+          // Re-calculate visible fields based on what has been entered so far
+          // For demo, we simulate current progress data
+          const currentProgressData = { ...formData };
+          
+          const sectionFields = sec.fields as PhaseField[];
+          const visible = sectionFields.filter(f => isFieldVisible(f, payload as FormData));
+          
+          // Group by pairId
+          const steps: PhaseField[][] = [];
+          const processedPairs = new Set<string>();
+          visible.forEach(field => {
+            if (field.pairId) {
+              if (!processedPairs.has(field.pairId)) {
+                const pair = visible.filter(f => f.pairId === field.pairId);
+                steps.push(pair);
+                processedPairs.add(field.pairId);
+              }
+            } else {
+              steps.push([field]);
+            }
+          });
+
+          if (fieldIdx >= steps.length) {
+            finishedSection = true;
+            break;
           }
-          updateFormData({ [key]: raw } as Partial<FormData>);
-          await delay(600);
+
+          const currentStep = steps[fieldIdx];
+          setActiveFieldIdx(fieldIdx);
+          await delay(1000); // Pause so coach can see the transition
+
+          // Update each field in the current step
+          for (const f of currentStep) {
+            const key = f.id;
+            
+            // For PAR-Q, we want to simulate the completion state
+            if (f.type === 'parq') {
+              updateFormData({ [key]: 'completed' } as Partial<FormData>);
+              await delay(1500);
+              continue;
+            }
+
+            let raw: any = payload[key] ?? formData[key];
+            if (!raw || (Array.isArray(raw) && raw.length === 0)) {
+              if (f.type === 'multiselect') {
+                raw = f.options?.slice(0, 1).map(o => o.value) || [];
+              }
+              else if (f.type === 'select') raw = f.options?.[0]?.value || '';
+              else raw = f.type === 'number' ? '0' : 'OK';
+            }
+            updateFormData({ [key]: raw } as Partial<FormData>);
+          }
+          
+          await delay(1200); // Pause to see the value entered
+          fieldIdx++;
         }
+        
         setRecentlyCompletedSections(prev => new Set(prev).add(sec.id));
         await delay(1000);
       }
     }
-    setActivePhaseIdx(totalPhases - 1);
-    setReportView('client');
+    
+    // Final check to ensure all data from payload is in formData
+    updateFormData(payload as Partial<FormData>);
+    await delay(2000);
+    
+    // Stay on Goals page, don't auto-jump to results
+    setIsReviewMode(true);
+    toast({ title: "Demo data populated", description: "Review the goals and click 'Generate Full Report'." });
   };
 
   useEffect(() => {
@@ -985,13 +1077,14 @@ const PhaseFormContent = ({ demoTrigger }: { demoTrigger?: number }) => {
 
   const toggleSection = (sectionId: string) => {
     setIsReviewMode(true);
-    setExpandedSections(prev => {
-      const next: Record<string, boolean> = {};
-      const willOpen = !prev[sectionId];
-      Object.keys(prev).forEach(id => { next[id] = false; });
-      next[sectionId] = willOpen;
-      return next;
-    });
+    // Find which phase this section belongs to
+    const phaseIdx = phaseDefinitions.findIndex(p => p.sections?.some(s => s.id === sectionId));
+    if (phaseIdx !== -1) {
+      setActivePhaseIdx(phaseIdx);
+    }
+    setExpandedSections({ [sectionId]: true });
+    setActiveFieldIdx(0);
+    setSidebarOpen(false); // Close sidebar on mobile after selection
   };
 
   const renderAllSections = () => {
@@ -1011,7 +1104,7 @@ const PhaseFormContent = ({ demoTrigger }: { demoTrigger?: number }) => {
           const currentIndex = allSections.findIndex(s => s.id === activeSection.id);
           if (currentIndex < allSections.length - 1) {
             setExpandedSections({ [allSections[currentIndex + 1].id]: true });
-          } else if (activePhaseIdx < totalPhases - 1) {
+          } else if (activePhaseIdx < totalPhases - 2) { // Guard: Don't auto-advance to Results (P7)
             setActivePhaseIdx(prev => prev + 1);
           }
         }}
@@ -1022,31 +1115,70 @@ const PhaseFormContent = ({ demoTrigger }: { demoTrigger?: number }) => {
   if (totalPhases === 0) return <div className="text-center py-20">No phases configured.</div>;
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-[calc(100vh-73px)]">
-      <aside className="w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-slate-200 bg-white p-6 shrink-0 sticky top-[73px] z-30 overflow-y-auto max-h-[calc(100vh-73px)]">
+    <div className="flex flex-col lg:flex-row min-h-[calc(100vh-73px)] relative">
+      <aside className={`w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-slate-200 bg-white p-6 shrink-0 lg:sticky top-[73px] z-30 overflow-y-auto max-h-[calc(100vh-73px)] ${sidebarOpen ? 'block fixed inset-0 z-50 pt-20' : 'hidden lg:block'}`}>
         <div className="space-y-8">
+          <div className="flex items-center justify-between lg:hidden mb-4">
+            <h3 className="text-lg font-bold text-slate-900">Navigation</h3>
+            <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)}>
+              <ChevronDown className="h-5 w-5 rotate-90" />
+            </Button>
+          </div>
           <div className="space-y-2">
             <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400">Assessment Phases</h3>
             <Progress value={progressValue} className="h-1" />
             <p className="text-[10px] font-medium text-slate-500 text-right">{Math.round(progressValue)}% Complete</p>
           </div>
-          <nav className="space-y-1.5">
+          <nav className="space-y-4">
             {phaseDefinitions.map((phase, idx) => {
               const isActive = idx === activePhaseIdx;
               const isCompleted = isPhaseCompleted(idx) && idx <= maxUnlockedPhaseIdx;
               const isDisabled = idx > maxUnlockedPhaseIdx;
+              const sections = phase.sections || [];
+
               return (
-                <button
-                  key={phase.id}
-                  onClick={() => { if (!isDisabled) { setIsReviewMode(true); setActivePhaseIdx(idx); } }}
-                  disabled={isDisabled}
-                  className={`group flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all ${isActive ? 'bg-slate-900 text-white shadow-md' : isCompleted ? 'text-indigo-600 hover:bg-indigo-50' : 'text-slate-500 hover:bg-slate-50'}`}
-                >
-                  <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold border ${isActive ? 'bg-white/20 border-white/20' : isCompleted ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-400'}`}>
-                    {isCompleted ? <Check className="h-3 w-3" /> : idx + 1}
-                  </span>
-                  <span className="truncate flex-1 text-left">{phase.title}</span>
-                </button>
+                <div key={phase.id} className="space-y-1">
+                  <button
+                    onClick={() => { 
+                      if (!isDisabled) { 
+                        setIsReviewMode(true); 
+                        setActivePhaseIdx(idx); 
+                        if (sections.length > 0) {
+                          setExpandedSections({ [sections[0].id]: true });
+                          setActiveFieldIdx(0);
+                        }
+                        if (sections.length === 0) setSidebarOpen(false);
+                      } 
+                    }}
+                    disabled={isDisabled}
+                    className={`group flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all ${isActive ? 'bg-slate-900 text-white shadow-md' : isCompleted ? 'text-indigo-600 hover:bg-indigo-50' : 'text-slate-500 hover:bg-slate-50'}`}
+                  >
+                    <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold border ${isActive ? 'bg-white/20 border-white/20' : isCompleted ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-400'}`}>
+                      {isCompleted ? <Check className="h-3 w-3" /> : idx + 1}
+                    </span>
+                    <span className="truncate flex-1 text-left uppercase tracking-wider">{phase.title}</span>
+                  </button>
+
+                  {/* Section List under Active/Completed/Selected Phase */}
+                  {(isActive || isCompleted || expandedSections[sections[0]?.id]) && sections.length > 0 && (
+                    <div className="ml-9 space-y-1 pt-1 border-l border-slate-100 pl-4">
+                      {sections.map(sec => {
+                        const isExpanded = expandedSections[sec.id];
+                        const isSecComp = isSectionCompleted(sec as PhaseSection);
+                        return (
+                          <button
+                            key={sec.id}
+                            onClick={() => toggleSection(sec.id)}
+                            className={`flex w-full items-center justify-between py-2 text-xs font-medium transition-colors ${isExpanded ? 'text-indigo-600' : isSecComp ? 'text-slate-700' : 'text-slate-400'} hover:text-indigo-500`}
+                          >
+                            <span className="truncate">{sec.title}</span>
+                            {isSecComp && <Check className="h-3 w-3 text-emerald-500" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </nav>
@@ -1121,11 +1253,18 @@ const PhaseFormContent = ({ demoTrigger }: { demoTrigger?: number }) => {
 
 const MultiStepForm = () => {
   const [demoTrigger, setDemoTrigger] = useState(0);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const handleDemoFill = () => setDemoTrigger(prev => prev + 1);
   return (
     <FormProvider>
-      <AppShell title="Fitness Assessment" showDemoFill={true} onDemoFill={handleDemoFill} variant="full-width">
-        <PhaseFormContent demoTrigger={demoTrigger} />
+      <AppShell 
+        title="Fitness Assessment" 
+        showDemoFill={true} 
+        onDemoFill={handleDemoFill} 
+        variant="full-width"
+        onMenuToggle={() => setSidebarOpen(prev => !prev)}
+      >
+        <PhaseFormContent demoTrigger={demoTrigger} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
       </AppShell>
     </FormProvider>
   );
