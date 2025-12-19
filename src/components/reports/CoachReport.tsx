@@ -186,8 +186,14 @@ export default function CoachReport({
               Areas to address
             </h4>
             <ul className="space-y-3">
+              {plan.keyIssues.map((issue, i) => (
+                <li key={`issue-${i}`} className="text-rose-900 text-sm font-bold flex gap-2">
+                  <span className="text-rose-500">!</span>
+                  {issue}
+                </li>
+              ))}
               {plan.internalNotes.needsAttention.map((note, i) => (
-                <li key={i} className="text-rose-900 text-sm flex gap-2">
+                <li key={`note-${i}`} className="text-rose-900 text-sm flex gap-2 border-t border-rose-100/50 pt-2 first:border-t-0 first:pt-0">
                   <span className="font-bold">•</span>
                   {note}
                 </li>
@@ -224,7 +230,7 @@ export default function CoachReport({
             </div>
           ))}
           
-          {plan.movementBlocks.slice(0, 3).map((b, idx) => (
+          {plan.movementBlocks.map((b, idx) => (
             <div key={idx} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
               <div className="flex justify-between items-start mb-4">
                 <h4 className="font-bold text-slate-900">{b.title}</h4>
@@ -250,28 +256,116 @@ export default function CoachReport({
         </div>
       </section>
 
-      {bodyComp && (
-        <section className="space-y-4">
-          <h3 className="text-xl font-bold text-slate-900">Body Composition Context</h3>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h4 className="font-bold mb-3 text-sm uppercase tracking-widest text-slate-400">Health Priority</h4>
-              {bodyComp.healthPriority.length ? (
-                <ul className="space-y-2">
-                  {bodyComp.healthPriority.map((p, i) => (
-                    <li key={i} className="text-sm text-slate-700 flex gap-2">
-                      <span className="text-indigo-500 font-bold">•</span> {p}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-slate-500 italic">No urgent priorities identified.</p>
-              )}
+      {/* SEGMENTAL GUIDANCE */}
+      {plan.segmentalGuidance && plan.segmentalGuidance.length > 0 && (
+        <section className="space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="bg-emerald-600 p-2 rounded-lg">
+              <Activity className="h-5 w-5 text-white" />
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h4 className="font-bold mb-3 text-sm uppercase tracking-widest text-slate-400">Timeframe Projection</h4>
-              <p className="text-2xl font-black text-indigo-600">{bodyComp.timeframeWeeks}</p>
-              <p className="text-xs text-slate-400 mt-1 italic">Based on physiological adaptation rates.</p>
+            <h3 className="text-xl font-bold text-slate-900">Lean Mass Distribution</h3>
+          </div>
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <ul className="space-y-3">
+              {plan.segmentalGuidance.map((item, i) => (
+                <li key={i} className="flex gap-3 text-slate-700 text-sm">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
+
+      {bodyComp && (
+        <section className="space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="bg-amber-600 p-2 rounded-lg">
+              <Target className="h-5 w-5 text-white" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-900">Body Composition Analysis</h3>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Health Priority & Timeframe */}
+            <div className="space-y-6">
+              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <h4 className="font-bold mb-3 text-sm uppercase tracking-widest text-slate-400">Health Priority</h4>
+                {bodyComp.healthPriority.length ? (
+                  <ul className="space-y-2">
+                    {bodyComp.healthPriority.map((p, i) => (
+                      <li key={i} className="text-sm text-slate-700 flex gap-2">
+                        <span className="text-indigo-500 font-bold">•</span> {p}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-slate-500 italic">No urgent priorities identified.</p>
+                )}
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <h4 className="font-bold mb-3 text-sm uppercase tracking-widest text-slate-400">Training Focus</h4>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-tight">Primary Block</p>
+                    <p className="text-sm text-slate-900 font-semibold">{bodyComp.trainingFocus.primary}</p>
+                  </div>
+                  {bodyComp.trainingFocus.secondary && (
+                    <div>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-tight">Secondary Focus</p>
+                      <ul className="text-sm text-slate-700 list-disc list-inside">
+                        {bodyComp.trainingFocus.secondary.map((s, i) => <li key={i}>{s}</li>)}
+                      </ul>
+                    </div>
+                  )}
+                  {bodyComp.trainingFocus.unilateralVolume && (
+                    <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-100">
+                      <p className="text-xs font-bold text-indigo-600 uppercase tracking-tight">Unilateral Strategy</p>
+                      <p className="text-sm text-indigo-900">{bodyComp.trainingFocus.unilateralVolume}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Nutrition & Lifestyle */}
+            <div className="space-y-6">
+              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <h4 className="font-bold mb-3 text-sm uppercase tracking-widest text-slate-400">Nutritional Strategy</h4>
+                <div className="space-y-4">
+                  {bodyComp.nutrition.calorieRange && (
+                    <div>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-tight">Energy Intake</p>
+                      <p className="text-sm text-slate-900">{bodyComp.nutrition.calorieRange}</p>
+                    </div>
+                  )}
+                  {bodyComp.nutrition.proteinTarget && (
+                    <div>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-tight">Protein Goal</p>
+                      <p className="text-sm text-slate-900">{bodyComp.nutrition.proteinTarget}</p>
+                    </div>
+                  )}
+                  {bodyComp.nutrition.hydration && (
+                    <div>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-tight">Hydration</p>
+                      <p className="text-sm text-slate-900">{bodyComp.nutrition.hydration}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <h4 className="font-bold mb-3 text-sm uppercase tracking-widest text-slate-400">Timeframe Projection</h4>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-3xl font-black text-indigo-600">{bodyComp.timeframeWeeks}</p>
+                  <p className="text-xs text-slate-400 italic">Target Range</p>
+                </div>
+                <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+                  Estimated time to reach recommended body composition markers based on standard physiological adaptation rates.
+                </p>
+              </div>
             </div>
           </div>
         </section>

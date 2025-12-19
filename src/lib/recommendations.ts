@@ -98,11 +98,38 @@ export function generateCoachPlan(form: FormData, scores: ScoreSummary): CoachPl
     needsAttention: [] as string[],
   };
 
-  const programmingStrategies: CoachPlan['programmingStrategies'] = [];
-
   const goals = Array.isArray((form as any).clientGoals) ? (form as any).clientGoals as string[] : [];
   const primaryGoalRaw = goals[0] || 'general-health';
   const primaryGoal = primaryGoalRaw.replace('-', ' ');
+
+  const programmingStrategies: CoachPlan['programmingStrategies'] = [];
+
+  // Goal-based strategies
+  if (primaryGoalRaw === 'weight-loss') {
+    programmingStrategies.push({
+      title: 'Metabolic Density',
+      strategy: 'Use supersets and short rest periods to keep heart rate elevated and increase caloric burn during the session.',
+      exercises: ['Goblet Squats', 'Kettlebell Swings', 'Push-ups', 'TRX Rows']
+    });
+  } else if (primaryGoalRaw === 'build-muscle' || primaryGoalRaw === 'build-strength') {
+    programmingStrategies.push({
+      title: 'Structural Hypertrophy',
+      strategy: 'Prioritize compound lifts with moderate-to-high volume (3-4 sets of 8-12 reps) to drive muscular adaptations.',
+      exercises: ['Back Squats', 'Bench Press', 'Deadlifts', 'Overhead Press']
+    });
+  } else if (primaryGoalRaw === 'improve-fitness') {
+    programmingStrategies.push({
+      title: 'Aerobic Power',
+      strategy: 'Focus on improving VO2 max and recovery through a combination of Zone 2 steady-state and high-intensity intervals.',
+      exercises: ['Interval Sprints', 'Tempo Runs', 'Rowing Intervals', 'Assault Bike']
+    });
+  } else if (primaryGoalRaw === 'general-health') {
+    programmingStrategies.push({
+      title: 'Functional Longevity',
+      strategy: 'Focus on full-body strength, balanced movement, and cardiovascular health to improve daily quality of life.',
+      exercises: ['Carry Variations', 'Bodyweight Squats', 'Bird-Dogs', 'Walking']
+    });
+  }
 
   // 1. Gather Findings and Internal Notes
   const gender = (form.gender || '').toLowerCase();
@@ -113,6 +140,19 @@ export function generateCoachPlan(form: FormData, scores: ScoreSummary): CoachPl
   const strengthScore = scores.categories.find(c => c.id === 'strength')?.score || 0;
   const movementScore = scores.categories.find(c => c.id === 'movementQuality')?.score || 0;
   const lifestyleScore = scores.categories.find(c => c.id === 'lifestyle')?.score || 0;
+
+  const w = parseFloat(form.inbodyWeightKg || '0');
+  const h = (parseFloat(form.heightCm || '0') || 0) / 100;
+  const healthyMax = h > 0 ? 25 * h * h : 0;
+
+  // Corrective strategies
+  if (movementScore < 65) {
+    programmingStrategies.push({
+      title: 'Movement Integration',
+      strategy: 'Incorporate corrective drills as "fillers" between main sets to address restrictions without extending session length.',
+      exercises: ['90/90 Hip Switches', 'Thoracic Extensions', 'Ankle Mobilizations']
+    });
+  }
 
   // Lead with Goal in the script
   clientScript.actionPlan.push(`To directly support your goal of ${primaryGoal}, we're going to build your program around three main pillars.`);
@@ -150,10 +190,25 @@ export function generateCoachPlan(form: FormData, scores: ScoreSummary): CoachPl
   clientScript.threeMonthOutlook.push(`In 90 days, the main thing you'll notice is a significant shift in your ${primaryGoal}.`);
   clientScript.threeMonthOutlook.push("Beyond that, you'll feel 'tighter' in your movement, have more 'engine' in your workouts, and feel more confident under load.");
   
+  // Client Commitment
+  clientScript.clientCommitment.push("Consistency: Hit our agreed session frequency every week.");
+  if (lifestyleScore < 70) {
+    clientScript.clientCommitment.push("Recovery: Prioritize the sleep and hydration targets we discussed.");
+  }
+  clientScript.clientCommitment.push("Communication: Provide feedback on recovery and intensity after every session.");
+  clientScript.clientCommitment.push("Focus: Trust the process during our foundational movement phase.");
+
   // Internal Notes - Doing Well
   if (bodyCompScore > 75) internalNotes.doingWell.push("Excellent metabolic baseline.");
   if (movementScore > 75) internalNotes.doingWell.push("Very high movement integrity.");
   if (lifestyleScore > 80) internalNotes.doingWell.push("Elite-level recovery habits.");
+  if (strengthScore > 70) internalNotes.doingWell.push("Strong foundational strength base.");
+  if (cardioScore > 70) internalNotes.doingWell.push("Good cardiovascular recovery and capacity.");
+
+  // Internal Notes - Needs Attention
+  if (lifestyleScore < 60) internalNotes.needsAttention.push("Lifestyle habits (sleep/stress) are a major recovery bottleneck.");
+  if (strengthScore < 40) internalNotes.needsAttention.push("Critical lack of foundational strength endurance.");
+  if (cardioScore < 40) internalNotes.needsAttention.push("Low cardiovascular base - will impact session density and recovery.");
   if ((gender === 'male' && bf > 25) || (gender === 'female' && bf > 32) || (healthyMax > 0 && w > healthyMax + 3) || visceral >= 12) {
     issues.push('Body composition priority (health risk)');
     // Encourage aerobic base + strength base blocks
@@ -208,9 +263,9 @@ export function generateCoachPlan(form: FormData, scores: ScoreSummary): CoachPl
   }
 
   // Mobility issues
-  if ((scores.categories.find(c => c.id === 'mobility')?.score || 0) < 65) {
-    const mob = scores.categories.find(c => c.id === 'mobility');
-    const mobIssues = mob?.weaknesses || [];
+  const movementCategory = scores.categories.find(c => c.id === 'movementQuality');
+  if ((movementCategory?.score || 0) < 65) {
+    const mobIssues = movementCategory?.weaknesses || [];
     if (mobIssues.find(w => w.toLowerCase().includes('hip'))) {
       issues.push('Hip mobility limitations');
       addBlock('Hip mobility', ['Increase hip ER/IR and extension'], EXERCISES.mobilityHip);
