@@ -12,6 +12,25 @@ interface LifestyleRadarChartProps {
   factors: LifestyleFactor[];
 }
 
+const renderCustomAxisTick = ({ payload, x, y, textAnchor, index }: any) => {
+  return (
+    <g>
+      <text
+        x={x}
+        y={y}
+        dy={y < 150 ? -10 : y > 250 ? 15 : 0}
+        dx={textAnchor === 'start' ? 10 : textAnchor === 'end' ? -10 : 0}
+        textAnchor={textAnchor}
+        fill="#0f766e" // teal-700
+        fontSize="12px"
+        fontWeight="600"
+      >
+        {payload.value}
+      </text>
+    </g>
+  );
+};
+
 export default function LifestyleRadarChart({ factors }: LifestyleRadarChartProps) {
   const data = factors.map(f => ({
     factor: f.name,
@@ -49,7 +68,7 @@ export default function LifestyleRadarChart({ factors }: LifestyleRadarChartProp
           <PolarGrid stroke="#e2e8f0" />
           <PolarAngleAxis
             dataKey="factor"
-            tick={{ fill: '#475569', fontSize: 12, fontWeight: 500 }}
+            tick={renderCustomAxisTick}
             tickLine={{ stroke: '#cbd5e1' }}
           />
           <PolarRadiusAxis

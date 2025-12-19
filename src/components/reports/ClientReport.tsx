@@ -5,6 +5,7 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/comp
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import LifestyleRadarChart from './LifestyleRadarChart';
 import CategoryRadarChart from './CategoryRadarChart';
+import OverallRadarChart from './OverallRadarChart';
 
 type BodyCompInterp = { timeframeWeeks: string };
 
@@ -32,6 +33,13 @@ const CATEGORY_COLOR: Record<string, string> = {
   cardio: 'bg-sky-500',
   movementQuality: 'bg-amber-500',
   lifestyle: 'bg-purple-500',
+};
+const CATEGORY_HEX: Record<string, string> = {
+  bodyComp: '#10b981',
+  strength: '#6366f1',
+  cardio: '#0ea5e9',
+  movementQuality: '#f59e0b',
+  lifestyle: '#a855f7',
 };
 
 const CATEGORY_EXPLANATIONS: Record<string, string> = {
@@ -217,6 +225,14 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
     return items;
   }, [formData]);
   const clientName = (formData?.fullName || '').trim();
+  const overallRadarData = useMemo(() => {
+    return orderedCats.map(cat => ({
+      name: niceLabel(cat.id).split(' ')[0], // Short name for axis
+      fullLabel: niceLabel(cat.id),
+      value: cat.score,
+      color: CATEGORY_HEX[cat.id] || '#3b82f6',
+    }));
+  }, [orderedCats, orderedCats.map(c => c.score)]);
   // High-level nutrition advice (goal + body-comp contextual, non-granular)
   const nutritionAdvice: string[] = useMemo(() => {
     const advice: string[] = [];
@@ -588,24 +604,32 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
       {/* 1. Here's where you are */}
       <section className="space-y-6">
         <h2 className="text-2xl font-bold text-slate-900 text-center">Here's where you are</h2>
-        <div className="flex flex-col items-center gap-5">
-          {/* Overall score centered and prominent */}
-          <div className="flex flex-col items-center">
-            <div className={`flex h-28 w-28 items-center justify-center rounded-full border-4 ${circleColor(scores.overall)}`}>
-              <span className="text-3xl font-bold">{scores.overall}</span>
-            </div>
-            <span className="mt-2 text-sm font-medium text-slate-700">Overall score</span>
+        <div className="grid gap-8 lg:grid-cols-2 items-center">
+          {/* Overall radar chart */}
+          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4 text-center">Your Profile Overview</h3>
+            <OverallRadarChart data={overallRadarData} />
           </div>
-          {/* Category circles centered under overall - aligned to top */}
-          <div className="flex flex-wrap items-start justify-center gap-4">
-            {orderedCats.map((cat) => (
-              <div key={cat.id} className="flex flex-col items-center">
-                <div className={`flex h-14 w-14 items-center justify-center rounded-full border-4 ${circleColor(cat.score)}`}>
-                  <span className="text-sm font-semibold">{cat.score}</span>
-                </div>
-                <span className="mt-2 w-28 text-center text-xs text-slate-600 leading-tight min-h-[2.5rem] flex items-center justify-center" style={{ wordBreak: 'break-word', hyphens: 'auto' }}>{niceLabel(cat.id)}</span>
+
+          <div className="flex flex-col items-center gap-6">
+            {/* Overall score centered and prominent */}
+            <div className="flex flex-col items-center">
+              <div className={`flex h-28 w-28 items-center justify-center rounded-full border-4 ${circleColor(scores.overall)}`}>
+                <span className="text-3xl font-bold">{scores.overall}</span>
               </div>
-            ))}
+              <span className="mt-2 text-sm font-medium text-slate-700">Overall score</span>
+            </div>
+            {/* Category circles centered under overall - aligned to top */}
+            <div className="flex flex-wrap items-start justify-center gap-4">
+              {orderedCats.map((cat) => (
+                <div key={cat.id} className="flex flex-col items-center">
+                  <div className={`flex h-14 w-14 items-center justify-center rounded-full border-4 ${circleColor(cat.score)}`}>
+                    <span className="text-sm font-semibold">{cat.score}</span>
+                  </div>
+                  <span className="mt-2 w-28 text-center text-xs text-slate-600 leading-tight min-h-[2.5rem] flex items-center justify-center" style={{ wordBreak: 'break-word', hyphens: 'auto' }}>{niceLabel(cat.id)}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>

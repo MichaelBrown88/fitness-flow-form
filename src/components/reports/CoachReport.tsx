@@ -1,7 +1,19 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { CoachPlan, BodyCompInterpretation } from '@/lib/recommendations';
 import type { FormData } from '@/contexts/FormContext';
 import type { ScoreSummary } from '@/lib/scoring';
+import OverallRadarChart from './OverallRadarChart';
+
+function niceLabel(id: string): string {
+  switch (id) {
+    case 'bodyComp': return 'Body composition';
+    case 'strength': return 'Strength & endurance';
+    case 'cardio': return 'Cardio fitness';
+    case 'movementQuality': return 'Movement quality';
+    case 'lifestyle': return 'Lifestyle';
+    default: return id;
+  }
+}
 
 export default function CoachReport({
   plan,
@@ -23,20 +35,37 @@ export default function CoachReport({
   }
   const clientName = (formData?.fullName || '').trim();
   const goals = Array.isArray(formData?.clientGoals) ? (formData!.clientGoals as string[]) : [];
+  
+  const overallRadarData = useMemo(() => {
+    return scores.categories.map(cat => ({
+      name: niceLabel(cat.id).split(' ')[0],
+      fullLabel: niceLabel(cat.id),
+      value: cat.score,
+      color: '#3b82f6',
+    }));
+  }, [scores.categories]);
+
   return (
     <div className="space-y-8">
-      <section className="space-y-1">
-        <h2 className="text-xl font-semibold text-slate-900">
-          {clientName ? `${clientName} — coaching overview` : 'Coaching overview'}
-        </h2>
-        <p className="text-sm text-slate-600">
-          Quick snapshot of this client’s priorities, key findings, and how the program will address them while moving toward their goals.
-        </p>
-        {goals.length > 0 && (
-          <p className="text-xs text-slate-500">
-            <span className="font-semibold">Goals:</span> {goals.map(g => g.replace('-', ' ')).join(', ')}
+      <section className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+        <div className="space-y-1 flex-1">
+          <h2 className="text-xl font-semibold text-slate-900">
+            {clientName ? `${clientName} — coaching overview` : 'Coaching overview'}
+          </h2>
+          <p className="text-sm text-slate-600">
+            Quick snapshot of this client’s priorities, key findings, and how the program will address them while moving toward their goals.
           </p>
-        )}
+          {goals.length > 0 && (
+            <p className="text-xs text-slate-500">
+              <span className="font-semibold">Goals:</span> {goals.map(g => g.replace('-', ' ')).join(', ')}
+            </p>
+          )}
+        </div>
+        <div className="w-full md:w-64 flex-shrink-0">
+          <div className="rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+            <OverallRadarChart data={overallRadarData} />
+          </div>
+        </div>
       </section>
       {bodyComp && (
         <section className="space-y-3">

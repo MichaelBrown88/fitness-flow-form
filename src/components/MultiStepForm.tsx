@@ -59,8 +59,8 @@ type IntakeSection = {
 
 type SectionType = PhaseSection | IntakeSection;
 
-const labelTextClasses = 'text-sm font-medium text-slate-700';
-const supportTextClasses = 'text-xs text-slate-500 mt-1';
+const labelTextClasses = 'text-sm font-bold uppercase tracking-wider text-slate-500 mb-1.5 block';
+const supportTextClasses = 'text-sm text-slate-400 font-medium leading-relaxed mb-4';
 
 const FieldControl = ({ field }: { field: PhaseField }) => {
   const { formData, updateFormData } = useFormContext();
@@ -100,8 +100,8 @@ const FieldControl = ({ field }: { field: PhaseField }) => {
   };
 
   const renderLabel = () => (
-    <div className="flex items-start gap-2">
-      <div className="flex flex-col">
+    <div className="flex items-start justify-between gap-4 mb-2">
+      <div className="flex flex-col flex-1">
         <label className={labelTextClasses}>{field.label}</label>
         {field.description && <p className={supportTextClasses}>{field.description}</p>}
       </div>
@@ -110,14 +110,14 @@ const FieldControl = ({ field }: { field: PhaseField }) => {
           <TooltipTrigger asChild>
             <button
               type="button"
-              className="mt-0.5 text-slate-400 hover:text-slate-600 transition-colors"
+              className="mt-0.5 h-8 w-8 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
               aria-label={`More information about ${field.label}`}
             >
-              <Info className="h-3.5 w-3.5" />
+              <Info className="h-4 w-4" />
             </button>
           </TooltipTrigger>
-          <TooltipContent className="max-w-xs">
-            <p className="text-xs leading-relaxed">{field.tooltip}</p>
+          <TooltipContent className="max-w-xs p-4 rounded-xl shadow-xl border-slate-200">
+            <p className="text-sm leading-relaxed text-slate-600">{field.tooltip}</p>
           </TooltipContent>
         </Tooltip>
       )}
@@ -134,22 +134,51 @@ const FieldControl = ({ field }: { field: PhaseField }) => {
             value={(value as string) ?? ''}
             onChange={(event) => handleChange(event.target.value)}
             rows={4}
-            className="mt-3"
+            className="mt-2 rounded-xl border-slate-200 focus:ring-indigo-500"
           />
         );
       case 'select':
+        // If 4 or fewer options, use a touch-optimized button grid (segmented control style)
+        if (field.options && field.options.length <= 4) {
+          return (
+            <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {field.options.map((option) => {
+                const isSelected = value === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => handleChange(option.value)}
+                    className={`flex h-16 items-center gap-4 rounded-2xl border px-5 text-left transition-all ${
+                      isSelected
+                        ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-md ring-1 ring-indigo-600'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                      isSelected ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-200 bg-white'
+                    }`}>
+                      {isSelected && <Check className="h-3.5 w-3.5 stroke-[3]" />}
+                    </div>
+                    <span className="font-bold text-base">{option.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          );
+        }
         return (
-          <div className="mt-3">
+          <div className="mt-2">
             <Select
               value={(value as string) ?? ''}
               onValueChange={(next) => handleChange(next)}
             >
-              <SelectTrigger>
+              <SelectTrigger className="h-12 rounded-xl border-slate-200 focus:ring-indigo-500">
                 <SelectValue placeholder={field.placeholder ?? 'Select option'} />
               </SelectTrigger>
               <SelectContent>
                 {field.options?.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
+                  <SelectItem key={option.value} value={option.value} className="h-11">
                     {option.label}
                   </SelectItem>
                 ))}
@@ -157,7 +186,7 @@ const FieldControl = ({ field }: { field: PhaseField }) => {
             </Select>
             {/* Dynamic helper for weight-loss target level */}
             {field.id === ('goalLevelWeightLoss' as keyof FormData) && (
-              <div className="mt-2 text-xs text-slate-600">
+              <div className="mt-3 rounded-xl bg-slate-50 p-3 text-xs text-slate-600 border border-slate-100">
                 {(() => {
                   const heightCm = parseFloat(String(formData.heightCm || '0'));
                   const weightKg = parseFloat(String(formData.inbodyWeightKg || '0'));
@@ -167,18 +196,23 @@ const FieldControl = ({ field }: { field: PhaseField }) => {
                   const t23 = wBMI(23);
                   const t22 = wBMI(22);
                   if (h <= 0) {
-                    return <div>Enter height to see specific targets for your build.</div>;
+                    return <div className="font-medium">Enter height to see specific targets for your build.</div>;
                   }
                   return (
-                    <ul className="list-disc pl-4 space-y-0.5">
-                      <li>Minimum for good health ≈ {t25 > 0 ? `${t25.toFixed(1)} kg` : '—'} (BMI 25)</li>
-                      <li>Average ≈ {t23 > 0 ? `${((t25 + t22) / 2).toFixed(1)} kg` : '—'} (midpoint)</li>
-                      <li>Above average (recommended) ≈ {t23 > 0 ? `${t23.toFixed(1)} kg` : '—'} (BMI 23)</li>
-                      <li>Elite (long-term) ≈ {t22 > 0 ? `${t22.toFixed(1)} kg` : '—'} (BMI 22)</li>
+                    <div className="space-y-2">
+                      <p className="font-semibold text-slate-700">Recommended Targets (BMI-based):</p>
+                      <ul className="grid grid-cols-2 gap-x-4 gap-y-1">
+                        <li>Health (25): <span className="font-semibold">{t25 > 0 ? `${t25.toFixed(1)} kg` : '—'}</span></li>
+                        <li>Average (23.5): <span className="font-semibold">{t23 > 0 ? `${((t25 + t22) / 2).toFixed(1)} kg` : '—'}</span></li>
+                        <li>Optimal (23): <span className="font-semibold">{t23 > 0 ? `${t23.toFixed(1)} kg` : '—'}</span></li>
+                        <li>Elite (22): <span className="font-semibold">{t22 > 0 ? `${t22.toFixed(1)} kg` : '—'}</span></li>
+                      </ul>
                       {weightKg > 0 && t25 > 0 && weightKg > t25 && (
-                        <li>Current is ~{(weightKg - t25).toFixed(1)} kg above the healthy range upper bound.</li>
+                        <p className="pt-1 border-t border-slate-200 text-indigo-600 font-medium">
+                          Target reduction: ~{(weightKg - t23).toFixed(1)} kg to reach optimal range.
+                        </p>
                       )}
-                    </ul>
+                    </div>
                   );
                 })()}
               </div>
@@ -186,7 +220,7 @@ const FieldControl = ({ field }: { field: PhaseField }) => {
           </div>
         );
       case 'multiselect': {
-        // Special tab-like multi toggle for goals
+        // Special touch-optimized grid for goals
         if ((field.id as string) === 'clientGoals' && field.options) {
           const selected = Array.isArray(value) ? (value as string[]) : [];
           const toggle = (val: string) => {
@@ -197,27 +231,30 @@ const FieldControl = ({ field }: { field: PhaseField }) => {
             }
           };
           return (
-            <div className="mt-3">
-              <div className="inline-flex flex-wrap gap-2">
-                {field.options.map(opt => {
-                  const isActive = selected.includes(opt.value);
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => toggle(opt.value)}
-                      className={`rounded-md px-3 py-1.5 text-sm font-medium border transition ${
-                        isActive
-                          ? 'border-slate-900 bg-slate-900 text-white'
-                          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                      }`}
-                      aria-pressed={isActive}
-                    >
-                      {opt.label}
-                    </button>
-                  );
-                })}
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+              {field.options.map(opt => {
+                const isActive = selected.includes(opt.value);
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => toggle(opt.value)}
+                    className={`flex h-16 items-center gap-4 rounded-2xl border px-5 text-left transition-all ${
+                      isActive
+                        ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-md ring-1 ring-indigo-600'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                    aria-pressed={isActive}
+                  >
+                    <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                      isActive ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-200 bg-white'
+                    }`}>
+                      {isActive && <Check className="h-3.5 w-3.5 stroke-[3]" />}
+                    </div>
+                    <span className="font-bold text-base">{opt.label}</span>
+                  </button>
+                );
+              })}
             </div>
           );
         }
@@ -283,7 +320,7 @@ const FieldControl = ({ field }: { field: PhaseField }) => {
             placeholder={field.placeholder}
             value={(value as string) ?? ''}
             onChange={(event) => handleChange(event.target.value)}
-            className="mt-3"
+            className="h-12 rounded-xl border-slate-200 focus:ring-indigo-500"
           />
         );
       case 'date':
@@ -293,7 +330,7 @@ const FieldControl = ({ field }: { field: PhaseField }) => {
             placeholder={field.placeholder}
             value={(value as string) ?? ''}
             onChange={(event) => handleChange(event.target.value)}
-            className="mt-3"
+            className="h-12 rounded-xl border-slate-200 focus:ring-indigo-500"
           />
         );
       case 'email':
@@ -303,7 +340,7 @@ const FieldControl = ({ field }: { field: PhaseField }) => {
             placeholder={field.placeholder}
             value={(value as string) ?? ''}
             onChange={(event) => handleChange(event.target.value)}
-            className="mt-3"
+            className="h-12 rounded-xl border-slate-200 focus:ring-indigo-500"
           />
         );
       case 'tel':
@@ -313,7 +350,7 @@ const FieldControl = ({ field }: { field: PhaseField }) => {
             placeholder={field.placeholder}
             value={(value as string) ?? ''}
             onChange={(event) => handleChange(event.target.value)}
-            className="mt-3"
+            className="h-12 rounded-xl border-slate-200 focus:ring-indigo-500"
           />
         );
       case 'number':
@@ -325,21 +362,21 @@ const FieldControl = ({ field }: { field: PhaseField }) => {
             placeholder={field.placeholder}
             value={(value as string) ?? ''}
             onChange={(event) => handleChange(event.target.value)}
-            className="mt-3"
+            className="h-12 rounded-xl border-slate-200 focus:ring-indigo-500"
           />
         );
     }
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-1">
       {renderLabel()}
       {renderInput()}
     </div>
   );
 };
 
-const PhaseFormContent = () => {
+const PhaseFormContent = ({ demoTrigger }: { demoTrigger?: number }) => {
   const { formData } = useFormContext();
   const { settings } = useSettings();
   const { user } = useAuth();
@@ -362,6 +399,13 @@ const PhaseFormContent = () => {
   const [shareLoading, setShareLoading] = useState(false);
   const reportRef = useRef<HTMLDivElement | null>(null);
   const [isDemoAssessment, setIsDemoAssessment] = useState(false);
+
+  // Trigger demo fill from parent
+  useEffect(() => {
+    if (demoTrigger && demoTrigger > 0) {
+      runDemoSequential();
+    }
+  }, [demoTrigger]);
 
   const totalPhases = phaseDefinitions.length;
   const activePhase = useMemo(() => {
@@ -1508,55 +1552,47 @@ const PhaseFormContent = () => {
         key={section.id}
         open={isExpanded}
         onOpenChange={() => toggleSection(section.id)}
+        className="group"
       >
-        <div className={`rounded-xl border transition-all duration-200 ${
-          isCompleted
-            ? 'border-green-200 bg-green-50/50'
-            : isExpanded
-            ? 'border-slate-300 bg-white shadow-sm'
-            : 'border-slate-200 bg-slate-50'
+        <div className={`rounded-2xl border transition-all duration-300 ${
+          isExpanded
+            ? 'border-indigo-100 bg-white shadow-xl shadow-indigo-100/20'
+            : isCompleted
+            ? 'border-slate-100 bg-slate-50/30'
+            : 'border-slate-200 bg-white'
         }`}>
           <CollapsibleTrigger asChild>
-            <button className="w-full px-6 py-4 text-left hover:bg-slate-50 transition-colors cursor-pointer">
+            <button className="w-full px-8 py-6 text-left transition-colors cursor-pointer">
               <div className="flex items-center justify-between">
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <div className="flex items-center gap-3">
-                  <h3 className="text-lg font-semibold text-slate-900">{section.title}</h3>
-                    {isCompleted && (
-                      <div className="flex items-center gap-1 text-green-600">
-                        <Check className="h-4 w-4" />
-                        <span className="text-xs font-medium">Completed</span>
+                    <h3 className={`text-xl font-bold tracking-tight transition-colors ${isExpanded ? 'text-indigo-600' : 'text-slate-800'}`}>
+                      {section.title}
+                    </h3>
+                    {isCompleted && !isExpanded && (
+                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                        <Check className="h-3 w-3" />
                       </div>
                     )}
-                    {section.id === 'health-screening' && (
-                      <span className="text-xs rounded bg-slate-100 px-2 py-0.5 text-slate-600">
-                        PAR‑Q: {String(formData.parqQuestionnaire || '—')}
-                      </span>
-                    )}
                   </div>
-                  {'description' in section && section.description && (
-                    <p className="text-sm text-slate-600">{section.description}</p>
+                  {'description' in section && section.description && !isExpanded && (
+                    <p className="text-sm text-slate-500 font-medium line-clamp-1">{section.description}</p>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
-                  {!isExpanded && section.fields.length > 0 && (
-                    <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">
-                      {section.fields.length} field{section.fields.length !== 1 ? 's' : ''}
-                    </span>
-                  )}
-                  {isExpanded ? (
-                    <ChevronDown className="h-5 w-5 text-slate-400" />
-                  ) : (
-                    <ChevronRightIcon className="h-5 w-5 text-slate-400" />
-                  )}
-                  </div>
+                <div className={`flex h-10 w-10 items-center justify-center rounded-xl transition-all ${isExpanded ? 'bg-indigo-600 text-white rotate-180' : 'bg-slate-50 text-slate-400 group-hover:bg-slate-100'}`}>
+                  <ChevronDown className="h-5 w-5" />
+                </div>
               </div>
             </button>
           </CollapsibleTrigger>
 
-          <CollapsibleContent>
-            <div className="px-6 pb-6">
-              <div className="space-y-6">
+          <CollapsibleContent className="animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="px-8 pb-8">
+              {'description' in section && section.description && (
+                <p className="text-base text-slate-600 mb-8 leading-relaxed border-l-2 border-indigo-100 pl-4">{section.description}</p>
+              )}
+              
+              <div className="space-y-8">
                 {(() => {
                   const parqField = section.fields.find(field => field.type === 'parq');
                   const otherFields = section.fields.filter(field => field.type !== 'parq');
@@ -1720,255 +1756,269 @@ const PhaseFormContent = () => {
   }
 
   return (
-    <div className="space-y-8">
-      {/* Phase navigation */}
-      <section className="space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="space-y-1">
-            <h2 className="text-2xl font-semibold text-slate-900">{activePhase.title}</h2>
-            <p className="text-sm text-slate-600">{activePhase.summary}</p>
+    <div className="flex flex-col lg:flex-row min-h-[calc(100vh-73px)]">
+      {/* Sidebar - Phase Navigation */}
+      <aside className="w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-slate-200 bg-white p-6 shrink-0 sticky top-[73px] z-30 overflow-y-auto max-h-[calc(100vh-73px)]">
+        <div className="space-y-8">
+          <div className="space-y-2">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400">Assessment Phases</h3>
+            <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-indigo-600 transition-all duration-500 ease-in-out" 
+                style={{ width: `${progressValue}%` }}
+              />
+            </div>
+            <p className="text-[10px] font-medium text-slate-500 text-right">{Math.round(progressValue)}% Complete</p>
           </div>
-          <div className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-600">
-            Phase {activePhaseIdx + 1} of {totalPhases}
-          </div>
-        </div>
-        <Progress value={progressValue} className="h-2 bg-slate-100 rounded-full" />
-        {/* AI-powered demo fill - only shown when enabled in settings */}
-        {settings.demoAutoFillEnabled && (
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" onClick={runDemoSequential}>
-              ▶︎ Auto‑fill demo persona (AI-generated)
-            </Button>
-            <span className="text-[11px] text-slate-400">fills each section with unique data then jumps to Results</span>
-          </div>
-        )}
 
-        <div className="relative">
-          <nav
-            className="flex flex-nowrap gap-2 overflow-x-auto py-1 scroll-smooth"
-            role="tablist"
-            aria-label="Assessment phases"
-          >
-          {phaseDefinitions.map((phase, idx) => {
-            const isActive = idx === activePhaseIdx;
+          <nav className="space-y-1.5" role="tablist" aria-label="Assessment phases">
+            {phaseDefinitions.map((phase, idx) => {
+              const isActive = idx === activePhaseIdx;
               const isCompleted = isPhaseCompleted(idx) && idx <= maxUnlockedPhaseIdx;
               const isDisabled = idx > maxUnlockedPhaseIdx;
 
-            return (
-              <button
-                key={phase.id}
+              return (
+                <button
+                  key={phase.id}
                   ref={(el) => { phaseRefs.current[idx] = el; }}
-                onClick={() => !isDisabled && setActivePhaseIdx(idx)}
-                disabled={isDisabled}
-                  className={`flex shrink-0 items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-all ${
-                  isActive
-                    ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
-                    : isCompleted
-                    ? 'border-green-200 bg-green-50 text-green-800 hover:bg-green-100'
-                    : isDisabled
-                    ? 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400'
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
-                }`}
-                  aria-current={isActive ? 'page' : undefined}
-              >
-                <span className="text-xs font-semibold">{phase.id}</span>
-                <span
-                  className={`truncate max-w-32 ${
+                  onClick={() => !isDisabled && setActivePhaseIdx(idx)}
+                  disabled={isDisabled}
+                  className={`group flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all ${
                     isActive
-                      ? 'text-white'
+                      ? 'bg-slate-900 text-white shadow-md shadow-slate-200'
                       : isCompleted
-                      ? 'text-green-800'
+                      ? 'text-indigo-600 hover:bg-indigo-50'
                       : isDisabled
-                      ? 'text-slate-400'
-                      : 'text-slate-700'
+                      ? 'opacity-40 cursor-not-allowed'
+                      : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
                   }`}
+                  aria-current={isActive ? 'page' : undefined}
                 >
-                  {phase.title}
-                </span>
-                {isCompleted && (
-                  <div className="mt-1 flex items-center gap-1">
-                    <Check className="h-3 w-3 text-green-600" />
-                    <span className="text-xs text-green-600">Completed</span>
-                  </div>
-                )}
-              </button>
-            );
-          })}
-        </nav>
-          <div className="pointer-events-none absolute left-0 top-0 h-full w-6 bg-gradient-to-r from-slate-50 to-transparent" />
-          <div className="pointer-events-none absolute right-0 top-0 h-full w-6 bg-gradient-to-l from-slate-50 to-transparent" />
-        </div>
-      </section>
-
-      {/* All sections content */}
-      <section className="space-y-6">
-        {renderAllSections()}
-
-        {/* Show navigation buttons when the phase has content and we are not on the final phase */}
-        {(activePhase.sections?.length ?? 0) > 0 && activePhaseIdx < totalPhases - 1 && (
-        <div className="flex items-center justify-between border-t border-slate-100 pt-6">
-          <Button
-            variant="outline"
-            onClick={handleBack}
-            disabled={activePhaseIdx === 0}
-              className="flex items-center gap-2"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Back
-          </Button>
-
-          <Button
-            onClick={handleNext}
-            disabled={activePhaseIdx === totalPhases - 1}
-            className="flex items-center gap-2 bg-slate-900 text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
-          >
-            Next Phase
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-        )}
-
-        {/* Show "View Results" button when all assessments are completed (anywhere in phases 1-5) */}
-        {activePhaseIdx >= 1 && activePhaseIdx < totalPhases - 1 && allAssessmentsCompleted && (
-          <div className="flex items-center justify-center border-t border-slate-100 pt-6">
-            <Button
-              onClick={handleViewResults}
-              className="flex items-center gap-2 bg-green-600 text-white hover:bg-green-700"
-            >
-              📊 View Results
-            </Button>
-          </div>
-        )}
-
-        {/* Results phase - Assessment Complete */}
-        {activePhase?.id === 'P7' && (
-          <div className="space-y-8 border-t border-slate-100 pt-6">
-            <div className="space-y-6">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="inline-flex rounded-md border border-slate-200 bg-white p-1">
-                  <button
-                    onClick={() => setReportView('client')}
-                    className={`px-3 py-1.5 text-sm font-medium rounded ${reportView === 'client' ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-50'}`}
-                    aria-pressed={reportView === 'client'}
-                  >
-                    Client Report
-                  </button>
-                  <button
-                    onClick={() => setReportView('coach')}
-                    className={`px-3 py-1.5 text-sm font-medium rounded ${reportView === 'coach' ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-50'}`}
-                    aria-pressed={reportView === 'coach'}
-                  >
-                    Coach Report
-                  </button>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {/* AI-powered demo fill - only shown when enabled in settings */}
-                  {settings.demoAutoFillEnabled && (
-                    <Button variant="outline" size="sm" onClick={runDemoSequential}>
-                      ▶︎ Auto‑fill demo persona (AI-generated)
-                    </Button>
+                  <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold border transition-colors ${
+                    isActive 
+                      ? 'bg-white/20 border-white/20 text-white' 
+                      : isCompleted
+                      ? 'bg-indigo-600 border-indigo-600 text-white'
+                      : 'bg-white border-slate-200 text-slate-400'
+                  }`}>
+                    {isCompleted ? <Check className="h-3 w-3" /> : idx + 1}
+                  </span>
+                  <span className="truncate flex-1 text-left">{phase.title}</span>
+                  {!isDisabled && !isActive && !isCompleted && (
+                    <ChevronRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                   )}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        disabled={shareLoading}
-                        aria-label="Share report"
-                      >
-                        <Share2 className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Share</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleShare}>
-                        System share
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={handleEmailLink}>
-                        Email link
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={handleWhatsAppShare}>
-                        WhatsApp
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={handleCopyLink}>
-                        <Copy className="mr-2 h-3 w-3" />
-                        Copy link
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        disabled={shareLoading}
-                        aria-label="Download or print report"
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Download</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleDownloadPdf}>
-                        Download PDF
-                      </DropdownMenuItem>
-                      {reportView === 'client' && (
-                        <DropdownMenuItem onClick={handleDownloadInteractiveHtml}>
-                          Download Interactive HTML
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem onClick={handlePrint}>
-                        Print
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <Button variant="outline" size="sm" onClick={handleStartNewAssessment}>
-                    🔄 Restart
-                  </Button>
-                </div>
+                </button>
+              );
+            })}
+          </nav>
+
+          <div className="pt-8 border-t border-slate-100 hidden lg:block">
+            <div className="rounded-2xl bg-indigo-50 p-4 border border-indigo-100">
+              <div className="flex items-center gap-2 text-indigo-700 mb-2">
+                <Info className="h-4 w-4" />
+                <span className="text-xs font-bold uppercase tracking-wider">Coach Note</span>
               </div>
-              <div 
-                ref={reportRef} 
-                data-pdf-target 
-                className="rounded-xl border border-slate-200 bg-white p-6 print:bg-white print:shadow-none"
-                style={{ 
-                  minWidth: '100%',
-                  maxWidth: '100%',
-                  overflow: 'visible',
-                  wordWrap: 'break-word',
-                  boxSizing: 'border-box'
-                }}
-              >
-                {reportView === 'client' ? (
-                  <ClientReport
-                    scores={scores}
-                    roadmap={roadmap}
-                    goals={Array.isArray(formData.clientGoals) ? formData.clientGoals : []}
-                    bodyComp={bodyCompInterp ? { timeframeWeeks: bodyCompInterp.timeframeWeeks } : undefined}
-                    formData={formData}
-                  />
-                ) : (
-                  <CoachReport plan={plan} scores={scores} bodyComp={bodyCompInterp} formData={formData} />
-                )}
-              </div>
+              <p className="text-xs text-indigo-600 leading-relaxed">
+                Complete each section to unlock the next phase. High movement quality is the priority for all new clients.
+              </p>
             </div>
           </div>
-        )}
-      </section>
+        </div>
+      </aside>
 
-      <footer className="pb-8 text-center text-xs text-slate-400">Assessment Engine v2.0</footer>
+      {/* Main Content Area */}
+      <main className="flex-1 bg-slate-50/50 p-6 lg:p-10 overflow-y-auto">
+        <div className="mx-auto max-w-3xl space-y-8">
+          <section className="space-y-2">
+            <div className="flex items-center gap-2 text-indigo-600 mb-1">
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em]">{activePhase.id}</span>
+              <div className="h-px w-8 bg-indigo-200"></div>
+            </div>
+            <h2 className="text-3xl font-bold tracking-tight text-slate-900">{activePhase.title}</h2>
+            <p className="text-slate-500 text-lg leading-relaxed max-w-2xl">{activePhase.summary}</p>
+          </section>
+
+          {/* All sections content */}
+          <section className="space-y-6">
+            {renderAllSections()}
+
+            {/* Show navigation buttons when the phase has content and we are not on the final phase */}
+            {(activePhase.sections?.length ?? 0) > 0 && activePhaseIdx < totalPhases - 1 && (
+              <div className="flex items-center justify-between border-t border-slate-200 pt-8 mt-10">
+                <Button
+                  variant="ghost"
+                  onClick={handleBack}
+                  disabled={activePhaseIdx === 0}
+                  className="h-12 px-6 rounded-xl font-semibold text-slate-600 hover:bg-white hover:text-slate-900"
+                >
+                  <ChevronLeft className="mr-2 h-4 w-4" />
+                  Previous Phase
+                </Button>
+
+                <Button
+                  onClick={handleNext}
+                  className="h-12 px-8 rounded-xl bg-slate-900 text-white font-semibold hover:bg-slate-800 shadow-lg shadow-slate-200 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  Next Phase
+                  <ChevronRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            )}
+
+            {/* Show "View Results" button when all assessments are completed (anywhere in phases 1-5) */}
+            {activePhaseIdx >= 1 && activePhaseIdx < totalPhases - 1 && allAssessmentsCompleted && (
+              <div className="flex items-center justify-center border-t border-slate-200 pt-8">
+                <Button
+                  onClick={handleViewResults}
+                  className="h-14 px-10 rounded-2xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 shadow-xl shadow-emerald-100 transition-all hover:scale-[1.05] active:scale-[0.95]"
+                >
+                  📊 Generate Full Report
+                </Button>
+              </div>
+            )}
+
+            {/* Results phase - Assessment Complete */}
+            {activePhase?.id === 'P7' && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1.5 shadow-sm">
+                    <button
+                      onClick={() => setReportView('client')}
+                      className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${reportView === 'client' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}
+                      aria-pressed={reportView === 'client'}
+                    >
+                      Client Report
+                    </button>
+                    <button
+                      onClick={() => setReportView('coach')}
+                      className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${reportView === 'coach' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}
+                      aria-pressed={reportView === 'coach'}
+                    >
+                      Coach Plan
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="lg"
+                          disabled={shareLoading}
+                          className="rounded-xl border-slate-200 px-4 h-12"
+                        >
+                          <Share2 className="mr-2 h-4 w-4" />
+                          Share
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56 rounded-xl">
+                        <DropdownMenuLabel>Share Assessment</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handleShare} className="py-3">
+                          System Share
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleEmailLink} className="py-3">
+                          Email PDF Link
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleWhatsAppShare} className="py-3">
+                          WhatsApp Message
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleCopyLink} className="py-3">
+                          <Copy className="mr-2 h-4 w-4" />
+                          Copy Report Link
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="lg"
+                          disabled={shareLoading}
+                          className="rounded-xl border-slate-200 px-4 h-12"
+                        >
+                          <Download className="mr-2 h-4 w-4" />
+                          Export
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56 rounded-xl">
+                        <DropdownMenuLabel>Download Report</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handleDownloadPdf} className="py-3">
+                          Download as PDF
+                        </DropdownMenuItem>
+                        {reportView === 'client' && (
+                          <DropdownMenuItem onClick={handleDownloadInteractiveHtml} className="py-3">
+                            Download Interactive HTML
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem onClick={handlePrint} className="py-3">
+                          Print Report
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <Button 
+                      variant="ghost" 
+                      size="lg" 
+                      onClick={handleStartNewAssessment}
+                      className="rounded-xl h-12"
+                    >
+                      🔄 New Client
+                    </Button>
+                  </div>
+                </div>
+                
+                <div 
+                  ref={reportRef} 
+                  data-pdf-target 
+                  className="rounded-3xl border border-slate-200 bg-white p-10 shadow-2xl shadow-slate-200/50 print:p-0 print:border-0 print:shadow-none"
+                  style={{ 
+                    minWidth: '100%',
+                    maxWidth: '100%',
+                    overflow: 'visible',
+                    wordWrap: 'break-word',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  {reportView === 'client' ? (
+                    <ClientReport
+                      scores={scores}
+                      roadmap={roadmap}
+                      goals={Array.isArray(formData.clientGoals) ? formData.clientGoals : []}
+                      bodyComp={bodyCompInterp ? { timeframeWeeks: bodyCompInterp.timeframeWeeks } : undefined}
+                      formData={formData}
+                    />
+                  ) : (
+                    <CoachReport plan={plan} scores={scores} bodyComp={bodyCompInterp} formData={formData} />
+                  )}
+                </div>
+              </div>
+            )}
+          </section>
+          
+          <footer className="pt-12 pb-8 text-center text-[10px] font-bold uppercase tracking-widest text-slate-300">
+            One Fitness Professional v2.1 • Confidential Client Data
+          </footer>
+        </div>
+      </main>
     </div>
   );
 };
 
-const MultiStepForm = () => (
-  <FormProvider>
-    <AppShell title="Fitness Assessment">
-      <PhaseFormContent />
-    </AppShell>
-  </FormProvider>
-);
+const MultiStepForm = () => {
+  const [demoTrigger, setDemoTrigger] = useState(0);
+  const handleDemoFill = () => setDemoTrigger(prev => prev + 1);
+
+  return (
+    <FormProvider>
+      <AppShell 
+        title="Fitness Assessment" 
+        showDemoFill={true} 
+        onDemoFill={handleDemoFill}
+      >
+        <PhaseFormContent demoTrigger={demoTrigger} />
+      </AppShell>
+    </FormProvider>
+  );
+};
 
 export default MultiStepForm;

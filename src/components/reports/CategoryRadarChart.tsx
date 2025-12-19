@@ -28,6 +28,25 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
   return null;
 }
 
+function renderCustomAxisTick({ payload, x, y, textAnchor, index, color }: any) {
+  return (
+    <g>
+      <text
+        x={x}
+        y={y}
+        dy={y < 150 ? -10 : y > 250 ? 15 : 0}
+        dx={textAnchor === 'start' ? 10 : textAnchor === 'end' ? -10 : 0}
+        textAnchor={textAnchor}
+        fill={color || "#475569"}
+        fontSize="11px"
+        fontWeight="600"
+      >
+        {payload.value}
+      </text>
+    </g>
+  );
+}
+
 export default function CategoryRadarChart({ details, categoryName }: CategoryRadarChartProps) {
   // Map each category tab to a distinct base colour
   const CATEGORY_COLORS: Record<string, string> = {
@@ -38,6 +57,8 @@ export default function CategoryRadarChart({ details, categoryName }: CategoryRa
     'Lifestyle': '#a855f7',               // purple-500
   };
   const baseColor = CATEGORY_COLORS[categoryName] ?? '#3b82f6';
+
+  const CustomTick = (props: any) => renderCustomAxisTick({ ...props, color: baseColor });
   
   // Filter out details with no score or invalid values
   const validDetails = details.filter(d => d.score > 0 && d.value !== '-' && d.value !== '');
@@ -82,7 +103,7 @@ export default function CategoryRadarChart({ details, categoryName }: CategoryRa
           <PolarGrid stroke="#e2e8f0" />
           <PolarAngleAxis
             dataKey="name"
-            tick={{ fill: '#475569', fontSize: 11 }}
+            tick={<CustomTick />}
             tickLine={false}
             className="text-xs"
           />
