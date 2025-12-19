@@ -174,13 +174,10 @@ function scoreCardio(form: FormData): ScoreCategory {
   }
 
   const details: ScoreDetail[] = [
-    { id: 'test', label: 'Test', value: test || '-', score: hasTest ? 100 : 0 },
-    { id: 'rhr', label: 'Resting HR', value: rhr || '-', unit: 'bpm', score: rhrScore },
-    { id: 'hr60', label: 'HR₆₀ (1-min post)', value: hr60 || '-', unit: 'bpm', score: recoveryScore },
-    { id: 'hr60rating', label: 'Recovery rating', value: hr60Rating, score: recoveryScore },
-    { id: 'vo2', label: 'VO₂max', value: vo2max ? vo2max.toFixed(1) : '-', unit: 'ml/kg/min', score: vo2Score },
-    { id: 'vo2class', label: 'VO₂ classification', value: vo2Class, score: vo2Score },
-    { id: 'recommendation', label: 'Recommendation', value: recommendation, score: 100 },
+    { id: 'rhr', label: 'Resting HR', value: rhr || '-', unit: 'bpm', score: rhrScore * 5 }, // scale to 100 for radar
+    { id: 'hr60', label: 'Recovery', value: hr60 || '-', unit: 'bpm', score: recoveryScore * 2.5 }, // scale to 100
+    { id: 'vo2', label: 'VO₂max', value: vo2max ? vo2max.toFixed(1) : '-', unit: 'ml/kg/min', score: vo2Score * 2.5 }, // scale to 100
+    { id: 'cardioClass', label: 'Fitness Level', value: cardioClass, score: fitnessScore },
   ];
 
   const strengths: string[] = [];
@@ -276,14 +273,11 @@ function scoreMovementQuality(form: FormData): ScoreCategory {
   const knees = hasKnees ? (kneesMap[form.postureKneesOverall] ?? 0) : 0;
   
   const details: ScoreDetail[] = [
-    { id: 'hip', label: 'Hip mobility', value: form.mobilityHip || '-', score: hip },
-    { id: 'shoulder', label: 'Shoulder mobility', value: form.mobilityShoulder || '-', score: shoulder },
-    { id: 'ankle', label: 'Ankle mobility', value: form.mobilityAnkle || '-', score: ankle },
-    { id: 'head', label: 'Head/neck alignment', value: form.postureHeadOverall || '-', score: head },
-    { id: 'shoulders', label: 'Shoulder alignment', value: form.postureShouldersOverall || '-', score: shoulders },
-    { id: 'back', label: 'Spinal alignment', value: form.postureBackOverall || '-', score: back },
-    { id: 'hips', label: 'Pelvic alignment', value: form.postureHipsOverall || '-', score: hips },
-    { id: 'knees', label: 'Knee alignment', value: form.postureKneesOverall || '-', score: knees },
+    { id: 'hip', label: 'Hip Mobility', value: form.mobilityHip || '-', score: hip },
+    { id: 'shoulder', label: 'Shoulder Mobility', value: form.mobilityShoulder || '-', score: shoulder },
+    { id: 'ankle', label: 'Ankle Mobility', value: form.mobilityAnkle || '-', score: ankle },
+    { id: 'spinal', label: 'Spinal Alignment', value: form.postureBackOverall || '-', score: back },
+    { id: 'knee', label: 'Knee Alignment', value: form.postureKneesOverall || '-', score: knees },
   ];
   
   const allScores = [hip, shoulder, ankle, head, shoulders, back, hips, knees].filter(s => s > 0);
@@ -362,12 +356,11 @@ function scoreLifestyle(form: FormData): ScoreCategory {
   const recoveryScore = Math.round((sleepScore * 0.6 + stressScore * 0.4));
   
   const details: ScoreDetail[] = [
-    { id: 'sleep', label: 'Sleep quality', value: sleepQ || '-', score: Math.round(sleepScore) },
-    { id: 'stress', label: 'Stress management', value: stress || '-', score: Math.round(stressScore) },
+    { id: 'sleep', label: 'Sleep Quality', value: sleepQ || '-', score: Math.round(sleepScore) },
+    { id: 'stress', label: 'Stress Management', value: stress || '-', score: Math.round(stressScore) },
     { id: 'hydration', label: 'Hydration', value: hydration || '-', score: Math.round(hydrationScore) },
     { id: 'nutrition', label: 'Nutrition', value: nutrition || '-', score: Math.round(nutritionScore) },
-    { id: 'activity', label: 'Daily activity', value: steps > 0 ? `${Math.round(steps)} steps` : '-', score: Math.round(activityScore) },
-    { id: 'recovery', label: 'Recovery capacity', value: '-', score: recoveryScore },
+    { id: 'activity', label: 'Daily Activity', value: steps > 0 ? `${Math.round(steps)} steps` : '-', score: Math.round(activityScore) },
   ];
   
   const overallScore = Math.round((sleepScore * 0.25 + stressScore * 0.2 + hydrationScore * 0.15 + nutritionScore * 0.2 + activityScore * 0.2));
