@@ -14,6 +14,9 @@ export interface PhaseField {
   options?: { value: string; label: string }[];
   required?: boolean;
   readOnly?: boolean;
+  pattern?: string; // Movement pattern (e.g., 'Hip Hinge', 'Lunge')
+  side?: 'left' | 'right'; // For side-by-side comparison
+  pairId?: string; // To group fields together on one screen
   conditional?: {
     showWhen: {
       field: string;
@@ -181,10 +184,10 @@ export const phaseDefinitions = [
 
           // Segmental Lean Analysis (kg only) — Trunk, Left arm, Right arm, Left leg, Right leg
           { id: 'segmentalTrunkKg' as keyof FormData, type: 'number' as FieldType, label: 'Trunk lean (kg)', placeholder: 'e.g., 28.5' },
-          { id: 'segmentalArmLeftKg' as keyof FormData, type: 'number' as FieldType, label: 'Left arm lean (kg)', placeholder: 'e.g., 3.1' },
-          { id: 'segmentalArmRightKg' as keyof FormData, type: 'number' as FieldType, label: 'Right arm lean (kg)', placeholder: 'e.g., 3.2', tooltip: 'Use left/right kg to detect imbalances (≥10% significant).' },
-          { id: 'segmentalLegLeftKg' as keyof FormData, type: 'number' as FieldType, label: 'Left leg lean (kg)', placeholder: 'e.g., 9.1' },
-          { id: 'segmentalLegRightKg' as keyof FormData, type: 'number' as FieldType, label: 'Right leg lean (kg)', placeholder: 'e.g., 9.7' },
+          { id: 'segmentalArmLeftKg' as keyof FormData, type: 'number' as FieldType, label: 'Left arm', side: 'left', pairId: 'arm-lean', placeholder: 'e.g., 3.1' },
+          { id: 'segmentalArmRightKg' as keyof FormData, type: 'number' as FieldType, label: 'Right arm', side: 'right', pairId: 'arm-lean', placeholder: 'e.g., 3.2', tooltip: 'Use left/right kg to detect imbalances (≥10% significant).' },
+          { id: 'segmentalLegLeftKg' as keyof FormData, type: 'number' as FieldType, label: 'Left leg', side: 'left', pairId: 'leg-lean', placeholder: 'e.g., 9.1' },
+          { id: 'segmentalLegRightKg' as keyof FormData, type: 'number' as FieldType, label: 'Right leg', side: 'right', pairId: 'leg-lean', placeholder: 'e.g., 9.7' },
 
           // SECTION 4 — METABOLIC BASELINE
           { id: 'bmrKcal' as keyof FormData, type: 'number' as FieldType, label: 'BMR (kcal)', placeholder: 'e.g., 1620', tooltip: 'Set calorie targets; typically rises with higher SMM.' },
@@ -272,27 +275,27 @@ export const phaseDefinitions = [
         description: 'Movement quality with arms overhead.',
         instructions: {
           clientInstructions: 'Perform with control.',
-          coachNotes: 'Observe compensations and depth.'
+          coachNotes: 'Observe from front and side. Watch for: torso lean, knee valgus, hip shift, and foot behavior.'
         },
         fields: [
           {
-            id: 'ohsShoulderMobility' as keyof FormData, type: 'select' as FieldType, label: 'Shoulder mobility', options: [
+            id: 'ohsShoulderMobility' as keyof FormData, type: 'select' as FieldType, label: 'Shoulder mobility', pattern: 'Overhead Squat', options: [
               { value: 'full-range', label: 'Full range' }, { value: 'compensated', label: 'Compensated' }, { value: 'limited', label: 'Limited' }
             ]
           },
-          { id: 'ohsTorsoLean' as keyof FormData, type: 'select' as FieldType, label: 'Torso lean', options: [
+          { id: 'ohsTorsoLean' as keyof FormData, type: 'select' as FieldType, label: 'Torso lean', pattern: 'Overhead Squat', options: [
             { value: 'upright', label: 'Upright' }, { value: 'moderate-lean', label: 'Moderate lean' }, { value: 'excessive-lean', label: 'Excessive lean' }
           ]},
-          { id: 'ohsSquatDepth' as keyof FormData, type: 'select' as FieldType, label: 'Squat depth', options: [
+          { id: 'ohsSquatDepth' as keyof FormData, type: 'select' as FieldType, label: 'Squat depth', pattern: 'Overhead Squat', options: [
             { value: 'full-depth', label: 'Full depth' }, { value: 'parallel', label: 'Parallel' }, { value: 'quarter-depth', label: 'Quarter' }, { value: 'no-depth', label: 'Minimal' }
           ]},
-          { id: 'ohsHipShift' as keyof FormData, type: 'select' as FieldType, label: 'Hip shift', options: [
+          { id: 'ohsHipShift' as keyof FormData, type: 'select' as FieldType, label: 'Hip shift', pattern: 'Overhead Squat', options: [
             { value: 'none', label: 'None' }, { value: 'left', label: 'Left' }, { value: 'right', label: 'Right' }
           ]},
-          { id: 'ohsKneeAlignment' as keyof FormData, type: 'select' as FieldType, label: 'Knee alignment', tooltip: 'Valgus = knees cave in; Varus = knees bow out.', options: [
+          { id: 'ohsKneeAlignment' as keyof FormData, type: 'select' as FieldType, label: 'Knee alignment', pattern: 'Overhead Squat', tooltip: 'Valgus = knees cave in; Varus = knees bow out.', options: [
             { value: 'stable', label: 'Stable' }, { value: 'valgus', label: 'Valgus (knees cave in)' }, { value: 'varus', label: 'Varus (knees bow out)' }
           ]},
-          { id: 'ohsFeetPosition' as keyof FormData, type: 'select' as FieldType, label: 'Foot behaviour', tooltip: 'Pronation = foot rolls inward; Supination = foot rolls outward.', options: [
+          { id: 'ohsFeetPosition' as keyof FormData, type: 'select' as FieldType, label: 'Foot behaviour', pattern: 'Overhead Squat', tooltip: 'Pronation = foot rolls inward; Supination = foot rolls outward.', options: [
             { value: 'stable', label: 'Stable' }, { value: 'pronation', label: 'Pronation (rolls inward)' }, { value: 'supination', label: 'Supination (rolls outward)' }
           ]},
         ],
@@ -303,13 +306,13 @@ export const phaseDefinitions = [
         description: 'Hip hinge movement.',
         instructions: {
           clientInstructions: 'Maintain neutral spine.',
-          coachNotes: 'Look for depth and rounding.'
+          coachNotes: 'Look for lumbar rounding or excessive knee bend. Ensure the movement comes from the hips, not the back.'
         },
         fields: [
-          { id: 'hingeDepth' as keyof FormData, type: 'select' as FieldType, label: 'Depth', options: [
+          { id: 'hingeDepth' as keyof FormData, type: 'select' as FieldType, label: 'Depth', pattern: 'Hip Hinge', options: [
             { value: 'excellent', label: 'Excellent' }, { value: 'good', label: 'Good' }, { value: 'fair', label: 'Fair' }, { value: 'poor', label: 'Poor' }
           ]},
-          { id: 'hingeBackRounding' as keyof FormData, type: 'select' as FieldType, label: 'Back rounding', options: [
+          { id: 'hingeBackRounding' as keyof FormData, type: 'select' as FieldType, label: 'Back rounding', pattern: 'Hip Hinge', options: [
             { value: 'none', label: 'None' }, { value: 'minor', label: 'Minor' }, { value: 'moderate', label: 'Moderate' }, { value: 'severe', label: 'Severe' }
           ]},
         ]
@@ -323,22 +326,22 @@ export const phaseDefinitions = [
           coachNotes: 'Observe balance, knee tracking, and hip position.'
         },
         fields: [
-          { id: 'lungeLeftBalance' as keyof FormData, type: 'select' as FieldType, label: 'Left side balance', options: [
+          { id: 'lungeLeftBalance' as keyof FormData, type: 'select' as FieldType, label: 'Balance', pattern: 'Lunge', side: 'left', pairId: 'lunge-balance', options: [
             { value: 'excellent', label: 'Excellent' }, { value: 'good', label: 'Good' }, { value: 'fair', label: 'Fair' }, { value: 'poor', label: 'Poor' }
           ]},
-          { id: 'lungeLeftKneeAlignment' as keyof FormData, type: 'select' as FieldType, label: 'Left side knee tracking', tooltip: 'Valgus = caves inward; Varus = bows outward.', options: [
+          { id: 'lungeRightBalance' as keyof FormData, type: 'select' as FieldType, label: 'Balance', pattern: 'Lunge', side: 'right', pairId: 'lunge-balance', options: [
+            { value: 'excellent', label: 'Excellent' }, { value: 'good', label: 'Good' }, { value: 'fair', label: 'Fair' }, { value: 'poor', label: 'Poor' }
+          ]},
+          { id: 'lungeLeftKneeAlignment' as keyof FormData, type: 'select' as FieldType, label: 'Knee tracking', pattern: 'Lunge', side: 'left', pairId: 'lunge-knee', tooltip: 'Valgus = caves inward; Varus = bows outward.', options: [
             { value: 'tracks-straight', label: 'Tracks straight' }, { value: 'caves-inward', label: 'Caves inward (valgus)' }, { value: 'bows-outward', label: 'Bows outward (varus)' }
           ]},
-          { id: 'lungeLeftTorso' as keyof FormData, type: 'select' as FieldType, label: 'Left side hips', tooltip: 'Anterior tilt = pelvis forward; Posterior tilt = pelvis backward.', options: [
+          { id: 'lungeRightKneeAlignment' as keyof FormData, type: 'select' as FieldType, label: 'Knee tracking', pattern: 'Lunge', side: 'right', pairId: 'lunge-knee', tooltip: 'Valgus = caves inward; Varus = bows outward.', options: [
+            { value: 'tracks-straight', label: 'Tracks straight' }, { value: 'caves-inward', label: 'Caves inward (valgus)' }, { value: 'bows-outward', label: 'Bows outward (varus)' }
+          ]},
+          { id: 'lungeLeftTorso' as keyof FormData, type: 'select' as FieldType, label: 'Hips position', pattern: 'Lunge', side: 'left', pairId: 'lunge-hips', tooltip: 'Anterior tilt = pelvis forward; Posterior tilt = pelvis backward.', options: [
             { value: 'neutral', label: 'Neutral' }, { value: 'anterior-tilt', label: 'Anterior tilt (pelvis forward)' }, { value: 'posterior-tilt', label: 'Posterior tilt (pelvis backward)' }
           ]},
-          { id: 'lungeRightBalance' as keyof FormData, type: 'select' as FieldType, label: 'Right side balance', options: [
-            { value: 'excellent', label: 'Excellent' }, { value: 'good', label: 'Good' }, { value: 'fair', label: 'Fair' }, { value: 'poor', label: 'Poor' }
-          ]},
-          { id: 'lungeRightKneeAlignment' as keyof FormData, type: 'select' as FieldType, label: 'Right side knee tracking', tooltip: 'Valgus = caves inward; Varus = bows outward.', options: [
-            { value: 'tracks-straight', label: 'Tracks straight' }, { value: 'caves-inward', label: 'Caves inward (valgus)' }, { value: 'bows-outward', label: 'Bows outward (varus)' }
-          ]},
-          { id: 'lungeRightTorso' as keyof FormData, type: 'select' as FieldType, label: 'Right side hips', tooltip: 'Anterior tilt = pelvis forward; Posterior tilt = pelvis backward.', options: [
+          { id: 'lungeRightTorso' as keyof FormData, type: 'select' as FieldType, label: 'Hips position', pattern: 'Lunge', side: 'right', pairId: 'lunge-hips', tooltip: 'Anterior tilt = pelvis forward; Posterior tilt = pelvis backward.', options: [
             { value: 'neutral', label: 'Neutral' }, { value: 'anterior-tilt', label: 'Anterior tilt (pelvis forward)' }, { value: 'posterior-tilt', label: 'Posterior tilt (pelvis backward)' }
           ]},
         ]
@@ -352,13 +355,13 @@ export const phaseDefinitions = [
           coachNotes: 'Record areas of restriction.'
         },
         fields: [
-          { id: 'mobilityHip' as keyof FormData, type: 'select' as FieldType, label: 'Hip mobility', options: [
+          { id: 'mobilityHip' as keyof FormData, type: 'select' as FieldType, label: 'Hip mobility', pattern: 'Hip Mobility', options: [
             { value: 'good', label: 'Good' }, { value: 'fair', label: 'Fair' }, { value: 'poor', label: 'Poor' }
           ]},
-          { id: 'mobilityShoulder' as keyof FormData, type: 'select' as FieldType, label: 'Shoulder mobility', options: [
+          { id: 'mobilityShoulder' as keyof FormData, type: 'select' as FieldType, label: 'Shoulder mobility', pattern: 'Shoulder Mobility', options: [
             { value: 'good', label: 'Good' }, { value: 'fair', label: 'Fair' }, { value: 'poor', label: 'Poor' }
           ]},
-          { id: 'mobilityAnkle' as keyof FormData, type: 'select' as FieldType, label: 'Ankle mobility', options: [
+          { id: 'mobilityAnkle' as keyof FormData, type: 'select' as FieldType, label: 'Ankle mobility', pattern: 'Ankle Mobility', options: [
             { value: 'good', label: 'Good' }, { value: 'fair', label: 'Fair' }, { value: 'poor', label: 'Poor' }
           ]},
         ]
@@ -376,14 +379,14 @@ export const phaseDefinitions = [
         description: 'Reps and holds.',
         instructions: {
           clientInstructions: 'Perform with proper form for accurate results.',
-          coachNotes: 'Record best effort and quality.'
+          coachNotes: 'Use a stopwatch for 60s tests. Only count reps with full range of motion. Record max duration for plank.'
         },
         fields: [
           { id: 'squatsOneMinuteReps' as keyof FormData, type: 'number' as FieldType, label: 'Squats in one minute', placeholder: 'e.g., 40' },
           { id: 'pushupsOneMinuteReps' as keyof FormData, type: 'number' as FieldType, label: 'Pushups in one minute', placeholder: 'e.g., 25' },
           { id: 'plankDurationSeconds' as keyof FormData, type: 'number' as FieldType, label: 'Plank duration (seconds)', placeholder: 'e.g., 60' },
-          { id: 'gripLeftKg' as keyof FormData, type: 'number' as FieldType, label: 'Grip strength left (kg)', placeholder: 'e.g., 24' },
-          { id: 'gripRightKg' as keyof FormData, type: 'number' as FieldType, label: 'Grip strength right (kg)', placeholder: 'e.g., 26' },
+          { id: 'gripLeftKg' as keyof FormData, type: 'number' as FieldType, label: 'Left hand', pattern: 'Grip Strength', side: 'left', pairId: 'grip-strength', placeholder: 'e.g., 24' },
+          { id: 'gripRightKg' as keyof FormData, type: 'number' as FieldType, label: 'Right hand', pattern: 'Grip Strength', side: 'right', pairId: 'grip-strength', placeholder: 'e.g., 26' },
         ]
           },
         ],
@@ -399,7 +402,7 @@ export const phaseDefinitions = [
         description: 'Choose test; follow steps for timing and measures.',
         instructions: {
           clientInstructions: 'Follow coach instructions during the test.',
-          coachNotes: 'Select appropriate test and record HR at specified times.'
+          coachNotes: 'Step test: 12" step, 96bpm for 3m. Treadmill: 1.7mph @ 10% grade for 3m. Record HR exactly 60s after test stops.'
         },
         fields: [
           { id: 'cardioTestSelected' as keyof FormData, type: 'select' as FieldType, label: 'Select test', options: [

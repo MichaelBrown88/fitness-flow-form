@@ -104,7 +104,8 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
     const heightM = (parseFloat(formData?.heightCm || '0') || 0) / 100;
     const healthyMin = heightM > 0 ? 22 * heightM * heightM : 0;
     const healthyMax = heightM > 0 ? 25 * heightM * heightM : 0;
-    // Weight loss level logic
+
+    // Weight loss target calculation
     const levelWL = formData?.goalLevelWeightLoss || '';
     let wlTarget = 0;
     if (healthyMax > 0 && weightKg > healthyMax) {
@@ -114,6 +115,7 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
       else wlTarget = weightKg - healthyMax;
       if (wlTarget < 0) wlTarget = 0;
     }
+
     const fatLossRate = 0.5;
     const fatLossWeeks = wlTarget > 0 ? Math.ceil(wlTarget / fatLossRate) : 16;
     // Muscle gain level logic
@@ -602,35 +604,45 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
         </section>
       )}
       {/* 1. Here's where you are */}
-      <section className="space-y-6">
-        <h2 className="text-2xl font-bold text-slate-900 text-center">Here's where you are</h2>
-        <div className="grid gap-8 lg:grid-cols-2 items-center">
-          {/* Overall radar chart */}
-          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4 text-center">Your Profile Overview</h3>
-            <OverallRadarChart data={overallRadarData} />
+      <section className="space-y-10 py-4">
+        <div className="flex flex-col items-center text-center space-y-6">
+          <div className="space-y-2">
+            <h2 className="text-3xl font-extrabold tracking-tight text-slate-900">Your Fitness Score</h2>
+            <p className="text-slate-500 font-medium">A comprehensive snapshot of your current physical condition.</p>
           </div>
-
-          <div className="flex flex-col items-center gap-6">
-            {/* Overall score centered and prominent */}
+          
+          {/* Overall score centered and prominent */}
+          <div className={`flex h-40 w-40 items-center justify-center rounded-full border-8 bg-white shadow-xl ${circleColor(scores.overall)} transition-transform hover:scale-105 duration-500`}>
             <div className="flex flex-col items-center">
-              <div className={`flex h-28 w-28 items-center justify-center rounded-full border-4 ${circleColor(scores.overall)}`}>
-                <span className="text-3xl font-bold">{scores.overall}</span>
-              </div>
-              <span className="mt-2 text-sm font-medium text-slate-700">Overall score</span>
-            </div>
-            {/* Category circles centered under overall - aligned to top */}
-            <div className="flex flex-wrap items-start justify-center gap-4">
-              {orderedCats.map((cat) => (
-                <div key={cat.id} className="flex flex-col items-center">
-                  <div className={`flex h-14 w-14 items-center justify-center rounded-full border-4 ${circleColor(cat.score)}`}>
-                    <span className="text-sm font-semibold">{cat.score}</span>
-                  </div>
-                  <span className="mt-2 w-28 text-center text-xs text-slate-600 leading-tight min-h-[2.5rem] flex items-center justify-center" style={{ wordBreak: 'break-word', hyphens: 'auto' }}>{niceLabel(cat.id)}</span>
-                </div>
-              ))}
+              <span className="text-5xl font-black">{scores.overall}</span>
+              <span className="text-[10px] uppercase tracking-[0.2em] font-bold opacity-70">Overall</span>
             </div>
           </div>
+        </div>
+
+        {/* Category circles in a row */}
+        <div className="flex flex-wrap items-start justify-center gap-6 md:gap-10">
+          {orderedCats.map((cat) => (
+            <div key={cat.id} className="flex flex-col items-center group">
+              <div className={`flex h-16 w-16 items-center justify-center rounded-full border-4 bg-white shadow-sm transition-all group-hover:shadow-md group-hover:-translate-y-1 ${circleColor(cat.score)}`}>
+                <span className="text-lg font-bold">{cat.score}</span>
+              </div>
+              <span className="mt-3 w-24 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider leading-tight">
+                {niceLabel(cat.id)}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Overall Profile Radar - Presented as a summary insight */}
+        <div className="max-w-2xl mx-auto mt-12 bg-white rounded-3xl border border-slate-100 p-8 shadow-sm">
+          <div className="text-center mb-6">
+            <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-slate-400">Profile Balance</h3>
+          </div>
+          <OverallRadarChart data={overallRadarData} />
+          <p className="text-center text-xs text-slate-400 mt-4 italic">
+            This graph shows how balanced your fitness is across all categories.
+          </p>
         </div>
       </section>
 
@@ -718,35 +730,6 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
             })}
           </Tabs>
         )}
-      </section>
-
-      {/* 3. What's working well & Areas for improvement - Side by side */}
-      <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-slate-900">Your strengths and focus areas</h2>
-        <div className="grid gap-4 md:grid-cols-2">
-          {/* What's working well */}
-          {strengths.length > 0 && (
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
-              <h3 className="text-lg font-semibold text-emerald-800 mb-3">What's working well</h3>
-              <p className="text-sm text-emerald-900 mb-3">These are areas where you're already strong. We'll maintain and build on these:</p>
-              <ul className="list-disc pl-5 text-sm text-emerald-900 space-y-2">
-                {strengths.map((s, i) => <li key={i}>{s}</li>)}
-              </ul>
-            </div>
-          )}
-          
-          {/* Areas for improvement */}
-          {(focusAreas.length > 0 || priorityFocus.length > 0) && (
-            <div className="rounded-lg border border-rose-200 bg-rose-50 p-5 shadow-sm">
-              <h3 className="text-lg font-semibold text-rose-800 mb-3">Areas for improvement</h3>
-              <p className="text-sm text-rose-900 mb-3">These are the main areas we'll focus on to help you reach your goals:</p>
-              <ul className="list-disc pl-5 text-sm text-rose-900 space-y-2">
-                {priorityFocus.map((p, i) => <li key={i}>{p}</li>)}
-                {focusAreas.slice(0, 5 - priorityFocus.length).map((f, i) => <li key={`focus-${i}`}>{f}</li>)}
-              </ul>
-            </div>
-          )}
-        </div>
       </section>
 
       {/* 4. Your goals - Tabbed if multiple, expanded with explanations and discovered goals */}

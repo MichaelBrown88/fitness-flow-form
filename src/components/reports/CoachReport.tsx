@@ -3,6 +3,7 @@ import type { CoachPlan, BodyCompInterpretation } from '@/lib/recommendations';
 import type { FormData } from '@/contexts/FormContext';
 import type { ScoreSummary } from '@/lib/scoring';
 import OverallRadarChart from './OverallRadarChart';
+import { CheckCircle2, AlertCircle, MessageSquare, Target, ClipboardList, Activity } from 'lucide-react';
 
 function niceLabel(id: string): string {
   switch (id) {
@@ -46,113 +47,201 @@ export default function CoachReport({
   }, [scores.categories]);
 
   return (
-    <div className="space-y-8">
-      <section className="flex flex-col md:flex-row md:items-start justify-between gap-6">
-        <div className="space-y-1 flex-1">
-          <h2 className="text-xl font-semibold text-slate-900">
-            {clientName ? `${clientName} — coaching overview` : 'Coaching overview'}
-          </h2>
-          <p className="text-sm text-slate-600">
-            Quick snapshot of this client’s priorities, key findings, and how the program will address them while moving toward their goals.
-          </p>
-          {goals.length > 0 && (
-            <p className="text-xs text-slate-500">
-              <span className="font-semibold">Goals:</span> {goals.map(g => g.replace('-', ' ')).join(', ')}
+    <div className="space-y-10">
+      {/* Header Section */}
+      <section className="flex flex-col md:flex-row md:items-start justify-between gap-8 bg-white rounded-3xl border border-slate-100 p-8 shadow-sm">
+        <div className="space-y-4 flex-1">
+          <div className="space-y-1">
+            <h2 className="text-3xl font-bold text-slate-900">
+              {clientName ? `${clientName}` : 'Client Overview'}
+            </h2>
+            <p className="text-indigo-600 font-semibold uppercase tracking-wider text-xs">
+              Coach Assessment & Strategy
             </p>
-          )}
-        </div>
-        <div className="w-full md:w-64 flex-shrink-0">
-          <div className="rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
-            <OverallRadarChart data={overallRadarData} />
           </div>
+          
+          <div className="flex flex-wrap gap-2">
+            {goals.map(g => (
+              <span key={g} className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-bold uppercase tracking-wide">
+                {g.replace('-', ' ')}
+              </span>
+            ))}
+          </div>
+
+          <p className="text-slate-500 text-sm leading-relaxed max-w-xl italic">
+            "Quick snapshot of this client’s priorities, key findings, and how the program will address them while moving toward their goals."
+          </p>
+        </div>
+        <div className="w-full md:w-72 flex-shrink-0 bg-slate-50 rounded-2xl p-4 border border-slate-100">
+          <OverallRadarChart data={overallRadarData} />
         </div>
       </section>
-      {bodyComp && (
-        <section className="space-y-3">
-          <h3 className="text-xl font-semibold text-slate-900">Body Composition Interpretation</h3>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-lg border border-slate-200 bg-white p-4">
-              <h4 className="font-semibold text-slate-900">Health Priority</h4>
-              {bodyComp.healthPriority.length ? (
-                <ul className="mt-2 list-disc pl-5 text-sm text-slate-700">
-                  {bodyComp.healthPriority.map((p, i) => <li key={i}>{p}</li>)}
+
+      {/* FIRST SESSION SCRIPT */}
+      <section className="space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="bg-indigo-600 p-2 rounded-lg">
+            <MessageSquare className="h-5 w-5 text-white" />
+          </div>
+          <h3 className="text-xl font-bold text-slate-900">First Session Talking Points</h3>
+        </div>
+
+        <div className="grid gap-6">
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-3">1. What we found</h4>
+                <ul className="space-y-2">
+                  {plan.clientScript.findings.map((item, i) => (
+                    <li key={i} className="flex gap-3 text-slate-700 text-sm">
+                      <span className="text-indigo-500 font-bold">•</span>
+                      {item}
+                    </li>
+                  ))}
                 </ul>
-              ) : (
-                <p className="text-sm text-slate-600">No urgent priorities identified.</p>
-              )}
-            </div>
-            <div className="rounded-lg border border-slate-200 bg-white p-4">
-              <h4 className="font-semibold text-slate-900">Timeframe Projection</h4>
-              <p className="mt-2 text-sm text-slate-700">{bodyComp.timeframeWeeks}</p>
-            </div>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-lg border border-slate-200 bg-white p-4">
-              <h4 className="font-semibold text-slate-900">Training Focus</h4>
-              <ul className="mt-2 list-disc pl-5 text-sm text-slate-700">
-                <li><span className="font-medium">Primary:</span> {bodyComp.trainingFocus.primary}</li>
-                {bodyComp.trainingFocus.secondary?.map((s, i) => <li key={i}><span className="font-medium">Secondary:</span> {s}</li>)}
-                {bodyComp.trainingFocus.corrective?.map((c, i) => <li key={i}><span className="font-medium">Corrective:</span> {c}</li>)}
-                {bodyComp.trainingFocus.unilateralVolume && <li><span className="font-medium">Unilateral:</span> {bodyComp.trainingFocus.unilateralVolume}</li>}
-              </ul>
-            </div>
-            <div className="rounded-lg border border-slate-200 bg-white p-4">
-              <h4 className="font-semibold text-slate-900">Nutrition & Lifestyle</h4>
-              <ul className="mt-2 list-disc pl-5 text-sm text-slate-700">
-                {bodyComp.nutrition.calorieRange && <li><span className="font-medium">Calories:</span> {bodyComp.nutrition.calorieRange}</li>}
-                {bodyComp.nutrition.proteinTarget && <li><span className="font-medium">Protein:</span> {bodyComp.nutrition.proteinTarget}</li>}
-                {bodyComp.nutrition.hydration && <li><span className="font-medium">Hydration:</span> {bodyComp.nutrition.hydration}</li>}
-                {bodyComp.nutrition.carbTiming && <li><span className="font-medium">Carb timing:</span> {bodyComp.nutrition.carbTiming}</li>}
-                {bodyComp.lifestyle.sleep && <li><span className="font-medium">Sleep:</span> {bodyComp.lifestyle.sleep}</li>}
-                {bodyComp.lifestyle.stress && <li><span className="font-medium">Stress:</span> {bodyComp.lifestyle.stress}</li>}
-                {bodyComp.lifestyle.dailyMovement && <li><span className="font-medium">Daily movement:</span> {bodyComp.lifestyle.dailyMovement}</li>}
-                {bodyComp.lifestyle.inflammationReduction && <li><span className="font-medium">Inflammation:</span> {bodyComp.lifestyle.inflammationReduction}</li>}
-              </ul>
-            </div>
-          </div>
-        </section>
-      )}
-      <section className="space-y-2">
-        <h3 className="text-xl font-semibold text-slate-900">Key Issues</h3>
-        {plan.keyIssues.length === 0 ? (
-          <p className="text-sm text-slate-600">No critical issues detected. Maintain strengths and progress gradually.</p>
-        ) : (
-          <ul className="list-disc pl-6 text-sm text-slate-700">
-            {plan.keyIssues.map((i, idx) => <li key={idx}>{i}</li>)}
-          </ul>
-        )}
-      </section>
+              </div>
 
-      <section className="space-y-2">
-        <h3 className="text-xl font-semibold text-slate-900">How to coach this client</h3>
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm text-sm text-slate-700 space-y-2">
-          <p>
-            Use the blocks below as the backbone of the program. Anchor sessions around the primary block, then layer correctives and
-            aerobic work so we are improving health, movement quality, and performance in parallel.
-          </p>
-          {goals.length > 0 && (
-            <p>
-              Keep language and progress checks tied to their stated goals ({goals.map(g => g.replace('-', ' ')).join(', ')}), so each block
-              is clearly connected to outcomes they care about.
-            </p>
-          )}
+              <div>
+                <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-3">2. Why this matters for your goals</h4>
+                <ul className="space-y-2">
+                  {plan.clientScript.whyItMatters.map((item, i) => (
+                    <li key={i} className="flex gap-3 text-slate-700 text-sm">
+                      <span className="text-amber-500 font-bold">•</span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-3">3. Our immediate focus</h4>
+                <ul className="space-y-2">
+                  {plan.clientScript.actionPlan.map((item, i) => (
+                    <li key={i} className="flex gap-3 text-slate-700 text-sm font-medium">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-6 pt-4 mt-4 border-t border-slate-100">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-3">4. 2-3 Month Outlook</h4>
+                  <ul className="space-y-2">
+                    {plan.clientScript.threeMonthOutlook.map((item, i) => (
+                      <li key={i} className="flex gap-3 text-slate-700 text-sm">
+                        <Target className="h-4 w-4 text-sky-500 shrink-0 mt-0.5" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-3">5. Your Commitment</h4>
+                  <ul className="space-y-2">
+                    {plan.clientScript.clientCommitment.map((item, i) => (
+                      <li key={i} className="flex gap-3 text-slate-700 text-sm">
+                        <span className="text-indigo-500 font-bold">{i + 1}.</span>
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section className="space-y-4">
-        <h3 className="text-xl font-semibold text-slate-900">Programming Blocks</h3>
-        <div className="grid gap-4 md:grid-cols-2">
-          {plan.movementBlocks.map((b, idx) => (
-            <div key={`${b.title}-${idx}`} className="rounded-lg border border-slate-200 p-4 bg-white shadow-sm">
-              <h4 className="font-semibold text-slate-900">{b.title}</h4>
-              <ul className="mt-2 list-disc pl-5 text-sm text-slate-700">
-                {b.objectives.map((o, i) => <li key={i}>{o}</li>)}
+      {/* INTERNAL COACH NOTES */}
+      <section className="space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="bg-slate-800 p-2 rounded-lg">
+            <ClipboardList className="h-5 w-5 text-white" />
+          </div>
+          <h3 className="text-xl font-bold text-slate-900">Internal Coaching Notes</h3>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="bg-emerald-50 rounded-2xl border border-emerald-100 p-6">
+            <h4 className="text-emerald-800 font-bold mb-4 flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5" />
+              What they're doing well
+            </h4>
+            <ul className="space-y-3">
+              {plan.internalNotes.doingWell.map((note, i) => (
+                <li key={i} className="text-emerald-900 text-sm flex gap-2">
+                  <span className="font-bold">•</span>
+                  {note}
+                </li>
+              ))}
+              {plan.internalNotes.doingWell.length === 0 && <li className="text-emerald-600 text-sm italic">Standard baseline.</li>}
+            </ul>
+          </div>
+
+          <div className="bg-rose-50 rounded-2xl border border-rose-100 p-6">
+            <h4 className="text-rose-800 font-bold mb-4 flex items-center gap-2">
+              <AlertCircle className="h-5 w-5" />
+              Areas to address
+            </h4>
+            <ul className="space-y-3">
+              {plan.internalNotes.needsAttention.map((note, i) => (
+                <li key={i} className="text-rose-900 text-sm flex gap-2">
+                  <span className="font-bold">•</span>
+                  {note}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* PROGRAMMING STRATEGIES */}
+      <section className="space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="bg-sky-600 p-2 rounded-lg">
+            <Activity className="h-5 w-5 text-white" />
+          </div>
+          <h3 className="text-xl font-bold text-slate-900">Programming Strategies & Exercises</h3>
+        </div>
+
+        <div className="grid gap-4">
+          {plan.programmingStrategies.map((s, i) => (
+            <div key={i} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+              <div className="flex justify-between items-start mb-4">
+                <h4 className="font-bold text-slate-900">{s.title}</h4>
+                <span className="px-3 py-1 bg-sky-50 text-sky-700 rounded-full text-[10px] font-bold uppercase tracking-widest">Strategy</span>
+              </div>
+              <p className="text-sm text-slate-600 mb-4">{s.strategy}</p>
+              <div className="flex flex-wrap gap-2">
+                {s.exercises.map((ex, j) => (
+                  <span key={j} className="px-3 py-1.5 bg-slate-50 border border-slate-100 text-slate-700 rounded-xl text-xs font-medium">
+                    {ex}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+          
+          {plan.movementBlocks.slice(0, 3).map((b, idx) => (
+            <div key={idx} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+              <div className="flex justify-between items-start mb-4">
+                <h4 className="font-bold text-slate-900">{b.title}</h4>
+                <span className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-[10px] font-bold uppercase tracking-widest">Movement Block</span>
+              </div>
+              <ul className="mb-4 space-y-1">
+                {b.objectives.map((o, i) => (
+                  <li key={i} className="text-xs text-slate-500 flex gap-2">
+                    <span className="text-indigo-400 font-bold">•</span> {o}
+                  </li>
+                ))}
               </ul>
-              <div className="mt-3 space-y-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {b.exercises.map((ex, i) => (
-                  <div key={i} className="flex items-center justify-between text-sm">
-                    <span className="text-slate-800">{ex.name}</span>
-                    <span className="text-slate-500">{ex.setsReps}</span>
+                  <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                    <span className="text-sm font-bold text-slate-800">{ex.name}</span>
+                    <span className="text-xs font-medium text-slate-500">{ex.setsReps}</span>
                   </div>
                 ))}
               </div>
@@ -161,36 +250,32 @@ export default function CoachReport({
         </div>
       </section>
 
-      {plan.segmentalGuidance && plan.segmentalGuidance.length > 0 && (
-        <section className="space-y-2">
-          <h3 className="text-xl font-semibold text-slate-900">Segmental Lean Imbalance Guidance</h3>
-          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <ul className="list-disc pl-5 text-sm text-slate-700 space-y-1">
-              {plan.segmentalGuidance.map((g, i) => <li key={i}>{g}</li>)}
-            </ul>
-            <p className="mt-3 text-xs text-slate-600">
-              Bonus: Keep it simple — bias the weaker side until it catches up. No need for complex overhauls.
-            </p>
+      {bodyComp && (
+        <section className="space-y-4">
+          <h3 className="text-xl font-bold text-slate-900">Body Composition Context</h3>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h4 className="font-bold mb-3 text-sm uppercase tracking-widest text-slate-400">Health Priority</h4>
+              {bodyComp.healthPriority.length ? (
+                <ul className="space-y-2">
+                  {bodyComp.healthPriority.map((p, i) => (
+                    <li key={i} className="text-sm text-slate-700 flex gap-2">
+                      <span className="text-indigo-500 font-bold">•</span> {p}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-slate-500 italic">No urgent priorities identified.</p>
+              )}
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h4 className="font-bold mb-3 text-sm uppercase tracking-widest text-slate-400">Timeframe Projection</h4>
+              <p className="text-2xl font-black text-indigo-600">{bodyComp.timeframeWeeks}</p>
+              <p className="text-xs text-slate-400 mt-1 italic">Based on physiological adaptation rates.</p>
+            </div>
           </div>
         </section>
       )}
-
-      <section className="space-y-2">
-        <h3 className="text-xl font-semibold text-slate-900">Category Scores</h3>
-        <div className="grid gap-3 md:grid-cols-2">
-          {scores.categories.map(cat => (
-            <div key={cat.id} className="rounded-lg border border-slate-200 bg-white p-3">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-700">{cat.title}</span>
-                <span className="font-semibold">{cat.score}</span>
-              </div>
-              <div className="mt-2 h-2 w-full rounded-full bg-slate-200">
-                <div className="h-2 rounded-full bg-slate-900" style={{ width: `${cat.score}%` }} />
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, ChevronDown } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +18,7 @@ export default function AppShell({
   children,
   onDemoFill,
   showDemoFill,
+  variant = 'default',
 }: {
   title: string;
   subtitle?: string;
@@ -25,6 +26,7 @@ export default function AppShell({
   children: React.ReactNode;
   onDemoFill?: () => void;
   showDemoFill?: boolean;
+  variant?: 'default' | 'full-width';
 }) {
   const { user, loading, signOut } = useAuth();
   const initials =
@@ -33,16 +35,17 @@ export default function AppShell({
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
-      <header className="border-b border-slate-200 bg-white sticky top-0 z-50">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4">
+      <header className="border-b border-slate-200 bg-white sticky top-0 z-50 w-full">
+        <div className="flex items-center justify-between h-16 px-6 lg:px-10">
+          {/* Left side: Logo */}
           <div className="flex items-center gap-6">
-            <Link to="/" className="flex items-center gap-3">
+            <Link to="/" className="flex items-center gap-3 shrink-0">
               <img
                 src="/Brand_Package_Primary_Logo_Black.svg"
                 alt="One Fitness"
                 className="h-8 w-auto"
               />
-              <div className="hidden leading-tight lg:block border-l border-slate-200 pl-6">
+              <div className="hidden leading-tight md:block border-l border-slate-200 pl-4">
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
                   Assessment Engine
                 </p>
@@ -53,7 +56,8 @@ export default function AppShell({
             </Link>
           </div>
 
-          <div className="flex items-center gap-4">
+          {/* Right side: actions/user */}
+          <div className="flex items-center gap-3">
             {showDemoFill && onDemoFill && (
               <Button
                 variant="ghost"
@@ -117,13 +121,16 @@ export default function AppShell({
           </div>
         </div>
       </header>
-      <main className="min-h-[calc(100-73px)]">
+      
+      <main className={`min-h-[calc(100vh-64px)] ${variant === 'default' ? 'mx-auto max-w-7xl px-8 lg:px-10 py-10 lg:py-12' : ''}`}>
+        {variant === 'default' && (
+          <div className="mb-8 space-y-1">
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900">{title}</h1>
+            {subtitle && <p className="text-slate-500 font-medium">{subtitle}</p>}
+          </div>
+        )}
         {children}
       </main>
     </div>
   );
 }
-
-import { ChevronDown } from 'lucide-react';
-
-

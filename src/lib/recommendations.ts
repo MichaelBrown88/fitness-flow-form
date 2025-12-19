@@ -3,6 +3,22 @@ import type { ScoreSummary } from './scoring';
 
 export type CoachPlan = {
   keyIssues: string[];
+  clientScript: {
+    findings: string[];
+    whyItMatters: string[];
+    actionPlan: string[];
+    threeMonthOutlook: string[];
+    clientCommitment: string[];
+  };
+  internalNotes: {
+    doingWell: string[];
+    needsAttention: string[];
+  };
+  programmingStrategies: {
+    title: string;
+    exercises: string[];
+    strategy: string;
+  }[];
   movementBlocks: {
     title: string;
     objectives: string[];
@@ -68,14 +84,76 @@ export function generateCoachPlan(form: FormData, scores: ScoreSummary): CoachPl
   const issues: string[] = [];
   const blocks: CoachPlan['movementBlocks'] = [];
   const segmentalGuidance: string[] = [];
+  
+  const clientScript = {
+    findings: [] as string[],
+    whyItMatters: [] as string[],
+    actionPlan: [] as string[],
+    threeMonthOutlook: [] as string[],
+    clientCommitment: [] as string[],
+  };
 
-  // Body composition priority flags (obesity / high BF% / visceral)
+  const internalNotes = {
+    doingWell: [] as string[],
+    needsAttention: [] as string[],
+  };
+
+  const programmingStrategies: CoachPlan['programmingStrategies'] = [];
+
+  const goals = Array.isArray((form as any).clientGoals) ? (form as any).clientGoals as string[] : [];
+  const primaryGoalRaw = goals[0] || 'general-health';
+  const primaryGoal = primaryGoalRaw.replace('-', ' ');
+
+  // 1. Gather Findings and Internal Notes
   const gender = (form.gender || '').toLowerCase();
   const bf = parseFloat(form.inbodyBodyFatPct || '0');
   const visceral = parseFloat(form.visceralFatLevel || '0');
-  const h = (parseFloat((form as any).heightCm || '0') || 0) / 100;
-  const w = parseFloat(form.inbodyWeightKg || '0');
-  const healthyMax = h > 0 ? 25 * h * h : 0;
+  const bodyCompScore = scores.categories.find(c => c.id === 'bodyComp')?.score || 0;
+  const cardioScore = scores.categories.find(c => c.id === 'cardio')?.score || 0;
+  const strengthScore = scores.categories.find(c => c.id === 'strength')?.score || 0;
+  const movementScore = scores.categories.find(c => c.id === 'movementQuality')?.score || 0;
+  const lifestyleScore = scores.categories.find(c => c.id === 'lifestyle')?.score || 0;
+
+  // Lead with Goal in the script
+  clientScript.actionPlan.push(`To directly support your goal of ${primaryGoal}, we're going to build your program around three main pillars.`);
+
+  // Body Composition framing
+  if (bf > (gender === 'male' ? 25 : 32) || visceral >= 12) {
+    clientScript.findings.push(`Your body composition markers show some metabolic stress.`);
+    clientScript.whyItMatters.push(`Lowering these markers will make reaching your ${primaryGoal} goal much faster by improving your energy and how your body processes fuel.`);
+    clientScript.actionPlan.push(`We'll use specific cardio 'anchors' to improve your metabolic health, which clears the path for your ${primaryGoal} results.`);
+    internalNotes.needsAttention.push("High metabolic risk - requires Zone 2 foundation to support primary goal.");
+  }
+
+  // Movement framing
+  if (movementScore < 60 || form.postureBackOverall !== 'neutral') {
+    clientScript.findings.push("We found some movement restrictions that act like 'brakes' on your progress.");
+    clientScript.whyItMatters.push(`Fixing these will make your ${primaryGoal} training much safer and allow us to load you up with heavier weights sooner.`);
+    clientScript.actionPlan.push(`We'll include 5-10 minutes of 'pre-hab' in every session to unlock these areas so they don't hold back your ${primaryGoal} progress.`);
+    internalNotes.needsAttention.push(`Movement quality (${movementScore}/100) is a bottleneck for ${primaryGoal}.`);
+  }
+
+  // Strength/Cardio framing
+  if (strengthScore < 50) {
+    clientScript.findings.push("Your current strength baseline is the foundation we need to build upon.");
+    clientScript.whyItMatters.push(`As we increase this baseline, every part of your ${primaryGoal} journey will become easier and more sustainable.`);
+    internalNotes.needsAttention.push("Foundational strength mastery required before high-intensity loading.");
+  }
+
+  if (cardioScore < 50) {
+    clientScript.findings.push("Your aerobic recovery is currently a limiting factor.");
+    clientScript.whyItMatters.push(`By improving this, you'll be able to work harder in your ${primaryGoal} sessions and recover much faster between them.`);
+    internalNotes.needsAttention.push("Aerobic base is low - will limit the density of primary goal workouts.");
+  }
+
+  // 3-Month Outlook - Goal Centric
+  clientScript.threeMonthOutlook.push(`In 90 days, the main thing you'll notice is a significant shift in your ${primaryGoal}.`);
+  clientScript.threeMonthOutlook.push("Beyond that, you'll feel 'tighter' in your movement, have more 'engine' in your workouts, and feel more confident under load.");
+  
+  // Internal Notes - Doing Well
+  if (bodyCompScore > 75) internalNotes.doingWell.push("Excellent metabolic baseline.");
+  if (movementScore > 75) internalNotes.doingWell.push("Very high movement integrity.");
+  if (lifestyleScore > 80) internalNotes.doingWell.push("Elite-level recovery habits.");
   if ((gender === 'male' && bf > 25) || (gender === 'female' && bf > 32) || (healthyMax > 0 && w > healthyMax + 3) || visceral >= 12) {
     issues.push('Body composition priority (health risk)');
     // Encourage aerobic base + strength base blocks
@@ -94,7 +172,6 @@ export function generateCoachPlan(form: FormData, scores: ScoreSummary): CoachPl
   };
 
   // Incorporate client goals
-  const goals = Array.isArray((form as any).clientGoals) ? (form as any).clientGoals as string[] : [];
   goals.forEach((g) => {
     if (g === 'weight-loss') {
       issues.push('Primary goal: Weight loss');
@@ -215,7 +292,14 @@ export function generateCoachPlan(form: FormData, scores: ScoreSummary): CoachPl
     blocks.push({ title: 'Performance maintenance', objectives: ['Maintain strengths', 'Prevent regression'], exercises: EXERCISES.strengthBase });
   }
 
-  return { keyIssues: issues, movementBlocks: blocks, segmentalGuidance };
+  return { 
+    keyIssues: issues, 
+    clientScript,
+    internalNotes,
+    programmingStrategies,
+    movementBlocks: blocks, 
+    segmentalGuidance 
+  };
 }
 
 export function generateBodyCompInterpretation(form: FormData): BodyCompInterpretation {
