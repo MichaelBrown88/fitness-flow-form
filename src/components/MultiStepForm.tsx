@@ -157,9 +157,9 @@ const SingleFieldFlow = ({
       <div className="space-y-2">
         <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400">
           <span>{section.title} Progress</span>
-          {!isParqField && <span>{activeFieldIdx + 1} of {steps.length}</span>}
+          {(!isParqField || formData.parqQuestionnaire === 'completed') && <span>{activeFieldIdx + 1} of {steps.length}</span>}
         </div>
-        {!isParqField && <Progress value={((activeFieldIdx + 1) / steps.length) * 100} className="h-1" />}
+        {(!isParqField || formData.parqQuestionnaire === 'completed') && <Progress value={((activeFieldIdx + 1) / steps.length) * 100} className="h-1" />}
       </div>
 
       <div className="bg-white rounded-3xl p-8 lg:p-10 shadow-xl shadow-indigo-100/20 border border-indigo-50 min-h-[400px] flex flex-col justify-center relative">
@@ -197,7 +197,7 @@ const SingleFieldFlow = ({
           ))}
         </div>
         
-        {!isParqField && (
+        {( !isParqField || formData.parqQuestionnaire === 'completed' ) && (
           <div className="flex items-center justify-between mt-12 pt-8 border-t border-slate-50">
             <Button
               variant="ghost"
