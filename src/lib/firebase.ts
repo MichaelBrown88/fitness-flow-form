@@ -23,21 +23,15 @@ export function getFirebaseApp(): FirebaseApp {
   return appInstance;
 }
 
-export function getDb(): Firestore {
-  return getFirestore(getFirebaseApp());
-}
+export const db = getFirestore(getFirebaseApp());
+export const auth = getAuth(getFirebaseApp());
+export const functions = getFunctions(getFirebaseApp());
+export const storage = getStorage(getFirebaseApp());
 
-export function getFirebaseAuth(): Auth {
-  return getAuth(getFirebaseApp());
-}
-
-export function getFirebaseFunctions(): Functions {
-  return getFunctions(getFirebaseApp());
-}
-
-export function getFirebaseStorage(): FirebaseStorage {
-  return getStorage(getFirebaseApp());
-}
+export const getDb = () => db;
+export const getFirebaseAuth = () => auth;
+export const getFirebaseFunctions = () => functions;
+export const getFirebaseStorage = () => storage;
 
 export default getFirebaseApp;
 

@@ -21,7 +21,6 @@ export interface FormData {
   goalLevelMuscle: string;
   goalLevelStrength: string;
   goalLevelFitness: string;
-  goalLevelHealth: string;
   activityLevel: string;
   sleepDuration: string;
   sleepQuality: string;
@@ -75,6 +74,8 @@ export interface FormData {
   inbodyScore: string;
 
   /** Phase 2 — Posture & Movement Quality */
+  postureInputMode: 'manual' | 'ai';
+  postureAiResults: any; // Detailed AI analysis results
   postureSeverity: string;
   postureForwardHead: string;
   postureRoundedShoulders: string;
@@ -189,7 +190,6 @@ const initialFormData: FormData = {
   goalLevelMuscle: '',
   goalLevelStrength: '',
   goalLevelFitness: '',
-  goalLevelHealth: '',
   activityLevel: '',
   sleepDuration: '',
   sleepQuality: '',
@@ -238,6 +238,8 @@ const initialFormData: FormData = {
   segmentalTrunkKg: '',
   bmrKcal: '',
   inbodyScore: '',
+  postureInputMode: 'manual',
+  postureAiResults: null,
   postureSeverity: '',
   postureForwardHead: '',
   postureRoundedShoulders: '',

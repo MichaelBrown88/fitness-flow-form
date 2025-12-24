@@ -260,23 +260,61 @@ function scoreMovementQuality(form: FormData): ScoreCategory {
   const shoulder = hasShoulder ? mapMobility(form.mobilityShoulder) : 0;
   const ankle = hasAnkle ? mapMobility(form.mobilityAnkle) : 0;
   
-  // Posture scores
-  const hasHead = !!(form.postureHeadOverall && form.postureHeadOverall.trim() !== '');
-  const hasShoulders = !!(form.postureShouldersOverall && form.postureShouldersOverall.trim() !== '');
-  const hasBack = !!(form.postureBackOverall && form.postureBackOverall.trim() !== '');
-  const hasHips = !!(form.postureHipsOverall && form.postureHipsOverall.trim() !== '');
-  const hasKnees = !!(form.postureKneesOverall && form.postureKneesOverall.trim() !== '');
-  const head = hasHead ? neutralScore(form.postureHeadOverall) : 0;
-  const shoulders = hasShoulders ? neutralScore(form.postureShouldersOverall) : 0;
-  const back = hasBack ? (backMap[form.postureBackOverall] ?? 0) : 0;
-  const hips = hasHips ? neutralScore(form.postureHipsOverall) : 0;
-  const knees = hasKnees ? (kneesMap[form.postureKneesOverall] ?? 0) : 0;
+  // Posture scores - Handle AI or Manual
+  let head = 0;
+  let shoulders = 0;
+  let back = 0;
+  let hips = 0;
+  let knees = 0;
+  let postureLabel = 'Manual';
+
+  if (form.postureAiResults) {
+    postureLabel = 'AI Analyzed';
+    const ai = form.postureAiResults;
+    
+    // 1. Head Posture (from side view)
+    const headData = ai['side-right']?.head_posture || ai['side-left']?.head_posture;
+    if (headData) {
+      const dev = headData.deviation_degrees ?? 0;
+      head = dev < 5 ? 100 : dev < 12 ? 75 : 45;
+    }
+
+    // 2. Shoulder Alignment (from front view)
+    const shoulderData = ai.front?.shoulder_alignment;
+    if (shoulderData) {
+      const off = Math.abs(shoulderData.vertical_offset_cm ?? 0);
+      shoulders = off < 1 ? 100 : off < 2.5 ? 75 : 45;
+    }
+
+    // 3. Spinal / Pelvic (from side view)
+    const pelvicData = ai['side-right']?.pelvic_position || ai['side-left']?.pelvic_position;
+    if (pelvicData) {
+      const tilt = Math.abs(pelvicData.tilt_degrees ?? 0);
+      back = tilt < 4 ? 100 : tilt < 8 ? 75 : 45;
+    }
+
+    // Hips/Knees fallback to manual or neutral if not explicitly in AI schema yet
+    hips = neutralScore(form.postureHipsOverall || 'neutral');
+    knees = kneesMap[form.postureKneesOverall || 'neutral'] || 100;
+  } else {
+    // Manual scoring
+    const hasHead = !!(form.postureHeadOverall && form.postureHeadOverall.trim() !== '');
+    const hasShoulders = !!(form.postureShouldersOverall && form.postureShouldersOverall.trim() !== '');
+    const hasBack = !!(form.postureBackOverall && form.postureBackOverall.trim() !== '');
+    const hasHips = !!(form.postureHipsOverall && form.postureHipsOverall.trim() !== '');
+    const hasKnees = !!(form.postureKneesOverall && form.postureKneesOverall.trim() !== '');
+    head = hasHead ? neutralScore(form.postureHeadOverall) : 0;
+    shoulders = hasShoulders ? neutralScore(form.postureShouldersOverall) : 0;
+    back = hasBack ? (backMap[form.postureBackOverall] ?? 0) : 0;
+    hips = hasHips ? neutralScore(form.postureHipsOverall) : 0;
+    knees = hasKnees ? (kneesMap[form.postureKneesOverall] ?? 0) : 0;
+  }
   
   const details: ScoreDetail[] = [
     { id: 'hip', label: 'Hip Mobility', value: form.mobilityHip || '-', score: hip },
     { id: 'shoulder', label: 'Shoulder Mobility', value: form.mobilityShoulder || '-', score: shoulder },
     { id: 'ankle', label: 'Ankle Mobility', value: form.mobilityAnkle || '-', score: ankle },
-    { id: 'spinal', label: 'Spinal Alignment', value: form.postureBackOverall || '-', score: back },
+    { id: 'spinal', label: `Posture (${postureLabel})`, value: form.postureAiResults ? 'Detailed' : (form.postureBackOverall || '-'), score: back },
     { id: 'knee', label: 'Knee Alignment', value: form.postureKneesOverall || '-', score: knees },
   ];
   
@@ -288,9 +326,9 @@ function scoreMovementQuality(form: FormData): ScoreCategory {
   if (hasHip && hip < 60) weaknesses.push('Hip mobility');
   if (hasShoulder && shoulder < 60) weaknesses.push('Shoulder mobility');
   if (hasAnkle && ankle < 60) weaknesses.push('Ankle mobility');
-  if (hasBack && back < 60) weaknesses.push('Spinal alignment');
-  if (hasKnees && knees < 60) weaknesses.push('Knee alignment');
-  if (hasHips && hips < 60) weaknesses.push('Pelvic alignment');
+  if (back < 60) weaknesses.push('Spinal alignment');
+  if (knees < 60) weaknesses.push('Knee alignment');
+  if (hips < 60) weaknesses.push('Pelvic alignment');
   if (score >= 75 && allScores.length >= 4) strengths.push('Overall movement quality');
   
   return { id: 'movementQuality', title: 'Movement Quality', score, details, strengths, weaknesses };

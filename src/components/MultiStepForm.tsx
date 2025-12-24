@@ -32,6 +32,12 @@ import {
   Share2,
   Download,
   Copy,
+  Loader2,
+  Camera as CameraIcon, 
+  Scan, 
+  CheckCircle2, 
+  Smartphone,
+  X
 } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
 import { phaseDefinitions, type PhaseField, type PhaseSection } from '@/lib/phaseConfig';
@@ -48,9 +54,11 @@ import { downloadElementAsPdf } from '@/lib/pdf';
 import { generateInteractiveHtml } from '@/lib/htmlExport';
 import { useSettings } from '@/hooks/useSettings';
 import { generateDemoData } from '@/lib/demoGenerator';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { CameraCapture } from './camera/CameraCapture';
+import { PostureCompanionModal } from './camera/PostureCompanionModal';
 import { processInBodyScan } from '@/lib/ai/ocrEngine';
-import { analyzePosture, type Landmark } from '@/lib/ai/postureEngine';
+import { analyzePostureImage } from '@/lib/ai/postureAnalysis';
 import {
   Dialog,
   DialogContent,
@@ -58,7 +66,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Camera as CameraIcon, Scan, CheckCircle2 } from 'lucide-react';
 
 type FieldValue = string | string[];
 
@@ -78,43 +85,47 @@ const SingleFieldFlow = ({
   activeFieldIdx,
   setActiveFieldIdx,
   onComplete,
-  onShowCamera
+  onShowCamera,
+  onShowPostureCompanion
 }: { 
   section: SectionType; 
   activeFieldIdx: number;
   setActiveFieldIdx: (idx: number | ((prev: number) => number)) => void;
   onComplete: () => void;
   onShowCamera?: (mode: 'ocr' | 'posture') => void;
+  onShowPostureCompanion?: () => void;
 }) => {
   const { formData } = useFormContext();
+  const isMobile = useIsMobile();
 
   // Filter visible fields and group paired ones
   const steps = useMemo(() => {
     const visible = (section.fields as PhaseField[]).filter(field => {
-      if (!('conditional' in field) || !field.conditional || !field.conditional.showWhen) return true;
-      const { showWhen } = field.conditional;
-      const dependentValue = formData[showWhen.field as keyof FormData];
-      let ok = true;
-      if (showWhen.exists !== undefined) {
-        ok = ok && (dependentValue !== undefined && dependentValue !== null && String(dependentValue).trim() !== '');
-      }
-      if (showWhen.value !== undefined) {
-        ok = ok && dependentValue === showWhen.value;
-      }
-      if (showWhen.notValue !== undefined) {
-        ok = ok && dependentValue !== showWhen.notValue;
-      }
-      if (showWhen.includes !== undefined) {
-        if (Array.isArray(dependentValue)) {
-          ok = ok && (dependentValue as string[]).includes(showWhen.includes);
+    if (!('conditional' in field) || !field.conditional || !field.conditional.showWhen) return true;
+    const { showWhen } = field.conditional;
+    const dependentValue = formData[showWhen.field as keyof FormData];
+    let ok = true;
+    if (showWhen.exists !== undefined) {
+        const hasValue = (dependentValue !== undefined && dependentValue !== null && String(dependentValue).trim() !== '');
+        ok = ok && (showWhen.exists ? hasValue : !hasValue);
+    }
+    if (showWhen.value !== undefined) {
+      ok = ok && dependentValue === showWhen.value;
+    }
+    if (showWhen.notValue !== undefined) {
+      ok = ok && dependentValue !== showWhen.notValue;
+    }
+    if (showWhen.includes !== undefined) {
+      if (Array.isArray(dependentValue)) {
+        ok = ok && (dependentValue as string[]).includes(showWhen.includes);
         } else if (typeof dependentValue === 'string') {
           ok = ok && dependentValue === showWhen.includes;
-        } else {
-          ok = false;
-        }
+      } else {
+        ok = false;
       }
-      return ok;
-    });
+    }
+    return ok;
+  });
 
     // Group by pairId
     const result: PhaseField[][] = [];
@@ -178,18 +189,19 @@ const SingleFieldFlow = ({
       </div>
 
       <div className="bg-white rounded-3xl p-8 lg:p-10 shadow-xl shadow-indigo-100/20 border border-indigo-50 min-h-[400px] flex flex-col justify-center relative">
-        {(section.id === 'body-comp' || section.id === 'posture') && onShowCamera && (
+        {section.id === 'body-comp' && onShowCamera && (
           <div className="absolute top-8 right-8 z-10">
             <Button 
               variant="outline" 
-              onClick={() => onShowCamera(section.id === 'body-comp' ? 'ocr' : 'posture')}
+              onClick={() => onShowCamera('ocr')}
               className="rounded-xl border-indigo-200 text-indigo-600 hover:bg-indigo-50 font-bold gap-2"
             >
-              <CameraIcon className="h-4 w-4" />
-              {section.id === 'body-comp' ? 'Scan InBody Report' : 'AI Posture Analysis'}
+              <Scan className="h-4 w-4" />
+              Scan InBody Report
             </Button>
           </div>
         )}
+
         {movementPattern && (
           <div className="mb-6 flex items-center justify-between">
             <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border border-indigo-100">
@@ -219,44 +231,57 @@ const SingleFieldFlow = ({
                   {field.side} Side
                 </span>
               )}
-              <FieldControl field={field} />
+              <FieldControl 
+                field={field} 
+                onShowCamera={onShowCamera}
+                onShowPostureCompanion={onShowPostureCompanion}
+              />
             </div>
           ))}
         </div>
         
         {( !isParqField || formData.parqQuestionnaire === 'completed' ) && (
-          <div className="flex items-center justify-between mt-12 pt-8 border-t border-slate-50">
-            <Button
-              variant="ghost"
-              onClick={handleBack}
+        <div className="flex items-center justify-between mt-12 pt-8 border-t border-slate-50">
+          <Button
+            variant="ghost"
+            onClick={handleBack}
               disabled={activeFieldIdx === 0}
-              className="h-12 px-6 rounded-xl font-bold text-slate-400 hover:text-slate-900"
-            >
-              <ChevronLeft className="mr-2 h-5 w-5" />
-              Back
-            </Button>
+            className="h-12 px-6 rounded-xl font-bold text-slate-400 hover:text-slate-900"
+          >
+            <ChevronLeft className="mr-2 h-5 w-5" />
+            Back
+          </Button>
 
-            <Button
-              onClick={handleNext}
+          <Button
+            onClick={handleNext}
               disabled={!hasValue && currentStep.some(f => f.required)}
-              className={`h-12 px-8 rounded-xl font-bold transition-all ${
+            className={`h-12 px-8 rounded-xl font-bold transition-all ${
                 hasValue || !currentStep.some(f => f.required)
-                  ? 'bg-slate-900 text-white hover:bg-slate-800'
-                  : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-              }`}
-            >
-              {isLastField ? 'Section Complete' : 'Next Step'}
-              <ChevronRight className="ml-2 h-5 w-5" />
-            </Button>
-          </div>
+                ? 'bg-slate-900 text-white hover:bg-slate-800'
+                : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+            }`}
+          >
+            {isLastField ? 'Section Complete' : 'Next Step'}
+            <ChevronRight className="ml-2 h-5 w-5" />
+          </Button>
+        </div>
         )}
       </div>
     </div>
   );
 };
 
-const FieldControl = ({ field }: { field: PhaseField }) => {
+const FieldControl = ({ 
+  field,
+  onShowCamera,
+  onShowPostureCompanion
+}: { 
+  field: PhaseField;
+  onShowCamera?: (mode: 'ocr' | 'posture') => void;
+  onShowPostureCompanion?: () => void;
+}) => {
   const { formData, updateFormData } = useFormContext();
+  const isMobile = useIsMobile();
 
   // Check conditional logic
   const shouldShow = () => {
@@ -266,7 +291,8 @@ const FieldControl = ({ field }: { field: PhaseField }) => {
     const dependentValue = formData[showWhen.field as keyof FormData];
     let ok = true;
     if (showWhen.exists !== undefined) {
-      ok = ok && (dependentValue !== undefined && dependentValue !== null && String(dependentValue).trim() !== '');
+      const hasValue = (dependentValue !== undefined && dependentValue !== null && String(dependentValue).trim() !== '');
+      ok = ok && (showWhen.exists ? hasValue : !hasValue);
     }
     if (showWhen.value !== undefined) {
       ok = ok && dependentValue === showWhen.value;
@@ -291,7 +317,14 @@ const FieldControl = ({ field }: { field: PhaseField }) => {
   }
 
   const handleChange = (value: FieldValue) => {
-    updateFormData({ [field.id]: value } as Partial<FormData>);
+    const updates: Partial<FormData> = { [field.id]: value } as Partial<FormData>;
+    
+    // Clear AI results if switching to manual
+    if (field.id === 'postureInputMode' && value === 'manual') {
+      updates.postureAiResults = null;
+    }
+    
+    updateFormData(updates);
   };
 
   const renderLabel = () => (
@@ -313,37 +346,20 @@ const FieldControl = ({ field }: { field: PhaseField }) => {
 
   const renderInput = () => {
     const value = formData[field.id];
-    switch (field.type) {
-      case 'textarea':
-        return (
-          <Textarea
-            placeholder={field.placeholder}
-            value={(value as string) ?? ''}
-            onChange={(event) => handleChange(event.target.value)}
-            rows={4}
-            className="mt-2 rounded-xl border-slate-200 focus:ring-indigo-500"
-          />
-        );
-      case 'select':
-        // Always use a touch-optimized button grid for select fields
-        return (
+
+    // Special UI for AI Posture Scan choice
+    if (field.id === 'postureInputMode' && value === 'ai') {
+      return (
+        <div className="space-y-6">
           <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
             {field.options?.map((option, idx) => {
               const isSelected = value === option.value;
-              const colors = [
-                'hover:border-emerald-200 hover:bg-emerald-50 text-emerald-700 border-emerald-100',
-                'hover:border-indigo-200 hover:bg-indigo-50 text-indigo-700 border-indigo-100',
-                'hover:border-sky-200 hover:bg-sky-50 text-sky-700 border-sky-100',
-                'hover:border-amber-200 hover:bg-amber-50 text-amber-700 border-amber-100',
-                'hover:border-purple-200 hover:bg-purple-50 text-purple-700 border-purple-100',
-                'hover:border-rose-200 hover:bg-rose-50 text-rose-700 border-rose-100',
-              ];
-              const colorClass = colors[idx % colors.length];
+              const colorClass = idx === 0 ? 'hover:border-slate-200 hover:bg-slate-50 text-slate-700 border-slate-100' : 'hover:border-indigo-200 hover:bg-indigo-50 text-indigo-700 border-indigo-100';
               
               return (
-                <button
+            <button
                   key={option.value}
-                  type="button"
+              type="button"
                   onClick={() => handleChange(option.value)}
                   className={`flex h-11 items-center gap-3 rounded-xl border-2 px-4 text-left transition-all ${
                     isSelected
@@ -357,25 +373,118 @@ const FieldControl = ({ field }: { field: PhaseField }) => {
                     {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
                   </div>
                   <span className="font-bold text-xs leading-tight">{option.label}</span>
-                </button>
+            </button>
               );
             })}
           </div>
+
+          <div className="p-8 bg-indigo-50 rounded-3xl border-2 border-dashed border-indigo-200 flex flex-col items-center text-center space-y-6 animate-in fade-in zoom-in duration-500">
+            <div className="bg-white p-4 rounded-3xl shadow-sm">
+              <Smartphone className="h-10 w-10 text-indigo-600" />
+            </div>
+            <div className="space-y-2">
+              <h4 className="text-xl font-black uppercase tracking-tight text-indigo-900">AI Posture Analysis</h4>
+              <p className="text-indigo-600/70 text-sm font-medium max-w-xs mx-auto">
+                {formData.postureAiResults 
+                  ? "Scan complete! You can re-scan if needed or continue to the next step."
+                  : "Connect your iPhone to perform a multi-view posture scan with real-time AI grading."}
+              </p>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm">
+              {isMobile ? (
+                <Button 
+                  onClick={() => onShowCamera?.('posture')}
+                  className="flex-1 h-14 rounded-2xl bg-indigo-600 text-white font-black uppercase tracking-widest text-xs gap-3 shadow-xl shadow-indigo-200"
+                >
+                  <CameraIcon className="h-5 w-5" />
+                  Start Posture Scan
+                </Button>
+              ) : (
+                <Button 
+                  onClick={onShowPostureCompanion}
+                  className="flex-1 h-14 rounded-2xl bg-indigo-600 text-white font-black uppercase tracking-widest text-xs gap-3 shadow-xl shadow-indigo-200"
+                >
+                  <Smartphone className="h-5 w-5" />
+                  Open Remote Mode
+                </Button>
+              )}
+            </div>
+
+            {formData.postureAiResults && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 rounded-full border border-emerald-500/20">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-700">AI Results Active</span>
+              </div>
+            )}
+          </div>
+    </div>
+  );
+    }
+
+    switch (field.type) {
+      case 'textarea':
+        return (
+          <Textarea
+            placeholder={field.placeholder}
+            value={(value as string) ?? ''}
+            onChange={(event) => handleChange(event.target.value)}
+            rows={4}
+            className="mt-2 rounded-xl border-slate-200 focus:ring-indigo-500"
+          />
+        );
+      case 'select':
+        // Always use a touch-optimized button grid for select fields
+          return (
+            <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {field.options?.map((option, idx) => {
+                const isSelected = value === option.value;
+              const colors = [
+                'hover:border-emerald-200 hover:bg-emerald-50 text-emerald-700 border-emerald-100',
+                'hover:border-indigo-200 hover:bg-indigo-50 text-indigo-700 border-indigo-100',
+                'hover:border-sky-200 hover:bg-sky-50 text-sky-700 border-sky-100',
+                'hover:border-amber-200 hover:bg-amber-50 text-amber-700 border-amber-100',
+                'hover:border-purple-200 hover:bg-purple-50 text-purple-700 border-purple-100',
+                'hover:border-rose-200 hover:bg-rose-50 text-rose-700 border-rose-100',
+              ];
+              const colorClass = colors[idx % colors.length];
+              
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => handleChange(option.value)}
+                  className={`flex h-11 items-center gap-3 rounded-xl border-2 px-4 text-left transition-all ${
+                      isSelected
+                      ? 'border-slate-900 bg-slate-900 text-white shadow-lg scale-[1.02]'
+                      : `bg-white text-slate-600 ${colorClass}`
+                    }`}
+                  >
+                  <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                    isSelected ? 'bg-white/20 border-white/20 text-white' : 'border-slate-200 bg-white'
+                    }`}>
+                    {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
+                    </div>
+                  <span className="font-bold text-xs leading-tight">{option.label}</span>
+                  </button>
+                );
+              })}
+          </div>
         );
       case 'multiselect': {
-        const selected = Array.isArray(value) ? (value as string[]) : [];
-        const toggle = (val: string) => {
-          if (selected.includes(val)) {
-            handleChange(selected.filter(v => v !== val));
-          } else {
-            handleChange([...selected, val]);
-          }
-        };
+          const selected = Array.isArray(value) ? (value as string[]) : [];
+          const toggle = (val: string) => {
+            if (selected.includes(val)) {
+              handleChange(selected.filter(v => v !== val));
+            } else {
+              handleChange([...selected, val]);
+            }
+          };
         
-        return (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+          return (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
             {field.options?.map((opt, idx) => {
-              const isActive = selected.includes(opt.value);
+                const isActive = selected.includes(opt.value);
               const colors = [
                 'hover:border-emerald-200 hover:bg-emerald-50 text-emerald-700 border-emerald-100',
                 'hover:border-indigo-200 hover:bg-indigo-50 text-indigo-700 border-indigo-100',
@@ -386,27 +495,27 @@ const FieldControl = ({ field }: { field: PhaseField }) => {
               ];
               const colorClass = colors[idx % colors.length];
 
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => toggle(opt.value)}
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => toggle(opt.value)}
                   className={`flex h-11 items-center gap-3 rounded-xl border-2 px-4 text-left transition-all ${
-                    isActive
+                      isActive
                       ? 'border-slate-900 bg-slate-900 text-white shadow-lg scale-[1.02]'
                       : `bg-white text-slate-600 ${colorClass}`
-                  }`}
-                  aria-pressed={isActive}
-                >
+                    }`}
+                    aria-pressed={isActive}
+                  >
                   <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
                     isActive ? 'bg-white/20 border-white/20 text-white' : 'border-slate-200 bg-white'
-                  }`}>
+                    }`}>
                     {isActive && <Check className="h-3 w-3 stroke-[3]" />}
-                  </div>
+                    </div>
                   <span className="font-bold text-xs leading-tight">{opt.label}</span>
-                </button>
-              );
-            })}
+                  </button>
+                );
+              })}
           </div>
         );
       }
@@ -488,6 +597,7 @@ const PhaseFormContent = ({
   const { settings } = useSettings();
   const { user } = useAuth();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [activePhaseIdx, setActivePhaseIdx] = useState(0);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [recentlyCompletedSections, setRecentlyCompletedSections] = useState<Set<string>>(new Set());
@@ -508,10 +618,13 @@ const PhaseFormContent = ({
   const reportRef = useRef<HTMLDivElement | null>(null);
   const [isDemoAssessment, setIsDemoAssessment] = useState(false);
   const [isReviewMode, setIsReviewMode] = useState(false);
+  
+  // NEW CAMERA/COMPANION STATE
   const [showCamera, setShowCamera] = useState<false | 'ocr' | 'posture'>(false);
+  const [showPostureCompanion, setShowPostureCompanion] = useState(false);
   const [ocrReviewData, setOcrReviewData] = useState<Partial<FormData> | null>(null);
   const [isProcessingOcr, setIsProcessingOcr] = useState(false);
-  const [postureStep, setPostureStep] = useState<number>(0); // 0: Front, 1: Back, 2: Left, 3: Right
+  const [postureStep, setPostureStep] = useState<number>(0);
 
   const totalPhases = phaseDefinitions.length;
   const activePhase = useMemo(() => {
@@ -657,7 +770,7 @@ const PhaseFormContent = ({
     }
     
     return { artifacts: null, blob: pdf.output('blob') };
-  }, [ensureShareArtifacts, user, savingId, reportView]);
+  }, [ensureShareArtifacts, user, savingId]);
 
   const handlePrint = useCallback(async () => {
     try {
@@ -685,7 +798,7 @@ const PhaseFormContent = ({
       setShareLoading(true);
       let shareUrl = window.location.origin;
       if (user && savingId) {
-        const artifacts = await ensureShareArtifacts(reportView);
+          const artifacts = await ensureShareArtifacts(reportView);
         shareUrl = `${window.location.origin}/share/${user.uid}/${savingId}`;
       }
       if (navigator.share) {
@@ -733,54 +846,65 @@ const PhaseFormContent = ({
 
   const handleCapture = async (imageSrc: string) => {
     if (showCamera === 'ocr') {
-      setIsProcessingOcr(true);
       setShowCamera(false);
+      setIsProcessingOcr(true);
+      
+      toast({ 
+        title: "Image Captured", 
+        description: "Gemini AI is analyzing your InBody scan...",
+      });
+
       try {
         const result = await processInBodyScan(imageSrc);
-        if (Object.keys(result.fields).length > 0) {
+        if (result.fields && Object.keys(result.fields).length > 0) {
           setOcrReviewData(result.fields);
         } else {
           toast({ 
-            title: "Scan incomplete", 
-            description: "Could not find clear data. Please ensure the scan is well-lit and aligned.",
+            title: "Scan failed", 
+            description: "AI couldn't find data. Please try again with a clearer photo.",
             variant: "destructive"
           });
         }
       } catch (err) {
         console.error('OCR error:', err);
-        toast({ title: "Scan failed", description: "An error occurred during scanning.", variant: "destructive" });
+        toast({ title: "Scan failed", description: "An error occurred during AI analysis.", variant: "destructive" });
       } finally {
         setIsProcessingOcr(false);
       }
     } else if (showCamera === 'posture') {
-      // In a real app, we'd use MediaPipe in real-time on the camera feed
-      // For this demo/implementation, we'll simulate landmark detection on the captured image
-      // Since we don't have a real backend for landmarks, we'll suggest based on the step
+      const views: ('front' | 'side-right' | 'side-left' | 'back')[] = ['front', 'side-right', 'side-left', 'back'];
+      const currentView = views[postureStep] || 'front';
       
-      const views: ('front' | 'back' | 'left' | 'right')[] = ['front', 'back', 'left', 'right'];
-      const currentView = views[postureStep];
+      toast({ title: `${currentView.toUpperCase()} captured`, description: "Analyzing posture..." });
       
-      // Simulating analysis delay
-      toast({ title: `Analysing ${currentView} view...` });
-      
-      setTimeout(() => {
-        if (postureStep < 3) {
+      try {
+        setIsProcessingOcr(true); // Re-use OCR loading mask for local analysis
+        const analysis = await analyzePostureImage(imageSrc, currentView);
+        
+        // Map analysis to form
+        const suggestions: Partial<FormData> = {};
+        if (currentView === 'side-right' || currentView === 'side-left') {
+          suggestions.postureHeadOverall = analysis.head_posture.status.toLowerCase().includes('neutral') ? 'neutral' : 'forward-head';
+          suggestions.postureBackOverall = analysis.head_posture.status.toLowerCase().includes('severe') ? 'increased-kyphosis' : 'neutral';
+        } else if (currentView === 'front') {
+          suggestions.postureShouldersOverall = analysis.shoulder_alignment.status.toLowerCase().includes('neutral') ? 'neutral' : 'rounded';
+        }
+
+        updateFormData(suggestions);
+
+        if (postureStep < views.length - 1) {
           setPostureStep(prev => prev + 1);
         } else {
           setShowCamera(false);
-          // Suggest some posture findings (simulated for now)
-          const suggestions: Partial<FormData> = {
-            postureHeadOverall: 'forward-head',
-            postureShouldersOverall: 'rounded',
-            postureBackOverall: 'increased-kyphosis'
-          };
-          updateFormData(suggestions);
-          toast({ 
-            title: "Posture Analysis Complete", 
-            description: "Suggested findings have been applied to the form. Please review them." 
-          });
+          toast({ title: "Posture analysis complete", description: "Findings have been applied to the form." });
         }
-      }, 1500);
+      } catch (err) {
+        console.error('Local posture analysis error:', err);
+        toast({ title: "Analysis failed", description: "Could not analyze posture image.", variant: "destructive" });
+        setShowCamera(false);
+      } finally {
+        setIsProcessingOcr(false);
+      }
     }
   };
 
@@ -795,20 +919,13 @@ const PhaseFormContent = ({
   const handleSaveToDashboard = useCallback(async () => {
     if (!user || saving || savingId) return;
     try {
-      console.log('Saving assessment to dashboard...', { uid: user.uid, email: user.email });
       setSaving(true);
       const id = await saveCoachAssessment(user.uid, user.email, formData, scores.overall);
-      console.log('Assessment saved successfully, ID:', id);
       setSavingId(id);
       toast({ title: 'Assessment Saved', description: 'Available on your dashboard.' });
     } catch (e) {
-      console.error('Save failed with error:', e);
-      // Fallback: if it's a network error or permissions, show more detail
-      toast({ 
-        title: 'Save Failed', 
-        description: 'Unable to sync with database. Please ensure you are logged in correctly.', 
-        variant: 'destructive' 
-      });
+      console.error('Save failed', e);
+      toast({ title: 'Save Failed', description: 'Unable to sync with database.', variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -907,7 +1024,6 @@ const PhaseFormContent = ({
       if (Array.isArray(dependentValue)) {
         ok = ok && (dependentValue as string[]).includes(showWhen.includes);
       } else if (typeof dependentValue === 'string') {
-        // Robust fallback: if it's a string, check if it matches exactly
         ok = ok && dependentValue === showWhen.includes;
       } else {
         ok = false;
@@ -917,9 +1033,23 @@ const PhaseFormContent = ({
   }, [formData]);
 
   const isSectionCompleted = useCallback((section: PhaseSection) => {
-    return (section.fields as PhaseField[]).every(field => {
-      if (!isFieldVisible(field)) return true;
-      if (!field.required) return true; // Only block if required
+    const visibleFields = (section.fields as PhaseField[]).filter(f => isFieldVisible(f));
+    if (visibleFields.length === 0) return true;
+
+    const requiredFields = visibleFields.filter(f => f.required);
+    
+    // If there are required fields, they MUST all be filled
+    if (requiredFields.length > 0) {
+      return requiredFields.every(field => {
+      const value = formData[field.id];
+        if (Array.isArray(value)) return value.length > 0;
+        return value !== undefined && value !== null && value !== '';
+      });
+    }
+
+    // If there are NO required fields, at least ONE field must be filled to count as "completed"
+    // This prevents empty sections from showing as checked immediately
+    return visibleFields.some(field => {
       const value = formData[field.id];
       if (Array.isArray(value)) return value.length > 0;
       return value !== undefined && value !== null && value !== '';
@@ -931,19 +1061,10 @@ const PhaseFormContent = ({
     if (!phase) return false;
     const sections = phase.sections ?? [];
     if (sections.length === 0) return true;
-    return (sections as PhaseSection[]).every(section =>
-      (section.fields as PhaseField[]).every(field => {
-        if (!isFieldVisible(field)) return true;
-        if (!field.required) return true; // Only block if required
-        const value = formData[field.id];
-        if (Array.isArray(value)) return value.length > 0;
-        return value !== undefined && value !== null && value !== '';
-      })
-    );
-  }, [formData, isFieldVisible]);
+    return (sections as PhaseSection[]).every(section => isSectionCompleted(section));
+  }, [isSectionCompleted]);
 
   const maxUnlockedPhaseIdx = useMemo(() => {
-    // ALWAYS allow navigation to any phase as per user request for iPad/Coach flexibility
     return totalPhases - 1;
   }, [totalPhases]);
 
@@ -957,13 +1078,11 @@ const PhaseFormContent = ({
 
     if (!basicsCompleted) return false;
 
-    // CRITICAL: Ensure ambition levels are also filled before enabling results
     const goals = Array.isArray(formData.clientGoals) ? formData.clientGoals : [];
     if (goals.includes('weight-loss') && !formData.goalLevelWeightLoss) return false;
     if (goals.includes('build-muscle') && !formData.goalLevelMuscle) return false;
     if (goals.includes('build-strength') && !formData.goalLevelStrength) return false;
     if (goals.includes('improve-fitness') && !formData.goalLevelFitness) return false;
-    if (goals.includes('general-health') && !formData.goalLevelHealth) return false;
 
     return true;
   }, [formData]);
@@ -1016,19 +1135,19 @@ const PhaseFormContent = ({
           const nextSection = allSections[currentIndex + 1];
           setExpandedSections({ [expandedSectionId]: false, [nextSection.id]: true });
         } else if (activePhaseIdx < totalPhases - 2) {
-          setActivePhaseIdx(prev => prev + 1);
-        }
+            setActivePhaseIdx(prev => prev + 1);
+          }
       }, 1500);
     }
     if (currentSection.id === 'parq' && formData.parqQuestionnaire === 'completed' && !wasRecentlyCompleted) {
       setRecentlyCompletedSections(prev => new Set(prev).add('parq'));
-      const currentIndex = allSections.findIndex(section => section.id === expandedSectionId);
+        const currentIndex = allSections.findIndex(section => section.id === expandedSectionId);
       setTimeout(() => {
         if (currentIndex < allSections.length - 1) {
           const nextSection = allSections[currentIndex + 1];
           setExpandedSections({ [expandedSectionId]: false, [nextSection.id]: true });
         } else if (activePhaseIdx < totalPhases - 1) {
-          setActivePhaseIdx(prev => prev + 1);
+            setActivePhaseIdx(prev => prev + 1);
         }
       }, 1500);
     }
@@ -1038,19 +1157,13 @@ const PhaseFormContent = ({
 
   const progressValue = useMemo(() => ((activePhaseIdx + 1) / totalPhases) * 100, [activePhaseIdx, totalPhases]);
 
-  useEffect(() => {
-    if (!canAutoAdvance) return;
-    // Removed auto-advancing to results page to prevent skipping fields (e.g. goal levels)
-    // The coach should manually click "Generate Full Report"
-  }, [allAssessmentsCompleted, activePhaseIdx, totalPhases, canAutoAdvance]);
-
   const handleViewResults = () => {
     if (allAssessmentsCompleted) {
       void handleSaveToDashboard();
       setIsReviewMode(false);
       setReportView('client');
       setActivePhaseIdx(totalPhases - 1);
-      setTimeout(() => { try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (_e) {} }, 100);
+      setTimeout(() => { try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (_e) { console.error('Scroll failed:', _e); } }, 100);
     }
   };
 
@@ -1064,7 +1177,6 @@ const PhaseFormContent = ({
     const payload = await generateDemoData();
     const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
     
-    // Reset to beginning
     setActivePhaseIdx(0);
     setActiveFieldIdx(0);
     await delay(1000);
@@ -1074,30 +1186,20 @@ const PhaseFormContent = ({
       if (!ph || ph.id === 'P7') break;
       
       setActivePhaseIdx(p);
-      await delay(1500); // Wait for phase transition animation
+      await delay(1500);
       
       const sections = ph.sections ?? [];
       for (const sec of sections) {
         setExpandedSections({ [sec.id]: true });
-        await delay(1200); // Let coach see the section expand
+        await delay(1200);
         
-        // Loop through all fields in section, but re-calculate visibility each step
-        // to ensure we don't skip fields that become visible after an input
         let fieldIdx = 0;
         let finishedSection = false;
         
-        // Track unique steps to correctly calculate count
-        let stepsCalculated: PhaseField[][] = [];
-        
         while (!finishedSection) {
-          // Re-calculate visible fields based on what has been entered so far
-          // For demo, we simulate current progress data
-          const currentProgressData = { ...formData };
-          
           const sectionFields = sec.fields as PhaseField[];
           const visible = sectionFields.filter(f => isFieldVisible(f, payload as FormData));
           
-          // Group by pairId
           const steps: PhaseField[][] = [];
           const processedPairs = new Set<string>();
           visible.forEach(field => {
@@ -1107,7 +1209,7 @@ const PhaseFormContent = ({
                 steps.push(pair);
                 processedPairs.add(field.pairId);
               }
-            } else {
+              } else {
               steps.push([field]);
             }
           });
@@ -1119,22 +1221,19 @@ const PhaseFormContent = ({
 
           const currentStep = steps[fieldIdx];
           setActiveFieldIdx(fieldIdx);
-          await delay(1000); // Pause so coach can see the transition
+          await delay(1000);
 
-          // Update each field in the current step
           for (const f of currentStep) {
             const key = f.id;
-            
-            // For PAR-Q, we want to simulate the completion state
             if (f.type === 'parq') {
               updateFormData({ [key]: 'completed' } as Partial<FormData>);
               await delay(1500);
-              continue;
-            }
-
-            let raw: any = payload[key] ?? formData[key];
+            continue;
+          }
+          
+            let raw: FieldValue = (payload as any)[key] ?? (formData as any)[key];
             if (!raw || (Array.isArray(raw) && raw.length === 0)) {
-              if (f.type === 'multiselect') {
+            if (f.type === 'multiselect') {
                 raw = f.options?.slice(0, 1).map(o => o.value) || [];
               }
               else if (f.type === 'select') raw = f.options?.[0]?.value || '';
@@ -1143,7 +1242,7 @@ const PhaseFormContent = ({
             updateFormData({ [key]: raw } as Partial<FormData>);
           }
           
-          await delay(1200); // Pause to see the value entered
+          await delay(1200);
           fieldIdx++;
         }
         
@@ -1152,29 +1251,26 @@ const PhaseFormContent = ({
       }
     }
     
-    // Final check to ensure all data from payload is in formData
     updateFormData(payload as Partial<FormData>);
     await delay(2000);
     
-    // Stay on Goals page, don't auto-jump to results
     setIsReviewMode(true);
     toast({ title: "Demo data populated", description: "Review the goals and click 'Generate Full Report'." });
   };
 
   useEffect(() => {
-    if (demoTrigger && demoTrigger > 0) runDemoSequential();
-  }, [demoTrigger]);
+    if (demoTrigger && demoTrigger > 0) void runDemoSequential();
+  }, [demoTrigger, runDemoSequential]);
 
   const toggleSection = (sectionId: string) => {
     setIsReviewMode(true);
-    // Find which phase this section belongs to
     const phaseIdx = phaseDefinitions.findIndex(p => p.sections?.some(s => s.id === sectionId));
     if (phaseIdx !== -1) {
       setActivePhaseIdx(phaseIdx);
     }
     setExpandedSections({ [sectionId]: true });
     setActiveFieldIdx(0);
-    setSidebarOpen(false); // Close sidebar on mobile after selection
+    setSidebarOpen(false); 
   };
 
   const renderAllSections = () => {
@@ -1194,12 +1290,13 @@ const PhaseFormContent = ({
           setShowCamera(mode);
           if (mode === 'posture') setPostureStep(0);
         }}
+        onShowPostureCompanion={() => setShowPostureCompanion(true)}
         onComplete={() => {
           const currentIndex = allSections.findIndex(s => s.id === activeSection.id);
           if (currentIndex < allSections.length - 1) {
             setExpandedSections({ [allSections[currentIndex + 1].id]: true });
-          } else if (activePhaseIdx < totalPhases - 2) { // Guard: Don't auto-advance to Results (P7)
-            setActivePhaseIdx(prev => prev + 1);
+          } else if (activePhaseIdx < totalPhases - 2) { 
+              setActivePhaseIdx(prev => prev + 1);
           }
         }}
       />
@@ -1208,14 +1305,14 @@ const PhaseFormContent = ({
 
   if (totalPhases === 0) return <div className="text-center py-20">No phases configured.</div>;
 
-  return (
-    <div className="flex flex-col lg:flex-row min-h-[calc(100vh-73px)] relative">
-      <aside className={`w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-slate-200 bg-white p-6 shrink-0 lg:sticky top-[73px] z-30 overflow-y-auto max-h-[calc(100vh-73px)] ${sidebarOpen ? 'block fixed inset-0 z-50 pt-20' : 'hidden lg:block'}`}>
+    return (
+    <div className="flex flex-col lg:flex-row min-h-[calc(100vh-64px)] relative">
+      <aside className={`w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-slate-200 bg-white p-6 shrink-0 lg:sticky top-[64px] z-30 overflow-y-auto max-h-[calc(100vh-64px)] ${sidebarOpen ? 'block fixed inset-0 z-50 pt-20' : 'hidden lg:block'}`}>
         <div className="space-y-8">
-          <div className="flex items-center justify-between lg:hidden mb-4">
-            <h3 className="text-lg font-bold text-slate-900">Navigation</h3>
-            <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)}>
-              <ChevronDown className="h-5 w-5 rotate-90" />
+          <div className="flex items-center justify-between lg:hidden mb-8">
+            <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Navigation</h3>
+            <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)} className="h-10 w-10 rounded-full bg-slate-100">
+              <X className="h-5 w-5 text-slate-600" />
             </Button>
           </div>
           <div className="space-y-2">
@@ -1232,7 +1329,7 @@ const PhaseFormContent = ({
 
               return (
                 <div key={phase.id} className="space-y-1">
-                  <button
+                <button
                     onClick={() => { 
                       if (!isDisabled) { 
                         setIsReviewMode(true); 
@@ -1241,21 +1338,20 @@ const PhaseFormContent = ({
                           setExpandedSections({ [sections[0].id]: true });
                           setActiveFieldIdx(0);
                         }
-                        if (sections.length === 0) setSidebarOpen(false);
+                        if (sections.length === 0 || isMobile) setSidebarOpen(false);
                       } 
                     }}
-                    disabled={isDisabled}
+                  disabled={isDisabled}
                     className={`group flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all ${isActive ? 'bg-slate-900 text-white shadow-md' : isCompleted ? 'text-indigo-600 hover:bg-indigo-50' : 'text-slate-500 hover:bg-slate-50'}`}
                   >
                     <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold border ${isActive ? 'bg-white/20 border-white/20' : isCompleted ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-400'}`}>
-                      {isCompleted ? <Check className="h-3 w-3" /> : idx + 1}
-                    </span>
+                    {isCompleted ? <Check className="h-3 w-3" /> : idx + 1}
+                  </span>
                     <span className="truncate flex-1 text-left uppercase tracking-wider">{phase.title}</span>
                   </button>
 
-                  {/* Section List under Active/Completed/Selected Phase */}
-                  {(isActive || isCompleted || expandedSections[sections[0]?.id]) && sections.length > 0 && (
-                    <div className="ml-9 space-y-1 pt-1 border-l border-slate-100 pl-4">
+                  {isActive && sections.length > 0 && (
+                    <div className="ml-9 space-y-1 pt-1 border-l border-slate-100 pl-4 animate-in slide-in-from-top-2 duration-300">
                       {sections.map(sec => {
                         const isExpanded = expandedSections[sec.id];
                         const isSecComp = isSectionCompleted(sec as PhaseSection);
@@ -1267,12 +1363,12 @@ const PhaseFormContent = ({
                           >
                             <span className="truncate">{sec.title}</span>
                             {isSecComp && <Check className="h-3 w-3 text-emerald-500" />}
-                          </button>
-                        );
-                      })}
-                    </div>
+                </button>
+              );
+            })}
+              </div>
                   )}
-                </div>
+            </div>
               );
             })}
           </nav>
@@ -1344,13 +1440,46 @@ const PhaseFormContent = ({
 
       {/* Camera Capture Modal */}
       {showCamera && (
-        <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4">
-          <CameraCapture 
-            mode={showCamera} 
-            onCapture={handleCapture}
-            onClose={() => setShowCamera(false)}
-            overlayText={showCamera === 'posture' ? `Capture ${['FRONT', 'BACK', 'LEFT', 'RIGHT'][postureStep]} View` : undefined}
-          />
+        <CameraCapture 
+          mode={showCamera} 
+          onCapture={handleCapture}
+          onClose={() => setShowCamera(false)}
+          overlayText={showCamera === 'posture' ? `Capture ${['FRONT', 'RIGHT SIDE', 'LEFT SIDE', 'BACK'][postureStep]} View` : undefined}
+        />
+      )}
+
+      {/* Posture Companion Modal */}
+      <PostureCompanionModal 
+        isOpen={showPostureCompanion}
+        onClose={() => setShowPostureCompanion(false)}
+        onStartDirectScan={() => {
+          setShowCamera('posture');
+          setPostureStep(0);
+        }}
+        onComplete={(data) => {
+          updateFormData(data);
+          toast({ title: "Posture data applied", description: "AI findings have been populated." });
+        }}
+      />
+
+      {/* OCR Processing Overlay */}
+      {isProcessingOcr && (
+        <div className="fixed inset-0 z-[150] bg-black/80 backdrop-blur-md flex items-center justify-center p-8 text-white">
+          <div className="flex flex-col items-center gap-8 max-w-xs text-center">
+            <div className="relative h-32 w-32">
+              <div className="absolute inset-0 rounded-full border-4 border-white/5" />
+              <div className="absolute inset-0 rounded-full border-4 border-t-indigo-500 animate-spin" />
+              <div className="absolute inset-4 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 animate-pulse flex items-center justify-center">
+                <Loader2 className="h-10 w-10 text-white animate-spin" />
+              </div>
+            </div>
+            <div className="space-y-4">
+              <h4 className="text-xl font-black uppercase tracking-widest text-white">Gemini AI</h4>
+              <p className="text-white/50 text-sm font-medium leading-relaxed">
+                Extracting 15+ data points from your scan...
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1367,22 +1496,57 @@ const PhaseFormContent = ({
             <p className="text-sm text-slate-500">
               We've found the following values in your scan. Please verify them before applying to the form.
             </p>
-            <div className="grid grid-cols-2 gap-3 max-h-[300px] overflow-y-auto p-1">
-              {ocrReviewData && Object.entries(ocrReviewData).map(([key, value]) => (
-                <div key={key} className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                    {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-                  </span>
-                  <span className="text-lg font-black text-slate-900">{value}</span>
-                </div>
-              ))}
+            <div className="grid grid-cols-2 gap-4 max-h-[400px] overflow-y-auto p-2">
+              {ocrReviewData && [
+                'inbodyScore',
+                'inbodyWeightKg',
+                'skeletalMuscleMassKg',
+                'bodyFatMassKg',
+                'inbodyBodyFatPct',
+                'inbodyBmi',
+                'totalBodyWaterL',
+                'waistHipRatio',
+                'visceralFatLevel',
+                'bmrKcal',
+                'segmentalTrunkKg',
+                'segmentalArmLeftKg',
+                'segmentalArmRightKg',
+                'segmentalLegLeftKg',
+                'segmentalLegRightKg'
+              ].map(key => {
+                const value = ocrReviewData[key as keyof typeof ocrReviewData] ?? '';
+                return (
+                  <div key={key} className={`bg-slate-50 p-4 rounded-2xl border transition-all flex flex-col justify-between ${!value ? 'border-amber-200 bg-amber-50/30' : 'border-slate-100'}`}>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-indigo-500/70 mb-2">
+                      {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                    </span>
+                    <div className="flex items-baseline gap-1">
+                      <Input 
+                        type="text" 
+                        value={value as string} 
+                        placeholder="--"
+                        onChange={(e) => {
+                          setOcrReviewData(prev => ({
+                            ...prev,
+                            [key]: e.target.value
+                          }));
+                        }}
+                        className="h-8 text-xl font-black text-slate-900 border-none bg-transparent p-0 focus-visible:ring-0 shadow-none w-full placeholder:text-slate-300"
+                      />
+                      <span className="text-[10px] font-bold text-slate-400">
+                        {key.toLowerCase().includes('kg') ? 'kg' : key.toLowerCase().includes('pct') ? '%' : key.toLowerCase().includes('water') ? 'L' : ''}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setOcrReviewData(null)} className="rounded-xl font-bold">
               Cancel
             </Button>
-            <Button onClick={applyOcrData} className="rounded-xl bg-slate-900 font-bold gap-2">
+            <Button onClick={applyOcrData} className="rounded-xl bg-slate-900 font-bold gap-2 text-white hover:bg-slate-800 transition-colors">
               <CheckCircle2 className="h-4 w-4" />
               Apply to Form
             </Button>
@@ -1402,7 +1566,7 @@ const MultiStepForm = () => {
       <AppShell 
         title="Fitness Assessment" 
         showDemoFill={true} 
-        onDemoFill={handleDemoFill} 
+        onDemoFill={handleDemoFill}
         variant="full-width"
         onMenuToggle={() => setSidebarOpen(prev => !prev)}
       >

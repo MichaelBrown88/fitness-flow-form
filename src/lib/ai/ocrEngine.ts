@@ -1,4 +1,5 @@
-import Tesseract from 'tesseract.js';
+import { getAI, VertexAIBackend, getGenerativeModel } from "firebase/ai";
+import { getApp } from "firebase/app";
 import { FormData } from '../../contexts/FormContext';
 
 export interface OcrResult {
@@ -7,73 +8,119 @@ export interface OcrResult {
   confidence: number;
 }
 
-const INBODY_MAPPING: Record<string, keyof FormData> = {
-  'InBody Score': 'inbodyScore',
-  'Weight': 'inbodyWeightKg',
-  'Skeletal Muscle Mass': 'skeletalMuscleMassKg',
-  'SMM': 'skeletalMuscleMassKg',
-  'Body Fat Mass': 'bodyFatMassKg',
-  'BFM': 'bodyFatMassKg',
-  'Percent Body Fat': 'inbodyBodyFatPct',
-  'PBF': 'inbodyBodyFatPct',
-  'BMI': 'inbodyBmi',
-  'Total Body Water': 'totalBodyWaterL',
-  'TBW': 'totalBodyWaterL',
-  'Waist-Hip Ratio': 'waistHipRatio',
-  'WHR': 'waistHipRatio',
-  'Visceral Fat Level': 'visceralFatLevel',
-  'VFL': 'visceralFatLevel',
-  'Basal Metabolic Rate': 'bmrKcal',
-  'BMR': 'bmrKcal',
-  'Trunk': 'segmentalTrunkKg',
-  'Left Arm': 'segmentalArmLeftKg',
-  'Right Arm': 'segmentalArmRightKg',
-  'Left Leg': 'segmentalLegLeftKg',
-  'Right Leg': 'segmentalLegRightKg',
-};
+export const REQUIRED_SCAN_FIELDS: (keyof FormData)[] = [
+  'inbodyWeightKg',
+  'skeletalMuscleMassKg',
+  'inbodyBodyFatPct',
+  'visceralFatLevel',
+  'inbodyScore'
+];
 
 export async function processInBodyScan(imageSrc: string): Promise<OcrResult> {
-  const worker = await Tesseract.createWorker('eng');
-  
   try {
-    const { data: { text, confidence } } = await worker.recognize(imageSrc);
-    
-    const fields = extractInBodyFields(text);
-    
-    return {
-      fields,
-      rawText: text,
-      confidence,
-    };
-  } finally {
-    await worker.terminate();
-  }
-}
+    const firebaseApp = getApp();
+    const ai = getAI(firebaseApp, { 
+      backend: new VertexAIBackend() 
+    });
 
-function extractInBodyFields(text: string): Partial<FormData> {
-  const result: Partial<FormData> = {};
-  const lines = text.split('\n');
+    // 2. Initialize Gemini 2.0 Flash (Fastest and most capable for OCR)
+    console.log('Initializing Gemini 2.0 Flash...');
+    const model = getGenerativeModel(ai, { 
+      model: "gemini-2.0-flash",
+      generationConfig: {
+        responseMimeType: "application/json",
+      }
+    });
 
-  for (const [label, fieldId] of Object.entries(INBODY_MAPPING)) {
-    // Look for lines containing the label followed by a number
-    // We handle common OCR errors like 'l' instead of '1' or 'O' instead of '0'
-    const pattern = new RegExp(`${label}\\s*[:\\-]?\\s*(\\d+[.,]\\d+|\\d+)`, 'i');
-    const match = text.match(pattern);
-
-    if (match && match[1]) {
-      let valueStr = match[1].replace(',', '.');
-      const value = parseFloat(valueStr);
+    // 3. Prepare the Master Prompt
+    const prompt = `
+      You are an expert medical data extractor specialized in InBody Composition Analysis reports.
+      Analyze the provided image and extract all relevant data points into a JSON object.
       
-      if (!isNaN(value)) {
-        // @ts-ignore - Dynamic assignment to FormData
-        result[fieldId] = value;
+      FIELD GUIDANCE:
+      - inbodyScore: Total InBody Score (0-100)
+      - inbodyWeightKg: Weight in KG
+      - skeletalMuscleMassKg: SMM in KG
+      - bodyFatMassKg: BFM in KG
+      - inbodyBodyFatPct: PBF %
+      - inbodyBmi: BMI
+      - totalBodyWaterL: Total Body Water (TBW) in Liters
+      - waistHipRatio: Waist-Hip Ratio (WHR)
+      - visceralFatLevel: Visceral Fat Level (VFL)
+      - bmrKcal: Basal Metabolic Rate (BMR)
+      - segmentalTrunkKg, segmentalArmLeftKg, segmentalArmRightKg, segmentalLegLeftKg, segmentalLegRightKg: Segmental Lean Analysis in KG
+      
+      RULES:
+      1. Return ONLY the JSON object.
+      2. If a value is not found, use null.
+      3. Numbers only (no units like "kg").
+    `;
+
+    // 4. Clean the base64 data
+    const base64Data = imageSrc.split(',')[1] || imageSrc;
+
+    // 5. Send to Gemini
+    console.log('Sending to Vertex AI (Gemini 2.0)...');
+    const result = await model.generateContent([
+      { text: prompt },
+      {
+        inlineData: {
+          data: base64Data,
+          mimeType: "image/jpeg",
+        },
+      },
+    ]);
+
+    const response = await result.response;
+    const text = response.text();
+    console.log('AI Raw Response:', text);
+    
+    // Improved JSON extraction: find the first { and last }
+    const startIdx = text.indexOf('{');
+    const endIdx = text.lastIndexOf('}');
+    
+    if (startIdx === -1 || endIdx === -1) {
+      throw new Error('No JSON found in AI response');
+    }
+    
+    const jsonString = text.substring(startIdx, endIdx + 1);
+    const data = JSON.parse(jsonString);
+
+    // 6. Map to FormData (ensuring everything is a string for our form)
+    const cleanFields: Partial<FormData> = {};
+    const fieldMapping: Record<string, keyof FormData> = {
+      inbodyScore: 'inbodyScore',
+      inbodyWeightKg: 'inbodyWeightKg',
+      skeletalMuscleMassKg: 'skeletalMuscleMassKg',
+      bodyFatMassKg: 'bodyFatMassKg',
+      inbodyBodyFatPct: 'inbodyBodyFatPct',
+      inbodyBmi: 'inbodyBmi',
+      totalBodyWaterL: 'totalBodyWaterL',
+      waistHipRatio: 'waistHipRatio',
+      visceralFatLevel: 'visceralFatLevel',
+      bmrKcal: 'bmrKcal',
+      segmentalTrunkKg: 'segmentalTrunkKg',
+      segmentalArmLeftKg: 'segmentalArmLeftKg',
+      segmentalArmRightKg: 'segmentalArmRightKg',
+      segmentalLegLeftKg: 'segmentalLegLeftKg',
+      segmentalLegRightKg: 'segmentalLegRightKg'
+    };
+
+    for (const [aiKey, value] of Object.entries(data)) {
+      const formKey = fieldMapping[aiKey];
+      if (formKey && value !== null && value !== undefined) {
+        cleanFields[formKey] = String(value);
       }
     }
+
+    return {
+      fields: cleanFields,
+      rawText: 'AI Analysis Complete',
+      confidence: 1.0,
+    };
+
+  } catch (err: any) {
+    console.error('Vertex AI Scan Error:', err);
+    throw new Error('Failed to analyze scan with Gemini AI. Ensure you are on the Blaze plan.');
   }
-
-  // Fallback: look for specific numeric patterns common in InBody reports 
-  // if primary mapping fails for some fields.
-  // This is a simplified version; in a production app, we'd use more sophisticated heuristics.
-
-  return result;
 }

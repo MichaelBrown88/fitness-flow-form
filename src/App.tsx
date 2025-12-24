@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import AssessmentReport from "./pages/AssessmentReport";
 import PublicClientReport from "./pages/PublicClientReport";
 import Settings from "./pages/Settings";
+import Companion from "./pages/Companion";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
@@ -94,6 +95,8 @@ const App = () => (
                 </RequireAuth>
               }
             />
+            {/* Companion mode (Mobile view) - No RequireAuth because it uses a token */}
+            <Route path="/companion/:sessionId" element={<Companion />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

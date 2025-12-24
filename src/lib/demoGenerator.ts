@@ -86,7 +86,7 @@ export async function generateDemoData(): Promise<Partial<FormData>> {
     ? Math.round((0.85 + rng() * 0.15) * 100) / 100 // 0.85-1.00
     : Math.round((0.75 + rng() * 0.15) * 100) / 100; // 0.75-0.90
   const totalBodyWaterL = Math.round((weightKg * 0.55 + rng() * 5) * 10) / 10;
-  const bmrKcal = Math.floor((10 * weightKg) + (6.25 * heightCm) - (5 * age) + (gender === 'male' ? 5 : -161));
+  const bmrKcal = Math.floor(1800 + (weightKg * 10) + (heightCm * 6.25) - (age * 5) + (gender === 'male' ? 5 : -161));
   
   // Segmental lean mass (kg) - realistic distribution
   const trunkRatio = 0.45;
@@ -294,7 +294,6 @@ export async function generateDemoData(): Promise<Partial<FormData>> {
   let goalLevelMuscle: string | undefined;
   let goalLevelStrength: string | undefined;
   let goalLevelFitness: string | undefined;
-  let goalLevelHealth: string | undefined;
   
   if (archetype === 'weight-loss') {
     clientGoals = ['weight-loss'];
@@ -317,10 +316,7 @@ export async function generateDemoData(): Promise<Partial<FormData>> {
       goalLevelWeightLoss = pickRandom(['health-minimum', 'average'], rng);
     }
     if (clientGoals.includes('improve-fitness')) {
-      goalLevelFitness = pickRandom(['health-minimum', 'average', 'above-average', 'elite'], rng);
-    }
-    if (clientGoals.includes('general-health')) {
-      goalLevelHealth = pickRandom(['health-minimum', 'average', 'above-average', 'elite'], rng);
+      goalLevelFitness = pickRandom(['health-minimum', 'average'], rng);
     }
   }
   
@@ -428,7 +424,6 @@ export async function generateDemoData(): Promise<Partial<FormData>> {
     ...(goalLevelMuscle ? { goalLevelMuscle } : {}),
     ...(goalLevelStrength ? { goalLevelStrength } : {}),
     ...(goalLevelFitness ? { goalLevelFitness } : {}),
-    ...(goalLevelHealth ? { goalLevelHealth } : {}),
   };
   
   return payload;

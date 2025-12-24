@@ -257,6 +257,42 @@ export default function CoachReport({
       </section>
 
       {/* SEGMENTAL GUIDANCE */}
+      {formData?.postureAiResults && (
+        <section className="space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="bg-indigo-600 p-2 rounded-lg">
+              <Activity className="h-5 w-5 text-white" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-900">AI Posture Metrics</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Object.entries(formData.postureAiResults).map(([view, analysis]: [string, any]) => (
+              <div key={view} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
+                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500">{view} Analysis</span>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500 font-bold uppercase tracking-tighter">Head Deviation</span>
+                    <span className="font-black text-slate-900">{analysis.head_posture?.deviation_degrees}°</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500 font-bold uppercase tracking-tighter">Shoulder Offset</span>
+                    <span className="font-black text-slate-900">{analysis.shoulder_alignment?.vertical_offset_cm}cm</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500 font-bold uppercase tracking-tighter">Pelvic Tilt</span>
+                    <span className="font-black text-slate-900">{analysis.pelvic_position?.tilt_degrees}°</span>
+                  </div>
+                </div>
+                <div className="pt-2 border-t border-slate-50">
+                  <p className="text-[10px] text-slate-600 leading-tight italic">"{analysis.head_posture?.description}"</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* SEGMENTAL GUIDANCE */}
       {plan.segmentalGuidance && plan.segmentalGuidance.length > 0 && (
         <section className="space-y-6">
           <div className="flex items-center gap-3">

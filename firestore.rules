@@ -7,20 +7,24 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == coachId;
     }
     
+    // Live Sessions for Companion Camera
+    // IMPORTANT: Allowing public access for dev testing
+    match /live_sessions/{sessionId} {
+      allow read, write: if true;
+    }
+    
     // Allow coaches to list their assessments (for dashboard)
     match /coaches/{coachId} {
       allow read: if request.auth != null && request.auth.uid == coachId;
     }
 
-    // Public reports: readable if public, writable by the coach who owns them
+    // Public reports
     match /publicReports/{publicId} {
       allow read: if resource.data.visibility == 'public' || 
                      (request.auth != null && resource.data.coachUid == request.auth.uid);
-      allow create: if request.auth != null && request.resource.data.coachUid == request.auth.uid;
-      allow update: if request.auth != null && request.resource.data.coachUid == request.auth.uid;
+      allow create, update: if request.auth != null && request.resource.data.coachUid == request.auth.uid;
     }
 
-    // Deny all other access
     match /{document=**} {
       allow read, write: if false;
     }

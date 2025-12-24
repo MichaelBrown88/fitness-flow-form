@@ -48,11 +48,11 @@ const renderCustomAxisTick = ({ payload, x, y, textAnchor, index }: any) => {
 
 export default function OverallRadarChart({ data }: OverallRadarChartProps) {
   // Use average score to control fill opacity
-  const avgValue = data.length > 0 ? data.reduce((sum, d) => sum + d.value, 0) / data.length : 0;
+  const avgValue = data.reduce((sum, d) => sum + d.value, 0) / data.length;
   const normalized = Math.max(0, Math.min(1, avgValue / 100));
   const minOpacity = 0.2;
   const maxOpacity = 0.6;
-  const dynamicOpacity = isNaN(normalized) ? minOpacity : minOpacity + (maxOpacity - minOpacity) * normalized;
+  const dynamicOpacity = minOpacity + (maxOpacity - minOpacity) * normalized;
 
   return (
     <div className="w-full h-72">

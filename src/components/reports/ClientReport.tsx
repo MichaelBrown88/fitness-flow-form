@@ -3,7 +3,6 @@ import type { FormData } from '@/contexts/FormContext';
 import type { ScoreSummary, RoadmapPhase } from '@/lib/scoring';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Sparkles, CheckCircle2, AlertCircle, Info } from 'lucide-react';
 import LifestyleRadarChart from './LifestyleRadarChart';
 import CategoryRadarChart from './CategoryRadarChart';
 import OverallRadarChart from './OverallRadarChart';
@@ -97,11 +96,10 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
     () => [...orderedCats].sort((a, b) => b.score - a.score),
     [orderedCats]
   );
-
   const weeksByCategory: Record<string, number> = useMemo(() => {
     const map: Record<string, number> = {};
     if (!orderedCats.length) return map;
-    
+    // Goal-based baseline horizons (conservative)
     const weightKg = parseFloat(formData?.inbodyWeightKg || '0');
     const heightM = (parseFloat(formData?.heightCm || '0') || 0) / 100;
     const healthyMin = heightM > 0 ? 22 * heightM * heightM : 0;
@@ -120,7 +118,6 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
 
     const fatLossRate = 0.5;
     const fatLossWeeks = wlTarget > 0 ? Math.ceil(wlTarget / fatLossRate) : 16;
-    
     // Muscle gain level logic
     const levelMG = formData?.goalLevelMuscle || '';
     const muscleTargetKg =
@@ -130,7 +127,6 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
       levelMG === 'elite' ? 4.0 : 2.0;
     const muscleRate = sessionsPerWeek >= 5 ? 0.22 : sessionsPerWeek === 4 ? 0.18 : 0.15;
     const muscleWeeks = Math.ceil(muscleTargetKg / muscleRate);
-    
     // Strength level logic
     const levelST = formData?.goalLevelStrength || '';
     const strengthPct =
@@ -138,60 +134,27 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
       levelST === 'average' ? 15 :
       levelST === 'above-average' ? 20 :
       levelST === 'elite' ? 30 : 15;
-    const pctPerBlock = sessionsPerWeek >= 5 ? 4 : sessionsPerWeek === 4 ? 3 : 2.5;
-    let strengthWeeks = Math.ceil(strengthPct / pctPerBlock) * 5;
-    
-    // Low score penalty for Strength
-    const strengthScore = orderedCats.find(c => c.id === 'strength')?.score || 50;
-    if (strengthScore < 45) strengthWeeks += 10; // Extra blocks for neurological/joint prep
-    else if (strengthScore < 65) strengthWeeks += 5;
-    
-    // Fitness level logic (VO2 Max / Cardio)
+    const pctPerBlock = sessionsPerWeek >= 5 ? 4 : sessionsPerWeek === 4 ? 3 : 2.5; // % per ~5 weeks
+    const strengthWeeks = Math.ceil(strengthPct / pctPerBlock) * 5;
+    // Fitness level logic
     const levelFT = formData?.goalLevelFitness || '';
-    let cardioBaseWeeks = levelFT === 'elite' ? 24 : levelFT === 'above-average' ? 20 : 16;
-    
-    // Low score penalty for Cardio
-    const cardioScore = orderedCats.find(c => c.id === 'cardio')?.score || 50;
-    if (cardioScore < 45) cardioBaseWeeks += 12; // Massive aerobic base work needed
-    else if (cardioScore < 65) cardioBaseWeeks += 6;
-
-    // Body Comp penalty logic
-    const bodyCompScore = orderedCats.find(c => c.id === 'bodyComp')?.score || 50;
-    let bodyCompBaseAdj = 0;
-    if (bodyCompScore < 45) bodyCompBaseAdj = 12; // Significant metabolic/habit work
-    else if (bodyCompScore < 65) bodyCompBaseAdj = 6;
-
-    const mobilityWeeks = 8;
-    const postureWeeks = 8;
+    const cardioWeeks = levelFT === 'elite' ? 20 : levelFT === 'above-average' ? 16 : 12;
+    const mobilityWeeks = 6; // quicker wins
+    const postureWeeks = 6; // quicker wins
 
     for (const cat of orderedCats) {
       let base = 12;
-      let scoreAdj = 1.0;
-      
-      // Score-based multiplier (Lower score = longer time)
-      // This compounds with the additions above for a very realistic conservative estimate
-      if (cat.score < 45) scoreAdj = 1.6;
-      else if (cat.score < 65) scoreAdj = 1.3;
-
-      if (cat.id === 'bodyComp') base = Math.max(12, Math.max(fatLossWeeks, muscleWeeks)) + bodyCompBaseAdj;
-      else if (cat.id === 'strength') base = Math.max(12, strengthWeeks);
-      else if (cat.id === 'cardio') base = cardioBaseWeeks;
-      else if (cat.id === 'movementQuality') base = Math.max(mobilityWeeks, postureWeeks);
-      else if (cat.id === 'lifestyle') base = 8; // Habit formation takes ~66 days (9 weeks)
-
-      // Frequency factor: sessions don't perfectly slash time for physiological adaptation
-      // 5 sessions is only 15% faster than 3, not 40% faster.
-      const freqFactor = sessionsPerWeek === 5 ? 0.85 : sessionsPerWeek === 4 ? 0.92 : 1.0;
-      map[cat.id] = Math.round(base * scoreAdj * freqFactor);
+      if (cat.id === 'bodyComp') base = Math.max(12, Math.max(fatLossWeeks, muscleWeeks));
+      if (cat.id === 'strength') base = Math.max(12, strengthWeeks);
+      if (cat.id === 'cardio') base = Math.max(12, cardioWeeks);
+      if (cat.id === 'movementQuality') base = Math.max(mobilityWeeks, postureWeeks);
+      if (cat.id === 'lifestyle') base = 4; // Lifestyle is foundational, quick wins
+      map[cat.id] = Math.round(base * sessionFactor);
     }
     return map;
-  }, [orderedCats, formData, sessionsPerWeek]);
+  }, [orderedCats, sessionFactor, formData?.goalLevelFitness, formData?.goalLevelMuscle, formData?.goalLevelStrength, formData?.goalLevelWeightLoss, formData?.heightCm, formData?.inbodyWeightKg, sessionsPerWeek]);
   const strengths = useMemo(() => orderedCats.flatMap(c => c.strengths.map(s => `${niceLabel(c.id)}: ${s}`)), [orderedCats]);
   const focusAreas = useMemo(() => orderedCats.flatMap(c => c.weaknesses.map(w => `${niceLabel(c.id)}: ${w}`)), [orderedCats]);
-  
-  // Calculate if the client is in "reasonable shape"
-  const isReasonableShape = useMemo(() => scores.overall >= 70, [scores.overall]);
-  
   const maxWeeks = useMemo(() => Math.max(...orderedCats.map(c => weeksByCategory[c.id] ?? 0), 0), [orderedCats, weeksByCategory]);
   // Priority focus (e.g., obesity risk) derived from inputs
   const priorityFocus: string[] = useMemo(() => {
@@ -495,17 +458,9 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
     }
     
     // Default if nothing specific
-    if (actions.length < 5) {
-      const defaults = [
-        'Establish consistent training routine (3 sessions/week) to build momentum toward your goals',
-        'Optimize lifestyle habits (sleep, nutrition, hydration) to maximize training results',
-        'Focus on foundational movement mastery before increasing training intensity',
-        'Track progress through regular strength and body composition re-assessments',
-        'Build work capacity to ensure you can sustain higher intensity training sessions'
-      ];
-      for (const d of defaults) {
-        if (actions.length < 5 && !actions.includes(d)) actions.push(d);
-      }
+    if (actions.length === 0) {
+      actions.push('Establish consistent training routine (3 sessions/week) to build momentum toward your goals');
+      actions.push('Optimize lifestyle habits (sleep, nutrition, hydration) to maximize training results');
     }
     return actions.slice(0, 5);
   }, [priorityFocus, orderedCats, goals, formData]);
@@ -651,39 +606,9 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
       {/* 1. Here's where you are */}
       <section className="space-y-10 py-4">
         <div className="flex flex-col items-center text-center space-y-6">
-          <div className="space-y-4 max-w-2xl">
-            <h2 className="text-3xl font-bold tracking-tight text-slate-900">Your Fitness Score</h2>
-            {(() => {
-              const overall = scores.overall;
-              const hasRed = orderedCats.some(c => c.score < 45);
-              const hasLowAmber = orderedCats.some(c => c.score < 60);
-              
-              if (overall >= 75 && !hasRed) {
-                return (
-                  <p className="text-slate-600 font-medium leading-relaxed text-lg">
-                    Excellent foundation! You're in <span className="text-green-600 font-bold">great shape</span> on paper, which means we can bypass standard conditioning and get <span className="text-indigo-600 font-bold">straight to work</span> on your specific performance goals of {goals?.map(g => g.replace('-', ' ')).join(', ')}.
-                  </p>
-                );
-              } else if (overall >= 60 && !hasRed) {
-                return (
-                  <p className="text-slate-600 font-medium leading-relaxed text-lg">
-                    Good news: you have a <span className="text-indigo-600 font-bold">solid physical foundation</span> to build upon. While there are clear areas to tighten up, we have a clear path to start making progress on your goals of {goals?.map(g => g.replace('-', ' ')).join(', ')} immediately.
-                  </p>
-                );
-              } else if (hasRed || overall < 60) {
-                return (
-                  <p className="text-slate-600 font-medium leading-relaxed text-lg">
-                    Assessment complete. We've identified some <span className="text-red-600 font-bold">critical bottlenecks</span> in your physical foundation. While your overall score shows potential, addressing these urgent areas first is mandatory to make your progress toward {goals?.map(g => g.replace('-', ' ')).join(', ')} safe and effective.
-                  </p>
-                );
-              } else {
-                return (
-                  <p className="text-slate-600 font-medium leading-relaxed text-lg">
-                    Your assessment highlights a mix of strengths and areas for development. We will focus on <span className="text-amber-600 font-bold">balancing your profile</span> to ensure you have the durability needed for your goals of {goals?.map(g => g.replace('-', ' ')).join(', ')}.
-                  </p>
-                );
-              }
-            })()}
+          <div className="space-y-2">
+            <h2 className="text-3xl font-extrabold tracking-tight text-slate-900">Your Fitness Score</h2>
+            <p className="text-slate-500 font-medium">A comprehensive snapshot of your current physical condition.</p>
           </div>
           
           {/* Overall score centered and prominent */}
@@ -729,8 +654,13 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
           <Tabs defaultValue={orderedCats[0].id} className="w-full">
             <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-5 h-auto">
               {orderedCats.map((cat) => (
-                <TabsTrigger key={cat.id} value={cat.id} className="text-xs sm:text-sm capitalize py-3">
-                  <span className="text-center leading-tight font-bold">{niceLabel(cat.id)}</span>
+                <TabsTrigger key={cat.id} value={cat.id} className="text-xs sm:text-sm capitalize">
+                  <div className="flex flex-col items-center gap-1">
+                    <div className={`h-8 w-8 rounded-full border-2 ${circleColor(cat.score)} flex items-center justify-center`}>
+                      <span className="text-xs font-semibold">{cat.score}</span>
+                    </div>
+                    <span className="text-center leading-tight">{niceLabel(cat.id)}</span>
+                  </div>
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -745,12 +675,14 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
                     {/* Category header with score */}
                     <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                       <div className="flex items-center justify-between mb-3">
-                        <div>
-                          <h3 className="text-xl font-semibold text-slate-900">{niceLabel(cat.id)}</h3>
-                          <p className="text-sm text-slate-600 mt-1">{jargon}</p>
-                        </div>
-                        <div className={`h-14 w-14 rounded-full border-4 ${circleColor(cat.score)} flex items-center justify-center shrink-0`}>
-                          <span className="text-lg font-bold">{cat.score}</span>
+                        <div className="flex items-center gap-3">
+                          <div className={`h-16 w-16 rounded-full border-4 ${circleColor(cat.score)} flex items-center justify-center`}>
+                            <span className="text-xl font-bold">{cat.score}</span>
+                          </div>
+                          <div>
+                            <h3 className="text-xl font-semibold text-slate-900">{niceLabel(cat.id)}</h3>
+                            <p className="text-sm text-slate-600 mt-1">{jargon}</p>
+                          </div>
                         </div>
                       </div>
                       <div className="mb-3">
@@ -766,9 +698,31 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
                     {/* Radar chart */}
                     <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
                       <h4 className="text-base font-semibold text-slate-900 mb-4">Detailed breakdown</h4>
-                      <TooltipProvider>
-                        <CategoryRadarChart details={cat.details} categoryName={niceLabel(cat.id)} />
-                      </TooltipProvider>
+                      {cat.id === 'movementQuality' && formData?.postureAiResults ? (
+                        <div className="space-y-6">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {Object.entries(formData.postureAiResults).map(([view, analysis]: [string, any]) => (
+                              <div key={view} className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                                <span className="text-[9px] font-black uppercase text-indigo-500 block mb-2">{view} Metric</span>
+                                <div className="space-y-1">
+                                  <div className="flex justify-between">
+                                    <span className="text-[10px] text-slate-500 font-bold uppercase">Deviation</span>
+                                    <span className="text-xs font-black text-slate-900">{analysis.head_posture?.deviation_degrees}°</span>
+                                  </div>
+                                  <p className="text-[10px] text-slate-600 mt-2 italic leading-tight">
+                                    {analysis.head_posture?.status}: {analysis.head_posture?.description}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <CategoryRadarChart details={cat.details} categoryName={niceLabel(cat.id)} />
+                        </div>
+                      ) : (
+                        <TooltipProvider>
+                          <CategoryRadarChart details={cat.details} categoryName={niceLabel(cat.id)} />
+                        </TooltipProvider>
+                      )}
                     </div>
                     
                     {/* Strengths and weaknesses for this category */}
@@ -920,12 +874,6 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
                 let explanation = '';
                 let whatItEntails: string[] = [];
                 
-                // Assessment-based context for this goal
-                const lowCardio = orderedCats.find(c => c.id === 'cardio' && c.score < 60);
-                const lowStrength = orderedCats.find(c => c.id === 'strength' && c.score < 60);
-                const lowMovement = orderedCats.find(c => c.id === 'movementQuality' && c.score < 65);
-                const lowBodyComp = orderedCats.find(c => c.id === 'bodyComp' && c.score < 60);
-
                 if (goal === 'weight-loss') {
                   explanation = 'Weight loss means reducing body fat while preserving muscle. This improves health, energy, and how you feel day-to-day.';
                   whatItEntails = [
@@ -968,50 +916,8 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
                   ];
                 }
                 
-                // Goal-specific contextual actions
-                const goalActions: string[] = [];
-                const goalNextSteps: string[] = [];
-
-                if (goal === 'weight-loss') {
-                  if (lowBodyComp) goalActions.push('Fix metabolic baseline with consistent protein intake and daily movement targets');
-                  if (lowCardio) goalActions.push('Build aerobic capacity to increase your "burn rate" and improve recovery between sets');
-                  if (lowStrength) goalActions.push('Establish foundational strength to protect your muscle mass during fat loss');
-                  goalNextSteps.push('Gradually increase training volume to maximize caloric expenditure');
-                  goalNextSteps.push('Introduce higher-intensity interval work once your aerobic base is established');
-                } else if (goal === 'build-muscle') {
-                  if (lowStrength) goalActions.push('Master compound lifting technique to ensure we can safely add weight for muscle growth');
-                  if (lowMovement) goalActions.push('Unlock movement restrictions to allow for full range of motion—critical for muscle fiber recruitment');
-                  if (lowBodyComp) goalActions.push('Optimize nutritional timing to fuel growth while keeping body fat in a healthy range');
-                  goalNextSteps.push('Shift toward hypertrophy-specific loading schemes (8-12 reps)');
-                  goalNextSteps.push('Focus on progressive overload and eccentric control for maximum growth');
-                } else if (goal === 'build-strength') {
-                  if (lowMovement) goalActions.push('Fix joint restrictions first—strength cannot be built on top of poor movement quality');
-                  if (lowStrength) goalActions.push('Build base-level muscular endurance before moving to maximal strength work');
-                  goalActions.push('Refine technique on the Big 3 (Squat, Bench, Hinge) to ensure long-term progress');
-                  goalNextSteps.push('Introduce heavier loading protocols (3-5 reps) once stability is confirmed');
-                  goalNextSteps.push('Focus on "stiffness" and core-bracing techniques under load');
-                } else if (goal === 'improve-fitness') {
-                  if (lowCardio) goalActions.push('Establish a Zone 2 aerobic base—the "foundation" for all high-intensity work');
-                  if (lowMovement) goalActions.push('Optimize joint mechanics to make your movement more energy-efficient');
-                  goalActions.push('Track HR recovery times to monitor your internal engine\'s efficiency');
-                  goalNextSteps.push('Layer in threshold intervals to push your VO2 max ceiling');
-                  goalNextSteps.push('Incorporate sport-specific conditioning tailored to your activity of choice');
-                } else {
-                  goalActions.push('Build a balanced routine across all 5 physical pillars');
-                  goalActions.push('Master the fundamentals of strength and aerobic recovery');
-                  goalNextSteps.push('Focus on long-term sustainability and lifestyle integration');
-                  goalNextSteps.push('Iteratively improve your lowest assessment scores');
-                }
-
-                // Fill defaults if needed
-                while (goalActions.length < 3) {
-                  const d = immediateActions.find(a => !goalActions.includes(a));
-                  if (d) goalActions.push(d); else break;
-                }
-                while (goalNextSteps.length < 2) {
-                  const d = immediateActions.find(a => !goalActions.includes(a) && !goalNextSteps.includes(a));
-                  if (d) goalNextSteps.push(d); else break;
-                }
+                const goalActions = immediateActions.slice(0, 3);
+                const goalQuickWins = quickWins.slice(0, 5);
                 
                 return (
                   <div key={i} className="space-y-4">
@@ -1037,7 +943,7 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
                       <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 shadow-sm">
                         <h3 className="text-base font-semibold text-indigo-800 mb-3">What we'll do first</h3>
                         <ul className="space-y-2 text-sm text-indigo-900">
-                          {goalActions.slice(0, 3).map((action, j) => (
+                          {goalActions.map((action, j) => (
                             <li key={j} className="flex items-start gap-2">
                               <span className="text-indigo-600 mt-1">•</span>
                               <span>{action}</span>
@@ -1048,7 +954,7 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
                       <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 shadow-sm">
                         <h3 className="text-base font-semibold text-indigo-800 mb-3">What we'll do next</h3>
                         <ul className="space-y-2 text-sm text-indigo-900">
-                          {goalNextSteps.slice(0, 2).map((action, j) => (
+                          {immediateActions.slice(3, 5).map((action, j) => (
                             <li key={j} className="flex items-start gap-2">
                               <span className="text-indigo-600 mt-1">•</span>
                               <span>{action}</span>
@@ -1099,24 +1005,12 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
             if (discoveredGoals.length === 0) return null;
             
             return (
-              <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-white p-6 shadow-sm">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="bg-indigo-600 p-2 rounded-lg">
-                    <Sparkles className="h-5 w-5 text-white" />
-                  </div>
-                  <h3 className="text-xl font-bold text-slate-900">Foundational Priorities</h3>
-                </div>
-                <p className="text-sm text-slate-600 mb-4 leading-relaxed">
-                  While we work toward your primary goals, your assessment highlighted these critical areas. Addressing these "discovered goals" first will unlock your body's ability to progress much faster:
-                </p>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {discoveredGoals.map((dg, i) => (
-                    <div key={i} className="flex items-start gap-3 p-3 bg-white/60 rounded-xl border border-white">
-                      <div className="mt-1 h-2 w-2 rounded-full bg-indigo-400 shrink-0" />
-                      <span className="text-sm font-medium text-slate-700">{dg}</span>
-                    </div>
-                  ))}
-                </div>
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-5 shadow-sm">
+                <h3 className="text-lg font-semibold text-amber-800 mb-3">Goals we discovered from your assessment</h3>
+                <p className="text-sm text-amber-900 mb-3">Based on your assessment results, we also need to address these areas to put your body in the right state to reach your goals safely:</p>
+                <ul className="list-disc pl-5 text-sm text-amber-900 space-y-2">
+                  {discoveredGoals.map((dg, i) => <li key={i}>{dg}</li>)}
+                </ul>
               </div>
             );
           })()}
@@ -1144,16 +1038,16 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
         let sleepDesc = '';
         if (sleepQ === 'excellent' && (sleepC === 'consistent' || sleepC === 'very-consistent')) {
           sleepStatus = 'good';
-          sleepDesc = "Your sleep quality and consistency are top-tier, which will accelerate your recovery and results.";
-        } else if (sleepQ === 'good' && (sleepC === 'consistent' || sleepC === 'very-consistent')) {
+          sleepDesc = `Excellent sleep quality (${sleepQ}) with consistent schedule (${sleepC})`;
+        } else if (sleepQ === 'good' && sleepC === 'consistent') {
           sleepStatus = 'good';
-          sleepDesc = "Good sleep quality and consistent timing. This provides a stable foundation for your training energy.";
+          sleepDesc = `Good sleep quality (${sleepQ}) with consistent schedule`;
         } else if (sleepQ === 'poor' || sleepC === 'very-inconsistent') {
           sleepStatus = 'poor';
-          sleepDesc = "Sleep is currently a bottleneck. Improving your sleep schedule will unlock significant progress in strength and body comp.";
+          sleepDesc = `Sleep needs attention: ${sleepQ} quality, ${sleepC} schedule`;
         } else {
           sleepStatus = 'needs-work';
-          sleepDesc = "There is room to tighten up your sleep consistency or quality to better support your training goals.";
+          sleepDesc = `Sleep can improve: ${sleepQ} quality, ${sleepC} schedule`;
         }
         lifestyleFactors.push({ name: 'Sleep & Recovery', status: sleepStatus, description: sleepDesc });
         
@@ -1162,13 +1056,13 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
         let stressDesc = '';
         if (stress === 'very-low' || stress === 'low') {
           stressStatus = 'good';
-          stressDesc = "Low stress levels mean your body is in a 'prime' state to adapt to training loads.";
-        } else if (stress === 'very-high' || stress === 'high') {
+          stressDesc = `Well-managed stress (${stress})`;
+        } else if (stress === 'very-high') {
           stressStatus = 'poor';
-          stressDesc = "Elevated stress will limit your recovery. We should prioritize stress-management techniques alongside your program.";
+          stressDesc = `Very high stress (${stress}) needs immediate attention`;
         } else {
           stressStatus = 'needs-work';
-          stressDesc = "Moderate stress levels are manageable, but we should keep an eye on total life-load during heavy training weeks.";
+          stressDesc = `Moderate to high stress (${stress}) can be improved`;
         }
         lifestyleFactors.push({ name: 'Stress Management', status: stressStatus, description: stressDesc });
         
@@ -1177,13 +1071,13 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
         let nutritionDesc = '';
         if (nutrition === 'excellent' || nutrition === 'good') {
           nutritionStatus = 'good';
-          nutritionDesc = "Your current nutrition habits are supporting your goals well. We'll refine these further for maximum performance.";
+          nutritionDesc = `${nutrition.charAt(0).toUpperCase() + nutrition.slice(1)} nutrition habits`;
         } else if (nutrition === 'poor') {
           nutritionStatus = 'poor';
-          nutritionDesc = "Nutritional consistency needs attention. Fueling your body correctly will be the key to reaching your target physique.";
+          nutritionDesc = `Poor nutrition habits need improvement`;
         } else {
           nutritionStatus = 'needs-work';
-          nutritionDesc = "Your nutrition is decent, but optimizing your food quality and timing will give you a significant edge.";
+          nutritionDesc = `Fair nutrition habits can be enhanced`;
         }
         lifestyleFactors.push({ name: 'Nutrition', status: nutritionStatus, description: nutritionDesc });
         
@@ -1192,13 +1086,13 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
         let hydrationDesc = '';
         if (hydration === 'excellent' || hydration === 'good') {
           hydrationStatus = 'good';
-          hydrationDesc = "Solid hydration. This keeps your joints healthy and your energy levels stable during workouts.";
+          hydrationDesc = `${hydration.charAt(0).toUpperCase() + hydration.slice(1)} hydration habits`;
         } else if (hydration === 'poor') {
           hydrationStatus = 'poor';
-          hydrationDesc = "Chronic dehydration will lead to fatigue and poor workout quality. Increasing water intake is an easy win.";
+          hydrationDesc = `Poor hydration needs improvement`;
         } else {
           hydrationStatus = 'needs-work';
-          hydrationDesc = "Occasional dehydration might be dampening your energy. Consistency here will improve your mental focus.";
+          hydrationDesc = `Fair hydration can be enhanced`;
         }
         lifestyleFactors.push({ name: 'Hydration', status: hydrationStatus, description: hydrationDesc });
         
@@ -1207,19 +1101,19 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
         let movementDesc = '';
         if (steps >= 10000) {
           movementStatus = 'good';
-          movementDesc = "Fantastic non-exercise activity. This high baseline burn makes weight management much easier.";
+          movementDesc = `Excellent daily movement (${Math.round(steps).toLocaleString()} steps/day)`;
         } else if (steps >= 8000) {
           movementStatus = 'good';
-          movementDesc = "Good daily movement level. You're staying active enough to support metabolic health.";
+          movementDesc = `Good daily movement (${Math.round(steps).toLocaleString()} steps/day)`;
         } else if (steps >= 6000) {
           movementStatus = 'needs-work';
-          movementDesc = "You're somewhat active, but bumping this up to 8-10k steps will significantly improve your recovery rate.";
+          movementDesc = `Daily movement can increase (${Math.round(steps).toLocaleString()} steps/day, target 8-10k)`;
         } else if (steps > 0) {
           movementStatus = 'poor';
-          movementDesc = "Relatively low activity levels. Increasing daily steps is the simplest way to accelerate your progress.";
+          movementDesc = `Low daily movement (${Math.round(steps).toLocaleString()} steps/day) needs improvement`;
         } else {
           movementStatus = 'needs-work';
-          movementDesc = "We need to establish a baseline for your daily movement to better calibrate your program.";
+          movementDesc = `Daily movement tracking needed`;
         }
         if (sedentary >= 10) {
           movementStatus = 'poor';
@@ -1316,8 +1210,8 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
                   <span className="text-sm font-medium text-slate-800">{niceLabel(cat.id)}</span>
                   <span className="text-xs text-slate-500">~{weeks} weeks to see improvements</span>
                 </div>
-                <div className="h-3 w-full rounded bg-slate-100 overflow-hidden">
-                  <div className={`h-3 rounded ${color}`} style={{ width: `${Math.max(0, Math.min(100, ((weeks || 0) / 26) * 100))}%` }} />
+                <div className="h-3 w-full rounded bg-slate-100">
+                  <div className={`h-3 rounded ${color}`} style={{ width: `${Math.min(100, (weeks / 26) * 100)}%` }} />
                 </div>
               </div>
             );
