@@ -45,6 +45,17 @@ export default function RoadmapTimeline({ phases }: { phases: RoadmapPhase[] }) 
           </div>
         ))}
       </div>
+      
+      {/* Disclaimer */}
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 mt-6">
+        <p className="text-xs text-amber-900 leading-relaxed">
+          <strong className="font-semibold">Important:</strong> These timeframes are estimates based on typical response rates and assume consistent adherence to the program. 
+          Individual results vary significantly based on genetics, adherence, lifestyle factors, and other variables. 
+          These projections do not account for missed sessions, travel, illness, or other interruptions. 
+          Adherence to the plan, consistency with training and nutrition, and following coach guidance are essential for achieving these timelines. 
+          These are not guarantees, and your actual progress may be faster or slower than projected.
+        </p>
+      </div>
     </div>
   );
 }

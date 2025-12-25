@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Extract Base64 from Images</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 20px;
+    }
+    .upload-area {
+      border: 2px dashed #ccc;
+      border-radius: 8px;
+      padding: 40px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .image-preview {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+    .image-card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 10px;
+    }
+    .image-card img {
+      width: 100%;
+      height: auto;
+      border-radius: 4px;
+    }
+    .base64-output {
+      background: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 10px;
+      word-break: break-all;
+      margin-top: 10px;
+      max-height: 100px;
+      overflow-y: auto;
+    }
+    button {
+      background: #4f46e5;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover {
+      background: #4338ca;
+    }
+  </style>
+</head>
+<body>
+  <h1>Extract Base64 from Posture Test Images</h1>
+  <p>Upload your 4 posture images (front, back, side-left, side-right) to extract base64 data for hard-coding.</p>
+  
+  <div class="upload-area">
+    <input type="file" id="fileInput" accept="image/*" multiple />
+    <p>Select 4 images: front, back, side-left, side-right</p>
+  </div>
+
+  <div id="preview"></div>
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const preview = document.getElementById('preview');
+    
+    const viewNames = ['front', 'back', 'side-left', 'side-right'];
+    
+    fileInput.addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files);
+      preview.innerHTML = '';
+      
+      const imageCards = [];
+      
+      for (let i = 0; i < Math.min(files.length, 4); i++) {
+        const file = files[i];
+        const viewName = viewNames[i] || `image-${i}`;
+        
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const base64 = event.target.result;
+          
+          const card = document.createElement('div');
+          card.className = 'image-card';
+          card.innerHTML = `
+            <h3>${viewName}</h3>
+            <img src="${base64}" alt="${viewName}" />
+            <div class="base64-output">${base64.substring(0, 100)}...</div>
+            <button onclick="copyToClipboard('${viewName}', \`${base64}\`)">Copy Base64</button>
+          `;
+          
+          imageCards.push({ viewName, base64, card });
+          
+          if (imageCards.length === Math.min(files.length, 4)) {
+            imageCards.forEach(({ card }) => preview.appendChild(card));
+            
+            // Generate code snippet
+            const codeSnippet = document.createElement('div');
+            codeSnippet.style.marginTop = '40px';
+            codeSnippet.style.padding = '20px';
+            codeSnippet.style.background = '#1e1e1e';
+            codeSnippet.style.color = '#d4d4d4';
+            codeSnippet.style.borderRadius = '8px';
+            codeSnippet.style.fontFamily = 'monospace';
+            codeSnippet.style.fontSize = '12px';
+            codeSnippet.style.overflow = 'auto';
+            
+            let code = 'export const HARDCODED_TEST_IMAGES: Record<string, string> = {\n';
+            imageCards.forEach(({ viewName, base64 }) => {
+              code += `  '${viewName}': \`${base64}\`,\n`;
+            });
+            code += '};';
+            
+            codeSnippet.textContent = code;
+            preview.appendChild(codeSnippet);
+            
+            const copyAllBtn = document.createElement('button');
+            copyAllBtn.textContent = 'Copy All Code';
+            copyAllBtn.style.marginTop = '10px';
+            copyAllBtn.onclick = () => {
+              navigator.clipboard.writeText(code);
+              alert('Code copied to clipboard!');
+            };
+            preview.appendChild(copyAllBtn);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+    
+    function copyToClipboard(viewName, base64) {
+      navigator.clipboard.writeText(base64);
+      alert(`Base64 for ${viewName} copied to clipboard!`);
+    }
+  </script>
+</body>
+</html>
+

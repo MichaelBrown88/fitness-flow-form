@@ -2,10 +2,57 @@ import { getAI, VertexAIBackend, getGenerativeModel } from "firebase/ai";
 import { getApp } from "firebase/app";
 
 export interface PostureAnalysisResult {
-  head_posture: { status: string; description: string; deviation_degrees?: number };
-  shoulder_alignment: { status: string; description: string; vertical_offset_cm?: number };
-  pelvic_position: { status: string; description: string; tilt_degrees?: number };
-  risk_flags: string[];
+  // Forward Head Posture (FHP)
+  forward_head: {
+    status: 'Neutral' | 'Mild' | 'Moderate' | 'Severe';
+    deviation_degrees: number; // Positive = forward
+    description: string;
+    recommendation?: string;
+  };
+  // Shoulder Alignment
+  shoulder_alignment: {
+    status: 'Neutral' | 'Elevated' | 'Depressed' | 'Asymmetric';
+    left_elevation_cm?: number; // Positive = left higher
+    right_elevation_cm?: number; // Positive = right higher
+    rounded_forward: boolean; // Rounded shoulders
+    description: string;
+    recommendation?: string;
+  };
+  // Kyphosis (Thoracic Curve)
+  kyphosis: {
+    status: 'Normal' | 'Mild' | 'Moderate' | 'Severe';
+    curve_degrees: number; // Increased thoracic curve
+    description: string;
+    recommendation?: string;
+  };
+  // Lordosis (Lumbar Curve)
+  lordosis: {
+    status: 'Normal' | 'Mild' | 'Moderate' | 'Severe';
+    curve_degrees: number; // Increased lumbar curve
+    description: string;
+    recommendation?: string;
+  };
+  // Pelvic Position
+  pelvic_tilt: {
+    status: 'Neutral' | 'Anterior Tilt' | 'Posterior Tilt' | 'Lateral Tilt';
+    anterior_tilt_degrees?: number; // Positive = anterior tilt
+    lateral_tilt_degrees?: number; // Positive = left side down
+    rotation_degrees?: number; // Pelvic rotation
+    description: string;
+    recommendation?: string;
+  };
+  // Hip Alignment
+  hip_alignment: {
+    status: 'Neutral' | 'Elevated' | 'Depressed' | 'Asymmetric';
+    left_elevation_cm?: number;
+    right_elevation_cm?: number;
+    description: string;
+    recommendation?: string;
+  };
+  // Overall Postural Deviations
+  deviations: string[]; // List of all identified deviations
+  risk_flags: string[]; // Risk factors for injury/pain
+  overall_assessment: string; // Comprehensive summary
 }
 
 export async function analyzePostureImage(imageUrl: string, view: 'front' | 'side-right' | 'side-left' | 'back'): Promise<PostureAnalysisResult> {
@@ -13,48 +60,325 @@ export async function analyzePostureImage(imageUrl: string, view: 'front' | 'sid
     const firebaseApp = getApp();
     const ai = getAI(firebaseApp, { backend: new VertexAIBackend() });
     
-    // Use Gemini 1.5 Flash for speed and reliability
+    // Use Gemini 2.0 Flash - latest model with improved accuracy and speed
     const model = getGenerativeModel(ai, { 
-      model: "gemini-1.5-flash-002"
+      model: "gemini-2.0-flash",
+      generationConfig: {
+        responseMimeType: "application/json",
+      }
     });
 
+    const viewSpecificInstructions = {
+      'front': `
+        FRONT VIEW ANALYSIS - CHECK ALL OF THESE:
+        - Vertical midline: Draw a line down the center of the body (through nose, sternum, navel, between feet)
+        - Horizontal shoulder line: Measure vertical height difference between left and right shoulders (in cm)
+        - Horizontal hip line: Measure vertical height difference between left and right hips (in cm)
+        - MUST analyze ALL of the following:
+          * Shoulder elevation asymmetry (left vs right height difference in cm)
+          * Hip elevation asymmetry (left vs right height difference in cm)
+          * Lateral pelvic tilt (angle in degrees)
+          * Hip shift (left/right displacement in cm)
+          * Knee alignment (valgus/varus from front view)
+          * Overall body alignment relative to midline
+        - DO NOT analyze: Forward head posture (cannot be seen from front), kyphosis, lordosis (these require side view)
+      `,
+      'back': `
+        BACK VIEW ANALYSIS - CHECK ALL OF THESE:
+        - Vertical midline: Draw a line down the center of the spine (from head to between feet)
+        - Horizontal shoulder line: Measure vertical height difference between left and right shoulders (in cm)
+        - Horizontal hip line: Measure vertical height difference between left and right hips (in cm)
+        - MUST analyze ALL of the following:
+          * Shoulder blade asymmetry
+          * Shoulder elevation asymmetry (left vs right height difference in cm)
+          * Spinal curvature (scoliosis - lateral deviation)
+          * Hip elevation asymmetry (left vs right height difference in cm)
+          * Lateral pelvic tilt (angle in degrees)
+          * Hip shift (left/right displacement in cm)
+          * Overall body alignment relative to midline
+        - DO NOT analyze: Forward head posture (cannot be seen from back), kyphosis, lordosis (these require side view)
+      `,
+      'side-right': `
+        RIGHT SIDE VIEW ANALYSIS - CENTER OF MASS PLUMB LINE:
+        - IMPORTANT: The vertical plumb line is positioned at the CENTER OF THE SCREEN (50% width)
+        - The client should be aligned so their mid-foot (just in front of ankle bone) aligns with this center plumb line
+        - Vertical plumb line: Draw from the center of the screen (through ear canal, center of shoulder joint, center of hip joint, center of knee, center of ankle)
+        - This plumb line represents ideal center of mass alignment and is always at 50% screen width
+        - Horizontal shoulder line: Reference for shoulder position
+        - Horizontal hip line: Reference for hip position
+        - Measure deviations FROM the plumb line:
+          * Forward head posture: Horizontal distance from ear canal to plumb line (in cm and degrees)
+          * Thoracic kyphosis: Degree of forward curve in upper back (normal 20-40°, mild 40-50°, moderate 50-60°, severe >60°)
+          * Lumbar lordosis: Degree of inward curve in lower back (normal 20-40°, mild 40-50°, moderate 50-60°, severe >60°)
+          * Anterior/posterior pelvic tilt: Angle of pelvic rotation (anterior = forward, posterior = backward)
+          * Rounded shoulders: Forward position of shoulders relative to plumb line
+          * Knee position: Hyperextension or flexion relative to plumb line
+      `,
+      'side-left': `
+        LEFT SIDE VIEW ANALYSIS - CENTER OF MASS PLUMB LINE:
+        - IMPORTANT: The vertical plumb line is positioned at the CENTER OF THE SCREEN (50% width)
+        - The client should be aligned so their mid-foot (just in front of ankle bone) aligns with this center plumb line
+        - Vertical plumb line: Draw from the center of the screen (through ear canal, center of shoulder joint, center of hip joint, center of knee, center of ankle)
+        - This plumb line represents ideal center of mass alignment and is always at 50% screen width
+        - Horizontal shoulder line: Reference for shoulder position
+        - Horizontal hip line: Reference for hip position
+        - Measure deviations FROM the plumb line:
+          * Forward head posture: Horizontal distance from ear canal to plumb line (in cm and degrees)
+          * Thoracic kyphosis: Degree of forward curve in upper back (normal 20-40°, mild 40-50°, moderate 50-60°, severe >60°)
+          * Lumbar lordosis: Degree of inward curve in lower back (normal 20-40°, mild 40-50°, moderate 50-60°, severe >60°)
+          * Anterior/posterior pelvic tilt: Angle of pelvic rotation (anterior = forward, posterior = backward)
+          * Rounded shoulders: Forward position of shoulders relative to plumb line
+          * Knee position: Hyperextension or flexion relative to plumb line
+      `
+    };
+
     const prompt = `
-      You are an expert Biomechanics and Posture Analyst. 
-      Analyze the attached image of a person from the ${view} view.
-      Assume the camera was perfectly vertical.
-      The person is standing within a guide box.
-
-      TASK:
-      1. Measure head deviation from the vertical axis in degrees. (Positive = right/forward, Negative = left/back)
-      2. Measure shoulder imbalance (vertical height difference) in cm.
-      3. Measure pelvic tilt or rotation in degrees.
-      4. Identify risk flags based on these findings.
-
+      You are an expert Biomechanics and Posture Analyst with 20+ years of clinical experience.
+      Analyze the attached image of a person from the ${view} view for comprehensive postural assessment.
+      
+      REFERENCE LINES TO USE:
+      ${viewSpecificInstructions[view]}
+      
+      VIEW-SPECIFIC ANALYSIS REQUIRED:
+      
+      ${view === 'front' || view === 'back' ? `
+      FRONT/BACK VIEW SPECIFIC CHECKS:
+      1. SHOULDER ELEVATION ASYMMETRY:
+         - Measure vertical height difference between left and right shoulders (in cm)
+         - Report the height_difference_cm (absolute value of difference)
+         - Normal: < 0.5cm difference = "Neutral" status
+         - Mild: 0.5-1.0cm difference = "Asymmetric" status
+         - Moderate: 1.0-2.0cm difference = "Asymmetric" status
+         - Severe: > 2.0cm difference = "Asymmetric" status
+         - Identify which shoulder is elevated in description
+         - If difference is 0cm or < 0.5cm, status must be "Neutral", not "Asymmetric"
+      
+      2. HIP ELEVATION ASYMMETRY:
+         - Measure vertical height difference between left and right hips (in cm)
+         - Normal: < 0.5cm difference
+         - Mild: 0.5-1.0cm difference
+         - Moderate: 1.0-2.0cm difference
+         - Severe: > 2.0cm difference
+         - Identify which hip is elevated
+      
+      3. LATERAL PELVIC TILT:
+         - Measure tilt angle in degrees
+         - Normal: < 2 degrees
+         - Mild: 2-5 degrees
+         - Moderate: 5-8 degrees
+         - Severe: > 8 degrees
+      
+      4. HIP SHIFT:
+         - Measure horizontal displacement of hips from midline (in cm)
+         - Left shift: hips shifted to left
+         - Right shift: hips shifted to right
+         - Normal: < 1cm displacement
+      
+      5. SHOULDER ROUNDING (Front view only):
+         - Check if shoulders are forward/protracted
+         - Normal: shoulders aligned with body
+         - Rounded: shoulders forward of ideal alignment
+      
+      6. KNEE ALIGNMENT (Front/Back view):
+         - Check for valgus (knees pointing inward) or varus (knees pointing outward)
+         - Measure deviation angle in degrees from ideal alignment
+         - Normal: knees aligned = "Neutral" status
+         - Valgus: knees pointing inward = "Valgus" status
+         - Varus: knees pointing outward = "Varus" status
+         - Report deviation_degrees (angle of deviation)
+      
+      7. SPINAL CURVATURE (Back view only):
+         - Check for scoliosis indicators (lateral spinal curvature)
+         - Measure curve angle in degrees
+         - Normal: straight spine = "Normal" status
+         - Mild Scoliosis: 10-20 degrees = "Mild Scoliosis" status
+         - Moderate Scoliosis: 20-40 degrees = "Moderate Scoliosis" status
+         - Severe Scoliosis: > 40 degrees = "Severe Scoliosis" status
+         - Report curve_degrees
+      
+      IMPORTANT: You MUST analyze ALL of the above checks (shoulders, hips, pelvic tilt, hip shift, knee alignment, and spinal curvature for back view).
+      DO NOT analyze forward head posture, kyphosis, or lordosis from this view - these require side view.
+      ` : `
+      SIDE VIEW SPECIFIC CHECKS (using center of mass plumb line):
+      1. FORWARD HEAD POSTURE (FHP):
+         - Measure horizontal distance from ear canal to plumb line (in cm)
+         - Measure deviation angle in degrees
+         - Normal: < 2cm forward, < 5 degrees
+         - Mild: 2-4cm forward, 5-12 degrees
+         - Moderate: 4-6cm forward, 12-20 degrees
+         - Severe: > 6cm forward, > 20 degrees
+      
+      2. THORACIC KYPHOSIS (Upper Back Curve):
+         - Measure the degree of forward curvature in upper back
+         - Normal: 20-40 degrees
+         - Mild: 40-50 degrees
+         - Moderate: 50-60 degrees
+         - Severe: > 60 degrees
+      
+      3. LUMBAR LORDOSIS (Lower Back Curve):
+         - Measure the degree of inward curvature in lower back
+         - Normal: 20-40 degrees
+         - Mild: 40-50 degrees
+         - Moderate: 50-60 degrees
+         - Severe: > 60 degrees
+      
+      4. ANTERIOR/POSTERIOR PELVIC TILT:
+         - Measure tilt angle in degrees relative to plumb line
+         - Anterior tilt: pelvis rotated forward (positive angle)
+         - Posterior tilt: pelvis rotated backward (negative angle)
+         - Normal: -5 to +5 degrees
+         - Mild: 5-10 degrees deviation
+         - Moderate: 10-15 degrees deviation
+         - Severe: > 15 degrees deviation
+      
+      5. ROUNDED SHOULDERS:
+         - Measure forward position of shoulders relative to plumb line (in cm)
+         - Normal: shoulders aligned with plumb line
+         - Mild: 1-2cm forward
+         - Moderate: 2-4cm forward
+         - Severe: > 4cm forward
+      
+      6. KNEE POSITION:
+         - Check for hyperextension (knee behind plumb line) or flexion (knee in front)
+         - Normal: knee aligned with plumb line
+         - Hyperextension: knee behind plumb line
+         - Flexion: knee forward of plumb line
+      `}
+      
       Return ONLY a JSON object with this EXACT structure:
+      ${view === 'front' || view === 'back' ? `
       {
-        "head_posture": { 
-          "status": "Neutral | Slight Deviation | Severe Deviation", 
-          "description": "Short summary of finding",
-          "deviation_degrees": number 
+        "forward_head": null,
+        "shoulder_alignment": {
+          "status": "Neutral | Elevated | Depressed | Asymmetric",
+          "left_elevation_cm": number,
+          "right_elevation_cm": number,
+          "height_difference_cm": number,
+          "rounded_forward": boolean,
+          "description": "Detailed explanation of shoulder alignment and asymmetry",
+          "recommendation": "Specific corrective recommendations"
         },
-        "shoulder_alignment": { 
-          "status": "Neutral | Slight Deviation | Severe Deviation", 
-          "description": "Short summary",
-          "vertical_offset_cm": number 
+        "kyphosis": null,
+        "lordosis": null,
+        "pelvic_tilt": {
+          "status": "Neutral | Lateral Tilt",
+          "lateral_tilt_degrees": number,
+          "left_hip_elevation_cm": number,
+          "right_hip_elevation_cm": number,
+          "height_difference_cm": number,
+          "hip_shift_cm": number,
+          "hip_shift_direction": "None | Left | Right",
+          "description": "Detailed explanation of pelvic position, hip elevation, and hip shift",
+          "recommendation": "Specific corrective recommendations"
         },
-        "pelvic_position": { 
-          "status": "Neutral | Slight Deviation | Severe Deviation", 
-          "description": "Short summary",
-          "tilt_degrees": number 
+        "hip_alignment": {
+          "status": "Neutral | Elevated | Depressed | Asymmetric",
+          "left_elevation_cm": number,
+          "right_elevation_cm": number,
+          "height_difference_cm": number,
+          "description": "Detailed explanation of hip alignment and asymmetry",
+          "recommendation": "Specific corrective recommendations"
         },
-        "risk_flags": ["list of string flags"]
+        "knee_alignment": {
+          "status": "Neutral | Valgus | Varus",
+          "deviation_degrees": number,
+          "description": "Detailed explanation of knee alignment from front/back view",
+          "recommendation": "Specific corrective recommendations"
+        },
+        ${view === 'back' ? `
+        "spinal_curvature": {
+          "status": "Normal | Mild Scoliosis | Moderate Scoliosis | Severe Scoliosis",
+          "curve_degrees": number,
+          "description": "Detailed explanation of spinal curvature from back view",
+          "recommendation": "Specific corrective recommendations"
+        },
+        ` : ''}
+        "deviations": ["list of all identified postural deviations from this view"],
+        "risk_flags": ["list of risk factors for pain/injury"],
+        "overall_assessment": "Comprehensive summary of all findings from ${view} view. IMPORTANT: Address the person directly as 'you' (e.g., 'You present with...', 'Your posture shows...', 'You have...'). Never use 'the individual', 'the person', or 'the subject'."
       }
+      ` : `
+      {
+        "forward_head": {
+          "status": "Neutral | Mild | Moderate | Severe",
+          "deviation_degrees": number,
+          "deviation_cm": number,
+          "description": "Detailed explanation of forward head posture relative to plumb line",
+          "recommendation": "Specific exercise/stretching recommendations"
+        },
+        "shoulder_alignment": {
+          "status": "Neutral | Rounded",
+          "forward_position_cm": number,
+          "rounded_forward": boolean,
+          "description": "Detailed explanation of shoulder position relative to plumb line",
+          "recommendation": "Specific corrective recommendations"
+        },
+        "kyphosis": {
+          "status": "Normal | Mild | Moderate | Severe",
+          "curve_degrees": number,
+          "description": "Detailed explanation of thoracic kyphosis",
+          "recommendation": "Specific strengthening/stretching recommendations"
+        },
+        "lordosis": {
+          "status": "Normal | Mild | Moderate | Severe",
+          "curve_degrees": number,
+          "description": "Detailed explanation of lumbar lordosis",
+          "recommendation": "Specific corrective recommendations"
+        },
+        "pelvic_tilt": {
+          "status": "Neutral | Anterior Tilt | Posterior Tilt",
+          "anterior_tilt_degrees": number,
+          "description": "Detailed explanation of pelvic position relative to plumb line",
+          "recommendation": "Specific corrective recommendations"
+        },
+        "hip_alignment": null,
+        "knee_position": {
+          "status": "Neutral | Hyperextended | Flexed",
+          "deviation_degrees": number,
+          "description": "Detailed explanation of knee position relative to plumb line",
+          "recommendation": "Specific corrective recommendations"
+        },
+        "deviations": ["list of all identified postural deviations from this view"],
+        "risk_flags": ["list of risk factors for pain/injury"],
+        "overall_assessment": "Comprehensive summary of all findings from ${view} view. IMPORTANT: Address the person directly as 'you' (e.g., 'You present with...', 'Your posture shows...', 'You have...'). Never use 'the individual', 'the person', or 'the subject'."
+      }
+      `}
     `;
 
-    // Handle data URL vs raw base64
-    let base64Data = imageUrl;
-    if (imageUrl.startsWith('data:')) {
+    // Handle different image formats:
+    // 1. Storage URL (https://...) - fetch and convert to base64
+    // 2. Data URL (data:image/...) - extract base64
+    // 3. Raw base64 - use as-is
+    let base64Data: string;
+    
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      // Fetch from Storage URL and convert to base64
+      console.log('[AI] Fetching full-size image from Storage URL...');
+      try {
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        base64Data = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const result = reader.result as string;
+            // Extract base64 part
+            const base64Part = result.split(',')[1] || result;
+            resolve(base64Part);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+        console.log('[AI] Successfully fetched full-size image from Storage');
+      } catch (error) {
+        console.error('[AI] Failed to fetch image from Storage URL:', error);
+        throw new Error('Failed to fetch full-size image from Storage');
+      }
+    } else if (imageUrl.startsWith('data:')) {
+      // Data URL - extract base64
       base64Data = imageUrl.split(',')[1];
+    } else {
+      // Assume raw base64
+      base64Data = imageUrl;
     }
 
     const result = await model.generateContent([
@@ -68,14 +392,26 @@ export async function analyzePostureImage(imageUrl: string, view: 'front' | 'sid
     ]);
 
     const aiResponse = await result.response;
-    const text = aiResponse.text();
     
-    // Robust JSON extraction
-    const startIdx = text.indexOf('{');
-    const endIdx = text.lastIndexOf('}');
-    if (startIdx === -1) throw new Error('Invalid AI response');
-    const jsonString = text.substring(startIdx, endIdx + 1);
-    return JSON.parse(jsonString);
+    // Gemini 2.0 Flash with responseMimeType: "application/json" returns JSON directly
+    // Try to get JSON first, fallback to text extraction if needed
+    try {
+      const text = aiResponse.text();
+      // If responseMimeType is set, text should be valid JSON
+      try {
+        return JSON.parse(text);
+      } catch {
+        // Fallback: extract JSON from text if wrapped
+        const startIdx = text.indexOf('{');
+        const endIdx = text.lastIndexOf('}');
+        if (startIdx === -1) throw new Error('Invalid AI response');
+        const jsonString = text.substring(startIdx, endIdx + 1);
+        return JSON.parse(jsonString);
+      }
+    } catch (parseError) {
+      console.error('JSON parsing error:', parseError);
+      throw new Error('Failed to parse AI response as JSON.');
+    }
 
   } catch (err) {
     console.error('Posture Analysis Error:', err);

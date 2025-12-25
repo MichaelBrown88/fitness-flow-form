@@ -35,7 +35,7 @@ const PublicClientReport = () => {
         setFormData(fd);
         const s = computeScores(fd);
         setScores(s);
-        setRoadmap(buildRoadmap(s));
+        setRoadmap(buildRoadmap(s, fd));
       } catch (e) {
         setError(
           e instanceof Error ? e.message : 'Unable to load this report.',

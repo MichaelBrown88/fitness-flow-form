@@ -15,6 +15,11 @@ import {
   type LiveSession 
 } from '@/services/liveSessions';
 import { analyzePostureImage } from '@/lib/ai/postureAnalysis';
+import { loadTestPostureImages, loadImagesFromFiles } from '@/lib/test/postureTestImages';
+import { updatePostureImage } from '@/services/liveSessions';
+import { addDeviationOverlay } from '@/lib/utils/postureOverlay';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { 
   Smartphone, 
   CheckCircle2, 
@@ -24,7 +29,11 @@ import {
   ArrowRight,
   RefreshCcw,
   Monitor,
-  ShieldAlert
+  ShieldAlert,
+  TestTube,
+  X,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -45,6 +54,9 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
   const [analyzingViews, setAnalyzingViews] = useState<Record<string, boolean>>({});
   const [isOnline, setIsOnline] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isLoadingTestImages, setIsLoadingTestImages] = useState(false);
+  const [previewImage, setPreviewImage] = useState<{ url: string; view: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const processedRef = useRef<Set<string>>(new Set());
 
@@ -77,14 +89,25 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
       }
 
       // 3. AUTO-START AI ANALYSIS
-      const views: ('front' | 'side-right' | 'side-left' | 'back')[] = ['front', 'side-right', 'side-left', 'back'];
+      const views: ('front' | 'side-right' | 'side-left' | 'back')[] = ['front', 'back', 'side-left', 'side-right'];
       for (const view of views) {
         const imageUrl = updatedSession.postureImages[view];
         const hasAnalysis = updatedSession.analysis[view];
         
         if (imageUrl && !hasAnalysis && !processedRef.current.has(`${view}-${imageUrl}`)) {
           processedRef.current.add(`${view}-${imageUrl}`);
-          handleAnalyze(view, imageUrl);
+          
+          // Use full-size image for AI analysis if available, otherwise use compressed
+          const fullSizeUrl = (updatedSession as any)[`postureImagesFull_${view}`];
+          const imageForAI = fullSizeUrl || imageUrl;
+          
+          if (fullSizeUrl) {
+            console.log(`[AI] Using full-size image from Storage for ${view}`);
+          } else {
+            console.warn(`[AI] Full-size image not available for ${view}, using compressed version`);
+          }
+          
+          handleAnalyze(view, imageForAI);
         }
       }
     });
@@ -96,7 +119,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
     ? `${window.location.origin}/companion/${session.id}?token=${session.companionToken}` 
     : '';
 
-  const views: ('front' | 'side-right' | 'side-left' | 'back')[] = ['front', 'side-right', 'side-left', 'back'];
+  const views: ('front' | 'side-right' | 'side-left' | 'back')[] = ['front', 'back', 'side-left', 'side-right'];
   
   const hasAllImages = views.every(v => !!session?.postureImages[v]);
   const isComplete = views.every(v => !!session?.analysis[v]);
@@ -106,8 +129,101 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
     try {
       console.log(`[AI] Starting analysis for ${view}...`);
       const result = await analyzePostureImage(url, view);
+      console.log(`[AI] Analysis result for ${view}:`, result);
+      
       if (session?.id) {
         await updatePostureAnalysis(session.id, view, result);
+        
+        // Update image with deviation lines after analysis
+        // CRITICAL: Get the image that already has green reference lines
+        // Try multiple sources: current session state, or fetch from Firestore
+        const sessionRef = doc(db, 'live_sessions', session.id);
+        const { getDoc } = await import('firebase/firestore');
+        const snap = await getDoc(sessionRef);
+        const latestSession = snap.exists() ? snap.data() as LiveSession : session;
+        
+        // Get image from latest session data (should have green lines)
+        let currentImage = latestSession.postureImages?.[view] || session.postureImages?.[view];
+        
+        // If still no image, the image might be in the URL we used for AI
+        if (!currentImage && url && !url.startsWith('http')) {
+          currentImage = url; // Base64 data URL
+        }
+        
+        console.log(`[OVERLAY] Image source check for ${view}:`, {
+          hasLatestImage: !!latestSession.postureImages?.[view],
+          hasSessionImage: !!session.postureImages?.[view],
+          hasUrl: !!url,
+          currentImageType: currentImage ? (currentImage.startsWith('data:') ? 'base64' : 'url') : 'none'
+        });
+        
+        if (currentImage) {
+          try {
+            console.log(`[OVERLAY] ✓ Adding deviation lines to ${view}, image found`);
+            // If it's a URL, fetch it first to get base64
+            let imageData = currentImage;
+            if (currentImage.startsWith('http')) {
+              console.log(`[OVERLAY] Fetching image from URL: ${currentImage}`);
+              const response = await fetch(currentImage);
+              const blob = await response.blob();
+              imageData = await new Promise<string>((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.readAsDataURL(blob);
+              });
+            }
+            
+            // The image already has green reference lines
+            // Now we add red deviation lines on top
+            const imageWithDeviations = await addDeviationOverlay(imageData, view, result);
+            console.log(`[OVERLAY] ✓ Deviation overlay complete for ${view}`);
+            
+            // Update both Firestore (compressed) and Storage (full-size) with deviation lines
+            const sessionRef = doc(db, 'live_sessions', session.id);
+            
+            // Compress for Firestore
+            const { compressImageForDisplay } = await import('@/lib/utils/imageCompression');
+            const compressed = await compressImageForDisplay(imageWithDeviations, 800, 0.8);
+            
+            // Update Firestore with compressed version (WITH deviation lines)
+            await setDoc(sessionRef, {
+              postureImages: {
+                [view]: compressed.compressed
+              }
+            }, { merge: true });
+            
+            // Upload full-size to Storage
+            // New structure: clients/{clientId}/sessions/{sessionId}/{view}_full.jpg
+            const { ref, uploadString, getDownloadURL } = await import('firebase/storage');
+            const { storage } = await import('@/lib/firebase');
+            const clientId = session.clientId || 'unknown';
+            const storagePath = `clients/${clientId}/sessions/${session.id}/${view}_full.jpg`;
+            const storageRef = ref(storage, storagePath);
+            const fullSizeBase64 = compressed.fullSize.split(',')[1] || compressed.fullSize;
+            const snapshot = await uploadString(storageRef, fullSizeBase64, 'base64', { contentType: 'image/jpeg' });
+            const downloadUrl = await getDownloadURL(snapshot.ref);
+            
+            // Store Storage URL
+            await setDoc(sessionRef, {
+              [`postureImagesStorage_${view}`]: downloadUrl,
+              [`postureImagesFull_${view}`]: downloadUrl
+            }, { merge: true });
+            
+            // Immediately refresh session state to show updated image with deviation lines
+            const { getDoc } = await import('firebase/firestore');
+            const snap = await getDoc(sessionRef);
+            if (snap.exists()) {
+              const updatedData = snap.data() as LiveSession;
+              setSession(updatedData);
+              console.log(`[OVERLAY] Session state updated with new image (with deviation lines) for ${view}`);
+            }
+            
+            console.log(`[OVERLAY] Added deviation lines to ${view} and updated Storage`);
+          } catch (overlayErr) {
+            console.warn(`[OVERLAY] Failed to add deviation lines:`, overlayErr);
+          }
+        }
+        
         console.log(`[AI] Success for ${view}`);
       }
     } catch (err) {
@@ -118,18 +234,111 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
     }
   };
 
-  const handleApply = () => {
+  const handleLoadTestImages = async () => {
+    if (!session?.id) {
+      toast({ title: "No session", description: "Please wait for session to initialize", variant: "destructive" });
+      return;
+    }
+
+    // Prompt for file upload
+    fileInputRef.current?.click();
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!session?.id) return;
+    
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsLoadingTestImages(true);
+    try {
+      toast({ title: "Loading test images...", description: "Processing uploaded images" });
+      
+      // Map files to views (user should upload in order: front, back, side-left, side-right)
+      const fileArray = Array.from(files);
+      const fileMap: Record<string, File> = {};
+      
+      // Try to match files by name or use order
+      const views: ('front' | 'side-right' | 'side-left' | 'back')[] = ['front', 'back', 'side-left', 'side-right'];
+      
+      fileArray.forEach((file, index) => {
+        const fileName = file.name.toLowerCase();
+        let matchedView: string | null = null;
+        
+        // Try to match by filename
+        if (fileName.includes('front')) matchedView = 'front';
+        else if (fileName.includes('right') || fileName.includes('side-right')) matchedView = 'side-right';
+        else if (fileName.includes('left') || fileName.includes('side-left')) matchedView = 'side-left';
+        else if (fileName.includes('back') || fileName.includes('rear')) matchedView = 'back';
+        else if (index < views.length) matchedView = views[index]; // Fallback to order
+        
+        if (matchedView) {
+          fileMap[matchedView] = file;
+        }
+      });
+      
+      // Load images from files
+      const testImages = await loadImagesFromFiles(fileMap);
+      
+      // Inject test images into session (this will trigger AI analysis automatically)
+      for (const view of views) {
+        if (testImages[view]) {
+          console.log(`[TEST] Injecting test image for ${view}...`);
+          await updatePostureImage(session.id, view, testImages[view]);
+          // Small delay to avoid overwhelming Firestore
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+      
+      toast({ title: "Test images loaded", description: "AI analysis will start automatically" });
+    } catch (error) {
+      console.error('[TEST] Failed to load test images:', error);
+      toast({ 
+        title: "Test failed", 
+        description: error instanceof Error ? error.message : "Could not load test images. Check console for details.", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsLoadingTestImages(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleApply = async () => {
     if (!session) return;
     
-    // Map basic fields for compatibility + store full AI results for the report
+    // Get Storage URLs for all images (for reports and comparisons)
+    const storageUrls: Record<string, string> = {};
+    const views: ('front' | 'side-right' | 'side-left' | 'back')[] = ['front', 'back', 'side-left', 'side-right'];
+    
+    for (const view of views) {
+      const storageUrl = (session as any)[`postureImagesStorage_${view}`] || 
+                        (session as any)[`postureImagesFull_${view}`];
+      if (storageUrl) {
+        storageUrls[view] = storageUrl;
+        console.log(`[APPLY] Found Storage URL for ${view}:`, storageUrl);
+      } else {
+        console.warn(`[APPLY] No Storage URL found for ${view} - image may not be stored yet`);
+      }
+    }
+    
+    // Map comprehensive AI results for the report
     const findings = {
       postureAiResults: session.analysis,
-      postureHeadOverall: session.analysis['side-right']?.head_posture.status.toLowerCase().includes('neutral') ? 'neutral' : 'forward-head',
-      postureShouldersOverall: session.analysis.front?.shoulder_alignment.status.toLowerCase().includes('neutral') ? 'neutral' : 'rounded',
-      postureBackOverall: session.analysis['side-right']?.head_posture.status.toLowerCase().includes('severe') ? 'increased-kyphosis' : 'neutral',
+      postureImages: session.postureImages, // Compressed images with overlay for display
+      postureImagesStorage: storageUrls, // Full-size Storage URLs for reports/comparisons
+      // Legacy fields for backward compatibility
+      postureHeadOverall: session.analysis['side-right']?.forward_head?.status === 'Neutral' ? 'neutral' : 'forward-head',
+      postureShouldersOverall: session.analysis.front?.shoulder_alignment?.status === 'Neutral' ? 'neutral' : 'rounded',
+      postureBackOverall: session.analysis['side-right']?.kyphosis?.status !== 'Normal' ? 'increased-kyphosis' : 'neutral',
     };
     
     console.log('[POSTURE] Applying Full AI Findings:', findings);
+    console.log('[POSTURE] Storage URLs available:', Object.keys(storageUrls).length, 'of', views.length);
+    
     onComplete(findings);
     onClose();
   };
@@ -137,6 +346,9 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden rounded-3xl p-0 border-none bg-white">
+        <DialogHeader className="sr-only">
+          <DialogTitle>Posture Capture</DialogTitle>
+        </DialogHeader>
         <div className="flex flex-col lg:flex-row h-full">
           
           {/* LEFT: CONNECTION STATUS & QR */}
@@ -146,7 +358,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                 <Smartphone className="h-10 w-10 text-indigo-600" />
               </div>
               <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Remote Camera</h3>
-              <p className="text-slate-500 text-xs mt-2">Scan to connect your phone.</p>
+              <p className="text-slate-500 text-xs mt-2">Scan to connect your iPhone.</p>
             </div>
 
             <div className="p-4 bg-white rounded-3xl shadow-xl border-4 border-white mb-6 flex items-center justify-center min-h-[212px]">
@@ -159,39 +371,56 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
               )}
             </div>
 
-            {session?.id && (
-              <div className="flex flex-col items-center gap-2">
-                <div className="flex items-center gap-2 px-3 py-1 bg-white rounded-full shadow-sm border border-slate-100">
-                  {isOnline ? (
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                      <span className="text-[9px] font-black text-emerald-600 uppercase">Phone Connected</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <RefreshCcw className="h-3 w-3 animate-spin text-slate-400" />
-                      <span className="text-[9px] font-black text-slate-400 uppercase">Waiting...</span>
-                    </div>
-                  )}
+            <div className="w-full space-y-3">
+              {isOnline ? (
+                <div className="flex items-center gap-2 text-emerald-600 bg-emerald-50 px-4 py-3 rounded-xl">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span className="text-xs font-bold">Phone Connected</span>
                 </div>
-                <span className="text-[8px] font-mono text-slate-300">ID: {session.id}</span>
+              ) : (
+                <div className="flex items-center gap-2 text-slate-500 bg-slate-100 px-4 py-3 rounded-xl">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-xs font-bold">Waiting for connection...</span>
+                </div>
+              )}
+            </div>
+
+            {onStartDirectScan && (
+              <div className="mt-auto w-full pt-8 border-t border-slate-200">
+                <Button
+                  onClick={() => { onClose(); onStartDirectScan(); }}
+                  variant="outline"
+                  className="w-full"
+                >
+                  Use This Device Instead
+                </Button>
               </div>
             )}
-
-            <div className="mt-auto w-full pt-8 border-t border-slate-200">
-              <Button 
-                variant="outline" 
-                onClick={() => { onClose(); onStartDirectScan?.(); }}
-                className="w-full h-12 rounded-xl text-[10px] font-black uppercase tracking-widest gap-2 bg-white"
-              >
-                <Monitor className="h-4 w-4" />
-                Use This Device
-              </Button>
-            </div>
           </div>
 
-          {/* RIGHT: LIVE SYNC GRID */}
+          {/* RIGHT: INSTRUCTIONS & LIVE SYNC GRID */}
           <div className="flex-1 p-8 overflow-y-auto bg-white max-h-[90vh]">
+            <div className="mb-6">
+              <h4 className="text-lg font-black text-slate-900 mb-2">How to Use</h4>
+              <ol className="space-y-3 text-sm text-slate-600">
+                <li className="flex gap-3">
+                  <span className="font-black text-indigo-600">1.</span>
+                  <span>Open your iPhone camera app</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="font-black text-indigo-600">2.</span>
+                  <span>Scan the QR code on the left</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="font-black text-indigo-600">3.</span>
+                  <span>Follow the on-screen instructions to capture all 4 views</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="font-black text-indigo-600">4.</span>
+                  <span>Photos will appear here as they're captured</span>
+                </li>
+              </ol>
+            </div>
             <div className="grid grid-cols-2 gap-4 pb-20">
               {views.map((view) => {
                 const imageUrl = session?.postureImages[view];
@@ -204,7 +433,14 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                     <div className="aspect-[3/4] rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 overflow-hidden relative flex items-center justify-center">
                       {imageUrl ? (
                         <>
-                          <img src={imageUrl} className="w-full h-full object-cover animate-in fade-in zoom-in duration-500" alt={view} />
+                          {/* Image with overlay - overlay is added during storage, so it's already in the image */}
+                          <img 
+                            src={imageUrl} 
+                            className="w-full h-full object-cover animate-in fade-in zoom-in duration-500 cursor-pointer hover:opacity-90 transition-opacity" 
+                            alt={view}
+                            title="Click to view full image"
+                            onClick={() => setPreviewImage({ url: imageUrl, view })}
+                          />
                           {analyzingViews[view] && (
                             <div className="absolute inset-0 bg-indigo-600/40 backdrop-blur-sm flex flex-col items-center justify-center p-4 text-center">
                               <Loader2 className="h-8 w-8 animate-spin text-white mb-2" />
@@ -220,13 +456,120 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                     {/* AI FINDINGS CARD */}
                     {session?.analysis[view] && (
                       <div className="mt-2 bg-slate-50 p-3 rounded-xl border border-slate-100 animate-in fade-in slide-in-from-bottom-2">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-2">
                           <ShieldAlert className="h-3 w-3 text-indigo-500" />
                           <span className="text-[8px] font-black uppercase text-indigo-500">AI Findings</span>
                         </div>
-                        <p className="text-[10px] font-bold text-slate-700 leading-tight">
-                          {session.analysis[view].head_posture?.status}
-                        </p>
+                        <div className="space-y-1.5">
+                          {/* Side view findings */}
+                          {session.analysis[view].forward_head && (
+                            <div>
+                              <span className="text-[9px] font-bold text-slate-600">Head: </span>
+                              <span className="text-[9px] font-black text-slate-900">
+                                {session.analysis[view].forward_head.status} ({session.analysis[view].forward_head.deviation_degrees}°)
+                              </span>
+                            </div>
+                          )}
+                          {session.analysis[view].shoulder_alignment && (
+                            <div>
+                              <span className="text-[9px] font-bold text-slate-600">Shoulders: </span>
+                              <span className="text-[9px] font-black text-slate-900">
+                                {session.analysis[view].shoulder_alignment.status}
+                                {session.analysis[view].shoulder_alignment.height_difference_cm !== undefined && 
+                                  ` (${Math.abs(session.analysis[view].shoulder_alignment.height_difference_cm).toFixed(1)}cm diff)`
+                                }
+                                {session.analysis[view].shoulder_alignment.forward_position_cm !== undefined && 
+                                  ` (${Math.abs(session.analysis[view].shoulder_alignment.forward_position_cm).toFixed(1)}cm forward)`
+                                }
+                              </span>
+                            </div>
+                          )}
+                          {session.analysis[view].kyphosis && (
+                            <div>
+                              <span className="text-[9px] font-bold text-slate-600">Kyphosis: </span>
+                              <span className="text-[9px] font-black text-slate-900">
+                                {session.analysis[view].kyphosis.status} ({session.analysis[view].kyphosis.curve_degrees}°)
+                              </span>
+                            </div>
+                          )}
+                          {session.analysis[view].lordosis && (
+                            <div>
+                              <span className="text-[9px] font-bold text-slate-600">Lordosis: </span>
+                              <span className="text-[9px] font-black text-slate-900">
+                                {session.analysis[view].lordosis.status} ({session.analysis[view].lordosis.curve_degrees}°)
+                              </span>
+                            </div>
+                          )}
+                          {/* Front/Back view findings */}
+                          {session.analysis[view].hip_alignment && (
+                            <div>
+                              <span className="text-[9px] font-bold text-slate-600">Hips: </span>
+                              <span className="text-[9px] font-black text-slate-900">
+                                {session.analysis[view].hip_alignment.status}
+                                {session.analysis[view].hip_alignment.height_difference_cm !== undefined && 
+                                  ` (${Math.abs(session.analysis[view].hip_alignment.height_difference_cm).toFixed(1)}cm diff)`
+                                }
+                              </span>
+                            </div>
+                          )}
+                          {session.analysis[view].pelvic_tilt && (
+                            <div>
+                              <span className="text-[9px] font-bold text-slate-600">Pelvis: </span>
+                              <span className="text-[9px] font-black text-slate-900">
+                                {session.analysis[view].pelvic_tilt.status}
+                                {session.analysis[view].pelvic_tilt.lateral_tilt_degrees !== undefined && 
+                                  ` (${Math.abs(session.analysis[view].pelvic_tilt.lateral_tilt_degrees).toFixed(1)}° tilt)`
+                                }
+                                {session.analysis[view].pelvic_tilt.anterior_tilt_degrees !== undefined && 
+                                  ` (${Math.abs(session.analysis[view].pelvic_tilt.anterior_tilt_degrees).toFixed(1)}° tilt)`
+                                }
+                                {session.analysis[view].pelvic_tilt.hip_shift_cm !== undefined && session.analysis[view].pelvic_tilt.hip_shift_cm > 0 && 
+                                  ` (${Math.abs(session.analysis[view].pelvic_tilt.hip_shift_cm).toFixed(1)}cm ${session.analysis[view].pelvic_tilt.hip_shift_direction || ''} shift)`
+                                }
+                              </span>
+                            </div>
+                          )}
+                          {session.analysis[view].knee_alignment && (
+                            <div>
+                              <span className="text-[9px] font-bold text-slate-600">Knees: </span>
+                              <span className="text-[9px] font-black text-slate-900">
+                                {session.analysis[view].knee_alignment.status}
+                                {session.analysis[view].knee_alignment.deviation_degrees !== undefined && 
+                                  ` (${Math.abs(session.analysis[view].knee_alignment.deviation_degrees).toFixed(1)}°)`
+                                }
+                              </span>
+                            </div>
+                          )}
+                          {session.analysis[view].knee_position && (
+                            <div>
+                              <span className="text-[9px] font-bold text-slate-600">Knees: </span>
+                              <span className="text-[9px] font-black text-slate-900">
+                                {session.analysis[view].knee_position.status}
+                                {session.analysis[view].knee_position.deviation_degrees !== undefined && 
+                                  ` (${Math.abs(session.analysis[view].knee_position.deviation_degrees).toFixed(1)}°)`
+                                }
+                              </span>
+                            </div>
+                          )}
+                          {session.analysis[view].spinal_curvature && (
+                            <div>
+                              <span className="text-[9px] font-bold text-slate-600">Spine: </span>
+                              <span className="text-[9px] font-black text-slate-900">
+                                {session.analysis[view].spinal_curvature.status}
+                                {session.analysis[view].spinal_curvature.curve_degrees !== undefined && 
+                                  ` (${Math.abs(session.analysis[view].spinal_curvature.curve_degrees).toFixed(1)}°)`
+                                }
+                              </span>
+                            </div>
+                          )}
+                          {session.analysis[view].deviations && session.analysis[view].deviations.length > 0 && (
+                            <div className="pt-1 border-t border-slate-200">
+                              <p className="text-[8px] text-slate-500 leading-tight">
+                                {session.analysis[view].deviations.slice(0, 3).join(', ')}
+                              </p>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -249,6 +592,34 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
 
         </div>
       </DialogContent>
+      
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
+          <DialogContent className="max-w-4xl max-h-[90vh] p-0 border-none bg-black/95">
+            <DialogHeader className="sr-only">
+              <DialogTitle>Posture Image Preview</DialogTitle>
+            </DialogHeader>
+            <div className="relative w-full h-full flex items-center justify-center p-8">
+              <button
+                onClick={() => setPreviewImage(null)}
+                className="absolute top-4 right-4 z-50 text-white hover:text-gray-300 p-2"
+              >
+                <X className="h-6 w-6" />
+              </button>
+              <img 
+                src={previewImage.url} 
+                alt={previewImage.view}
+                className="max-w-full max-h-[85vh] object-contain"
+              />
+              <div className="absolute bottom-4 left-4 right-4 text-center">
+                <p className="text-white text-sm font-bold uppercase">{previewImage.view.replace('-', ' ')} View</p>
+                <p className="text-white/60 text-xs mt-1">Reference lines: Red vertical (midline/plumb), Red horizontal (shoulders/hips)</p>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </Dialog>
   );
 };

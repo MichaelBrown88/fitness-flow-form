@@ -6,7 +6,11 @@
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
+  "storage": {
+    "rules": "storage.rules"
+  },
   "hosting": {
+    "site": "assessment-engine-8f633",
     "public": "dist",
     "ignore": [
       "firebase.json",

@@ -57,6 +57,7 @@ import { generateDemoData } from '@/lib/demoGenerator';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { CameraCapture } from './camera/CameraCapture';
 import { PostureCompanionModal } from './camera/PostureCompanionModal';
+import { InBodyCompanionModal } from './camera/InBodyCompanionModal';
 import { processInBodyScan } from '@/lib/ai/ocrEngine';
 import { analyzePostureImage } from '@/lib/ai/postureAnalysis';
 import {
@@ -86,7 +87,8 @@ const SingleFieldFlow = ({
   setActiveFieldIdx,
   onComplete,
   onShowCamera,
-  onShowPostureCompanion
+  onShowPostureCompanion,
+  onShowInBodyCompanion
 }: { 
   section: SectionType; 
   activeFieldIdx: number;
@@ -189,18 +191,6 @@ const SingleFieldFlow = ({
       </div>
 
       <div className="bg-white rounded-3xl p-8 lg:p-10 shadow-xl shadow-indigo-100/20 border border-indigo-50 min-h-[400px] flex flex-col justify-center relative">
-        {section.id === 'body-comp' && onShowCamera && (
-          <div className="absolute top-8 right-8 z-10">
-            <Button 
-              variant="outline" 
-              onClick={() => onShowCamera('ocr')}
-              className="rounded-xl border-indigo-200 text-indigo-600 hover:bg-indigo-50 font-bold gap-2"
-            >
-              <Scan className="h-4 w-4" />
-              Scan InBody Report
-            </Button>
-          </div>
-        )}
 
         {movementPattern && (
           <div className="mb-6 flex items-center justify-between">
@@ -232,13 +222,36 @@ const SingleFieldFlow = ({
                 </span>
               )}
               <FieldControl 
-                field={field} 
+                field={field}
                 onShowCamera={onShowCamera}
                 onShowPostureCompanion={onShowPostureCompanion}
+                onShowInBodyCompanion={onShowInBodyCompanion}
               />
             </div>
           ))}
         </div>
+
+        {/* InBody Scan Button - Below input fields */}
+        {section.id === 'body-comp' && onShowCamera && (
+          <div className="mt-8 pt-6 border-t border-slate-100">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                // On desktop/iPad: show companion modal for iPhone handoff
+                // On mobile: use direct camera
+                if (!isMobile && onShowInBodyCompanion) {
+                  onShowInBodyCompanion();
+                } else {
+                  onShowCamera('ocr');
+                }
+              }}
+              className="w-full h-14 rounded-xl border-indigo-200 text-indigo-600 hover:bg-indigo-50 font-bold gap-2"
+            >
+              <Scan className="h-5 w-5" />
+              Scan InBody Report
+            </Button>
+          </div>
+        )}
         
         {( !isParqField || formData.parqQuestionnaire === 'completed' ) && (
         <div className="flex items-center justify-between mt-12 pt-8 border-t border-slate-50">
@@ -274,7 +287,8 @@ const SingleFieldFlow = ({
 const FieldControl = ({ 
   field,
   onShowCamera,
-  onShowPostureCompanion
+  onShowPostureCompanion,
+  onShowInBodyCompanion
 }: { 
   field: PhaseField;
   onShowCamera?: (mode: 'ocr' | 'posture') => void;
@@ -618,10 +632,12 @@ const PhaseFormContent = ({
   const reportRef = useRef<HTMLDivElement | null>(null);
   const [isDemoAssessment, setIsDemoAssessment] = useState(false);
   const [isReviewMode, setIsReviewMode] = useState(false);
+  const isRunningDemoRef = useRef(false); // Prevent multiple simultaneous auto-fill runs
   
   // NEW CAMERA/COMPANION STATE
   const [showCamera, setShowCamera] = useState<false | 'ocr' | 'posture'>(false);
   const [showPostureCompanion, setShowPostureCompanion] = useState(false);
+  const [showInBodyCompanion, setShowInBodyCompanion] = useState(false);
   const [ocrReviewData, setOcrReviewData] = useState<Partial<FormData> | null>(null);
   const [isProcessingOcr, setIsProcessingOcr] = useState(false);
   const [postureStep, setPostureStep] = useState<number>(0);
@@ -651,12 +667,12 @@ const PhaseFormContent = ({
 
   const roadmap = useMemo(() => {
     try {
-      return buildRoadmap(scores);
+      return buildRoadmap(scores, formData);
     } catch (e) {
       console.error('Error building roadmap:', e);
       return [];
     }
-  }, [scores]);
+  }, [scores, formData]);
 
   const plan = useMemo(() => {
     try {
@@ -1172,32 +1188,52 @@ const PhaseFormContent = ({
     window.location.reload();
   };
 
-  const runDemoSequential = async () => {
-    setIsDemoAssessment(true);
-    const payload = await generateDemoData();
-    const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+  const runDemoSequential = useCallback(async () => {
+    // Prevent multiple simultaneous runs
+    if (isRunningDemoRef.current || isDemoAssessment) {
+      console.warn('[DEMO] Auto-fill already in progress, skipping...');
+      return;
+    }
     
-    setActivePhaseIdx(0);
-    setActiveFieldIdx(0);
-    await delay(1000);
+    isRunningDemoRef.current = true;
+    setIsDemoAssessment(true);
+    try {
+      const payload = await generateDemoData();
+      const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+      
+      // OPTIMIZATION: Set all data at once in a single batch to minimize re-renders
+      updateFormData(payload as Partial<FormData>);
+      
+      // Use requestAnimationFrame to yield to browser for smoother performance
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      await delay(300);
+    
+      setActivePhaseIdx(0);
+      setActiveFieldIdx(0);
+      await delay(500); // Reduced initial delay
 
     for (let p = 0; p < totalPhases; p++) {
       const ph = phaseDefinitions[p];
       if (!ph || ph.id === 'P7') break;
       
       setActivePhaseIdx(p);
-      await delay(1500);
+      await delay(800); // Reduced delay
       
       const sections = ph.sections ?? [];
       for (const sec of sections) {
-        setExpandedSections({ [sec.id]: true });
-        await delay(1200);
+        // Ensure section is expanded before processing
+        setExpandedSections(prev => ({ ...prev, [sec.id]: true }));
+        await delay(400); // Reduced delay
         
         let fieldIdx = 0;
         let finishedSection = false;
+        let loopSafety = 0;
+        const maxLoops = 100; // Safety limit to prevent infinite loops
         
-        while (!finishedSection) {
+        while (!finishedSection && loopSafety < maxLoops) {
+          loopSafety++;
           const sectionFields = sec.fields as PhaseField[];
+          // Use payload for visibility check since we've already set all the data
           const visible = sectionFields.filter(f => isFieldVisible(f, payload as FormData));
           
           const steps: PhaseField[][] = [];
@@ -1209,58 +1245,110 @@ const PhaseFormContent = ({
                 steps.push(pair);
                 processedPairs.add(field.pairId);
               }
-              } else {
+            } else {
               steps.push([field]);
             }
           });
 
+          if (steps.length === 0) {
+            finishedSection = true;
+            break;
+          }
+          
           if (fieldIdx >= steps.length) {
             finishedSection = true;
             break;
           }
 
           const currentStep = steps[fieldIdx];
-          setActiveFieldIdx(fieldIdx);
-          await delay(1000);
-
-          for (const f of currentStep) {
-            const key = f.id;
-            if (f.type === 'parq') {
-              updateFormData({ [key]: 'completed' } as Partial<FormData>);
-              await delay(1500);
+          if (!currentStep || currentStep.length === 0) {
+            fieldIdx++;
+            await delay(200);
             continue;
           }
           
-            let raw: FieldValue = (payload as any)[key] ?? (formData as any)[key];
-            if (!raw || (Array.isArray(raw) && raw.length === 0)) {
-            if (f.type === 'multiselect') {
-                raw = f.options?.slice(0, 1).map(o => o.value) || [];
-              }
-              else if (f.type === 'select') raw = f.options?.[0]?.value || '';
-              else raw = f.type === 'number' ? '0' : 'OK';
+          setActiveFieldIdx(fieldIdx);
+          
+          // OPTIMIZATION: Batch all field updates for this step to reduce re-renders
+          const fieldUpdates: Partial<FormData> = {};
+          
+          for (const f of currentStep) {
+            const key = f.id;
+            if (f.type === 'parq') {
+              fieldUpdates[key] = 'completed' as any;
+              continue;
             }
-            updateFormData({ [key]: raw } as Partial<FormData>);
+          
+            // Get value from payload first (which we already set at the start)
+            let raw: FieldValue = (payload as any)[key];
+            
+            // If not in payload, check current formData
+            if (raw === undefined || raw === null) {
+              raw = (formData as any)[key];
+            }
+            
+            // Check if value is empty (handle empty strings, null, undefined, empty arrays)
+            const isEmpty = raw === null || raw === undefined || raw === '' || 
+                           (Array.isArray(raw) && raw.length === 0);
+            
+            if (isEmpty) {
+              if (f.type === 'multiselect') {
+                raw = f.options?.slice(0, 1).map(o => o.value) || [];
+              } else if (f.type === 'select') {
+                raw = f.options?.[0]?.value || '';
+              } else {
+                raw = f.type === 'number' ? '0' : 'OK';
+              }
+            }
+            
+            if (raw !== undefined && raw !== null) {
+              fieldUpdates[key] = raw as any;
+            }
           }
           
-          await delay(1200);
+          // OPTIMIZATION: Update all fields in this step at once (single re-render)
+          if (Object.keys(fieldUpdates).length > 0) {
+            updateFormData(fieldUpdates);
+            // Yield to browser to prevent blocking
+            await new Promise(resolve => requestAnimationFrame(resolve));
+            await delay(200); // Reduced delay since we're batching
+          }
+          
+          await delay(400); // Reduced delay between steps
           fieldIdx++;
         }
         
         setRecentlyCompletedSections(prev => new Set(prev).add(sec.id));
-        await delay(1000);
+        await delay(300); // Reduced delay
       }
     }
     
-    updateFormData(payload as Partial<FormData>);
-    await delay(2000);
-    
-    setIsReviewMode(true);
-    toast({ title: "Demo data populated", description: "Review the goals and click 'Generate Full Report'." });
-  };
+      await delay(500); // Reduced final delay
+      setIsReviewMode(true);
+      setIsDemoAssessment(false);
+      isRunningDemoRef.current = false; // Reset flag
+      toast({ title: "Demo data populated", description: "Review the goals and click 'Generate Full Report'." });
+    } catch (error) {
+      console.error('[DEMO] Auto-fill error:', error);
+      setIsDemoAssessment(false);
+      isRunningDemoRef.current = false; // Reset flag on error
+      toast({ 
+        title: "Auto-fill failed", 
+        description: "An error occurred while filling the form. Please try again.", 
+        variant: "destructive" 
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDemoAssessment]); // Minimal dependencies to prevent re-creation
 
   useEffect(() => {
-    if (demoTrigger && demoTrigger > 0) void runDemoSequential();
-  }, [demoTrigger, runDemoSequential]);
+    if (demoTrigger && demoTrigger > 0) {
+      // Prevent multiple simultaneous runs
+      if (isDemoAssessment) return;
+      void runDemoSequential();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [demoTrigger]); // Only depend on demoTrigger, not runDemoSequential
 
   const toggleSection = (sectionId: string) => {
     setIsReviewMode(true);
@@ -1291,6 +1379,7 @@ const PhaseFormContent = ({
           if (mode === 'posture') setPostureStep(0);
         }}
         onShowPostureCompanion={() => setShowPostureCompanion(true)}
+        onShowInBodyCompanion={() => setShowInBodyCompanion(true)}
         onComplete={() => {
           const currentIndex = allSections.findIndex(s => s.id === activeSection.id);
           if (currentIndex < allSections.length - 1) {
@@ -1323,8 +1412,23 @@ const PhaseFormContent = ({
           <nav className="space-y-4">
             {phaseDefinitions.map((phase, idx) => {
               const isActive = idx === activePhaseIdx;
-              const isCompleted = isPhaseCompleted(idx) && idx <= maxUnlockedPhaseIdx;
-              const isDisabled = idx > maxUnlockedPhaseIdx;
+              const isResultsPhase = phase.id === 'P7';
+              
+              // Check if at least one non-Results phase is completed
+              const hasAnyCompletedPhase = phaseDefinitions.some((p, i) => 
+                i !== idx && p.id !== 'P7' && isPhaseCompleted(i)
+              );
+              
+              // Results phase is only completed/active if at least one other phase is completed
+              const isCompleted = isResultsPhase 
+                ? false // Never show Results as completed (no checkmark)
+                : (isPhaseCompleted(idx) && idx <= maxUnlockedPhaseIdx);
+              
+              // Results phase is disabled until at least one phase is completed
+              const isDisabled = isResultsPhase 
+                ? !hasAnyCompletedPhase 
+                : (idx > maxUnlockedPhaseIdx);
+              
               const sections = phase.sections || [];
 
               return (
@@ -1342,9 +1446,9 @@ const PhaseFormContent = ({
                       } 
                     }}
                   disabled={isDisabled}
-                    className={`group flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all ${isActive ? 'bg-slate-900 text-white shadow-md' : isCompleted ? 'text-indigo-600 hover:bg-indigo-50' : 'text-slate-500 hover:bg-slate-50'}`}
+                    className={`group flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all ${isActive ? 'bg-slate-900 text-white shadow-md' : isCompleted ? 'text-indigo-600 hover:bg-indigo-50' : isDisabled ? 'text-slate-300 cursor-not-allowed' : 'text-slate-500 hover:bg-slate-50'}`}
                   >
-                    <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold border ${isActive ? 'bg-white/20 border-white/20' : isCompleted ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-400'}`}>
+                    <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold border ${isActive ? 'bg-white/20 border-white/20' : isCompleted ? 'bg-indigo-600 border-indigo-600 text-white' : isDisabled ? 'bg-slate-100 border-slate-200 text-slate-300' : 'bg-white border-slate-200 text-slate-400'}`}>
                     {isCompleted ? <Check className="h-3 w-3" /> : idx + 1}
                   </span>
                     <span className="truncate flex-1 text-left uppercase tracking-wider">{phase.title}</span>
@@ -1426,7 +1530,7 @@ const PhaseFormContent = ({
                 </div>
                 <div ref={reportRef} data-pdf-target className="rounded-3xl border border-slate-200 bg-white p-10 shadow-2xl shadow-slate-200/50" style={{ minWidth: '100%', maxWidth: '100%', overflow: 'visible' }}>
                   {reportView === 'client' ? (
-                    <ClientReport scores={scores} roadmap={roadmap} goals={Array.isArray(formData.clientGoals) ? formData.clientGoals : []} bodyComp={bodyCompInterp ? { timeframeWeeks: bodyCompInterp.timeframeWeeks } : undefined} formData={formData} />
+                    <ClientReport scores={scores} roadmap={roadmap} goals={Array.isArray(formData.clientGoals) ? formData.clientGoals : []} bodyComp={bodyCompInterp ? { timeframeWeeks: bodyCompInterp.timeframeWeeks } : undefined} formData={formData} plan={plan} />
                   ) : (
                     <CoachReport plan={plan} scores={scores} bodyComp={bodyCompInterp} formData={formData} />
                   )}
@@ -1459,6 +1563,19 @@ const PhaseFormContent = ({
         onComplete={(data) => {
           updateFormData(data);
           toast({ title: "Posture data applied", description: "AI findings have been populated." });
+        }}
+      />
+
+      {/* InBody Companion Modal */}
+      <InBodyCompanionModal 
+        isOpen={showInBodyCompanion}
+        onClose={() => setShowInBodyCompanion(false)}
+        onStartDirectScan={() => {
+          setShowCamera('ocr');
+        }}
+        onComplete={(data) => {
+          setOcrReviewData(data);
+          toast({ title: "InBody data applied", description: "All fields have been populated." });
         }}
       />
 
@@ -1561,6 +1678,7 @@ const MultiStepForm = () => {
   const [demoTrigger, setDemoTrigger] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const handleDemoFill = () => setDemoTrigger(prev => prev + 1);
+  
   return (
     <FormProvider>
       <AppShell 
@@ -1577,3 +1695,4 @@ const MultiStepForm = () => {
 };
 
 export default MultiStepForm;
+

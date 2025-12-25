@@ -109,7 +109,7 @@ const AssessmentReport = () => {
         setFormData(fd);
         const s = computeScores(fd);
         setScores(s);
-        setRoadmap(buildRoadmap(s));
+        setRoadmap(buildRoadmap(s, fd));
       } catch (e) {
         setError(
           e instanceof Error ? e.message : 'Unable to load this assessment.',
@@ -229,6 +229,7 @@ const AssessmentReport = () => {
               goals={Array.isArray(formData.clientGoals) ? formData.clientGoals : []}
               bodyComp={bodyComp ? { timeframeWeeks: bodyComp.timeframeWeeks } : undefined}
               formData={formData}
+              plan={plan}
             />
           ) : (
             <CoachReport

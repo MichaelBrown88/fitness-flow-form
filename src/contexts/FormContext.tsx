@@ -318,7 +318,22 @@ const initialFormData: FormData = {
 };
 
 export const FormProvider = ({ children }: { children: ReactNode }) => {
-  const [formData, setFormData] = useState<FormData>(initialFormData);
+  // Check for pre-filled client data from dashboard
+  const getInitialData = (): FormData => {
+    try {
+      const prefillData = sessionStorage.getItem('prefillClientData');
+      if (prefillData) {
+        const data = JSON.parse(prefillData);
+        sessionStorage.removeItem('prefillClientData');
+        return { ...initialFormData, ...data };
+      }
+    } catch (e) {
+      console.warn('Failed to parse prefill data:', e);
+    }
+    return initialFormData;
+  };
+
+  const [formData, setFormData] = useState<FormData>(getInitialData());
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 5;
 

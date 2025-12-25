@@ -12,6 +12,7 @@ import AssessmentReport from "./pages/AssessmentReport";
 import PublicClientReport from "./pages/PublicClientReport";
 import Settings from "./pages/Settings";
 import Companion from "./pages/Companion";
+import ClientDetail from "./pages/ClientDetail";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
@@ -84,6 +85,14 @@ const App = () => (
               element={
                 <RequireAuth>
                   <AssessmentReport />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/client/:clientName"
+              element={
+                <RequireAuth>
+                  <ClientDetail />
                 </RequireAuth>
               }
             />

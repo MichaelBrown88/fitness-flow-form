@@ -3,6 +3,7 @@ import type { FormData } from '@/contexts/FormContext';
 import type { ScoreSummary, RoadmapPhase } from '@/lib/scoring';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import LifestyleRadarChart from './LifestyleRadarChart';
 import CategoryRadarChart from './CategoryRadarChart';
 import OverallRadarChart from './OverallRadarChart';
@@ -20,10 +21,346 @@ function niceLabel(id: string): string {
     case 'bodyComp': return 'Body composition';
     case 'strength': return 'Strength & endurance';
     case 'cardio': return 'Cardio fitness';
-    case 'movementQuality': return 'Movement quality';
+    case 'movementQuality': return 'Posture & Mobility';
     case 'lifestyle': return 'Lifestyle';
     default: return id;
   }
+}
+
+// Generate client-friendly summary if overall_assessment is missing
+function generateClientFriendlySummary(analysis: any, view: string): string {
+  const parts: string[] = [];
+  
+  // Front/Back view summaries
+  if (view === 'front' || view === 'back') {
+    const shoulderStatus = analysis.shoulder_alignment?.status;
+    const hipStatus = analysis.hip_alignment?.status;
+    const pelvicStatus = analysis.pelvic_tilt?.status;
+    const kneeStatus = analysis.knee_position?.status;
+    const spineStatus = analysis.spinal_curvature?.status;
+    
+    if (shoulderStatus === 'Neutral' && hipStatus === 'Neutral' && pelvicStatus === 'Neutral' && kneeStatus === 'Neutral' && (spineStatus === 'Normal' || !spineStatus)) {
+      return "Your posture looks well-balanced from this view. Your shoulders, hips, and knees are aligned evenly, which is great for movement efficiency and injury prevention.";
+    }
+    
+    if (shoulderStatus === 'Asymmetric') {
+      const diff = analysis.shoulder_alignment?.height_difference_cm || 0;
+      parts.push(`Your shoulders are uneven (${diff.toFixed(1)}cm difference). This means one shoulder sits higher than the other, which can create tension and affect your movement patterns.`);
+    }
+    
+    if (hipStatus === 'Asymmetric') {
+      const diff = analysis.hip_alignment?.height_difference_cm || 0;
+      parts.push(`Your hips are uneven (${diff.toFixed(1)}cm difference). This creates an imbalance that can lead to lower back pain and affect how you walk or stand.`);
+    }
+    
+    if (pelvicStatus && pelvicStatus !== 'Neutral') {
+      const tilt = analysis.pelvic_tilt?.lateral_tilt_degrees || 0;
+      const shift = analysis.pelvic_tilt?.lateral_shift_cm || 0;
+      const direction = shift > 0 ? 'right' : shift < 0 ? 'left' : '';
+      if (direction) {
+        parts.push(`Your pelvis is tilted (${Math.abs(tilt).toFixed(1)}°) and shifted ${direction} (${Math.abs(shift).toFixed(1)}cm). This is like having your foundation slightly off-center, which can cause compensation patterns throughout your body.`);
+      } else {
+        parts.push(`Your pelvis is tilted (${Math.abs(tilt).toFixed(1)}°). This affects how your spine and legs align, potentially causing discomfort.`);
+      }
+    }
+    
+    if (spineStatus && spineStatus !== 'Normal') {
+      const curve = analysis.spinal_curvature?.curve_degrees || 0;
+      parts.push(`Your spine shows a lateral curve (${curve.toFixed(1)}°). This is a sideways curve that can affect your overall alignment and may cause one side of your body to work harder than the other.`);
+    }
+    
+    if (kneeStatus && kneeStatus !== 'Neutral') {
+      parts.push(`Your knees show some misalignment. This can affect how force travels through your legs and may contribute to joint stress over time.`);
+    }
+  }
+  
+  // Side view summaries
+  if (view === 'side-right' || view === 'side-left') {
+    const headStatus = analysis.forward_head?.status;
+    const shoulderStatus = analysis.shoulder_alignment?.status;
+    const kyphosisStatus = analysis.kyphosis?.status;
+    const lordosisStatus = analysis.lordosis?.status;
+    const pelvicStatus = analysis.pelvic_tilt?.status;
+    
+    if (headStatus === 'Neutral' && shoulderStatus === 'Neutral' && kyphosisStatus === 'Normal' && lordosisStatus === 'Normal' && pelvicStatus === 'Neutral') {
+      return "Your side profile shows good alignment. Your head, shoulders, and hips stack nicely, which means your body is efficiently supporting itself without extra strain.";
+    }
+    
+    if (headStatus && headStatus !== 'Neutral') {
+      const dev = analysis.forward_head?.deviation_degrees || 0;
+      const cm = analysis.forward_head?.deviation_cm || 0;
+      parts.push(`Your head is positioned forward (${dev.toFixed(1)}° or ${cm.toFixed(1)}cm ahead of ideal). Think of it like your head is leaning ahead of your shoulders - this puts extra strain on your neck and upper back muscles.`);
+    }
+    
+    if (shoulderStatus === 'Rounded') {
+      const forward = analysis.shoulder_alignment?.forward_position_cm || 0;
+      parts.push(`Your shoulders are rounded forward (${forward.toFixed(1)}cm ahead). This is like your shoulders are rolling inward, which can compress your chest and create tension in your upper back.`);
+    }
+    
+    if (kyphosisStatus && kyphosisStatus !== 'Normal') {
+      const curve = analysis.kyphosis?.curve_degrees || 0;
+      parts.push(`Your upper back has an increased forward curve (${curve.toFixed(1)}°). This is called kyphosis - imagine your upper back rounding forward more than it should, which can make you appear hunched and create neck and shoulder tension.`);
+    }
+    
+    if (lordosisStatus && lordosisStatus !== 'Normal') {
+      const curve = analysis.lordosis?.curve_degrees || 0;
+      parts.push(`Your lower back has an increased inward curve (${curve.toFixed(1)}°). This is called lordosis - it's like your lower back is arching too much, which can create compression and affect how your pelvis and hips function.`);
+    }
+    
+    if (pelvicStatus && pelvicStatus !== 'Neutral') {
+      const tilt = analysis.pelvic_tilt?.anterior_tilt_degrees || 0;
+      const isAnterior = tilt > 0;
+      if (isAnterior) {
+        parts.push(`Your pelvis is tilted forward (${Math.abs(tilt).toFixed(1)}° anterior tilt). This means your pelvis is rotated so the front drops down - like you're sticking your tailbone out. This can increase the curve in your lower back and affect your hip function.`);
+      } else {
+        parts.push(`Your pelvis is tilted backward (${Math.abs(tilt).toFixed(1)}° posterior tilt). This means your pelvis is rotated so the front lifts up - like you're tucking your tailbone. This can flatten your lower back and affect your hip mobility.`);
+      }
+    }
+  }
+  
+  if (parts.length === 0) {
+    return "Your posture appears well-aligned from this view. Keep up the good work with your movement patterns!";
+  }
+  
+  return parts.join(' ');
+}
+
+// Posture Analysis Viewer - shows one view at a time with navigation
+function PostureAnalysisViewer({ 
+  postureResults, 
+  postureImages 
+}: { 
+  postureResults: Record<string, any>; 
+  postureImages: Record<string, string> | undefined;
+}) {
+  const views = ['front', 'back', 'side-left', 'side-right'] as const;
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const availableViews = views.filter(v => postureResults[v]);
+  
+  if (availableViews.length === 0) return null;
+  
+  const currentView = availableViews[currentIndex];
+  const analysis = postureResults[currentView];
+  // Try multiple image sources: Storage URL first (full-size with deviation lines), then compressed
+  const imageUrl = postureImages?.[currentView] || 
+                   (postureImages as any)?.[`postureImagesStorage_${currentView}`] ||
+                   (postureImages as any)?.[`postureImagesFull_${currentView}`];
+  
+  const nextView = () => {
+    setCurrentIndex((prev) => (prev + 1) % availableViews.length);
+  };
+  
+  const prevView = () => {
+    setCurrentIndex((prev) => (prev - 1 + availableViews.length) % availableViews.length);
+  };
+  
+  const getFindings = () => {
+    const findings: Array<{ label: string; status: string; description: string }> = [];
+    
+    if (analysis.forward_head && analysis.forward_head.status !== 'Neutral') {
+      findings.push({
+        label: 'Head Position',
+        status: analysis.forward_head.status,
+        description: analysis.forward_head.description
+      });
+    }
+    
+    if (analysis.shoulder_alignment && analysis.shoulder_alignment.status !== 'Neutral') {
+      findings.push({
+        label: 'Shoulders',
+        status: analysis.shoulder_alignment.status,
+        description: analysis.shoulder_alignment.description
+      });
+    }
+    
+    if (analysis.kyphosis && analysis.kyphosis.status !== 'Normal') {
+      findings.push({
+        label: 'Upper Back',
+        status: analysis.kyphosis.status,
+        description: analysis.kyphosis.description
+      });
+    }
+    
+    if (analysis.lordosis && analysis.lordosis.status !== 'Normal') {
+      findings.push({
+        label: 'Lower Back',
+        status: analysis.lordosis.status,
+        description: analysis.lordosis.description
+      });
+    }
+    
+    if (analysis.pelvic_tilt && analysis.pelvic_tilt.status !== 'Neutral') {
+      findings.push({
+        label: 'Pelvis',
+        status: analysis.pelvic_tilt.status,
+        description: analysis.pelvic_tilt.description
+      });
+    }
+    
+    if (analysis.hip_alignment && analysis.hip_alignment.status !== 'Neutral') {
+      findings.push({
+        label: 'Hips',
+        status: analysis.hip_alignment.status,
+        description: analysis.hip_alignment.description
+      });
+    }
+    
+    if (analysis.knee_position && analysis.knee_position.status !== 'Neutral') {
+      findings.push({
+        label: 'Knees',
+        status: analysis.knee_position.status,
+        description: analysis.knee_position.description
+      });
+    }
+    
+    if (analysis.spinal_curvature && analysis.spinal_curvature.status !== 'Normal') {
+      findings.push({
+        label: 'Spine',
+        status: analysis.spinal_curvature.status,
+        description: analysis.spinal_curvature.description
+      });
+    }
+    
+    return findings;
+  };
+  
+  const findings = getFindings();
+  
+  // Get areas for improvement specific to this view
+  const getAreasForImprovement = (): string[] => {
+    const areas: string[] = [];
+    if (analysis.forward_head && analysis.forward_head.status !== 'Neutral') {
+      areas.push('Head posture');
+    }
+    if (analysis.shoulder_alignment && analysis.shoulder_alignment.status !== 'Neutral') {
+      areas.push('Shoulder alignment');
+    }
+    if (analysis.kyphosis && analysis.kyphosis.status !== 'Normal') {
+      areas.push('Upper back posture');
+    }
+    if (analysis.lordosis && analysis.lordosis.status !== 'Normal') {
+      areas.push('Lower back posture');
+    }
+    if (analysis.pelvic_tilt && analysis.pelvic_tilt.status !== 'Neutral') {
+      areas.push('Pelvic alignment');
+    }
+    if (analysis.hip_alignment && analysis.hip_alignment.status !== 'Neutral') {
+      areas.push('Hip alignment');
+    }
+    if (analysis.knee_position && analysis.knee_position.status !== 'Neutral') {
+      areas.push('Knee alignment');
+    }
+    if (analysis.spinal_curvature && analysis.spinal_curvature.status !== 'Normal') {
+      areas.push('Spinal alignment');
+    }
+    return areas;
+  };
+  
+  const areasForImprovement = getAreasForImprovement();
+  
+  return (
+    <div className="space-y-4">
+      <div className="bg-white rounded-xl border border-slate-200 p-4">
+        <div className="flex items-center justify-between mb-4">
+          <h5 className="text-sm font-bold uppercase text-indigo-600">{currentView.replace('-', ' ')} View</h5>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={prevView}
+              disabled={availableViews.length <= 1}
+              className="p-1 rounded hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="text-xs text-slate-500">
+              {currentIndex + 1} / {availableViews.length}
+            </span>
+            <button
+              onClick={nextView}
+              disabled={availableViews.length <= 1}
+              className="p-1 rounded hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Image */}
+          {imageUrl ? (
+            <div className="relative aspect-[3/4] rounded-lg overflow-hidden border-2 border-slate-300 bg-white">
+              <img 
+                src={imageUrl} 
+                alt={currentView} 
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  console.error('[POSTURE] Image failed to load:', imageUrl, 'Trying alternative sources...');
+                  // Try alternative image sources
+                  const altImage = (postureImages as any)?.[`postureImagesStorage_${currentView}`] || 
+                                  (postureImages as any)?.[`postureImagesFull_${currentView}`];
+                  if (altImage && altImage !== imageUrl) {
+                    (e.target as HTMLImageElement).src = altImage;
+                  } else {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }
+                }}
+              />
+              <div className="absolute bottom-1 left-1 right-1 bg-black/60 text-white text-[7px] px-1.5 py-0.5 rounded">
+                Green: Reference lines | Red: Deviations
+              </div>
+            </div>
+          ) : (
+            <div className="relative aspect-[3/4] rounded-lg overflow-hidden border-2 border-slate-300 bg-slate-100 flex items-center justify-center">
+              <p className="text-xs text-slate-400">Image not available</p>
+            </div>
+          )}
+          
+          {/* Findings */}
+          <div className="space-y-3">
+            {findings.length > 0 ? (
+              findings.map((finding, idx) => (
+                <div key={idx} className="border-l-2 border-indigo-500 pl-3 py-2">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-xs font-bold text-slate-700">{finding.label}</span>
+                    <span className="text-xs font-black text-slate-900">{finding.status}</span>
+                  </div>
+                  <p className="text-[10px] text-slate-600 leading-tight">{finding.description}</p>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-slate-500">
+                <p className="text-sm font-semibold">No significant deviations found</p>
+                <p className="text-xs mt-1">Posture appears neutral for this view</p>
+              </div>
+            )}
+            
+            {/* Always show summary - generate one if missing */}
+            <div className="pt-3 border-t border-slate-200 mt-3">
+              <p className="text-xs font-semibold text-slate-700 mb-1">Summary:</p>
+              {analysis.overall_assessment ? (
+                <p className="text-[10px] text-slate-600 leading-relaxed">{analysis.overall_assessment}</p>
+              ) : (
+                <p className="text-[10px] text-slate-600 leading-relaxed">
+                  {generateClientFriendlySummary(analysis, currentView)}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+        
+        {/* Areas for improvement - dynamic per view */}
+        {areasForImprovement.length > 0 && (
+          <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-3">
+            <h4 className="text-xs font-semibold text-rose-800 mb-2">Areas for improvement</h4>
+            <ul className="list-disc pl-5 text-[10px] text-rose-900 space-y-1">
+              {areasForImprovement.map((area, i) => (
+                <li key={i}>{area}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 const CATEGORY_ORDER = ['bodyComp','strength','cardio','movementQuality','lifestyle'];
@@ -83,7 +420,7 @@ const PROGRAM_PHASES = [
   },
 ];
 
-export default function ClientReport({ scores, roadmap, goals, bodyComp, formData }: { scores: ScoreSummary; roadmap: RoadmapPhase[]; goals?: string[]; bodyComp?: BodyCompInterp; formData?: FormData }) {
+export default function ClientReport({ scores, roadmap, goals, bodyComp, formData, plan }: { scores: ScoreSummary; roadmap: RoadmapPhase[]; goals?: string[]; bodyComp?: BodyCompInterp; formData?: FormData; plan?: any }) {
   const [sessionsPerWeek, setSessionsPerWeek] = useState<number>(3);
   const sessionFactor = useMemo(() => (sessionsPerWeek === 5 ? 0.75 : sessionsPerWeek === 4 ? 0.85 : 1.0), [sessionsPerWeek]);
   const orderedCats = useMemo(
@@ -549,10 +886,27 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
     return focus;
   }, [formData]);
 
-  if (!scores || !scores.categories || scores.categories.length === 0) {
+  // Check if form has ANY data at all
+  const hasAnyData = useMemo(() => {
+    if (!formData) return false;
+    
+    // Check for any filled fields across all categories
+    const hasBodyComp = !!(formData.inbodyWeightKg && parseFloat(formData.inbodyWeightKg || '0') > 0);
+    const hasStrength = !!(formData.maxPushups && parseFloat(formData.maxPushups || '0') > 0) ||
+                        !!(formData.pushupsOneMinuteReps && parseFloat(formData.pushupsOneMinuteReps || '0') > 0);
+    const hasCardio = !!(formData.cardioMinutes && parseFloat(formData.cardioMinutes || '0') > 0);
+    const hasPosture = !!(formData.postureAiResults || formData.postureHeadOverall || formData.postureShouldersOverall);
+    const hasLifestyle = !!(formData.sleepQuality || formData.stressLevel || formData.hydrationHabits || 
+                           formData.nutritionHabits || (formData.stepsPerDay && parseFloat(formData.stepsPerDay || '0') > 0));
+    
+    return hasBodyComp || hasStrength || hasCardio || hasPosture || hasLifestyle;
+  }, [formData]);
+
+  if (!scores || !scores.categories || scores.categories.length === 0 || !hasAnyData) {
     return (
       <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-        Results are not available yet. Please complete the assessment steps and try again.
+        <p className="font-semibold mb-2">No assessment data available</p>
+        <p>Please complete at least one section of the assessment to generate a report.</p>
       </div>
     );
   }
@@ -567,10 +921,12 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
             <span>Medical clearance recommended</span>
           </div>
         )}
+        {goals && goals.length > 0 && (
         <div className="inline-flex items-center gap-1.5 rounded-full bg-indigo-100 px-3 py-1.5 text-xs font-medium text-indigo-800 border border-indigo-200">
           <span>🎯</span>
           <span>Primary goal: {goalLabel}</span>
         </div>
+        )}
         {lifestyleFocus.length > 0 && (
           <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1.5 text-xs font-medium text-amber-800 border border-amber-200">
             <span>💪</span>
@@ -699,25 +1055,10 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
                     <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
                       <h4 className="text-base font-semibold text-slate-900 mb-4">Detailed breakdown</h4>
                       {cat.id === 'movementQuality' && formData?.postureAiResults ? (
-                        <div className="space-y-6">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {Object.entries(formData.postureAiResults).map(([view, analysis]: [string, any]) => (
-                              <div key={view} className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                                <span className="text-[9px] font-black uppercase text-indigo-500 block mb-2">{view} Metric</span>
-                                <div className="space-y-1">
-                                  <div className="flex justify-between">
-                                    <span className="text-[10px] text-slate-500 font-bold uppercase">Deviation</span>
-                                    <span className="text-xs font-black text-slate-900">{analysis.head_posture?.deviation_degrees}°</span>
-                                  </div>
-                                  <p className="text-[10px] text-slate-600 mt-2 italic leading-tight">
-                                    {analysis.head_posture?.status}: {analysis.head_posture?.description}
-                                  </p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                          <CategoryRadarChart details={cat.details} categoryName={niceLabel(cat.id)} />
-                        </div>
+                        <PostureAnalysisViewer 
+                          postureResults={formData.postureAiResults} 
+                          postureImages={(formData.postureImagesStorage || formData.postureImages || {}) as Record<string, string>} 
+                        />
                       ) : (
                         <TooltipProvider>
                           <CategoryRadarChart details={cat.details} categoryName={niceLabel(cat.id)} />
@@ -736,7 +1077,7 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
                             </ul>
                           </div>
                         )}
-                        {cat.weaknesses.length > 0 && (
+                        {cat.weaknesses.length > 0 && cat.score > 0 && (
                           <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 shadow-sm">
                             <h4 className="text-base font-semibold text-rose-800 mb-2">Areas for improvement</h4>
                             <ul className="list-disc pl-5 text-sm text-rose-900 space-y-1">
@@ -1187,7 +1528,31 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
         );
       })()}
 
-      {/* 6. Your roadmap */}
+      {/* 6. Your roadmap - Only show if form has sufficient data */}
+      {(() => {
+        // Check if form has enough data to show meaningful roadmap
+        // Need at least 2 categories with scores > 0 (not just posture)
+        const categoriesWithData = scores.categories.filter(c => c.score > 0).length;
+        const hasBodyComp = formData?.inbodyWeightKg && parseFloat(formData.inbodyWeightKg) > 0;
+        const hasStrength = formData?.maxPushups && parseFloat(formData.maxPushups) > 0;
+        const hasCardio = formData?.cardioMinutes && parseFloat(formData.cardioMinutes) > 0;
+        const hasLifestyle = formData?.sleepQuality || formData?.stressLevel;
+        const isFormComplete = categoriesWithData >= 2 || (hasBodyComp && hasStrength) || (hasStrength && hasCardio) || (hasCardio && hasLifestyle);
+        
+        if (!isFormComplete) {
+          return (
+            <section className="space-y-4">
+              <h2 className="text-2xl font-bold text-slate-900">Your roadmap</h2>
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                <p className="text-sm text-amber-800">
+                  Complete more sections of your assessment to see your personalized roadmap and timeline.
+                </p>
+              </div>
+            </section>
+          );
+        }
+        
+        return (
       <section className="space-y-4">
         <h2 className="text-2xl font-bold text-slate-900">Your roadmap</h2>
         <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 shadow-sm">
@@ -1226,6 +1591,8 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
           </div>
         </div>
       </section>
+        );
+      })()}
 
       {/* 7. What to expect */}
       <section className="space-y-4">
@@ -1250,142 +1617,203 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
         </div>
       </section>
 
-      {/* 8. Sample Workout - restructured format */}
+      {/* 8. What We'll Focus On - Prioritized */}
+      {plan?.prioritizedExercises && (
+        <section className="space-y-6">
+          <h2 className="text-2xl font-bold text-slate-900">What We'll Focus On</h2>
+          <p className="text-sm text-slate-600">
+            Based on your assessment, here's what we'll prioritize and why. This helps you understand what's urgent, 
+            what directly supports your goals, and what we'll refine along the way.
+          </p>
+          
+          <div className="space-y-4">
+            {/* Critical/Urgent Issues */}
+            {plan.prioritizedExercises.criticalIssues.length > 0 && (
+              <div className="rounded-xl border-2 border-red-300 bg-red-50 p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-lg">🚨</span>
+                  <h3 className="text-lg font-black text-slate-900">URGENT: Critical Health & Safety</h3>
+                </div>
+                <p className="text-sm text-slate-700 mb-3">
+                  These issues need immediate attention to protect your health and prevent injury. We'll address these first.
+                </p>
+                <ul className="space-y-2">
+                  {plan.prioritizedExercises.criticalIssues.map((issue, i) => (
+                    <li key={i} className="text-sm text-slate-800 flex gap-2">
+                      <span className="text-red-600 font-bold">•</span>
+                      <span>{issue}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            {/* Goal-Focused */}
+            {plan.prioritizedExercises.goalExercises.length > 0 && (
+              <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-lg">🎯</span>
+                  <h3 className="text-lg font-black text-slate-900">Your Goals: Direct Path Forward</h3>
+                </div>
+                <p className="text-sm text-slate-700 mb-3">
+                  These exercises directly support your primary goals. This is how we'll make progress toward what you want to achieve.
+                </p>
+                <ul className="space-y-2">
+                  {plan.prioritizedExercises.goalExercises.map((goal, i) => (
+                    <li key={i} className="text-sm text-slate-800 flex gap-2">
+                      <span className="text-amber-600 font-bold">•</span>
+                      <span>{goal}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            {/* Important Issues */}
+            {plan.prioritizedExercises.importantIssues.length > 0 && (
+              <div className="rounded-xl border-2 border-blue-300 bg-blue-50 p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-lg">⚡</span>
+                  <h3 className="text-lg font-black text-slate-900">Important: Issues That Could Hinder Progress</h3>
+                </div>
+                <p className="text-sm text-slate-700 mb-3">
+                  These aren't urgent, but addressing them will help you progress faster and avoid setbacks.
+                </p>
+                <ul className="space-y-2">
+                  {plan.prioritizedExercises.importantIssues.map((issue, i) => (
+                    <li key={i} className="text-sm text-slate-800 flex gap-2">
+                      <span className="text-blue-600 font-bold">•</span>
+                      <span>{issue}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            {/* Minor Issues */}
+            {plan.prioritizedExercises.minorIssues.length > 0 && (
+              <div className="rounded-xl border-2 border-slate-300 bg-slate-50 p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-lg">✨</span>
+                  <h3 className="text-lg font-black text-slate-900">Minor: Optimizations We'll Address</h3>
+                </div>
+                <p className="text-sm text-slate-700 mb-3">
+                  Small refinements we'll work on along the way to fine-tune your movement and performance.
+                </p>
+                <ul className="space-y-2">
+                  {plan.prioritizedExercises.minorIssues.map((issue, i) => (
+                    <li key={i} className="text-sm text-slate-800 flex gap-2">
+                      <span className="text-slate-600 font-bold">•</span>
+                      <span>{issue}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* 9. Sample Workout - Enhanced with Priority Context */}
       {(() => {
         const g0 = (goals && goals[0]) || '';
         
-        // Collect assessment findings for warmup
-        const warmupMovements: string[] = [];
+        // Get exercises from prioritized system if available
+        const criticalExercises = plan?.prioritizedExercises?.groups.find(g => g.priority === 'critical')?.exercises || [];
+        const goalExercises = plan?.prioritizedExercises?.groups.find(g => g.priority === 'goal-focused')?.exercises || [];
+        const importantExercises = plan?.prioritizedExercises?.groups.find(g => g.priority === 'important')?.exercises || [];
+        
+        // Build workout structure showing how each part addresses priorities
+        const workoutParts: Array<{ section: string; exercises: string[]; addresses: string[] }> = [];
+        
+        // Warm-up: Addresses urgent and important issues
+        const warmupExercises: string[] = [];
         const warmupAddresses: string[] = [];
-        
-        if (formData?.mobilityHip && formData.mobilityHip !== 'good' || focusAreas.find(f => f.toLowerCase().includes('hip mobility'))) {
-          warmupMovements.push('hip mobility drills (90/90 switches, hip flexor stretches)');
-          warmupAddresses.push('hip mobility limitations');
+        if (criticalExercises.length > 0) {
+          criticalExercises.slice(0, 2).forEach(ex => {
+            warmupExercises.push(ex.name);
+            warmupAddresses.push(...ex.addresses);
+          });
         }
-        if (formData?.mobilityShoulder && formData.mobilityShoulder !== 'good' || focusAreas.find(f => f.toLowerCase().includes('shoulder mobility'))) {
-          warmupMovements.push('shoulder mobility work (dislocates, wall slides)');
-          warmupAddresses.push('shoulder mobility restrictions');
+        if (importantExercises.length > 0 && warmupExercises.length < 3) {
+          importantExercises.slice(0, 2).forEach(ex => {
+            if (!warmupExercises.includes(ex.name)) {
+              warmupExercises.push(ex.name);
+              warmupAddresses.push(...ex.addresses);
+            }
+          });
         }
-        if (formData?.mobilityAnkle && formData.mobilityAnkle !== 'good' || focusAreas.find(f => f.toLowerCase().includes('ankle mobility'))) {
-          warmupMovements.push('ankle mobility exercises');
-          warmupAddresses.push('ankle mobility issues');
-        }
-        if ((formData?.postureBackOverall && formData.postureBackOverall !== 'neutral') || focusAreas.find(f => f.toLowerCase().includes('spinal') || f.toLowerCase().includes('posture'))) {
-          warmupMovements.push('posture correctives (T-spine extensions, thoracic mobility)');
-          warmupAddresses.push('posture and spinal alignment concerns');
-        }
-        if (focusAreas.find(f => f.toLowerCase().includes('knee alignment'))) {
-          warmupMovements.push('knee tracking drills (mini-band work, split squat patterns)');
-          warmupAddresses.push('knee alignment issues');
-        }
-        if (focusAreas.find(f => f.toLowerCase().includes('core endurance') || f.toLowerCase().includes('core'))) {
-          warmupMovements.push('core activation (dead bug, plank variations)');
-          warmupAddresses.push('core stability needs');
+        if (warmupExercises.length > 0) {
+          workoutParts.push({
+            section: 'Warm-up & Movement Prep',
+            exercises: warmupExercises,
+            addresses: [...new Set(warmupAddresses)]
+          });
         }
         
-        // Default warmup if nothing specific
-        if (warmupMovements.length === 0) {
-          warmupMovements.push('dynamic mobility work targeting hips, shoulders, and ankles');
-          warmupAddresses.push('general movement preparation');
+        // Main workout: Goal-focused exercises
+        const mainExercises: string[] = [];
+        const mainAddresses: string[] = [];
+        if (goalExercises.length > 0) {
+          goalExercises.slice(0, 4).forEach(ex => {
+            mainExercises.push(ex.name);
+            mainAddresses.push(...ex.addresses);
+          });
+        }
+        if (mainExercises.length > 0) {
+          workoutParts.push({
+            section: 'Main Workout',
+            exercises: mainExercises,
+            addresses: [...new Set(mainAddresses)]
+          });
         }
         
-        // Goal-specific workout structure
-        let workoutStructure: string[] = [];
-        let workoutAddresses: string[] = [];
-        
+        // Fallback to goal-based structure if no prioritized exercises
+        if (workoutParts.length === 0) {
         if (g0 === 'weight-loss') {
-          workoutStructure = [
-            'Compound movements (squats, presses, rows) to build strength while burning calories',
-            'Single-leg work (lunges, step-ups) to improve stability and increase metabolic demand',
-            'Posterior chain exercises (hip hinges, RDLs) to strengthen the back of your body',
-            'Cardiovascular finisher to boost calorie burn and improve fitness'
-          ];
-          workoutAddresses = [
-            'Building strength to preserve muscle during fat loss',
-            'Improving daily movement capacity',
-            'Addressing any movement quality issues found in your assessment'
-          ];
-        } else if (g0 === 'build-muscle') {
-          workoutStructure = [
-            'Primary compound lifts (squats, presses, rows) with progressive loading',
-            'Accessory work targeting specific muscle groups for balanced development',
-            'Volume-focused training to stimulate muscle growth',
-            'Optional light cardio for recovery and cardiovascular health'
-          ];
-          workoutAddresses = [
-            'Progressive muscle building (hypertrophy)',
-            'Addressing any strength imbalances from your assessment',
-            'Building overall muscle mass while improving movement quality'
-          ];
-        } else if (g0 === 'build-strength') {
-          workoutStructure = [
-            'Heavy compound lifts (squat, bench, deadlift) with focus on technique and progressive overload',
-            'Technique work (paused reps, tempo work) to refine movement patterns',
-            'Supporting exercises for muscle groups that assist the main lifts',
-            'Recovery practices (breathing, mobility) between sets'
-          ];
-          workoutAddresses = [
-            'Building maximum strength safely',
-            'Ensuring movement quality supports heavier loads',
-            'Addressing any limitations that could limit strength gains'
-          ];
+            workoutParts.push({
+              section: 'Main Workout',
+              exercises: ['Metabolic Circuit Training', 'Zone 2 Cardio'],
+              addresses: ['weight loss', 'calorie burn', 'fat loss']
+            });
+          } else if (g0 === 'build-muscle' || g0 === 'build-strength') {
+            workoutParts.push({
+              section: 'Main Workout',
+              exercises: ['Compound Lifts', 'Progressive Overload'],
+              addresses: [g0 === 'build-muscle' ? 'muscle growth' : 'strength']
+            });
         } else if (g0 === 'improve-fitness') {
-          workoutStructure = [
-            'Cardiovascular intervals to improve heart and lung capacity',
-            'Zone 2 steady-state work to build aerobic base',
-            'Strength work to support cardiovascular performance',
-            'Form drills and technique work for efficient movement'
-          ];
-          workoutAddresses = [
-            'Improving cardiovascular fitness (VO₂ max)',
-            'Building endurance capacity',
-            'Supporting cardio gains with strength and movement quality'
-          ];
-        } else {
-          workoutStructure = [
-            'Balanced mix of strength, cardio, and movement quality work',
-            'Circuit-style training for general conditioning',
-            'Movement patterns that improve daily function'
-          ];
-          workoutAddresses = [
-            'Overall health and fitness improvements',
-            'Addressing assessment findings',
-            'Building sustainable movement habits'
-          ];
+            workoutParts.push({
+              section: 'Main Workout',
+              exercises: ['Interval Training', 'Zone 2 Cardio'],
+              addresses: ['fitness', 'cardio capacity']
+            });
+          }
         }
         
         return (
           <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-slate-900">Sample workout</h2>
-            <p className="text-sm text-slate-600">Here's how we'll structure your sessions based on your goals and assessment findings:</p>
+            <h2 className="text-2xl font-bold text-slate-900">Sample Workout Structure</h2>
+            <p className="text-sm text-slate-600">
+              Here's how a typical workout will look and how each part serves your urgent needs, goals, and improvements:
+            </p>
             
             <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-              <div>
-                <h3 className="text-base font-semibold text-slate-900 mb-2">Warm-up</h3>
-                <p className="text-sm text-slate-700 mb-2">
-                  We'll warm up with movements such as <strong>{warmupMovements.join(', ')}</strong>.
-                </p>
-                <p className="text-xs text-slate-600 italic">
-                  This will address: {warmupAddresses.join(', ')}.
-                </p>
-              </div>
-              
-              <div>
-                <h3 className="text-base font-semibold text-slate-900 mb-2">Main workout</h3>
-                <p className="text-sm text-slate-700 mb-2">
-                  Your workout will be structured like this:
-                </p>
+              {workoutParts.map((part, idx) => (
+                <div key={idx} className="border-b border-slate-200 pb-4 last:border-b-0 last:pb-0">
+                  <h3 className="text-base font-semibold text-slate-900 mb-2">{part.section}</h3>
                 <ul className="list-disc pl-5 text-sm text-slate-700 space-y-1 mb-2">
-                  {workoutStructure.map((item, i) => (
-                    <li key={i}>{item}</li>
+                    {part.exercises.map((ex, i) => (
+                      <li key={i}>{ex}</li>
                   ))}
                 </ul>
                 <p className="text-xs text-slate-600 italic">
-                  These exercises address: {workoutAddresses.join(', ')}.
+                    Addresses: {part.addresses.join(', ')}
                 </p>
               </div>
+              ))}
               
-              <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+              <div className="rounded-md border border-slate-200 bg-slate-50 p-3 mt-4">
                 <p className="text-xs text-slate-700">
                   <strong>Note:</strong> Specific reps, sets, and weights will be tailored to your current ability and progress. 
                   We'll start with technique-focused work and gradually increase intensity as your movement quality and strength improve.

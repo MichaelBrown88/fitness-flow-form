@@ -1,4 +1,4 @@
-import { collection, addDoc, serverTimestamp, getDocs, query, orderBy, limit, doc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, getDocs, query, orderBy, limit, doc, getDoc, deleteDoc, where } from 'firebase/firestore';
 import type { Timestamp } from 'firebase/firestore';
 import type { FormData } from '@/contexts/FormContext';
 import { getDb } from '@/lib/firebase';
@@ -86,6 +86,51 @@ export async function getCoachAssessment(
     overallScore: typeof data.overallScore === 'number' ? data.overallScore : 0,
     goals: Array.isArray(data.goals) ? data.goals : [],
   };
+}
+
+export async function deleteCoachAssessment(
+  coachUid: string,
+  assessmentId: string,
+): Promise<void> {
+  const ref = doc(getDb(), 'coaches', coachUid, 'assessments', assessmentId);
+  await deleteDoc(ref);
+}
+
+export async function getClientAssessments(
+  coachUid: string,
+  clientName: string,
+): Promise<CoachAssessmentSummary[]> {
+  const q = query(
+    coachAssessmentsCollection(coachUid),
+    where('clientNameLower', '==', clientName.toLowerCase()),
+    orderBy('createdAt', 'desc'),
+  );
+  const snap = await getDocs(q);
+  const items: CoachAssessmentSummary[] = [];
+  snap.forEach((docSnap) => {
+    const data = docSnap.data() as Partial<CoachAssessmentDoc>;
+    items.push({
+      id: docSnap.id,
+      clientName: data.clientName || 'Unnamed client',
+      createdAt: (data.createdAt as Timestamp | undefined) ?? null,
+      overallScore: typeof data.overallScore === 'number' ? data.overallScore : 0,
+      goals: Array.isArray(data.goals) ? data.goals : [],
+    });
+  });
+  return items;
+}
+
+export async function getAllClients(coachUid: string): Promise<string[]> {
+  const q = query(coachAssessmentsCollection(coachUid), orderBy('createdAt', 'desc'));
+  const snap = await getDocs(q);
+  const clients = new Set<string>();
+  snap.forEach((docSnap) => {
+    const data = docSnap.data() as Partial<CoachAssessmentDoc>;
+    if (data.clientName) {
+      clients.add(data.clientName);
+    }
+  });
+  return Array.from(clients).sort();
 }
 
 
