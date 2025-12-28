@@ -39,6 +39,7 @@ export async function processInBodyScan(imageSrc: string): Promise<OcrResult> {
       Analyze the provided image and extract all relevant data points into a JSON object.
       
       FIELD GUIDANCE:
+      - heightCm: Height in CM (often at the top near Name/Age)
       - inbodyScore: Total InBody Score (0-100)
       - inbodyWeightKg: Weight in KG
       - skeletalMuscleMassKg: SMM in KG
@@ -90,6 +91,7 @@ export async function processInBodyScan(imageSrc: string): Promise<OcrResult> {
     // 6. Map to FormData (ensuring everything is a string for our form)
     const cleanFields: Partial<FormData> = {};
     const fieldMapping: Record<string, keyof FormData> = {
+      heightCm: 'heightCm',
       inbodyScore: 'inbodyScore',
       inbodyWeightKg: 'inbodyWeightKg',
       skeletalMuscleMassKg: 'skeletalMuscleMassKg',

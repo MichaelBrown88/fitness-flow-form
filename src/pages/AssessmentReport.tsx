@@ -100,7 +100,11 @@ const AssessmentReport = () => {
     (async () => {
       try {
         setLoadingData(true);
-        const data = await getCoachAssessment(user.uid, id);
+        // Get clientName from query params if available
+        const params = new URLSearchParams(window.location.search);
+        const clientName = params.get('clientName');
+        
+        const data = await getCoachAssessment(user.uid, id, clientName || undefined);
         if (!data) {
           setError('Assessment not found for this coach.');
           return;
@@ -171,6 +175,7 @@ const AssessmentReport = () => {
 
   const plan = generateCoachPlan(formData, scores);
   const bodyComp = generateBodyCompInterpretation(formData, scores);
+  const highlightCategory = sessionStorage.getItem('highlightCategory') || undefined;
 
   return (
     <AppShell
@@ -244,6 +249,7 @@ const AssessmentReport = () => {
               bodyComp={bodyComp ? { timeframeWeeks: bodyComp.timeframeWeeks } : undefined}
               formData={formData}
               plan={plan}
+              highlightCategory={highlightCategory}
             />
           ) : (
             <CoachReport
@@ -251,6 +257,7 @@ const AssessmentReport = () => {
               scores={scores}
               bodyComp={bodyComp}
               formData={formData}
+              highlightCategory={highlightCategory}
             />
           )}
         </div>

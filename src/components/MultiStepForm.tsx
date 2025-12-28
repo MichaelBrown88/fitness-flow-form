@@ -690,22 +690,28 @@ const PhaseFormContent = ({
   const { user } = useAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+
+  // Determine client name from storage or form
+  const clientNameFromStorage = useMemo(() => {
+    try {
+      const partialData = sessionStorage.getItem('partialAssessment');
+      if (partialData) return JSON.parse(partialData).clientName as string;
+      const prefillData = sessionStorage.getItem('prefillClientData');
+      if (prefillData) return JSON.parse(prefillData).clientName as string;
+    } catch {}
+    return '';
+  }, []);
+
+  const activeClientName = clientNameFromStorage || formData.fullName || '';
   
   // Check for partial assessment mode
   const getInitialPhase = () => {
     try {
       const partialData = sessionStorage.getItem('partialAssessment');
       if (partialData) {
-        const { category } = JSON.parse(partialData);
-        // Map categories to phase indices
-        const categoryToPhase: Record<string, number> = {
-          'inbody': 2,      // P2 - Body Composition
-          'posture': 2,     // P2 - Posture & Movement (same phase as InBody)
-          'fitness': 4,     // P4 - Cardiovascular Fitness
-          'strength': 5,    // P5 - Strength & Power
-          'lifestyle': 1,   // P1 - Lifestyle Overview
-        };
-        return categoryToPhase[category] || 0;
+        // In partial assessment mode, we always want to jump straight to the relevant category.
+        // Since visiblePhases is filtered, the category phase is always at index 1 (after P0).
+        return 1;
       }
     } catch (e) {
       console.warn('Failed to parse partial assessment data:', e);
@@ -735,54 +741,151 @@ const PhaseFormContent = ({
     }
     return null;
   });
-  
-  // Clear partial assessment data if navigating directly to assessment without explicit partial mode
-  // This ensures full assessments aren't accidentally filtered
-  useEffect(() => {
-    // Only clear if there's no prefillClientData (which indicates a new client) 
-    // and no explicit partialAssessment flag from a quick assessment button
-    const prefillData = sessionStorage.getItem('prefillClientData');
-    const partialData = sessionStorage.getItem('partialAssessment');
-    
-    // If we have partial data but no prefill data, it might be leftover - clear it
-    // (Quick assessments should always have both prefill and partial data)
-    if (partialData && !prefillData) {
-      console.log('[MultiStepForm] Clearing leftover partial assessment data');
-      sessionStorage.removeItem('partialAssessment');
-      setIsPartialAssessment(false);
-      setPartialCategory(null);
+
+  // Filter phases for partial assessments
+  const visiblePhases = useMemo(() => {
+    if (!isPartialAssessment || !partialCategory) {
+      return phaseDefinitions;
     }
-  }, []);
-  
+    
+    // Map category to allowed phase IDs and specific section IDs
+    const categoryConfig: Record<string, { phaseIds: PhaseId[], sectionIds?: string[] }> = {
+      'inbody': { 
+        phaseIds: ['P0', 'P2', 'P7'], 
+        sectionIds: ['basic-client-info', 'body-comp', 'parq'] 
+      },
+      'posture': { 
+        phaseIds: ['P0', 'P3', 'P7'], 
+        sectionIds: ['basic-client-info', 'posture', 'overhead-squat', 'hinge-assessment', 'lunge-assessment', 'mobility'] 
+      },
+      'fitness': { 
+        phaseIds: ['P0', 'P5', 'P7'], 
+        sectionIds: ['basic-client-info', 'fitness-assessment'] 
+      },
+      'strength': { 
+        phaseIds: ['P0', 'P4', 'P7'], 
+        sectionIds: ['basic-client-info', 'strength-endurance'] 
+      },
+      'lifestyle': { 
+        phaseIds: ['P0', 'P1', 'P7'], 
+        sectionIds: ['basic-client-info', 'lifestyle-overview'] 
+      },
+    };
+    
+    const config = categoryConfig[partialCategory] || { phaseIds: ['P0'] };
+    
+    return phaseDefinitions
+      .filter(phase => (config.phaseIds as string[]).includes(phase.id))
+      .map(phase => {
+        if (!config.sectionIds) return phase;
+        const filteredSections = (phase.sections || []).filter(section => config.sectionIds!.includes(section.id));
+        if (filteredSections.length === 0 && phase.id !== 'P7') return null;
+        return {
+          ...phase,
+          sections: filteredSections
+        };
+      })
+      .filter((p): p is NonNullable<typeof p> => p !== null);
+  }, [isPartialAssessment, partialCategory]);
+
+  const isFieldVisible = useCallback((field: PhaseField, customData?: FormData) => {
+    const data = customData || formData;
+    if (!('conditional' in field) || !field.conditional || !field.conditional.showWhen) return true;
+    const { showWhen } = field.conditional;
+    const dependentValue = data[showWhen.field as keyof FormData];
+    let ok = true;
+    if (showWhen.exists !== undefined) {
+      ok = ok && (dependentValue !== undefined && dependentValue !== null && String(dependentValue).trim() !== '');
+    }
+    if (showWhen.value !== undefined) ok = ok && dependentValue === showWhen.value;
+    if (showWhen.notValue !== undefined) ok = ok && dependentValue !== showWhen.notValue;
+    if (showWhen.includes !== undefined) {
+      if (Array.isArray(dependentValue)) {
+        ok = ok && (dependentValue as string[]).includes(showWhen.includes);
+      } else if (typeof dependentValue === 'string') {
+        ok = ok && dependentValue === showWhen.includes;
+      } else {
+        ok = false;
+      }
+    }
+    return ok;
+  }, [formData]);
+
+  const isSectionCompleted = useCallback((section: PhaseSection) => {
+    const visibleFields = (section.fields as PhaseField[]).filter(f => isFieldVisible(f));
+    if (visibleFields.length === 0) return true;
+
+    const requiredFields = visibleFields.filter(f => f.required);
+    
+    // If there are required fields, they MUST all be filled
+    if (requiredFields.length > 0) {
+      return requiredFields.every(field => {
+        const value = formData[field.id];
+        if (Array.isArray(value)) return value.length > 0;
+        return value !== undefined && value !== null && value !== '';
+      });
+    }
+
+    // If there are NO required fields, at least ONE field must be filled to count as "completed"
+    return visibleFields.some(field => {
+      const value = formData[field.id];
+      if (Array.isArray(value)) return value.length > 0;
+      return value !== undefined && value !== null && value !== '';
+    });
+  }, [formData, isFieldVisible]);
+
+  const isPhaseCompleted = useCallback((phaseIdx: number) => {
+    const phase = visiblePhases[phaseIdx];
+    if (!phase) return false;
+    const sections = phase.sections || [];
+    if (sections.length === 0) return true;
+    return sections.every(sec => isSectionCompleted(sec as PhaseSection));
+  }, [visiblePhases, isSectionCompleted]);
+
   // Load current assessment data when starting partial assessment
   useEffect(() => {
-    if (isPartialAssessment && user && partialCategory) {
-      const loadCurrentAssessment = async () => {
-        try {
-          const partialData = sessionStorage.getItem('partialAssessment');
-          if (partialData) {
-            const { clientName } = JSON.parse(partialData);
-            const { getCurrentAssessment } = await import('@/services/assessmentHistory');
-            const current = await getCurrentAssessment(user.uid, clientName);
-            if (current?.formData) {
-              // Merge current data into form context
-              const updates: Partial<FormData> = {};
-              Object.keys(current.formData).forEach((key) => {
-                const value = (current.formData as any)[key];
-                if (value !== undefined && value !== null) {
-                  updates[key as keyof FormData] = value;
-                }
-              });
-              updateFormData(updates);
-            }
+    const loadCurrentAssessment = async () => {
+      if (!user || !activeClientName) return;
+
+      try {
+        const { getCurrentAssessment } = await import('@/services/assessmentHistory');
+        const current = await getCurrentAssessment(user.uid, activeClientName);
+        if (current?.formData) {
+          console.log(`[MultiStepForm] Pre-filling from current assessment for ${activeClientName}`);
+          
+          // Determine which fields belong to the current partial assessment category
+          let fieldsToSkip: string[] = [];
+          if (isPartialAssessment && partialCategory) {
+            const categoryConfig: Record<string, string[]> = {
+              'inbody': ['inbody', 'segmental', 'bmr', 'visceral', 'waistHip'],
+              'posture': ['posture', 'ohs', 'hinge', 'lunge', 'mobility'],
+              'fitness': ['cardio', 'ymca', 'treadmill'],
+              'strength': ['pushup', 'squat', 'plank', 'grip', 'chairStand', 'dynamometer'],
+              'lifestyle': ['activityLevel', 'stepsPerDay', 'sedentaryHours', 'workHours', 'sleep', 'stress', 'nutrition', 'hydration', 'caffeine'],
+            };
+            fieldsToSkip = categoryConfig[partialCategory] || [];
           }
-        } catch (e) {
-          console.error('Failed to load current assessment:', e);
+
+          // Merge current data into form context, skipping fields in the partial category
+          const updates: Partial<FormData> = {};
+          Object.keys(current.formData).forEach((key) => {
+            const value = (current.formData as any)[key];
+            if (value !== undefined && value !== null) {
+              // Only pre-fill if it's NOT a field we are trying to update in partial mode
+              const shouldSkip = fieldsToSkip.some(prefix => key.toLowerCase().includes(prefix.toLowerCase()));
+              if (!isPartialAssessment || !shouldSkip) {
+                updates[key as keyof FormData] = value;
+              }
+            }
+          });
+          updateFormData(updates);
         }
-      };
-      loadCurrentAssessment();
-    }
-  }, [isPartialAssessment, user, partialCategory, updateFormData]);
+      } catch (e) {
+        console.error('Failed to load current assessment:', e);
+      }
+    };
+    loadCurrentAssessment();
+  }, [user, activeClientName, isPartialAssessment, partialCategory]); // Run when user is ready or client name changes (e.g. from storage)
   
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [recentlyCompletedSections, setRecentlyCompletedSections] = useState<Set<string>>(new Set());
@@ -814,24 +917,7 @@ const PhaseFormContent = ({
   const [postureStep, setPostureStep] = useState<number>(0);
 
   // Filter phases for partial assessments
-  const visiblePhases = useMemo(() => {
-    if (!isPartialAssessment || !partialCategory) {
-      return phaseDefinitions;
-    }
-    
-    // Map category to allowed phase IDs
-    const categoryToPhases: Record<string, PhaseId[]> = {
-      'inbody': ['P0', 'P2', 'P7'],    // Basic info + Body Composition + Results
-      'posture': ['P0', 'P2', 'P7'],   // Basic info + Posture + Results
-      'fitness': ['P0', 'P4', 'P7'],   // Basic info + Fitness + Results
-      'strength': ['P0', 'P5', 'P7'],  // Basic info + Strength + Results
-      'lifestyle': ['P0', 'P1', 'P7'], // Basic info + Lifestyle + Results
-    };
-    
-    const allowedPhases: PhaseId[] = categoryToPhases[partialCategory] || ['P0'];
-    return phaseDefinitions.filter(phase => (allowedPhases as string[]).includes(phase.id));
-  }, [isPartialAssessment, partialCategory]);
-  
+
   const totalPhases = visiblePhases.length;
   const activePhase = useMemo(() => {
     return visiblePhases[activePhaseIdx] || {
@@ -842,7 +928,6 @@ const PhaseFormContent = ({
     };
   }, [activePhaseIdx, visiblePhases]);
 
-  // Determine if we are in the results phase
   const isResultsPhase = activePhase?.id === 'P7';
 
   // Precompute reports data when needed
@@ -854,6 +939,13 @@ const PhaseFormContent = ({
       return { overall: 0, categories: [], synthesis: [] };
     }
   }, [formData]);
+
+  // Determine progress percentage
+  const progressValue = useMemo(() => {
+    if (isPartialAssessment) return 0; // Hide progress for partial updates
+    const completed = visiblePhases.filter((_, i) => isPhaseCompleted(i)).length;
+    return (completed / (totalPhases - 1)) * 100;
+  }, [visiblePhases, totalPhases, isPhaseCompleted, isPartialAssessment]);
 
   const roadmap = useMemo(() => {
     try {
@@ -1090,10 +1182,10 @@ const PhaseFormContent = ({
         // Map analysis to form
         const suggestions: Partial<FormData> = {};
         if (currentView === 'side-right' || currentView === 'side-left') {
-          suggestions.postureHeadOverall = analysis.forward_head.status.toLowerCase().includes('neutral') ? 'neutral' : 'forward-head';
-          suggestions.postureBackOverall = analysis.kyphosis.status.toLowerCase().includes('severe') ? 'increased-kyphosis' : 'neutral';
+          suggestions.postureHeadOverall = [analysis.forward_head.status.toLowerCase().includes('neutral') ? 'neutral' : 'forward-head'];
+          suggestions.postureBackOverall = [analysis.kyphosis.status.toLowerCase().includes('severe') ? 'increased-kyphosis' : 'neutral'];
         } else if (currentView === 'front') {
-          suggestions.postureShouldersOverall = analysis.shoulder_alignment.status.toLowerCase().includes('neutral') ? 'neutral' : 'rounded';
+          suggestions.postureShouldersOverall = [analysis.shoulder_alignment.status.toLowerCase().includes('neutral') ? 'neutral' : 'rounded'];
         }
 
         updateFormData(suggestions);
@@ -1125,7 +1217,8 @@ const PhaseFormContent = ({
       if (activePhase.id === 'P2') {
         setTimeout(() => {
           if (isPartialAssessment) {
-            handleViewResults();
+            // No auto-results for partial assessments anymore
+            toast({ title: "Data applied", description: "You can now review the fields and click Update Report when ready." });
           } else {
             // Move to next visible phase (likely P3)
             const nextVisibleIdx = visiblePhases.findIndex((p, i) => i > activePhaseIdx);
@@ -1184,6 +1277,9 @@ const PhaseFormContent = ({
           if (Object.keys(updateData).length > 0) {
             await createOrUpdateClientProfile(user.uid, clientName, updateData);
           }
+          
+          // Set highlight category for the report
+          sessionStorage.setItem('highlightCategory', category);
           
           // Clear partial assessment flag
           sessionStorage.removeItem('partialAssessment');
@@ -1287,61 +1383,6 @@ const PhaseFormContent = ({
     });
   }, [formData]);
 
-  const isFieldVisible = useCallback((field: PhaseField, customData?: FormData) => {
-    const data = customData || formData;
-    if (!('conditional' in field) || !field.conditional || !field.conditional.showWhen) return true;
-    const { showWhen } = field.conditional;
-    const dependentValue = data[showWhen.field as keyof FormData];
-    let ok = true;
-    if (showWhen.exists !== undefined) {
-      ok = ok && (dependentValue !== undefined && dependentValue !== null && String(dependentValue).trim() !== '');
-    }
-    if (showWhen.value !== undefined) ok = ok && dependentValue === showWhen.value;
-    if (showWhen.notValue !== undefined) ok = ok && dependentValue !== showWhen.notValue;
-    if (showWhen.includes !== undefined) {
-      if (Array.isArray(dependentValue)) {
-        ok = ok && (dependentValue as string[]).includes(showWhen.includes);
-      } else if (typeof dependentValue === 'string') {
-        ok = ok && dependentValue === showWhen.includes;
-      } else {
-        ok = false;
-      }
-    }
-    return ok;
-  }, [formData]);
-
-  const isSectionCompleted = useCallback((section: PhaseSection) => {
-    const visibleFields = (section.fields as PhaseField[]).filter(f => isFieldVisible(f));
-    if (visibleFields.length === 0) return true;
-
-    const requiredFields = visibleFields.filter(f => f.required);
-    
-    // If there are required fields, they MUST all be filled
-    if (requiredFields.length > 0) {
-      return requiredFields.every(field => {
-      const value = formData[field.id];
-        if (Array.isArray(value)) return value.length > 0;
-        return value !== undefined && value !== null && value !== '';
-      });
-    }
-
-    // If there are NO required fields, at least ONE field must be filled to count as "completed"
-    // This prevents empty sections from showing as checked immediately
-    return visibleFields.some(field => {
-      const value = formData[field.id];
-      if (Array.isArray(value)) return value.length > 0;
-      return value !== undefined && value !== null && value !== '';
-    });
-  }, [formData, isFieldVisible]);
-
-  const isPhaseCompleted = useCallback((phaseIdx: number) => {
-    const phase = phaseDefinitions[phaseIdx];
-    if (!phase) return false;
-    const sections = phase.sections ?? [];
-    if (sections.length === 0) return true;
-    return (sections as PhaseSection[]).every(section => isSectionCompleted(section));
-  }, [isSectionCompleted]);
-
   const maxUnlockedPhaseIdx = useMemo(() => {
     return totalPhases - 1;
   }, [totalPhases]);
@@ -1374,7 +1415,7 @@ const PhaseFormContent = ({
   }, [formData]);
 
   const canAutoAdvance = useMemo(() => 
-    (!isReviewMode && !allAssessmentsCompleted) || isPartialAssessment, 
+    (!isReviewMode && !allAssessmentsCompleted) && !isPartialAssessment, 
     [isReviewMode, allAssessmentsCompleted, isPartialAssessment]
   );
 
@@ -1458,8 +1499,6 @@ const PhaseFormContent = ({
   }, [formData, expandedSections, activePhaseIdx, totalPhases, getAllSections, isIntakeCompleted, recentlyCompletedSections, isSectionCompleted, canAutoAdvance, visiblePhases]);
 
   useEffect(() => { setActiveFieldIdx(0); }, [activePhaseIdx, expandedSections]);
-
-  const progressValue = useMemo(() => ((activePhaseIdx + 1) / totalPhases) * 100, [activePhaseIdx, totalPhases]);
 
   const handleViewResults = () => {
     // If we're already at the results phase, don't do anything
@@ -1707,95 +1746,98 @@ const PhaseFormContent = ({
 
     return (
     <div className="flex flex-col lg:flex-row min-h-[calc(100vh-64px)] relative">
-      <aside className={`w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-slate-200 bg-white p-6 shrink-0 lg:sticky top-[64px] z-30 overflow-y-auto max-h-[calc(100vh-64px)] ${sidebarOpen ? 'block fixed inset-0 z-50 pt-20' : 'hidden lg:block'}`}>
-        <div className="space-y-8">
-          <div className="flex items-center justify-between lg:hidden mb-8">
-            <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Navigation</h3>
-            <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)} className="h-10 w-10 rounded-full bg-slate-100">
-              <X className="h-5 w-5 text-slate-600" />
-            </Button>
-          </div>
-          <div className="space-y-2">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400">Assessment Phases</h3>
-            <Progress value={progressValue} className="h-1" />
-            <p className="text-[10px] font-medium text-slate-500 text-right">{Math.round(progressValue)}% Complete</p>
-          </div>
-          <nav className="space-y-4">
-            {visiblePhases.map((phase, idx) => {
-              const isActive = idx === activePhaseIdx;
-              const isResultsPhase = phase.id === 'P7';
-              
-              // Check if at least one non-Results phase is completed
-              const hasAnyCompletedPhase = visiblePhases.some((p, i) => 
-                i !== idx && p.id !== 'P7' && isPhaseCompleted(i)
-              );
-              
-              // Results phase is only completed/active if at least one other phase is completed
-              const isCompleted = isResultsPhase 
-                ? false // Never show Results as completed (no checkmark)
-                : (isPhaseCompleted(idx) && idx <= maxUnlockedPhaseIdx);
-              
-              // Results phase is disabled until at least one phase is completed
-              const isDisabled = isResultsPhase 
-                ? !hasAnyCompletedPhase 
-                : (idx > maxUnlockedPhaseIdx);
-              
-              const sections = phase.sections || [];
-
-              return (
-                <div key={phase.id} className="space-y-1">
-                <button
-                    onClick={() => { 
-                      if (!isDisabled) { 
-                        setIsReviewMode(true); 
-                        setActivePhaseIdx(idx); 
-                        if (sections.length > 0) {
-                          setExpandedSections({ [sections[0].id]: true });
-                          setActiveFieldIdx(0);
-                        }
-                        if (sections.length === 0 || isMobile) setSidebarOpen(false);
-                      } 
-                    }}
-                  disabled={isDisabled}
-                    className={`group flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all ${isActive ? 'bg-slate-900 text-white shadow-md' : isCompleted ? 'text-indigo-600 hover:bg-indigo-50' : isDisabled ? 'text-slate-300 cursor-not-allowed' : 'text-slate-500 hover:bg-slate-50'}`}
-                  >
-                    <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold border ${isActive ? 'bg-white/20 border-white/20' : isCompleted ? 'bg-indigo-600 border-indigo-600 text-white' : isDisabled ? 'bg-slate-100 border-slate-200 text-slate-300' : 'bg-white border-slate-200 text-slate-400'}`}>
-                    {isCompleted ? <Check className="h-3 w-3" /> : idx + 1}
-                  </span>
-                    <span className="truncate flex-1 text-left uppercase tracking-wider">{phase.title}</span>
-                  </button>
-
-                  {isActive && sections.length > 0 && (
-                    <div className="ml-9 space-y-1 pt-1 border-l border-slate-100 pl-4 animate-in slide-in-from-top-2 duration-300">
-                      {sections.map(sec => {
-                        const isExpanded = expandedSections[sec.id];
-                        const isSecComp = isSectionCompleted(sec as PhaseSection);
-                        return (
-                          <button
-                            key={sec.id}
-                            onClick={() => toggleSection(sec.id)}
-                            className={`flex w-full items-center justify-between py-2 text-xs font-medium transition-colors ${isExpanded ? 'text-indigo-600' : isSecComp ? 'text-slate-700' : 'text-slate-400'} hover:text-indigo-500`}
-                          >
-                            <span className="truncate">{sec.title}</span>
-                            {isSecComp && <Check className="h-3 w-3 text-emerald-500" />}
-                </button>
-              );
-            })}
-              </div>
-                  )}
+      {!isPartialAssessment && (
+        <aside className={`w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-slate-200 bg-white p-6 shrink-0 lg:sticky top-[64px] z-30 overflow-y-auto max-h-[calc(100vh-64px)] ${sidebarOpen ? 'block fixed inset-0 z-50 pt-20' : 'hidden lg:block'}`}>
+          <div className="space-y-8">
+            <div className="flex items-center justify-between lg:hidden mb-8">
+              <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Navigation</h3>
+              <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)} className="h-10 w-10 rounded-full bg-slate-100">
+                <X className="h-5 w-5 text-slate-600" />
+              </Button>
             </div>
-              );
-            })}
-          </nav>
-        </div>
-      </aside>
+            <div className="space-y-2">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400">Assessment Phases</h3>
+              <Progress value={progressValue} className="h-1" />
+              <p className="text-[10px] font-medium text-slate-500 text-right">{Math.round(progressValue)}% Complete</p>
+            </div>
+            <nav className="space-y-4">
+              {visiblePhases.map((phase, idx) => {
+                const isActive = idx === activePhaseIdx;
+                const isResultsPhase = phase.id === 'P7';
+                
+                // Check if at least one non-Results phase is completed
+                const hasAnyCompletedPhase = visiblePhases.some((p, i) => 
+                  i !== idx && p.id !== 'P7' && isPhaseCompleted(i)
+                );
+                
+                // Results phase is only completed/active if at least one other phase is completed
+                const isCompleted = isResultsPhase 
+                  ? false // Never show Results as completed (no checkmark)
+                  : (isPhaseCompleted(idx) && idx <= maxUnlockedPhaseIdx);
+                
+                // Results phase is disabled until at least one phase is completed
+                const isDisabled = isResultsPhase 
+                  ? !hasAnyCompletedPhase 
+                  : (idx > maxUnlockedPhaseIdx);
+                
+                const sections = phase.sections || [];
 
-      <main className="flex-1 bg-slate-50/50 p-6 lg:p-10 overflow-y-auto">
+                return (
+                  <div key={phase.id} className="space-y-1">
+                  <button
+                      onClick={() => { 
+                        if (!isDisabled) { 
+                          setIsReviewMode(true); 
+                          setActivePhaseIdx(idx); 
+                          if (sections.length > 0) {
+                            setExpandedSections({ [sections[0].id]: true });
+                            setActiveFieldIdx(0);
+                          }
+                          if (sections.length === 0 || isMobile) setSidebarOpen(false);
+                        } 
+                      }}
+                    disabled={isDisabled}
+                      className={`group flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all ${isActive ? 'bg-slate-900 text-white shadow-md' : isCompleted ? 'text-indigo-600 hover:bg-indigo-50' : isDisabled ? 'text-slate-300 cursor-not-allowed' : 'text-slate-500 hover:bg-slate-50'}`}
+                    >
+                      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold border ${isActive ? 'bg-white/20 border-white/20' : isCompleted ? 'bg-indigo-600 border-indigo-600 text-white' : isDisabled ? 'bg-slate-100 border-slate-200 text-slate-300' : 'bg-white border-slate-200 text-slate-400'}`}>
+                      {isCompleted ? <Check className="h-3 w-3" /> : idx + 1}
+                    </span>
+                      <span className="truncate flex-1 text-left uppercase tracking-wider">{phase.title}</span>
+                    </button>
+
+                    {isActive && sections.length > 0 && (
+                      <div className="ml-9 space-y-1 pt-1 border-l border-slate-100 pl-4 animate-in slide-in-from-top-2 duration-300">
+                        {sections.map(sec => {
+                          const isExpanded = expandedSections[sec.id];
+                          const isSecComp = isSectionCompleted(sec as PhaseSection);
+                          return (
+                            <button
+                              key={sec.id}
+                              onClick={() => toggleSection(sec.id)}
+                              className={`flex w-full items-center justify-between py-2 text-xs font-medium transition-colors ${isExpanded ? 'text-indigo-600' : isSecComp ? 'text-slate-700' : 'text-slate-400'} hover:text-indigo-500`}
+                            >
+                              <span className="truncate">{sec.title}</span>
+                              {isSecComp && <Check className="h-3 w-3 text-emerald-500" />}
+                  </button>
+                );
+              })}
+                </div>
+                    )}
+              </div>
+                );
+              })}
+            </nav>
+          </div>
+        </aside>
+      )}
+
+      <main className={`flex-1 bg-slate-50/50 p-6 lg:p-10 overflow-y-auto ${isPartialAssessment ? 'w-full' : ''}`}>
         <div className="mx-auto max-w-3xl space-y-8">
           <section className="space-y-2">
             <div className="flex items-center gap-2 text-indigo-600 mb-1">
               <span className="text-[10px] font-bold uppercase tracking-[0.2em]">{activePhase.id}</span>
               <div className="h-px w-8 bg-indigo-200"></div>
+              {isPartialAssessment && <span className="text-[10px] font-black uppercase tracking-widest bg-indigo-100 px-2 py-0.5 rounded text-indigo-700">Quick Update: {partialCategory}</span>}
             </div>
             <h2 className="text-3xl font-bold tracking-tight text-slate-900">{activePhase.title}</h2>
             <p className="text-slate-500 text-lg leading-relaxed max-w-2xl">{activePhase.summary}</p>
@@ -1804,11 +1846,11 @@ const PhaseFormContent = ({
           <section className="space-y-6">
             {renderAllSections()}
             
-            {/* Show "Generate Full Report" only when everything is truly finished */}
+            {/* Show "Update Live Report" or "Generate Full Report" only when everything is truly finished */}
             {activePhaseIdx >= 1 && activePhaseIdx < totalPhases - 1 && allAssessmentsCompleted && (
               <div className="flex items-center justify-center border-t border-slate-200 pt-8">
                 <Button onClick={handleViewResults} className="h-14 px-10 rounded-2xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 shadow-xl transition-all hover:scale-[1.05]">
-                  📊 Generate Full Report
+                  {isPartialAssessment ? '📊 Update Live Report' : '📊 Generate Full Report'}
                 </Button>
               </div>
             )}
@@ -1817,7 +1859,7 @@ const PhaseFormContent = ({
             {activePhaseIdx >= 1 && activePhaseIdx < totalPhases - 1 && !allAssessmentsCompleted && anyAssessmentCompleted && (
               <div className="flex items-center justify-center border-t border-slate-200 pt-8">
                 <Button variant="outline" onClick={handleViewResults} className="h-14 px-10 rounded-2xl border-indigo-200 text-indigo-600 font-bold hover:bg-indigo-50 transition-all">
-                  🔍 Preview Partial Results
+                  {isPartialAssessment ? '📊 Update Live Report' : '🔍 Preview Partial Results'}
                 </Button>
               </div>
             )}
@@ -1852,9 +1894,23 @@ const PhaseFormContent = ({
                 </div>
                 <div ref={reportRef} data-pdf-target className="rounded-3xl border border-slate-200 bg-white p-10 shadow-2xl shadow-slate-200/50" style={{ minWidth: '100%', maxWidth: '100%', overflow: 'visible' }}>
                   {reportView === 'client' ? (
-                    <ClientReport scores={scores} roadmap={roadmap} goals={Array.isArray(formData.clientGoals) ? formData.clientGoals : []} bodyComp={bodyCompInterp ? { timeframeWeeks: bodyCompInterp.timeframeWeeks } : undefined} formData={formData} plan={plan} />
+                    <ClientReport 
+                      scores={scores} 
+                      roadmap={roadmap} 
+                      goals={Array.isArray(formData.clientGoals) ? formData.clientGoals : []} 
+                      bodyComp={bodyCompInterp ? { timeframeWeeks: bodyCompInterp.timeframeWeeks } : undefined} 
+                      formData={formData} 
+                      plan={plan} 
+                      highlightCategory={sessionStorage.getItem('highlightCategory') || undefined}
+                    />
                   ) : (
-                    <CoachReport plan={plan} scores={scores} bodyComp={bodyCompInterp} formData={formData} />
+                    <CoachReport 
+                      plan={plan} 
+                      scores={scores} 
+                      bodyComp={bodyCompInterp} 
+                      formData={formData} 
+                      highlightCategory={sessionStorage.getItem('highlightCategory') || undefined}
+                    />
                   )}
                 </div>
               </div>

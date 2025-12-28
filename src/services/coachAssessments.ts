@@ -50,7 +50,7 @@ export async function saveCoachAssessment(
     coachEmail: coachEmail || null,
     overallScore,
     goals: Array.isArray(formData.clientGoals) ? formData.clientGoals : [],
-    // We don't store full formData here to keep the dashboard list light
+    formData: formData, // Include full data so it can be reopened from dashboard
     isSummary: true 
   });
   
@@ -85,16 +85,72 @@ export async function listCoachAssessments(
 export async function getCoachAssessment(
   coachUid: string,
   assessmentId: string,
+  clientName?: string
 ): Promise<{ formData: FormData; overallScore: number; goals: string[] } | null> {
-  const ref = doc(getDb(), 'coaches', coachUid, 'assessments', assessmentId);
+  const db = getDb();
+  
+  // 0. Handle "latest" keyword for the live merged report
+  if (assessmentId === 'latest' && clientName) {
+    const { getCurrentAssessment } = await import('./assessmentHistory');
+    const current = await getCurrentAssessment(coachUid, clientName);
+    if (current) {
+      return {
+        formData: current.formData,
+        overallScore: current.overallScore,
+        goals: Array.isArray(current.formData.clientGoals) ? current.formData.clientGoals : [],
+      };
+    }
+  }
+
+  // 1. Try the specific assessment document (summary or full)
+  const ref = doc(db, 'coaches', coachUid, 'assessments', assessmentId);
   const snap = await getDoc(ref);
-  if (!snap.exists()) return null;
-  const data = snap.data() as Partial<CoachAssessmentDoc>;
-  return {
-    formData: (data.formData as FormData) ?? ({} as FormData),
-    overallScore: typeof data.overallScore === 'number' ? data.overallScore : 0,
-    goals: Array.isArray(data.goals) ? data.goals : [],
-  };
+  
+  if (snap.exists()) {
+    const data = snap.data();
+    
+    // If it has formData, we're good
+    if (data.formData) {
+      return {
+        formData: data.formData as FormData,
+        overallScore: typeof data.overallScore === 'number' ? data.overallScore : 0,
+        goals: Array.isArray(data.goals) ? data.goals : [],
+      };
+    }
+    
+    // If it's a summary WITHOUT formData, try to find the full data
+    const resolvedName = clientName || data.clientName;
+    if (resolvedName) {
+      const { getCurrentAssessment, getSnapshots } = await import('./assessmentHistory');
+      
+      // Try to find a snapshot that might match this summary's timestamp? 
+      // Or just fall back to current if it's the latest
+      const current = await getCurrentAssessment(coachUid, resolvedName);
+      if (current) {
+        return {
+          formData: current.formData,
+          overallScore: current.overallScore,
+          goals: Array.isArray(current.formData.clientGoals) ? current.formData.clientGoals : [],
+        };
+      }
+    }
+  }
+
+  // 2. Try the client's snapshots collection if assessmentId might be a snapshot ID
+  if (clientName) {
+    const { getSnapshots } = await import('./assessmentHistory');
+    const snapshots = await getSnapshots(coachUid, clientName);
+    const snapshot = snapshots.find(s => s.id === assessmentId);
+    if (snapshot) {
+      return {
+        formData: snapshot.formData,
+        overallScore: snapshot.overallScore,
+        goals: Array.isArray(snapshot.formData.clientGoals) ? snapshot.formData.clientGoals : [],
+      };
+    }
+  }
+
+  return null;
 }
 
 export async function deleteCoachAssessment(
@@ -176,6 +232,7 @@ export async function savePartialAssessment(
     coachEmail: coachEmail || null,
     overallScore,
     goals: Array.isArray(mergedFormData.clientGoals) ? mergedFormData.clientGoals : [],
+    formData: mergedFormData, // Include merged data for this point in time
     category,
     isPartial: true
   });

@@ -369,30 +369,36 @@ const Dashboard = () => {
   const handleNewAssessmentForClient = async (clientName: string, category?: string) => {
     if (!user) return;
     
-    // Clear any existing partial assessment data
-    sessionStorage.removeItem('partialAssessment');
-    
-    // Get the latest assessment to pre-fill data
-    const history = await getClientAssessments(user.uid, clientName);
-    if (history.length > 0) {
-      const latest = await getCoachAssessment(user.uid, history[0].id);
-      if (latest?.formData) {
-        // Store in sessionStorage to pre-fill form
-        sessionStorage.setItem('prefillClientData', JSON.stringify({
-          clientName: latest.formData.fullName,
-          dateOfBirth: latest.formData.dateOfBirth,
-          email: latest.formData.email,
-          phone: latest.formData.phone,
-        }));
-      }
-    }
-    
-    // If category is provided, set up partial assessment
+    // Set up partial assessment immediately if category provided
     if (category) {
       sessionStorage.setItem('partialAssessment', JSON.stringify({
         category,
         clientName,
       }));
+    } else {
+      sessionStorage.removeItem('partialAssessment');
+    }
+    
+    sessionStorage.removeItem('isDemoAssessment');
+    sessionStorage.removeItem('prefillClientData');
+    
+    // Get the latest assessment to pre-fill data
+    try {
+      const history = await getClientAssessments(user.uid, clientName);
+      if (history.length > 0) {
+        const latest = await getCoachAssessment(user.uid, history[0].id);
+        if (latest?.formData) {
+          // Store in sessionStorage to pre-fill form
+          sessionStorage.setItem('prefillClientData', JSON.stringify({
+            clientName: latest.formData.fullName,
+            dateOfBirth: latest.formData.dateOfBirth,
+            email: latest.formData.email,
+            phone: latest.formData.phone,
+          }));
+        }
+      }
+    } catch (e) {
+      console.error('Failed to pre-fill data:', e);
     }
     
     navigate('/assessment');

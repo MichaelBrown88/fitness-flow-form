@@ -17,7 +17,8 @@ import {
   CheckCircle2, 
   AlertCircle, 
   Info, 
-  Maximize2 
+  Maximize2,
+  Target as TargetIcon
 } from 'lucide-react';
 import LifestyleRadarChart from './LifestyleRadarChart';
 import CategoryRadarChart from './CategoryRadarChart';
@@ -447,8 +448,36 @@ const PROGRAM_PHASES = [
   },
 ];
 
-export default function ClientReport({ scores, roadmap, goals, bodyComp, formData, plan }: { scores: ScoreSummary; roadmap: RoadmapPhase[]; goals?: string[]; bodyComp?: BodyCompInterp; formData?: FormData; plan?: any }) {
+export default function ClientReport({ 
+  scores, 
+  roadmap, 
+  goals, 
+  bodyComp, 
+  formData, 
+  plan,
+  highlightCategory 
+}: { 
+  scores: ScoreSummary; 
+  roadmap: RoadmapPhase[]; 
+  goals?: string[]; 
+  bodyComp?: BodyCompInterp; 
+  formData?: FormData; 
+  plan?: any;
+  highlightCategory?: string;
+}) {
   const [sessionsPerWeek, setSessionsPerWeek] = useState<number>(3);
+  // Clear highlight after some time
+  const [tempHighlight, setTempHighlight] = useState<string | undefined>(highlightCategory);
+  React.useEffect(() => {
+    if (tempHighlight) {
+      const timer = setTimeout(() => {
+        setTempHighlight(undefined);
+        sessionStorage.removeItem('highlightCategory');
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [tempHighlight]);
+
   const sessionFactor = useMemo(() => (sessionsPerWeek === 5 ? 0.75 : sessionsPerWeek === 4 ? 0.85 : 1.0), [sessionsPerWeek]);
   const orderedCats = useMemo(
     () => scores?.categories ? CATEGORY_ORDER.map(id => scores.categories.find(c => c.id === (id as 'bodyComp' | 'strength' | 'cardio' | 'movementQuality' | 'lifestyle'))).filter(Boolean) as ScoreSummary['categories'] : [],
@@ -775,59 +804,62 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
     return profile;
   }, [formData]);
 
-  // Calculate "What we'll do first" - relate to goals and main factors
-  const immediateActions = useMemo(() => {
-    const actions: string[] = [];
-    const sleepQ = (formData?.sleepQuality || '').toLowerCase();
-    const sleepC = (formData?.sleepConsistency || '').toLowerCase();
-    const stress = (formData?.stressLevel || '').toLowerCase();
-    const hydration = (formData?.hydrationHabits || '').toLowerCase();
-    const nutrition = (formData?.nutritionHabits || '').toLowerCase();
-    const steps = parseFloat(formData?.stepsPerDay || '0');
+  // Calculate "What we'll do first" and "What we'll do next"
+  const programmingNarrative = useMemo(() => {
+    const first: string[] = [];
+    const next: string[] = [];
     
-    // Connect to goals: Lifestyle foundation first (supports all goals)
-    if (sleepQ === 'poor' || sleepQ === 'fair' || sleepC === 'inconsistent' || sleepC === 'very-inconsistent') {
-      actions.push('Establish consistent sleep (7–9h, same bedtime/wake time) to support recovery and progress toward your goals');
-    }
-    if (nutrition === 'poor' || nutrition === 'fair') {
-      actions.push('Optimize nutrition (protein at each meal, mostly whole foods) to fuel training and support your goals');
-    }
-    if (hydration === 'poor' || hydration === 'fair') {
-      actions.push('Improve hydration (2–3L/day) to boost energy and recovery, making every workout more effective');
-    }
-    if (steps > 0 && steps < 7000) {
-      actions.push('Increase daily movement (build to 6–10k steps) to enhance metabolism and support your goals');
-    }
-    if (stress === 'high' || stress === 'very-high') {
-      actions.push('Implement stress management (5–10 min daily breathwork/walks) to improve recovery and training quality');
-    }
+    const primaryGoal = goals && goals.length > 0 ? goals[0] : 'general-health';
+    const movementScore = scores.categories.find(c => c.id === 'movementQuality')?.score || 0;
+    const bodyCompScore = scores.categories.find(c => c.id === 'bodyComp')?.score || 0;
+    const lifestyleScore = scores.categories.find(c => c.id === 'lifestyle')?.score || 0;
+
+    // --- PHASE 1: WHAT WE'LL DO FIRST (Base & Alignment) ---
     
-    // Connect to goals: Address main factors that block goal achievement
-    const lowestCat = orderedCats.sort((a, b) => a.score - b.score)[0];
-    if (lowestCat) {
-      if (lowestCat.id === 'bodyComp' && (goals?.includes('weight-loss') || goals?.includes('build-muscle'))) {
-        actions.push('Address body composition through structured nutrition and training to unlock your goal progress');
-      } else if (lowestCat.id === 'movementQuality') {
-        actions.push('Improve movement quality first to ensure you can train safely and effectively toward your goals');
-      } else if (lowestCat.id === 'strength' && goals?.includes('build-strength')) {
-        actions.push('Build foundational strength with progressive training to directly support your strength goals');
-      } else if (lowestCat.id === 'cardio' && goals?.includes('improve-fitness')) {
-        actions.push('Establish cardiovascular base to directly improve your fitness and energy levels');
-      }
+    // 1. Movement/Mobility (The Pre-requisite)
+    if (movementScore < 70) {
+      first.push('Establish movement integrity: Dial in technique and correct identified imbalances to ensure you can train under load safely.');
+    } else {
+      first.push('Refine movement efficiency: Fine-tune your already strong patterns to maximize power output and prevent future plateaus.');
     }
-    
-    // Priority health risks (must address for safety)
-    if (priorityFocus.some(p => p.includes('urgent') || p.includes('health risk'))) {
-      actions.push('Address health concerns first to ensure safe and effective progress toward your goals');
+
+    // 2. Lifestyle/Recovery (The Foundation)
+    if (lifestyleScore < 70) {
+      first.push('Optimize the recovery engine: Focus on sleep consistency and hydration to provide the energy needed for your new training volume.');
     }
-    
-    // Default if nothing specific
-    if (actions.length === 0) {
-      actions.push('Establish consistent training routine (3 sessions/week) to build momentum toward your goals');
-      actions.push('Optimize lifestyle habits (sleep, nutrition, hydration) to maximize training results');
+
+    // 3. Goal-Specific Base
+    if (primaryGoal === 'weight-loss' || bodyCompScore < 60) {
+      first.push('Build the metabolic base: Utilize Zone 2 activity and nutritional "anchors" to improve fat oxidation and insulin sensitivity.');
+    } else if (primaryGoal === 'build-muscle' || primaryGoal === 'build-strength') {
+      first.push('Master compound movement: Establish perfect form on "The Big Rocks" (Squat, Press, Pull) to set the stage for heavy loading.');
     }
-    return actions.slice(0, 5);
-  }, [priorityFocus, orderedCats, goals, formData]);
+
+    // --- PHASE 2: WHAT WE'LL DO NEXT (Overload & Optimization) ---
+
+    // 1. Progressive Overload
+    next.push('Implement progressive overload: Systematically increase training intensity and volume as your technique becomes automatic.');
+
+    // 2. Goal-Specific Optimization
+    if (primaryGoal === 'build-muscle') {
+      next.push('Structural hypertrophy focus: Shift toward higher-volume accessory work to target specific muscle groups and maximize growth.');
+    } else if (primaryGoal === 'build-strength') {
+      next.push('Central Nervous System (CNS) adaptation: Transition to lower-rep, higher-intensity work to maximize absolute strength.');
+    } else if (primaryGoal === 'improve-fitness') {
+      next.push('VO2 Max development: Introduce high-intensity interval training (HIIT) to push your cardiovascular ceiling.');
+    }
+
+    // 3. Weak Point Targeting
+    next.push('Target relative weaknesses: Address the secondary areas identified in your assessment to ensure a balanced, resilient profile.');
+
+    return { 
+      first: first.slice(0, 3), 
+      next: next.slice(0, 3) 
+    };
+  }, [scores, goals, formData]);
+
+  const immediateActions = programmingNarrative.first;
+  const secondaryActions = programmingNarrative.next;
 
   // Calculate "Quick wins" - expanded with general wins and client-specific highlights
   const quickWins = useMemo(() => {
@@ -1077,7 +1109,13 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
           <Tabs defaultValue={orderedCats[0].id} className="w-full">
             <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-5 h-auto">
               {orderedCats.map((cat) => (
-                <TabsTrigger key={cat.id} value={cat.id} className="text-xs sm:text-sm capitalize">
+                <TabsTrigger 
+                  key={cat.id} 
+                  value={cat.id} 
+                  className={`text-xs sm:text-sm capitalize transition-all duration-1000 ${
+                    tempHighlight === cat.id ? 'ring-2 ring-indigo-500 ring-offset-2 animate-pulse bg-indigo-50' : ''
+                  }`}
+                >
                   <div className="flex flex-col items-center gap-1">
                     <div className={`h-8 w-8 rounded-full border-2 ${circleColor(cat.score)} flex items-center justify-center`}>
                       <span className="text-xs font-semibold">{cat.score}</span>
@@ -1197,36 +1235,41 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
                       let whatItEntails: string[] = [];
                       
                       if (goal === 'weight-loss') {
-                        explanation = 'Weight loss means reducing body fat while preserving muscle. This improves health, energy, and how you feel day-to-day.';
+                        const level = formData?.goalLevelWeightLoss || 'average';
+                        const rate = level === 'elite' ? '1%' : level === 'above-average' ? '0.7%' : '0.5%';
+                        explanation = `Your ${level.replace('-', ' ')} weight loss goal targets a sustainable reduction of ~${rate} body weight per week. This approach preserves muscle mass while optimizing metabolic health.`;
                         whatItEntails = [
-                          'Creating a sustainable calorie deficit through better food choices and portion control',
-                          'Protecting muscle mass with strength training and adequate protein',
-                          'Improving daily movement to boost metabolism and recovery',
-                          'Establishing habits that make fat loss feel natural, not restrictive'
+                          'A controlled caloric deficit (dialing in nutrition at every meal)',
+                          `Training at least ${sessionsPerWeek} sessions per week (more is recommended for faster progress)`,
+                          'Prioritizing high-protein intake to protect your skeletal muscle',
+                          'Utilizing progressive overload to ensure you lose fat, not strength'
                         ];
                       } else if (goal === 'build-muscle') {
-                        explanation = 'Building muscle (hypertrophy) means increasing your muscle size and strength. This improves metabolism, body composition, and functional strength.';
+                        const level = formData?.goalLevelMuscle || 'average';
+                        explanation = `Building ${level.replace('-', ' ')} muscle mass requires a dedicated hypertrophy block. We will focus on increasing your skeletal muscle "engine" to boost metabolism and functional power.`;
                         whatItEntails = [
-                          'Progressive strength training that challenges your muscles',
-                          'Adequate protein and nutrition to support muscle growth',
-                          'Recovery practices (sleep, stress management) that allow muscles to repair and grow',
-                          'Consistent training that gradually increases volume and intensity'
+                          'A slight caloric surplus with high-quality protein distribution',
+                          `Consistent resistance training (${sessionsPerWeek}+ times per week recommended)`,
+                          'Focusing on mechanical tension and metabolic stress in your lifts',
+                          'Prioritizing 7-9 hours of sleep to allow for tissue repair and growth'
                         ];
                       } else if (goal === 'build-strength') {
-                        explanation = 'Building strength means increasing how much weight you can lift and how efficiently you move. This improves daily function and reduces injury risk.';
+                        const level = formData?.goalLevelStrength || 'average';
+                        explanation = `Your ${level.replace('-', ' ')} strength goal focuses on increasing absolute force production. We will prioritize neural adaptations and movement efficiency to help you lift heavier, safer.`;
                         whatItEntails = [
-                          'Focused strength training with proper technique',
-                          'Progressive overload—gradually increasing weight or difficulty',
-                          'Recovery between sessions to allow strength adaptations',
-                          'Movement quality work to ensure you can handle heavier loads safely'
+                          'Low-rep, high-intensity compound lifting sets',
+                          'Mastering technique on "The Big Rocks" (Squats, Deadlifts, Presses)',
+                          'Adequate rest between sets to maximize Central Nervous System recovery',
+                          'Strategic use of accessory work to eliminate weak links'
                         ];
                       } else if (goal === 'improve-fitness') {
-                        explanation = 'Improving fitness means increasing your cardiovascular capacity (VO₂ max) and endurance. This improves energy, recovery, and overall health.';
+                        const level = formData?.goalLevelFitness || 'average';
+                        explanation = `Improving to an ${level.replace('-', ' ')} fitness level means pushing your cardiovascular ceiling. We will build a robust aerobic base to support higher intensity work and faster recovery.`;
                         whatItEntails = [
-                          'Cardiovascular training that challenges your heart and lungs',
-                          'Building a base of consistent activity before increasing intensity',
-                          'Recovery practices that support cardiovascular adaptations',
-                          'Gradual progression to avoid burnout and injury'
+                          'Mix of Zone 2 steady-state and high-intensity intervals (HIIT)',
+                          'Consistent conditioning work at least 3 times per week',
+                          'Monitoring Heart Rate Recovery (HRR) to track progress',
+                          'Focusing on breathwork and aerobic efficiency'
                         ];
                       } else if (goal === 'general-health') {
                         explanation = 'General health means improving overall wellbeing, energy, and quality of life through balanced training and lifestyle habits.';
@@ -1269,7 +1312,7 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
                             <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 shadow-sm">
                               <h3 className="text-base font-semibold text-indigo-800 mb-3">What we'll do next</h3>
                               <ul className="space-y-2 text-sm text-indigo-900">
-                                {immediateActions.slice(3, 5).map((action, j) => (
+                                {secondaryActions.map((action, j) => (
                                   <li key={j} className="flex items-start gap-2">
                                     <span className="text-indigo-600 mt-1">•</span>
                                     <span>{action}</span>
@@ -1371,7 +1414,7 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
                       <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 shadow-sm">
                         <h3 className="text-base font-semibold text-indigo-800 mb-3">What we'll do next</h3>
                         <ul className="space-y-2 text-sm text-indigo-900">
-                          {immediateActions.slice(3, 5).map((action, j) => (
+                          {secondaryActions.map((action, j) => (
                             <li key={j} className="flex items-start gap-2">
                               <span className="text-indigo-600 mt-1">•</span>
                               <span>{action}</span>
@@ -1693,216 +1736,149 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
         </div>
       </section>
 
-      {/* 8. What We'll Focus On - Prioritized */}
-      {plan?.prioritizedExercises && (
-        <section className="space-y-6">
-          <h2 className="text-2xl font-bold text-slate-900">What We'll Focus On</h2>
-          <p className="text-sm text-slate-600">
-            Based on your assessment, here's what we'll prioritize and why. This helps you understand what's urgent, 
-            what directly supports your goals, and what we'll refine along the way.
-          </p>
+      {/* 8. What We'll Focus On - Enhanced Personalization */}
+      {plan?.clientScript && (
+        <section className="space-y-8">
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold text-slate-900">What We'll Focus On</h2>
+            <p className="text-sm text-slate-600 italic">"Removing the brakes to put the pedal to the metal on your goals."</p>
+          </div>
           
-          <div className="space-y-4">
-            {/* Critical/Urgent Issues */}
-            {plan.prioritizedExercises.criticalIssues.length > 0 && (
-              <div className="rounded-xl border-2 border-red-300 bg-red-50 p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-lg">🚨</span>
-                  <h3 className="text-lg font-black text-slate-900">URGENT: Critical Health & Safety</h3>
+          <div className="grid gap-6">
+            {/* The Plot: Findings */}
+            <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-2xl bg-indigo-50 flex items-center justify-center">
+                  <TargetIcon className="h-5 w-5 text-indigo-600" />
                 </div>
-                <p className="text-sm text-slate-700 mb-3">
-                  These issues need immediate attention to protect your health and prevent injury. We'll address these first.
-                </p>
-                <ul className="space-y-2">
-                  {plan.prioritizedExercises.criticalIssues.map((issue, i) => (
-                    <li key={i} className="text-sm text-slate-800 flex gap-2">
-                      <span className="text-red-600 font-bold">•</span>
-                      <span>{issue}</span>
-                    </li>
-                  ))}
-                </ul>
+                <h3 className="text-xl font-bold text-slate-900">1. Your Starting Point</h3>
               </div>
-            )}
-            
-            {/* Goal-Focused */}
-            {plan.prioritizedExercises.goalExercises.length > 0 && (
-              <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-lg">🎯</span>
-                  <h3 className="text-lg font-black text-slate-900">Your Goals: Direct Path Forward</h3>
+              <ul className="space-y-4">
+                {plan.clientScript.findings.map((finding: string, i: number) => (
+                  <li key={i} className="flex gap-4 items-start">
+                    <span className="h-6 w-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold">{i+1}</span>
+                    <p className="text-slate-700 leading-relaxed font-medium">{finding}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* The Stakes: Why it Matters */}
+            <div className="bg-slate-900 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-8 opacity-10">
+                <TargetIcon className="h-32 w-32" />
+              </div>
+              <div className="relative z-10 space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-2xl bg-white/10 flex items-center justify-center">
+                    <AlertCircle className="h-5 w-5 text-indigo-400" />
+                  </div>
+                  <h3 className="text-xl font-bold">2. Why This Matters</h3>
                 </div>
-                <p className="text-sm text-slate-700 mb-3">
-                  These exercises directly support your primary goals. This is how we'll make progress toward what you want to achieve.
-                </p>
-                <ul className="space-y-2">
-                  {plan.prioritizedExercises.goalExercises.map((goal, i) => (
-                    <li key={i} className="text-sm text-slate-800 flex gap-2">
-                      <span className="text-amber-600 font-bold">•</span>
-                      <span>{goal}</span>
-                    </li>
+                <div className="space-y-4">
+                  {plan.clientScript.whyItMatters.map((stake: string, i: number) => (
+                    <p key={i} className="text-indigo-100/90 leading-relaxed italic border-l-2 border-indigo-500/50 pl-4">{stake}</p>
                   ))}
-                </ul>
-              </div>
-            )}
-            
-            {/* Important Issues */}
-            {plan.prioritizedExercises.importantIssues.length > 0 && (
-              <div className="rounded-xl border-2 border-blue-300 bg-blue-50 p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-lg">⚡</span>
-                  <h3 className="text-lg font-black text-slate-900">Important: Issues That Could Hinder Progress</h3>
                 </div>
-                <p className="text-sm text-slate-700 mb-3">
-                  These aren't urgent, but addressing them will help you progress faster and avoid setbacks.
-                </p>
-                <ul className="space-y-2">
-                  {plan.prioritizedExercises.importantIssues.map((issue, i) => (
-                    <li key={i} className="text-sm text-slate-800 flex gap-2">
-                      <span className="text-blue-600 font-bold">•</span>
-                      <span>{issue}</span>
-                    </li>
-                  ))}
-                </ul>
               </div>
-            )}
-            
-            {/* Minor Issues */}
-            {plan.prioritizedExercises.minorIssues.length > 0 && (
-              <div className="rounded-xl border-2 border-slate-300 bg-slate-50 p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-lg">✨</span>
-                  <h3 className="text-lg font-black text-slate-900">Minor: Optimizations We'll Address</h3>
+            </div>
+
+            {/* The Strategy: Action Plan */}
+            <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-2xl bg-emerald-50 flex items-center justify-center">
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                 </div>
-                <p className="text-sm text-slate-700 mb-3">
-                  Small refinements we'll work on along the way to fine-tune your movement and performance.
-                </p>
-                <ul className="space-y-2">
-                  {plan.prioritizedExercises.minorIssues.map((issue, i) => (
-                    <li key={i} className="text-sm text-slate-800 flex gap-2">
-                      <span className="text-slate-600 font-bold">•</span>
-                      <span>{issue}</span>
-                    </li>
-                  ))}
-                </ul>
+                <h3 className="text-xl font-bold text-slate-900">3. Our Strategy</h3>
               </div>
-            )}
+              <div className="grid gap-4">
+                {plan.clientScript.actionPlan.map((action: string, i: number) => (
+                  <div key={i} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex gap-4 items-center">
+                    <div className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+                    <p className="text-slate-700 font-bold">{action}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
       )}
 
-      {/* 9. Sample Workout - Enhanced with Priority Context */}
-      {(() => {
-        const g0 = (goals && goals[0]) || '';
-        
-        // Get exercises from prioritized system if available
-        const criticalExercises = plan?.prioritizedExercises?.groups.find(g => g.priority === 'critical')?.exercises || [];
-        const goalExercises = plan?.prioritizedExercises?.groups.find(g => g.priority === 'goal-focused')?.exercises || [];
-        const importantExercises = plan?.prioritizedExercises?.groups.find(g => g.priority === 'important')?.exercises || [];
-        
-        // Build workout structure showing how each part addresses priorities
-        const workoutParts: Array<{ section: string; exercises: string[]; addresses: string[] }> = [];
-        
-        // Warm-up: Addresses urgent and important issues
-        const warmupExercises: string[] = [];
-        const warmupAddresses: string[] = [];
-        if (criticalExercises.length > 0) {
-          criticalExercises.slice(0, 2).forEach(ex => {
-            warmupExercises.push(ex.name);
-            warmupAddresses.push(...ex.addresses);
-          });
-        }
-        if (importantExercises.length > 0 && warmupExercises.length < 3) {
-          importantExercises.slice(0, 2).forEach(ex => {
-            if (!warmupExercises.includes(ex.name)) {
-              warmupExercises.push(ex.name);
-              warmupAddresses.push(...ex.addresses);
-            }
-          });
-        }
-        if (warmupExercises.length > 0) {
-          workoutParts.push({
-            section: 'Warm-up & Movement Prep',
-            exercises: warmupExercises,
-            addresses: [...new Set(warmupAddresses)]
-          });
-        }
-        
-        // Main workout: Goal-focused exercises
-        const mainExercises: string[] = [];
-        const mainAddresses: string[] = [];
-        if (goalExercises.length > 0) {
-          goalExercises.slice(0, 4).forEach(ex => {
-            mainExercises.push(ex.name);
-            mainAddresses.push(...ex.addresses);
-          });
-        }
-        if (mainExercises.length > 0) {
-          workoutParts.push({
-            section: 'Main Workout',
-            exercises: mainExercises,
-            addresses: [...new Set(mainAddresses)]
-          });
-        }
-        
-        // Fallback to goal-based structure if no prioritized exercises
-        if (workoutParts.length === 0) {
-        if (g0 === 'weight-loss') {
-            workoutParts.push({
-              section: 'Main Workout',
-              exercises: ['Metabolic Circuit Training', 'Zone 2 Cardio'],
-              addresses: ['weight loss', 'calorie burn', 'fat loss']
-            });
-          } else if (g0 === 'build-muscle' || g0 === 'build-strength') {
-            workoutParts.push({
-              section: 'Main Workout',
-              exercises: ['Compound Lifts', 'Progressive Overload'],
-              addresses: [g0 === 'build-muscle' ? 'muscle growth' : 'strength']
-            });
-        } else if (g0 === 'improve-fitness') {
-            workoutParts.push({
-              section: 'Main Workout',
-              exercises: ['Interval Training', 'Zone 2 Cardio'],
-              addresses: ['fitness', 'cardio capacity']
-            });
-          }
-        }
-        
-        return (
-          <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-slate-900">Sample Workout Structure</h2>
-            <p className="text-sm text-slate-600">
-              Here's how a typical workout will look and how each part serves your urgent needs, goals, and improvements:
-            </p>
-            
-            <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-              {workoutParts.map((part, idx) => (
-                <div key={idx} className="border-b border-slate-200 pb-4 last:border-b-0 last:pb-0">
-                  <h3 className="text-base font-semibold text-slate-900 mb-2">{part.section}</h3>
-                <ul className="list-disc pl-5 text-sm text-slate-700 space-y-1 mb-2">
-                    {part.exercises.map((ex, i) => (
-                      <li key={i}>{ex}</li>
-                  ))}
-                </ul>
-                <p className="text-xs text-slate-600 italic">
-                    Addresses: {part.addresses.join(', ')}
-                </p>
+      {/* 9. Sample Workout - Enhanced with Detail & Context */}
+      {plan?.prioritizedExercises && (
+        <section className="space-y-6">
+          <h2 className="text-2xl font-bold text-slate-900">Your Sample Workout Structure</h2>
+          <p className="text-sm text-slate-600">
+            This is how we'll blend your immediate needs with your long-term goals in a typical session.
+          </p>
+          
+          <div className="grid gap-6">
+            {/* Warm-up / Prep */}
+            <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 font-bold italic">A</div>
+                  <h3 className="text-lg font-bold text-slate-900">Performance Tuning (Warm-up)</h3>
+                </div>
+                <Badge variant="outline" className="border-blue-200 text-blue-600 bg-blue-50 font-bold">5-10 MIN</Badge>
               </div>
-              ))}
-              
-              <div className="rounded-md border border-slate-200 bg-slate-50 p-3 mt-4">
-                <p className="text-xs text-slate-700">
-                  <strong>Note:</strong> Specific reps, sets, and weights will be tailored to your current ability and progress. 
-                  We'll start with technique-focused work and gradually increase intensity as your movement quality and strength improve.
-                </p>
+              <p className="text-sm text-slate-500">We start every session by "unlocking" your restricted patterns to prepare for load.</p>
+              <div className="grid gap-3">
+                {plan.prioritizedExercises.groups.filter((g: any) => g.priority === 'critical' || g.priority === 'important').flatMap((g: any) => g.exercises.slice(0, 3)).map((ex: any, i: number) => (
+                  <div key={i} className="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50/50">
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">{ex.name}</p>
+                      <p className="text-[10px] text-slate-500 uppercase tracking-widest">{ex.addresses.join(' • ')}</p>
+                    </div>
+                    <span className="text-xs font-medium text-slate-400">{ex.setsReps || '2 x 30s'}</span>
+                  </div>
+                ))}
               </div>
             </div>
-          </section>
-        );
-      })()}
+
+            {/* Main Block */}
+            <div className="bg-white rounded-3xl border-2 border-indigo-600 p-8 shadow-md space-y-6 relative overflow-hidden">
+              <div className="absolute top-0 right-0 -mt-2 -mr-2 bg-indigo-600 text-white text-[10px] font-black px-4 py-2 rotate-12 shadow-lg">GOAL BLOCK</div>
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white font-bold italic">B</div>
+                <h3 className="text-lg font-bold text-slate-900">Main Training Block (The Work)</h3>
+              </div>
+              <p className="text-sm text-slate-500">The "heavy lifting" focused entirely on your primary goal of {goalLabel}.</p>
+              <div className="grid gap-3">
+                {plan.prioritizedExercises.goalExercises.slice(0, 3).map((goal: string, i: number) => (
+                  <div key={i} className="flex items-center gap-3 p-4 rounded-2xl bg-indigo-50/50 border border-indigo-100">
+                    <div className="h-8 w-8 rounded-full bg-indigo-600 flex items-center justify-center shrink-0">
+                      <TargetIcon className="h-4 w-4 text-white" />
+                    </div>
+                    <p className="text-sm font-bold text-indigo-900">{goal}</p>
+                  </div>
+                ))}
+                {/* Specific exercises for the main block */}
+                {plan.prioritizedExercises.groups.find((g: any) => g.priority === 'goal-focused')?.exercises.map((ex: any, i: number) => (
+                  <div key={`ex-${i}`} className="flex items-center justify-between p-4 rounded-2xl border border-slate-100 bg-white">
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">{ex.name}</p>
+                      <p className="text-xs text-slate-500 italic mt-0.5">{ex.reason}</p>
+                    </div>
+                    <Badge className="bg-indigo-600 text-white border-none text-[10px] font-black">{ex.setsReps || '3-4 Sets'}</Badge>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          
+          <div className="rounded-2xl bg-slate-50 border border-slate-200 p-6">
+            <p className="text-xs text-slate-600 leading-relaxed">
+              <strong>Note on Integration:</strong> We don't do "physio" separately. If you have an imbalance, we'll choose **Unilateral Variations** (one side at a time) for your main lifts. This builds the muscle you want while solving the issues you have.
+            </p>
+          </div>
+        </section>
+      )}
 
       {/* Removed explicit expected timeframe to keep end date obscure */}
     </div>
   );
 }
+
 
 

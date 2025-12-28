@@ -21,12 +21,26 @@ export default function CoachReport({
   scores,
   bodyComp,
   formData,
+  highlightCategory,
 }: {
   plan: CoachPlan;
   scores: ScoreSummary;
   bodyComp?: BodyCompInterpretation;
   formData?: FormData;
+  highlightCategory?: string;
 }) {
+  // Clear highlight after some time
+  const [tempHighlight, setTempHighlight] = React.useState<string | undefined>(highlightCategory);
+  React.useEffect(() => {
+    if (tempHighlight) {
+      const timer = setTimeout(() => {
+        setTempHighlight(undefined);
+        sessionStorage.removeItem('highlightCategory');
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [tempHighlight]);
+
   if (!scores || !scores.categories || scores.categories.length === 0) {
     return (
       <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
@@ -294,7 +308,7 @@ export default function CoachReport({
             })}
           </div>
 
-          {/* Exercises by Session Type */}
+          {/* Exercises by Session Type - Smarter Grouping */}
           {plan.prioritizedExercises.bySession && plan.prioritizedExercises.bySession.length > 0 && (
             <div className="mt-8">
               <h4 className="text-lg font-bold text-slate-900 mb-4">Exercises Organized by Session Type</h4>
@@ -312,30 +326,37 @@ export default function CoachReport({
                     'strength': 'Strength Session'
                   };
                   
+                  // Sort exercises within session: Urgent -> Goal -> Important -> Minor
+                  const sortedExercises = [...session.exercises].sort((a, b) => {
+                    const order = { 'critical': 0, 'goal-focused': 1, 'important': 2, 'minor': 3 };
+                    return order[a.priority] - order[b.priority];
+                  });
+
                   return (
-                    <div key={idx} className="bg-white rounded-xl border border-slate-200 p-4">
-                      <h5 className="font-bold text-slate-900 mb-3 text-sm uppercase tracking-wider">
+                    <div key={idx} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col h-full">
+                      <h5 className="font-bold text-slate-900 mb-3 text-sm uppercase tracking-wider border-b border-slate-100 pb-2">
                         {sessionLabels[session.sessionType] || session.sessionType}
                       </h5>
-                      <div className="space-y-2">
-                        {session.exercises.map((ex, i) => (
-                          <div key={i} className="text-xs">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="font-semibold text-slate-800">{ex.name}</span>
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                                ex.priority === 'critical' ? 'bg-red-100 text-red-700' :
-                                ex.priority === 'goal-focused' ? 'bg-amber-100 text-amber-700' :
-                                ex.priority === 'important' ? 'bg-blue-100 text-blue-700' :
-                                'bg-slate-100 text-slate-700'
+                      <div className="space-y-3 flex-1">
+                        {sortedExercises.map((ex, i) => (
+                          <div key={i} className="text-xs border-l-2 pl-3 py-0.5 border-slate-100 hover:border-indigo-200 transition-colors">
+                            <div className="flex items-start justify-between mb-1">
+                              <span className="font-bold text-slate-800 leading-tight">{ex.name}</span>
+                              <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase shrink-0 ml-2 ${
+                                ex.priority === 'critical' ? 'bg-red-600 text-white shadow-sm' :
+                                ex.priority === 'goal-focused' ? 'bg-amber-500 text-white' :
+                                ex.priority === 'important' ? 'bg-blue-500 text-white' :
+                                'bg-slate-100 text-slate-600'
                               }`}>
                                 {ex.priority === 'critical' ? 'URGENT' :
                                  ex.priority === 'goal-focused' ? 'GOAL' :
-                                 ex.priority === 'important' ? 'IMPORTANT' : 'MINOR'}
+                                 ex.priority === 'important' ? 'IMP' : 'MINOR'}
                               </span>
                             </div>
                             {ex.setsReps && (
-                              <p className="text-[10px] text-slate-500">{ex.setsReps}</p>
+                              <p className="text-[9px] text-indigo-600 font-bold mb-0.5">{ex.setsReps}</p>
                             )}
+                            <p className="text-[9px] text-slate-500 leading-relaxed italic">{ex.reason}</p>
                           </div>
                         ))}
                       </div>

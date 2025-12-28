@@ -130,49 +130,139 @@ export function generateCoachPlan(form: FormData, scores: ScoreSummary): CoachPl
   const goals = Array.isArray((form as any).clientGoals) ? (form as any).clientGoals as string[] : [];
   const primaryGoalRaw = goals[0] || 'general-health';
   
+  // Derive goal ambition level from primary goal's specific level field
+  let goalAmbition = 'average';
+  if (primaryGoalRaw === 'weight-loss') goalAmbition = form.goalLevelWeightLoss || 'average';
+  else if (primaryGoalRaw === 'build-muscle') goalAmbition = form.goalLevelMuscle || 'average';
+  else if (primaryGoalRaw === 'build-strength') goalAmbition = form.goalLevelStrength || 'average';
+  else if (primaryGoalRaw === 'improve-fitness') goalAmbition = form.goalLevelFitness || 'average';
+
+  const levelText = goalAmbition === 'elite' ? 'elite-level' : goalAmbition === 'above-average' ? 'above-average' : 'foundational';
+  
+  // Data Extraction for Narrative
+  const weight = parseFloat(form.inbodyWeightKg || '0');
+  const gender = (form.gender || '').toLowerCase();
+  const bf = parseFloat(form.inbodyBodyFatPct || '0');
+  const visceral = parseFloat(form.visceralFatLevel || '0');
+  const smm = parseFloat(form.skeletalMuscleMassKg || '0');
+  const ra = parseFloat(form.segmentalArmRightKg || '0');
+  const la = parseFloat(form.segmentalArmLeftKg || '0');
+  const rl = parseFloat(form.segmentalLegRightKg || '0');
+  const ll = parseFloat(form.segmentalLegLeftKg || '0');
+  const trunk = parseFloat(form.segmentalTrunkKg || '0');
+
+  // Posture Findings - consolidated at top to avoid redeclaration
+  const headPos = Array.isArray(form.postureHeadOverall) ? form.postureHeadOverall : [form.postureHeadOverall];
+  const shoulderPos = Array.isArray(form.postureShouldersOverall) ? form.postureShouldersOverall : [form.postureShouldersOverall];
+  const backPos = Array.isArray(form.postureBackOverall) ? form.postureBackOverall : [form.postureBackOverall];
+  const hipPos = Array.isArray(form.postureHipsOverall) ? form.postureHipsOverall : [form.postureHipsOverall];
+  const kneePos = Array.isArray(form.postureKneesOverall) ? form.postureKneesOverall : [form.postureKneesOverall];
+
+  // Asymmetry detection
+  const armDiff = (ra > 0 && la > 0) ? Math.abs(ra - la) / Math.max(ra, la) : 0;
+  const legDiff = (rl > 0 && ll > 0) ? Math.abs(rl - ll) / Math.max(rl, la) : 0;
+
   // Format goal for natural language use
-  const goalInSentence = primaryGoalRaw === 'weight-loss' ? 'weight loss'
-    : primaryGoalRaw === 'build-muscle' ? 'muscle building'
-    : primaryGoalRaw === 'build-strength' ? 'strength building'
-    : primaryGoalRaw === 'improve-fitness' ? 'fitness'
+  const goalInSentence = goals.length > 0 
+    ? goals.map(g => g.replace('-', ' ')).join(' and ')
     : 'health and longevity';
 
-  const primaryGoal = primaryGoalRaw.replace('-', ' ');
+  // --- 1. FINDINGS (The "What") ---
+  
+  // Body Comp Findings
+  if (bf > (gender === 'male' ? 25 : 32)) {
+    clientScript.findings.push(`Your current body fat percentage is above the optimal range for health, which acts as a "metabolic drag" on your energy.`);
+  } else if (bf > 0) {
+    clientScript.findings.push(`Your body composition is in a healthy range, giving us a great "clean slate" to focus on performance.`);
+  }
+
+  if (armDiff > 0.1 || legDiff > 0.1) {
+    const limb = armDiff > 0.1 ? 'arms' : 'legs';
+    clientScript.findings.push(`The InBody scan identified a noticeable muscle imbalance between your ${limb} (${(Math.max(armDiff, legDiff) * 100).toFixed(0)}% difference).`);
+  }
+
+  if (smm > 0 && smm < (gender === 'male' ? 30 : 22)) {
+    clientScript.findings.push(`Your total skeletal muscle mass is currently lower than ideal, which means your "engine" isn't as powerful as it could be yet.`);
+  }
+
+  // Movement Findings
+  if (headPos.includes('forward-head') || shoulderPos.includes('rounded')) {
+    clientScript.findings.push(`We've identified some "Upper Crossed" patterns—meaning tight chest/neck muscles are pulling your alignment out of its power position.`);
+  }
+
+  if (form.ohsKneeAlignment === 'valgus' || form.lungeLeftKneeAlignment === 'valgus' || form.lungeRightKneeAlignment === 'valgus') {
+    clientScript.findings.push(`Your knees show a tendency to "cave in" during movement, which is a common "energy leak" that can lead to joint strain over time.`);
+  }
+
+  // --- 2. WHY IT MATTERS (The "So What") ---
+  
+  if (armDiff > 0.1 || legDiff > 0.1) {
+    clientScript.whyItMatters.push(`Limb imbalances mean one side is doing more work than the other. This eventually causes "overuse" issues on the strong side and "underuse" issues on the weak side.`);
+  }
+
+  if (goals.includes('build-muscle') || goals.includes('build-strength')) {
+    clientScript.whyItMatters.push(`Fixing your alignment isn't just about posture—it's about "lever efficiency." Better alignment means you can lift more weight with less risk.`);
+  }
+
+  if (visceral >= 12) {
+    clientScript.whyItMatters.push(`Your internal (visceral) fat level is high enough that it's likely impacting your recovery and systemic inflammation levels.`);
+  }
+
+  // --- 3. ACTION PLAN (The "How") ---
+  
+  if (armDiff > 0.1 || legDiff > 0.1) {
+    clientScript.actionPlan.push(`Swap some barbell work for dumbbells: This forces your weaker side to carry its own weight and catch up to the strong side.`);
+  }
+
+  if (goals.includes('weight-loss')) {
+    clientScript.actionPlan.push(`Prioritize "Metabolic Resistance": We'll use compound movements with shorter rest periods to keep your heart rate elevated while building muscle.`);
+  }
+
+  if (headPos.includes('forward-head') || shoulderPos.includes('rounded')) {
+    clientScript.actionPlan.push(`"Open the chest": Every session will start with specific stretches to release the tight muscles pulling you forward.`);
+  }
+
+  clientScript.actionPlan.push(`Progressive Overload: We'll systematically increase your training volume as your movement quality earns the right to more weight.`);
+
+  // --- 4. 3-MONTH OUTLOOK ---
+  clientScript.threeMonthOutlook.push(`Weeks 1-4: You'll feel "tighter" and more controlled in your movement, and your energy levels will stabilize.`);
+  clientScript.threeMonthOutlook.push(`Weeks 5-12: This is where we see the "compounding effect"—visible changes in body shape and a significant jump in your strength numbers.`);
+
+  // --- 5. CLIENT COMMITMENT ---
+  clientScript.clientCommitment.push(`Training Consistency: Hit your target session frequency week-in, week-out.`);
+  clientScript.clientCommitment.push(`Habit Anchors: Focus on 7-9 hours of sleep to ensure the work we do in the gym actually sticks.`);
+  clientScript.clientCommitment.push(`Open Feedback: Tell me when something feels "off" or "too easy"—it's how we fine-tune your path.`);
 
   const programmingStrategies: CoachPlan['programmingStrategies'] = [];
 
-  // Goal-based strategies
+  // Goal-based strategies - enhanced with narrative and goal levels
   if (primaryGoalRaw === 'weight-loss') {
     programmingStrategies.push({
-      title: 'Metabolic Density',
-      strategy: 'Use supersets and short rest periods to keep heart rate elevated and increase caloric burn during the session.',
+      title: 'Metabolic Resilience & Fat Loss',
+      strategy: `To achieve your ${levelText} weight loss goal, we will utilize metabolic density training. This means keeping your heart rate elevated while focusing on fat-burning "anchors" like Zone 2 steady-state and high-intensity circuits.`,
       exercises: ['Goblet Squats', 'Kettlebell Swings', 'Push-ups', 'TRX Rows']
     });
   } else if (primaryGoalRaw === 'build-muscle' || primaryGoalRaw === 'build-strength') {
     programmingStrategies.push({
-      title: 'Structural Hypertrophy',
-      strategy: 'Prioritize compound lifts with moderate-to-high volume (3-4 sets of 8-12 reps) to drive muscular adaptations.',
+      title: 'Structural Hypertrophy & Power',
+      strategy: `Your ${levelText} ambition for ${primaryGoalRaw.replace('-', ' ')} requires a focus on structural hypertrophy. We will prioritize compound lifts with progressive overload, ensuring every session moves you closer to your target lean mass distribution.`,
       exercises: ['Back Squats', 'Bench Press', 'Deadlifts', 'Overhead Press']
     });
   } else if (primaryGoalRaw === 'improve-fitness') {
     programmingStrategies.push({
-      title: 'Aerobic Power',
-      strategy: 'Focus on improving VO2 max and recovery through a combination of Zone 2 steady-state and high-intensity intervals.',
+      title: 'Aerobic Power & Cardiovascular Capacity',
+      strategy: `Reaching your ${levelText} fitness threshold means building a robust aerobic engine. We'll combine Zone 2 base building with targeted VO2 max intervals to ensure you recover faster and can handle higher training densities.`,
       exercises: ['Interval Sprints', 'Tempo Runs', 'Rowing Intervals', 'Assault Bike']
     });
   } else if (primaryGoalRaw === 'general-health') {
     programmingStrategies.push({
-      title: 'Functional Longevity',
-      strategy: 'Focus on full-body strength, balanced movement, and cardiovascular health to improve daily quality of life.',
+      title: 'Functional Longevity & Vitality',
+      strategy: `Our strategy for your ${levelText} health goal is focused on full-body vitality. We'll blend strength, cardiovascular capacity, and movement quality to ensure you feel as good as you look, supporting a high quality of life.`,
       exercises: ['Carry Variations', 'Bodyweight Squats', 'Bird-Dogs', 'Walking']
     });
   }
 
   // 1. Gather Findings and Internal Notes
-  const gender = (form.gender || '').toLowerCase();
-  const bf = parseFloat(form.inbodyBodyFatPct || '0');
-  const visceral = parseFloat(form.visceralFatLevel || '0');
-  const smm = parseFloat(form.skeletalMuscleMassKg || '0');
   const bodyCompScore = scores.categories.find(c => c.id === 'bodyComp')?.score || 0;
   const cardioScore = scores.categories.find(c => c.id === 'cardio')?.score || 0;
   const strengthScore = scores.categories.find(c => c.id === 'strength')?.score || 0;
@@ -192,92 +282,41 @@ export function generateCoachPlan(form: FormData, scores: ScoreSummary): CoachPl
   const hasStrengthData = strengthScore > 0;
   const hasCardioData = cardioScore > 0;
 
-  // Body Composition framing - only if we have body comp data
-  if ((bf > 0 || visceral > 0 || w > 0) && (bf > (gender === 'male' ? 22 : 30) || visceral >= 10)) {
-    clientScript.findings.push(`Your body composition markers (BF: ${bf}%, Visceral Fat: ${visceral}) indicate some metabolic stress.`);
-    clientScript.whyItMatters.push(`Lowering these markers will directly support your ${goalInSentence} results by improving your energy and recovery speed.`);
-    clientScript.actionPlan.push(`We'll use specific cardio 'anchors' to improve your metabolic health, which clears the path for your ${goalInSentence} progress.`);
-    internalNotes.needsAttention.push(`High metabolic risk (BF ${bf}%, VFL ${visceral}) - requires Zone 2 foundation.`);
+  // --- STORYTELLING ENGINE: CLIENT SCRIPT ---
+  
+  // 1. Findings (The Plot)
+  if (hasBodyCompData && (bf > (gender === 'male' ? 22 : 30) || visceral >= 10)) {
+    clientScript.findings.push(`Your body composition analysis reveals that while you have a solid foundation, your current metabolic markers are creating a "resistance" to your ${goalInSentence} progress.`);
+  }
+  
+  if (smm > 0 && smm < (gender === 'male' ? 33 : 24)) {
+    clientScript.findings.push(`We've identified that your skeletal muscle mass is currently a limiting factor for your ${goalInSentence} goals—we need to build the "engine" to support your ambitions.`);
   }
 
-  // SMM Findings
-  if (smm > 0) {
-    const targetSmm = gender === 'male' ? 33 : 24;
-    if (smm < targetSmm) {
-      clientScript.findings.push(`Your skeletal muscle mass (${smm}kg) is currently below the recommended baseline for your frame.`);
-      clientScript.whyItMatters.push(`Building this muscle foundation is essential to provide the 'engine' needed for ${goalInSentence} and long-term metabolic health.`);
-      internalNotes.needsAttention.push(`Low SMM (${smm}kg) - hypertrophy focus required.`);
-    }
+  if (hasMovementData && movementScore < 70) {
+    clientScript.findings.push(`Our movement screen found some specific restrictions that act like "speed bumps" on your journey, potentially leading to plateaus or discomfort if not addressed.`);
+  } else if (hasMovementData && movementScore >= 70) {
+    clientScript.findings.push(`You have strong movement integrity, which gives us a massive "green light" to pursue your ${goalInSentence} goals with higher intensity sooner.`);
   }
 
-  // Posture/Movement findings
-  if (form.postureAiResults) {
-    const ai = form.postureAiResults;
-    const views = ['front', 'back', 'side-left', 'side-right'] as const;
-    let foundMovementIssue = false;
+  // 2. Why It Matters (The Stakes)
+  clientScript.whyItMatters.push(`By addressing these foundational pillars simultaneously with your ${goalInSentence} work, we aren't just getting you results—we're making sure they are permanent and that you stay injury-free.`);
+  clientScript.whyItMatters.push(`Think of it this way: fixing your movement and metabolic health is like tuning the engine and aligning the tires so you can finally put the pedal down on your ${goalInSentence} training.`);
 
-    for (const view of views) {
-      const analysis = ai[view];
-      if (!analysis) continue;
+  // 3. Action Plan (The Strategy)
+  clientScript.actionPlan.push(`Our immediate priority is to "clear the path" by integrating 5-10 minutes of targeted movement prep into every session. This isn't "physio"—it's performance tuning.`);
+  clientScript.actionPlan.push(`Your main training blocks will be 100% focused on your goal of ${primaryGoalRaw.replace('-', ' ')}, but we'll choose specific exercise variations (like unilateral work) that solve your issues while you build muscle and strength.`);
 
-      if (analysis.forward_head && analysis.forward_head.status !== 'Neutral') {
-        const deg = Math.round(analysis.forward_head.deviation_degrees || 0);
-        clientScript.findings.push(`Our AI scan detected a ${deg}° forward head deviation in your ${view} view.`);
-        foundMovementIssue = true;
-      }
-      if (analysis.head_alignment && analysis.head_alignment.status !== 'Neutral') {
-        const tilt = analysis.head_alignment.tilt_degrees.toFixed(1);
-        clientScript.findings.push(`We found a ${tilt}° head tilt to the ${analysis.head_alignment.status.toLowerCase()} in your ${view} view.`);
-        foundMovementIssue = true;
-      }
-      if (analysis.spinal_curvature && analysis.spinal_curvature.status !== 'Normal') {
-        const curve = analysis.spinal_curvature.curve_degrees.toFixed(1);
-        clientScript.findings.push(`Your back scan shows a ${curve}° lateral spinal curvature.`);
-        foundMovementIssue = true;
-      }
-    }
-
-    if (foundMovementIssue) {
-      clientScript.whyItMatters.push(`Addressing these movement restrictions will make your ${goalInSentence} training much safer and allow us to progress faster.`);
-      clientScript.actionPlan.push(`We'll include 5-10 minutes of targeted 'pre-hab' in every session to unlock these areas so they don't hold back your ${goalInSentence} progress.`);
-    }
-  } else if (movementScore > 0 && movementScore < 60) {
-    clientScript.findings.push("We found some movement restrictions that act like 'brakes' on your progress.");
-    clientScript.whyItMatters.push(`Fixing these will make your ${goalInSentence} training much safer and allow us to load you up with heavier weights sooner.`);
-    clientScript.actionPlan.push(`We'll include 5-10 minutes of 'pre-hab' in every session to unlock these areas so they don't hold back your ${goalInSentence} progress.`);
-    internalNotes.needsAttention.push(`Movement quality (${movementScore}/100) is a bottleneck.`);
-  }
-
-  // Strength/Cardio framing - only if we have data
-  if (strengthScore > 0 && strengthScore < 55) {
-    clientScript.findings.push(`Your current strength baseline is below our foundational target.`);
-    clientScript.whyItMatters.push(`As we increase this baseline, every part of your ${goalInSentence} journey will become easier and more sustainable.`);
-    internalNotes.needsAttention.push(`Strength Mastery (${strengthScore}/100) requires foundational build.`);
-  }
-
-  if (cardioScore > 0 && cardioScore < 55) {
-    const rhr = form.cardioRestingHr;
-    clientScript.findings.push(`Your aerobic recovery is currently a limiting factor (Resting HR: ${rhr}bpm).`);
-    clientScript.whyItMatters.push(`By improving this, you'll be able to work harder in your ${goalInSentence} sessions and recover much faster between them.`);
-    internalNotes.needsAttention.push(`Low aerobic base (RHR ${rhr}bpm) - limits session density.`);
-  }
-
-  // 3-Month Outlook - Goal Centric (only if we have data)
+  // 4. Outlook (The Future)
   if (hasAnyData) {
-    clientScript.threeMonthOutlook.push(`Over the next ${totalWeeks} weeks, the main thing you'll notice is a significant shift in your ${goalInSentence} capacity.`);
-    clientScript.threeMonthOutlook.push("Beyond that, you'll feel 'tighter' in your movement, have more 'engine' in your workouts, and feel more confident under load.");
+    clientScript.threeMonthOutlook.push(`Over the next ${totalWeeks} weeks, we expect to see a profound transformation in how your body moves and how much energy you have.`);
+    clientScript.threeMonthOutlook.push(`By month 3, the movement patterns that feel challenging now will be automatic, allowing us to utilize progressive overload to truly drive your ${goalInSentence} results.`);
   }
 
-  // Client Commitment (only if we have data)
-  if (hasAnyData) {
-    clientScript.clientCommitment.push("Consistency: Hit our agreed session frequency every week.");
-    const hasLifestyleData = lifestyleScore > 0;
-    if (hasLifestyleData && lifestyleScore < 70) {
-      clientScript.clientCommitment.push("Recovery: Prioritize the sleep and hydration targets we discussed.");
-    }
-    clientScript.clientCommitment.push("Communication: Provide feedback on recovery and intensity after every session.");
-    clientScript.clientCommitment.push("Focus: Trust the process during our foundational movement phase.");
-  }
+  // 5. Commitment
+  clientScript.clientCommitment.push(`Trust the foundation: the small "pre-hab" wins in the first 4 weeks are what unlock the massive ${goalInSentence} wins in months 2 and 3.`);
+  clientScript.clientCommitment.push("Consistency: hitting your session targets is the single biggest predictor of our success.");
+
 
   // Internal Notes - Doing Well (only if we have data)
   if (hasBodyCompData && bodyCompScore > 75) internalNotes.doingWell.push("Excellent metabolic baseline.");
@@ -334,26 +373,21 @@ export function generateCoachPlan(form: FormData, scores: ScoreSummary): CoachPl
   const movementFindings = new Set<string>();
   
   // 1. Head/Neck -> Upper Crossed
-  const headPos = Array.isArray(form.postureHeadOverall) ? form.postureHeadOverall : [form.postureHeadOverall];
   if (headPos.includes('forward-head')) movementFindings.add('upper_crossed');
   
   // 2. Shoulders -> Upper Crossed
-  const shoulderPos = Array.isArray(form.postureShouldersOverall) ? form.postureShouldersOverall : [form.postureShouldersOverall];
   if (shoulderPos.includes('rounded')) movementFindings.add('upper_crossed');
   
   // 3. Back -> Kyphosis (Upper) or Lordosis (Lower)
-  const backPos = Array.isArray(form.postureBackOverall) ? form.postureBackOverall : [form.postureBackOverall];
   if (backPos.includes('increased-kyphosis')) movementFindings.add('upper_crossed');
   if (backPos.includes('increased-lordosis')) movementFindings.add('lower_crossed');
   if (backPos.includes('flat-back')) movementFindings.add('posterior_pelvic_tilt');
   
   // 4. Hips -> APT (Lower) or PPT (Flat)
-  const hipPos = Array.isArray(form.postureHipsOverall) ? form.postureHipsOverall : [form.postureHipsOverall];
   if (hipPos.includes('anterior-tilt')) movementFindings.add('lower_crossed');
   if (hipPos.includes('posterior-tilt')) movementFindings.add('posterior_pelvic_tilt');
   
   // 5. Knees -> Valgus
-  const kneePos = Array.isArray(form.postureKneesOverall) ? form.postureKneesOverall : [form.postureKneesOverall];
   if (kneePos.includes('valgus-knee') || form.ohsKneeAlignment === 'valgus' || form.lungeLeftKneeAlignment === 'valgus' || form.lungeRightKneeAlignment === 'valgus') {
     movementFindings.add('knee_valgus');
   }

@@ -200,80 +200,225 @@ export function prioritizeExercises(
   }
 
   // ============================================
-  // PRIORITY 2: GOAL-FOCUSED EXERCISES
+  // PRIORITY 2: GOAL-FOCUSED EXERCISES (All Goals)
   // ============================================
   
-  if (primaryGoal === 'weight-loss') {
-    goalExercises.push('Weight loss is primary goal');
-    goalFocused.push({
-      name: 'Metabolic Circuit Training',
-      setsReps: '3-4 rounds, 30-45s work / 15s rest',
-      notes: 'Supersets to maximize calorie burn',
-      priority: 'goal-focused',
-      reason: 'Directly supports weight loss goal through increased calorie expenditure',
-      sessionTypes: ['full-body', 'cardio'],
-      addresses: ['weight loss', 'calorie burn']
-    });
-    goalFocused.push({
-      name: 'Zone 2 Cardio',
-      setsReps: '30-45 min, 3-4x/week',
-      notes: 'Builds aerobic base for fat loss',
-      priority: 'goal-focused',
-      reason: 'Essential for sustainable fat loss',
-      sessionTypes: ['cardio', 'full-body'],
-      addresses: ['weight loss', 'fat loss']
-    });
-  }
+  goals.forEach(goal => {
+    if (goal === 'weight-loss') {
+      goalExercises.push('Weight loss');
+      goalFocused.push({
+        name: 'Metabolic Circuit Training',
+        setsReps: '3-4 rounds, 30-45s work / 15s rest',
+        notes: 'Supersets to maximize calorie burn',
+        priority: 'goal-focused',
+        reason: 'Directly supports weight loss goal through increased calorie expenditure',
+        sessionTypes: ['full-body', 'cardio'],
+        addresses: ['weight loss', 'calorie burn']
+      });
+      goalFocused.push({
+        name: 'Zone 2 Cardio',
+        setsReps: '30-45 min, 3-4x/week',
+        notes: 'Builds aerobic base for fat loss',
+        priority: 'goal-focused',
+        reason: 'Essential for sustainable fat loss',
+        sessionTypes: ['cardio', 'full-body'],
+        addresses: ['weight loss', 'fat loss']
+      });
+    }
+    
+    if (goal === 'build-muscle' || goal === 'build-strength') {
+      const isMuscle = goal === 'build-muscle';
+      goalExercises.push(isMuscle ? 'Muscle building' : 'Strength building');
+      
+      // Personalized based on InBody SMM
+      const smm = parseFloat(form.skeletalMuscleMassKg || '0');
+      const weight = parseFloat(form.inbodyWeightKg || '0');
+      const smmPct = weight > 0 ? (smm / weight) * 100 : 0;
+      
+      const repRange = isMuscle ? '8-12 reps' : '3-6 reps';
+      const intensity = isMuscle ? 'Moderate intensity, high volume' : 'High intensity, moderate volume';
+
+      goalFocused.push({
+        name: isMuscle ? 'Hypertrophy-Focused Compound Lifts' : 'Absolute Strength Compound Lifts',
+        setsReps: isMuscle ? `3-4 x 8-12` : `4-5 x 3-6`,
+        notes: `Focus on ${isMuscle ? 'time under tension' : 'explosive concentric'} for ${isMuscle ? 'growth' : 'neuromuscular drive'}.`,
+        priority: 'goal-focused',
+        reason: `${isMuscle ? 'Hypertrophy' : 'Strength'} protocols tailored to your current muscle mass profile (${smmPct.toFixed(1)}% SMM).`,
+        sessionTypes: ['full-body', 'legs', 'push', 'pull', 'strength'],
+        addresses: [isMuscle ? 'muscle growth' : 'strength']
+      });
+
+      // Add specific lift variations based on goals
+      if (isMuscle) {
+        goalFocused.push({
+          name: 'Mechanical Tension Isolation',
+          setsReps: '3 x 12-15',
+          notes: 'Target specific lagging muscle groups',
+          priority: 'goal-focused',
+          reason: 'Accessory work to drive local hypertrophy in addition to main lifts.',
+          sessionTypes: ['upper-body', 'lower-body', 'push', 'pull'],
+          addresses: ['muscle growth']
+        });
+      } else {
+        goalFocused.push({
+          name: 'Heavy Primary Lift Variation',
+          setsReps: '3 x 5',
+          notes: 'Focus on perfect technique under 80%+ 1RM load',
+          priority: 'goal-focused',
+          reason: 'Strength development requires specific heavy loading phases.',
+          sessionTypes: ['strength', 'full-body'],
+          addresses: ['strength']
+        });
+      }
+    }
+    
+    if (goal === 'improve-fitness') {
+      goalExercises.push('Fitness improvement');
+      goalFocused.push({
+        name: 'High Intensity Interval Training (HIIT)',
+        setsReps: '6-8 x 2-4 min intervals',
+        notes: 'Mix of Zone 2 and higher intensity',
+        priority: 'goal-focused',
+        reason: 'Improves cardiovascular fitness and VO2 max to move you toward "Elite" status.',
+        sessionTypes: ['cardio', 'full-body'],
+        addresses: ['fitness', 'cardio capacity']
+      });
+    }
+
+    if (goal === 'improve-mobility') {
+      goalExercises.push('Mobility improvement');
+      goalFocused.push({
+        name: 'Dynamic Joint Mobilization',
+        setsReps: '2 x 10-12 reps',
+        notes: 'Controlled Articular Rotations (CARs) for major joints',
+        priority: 'goal-focused',
+        reason: 'Systematic mobility work to improve active range of motion.',
+        sessionTypes: ['full-body', 'upper-body', 'lower-body'],
+        addresses: ['mobility', 'joint health']
+      });
+    }
+  });
+
+  // ============================================
+  // INBODY-SPECIFIC PERSONALIZATION (Asymmetry & Distribution)
+  // ============================================
   
-  if (primaryGoal === 'build-muscle' || primaryGoal === 'build-strength') {
-    goalExercises.push(primaryGoal === 'build-muscle' ? 'Muscle building is primary goal' : 'Strength building is primary goal');
-    goalFocused.push({
-      name: 'Compound Lifts',
-      setsReps: '3-4 x 6-12',
-      notes: 'Squat, Deadlift, Bench, Row variations',
-      priority: 'goal-focused',
-      reason: 'Compound movements are most effective for muscle/strength gains',
-      sessionTypes: ['full-body', 'legs', 'push', 'pull'],
-      addresses: [primaryGoal === 'build-muscle' ? 'muscle growth' : 'strength']
-    });
-    goalFocused.push({
-      name: 'Progressive Overload',
-      setsReps: 'Increase weight/reps weekly',
-      notes: 'Track and progress systematically',
-      priority: 'goal-focused',
-      reason: 'Essential for continued muscle/strength development',
-      sessionTypes: ['full-body', 'legs', 'push', 'pull'],
-      addresses: [primaryGoal === 'build-muscle' ? 'muscle growth' : 'strength']
-    });
+  const ra = parseFloat(form.segmentalArmRightKg || '0');
+  const la = parseFloat(form.segmentalArmLeftKg || '0');
+  const rl = parseFloat(form.segmentalLegRightKg || '0');
+  const ll = parseFloat(form.segmentalLegLeftKg || '0');
+  const trunk = parseFloat(form.segmentalTrunkKg || '0');
+
+  // Asymmetry Detection (>10% difference)
+  if (ra > 0 && la > 0) {
+    const armDiff = Math.abs(ra - la) / Math.max(ra, la);
+    if (armDiff > 0.1) {
+      importantIssues.push(`Significant arm muscle imbalance (${(armDiff * 100).toFixed(1)}%)`);
+      important.push({
+        name: 'Unilateral Upper Body Focus',
+        setsReps: '3 x 10-12 per side',
+        notes: 'Use dumbbells or cables to ensure equal loading and fix asymmetry',
+        priority: 'important',
+        reason: 'Dumbbell-only upper body work to correct the 10%+ muscle imbalance between arms.',
+        sessionTypes: ['upper-body', 'push', 'pull'],
+        addresses: ['muscle imbalance', 'asymmetry']
+      });
+    }
   }
-  
-  if (primaryGoal === 'improve-fitness') {
-    goalExercises.push('Fitness improvement is primary goal');
-    goalFocused.push({
-      name: 'Interval Training',
-      setsReps: '6-8 x 2-4 min intervals',
-      notes: 'Mix of Zone 2 and higher intensity',
-      priority: 'goal-focused',
-      reason: 'Improves cardiovascular fitness and VO2 max',
-      sessionTypes: ['cardio', 'full-body'],
-      addresses: ['fitness', 'cardio capacity']
-    });
+
+  if (rl > 0 && ll > 0) {
+    const legDiff = Math.abs(rl - ll) / Math.max(rl, ll);
+    if (legDiff > 0.1) {
+      importantIssues.push(`Significant leg muscle imbalance (${(legDiff * 100).toFixed(1)}%)`);
+      important.push({
+        name: 'Unilateral Lower Body Focus (Split Squats)',
+        setsReps: '3 x 10-12 per side',
+        notes: 'Prioritize the weaker leg to balance muscle mass',
+        priority: 'important',
+        reason: 'Single-leg variations (split squats, step-ups) to address the significant lower body asymmetry.',
+        sessionTypes: ['lower-body', 'legs'],
+        addresses: ['muscle imbalance', 'asymmetry']
+      });
+    }
+  }
+
+  // Trunk/Limb Distribution focus
+  const totalLimbMuscle = ra + la + rl + ll;
+  if (totalLimbMuscle > 0 && trunk > 0) {
+    const trunkToLimbRatio = trunk / totalLimbMuscle;
+    // Standard ratio is roughly 1.0 - 1.2. If trunk is significantly higher, focus on limbs.
+    if (trunkToLimbRatio > 1.3) {
+      minorIssues.push('Relatively higher trunk muscle mass vs limbs');
+      minor.push({
+        name: 'Isolation Limb Volume',
+        setsReps: '2-3 x 12-15',
+        notes: 'Add specific focus to arm/leg development',
+        priority: 'minor',
+        reason: 'Your trunk muscle is very developed; adding isolation work will balance your overall profile.',
+        sessionTypes: ['upper-body', 'lower-body', 'push', 'pull'],
+        addresses: ['muscle distribution']
+      });
+    } else if (trunkToLimbRatio < 0.8) {
+      minorIssues.push('Relatively lower trunk muscle mass vs limbs');
+      minor.push({
+        name: 'Heavy Axial Loading (Core/Trunk)',
+        setsReps: '3 x 8-10',
+        notes: 'Loaded carries and heavy compounds',
+        priority: 'minor',
+        reason: 'Strengthening the trunk/core will provide a more stable base for your strong limbs.',
+        sessionTypes: ['full-body', 'core', 'strength'],
+        addresses: ['muscle distribution', 'core stability']
+      });
+    }
+  }
+
+  // Specific Limb Focus (Lower vs Upper)
+  const totalArms = ra + la;
+  const totalLegs = rl + ll;
+  if (totalArms > 0 && totalLegs > 0) {
+    const upperToLowerRatio = totalArms / totalLegs;
+    // Standard ratio is roughly 0.2 - 0.25 for most athletes. 
+    // If arms are very low, suggest upper body focus.
+    if (upperToLowerRatio < 0.18) {
+      minorIssues.push('Relatively lower upper body muscle mass');
+      minor.push({
+        name: 'Upper Body Hypertrophy Focus',
+        setsReps: '3 x 10-12',
+        notes: 'Vertical and horizontal pressing/pulling',
+        priority: 'minor',
+        reason: 'Your upper body muscle mass is lower relative to your legs; adding volume here will improve balance.',
+        sessionTypes: ['upper-body', 'push', 'pull'],
+        addresses: ['muscle distribution']
+      });
+    } else if (upperToLowerRatio > 0.3) {
+      minorIssues.push('Relatively lower lower body muscle mass');
+      minor.push({
+        name: 'Lower Body Hypertrophy Focus',
+        setsReps: '3 x 10-12',
+        notes: 'Squat and hinge variations',
+        priority: 'minor',
+        reason: 'Your lower body muscle mass is lower relative to your upper body; prioritize leg volume.',
+        sessionTypes: ['lower-body', 'legs'],
+        addresses: ['muscle distribution']
+      });
+    }
   }
 
   // Clinical Postural Corrections (Important Priority)
   const movementFindings = new Set<string>();
   const headPos = Array.isArray(form.postureHeadOverall) ? form.postureHeadOverall : [form.postureHeadOverall];
-  if (headPos.includes('forward-head')) movementFindings.add('upper_crossed');
   const shoulderPos = Array.isArray(form.postureShouldersOverall) ? form.postureShouldersOverall : [form.postureShouldersOverall];
-  if (shoulderPos.includes('rounded')) movementFindings.add('upper_crossed');
   const backPos = Array.isArray(form.postureBackOverall) ? form.postureBackOverall : [form.postureBackOverall];
+  const hipPos = Array.isArray(form.postureHipsOverall) ? form.postureHipsOverall : [form.postureHipsOverall];
+  const kneePos = Array.isArray(form.postureKneesOverall) ? form.postureKneesOverall : [form.postureKneesOverall];
+
+  if (headPos.includes('forward-head')) movementFindings.add('upper_crossed');
+  if (shoulderPos.includes('rounded')) movementFindings.add('upper_crossed');
   if (backPos.includes('increased-kyphosis')) movementFindings.add('upper_crossed');
   if (backPos.includes('increased-lordosis')) movementFindings.add('lower_crossed');
   if (backPos.includes('flat-back')) movementFindings.add('posterior_pelvic_tilt');
-  const hipPos = Array.isArray(form.postureHipsOverall) ? form.postureHipsOverall : [form.postureHipsOverall];
   if (hipPos.includes('anterior-tilt')) movementFindings.add('lower_crossed');
   if (hipPos.includes('posterior-tilt')) movementFindings.add('posterior_pelvic_tilt');
-  const kneePos = Array.isArray(form.postureKneesOverall) ? form.postureKneesOverall : [form.postureKneesOverall];
   if (kneePos.includes('valgus-knee') || form.ohsKneeAlignment === 'valgus' || form.lungeLeftKneeAlignment === 'valgus' || form.lungeRightKneeAlignment === 'valgus') {
     movementFindings.add('knee_valgus');
   }
@@ -405,7 +550,7 @@ export function prioritizeExercises(
   }
 
   // ============================================
-  // GROUP BY SESSION TYPE
+  // GROUP BY SESSION TYPE (Intelligent Distribution)
   // ============================================
   
   const sessionMap: Record<string, PrioritizedExercise[]> = {
@@ -425,11 +570,40 @@ export function prioritizeExercises(
   allExercises.forEach(ex => {
     ex.sessionTypes.forEach(sessionType => {
       if (sessionMap[sessionType]) {
-        sessionMap[sessionType].push(ex);
+        // Prevent duplicate exercises in the same session
+        if (!sessionMap[sessionType].some(e => e.name === ex.name)) {
+          // Intelligent Filtering: Only add relevant correctives to specific days
+          const isCorrective = ex.priority === 'important' || ex.priority === 'minor';
+          const isGoal = ex.priority === 'goal-focused' || ex.priority === 'critical';
+          
+          if (isGoal) {
+            sessionMap[sessionType].push(ex);
+          } else if (isCorrective) {
+            // Only add upper body correctives to upper/full body days, etc.
+            const isUpperCorrective = ex.sessionTypes.includes('upper-body') || ex.addresses.some(a => a.toLowerCase().includes('head') || a.toLowerCase().includes('shoulder') || a.toLowerCase().includes('kyphosis'));
+            const isLowerCorrective = ex.sessionTypes.includes('lower-body') || ex.addresses.some(a => a.toLowerCase().includes('hip') || a.toLowerCase().includes('knee') || a.toLowerCase().includes('ankle') || a.toLowerCase().includes('pelvic'));
+            
+            if (sessionType === 'upper-body' && isUpperCorrective) sessionMap[sessionType].push(ex);
+            else if (sessionType === 'lower-body' && isLowerCorrective) sessionMap[sessionType].push(ex);
+            else if (sessionType === 'full-body') sessionMap[sessionType].push(ex);
+            else if (sessionType === 'core' && ex.addresses.some(a => a.toLowerCase().includes('core') || a.toLowerCase().includes('pelvic'))) sessionMap[sessionType].push(ex);
+            else if (sessionType === 'cardio' && ex.addresses.some(a => a.toLowerCase().includes('cardio') || a.toLowerCase().includes('recovery'))) sessionMap[sessionType].push(ex);
+          }
+        }
       }
     });
   });
   
+  // Final cleanup: Limit correctives per session so they don't overwhelm the workout
+  Object.keys(sessionMap).forEach(key => {
+    const exercises = sessionMap[key];
+    const goals = exercises.filter(e => e.priority === 'critical' || e.priority === 'goal-focused');
+    const correctives = exercises.filter(e => e.priority === 'important' || e.priority === 'minor');
+    
+    // Max 3 correctives per session to avoid "physio feel"
+    sessionMap[key] = [...goals, ...correctives.slice(0, 3)];
+  });
+
   const bySession: SessionGroup[] = Object.entries(sessionMap)
     .filter(([_, exercises]) => exercises.length > 0)
     .map(([sessionType, exercises]) => ({

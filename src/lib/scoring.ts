@@ -146,12 +146,30 @@ function scoreBodyComp(form: FormData, age: number, gender: string): ScoreCatego
 
   const strengths = [];
   const weaknesses = [];
-  if (bfScore >= 70) strengths.push('Healthy body fat range');
-  else weaknesses.push('Elevated body fat');
-  if (smmScore >= 65) strengths.push('Good muscle mass');
-  else weaknesses.push('Low muscle-to-weight ratio');
-  if (visceralScore < 60) weaknesses.push('Visceral fat risk');
-  if (whrScore < 60) weaknesses.push('Central adiposity risk (WHR)');
+  
+  // High-level strengths
+  if (bfScore >= 75) strengths.push('Excellent body fat management');
+  else if (bfScore >= 60) strengths.push('Body fat within a healthy functional range');
+  
+  if (smmScore >= 70) strengths.push('Strong skeletal muscle foundation');
+  else if (smmScore >= 55) strengths.push('Functional muscle mass for your frame');
+
+  // Finding the relative weaknesses (lowest scores)
+  const items = [
+    { label: 'Body Fat %', score: bfScore },
+    { label: 'Muscle Mass', score: smmScore },
+    { label: 'Visceral Fat', score: visceralScore },
+    { label: 'Waist-to-Hip Ratio', score: whrScore }
+  ].sort((a, b) => a.score - b.score);
+
+  // Always list the bottom 2 as areas for improvement, even if they are "good"
+  items.slice(0, 2).forEach(item => {
+    if (item.score < 60) {
+      weaknesses.push(`${item.label} identified as a priority area`);
+    } else {
+      weaknesses.push(`Optimization of ${item.label} for better performance`);
+    }
+  });
 
   return { id: 'bodyComp', title: 'Body Composition', score, details, strengths, weaknesses };
 }
@@ -219,9 +237,25 @@ function scoreCardio(form: FormData, age: number, gender: string): ScoreCategory
 
   const strengths: string[] = [];
   const weaknesses: string[] = [];
-  if (hasTest && fitnessScore >= 75) strengths.push('Strong aerobic base');
-  if (hasTest && hasHr60 && recoveryScore < 50) weaknesses.push('HR recovery needs improvement');
-  if (hasRhr && rhrScore < 60) weaknesses.push('Elevated resting HR');
+  
+  if (hasTest && fitnessScore >= 85) strengths.push('Elite cardiovascular efficiency');
+  else if (hasTest && fitnessScore >= 70) strengths.push('Solid aerobic base foundation');
+  
+  if (hasRhr && rhrScore >= 80) strengths.push('Excellent resting heart rate (indicates low systemic stress)');
+
+  // Relative weaknesses
+  const items = [
+    { label: 'Resting Heart Rate', score: rhrScore },
+    { label: 'Heart Rate Recovery', score: recoveryScore }
+  ].sort((a, b) => a.score - b.score);
+
+  items.forEach(item => {
+    if (item.score < 60) {
+      weaknesses.push(`${item.label} identified as a limiting factor`);
+    } else {
+      weaknesses.push(`Further refinement of ${item.label} for better recovery`);
+    }
+  });
 
   return { id: 'cardio', title: 'Metabolic Fitness', score: Math.round(fitnessScore), details, strengths, weaknesses };
 }
@@ -263,11 +297,28 @@ function scoreStrength(form: FormData, age: number, gender: string): ScoreCatego
 
   const strengths = [];
   const weaknesses = [];
-  if (hasPlank && plankScore < 50) weaknesses.push('Core endurance below average');
-  if (hasPushups && pushScore < 50) weaknesses.push('Upper body endurance below average');
-  if (hasSquats && squatScore < 50) weaknesses.push('Lower body endurance below average');
-  if (hasGrip && gripScore < 50) weaknesses.push('Grip strength below average');
-  if (score >= 75 && filledTests >= 2) strengths.push('Overall strength & endurance');
+  
+  if (score >= 85) strengths.push('Exceptional foundational strength and power');
+  else if (score >= 70) strengths.push('Strong muscular endurance baseline');
+
+  // Relative weaknesses
+  const items = [
+    { label: 'Upper Body Endurance', score: pushScore },
+    { label: 'Lower Body Endurance', score: squatScore },
+    { label: 'Core Stability', score: plankScore },
+    { label: 'Grip Strength', score: gripScore }
+  ].filter(i => (i.score > 0 || (i.label === 'Upper Body Endurance' && hasPushups) || (i.label === 'Lower Body Endurance' && hasSquats) || (i.label === 'Core Stability' && hasPlank) || (i.label === 'Grip Strength' && hasGrip)))
+   .sort((a, b) => a.score - b.score);
+
+  items.slice(0, 2).forEach(item => {
+    if (item.score < 60) {
+      weaknesses.push(`${item.label} identified as a structural priority`);
+    } else {
+      weaknesses.push(`Optimization of ${item.label} for peak performance`);
+    }
+  });
+
+  if (score >= 75 && filledTests >= 2) strengths.push('Balanced muscular development across tests');
 
   return { id: 'strength', title: 'Muscular Strength', score, details, strengths, weaknesses };
 }
@@ -290,6 +341,15 @@ function scoreMovementQuality(form: FormData, age: number, gender: string): Scor
     : 0;
 
   // 2. POSTURE SCORING
+  const scorePostureArray = (arr: string[] | string | undefined, map: Record<string, number> | ((v: string) => number)) => {
+    if (!arr) return 0;
+    const values = Array.isArray(arr) ? arr : [arr];
+    if (values.length === 0) return 0;
+    
+    const scores = values.map(v => typeof map === 'function' ? map(v) : (map[v] ?? 0));
+    return Math.min(...scores);
+  };
+
   const neutralScore = (v: string) => (v === 'neutral' ? 100 : 60);
   const backMap: Record<string, number> = {
     neutral: 100,
@@ -311,7 +371,10 @@ function scoreMovementQuality(form: FormData, age: number, gender: string): Scor
   let knees = 0;
 
   if (form.postureAiResults) {
+    // AI results logic remains same as it doesn't use the form.posture arrays
     const ai = form.postureAiResults;
+    // ... logic for head, shoulders, back, hips, knees from AI
+    // (Truncated for readability, assuming existing AI logic is correct)
     
     // Head Posture
     const headData = ai['side-right']?.forward_head || ai['side-left']?.forward_head;
@@ -407,11 +470,11 @@ function scoreMovementQuality(form: FormData, age: number, gender: string): Scor
     knees = Math.min(kneeSideScore, kneeFrontScore);
   } else {
     // Manual Posture Scoring
-    head = form.postureHeadOverall ? neutralScore(form.postureHeadOverall) : 0;
-    shoulders = form.postureShouldersOverall ? neutralScore(form.postureShouldersOverall) : 0;
-    back = form.postureBackOverall ? (backMap[form.postureBackOverall] ?? 0) : 0;
-    hips = form.postureHipsOverall ? neutralScore(form.postureHipsOverall) : 0;
-    knees = form.postureKneesOverall ? (kneesMap[form.postureKneesOverall] ?? 0) : 0;
+    head = scorePostureArray(form.postureHeadOverall, neutralScore);
+    shoulders = scorePostureArray(form.postureShouldersOverall, neutralScore);
+    back = scorePostureArray(form.postureBackOverall, backMap);
+    hips = scorePostureArray(form.postureHipsOverall, neutralScore);
+    knees = scorePostureArray(form.postureKneesOverall, kneesMap);
   }
 
   const postureScores = [head, shoulders, back, hips, knees].filter(s => s > 0);
@@ -460,8 +523,14 @@ function scoreMovementQuality(form: FormData, age: number, gender: string): Scor
   const activations: string[] = [];
   const contraindications: string[] = [];
 
+  const headPos = Array.isArray(form.postureHeadOverall) ? form.postureHeadOverall : [form.postureHeadOverall];
+  const shoulderPos = Array.isArray(form.postureShouldersOverall) ? form.postureShouldersOverall : [form.postureShouldersOverall];
+  const backPos = Array.isArray(form.postureBackOverall) ? form.postureBackOverall : [form.postureBackOverall];
+  const hipPos = Array.isArray(form.postureHipsOverall) ? form.postureHipsOverall : [form.postureHipsOverall];
+  const kneePos = Array.isArray(form.postureKneesOverall) ? form.postureKneesOverall : [form.postureKneesOverall];
+
   // Check for Upper Crossed Syndrome
-  if (form.postureHeadOverall === 'forward-head' || form.postureShouldersOverall === 'rounded') {
+  if (headPos.includes('forward-head') || shoulderPos.includes('rounded')) {
     const dev = MOVEMENT_LOGIC_DB.upper_crossed;
     stretches.push(dev.primaryStretch);
     activations.push(dev.primaryActivation);
@@ -469,7 +538,7 @@ function scoreMovementQuality(form: FormData, age: number, gender: string): Scor
   }
 
   // Check for Lower Crossed Syndrome
-  if (form.postureHipsOverall === 'anterior-tilt' || form.ohsTorsoLean === 'excessive-lean') {
+  if (hipPos.includes('anterior-tilt') || form.ohsTorsoLean === 'excessive-lean') {
     const dev = MOVEMENT_LOGIC_DB.lower_crossed;
     stretches.push(dev.primaryStretch);
     activations.push(dev.primaryActivation);
@@ -485,7 +554,7 @@ function scoreMovementQuality(form: FormData, age: number, gender: string): Scor
   }
 
   // Check for Posterior Pelvic Tilt
-  if (form.postureHipsOverall === 'posterior-tilt' || form.hingeBackRounding === 'severe') {
+  if (hipPos.includes('posterior-tilt') || form.hingeBackRounding === 'severe') {
     const dev = MOVEMENT_LOGIC_DB.posterior_pelvic_tilt;
     stretches.push(dev.primaryStretch);
     activations.push(dev.primaryActivation);
@@ -493,7 +562,7 @@ function scoreMovementQuality(form: FormData, age: number, gender: string): Scor
   }
 
   // Check for Feet Pronation
-  if (form.ohsFeetPosition === 'pronation' || form.postureKneesOverall === 'valgus-knee') {
+  if (form.ohsFeetPosition === 'pronation' || kneePos.includes('valgus-knee')) {
     const dev = MOVEMENT_LOGIC_DB.feet_pronation;
     stretches.push(dev.primaryStretch);
     activations.push(dev.primaryActivation);
@@ -519,13 +588,30 @@ function scoreMovementQuality(form: FormData, age: number, gender: string): Scor
 
   const strengths = [];
   const weaknesses = [];
-  if (postureScore >= 80) strengths.push('Solid postural alignment');
-  if (movementScore >= 80) strengths.push('Strong movement patterns');
-  if (mobilityScore >= 80) strengths.push('Good joint mobility');
   
-  if (postureScore > 0 && postureScore < 65) weaknesses.push('Postural imbalances identified');
-  if (movementScore > 0 && movementScore < 65) weaknesses.push('Movement pattern compensation');
-  if (mobilityScore > 0 && mobilityScore < 65) weaknesses.push('Joint mobility restrictions');
+  if (postureScore >= 85) strengths.push('Elite-level postural alignment');
+  else if (postureScore >= 70) strengths.push('Solid foundational alignment');
+  
+  if (movementScore >= 85) strengths.push('Exceptional control during dynamic movement');
+  else if (movementScore >= 70) strengths.push('Reliable movement patterns');
+  
+  if (mobilityScore >= 85) strengths.push('Full functional range of motion in key joints');
+  else if (mobilityScore >= 70) strengths.push('Good joint mobility baseline');
+
+  // Relative weaknesses
+  const items = [
+    { label: 'Postural Alignment', score: postureScore },
+    { label: 'Movement Pattern Quality', score: movementScore },
+    { label: 'Joint Mobility', score: mobilityScore }
+  ].filter(i => i.score > 0).sort((a, b) => a.score - b.score);
+
+  items.slice(0, 2).forEach(item => {
+    if (item.score < 60) {
+      weaknesses.push(`${item.label} identified as a movement bottleneck`);
+    } else {
+      weaknesses.push(`Refining ${item.label} to unlock further potential`);
+    }
+  });
 
   return { 
     id: 'movementQuality', 
@@ -861,11 +947,14 @@ export function buildRoadmap(scores: ScoreSummary, formData?: FormData): Roadmap
   // Posture improvement calculations
   let postureWeeks = 0;
   const postureIssues: string[] = [];
-  if (formData?.postureHeadOverall === 'forward-head') {
+  const headPos = Array.isArray(formData?.postureHeadOverall) ? formData?.postureHeadOverall : [formData?.postureHeadOverall];
+  const shoulderPos = Array.isArray(formData?.postureShouldersOverall) ? formData?.postureShouldersOverall : [formData?.postureShouldersOverall];
+
+  if (headPos.includes('forward-head')) {
     postureWeeks = Math.max(postureWeeks, 8);
     postureIssues.push('Forward head posture');
   }
-  if (formData?.postureShouldersOverall === 'rounded') {
+  if (shoulderPos.includes('rounded')) {
     postureWeeks = Math.max(postureWeeks, 8);
     postureIssues.push('Rounded shoulders');
   }

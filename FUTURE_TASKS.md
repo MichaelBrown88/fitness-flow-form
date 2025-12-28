@@ -59,3 +59,16 @@ For every task below, we must follow this exact sequence:
 ### 9. Report UI Cleanup [x]
 - **Task:** Final polish of reports to prioritize deterministic data and safety flags.
 - **Steps:** [x] Implement | [x] Test | [x] Confirm | [x] Push | [x] Complete
+
+### 10. Database Reliability & Snapshot Comparison [x]
+- **Task:** Ensure full `formData` is saved in dashboard summaries and implement a robust snapshot-to-current comparison UI in Client Details.
+- **Results:** 
+    - Full merged data is now saved into a "Current Live Report".
+    - Partial assessments now show ONLY the relevant fields for that pillar.
+    - Historical snapshots are immutable and can be compared side-by-side with the current live state.
+- **Steps:** [x] Implement | [x] Test | [x] Confirm | [x] Push | [x] Complete
+
+### 11. Codebase Sanitization & Cleanup [x]
+- **Task:** Remove all orphaned legacy files and directories to ensure a clean, configuration-driven codebase.
+- **Actions:** Deleted 18 files from `src/components/steps/`, plus legacy flow and modal files.
+- **Steps:** [x] Implement | [x] Test | [x] Confirm | [x] Push | [x] Complete

@@ -126,31 +126,91 @@ export const AssessmentComparison: React.FC<AssessmentComparisonProps> = ({
             oldData.inbodyWeightKg,
             newData.inbodyWeightKg,
             'Weight (kg)',
-            (v) => v ? `${v} kg` : 'N/A'
+            (v) => {
+              const num = parseFloat(v);
+              return !isNaN(num) ? `${num.toFixed(1)} kg` : 'N/A';
+            }
           )}
           {compareValue(
             oldData.inbodyBodyFatPct,
             newData.inbodyBodyFatPct,
             'Body Fat %',
-            (v) => v ? `${v}%` : 'N/A'
+            (v) => {
+              const num = parseFloat(v);
+              return !isNaN(num) ? `${num.toFixed(1)}%` : 'N/A';
+            }
           )}
           {compareValue(
             oldData.inbodyBmi,
             newData.inbodyBmi,
             'BMI',
-            (v) => v ? v.toFixed(1) : 'N/A'
+            (v) => {
+              const num = parseFloat(v);
+              return !isNaN(num) ? num.toFixed(1) : 'N/A';
+            }
           )}
           {compareValue(
             oldData.cardioVo2MaxEstimate,
             newData.cardioVo2MaxEstimate,
             'VO2 Max Estimate',
-            (v) => v ? `${v} ml/kg/min` : 'N/A'
+            (v) => {
+              const num = parseFloat(v);
+              return !isNaN(num) ? `${num.toFixed(1)} ml/kg/min` : 'N/A';
+            }
+          )}
+          {compareValue(
+            oldData.inbodyScore,
+            newData.inbodyScore,
+            'InBody Score',
+            (v) => {
+              const num = parseFloat(v);
+              return !isNaN(num) ? num.toFixed(0) : 'N/A';
+            }
+          )}
+          {compareValue(
+            oldData.visceralFatLevel,
+            newData.visceralFatLevel,
+            'Visceral Fat Level',
+            (v) => {
+              const num = parseFloat(v);
+              return !isNaN(num) ? num.toFixed(0) : 'N/A';
+            }
+          )}
+          {compareValue(
+            oldData.skeletalMuscleMassKg,
+            newData.skeletalMuscleMassKg,
+            'Muscle Mass (kg)',
+            (v) => {
+              const num = parseFloat(v);
+              return !isNaN(num) ? `${num.toFixed(1)} kg` : 'N/A';
+            }
+          )}
+          {compareValue(
+            oldData.cardioRestingHr,
+            newData.cardioRestingHr,
+            'Resting HR',
+            (v) => {
+              const num = parseFloat(v);
+              return !isNaN(num) ? `${num} bpm` : 'N/A';
+            }
+          )}
+          {compareValue(
+            oldData.gripLeftKg,
+            newData.gripLeftKg,
+            'Grip Strength (L)',
+            (v) => {
+              const num = parseFloat(v);
+              return !isNaN(num) ? `${num.toFixed(1)} kg` : 'N/A';
+            }
           )}
           {compareValue(
             oldData.pushupsOneMinuteReps,
             newData.pushupsOneMinuteReps,
             'Push-ups (1 min)',
-            (v) => v ? `${v} reps` : 'N/A'
+            (v) => {
+              const num = parseFloat(v);
+              return !isNaN(num) ? `${num} reps` : 'N/A';
+            }
           )}
         </div>
       </div>

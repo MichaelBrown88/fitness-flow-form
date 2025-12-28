@@ -74,7 +74,6 @@ export const phaseDefinitions = [
           { id: 'email' as keyof FormData, type: 'email' as FieldType, label: 'Email address', required: true, placeholder: 'client@email.com', tooltip: 'Used for sending the digital assessment report.' },
           { id: 'phone' as keyof FormData, type: 'tel' as FieldType, label: 'Phone number', required: true, placeholder: '(555) 123-4567', tooltip: 'Used for SMS notifications and contact.' },
           { id: 'dateOfBirth' as keyof FormData, type: 'date' as FieldType, label: 'Date of birth', required: true, tooltip: 'Required to calculate age-adjusted health and fitness scores.' },
-          { id: 'heightCm' as keyof FormData, type: 'number' as FieldType, label: 'Height (cm)', required: true, placeholder: 'e.g., 175', tooltip: 'Required for BMI and body composition calculations.' },
           { id: 'gender' as keyof FormData, type: 'select' as FieldType, label: 'Gender', required: true, options: [{ value: 'male', label: 'Male' }, { value: 'female', label: 'Female' }], tooltip: 'Used for physiological baseline comparisons (SMM, Body Fat).' },
           { id: 'assignedCoach' as keyof FormData, type: 'select' as FieldType, label: 'Assigned Coach', required: true, options: [{ value: 'coach-mike', label: 'Coach Mike' }, { value: 'coach-selina', label: 'Coach Selina' }], tooltip: 'Select the primary coach responsible for this client.' },
         ],
@@ -150,6 +149,7 @@ export const phaseDefinitions = [
         id: 'body-comp',
         title: 'Body Composition',
         fields: [
+          { id: 'heightCm' as keyof FormData, type: 'number' as FieldType, label: 'Height (cm)', required: true, placeholder: 'e.g., 175', tooltip: 'Required for BMI and body composition calculations. This is often found at the top of your InBody scan.' },
           // InBody Score first per 270 summary
           { id: 'inbodyScore' as keyof FormData, type: 'number' as FieldType, label: 'InBody Score', placeholder: 'e.g., 78', tooltip: 'A combined health score that increases as you gain muscle and lose body fat.' },
           // Order aligned to InBody 270 printout (approximate)
