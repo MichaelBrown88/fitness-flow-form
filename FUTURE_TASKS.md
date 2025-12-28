@@ -62,13 +62,29 @@ For every task below, we must follow this exact sequence:
 
 ### 10. Database Reliability & Snapshot Comparison [x]
 - **Task:** Ensure full `formData` is saved in dashboard summaries and implement a robust snapshot-to-current comparison UI in Client Details.
-- **Results:** 
-    - Full merged data is now saved into a "Current Live Report".
-    - Partial assessments now show ONLY the relevant fields for that pillar.
-    - Historical snapshots are immutable and can be compared side-by-side with the current live state.
 - **Steps:** [x] Implement | [x] Test | [x] Confirm | [x] Push | [x] Complete
 
 ### 11. Codebase Sanitization & Cleanup [x]
 - **Task:** Remove all orphaned legacy files and directories to ensure a clean, configuration-driven codebase.
-- **Actions:** Deleted 18 files from `src/components/steps/`, plus legacy flow and modal files.
+- **Steps:** [x] Implement | [x] Test | [x] Confirm | [x] Push | [x] Complete
+
+### 12. InBody Segmental Analysis & Asymmetry [x]
+- **Task:** Analyze limb imbalances (>10% diff) and trunk/limb distribution to prioritize unilateral work and hypertrophy focus.
+- **Steps:** [x] Implement | [x] Test | [x] Confirm | [x] Push | [x] Complete
+
+### 13. Narrative Storytelling Engine [x]
+- **Task:** Create a narrative-driven "client script" using metaphors (speed bumps, performance tuning) to explain findings.
+- **Steps:** [x] Implement | [x] Test | [x] Confirm | [x] Push | [x] Complete
+
+### 14. Multi-Goal Support & Personalization [x]
+- **Task:** Update exercise prioritization to handle multiple client goals and ambition levels simultaneously.
+- **Steps:** [x] Implement | [x] Test | [x] Confirm | [x] Push | [x] Complete
+
+---
+
+## Phase 4: Production & Deployment
+*Goal: Transition changes to the live environment.*
+
+### 15. Deployment to Production [x]
+- **Task:** Merge all changes from `camera-features` to `main` and deploy to Firebase.
 - **Steps:** [x] Implement | [x] Test | [x] Confirm | [x] Push | [x] Complete
