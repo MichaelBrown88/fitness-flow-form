@@ -20,7 +20,7 @@ For every task below, we must follow this exact sequence:
 
 ### 2. Movement Safety (Pain Fields) [ ]
 - **Task:** Add `hasPainDiscomfort` boolean fields to the form state for OHS, Hinge, and Lunge. Update the UI in `Phase2` steps to include these toggles.
-- **Steps:** [ ] Implement | [ ] Test | [ ] Confirm | [ ] Push | [ ] Complete
+- **Steps:** [x] Implement | [x] Test | [ ] Confirm | [x] Push | [ ] Complete
 
 ### 3. Reliable Demographic Injection [ ]
 - **Task:** Ensure `age` (calculated from DOB) and `gender` are passed correctly from `FormData` into the `computeScores` and `buildRoadmap` functions.
