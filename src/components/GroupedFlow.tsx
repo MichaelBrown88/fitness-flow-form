@@ -63,6 +63,7 @@ export default function GroupedFlow({ onSubmit }: { onSubmit: () => void }) {
       sectionTitle: 'Movement',
       cardTitle: 'Overhead Squat',
       fields: [
+        { kind: 'select', key: 'ohsHasPain', label: 'Pain/Discomfort?', options: [ { value: 'no', label: 'No pain' }, { value: 'yes', label: 'Yes - Pain reported' } ] },
         { kind: 'select', key: 'overheadSquatKneeAlignment', label: 'Knee alignment', options: [ { value: 'no-issue', label: 'No issue' }, { value: 'mild-cave', label: 'Mild cave-in' }, { value: 'severe-cave', label: 'Severe cave-in' }, { value: 'knees-out', label: 'Knees out' } ] },
         { kind: 'select', key: 'overheadSquatTorsoLean', label: 'Torso lean', options: [ { value: 'upright', label: 'Upright' }, { value: 'mild-lean', label: 'Mild forward lean' }, { value: 'excessive-lean', label: 'Excessive forward lean' } ] },
         { kind: 'select', key: 'overheadSquatHipShift', label: 'Hip shift', options: [ { value: 'no-shift', label: 'No shift' }, { value: 'shift-left', label: 'Shifts left' }, { value: 'shift-right', label: 'Shifts right' }, { value: 'shift-unstable', label: 'Unstable' } ] },
@@ -75,6 +76,7 @@ export default function GroupedFlow({ onSubmit }: { onSubmit: () => void }) {
       sectionTitle: 'Movement',
       cardTitle: 'Lunge',
       fields: [
+        { kind: 'select', key: 'lungeHasPain', label: 'Pain/Discomfort?', options: [ { value: 'no', label: 'No pain' }, { value: 'yes', label: 'Yes - Pain reported' } ] },
         { kind: 'select', key: 'lungeLeftKneeAlignment', label: 'Left: Knee', options: [ { value: 'tracks-center', label: 'Tracks center' }, { value: 'caves-inward', label: 'Caves inward' }, { value: 'pushes-out', label: 'Pushes out' }, { value: 'wobbles', label: 'Wobbles' } ] },
         { kind: 'select', key: 'lungeRightKneeAlignment', label: 'Right: Knee', options: [ { value: 'tracks-center', label: 'Tracks center' }, { value: 'caves-inward', label: 'Caves inward' }, { value: 'pushes-out', label: 'Pushes out' }, { value: 'wobbles', label: 'Wobbles' } ] },
       ],
@@ -93,6 +95,7 @@ export default function GroupedFlow({ onSubmit }: { onSubmit: () => void }) {
       sectionTitle: 'Movement',
       cardTitle: 'Hinge',
       fields: [
+        { kind: 'select', key: 'hingeHasPain', label: 'Pain/Discomfort?', options: [ { value: 'no', label: 'No pain' }, { value: 'yes', label: 'Yes - Pain reported' } ] },
         { kind: 'select', key: 'hingeQuality', label: 'Hinge quality', options: [ { value: 'good', label: 'Good' }, { value: 'compensation', label: 'Compensations' }, { value: 'poor', label: 'Poor' } ] },
         { kind: 'select', key: 'hingeBalance', label: 'Hinge balance', options: [ { value: 'stable', label: 'Stable' }, { value: 'slight-wobble', label: 'Slight wobble' }, { value: 'unstable', label: 'Unstable' } ] },
       ],

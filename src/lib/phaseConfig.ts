@@ -265,6 +265,10 @@ export const phaseDefinitions = [
         id: 'overhead-squat',
         title: 'Overhead Squat',
         fields: [
+          { id: 'ohsHasPain' as keyof FormData, type: 'select' as FieldType, label: 'Pain or Discomfort?', tooltip: 'Does the client feel any pain or discomfort during this movement?', options: [
+            { value: 'no', label: 'No pain' },
+            { value: 'yes', label: 'Yes - Pain reported' }
+          ]},
           {
             id: 'ohsShoulderMobility' as keyof FormData, type: 'select' as FieldType, label: 'Shoulder mobility', pattern: 'Overhead Squat', tooltip: 'Instructions:\n1. Stand with feet shoulder-width apart.\n2. Raise arms overhead with elbows locked.\n3. Note if arms stay vertical or tilt forward.', options: [
               { value: 'full-range', label: 'Full range' }, { value: 'compensated', label: 'Compensated' }, { value: 'limited', label: 'Limited' }
@@ -291,6 +295,10 @@ export const phaseDefinitions = [
         id: 'hinge-assessment',
         title: 'Hinge',
         fields: [
+          { id: 'hingeHasPain' as keyof FormData, type: 'select' as FieldType, label: 'Pain or Discomfort?', tooltip: 'Does the client feel any pain or discomfort during this movement?', options: [
+            { value: 'no', label: 'No pain' },
+            { value: 'yes', label: 'Yes - Pain reported' }
+          ]},
           { id: 'hingeDepth' as keyof FormData, type: 'select' as FieldType, label: 'Depth', pattern: 'Hip Hinge', tooltip: 'Instructions:\n1. Perform a hip hinge (reaching hips back).\n2. Note the range of motion before form breaks or hamstrings limit movement.', options: [
             { value: 'excellent', label: 'Excellent' }, { value: 'good', label: 'Good' }, { value: 'fair', label: 'Fair' }, { value: 'poor', label: 'Poor' }
           ]},
@@ -303,6 +311,10 @@ export const phaseDefinitions = [
         id: 'lunge-assessment',
         title: 'Lunge',
         fields: [
+          { id: 'lungeHasPain' as keyof FormData, type: 'select' as FieldType, label: 'Pain or Discomfort?', tooltip: 'Does the client feel any pain or discomfort during this movement?', options: [
+            { value: 'no', label: 'No pain' },
+            { value: 'yes', label: 'Yes - Pain reported' }
+          ]},
           { id: 'lungeLeftBalance' as keyof FormData, type: 'select' as FieldType, label: 'Balance', pattern: 'Lunge', side: 'left', pairId: 'lunge-balance', tooltip: 'Instructions:\n1. Step forward into a lunge.\n2. Note any wobble or loss of stability on the working leg.', options: [
             { value: 'excellent', label: 'Excellent' }, { value: 'good', label: 'Good' }, { value: 'fair', label: 'Fair' }, { value: 'poor', label: 'Poor' }
           ]},

@@ -38,6 +38,7 @@ export default function SingleFieldFlow({ onSubmit }: { onSubmit: () => void }) 
     // Posture
     { label: 'Posture Assessment', type: 'posture' },
     // Overhead Squat
+    { key: 'ohsHasPain', label: 'Overhead Squat – Pain/Discomfort?', type: 'select', options: [ { value: 'no', label: 'No pain' }, { value: 'yes', label: 'Yes - Pain reported' } ] },
     { key: 'overheadSquatKneeAlignment', label: 'Overhead Squat – Knee Alignment', type: 'select', options: [ { value: 'no-issue', label: 'No issue' }, { value: 'mild-cave', label: 'Mild cave-in' }, { value: 'severe-cave', label: 'Severe cave-in' }, { value: 'knees-out', label: 'Knees push out' } ] },
     { key: 'overheadSquatTorsoLean', label: 'Overhead Squat – Torso Lean', type: 'select', options: [ { value: 'upright', label: 'Upright' }, { value: 'mild-lean', label: 'Mild forward lean' }, { value: 'excessive-lean', label: 'Excessive forward lean' } ] },
     { key: 'overheadSquatHipShift', label: 'Overhead Squat – Hip Shift', type: 'select', options: [ { value: 'no-shift', label: 'No shift' }, { value: 'shift-left', label: 'Shifts left' }, { value: 'shift-right', label: 'Shifts right' }, { value: 'shift-unstable', label: 'Unstable' } ] },
@@ -45,6 +46,7 @@ export default function SingleFieldFlow({ onSubmit }: { onSubmit: () => void }) 
     { key: 'overheadSquatFootHeel', label: 'Overhead Squat – Foot/Heel', type: 'select', options: [ { value: 'heels-down', label: 'Heels down' }, { value: 'heels-lift', label: 'Heels lift' }, { value: 'feet-roll-in', label: 'Feet roll in' }, { value: 'feet-roll-out', label: 'Feet roll out' } ] },
     // notes removed
     // Lunge left/right
+    { key: 'lungeHasPain', label: 'Lunge – Pain/Discomfort?', type: 'select', options: [ { value: 'no', label: 'No pain' }, { value: 'yes', label: 'Yes - Pain reported' } ] },
     { key: 'lungeLeftKneeAlignment', label: 'Lunge – Left Front Knee Alignment', type: 'select', options: [ { value: 'tracks-center', label: 'Tracks center' }, { value: 'caves-inward', label: 'Caves inward' }, { value: 'pushes-out', label: 'Pushes out' }, { value: 'wobbles', label: 'Wobbles' } ] },
     { key: 'lungeLeftBalance', label: 'Lunge – Left Balance', type: 'select', options: [ { value: 'stable', label: 'Stable' }, { value: 'slight-wobble', label: 'Slight wobble' }, { value: 'unstable', label: 'Unstable' } ] },
     { key: 'lungeLeftTorso', label: 'Lunge – Left Torso', type: 'select', options: [ { value: 'upright', label: 'Upright' }, { value: 'mild-lean', label: 'Mild lean' }, { value: 'excessive-lean', label: 'Excessive lean' } ] },
@@ -57,6 +59,7 @@ export default function SingleFieldFlow({ onSubmit }: { onSubmit: () => void }) 
     { key: 'shoulderMobilityRating', label: 'Shoulder Mobility Rating', type: 'select', options: [ { value: 'good', label: 'Good' }, { value: 'ok', label: 'OK' }, { value: 'poor', label: 'Poor' } ] },
     // notes removed
     // Hinge
+    { key: 'hingeHasPain', label: 'Hip Hinge – Pain/Discomfort?', type: 'select', options: [ { value: 'no', label: 'No pain' }, { value: 'yes', label: 'Yes - Pain reported' } ] },
     { key: 'hingeQuality', label: 'Hip Hinge – Quality', type: 'select', options: [ { value: 'good', label: 'Good' }, { value: 'compensation', label: 'Compensations' }, { value: 'poor', label: 'Poor' } ] },
     { key: 'hingeBalance', label: 'Hip Hinge – Balance', type: 'select', options: [ { value: 'stable', label: 'Stable' }, { value: 'slight-wobble', label: 'Slight wobble' }, { value: 'unstable', label: 'Unstable' } ] },
     // notes removed

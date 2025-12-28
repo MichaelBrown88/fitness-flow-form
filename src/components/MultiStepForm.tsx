@@ -519,24 +519,31 @@ const FieldControl = ({
               const colorClass = colors[idx % colors.length];
               
                 return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => handleChange(option.value)}
-                    className={`flex min-h-[44px] h-auto items-center gap-3 rounded-xl border-2 px-4 py-2 text-left transition-all ${
-                      isSelected
-                        ? 'border-slate-900 bg-slate-900 text-white shadow-lg scale-[1.02]'
-                        : `bg-white text-slate-600 ${colorClass}`
-                    }`}
-                    aria-label={option.label}
-                  >
-                  <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-                    isSelected ? 'bg-white/20 border-white/20 text-white' : 'border-slate-200 bg-white'
-                    }`}>
-                    {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
-                    </div>
-                  <span className="font-bold text-xs leading-tight">{option.label}</span>
-                  </button>
+                  <div key={option.value} className="space-y-2">
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => handleChange(option.value)}
+                      className={`flex min-h-[44px] h-auto w-full items-center gap-3 rounded-xl border-2 px-4 py-2 text-left transition-all ${
+                        isSelected
+                          ? 'border-slate-900 bg-slate-900 text-white shadow-lg scale-[1.02]'
+                          : `bg-white text-slate-600 ${colorClass}`
+                      }`}
+                      aria-label={option.label}
+                    >
+                    <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                      isSelected ? 'bg-white/20 border-white/20 text-white' : 'border-slate-200 bg-white'
+                      }`}>
+                      {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
+                      </div>
+                    <span className="font-bold text-xs leading-tight">{option.label}</span>
+                    </button>
+                    {isSelected && option.value === 'yes' && field.id.toLowerCase().includes('pain') && (
+                      <p className="px-2 py-1.5 rounded-lg bg-rose-50 border border-rose-100 text-[10px] font-black uppercase tracking-widest text-rose-600 flex items-center gap-2 animate-pulse shadow-sm">
+                        <span className="text-sm">⚠️</span> Safety Flag: Do not load this movement pattern.
+                      </p>
+                    )}
+                  </div>
                 );
               })}
           </div>

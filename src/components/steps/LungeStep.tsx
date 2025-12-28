@@ -130,6 +130,29 @@ const LungeStep = () => {
           </div>
         </div>
 
+        <div className="rounded-lg border border-slate-200 bg-white p-5 space-y-4">
+          <div>
+            <Label htmlFor="lungeHasPain">Pain or Discomfort?</Label>
+            <Select
+              value={formData.lungeHasPain}
+              onValueChange={(value) => updateFormData({ lungeHasPain: value })}
+            >
+              <SelectTrigger className="mt-1 border-rose-200 focus:ring-rose-500">
+                <SelectValue placeholder="Is there any pain?" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="no">No pain – movement is comfortable</SelectItem>
+                <SelectItem value="yes">Yes – client reported pain or discomfort</SelectItem>
+              </SelectContent>
+            </Select>
+            {formData.lungeHasPain === 'yes' && (
+              <p className="mt-1.5 text-xs font-bold text-rose-600 flex items-center gap-1 animate-pulse">
+                <span>⚠️</span> Safety Flag: Do not load this movement pattern.
+              </p>
+            )}
+          </div>
+        </div>
+
         <div>
           <Label htmlFor="lungeTestNotes">Coach Notes (optional)</Label>
           <Textarea

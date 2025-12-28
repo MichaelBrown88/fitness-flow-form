@@ -105,6 +105,27 @@ const OverheadSquatStep = () => {
         </div>
 
         <div>
+          <Label htmlFor="ohsHasPain">Pain or Discomfort?</Label>
+          <Select
+            value={formData.ohsHasPain}
+            onValueChange={(value) => updateFormData({ ohsHasPain: value })}
+          >
+            <SelectTrigger className="mt-1 border-rose-200 focus:ring-rose-500">
+              <SelectValue placeholder="Is there any pain?" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="no">No pain – movement is comfortable</SelectItem>
+              <SelectItem value="yes">Yes – client reported pain or discomfort</SelectItem>
+            </SelectContent>
+          </Select>
+          {formData.ohsHasPain === 'yes' && (
+            <p className="mt-1.5 text-xs font-bold text-rose-600 flex items-center gap-1 animate-pulse">
+              <span>⚠️</span> Safety Flag: Do not load this movement pattern.
+            </p>
+          )}
+        </div>
+
+        <div>
           <Label htmlFor="overheadSquatNotes">Coach Notes (optional)</Label>
           <Textarea
             id="overheadSquatNotes"
