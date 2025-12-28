@@ -71,6 +71,28 @@ export default function CoachReport({
           <p className="text-slate-600 text-sm leading-relaxed max-w-xl">
             Based on the assessment data, we've identified the following training priorities and strategy for {clientName || 'this client'}.
           </p>
+
+          {/* Synthesis for Coach */}
+          {scores.synthesis && scores.synthesis.length > 0 && (
+            <div className="pt-4 space-y-3">
+              <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">Cross-Pillar Synthesis</h4>
+              <div className="grid gap-3">
+                {scores.synthesis.map((item, idx) => (
+                  <div key={idx} className={`p-3 rounded-xl border flex gap-3 ${
+                    item.severity === 'high' ? 'border-rose-100 bg-rose-50/50' : 
+                    item.severity === 'medium' ? 'border-amber-100 bg-amber-50/50' : 
+                    'border-blue-100 bg-blue-50/50'
+                  }`}>
+                    <span className="shrink-0">{item.severity === 'high' ? '🚨' : item.severity === 'medium' ? '⚠️' : 'ℹ️'}</span>
+                    <div>
+                      <h5 className="text-xs font-bold text-slate-900">{item.title}</h5>
+                      <p className="text-xs text-slate-600 leading-relaxed mt-0.5">{item.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         <div className="w-full md:w-72 flex-shrink-0 bg-slate-50 rounded-2xl p-4 border border-slate-100">
           <OverallRadarChart data={overallRadarData} />

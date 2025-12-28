@@ -17,10 +17,10 @@ const OverheadSquatStep = () => {
 
       <div className="space-y-4">
         <div>
-          <Label htmlFor="overheadSquatKneeAlignment">Knee Alignment</Label>
+          <Label htmlFor="ohsKneeAlignment">Knee Alignment</Label>
           <Select
-            value={formData.overheadSquatKneeAlignment}
-            onValueChange={(value) => updateFormData({ overheadSquatKneeAlignment: value })}
+            value={formData.ohsKneeAlignment}
+            onValueChange={(value) => updateFormData({ ohsKneeAlignment: value })}
           >
             <SelectTrigger className="mt-1">
               <SelectValue placeholder="Select knee alignment" />
@@ -35,10 +35,10 @@ const OverheadSquatStep = () => {
         </div>
 
         <div>
-          <Label htmlFor="overheadSquatTorsoLean">Torso Lean</Label>
+          <Label htmlFor="ohsTorsoLean">Torso Lean</Label>
           <Select
-            value={formData.overheadSquatTorsoLean}
-            onValueChange={(value) => updateFormData({ overheadSquatTorsoLean: value })}
+            value={formData.ohsTorsoLean}
+            onValueChange={(value) => updateFormData({ ohsTorsoLean: value })}
           >
             <SelectTrigger className="mt-1">
               <SelectValue placeholder="Select torso lean" />
@@ -52,10 +52,10 @@ const OverheadSquatStep = () => {
         </div>
 
         <div>
-          <Label htmlFor="overheadSquatHipShift">Hip Shift</Label>
+          <Label htmlFor="ohsHipShift">Hip Shift</Label>
           <Select
-            value={formData.overheadSquatHipShift}
-            onValueChange={(value) => updateFormData({ overheadSquatHipShift: value })}
+            value={formData.ohsHipShift}
+            onValueChange={(value) => updateFormData({ ohsHipShift: value })}
           >
             <SelectTrigger className="mt-1">
               <SelectValue placeholder="Select hip shift" />
@@ -70,10 +70,10 @@ const OverheadSquatStep = () => {
         </div>
 
         <div>
-          <Label htmlFor="overheadSquatDepth">Squat Depth</Label>
+          <Label htmlFor="ohsSquatDepth">Squat Depth</Label>
           <Select
-            value={formData.overheadSquatDepth}
-            onValueChange={(value) => updateFormData({ overheadSquatDepth: value })}
+            value={formData.ohsSquatDepth}
+            onValueChange={(value) => updateFormData({ ohsSquatDepth: value })}
           >
             <SelectTrigger className="mt-1">
               <SelectValue placeholder="Select squat depth" />
@@ -87,10 +87,10 @@ const OverheadSquatStep = () => {
         </div>
 
         <div>
-          <Label htmlFor="overheadSquatFootHeel">Foot / Heel Behaviour</Label>
+          <Label htmlFor="ohsHeelBehavior">Foot / Heel Behaviour</Label>
           <Select
-            value={formData.overheadSquatFootHeel}
-            onValueChange={(value) => updateFormData({ overheadSquatFootHeel: value })}
+            value={formData.ohsHeelBehavior}
+            onValueChange={(value) => updateFormData({ ohsHeelBehavior: value })}
           >
             <SelectTrigger className="mt-1">
               <SelectValue placeholder="Select foot/heel behaviour" />
@@ -146,11 +146,11 @@ const OverheadSquatStep = () => {
         </div>
 
         <div>
-          <Label htmlFor="overheadSquatNotes">Coach Notes (optional)</Label>
+          <Label htmlFor="ohsNotes">Coach Notes (optional)</Label>
           <Textarea
-            id="overheadSquatNotes"
-            value={formData.overheadSquatNotes}
-            onChange={(e) => updateFormData({ overheadSquatNotes: e.target.value })}
+            id="ohsNotes"
+            value={formData.ohsNotes}
+            onChange={(e) => updateFormData({ ohsNotes: e.target.value })}
             placeholder="Record anything unusual..."
             className="mt-1 min-h-[80px]"
           />

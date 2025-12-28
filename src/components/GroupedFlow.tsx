@@ -26,11 +26,11 @@ export default function GroupedFlow({ onSubmit }: { onSubmit: () => void }) {
       cardTitle: 'Basic Info',
       fields: [
         { kind: 'text', key: 'fullName', label: 'Full Name', placeholder: 'Enter full name' },
-        { kind: 'number', key: 'age', label: 'Age', placeholder: 'Enter age' },
+        { kind: 'text', key: 'dateOfBirth', label: 'Date of Birth', placeholder: 'YYYY-MM-DD' },
         { kind: 'select', key: 'gender', label: 'Gender', options: [ { value: 'male', label: 'Male' }, { value: 'female', label: 'Female' } ] },
-        { kind: 'select', key: 'assignedCoach', label: 'Assigned Coach', options: [ { value: 'Coach Mike', label: 'Coach Mike' }, { value: 'Coach Selina', label: 'Coach Selina' } ] },
-        { kind: 'email', key: 'contactEmail', label: 'Contact Email', placeholder: 'email@example.com' },
-        { kind: 'checkbox-multi', key: 'clientGoals', label: 'Goals', options: [ { value: 'weight-loss', label: 'Weight Loss' }, { value: 'muscle-gain', label: 'Muscle Gain' }, { value: 'improve-mobility', label: 'Improve Mobility' }, { value: 'general-fitness', label: 'General Fitness' } ] },
+        { kind: 'select', key: 'assignedCoach', label: 'Assigned Coach', options: [ { value: 'coach-mike', label: 'Coach Mike' }, { value: 'coach-selina', label: 'Coach Selina' } ] },
+        { kind: 'email', key: 'email', label: 'Email', placeholder: 'email@example.com' },
+        { kind: 'checkbox-multi', key: 'clientGoals', label: 'Goals', options: [ { value: 'weight-loss', label: 'Weight Loss' }, { value: 'build-muscle', label: 'Muscle Gain' }, { value: 'build-strength', label: 'Build Strength' }, { value: 'improve-fitness', label: 'Improve Fitness' } ] },
       ],
     },
     // 2) InBody Results
@@ -38,11 +38,11 @@ export default function GroupedFlow({ onSubmit }: { onSubmit: () => void }) {
       sectionTitle: 'InBody Results',
       cardTitle: 'Body Composition',
       fields: [
-        { kind: 'number', key: 'height', label: 'Height (cm)', placeholder: '170' },
-        { kind: 'number', key: 'weight', label: 'Weight (kg)', placeholder: '70' },
-        { kind: 'number', key: 'bodyFat', label: 'Body Fat %', placeholder: '20.5' },
-        { kind: 'number', key: 'skeletalMuscleMass', label: 'Skeletal Muscle Mass (kg)', placeholder: '30' },
-        { kind: 'number', key: 'visceralFat', label: 'Visceral Fat Rating', placeholder: '10' },
+        { kind: 'number', key: 'heightCm', label: 'Height (cm)', placeholder: '170' },
+        { kind: 'number', key: 'inbodyWeightKg', label: 'Weight (kg)', placeholder: '70' },
+        { kind: 'number', key: 'inbodyBodyFatPct', label: 'Body Fat %', placeholder: '20.5' },
+        { kind: 'number', key: 'skeletalMuscleMassKg', label: 'Skeletal Muscle Mass (kg)', placeholder: '30' },
+        { kind: 'number', key: 'visceralFatLevel', label: 'Visceral Fat Rating', placeholder: '10' },
       ],
     },
     // 3) Posture
@@ -50,12 +50,11 @@ export default function GroupedFlow({ onSubmit }: { onSubmit: () => void }) {
       sectionTitle: 'Posture',
       cardTitle: 'Posture Assessment',
       fields: [
-        { kind: 'boolean', key: 'forwardHeadPosture', label: 'Forward head posture' },
-        { kind: 'boolean', key: 'roundedShoulders', label: 'Rounded shoulders' },
-        { kind: 'boolean', key: 'anteriorPelvicTilt', label: 'Anterior pelvic tilt' },
-        { kind: 'boolean', key: 'kyphosisLordosis', label: 'Kyphosis/Lordosis' },
-        { kind: 'select', key: 'kneeAlignment', label: 'Knee alignment', options: [ { value: 'none', label: 'None' }, { value: 'valgus', label: 'Valgus' }, { value: 'varus', label: 'Varus' }, { value: 'hyperextension', label: 'Hyperextension' } ] },
-        { kind: 'select', key: 'footPosition', label: 'Foot position', options: [ { value: 'none', label: 'None' }, { value: 'overpronation', label: 'Overpronation' }, { value: 'underpronation', label: 'Underpronation (Supination)' }, { value: 'flat-feet', label: 'Flat Feet' }, { value: 'high-arch', label: 'High Arch' } ] },
+        { kind: 'select', key: 'postureHeadOverall', label: 'Head and neck', options: [ { value: 'neutral', label: 'Neutral' }, { value: 'forward-head', label: 'Forward Head' } ] },
+        { kind: 'select', key: 'postureShouldersOverall', label: 'Shoulders', options: [ { value: 'neutral', label: 'Neutral' }, { value: 'rounded', label: 'Rounded' } ] },
+        { kind: 'select', key: 'postureBackOverall', label: 'Back', options: [ { value: 'neutral', label: 'Neutral' }, { value: 'increased-kyphosis', label: 'Kyphosis' } ] },
+        { kind: 'select', key: 'postureHipsOverall', label: 'Hips', options: [ { value: 'neutral', label: 'Neutral' }, { value: 'anterior-tilt', label: 'Anterior Tilt' } ] },
+        { kind: 'select', key: 'postureKneesOverall', label: 'Knees', options: [ { value: 'neutral', label: 'Neutral' }, { value: 'valgus-knee', label: 'Valgus' } ] },
       ],
     },
     // 4) Movement: Overhead Squat (alone)
@@ -63,12 +62,12 @@ export default function GroupedFlow({ onSubmit }: { onSubmit: () => void }) {
       sectionTitle: 'Movement',
       cardTitle: 'Overhead Squat',
       fields: [
+        { kind: 'select', key: 'ohsKneeAlignment', label: 'Knee alignment', options: [ { value: 'no-issue', label: 'No issue' }, { value: 'valgus', label: 'Valgus' } ] },
+        { kind: 'select', key: 'ohsTorsoLean', label: 'Torso lean', options: [ { value: 'upright', label: 'Upright' }, { value: 'moderate-lean', label: 'Moderate' } ] },
+        { kind: 'select', key: 'ohsHipShift', label: 'Hip shift', options: [ { value: 'none', label: 'None' }, { value: 'left', label: 'Left' }, { value: 'right', label: 'Right' } ] },
+        { kind: 'select', key: 'ohsSquatDepth', label: 'Depth', options: [ { value: 'full-depth', label: 'Full depth' }, { value: 'parallel', label: 'Parallel' } ] },
+        { kind: 'select', key: 'ohsHeelBehavior', label: 'Heel behavior', options: [ { value: 'heels-down', label: 'Heels down' }, { value: 'heels-lift', label: 'Heels lift' } ] },
         { kind: 'select', key: 'ohsHasPain', label: 'Pain/Discomfort?', options: [ { value: 'no', label: 'No pain' }, { value: 'yes', label: 'Yes - Pain reported' } ] },
-        { kind: 'select', key: 'overheadSquatKneeAlignment', label: 'Knee alignment', options: [ { value: 'no-issue', label: 'No issue' }, { value: 'mild-cave', label: 'Mild cave-in' }, { value: 'severe-cave', label: 'Severe cave-in' }, { value: 'knees-out', label: 'Knees out' } ] },
-        { kind: 'select', key: 'overheadSquatTorsoLean', label: 'Torso lean', options: [ { value: 'upright', label: 'Upright' }, { value: 'mild-lean', label: 'Mild forward lean' }, { value: 'excessive-lean', label: 'Excessive forward lean' } ] },
-        { kind: 'select', key: 'overheadSquatHipShift', label: 'Hip shift', options: [ { value: 'no-shift', label: 'No shift' }, { value: 'shift-left', label: 'Shifts left' }, { value: 'shift-right', label: 'Shifts right' }, { value: 'shift-unstable', label: 'Unstable' } ] },
-        { kind: 'select', key: 'overheadSquatDepth', label: 'Depth', options: [ { value: 'full-depth', label: 'Full depth' }, { value: 'mid-range', label: 'Mid range' }, { value: 'shallow', label: 'Shallow' } ] },
-        { kind: 'select', key: 'overheadSquatFootHeel', label: 'Foot/heel', options: [ { value: 'heels-down', label: 'Heels down' }, { value: 'heels-lift', label: 'Heels lift' }, { value: 'feet-roll-in', label: 'Feet roll in' }, { value: 'feet-roll-out', label: 'Feet roll out' } ] },
       ],
     },
     // 5) Movement: Lunge (own screen)
@@ -76,18 +75,19 @@ export default function GroupedFlow({ onSubmit }: { onSubmit: () => void }) {
       sectionTitle: 'Movement',
       cardTitle: 'Lunge',
       fields: [
+        { kind: 'select', key: 'lungeLeftKneeAlignment', label: 'Left Knee', options: [ { value: 'tracks-straight', label: 'Tracks straight' }, { value: 'caves-inward', label: 'Valgus' } ] },
+        { kind: 'select', key: 'lungeRightKneeAlignment', label: 'Right Knee', options: [ { value: 'tracks-straight', label: 'Tracks straight' }, { value: 'caves-inward', label: 'Valgus' } ] },
         { kind: 'select', key: 'lungeHasPain', label: 'Pain/Discomfort?', options: [ { value: 'no', label: 'No pain' }, { value: 'yes', label: 'Yes - Pain reported' } ] },
-        { kind: 'select', key: 'lungeLeftKneeAlignment', label: 'Left: Knee', options: [ { value: 'tracks-center', label: 'Tracks center' }, { value: 'caves-inward', label: 'Caves inward' }, { value: 'pushes-out', label: 'Pushes out' }, { value: 'wobbles', label: 'Wobbles' } ] },
-        { kind: 'select', key: 'lungeRightKneeAlignment', label: 'Right: Knee', options: [ { value: 'tracks-center', label: 'Tracks center' }, { value: 'caves-inward', label: 'Caves inward' }, { value: 'pushes-out', label: 'Pushes out' }, { value: 'wobbles', label: 'Wobbles' } ] },
       ],
     },
-    // 6) Movement: Overhead Reach (own screen)
+    // 6) Movement: Mobility
     {
       sectionTitle: 'Movement',
-      cardTitle: 'Overhead Reach',
+      cardTitle: 'Mobility Screens',
       fields: [
-        { kind: 'select', key: 'overheadReachResult', label: 'Result', options: [ { value: 'full-range', label: 'Full range' }, { value: 'limited-range', label: 'Limited range' }, { value: 'limited-with-arch', label: 'Limited with low-back arch' }, { value: 'pain-reported', label: 'Pain reported' } ] },
-        { kind: 'select', key: 'shoulderMobilityRating', label: 'Shoulder mobility', options: [ { value: 'good', label: 'Good' }, { value: 'ok', label: 'OK' }, { value: 'poor', label: 'Poor' } ] },
+        { kind: 'select', key: 'mobilityHip', label: 'Hip Mobility', options: [ { value: 'good', label: 'Good' }, { value: 'fair', label: 'Fair' }, { value: 'poor', label: 'Poor' } ] },
+        { kind: 'select', key: 'mobilityShoulder', label: 'Shoulder Mobility', options: [ { value: 'good', label: 'Good' }, { value: 'fair', label: 'Fair' }, { value: 'poor', label: 'Poor' } ] },
+        { kind: 'select', key: 'mobilityAnkle', label: 'Ankle Mobility', options: [ { value: 'good', label: 'Good' }, { value: 'fair', label: 'Fair' }, { value: 'poor', label: 'Poor' } ] },
       ],
     },
     // 7) Movement: Hinge (own screen)
@@ -95,9 +95,9 @@ export default function GroupedFlow({ onSubmit }: { onSubmit: () => void }) {
       sectionTitle: 'Movement',
       cardTitle: 'Hinge',
       fields: [
-        { kind: 'select', key: 'hingeHasPain', label: 'Pain/Discomfort?', options: [ { value: 'no', label: 'No pain' }, { value: 'yes', label: 'Yes - Pain reported' } ] },
         { kind: 'select', key: 'hingeQuality', label: 'Hinge quality', options: [ { value: 'good', label: 'Good' }, { value: 'compensation', label: 'Compensations' }, { value: 'poor', label: 'Poor' } ] },
         { kind: 'select', key: 'hingeBalance', label: 'Hinge balance', options: [ { value: 'stable', label: 'Stable' }, { value: 'slight-wobble', label: 'Slight wobble' }, { value: 'unstable', label: 'Unstable' } ] },
+        { kind: 'select', key: 'hingeHasPain', label: 'Pain/Discomfort?', options: [ { value: 'no', label: 'No pain' }, { value: 'yes', label: 'Yes - Pain reported' } ] },
       ],
     },
     // 8) Muscular Endurance grouped
@@ -105,8 +105,8 @@ export default function GroupedFlow({ onSubmit }: { onSubmit: () => void }) {
       sectionTitle: 'Muscular Endurance',
       cardTitle: 'Upper / Lower Endurance',
       fields: [
-        { kind: 'number', key: 'pushupReps', label: 'Push-ups in 1 minute', placeholder: 'e.g., 25' },
-        { kind: 'number', key: 'bwSquats1Min', label: 'Bodyweight squats in 1 minute', placeholder: 'e.g., 35' },
+        { kind: 'number', key: 'pushupsOneMinuteReps', label: 'Push-ups in 1 minute', placeholder: 'e.g., 25' },
+        { kind: 'number', key: 'squatsOneMinuteReps', label: 'Bodyweight squats in 1 minute', placeholder: 'e.g., 35' },
       ],
     },
     // 9) Core strength & stability grouped
@@ -114,16 +114,14 @@ export default function GroupedFlow({ onSubmit }: { onSubmit: () => void }) {
       sectionTitle: 'Core Strength & Stability',
       cardTitle: 'Core Tests',
       fields: [
-        { kind: 'number', key: 'plankHold', label: 'Plank hold (sec)', placeholder: 'e.g., 60' },
-        { kind: 'number', key: 'windshieldWipersReps', label: 'Windshield wipers (reps)', placeholder: 'e.g., 12' },
+        { kind: 'number', key: 'plankDurationSeconds', label: 'Plank hold (sec)', placeholder: 'e.g., 60' },
       ],
     },
-    // 10) Grip strength & Sit-and-Reach grouped
+    // 10) Grip strength grouped
     {
-      sectionTitle: 'Grip & Flexibility',
-      cardTitle: 'Grip Strength & Sit-and-Reach',
+      sectionTitle: 'Grip Strength',
+      cardTitle: 'Grip Strength',
       fields: [
-        { kind: 'select', key: 'sitAndReachCategory', label: 'Sit-and-reach', options: [ { value: 'poor', label: "Can't reach toes" }, { value: 'average', label: 'Can reach toes' }, { value: 'good', label: 'Reach past toes' } ] },
         { kind: 'number', key: 'gripLeftKg', label: 'Grip left (kg)', placeholder: 'e.g., 28.5' },
         { kind: 'number', key: 'gripRightKg', label: 'Grip right (kg)', placeholder: 'e.g., 32.0' },
       ],
@@ -133,14 +131,9 @@ export default function GroupedFlow({ onSubmit }: { onSubmit: () => void }) {
       sectionTitle: 'Fitness',
       cardTitle: 'Cardio Test',
       fields: [
-        { kind: 'select', key: 'cardioTestType', label: 'Test type', options: [ { value: 'step-test', label: 'Step Test (3 min)' }, { value: 'treadmill-3min', label: 'Treadmill (3 min)' } ] },
-        { kind: 'number', key: 'stepTestImmediateHr', label: 'Step Test – Immediate HR (bpm)', placeholder: 'e.g., 140' },
-        { kind: 'number', key: 'stepTestRecoveryIntervalSec', label: 'Step Test – Recovery Interval (sec)', placeholder: '60' },
-        { kind: 'number', key: 'stepTestRecoveryHr', label: 'Step Test – Recovery HR (bpm)', placeholder: 'e.g., 110' },
-        { kind: 'number', key: 'treadmillSpeed', label: 'Treadmill – Speed', placeholder: 'e.g., 5.0' },
-        { kind: 'select', key: 'treadmillSpeedUnit', label: 'Speed unit', options: [ { value: 'mph', label: 'mph' }, { value: 'kmh', label: 'km/h' } ] },
-        { kind: 'number', key: 'treadmillImmediateHr', label: 'Treadmill – Immediate HR (bpm)', placeholder: 'e.g., 150' },
-        { kind: 'number', key: 'treadmillRecoveryHr', label: 'Treadmill – 1-min Recovery HR (bpm)', placeholder: 'e.g., 120' },
+        { kind: 'select', key: 'cardioTestSelected', label: 'Test type', options: [ { value: 'ymca-step', label: 'YMCA Step Test' }, { value: 'treadmill', label: 'Treadmill Test' } ] },
+        { kind: 'number', key: 'cardioRestingHr', label: 'Resting HR (bpm)', placeholder: 'e.g., 65' },
+        { kind: 'number', key: 'cardioPost1MinHr', label: '1-min Post-Test HR (bpm)', placeholder: 'e.g., 110' },
       ],
     },
   ], []);

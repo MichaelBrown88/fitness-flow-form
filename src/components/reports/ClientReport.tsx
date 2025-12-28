@@ -1027,6 +1027,46 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
             This graph shows how balanced your fitness is across all categories.
           </p>
         </div>
+
+        {/* Synthesis Section - Cross-Pillar Insights */}
+        {scores.synthesis && scores.synthesis.length > 0 && (
+          <div className="max-w-2xl mx-auto mt-12 space-y-4">
+            <div className="text-center mb-6">
+              <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-slate-400">Expert Synthesis</h3>
+              <p className="text-xs text-slate-500 mt-1">How your different results interact</p>
+            </div>
+            {scores.synthesis.map((item, idx) => (
+              <div 
+                key={idx} 
+                className={`rounded-2xl border p-5 shadow-sm ${
+                  item.severity === 'high' ? 'border-rose-200 bg-rose-50' : 
+                  item.severity === 'medium' ? 'border-amber-200 bg-amber-50' : 
+                  'border-blue-200 bg-blue-50'
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-lg">
+                    {item.severity === 'high' ? '🚨' : item.severity === 'medium' ? '⚠️' : 'ℹ️'}
+                  </span>
+                  <h4 className={`font-bold ${
+                    item.severity === 'high' ? 'text-rose-900' : 
+                    item.severity === 'medium' ? 'text-amber-900' : 
+                    'text-blue-900'
+                  }`}>
+                    {item.title}
+                  </h4>
+                </div>
+                <p className={`text-sm leading-relaxed ${
+                  item.severity === 'high' ? 'text-rose-800' : 
+                  item.severity === 'medium' ? 'text-amber-800' : 
+                  'text-blue-800'
+                }`}>
+                  {item.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* 2. Category tabs with radar charts - Each fitness section gets its own tab */}

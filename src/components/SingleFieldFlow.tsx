@@ -24,28 +24,26 @@ export default function SingleFieldFlow({ onSubmit }: { onSubmit: () => void }) 
   const fields: FieldDef[] = useMemo(() => [
     // Identity
     { key: 'fullName', label: 'Full Name', type: 'text', placeholder: 'Enter full name', required: true },
-    { key: 'age', label: 'Age', type: 'number', placeholder: 'Enter age', required: true },
+    { key: 'dateOfBirth', label: 'Date of Birth', type: 'text', placeholder: 'YYYY-MM-DD', required: true },
     { key: 'gender', label: 'Gender', type: 'select', options: [ { value: 'male', label: 'Male' }, { value: 'female', label: 'Female' } ], required: true },
-    { key: 'assignedCoach', label: 'Assigned Coach', type: 'select', options: [ { value: 'Coach Mike', label: 'Coach Mike' }, { value: 'Coach Selina', label: 'Coach Selina' } ], required: true },
-    { key: 'contactEmail', label: 'Contact Email', type: 'email', placeholder: 'email@example.com', required: true },
+    { key: 'assignedCoach', label: 'Assigned Coach', type: 'select', options: [ { value: 'coach-mike', label: 'Coach Mike' }, { value: 'coach-selina', label: 'Coach Selina' } ], required: true },
+    { key: 'email', label: 'Email', type: 'email', placeholder: 'email@example.com', required: true },
     // Body Composition
-    { key: 'height', label: 'Height (cm)', type: 'number', placeholder: '170', required: true },
-    { key: 'weight', label: 'Weight (kg)', type: 'number', placeholder: '70', required: true },
-    { key: 'bodyFat', label: 'Body Fat %', type: 'number', placeholder: '20.5', required: true },
-    { key: 'skeletalMuscleMass', label: 'Skeletal Muscle Mass (kg)', type: 'number', placeholder: '30', required: true },
-    { key: 'visceralFat', label: 'Visceral Fat Rating', type: 'number', placeholder: '10' },
-    // removed coach notes from flow for minimalism
+    { key: 'heightCm', label: 'Height (cm)', type: 'number', placeholder: '170', required: true },
+    { key: 'inbodyWeightKg', label: 'Weight (kg)', type: 'number', placeholder: '70', required: true },
+    { key: 'inbodyBodyFatPct', label: 'Body Fat %', type: 'number', placeholder: '20.5', required: true },
+    { key: 'skeletalMuscleMassKg', label: 'Skeletal Muscle Mass (kg)', type: 'number', placeholder: '30', required: true },
+    { key: 'visceralFatLevel', label: 'Visceral Fat Rating', type: 'number', placeholder: '10' },
     // Posture
     { label: 'Posture Assessment', type: 'posture' },
     // Overhead Squat
-    { key: 'overheadSquatKneeAlignment', label: 'Overhead Squat – Knee Alignment', type: 'select', options: [ { value: 'no-issue', label: 'No issue' }, { value: 'mild-cave', label: 'Mild cave-in' }, { value: 'severe-cave', label: 'Severe cave-in' }, { value: 'knees-out', label: 'Knees push out' } ] },
-    { key: 'overheadSquatTorsoLean', label: 'Overhead Squat – Torso Lean', type: 'select', options: [ { value: 'upright', label: 'Upright' }, { value: 'mild-lean', label: 'Mild forward lean' }, { value: 'excessive-lean', label: 'Excessive forward lean' } ] },
-    { key: 'overheadSquatHipShift', label: 'Overhead Squat – Hip Shift', type: 'select', options: [ { value: 'no-shift', label: 'No shift' }, { value: 'shift-left', label: 'Shifts left' }, { value: 'shift-right', label: 'Shifts right' }, { value: 'shift-unstable', label: 'Unstable' } ] },
-    { key: 'overheadSquatDepth', label: 'Overhead Squat – Depth', type: 'select', options: [ { value: 'full-depth', label: 'Full depth' }, { value: 'mid-range', label: 'Mid range' }, { value: 'shallow', label: 'Shallow' } ] },
-    { key: 'overheadSquatFootHeel', label: 'Overhead Squat – Foot/Heel', type: 'select', options: [ { value: 'heels-down', label: 'Heels down' }, { value: 'heels-lift', label: 'Heels lift' }, { value: 'feet-roll-in', label: 'Feet roll in' }, { value: 'feet-roll-out', label: 'Feet roll out' } ] },
+    { key: 'ohsKneeAlignment', label: 'Overhead Squat – Knee Alignment', type: 'select', options: [ { value: 'no-issue', label: 'No issue' }, { value: 'mild-cave', label: 'Mild cave-in' }, { value: 'severe-cave', label: 'Severe cave-in' }, { value: 'knees-out', label: 'Knees push out' } ] },
+    { key: 'ohsTorsoLean', label: 'Overhead Squat – Torso Lean', type: 'select', options: [ { value: 'upright', label: 'Upright' }, { value: 'mild-lean', label: 'Mild forward lean' }, { value: 'excessive-lean', label: 'Excessive forward lean' } ] },
+    { key: 'ohsHipShift', label: 'Overhead Squat – Hip Shift', type: 'select', options: [ { value: 'no-shift', label: 'No shift' }, { value: 'shift-left', label: 'Shifts left' }, { value: 'shift-right', label: 'Shifts right' }, { value: 'shift-unstable', label: 'Unstable' } ] },
+    { key: 'ohsSquatDepth', label: 'Overhead Squat – Depth', type: 'select', options: [ { value: 'full-depth', label: 'Full depth' }, { value: 'mid-range', label: 'Mid range' }, { value: 'shallow', label: 'Shallow' } ] },
+    { key: 'ohsHeelBehavior', label: 'Overhead Squat – Heel Behavior', type: 'select', options: [ { value: 'heels-down', label: 'Heels down' }, { value: 'heels-lift', label: 'Heels lift' }, { value: 'feet-roll-in', label: 'Feet roll in' }, { value: 'feet-roll-out', label: 'Feet roll out' } ] },
     { key: 'ohsHasPain', label: 'Overhead Squat – Pain/Discomfort?', type: 'select', options: [ { value: 'no', label: 'No pain' }, { value: 'yes', label: 'Yes - Pain reported' } ] },
     { key: 'ohsPainLevel', label: 'Overhead Squat – Pain Level (1-10)', type: 'select', options: [ { value: '1', label: '1 - Very Mild' }, { value: '2', label: '2' }, { value: '3', label: '3' }, { value: '4', label: '4 - Moderate' }, { value: '5', label: '5' }, { value: '6', label: '6' }, { value: '7', label: '7 - Severe' }, { value: '8', label: '8' }, { value: '9', label: '9' }, { value: '10', label: '10 - Unbearable' } ] },
-    // notes removed
     // Lunge left/right
     { key: 'lungeLeftKneeAlignment', label: 'Lunge – Left Front Knee Alignment', type: 'select', options: [ { value: 'tracks-center', label: 'Tracks center' }, { value: 'caves-inward', label: 'Caves inward' }, { value: 'pushes-out', label: 'Pushes out' }, { value: 'wobbles', label: 'Wobbles' } ] },
     { key: 'lungeLeftBalance', label: 'Lunge – Left Balance', type: 'select', options: [ { value: 'stable', label: 'Stable' }, { value: 'slight-wobble', label: 'Slight wobble' }, { value: 'unstable', label: 'Unstable' } ] },
@@ -55,34 +53,23 @@ export default function SingleFieldFlow({ onSubmit }: { onSubmit: () => void }) 
     { key: 'lungeRightTorso', label: 'Lunge – Right Torso', type: 'select', options: [ { value: 'upright', label: 'Upright' }, { value: 'mild-lean', label: 'Mild lean' }, { value: 'excessive-lean', label: 'Excessive lean' } ] },
     { key: 'lungeHasPain', label: 'Lunge – Pain/Discomfort?', type: 'select', options: [ { value: 'no', label: 'No pain' }, { value: 'yes', label: 'Yes - Pain reported' } ] },
     { key: 'lungePainLevel', label: 'Lunge – Pain Level (1-10)', type: 'select', options: [ { value: '1', label: '1 - Very Mild' }, { value: '2', label: '2' }, { value: '3', label: '3' }, { value: '4', label: '4 - Moderate' }, { value: '5', label: '5' }, { value: '6', label: '6' }, { value: '7', label: '7 - Severe' }, { value: '8', label: '8' }, { value: '9', label: '9' }, { value: '10', label: '10 - Unbearable' } ] },
-    // notes removed
     // Overhead reach / shoulder
-    { key: 'overheadReachResult', label: 'Overhead Reach Result', type: 'select', options: [ { value: 'full-range', label: 'Full range' }, { value: 'limited-range', label: 'Limited range' }, { value: 'limited-with-arch', label: 'Limited with low-back arch' }, { value: 'pain-reported', label: 'Pain reported' } ] },
-    { key: 'shoulderMobilityRating', label: 'Shoulder Mobility Rating', type: 'select', options: [ { value: 'good', label: 'Good' }, { value: 'ok', label: 'OK' }, { value: 'poor', label: 'Poor' } ] },
-    // notes removed
+    { key: 'ohsShoulderMobility', label: 'Overhead Reach Result', type: 'select', options: [ { value: 'full-range', label: 'Full range' }, { value: 'compensated', label: 'Compensated' }, { value: 'limited', label: 'Limited' } ] },
+    { key: 'mobilityShoulder', label: 'Shoulder Mobility Rating', type: 'select', options: [ { value: 'good', label: 'Good' }, { value: 'fair', label: 'Fair' }, { value: 'poor', label: 'Poor' } ] },
     // Hinge
     { key: 'hingeQuality', label: 'Hip Hinge – Quality', type: 'select', options: [ { value: 'good', label: 'Good' }, { value: 'compensation', label: 'Compensations' }, { value: 'poor', label: 'Poor' } ] },
     { key: 'hingeBalance', label: 'Hip Hinge – Balance', type: 'select', options: [ { value: 'stable', label: 'Stable' }, { value: 'slight-wobble', label: 'Slight wobble' }, { value: 'unstable', label: 'Unstable' } ] },
     { key: 'hingeHasPain', label: 'Hip Hinge – Pain/Discomfort?', type: 'select', options: [ { value: 'no', label: 'No pain' }, { value: 'yes', label: 'Yes - Pain reported' } ] },
     { key: 'hingePainLevel', label: 'Hip Hinge – Pain Level (1-10)', type: 'select', options: [ { value: '1', label: '1 - Very Mild' }, { value: '2', label: '2' }, { value: '3', label: '3' }, { value: '4', label: '4 - Moderate' }, { value: '5', label: '5' }, { value: '6', label: '6' }, { value: '7', label: '7 - Severe' }, { value: '8', label: '8' }, { value: '9', label: '9' }, { value: '10', label: '10 - Unbearable' } ] },
-    // notes removed
     // Muscular Strength
-    { key: 'pushupReps', label: 'Push-ups in 1 minute', type: 'number', placeholder: 'e.g., 25', required: true },
-    { key: 'plankHold', label: 'Plank Hold (sec)', type: 'number', placeholder: 'e.g., 60', required: true },
-    { key: 'bwSquats1Min', label: 'Bodyweight Squats in 1 minute', type: 'number', placeholder: 'e.g., 35', required: true },
-    // notes removed
+    { key: 'pushupsOneMinuteReps', label: 'Push-ups in 1 minute', type: 'number', placeholder: 'e.g., 25', required: true },
+    { key: 'plankDurationSeconds', label: 'Plank Hold (sec)', type: 'number', placeholder: 'e.g., 60', required: true },
+    { key: 'squatsOneMinuteReps', label: 'Bodyweight Squats in 1 minute', type: 'number', placeholder: 'e.g., 35', required: true },
     // Metabolic Fitness
-    { key: 'cardioTestType', label: 'Cardio Test Type', type: 'select', options: [ { value: 'step-test', label: 'Step Test (3 min)' }, { value: 'treadmill-3min', label: 'Treadmill (3 min)' } ] },
-    { key: 'stepTestImmediateHr', label: 'Step Test – Immediate HR (bpm)', type: 'number', placeholder: 'e.g., 140' },
-    { key: 'stepTestRecoveryIntervalSec', label: 'Step Test – Recovery Interval (sec)', type: 'number', placeholder: '60' },
-    { key: 'stepTestRecoveryHr', label: 'Step Test – Recovery HR (bpm)', type: 'number', placeholder: 'e.g., 110' },
-    { key: 'treadmillSpeed', label: 'Treadmill – Speed', type: 'number', placeholder: 'e.g., 5.0' },
-    { key: 'treadmillSpeedUnit', label: 'Treadmill – Speed Unit', type: 'select', options: [ { value: 'mph', label: 'mph' }, { value: 'kmh', label: 'km/h' } ] },
-    { key: 'treadmillImmediateHr', label: 'Treadmill – Immediate HR (bpm)', type: 'number', placeholder: 'e.g., 150' },
-    { key: 'treadmillRecoveryHr', label: 'Treadmill – 1-min Recovery HR (bpm)', type: 'number', placeholder: 'e.g., 120' },
-    // notes removed
+    { key: 'cardioTestSelected', label: 'Cardio Test Type', type: 'select', options: [ { value: 'ymca-step', label: 'Step Test (3 min)' }, { value: 'treadmill', label: 'Treadmill (3 min)' } ] },
+    { key: 'cardioRestingHr', label: 'Resting Heart Rate (bpm)', type: 'number', placeholder: 'e.g., 65' },
+    { key: 'cardioPost1MinHr', label: '1-min Post-Test HR (bpm)', type: 'number', placeholder: 'e.g., 110' },
     // Flexibility & grip
-    { key: 'sitAndReachCategory', label: 'Sit-and-Reach', type: 'select', options: [ { value: 'poor', label: "Can't reach toes" }, { value: 'average', label: 'Can reach toes' }, { value: 'good', label: 'Reach past toes' } ] },
     { key: 'gripLeftKg', label: 'Grip Strength – Left (kg)', type: 'number', placeholder: 'e.g., 28.5' },
     { key: 'gripRightKg', label: 'Grip Strength – Right (kg)', type: 'number', placeholder: 'e.g., 32.0' },
   ], []);
@@ -105,7 +92,9 @@ export default function SingleFieldFlow({ onSubmit }: { onSubmit: () => void }) 
   }, [current?.key, current?.type]);
 
   const handleSet = (value: string | boolean) => {
-    updateFormData({ [current.key]: value } as any);
+    if (current.key) {
+      updateFormData({ [current.key]: value } as any);
+    }
   };
 
   const handleEnter = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -122,64 +111,32 @@ export default function SingleFieldFlow({ onSubmit }: { onSubmit: () => void }) 
           <div className="grid grid-cols-2 gap-3">
             <div className="flex items-center space-x-2">
               <Checkbox
-                id="forwardHeadPosture"
-                checked={Boolean((formData as any).forwardHeadPosture)}
-                onCheckedChange={(c) => updateFormData({ forwardHeadPosture: Boolean(c) } as any)}
+                id="postureForwardHead"
+                checked={formData.postureForwardHead === 'forward-head'}
+                onCheckedChange={(c) => updateFormData({ postureForwardHead: c ? 'forward-head' : 'neutral' })}
               />
-              <Label htmlFor="forwardHeadPosture">Forward head posture</Label>
+              <Label htmlFor="postureForwardHead">Forward head posture</Label>
             </div>
             <div className="flex items-center space-x-2">
               <Checkbox
-                id="roundedShoulders"
-                checked={Boolean((formData as any).roundedShoulders)}
-                onCheckedChange={(c) => updateFormData({ roundedShoulders: Boolean(c) } as any)}
+                id="postureRoundedShoulders"
+                checked={formData.postureRoundedShoulders === 'rounded'}
+                onCheckedChange={(c) => updateFormData({ postureRoundedShoulders: c ? 'rounded' : 'neutral' })}
               />
-              <Label htmlFor="roundedShoulders">Rounded shoulders</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="anteriorPelvicTilt"
-                checked={Boolean((formData as any).anteriorPelvicTilt)}
-                onCheckedChange={(c) => updateFormData({ anteriorPelvicTilt: Boolean(c) } as any)}
-              />
-              <Label htmlFor="anteriorPelvicTilt">Anterior pelvic tilt</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="kyphosisLordosis"
-                checked={Boolean((formData as any).kyphosisLordosis)}
-                onCheckedChange={(c) => updateFormData({ kyphosisLordosis: Boolean(c) } as any)}
-              />
-              <Label htmlFor="kyphosisLordosis">Kyphosis/Lordosis</Label>
+              <Label htmlFor="postureRoundedShoulders">Rounded shoulders</Label>
             </div>
           </div>
           <div className="grid md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="kneeAlignment">Knee alignment</Label>
-              <Select value={(formData as any).kneeAlignment || ''} onValueChange={(v) => updateFormData({ kneeAlignment: v } as any)}>
-                <SelectTrigger id="kneeAlignment" className="mt-1 h-12">
+              <Label htmlFor="postureKneesOverall">Knee alignment</Label>
+              <Select value={formData.postureKneesOverall} onValueChange={(v) => updateFormData({ postureKneesOverall: v })}>
+                <SelectTrigger id="postureKneesOverall" className="mt-1 h-12">
                   <SelectValue placeholder="Select" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  <SelectItem value="valgus">Valgus</SelectItem>
-                  <SelectItem value="varus">Varus</SelectItem>
-                  <SelectItem value="hyperextension">Hyperextension</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="footPosition">Foot position</Label>
-              <Select value={(formData as any).footPosition || ''} onValueChange={(v) => updateFormData({ footPosition: v } as any)}>
-                <SelectTrigger id="footPosition" className="mt-1 h-12">
-                  <SelectValue placeholder="Select" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  <SelectItem value="overpronation">Overpronation</SelectItem>
-                  <SelectItem value="underpronation">Underpronation (Supination)</SelectItem>
-                  <SelectItem value="flat-feet">Flat Feet</SelectItem>
-                  <SelectItem value="high-arch">High Arch</SelectItem>
+                  <SelectItem value="neutral">Neutral</SelectItem>
+                  <SelectItem value="valgus-knee">Valgus</SelectItem>
+                  <SelectItem value="varus-knee">Varus</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -258,5 +215,3 @@ export default function SingleFieldFlow({ onSubmit }: { onSubmit: () => void }) 
     </div>
   );
 }
-
-
