@@ -165,7 +165,7 @@ export const phaseDefinitions = [
           // Segmental Lean Analysis (kg only) — Trunk, Left arm, Right arm, Left leg, Right leg
           { id: 'segmentalTrunkKg' as keyof FormData, type: 'number' as FieldType, label: 'Trunk lean (kg)', placeholder: 'e.g., 28.5', tooltip: 'The amount of muscle in your core and torso region.' },
           { id: 'segmentalArmLeftKg' as keyof FormData, type: 'number' as FieldType, label: 'Left arm', side: 'left', pairId: 'arm-lean', placeholder: 'e.g., 3.1', tooltip: 'Muscle mass in your left arm. Compare with your right side to check for balance.' },
-          { id: 'segmentalArmRightKg' as keyof FormData, type: 'number' as FieldType, label: 'Right arm', side: 'right', pairId: 'arm-lean', placeholder: 'e.g., 3.2', tooltip: 'Muscle mass in your right arm. Compare with your left side to check for balance.' },
+          { id: 'segmentalArmRightKg' as keyof FormData, type: 'number' as FieldType, label: 'Right arm', side: 'right', pairId: 'arm-lean', placeholder: 'e.g., 3.2', tooltip: 'Muscle mass in your right arm. Compare with your right side to check for balance.' },
           { id: 'segmentalLegLeftKg' as keyof FormData, type: 'number' as FieldType, label: 'Left leg', side: 'left', pairId: 'leg-lean', placeholder: 'e.g., 9.1', tooltip: 'Muscle mass in your left leg. Compare with your right side to check for balance.' },
           { id: 'segmentalLegRightKg' as keyof FormData, type: 'number' as FieldType, label: 'Right leg', side: 'right', pairId: 'leg-lean', placeholder: 'e.g., 9.7', tooltip: 'Muscle mass in your right leg. Compare with your left side to check for balance.' },
 
@@ -261,6 +261,27 @@ export const phaseDefinitions = [
           },
         ],
       },
+      {
+        id: 'overhead-squat',
+        title: 'Overhead Squat',
+        fields: [
+          {
+            id: 'ohsShoulderMobility' as keyof FormData, type: 'select' as FieldType, label: 'Shoulder mobility', pattern: 'Overhead Squat', tooltip: 'Instructions:\n1. Stand with feet shoulder-width apart.\n2. Raise arms overhead with elbows locked.\n3. Note if arms stay vertical or tilt forward.', options: [
+              { value: 'full-range', label: 'Full range' }, { value: 'compensated', label: 'Compensated' }, { value: 'limited', label: 'Limited' }
+            ]
+          },
+          { id: 'ohsTorsoLean' as keyof FormData, type: 'select' as FieldType, label: 'Torso lean', pattern: 'Overhead Squat', tooltip: 'Instructions:\n1. Squat as deep as comfortable.\n2. Observe from the side view.\n3. Note if the torso stays upright or leans excessively forward.', options: [
+            { value: 'upright', label: 'Upright' }, { value: 'moderate-lean', label: 'Moderate lean' }, { value: 'excessive-lean', label: 'Excessive lean' }
+          ]},
+          { id: 'ohsSquatDepth' as keyof FormData, type: 'select' as FieldType, label: 'Squat depth', pattern: 'Overhead Squat', tooltip: 'Instructions:\n1. Observe depth relative to parallel.\n2. Full = Hips below knees.\n3. Parallel = Thighs horizontal.', options: [
+            { value: 'full-depth', label: 'Full depth' }, { value: 'parallel', label: 'Parallel' }, { value: 'quarter-depth', label: 'Quarter' }, { value: 'no-depth', label: 'Minimal' }
+          ]},
+          { id: 'ohsHipShift' as keyof FormData, type: 'select' as FieldType, label: 'Hip shift', pattern: 'Overhead Squat', tooltip: 'Instructions:\n1. Observe from the back view.\n2. Watch for hips drifting to one side during the squat.', options: [
+            { value: 'none', label: 'None' }, { value: 'left', label: 'Left' }, { value: 'right', label: 'Right' }
+          ]},
+          { id: 'ohsKneeAlignment' as keyof FormData, type: 'select' as FieldType, label: 'Knee alignment', pattern: 'Overhead Squat', tooltip: 'Instructions:\n1. View from the front.\n2. Note if knees cave in (Valgus) or bow out (Varus) during movement.', options: [
+            { value: 'stable', label: 'Stable' }, { value: 'valgus', label: 'Valgus (knees cave in)' }, { value: 'varus', label: 'Varus (knees bow out)' }
+          ]},
           { id: 'ohsFeetPosition' as keyof FormData, type: 'select' as FieldType, label: 'Foot behaviour', pattern: 'Overhead Squat', tooltip: 'Instructions:\n1. Watch for arches collapsing (Pronation) or feet turning out excessively.', options: [
             { value: 'stable', label: 'Stable' }, { value: 'pronation', label: 'Pronation (rolls inward)' }, { value: 'supination', label: 'Supination (rolls outward)' }
           ]},
@@ -344,9 +365,9 @@ export const phaseDefinitions = [
           ]},
         ]
       },
-            ],
-          },
-          {
+    ],
+  },
+  {
     id: 'P4',
     title: 'Muscular Strength',
     summary: 'Basic strength and endurance metrics.',
