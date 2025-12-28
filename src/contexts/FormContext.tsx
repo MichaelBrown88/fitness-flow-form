@@ -96,6 +96,7 @@ export interface FormData {
   ohsFeetPosition: string;
   ohsFootKneeBehavior: string;
   ohsHasPain: string;
+  ohsPainLevel: string;
   ohsNotes: string;
   modifiedThomasResult: string;
   hingeQuality: string;
@@ -103,6 +104,7 @@ export interface FormData {
   hingeDepth: string;
   hingeBackRounding: string;
   hingeHasPain: string;
+  hingePainLevel: string;
   hingeNotes: string;
   lungeLeftKneeAlignment: string;
   lungeLeftBalance: string;
@@ -111,6 +113,7 @@ export interface FormData {
   lungeRightBalance: string;
   lungeRightTorso: string;
   lungeHasPain: string;
+  lungePainLevel: string;
   lungeTestNotes: string;
   shoulderMobilityReach: string;
   mobilityHip: string;
@@ -265,6 +268,7 @@ const initialFormData: FormData = {
   ohsFeetPosition: '',
   ohsFootKneeBehavior: '',
   ohsHasPain: 'no',
+  ohsPainLevel: '0',
   ohsNotes: '',
   modifiedThomasResult: '',
   hingeQuality: '',
@@ -272,6 +276,7 @@ const initialFormData: FormData = {
   hingeDepth: '',
   hingeBackRounding: '',
   hingeHasPain: 'no',
+  hingePainLevel: '0',
   hingeNotes: '',
   lungeLeftKneeAlignment: '',
   lungeLeftBalance: '',
@@ -280,6 +285,7 @@ const initialFormData: FormData = {
   lungeRightBalance: '',
   lungeRightTorso: '',
   lungeHasPain: 'no',
+  lungePainLevel: '0',
   lungeTestNotes: '',
   shoulderMobilityReach: '',
   mobilityHip: '',

@@ -261,33 +261,17 @@ export const phaseDefinitions = [
           },
         ],
       },
-      {
-        id: 'overhead-squat',
-        title: 'Overhead Squat',
-        fields: [
+          { id: 'ohsFeetPosition' as keyof FormData, type: 'select' as FieldType, label: 'Foot behaviour', pattern: 'Overhead Squat', tooltip: 'Instructions:\n1. Watch for arches collapsing (Pronation) or feet turning out excessively.', options: [
+            { value: 'stable', label: 'Stable' }, { value: 'pronation', label: 'Pronation (rolls inward)' }, { value: 'supination', label: 'Supination (rolls outward)' }
+          ]},
           { id: 'ohsHasPain' as keyof FormData, type: 'select' as FieldType, label: 'Pain or Discomfort?', tooltip: 'Does the client feel any pain or discomfort during this movement?', options: [
             { value: 'no', label: 'No pain' },
             { value: 'yes', label: 'Yes - Pain reported' }
           ]},
-          {
-            id: 'ohsShoulderMobility' as keyof FormData, type: 'select' as FieldType, label: 'Shoulder mobility', pattern: 'Overhead Squat', tooltip: 'Instructions:\n1. Stand with feet shoulder-width apart.\n2. Raise arms overhead with elbows locked.\n3. Note if arms stay vertical or tilt forward.', options: [
-              { value: 'full-range', label: 'Full range' }, { value: 'compensated', label: 'Compensated' }, { value: 'limited', label: 'Limited' }
-            ]
-          },
-          { id: 'ohsTorsoLean' as keyof FormData, type: 'select' as FieldType, label: 'Torso lean', pattern: 'Overhead Squat', tooltip: 'Instructions:\n1. Squat as deep as comfortable.\n2. Observe from the side view.\n3. Note if the torso stays upright or leans excessively forward.', options: [
-            { value: 'upright', label: 'Upright' }, { value: 'moderate-lean', label: 'Moderate lean' }, { value: 'excessive-lean', label: 'Excessive lean' }
-          ]},
-          { id: 'ohsSquatDepth' as keyof FormData, type: 'select' as FieldType, label: 'Squat depth', pattern: 'Overhead Squat', tooltip: 'Instructions:\n1. Observe depth relative to parallel.\n2. Full = Hips below knees.\n3. Parallel = Thighs horizontal.', options: [
-            { value: 'full-depth', label: 'Full depth' }, { value: 'parallel', label: 'Parallel' }, { value: 'quarter-depth', label: 'Quarter' }, { value: 'no-depth', label: 'Minimal' }
-          ]},
-          { id: 'ohsHipShift' as keyof FormData, type: 'select' as FieldType, label: 'Hip shift', pattern: 'Overhead Squat', tooltip: 'Instructions:\n1. Observe from the back view.\n2. Watch for hips drifting to one side during the squat.', options: [
-            { value: 'none', label: 'None' }, { value: 'left', label: 'Left' }, { value: 'right', label: 'Right' }
-          ]},
-          { id: 'ohsKneeAlignment' as keyof FormData, type: 'select' as FieldType, label: 'Knee alignment', pattern: 'Overhead Squat', tooltip: 'Instructions:\n1. View from the front.\n2. Note if knees cave in (Valgus) or bow out (Varus) during movement.', options: [
-            { value: 'stable', label: 'Stable' }, { value: 'valgus', label: 'Valgus (knees cave in)' }, { value: 'varus', label: 'Varus (knees bow out)' }
-          ]},
-          { id: 'ohsFeetPosition' as keyof FormData, type: 'select' as FieldType, label: 'Foot behaviour', pattern: 'Overhead Squat', tooltip: 'Instructions:\n1. Watch for arches collapsing (Pronation) or feet turning out excessively.', options: [
-            { value: 'stable', label: 'Stable' }, { value: 'pronation', label: 'Pronation (rolls inward)' }, { value: 'supination', label: 'Supination (rolls outward)' }
+          { id: 'ohsPainLevel' as keyof FormData, type: 'select' as FieldType, label: 'Pain Level (1-10)', tooltip: 'Rate the intensity of the pain reported.', conditional: { showWhen: { field: 'ohsHasPain', value: 'yes' } }, options: [
+            { value: '1', label: '1 - Very Mild' }, { value: '2', label: '2' }, { value: '3', label: '3' },
+            { value: '4', label: '4 - Moderate' }, { value: '5', label: '5' }, { value: '6', label: '6' },
+            { value: '7', label: '7 - Severe' }, { value: '8', label: '8' }, { value: '9', label: '9' }, { value: '10', label: '10 - Unbearable' }
           ]},
         ],
       },
@@ -295,15 +279,20 @@ export const phaseDefinitions = [
         id: 'hinge-assessment',
         title: 'Hinge',
         fields: [
-          { id: 'hingeHasPain' as keyof FormData, type: 'select' as FieldType, label: 'Pain or Discomfort?', tooltip: 'Does the client feel any pain or discomfort during this movement?', options: [
-            { value: 'no', label: 'No pain' },
-            { value: 'yes', label: 'Yes - Pain reported' }
-          ]},
           { id: 'hingeDepth' as keyof FormData, type: 'select' as FieldType, label: 'Depth', pattern: 'Hip Hinge', tooltip: 'Instructions:\n1. Perform a hip hinge (reaching hips back).\n2. Note the range of motion before form breaks or hamstrings limit movement.', options: [
             { value: 'excellent', label: 'Excellent' }, { value: 'good', label: 'Good' }, { value: 'fair', label: 'Fair' }, { value: 'poor', label: 'Poor' }
           ]},
           { id: 'hingeBackRounding' as keyof FormData, type: 'select' as FieldType, label: 'Back rounding', pattern: 'Hip Hinge', tooltip: 'Instructions:\n1. Watch the lumbar spine during the hinge.\n2. Note any rounding (flexion) as the client reaches back.', options: [
             { value: 'none', label: 'None' }, { value: 'minor', label: 'Minor' }, { value: 'moderate', label: 'Moderate' }, { value: 'severe', label: 'Severe' }
+          ]},
+          { id: 'hingeHasPain' as keyof FormData, type: 'select' as FieldType, label: 'Pain or Discomfort?', tooltip: 'Does the client feel any pain or discomfort during this movement?', options: [
+            { value: 'no', label: 'No pain' },
+            { value: 'yes', label: 'Yes - Pain reported' }
+          ]},
+          { id: 'hingePainLevel' as keyof FormData, type: 'select' as FieldType, label: 'Pain Level (1-10)', tooltip: 'Rate the intensity of the pain reported.', conditional: { showWhen: { field: 'hingeHasPain', value: 'yes' } }, options: [
+            { value: '1', label: '1 - Very Mild' }, { value: '2', label: '2' }, { value: '3', label: '3' },
+            { value: '4', label: '4 - Moderate' }, { value: '5', label: '5' }, { value: '6', label: '6' },
+            { value: '7', label: '7 - Severe' }, { value: '8', label: '8' }, { value: '9', label: '9' }, { value: '10', label: '10 - Unbearable' }
           ]},
         ]
       },
@@ -311,10 +300,6 @@ export const phaseDefinitions = [
         id: 'lunge-assessment',
         title: 'Lunge',
         fields: [
-          { id: 'lungeHasPain' as keyof FormData, type: 'select' as FieldType, label: 'Pain or Discomfort?', tooltip: 'Does the client feel any pain or discomfort during this movement?', options: [
-            { value: 'no', label: 'No pain' },
-            { value: 'yes', label: 'Yes - Pain reported' }
-          ]},
           { id: 'lungeLeftBalance' as keyof FormData, type: 'select' as FieldType, label: 'Balance', pattern: 'Lunge', side: 'left', pairId: 'lunge-balance', tooltip: 'Instructions:\n1. Step forward into a lunge.\n2. Note any wobble or loss of stability on the working leg.', options: [
             { value: 'excellent', label: 'Excellent' }, { value: 'good', label: 'Good' }, { value: 'fair', label: 'Fair' }, { value: 'poor', label: 'Poor' }
           ]},
@@ -328,10 +313,19 @@ export const phaseDefinitions = [
             { value: 'tracks-straight', label: 'Tracks straight' }, { value: 'caves-inward', label: 'Caves inward (valgus)' }, { value: 'bows-outward', label: 'Bows outward (varus)' }
           ]},
           { id: 'lungeLeftTorso' as keyof FormData, type: 'select' as FieldType, label: 'Hips position', pattern: 'Lunge', side: 'left', pairId: 'lunge-hips', tooltip: 'Instructions:\n1. Observe pelvic position at the bottom of the lunge.\n2. Note if the hips stay neutral or tilt forward/back.', options: [
-            { value: 'neutral', label: 'Neutral' }, { value: 'anterior-tilt', label: 'Anterior tilt (pelvis forward)' }, { value: 'posterior-tilt', label: 'Posterior tilt (pelvis backward)' }
+            { value: 'neutral', label: 'Neutral' }, { value: 'anterior-tilt', label: 'Anterior tilt (pelvis forward)' }, { value: 'posterior-tilt', label: 'Pelvis backward (posterior)' }
           ]},
           { id: 'lungeRightTorso' as keyof FormData, type: 'select' as FieldType, label: 'Hips position', pattern: 'Lunge', side: 'right', pairId: 'lunge-hips', tooltip: 'Instructions:\n1. Observe pelvic position at the bottom of the lunge.\n2. Note if the hips stay neutral or tilt forward/back.', options: [
-            { value: 'neutral', label: 'Neutral' }, { value: 'anterior-tilt', label: 'Anterior tilt (pelvis forward)' }, { value: 'posterior-tilt', label: 'Posterior tilt (pelvis backward)' }
+            { value: 'neutral', label: 'Neutral' }, { value: 'anterior-tilt', label: 'Anterior tilt (pelvis forward)' }, { value: 'posterior-tilt', label: 'Pelvis backward (posterior)' }
+          ]},
+          { id: 'lungeHasPain' as keyof FormData, type: 'select' as FieldType, label: 'Pain or Discomfort?', tooltip: 'Does the client feel any pain or discomfort during this movement?', options: [
+            { value: 'no', label: 'No pain' },
+            { value: 'yes', label: 'Yes - Pain reported' }
+          ]},
+          { id: 'lungePainLevel' as keyof FormData, type: 'select' as FieldType, label: 'Pain Level (1-10)', tooltip: 'Rate the intensity of the pain reported.', conditional: { showWhen: { field: 'lungeHasPain', value: 'yes' } }, options: [
+            { value: '1', label: '1 - Very Mild' }, { value: '2', label: '2' }, { value: '3', label: '3' },
+            { value: '4', label: '4 - Moderate' }, { value: '5', label: '5' }, { value: '6', label: '6' },
+            { value: '7', label: '7 - Severe' }, { value: '8', label: '8' }, { value: '9', label: '9' }, { value: '10', label: '10 - Unbearable' }
           ]},
         ]
       },

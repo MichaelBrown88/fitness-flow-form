@@ -119,9 +119,29 @@ const OverheadSquatStep = () => {
             </SelectContent>
           </Select>
           {formData.ohsHasPain === 'yes' && (
-            <p className="mt-1.5 text-xs font-bold text-rose-600 flex items-center gap-1 animate-pulse">
-              <span>⚠️</span> Safety Flag: Do not load this movement pattern.
-            </p>
+            <div className="mt-4 space-y-4">
+              <p className="text-xs font-bold text-rose-600 flex items-center gap-1 animate-pulse">
+                <span>⚠️</span> Safety Flag: Do not load this movement pattern.
+              </p>
+              <div>
+                <Label htmlFor="ohsPainLevel">Pain Level (1-10)</Label>
+                <Select
+                  value={formData.ohsPainLevel}
+                  onValueChange={(value) => updateFormData({ ohsPainLevel: value })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Rate pain intensity" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                      <SelectItem key={n} value={n.toString()}>
+                        {n} {n <= 3 ? '(Mild)' : n <= 6 ? '(Moderate)' : '(Severe)'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           )}
         </div>
 

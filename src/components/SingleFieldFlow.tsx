@@ -38,30 +38,33 @@ export default function SingleFieldFlow({ onSubmit }: { onSubmit: () => void }) 
     // Posture
     { label: 'Posture Assessment', type: 'posture' },
     // Overhead Squat
-    { key: 'ohsHasPain', label: 'Overhead Squat – Pain/Discomfort?', type: 'select', options: [ { value: 'no', label: 'No pain' }, { value: 'yes', label: 'Yes - Pain reported' } ] },
     { key: 'overheadSquatKneeAlignment', label: 'Overhead Squat – Knee Alignment', type: 'select', options: [ { value: 'no-issue', label: 'No issue' }, { value: 'mild-cave', label: 'Mild cave-in' }, { value: 'severe-cave', label: 'Severe cave-in' }, { value: 'knees-out', label: 'Knees push out' } ] },
     { key: 'overheadSquatTorsoLean', label: 'Overhead Squat – Torso Lean', type: 'select', options: [ { value: 'upright', label: 'Upright' }, { value: 'mild-lean', label: 'Mild forward lean' }, { value: 'excessive-lean', label: 'Excessive forward lean' } ] },
     { key: 'overheadSquatHipShift', label: 'Overhead Squat – Hip Shift', type: 'select', options: [ { value: 'no-shift', label: 'No shift' }, { value: 'shift-left', label: 'Shifts left' }, { value: 'shift-right', label: 'Shifts right' }, { value: 'shift-unstable', label: 'Unstable' } ] },
     { key: 'overheadSquatDepth', label: 'Overhead Squat – Depth', type: 'select', options: [ { value: 'full-depth', label: 'Full depth' }, { value: 'mid-range', label: 'Mid range' }, { value: 'shallow', label: 'Shallow' } ] },
     { key: 'overheadSquatFootHeel', label: 'Overhead Squat – Foot/Heel', type: 'select', options: [ { value: 'heels-down', label: 'Heels down' }, { value: 'heels-lift', label: 'Heels lift' }, { value: 'feet-roll-in', label: 'Feet roll in' }, { value: 'feet-roll-out', label: 'Feet roll out' } ] },
+    { key: 'ohsHasPain', label: 'Overhead Squat – Pain/Discomfort?', type: 'select', options: [ { value: 'no', label: 'No pain' }, { value: 'yes', label: 'Yes - Pain reported' } ] },
+    { key: 'ohsPainLevel', label: 'Overhead Squat – Pain Level (1-10)', type: 'select', options: [ { value: '1', label: '1 - Very Mild' }, { value: '2', label: '2' }, { value: '3', label: '3' }, { value: '4', label: '4 - Moderate' }, { value: '5', label: '5' }, { value: '6', label: '6' }, { value: '7', label: '7 - Severe' }, { value: '8', label: '8' }, { value: '9', label: '9' }, { value: '10', label: '10 - Unbearable' } ] },
     // notes removed
     // Lunge left/right
-    { key: 'lungeHasPain', label: 'Lunge – Pain/Discomfort?', type: 'select', options: [ { value: 'no', label: 'No pain' }, { value: 'yes', label: 'Yes - Pain reported' } ] },
     { key: 'lungeLeftKneeAlignment', label: 'Lunge – Left Front Knee Alignment', type: 'select', options: [ { value: 'tracks-center', label: 'Tracks center' }, { value: 'caves-inward', label: 'Caves inward' }, { value: 'pushes-out', label: 'Pushes out' }, { value: 'wobbles', label: 'Wobbles' } ] },
     { key: 'lungeLeftBalance', label: 'Lunge – Left Balance', type: 'select', options: [ { value: 'stable', label: 'Stable' }, { value: 'slight-wobble', label: 'Slight wobble' }, { value: 'unstable', label: 'Unstable' } ] },
     { key: 'lungeLeftTorso', label: 'Lunge – Left Torso', type: 'select', options: [ { value: 'upright', label: 'Upright' }, { value: 'mild-lean', label: 'Mild lean' }, { value: 'excessive-lean', label: 'Excessive lean' } ] },
     { key: 'lungeRightKneeAlignment', label: 'Lunge – Right Front Knee Alignment', type: 'select', options: [ { value: 'tracks-center', label: 'Tracks center' }, { value: 'caves-inward', label: 'Caves inward' }, { value: 'pushes-out', label: 'Pushes out' }, { value: 'wobbles', label: 'Wobbles' } ] },
     { key: 'lungeRightBalance', label: 'Lunge – Right Balance', type: 'select', options: [ { value: 'stable', label: 'Stable' }, { value: 'slight-wobble', label: 'Slight wobble' }, { value: 'unstable', label: 'Unstable' } ] },
     { key: 'lungeRightTorso', label: 'Lunge – Right Torso', type: 'select', options: [ { value: 'upright', label: 'Upright' }, { value: 'mild-lean', label: 'Mild lean' }, { value: 'excessive-lean', label: 'Excessive lean' } ] },
+    { key: 'lungeHasPain', label: 'Lunge – Pain/Discomfort?', type: 'select', options: [ { value: 'no', label: 'No pain' }, { value: 'yes', label: 'Yes - Pain reported' } ] },
+    { key: 'lungePainLevel', label: 'Lunge – Pain Level (1-10)', type: 'select', options: [ { value: '1', label: '1 - Very Mild' }, { value: '2', label: '2' }, { value: '3', label: '3' }, { value: '4', label: '4 - Moderate' }, { value: '5', label: '5' }, { value: '6', label: '6' }, { value: '7', label: '7 - Severe' }, { value: '8', label: '8' }, { value: '9', label: '9' }, { value: '10', label: '10 - Unbearable' } ] },
     // notes removed
     // Overhead reach / shoulder
     { key: 'overheadReachResult', label: 'Overhead Reach Result', type: 'select', options: [ { value: 'full-range', label: 'Full range' }, { value: 'limited-range', label: 'Limited range' }, { value: 'limited-with-arch', label: 'Limited with low-back arch' }, { value: 'pain-reported', label: 'Pain reported' } ] },
     { key: 'shoulderMobilityRating', label: 'Shoulder Mobility Rating', type: 'select', options: [ { value: 'good', label: 'Good' }, { value: 'ok', label: 'OK' }, { value: 'poor', label: 'Poor' } ] },
     // notes removed
     // Hinge
-    { key: 'hingeHasPain', label: 'Hip Hinge – Pain/Discomfort?', type: 'select', options: [ { value: 'no', label: 'No pain' }, { value: 'yes', label: 'Yes - Pain reported' } ] },
     { key: 'hingeQuality', label: 'Hip Hinge – Quality', type: 'select', options: [ { value: 'good', label: 'Good' }, { value: 'compensation', label: 'Compensations' }, { value: 'poor', label: 'Poor' } ] },
     { key: 'hingeBalance', label: 'Hip Hinge – Balance', type: 'select', options: [ { value: 'stable', label: 'Stable' }, { value: 'slight-wobble', label: 'Slight wobble' }, { value: 'unstable', label: 'Unstable' } ] },
+    { key: 'hingeHasPain', label: 'Hip Hinge – Pain/Discomfort?', type: 'select', options: [ { value: 'no', label: 'No pain' }, { value: 'yes', label: 'Yes - Pain reported' } ] },
+    { key: 'hingePainLevel', label: 'Hip Hinge – Pain Level (1-10)', type: 'select', options: [ { value: '1', label: '1 - Very Mild' }, { value: '2', label: '2' }, { value: '3', label: '3' }, { value: '4', label: '4 - Moderate' }, { value: '5', label: '5' }, { value: '6', label: '6' }, { value: '7', label: '7 - Severe' }, { value: '8', label: '8' }, { value: '9', label: '9' }, { value: '10', label: '10 - Unbearable' } ] },
     // notes removed
     // Muscular Strength
     { key: 'pushupReps', label: 'Push-ups in 1 minute', type: 'number', placeholder: 'e.g., 25', required: true },
