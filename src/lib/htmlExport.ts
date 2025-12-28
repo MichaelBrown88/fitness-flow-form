@@ -632,6 +632,66 @@ export async function generateInteractiveHtml(params: {
                 ))}
               </div>
             </div>
+
+            {/* Synthesis Section - Cross-Pillar Insights */}
+            {scores.synthesis && scores.synthesis.length > 0 && (
+              <div style={{ maxWidth: '600px', margin: '32px auto 0', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+                  <h3 style={{ fontSize: '14px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#94a3b8' }}>Expert Synthesis</h3>
+                  <p style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>How your different results interact</p>
+                </div>
+                {scores.synthesis.map((item, idx) => (
+                  <div 
+                    key={idx} 
+                    style={{ 
+                      padding: '20px', 
+                      borderRadius: '16px', 
+                      border: '1px solid ' + (
+                        item.severity === 'high' ? '#fecaca' : 
+                        item.severity === 'medium' ? '#fde68a' : 
+                        '#bfdbfe'
+                      ),
+                      backgroundColor: (
+                        item.severity === 'high' ? '#fef2f2' : 
+                        item.severity === 'medium' ? '#fffbeb' : 
+                        '#eff6ff'
+                      ),
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '18px' }}>
+                        {item.severity === 'high' ? '🚨' : item.severity === 'medium' ? '⚠️' : 'ℹ️'}
+                      </span>
+                      <h4 style={{ 
+                        margin: 0,
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                        color: (
+                          item.severity === 'high' ? '#991b1b' : 
+                          item.severity === 'medium' ? '#92400e' : 
+                          '#1e40af'
+                        )
+                      }}>
+                        {item.title}
+                      </h4>
+                    </div>
+                    <p style={{ 
+                      margin: 0,
+                      fontSize: '14px', 
+                      lineHeight: '1.5',
+                      color: (
+                        item.severity === 'high' ? '#b91c1c' : 
+                        item.severity === 'medium' ? '#b45309' : 
+                        '#1d4ed8'
+                      )
+                    }}>
+                      {item.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
           {/* 2. What this means - with visual progress bars */}

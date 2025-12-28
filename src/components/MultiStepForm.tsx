@@ -847,7 +847,7 @@ const PhaseFormContent = ({
       return computeScores(formData);
     } catch (e) {
       console.error('Error computing scores:', e);
-      return { overall: 0, categories: [] };
+      return { overall: 0, categories: [], synthesis: [] };
     }
   }, [formData]);
 
