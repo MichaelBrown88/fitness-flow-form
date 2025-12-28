@@ -81,11 +81,11 @@ export interface FormData {
   postureSeverity: string;
   postureForwardHead: string;
   postureRoundedShoulders: string;
-  postureHeadOverall: string;
-  postureShouldersOverall: string;
-  postureBackOverall: string;
-  postureHipsOverall: string;
-  postureKneesOverall: string;
+  postureHeadOverall: string[];
+  postureShouldersOverall: string[];
+  postureBackOverall: string[];
+  postureHipsOverall: string[];
+  postureKneesOverall: string[];
   ohsKneeAlignment: string;
   ohsHeelBehavior: string;
   ohsLumbarControl: string;
@@ -253,11 +253,11 @@ const initialFormData: FormData = {
   postureSeverity: '',
   postureForwardHead: '',
   postureRoundedShoulders: '',
-  postureHeadOverall: '',
-  postureShouldersOverall: '',
-  postureBackOverall: '',
-  postureHipsOverall: '',
-  postureKneesOverall: '',
+  postureHeadOverall: [],
+  postureShouldersOverall: [],
+  postureBackOverall: [],
+  postureHipsOverall: [],
+  postureKneesOverall: [],
   ohsKneeAlignment: '',
   ohsHeelBehavior: '',
   ohsLumbarControl: '',

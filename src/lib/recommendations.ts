@@ -1,6 +1,7 @@
 import type { FormData } from '@/contexts/FormContext';
 import { type ScoreSummary, buildRoadmap } from './scoring';
 import { prioritizeExercises, type ExerciseGroup, type SessionGroup } from './exercisePrioritization';
+import { MOVEMENT_LOGIC_DB } from './clinical-data';
 
 export type CoachPlan = {
   keyIssues: string[];
@@ -329,19 +330,57 @@ export function generateCoachPlan(form: FormData, scores: ScoreSummary): CoachPl
     }
   });
 
-  // Posture/alignment issues
-  if (form.postureBackOverall === 'increased-kyphosis') {
-    issues.push('Increased thoracic kyphosis');
-    addBlock('T-spine extension & scapular control', ['Improve thoracic extension', 'Reinforce scapular retraction'], EXERCISES.kyphosis);
+  // Posture/alignment issues - Using deterministic Movement Logic DB
+  const movementFindings = new Set<string>();
+  
+  // 1. Head/Neck -> Upper Crossed
+  const headPos = Array.isArray(form.postureHeadOverall) ? form.postureHeadOverall : [form.postureHeadOverall];
+  if (headPos.includes('forward-head')) movementFindings.add('upper_crossed');
+  
+  // 2. Shoulders -> Upper Crossed
+  const shoulderPos = Array.isArray(form.postureShouldersOverall) ? form.postureShouldersOverall : [form.postureShouldersOverall];
+  if (shoulderPos.includes('rounded')) movementFindings.add('upper_crossed');
+  
+  // 3. Back -> Kyphosis (Upper) or Lordosis (Lower)
+  const backPos = Array.isArray(form.postureBackOverall) ? form.postureBackOverall : [form.postureBackOverall];
+  if (backPos.includes('increased-kyphosis')) movementFindings.add('upper_crossed');
+  if (backPos.includes('increased-lordosis')) movementFindings.add('lower_crossed');
+  if (backPos.includes('flat-back')) movementFindings.add('posterior_pelvic_tilt');
+  
+  // 4. Hips -> APT (Lower) or PPT (Flat)
+  const hipPos = Array.isArray(form.postureHipsOverall) ? form.postureHipsOverall : [form.postureHipsOverall];
+  if (hipPos.includes('anterior-tilt')) movementFindings.add('lower_crossed');
+  if (hipPos.includes('posterior-tilt')) movementFindings.add('posterior_pelvic_tilt');
+  
+  // 5. Knees -> Valgus
+  const kneePos = Array.isArray(form.postureKneesOverall) ? form.postureKneesOverall : [form.postureKneesOverall];
+  if (kneePos.includes('valgus-knee') || form.ohsKneeAlignment === 'valgus' || form.lungeLeftKneeAlignment === 'valgus' || form.lungeRightKneeAlignment === 'valgus') {
+    movementFindings.add('knee_valgus');
   }
-  if (form.postureBackOverall === 'increased-lordosis') {
-    issues.push('Anterior pelvic tilt / lordosis');
-    addBlock('Pelvic control & deep core activation', ['Improve posterior pelvic tilt control', 'Enhance core stiffness'], EXERCISES.lordosis);
-  }
-  if (form.postureKneesOverall === 'valgus-knee') {
-    issues.push('Knee valgus tendency');
-    addBlock('Hip abduction strength & knee tracking', ['Strengthen glute med', 'Improve knee-over-toes control'], EXERCISES.kneeValgus);
-  }
+  
+  // 6. Feet -> Pronation
+  if (form.ohsFeetPosition === 'pronation') movementFindings.add('feet_pronation');
+
+  // Map findings to clinical blocks
+  movementFindings.forEach(id => {
+    const deviation = MOVEMENT_LOGIC_DB[id];
+    if (deviation) {
+      issues.push(deviation.name);
+      addBlock(
+        `Correction: ${deviation.name}`, 
+        [`Stretch: ${deviation.primaryStretch}`, `Activate: ${deviation.primaryActivation}`], 
+        [
+          { name: deviation.primaryStretch, setsReps: '2-3 x 30-45s', notes: `Target: ${deviation.overactiveMuscles.join(', ')}` },
+          { name: deviation.primaryActivation, setsReps: '2-3 x 12-15', notes: `Target: ${deviation.underactiveMuscles.join(', ')}` }
+        ]
+      );
+      
+      // Add contraindications to internal notes
+      deviation.contraindications.forEach(c => {
+        internalNotes.needsAttention.push(`Contraindication: Avoid ${c} due to ${deviation.name}.`);
+      });
+    }
+  });
 
   // Mobility issues
   const movementCategory = scores.categories.find(c => c.id === 'movementQuality');

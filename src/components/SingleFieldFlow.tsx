@@ -7,11 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Check } from 'lucide-react';
 
 type FieldDef = {
   key?: keyof import('@/contexts/FormContext').FormData;
   label: string;
-  type: 'text' | 'number' | 'email' | 'textarea' | 'select' | 'boolean' | 'posture';
+  type: 'text' | 'number' | 'email' | 'textarea' | 'select' | 'boolean' | 'posture' | 'multiselect';
   placeholder?: string;
   options?: { value: string; label: string }[];
   required?: boolean;
@@ -108,37 +109,66 @@ export default function SingleFieldFlow({ onSubmit }: { onSubmit: () => void }) 
     if (current.type === 'posture') {
       return (
         <div className="space-y-6">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="postureForwardHead"
-                checked={formData.postureForwardHead === 'forward-head'}
-                onCheckedChange={(c) => updateFormData({ postureForwardHead: c ? 'forward-head' : 'neutral' })}
-              />
-              <Label htmlFor="postureForwardHead">Forward head posture</Label>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <Label>Head and neck alignment</Label>
+              <div className="grid grid-cols-1 gap-2">
+                {[
+                  { value: 'neutral', label: 'Neutral' },
+                  { value: 'forward-head', label: 'Forward Head' },
+                  { value: 'tilted', label: 'Head Tilt' }
+                ].map(opt => {
+                  const selected = formData.postureHeadOverall || [];
+                  const active = selected.includes(opt.value);
+                  return (
+                    <Button
+                      key={opt.value}
+                      variant={active ? 'default' : 'outline'}
+                      className="justify-start gap-3"
+                      onClick={() => {
+                        const next = active ? selected.filter(v => v !== opt.value) : [...selected, opt.value];
+                        updateFormData({ postureHeadOverall: next });
+                      }}
+                    >
+                      <div className={`h-4 w-4 rounded border ${active ? 'bg-white border-white' : 'border-slate-300'}`}>
+                        {active && <Check className="h-3 w-3 text-slate-900" />}
+                      </div>
+                      {opt.label}
+                    </Button>
+                  );
+                })}
+              </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="postureRoundedShoulders"
-                checked={formData.postureRoundedShoulders === 'rounded'}
-                onCheckedChange={(c) => updateFormData({ postureRoundedShoulders: c ? 'rounded' : 'neutral' })}
-              />
-              <Label htmlFor="postureRoundedShoulders">Rounded shoulders</Label>
-            </div>
-          </div>
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="postureKneesOverall">Knee alignment</Label>
-              <Select value={formData.postureKneesOverall} onValueChange={(v) => updateFormData({ postureKneesOverall: v })}>
-                <SelectTrigger id="postureKneesOverall" className="mt-1 h-12">
-                  <SelectValue placeholder="Select" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="neutral">Neutral</SelectItem>
-                  <SelectItem value="valgus-knee">Valgus</SelectItem>
-                  <SelectItem value="varus-knee">Varus</SelectItem>
-                </SelectContent>
-              </Select>
+
+            <div className="space-y-3">
+              <Label>Shoulder and upper back</Label>
+              <div className="grid grid-cols-1 gap-2">
+                {[
+                  { value: 'neutral', label: 'Neutral' },
+                  { value: 'rounded', label: 'Rounded Shoulders' },
+                  { value: 'elevated', label: 'One Shoulder Elevated' },
+                  { value: 'winged-scapula', label: 'Scapula Winging' }
+                ].map(opt => {
+                  const selected = formData.postureShouldersOverall || [];
+                  const active = selected.includes(opt.value);
+                  return (
+                    <Button
+                      key={opt.value}
+                      variant={active ? 'default' : 'outline'}
+                      className="justify-start gap-3"
+                      onClick={() => {
+                        const next = active ? selected.filter(v => v !== opt.value) : [...selected, opt.value];
+                        updateFormData({ postureShouldersOverall: next });
+                      }}
+                    >
+                      <div className={`h-4 w-4 rounded border ${active ? 'bg-white border-white' : 'border-slate-300'}`}>
+                        {active && <Check className="h-3 w-3 text-slate-900" />}
+                      </div>
+                      {opt.label}
+                    </Button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
@@ -189,6 +219,35 @@ export default function SingleFieldFlow({ onSubmit }: { onSubmit: () => void }) 
           <div className="grid grid-cols-2 gap-3">
             <Button variant={value === true ? 'default' : 'secondary'} className="h-14 text-lg" onClick={() => { handleSet(true); goNext(); }}>Yes</Button>
             <Button variant={value === false ? 'default' : 'secondary'} className="h-14 text-lg" onClick={() => { handleSet(false); goNext(); }}>No</Button>
+          </div>
+        );
+      case 'multiselect':
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {current.options?.map((opt) => {
+              const selected = Array.isArray(value) ? value : [];
+              const isSelected = selected.includes(opt.value);
+              return (
+                <Button
+                  key={opt.value}
+                  variant={isSelected ? 'default' : 'outline'}
+                  className="h-14 justify-start px-6 text-left font-bold transition-all"
+                  onClick={() => {
+                    const next = isSelected 
+                      ? selected.filter(v => v !== opt.value)
+                      : [...selected, opt.value];
+                    handleSet(next as any);
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`h-5 w-5 rounded border-2 flex items-center justify-center ${isSelected ? 'bg-white border-white' : 'border-slate-300'}`}>
+                      {isSelected && <div className="h-2.5 w-2.5 rounded-sm bg-slate-900" />}
+                    </div>
+                    {opt.label}
+                  </div>
+                </Button>
+              );
+            })}
           </div>
         );
     }

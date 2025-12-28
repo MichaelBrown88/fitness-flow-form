@@ -50,11 +50,11 @@ export default function GroupedFlow({ onSubmit }: { onSubmit: () => void }) {
       sectionTitle: 'Posture',
       cardTitle: 'Posture Assessment',
       fields: [
-        { kind: 'select', key: 'postureHeadOverall', label: 'Head and neck', options: [ { value: 'neutral', label: 'Neutral' }, { value: 'forward-head', label: 'Forward Head' } ] },
-        { kind: 'select', key: 'postureShouldersOverall', label: 'Shoulders', options: [ { value: 'neutral', label: 'Neutral' }, { value: 'rounded', label: 'Rounded' } ] },
-        { kind: 'select', key: 'postureBackOverall', label: 'Back', options: [ { value: 'neutral', label: 'Neutral' }, { value: 'increased-kyphosis', label: 'Kyphosis' } ] },
-        { kind: 'select', key: 'postureHipsOverall', label: 'Hips', options: [ { value: 'neutral', label: 'Neutral' }, { value: 'anterior-tilt', label: 'Anterior Tilt' } ] },
-        { kind: 'select', key: 'postureKneesOverall', label: 'Knees', options: [ { value: 'neutral', label: 'Neutral' }, { value: 'valgus-knee', label: 'Valgus' } ] },
+        { kind: 'checkbox-multi', key: 'postureHeadOverall', label: 'Head and neck', options: [ { value: 'neutral', label: 'Neutral' }, { value: 'forward-head', label: 'Forward Head' }, { value: 'tilted', label: 'Head Tilt' } ] },
+        { kind: 'checkbox-multi', key: 'postureShouldersOverall', label: 'Shoulders', options: [ { value: 'neutral', label: 'Neutral' }, { value: 'rounded', label: 'Rounded' }, { value: 'elevated', label: 'Elevated' }, { value: 'winged-scapula', label: 'Winged' } ] },
+        { kind: 'checkbox-multi', key: 'postureBackOverall', label: 'Back', options: [ { value: 'neutral', label: 'Neutral' }, { value: 'increased-kyphosis', label: 'Kyphosis' }, { value: 'increased-lordosis', label: 'Lordosis' }, { value: 'scoliosis', label: 'Scoliosis' } ] },
+        { kind: 'checkbox-multi', key: 'postureHipsOverall', label: 'Hips', options: [ { value: 'neutral', label: 'Neutral' }, { value: 'anterior-tilt', label: 'Anterior Tilt' }, { value: 'posterior-tilt', label: 'Posterior Tilt' } ] },
+        { kind: 'checkbox-multi', key: 'postureKneesOverall', label: 'Knees', options: [ { value: 'neutral', label: 'Neutral' }, { value: 'valgus-knee', label: 'Valgus' }, { value: 'varus-knee', label: 'Varus' } ] },
       ],
     },
     // 4) Movement: Overhead Squat (alone)

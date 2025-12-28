@@ -1,6 +1,7 @@
 import type { FormData } from '@/contexts/FormContext';
 import type { ScoreSummary } from './scoring';
 import type { CoachPlan } from './recommendations';
+import { MOVEMENT_LOGIC_DB } from './clinical-data';
 
 export type ExercisePriority = 'critical' | 'goal-focused' | 'important' | 'minor';
 
@@ -77,6 +78,23 @@ export function prioritizeExercises(
   // PRIORITY 1: CRITICAL HEALTH/INJURY RISK
   // ============================================
   
+  // Pain Flags (Highest Priority Safety Warning)
+  const painMovements: string[] = [];
+  if (form.ohsHasPain === 'yes') painMovements.push('Overhead Squat');
+  if (form.hingeHasPain === 'yes') painMovements.push('Hip Hinge');
+  if (form.lungeHasPain === 'yes') painMovements.push('Lunge');
+
+  painMovements.forEach(m => {
+    criticalIssues.push(`REPORTED PAIN during ${m} assessment.`);
+    critical.push({
+      name: `STOP: ${m} Loading`,
+      priority: 'critical',
+      reason: 'Pain reported during movement. Do not apply external load until cleared by a medical professional or physical therapist.',
+      sessionTypes: ['full-body', 'strength'],
+      addresses: ['pain', 'injury prevention']
+    });
+  });
+
   // Obesity / High body fat (critical health risk)
   if (bf > (gender === 'male' ? 30 : 38) || bmi > 35 || visceral >= 15) {
     criticalIssues.push('High body fat/obesity - significant health risk');
@@ -242,134 +260,57 @@ export function prioritizeExercises(
     });
   }
 
+  // Clinical Postural Corrections (Important Priority)
+  const movementFindings = new Set<string>();
+  const headPos = Array.isArray(form.postureHeadOverall) ? form.postureHeadOverall : [form.postureHeadOverall];
+  if (headPos.includes('forward-head')) movementFindings.add('upper_crossed');
+  const shoulderPos = Array.isArray(form.postureShouldersOverall) ? form.postureShouldersOverall : [form.postureShouldersOverall];
+  if (shoulderPos.includes('rounded')) movementFindings.add('upper_crossed');
+  const backPos = Array.isArray(form.postureBackOverall) ? form.postureBackOverall : [form.postureBackOverall];
+  if (backPos.includes('increased-kyphosis')) movementFindings.add('upper_crossed');
+  if (backPos.includes('increased-lordosis')) movementFindings.add('lower_crossed');
+  if (backPos.includes('flat-back')) movementFindings.add('posterior_pelvic_tilt');
+  const hipPos = Array.isArray(form.postureHipsOverall) ? form.postureHipsOverall : [form.postureHipsOverall];
+  if (hipPos.includes('anterior-tilt')) movementFindings.add('lower_crossed');
+  if (hipPos.includes('posterior-tilt')) movementFindings.add('posterior_pelvic_tilt');
+  const kneePos = Array.isArray(form.postureKneesOverall) ? form.postureKneesOverall : [form.postureKneesOverall];
+  if (kneePos.includes('valgus-knee') || form.ohsKneeAlignment === 'valgus' || form.lungeLeftKneeAlignment === 'valgus' || form.lungeRightKneeAlignment === 'valgus') {
+    movementFindings.add('knee_valgus');
+  }
+  if (form.ohsFeetPosition === 'pronation') movementFindings.add('feet_pronation');
+
+  movementFindings.forEach(id => {
+    const deviation = MOVEMENT_LOGIC_DB[id];
+    if (deviation) {
+      importantIssues.push(`Clinical Correction: ${deviation.name}`);
+      
+      // Add Stretch
+      important.push({
+        name: deviation.primaryStretch,
+        setsReps: '2-3 x 30-45s',
+        notes: `Correction for ${deviation.name}. Targets overactive: ${deviation.overactiveMuscles.join(', ')}`,
+        priority: 'important',
+        reason: `Releases tight muscles identified in manual posture assessment.`,
+        sessionTypes: ['full-body', 'upper-body', 'lower-body'],
+        addresses: [deviation.name, 'posture']
+      });
+
+      // Add Activation
+      important.push({
+        name: deviation.primaryActivation,
+        setsReps: '2-3 x 12-15',
+        notes: `Correction for ${deviation.name}. Targets underactive: ${deviation.underactiveMuscles.join(', ')}`,
+        priority: 'important',
+        reason: `Strengthens weak muscles to stabilize and correct ${deviation.name}.`,
+        sessionTypes: ['full-body', 'upper-body', 'lower-body'],
+        addresses: [deviation.name, 'posture']
+      });
+    }
+  });
+
   // ============================================
   // PRIORITY 3: IMPORTANT (NOT URGENT)
   // ============================================
-  
-  // Moderate postural issues
-  if (form.postureAiResults) {
-    const ai = form.postureAiResults;
-    const views = ['front', 'back', 'side-left', 'side-right'] as const;
-    
-    for (const view of views) {
-      const analysis = ai[view];
-      if (!analysis) continue;
-      
-      // Moderate forward head (8-15°)
-      if (analysis.forward_head && 
-          analysis.forward_head.deviation_degrees >= 8 && 
-          analysis.forward_head.deviation_degrees <= 15 &&
-          analysis.forward_head.status !== 'Neutral') {
-        importantIssues.push('Forward head posture - should be addressed');
-        important.push({
-          name: 'Wall Angels',
-          setsReps: '3 x 10-12',
-          notes: 'Improve upper back and neck alignment',
-          priority: 'important',
-          reason: 'Addresses forward head to improve movement quality',
-          sessionTypes: ['upper-body', 'pull'],
-          addresses: ['forward head', 'posture']
-        });
-      }
-      
-      // Moderate kyphosis (40-60°)
-      if (analysis.kyphosis && 
-          analysis.kyphosis.curve_degrees >= 40 && 
-          analysis.kyphosis.curve_degrees <= 60 &&
-          analysis.kyphosis.status !== 'Normal') {
-        importantIssues.push('Moderate thoracic kyphosis');
-        important.push({
-          name: 'Prone Y/T/W',
-          setsReps: '3 x 8 each',
-          notes: 'Strengthen upper back extensors',
-          priority: 'important',
-          reason: 'Improves upper back posture and reduces rounding',
-          sessionTypes: ['upper-body', 'pull'],
-          addresses: ['kyphosis', 'upper back']
-        });
-      }
-      
-      // Shoulder asymmetry
-      if (analysis.shoulder_alignment && 
-          analysis.shoulder_alignment.status === 'Asymmetric') {
-        const diff = Math.abs(analysis.shoulder_alignment.height_difference_cm || 0);
-        if (diff >= 1.0) {
-          importantIssues.push(`Shoulder asymmetry (${diff.toFixed(1)}cm)`);
-          important.push({
-            name: 'Unilateral Rows',
-            setsReps: '3 x 8-12/side',
-            notes: 'Focus on weaker/elevated side',
-            priority: 'important',
-            reason: 'Addresses shoulder imbalance to prevent compensation patterns',
-            sessionTypes: ['upper-body', 'pull'],
-            addresses: ['shoulder asymmetry', 'posture']
-          });
-        }
-      }
-      
-      // Hip/pelvic issues
-      if (analysis.hip_alignment && analysis.hip_alignment.status === 'Asymmetric') {
-        const diff = Math.abs(analysis.hip_alignment.height_difference_cm || 0);
-        if (diff >= 1.0) {
-          importantIssues.push(`Hip asymmetry (${diff.toFixed(1)}cm)`);
-          important.push({
-            name: 'Single-Leg Work',
-            setsReps: '3 x 8-12/side',
-            notes: 'Split squats, step-ups - focus on weaker side',
-            priority: 'important',
-            reason: 'Addresses hip imbalance to improve movement patterns',
-            sessionTypes: ['legs', 'lower-body'],
-            addresses: ['hip asymmetry', 'pelvic alignment']
-          });
-        }
-      }
-      
-      // Pelvic tilt
-      if (analysis.pelvic_tilt && analysis.pelvic_tilt.status !== 'Neutral') {
-        const tilt = Math.abs(analysis.pelvic_tilt.anterior_tilt_degrees || 0);
-        if (tilt >= 5 && tilt < 15) {
-          importantIssues.push('Pelvic tilt - affects lower back alignment');
-          important.push({
-            name: 'Posterior Pelvic Tilts',
-            setsReps: '3 x 10-12',
-            notes: 'Improve pelvic control',
-            priority: 'important',
-            reason: 'Addresses pelvic tilt to improve lower back alignment',
-            sessionTypes: ['legs', 'lower-body', 'core'],
-            addresses: ['pelvic tilt', 'lower back']
-          });
-        }
-      }
-
-      // Moderate head tilt (5-10°)
-      if (analysis.head_alignment && analysis.head_alignment.tilt_degrees >= 5 && analysis.head_alignment.tilt_degrees <= 10) {
-        importantIssues.push(`Moderate head tilt (${analysis.head_alignment.tilt_degrees.toFixed(1)}°)`);
-        important.push({
-          name: 'Cervical Reset Drills',
-          setsReps: '3 x 10',
-          notes: 'Focus on neutral head position awareness',
-          priority: 'important',
-          reason: 'Addresses moderate head tilt to improve upper body alignment',
-          sessionTypes: ['upper-body', 'full-body'],
-          addresses: ['head tilt', 'posture']
-        });
-      }
-
-      // Moderate spinal curvature (10-20°)
-      if (analysis.spinal_curvature && analysis.spinal_curvature.curve_degrees >= 10 && analysis.spinal_curvature.curve_degrees <= 20) {
-        importantIssues.push(`Moderate spinal curvature (${analysis.spinal_curvature.curve_degrees.toFixed(1)}°)`);
-        important.push({
-          name: 'Asymmetric Core Bracing',
-          setsReps: '3 x 30s holds',
-          notes: 'Focus on maintaining neutral spine under load',
-          priority: 'important',
-          reason: 'Addresses moderate spinal curvature to improve core stability',
-          sessionTypes: ['full-body', 'core'],
-          addresses: ['spinal curvature', 'posture']
-        });
-      }
-    }
-  }
   
   // Low strength (but not critical)
   if (strengthScore >= 30 && strengthScore < 50) {

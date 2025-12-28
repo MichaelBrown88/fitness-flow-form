@@ -105,7 +105,9 @@ export const phaseDefinitions = [
             { value: 'poor', label: 'Poor' }, { value: 'fair', label: 'Fair' }, { value: 'good', label: 'Good' }, { value: 'excellent', label: 'Excellent' }
           ]},
           { id: 'sleepDuration' as keyof FormData, type: 'select' as FieldType, label: 'Sleep Duration', tooltip: 'Average total hours of sleep per night over the last 1–2 weeks.', options: [
-            { value: 'less-than-5', label: '<5h' }, { value: '5-6', label: '5-6h' }, { value: '6-7', label: '6-7h' }, { value: '7-8', label: '7-8h' }, { value: '8-9', label: '8-9h' }, { value: 'more-than-9', label: '>9h' }
+            { value: 'less-than-7', label: 'Less than 7 Hours' }, 
+            { value: '7-9', label: '7 to 9 Hours (Ideal)' }, 
+            { value: 'more-than-9', label: 'More than 9 Hours' }
           ]},
           { id: 'sleepConsistency' as keyof FormData, type: 'select' as FieldType, label: 'Sleep schedule consistency', tooltip: 'How consistent are bedtime and wake times across the week.', options: [
             { value: 'very-inconsistent', label: 'Very inconsistent' }, { value: 'inconsistent', label: 'Inconsistent' }, { value: 'consistent', label: 'Consistent' }, { value: 'very-consistent', label: 'Very consistent' }
@@ -197,7 +199,7 @@ export const phaseDefinitions = [
           },
           {
             id: 'postureHeadOverall' as keyof FormData,
-            type: 'select' as FieldType,
+            type: 'multiselect' as FieldType,
             label: 'Head and neck alignment',
             tooltip: 'Instructions:\n1. Observe client from the side view.\n2. Note if the ear is positioned directly over the shoulder (Neutral).\n3. If the head sits forward of the shoulder line, mark as Forward Head.',
             conditional: { showWhen: { field: 'postureInputMode', value: 'manual' } },
@@ -210,7 +212,7 @@ export const phaseDefinitions = [
           },
           {
             id: 'postureShouldersOverall' as keyof FormData,
-            type: 'select' as FieldType,
+            type: 'multiselect' as FieldType,
             label: 'Shoulder and upper back',
             tooltip: 'Instructions:\n1. View from the side for rounded positions.\n2. View from the back for height symmetry or winged blades.\n3. Note any persistent elevation on one side.',
             conditional: { showWhen: { field: 'postureInputMode', value: 'manual' } },
@@ -223,7 +225,7 @@ export const phaseDefinitions = [
           },
           {
             id: 'postureBackOverall' as keyof FormData,
-            type: 'select' as FieldType,
+            type: 'multiselect' as FieldType,
             label: 'Back and spine',
             tooltip: 'Instructions:\n1. Observe spinal curves from the side view.\n2. Note excessive upper back rounding (Kyphosis) or lower back arch (Lordosis).\n3. Check for side-to-side curvature (Scoliosis) from the back.',
             conditional: { showWhen: { field: 'postureInputMode', value: 'manual' } },
@@ -237,7 +239,7 @@ export const phaseDefinitions = [
           },
           {
             id: 'postureHipsOverall' as keyof FormData,
-            type: 'select' as FieldType,
+            type: 'multiselect' as FieldType,
             label: 'Hips alignment',
             tooltip: 'Instructions:\n1. Place hands on hip bones from the side.\n2. Note if the pelvis tilts forward (Anterior) or backward (Posterior).\n3. Check for height difference between left and right sides.',
             conditional: { showWhen: { field: 'postureInputMode', value: 'manual' } },
@@ -249,7 +251,7 @@ export const phaseDefinitions = [
           },
           {
             id: 'postureKneesOverall' as keyof FormData,
-            type: 'select' as FieldType,
+            type: 'multiselect' as FieldType,
             label: 'Knees alignment',
             tooltip: 'Instructions:\n1. View from the front for inward/outward bowing.\n2. Inward cave = Valgus; Outward bow = Varus.\n3. Note any excessive locking back (hyperextension) from the side.',
             conditional: { showWhen: { field: 'postureInputMode', value: 'manual' } },

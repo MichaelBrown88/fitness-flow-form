@@ -119,7 +119,7 @@ export async function generateDemoData(): Promise<Partial<FormData>> {
     sedentaryHours = Math.floor(8 + rng() * 4); // 8-12
     workHoursPerDay = Math.floor(8 + rng() * 3); // 8-11
     sleepQuality = pickRandom(['poor', 'fair', 'good'], rng);
-    sleepDuration = pickRandom(['5-6', '6-7', '7-8'], rng);
+    sleepDuration = 'less-than-7';
     sleepConsistency = pickRandom(['very-inconsistent', 'inconsistent', 'consistent'], rng);
     stressLevel = pickRandom(['moderate', 'high', 'very-high'], rng);
     nutritionHabits = pickRandom(['poor', 'fair', 'good'], rng);
@@ -136,7 +136,7 @@ export async function generateDemoData(): Promise<Partial<FormData>> {
     sedentaryHours = Math.floor(5 + rng() * 3); // 5-8
     workHoursPerDay = Math.floor(7 + rng() * 3); // 7-10
     sleepQuality = pickRandom(['good', 'excellent'], rng);
-    sleepDuration = pickRandom(['7-8', '8-9'], rng);
+    sleepDuration = '7-9';
     sleepConsistency = pickRandom(['consistent', 'very-consistent'], rng);
     stressLevel = pickRandom(['low', 'moderate'], rng);
     nutritionHabits = pickRandom(['good', 'excellent'], rng);
@@ -153,7 +153,7 @@ export async function generateDemoData(): Promise<Partial<FormData>> {
     sedentaryHours = Math.floor(5 + rng() * 3); // 5-8
     workHoursPerDay = Math.floor(8 + rng() * 2); // 8-10
     sleepQuality = pickRandom(['good', 'excellent'], rng);
-    sleepDuration = pickRandom(['7-8', '8-9'], rng);
+    sleepDuration = '7-9';
     sleepConsistency = pickRandom(['consistent', 'very-consistent'], rng);
     stressLevel = pickRandom(['low', 'moderate'], rng);
     nutritionHabits = pickRandom(['good', 'excellent'], rng);
@@ -171,7 +171,7 @@ export async function generateDemoData(): Promise<Partial<FormData>> {
     sedentaryHours = Math.floor(6 + rng() * 5); // 6-11
     workHoursPerDay = Math.floor(7 + rng() * 4); // 7-11
     sleepQuality = pickRandom(['fair', 'good', 'excellent'], rng);
-    sleepDuration = pickRandom(['6-7', '7-8', '8-9'], rng);
+    sleepDuration = pickRandom(['less-than-7', '7-9', 'more-than-9'], rng);
     sleepConsistency = pickRandom(['inconsistent', 'consistent', 'very-consistent'], rng);
     stressLevel = pickRandom(['low', 'moderate', 'high'], rng);
     nutritionHabits = pickRandom(['fair', 'good', 'excellent'], rng);

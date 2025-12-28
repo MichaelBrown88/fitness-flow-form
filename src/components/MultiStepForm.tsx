@@ -585,10 +585,14 @@ const FieldControl = ({
                     aria-pressed={isActive}
                     aria-label={opt.label}
                   >
-                  <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                  <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
                     isActive ? 'bg-white/20 border-white/20 text-white' : 'border-slate-200 bg-white'
                     }`}>
-                    {isActive && <Check className="h-3 w-3 stroke-[3]" />}
+                    {isActive ? (
+                      <Check className="h-3 w-3 stroke-[4]" />
+                    ) : (
+                      <div className="h-2 w-2 rounded-sm bg-slate-100 opacity-0 group-hover:opacity-100" />
+                    )}
                     </div>
                   <span className="font-bold text-xs leading-tight">{opt.label}</span>
                   </button>

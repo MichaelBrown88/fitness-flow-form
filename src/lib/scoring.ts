@@ -685,6 +685,8 @@ function generateSynthesis(categories: ScoreCategory[]): ScoreSummary['synthesis
   const movement = categories.find(c => c.id === 'movementQuality');
   const lifestyle = categories.find(c => c.id === 'lifestyle');
 
+  // --- RISK SYNTHESIS ---
+
   // 1. Metabolic Risk: High Visceral + Low Cardio
   const visceral = bodyComp?.details.find(d => d.id === 'visceral')?.value;
   if (Number(visceral) >= 12 && (cardio?.score || 0) < 50) {
@@ -722,6 +724,44 @@ function generateSynthesis(categories: ScoreCategory[]): ScoreSummary['synthesis
       title: 'Structural Integrity Needed',
       description: 'Low muscle mass and low baseline strength suggest a need for a dedicated hypertrophy and basic strength block to support long-term metabolic health and mobility.',
       severity: 'medium'
+    });
+  }
+
+  // --- OPTIMIZATION / POSITIVE SYNTHESIS ---
+
+  // 5. Elite Hybrid Potential: High Strength + High Cardio
+  if ((strength?.score || 0) >= 85 && (cardio?.score || 0) >= 85) {
+    synthesis.push({
+      title: 'Hybrid Athlete Profile',
+      description: 'You demonstrate elite-level performance in both strength and aerobic capacity. This is a rare "hybrid" profile that allows for advanced, high-density training protocols.',
+      severity: 'low'
+    });
+  }
+
+  // 6. Movement Mastery: High Movement + High Strength
+  if ((movement?.score || 0) >= 80 && (strength?.score || 0) >= 80) {
+    synthesis.push({
+      title: 'Structural Mastery',
+      description: 'Your high movement quality provides a safe foundation for your significant strength. You are cleared for advanced compound loading and explosive power work.',
+      severity: 'low'
+    });
+  }
+
+  // 7. Metabolic Resilience: High Lifestyle + High Body Comp
+  if ((lifestyle?.score || 0) >= 80 && (bodyComp?.score || 0) >= 80) {
+    synthesis.push({
+      title: 'Metabolic Resilience',
+      description: 'Your excellent recovery habits and healthy body composition create a high "ceiling" for progress. You can handle higher volume and intensity than the average trainee.',
+      severity: 'low'
+    });
+  }
+
+  // Fallback for high performers with no specific flags
+  if (synthesis.length === 0 && (categories.reduce((acc, c) => acc + c.score, 0) / categories.length) > 80) {
+    synthesis.push({
+      title: 'Performance Optimization',
+      description: 'Overall scores are excellent. Focus now shifts from "fixing" to "optimizing"—fine-tuning specific performance metrics rather than correcting imbalances.',
+      severity: 'low'
     });
   }
 
