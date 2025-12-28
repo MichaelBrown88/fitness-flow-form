@@ -7,11 +7,11 @@ import { CheckCircle2, AlertCircle, MessageSquare, Target, ClipboardList, Activi
 
 function niceLabel(id: string): string {
   switch (id) {
-    case 'bodyComp': return 'Body composition';
-    case 'strength': return 'Strength & endurance';
-    case 'cardio': return 'Cardio fitness';
-    case 'movementQuality': return 'Movement quality';
-    case 'lifestyle': return 'Lifestyle';
+    case 'bodyComp': return 'Body Composition';
+    case 'strength': return 'Muscular Strength';
+    case 'cardio': return 'Metabolic Fitness';
+    case 'movementQuality': return 'Movement Quality';
+    case 'lifestyle': return 'Lifestyle Factors';
     default: return id;
   }
 }
@@ -62,14 +62,14 @@ export default function CoachReport({
           
           <div className="flex flex-wrap gap-2">
             {goals.map(g => (
-              <span key={g} className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-bold uppercase tracking-wide">
+              <span key={g} className="px-3 py-1 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-full text-[10px] font-black uppercase tracking-widest">
                 {g.replace('-', ' ')}
               </span>
             ))}
           </div>
 
-          <p className="text-slate-500 text-sm leading-relaxed max-w-xl italic">
-            "Quick snapshot of this client’s priorities, key findings, and how the program will address them while moving toward their goals."
+          <p className="text-slate-600 text-sm leading-relaxed max-w-xl">
+            Based on the assessment data, we've identified the following training priorities and strategy for {clientName || 'this client'}.
           </p>
         </div>
         <div className="w-full md:w-72 flex-shrink-0 bg-slate-50 rounded-2xl p-4 border border-slate-100">
@@ -204,7 +204,7 @@ export default function CoachReport({
       </section>
 
       {/* PRIORITIZED EXERCISE RECOMMENDATIONS */}
-      {plan.prioritizedExercises && (
+      {plan.prioritizedExercises && plan.prioritizedExercises.groups && (
       <section className="space-y-6">
         <div className="flex items-center gap-3">
           <div className="bg-sky-600 p-2 rounded-lg">
@@ -273,7 +273,7 @@ export default function CoachReport({
           </div>
 
           {/* Exercises by Session Type */}
-          {plan.prioritizedExercises.bySession.length > 0 && (
+          {plan.prioritizedExercises.bySession && plan.prioritizedExercises.bySession.length > 0 && (
             <div className="mt-8">
               <h4 className="text-lg font-bold text-slate-900 mb-4">Exercises Organized by Session Type</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

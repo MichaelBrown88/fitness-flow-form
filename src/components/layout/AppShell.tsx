@@ -101,7 +101,7 @@ export default function AppShell({
                     <DropdownMenuContent align="end" className="w-52">
                       <DropdownMenuLabel className="font-normal">
                         <div className="flex flex-col space-y-1">
-                          <p className="text-sm font-medium leading-none">Coach Account</p>
+                          <p className="text-sm font-medium leading-none">{user.displayName || 'Coach Account'}</p>
                           <p className="text-xs leading-none text-slate-500">{user.email}</p>
                         </div>
                       </DropdownMenuLabel>

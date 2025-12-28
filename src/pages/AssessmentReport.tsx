@@ -170,7 +170,7 @@ const AssessmentReport = () => {
   }
 
   const plan = generateCoachPlan(formData, scores);
-  const bodyComp = generateBodyCompInterpretation(formData);
+  const bodyComp = generateBodyCompInterpretation(formData, scores);
 
   return (
     <AppShell
@@ -178,10 +178,24 @@ const AssessmentReport = () => {
       subtitle="Saved assessment report"
       actions={
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate('/dashboard')}>
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              // Navigate to client dashboard if we have client name, otherwise main dashboard
+              if (formData?.fullName) {
+                navigate(`/client/${encodeURIComponent(formData.fullName)}`);
+              } else {
+                navigate('/dashboard');
+              }
+            }}
+          >
             Dashboard
           </Button>
-          <Button onClick={() => navigate('/assessment')}>
+          <Button onClick={() => {
+            // Clear any partial assessment data to ensure full assessment
+            sessionStorage.removeItem('partialAssessment');
+            navigate('/assessment');
+          }}>
             New assessment
           </Button>
           <Button variant="outline" onClick={handleEmailLink} disabled={shareLoading}>

@@ -1,6 +1,7 @@
 import { getAI, VertexAIBackend, getGenerativeModel } from "firebase/ai";
 import { getApp } from "firebase/app";
 import { FormData } from '../../contexts/FormContext';
+import { CONFIG } from '@/config';
 
 export interface OcrResult {
   fields: Partial<FormData>;
@@ -24,9 +25,9 @@ export async function processInBodyScan(imageSrc: string): Promise<OcrResult> {
     });
 
     // 2. Initialize Gemini 2.0 Flash (Fastest and most capable for OCR)
-    console.log('Initializing Gemini 2.0 Flash...');
+    console.log(`Initializing ${CONFIG.AI.GEMINI.MODEL_NAME}...`);
     const model = getGenerativeModel(ai, { 
-      model: "gemini-2.0-flash",
+      model: CONFIG.AI.GEMINI.MODEL_NAME,
       generationConfig: {
         responseMimeType: "application/json",
       }

@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
@@ -40,7 +40,7 @@ import {
   X
 } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
-import { phaseDefinitions, type PhaseField, type PhaseSection } from '@/lib/phaseConfig';
+import { phaseDefinitions, type PhaseField, type PhaseSection, type PhaseId } from '@/lib/phaseConfig';
 import ParQQuestionnaire from './ParQQuestionnaire';
 import { computeScores, buildRoadmap } from '@/lib/scoring';
 import { generateCoachPlan, generateBodyCompInterpretation } from '@/lib/recommendations';
@@ -96,6 +96,7 @@ const SingleFieldFlow = ({
   onComplete: () => void;
   onShowCamera?: (mode: 'ocr' | 'posture') => void;
   onShowPostureCompanion?: () => void;
+  onShowInBodyCompanion?: () => void;
 }) => {
   const { formData } = useFormContext();
   const isMobile = useIsMobile();
@@ -197,19 +198,6 @@ const SingleFieldFlow = ({
             <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border border-indigo-100">
               {movementPattern}
             </span>
-            
-            {coachNotes && (
-              <div className="flex items-center gap-2 text-indigo-400">
-                <Info className="h-3 w-3" />
-                <span className="text-[10px] font-bold uppercase tracking-wider">Coach Instruction</span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {coachNotes && (
-          <div className="mb-8 p-4 bg-slate-50 rounded-2xl border border-slate-100 italic text-sm text-slate-600">
-            {coachNotes}
           </div>
         )}
 
@@ -293,6 +281,7 @@ const FieldControl = ({
   field: PhaseField;
   onShowCamera?: (mode: 'ocr' | 'posture') => void;
   onShowPostureCompanion?: () => void;
+  onShowInBodyCompanion?: () => void;
 }) => {
   const { formData, updateFormData } = useFormContext();
   const isMobile = useIsMobile();
@@ -341,22 +330,77 @@ const FieldControl = ({
     updateFormData(updates);
   };
 
-  const renderLabel = () => (
-    <div className="flex flex-col gap-2 mb-4">
-      <div className="flex items-center justify-between gap-4">
-        <label className={labelTextClasses}>{field.label}</label>
-      </div>
-      
-      {field.tooltip && (
-        <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-xl flex gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
-          <Info className="h-5 w-5 text-indigo-500 shrink-0 mt-0.5" />
-          <p className="text-sm leading-relaxed text-indigo-900 font-medium">{field.tooltip}</p>
+  const renderLabel = () => {
+    const tooltipLines = field.tooltip?.split('\n') || [];
+    const hasInstructions = tooltipLines.some(l => l.toLowerCase().includes('instructions'));
+
+    return (
+      <div className="flex flex-col gap-1 mb-2">
+        <div className="flex items-center gap-2">
+          <label htmlFor={field.id} className={labelTextClasses}>{field.label}</label>
+          {field.tooltip && (
+            <TooltipProvider>
+              <Tooltip delayDuration={200}>
+                <TooltipTrigger asChild>
+                  <button type="button" className="text-indigo-400 hover:text-indigo-600 transition-colors">
+                    <Info className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent 
+                  side="right" 
+                  className="z-[100] max-w-[300px] p-5 bg-slate-900 text-white rounded-2xl border-none shadow-2xl animate-in fade-in zoom-in duration-200"
+                >
+                  <div className="space-y-3 text-left">
+                    {tooltipLines.map((line, i) => {
+                      const isInstructionHeader = line.toLowerCase().includes('instructions:');
+                      const isStep = line.match(/^\d+\./);
+                      const isBullet = line.trim().startsWith('•');
+
+                      if (isInstructionHeader) {
+                        return (
+                          <div key={i} className="flex items-center gap-2 mb-1">
+                            <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400">{line.replace(':', '')}</span>
+                          </div>
+                        );
+                      }
+
+                      if (isStep) {
+                        const [num, ...rest] = line.split('.');
+                        return (
+                          <div key={i} className="flex gap-3 text-[11px] leading-relaxed">
+                            <span className="font-black text-indigo-500 min-w-[12px]">{num}.</span>
+                            <span className="text-slate-200 font-medium">{rest.join('.').trim()}</span>
+                          </div>
+                        );
+                      }
+
+                      if (isBullet) {
+                        return (
+                          <div key={i} className="flex gap-3 text-[11px] leading-relaxed pl-1">
+                            <span className="text-indigo-500">•</span>
+                            <span className="text-slate-200 font-medium">{line.replace('•', '').trim()}</span>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <p key={i} className="text-[11px] leading-relaxed font-medium text-slate-300">
+                          {line}
+                        </p>
+                      );
+                    })}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </div>
-      )}
-      
-      {field.description && <p className={supportTextClasses}>{field.description}</p>}
-    </div>
-  );
+        
+        {field.description && <p className={supportTextClasses}>{field.description}</p>}
+      </div>
+    );
+  };
 
   const renderInput = () => {
     const value = formData[field.id];
@@ -365,29 +409,38 @@ const FieldControl = ({
     if (field.id === 'postureInputMode' && value === 'ai') {
       return (
         <div className="space-y-6">
-          <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {field.options?.map((option, idx) => {
               const isSelected = value === option.value;
               const colorClass = idx === 0 ? 'hover:border-slate-200 hover:bg-slate-50 text-slate-700 border-slate-100' : 'hover:border-indigo-200 hover:bg-indigo-50 text-indigo-700 border-indigo-100';
+              const inputId = `${field.id}-${option.value}`;
               
               return (
-            <button
+                <label
                   key={option.value}
-              type="button"
-                  onClick={() => handleChange(option.value)}
-                  className={`flex h-11 items-center gap-3 rounded-xl border-2 px-4 text-left transition-all ${
+                  htmlFor={inputId}
+                  className={`flex h-11 cursor-pointer items-center gap-3 rounded-xl border-2 px-4 text-left transition-all ${
                     isSelected
                       ? 'border-slate-900 bg-slate-900 text-white shadow-lg scale-[1.02]'
                       : `bg-white text-slate-600 ${colorClass}`
                   }`}
                 >
+                  <input 
+                    type="radio" 
+                    id={inputId} 
+                    name={field.id} 
+                    value={option.value} 
+                    checked={isSelected}
+                    onChange={() => handleChange(option.value)}
+                    className="sr-only"
+                  />
                   <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
                     isSelected ? 'bg-white/20 border-white/20 text-white' : 'border-slate-200 bg-white'
                   }`}>
                     {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
                   </div>
                   <span className="font-bold text-xs leading-tight">{option.label}</span>
-            </button>
+                </label>
               );
             })}
           </div>
@@ -432,14 +485,16 @@ const FieldControl = ({
               </div>
             )}
           </div>
-    </div>
-  );
+        </div>
+      );
     }
 
     switch (field.type) {
       case 'textarea':
         return (
           <Textarea
+            id={field.id}
+            name={field.id}
             placeholder={field.placeholder}
             value={(value as string) ?? ''}
             onChange={(event) => handleChange(event.target.value)}
@@ -468,11 +523,12 @@ const FieldControl = ({
                     key={option.value}
                     type="button"
                     onClick={() => handleChange(option.value)}
-                  className={`flex h-11 items-center gap-3 rounded-xl border-2 px-4 text-left transition-all ${
+                    className={`flex min-h-[44px] h-auto items-center gap-3 rounded-xl border-2 px-4 py-2 text-left transition-all ${
                       isSelected
-                      ? 'border-slate-900 bg-slate-900 text-white shadow-lg scale-[1.02]'
-                      : `bg-white text-slate-600 ${colorClass}`
+                        ? 'border-slate-900 bg-slate-900 text-white shadow-lg scale-[1.02]'
+                        : `bg-white text-slate-600 ${colorClass}`
                     }`}
+                    aria-label={option.label}
                   >
                   <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
                     isSelected ? 'bg-white/20 border-white/20 text-white' : 'border-slate-200 bg-white'
@@ -514,12 +570,13 @@ const FieldControl = ({
                     key={opt.value}
                     type="button"
                     onClick={() => toggle(opt.value)}
-                  className={`flex h-11 items-center gap-3 rounded-xl border-2 px-4 text-left transition-all ${
+                    className={`flex min-h-[44px] h-auto items-center gap-3 rounded-xl border-2 px-4 py-2 text-left transition-all ${
                       isActive
                       ? 'border-slate-900 bg-slate-900 text-white shadow-lg scale-[1.02]'
                       : `bg-white text-slate-600 ${colorClass}`
                     }`}
                     aria-pressed={isActive}
+                    aria-label={opt.label}
                   >
                   <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
                     isActive ? 'bg-white/20 border-white/20 text-white' : 'border-slate-200 bg-white'
@@ -538,6 +595,8 @@ const FieldControl = ({
       case 'time':
         return (
           <Input
+            id={field.id}
+            name={field.id}
             type="time"
             placeholder={field.placeholder}
             value={(value as string) ?? ''}
@@ -548,6 +607,8 @@ const FieldControl = ({
       case 'date':
         return (
           <Input
+            id={field.id}
+            name={field.id}
             type="date"
             placeholder={field.placeholder}
             value={(value as string) ?? ''}
@@ -558,6 +619,8 @@ const FieldControl = ({
       case 'email':
         return (
           <Input
+            id={field.id}
+            name={field.id}
             type="email"
             placeholder={field.placeholder}
             value={(value as string) ?? ''}
@@ -568,6 +631,8 @@ const FieldControl = ({
       case 'tel':
         return (
           <Input
+            id={field.id}
+            name={field.id}
             type="tel"
             placeholder={field.placeholder}
             value={(value as string) ?? ''}
@@ -580,6 +645,8 @@ const FieldControl = ({
       default:
         return (
           <Input
+            id={field.id}
+            name={field.id}
             type={field.type === 'number' ? 'number' : 'text'}
             placeholder={field.placeholder}
             value={(value as string) ?? ''}
@@ -612,7 +679,100 @@ const PhaseFormContent = ({
   const { user } = useAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const [activePhaseIdx, setActivePhaseIdx] = useState(0);
+  
+  // Check for partial assessment mode
+  const getInitialPhase = () => {
+    try {
+      const partialData = sessionStorage.getItem('partialAssessment');
+      if (partialData) {
+        const { category } = JSON.parse(partialData);
+        // Map categories to phase indices
+        const categoryToPhase: Record<string, number> = {
+          'inbody': 2,      // P2 - Body Composition
+          'posture': 2,     // P2 - Posture & Movement (same phase as InBody)
+          'fitness': 4,     // P4 - Cardiovascular Fitness
+          'strength': 5,    // P5 - Strength & Power
+          'lifestyle': 1,   // P1 - Lifestyle Overview
+        };
+        return categoryToPhase[category] || 0;
+      }
+    } catch (e) {
+      console.warn('Failed to parse partial assessment data:', e);
+    }
+    return 0;
+  };
+  
+  const [activePhaseIdx, setActivePhaseIdx] = useState(getInitialPhase());
+  const [isPartialAssessment, setIsPartialAssessment] = useState(() => {
+    try {
+      const partialData = sessionStorage.getItem('partialAssessment');
+      return !!partialData;
+    } catch {
+      return false;
+    }
+  });
+  
+  const [partialCategory, setPartialCategory] = useState<string | null>(() => {
+    try {
+      const partialData = sessionStorage.getItem('partialAssessment');
+      if (partialData) {
+        const { category } = JSON.parse(partialData);
+        return category;
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  });
+  
+  // Clear partial assessment data if navigating directly to assessment without explicit partial mode
+  // This ensures full assessments aren't accidentally filtered
+  useEffect(() => {
+    // Only clear if there's no prefillClientData (which indicates a new client) 
+    // and no explicit partialAssessment flag from a quick assessment button
+    const prefillData = sessionStorage.getItem('prefillClientData');
+    const partialData = sessionStorage.getItem('partialAssessment');
+    
+    // If we have partial data but no prefill data, it might be leftover - clear it
+    // (Quick assessments should always have both prefill and partial data)
+    if (partialData && !prefillData) {
+      console.log('[MultiStepForm] Clearing leftover partial assessment data');
+      sessionStorage.removeItem('partialAssessment');
+      setIsPartialAssessment(false);
+      setPartialCategory(null);
+    }
+  }, []);
+  
+  // Load current assessment data when starting partial assessment
+  useEffect(() => {
+    if (isPartialAssessment && user && partialCategory) {
+      const loadCurrentAssessment = async () => {
+        try {
+          const partialData = sessionStorage.getItem('partialAssessment');
+          if (partialData) {
+            const { clientName } = JSON.parse(partialData);
+            const { getCurrentAssessment } = await import('@/services/assessmentHistory');
+            const current = await getCurrentAssessment(user.uid, clientName);
+            if (current?.formData) {
+              // Merge current data into form context
+              const updates: Partial<FormData> = {};
+              Object.keys(current.formData).forEach((key) => {
+                const value = (current.formData as any)[key];
+                if (value !== undefined && value !== null) {
+                  updates[key as keyof FormData] = value;
+                }
+              });
+              updateFormData(updates);
+            }
+          }
+        } catch (e) {
+          console.error('Failed to load current assessment:', e);
+        }
+      };
+      loadCurrentAssessment();
+    }
+  }, [isPartialAssessment, user, partialCategory, updateFormData]);
+  
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [recentlyCompletedSections, setRecentlyCompletedSections] = useState<Set<string>>(new Set());
   const phaseRefs = useRef<Record<number, HTMLButtonElement | null>>({});
@@ -642,15 +802,34 @@ const PhaseFormContent = ({
   const [isProcessingOcr, setIsProcessingOcr] = useState(false);
   const [postureStep, setPostureStep] = useState<number>(0);
 
-  const totalPhases = phaseDefinitions.length;
+  // Filter phases for partial assessments
+  const visiblePhases = useMemo(() => {
+    if (!isPartialAssessment || !partialCategory) {
+      return phaseDefinitions;
+    }
+    
+    // Map category to allowed phase IDs
+    const categoryToPhases: Record<string, PhaseId[]> = {
+      'inbody': ['P0', 'P2', 'P7'],    // Basic info + Body Composition + Results
+      'posture': ['P0', 'P2', 'P7'],   // Basic info + Posture + Results
+      'fitness': ['P0', 'P4', 'P7'],   // Basic info + Fitness + Results
+      'strength': ['P0', 'P5', 'P7'],  // Basic info + Strength + Results
+      'lifestyle': ['P0', 'P1', 'P7'], // Basic info + Lifestyle + Results
+    };
+    
+    const allowedPhases: PhaseId[] = categoryToPhases[partialCategory] || ['P0'];
+    return phaseDefinitions.filter(phase => (allowedPhases as string[]).includes(phase.id));
+  }, [isPartialAssessment, partialCategory]);
+  
+  const totalPhases = visiblePhases.length;
   const activePhase = useMemo(() => {
-    return phaseDefinitions[activePhaseIdx] || {
+    return visiblePhases[activePhaseIdx] || {
       id: 'empty',
       title: 'No Phases Available',
       summary: 'Phase definitions are currently being loaded or configured.',
       sections: []
     };
-  }, [activePhaseIdx]);
+  }, [activePhaseIdx, visiblePhases]);
 
   // Determine if we are in the results phase
   const isResultsPhase = activePhase?.id === 'P7';
@@ -900,8 +1079,8 @@ const PhaseFormContent = ({
         // Map analysis to form
         const suggestions: Partial<FormData> = {};
         if (currentView === 'side-right' || currentView === 'side-left') {
-          suggestions.postureHeadOverall = analysis.head_posture.status.toLowerCase().includes('neutral') ? 'neutral' : 'forward-head';
-          suggestions.postureBackOverall = analysis.head_posture.status.toLowerCase().includes('severe') ? 'increased-kyphosis' : 'neutral';
+          suggestions.postureHeadOverall = analysis.forward_head.status.toLowerCase().includes('neutral') ? 'neutral' : 'forward-head';
+          suggestions.postureBackOverall = analysis.kyphosis.status.toLowerCase().includes('severe') ? 'increased-kyphosis' : 'neutral';
         } else if (currentView === 'front') {
           suggestions.postureShouldersOverall = analysis.shoulder_alignment.status.toLowerCase().includes('neutral') ? 'neutral' : 'rounded';
         }
@@ -929,19 +1108,91 @@ const PhaseFormContent = ({
       updateFormData(ocrReviewData);
       setOcrReviewData(null);
       toast({ title: "InBody data applied", description: "All fields have been populated." });
+      
+      // Auto-advance: if we're in the Body Composition section, move to the next phase
+      // This matches the user's request to "complete and go to the next"
+      if (activePhase.id === 'P2') {
+        setTimeout(() => {
+          if (isPartialAssessment) {
+            handleViewResults();
+          } else {
+            // Move to next visible phase (likely P3)
+            const nextVisibleIdx = visiblePhases.findIndex((p, i) => i > activePhaseIdx);
+            if (nextVisibleIdx !== -1) {
+              setActivePhaseIdx(nextVisibleIdx);
+            }
+          }
+        }, 800);
+      }
     }
   };
 
   const handleSaveToDashboard = useCallback(async () => {
     if (!user || saving || savingId) return;
+    
+    // Safety check for client name
+    const clientName = (formData.fullName || 'Unnamed client').trim();
+    
     try {
       setSaving(true);
-      const id = await saveCoachAssessment(user.uid, user.email, formData, scores.overall);
-      setSavingId(id);
-      toast({ title: 'Assessment Saved', description: 'Available on your dashboard.' });
+      console.log(`[SYNC] Starting sync for client: ${clientName}...`);
+      
+      // Check if this is a partial assessment
+      let assessmentId: string;
+      let category: string | null = null;
+      
+      try {
+        const partialData = sessionStorage.getItem('partialAssessment');
+        if (partialData) {
+          const { category: cat, clientName } = JSON.parse(partialData);
+          category = cat;
+          
+          // Use partial assessment save (merges with latest)
+          const { savePartialAssessment } = await import('@/services/coachAssessments');
+          assessmentId = await savePartialAssessment(
+            user.uid, 
+            user.email, 
+            formData, 
+            scores.overall, 
+            clientName,
+            category as 'inbody' | 'posture' | 'fitness' | 'strength' | 'lifestyle'
+          );
+          
+          // Update client profile with last assessment date for this category
+          const { createOrUpdateClientProfile } = await import('@/services/clientProfiles');
+          const { Timestamp } = await import('firebase/firestore');
+          const updateData: Record<string, any> = {};
+          const now = Timestamp.now();
+          
+          if (category === 'inbody') updateData.lastInBodyDate = now;
+          else if (category === 'posture') updateData.lastPostureDate = now;
+          else if (category === 'fitness') updateData.lastFitnessDate = now;
+          else if (category === 'strength') updateData.lastStrengthDate = now;
+          else if (category === 'lifestyle') updateData.lastLifestyleDate = now;
+          
+          if (Object.keys(updateData).length > 0) {
+            await createOrUpdateClientProfile(user.uid, clientName, updateData);
+          }
+          
+          // Clear partial assessment flag
+          sessionStorage.removeItem('partialAssessment');
+        } else {
+          // Full assessment
+          assessmentId = await saveCoachAssessment(user.uid, user.email, formData, scores.overall);
+        }
+      } catch (parseErr) {
+        // Fallback to regular save if partial data parsing fails
+        assessmentId = await saveCoachAssessment(user.uid, user.email, formData, scores.overall);
+      }
+      
+      setSavingId(assessmentId);
+      toast({ 
+        title: category ? 'Partial Assessment Saved' : 'Assessment Saved', 
+        description: category ? `${category.charAt(0).toUpperCase() + category.slice(1)} data updated and merged.` : `Progress for ${clientName} has been saved.` 
+      });
     } catch (e) {
-      console.error('Save failed', e);
-      toast({ title: 'Save Failed', description: 'Unable to sync with database.', variant: 'destructive' });
+      console.error('[SYNC] Save failed:', e);
+      toast({ title: 'Sync Error', description: 'Unable to sync with dashboard. Please check your connection.', variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -998,7 +1249,7 @@ const PhaseFormContent = ({
     try {
       setShareLoading(true);
       const htmlBlob = await generateInteractiveHtml({
-        formData, scores, roadmap, bodyComp: generateBodyCompInterpretation(formData) || undefined, view: 'client',
+        formData, scores, roadmap, bodyComp: generateBodyCompInterpretation(formData, scores) || undefined, view: 'client',
       });
       const url = URL.createObjectURL(htmlBlob);
       const link = document.createElement('a');
@@ -1084,6 +1335,14 @@ const PhaseFormContent = ({
     return totalPhases - 1;
   }, [totalPhases]);
 
+  const anyAssessmentCompleted = useMemo(() => {
+    const categories = ['inbodyScore', 'postureHeadOverall', 'pushupsOneMinuteReps', 'cardioTestSelected'];
+    return categories.some((field) => {
+      const val = formData[field as keyof FormData];
+      return val !== '' && val !== undefined && val !== null;
+    });
+  }, [formData]);
+
   const allAssessmentsCompleted = useMemo(() => {
     const requiredFields = ['parqQuestionnaire', 'postureHeadOverall', 'pushupsOneMinuteReps', 'plankDurationSeconds', 'cardioTestSelected', 'clientGoals'];
     const basicsCompleted = requiredFields.every((field) => {
@@ -1103,7 +1362,10 @@ const PhaseFormContent = ({
     return true;
   }, [formData]);
 
-  const canAutoAdvance = useMemo(() => !isReviewMode && !allAssessmentsCompleted, [isReviewMode, allAssessmentsCompleted]);
+  const canAutoAdvance = useMemo(() => 
+    (!isReviewMode && !allAssessmentsCompleted) || isPartialAssessment, 
+    [isReviewMode, allAssessmentsCompleted, isPartialAssessment]
+  );
 
   const getAllSections = useCallback(() => {
     const sections: SectionType[] = [];
@@ -1122,17 +1384,25 @@ const PhaseFormContent = ({
 
   useEffect(() => {
     if ((activePhase.sections?.length ?? 0) === 0 && activePhaseIdx < totalPhases - 1) {
-      const timeout = setTimeout(() => setActivePhaseIdx(prev => prev + 1), 250);
+      const timeout = setTimeout(() => {
+        // Find next visible phase index
+        const nextVisibleIdx = visiblePhases.findIndex((p, i) => i > activePhaseIdx);
+        if (nextVisibleIdx !== -1) {
+          setActivePhaseIdx(nextVisibleIdx);
+        }
+      }, 250);
       return () => clearTimeout(timeout);
     }
-  }, [activePhase, activePhaseIdx, totalPhases]);
+  }, [activePhase, activePhaseIdx, totalPhases, visiblePhases]);
 
   useEffect(() => {
     if (!canAutoAdvance) return;
-    const p0FirstSectionId = phaseDefinitions[0]?.sections?.[0]?.id ?? 'phase0';
+    const p0FirstSectionId = visiblePhases[0]?.sections?.[0]?.id ?? 'phase0';
     if (activePhaseIdx === 0 && isIntakeCompleted() && !recentlyCompletedSections.has(p0FirstSectionId)) {
       setRecentlyCompletedSections(prev => new Set(prev).add(p0FirstSectionId));
-      setTimeout(() => setActivePhaseIdx(1), 1500);
+      if (visiblePhases.length > 1) {
+        setTimeout(() => setActivePhaseIdx(1), 1500);
+      }
       return;
     }
     const allSections = getAllSections();
@@ -1150,9 +1420,13 @@ const PhaseFormContent = ({
         if (currentIndex < allSections.length - 1) {
           const nextSection = allSections[currentIndex + 1];
           setExpandedSections({ [expandedSectionId]: false, [nextSection.id]: true });
-        } else if (activePhaseIdx < totalPhases - 2) {
-            setActivePhaseIdx(prev => prev + 1);
+        } else if (activePhaseIdx < totalPhases - 1) {
+          // Find next visible phase
+          const nextVisibleIdx = visiblePhases.findIndex((p, i) => i > activePhaseIdx);
+          if (nextVisibleIdx !== -1) {
+            setActivePhaseIdx(nextVisibleIdx);
           }
+        }
       }, 1500);
     }
     if (currentSection.id === 'parq' && formData.parqQuestionnaire === 'completed' && !wasRecentlyCompleted) {
@@ -1163,24 +1437,42 @@ const PhaseFormContent = ({
           const nextSection = allSections[currentIndex + 1];
           setExpandedSections({ [expandedSectionId]: false, [nextSection.id]: true });
         } else if (activePhaseIdx < totalPhases - 1) {
-            setActivePhaseIdx(prev => prev + 1);
+          const nextVisibleIdx = visiblePhases.findIndex((p, i) => i > activePhaseIdx);
+          if (nextVisibleIdx !== -1) {
+            setActivePhaseIdx(nextVisibleIdx);
+          }
         }
       }, 1500);
     }
-  }, [formData, expandedSections, activePhaseIdx, totalPhases, getAllSections, isIntakeCompleted, recentlyCompletedSections, isSectionCompleted, canAutoAdvance]);
+  }, [formData, expandedSections, activePhaseIdx, totalPhases, getAllSections, isIntakeCompleted, recentlyCompletedSections, isSectionCompleted, canAutoAdvance, visiblePhases]);
 
   useEffect(() => { setActiveFieldIdx(0); }, [activePhaseIdx, expandedSections]);
 
   const progressValue = useMemo(() => ((activePhaseIdx + 1) / totalPhases) * 100, [activePhaseIdx, totalPhases]);
 
   const handleViewResults = () => {
-    if (allAssessmentsCompleted) {
-      void handleSaveToDashboard();
-      setIsReviewMode(false);
-      setReportView('client');
-      setActivePhaseIdx(totalPhases - 1);
-      setTimeout(() => { try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (_e) { console.error('Scroll failed:', _e); } }, 100);
-    }
+    // If we're already at the results phase, don't do anything
+    if (activePhaseIdx === totalPhases - 1) return;
+    
+    // Attempt to save before showing results
+    void handleSaveToDashboard();
+    
+    setIsReviewMode(false);
+    setReportView('client');
+    setActivePhaseIdx(totalPhases - 1);
+    
+    setTimeout(() => { 
+      try { 
+        window.scrollTo({ top: 0, behavior: 'smooth' }); 
+      } catch (_e) { 
+        console.error('Scroll failed:', _e); 
+      } 
+    }, 100);
+
+    toast({
+      title: "Generating Reports",
+      description: "Analyzing data and building your coaching strategy...",
+    });
   };
 
   const handleStartNewAssessment = () => {
@@ -1384,8 +1676,16 @@ const PhaseFormContent = ({
           const currentIndex = allSections.findIndex(s => s.id === activeSection.id);
           if (currentIndex < allSections.length - 1) {
             setExpandedSections({ [allSections[currentIndex + 1].id]: true });
-          } else if (activePhaseIdx < totalPhases - 2) { 
-              setActivePhaseIdx(prev => prev + 1);
+          } else if (activePhaseIdx < totalPhases - 1) {
+            if (isPartialAssessment) {
+              handleViewResults();
+            } else {
+              // Find next visible phase
+              const nextVisibleIdx = visiblePhases.findIndex((p, i) => i > activePhaseIdx);
+              if (nextVisibleIdx !== -1) {
+                setActivePhaseIdx(nextVisibleIdx);
+              }
+            }
           }
         }}
       />
@@ -1410,12 +1710,12 @@ const PhaseFormContent = ({
             <p className="text-[10px] font-medium text-slate-500 text-right">{Math.round(progressValue)}% Complete</p>
           </div>
           <nav className="space-y-4">
-            {phaseDefinitions.map((phase, idx) => {
+            {visiblePhases.map((phase, idx) => {
               const isActive = idx === activePhaseIdx;
               const isResultsPhase = phase.id === 'P7';
               
               // Check if at least one non-Results phase is completed
-              const hasAnyCompletedPhase = phaseDefinitions.some((p, i) => 
+              const hasAnyCompletedPhase = visiblePhases.some((p, i) => 
                 i !== idx && p.id !== 'P7' && isPhaseCompleted(i)
               );
               
@@ -1492,10 +1792,21 @@ const PhaseFormContent = ({
 
           <section className="space-y-6">
             {renderAllSections()}
+            
+            {/* Show "Generate Full Report" only when everything is truly finished */}
             {activePhaseIdx >= 1 && activePhaseIdx < totalPhases - 1 && allAssessmentsCompleted && (
               <div className="flex items-center justify-center border-t border-slate-200 pt-8">
                 <Button onClick={handleViewResults} className="h-14 px-10 rounded-2xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 shadow-xl transition-all hover:scale-[1.05]">
                   📊 Generate Full Report
+                </Button>
+              </div>
+            )}
+
+            {/* NEW: Show "Preview Results" for testing/partial data */}
+            {activePhaseIdx >= 1 && activePhaseIdx < totalPhases - 1 && !allAssessmentsCompleted && anyAssessmentCompleted && (
+              <div className="flex items-center justify-center border-t border-slate-200 pt-8">
+                <Button variant="outline" onClick={handleViewResults} className="h-14 px-10 rounded-2xl border-indigo-200 text-indigo-600 font-bold hover:bg-indigo-50 transition-all">
+                  🔍 Preview Partial Results
                 </Button>
               </div>
             )}
@@ -1680,17 +1991,19 @@ const MultiStepForm = () => {
   const handleDemoFill = () => setDemoTrigger(prev => prev + 1);
   
   return (
-    <FormProvider>
-      <AppShell 
-        title="Fitness Assessment" 
-        showDemoFill={true} 
-        onDemoFill={handleDemoFill}
-        variant="full-width"
-        onMenuToggle={() => setSidebarOpen(prev => !prev)}
-      >
-        <PhaseFormContent demoTrigger={demoTrigger} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-      </AppShell>
-    </FormProvider>
+    <TooltipProvider delayDuration={0}>
+      <FormProvider>
+        <AppShell 
+          title="Fitness Assessment" 
+          showDemoFill={true} 
+          onDemoFill={handleDemoFill}
+          variant="full-width"
+          onMenuToggle={() => setSidebarOpen(prev => !prev)}
+        >
+          <PhaseFormContent demoTrigger={demoTrigger} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+        </AppShell>
+      </FormProvider>
+    </TooltipProvider>
   );
 };
 

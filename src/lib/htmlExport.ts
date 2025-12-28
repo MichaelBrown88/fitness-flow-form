@@ -25,21 +25,21 @@ export async function generateInteractiveHtml(params: {
   // Calculate focus areas and strengths
   const focusAreas = orderedCats.flatMap(cat => 
     (cat?.weaknesses || []).map(w => {
-      const label = cat?.id === 'bodyComp' ? 'Body composition' :
-                   cat?.id === 'strength' ? 'Strength & endurance' :
-                   cat?.id === 'cardio' ? 'Cardio fitness' :
-                   cat?.id === 'movementQuality' ? 'Movement quality' :
-                   cat?.id === 'lifestyle' ? 'Lifestyle' : cat?.id || '';
+      const label = cat?.id === 'bodyComp' ? 'Body Composition' :
+                   cat?.id === 'strength' ? 'Muscular Strength' :
+                   cat?.id === 'cardio' ? 'Metabolic Fitness' :
+                   cat?.id === 'movementQuality' ? 'Movement Quality' :
+                   cat?.id === 'lifestyle' ? 'Lifestyle Factors' : cat?.id || '';
       return `${label}: ${w}`;
     })
   );
   const strengths = orderedCats.flatMap(cat => 
     (cat?.strengths || []).map(s => {
-      const label = cat?.id === 'bodyComp' ? 'Body composition' :
-                   cat?.id === 'strength' ? 'Strength & endurance' :
-                   cat?.id === 'cardio' ? 'Cardio fitness' :
-                   cat?.id === 'movementQuality' ? 'Movement quality' :
-                   cat?.id === 'lifestyle' ? 'Lifestyle' : cat?.id || '';
+      const label = cat?.id === 'bodyComp' ? 'Body Composition' :
+                   cat?.id === 'strength' ? 'Muscular Strength' :
+                   cat?.id === 'cardio' ? 'Metabolic Fitness' :
+                   cat?.id === 'movementQuality' ? 'Movement Quality' :
+                   cat?.id === 'lifestyle' ? 'Lifestyle Factors' : cat?.id || '';
       return `${label}: ${s}`;
     })
   );
@@ -218,11 +218,11 @@ export async function generateInteractiveHtml(params: {
     
     function niceLabel(id) {
       const labels = {
-        bodyComp: 'Body composition',
-        strength: 'Strength & endurance',
-        cardio: 'Cardio fitness',
-        movementQuality: 'Movement quality',
-        lifestyle: 'Lifestyle'
+        bodyComp: 'Body Composition',
+        strength: 'Muscular Strength',
+        cardio: 'Metabolic Fitness',
+        movementQuality: 'Movement Quality',
+        lifestyle: 'Lifestyle Factors'
       };
       return labels[id] || id;
     }
@@ -998,7 +998,7 @@ export async function generateInteractiveHtml(params: {
                     {goals && goals[0] === 'weight-loss' ? 'Primary block — Fat‑loss training' :
                      goals && goals[0] === 'build-muscle' ? 'Primary block — Hypertrophy' :
                      goals && goals[0] === 'build-strength' ? 'Primary block — Strength' :
-                     goals && goals[0] === 'improve-fitness' ? 'Primary block — Cardio fitness' : 'Primary block'}
+                     goals && goals[0] === 'improve-fitness' ? 'Primary block — Metabolic Fitness' : 'Primary block'}
                   </h4>
                   <ul style={{ marginTop: '8px', paddingLeft: '20px', fontSize: '14px', color: '#475569', listStyle: 'disc' }}>
                     {goals && goals[0] === 'weight-loss' ? (
@@ -1023,7 +1023,7 @@ export async function generateInteractiveHtml(params: {
                       </>
                     ) : goals && goals[0] === 'improve-fitness' ? (
                       <>
-                        <li style={{ marginBottom: '4px' }}>Tempo intervals: 6 x 2 min hard / 2 min easy (cardio fitness)</li>
+                        <li style={{ marginBottom: '4px' }}>Tempo intervals: 6 x 2 min hard / 2 min easy (Metabolic Fitness)</li>
                         <li style={{ marginBottom: '4px' }}>Zone 2 steady 20–30 min (cardio base)</li>
                         <li style={{ marginBottom: '4px' }}>Split squat 3 x 8/side (single‑leg strength)</li>
                       </>

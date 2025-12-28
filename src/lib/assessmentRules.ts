@@ -72,7 +72,7 @@ export const ASSESSMENT_RULES: AssessmentRule[] = [
     testName: 'InBody Analysis',
     negativeOutcome: 'Visceral Fat Level above 10 (high metabolic risk).',
     coachAction:
-      'Lifestyle: Prescribe sustained calorie deficit (~500 kcal/day) and low-impact Zone 2 cardio (>150 min/week).',
+      'Lifestyle Factors: Prescribe sustained calorie deficit (~500 kcal/day) and low-impact Zone 2 cardio (>150 min/week).',
     clientFocus:
       'Adjustment: “Prioritize nutrition for fat loss and complete 3-4 low-impact cardio sessions per week.”',
     trigger: (form) => {

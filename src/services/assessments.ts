@@ -3,6 +3,7 @@ import { addDoc, collection, doc, getDoc, serverTimestamp, Timestamp } from 'fir
 import type { FormData } from '@/contexts/FormContext';
 import type { AssessmentResult } from '@/lib/assessmentLogic';
 import { generateAssessmentResults } from '@/lib/assessmentLogic';
+import { sanitizeForFirestore } from '@/lib/utils/firebaseUtils';
 
 export type AssessmentRecord = {
   id: string;
@@ -15,8 +16,8 @@ export async function createAssessment(input: FormData, computedResult: Assessme
   const db = getDb();
   const ref = await addDoc(collection(db, 'assessments'), {
     createdAt: serverTimestamp(),
-    input,
-    computedResult,
+    input: sanitizeForFirestore(input),
+    computedResult: sanitizeForFirestore(computedResult),
   });
   return ref.id;
 }

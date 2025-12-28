@@ -69,7 +69,7 @@ export const NEGATIVE_OUTCOME_RULES: NegativeOutcomeRule[] = [
     negativeFinding: 'Visceral fat rating above recommended threshold (>10).',
     priority: 'P1',
     coachAction:
-      'Lifestyle: Recommend a sustained calorie deficit (500 kcal/day). Exercise: Prioritize low-impact Zone 2 cardio (150+ minutes/week).',
+      'Lifestyle Factors: Recommend a sustained calorie deficit (500 kcal/day). Exercise: Prioritize low-impact Zone 2 cardio (150+ minutes/week).',
     clientFocus:
       'Adjustment: Prioritize nutrition for fat loss and 3-4 low-impact cardio sessions per week.',
     trigger: (form) => {

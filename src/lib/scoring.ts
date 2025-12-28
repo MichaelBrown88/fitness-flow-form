@@ -1,4 +1,5 @@
 import type { FormData } from '@/contexts/FormContext';
+import { CONFIG } from '@/config';
 
 export type ScoreDetail = {
   id: string;
@@ -37,11 +38,11 @@ function scoreBodyComp(form: FormData): ScoreCategory {
   const tbw = parseFloat(form.totalBodyWaterL || '0');
 
   // Heuristic scoring
-  const bfScore = bodyFat > 0 ? clamp(100 - (bodyFat - 12) * 3) : 0;
-  const smmScore = smm > 0 ? clamp((smm / (weight || 1)) * 300) : 0; // rough ratio scaled
+  const bfScore = bodyFat > 0 ? clamp(100 - (bodyFat - CONFIG.SCORING.THRESHOLDS.BF_HEALTHY_MIN) * 3) : 0;
+  const smmScore = smm > 0 ? clamp((smm / (weight || 1)) * CONFIG.SCORING.THRESHOLDS.SMM_RATIO_SCALE) : 0; // rough ratio scaled
   const visceral = parseFloat(form.visceralFatLevel || '0');
-  const visceralScore = visceral > 0 ? clamp(100 - (visceral - 8) * 10) : 0;
-  const whrScore = whr > 0 ? clamp(100 - Math.max(0, (whr - 0.9) * 150)) : 0; // rough, gender-agnostic heuristic
+  const visceralScore = visceral > 0 ? clamp(100 - (visceral - CONFIG.SCORING.THRESHOLDS.VISCERAL_RISK_START) * 10) : 0;
+  const whrScore = whr > 0 ? clamp(100 - Math.max(0, (whr - CONFIG.SCORING.THRESHOLDS.WHR_RISK_START) * 150)) : 0; // rough, gender-agnostic heuristic
 
   const details: ScoreDetail[] = [
     { id: 'bf', label: 'Body Fat %', value: form.inbodyBodyFatPct || '-', unit: '%', score: Math.round(bfScore) },
@@ -54,7 +55,12 @@ function scoreBodyComp(form: FormData): ScoreCategory {
     ...(bmr ? [{ id: 'bmr', label: 'BMR', value: bmr, unit: 'kcal', score: 100 }] as ScoreDetail[] : []),
     ...(inbodyScore ? [{ id: 'inbodyScore', label: 'InBody Score', value: inbodyScore, score: clamp(inbodyScore) }] as ScoreDetail[] : []),
   ];
-  const score = Math.round((bfScore * 0.45 + smmScore * 0.25 + visceralScore * 0.2 + whrScore * 0.1));
+  const score = Math.round((
+    bfScore * CONFIG.SCORING.WEIGHTS.BODY_FAT + 
+    smmScore * CONFIG.SCORING.WEIGHTS.SMM + 
+    visceralScore * CONFIG.SCORING.WEIGHTS.VISCERAL + 
+    whrScore * CONFIG.SCORING.WEIGHTS.WHR
+  ));
 
   const strengths = [];
   const weaknesses = [];
@@ -164,7 +170,7 @@ function scoreCardio(form: FormData): ScoreCategory {
   // Recommendation by FitnessScore and VO2 class
   let recommendation = '';
   if (!hasTest) {
-    recommendation = 'Cardio assessment not performed.';
+    recommendation = 'Metabolic fitness assessment not performed.';
   } else if (cardioClass === 'Poor' || vo2Class === 'Very Poor' || vo2Class === 'Poor') {
     recommendation = 'Low aerobic base – prioritise 3–4 sessions/week of 20–40 minutes Zone 2 walking.';
   } else if (cardioClass === 'Average' || cardioClass === 'Below Average' || vo2Class === 'Below Average' || vo2Class === 'Average') {
@@ -188,7 +194,7 @@ function scoreCardio(form: FormData): ScoreCategory {
   if (hasTest && hasHr60 && vo2Score < 22) weaknesses.push('VO₂ capacity needs improvement');
   if (hasRhr && rhrScore < 12) weaknesses.push('Elevated resting HR');
 
-  return { id: 'cardio', title: 'Cardiovascular Fitness', score: Math.round(fitnessScore), details, strengths, weaknesses };
+  return { id: 'cardio', title: 'Metabolic Fitness', score: Math.round(fitnessScore), details, strengths, weaknesses };
 }
 
 function scoreStrength(form: FormData): ScoreCategory {
@@ -232,12 +238,27 @@ function scoreStrength(form: FormData): ScoreCategory {
   if (hasGrip && gripScore < 50) weaknesses.push('Grip strength');
   if (score >= 75 && filledTests >= 2) strengths.push('Overall strength & endurance');
 
-  return { id: 'strength', title: 'Strength & Endurance', score, details, strengths, weaknesses };
+  return { id: 'strength', title: 'Muscular Strength', score, details, strengths, weaknesses };
 }
 
 function scoreMovementQuality(form: FormData): ScoreCategory {
-  // Combine mobility and posture into Movement Quality
+  // 1. MOBILITY SCORING
   const mapMobility = (v: string) => (v === 'good' ? 100 : v === 'fair' ? 60 : v === 'poor' ? 30 : 0);
+  
+  const hasHip = !!(form.mobilityHip && form.mobilityHip.trim() !== '');
+  const hasShoulder = !!(form.mobilityShoulder && form.mobilityShoulder.trim() !== '');
+  const hasAnkle = !!(form.mobilityAnkle && form.mobilityAnkle.trim() !== '');
+  
+  const hipMob = hasHip ? mapMobility(form.mobilityHip) : 0;
+  const shoulderMob = hasShoulder ? mapMobility(form.mobilityShoulder) : 0;
+  const ankleMob = hasAnkle ? mapMobility(form.mobilityAnkle) : 0;
+  
+  const mobilityScores = [hipMob, shoulderMob, ankleMob].filter(s => s > 0);
+  const mobilityScore = mobilityScores.length > 0 
+    ? Math.round(mobilityScores.reduce((a, b) => a + b, 0) / mobilityScores.length) 
+    : 0;
+
+  // 2. POSTURE SCORING
   const neutralScore = (v: string) => (v === 'neutral' ? 100 : 60);
   const backMap: Record<string, number> = {
     neutral: 100,
@@ -252,72 +273,70 @@ function scoreMovementQuality(form: FormData): ScoreCategory {
     'varus-knee': 40,
   };
   
-  // Mobility scores
-  const hasHip = !!(form.mobilityHip && form.mobilityHip.trim() !== '');
-  const hasShoulder = !!(form.mobilityShoulder && form.mobilityShoulder.trim() !== '');
-  const hasAnkle = !!(form.mobilityAnkle && form.mobilityAnkle.trim() !== '');
-  const hip = hasHip ? mapMobility(form.mobilityHip) : 0;
-  const shoulder = hasShoulder ? mapMobility(form.mobilityShoulder) : 0;
-  const ankle = hasAnkle ? mapMobility(form.mobilityAnkle) : 0;
-  
-  // Posture scores - Handle AI or Manual
   let head = 0;
   let shoulders = 0;
   let back = 0;
   let hips = 0;
   let knees = 0;
-  let postureLabel = 'Manual';
 
   if (form.postureAiResults) {
-    postureLabel = 'AI Analyzed';
     const ai = form.postureAiResults;
     
-    // 1. Head Posture (from side view only)
+    // Head Posture
     const headData = ai['side-right']?.forward_head || ai['side-left']?.forward_head;
+    const tiltData = ai.front?.head_alignment || ai.back?.head_alignment;
+    let fhpScore = 100;
     if (headData && headData.status !== 'Neutral') {
-      const dev = Math.abs(headData.deviation_degrees ?? 0);
-      if (headData.status === 'Mild') head = 75;
-      else if (headData.status === 'Moderate') head = 50;
-      else if (headData.status === 'Severe') head = 25;
-      else head = 100;
-    } else if (headData) {
-      head = 100; // Neutral
+      if (headData.status === 'Mild') fhpScore = 75;
+      else if (headData.status === 'Moderate') fhpScore = 50;
+      else if (headData.status === 'Severe') fhpScore = 25;
     }
+    let tiltScore = 100;
+    if (tiltData && tiltData.status !== 'Neutral') {
+      const tilt = Math.abs(tiltData.tilt_degrees || 0);
+      if (tilt < 3) tiltScore = 100;
+      else if (tilt < 6) tiltScore = 75;
+      else if (tilt < 10) tiltScore = 50;
+      else tiltScore = 25;
+    }
+    head = Math.round((fhpScore + tiltScore) / 2);
 
-    // 2. Shoulder Alignment (from front view)
+    // Shoulders
     const shoulderData = ai.front?.shoulder_alignment;
     if (shoulderData) {
       const diff = Math.abs(shoulderData.height_difference_cm ?? 0);
-      if (shoulderData.status === 'Neutral' && diff < 0.5) {
-        shoulders = 100;
-      } else if (shoulderData.status === 'Asymmetric' || diff >= 0.5) {
-        if (diff < 1.0) shoulders = 75;
-        else if (diff < 2.0) shoulders = 50;
-        else shoulders = 25;
-      } else {
-        shoulders = 100;
-      }
+      if (shoulderData.status === 'Neutral' && diff < 0.5) shoulders = 100;
+      else if (diff < 1.0) shoulders = 75;
+      else if (diff < 2.0) shoulders = 50;
+      else shoulders = 25;
     }
 
-    // 3. Kyphosis (from side view)
+    // Back
     const kyphosisData = ai['side-right']?.kyphosis || ai['side-left']?.kyphosis;
+    const lordosisData = ai['side-right']?.lordosis || ai['side-left']?.lordosis;
+    const spineData = ai.back?.spinal_curvature;
     let kyphosisScore = 100;
     if (kyphosisData && kyphosisData.status !== 'Normal') {
       if (kyphosisData.status === 'Mild') kyphosisScore = 75;
       else if (kyphosisData.status === 'Moderate') kyphosisScore = 50;
       else if (kyphosisData.status === 'Severe') kyphosisScore = 25;
     }
-
-    // 4. Lordosis (from side view)
-    const lordosisData = ai['side-right']?.lordosis || ai['side-left']?.lordosis;
     let lordosisScore = 100;
     if (lordosisData && lordosisData.status !== 'Normal') {
       if (lordosisData.status === 'Mild') lordosisScore = 75;
       else if (lordosisData.status === 'Moderate') lordosisScore = 50;
       else if (lordosisData.status === 'Severe') lordosisScore = 25;
     }
+    let scoliosisScore = 100;
+    if (spineData && spineData.status !== 'Normal') {
+      const deg = Math.abs(spineData.curve_degrees || 0);
+      if (deg < 10) scoliosisScore = 75;
+      else if (deg < 20) scoliosisScore = 50;
+      else scoliosisScore = 25;
+    }
+    back = Math.round((kyphosisScore + lordosisScore + scoliosisScore) / 3);
 
-    // 5. Pelvic Tilt (from side view for anterior/posterior, from front/back for lateral)
+    // Hips/Pelvis
     const pelvicSideData = ai['side-right']?.pelvic_tilt || ai['side-left']?.pelvic_tilt;
     const pelvicFrontData = ai.front?.pelvic_tilt || ai.back?.pelvic_tilt;
     let pelvicScore = 100;
@@ -335,24 +354,11 @@ function scoreMovementQuality(form: FormData): ScoreCategory {
       else if (lateralTilt < 8) pelvicScore = Math.min(pelvicScore, 50);
       else pelvicScore = Math.min(pelvicScore, 25);
     }
+    hips = pelvicScore;
 
-    // 6. Hip Alignment (from front/back view)
-    const hipData = ai.front?.hip_alignment || ai.back?.hip_alignment;
-    if (hipData) {
-      const diff = Math.abs(hipData.height_difference_cm ?? 0);
-      if (hipData.status === 'Neutral' && diff < 0.5) {
-        hips = 100;
-      } else if (hipData.status === 'Asymmetric' || diff >= 0.5) {
-        if (diff < 1.0) hips = 75;
-        else if (diff < 2.0) hips = 50;
-        else hips = 25;
-      } else {
-        hips = 100;
-      }
-    }
-
-    // 7. Knee Position (from side view for hyperextension/flexion)
+    // Knees
     const kneeSideData = ai['side-right']?.knee_position || ai['side-left']?.knee_position;
+    const kneeFrontData = ai.front?.knee_alignment || ai.back?.knee_alignment;
     let kneeSideScore = 100;
     if (kneeSideData && kneeSideData.status !== 'Neutral') {
       const dev = Math.abs(kneeSideData.deviation_degrees ?? 0);
@@ -360,9 +366,6 @@ function scoreMovementQuality(form: FormData): ScoreCategory {
       else if (dev < 10) kneeSideScore = 50;
       else kneeSideScore = 25;
     }
-    
-    // 8. Knee Alignment (from front/back view for valgus/varus)
-    const kneeFrontData = ai.front?.knee_alignment || ai.back?.knee_alignment;
     let kneeFrontScore = 100;
     if (kneeFrontData && kneeFrontData.status !== 'Neutral') {
       const dev = Math.abs(kneeFrontData.deviation_degrees ?? 0);
@@ -370,82 +373,80 @@ function scoreMovementQuality(form: FormData): ScoreCategory {
       else if (dev < 10) kneeFrontScore = 50;
       else kneeFrontScore = 25;
     }
-    
-    // Combine knee scores (use worst one)
     knees = Math.min(kneeSideScore, kneeFrontScore);
+  } else {
+    // Manual Posture Scoring
+    head = form.postureHeadOverall ? neutralScore(form.postureHeadOverall) : 0;
+    shoulders = form.postureShouldersOverall ? neutralScore(form.postureShouldersOverall) : 0;
+    back = form.postureBackOverall ? (backMap[form.postureBackOverall] ?? 0) : 0;
+    hips = form.postureHipsOverall ? neutralScore(form.postureHipsOverall) : 0;
+    knees = form.postureKneesOverall ? (kneesMap[form.postureKneesOverall] ?? 0) : 0;
+  }
 
-    // Back score is average of kyphosis, lordosis, and pelvic
-    back = Math.round((kyphosisScore + lordosisScore + pelvicScore) / 3);
-  } else {
-    // Manual scoring
-    const hasHead = !!(form.postureHeadOverall && form.postureHeadOverall.trim() !== '');
-    const hasShoulders = !!(form.postureShouldersOverall && form.postureShouldersOverall.trim() !== '');
-    const hasBack = !!(form.postureBackOverall && form.postureBackOverall.trim() !== '');
-    const hasHips = !!(form.postureHipsOverall && form.postureHipsOverall.trim() !== '');
-    const hasKnees = !!(form.postureKneesOverall && form.postureKneesOverall.trim() !== '');
-    head = hasHead ? neutralScore(form.postureHeadOverall) : 0;
-    shoulders = hasShoulders ? neutralScore(form.postureShouldersOverall) : 0;
-    back = hasBack ? (backMap[form.postureBackOverall] ?? 0) : 0;
-    hips = hasHips ? neutralScore(form.postureHipsOverall) : 0;
-    knees = hasKnees ? (kneesMap[form.postureKneesOverall] ?? 0) : 0;
-  }
-  
-  const details: ScoreDetail[] = [
-    { id: 'hip', label: 'Hip Mobility', value: form.mobilityHip || '-', score: hip },
-    { id: 'shoulder', label: 'Shoulder Mobility', value: form.mobilityShoulder || '-', score: shoulder },
-    { id: 'ankle', label: 'Ankle Mobility', value: form.mobilityAnkle || '-', score: ankle },
-    { id: 'head', label: 'Head Posture', value: form.postureAiResults ? 'AI' : (form.postureHeadOverall || '-'), score: head },
-    { id: 'shoulders', label: 'Shoulder Alignment', value: form.postureAiResults ? 'AI' : (form.postureShouldersOverall || '-'), score: shoulders },
-    { id: 'spinal', label: `Spinal Alignment (${postureLabel})`, value: form.postureAiResults ? 'AI' : (form.postureBackOverall || '-'), score: back },
-    { id: 'hips', label: 'Hip Alignment', value: form.postureAiResults ? 'AI' : (form.postureHipsOverall || '-'), score: hips },
-    { id: 'knee', label: 'Knee Alignment', value: form.postureAiResults ? 'AI' : (form.postureKneesOverall || '-'), score: knees },
-  ];
-  
-  // Only include scores that have actual data
-  // If only posture data is provided (no mobility), only average posture scores
-  const mobilityScores = [hip, shoulder, ankle].filter(s => s > 0);
   const postureScores = [head, shoulders, back, hips, knees].filter(s => s > 0);
-  
-  // If we have posture data but no mobility data, only use posture scores
-  // BUT: If only posture images were provided (no mobility assessment), reduce the score to reflect incomplete assessment
-  const hasMobilityData = mobilityScores.length > 0;
-  const hasPostureData = postureScores.length > 0;
-  
-  let allScores: number[];
-  if (hasPostureData && !hasMobilityData) {
-    // Only posture data - use posture scores but apply a penalty to reflect incomplete assessment
-    allScores = postureScores;
-  } else {
-    // Both or only mobility - use all available scores
-    allScores = [...mobilityScores, ...postureScores];
-  }
-  
-  let score = allScores.length > 0 ? Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length) : 0;
-  
-  // Apply penalty if only posture was assessed (no mobility): 
-  // Posture is only 1/3 of "Posture, Movement and Mobility" category
-  // So if only posture exists, max score should be ~33% of what it would be with all 3 components
-  // But we still want to reflect the actual posture quality, so use a more nuanced approach:
-  // If posture average is 100, score should be ~33 (since it's 1/3 of the category)
-  // If posture average is 70, score should be ~23 (70% of 33)
-  if (hasPostureData && !hasMobilityData && score > 0) {
-    // Calculate what the score would be if posture was 1/3 of the total
-    const postureOnlyScore = Math.round(score * 0.33);
-    score = postureOnlyScore;
-    console.log(`[SCORING] Only posture data provided. Posture average: ${score}, Adjusted to reflect 1/3 category: ${postureOnlyScore}`);
-  }
-  
+  const postureScore = postureScores.length > 0
+    ? Math.round(postureScores.reduce((a, b) => a + b, 0) / postureScores.length)
+    : 0;
+
+  // 3. MOVEMENT PATTERN SCORING
+  const scoreMap: Record<string, number> = {
+    'excellent': 100, 'good': 85, 'fair': 60, 'poor': 40,
+    'full-depth': 100, 'parallel': 80, 'quarter-depth': 50, 'no-depth': 30,
+    'full-range': 100, 'compensated': 60, 'limited': 30,
+    'upright': 100, 'moderate-lean': 60, 'excessive-lean': 30,
+    'none': 100, 'minor': 80, 'moderate': 50, 'severe': 25,
+    'stable': 100, 'tracks-straight': 100, 'neutral': 100,
+    'valgus': 40, 'varus': 40, 'pronation': 50, 'supination': 50,
+    'caves-inward': 40, 'bows-outward': 40,
+    'anterior-tilt': 50, 'posterior-tilt': 50,
+    'left': 60, 'right': 60
+  };
+
+  const getScore = (v: string | undefined) => (v ? (scoreMap[v.toLowerCase()] ?? 0) : 0);
+
+  // Overhead Squat Score
+  const ohsFields = [form.ohsShoulderMobility, form.ohsTorsoLean, form.ohsSquatDepth, form.ohsHipShift, form.ohsKneeAlignment, form.ohsFeetPosition];
+  const ohsScores = ohsFields.map(getScore).filter(s => s > 0);
+  const ohsScore = ohsScores.length > 0 ? ohsScores.reduce((a, b) => a + b, 0) / ohsScores.length : 0;
+
+  // Hinge Score
+  const hingeFields = [form.hingeDepth, form.hingeBackRounding];
+  const hingeScores = hingeFields.map(getScore).filter(s => s > 0);
+  const hingeScore = hingeScores.length > 0 ? hingeScores.reduce((a, b) => a + b, 0) / hingeScores.length : 0;
+
+  // Lunge Score
+  const lungeFields = [form.lungeLeftBalance, form.lungeRightBalance, form.lungeLeftKneeAlignment, form.lungeRightKneeAlignment, form.lungeLeftTorso, form.lungeRightTorso];
+  const lungeScores = lungeFields.map(getScore).filter(s => s > 0);
+  const lungeScore = lungeScores.length > 0 ? lungeScores.reduce((a, b) => a + b, 0) / lungeScores.length : 0;
+
+  const mvmntScores = [ohsScore, hingeScore, lungeScore].filter(s => s > 0);
+  const movementScore = mvmntScores.length > 0 
+    ? Math.round(mvmntScores.reduce((a, b) => a + b, 0) / mvmntScores.length)
+    : 0;
+
+  // FINAL OUTPUT
+  const details: ScoreDetail[] = [
+    { id: 'posture', label: 'Posture', value: postureScore > 0 ? 'Analyzed' : '-', score: postureScore },
+    { id: 'movement', label: 'Movement', value: movementScore > 0 ? 'Patterns' : '-', score: movementScore },
+    { id: 'mobility', label: 'Mobility', value: mobilityScore > 0 ? 'Joints' : '-', score: mobilityScore },
+  ];
+
+  const allCategoryScores = [postureScore, movementScore, mobilityScore].filter(s => s > 0);
+  const score = allCategoryScores.length > 0
+    ? Math.round(allCategoryScores.reduce((a, b) => a + b, 0) / allCategoryScores.length)
+    : 0;
+
   const strengths = [];
   const weaknesses = [];
-  if (hasHip && hip < 60) weaknesses.push('Hip mobility');
-  if (hasShoulder && shoulder < 60) weaknesses.push('Shoulder mobility');
-  if (hasAnkle && ankle < 60) weaknesses.push('Ankle mobility');
-  if (back < 60) weaknesses.push('Spinal alignment');
-  if (knees < 60) weaknesses.push('Knee alignment');
-  if (hips < 60) weaknesses.push('Pelvic alignment');
-  if (score >= 75 && allScores.length >= 4) strengths.push('Overall movement quality');
+  if (postureScore >= 80) strengths.push('Solid postural alignment');
+  if (movementScore >= 80) strengths.push('Strong movement patterns');
+  if (mobilityScore >= 80) strengths.push('Good joint mobility');
   
-  return { id: 'movementQuality', title: 'Posture, movement and mobility', score, details, strengths, weaknesses };
+  if (postureScore > 0 && postureScore < 65) weaknesses.push('Postural imbalances identified');
+  if (movementScore > 0 && movementScore < 65) weaknesses.push('Movement pattern compensation');
+  if (mobilityScore > 0 && mobilityScore < 65) weaknesses.push('Joint mobility restrictions');
+
+  return { id: 'movementQuality', title: 'Movement Quality', score, details, strengths, weaknesses };
 }
 
 function scoreLifestyle(form: FormData): ScoreCategory {
@@ -465,7 +466,7 @@ function scoreLifestyle(form: FormData): ScoreCategory {
   if (!hasLifestyleData) {
     return {
       id: 'lifestyle',
-      title: 'Lifestyle',
+      title: 'Lifestyle Factors',
       score: 0,
       details: [],
       strengths: [],
@@ -548,7 +549,7 @@ function scoreLifestyle(form: FormData): ScoreCategory {
   if (activityScore >= 75) strengths.push('Active lifestyle');
   else weaknesses.push('Daily activity needs increase');
   
-  return { id: 'lifestyle', title: 'Lifestyle', score: overallScore, details, strengths, weaknesses };
+  return { id: 'lifestyle', title: 'Lifestyle Factors', score: overallScore, details, strengths, weaknesses };
 }
 
 export function computeScores(form: FormData): ScoreSummary {
@@ -591,15 +592,15 @@ export function buildRoadmap(scores: ScoreSummary, formData?: any): RoadmapPhase
   let weightLossWeeks = 0;
   let weightLossKg = 0;
   if (weight > 0 && h > 0) {
-    const targetBF = gender === 'male' ? 18 : 25; // Target body fat %
+    const targetBF = gender === 'male' ? CONFIG.SCORING.ROADMAP.TARGET_BF_MALE : CONFIG.SCORING.ROADMAP.TARGET_BF_FEMALE; // Target body fat %
     const currentBF = bf > 0 ? bf : (bfm > 0 && weight > 0 ? (bfm / weight) * 100 : 0);
     if (currentBF > targetBF) {
       const targetWeight = weight * (1 - (currentBF - targetBF) / 100);
       weightLossKg = weight - targetWeight;
-      weightLossWeeks = Math.ceil(weightLossKg / 0.5); // 0.5kg/week
+      weightLossWeeks = Math.ceil(weightLossKg / CONFIG.SCORING.ROADMAP.WEIGHT_LOSS_KG_PER_WEEK); // 0.5kg/week
     } else if (bmi > 25 && healthyMax > 0) {
       weightLossKg = weight - healthyMax;
-      weightLossWeeks = Math.ceil(weightLossKg / 0.5);
+      weightLossWeeks = Math.ceil(weightLossKg / CONFIG.SCORING.ROADMAP.WEIGHT_LOSS_KG_PER_WEEK);
     }
   }
   
@@ -608,10 +609,10 @@ export function buildRoadmap(scores: ScoreSummary, formData?: any): RoadmapPhase
   let muscleGainWeeks = 0;
   let muscleGainKg = 0;
   if (smm > 0) {
-    const targetSMM = gender === 'male' ? 33 : 24;
+    const targetSMM = gender === 'male' ? CONFIG.SCORING.ROADMAP.TARGET_SMM_MALE : CONFIG.SCORING.ROADMAP.TARGET_SMM_FEMALE;
     if (smm < targetSMM) {
       muscleGainKg = targetSMM - smm;
-      const rate = smm < 25 ? 0.25 : 0.15; // Faster for very low muscle mass
+      const rate = smm < 25 ? CONFIG.SCORING.ROADMAP.MUSCLE_GAIN_KG_PER_WEEK_BEG : CONFIG.SCORING.ROADMAP.MUSCLE_GAIN_KG_PER_WEEK_INT; // Faster for very low muscle mass
       muscleGainWeeks = Math.ceil(muscleGainKg / rate);
     }
   }
@@ -718,7 +719,7 @@ export function buildRoadmap(scores: ScoreSummary, formData?: any): RoadmapPhase
     const weeks = Math.max(weightLossWeeks, visceral >= 12 ? 16 : 0);
     if (weeks > 0) {
       phases.push({
-        title: 'Health & Body Composition',
+        title: 'Body Composition',
         weeks: Math.min(weeks, 24), // Cap at 24 weeks
         focus: [
           weightLossWeeks > 0 ? `Reduce body weight by ~${weightLossKg.toFixed(1)}kg` : '',
@@ -737,7 +738,7 @@ export function buildRoadmap(scores: ScoreSummary, formData?: any): RoadmapPhase
   // Priority 2: Posture issues (if significant)
   if (postureWeeks > 0) {
     phases.push({
-      title: 'Posture & Movement Quality',
+      title: 'Movement Quality',
       weeks: Math.min(postureWeeks, 16), // Cap at 16 weeks
       focus: postureIssues.slice(0, 4),
       rationale: `Addressing postural deviations to improve movement quality and reduce injury risk. Timeframe based on severity of findings.`,
@@ -748,7 +749,7 @@ export function buildRoadmap(scores: ScoreSummary, formData?: any): RoadmapPhase
   // Priority 3: Strength (if low)
   if (strengthWeeks > 0) {
     phases.push({
-      title: 'Strength Foundation',
+      title: 'Muscular Strength',
       weeks: strengthWeeks,
       focus: [
         'Build foundational movement patterns',
@@ -763,7 +764,7 @@ export function buildRoadmap(scores: ScoreSummary, formData?: any): RoadmapPhase
   // Priority 4: Cardio (if low)
   if (cardioWeeks > 0) {
     phases.push({
-      title: 'Cardiovascular Fitness',
+      title: 'Metabolic Fitness',
       weeks: cardioWeeks,
       focus: [
         'Build aerobic base',
@@ -778,7 +779,7 @@ export function buildRoadmap(scores: ScoreSummary, formData?: any): RoadmapPhase
   // Priority 5: Lifestyle (if poor)
   if (lifestyleWeeks > 0) {
     phases.push({
-      title: 'Lifestyle Habits',
+      title: 'Lifestyle Factors',
       weeks: lifestyleWeeks,
       focus: [
         'Establish consistent sleep patterns',
@@ -815,10 +816,8 @@ export function buildRoadmap(scores: ScoreSummary, formData?: any): RoadmapPhase
       focus: ['Integrate improvements', 'Maintain consistency', 'Prepare for next phase'],
       rationale: 'Solidify gains and establish sustainable patterns before progressing.',
       expectedDelta: 5,
-    });
+      });
   }
   
   return phases.slice(0, 5); // Max 5 phases
 }
-
-

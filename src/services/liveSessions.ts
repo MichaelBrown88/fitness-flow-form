@@ -10,6 +10,7 @@ import {
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { compressImageForDisplay } from '@/lib/utils/imageCompression';
 import { addPostureOverlay } from '@/lib/utils/postureOverlay';
+import { sanitizeForFirestore } from '@/lib/utils/firebaseUtils';
 
 export interface LiveSession {
   id: string;
@@ -64,48 +65,117 @@ export const subscribeToLiveSession = (sessionId: string, callback: (session: Li
 
 export const updatePostureImage = async (sessionId: string, view: string, imageData: string) => {
   try {
-    // 1. Add overlay with reference lines to full-size image
-    let imageWithOverlay = imageData;
+    // Validate image data first
+    if (!imageData || (!imageData.startsWith('data:image') && !imageData.startsWith('http'))) {
+      throw new Error(`Invalid image data format for ${view}. Expected data URL or HTTP URL.`);
+    }
+    
+    // STEP 1: Detect landmarks to align the image
+    // We need to know where the body is before we can align it with fixed green line positions
+    let landmarks;
+    
+    // Only try landmark detection if we have valid image data
+    if (imageData.startsWith('data:image') || imageData.startsWith('http')) {
+      try {
+        const { detectPostureLandmarks } = await import('@/lib/ai/postureLandmarks');
+        landmarks = await detectPostureLandmarks(imageData, view as 'front' | 'side-right' | 'side-left' | 'back');
+        console.log(`[ALIGN] Detected landmarks for ${view}:`, landmarks);
+      } catch (landmarkError) {
+        console.warn(`[ALIGN] Failed to detect landmarks for ${view}, will skip alignment:`, landmarkError);
+        // Continue without alignment if landmark detection fails
+        landmarks = undefined;
+      }
+    }
+    
+    // STEP 2: Align image and draw green reference lines at FIXED positions
+    // The green lines are always at the same positions (center X, 25% Y for shoulders, 50% Y for hips)
+    // We crop/zoom the image so the client's body aligns with these fixed positions
+    let imageWithGreenLines = imageData;
     let fullSizeImage = imageData;
     
     try {
-      // Add green reference lines overlay to full-size image (before AI analysis)
-      imageWithOverlay = await addPostureOverlay(imageData, view as 'front' | 'side-right' | 'side-left' | 'back', {
-        showMidline: true,
-        showShoulderLine: true,
-        showHipLine: true,
-        lineColor: '#00ff00', // Green for reference lines
-        lineWidth: 2
-      });
-      console.log(`[OVERLAY] Added reference lines to ${view}`);
+      const { addPostureOverlay } = await import('@/lib/utils/postureOverlay');
+      if (landmarks) {
+        // ALIGN MODE: Crop/zoom image so body aligns with fixed green line positions, then draw green lines
+        imageWithGreenLines = await addPostureOverlay(imageData, view as 'front' | 'side-right' | 'side-left' | 'back', {
+          showMidline: true,
+          showShoulderLine: true,
+          showHipLine: true,
+          lineColor: '#00ff00',
+          lineWidth: 4, // Increased from 2 to 4 for better visibility
+          mode: 'align', // Align image, then draw green lines at fixed positions
+          landmarks, // Use detected landmarks for alignment
+        });
+        console.log(`[ALIGN] Aligned image and added green reference lines to ${view} using landmarks`);
+      } else {
+        // If no landmarks, still draw green lines at fixed positions (no alignment, but green lines are the reference)
+        // This ensures green lines are always present as the reference point
+        imageWithGreenLines = await addPostureOverlay(imageData, view as 'front' | 'side-right' | 'side-left' | 'back', {
+          showMidline: true,
+          showShoulderLine: true,
+          showHipLine: true,
+          lineColor: '#00ff00',
+          lineWidth: 4, // Increased from 2 to 4 for better visibility
+          mode: 'reference', // Just draw green lines at fixed positions (hardcoded reference)
+        });
+        console.log(`[ALIGN] Added green reference lines to ${view} at fixed positions (no alignment - landmarks not detected)`);
+      }
+      fullSizeImage = imageWithGreenLines;
     } catch (overlayError) {
-      console.warn(`[OVERLAY] Overlay failed for ${view}, using original:`, overlayError);
-      // Continue without overlay if it fails
+      console.error(`[ALIGN] Failed to align/add green lines for ${view}:`, overlayError);
+      // Try one more time with just reference mode (no alignment) to ensure green lines are drawn
+      try {
+        const { addPostureOverlay } = await import('@/lib/utils/postureOverlay');
+        imageWithGreenLines = await addPostureOverlay(imageData, view as 'front' | 'side-right' | 'side-left' | 'back', {
+          showMidline: true,
+          showShoulderLine: true,
+          showHipLine: true,
+          lineColor: '#00ff00',
+          lineWidth: 4, // Increased from 2 to 4 for better visibility
+          mode: 'reference', // Fallback: just draw green lines at fixed positions
+        });
+        fullSizeImage = imageWithGreenLines;
+        console.log(`[ALIGN] Fallback: Added green reference lines to ${view} (alignment failed but green lines drawn)`);
+      } catch (fallbackError) {
+        console.error(`[ALIGN] Fallback also failed for ${view}, using original image:`, fallbackError);
+        // Last resort: use original image (no green lines, but at least we have an image)
+        imageWithGreenLines = imageData;
+        fullSizeImage = imageData;
+      }
     }
 
-    // 2. Compress image for display (fast Firestore sync)
-    let compressedImage = imageWithOverlay;
+    // STEP 2: Compress image with green lines for display (fast Firestore sync)
+    let compressedImage = imageWithGreenLines;
     
     try {
-      const compressed = await compressImageForDisplay(imageWithOverlay, 800, 0.8);
+      const compressed = await compressImageForDisplay(imageWithGreenLines, 800, 0.8);
       compressedImage = compressed.compressed;
-      fullSizeImage = compressed.fullSize; // Keep original full-size for storage
-      console.log(`[COMPRESS] Compressed ${view} for display`);
+      fullSizeImage = compressed.fullSize; // Keep full-size with green lines for storage
+      console.log(`[COMPRESS] Compressed ${view} with green lines for display`);
     } catch (compressError) {
       console.warn(`[COMPRESS] Compression failed for ${view}, using original:`, compressError);
       // Continue with original if compression fails
-      fullSizeImage = imageWithOverlay;
+      fullSizeImage = imageWithGreenLines;
     }
 
-    // 3. Store compressed version WITH OVERLAY in Firestore (for fast real-time dashboard display)
+    // STEP 3: Store compressed version WITH green lines in Firestore
+    // Use updateDoc with dot notation to avoid nested entity issues
     const sessionRef = doc(db, SESSIONS_COLLECTION, sessionId);
-    await setDoc(sessionRef, {
-      postureImages: {
-        [view]: compressedImage // Compressed with overlay for fast loading
-      }
-    }, { merge: true });
+    console.log(`[SYNC] Updating Firestore for ${view} in session ${sessionId}`);
+    
+    const updatePayload: Record<string, any> = {
+      [`postureImages.${view}`]: compressedImage
+    };
+    
+    // Store landmarks in session so they can be passed to AI
+    if (landmarks) {
+      updatePayload[`landmarks_${view}`] = sanitizeForFirestore(landmarks);
+    }
+    
+    await updateDoc(sessionRef, updatePayload);
 
-    // 4. Upload FULL-SIZE version WITH OVERLAY to Storage (for AI analysis and reports)
+    // STEP 4: Upload FULL-SIZE image WITH GREEN LINES to Storage (for AI analysis)
+    // The AI will see the green reference lines and measure deviations FROM them
     // IMPORTANT: Get clientId from session to organize by client
     const sessionDoc = await getDoc(doc(db, SESSIONS_COLLECTION, sessionId));
     const clientId = sessionDoc.exists() ? (sessionDoc.data() as LiveSession).clientId : 'unknown';
@@ -115,7 +185,7 @@ export const updatePostureImage = async (sessionId: string, view: string, imageD
     const storagePath = `clients/${clientId}/sessions/${sessionId}/${view}_full.jpg`;
     const storageRef = ref(storage, storagePath);
     
-    // Use full-size image with overlay for storage
+    // Use full-size image WITH green reference lines (AI needs to see these)
     const fullSizeBase64 = fullSizeImage.split(',')[1] || fullSizeImage;
     
     try {
@@ -124,8 +194,9 @@ export const updatePostureImage = async (sessionId: string, view: string, imageD
       console.log(`[STORAGE] Successfully uploaded full-size ${view} to:`, downloadUrl);
       
       // Store full-size URL in Firestore for AI analysis and future reports
+      // This image has green reference lines - AI will measure deviations FROM these lines
       await setDoc(sessionRef, {
-        [`postureImagesFull_${view}`]: downloadUrl, // Store full-size URL for AI
+        [`postureImagesFull_${view}`]: downloadUrl, // Full-size WITH green lines (for AI)
         [`postureImagesStorage_${view}`]: downloadUrl // Also store for reports/comparisons
       }, { merge: true });
       
@@ -200,11 +271,10 @@ export const updateInBodyImage = async (sessionId: string, imageData: string) =>
 
 export const updatePostureAnalysis = async (sessionId: string, view: string, analysis: any) => {
   const sessionRef = doc(db, SESSIONS_COLLECTION, sessionId);
-  await setDoc(sessionRef, {
-    analysis: {
-      [view]: analysis
-    }
-  }, { merge: true });
+  // Use updateDoc with dot notation to avoid nested entity issues
+  await updateDoc(sessionRef, {
+    [`analysis.${view}`]: sanitizeForFirestore(analysis)
+  });
 };
 
 /**

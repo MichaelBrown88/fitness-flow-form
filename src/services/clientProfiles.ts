@@ -13,6 +13,11 @@ export type ClientProfile = {
   createdAt: Timestamp;
   updatedAt: Timestamp;
   lastAssessmentDate?: Timestamp;
+  lastInBodyDate?: Timestamp;
+  lastPostureDate?: Timestamp;
+  lastFitnessDate?: Timestamp;
+  lastStrengthDate?: Timestamp;
+  lastLifestyleDate?: Timestamp;
 };
 
 const clientProfileDoc = (coachUid: string, clientName: string) =>

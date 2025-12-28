@@ -111,30 +111,114 @@ export async function loadImagesFromFiles(files: {
     const file = files[view];
     if (file) {
       try {
+        console.log(`[TEST] Processing ${view} from file: ${file.name} (${file.type || 'unknown type'})`);
         const base64 = await fileToBase64(file);
+        
+        // Validate the result
+        if (!base64 || !base64.startsWith('data:image')) {
+          throw new Error(`Invalid image data returned for ${view}`);
+        }
+        
         images[view] = base64;
-        console.log(`[TEST] Loaded ${view} from file: ${file.name}`);
+        console.log(`[TEST] Successfully loaded ${view} from file: ${file.name} (${base64.substring(0, 50)}...)`);
       } catch (error) {
-        console.error(`[TEST] Failed to load ${view} from file:`, error);
-        throw new Error(`Failed to load ${view} image: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        console.error(`[TEST] Failed to load ${view} from file ${file.name}:`, error);
+        throw new Error(`Failed to load ${view} image (${file.name}): ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
   }
   
+  if (Object.keys(images).length === 0) {
+    throw new Error('No images were successfully loaded from the uploaded files');
+  }
+  
+  console.log(`[TEST] Successfully loaded ${Object.keys(images).length} images:`, Object.keys(images));
   return images;
 }
 
 /**
- * Convert File to base64
+ * Convert File to base64, handling HEIC files
  */
-function fileToBase64(file: File): Promise<string> {
+async function fileToBase64(file: File): Promise<string> {
+  // Check if file is HEIC/HEIF
+  const isHeic = file.type === 'image/heic' || 
+                 file.type === 'image/heif' ||
+                 file.name.toLowerCase().endsWith('.heic') ||
+                 file.name.toLowerCase().endsWith('.heif');
+  
+  if (isHeic) {
+    try {
+      console.log(`[HEIC] Converting HEIC file: ${file.name}`);
+      // Convert HEIC to JPEG using heic2any
+      const heic2any = (await import('heic2any')).default;
+      const convertedBlob = await heic2any({
+        blob: file,
+        toType: 'image/jpeg',
+        quality: 0.92
+      });
+      
+      // heic2any returns an array, get the first result
+      const blob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+      
+      if (!blob) {
+        throw new Error('HEIC conversion returned no blob');
+      }
+      
+      // Ensure the blob is a JPEG blob
+      if (!(blob instanceof Blob)) {
+        throw new Error('HEIC conversion did not return a valid Blob');
+      }
+      
+      // Create a new Blob explicitly as JPEG to ensure correct MIME type
+      const jpegBlob = new Blob([blob], { type: 'image/jpeg' });
+      
+      // Convert blob to base64, ensuring it's marked as JPEG
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          let base64String = reader.result as string;
+          if (!base64String) {
+            reject(new Error('FileReader returned no result'));
+            return;
+          }
+          
+          // Force the MIME type to be JPEG, regardless of what FileReader detected
+          // Extract just the base64 data part
+          const base64Part = base64String.includes(',') ? base64String.split(',')[1] : base64String;
+          
+          // Create a proper JPEG data URL
+          base64String = `data:image/jpeg;base64,${base64Part}`;
+          
+          console.log(`[HEIC] Successfully converted ${file.name} to JPEG (${base64String.substring(0, 50)}...)`);
+          resolve(base64String);
+        };
+        reader.onerror = (err) => {
+          console.error('[HEIC] FileReader error:', err);
+          reject(new Error('Failed to read converted HEIC file'));
+        };
+        reader.readAsDataURL(jpegBlob);
+      });
+    } catch (error) {
+      console.error('[HEIC] Failed to convert HEIC file:', error);
+      throw new Error(`Failed to convert HEIC file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+  
+  // Regular file conversion for non-HEIC files
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => {
       const base64String = reader.result as string;
+      if (!base64String || !base64String.startsWith('data:image')) {
+        reject(new Error('Invalid image file'));
+        return;
+      }
       resolve(base64String);
     };
-    reader.onerror = reject;
+    reader.onerror = (err) => {
+      console.error('[FILE] FileReader error:', err);
+      reject(new Error('Failed to read file'));
+    };
     reader.readAsDataURL(file);
   });
 }

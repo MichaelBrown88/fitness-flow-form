@@ -2,6 +2,7 @@ import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import type { Timestamp } from 'firebase/firestore';
 import type { FormData } from '@/contexts/FormContext';
 import { getDb } from '@/lib/firebase';
+import { sanitizeForFirestore } from '@/lib/utils/firebaseUtils';
 
 export type PublicReportDoc = {
   coachUid: string;
@@ -36,12 +37,13 @@ export async function publishPublicReport(params: {
     clientName: (formData.fullName || 'Unnamed client').trim(),
     clientNameLower: (formData.fullName || 'Unnamed client').toLowerCase(),
     visibility,
-    formData,
+    formData: sanitizeForFirestore(formData),
     updatedAt: serverTimestamp(),
     ...(snapshot.exists() ? {} : { createdAt: serverTimestamp() }),
   };
 
   await setDoc(ref, payload, { merge: true });
+  console.log(`[SHARE] ✓ Public report published to: ${ref.path}`);
   return id;
 }
 

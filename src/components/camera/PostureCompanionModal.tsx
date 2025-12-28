@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { 
   Dialog, 
@@ -17,9 +17,10 @@ import {
 import { analyzePostureImage } from '@/lib/ai/postureAnalysis';
 import { loadTestPostureImages, loadImagesFromFiles } from '@/lib/test/postureTestImages';
 import { updatePostureImage } from '@/services/liveSessions';
-import { addDeviationOverlay } from '@/lib/utils/postureOverlay';
+import { addDeviationOverlay, generatePlaceholderWithGreenLines } from '@/lib/utils/postureOverlay';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { CONFIG } from '@/config';
 import { 
   Smartphone, 
   CheckCircle2, 
@@ -89,8 +90,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
       }
 
       // 3. AUTO-START AI ANALYSIS
-      const views: ('front' | 'side-right' | 'side-left' | 'back')[] = ['front', 'back', 'side-left', 'side-right'];
-      for (const view of views) {
+      views.forEach((view) => {
         const imageUrl = updatedSession.postureImages[view];
         const hasAnalysis = updatedSession.analysis[view];
         
@@ -101,15 +101,18 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
           const fullSizeUrl = (updatedSession as any)[`postureImagesFull_${view}`];
           const imageForAI = fullSizeUrl || imageUrl;
           
+          // Get landmarks if available in session
+          const landmarks = (updatedSession as any)[`landmarks_${view}`];
+          
           if (fullSizeUrl) {
             console.log(`[AI] Using full-size image from Storage for ${view}`);
           } else {
             console.warn(`[AI] Full-size image not available for ${view}, using compressed version`);
           }
           
-          handleAnalyze(view, imageForAI);
+          handleAnalyze(view, imageForAI, landmarks);
         }
-      }
+      });
     });
 
     return () => unsubscribe();
@@ -119,80 +122,111 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
     ? `${window.location.origin}/companion/${session.id}?token=${session.companionToken}` 
     : '';
 
-  const views: ('front' | 'side-right' | 'side-left' | 'back')[] = ['front', 'back', 'side-left', 'side-right'];
+  const views = ['front', 'back', 'side-left', 'side-right'] as const;
+
+  // Generate placeholder images with green lines for each view (memoized)
+  const placeholderImages = useMemo(() => {
+    const placeholders: Record<string, string> = {};
+    views.forEach(view => {
+      placeholders[view] = generatePlaceholderWithGreenLines(view);
+    });
+    return placeholders;
+  }, []); // Only generate once on mount
   
   const hasAllImages = views.every(v => !!session?.postureImages[v]);
   const isComplete = views.every(v => !!session?.analysis[v]);
 
-  const handleAnalyze = async (view: 'front' | 'side-right' | 'side-left' | 'back', url: string) => {
+  const handleAnalyze = async (view: 'front' | 'side-right' | 'side-left' | 'back', url: string, landmarks?: any) => {
     setAnalyzingViews(prev => ({ ...prev, [view]: true }));
     try {
       console.log(`[AI] Starting analysis for ${view}...`);
-      const result = await analyzePostureImage(url, view);
+      // Pass MediaPipe landmarks to AI to inform its analysis
+      const result = await analyzePostureImage(url, view, landmarks);
       console.log(`[AI] Analysis result for ${view}:`, result);
       
       if (session?.id) {
         await updatePostureAnalysis(session.id, view, result);
         
-        // Update image with deviation lines after analysis
-        // CRITICAL: Get the image that already has green reference lines
-        // Try multiple sources: current session state, or fetch from Firestore
+        // Update image with red deviation lines
+        // The image already has green reference lines (added before AI analysis)
+        // Now we add red deviation lines showing how the body deviates from the green lines
         const sessionRef = doc(db, 'live_sessions', session.id);
         const { getDoc } = await import('firebase/firestore');
         const snap = await getDoc(sessionRef);
         const latestSession = snap.exists() ? snap.data() as LiveSession : session;
         
-        // Get image from latest session data (should have green lines)
-        let currentImage = latestSession.postureImages?.[view] || session.postureImages?.[view];
+        // Get image WITH green lines (should already have them from updatePostureImage)
+        // Prefer base64 from Firestore to avoid CORS issues with Storage URLs
+        let currentImage = latestSession.postureImages?.[view] || 
+                          session.postureImages?.[view] ||
+                          (latestSession as any)[`postureImagesFull_${view}`] || 
+                          (latestSession as any)[`postureImagesStorage_${view}`];
         
-        // If still no image, the image might be in the URL we used for AI
-        if (!currentImage && url && !url.startsWith('http')) {
-          currentImage = url; // Base64 data URL
+        // If still no image, use the URL we used for AI (should have green lines)
+        if (!currentImage && url) {
+          currentImage = url;
         }
         
         console.log(`[OVERLAY] Image source check for ${view}:`, {
+          hasFirestoreBase64: !!latestSession.postureImages?.[view],
+          hasStorageUrl: !!(latestSession as any)[`postureImagesFull_${view}`],
           hasLatestImage: !!latestSession.postureImages?.[view],
           hasSessionImage: !!session.postureImages?.[view],
           hasUrl: !!url,
-          currentImageType: currentImage ? (currentImage.startsWith('data:') ? 'base64' : 'url') : 'none'
+          currentImageType: currentImage ? (currentImage.startsWith('data:') ? 'base64' : currentImage.startsWith('http') ? 'url' : 'unknown') : 'none'
         });
         
         if (currentImage) {
           try {
-            console.log(`[OVERLAY] ✓ Adding deviation lines to ${view}, image found`);
-            // If it's a URL, fetch it first to get base64
+            console.log(`[OVERLAY] ✓ Adding red deviation lines to ${view} (green lines already present)`);
+            // Prefer base64 from Firestore to avoid CORS issues
             let imageData = currentImage;
             if (currentImage.startsWith('http')) {
-              console.log(`[OVERLAY] Fetching image from URL: ${currentImage}`);
-              const response = await fetch(currentImage);
-              const blob = await response.blob();
-              imageData = await new Promise<string>((resolve) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result as string);
-                reader.readAsDataURL(blob);
-              });
+              // Only fetch from Storage if we don't have base64 from Firestore
+              console.log(`[OVERLAY] Fetching image with green lines from URL (no Firestore base64 available): ${currentImage}`);
+              try {
+                const response = await fetch(currentImage, { mode: 'cors' });
+                if (!response.ok) {
+                  throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                const blob = await response.blob();
+                imageData = await new Promise<string>((resolve, reject) => {
+                  const reader = new FileReader();
+                  reader.onloadend = () => resolve(reader.result as string);
+                  reader.onerror = reject;
+                  reader.readAsDataURL(blob);
+                });
+              } catch (fetchError) {
+                console.error(`[OVERLAY] Failed to fetch from Storage URL (CORS or network error):`, fetchError);
+                // If fetch fails, try to use the base64 from Firestore if available
+                const fallbackBase64 = latestSession.postureImages?.[view] || session.postureImages?.[view];
+                if (fallbackBase64 && fallbackBase64.startsWith('data:')) {
+                  console.log(`[OVERLAY] Using fallback base64 from Firestore`);
+                  imageData = fallbackBase64;
+                } else {
+                  throw new Error(`Cannot fetch image from Storage and no base64 fallback available: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}`);
+                }
+              }
             }
             
-            // The image already has green reference lines
-            // Now we add red deviation lines on top
-            const imageWithDeviations = await addDeviationOverlay(imageData, view, result);
-            console.log(`[OVERLAY] ✓ Deviation overlay complete for ${view}`);
+            // Add red deviation lines to image that already has green reference lines
+            // The red lines show deviations FROM the green reference lines
+            const imageWithOverlay = await addDeviationOverlay(imageData, view, result);
+            console.log(`[OVERLAY] ✓ Red deviation lines added to ${view}`);
             
-            // Update both Firestore (compressed) and Storage (full-size) with deviation lines
-            const sessionRef = doc(db, 'live_sessions', session.id);
-            
+            // Update both Firestore (compressed) and Storage (full-size) with complete overlay
             // Compress for Firestore
             const { compressImageForDisplay } = await import('@/lib/utils/imageCompression');
-            const compressed = await compressImageForDisplay(imageWithDeviations, 800, 0.8);
+            const compressed = await compressImageForDisplay(imageWithOverlay, 800, 0.8);
             
-            // Update Firestore with compressed version (WITH deviation lines)
-            await setDoc(sessionRef, {
-              postureImages: {
-                [view]: compressed.compressed
-              }
-            }, { merge: true });
+            // Update Firestore with compressed version (WITH complete overlay: green + red lines)
+            // Use updateDoc with dot notation to avoid nested entity issues
+            const { updateDoc } = await import('firebase/firestore');
+            await updateDoc(sessionRef, {
+              [`postureImages.${view}`]: compressed.compressed
+            });
             
-            // Upload full-size to Storage
+            // Upload full-size to Storage (overwrite original with overlay version)
             // New structure: clients/{clientId}/sessions/{sessionId}/{view}_full.jpg
             const { ref, uploadString, getDownloadURL } = await import('firebase/storage');
             const { storage } = await import('@/lib/firebase');
@@ -203,7 +237,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
             const snapshot = await uploadString(storageRef, fullSizeBase64, 'base64', { contentType: 'image/jpeg' });
             const downloadUrl = await getDownloadURL(snapshot.ref);
             
-            // Store Storage URL
+            // Store Storage URL (now points to image WITH overlay)
             await setDoc(sessionRef, {
               [`postureImagesStorage_${view}`]: downloadUrl,
               [`postureImagesFull_${view}`]: downloadUrl
@@ -254,23 +288,28 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
     try {
       toast({ title: "Loading test images...", description: "Processing uploaded images" });
       
-      // Map files to views (user should upload in order: front, back, side-left, side-right)
+      // Map files to views (user should upload in order)
       const fileArray = Array.from(files);
       const fileMap: Record<string, File> = {};
-      
-      // Try to match files by name or use order
-      const views: ('front' | 'side-right' | 'side-left' | 'back')[] = ['front', 'back', 'side-left', 'side-right'];
       
       fileArray.forEach((file, index) => {
         const fileName = file.name.toLowerCase();
         let matchedView: string | null = null;
         
-        // Try to match by filename
-        if (fileName.includes('front')) matchedView = 'front';
-        else if (fileName.includes('right') || fileName.includes('side-right')) matchedView = 'side-right';
-        else if (fileName.includes('left') || fileName.includes('side-left')) matchedView = 'side-left';
-        else if (fileName.includes('back') || fileName.includes('rear')) matchedView = 'back';
-        else if (index < views.length) matchedView = views[index]; // Fallback to order
+        // Try to match by filename - improved matching for variations
+        if (fileName.includes('front')) {
+          matchedView = 'front';
+        } else if (fileName.includes('right side') || fileName.includes('side-right') || 
+                   (fileName.includes('right') && !fileName.includes('left'))) {
+          matchedView = 'side-right';
+        } else if (fileName.includes('left side') || fileName.includes('side-left') || 
+                   (fileName.includes('left') && !fileName.includes('right'))) {
+          matchedView = 'side-left';
+        } else if (fileName.includes('back') || fileName.includes('rear')) {
+          matchedView = 'back';
+        } else if (index < views.length) {
+          matchedView = views[index]; // Fallback to order
+        }
         
         if (matchedView) {
           fileMap[matchedView] = file;
@@ -280,13 +319,35 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
       // Load images from files
       const testImages = await loadImagesFromFiles(fileMap);
       
+      // Validate that we have at least one image
+      if (Object.keys(testImages).length === 0) {
+        throw new Error('No images could be loaded from the uploaded files. Please check that the files are valid images.');
+      }
+      
+      console.log(`[TEST] Successfully loaded ${Object.keys(testImages).length} images, injecting into session...`);
+      
       // Inject test images into session (this will trigger AI analysis automatically)
       for (const view of views) {
         if (testImages[view]) {
-          console.log(`[TEST] Injecting test image for ${view}...`);
-          await updatePostureImage(session.id, view, testImages[view]);
-          // Small delay to avoid overwhelming Firestore
-          await new Promise(resolve => setTimeout(resolve, 500));
+          try {
+            console.log(`[TEST] Injecting test image for ${view}...`);
+            // Validate image data before sending
+            if (!testImages[view] || !testImages[view].startsWith('data:image')) {
+              throw new Error(`Invalid image data for ${view}`);
+            }
+            await updatePostureImage(session.id, view, testImages[view]);
+            console.log(`[TEST] Successfully injected ${view} image`);
+            // Small delay to avoid overwhelming Firestore
+            await new Promise(resolve => setTimeout(resolve, 500));
+          } catch (err) {
+            console.error(`[TEST] Failed to inject ${view} image:`, err);
+            // Continue with other images even if one fails
+            toast({
+              title: `Failed to process ${view} image`,
+              description: err instanceof Error ? err.message : 'Unknown error',
+              variant: 'destructive'
+            });
+          }
         }
       }
       
@@ -312,9 +373,8 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
     
     // Get Storage URLs for all images (for reports and comparisons)
     const storageUrls: Record<string, string> = {};
-    const views: ('front' | 'side-right' | 'side-left' | 'back')[] = ['front', 'back', 'side-left', 'side-right'];
     
-    for (const view of views) {
+    views.forEach((view) => {
       const storageUrl = (session as any)[`postureImagesStorage_${view}`] || 
                         (session as any)[`postureImagesFull_${view}`];
       if (storageUrl) {
@@ -323,7 +383,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
       } else {
         console.warn(`[APPLY] No Storage URL found for ${view} - image may not be stored yet`);
       }
-    }
+    });
     
     // Map comprehensive AI results for the report
     const findings = {
@@ -348,6 +408,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden rounded-3xl p-0 border-none bg-white">
         <DialogHeader className="sr-only">
           <DialogTitle>Posture Capture</DialogTitle>
+          <div className="text-xs text-slate-500">Connect your phone to capture posture images and view real-time AI results.</div>
         </DialogHeader>
         <div className="flex flex-col lg:flex-row h-full">
           
@@ -385,8 +446,38 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
               )}
             </div>
 
-            {onStartDirectScan && (
-              <div className="mt-auto w-full pt-8 border-t border-slate-200">
+            <div className="mt-auto w-full pt-8 border-t border-slate-200 space-y-3">
+              {/* Hidden file input for manual upload */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,.heic,.heif"
+                multiple
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+              
+              {/* Manual Upload Button for Testing */}
+              <Button
+                onClick={handleLoadTestImages}
+                disabled={isLoadingTestImages || !session?.id}
+                variant="outline"
+                className="w-full"
+              >
+                {isLoadingTestImages ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <TestTube className="h-4 w-4 mr-2" />
+                    Upload Test Images
+                  </>
+                )}
+              </Button>
+              
+              {onStartDirectScan && (
                 <Button
                   onClick={() => { onClose(); onStartDirectScan(); }}
                   variant="outline"
@@ -394,15 +485,15 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                 >
                   Use This Device Instead
                 </Button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           {/* RIGHT: INSTRUCTIONS & LIVE SYNC GRID */}
           <div className="flex-1 p-8 overflow-y-auto bg-white max-h-[90vh]">
             <div className="mb-6">
               <h4 className="text-lg font-black text-slate-900 mb-2">How to Use</h4>
-              <ol className="space-y-3 text-sm text-slate-600">
+              <ol className="space-y-3 text-sm text-slate-600 mb-4">
                 <li className="flex gap-3">
                   <span className="font-black text-indigo-600">1.</span>
                   <span>Open your iPhone camera app</span>
@@ -420,6 +511,12 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                   <span>Photos will appear here as they're captured</span>
                 </li>
               </ol>
+              <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                <p className="text-xs text-amber-800">
+                  <strong className="font-black">Testing Mode:</strong> You can also upload images manually using the "Upload Test Images" button. 
+                  Images will be automatically aligned with the green control lines for testing.
+                </p>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4 pb-20">
               {views.map((view) => {
@@ -449,7 +546,15 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                           )}
                         </>
                       ) : (
-                        <Camera className="h-6 w-6 text-slate-200" />
+                        <>
+                          {/* Placeholder with green reference lines */}
+                          <img 
+                            src={placeholderImages[view]} 
+                            className="w-full h-full object-cover" 
+                            alt={`${view} placeholder`}
+                          />
+                          <Camera className="absolute h-6 w-6 text-slate-300" />
+                        </>
                       )}
                     </div>
 
@@ -462,11 +567,19 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                         </div>
                         <div className="space-y-1.5">
                           {/* Side view findings */}
-                          {session.analysis[view].forward_head && (
+                          {session.analysis[view].head_alignment && (
                             <div>
                               <span className="text-[9px] font-bold text-slate-600">Head: </span>
                               <span className="text-[9px] font-black text-slate-900">
-                                {session.analysis[view].forward_head.status} ({session.analysis[view].forward_head.deviation_degrees}°)
+                                {session.analysis[view].head_alignment.status} ({session.analysis[view].head_alignment.tilt_degrees.toFixed(1)}°)
+                              </span>
+                            </div>
+                          )}
+                          {session.analysis[view].forward_head && (
+                            <div>
+                              <span className="text-[9px] font-bold text-slate-600">Neck: </span>
+                              <span className="text-[9px] font-black text-slate-900">
+                                {session.analysis[view].forward_head.status} ({session.analysis[view].forward_head.deviation_degrees.toFixed(1)}°)
                               </span>
                             </div>
                           )}
@@ -526,6 +639,14 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                                 {session.analysis[view].pelvic_tilt.hip_shift_cm !== undefined && session.analysis[view].pelvic_tilt.hip_shift_cm > 0 && 
                                   ` (${Math.abs(session.analysis[view].pelvic_tilt.hip_shift_cm).toFixed(1)}cm ${session.analysis[view].pelvic_tilt.hip_shift_direction || ''} shift)`
                                 }
+                              </span>
+                            </div>
+                          )}
+                          {session.analysis[view].spinal_curvature && (
+                            <div>
+                              <span className="text-[9px] font-bold text-slate-600">Spine: </span>
+                              <span className="text-[9px] font-black text-slate-900">
+                                {session.analysis[view].spinal_curvature.status} ({session.analysis[view].spinal_curvature.curve_degrees.toFixed(1)}°)
                               </span>
                             </div>
                           )}
@@ -623,3 +744,4 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
     </Dialog>
   );
 };
+

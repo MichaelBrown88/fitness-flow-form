@@ -11,6 +11,7 @@ import {
   getAllClients,
   type CoachAssessmentSummary 
 } from '@/services/coachAssessments';
+import { getChangeHistory, getCurrentAssessment } from '@/services/assessmentHistory';
 import { computeScores } from '@/lib/scoring';
 import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { getDb } from '@/lib/firebase';
@@ -25,7 +26,8 @@ import {
   Calendar,
   BarChart3,
   ChevronRight,
-  X
+  X,
+  ChevronDown
 } from 'lucide-react';
 import {
   Dialog,
@@ -35,6 +37,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useToast } from '@/components/ui/use-toast';
 import { getCoachAssessment } from '@/services/coachAssessments';
 import type { FormData } from '@/contexts/FormContext';
@@ -58,6 +68,17 @@ type Analytics = {
   clientsThisMonth: number;
 };
 
+const formatGoal = (goal: string) => {
+  const map: Record<string, string> = {
+    'build-muscle': 'Build Muscle',
+    'weight-loss': 'Weight Loss',
+    'build-strength': 'Build Strength',
+    'improve-fitness': 'Improve Fitness',
+    'general-health': 'General Health',
+  };
+  return map[goal] || goal.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+};
+
 const Dashboard = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -71,6 +92,12 @@ const Dashboard = () => {
   const [clientHistory, setClientHistory] = useState<CoachAssessmentSummary[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [recentChanges, setRecentChanges] = useState<Array<{
+    clientName: string;
+    category: string;
+    date: Date;
+    type: string;
+  }>>([]);
 
   useEffect(() => {
     if (!user) {
@@ -96,6 +123,44 @@ const Dashboard = () => {
           });
         });
         setItems(data);
+        
+        // Load recent changes from assessment history
+        if (user) {
+          (async () => {
+            try {
+              const clients = await getAllClients(user.uid);
+              const changes: Array<{
+                clientName: string;
+                category: string;
+                date: Date;
+                type: string;
+              }> = [];
+              
+              // Get recent changes for each client (limit to top 10 most recent)
+              for (const clientName of clients.slice(0, 10)) {
+                try {
+                  const history = await getChangeHistory(user.uid, clientName, 5);
+                  history.forEach(change => {
+                    changes.push({
+                      clientName,
+                      category: change.category,
+                      date: change.timestamp.toDate(),
+                      type: change.type,
+                    });
+                  });
+                } catch (err) {
+                  // Skip if client doesn't have history yet
+                }
+              }
+              
+              // Sort by date, most recent first
+              changes.sort((a, b) => b.date.getTime() - a.date.getTime());
+              setRecentChanges(changes.slice(0, 10));
+            } catch (err) {
+              console.warn('Failed to load recent changes:', err);
+            }
+          })();
+        }
         
         // Compute analytics
         const analyticsData = await computeAnalytics(data, user.uid);
@@ -301,8 +366,12 @@ const Dashboard = () => {
     }
   };
 
-  const handleNewAssessmentForClient = async (clientName: string) => {
+  const handleNewAssessmentForClient = async (clientName: string, category?: string) => {
     if (!user) return;
+    
+    // Clear any existing partial assessment data
+    sessionStorage.removeItem('partialAssessment');
+    
     // Get the latest assessment to pre-fill data
     const history = await getClientAssessments(user.uid, clientName);
     if (history.length > 0) {
@@ -317,6 +386,15 @@ const Dashboard = () => {
         }));
       }
     }
+    
+    // If category is provided, set up partial assessment
+    if (category) {
+      sessionStorage.setItem('partialAssessment', JSON.stringify({
+        category,
+        clientName,
+      }));
+    }
+    
     navigate('/assessment');
   };
 
@@ -328,9 +406,11 @@ const Dashboard = () => {
     );
   }
 
+  const coachFirstName = user?.displayName ? user.displayName.split(' ')[0] : 'Coach';
+
   return (
     <AppShell
-      title="Coach dashboard"
+      title={`${coachFirstName}'s dashboard`}
       subtitle="Manage clients, view assessments, and track progress."
       actions={
         <Button asChild className="bg-slate-900 text-white hover:bg-slate-800">
@@ -455,6 +535,53 @@ const Dashboard = () => {
           </section>
         )}
 
+        {/* Recent Activity */}
+        {recentChanges.length > 0 && (
+          <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
+              <History className="h-4 w-4" />
+              Recent Activity
+            </h3>
+            <div className="space-y-2">
+              {recentChanges.map((change, idx) => {
+                const categoryLabels: Record<string, string> = {
+                  inbody: 'InBody',
+                  posture: 'Posture',
+                  fitness: 'Fitness',
+                  strength: 'Strength',
+                  lifestyle: 'Lifestyle',
+                  all: 'Full Assessment',
+                };
+                const typeLabels: Record<string, string> = {
+                  'full': 'Full Assessment',
+                  'partial-inbody': 'InBody Update',
+                  'partial-posture': 'Posture Update',
+                  'partial-fitness': 'Fitness Update',
+                  'partial-strength': 'Strength Update',
+                  'partial-lifestyle': 'Lifestyle Update',
+                };
+                return (
+                  <div key={idx} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="text-xs text-slate-500">
+                        {change.date.toLocaleDateString()} {change.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                      <div className="text-sm text-slate-700">
+                        <span className="font-semibold">{change.clientName}</span>
+                        {' - '}
+                        <span>{typeLabels[change.type] || change.type}</span>
+                      </div>
+                    </div>
+                    <span className="text-xs font-semibold text-slate-500 bg-white px-2 py-0.5 rounded">
+                      {categoryLabels[change.category] || change.category}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {/* View Toggle */}
         <section className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -550,7 +677,7 @@ const Dashboard = () => {
                         </td>
                         <td className="px-4 py-2 text-xs text-slate-600">
                           {item.goals && item.goals.length
-                            ? item.goals.slice(0, 2).join(', ')
+                            ? item.goals.map(formatGoal).slice(0, 2).join(', ')
                             : '—'}
                         </td>
                         <td className="px-4 py-2 text-right">
@@ -639,14 +766,41 @@ const Dashboard = () => {
                         <History className="h-3 w-3 mr-1" />
                         View Dashboard
                       </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => handleNewAssessmentForClient(group.name)}
-                        className="flex-1 bg-slate-900 text-white hover:bg-slate-800"
-                      >
-                        <UserPlus className="h-3 w-3 mr-1" />
-                        New Assessment
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            size="sm"
+                            className="flex-1 bg-slate-900 text-white hover:bg-slate-800"
+                          >
+                            <UserPlus className="h-3 w-3 mr-1" />
+                            New Assessment
+                            <ChevronDown className="h-3 w-3 ml-1" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56">
+                          <DropdownMenuLabel>Assessment Type</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleNewAssessmentForClient(group.name)}>
+                            Full Assessment
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleNewAssessmentForClient(group.name, 'inbody')}>
+                            InBody Only
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleNewAssessmentForClient(group.name, 'posture')}>
+                            Posture Only
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleNewAssessmentForClient(group.name, 'fitness')}>
+                            Fitness Only
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleNewAssessmentForClient(group.name, 'strength')}>
+                            Strength Only
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleNewAssessmentForClient(group.name, 'lifestyle')}>
+                            Lifestyle Only
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 ))
@@ -709,7 +863,7 @@ const Dashboard = () => {
                     </div>
                     {assessment.goals && assessment.goals.length > 0 && (
                       <div className="text-xs text-slate-600 mt-1">
-                        Goals: {assessment.goals.join(', ')}
+                        Goals: {assessment.goals.map(formatGoal).join(', ')}
                       </div>
                     )}
                   </div>

@@ -154,7 +154,14 @@ const Results = () => {
         <div className="mx-auto max-w-xl space-y-4 rounded-lg border border-slate-200 bg-white p-6 text-slate-700">
           <h1 className="text-lg font-semibold">Assessment unavailable</h1>
           <p className="text-sm text-slate-500">{error ?? 'Result not found. Please generate a new assessment.'}</p>
-          <Button onClick={() => navigate('/assessment')} className="bg-slate-900 text-white hover:bg-slate-800">
+          <Button 
+            onClick={() => {
+              // Clear any partial assessment data to ensure full assessment
+              sessionStorage.removeItem('partialAssessment');
+              navigate('/assessment');
+            }} 
+            className="bg-slate-900 text-white hover:bg-slate-800"
+          >
             Start New Assessment
           </Button>
         </div>
@@ -170,7 +177,14 @@ const Results = () => {
       subtitle={`${input.assignedCoach || 'Coach'} · Assessment Summary`}
       actions={
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate('/assessment')}>
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              // Clear any partial assessment data to ensure full assessment
+              sessionStorage.removeItem('partialAssessment');
+              navigate('/assessment');
+            }}
+          >
             New Assessment
           </Button>
           <Button onClick={handlePrint} className="bg-slate-900 text-white hover:bg-slate-800">

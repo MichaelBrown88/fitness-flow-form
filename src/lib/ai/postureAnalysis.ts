@@ -1,7 +1,23 @@
 import { getAI, VertexAIBackend, getGenerativeModel } from "firebase/ai";
 import { getApp } from "firebase/app";
+import { CONFIG } from '@/config';
 
 export interface PostureAnalysisResult {
+  // Body Landmarks (for overlay alignment) - NEW
+  landmarks?: {
+    shoulder_y_percent?: number; // Y position of shoulder line as % of image height (0-100)
+    hip_y_percent?: number; // Y position of hip line as % of image height (0-100)
+    head_y_percent?: number; // Y position of head/nose as % of image height (0-100)
+    center_x_percent?: number; // X position of body center/midfoot as % of image width (0-100)
+    midfoot_x_percent?: number; // X position of midfoot (for side views) as % of image width (0-100)
+  };
+  // Head Position
+  head_alignment?: {
+    status: 'Neutral' | 'Tilted Left' | 'Tilted Right';
+    tilt_degrees: number;
+    description: string;
+    recommendation?: string;
+  };
   // Forward Head Posture (FHP)
   forward_head: {
     status: 'Neutral' | 'Mild' | 'Moderate' | 'Severe';
@@ -11,9 +27,11 @@ export interface PostureAnalysisResult {
   };
   // Shoulder Alignment
   shoulder_alignment: {
-    status: 'Neutral' | 'Elevated' | 'Depressed' | 'Asymmetric';
+    status: 'Neutral' | 'Elevated' | 'Depressed' | 'Asymmetric' | 'Rounded';
     left_elevation_cm?: number; // Positive = left higher
     right_elevation_cm?: number; // Positive = right higher
+    height_difference_cm?: number;
+    forward_position_cm?: number;
     rounded_forward: boolean; // Rounded shoulders
     description: string;
     recommendation?: string;
@@ -37,6 +55,7 @@ export interface PostureAnalysisResult {
     status: 'Neutral' | 'Anterior Tilt' | 'Posterior Tilt' | 'Lateral Tilt';
     anterior_tilt_degrees?: number; // Positive = anterior tilt
     lateral_tilt_degrees?: number; // Positive = left side down
+    height_difference_cm?: number;
     rotation_degrees?: number; // Pelvic rotation
     description: string;
     recommendation?: string;
@@ -46,6 +65,28 @@ export interface PostureAnalysisResult {
     status: 'Neutral' | 'Elevated' | 'Depressed' | 'Asymmetric';
     left_elevation_cm?: number;
     right_elevation_cm?: number;
+    height_difference_cm?: number;
+    description: string;
+    recommendation?: string;
+  };
+  // Knee Position
+  knee_position?: {
+    status: 'Neutral' | 'Hyperextended' | 'Flexed';
+    deviation_degrees: number;
+    description: string;
+    recommendation?: string;
+  };
+  // Knee Alignment (Front View)
+  knee_alignment?: {
+    status: 'Neutral' | 'Valgus' | 'Varus';
+    deviation_degrees: number;
+    description: string;
+    recommendation?: string;
+  };
+  // Spinal Curvature (Back View)
+  spinal_curvature?: {
+    status: 'Normal' | 'Mild Scoliosis' | 'Moderate Scoliosis' | 'Severe Scoliosis';
+    curve_degrees: number;
     description: string;
     recommendation?: string;
   };
@@ -55,48 +96,64 @@ export interface PostureAnalysisResult {
   overall_assessment: string; // Comprehensive summary
 }
 
-export async function analyzePostureImage(imageUrl: string, view: 'front' | 'side-right' | 'side-left' | 'back'): Promise<PostureAnalysisResult> {
+export async function analyzePostureImage(
+  imageUrl: string, 
+  view: 'front' | 'side-right' | 'side-left' | 'back',
+  landmarks?: PostureAnalysisResult['landmarks']
+): Promise<PostureAnalysisResult> {
   try {
     const firebaseApp = getApp();
     const ai = getAI(firebaseApp, { backend: new VertexAIBackend() });
     
-    // Use Gemini 2.0 Flash - latest model with improved accuracy and speed
+    // Use Gemini 2.0 Flash
     const model = getGenerativeModel(ai, { 
-      model: "gemini-2.0-flash",
+      model: CONFIG.AI.GEMINI.MODEL_NAME,
       generationConfig: {
         responseMimeType: "application/json",
       }
     });
 
+    const quantitativeContext = landmarks ? `
+      QUANTITATIVE DATA FROM MEDIAPIPE (0-100% of image):
+      - Shoulder Line Y: ${landmarks.shoulder_y_percent?.toFixed(1)}%
+      - Hip Line Y: ${landmarks.hip_y_percent?.toFixed(1)}%
+      - Head/Nose Y: ${landmarks.head_y_percent?.toFixed(1)}%
+      - Body Center X: ${landmarks.center_x_percent?.toFixed(1)}%
+      ${landmarks.midfoot_x_percent ? `- Plumb Line Anchor X: ${landmarks.midfoot_x_percent.toFixed(1)}%` : ''}
+      Use these coordinates as your primary ground truth for alignment.
+    ` : '';
+
     const viewSpecificInstructions = {
       'front': `
-        FRONT VIEW ANALYSIS - CHECK ALL OF THESE:
-        - Vertical midline: Draw a line down the center of the body (through nose, sternum, navel, between feet)
-        - Horizontal shoulder line: Measure vertical height difference between left and right shoulders (in cm)
-        - Horizontal hip line: Measure vertical height difference between left and right hips (in cm)
-        - MUST analyze ALL of the following:
-          * Shoulder elevation asymmetry (left vs right height difference in cm)
-          * Hip elevation asymmetry (left vs right height difference in cm)
-          * Lateral pelvic tilt (angle in degrees)
-          * Hip shift (left/right displacement in cm)
-          * Knee alignment (valgus/varus from front view)
-          * Overall body alignment relative to midline
-        - DO NOT analyze: Forward head posture (cannot be seen from front), kyphosis, lordosis (these require side view)
+        FRONT VIEW ANALYSIS - CRITICAL SKELETAL CHECKS:
+        - Use the provided MediaPipe coordinates as your skeletal "ground truth".
+        - Vertical midline: Draw through nose, sternum, and center of feet.
+        - Analyze HEAD TILT: Look at eye level and ear alignment. Even a slight 2-3 degree tilt is significant.
+        - Analyze SHOULDER ASYMMETRY: Measure height difference between acromion processes. 
+        - Analyze HIP ASYMMETRY: Measure height difference between iliac crests. 
+        - Analyze PELVIC SHIFT: Check if the pelvis is shifted left or right of the vertical midline.
+        - CRITICAL: Do not default to "Neutral" if you see any asymmetry. Report exact degrees and cm.
+        - LANDMARK PERCENTAGES:
+          * center_x_percent: X position of midline as % of image width (0-100)
+          * shoulder_y_percent: Y position of shoulder center as % of image height (0-100)
+          * hip_y_percent: Y position of hip center as % of image height (0-100)
+          * head_y_percent: Y position of nose as % of image height (0-100)
       `,
       'back': `
-        BACK VIEW ANALYSIS - CHECK ALL OF THESE:
-        - Vertical midline: Draw a line down the center of the spine (from head to between feet)
-        - Horizontal shoulder line: Measure vertical height difference between left and right shoulders (in cm)
-        - Horizontal hip line: Measure vertical height difference between left and right hips (in cm)
-        - MUST analyze ALL of the following:
-          * Shoulder blade asymmetry
-          * Shoulder elevation asymmetry (left vs right height difference in cm)
-          * Spinal curvature (scoliosis - lateral deviation)
-          * Hip elevation asymmetry (left vs right height difference in cm)
-          * Lateral pelvic tilt (angle in degrees)
-          * Hip shift (left/right displacement in cm)
-          * Overall body alignment relative to midline
-        - DO NOT analyze: Forward head posture (cannot be seen from back), kyphosis, lordosis (these require side view)
+        BACK VIEW ANALYSIS - CRITICAL SKELETAL CHECKS:
+        - Use the provided MediaPipe coordinates as your skeletal "ground truth".
+        - Vertical midline: Draw along the spine to the center of the heels.
+        - Analyze HEAD TILT: Look at ear alignment and head position relative to the spine.
+        - Analyze SHOULDER ASYMMETRY: Look for height differences and scapular winging/protraction.
+        - Analyze SPINAL CURVATURE (Scoliosis): Look for lateral deviation (S-curve or C-curve). Estimate Cobb angle.
+        - Analyze HIP ASYMMETRY: Measure height difference between iliac crests or gluteal folds.
+        - Analyze PELVIC TILT & SHIFT: Look for lateral tilt and displacement from the midline.
+        - CRITICAL: Report exact degrees and directions (e.g. "Right-side bulge", "Left shoulder elevated").
+        - LANDMARK PERCENTAGES:
+          * center_x_percent: X position of spine as % of image width (0-100)
+          * shoulder_y_percent: Y position of shoulder center as % of image height (0-100)
+          * hip_y_percent: Y position of hip center as % of image height (0-100)
+          * head_y_percent: Y position of head as % of image height (0-100)
       `,
       'side-right': `
         RIGHT SIDE VIEW ANALYSIS - CENTER OF MASS PLUMB LINE:
@@ -135,6 +192,8 @@ export async function analyzePostureImage(imageUrl: string, view: 'front' | 'sid
     const prompt = `
       You are an expert Biomechanics and Posture Analyst with 20+ years of clinical experience.
       Analyze the attached image of a person from the ${view} view for comprehensive postural assessment.
+      
+      ${quantitativeContext}
       
       REFERENCE LINES TO USE:
       ${viewSpecificInstructions[view]}
@@ -189,12 +248,14 @@ export async function analyzePostureImage(imageUrl: string, view: 'front' | 'sid
       
       7. SPINAL CURVATURE (Back view only):
          - Check for scoliosis indicators (lateral spinal curvature)
-         - Measure curve angle in degrees
+         - Look for lateral deviation of the spine from the midline
+         - Measure curve angle in degrees (Cobb angle estimation)
          - Normal: straight spine = "Normal" status
-         - Mild Scoliosis: 10-20 degrees = "Mild Scoliosis" status
-         - Moderate Scoliosis: 20-40 degrees = "Moderate Scoliosis" status
-         - Severe Scoliosis: > 40 degrees = "Severe Scoliosis" status
-         - Report curve_degrees
+         - Mild Scoliosis: 5-15 degrees = "Mild Scoliosis" status
+         - Moderate Scoliosis: 15-30 degrees = "Moderate Scoliosis" status
+         - Severe Scoliosis: > 30 degrees = "Severe Scoliosis" status
+         - Report curve_degrees (positive for right-side bulge, negative for left-side bulge)
+         - CRITICAL: If you see ANY lateral deviation, you MUST report it here, not just in overall_assessment.
       
       IMPORTANT: You MUST analyze ALL of the above checks (shoulders, hips, pelvic tilt, hip shift, knee alignment, and spinal curvature for back view).
       DO NOT analyze forward head posture, kyphosis, or lordosis from this view - these require side view.
@@ -248,6 +309,18 @@ export async function analyzePostureImage(imageUrl: string, view: 'front' | 'sid
       Return ONLY a JSON object with this EXACT structure:
       ${view === 'front' || view === 'back' ? `
       {
+        "landmarks": {
+          "shoulder_y_percent": number,  // Y position of shoulder center as % of image height (0-100)
+          "hip_y_percent": number,        // Y position of hip center as % of image height (0-100)
+          "head_y_percent": number,       // Y position of center of head as % of image height (0-100)
+          "center_x_percent": number      // X position of body midline (between legs) as % of image width (0-100)
+        },
+        "head_alignment": {
+          "status": "Neutral | Tilted Left | Tilted Right",
+          "tilt_degrees": number,
+          "description": "Detailed explanation of head tilt and asymmetry",
+          "recommendation": "Specific corrective recommendations"
+        },
         "forward_head": null,
         "shoulder_alignment": {
           "status": "Neutral | Elevated | Depressed | Asymmetric",
@@ -299,6 +372,11 @@ export async function analyzePostureImage(imageUrl: string, view: 'front' | 'sid
       }
       ` : `
       {
+        "landmarks": {
+          "shoulder_y_percent": number,  // Y position of shoulder center as % of image height (0-100)
+          "hip_y_percent": number,        // Y position of hip center as % of image height (0-100)
+          "midfoot_x_percent": number     // X position of midfoot (ankle area) as % of image width (0-100)
+        },
         "forward_head": {
           "status": "Neutral | Mild | Moderate | Severe",
           "deviation_degrees": number,

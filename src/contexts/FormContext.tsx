@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 export interface FormData {
   /** Client Profile */
@@ -76,6 +76,8 @@ export interface FormData {
   /** Phase 2 — Posture & Movement Quality */
   postureInputMode: 'manual' | 'ai';
   postureAiResults: any; // Detailed AI analysis results
+  postureImages: Record<string, string>; // Base64 images
+  postureImagesStorage: Record<string, string>; // Firebase Storage URLs
   postureSeverity: string;
   postureForwardHead: string;
   postureRoundedShoulders: string;
@@ -240,6 +242,8 @@ const initialFormData: FormData = {
   inbodyScore: '',
   postureInputMode: 'manual',
   postureAiResults: null,
+  postureImages: {},
+  postureImagesStorage: {},
   postureSeverity: '',
   postureForwardHead: '',
   postureRoundedShoulders: '',

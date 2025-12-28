@@ -65,7 +65,7 @@ const Step7 = () => {
       ],
     },
     {
-      title: 'Strength & Endurance',
+      title: 'Muscular Strength',
       step: 8,
       data: [
         { label: 'Push-ups (1 min)', value: formData.pushupReps },
@@ -90,7 +90,7 @@ const Step7 = () => {
       ],
     },
     {
-      title: 'Cardio Fitness',
+      title: 'Metabolic Fitness',
       step: 13,
       data: [
         { label: 'Test Type', value: formData.cardioTestType },

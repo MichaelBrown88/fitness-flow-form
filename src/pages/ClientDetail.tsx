@@ -4,11 +4,15 @@ import AppShell from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as UICalendar } from '@/components/ui/calendar';
 import { useAuth } from '@/contexts/AuthContext';
 import { getClientAssessments, type CoachAssessmentSummary } from '@/services/coachAssessments';
 import { getClientProfile, createOrUpdateClientProfile, subscribeToClientProfile, type ClientProfile } from '@/services/clientProfiles';
 import { getCoachAssessment } from '@/services/coachAssessments';
+import { getCurrentAssessment, reconstructAssessmentAtDate, getChangeHistory } from '@/services/assessmentHistory';
 import { computeScores } from '@/lib/scoring';
+import { AssessmentComparison } from '@/components/AssessmentComparison';
 import {
   ArrowLeft,
   UserPlus,
@@ -17,7 +21,7 @@ import {
   X,
   TrendingUp,
   TrendingDown,
-  Calendar,
+  Calendar as CalendarIcon,
   Target,
   BarChart3,
   FileText,
@@ -27,6 +31,13 @@ import {
   Phone,
   Cake,
   AlertCircle,
+  Activity,
+  Dumbbell,
+  Heart,
+  Scan,
+  UserCheck,
+  Clock,
+  GitCompare,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import {
@@ -52,6 +63,11 @@ const ClientDetail = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<Partial<ClientProfile>>({});
   const [deleteDialog, setDeleteDialog] = useState<{ id: string; date: string } | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [historicalAssessment, setHistoricalAssessment] = useState<{ formData: any; overallScore: number } | null>(null);
+  const [loadingHistorical, setLoadingHistorical] = useState(false);
+  const [showComparison, setShowComparison] = useState(false);
+  const [comparisonDate, setComparisonDate] = useState<Date | undefined>(undefined);
 
   useEffect(() => {
     if (!user || !clientName) return;
@@ -113,7 +129,7 @@ const ClientDetail = () => {
     }
   };
 
-  const handleNewAssessment = async () => {
+  const handleNewAssessment = async (category?: 'inbody' | 'posture' | 'fitness' | 'strength' | 'lifestyle') => {
     if (!user) return;
     // Get latest assessment to pre-fill
     if (assessments.length > 0) {
@@ -127,6 +143,15 @@ const ClientDetail = () => {
         }));
       }
     }
+    
+    // Set partial assessment mode if category specified
+    if (category) {
+      sessionStorage.setItem('partialAssessment', JSON.stringify({
+        category,
+        clientName,
+      }));
+    }
+    
     navigate('/assessment');
   };
 
@@ -183,20 +208,57 @@ const ClientDetail = () => {
 
   // Load category scores for latest assessment
   const [categoryBreakdown, setCategoryBreakdown] = useState<Record<string, number>>({});
+  const [currentAssessment, setCurrentAssessment] = useState<any>(null);
+  
   useEffect(() => {
-    if (!user || assessments.length === 0) return;
+    if (!user || !clientName) return;
     (async () => {
-      const latest = await getCoachAssessment(user.uid, assessments[0].id);
-      if (latest?.formData) {
-        const scores = computeScores(latest.formData);
+      // Load current assessment using new system
+      const current = await getCurrentAssessment(user.uid, clientName);
+      if (current) {
+        setCurrentAssessment(current);
+        const scores = computeScores(current.formData);
         const breakdown: Record<string, number> = {};
         scores.categories.forEach(cat => {
           breakdown[cat.id] = cat.score;
         });
         setCategoryBreakdown(breakdown);
+      } else if (assessments.length > 0) {
+        // Fallback to old system
+        const latest = await getCoachAssessment(user.uid, assessments[0].id);
+        if (latest?.formData) {
+          setCurrentAssessment({ formData: latest.formData, overallScore: latest.overallScore });
+          const scores = computeScores(latest.formData);
+          const breakdown: Record<string, number> = {};
+          scores.categories.forEach(cat => {
+            breakdown[cat.id] = cat.score;
+          });
+          setCategoryBreakdown(breakdown);
+        }
       }
     })();
-  }, [user, assessments]);
+  }, [user, clientName, assessments]);
+
+  // Load historical assessment when date is selected
+  useEffect(() => {
+    if (!user || !clientName || !selectedDate) {
+      setHistoricalAssessment(null);
+      return;
+    }
+    
+    setLoadingHistorical(true);
+    (async () => {
+      try {
+        const historical = await reconstructAssessmentAtDate(user.uid, clientName, selectedDate);
+        setHistoricalAssessment(historical);
+      } catch (err) {
+        console.error('Failed to load historical assessment:', err);
+        setHistoricalAssessment(null);
+      } finally {
+        setLoadingHistorical(false);
+      }
+    })();
+  }, [user, clientName, selectedDate]);
 
   if (!user) {
     return (
@@ -208,7 +270,10 @@ const ClientDetail = () => {
 
   if (loading) {
     return (
-      <AppShell title="Client Dashboard">
+      <AppShell 
+        title={`${clientName}'s Dashboard`}
+        subtitle="Comprehensive view of client progress, history, and profile."
+      >
         <div className="py-10 text-sm text-slate-600">Loading client data…</div>
       </AppShell>
     );
@@ -216,8 +281,8 @@ const ClientDetail = () => {
 
   return (
     <AppShell
-      title={clientName}
-      subtitle="View client profile, assessment history, and progress"
+      title={`${clientName}'s Dashboard`}
+      subtitle="Comprehensive view of client progress, history, and profile."
       actions={
         <div className="flex items-center gap-3">
           <Button
@@ -241,7 +306,7 @@ const ClientDetail = () => {
               {isEditing ? <X className="h-4 w-4 mr-2" /> : <Edit2 className="h-4 w-4 mr-2" />}
               {isEditing ? 'Cancel' : 'Edit Profile'}
             </Button>
-            <Button onClick={handleNewAssessment} className="bg-slate-900 text-white hover:bg-slate-800">
+            <Button onClick={() => handleNewAssessment()} className="bg-slate-900 text-white hover:bg-slate-800">
               <UserPlus className="h-4 w-4 mr-2" />
               New Assessment
             </Button>
@@ -371,6 +436,93 @@ const ClientDetail = () => {
           )}
         </div>
 
+        {/* Quick Assessment Options */}
+        <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+            <Target className="h-5 w-5" />
+            Quick Assessments
+          </h3>
+          <p className="text-sm text-slate-600 mb-4">
+            Update specific areas without completing a full assessment
+          </p>
+          <div className="grid gap-3 md:grid-cols-5">
+            <Button
+              variant="outline"
+              onClick={() => handleNewAssessment('inbody')}
+              className="flex flex-col items-center gap-2 h-auto py-4"
+            >
+              <Scan className="h-5 w-5 text-indigo-600" />
+              <span className="text-xs font-semibold">InBody</span>
+              {profile?.lastInBodyDate && (
+                <span className="text-[10px] text-slate-500">
+                  {profile.lastInBodyDate.toDate().toLocaleDateString()}
+                </span>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => handleNewAssessment('posture')}
+              className="flex flex-col items-center gap-2 h-auto py-4"
+            >
+              <UserCheck className="h-5 w-5 text-emerald-600" />
+              <span className="text-xs font-semibold">Posture</span>
+              {profile?.lastPostureDate && (
+                <span className="text-[10px] text-slate-500">
+                  {profile.lastPostureDate.toDate().toLocaleDateString()}
+                </span>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => handleNewAssessment('fitness')}
+              className="flex flex-col items-center gap-2 h-auto py-4"
+            >
+              <Heart className="h-5 w-5 text-red-600" />
+              <span className="text-xs font-semibold">Fitness</span>
+              {profile?.lastFitnessDate && (
+                <span className="text-[10px] text-slate-500">
+                  {profile.lastFitnessDate.toDate().toLocaleDateString()}
+                </span>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => handleNewAssessment('strength')}
+              className="flex flex-col items-center gap-2 h-auto py-4"
+            >
+              <Dumbbell className="h-5 w-5 text-amber-600" />
+              <span className="text-xs font-semibold">Strength</span>
+              {profile?.lastStrengthDate && (
+                <span className="text-[10px] text-slate-500">
+                  {profile.lastStrengthDate.toDate().toLocaleDateString()}
+                </span>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => handleNewAssessment('lifestyle')}
+              className="flex flex-col items-center gap-2 h-auto py-4"
+            >
+              <Activity className="h-5 w-5 text-purple-600" />
+              <span className="text-xs font-semibold">Lifestyle Factors</span>
+              {profile?.lastLifestyleDate && (
+                <span className="text-[10px] text-slate-500">
+                  {profile.lastLifestyleDate.toDate().toLocaleDateString()}
+                </span>
+              )}
+            </Button>
+          </div>
+          <div className="mt-4 pt-4 border-t border-slate-200">
+            <Button
+              onClick={() => handleNewAssessment()}
+              className="w-full bg-slate-900 text-white hover:bg-slate-800"
+            >
+              <UserPlus className="h-4 w-4 mr-2" />
+              Full Assessment
+            </Button>
+          </div>
+        </div>
+
         {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-4">
           <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
@@ -422,11 +574,11 @@ const ClientDetail = () => {
             <div className="grid gap-4 md:grid-cols-5">
               {Object.entries(categoryBreakdown).map(([category, score]) => {
                 const labels: Record<string, string> = {
-                  bodyComp: 'Body Comp',
-                  cardio: 'Cardio',
-                  strength: 'Strength',
-                  movementQuality: 'Movement',
-                  lifestyle: 'Lifestyle',
+                  bodyComp: 'Body Composition',
+                  cardio: 'Metabolic Fitness',
+                  strength: 'Muscular Strength',
+                  movementQuality: 'Movement Quality',
+                  lifestyle: 'Lifestyle Factors',
                 };
                 return (
                   <div key={category} className="text-center">
@@ -474,7 +626,7 @@ const ClientDetail = () => {
                           </div>
                           {assessment.createdAt && (
                             <div className="text-xs text-slate-500 flex items-center gap-1 mt-1">
-                              <Calendar className="h-3 w-3" />
+                              <CalendarIcon className="h-3 w-3" />
                               {assessment.createdAt.toDate().toLocaleDateString()}
                             </div>
                           )}
@@ -531,6 +683,31 @@ const ClientDetail = () => {
               onClick={() => deleteDialog && handleDeleteAssessment(deleteDialog.id)}
             >
               Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Comparison Dialog */}
+      <Dialog open={showComparison} onOpenChange={setShowComparison}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Assessment Comparison</DialogTitle>
+            <DialogDescription>
+              Compare assessment from {comparisonDate?.toLocaleDateString()} with current assessment
+            </DialogDescription>
+          </DialogHeader>
+          {comparisonDate && currentAssessment && historicalAssessment && (
+            <AssessmentComparison
+              oldData={historicalAssessment.formData}
+              newData={currentAssessment.formData}
+              oldDate={comparisonDate}
+              newDate={new Date()}
+            />
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowComparison(false)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

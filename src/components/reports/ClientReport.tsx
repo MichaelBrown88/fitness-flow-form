@@ -3,7 +3,22 @@ import type { FormData } from '@/contexts/FormContext';
 import type { ScoreSummary, RoadmapPhase } from '@/lib/scoring';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger 
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  CheckCircle2, 
+  AlertCircle, 
+  Info, 
+  Maximize2 
+} from 'lucide-react';
 import LifestyleRadarChart from './LifestyleRadarChart';
 import CategoryRadarChart from './CategoryRadarChart';
 import OverallRadarChart from './OverallRadarChart';
@@ -18,11 +33,11 @@ function circleColor(score: number): string {
 
 function niceLabel(id: string): string {
   switch (id) {
-    case 'bodyComp': return 'Body composition';
-    case 'strength': return 'Strength & endurance';
-    case 'cardio': return 'Cardio fitness';
-    case 'movementQuality': return 'Posture & Mobility';
-    case 'lifestyle': return 'Lifestyle';
+    case 'bodyComp': return 'Body Composition';
+    case 'strength': return 'Muscular Strength';
+    case 'cardio': return 'Metabolic Fitness';
+    case 'movementQuality': return 'Movement Quality';
+    case 'lifestyle': return 'Lifestyle Factors';
     default: return id;
   }
 }
@@ -64,9 +79,10 @@ function generateClientFriendlySummary(analysis: any, view: string): string {
       }
     }
     
-    if (spineStatus && spineStatus !== 'Normal') {
+    if (spineStatus && (spineStatus.includes('Scoliosis') || spineStatus !== 'Normal')) {
       const curve = analysis.spinal_curvature?.curve_degrees || 0;
-      parts.push(`Your spine shows a lateral curve (${curve.toFixed(1)}°). This is a sideways curve that can affect your overall alignment and may cause one side of your body to work harder than the other.`);
+      const direction = curve > 0 ? 'right' : 'left';
+      parts.push(`Your spine shows a lateral curve (${Math.abs(curve).toFixed(1)}° to the ${direction}). This is a sideways curve known as scoliosis, which can affect your overall alignment and may cause one side of your body to work harder than the other, potentially leading to discomfort or muscle imbalances.`);
     }
     
     if (kneeStatus && kneeStatus !== 'Neutral') {
@@ -125,7 +141,7 @@ function generateClientFriendlySummary(analysis: any, view: string): string {
   return parts.join(' ');
 }
 
-// Posture Analysis Viewer - shows one view at a time with navigation
+// Posture Analysis Viewer - shows 4 cards that open detailed analysis
 function PostureAnalysisViewer({ 
   postureResults, 
   postureImages 
@@ -134,232 +150,243 @@ function PostureAnalysisViewer({
   postureImages: Record<string, string> | undefined;
 }) {
   const views = ['front', 'back', 'side-left', 'side-right'] as const;
-  const [currentIndex, setCurrentIndex] = useState(0);
   const availableViews = views.filter(v => postureResults[v]);
   
   if (availableViews.length === 0) return null;
-  
-  const currentView = availableViews[currentIndex];
-  const analysis = postureResults[currentView];
-  // Try multiple image sources: Storage URL first (full-size with deviation lines), then compressed
-  const imageUrl = postureImages?.[currentView] || 
-                   (postureImages as any)?.[`postureImagesStorage_${currentView}`] ||
-                   (postureImages as any)?.[`postureImagesFull_${currentView}`];
-  
-  const nextView = () => {
-    setCurrentIndex((prev) => (prev + 1) % availableViews.length);
-  };
-  
-  const prevView = () => {
-    setCurrentIndex((prev) => (prev - 1 + availableViews.length) % availableViews.length);
-  };
-  
-  const getFindings = () => {
-    const findings: Array<{ label: string; status: string; description: string }> = [];
-    
-    if (analysis.forward_head && analysis.forward_head.status !== 'Neutral') {
-      findings.push({
-        label: 'Head Position',
-        status: analysis.forward_head.status,
-        description: analysis.forward_head.description
-      });
-    }
-    
-    if (analysis.shoulder_alignment && analysis.shoulder_alignment.status !== 'Neutral') {
-      findings.push({
-        label: 'Shoulders',
-        status: analysis.shoulder_alignment.status,
-        description: analysis.shoulder_alignment.description
-      });
-    }
-    
-    if (analysis.kyphosis && analysis.kyphosis.status !== 'Normal') {
-      findings.push({
-        label: 'Upper Back',
-        status: analysis.kyphosis.status,
-        description: analysis.kyphosis.description
-      });
-    }
-    
-    if (analysis.lordosis && analysis.lordosis.status !== 'Normal') {
-      findings.push({
-        label: 'Lower Back',
-        status: analysis.lordosis.status,
-        description: analysis.lordosis.description
-      });
-    }
-    
-    if (analysis.pelvic_tilt && analysis.pelvic_tilt.status !== 'Neutral') {
-      findings.push({
-        label: 'Pelvis',
-        status: analysis.pelvic_tilt.status,
-        description: analysis.pelvic_tilt.description
-      });
-    }
-    
-    if (analysis.hip_alignment && analysis.hip_alignment.status !== 'Neutral') {
-      findings.push({
-        label: 'Hips',
-        status: analysis.hip_alignment.status,
-        description: analysis.hip_alignment.description
-      });
-    }
-    
-    if (analysis.knee_position && analysis.knee_position.status !== 'Neutral') {
-      findings.push({
-        label: 'Knees',
-        status: analysis.knee_position.status,
-        description: analysis.knee_position.description
-      });
-    }
-    
-    if (analysis.spinal_curvature && analysis.spinal_curvature.status !== 'Normal') {
-      findings.push({
-        label: 'Spine',
-        status: analysis.spinal_curvature.status,
-        description: analysis.spinal_curvature.description
-      });
-    }
-    
-    return findings;
-  };
-  
-  const findings = getFindings();
-  
-  // Get areas for improvement specific to this view
-  const getAreasForImprovement = (): string[] => {
-    const areas: string[] = [];
-    if (analysis.forward_head && analysis.forward_head.status !== 'Neutral') {
-      areas.push('Head posture');
-    }
-    if (analysis.shoulder_alignment && analysis.shoulder_alignment.status !== 'Neutral') {
-      areas.push('Shoulder alignment');
-    }
-    if (analysis.kyphosis && analysis.kyphosis.status !== 'Normal') {
-      areas.push('Upper back posture');
-    }
-    if (analysis.lordosis && analysis.lordosis.status !== 'Normal') {
-      areas.push('Lower back posture');
-    }
-    if (analysis.pelvic_tilt && analysis.pelvic_tilt.status !== 'Neutral') {
-      areas.push('Pelvic alignment');
-    }
-    if (analysis.hip_alignment && analysis.hip_alignment.status !== 'Neutral') {
-      areas.push('Hip alignment');
-    }
-    if (analysis.knee_position && analysis.knee_position.status !== 'Neutral') {
-      areas.push('Knee alignment');
-    }
-    if (analysis.spinal_curvature && analysis.spinal_curvature.status !== 'Normal') {
-      areas.push('Spinal alignment');
-    }
-    return areas;
-  };
-  
-  const areasForImprovement = getAreasForImprovement();
-  
+
   return (
-    <div className="space-y-4">
-      <div className="bg-white rounded-xl border border-slate-200 p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h5 className="text-sm font-bold uppercase text-indigo-600">{currentView.replace('-', ' ')} View</h5>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={prevView}
-              disabled={availableViews.length <= 1}
-              className="p-1 rounded hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <span className="text-xs text-slate-500">
-              {currentIndex + 1} / {availableViews.length}
-            </span>
-            <button
-              onClick={nextView}
-              disabled={availableViews.length <= 1}
-              className="p-1 rounded hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {availableViews.map((view) => (
+        <PostureViewCard 
+          key={view}
+          view={view}
+          analysis={postureResults[view]}
+          imageUrl={
+            postureImages?.[view] || 
+            (postureImages as any)?.[`postureImagesStorage_${view}`] ||
+            (postureImages as any)?.[`postureImagesFull_${view}`]
+          }
+        />
+      ))}
+    </div>
+  );
+}
+
+function PostureViewCard({ view, analysis, imageUrl }: { view: string, analysis: any, imageUrl: string }) {
+  // High-level summary of findings for the preview
+  const getBriefFindings = () => {
+    const brief: string[] = [];
+    if (analysis.forward_head && analysis.forward_head.status !== 'Neutral') {
+      brief.push(`${analysis.forward_head.status} FHP`);
+    }
+    if (analysis.head_alignment && analysis.head_alignment.status !== 'Neutral') {
+      brief.push(`Head Tilt`);
+    }
+    if (analysis.shoulder_alignment && analysis.shoulder_alignment.status !== 'Neutral') {
+      brief.push('Shoulder Asymmetry');
+    }
+    if (analysis.spinal_curvature && analysis.spinal_curvature.status !== 'Normal') {
+      brief.push('Spinal Curvature');
+    }
+    if (analysis.pelvic_tilt && analysis.pelvic_tilt.status !== 'Neutral') {
+      brief.push('Pelvic Tilt');
+    }
+    return brief.length > 0 ? brief : ['Neutral Alignment'];
+  };
+
+  const briefFindings = getBriefFindings();
+  const isNeutral = briefFindings[0] === 'Neutral Alignment';
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <div 
+          className="group relative cursor-pointer overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all hover:shadow-md active:scale-[0.98]"
+        >
+          {/* View Label */}
+          <div className="absolute top-2 left-2 z-10">
+            <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm text-[8px] font-black uppercase tracking-widest text-slate-600 border-none shadow-sm h-5">
+              {view.replace('-', ' ')}
+            </Badge>
+          </div>
+
+          {/* Status Icon */}
+          <div className="absolute top-2 right-2 z-10">
+            {isNeutral ? (
+              <CheckCircle2 className="h-4 w-4 text-emerald-500 fill-white" />
+            ) : (
+              <AlertCircle className="h-4 w-4 text-amber-500 fill-white" />
+            )}
+          </div>
+
+          {/* Image Portal (Cropped to head/shoulders) */}
+          <div className="aspect-[4/5] w-full overflow-hidden bg-slate-50">
+            <img 
+              src={imageUrl} 
+              alt={view}
+              className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+              style={{ objectPosition: 'center 10%' }} // Focus on head/neck area
+            />
+          </div>
+
+          {/* Feedback Overlay */}
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-3 pt-8 text-center">
+            <div className="flex flex-col gap-0.5">
+              {briefFindings.slice(0, 1).map((finding, i) => (
+                <span key={i} className={`text-[9px] font-black uppercase tracking-tight leading-none ${isNeutral ? 'text-emerald-400' : 'text-white'}`}>
+                  {finding}
+                </span>
+              ))}
+              <span className="text-[7px] font-medium text-white/70">Click to expand analysis</span>
+            </div>
+          </div>
+
+          {/* Action Overlay */}
+          <div className="absolute inset-0 flex items-center justify-center bg-indigo-600/10 opacity-0 transition-opacity group-hover:opacity-100">
+            <div className="rounded-full bg-white/90 p-2 shadow-lg scale-75 group-hover:scale-100 transition-transform">
+              <Maximize2 className="h-4 w-4 text-indigo-600" />
+            </div>
           </div>
         </div>
+      </DialogTrigger>
+
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0 border-none sm:rounded-[32px] shadow-2xl bg-white">
+        <DialogHeader className="sr-only">
+          <DialogTitle>Posture Analysis Details - {view.replace('-', ' ')} View</DialogTitle>
+        </DialogHeader>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Image */}
-          {imageUrl ? (
-            <div className="relative aspect-[3/4] rounded-lg overflow-hidden border-2 border-slate-300 bg-white">
+        <div className="flex flex-col">
+          {/* Top: Cropped Image Portal (Upper Torso & Head Focus) */}
+          <div className="w-full bg-[#0a0d14] relative h-[320px] md:h-[400px] overflow-hidden">
+            <div className="absolute inset-0 flex items-center justify-center">
               <img 
                 src={imageUrl} 
-                alt={currentView} 
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  console.error('[POSTURE] Image failed to load:', imageUrl, 'Trying alternative sources...');
-                  // Try alternative image sources
-                  const altImage = (postureImages as any)?.[`postureImagesStorage_${currentView}`] || 
-                                  (postureImages as any)?.[`postureImagesFull_${currentView}`];
-                  if (altImage && altImage !== imageUrl) {
-                    (e.target as HTMLImageElement).src = altImage;
-                  } else {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }
-                }}
+                alt={view} 
+                className="w-full h-full object-cover scale-[1.4]" 
+                style={{ objectPosition: 'center 15%' }} 
               />
-              <div className="absolute bottom-1 left-1 right-1 bg-black/60 text-white text-[7px] px-1.5 py-0.5 rounded">
-                Green: Reference lines | Red: Deviations
-              </div>
             </div>
-          ) : (
-            <div className="relative aspect-[3/4] rounded-lg overflow-hidden border-2 border-slate-300 bg-slate-100 flex items-center justify-center">
-              <p className="text-xs text-slate-400">Image not available</p>
-            </div>
-          )}
-          
-          {/* Findings */}
-          <div className="space-y-3">
-            {findings.length > 0 ? (
-              findings.map((finding, idx) => (
-                <div key={idx} className="border-l-2 border-indigo-500 pl-3 py-2">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-xs font-bold text-slate-700">{finding.label}</span>
-                    <span className="text-xs font-black text-slate-900">{finding.status}</span>
-                  </div>
-                  <p className="text-[10px] text-slate-600 leading-tight">{finding.description}</p>
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-8 text-slate-500">
-                <p className="text-sm font-semibold">No significant deviations found</p>
-                <p className="text-xs mt-1">Posture appears neutral for this view</p>
-              </div>
-            )}
             
-            {/* Always show summary - generate one if missing */}
-            <div className="pt-3 border-t border-slate-200 mt-3">
-              <p className="text-xs font-semibold text-slate-700 mb-1">Summary:</p>
-              {analysis.overall_assessment ? (
-                <p className="text-[10px] text-slate-600 leading-relaxed">{analysis.overall_assessment}</p>
-              ) : (
-                <p className="text-[10px] text-slate-600 leading-relaxed">
-                  {generateClientFriendlySummary(analysis, currentView)}
-                </p>
+            {/* Overlay Label */}
+            <div className="absolute top-6 left-6 flex flex-col gap-2 z-10">
+              <Badge className="bg-indigo-600/90 hover:bg-indigo-600 text-white border-none text-[10px] uppercase font-black tracking-[0.2em] px-4 py-2 rounded-full shadow-lg backdrop-blur-sm">
+                {view.replace('-', ' ')} View
+              </Badge>
+              {analysis.spinal_curvature && analysis.spinal_curvature.status !== 'Normal' && (
+                <Badge className="bg-red-600/90 text-white border-none text-[9px] uppercase font-black tracking-widest px-3 py-1.5 rounded-full shadow-lg animate-pulse backdrop-blur-sm">
+                  Scoliosis Flag
+                </Badge>
               )}
+            </div>
+
+            {/* Bottom Legend */}
+            <div className="absolute bottom-4 left-6 right-6 flex items-center justify-center gap-6 z-10">
+              <div className="flex items-center gap-2 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
+                <div className="h-1.5 w-1.5 rounded-full bg-[#00ff00]" />
+                <span className="text-[8px] font-black uppercase tracking-widest text-white/80">Target</span>
+              </div>
+              <div className="flex items-center gap-2 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
+                <div className="h-1.5 w-1.5 rounded-full bg-[#ff0000]" />
+                <span className="text-[8px] font-black uppercase tracking-widest text-white/80">Deviations</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom: Split Feedback Section */}
+          <div className="p-8 md:p-12 bg-white">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+              
+              {/* Left Column: Deviations */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+                  <div className="h-8 w-8 rounded-xl bg-red-50 flex items-center justify-center">
+                    <AlertCircle className="h-4 w-4 text-red-500" />
+                  </div>
+                  <h4 className="text-xs font-black uppercase tracking-[0.2em] text-slate-900">Identified Deviations</h4>
+                </div>
+                
+                <div className="space-y-5">
+                  {Object.entries(analysis).map(([key, value]: [string, any]) => {
+                    if (
+                      !value || 
+                      typeof value !== 'object' || 
+                      Array.isArray(value) || 
+                      !value.status || 
+                      value.status === 'Neutral' || 
+                      value.status === 'Normal' || 
+                      key === 'landmarks'
+                    ) return null;
+                    
+                    return (
+                      <div key={key} className="space-y-1 animate-in fade-in slide-in-from-left-2 duration-300">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] font-black uppercase tracking-widest text-indigo-600">{key.replace('_', ' ')}</span>
+                          <span className="text-[8px] font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded uppercase">{value.status}</span>
+                        </div>
+                        <p className="text-[13px] font-bold text-slate-700 leading-snug">{value.description}</p>
+                      </div>
+                    );
+                  })}
+                  {isNeutral && (
+                    <div className="py-8 text-center bg-emerald-50/30 rounded-2xl border border-dashed border-emerald-100">
+                      <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest">Ideal Functional Range</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Right Column: Corrective Strategy */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+                  <div className="h-8 w-8 rounded-xl bg-emerald-50 flex items-center justify-center">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  </div>
+                  <h4 className="text-xs font-black uppercase tracking-[0.2em] text-slate-900">Corrective Strategy</h4>
+                </div>
+
+                <div className="space-y-5">
+                  {Object.entries(analysis).map(([key, value]: [string, any]) => {
+                    if (
+                      !value || 
+                      typeof value !== 'object' || 
+                      Array.isArray(value) || 
+                      !value.status || 
+                      value.status === 'Neutral' || 
+                      value.status === 'Normal' || 
+                      !value.recommendation ||
+                      key === 'landmarks'
+                    ) return null;
+                    
+                    return (
+                      <div key={`rec-${key}`} className="space-y-1 animate-in fade-in slide-in-from-right-2 duration-300">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600">Action: {key.replace('_', ' ')}</span>
+                        </div>
+                        <p className="text-[13px] font-medium text-slate-600 leading-snug italic">"{value.recommendation}"</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+            </div>
+
+            {/* Expert Summary Block - Full Width */}
+            <div className="mt-12 pt-8 border-t border-slate-100">
+              <div className="bg-slate-900 rounded-[24px] p-8 text-white relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-6 opacity-5">
+                  <Info className="h-24 w-24 text-white" />
+                </div>
+                <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400 mb-4">Summary Assessment</h5>
+                <p className="text-[15px] font-medium leading-relaxed text-slate-300 italic relative z-10">
+                  "{analysis.overall_assessment || generateClientFriendlySummary(analysis, view)}"
+                </p>
+              </div>
             </div>
           </div>
         </div>
-        
-        {/* Areas for improvement - dynamic per view */}
-        {areasForImprovement.length > 0 && (
-          <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-3">
-            <h4 className="text-xs font-semibold text-rose-800 mb-2">Areas for improvement</h4>
-            <ul className="list-disc pl-5 text-[10px] text-rose-900 space-y-1">
-              {areasForImprovement.map((area, i) => (
-                <li key={i}>{area}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -485,7 +512,7 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
       if (cat.id === 'strength') base = Math.max(12, strengthWeeks);
       if (cat.id === 'cardio') base = Math.max(12, cardioWeeks);
       if (cat.id === 'movementQuality') base = Math.max(mobilityWeeks, postureWeeks);
-      if (cat.id === 'lifestyle') base = 4; // Lifestyle is foundational, quick wins
+      if (cat.id === 'lifestyle') base = 4; // Lifestyle Factors is foundational, quick wins
       map[cat.id] = Math.round(base * sessionFactor);
     }
     return map;
@@ -892,9 +919,9 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
     
     // Check for any filled fields across all categories
     const hasBodyComp = !!(formData.inbodyWeightKg && parseFloat(formData.inbodyWeightKg || '0') > 0);
-    const hasStrength = !!(formData.maxPushups && parseFloat(formData.maxPushups || '0') > 0) ||
+    const hasStrength = !!(formData.pushupMaxReps && parseFloat(formData.pushupMaxReps || '0') > 0) ||
                         !!(formData.pushupsOneMinuteReps && parseFloat(formData.pushupsOneMinuteReps || '0') > 0);
-    const hasCardio = !!(formData.cardioMinutes && parseFloat(formData.cardioMinutes || '0') > 0);
+    const hasCardio = !!(formData.cardioRestingHr && parseFloat(formData.cardioRestingHr || '0') > 0);
     const hasPosture = !!(formData.postureAiResults || formData.postureHeadOverall || formData.postureShouldersOverall);
     const hasLifestyle = !!(formData.sleepQuality || formData.stressLevel || formData.hydrationHabits || 
                            formData.nutritionHabits || (formData.stepsPerDay && parseFloat(formData.stepsPerDay || '0') > 0));
@@ -1051,18 +1078,27 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
                       </div>
                     </div>
                     
-                    {/* Radar chart */}
-                    <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-                      <h4 className="text-base font-semibold text-slate-900 mb-4">Detailed breakdown</h4>
-                      {cat.id === 'movementQuality' && formData?.postureAiResults ? (
-                        <PostureAnalysisViewer 
-                          postureResults={formData.postureAiResults} 
-                          postureImages={(formData.postureImagesStorage || formData.postureImages || {}) as Record<string, string>} 
-                        />
-                      ) : (
-                        <TooltipProvider>
-                          <CategoryRadarChart details={cat.details} categoryName={niceLabel(cat.id)} />
-                        </TooltipProvider>
+                    {/* Radar chart & Posture Viewer */}
+                        <div className="space-y-6">
+                      <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+                        <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6 text-center">Functional Mobility Breakdown</h4>
+                        <div className="flex justify-center">
+                          <div className="w-full max-w-md">
+                            <TooltipProvider>
+                              <CategoryRadarChart details={cat.details} categoryName={niceLabel(cat.id)} />
+                            </TooltipProvider>
+                                  </div>
+                                </div>
+                              </div>
+
+                      {cat.id === 'movementQuality' && formData?.postureAiResults && (
+                        <div className="space-y-4">
+                          <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 px-1">Posture scan results</h4>
+                          <PostureAnalysisViewer 
+                            postureResults={formData.postureAiResults} 
+                            postureImages={(formData.postureImagesStorage || formData.postureImages || {}) as Record<string, string>} 
+                          />
+                          </div>
                       )}
                     </div>
                     
@@ -1534,8 +1570,8 @@ export default function ClientReport({ scores, roadmap, goals, bodyComp, formDat
         // Need at least 2 categories with scores > 0 (not just posture)
         const categoriesWithData = scores.categories.filter(c => c.score > 0).length;
         const hasBodyComp = formData?.inbodyWeightKg && parseFloat(formData.inbodyWeightKg) > 0;
-        const hasStrength = formData?.maxPushups && parseFloat(formData.maxPushups) > 0;
-        const hasCardio = formData?.cardioMinutes && parseFloat(formData.cardioMinutes) > 0;
+        const hasStrength = formData?.pushupMaxReps && parseFloat(formData.pushupMaxReps) > 0;
+        const hasCardio = formData?.cardioRestingHr && parseFloat(formData.cardioRestingHr) > 0;
         const hasLifestyle = formData?.sleepQuality || formData?.stressLevel;
         const isFormComplete = categoriesWithData >= 2 || (hasBodyComp && hasStrength) || (hasStrength && hasCardio) || (hasCardio && hasLifestyle);
         

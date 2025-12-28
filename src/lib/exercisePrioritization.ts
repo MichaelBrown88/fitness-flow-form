@@ -93,6 +93,8 @@ export function prioritizeExercises(
       name: 'Walking / Daily Movement',
       setsReps: '6-10k steps/day',
       notes: 'Increase daily activity to support fat loss',
+      priority: 'critical',
+      reason: 'Low activity is a significant barrier to fat loss and overall health',
       sessionTypes: ['full-body', 'cardio'],
       addresses: ['obesity', 'metabolic health']
     });
@@ -137,15 +139,29 @@ export function prioritizeExercises(
       
       // Severe spinal curvature (scoliosis >20°)
       if (analysis.spinal_curvature && analysis.spinal_curvature.curve_degrees > 20) {
-        criticalIssues.push('Significant spinal curvature - requires immediate attention');
+        criticalIssues.push(`Severe spinal curvature (${analysis.spinal_curvature.curve_degrees.toFixed(1)}°) - requires immediate attention`);
         critical.push({
-          name: 'Unilateral Core Work',
-          setsReps: '3 x 8-12/side',
-          notes: 'Focus on weaker side to address curvature',
+          name: 'Side-Specific Core Stabilization',
+          setsReps: '3 x 10-15/side',
+          notes: 'Focus on strengthening the convex side of the curve',
           priority: 'critical',
-          reason: 'Significant spinal curvature increases injury risk',
+          reason: 'Severe scoliosis significantly increases injury risk and requires targeted core stabilization',
           sessionTypes: ['full-body', 'core'],
-          addresses: ['spinal curvature', 'injury prevention']
+          addresses: ['spinal curvature', 'scoliosis', 'injury prevention']
+        });
+      }
+
+      // Severe head tilt (>10°)
+      if (analysis.head_alignment && analysis.head_alignment.tilt_degrees > 10) {
+        criticalIssues.push(`Severe head tilt (${analysis.head_alignment.tilt_degrees.toFixed(1)}°) - high neck/shoulder injury risk`);
+        critical.push({
+          name: 'Isolateral Neck Stabilization',
+          setsReps: '3 x 10-12/side',
+          notes: 'Gentle isometric holds to correct head tilt',
+          priority: 'critical',
+          reason: 'Severe head tilt can lead to chronic neck pain and shoulder compensation',
+          sessionTypes: ['upper-body', 'full-body'],
+          addresses: ['head tilt', 'neck pain', 'injury prevention']
         });
       }
     }
@@ -323,6 +339,34 @@ export function prioritizeExercises(
             addresses: ['pelvic tilt', 'lower back']
           });
         }
+      }
+
+      // Moderate head tilt (5-10°)
+      if (analysis.head_alignment && analysis.head_alignment.tilt_degrees >= 5 && analysis.head_alignment.tilt_degrees <= 10) {
+        importantIssues.push(`Moderate head tilt (${analysis.head_alignment.tilt_degrees.toFixed(1)}°)`);
+        important.push({
+          name: 'Cervical Reset Drills',
+          setsReps: '3 x 10',
+          notes: 'Focus on neutral head position awareness',
+          priority: 'important',
+          reason: 'Addresses moderate head tilt to improve upper body alignment',
+          sessionTypes: ['upper-body', 'full-body'],
+          addresses: ['head tilt', 'posture']
+        });
+      }
+
+      // Moderate spinal curvature (10-20°)
+      if (analysis.spinal_curvature && analysis.spinal_curvature.curve_degrees >= 10 && analysis.spinal_curvature.curve_degrees <= 20) {
+        importantIssues.push(`Moderate spinal curvature (${analysis.spinal_curvature.curve_degrees.toFixed(1)}°)`);
+        important.push({
+          name: 'Asymmetric Core Bracing',
+          setsReps: '3 x 30s holds',
+          notes: 'Focus on maintaining neutral spine under load',
+          priority: 'important',
+          reason: 'Addresses moderate spinal curvature to improve core stability',
+          sessionTypes: ['full-body', 'core'],
+          addresses: ['spinal curvature', 'posture']
+        });
       }
     }
   }

@@ -65,7 +65,7 @@ const PublicClientReport = () => {
     );
   }
 
-  const bodyComp = generateBodyCompInterpretation(formData);
+  const bodyComp = formData && scores ? generateBodyCompInterpretation(formData, scores) : null;
 
   return (
     <AppShell

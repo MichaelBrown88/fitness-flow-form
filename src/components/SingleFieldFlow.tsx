@@ -60,12 +60,12 @@ export default function SingleFieldFlow({ onSubmit }: { onSubmit: () => void }) 
     { key: 'hingeQuality', label: 'Hip Hinge – Quality', type: 'select', options: [ { value: 'good', label: 'Good' }, { value: 'compensation', label: 'Compensations' }, { value: 'poor', label: 'Poor' } ] },
     { key: 'hingeBalance', label: 'Hip Hinge – Balance', type: 'select', options: [ { value: 'stable', label: 'Stable' }, { value: 'slight-wobble', label: 'Slight wobble' }, { value: 'unstable', label: 'Unstable' } ] },
     // notes removed
-    // Strength & endurance
+    // Muscular Strength
     { key: 'pushupReps', label: 'Push-ups in 1 minute', type: 'number', placeholder: 'e.g., 25', required: true },
     { key: 'plankHold', label: 'Plank Hold (sec)', type: 'number', placeholder: 'e.g., 60', required: true },
     { key: 'bwSquats1Min', label: 'Bodyweight Squats in 1 minute', type: 'number', placeholder: 'e.g., 35', required: true },
     // notes removed
-    // Cardio
+    // Metabolic Fitness
     { key: 'cardioTestType', label: 'Cardio Test Type', type: 'select', options: [ { value: 'step-test', label: 'Step Test (3 min)' }, { value: 'treadmill-3min', label: 'Treadmill (3 min)' } ] },
     { key: 'stepTestImmediateHr', label: 'Step Test – Immediate HR (bpm)', type: 'number', placeholder: 'e.g., 140' },
     { key: 'stepTestRecoveryIntervalSec', label: 'Step Test – Recovery Interval (sec)', type: 'number', placeholder: '60' },

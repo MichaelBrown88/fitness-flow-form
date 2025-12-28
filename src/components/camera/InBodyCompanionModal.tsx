@@ -105,10 +105,10 @@ export const InBodyCompanionModal: React.FC<InBodyCompanionModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden rounded-3xl p-0 border-none bg-white">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden rounded-3xl p-0 border-none bg-white text-left">
         <VisuallyHidden>
           <DialogTitle>InBody Scan Remote Camera</DialogTitle>
-          <DialogDescription>Use your iPhone to scan the InBody report</DialogDescription>
+          <DialogDescription>Use your iPhone to scan the InBody report for automated assessment data entry.</DialogDescription>
         </VisuallyHidden>
         <div className="flex flex-col lg:flex-row h-full">
           

@@ -49,19 +49,22 @@ function renderCustomAxisTick({ payload, x, y, textAnchor, index, color }: any) 
 
 export default function CategoryRadarChart({ details, categoryName }: CategoryRadarChartProps) {
   // Map each category tab to a distinct base colour
-  const CATEGORY_COLORS: Record<string, string> = {
-    'Body composition': '#10b981',        // emerald-500
-    'Strength & endurance': '#6366f1',    // indigo-500
-    'Cardio fitness': '#0ea5e9',          // sky-500
-    'Movement quality': '#f59e0b',        // amber-500
-    'Lifestyle': '#a855f7',               // purple-500
-  };
+const CATEGORY_COLORS: Record<string, string> = {
+  'Body Composition': '#10b981',        // emerald-500
+  'Muscular Strength': '#6366f1',    // indigo-500
+  'Metabolic Fitness': '#0ea5e9',          // sky-500
+  'Movement Quality': '#f59e0b',        // amber-500
+  'Lifestyle Factors': '#a855f7',               // purple-500
+};
   const baseColor = CATEGORY_COLORS[categoryName] ?? '#3b82f6';
 
   const CustomTick = (props: any) => renderCustomAxisTick({ ...props, color: baseColor });
   
   // Filter out details with no score or invalid values
-  const validDetails = details.filter(d => d.score > 0 && d.value !== '-' && d.value !== '');
+  // For Movement Quality, we want to show all 3 main points even if score is 0
+  const validDetails = categoryName === 'Movement Quality' 
+    ? details 
+    : details.filter(d => d.score > 0 && d.value !== '-' && d.value !== '');
   
   if (validDetails.length === 0) {
     return (
@@ -71,16 +74,17 @@ export default function CategoryRadarChart({ details, categoryName }: CategoryRa
     );
   }
   
-  // Prepare data for radar chart - limit to top 6-8 most important metrics
+  // Prepare data for radar chart
   const radarData = validDetails
     .map(d => ({
-      name: d.label.length > 15 ? d.label.substring(0, 15) + '...' : d.label,
+      name: d.label,
       fullLabel: d.label,
       value: Math.min(100, Math.max(0, d.score)),
     }))
-    .slice(0, 8); // Limit to 8 metrics for readability
+    .slice(0, 8); 
   
   // Ensure we have at least 3 points for a meaningful radar chart
+  // Movement Quality always has 3 points now
   if (radarData.length < 3) {
     return (
       <div className="flex h-64 items-center justify-center rounded-lg border border-slate-200 bg-slate-50">

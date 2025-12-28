@@ -69,40 +69,29 @@ export const phaseDefinitions = [
       {
         id: 'basic-client-info',
         title: 'Basic Client Info',
-        description: 'Personal and contact details.',
-        instructions: {
-          clientInstructions: 'Provide your contact info to begin.',
-          coachNotes: 'Ensure accuracy before proceeding.'
-        },
         fields: [
-          { id: 'fullName' as keyof FormData, type: 'text' as FieldType, label: 'Name', required: true, placeholder: 'First and last name' },
-          { id: 'email' as keyof FormData, type: 'email' as FieldType, label: 'Email address', required: true, placeholder: 'client@email.com' },
-          { id: 'phone' as keyof FormData, type: 'tel' as FieldType, label: 'Phone number', required: true, placeholder: '(555) 123-4567' },
-          { id: 'dateOfBirth' as keyof FormData, type: 'date' as FieldType, label: 'Date of birth', required: true },
-          { id: 'heightCm' as keyof FormData, type: 'number' as FieldType, label: 'Height (cm)', required: true, placeholder: 'e.g., 175' },
-          { id: 'gender' as keyof FormData, type: 'select' as FieldType, label: 'Gender', required: true, options: [{ value: 'male', label: 'Male' }, { value: 'female', label: 'Female' }] },
-          { id: 'assignedCoach' as keyof FormData, type: 'select' as FieldType, label: 'Assigned Coach', required: true, options: [{ value: 'coach-mike', label: 'Coach Mike' }, { value: 'coach-selina', label: 'Coach Selina' }] },
+          { id: 'fullName' as keyof FormData, type: 'text' as FieldType, label: 'Name', required: true, placeholder: 'First and last name', tooltip: 'Enter the client\'s official full name for report generation.' },
+          { id: 'email' as keyof FormData, type: 'email' as FieldType, label: 'Email address', required: true, placeholder: 'client@email.com', tooltip: 'Used for sending the digital assessment report.' },
+          { id: 'phone' as keyof FormData, type: 'tel' as FieldType, label: 'Phone number', required: true, placeholder: '(555) 123-4567', tooltip: 'Used for SMS notifications and contact.' },
+          { id: 'dateOfBirth' as keyof FormData, type: 'date' as FieldType, label: 'Date of birth', required: true, tooltip: 'Required to calculate age-adjusted health and fitness scores.' },
+          { id: 'heightCm' as keyof FormData, type: 'number' as FieldType, label: 'Height (cm)', required: true, placeholder: 'e.g., 175', tooltip: 'Required for BMI and body composition calculations.' },
+          { id: 'gender' as keyof FormData, type: 'select' as FieldType, label: 'Gender', required: true, options: [{ value: 'male', label: 'Male' }, { value: 'female', label: 'Female' }], tooltip: 'Used for physiological baseline comparisons (SMM, Body Fat).' },
+          { id: 'assignedCoach' as keyof FormData, type: 'select' as FieldType, label: 'Assigned Coach', required: true, options: [{ value: 'coach-mike', label: 'Coach Mike' }, { value: 'coach-selina', label: 'Coach Selina' }], tooltip: 'Select the primary coach responsible for this client.' },
         ],
       },
-      // Goals moved to final phase P7
     ],
   },
   {
     id: 'P1',
-    title: 'Lifestyle Overview',
+    title: 'Lifestyle Factors',
     summary: 'Daily habits that impact training and recovery.',
     gateHint: 'Complete lifestyle before health screening.',
     sections: [
       {
         id: 'lifestyle-overview',
-        title: 'Lifestyle Overview',
-        description: 'Habits and routines.',
-        instructions: {
-          clientInstructions: 'Answer honestly about your typical routines.',
-          coachNotes: 'Use to set volume and recovery strategies.'
-        },
+        title: 'Lifestyle Factors',
         fields: [
-          { id: 'activityLevel' as keyof FormData, type: 'select' as FieldType, label: 'Activity Level', required: true, tooltip: 'How active are you outside dedicated workouts? (daily movement, job activity, errands).', options: [
+          { id: 'activityLevel' as keyof FormData, type: 'select' as FieldType, label: 'Activity Level', required: true, tooltip: 'Instructions:\n1. Consider daily movement outside of the gym (job, chores).\n2. Sedentary = Desk job, minimal walking.\n3. Active = Standing job or 10k+ steps daily.', options: [
             { value: 'sedentary', label: 'Sedentary' },
             { value: 'lightly-active', label: 'Lightly Active' },
             { value: 'moderately-active', label: 'Moderately Active' },
@@ -138,82 +127,69 @@ export const phaseDefinitions = [
   },
   {
     id: 'P2',
-    title: 'Health screen and body comp',
+    title: 'Body Composition',
     summary: 'PAR-Q and Inbody scan.',
     gateHint: 'Complete before movement assessment.',
     sections: [
       {
         id: 'parq',
         title: 'Par Q',
-        description: 'Physical Activity Readiness Questionnaire',
-        instructions: {
-          clientInstructions: 'Answer the PAR-Q+ honestly.',
-          coachNotes: 'If flags appear, pause testing and refer as needed.'
-        },
         fields: [
           {
             id: 'parqQuestionnaire' as keyof FormData,
             type: 'parq' as FieldType,
             label: 'PAR-Q Questionnaire',
             required: true,
+            tooltip: 'Instructions:\n1. Answer each question carefully.\n2. Any "YES" answer requires medical clearance before physical testing.',
           },
         ],
       },
       {
         id: 'body-comp',
-        title: 'InBody 270 Scan',
-        description: 'Collect the 12 primary markers from the InBody 270 for clear decisions.',
-        instructions: {
-          clientInstructions: 'Stand still on the machine as instructed.',
-          coachNotes: 'Record: Weight, SMM, BFM, BF%, BMI, VFL, WHR, TBW (L), Segmental lean mass (kg for 5 regions), BMR, Score.'
-        },
+        title: 'Body Composition',
         fields: [
           // InBody Score first per 270 summary
-          { id: 'inbodyScore' as keyof FormData, type: 'number' as FieldType, label: 'InBody Score', placeholder: 'e.g., 78', tooltip: 'Client-friendly marker that improves as fat ↓ and muscle ↑.' },
+          { id: 'inbodyScore' as keyof FormData, type: 'number' as FieldType, label: 'InBody Score', placeholder: 'e.g., 78', tooltip: 'A combined health score that increases as you gain muscle and lose body fat.' },
           // Order aligned to InBody 270 printout (approximate)
           // Body Composition (top)
-          { id: 'inbodyWeightKg' as keyof FormData, type: 'number' as FieldType, label: 'Weight (kg)', placeholder: 'e.g., 78.2', tooltip: 'Baseline for trend tracking. Never used alone as a progress metric.' },
-          { id: 'skeletalMuscleMassKg' as keyof FormData, type: 'number' as FieldType, label: 'Skeletal Muscle Mass (kg)', placeholder: 'e.g., 36.4', tooltip: 'Core metabolic/strength indicator. Low SMM → prioritise hypertrophy and protein targets.' },
-          { id: 'bodyFatMassKg' as keyof FormData, type: 'number' as FieldType, label: 'Body Fat Mass (kg)', placeholder: 'e.g., 21.3', tooltip: 'Used to set specific fat-loss targets and timelines.' },
-          { id: 'inbodyBodyFatPct' as keyof FormData, type: 'number' as FieldType, label: 'Body Fat (%)', placeholder: 'e.g., 18.5', tooltip: 'Primary health risk indicator (Men >25% / Women >32% = high risk).' },
+          { id: 'inbodyWeightKg' as keyof FormData, type: 'number' as FieldType, label: 'Weight (kg)', placeholder: 'e.g., 78.2', tooltip: 'Your total body mass. Use this as a baseline for trends, not as the only measure of progress.' },
+          { id: 'skeletalMuscleMassKg' as keyof FormData, type: 'number' as FieldType, label: 'Skeletal Muscle Mass (kg)', placeholder: 'e.g., 36.4', tooltip: 'The weight of the muscles you can strengthen and grow. More muscle boosts metabolism and functional strength.' },
+          { id: 'bodyFatMassKg' as keyof FormData, type: 'number' as FieldType, label: 'Body Fat Mass (kg)', placeholder: 'e.g., 21.3', tooltip: 'The total weight of fat in your body. We use this to track actual fat loss versus just weight changes.' },
+          { id: 'inbodyBodyFatPct' as keyof FormData, type: 'number' as FieldType, label: 'Body Fat (%)', placeholder: 'e.g., 18.5', tooltip: 'The percentage of your body weight that is fat. This is a primary indicator of long-term health risk.' },
           // Obesity / Hydration
-          { id: 'inbodyBmi' as keyof FormData, type: 'number' as FieldType, label: 'BMI', placeholder: 'e.g., 24.8', tooltip: 'Included for familiarity; not used for decisions.' },
-          { id: 'totalBodyWaterL' as keyof FormData, type: 'number' as FieldType, label: 'Total Body Water (L)', placeholder: 'e.g., 41.0', tooltip: 'Hydration context only on 270. Use for scan-to-scan consistency.' },
-          { id: 'waistHipRatio' as keyof FormData, type: 'number' as FieldType, label: 'Waist-to-Hip Ratio (WHR)', placeholder: 'e.g., 0.92', tooltip: 'Men: <0.90 low, 0.90–0.99 moderate, ≥1.00 high. Women: <0.80 low, 0.80–0.89 moderate, ≥0.90 high.' },
-          { id: 'visceralFatLevel' as keyof FormData, type: 'number' as FieldType, label: 'Visceral Fat Level', placeholder: 'e.g., 9', tooltip: 'InBody 270: 12+ high risk; 10–11 borderline; <10 healthy.' },
+          { id: 'inbodyBmi' as keyof FormData, type: 'number' as FieldType, label: 'BMI', placeholder: 'e.g., 24.8', tooltip: 'A general score based on your height and weight. Useful for broad health category tracking.' },
+          { id: 'totalBodyWaterL' as keyof FormData, type: 'number' as FieldType, label: 'Total Body Water (L)', placeholder: 'e.g., 41.0', tooltip: 'The amount of fluid in your body. Helps ensure your scan results are consistent and accurate.' },
+          { id: 'waistHipRatio' as keyof FormData, type: 'number' as FieldType, label: 'Waist-to-Hip Ratio (WHR)', placeholder: 'e.g., 0.92', tooltip: 'A measure of fat distribution. Lower ratios generally indicate lower risk of metabolic health issues.' },
+          { id: 'visceralFatLevel' as keyof FormData, type: 'number' as FieldType, label: 'Visceral Fat Level', placeholder: 'e.g., 9', tooltip: 'The level of fat stored deep around your internal organs. Staying below 10 is ideal for health.' },
 
           // Segmental Lean Analysis (kg only) — Trunk, Left arm, Right arm, Left leg, Right leg
-          { id: 'segmentalTrunkKg' as keyof FormData, type: 'number' as FieldType, label: 'Trunk lean (kg)', placeholder: 'e.g., 28.5' },
-          { id: 'segmentalArmLeftKg' as keyof FormData, type: 'number' as FieldType, label: 'Left arm', side: 'left', pairId: 'arm-lean', placeholder: 'e.g., 3.1' },
-          { id: 'segmentalArmRightKg' as keyof FormData, type: 'number' as FieldType, label: 'Right arm', side: 'right', pairId: 'arm-lean', placeholder: 'e.g., 3.2', tooltip: 'Use left/right kg to detect imbalances (≥10% significant).' },
-          { id: 'segmentalLegLeftKg' as keyof FormData, type: 'number' as FieldType, label: 'Left leg', side: 'left', pairId: 'leg-lean', placeholder: 'e.g., 9.1' },
-          { id: 'segmentalLegRightKg' as keyof FormData, type: 'number' as FieldType, label: 'Right leg', side: 'right', pairId: 'leg-lean', placeholder: 'e.g., 9.7' },
+          { id: 'segmentalTrunkKg' as keyof FormData, type: 'number' as FieldType, label: 'Trunk lean (kg)', placeholder: 'e.g., 28.5', tooltip: 'The amount of muscle in your core and torso region.' },
+          { id: 'segmentalArmLeftKg' as keyof FormData, type: 'number' as FieldType, label: 'Left arm', side: 'left', pairId: 'arm-lean', placeholder: 'e.g., 3.1', tooltip: 'Muscle mass in your left arm. Compare with your right side to check for balance.' },
+          { id: 'segmentalArmRightKg' as keyof FormData, type: 'number' as FieldType, label: 'Right arm', side: 'right', pairId: 'arm-lean', placeholder: 'e.g., 3.2', tooltip: 'Muscle mass in your right arm. Compare with your left side to check for balance.' },
+          { id: 'segmentalLegLeftKg' as keyof FormData, type: 'number' as FieldType, label: 'Left leg', side: 'left', pairId: 'leg-lean', placeholder: 'e.g., 9.1', tooltip: 'Muscle mass in your left leg. Compare with your right side to check for balance.' },
+          { id: 'segmentalLegRightKg' as keyof FormData, type: 'number' as FieldType, label: 'Right leg', side: 'right', pairId: 'leg-lean', placeholder: 'e.g., 9.7', tooltip: 'Muscle mass in your right leg. Compare with your left side to check for balance.' },
 
           // SECTION 4 — METABOLIC BASELINE
-          { id: 'bmrKcal' as keyof FormData, type: 'number' as FieldType, label: 'BMR (kcal)', placeholder: 'e.g., 1620', tooltip: 'Set calorie targets; typically rises with higher SMM.' },
+          { id: 'bmrKcal' as keyof FormData, type: 'number' as FieldType, label: 'BMR (kcal)', placeholder: 'e.g., 1620', tooltip: 'The calories your body burns at rest. This helps us set your personalized nutrition targets.' },
         ]
       }
     ],
   },
   {
     id: 'P3',
-    title: 'Posture, movement and mobility',
+    title: 'Movement Quality',
     summary: 'Posture, movement patterns, and mobility screens.',
     sections: [
       {
         id: 'posture',
         title: 'Posture',
-        description: 'Standing posture evaluation.',
-        instructions: {
-          clientInstructions: 'Stand naturally, look straight ahead.',
-          coachNotes: 'Observe head/neck, shoulders, spine, hips, knees.'
-        },
         fields: [
           {
             id: 'postureInputMode' as keyof FormData,
             type: 'select' as FieldType,
             label: 'Assessment Method',
             required: true,
+            tooltip: 'Instructions:\n1. Choose "AI Posture Scan" for automated landmark detection using an iPhone.\n2. Choose "Manual" to record observations directly.',
             options: [
               { value: 'manual', label: 'Manual Observation' },
               { value: 'ai', label: 'AI Posture Scan (iPhone)' },
@@ -223,7 +199,7 @@ export const phaseDefinitions = [
             id: 'postureHeadOverall' as keyof FormData,
             type: 'select' as FieldType,
             label: 'Head and neck alignment',
-            tooltip: 'Forward head means the head juts forward; neutral means stacked over shoulders.',
+            tooltip: 'Instructions:\n1. Observe client from the side view.\n2. Note if the ear is positioned directly over the shoulder (Neutral).\n3. If the head sits forward of the shoulder line, mark as Forward Head.',
             conditional: { showWhen: { field: 'postureInputMode', value: 'manual' } },
             options: [
               { value: 'neutral', label: 'Neutral' },
@@ -236,7 +212,7 @@ export const phaseDefinitions = [
             id: 'postureShouldersOverall' as keyof FormData,
             type: 'select' as FieldType,
             label: 'Shoulder and upper back',
-            tooltip: 'Winged scapula means the shoulder blade sticks out from the rib cage.',
+            tooltip: 'Instructions:\n1. View from the side for rounded positions.\n2. View from the back for height symmetry or winged blades.\n3. Note any persistent elevation on one side.',
             conditional: { showWhen: { field: 'postureInputMode', value: 'manual' } },
             options: [
               { value: 'neutral', label: 'Neutral' },
@@ -249,6 +225,7 @@ export const phaseDefinitions = [
             id: 'postureBackOverall' as keyof FormData,
             type: 'select' as FieldType,
             label: 'Back and spine',
+            tooltip: 'Instructions:\n1. Observe spinal curves from the side view.\n2. Note excessive upper back rounding (Kyphosis) or lower back arch (Lordosis).\n3. Check for side-to-side curvature (Scoliosis) from the back.',
             conditional: { showWhen: { field: 'postureInputMode', value: 'manual' } },
             options: [
               { value: 'neutral', label: 'Neutral' },
@@ -262,7 +239,7 @@ export const phaseDefinitions = [
             id: 'postureHipsOverall' as keyof FormData,
             type: 'select' as FieldType,
             label: 'Hips alignment',
-            tooltip: 'Anterior tilt means pelvis tilts forward; posterior tilt means pelvis tilts backward.',
+            tooltip: 'Instructions:\n1. Place hands on hip bones from the side.\n2. Note if the pelvis tilts forward (Anterior) or backward (Posterior).\n3. Check for height difference between left and right sides.',
             conditional: { showWhen: { field: 'postureInputMode', value: 'manual' } },
             options: [
               { value: 'neutral', label: 'Neutral' },
@@ -274,7 +251,7 @@ export const phaseDefinitions = [
             id: 'postureKneesOverall' as keyof FormData,
             type: 'select' as FieldType,
             label: 'Knees alignment',
-            tooltip: 'Valgus means knees cave inward; varus means knees bow outward.',
+            tooltip: 'Instructions:\n1. View from the front for inward/outward bowing.\n2. Inward cave = Valgus; Outward bow = Varus.\n3. Note any excessive locking back (hyperextension) from the side.',
             conditional: { showWhen: { field: 'postureInputMode', value: 'manual' } },
             options: [
               { value: 'neutral', label: 'Neutral' },
@@ -287,30 +264,25 @@ export const phaseDefinitions = [
       {
         id: 'overhead-squat',
         title: 'Overhead Squat',
-        description: 'Movement quality with arms overhead.',
-        instructions: {
-          clientInstructions: 'Perform with control.',
-          coachNotes: 'Observe from front and side. Watch for: torso lean, knee valgus, hip shift, and foot behavior.'
-        },
         fields: [
           {
-            id: 'ohsShoulderMobility' as keyof FormData, type: 'select' as FieldType, label: 'Shoulder mobility', pattern: 'Overhead Squat', options: [
+            id: 'ohsShoulderMobility' as keyof FormData, type: 'select' as FieldType, label: 'Shoulder mobility', pattern: 'Overhead Squat', tooltip: 'Instructions:\n1. Stand with feet shoulder-width apart.\n2. Raise arms overhead with elbows locked.\n3. Note if arms stay vertical or tilt forward.', options: [
               { value: 'full-range', label: 'Full range' }, { value: 'compensated', label: 'Compensated' }, { value: 'limited', label: 'Limited' }
             ]
           },
-          { id: 'ohsTorsoLean' as keyof FormData, type: 'select' as FieldType, label: 'Torso lean', pattern: 'Overhead Squat', options: [
+          { id: 'ohsTorsoLean' as keyof FormData, type: 'select' as FieldType, label: 'Torso lean', pattern: 'Overhead Squat', tooltip: 'Instructions:\n1. Squat as deep as comfortable.\n2. Observe from the side view.\n3. Note if the torso stays upright or leans excessively forward.', options: [
             { value: 'upright', label: 'Upright' }, { value: 'moderate-lean', label: 'Moderate lean' }, { value: 'excessive-lean', label: 'Excessive lean' }
           ]},
-          { id: 'ohsSquatDepth' as keyof FormData, type: 'select' as FieldType, label: 'Squat depth', pattern: 'Overhead Squat', options: [
+          { id: 'ohsSquatDepth' as keyof FormData, type: 'select' as FieldType, label: 'Squat depth', pattern: 'Overhead Squat', tooltip: 'Instructions:\n1. Observe depth relative to parallel.\n2. Full = Hips below knees.\n3. Parallel = Thighs horizontal.', options: [
             { value: 'full-depth', label: 'Full depth' }, { value: 'parallel', label: 'Parallel' }, { value: 'quarter-depth', label: 'Quarter' }, { value: 'no-depth', label: 'Minimal' }
           ]},
-          { id: 'ohsHipShift' as keyof FormData, type: 'select' as FieldType, label: 'Hip shift', pattern: 'Overhead Squat', options: [
+          { id: 'ohsHipShift' as keyof FormData, type: 'select' as FieldType, label: 'Hip shift', pattern: 'Overhead Squat', tooltip: 'Instructions:\n1. Observe from the back view.\n2. Watch for hips drifting to one side during the squat.', options: [
             { value: 'none', label: 'None' }, { value: 'left', label: 'Left' }, { value: 'right', label: 'Right' }
           ]},
-          { id: 'ohsKneeAlignment' as keyof FormData, type: 'select' as FieldType, label: 'Knee alignment', pattern: 'Overhead Squat', tooltip: 'Valgus = knees cave in; Varus = knees bow out.', options: [
+          { id: 'ohsKneeAlignment' as keyof FormData, type: 'select' as FieldType, label: 'Knee alignment', pattern: 'Overhead Squat', tooltip: 'Instructions:\n1. View from the front.\n2. Note if knees cave in (Valgus) or bow out (Varus) during movement.', options: [
             { value: 'stable', label: 'Stable' }, { value: 'valgus', label: 'Valgus (knees cave in)' }, { value: 'varus', label: 'Varus (knees bow out)' }
           ]},
-          { id: 'ohsFeetPosition' as keyof FormData, type: 'select' as FieldType, label: 'Foot behaviour', pattern: 'Overhead Squat', tooltip: 'Pronation = foot rolls inward; Supination = foot rolls outward.', options: [
+          { id: 'ohsFeetPosition' as keyof FormData, type: 'select' as FieldType, label: 'Foot behaviour', pattern: 'Overhead Squat', tooltip: 'Instructions:\n1. Watch for arches collapsing (Pronation) or feet turning out excessively.', options: [
             { value: 'stable', label: 'Stable' }, { value: 'pronation', label: 'Pronation (rolls inward)' }, { value: 'supination', label: 'Supination (rolls outward)' }
           ]},
         ],
@@ -318,16 +290,11 @@ export const phaseDefinitions = [
       {
         id: 'hinge-assessment',
         title: 'Hinge',
-        description: 'Hip hinge movement.',
-        instructions: {
-          clientInstructions: 'Maintain neutral spine.',
-          coachNotes: 'Look for lumbar rounding or excessive knee bend. Ensure the movement comes from the hips, not the back.'
-        },
         fields: [
-          { id: 'hingeDepth' as keyof FormData, type: 'select' as FieldType, label: 'Depth', pattern: 'Hip Hinge', options: [
+          { id: 'hingeDepth' as keyof FormData, type: 'select' as FieldType, label: 'Depth', pattern: 'Hip Hinge', tooltip: 'Instructions:\n1. Perform a hip hinge (reaching hips back).\n2. Note the range of motion before form breaks or hamstrings limit movement.', options: [
             { value: 'excellent', label: 'Excellent' }, { value: 'good', label: 'Good' }, { value: 'fair', label: 'Fair' }, { value: 'poor', label: 'Poor' }
           ]},
-          { id: 'hingeBackRounding' as keyof FormData, type: 'select' as FieldType, label: 'Back rounding', pattern: 'Hip Hinge', options: [
+          { id: 'hingeBackRounding' as keyof FormData, type: 'select' as FieldType, label: 'Back rounding', pattern: 'Hip Hinge', tooltip: 'Instructions:\n1. Watch the lumbar spine during the hinge.\n2. Note any rounding (flexion) as the client reaches back.', options: [
             { value: 'none', label: 'None' }, { value: 'minor', label: 'Minor' }, { value: 'moderate', label: 'Moderate' }, { value: 'severe', label: 'Severe' }
           ]},
         ]
@@ -335,28 +302,23 @@ export const phaseDefinitions = [
       {
         id: 'lunge-assessment',
         title: 'Lunge',
-        description: 'Unilateral control and knee tracking.',
-        instructions: {
-          clientInstructions: 'Step forward and lower under control.',
-          coachNotes: 'Observe balance, knee tracking, and hip position.'
-        },
         fields: [
-          { id: 'lungeLeftBalance' as keyof FormData, type: 'select' as FieldType, label: 'Balance', pattern: 'Lunge', side: 'left', pairId: 'lunge-balance', options: [
+          { id: 'lungeLeftBalance' as keyof FormData, type: 'select' as FieldType, label: 'Balance', pattern: 'Lunge', side: 'left', pairId: 'lunge-balance', tooltip: 'Instructions:\n1. Step forward into a lunge.\n2. Note any wobble or loss of stability on the working leg.', options: [
             { value: 'excellent', label: 'Excellent' }, { value: 'good', label: 'Good' }, { value: 'fair', label: 'Fair' }, { value: 'poor', label: 'Poor' }
           ]},
-          { id: 'lungeRightBalance' as keyof FormData, type: 'select' as FieldType, label: 'Balance', pattern: 'Lunge', side: 'right', pairId: 'lunge-balance', options: [
+          { id: 'lungeRightBalance' as keyof FormData, type: 'select' as FieldType, label: 'Balance', pattern: 'Lunge', side: 'right', pairId: 'lunge-balance', tooltip: 'Instructions:\n1. Step forward into a lunge.\n2. Note any wobble or loss of stability on the working leg.', options: [
             { value: 'excellent', label: 'Excellent' }, { value: 'good', label: 'Good' }, { value: 'fair', label: 'Fair' }, { value: 'poor', label: 'Poor' }
           ]},
-          { id: 'lungeLeftKneeAlignment' as keyof FormData, type: 'select' as FieldType, label: 'Knee tracking', pattern: 'Lunge', side: 'left', pairId: 'lunge-knee', tooltip: 'Valgus = caves inward; Varus = bows outward.', options: [
+          { id: 'lungeLeftKneeAlignment' as keyof FormData, type: 'select' as FieldType, label: 'Knee tracking', pattern: 'Lunge', side: 'left', pairId: 'lunge-knee', tooltip: 'Instructions:\n1. Watch the front knee during the descent.\n2. Note if the knee stays over the foot or caves inward.', options: [
             { value: 'tracks-straight', label: 'Tracks straight' }, { value: 'caves-inward', label: 'Caves inward (valgus)' }, { value: 'bows-outward', label: 'Bows outward (varus)' }
           ]},
-          { id: 'lungeRightKneeAlignment' as keyof FormData, type: 'select' as FieldType, label: 'Knee tracking', pattern: 'Lunge', side: 'right', pairId: 'lunge-knee', tooltip: 'Valgus = caves inward; Varus = bows outward.', options: [
+          { id: 'lungeRightKneeAlignment' as keyof FormData, type: 'select' as FieldType, label: 'Knee tracking', pattern: 'Lunge', side: 'right', pairId: 'lunge-knee', tooltip: 'Instructions:\n1. Watch the front knee during the descent.\n2. Note if the knee stays over the foot or caves inward.', options: [
             { value: 'tracks-straight', label: 'Tracks straight' }, { value: 'caves-inward', label: 'Caves inward (valgus)' }, { value: 'bows-outward', label: 'Bows outward (varus)' }
           ]},
-          { id: 'lungeLeftTorso' as keyof FormData, type: 'select' as FieldType, label: 'Hips position', pattern: 'Lunge', side: 'left', pairId: 'lunge-hips', tooltip: 'Anterior tilt = pelvis forward; Posterior tilt = pelvis backward.', options: [
+          { id: 'lungeLeftTorso' as keyof FormData, type: 'select' as FieldType, label: 'Hips position', pattern: 'Lunge', side: 'left', pairId: 'lunge-hips', tooltip: 'Instructions:\n1. Observe pelvic position at the bottom of the lunge.\n2. Note if the hips stay neutral or tilt forward/back.', options: [
             { value: 'neutral', label: 'Neutral' }, { value: 'anterior-tilt', label: 'Anterior tilt (pelvis forward)' }, { value: 'posterior-tilt', label: 'Posterior tilt (pelvis backward)' }
           ]},
-          { id: 'lungeRightTorso' as keyof FormData, type: 'select' as FieldType, label: 'Hips position', pattern: 'Lunge', side: 'right', pairId: 'lunge-hips', tooltip: 'Anterior tilt = pelvis forward; Posterior tilt = pelvis backward.', options: [
+          { id: 'lungeRightTorso' as keyof FormData, type: 'select' as FieldType, label: 'Hips position', pattern: 'Lunge', side: 'right', pairId: 'lunge-hips', tooltip: 'Instructions:\n1. Observe pelvic position at the bottom of the lunge.\n2. Note if the hips stay neutral or tilt forward/back.', options: [
             { value: 'neutral', label: 'Neutral' }, { value: 'anterior-tilt', label: 'Anterior tilt (pelvis forward)' }, { value: 'posterior-tilt', label: 'Posterior tilt (pelvis backward)' }
           ]},
         ]
@@ -364,19 +326,14 @@ export const phaseDefinitions = [
       {
         id: 'mobility',
         title: 'Mobility',
-        description: 'Joint mobility screens.',
-        instructions: {
-          clientInstructions: 'Move within comfortable range.',
-          coachNotes: 'Record areas of restriction.'
-        },
         fields: [
-          { id: 'mobilityHip' as keyof FormData, type: 'select' as FieldType, label: 'Hip mobility', pattern: 'Hip Mobility', options: [
+          { id: 'mobilityHip' as keyof FormData, type: 'select' as FieldType, label: 'Hip mobility', pattern: 'Hip Mobility', tooltip: 'Instructions:\n1. Perform active hip flexion and internal/external rotation tests.\n2. Record range of motion quality.', options: [
             { value: 'good', label: 'Good' }, { value: 'fair', label: 'Fair' }, { value: 'poor', label: 'Poor' }
           ]},
-          { id: 'mobilityShoulder' as keyof FormData, type: 'select' as FieldType, label: 'Shoulder mobility', pattern: 'Shoulder Mobility', options: [
+          { id: 'mobilityShoulder' as keyof FormData, type: 'select' as FieldType, label: 'Shoulder mobility', pattern: 'Shoulder Mobility', tooltip: 'Instructions:\n1. Perform reaching tests (Apley scratch test or similar).\n2. Record quality of overhead and behind-back reach.', options: [
             { value: 'good', label: 'Good' }, { value: 'fair', label: 'Fair' }, { value: 'poor', label: 'Poor' }
           ]},
-          { id: 'mobilityAnkle' as keyof FormData, type: 'select' as FieldType, label: 'Ankle mobility', pattern: 'Ankle Mobility', options: [
+          { id: 'mobilityAnkle' as keyof FormData, type: 'select' as FieldType, label: 'Ankle mobility', pattern: 'Ankle Mobility', tooltip: 'Instructions:\n1. Knee-to-wall test or similar dorsiflexion check.\n2. Note if movement is restricted by tightness or joint block.', options: [
             { value: 'good', label: 'Good' }, { value: 'fair', label: 'Fair' }, { value: 'poor', label: 'Poor' }
           ]},
         ]
@@ -385,53 +342,44 @@ export const phaseDefinitions = [
           },
           {
     id: 'P4',
-    title: 'Muscular strength and endurance',
+    title: 'Muscular Strength',
     summary: 'Basic strength and endurance metrics.',
+    gateHint: 'Complete movement before strength testing.',
     sections: [
       {
         id: 'strength-endurance',
-        title: 'Muscular strength and endurance',
-        description: 'Reps and holds.',
-        instructions: {
-          clientInstructions: 'Perform with proper form for accurate results.',
-          coachNotes: 'Use a stopwatch for 60s tests. Only count reps with full range of motion. Record max duration for plank.'
-        },
+        title: 'Muscular Strength',
         fields: [
-          { id: 'squatsOneMinuteReps' as keyof FormData, type: 'number' as FieldType, label: 'Squats in one minute', placeholder: 'e.g., 40' },
-          { id: 'pushupsOneMinuteReps' as keyof FormData, type: 'number' as FieldType, label: 'Pushups in one minute', placeholder: 'e.g., 25' },
-          { id: 'plankDurationSeconds' as keyof FormData, type: 'number' as FieldType, label: 'Plank duration (seconds)', placeholder: 'e.g., 60' },
-          { id: 'gripLeftKg' as keyof FormData, type: 'number' as FieldType, label: 'Left hand', pattern: 'Grip Strength', side: 'left', pairId: 'grip-strength', placeholder: 'e.g., 24' },
-          { id: 'gripRightKg' as keyof FormData, type: 'number' as FieldType, label: 'Right hand', pattern: 'Grip Strength', side: 'right', pairId: 'grip-strength', placeholder: 'e.g., 26' },
+          { id: 'squatsOneMinuteReps' as keyof FormData, type: 'number' as FieldType, label: 'Squats in one minute', placeholder: 'e.g., 40', tooltip: 'Instructions:\n1. Set timer for 60 seconds.\n2. Count only reps with full range of motion (thighs parallel to floor).\n3. Stop immediately when time expires.' },
+          { id: 'pushupsOneMinuteReps' as keyof FormData, type: 'number' as FieldType, label: 'Pushups in one minute', placeholder: 'e.g., 25', tooltip: 'Instructions:\n1. Maintain a rigid plank position throughout.\n2. Chest must come within 2 inches of the floor.\n3. Arms must reach full lockout at the top.' },
+          { id: 'plankDurationSeconds' as keyof FormData, type: 'number' as FieldType, label: 'Plank duration (seconds)', placeholder: 'e.g., 60', tooltip: 'Instructions:\n1. Hold a forearm plank with a flat back and active core.\n2. Record the total time until form breaks or knees touch.' },
+          { id: 'gripLeftKg' as keyof FormData, type: 'number' as FieldType, label: 'Left hand', pattern: 'Grip Strength', side: 'left', pairId: 'grip-strength', placeholder: 'e.g., 24', tooltip: 'Instructions:\n1. Squeeze the dynamometer with maximum effort.\n2. Keep arm at your side, not touching your body.\n3. Record the best of 3 attempts.' },
+          { id: 'gripRightKg' as keyof FormData, type: 'number' as FieldType, label: 'Right hand', pattern: 'Grip Strength', side: 'right', pairId: 'grip-strength', placeholder: 'e.g., 26', tooltip: 'Instructions:\n1. Squeeze the dynamometer with maximum effort.\n2. Keep arm at your side, not touching your body.\n3. Record the best of 3 attempts.' },
         ]
-          },
-        ],
       },
-      {
+    ],
+  },
+  {
     id: 'P5',
-    title: 'Fitness assessment',
+    title: 'Metabolic Fitness',
     summary: 'Select and run cardio test.',
     sections: [
       {
         id: 'fitness-assessment',
-        title: 'Fitness assessment',
-        description: 'Choose test; follow steps for timing and measures.',
-        instructions: {
-          clientInstructions: 'Follow coach instructions during the test.',
-          coachNotes: 'Step test: 12" step, 96bpm for 3m. Treadmill: 1.7mph @ 10% grade for 3m. Record HR exactly 60s after test stops.'
-        },
+        title: 'Metabolic Fitness',
         fields: [
-          { id: 'cardioTestSelected' as keyof FormData, type: 'select' as FieldType, label: 'Select test', options: [
+          { id: 'cardioTestSelected' as keyof FormData, type: 'select' as FieldType, label: 'Select test', tooltip: 'Instructions:\n1. Choose the YMCA Step Test for a portable option.\n2. Choose the Treadmill Test for a more controlled environment.', options: [
             { value: 'ymca-step', label: 'YMCA step test' },
             { value: 'treadmill', label: 'Treadmill test' },
           ]},
           // Simplified fields common to both tests
-          { id: 'cardioRestingHr' as keyof FormData, type: 'number' as FieldType, label: 'Resting Heart Rate (bpm)', tooltip: 'Measure after 5 minutes seated rest before the test.' },
-          { id: 'cardioPost1MinHr' as keyof FormData, type: 'number' as FieldType, label: '1-min Post-Test HR (HR₆₀, bpm)', tooltip: 'Record heart rate exactly 60s after test completion. See test instructions below.' },
-            ],
-          },
+          { id: 'cardioRestingHr' as keyof FormData, type: 'number' as FieldType, label: 'Resting Heart Rate (bpm)', tooltip: 'Instructions:\n1. Client should sit quietly for 5 minutes.\n2. Measure pulse for 60s or use a heart rate monitor.' },
+          { id: 'cardioPost1MinHr' as keyof FormData, type: 'number' as FieldType, label: '1-min Post-Test HR (HR₆₀, bpm)', tooltip: 'Instructions:\n1. Step Test: 12" step, 96bpm for 3m.\n2. Treadmill: 1.7mph @ 10% grade for 3m.\n3. Stop test at 3:00. Record HR exactly 60s later.' },
         ],
       },
-      {
+    ],
+  },
+  {
     id: 'P6',
     title: 'Goals & Planning',
     summary: 'Set ambitions after we understand your baseline.',
@@ -439,18 +387,13 @@ export const phaseDefinitions = [
       {
         id: 'goals',
         title: 'Goals',
-        description: 'Select your goals and ambition level. Recommendations use your baseline data.',
-        instructions: {
-          clientInstructions: 'Choose all that apply. Then pick the ambition level for each selected goal.',
-          coachNotes: 'Use levels to calibrate targets and timelines.'
-        },
         fields: [
           {
             id: 'clientGoals' as keyof FormData,
             type: 'multiselect' as FieldType,
             label: 'Client Goals',
             placeholder: 'Select one or more goals',
-            tooltip: 'Select multiple goals. The roadmap and recommendations will prioritise toward these.',
+            tooltip: 'Instructions:\n1. Select all goals that apply to the client.\n2. Specific levels will be requested for each selection to calibrate the roadmap.',
             options: [
               { value: 'build-muscle', label: 'Build muscle' },
               { value: 'weight-loss', label: 'Weight loss' },
@@ -463,7 +406,7 @@ export const phaseDefinitions = [
             id: 'goalLevelWeightLoss' as keyof FormData,
             type: 'select' as FieldType,
             label: 'Weight loss target level',
-            tooltip: 'Ambition level calibrated to your height/weight.',
+            tooltip: 'Instructions:\n1. Average = ~0.5kg loss per week.\n2. Elite = Maximum sustainable rate (~1% bodyweight per week).',
             options: [
               { value: 'health-minimum', label: 'Minimum for good health' },
               { value: 'average', label: 'Average target' },
@@ -476,6 +419,7 @@ export const phaseDefinitions = [
             id: 'goalLevelMuscle' as keyof FormData,
             type: 'select' as FieldType,
             label: 'Muscle gain target level',
+            tooltip: 'Instructions:\n1. Average = Consistent noticeable gain.\n2. Elite = Maximizing genetic potential over several years.',
             options: [
               { value: 'health-minimum', label: 'Minimum visible change' },
               { value: 'average', label: 'Average (noticeable)' },
@@ -488,6 +432,7 @@ export const phaseDefinitions = [
             id: 'goalLevelStrength' as keyof FormData,
             type: 'select' as FieldType,
             label: 'Strength target level',
+            tooltip: 'Instructions:\n1. Average = Standard strength ratios.\n2. Elite = Advanced/Competitive strength standards.',
             options: [
               { value: 'health-minimum', label: 'Solid base (health & function)' },
               { value: 'average', label: 'Average lifter' },
@@ -500,6 +445,7 @@ export const phaseDefinitions = [
             id: 'goalLevelFitness' as keyof FormData,
             type: 'select' as FieldType,
             label: 'Fitness target level',
+            tooltip: 'Instructions:\n1. Average = Recreational fitness.\n2. Elite = Competitive endurance or high-performance thresholds.',
             options: [
               { value: 'health-minimum', label: 'Comfortable daily fitness' },
               { value: 'average', label: 'Recreational runner/cyclist' },

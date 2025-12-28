@@ -32,21 +32,30 @@ export async function saveCoachAssessment(
   overallScore: number,
 ): Promise<string> {
   const name = (formData.fullName || 'Unnamed client').trim();
-  const goals = Array.isArray(formData.clientGoals) ? formData.clientGoals : [];
-
-  const payload: Omit<CoachAssessmentDoc, 'createdAt'> & { createdAt: ReturnType<typeof serverTimestamp> } = {
+  
+  // 1. Use new assessment history system (the deep structure)
+  const { updateCurrentAssessment } = await import('./assessmentHistory');
+  await updateCurrentAssessment(coachUid, name, formData, overallScore, 'full', 'all');
+  
+  // 2. ALSO update/create a summary in the flat assessments collection for the dashboard
+  // We use a consistent ID based on the client name to keep the dashboard tidy
+  const assessmentId = `${name.toLowerCase().replace(/\s+/g, '-')}-latest`;
+  const summaryRef = doc(getDb(), 'coaches', coachUid, 'assessments', assessmentId);
+  
+  await addDoc(collection(getDb(), 'coaches', coachUid, 'assessments'), {
     clientName: name,
     clientNameLower: name.toLowerCase(),
     createdAt: serverTimestamp(),
     coachUid,
-    coachEmail: coachEmail ?? null,
+    coachEmail: coachEmail || null,
     overallScore,
-    goals,
-    formData,
-  };
-
-  const ref = await addDoc(coachAssessmentsCollection(coachUid), payload);
-  return ref.id;
+    goals: Array.isArray(formData.clientGoals) ? formData.clientGoals : [],
+    // We don't store full formData here to keep the dashboard list light
+    isSummary: true 
+  });
+  
+  // Return a consistent ID for the current assessment
+  return `${coachUid}-${name.toLowerCase().replace(/\s+/g, '-')}-current`;
 }
 
 export async function listCoachAssessments(
@@ -131,6 +140,48 @@ export async function getAllClients(coachUid: string): Promise<string[]> {
     }
   });
   return Array.from(clients).sort();
+}
+
+export async function savePartialAssessment(
+  coachUid: string,
+  coachEmail: string | null | undefined,
+  formData: FormData,
+  overallScore: number,
+  clientName: string,
+  category: 'inbody' | 'posture' | 'fitness' | 'strength' | 'lifestyle',
+): Promise<string> {
+  const finalName = (clientName || formData.fullName || 'Unnamed client').trim();
+  
+  // 1. Get current assessment to merge with
+  const { getCurrentAssessment, updateCurrentAssessment } = await import('./assessmentHistory');
+  const current = await getCurrentAssessment(coachUid, finalName);
+  
+  // Merge: new partial data overrides existing data
+  const mergedFormData = current?.formData 
+    ? { ...current.formData, ...formData }
+    : formData;
+  
+  // Determine change type
+  const changeType = `partial-${category}` as const;
+  
+  // 2. Update current assessment and log change (deep structure)
+  await updateCurrentAssessment(coachUid, finalName, mergedFormData, overallScore, changeType, category);
+  
+  // 3. Update summary for dashboard
+  await addDoc(collection(getDb(), 'coaches', coachUid, 'assessments'), {
+    clientName: finalName,
+    clientNameLower: finalName.toLowerCase(),
+    createdAt: serverTimestamp(),
+    coachUid,
+    coachEmail: coachEmail || null,
+    overallScore,
+    goals: Array.isArray(mergedFormData.clientGoals) ? mergedFormData.clientGoals : [],
+    category,
+    isPartial: true
+  });
+  
+  // Return consistent ID
+  return `${coachUid}-${finalName.toLowerCase().replace(/\s+/g, '-')}-current`;
 }
 
 

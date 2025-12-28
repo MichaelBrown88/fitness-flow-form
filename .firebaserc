@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "assessment-engine-8f633"
-  }
+    "default": "assessment-engine-8f633",
+    "Assessment": "assessment-engine-8f633"
+  },
+  "targets": {},
+  "etags": {}
 }

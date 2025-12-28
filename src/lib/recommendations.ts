@@ -1,6 +1,6 @@
 import type { FormData } from '@/contexts/FormContext';
-import type { ScoreSummary } from './scoring';
-import { prioritizeExercises } from './exercisePrioritization';
+import { type ScoreSummary, buildRoadmap } from './scoring';
+import { prioritizeExercises, type ExerciseGroup, type SessionGroup } from './exercisePrioritization';
 
 export type CoachPlan = {
   keyIssues: string[];
@@ -26,6 +26,14 @@ export type CoachPlan = {
     exercises: { name: string; setsReps?: string; notes?: string }[];
   }[];
   segmentalGuidance?: string[];
+  prioritizedExercises?: {
+    groups: ExerciseGroup[];
+    bySession: SessionGroup[];
+    criticalIssues: string[];
+    goalExercises: string[];
+    importantIssues: string[];
+    minorIssues: string[];
+  };
 };
 
 export type BodyCompInterpretation = {
@@ -84,9 +92,9 @@ const EXERCISES = {
 export function generateCoachPlan(form: FormData, scores: ScoreSummary): CoachPlan {
   // Check if form has ANY data - if not, return empty plan
   const hasAnyData = !!(form.inbodyWeightKg && parseFloat(form.inbodyWeightKg || '0') > 0) ||
-                     !!(form.maxPushups && parseFloat(form.maxPushups || '0') > 0) ||
+                     !!(form.pushupMaxReps && parseFloat(form.pushupMaxReps || '0') > 0) ||
                      !!(form.pushupsOneMinuteReps && parseFloat(form.pushupsOneMinuteReps || '0') > 0) ||
-                     !!(form.cardioMinutes && parseFloat(form.cardioMinutes || '0') > 0) ||
+                     !!(form.cardioRestingHr && parseFloat(form.cardioRestingHr || '0') > 0) ||
                      !!(form.postureAiResults || form.postureHeadOverall || form.postureShouldersOverall) ||
                      !!(form.sleepQuality || form.stressLevel || form.hydrationHabits || form.nutritionHabits);
   
@@ -120,6 +128,14 @@ export function generateCoachPlan(form: FormData, scores: ScoreSummary): CoachPl
 
   const goals = Array.isArray((form as any).clientGoals) ? (form as any).clientGoals as string[] : [];
   const primaryGoalRaw = goals[0] || 'general-health';
+  
+  // Format goal for natural language use
+  const goalInSentence = primaryGoalRaw === 'weight-loss' ? 'weight loss'
+    : primaryGoalRaw === 'build-muscle' ? 'muscle building'
+    : primaryGoalRaw === 'build-strength' ? 'strength building'
+    : primaryGoalRaw === 'improve-fitness' ? 'fitness'
+    : 'health and longevity';
+
   const primaryGoal = primaryGoalRaw.replace('-', ' ');
 
   const programmingStrategies: CoachPlan['programmingStrategies'] = [];
@@ -155,6 +171,7 @@ export function generateCoachPlan(form: FormData, scores: ScoreSummary): CoachPl
   const gender = (form.gender || '').toLowerCase();
   const bf = parseFloat(form.inbodyBodyFatPct || '0');
   const visceral = parseFloat(form.visceralFatLevel || '0');
+  const smm = parseFloat(form.skeletalMuscleMassKg || '0');
   const bodyCompScore = scores.categories.find(c => c.id === 'bodyComp')?.score || 0;
   const cardioScore = scores.categories.find(c => c.id === 'cardio')?.score || 0;
   const strengthScore = scores.categories.find(c => c.id === 'strength')?.score || 0;
@@ -165,93 +182,91 @@ export function generateCoachPlan(form: FormData, scores: ScoreSummary): CoachPl
   const h = (parseFloat(form.heightCm || '0') || 0) / 100;
   const healthyMax = h > 0 ? 25 * h * h : 0;
 
-  // Only generate recommendations if we have actual data
+  const roadmap = buildRoadmap(scores, form);
+  const totalWeeks = roadmap.reduce((acc, p) => acc + p.weeks, 0);
+
+  // Helper flags
   const hasBodyCompData = bf > 0 || visceral > 0 || w > 0;
   const hasMovementData = movementScore > 0 || form.postureAiResults || form.postureBackOverall;
-  
-  // Corrective strategies - only if we have movement data
-  if (hasMovementData && movementScore < 65 && movementScore > 0) {
-    programmingStrategies.push({
-      title: 'Movement Integration',
-      strategy: 'Incorporate corrective drills as "fillers" between main sets to address restrictions without extending session length.',
-      exercises: ['90/90 Hip Switches', 'Thoracic Extensions', 'Ankle Mobilizations']
-    });
-  }
-
-  // Lead with Goal in the script - only if we have data
-  if (hasAnyData) {
-    clientScript.actionPlan.push(`To directly support your goal of ${primaryGoal}, we're going to build your program around three main pillars.`);
-  }
+  const hasStrengthData = strengthScore > 0;
+  const hasCardioData = cardioScore > 0;
 
   // Body Composition framing - only if we have body comp data
-  if (hasBodyCompData && (bf > (gender === 'male' ? 25 : 32) || visceral >= 12)) {
-    clientScript.findings.push(`Your body composition markers show some metabolic stress.`);
-    clientScript.whyItMatters.push(`Lowering these markers will make reaching your ${primaryGoal} goal much faster by improving your energy and how your body processes fuel.`);
-    clientScript.actionPlan.push(`We'll use specific cardio 'anchors' to improve your metabolic health, which clears the path for your ${primaryGoal} results.`);
-    internalNotes.needsAttention.push("High metabolic risk - requires Zone 2 foundation to support primary goal.");
+  if ((bf > 0 || visceral > 0 || w > 0) && (bf > (gender === 'male' ? 22 : 30) || visceral >= 10)) {
+    clientScript.findings.push(`Your body composition markers (BF: ${bf}%, Visceral Fat: ${visceral}) indicate some metabolic stress.`);
+    clientScript.whyItMatters.push(`Lowering these markers will directly support your ${goalInSentence} results by improving your energy and recovery speed.`);
+    clientScript.actionPlan.push(`We'll use specific cardio 'anchors' to improve your metabolic health, which clears the path for your ${goalInSentence} progress.`);
+    internalNotes.needsAttention.push(`High metabolic risk (BF ${bf}%, VFL ${visceral}) - requires Zone 2 foundation.`);
   }
 
-  // Posture framing - only if we have posture data (not general movement/mobility)
-  // Check if we have actual mobility data (hip/shoulder/ankle mobility tests)
-  const hasMobilityTests = !!(form.mobilityHip || form.mobilityShoulder || form.mobilityAnkle);
-  const hasPostureOnly = form.postureAiResults && !hasMobilityTests;
-  
-  if (hasPostureOnly && form.postureAiResults) {
-    // Only posture data - frame it as posture-specific, not general movement
-    const ai = form.postureAiResults;
-    const hasDeviations = Object.values(ai).some((analysis: any) => 
-      (analysis.forward_head && analysis.forward_head.status !== 'Neutral') ||
-      (analysis.shoulder_alignment && analysis.shoulder_alignment.status !== 'Neutral') ||
-      (analysis.hip_alignment && analysis.hip_alignment.status !== 'Neutral') ||
-      (analysis.pelvic_tilt && analysis.pelvic_tilt.status !== 'Neutral') ||
-      (analysis.kyphosis && analysis.kyphosis.status !== 'Normal') ||
-      (analysis.lordosis && analysis.lordosis.status !== 'Normal')
-    );
-    
-    if (hasDeviations) {
-      clientScript.findings.push("We found some postural deviations that could impact your training efficiency.");
-      clientScript.whyItMatters.push(`Addressing these postural issues will make your ${primaryGoal} training safer and more effective.`);
-      clientScript.actionPlan.push(`We'll include corrective exercises to address these postural patterns so they don't limit your ${primaryGoal} progress.`);
-      internalNotes.needsAttention.push(`Postural deviations identified - corrective exercises recommended.`);
+  // SMM Findings
+  if (smm > 0) {
+    const targetSmm = gender === 'male' ? 33 : 24;
+    if (smm < targetSmm) {
+      clientScript.findings.push(`Your skeletal muscle mass (${smm}kg) is currently below the recommended baseline for your frame.`);
+      clientScript.whyItMatters.push(`Building this muscle foundation is essential to provide the 'engine' needed for ${goalInSentence} and long-term metabolic health.`);
+      internalNotes.needsAttention.push(`Low SMM (${smm}kg) - hypertrophy focus required.`);
     }
-  } else if (hasMovementData && hasMobilityTests && (movementScore < 60 || form.postureBackOverall !== 'neutral' || form.postureAiResults)) {
-    // Full movement assessment (mobility + posture)
-    let movementFinding = "We found some movement restrictions that act like 'brakes' on your progress.";
-    if (form.postureAiResults) {
-      const ai = form.postureAiResults;
-      const headDev = ai['side-right']?.forward_head?.deviation_degrees || ai['side-left']?.forward_head?.deviation_degrees || 0;
-      if (headDev > 8) {
-        movementFinding = `Our AI scan detected a head deviation of ${Math.round(headDev)}°, which is acting like a 'brake' on your progress.`;
+  }
+
+  // Posture/Movement findings
+  if (form.postureAiResults) {
+    const ai = form.postureAiResults;
+    const views = ['front', 'back', 'side-left', 'side-right'] as const;
+    let foundMovementIssue = false;
+
+    for (const view of views) {
+      const analysis = ai[view];
+      if (!analysis) continue;
+
+      if (analysis.forward_head && analysis.forward_head.status !== 'Neutral') {
+        const deg = Math.round(analysis.forward_head.deviation_degrees || 0);
+        clientScript.findings.push(`Our AI scan detected a ${deg}° forward head deviation in your ${view} view.`);
+        foundMovementIssue = true;
+      }
+      if (analysis.head_alignment && analysis.head_alignment.status !== 'Neutral') {
+        const tilt = analysis.head_alignment.tilt_degrees.toFixed(1);
+        clientScript.findings.push(`We found a ${tilt}° head tilt to the ${analysis.head_alignment.status.toLowerCase()} in your ${view} view.`);
+        foundMovementIssue = true;
+      }
+      if (analysis.spinal_curvature && analysis.spinal_curvature.status !== 'Normal') {
+        const curve = analysis.spinal_curvature.curve_degrees.toFixed(1);
+        clientScript.findings.push(`Your back scan shows a ${curve}° lateral spinal curvature.`);
+        foundMovementIssue = true;
       }
     }
-    clientScript.findings.push(movementFinding);
-    clientScript.whyItMatters.push(`Fixing these will make your ${primaryGoal} training much safer and allow us to load you up with heavier weights sooner.`);
-    clientScript.actionPlan.push(`We'll include 5-10 minutes of 'pre-hab' in every session to unlock these areas so they don't hold back your ${primaryGoal} progress.`);
-    internalNotes.needsAttention.push(`Movement quality (${movementScore}/100) is a bottleneck for ${primaryGoal}.`);
+
+    if (foundMovementIssue) {
+      clientScript.whyItMatters.push(`Addressing these movement restrictions will make your ${goalInSentence} training much safer and allow us to progress faster.`);
+      clientScript.actionPlan.push(`We'll include 5-10 minutes of targeted 'pre-hab' in every session to unlock these areas so they don't hold back your ${goalInSentence} progress.`);
+    }
+  } else if (movementScore > 0 && movementScore < 60) {
+    clientScript.findings.push("We found some movement restrictions that act like 'brakes' on your progress.");
+    clientScript.whyItMatters.push(`Fixing these will make your ${goalInSentence} training much safer and allow us to load you up with heavier weights sooner.`);
+    clientScript.actionPlan.push(`We'll include 5-10 minutes of 'pre-hab' in every session to unlock these areas so they don't hold back your ${goalInSentence} progress.`);
+    internalNotes.needsAttention.push(`Movement quality (${movementScore}/100) is a bottleneck.`);
   }
 
   // Strength/Cardio framing - only if we have data
-  const hasStrengthData = strengthScore > 0;
-  const hasCardioData = cardioScore > 0;
-  
-  if (hasStrengthData && strengthScore < 50) {
-    clientScript.findings.push("Your current strength baseline is the foundation we need to build upon.");
-    clientScript.whyItMatters.push(`As we increase this baseline, every part of your ${primaryGoal} journey will become easier and more sustainable.`);
-    internalNotes.needsAttention.push("Foundational strength mastery required before high-intensity loading.");
+  if (strengthScore > 0 && strengthScore < 55) {
+    clientScript.findings.push(`Your current strength baseline is below our foundational target.`);
+    clientScript.whyItMatters.push(`As we increase this baseline, every part of your ${goalInSentence} journey will become easier and more sustainable.`);
+    internalNotes.needsAttention.push(`Strength Mastery (${strengthScore}/100) requires foundational build.`);
   }
 
-  if (hasCardioData && cardioScore < 50) {
-    clientScript.findings.push("Your aerobic recovery is currently a limiting factor.");
-    clientScript.whyItMatters.push(`By improving this, you'll be able to work harder in your ${primaryGoal} sessions and recover much faster between them.`);
-    internalNotes.needsAttention.push("Aerobic base is low - will limit the density of primary goal workouts.");
+  if (cardioScore > 0 && cardioScore < 55) {
+    const rhr = form.cardioRestingHr;
+    clientScript.findings.push(`Your aerobic recovery is currently a limiting factor (Resting HR: ${rhr}bpm).`);
+    clientScript.whyItMatters.push(`By improving this, you'll be able to work harder in your ${goalInSentence} sessions and recover much faster between them.`);
+    internalNotes.needsAttention.push(`Low aerobic base (RHR ${rhr}bpm) - limits session density.`);
   }
 
   // 3-Month Outlook - Goal Centric (only if we have data)
   if (hasAnyData) {
-    clientScript.threeMonthOutlook.push(`In 90 days, the main thing you'll notice is a significant shift in your ${primaryGoal}.`);
+    clientScript.threeMonthOutlook.push(`Over the next ${totalWeeks} weeks, the main thing you'll notice is a significant shift in your ${goalInSentence} capacity.`);
     clientScript.threeMonthOutlook.push("Beyond that, you'll feel 'tighter' in your movement, have more 'engine' in your workouts, and feel more confident under load.");
   }
-  
+
   // Client Commitment (only if we have data)
   if (hasAnyData) {
     clientScript.clientCommitment.push("Consistency: Hit our agreed session frequency every week.");
@@ -399,7 +414,7 @@ export function generateCoachPlan(form: FormData, scores: ScoreSummary): CoachPl
 
   // Core/strength (only if we have strength data)
   if (hasStrengthData && (scores.categories.find(c => c.id === 'strength')?.score || 0) < 70) {
-    issues.push('Strength & endurance below target');
+    issues.push('Muscular Strength below target');
     addBlock('Strength & core', ['Improve core endurance', 'Build foundational strength'], [...EXERCISES.coreEndurance, ...EXERCISES.strengthBase]);
   }
 
@@ -434,7 +449,7 @@ export function generateCoachPlan(form: FormData, scores: ScoreSummary): CoachPl
   };
 }
 
-export function generateBodyCompInterpretation(form: FormData): BodyCompInterpretation | null {
+export function generateBodyCompInterpretation(form: FormData, scores?: ScoreSummary): BodyCompInterpretation | null {
   const gender = (form.gender || '').toLowerCase();
   const weight = parseFloat(form.inbodyWeightKg || '0');
   const bf = parseFloat(form.inbodyBodyFatPct || '0');
@@ -451,6 +466,28 @@ export function generateBodyCompInterpretation(form: FormData): BodyCompInterpre
   if (!hasBodyCompData) {
     return null;
   }
+
+  // Calculate weeks - simplified but aligned with buildRoadmap in scoring.ts
+  const isHighBf = gender === 'male' ? bf > 22 : bf > 30;
+  const fatLossTargetKg = isHighBf ? Math.max(0, bfm - (gender === 'male' ? weight * 0.18 : weight * 0.25)) : 0;
+  const fatLossWeeks = Math.ceil(fatLossTargetKg / 0.5); // 0.5kg/week
+  
+  const targetSMM = gender === 'male' ? 33 : 24;
+  const muscleGainKg = smm > 0 && smm < targetSMM ? targetSMM - smm : 0;
+  const muscleWeeks = Math.ceil(muscleGainKg / 0.15); // 0.15kg/week
+  
+  // Posture/Movement weeks if scores are provided
+  let movementWeeks = 0;
+  if (form.postureAiResults) {
+    movementWeeks = 8;
+  } else if (scores) {
+    const mScore = scores.categories.find(c => c.id === 'movementQuality')?.score || 0;
+    if (mScore > 0 && mScore < 60) movementWeeks = 6;
+  }
+
+  const totalWeeks = Math.max(fatLossWeeks, muscleWeeks, movementWeeks, 8); // Minimum 8 week build
+  const minWeeks = Math.max(4, totalWeeks - 2);
+  const maxWeeks = totalWeeks + 4;
 
   // Segmental kg
   const armR = parseFloat(form.segmentalArmRightKg || '0');
@@ -561,17 +598,6 @@ export function generateBodyCompInterpretation(form: FormData): BodyCompInterpre
   const stress = (highVisceral || highStress) ? 'Daily breathwork 5–10 min; walking breaks; reduce late caffeine' : 'Maintain current routines';
   const dailyMovement = '6–10k steps/day target (break up long sitting)';
   const inflammationReduction = (highVisceral || lowHydration) ? 'Reduce alcohol/ultra-processed foods; add omega-3s; emphasize whole foods' : undefined;
-
-  // Timeframe projection
-  const fatLossTargetKg = highBf ? Math.max(0, bfm - (gender === 'male' ? weight * 0.18 : weight * 0.25)) : 0; // aim toward ~18% men / 25% women
-  const fatLossRate = 0.4; // kg/week conservative
-  const muscleGainNeedKg = lowSmm ? ((gender === 'male' ? 33 : 24) - smm) : 0;
-  const muscleGainRate = 0.15; // kg/week novice avg
-  const fatWeeks = fatLossTargetKg > 0 ? fatLossTargetKg / fatLossRate : 0;
-  const muscleWeeks = muscleGainNeedKg > 0 ? muscleGainNeedKg / muscleGainRate : 0;
-  const riskAdd = highVisceral ? 3 : whrHigh ? 2 : borderlineVisceral ? 1 : 0;
-  const minWeeks = Math.round(Math.max(4, Math.min(12, Math.max(fatWeeks, muscleWeeks) * 0.6)) + riskAdd);
-  const maxWeeks = Math.round(Math.max(8, Math.min(28, Math.max(fatWeeks, muscleWeeks) * 1.2)) + riskAdd);
 
   return {
     healthPriority,

@@ -3,16 +3,17 @@ import { getFirestore, type Firestore } from 'firebase/firestore';
 import { getAuth, type Auth } from 'firebase/auth';
 import { getFunctions, type Functions } from 'firebase/functions';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
+import { CONFIG } from '@/config';
 
 // SECURITY: Use environment variables for all sensitive configuration
 // Never hardcode API keys, secrets, or credentials in source code
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: CONFIG.FIREBASE.API_KEY,
+  authDomain: CONFIG.FIREBASE.AUTH_DOMAIN,
+  projectId: CONFIG.FIREBASE.PROJECT_ID,
+  storageBucket: CONFIG.FIREBASE.STORAGE_BUCKET,
+  messagingSenderId: CONFIG.FIREBASE.MESSAGING_SENDER_ID,
+  appId: CONFIG.FIREBASE.APP_ID,
 };
 
 // Validate that all required environment variables are present

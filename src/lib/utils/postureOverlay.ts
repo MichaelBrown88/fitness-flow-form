@@ -1,23 +1,19 @@
-/**
- * Draw reference lines overlay on posture images
- * Adds green reference lines and red deviation lines based on AI analysis
- */
+import { PostureAnalysisResult } from '../ai/postureAnalysis';
+import { CONFIG } from '@/config';
 
-export interface OverlayOptions {
-  showMidline?: boolean; // Vertical center line
-  showShoulderLine?: boolean; // Horizontal line at shoulder level
-  showHipLine?: boolean; // Horizontal line at hip level
+interface OverlayOptions {
+  showMidline?: boolean;
+  showShoulderLine?: boolean;
+  showHipLine?: boolean;
   lineColor?: string;
   lineWidth?: number;
-  analysis?: any; // PostureAnalysisResult from AI
+  analysis?: PostureAnalysisResult;
+  mode?: 'reference' | 'align' | 'deviation';
+  landmarks?: PostureAnalysisResult['landmarks'];
 }
 
 /**
- * Draw reference lines on an image
- * @param imageData Base64 image data URL
- * @param view The view being analyzed
- * @param options Overlay options
- * @returns Base64 image with overlay lines
+ * Adds posture reference or deviation lines to an image using HTML Canvas
  */
 export async function addPostureOverlay(
   imageData: string,
@@ -28,9 +24,10 @@ export async function addPostureOverlay(
     showMidline = true,
     showShoulderLine = true,
     showHipLine = true,
-    lineColor = '#00ff00', // Green for reference lines
-    lineWidth = 2,
-    analysis
+    lineColor = CONFIG.POSTURE_OVERLAY.STYLE.LINE_COLOR,
+    lineWidth = CONFIG.POSTURE_OVERLAY.STYLE.LINE_WIDTH,
+    analysis,
+    mode = 'reference'
   } = options;
 
   return new Promise((resolve, reject) => {
@@ -39,8 +36,10 @@ export async function addPostureOverlay(
     img.onload = () => {
       try {
         const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
+        const width = CONFIG.POSTURE_OVERLAY.CANVAS_SIZE.WIDTH;
+        const height = CONFIG.POSTURE_OVERLAY.CANVAS_SIZE.HEIGHT;
+        canvas.width = width;
+        canvas.height = height;
         const ctx = canvas.getContext('2d');
         
         if (!ctx) {
@@ -48,382 +47,393 @@ export async function addPostureOverlay(
           return;
         }
         
-        // Draw original image
-        ctx.drawImage(img, 0, 0);
+        const targetCenterX = canvas.width * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.CENTER_X_PCT / 100);
+        const targetShoulderY = canvas.height * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.SHOULDER_Y_PCT / 100);
+        const targetHipY = canvas.height * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.HIP_Y_PCT / 100);
         
-        // Track how many deviations we draw (declare outside if block for scope)
-        let deviationCount = 0;
+        const landmarkData = options.landmarks || analysis?.landmarks;
         
-        // Draw GREEN reference lines first
-        ctx.strokeStyle = '#00ff00'; // Green
-        ctx.lineWidth = lineWidth;
-        ctx.setLineDash([]);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        // Standard Reference Coordinates (used for both green and red lines)
-        const centerX = canvas.width / 2;
-        const shoulderY = canvas.height * 0.25; // Approx shoulder height
-        const hipY = canvas.height * 0.5;      // Approx hip height
-        
-        if (showMidline && (view === 'front' || view === 'back')) {
-          // Vertical midline for front/back views
-          ctx.beginPath();
-          ctx.moveTo(centerX, 0);
-          ctx.lineTo(centerX, canvas.height);
-          ctx.stroke();
+        if (mode === 'align' && landmarkData) {
+          let landmarkX = img.width * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.CENTER_X_PCT / 100);
+          let landmarkShoulderY = img.height * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.SHOULDER_Y_PCT / 100);
+          let landmarkHipY = img.height * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.HIP_Y_PCT / 100);
+          
+          if (view === 'side-right' || view === 'side-left') {
+            if (landmarkData.midfoot_x_percent !== undefined) {
+              landmarkX = (landmarkData.midfoot_x_percent / 100) * img.width;
+            }
+          } else {
+            if (landmarkData.center_x_percent !== undefined) {
+              landmarkX = (landmarkData.center_x_percent / 100) * img.width;
+            }
+          }
+          
+          if (landmarkData.shoulder_y_percent !== undefined) {
+            landmarkShoulderY = (landmarkData.shoulder_y_percent / 100) * img.height;
+          }
+          if (landmarkData.hip_y_percent !== undefined) {
+            landmarkHipY = (landmarkData.hip_y_percent / 100) * img.height;
+          }
+
+          const actualTorsoHeight = Math.abs(landmarkHipY - landmarkShoulderY);
+          const targetTorsoHeight = Math.abs(targetHipY - targetShoulderY);
+          const scale = actualTorsoHeight > 0 ? targetTorsoHeight / actualTorsoHeight : (canvas.height / img.height);
+
+          const translateX = targetCenterX - (landmarkX * scale);
+          const bodyCenterY = (landmarkShoulderY + landmarkHipY) / 2;
+          const targetCenterY = (targetShoulderY + targetHipY) / 2;
+          const translateY = targetCenterY - (bodyCenterY * scale);
+
+          console.log(`[OVERLAY] Aligning ${view}: torso_h=${actualTorsoHeight.toFixed(0)}px, scale=${scale.toFixed(3)}, translate(${translateX.toFixed(1)}, ${translateY.toFixed(1)})`);
+
+          ctx.save();
+          ctx.translate(translateX, translateY);
+          ctx.scale(scale, scale);
+          ctx.drawImage(img, 0, 0);
+          ctx.restore();
+        } else {
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         }
         
-        if (showMidline && (view === 'side-right' || view === 'side-left')) {
-          // Vertical plumb line for side views - CENTER OF SCREEN
-          const plumbX = centerX; // Same as centerX
+        ctx.strokeStyle = lineColor;
+        ctx.lineWidth = lineWidth;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        
+        if (showMidline) {
           ctx.beginPath();
-          ctx.moveTo(plumbX, 0);
-          ctx.lineTo(plumbX, canvas.height);
+          ctx.moveTo(targetCenterX, 0);
+          ctx.lineTo(targetCenterX, canvas.height);
           ctx.stroke();
         }
         
         if (showShoulderLine) {
-          // Horizontal line at shoulder level
           ctx.beginPath();
-          ctx.moveTo(0, shoulderY);
-          ctx.lineTo(canvas.width, shoulderY);
+          ctx.moveTo(0, targetShoulderY);
+          ctx.lineTo(canvas.width, targetShoulderY);
           ctx.stroke();
         }
         
         if (showHipLine) {
-          // Horizontal line at hip level
           ctx.beginPath();
-          ctx.moveTo(0, hipY);
-          ctx.lineTo(canvas.width, hipY);
+          ctx.moveTo(0, targetHipY);
+          ctx.lineTo(canvas.width, targetHipY);
           ctx.stroke();
         }
-        
-        // Draw RED deviation lines if analysis is available
-        if (analysis) {
-          console.log(`[OVERLAY] ===== STARTING DEVIATION OVERLAY FOR ${view} =====`);
-          console.log(`[OVERLAY] Full analysis object:`, JSON.stringify(analysis, null, 2));
-          console.log(`[OVERLAY] Analysis keys:`, Object.keys(analysis));
-          
-          ctx.strokeStyle = '#ff0000'; // Red for deviations
-          ctx.lineWidth = 3;
-          ctx.setLineDash([5, 5]); // Dashed line for deviations
-          
-          if (view === 'front' || view === 'back') {
-            // Front/Back view deviations
-            // Use same coordinates as green reference lines
-            
-            // Shoulder asymmetry - draw offset line
-            // ALWAYS draw if there's a measurable difference, regardless of status
-            const shoulderDiff = Math.abs(analysis.shoulder_alignment?.height_difference_cm || 0);
-            if (analysis.shoulder_alignment && shoulderDiff > 0.1) {
-              console.log(`[OVERLAY] Drawing shoulder asymmetry: ${shoulderDiff}cm, status: ${analysis.shoulder_alignment.status}`);
-              // Convert cm to pixels (approximate: 1cm = ~10px for typical photo)
-              const offsetPx = Math.max(5, shoulderDiff * 10); // Minimum 5px for visibility
-              // Determine which shoulder is higher based on elevation values
-              const leftElev = analysis.shoulder_alignment.left_elevation_cm || 0;
-              const rightElev = analysis.shoulder_alignment.right_elevation_cm || 0;
-              const leftHigher = leftElev > rightElev;
-              
-              const leftShoulderY = leftHigher ? shoulderY - (offsetPx / 2) : shoulderY + (offsetPx / 2);
-              const rightShoulderY = leftHigher ? shoulderY + (offsetPx / 2) : shoulderY - (offsetPx / 2);
-              
-              // Draw horizontal line showing asymmetry
-              ctx.beginPath();
-              ctx.moveTo(centerX - canvas.width * 0.3, leftShoulderY);
-              ctx.lineTo(centerX + canvas.width * 0.3, rightShoulderY);
-              ctx.stroke();
-            }
-            
-            // Hip asymmetry - draw offset line
-            // ALWAYS draw if there's a measurable difference
-            const hipDiff = Math.abs(analysis.hip_alignment?.height_difference_cm || 0);
-            if (analysis.hip_alignment && hipDiff > 0.1) {
-              console.log(`[OVERLAY] Drawing hip asymmetry: ${hipDiff}cm, status: ${analysis.hip_alignment.status}`);
-              const offsetPx = Math.max(5, hipDiff * 10);
-              // Determine which hip is higher
-              const leftElev = analysis.hip_alignment.left_elevation_cm || 0;
-              const rightElev = analysis.hip_alignment.right_elevation_cm || 0;
-              const leftHigher = leftElev > rightElev;
-              
-              const leftHipY = leftHigher ? hipY - (offsetPx / 2) : hipY + (offsetPx / 2);
-              const rightHipY = leftHigher ? hipY + (offsetPx / 2) : hipY - (offsetPx / 2);
-              
-              ctx.beginPath();
-              ctx.moveTo(centerX - canvas.width * 0.3, leftHipY);
-              ctx.lineTo(centerX + canvas.width * 0.3, rightHipY);
-              ctx.stroke();
-            }
-            
-            // Lateral pelvic tilt - draw angled line
-            // ALWAYS draw if there's a measurable tilt
-            const lateralTilt = Math.abs(analysis.pelvic_tilt?.lateral_tilt_degrees || 0);
-            if (analysis.pelvic_tilt && lateralTilt > 0.5) {
-              console.log(`[OVERLAY] Drawing lateral pelvic tilt: ${lateralTilt}°, status: ${analysis.pelvic_tilt.status}`);
-              const hipWidth = canvas.width * 0.2;
-              const tiltRad = (lateralTilt * Math.PI) / 180;
-              // Determine tilt direction
-              const leftElev = analysis.pelvic_tilt.left_hip_elevation_cm || 0;
-              const rightElev = analysis.pelvic_tilt.right_hip_elevation_cm || 0;
-              const leftHigher = leftElev > rightElev;
-              
-              // Draw hip line at angle
-              ctx.beginPath();
-              if (leftHigher) {
-                ctx.moveTo(centerX - hipWidth, hipY - (Math.sin(tiltRad) * hipWidth));
-                ctx.lineTo(centerX + hipWidth, hipY + (Math.sin(tiltRad) * hipWidth));
-              } else {
-                ctx.moveTo(centerX - hipWidth, hipY + (Math.sin(tiltRad) * hipWidth));
-                ctx.lineTo(centerX + hipWidth, hipY - (Math.sin(tiltRad) * hipWidth));
-              }
-              ctx.stroke();
-            }
-            
-            // Hip shift - draw vertical offset
-            // ALWAYS draw if there's a measurable shift
-            const hipShift = Math.abs(analysis.pelvic_tilt?.hip_shift_cm || 0);
-            if (analysis.pelvic_tilt && hipShift > 0.1) {
-              console.log(`[OVERLAY] Drawing hip shift: ${hipShift}cm, direction: ${analysis.pelvic_tilt.hip_shift_direction}`);
-              const shiftPx = Math.max(5, hipShift * 10);
-              const shiftDirection = analysis.pelvic_tilt.hip_shift_direction === 'Left' ? -1 : 
-                                    analysis.pelvic_tilt.hip_shift_direction === 'Right' ? 1 : 0;
-              const shiftedX = centerX + (shiftPx * shiftDirection);
-              
-              ctx.beginPath();
-              ctx.moveTo(shiftedX, hipY - canvas.height * 0.2);
-              ctx.lineTo(shiftedX, hipY + canvas.height * 0.2);
-              ctx.stroke();
-            }
-            
-            // Knee alignment - draw valgus/varus lines
-            if (analysis.knee_alignment && analysis.knee_alignment.status !== 'Neutral') {
-              const kneeY = canvas.height * 0.75;
-              const devDegrees = analysis.knee_alignment.deviation_degrees || 0;
-              const kneeWidth = canvas.width * 0.1;
-              
-              if (analysis.knee_alignment.status === 'Valgus') {
-                // Knees pointing inward - draw angle lines
-                ctx.beginPath();
-                ctx.moveTo(centerX - kneeWidth, kneeY);
-                ctx.lineTo(centerX - kneeWidth * 0.5, kneeY - (devDegrees * 2));
-                ctx.moveTo(centerX + kneeWidth, kneeY);
-                ctx.lineTo(centerX + kneeWidth * 0.5, kneeY - (devDegrees * 2));
-                ctx.stroke();
-              } else if (analysis.knee_alignment.status === 'Varus') {
-                // Knees pointing outward - draw angle lines
-                ctx.beginPath();
-                ctx.moveTo(centerX - kneeWidth, kneeY);
-                ctx.lineTo(centerX - kneeWidth * 1.5, kneeY - (devDegrees * 2));
-                ctx.moveTo(centerX + kneeWidth, kneeY);
-                ctx.lineTo(centerX + kneeWidth * 1.5, kneeY - (devDegrees * 2));
-                ctx.stroke();
-              }
-            }
-            
-            // Spinal curvature (scoliosis) - for back view only
-            if (view === 'back' && analysis.spinal_curvature && analysis.spinal_curvature.status !== 'Normal') {
-              const curveDegrees = analysis.spinal_curvature.curve_degrees || 0;
-              const spineStartY = canvas.height * 0.15; // Top of spine
-              const spineEndY = hipY; // Bottom of spine
-              const curveOffset = (curveDegrees / 10) * (canvas.width * 0.1); // Convert degrees to pixels
-              
-              // Draw curved spine line
-              ctx.beginPath();
-              ctx.moveTo(centerX, spineStartY);
-              ctx.quadraticCurveTo(centerX + curveOffset, (spineStartY + spineEndY) / 2, centerX, spineEndY);
-              ctx.stroke();
-            }
-          } else if (view === 'side-right' || view === 'side-left') {
-            // Side view deviations - FIXED with facing direction awareness
-            const plumbX = centerX; // Same as green plumb line
-            // Use same Y-coords as green reference lines (defined at top of function)
-            
-            // 1. DETERMINE FACING DIRECTION
-            // side-right: Person's RIGHT side visible, facing RIGHT (nose → right, front → right)
-            // side-left: Person's LEFT side visible, facing LEFT (nose → left, front → left)
-            // Forward head means head protrudes forward (toward camera/viewer)
-            // In side-right view: forward = +X (right side of image)
-            // In side-left view: forward = -X (left side of image)
-            const facingDir = view === 'side-right' ? 1 : -1;
-            
-            // Forward head posture - draw angled line from shoulder to ear
-            const forwardHead = analysis.forward_head;
-            if (forwardHead) {
-              console.log(`[OVERLAY] forward_head data:`, forwardHead);
-              const headDevDegrees = Math.abs(forwardHead.deviation_degrees || 0);
-              const headStatus = forwardHead.status || 'Neutral';
-              const hasDeviation = headDevDegrees > 0 || headStatus !== 'Neutral';
-              
-              if (hasDeviation) {
-                deviationCount++;
-                console.log(`[OVERLAY] ✓ Drawing forward head: ${headDevDegrees}°, status: ${headStatus}, view: ${view}, facingDir: ${facingDir}`);
-                
-                // Anchor at the intersection of Plumb Line and Shoulder Line
-                const startX = plumbX;
-                const startY = shoulderY;
-                
-                // Calculate length of the neck line (approximate)
-                const neckLength = canvas.height * 0.15;
-                
-                // Calculate the endpoint (Ear) based on the angle
-                // Forward head: head moves forward from plumb line
-                // For side-right: forward = +X (right)
-                // For side-left: forward = -X (left)
-                const angleRad = (headDevDegrees * Math.PI) / 180;
-                
-                // Math: sin gives us the X offset (forward), cos gives the Y height (up)
-                // Forward head means head is forward of plumb line, so multiply by facingDir
-                const endX = startX + (Math.sin(angleRad) * neckLength * facingDir);
-                const endY = startY - (Math.cos(angleRad) * neckLength); // -Y is Up
-                
-                ctx.beginPath();
-                ctx.moveTo(startX, startY);
-                ctx.lineTo(endX, endY);
-                ctx.stroke();
-                
-                // NO CIRCLE - just the line showing the deviation
-              } else {
-                console.log(`[OVERLAY] ✗ Skipping forward head - no deviation detected`);
-              }
-            } else {
-              console.log(`[OVERLAY] ✗ No forward_head data in analysis`);
-            }
-            
-            // Rounded shoulders - draw forward position
-            const shoulderForwardCm = Math.abs(analysis.shoulder_alignment?.forward_position_cm || 0);
-            if (analysis.shoulder_alignment && (analysis.shoulder_alignment.status === 'Rounded' || shoulderForwardCm > 0)) {
-              deviationCount++;
-              console.log(`[OVERLAY] ✓ Drawing rounded shoulders: ${shoulderForwardCm}cm forward, status: ${analysis.shoulder_alignment.status}`);
-              const forwardPx = Math.max(10, shoulderForwardCm * 10);
-              const shoulderX = plumbX + (forwardPx * facingDir); // Shoulders are forward of plumb line
-              
-              // Draw line showing forward shoulder position
-              ctx.beginPath();
-              ctx.moveTo(shoulderX, shoulderY);
-              ctx.lineTo(plumbX, shoulderY);
-              ctx.stroke();
-            }
-            
-            // Torso angle (kyphosis) - draw line showing forward curve
-            const kyphosisDegrees = analysis.kyphosis?.curve_degrees || 0;
-            if (analysis.kyphosis && kyphosisDegrees > 0) {
-              deviationCount++;
-              console.log(`[OVERLAY] ✓ Drawing kyphosis: ${kyphosisDegrees}°, status: ${analysis.kyphosis.status}`);
-              // Draw line from shoulder to mid-back showing curve
-              const midBackY = (shoulderY + hipY) / 2;
-              const idealKyphosis = 30; // Ideal thoracic curve
-              const deviationDegrees = Math.max(0, kyphosisDegrees - idealKyphosis);
-              const forwardOffset = Math.tan((deviationDegrees * Math.PI) / 180) * (midBackY - shoulderY);
-              
-              // Draw curved line showing forward deviation (forward = negative X for side views)
-              ctx.beginPath();
-              ctx.moveTo(plumbX, shoulderY);
-              ctx.lineTo(plumbX - (forwardOffset * facingDir), midBackY);
-              ctx.stroke();
-            }
-            
-            // Pelvic Tilt - FIXED with facing direction awareness
-            const pelvicTilt = analysis.pelvic_tilt;
-            if (pelvicTilt) {
-              console.log(`[OVERLAY] pelvic_tilt data:`, pelvicTilt);
-              const tiltDegrees = pelvicTilt.anterior_tilt_degrees || 0; // Positive = Anterior
-              const isAnterior = tiltDegrees > 0 || (pelvicTilt.status || '').includes('Anterior');
-              const tiltAbs = Math.abs(tiltDegrees);
-              
-              if (tiltAbs > 0) {
-                deviationCount++;
-                console.log(`[OVERLAY] ✓ Drawing pelvic tilt: ${tiltDegrees}° (absolute: ${tiltAbs}°), status: ${pelvicTilt.status}, isAnterior: ${isAnterior}, facingDir: ${facingDir}`);
-                
-                const lineLen = canvas.width * 0.2; // Length of the hip line
-                const tiltRad = (tiltAbs * Math.PI) / 180;
-                
-                // Calculate offsets
-                // If Anterior: Belt buckle drops.
-                // Facing Right: Front (Right) Y increases. Back (Left) Y decreases.
-                // Facing Left: Front (Left) Y increases. Back (Right) Y decreases.
-                
-                let frontYOffset, backYOffset;
-                
-                if (isAnterior) {
-                  // Front drops down (+Y), Back goes up (-Y)
-                  frontYOffset = Math.sin(tiltRad) * (lineLen / 2);
-                  backYOffset = -Math.sin(tiltRad) * (lineLen / 2);
-                } else {
-                  // Posterior: Front goes up (-Y), Back drops down (+Y)
-                  frontYOffset = -Math.sin(tiltRad) * (lineLen / 2);
-                  backYOffset = Math.sin(tiltRad) * (lineLen / 2);
-                }
-                
-                const frontX = plumbX + ((lineLen / 2) * facingDir);
-                const frontY = hipY + frontYOffset;
-                
-                const backX = plumbX - ((lineLen / 2) * facingDir);
-                const backY = hipY + backYOffset;
-                
-                // Draw the tilted Red Line (NO CIRCLE/ARC - just offset line)
-                ctx.beginPath();
-                ctx.moveTo(backX, backY);
-                ctx.lineTo(frontX, frontY);
-                ctx.stroke();
-                
-                // Draw green horizontal reference line for comparison (ideal alignment)
-                ctx.strokeStyle = '#00ff00'; // Green reference
-                ctx.lineWidth = 1;
-                ctx.setLineDash([5, 5]);
-                ctx.beginPath();
-                ctx.moveTo(plumbX - (lineLen / 2), hipY);
-                ctx.lineTo(plumbX + (lineLen / 2), hipY);
-                ctx.stroke();
-                
-                // NO ARC/CIRCLE - just the offset lines showing the tilt
-                
-                // Reset to red solid line for other deviations
-                ctx.strokeStyle = '#ff0000';
-                ctx.lineWidth = 3;
-                ctx.setLineDash([5, 5]);
-              } else {
-                console.log(`[OVERLAY] ✗ Skipping pelvic tilt - no deviation detected`);
-              }
-            } else {
-              console.log(`[OVERLAY] ✗ No pelvic_tilt data in analysis`);
-            }
-          }
+
+        if (mode === 'deviation' && analysis) {
+          drawDeviations(ctx, view, analysis, targetCenterX, targetShoulderY, targetHipY);
         }
-        
-        // Convert back to base64
-        const overlayImage = canvas.toDataURL('image/jpeg', 0.95);
-        console.log(`[OVERLAY] ===== COMPLETED DEVIATION OVERLAY FOR ${view} =====`);
-        console.log(`[OVERLAY] Total deviations drawn: ${deviationCount}`);
-        if (deviationCount === 0) {
-          console.warn(`[OVERLAY] ⚠️ NO DEVIATIONS DRAWN! Check analysis data structure.`);
-        }
-        resolve(overlayImage);
+
+        resolve(canvas.toDataURL('image/jpeg', 0.95));
       } catch (error) {
         reject(error);
       }
     };
     
-    img.onerror = () => {
-      reject(new Error('Failed to load image'));
-    };
-    
+    img.onerror = () => reject(new Error('Failed to load image'));
     img.src = imageData;
   });
 }
 
+function drawDeviations(
+  ctx: CanvasRenderingContext2D,
+  view: string,
+  analysis: PostureAnalysisResult,
+  centerX: number,
+  shoulderY: number,
+  hipY: number
+) {
+  const facingDir = view === 'side-right' ? 1 : -1;
+  // For front/back, we need to know screen-left vs screen-right
+  // Front: screen-left is client-right
+  // Back: screen-left is client-left
+  const isBackView = view === 'back';
+  
+  ctx.strokeStyle = CONFIG.POSTURE_OVERLAY.STYLE.DEVIATION_COLOR;
+  ctx.lineWidth = CONFIG.POSTURE_OVERLAY.STYLE.DEVIATION_WIDTH;
+  ctx.setLineDash([5, 5]);
+
+  if (view === 'front' || view === 'back') {
+    // 1. Head Tilt
+    if (analysis.head_alignment && analysis.head_alignment.status !== 'Neutral') {
+      const tiltDeg = analysis.head_alignment.tilt_degrees || 0;
+      const status = analysis.head_alignment.status;
+      
+      // Determine screen direction of tilt
+      // Tilted Right in Back view = Screen Right
+      // Tilted Right in Front view = Screen Left
+      let screenTiltDir = 1; // Default to screen right
+      if (status === 'Tilted Right') {
+        screenTiltDir = isBackView ? 1 : -1;
+      } else if (status === 'Tilted Left') {
+        screenTiltDir = isBackView ? -1 : 1;
+      }
+      
+      const headY = (analysis.landmarks?.head_y_percent !== undefined) 
+        ? (analysis.landmarks.head_y_percent / 100) * ctx.canvas.height 
+        : shoulderY - 150;
+      
+      const rad = (Math.abs(tiltDeg) * Math.PI / 180) * screenTiltDir;
+      const lineLength = 100;
+      
+      ctx.beginPath();
+      ctx.moveTo(centerX - (Math.cos(rad) * lineLength), headY + (Math.sin(rad) * lineLength));
+      ctx.lineTo(centerX + (Math.cos(rad) * lineLength), headY - (Math.sin(rad) * lineLength));
+      ctx.stroke();
+    }
+
+    // 2. Shoulder Asymmetry
+    if (analysis.shoulder_alignment && analysis.shoulder_alignment.status !== 'Neutral') {
+      const diffCm = analysis.shoulder_alignment.height_difference_cm || 0;
+      const desc = analysis.shoulder_alignment.description.toLowerCase();
+      
+      // Determine which side is higher on screen
+      let higherSide = 0; // 0 = even, -1 = screen left higher, 1 = screen right higher
+      
+      if (desc.includes('right shoulder is slightly elevated') || desc.includes('right shoulder sits higher')) {
+        // Client Right is Screen Left in Back View, Screen Right in Front View
+        higherSide = isBackView ? -1 : 1;
+      } else if (desc.includes('left shoulder is slightly elevated') || desc.includes('left shoulder sits higher')) {
+        // Client Left is Screen Right in Back View, Screen Left in Front View
+        higherSide = isBackView ? 1 : -1;
+      }
+      
+      if (higherSide !== 0) {
+        const pixelDiff = Math.min(diffCm * 15, 60); // Scale for visibility
+        ctx.beginPath();
+        // Line tilts up towards the higher side
+        ctx.moveTo(centerX - 150, shoulderY + (higherSide * pixelDiff / 2));
+        ctx.lineTo(centerX + 150, shoulderY - (higherSide * pixelDiff / 2));
+        ctx.stroke();
+      }
+    }
+
+    // 3. Pelvic/Hip Asymmetry
+    const pelvicData = analysis.pelvic_tilt;
+    const hipData = analysis.hip_alignment;
+    
+    if ((pelvicData && pelvicData.status !== 'Neutral') || (hipData && hipData.status !== 'Neutral')) {
+      const pelvicDiff = (pelvicData as any)?.height_difference_cm || 0;
+      const hipDiff = (hipData as any)?.height_difference_cm || 0;
+      const diffCm = Math.max(pelvicDiff, hipDiff);
+      
+      const pelvicDesc = pelvicData?.description.toLowerCase() || '';
+      const hipDesc = hipData?.description.toLowerCase() || '';
+      const combinedDesc = `${pelvicDesc} ${hipDesc}`;
+      
+      let higherSide = 0;
+      if (combinedDesc.includes('right side is elevated') || combinedDesc.includes('right hip sits higher') || combinedDesc.includes('right shoulder is slightly elevated')) {
+        higherSide = isBackView ? -1 : 1;
+      } else if (combinedDesc.includes('left side is elevated') || combinedDesc.includes('left hip sits higher') || combinedDesc.includes('left shoulder is slightly elevated')) {
+        higherSide = isBackView ? 1 : -1;
+      }
+      
+      if (higherSide !== 0 || diffCm > 0) {
+        const pixelDiff = Math.min(Math.max(diffCm * 15, 20), 60);
+        ctx.beginPath();
+        ctx.moveTo(centerX - 150, hipY + (higherSide * pixelDiff / 2));
+        ctx.lineTo(centerX + 150, hipY - (higherSide * pixelDiff / 2));
+        ctx.stroke();
+      }
+    }
+
+    // 4. Spinal Curvature (Scoliosis)
+    if (view === 'back' && analysis.spinal_curvature && analysis.spinal_curvature.status !== 'Normal') {
+      const curveDeg = analysis.spinal_curvature.curve_degrees || 0;
+      const desc = analysis.spinal_curvature.description.toLowerCase();
+      
+      // Determine bulge direction
+      let bulgeSide = curveDeg > 0 ? 1 : -1; 
+      if (desc.includes('right-side bulge') || desc.includes('curve to the right')) {
+        bulgeSide = -1; // Client Right is Screen Left in Back View
+      } else if (desc.includes('left-side bulge') || desc.includes('curve to the left')) {
+        bulgeSide = 1; // Client Left is Screen Right in Back View
+      }
+      
+      ctx.beginPath();
+      ctx.setLineDash([2, 4]);
+      
+      // S-curve support: Use cubic bezier for more complex visualization
+      const curveHeight = hipY - shoulderY;
+      const bulge = Math.min(Math.max(Math.abs(curveDeg) * 4, 40), 150);
+      
+      // Control points for a more realistic spinal curve
+      const cp1x = centerX + (bulgeSide * bulge);
+      const cp1y = shoulderY + (curveHeight * 0.3);
+      const cp2x = centerX - (bulgeSide * bulge * 0.5); // Slight counter-curve for S-shape
+      const cp2y = shoulderY + (curveHeight * 0.7);
+      
+      ctx.moveTo(centerX, shoulderY);
+      ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, centerX, hipY);
+      ctx.stroke();
+      ctx.setLineDash([5, 5]);
+    }
+  } else {
+    // Side view deviations
+    // Forward Head
+    if (analysis.forward_head && analysis.forward_head.deviation_degrees) {
+      const deg = analysis.forward_head.deviation_degrees;
+      const rad = (deg * Math.PI) / 180;
+      
+      ctx.beginPath();
+      ctx.moveTo(centerX, shoulderY);
+      const lineLength = 150;
+      const endX = centerX + (facingDir * Math.sin(rad) * lineLength);
+      const endY = shoulderY - (Math.cos(rad) * lineLength);
+      ctx.lineTo(endX, endY);
+      ctx.stroke();
+    }
+
+    // Rounded Shoulders (Side View)
+    if (analysis.shoulder_alignment && (analysis.shoulder_alignment.rounded_forward || (analysis.shoulder_alignment.forward_position_cm || 0) > 0)) {
+      const forwardCm = analysis.shoulder_alignment.forward_position_cm || 2;
+      const pixelOffset = Math.min(forwardCm * 10, 80); 
+      
+      ctx.beginPath();
+      ctx.moveTo(centerX, shoulderY);
+      ctx.lineTo(centerX + (facingDir * pixelOffset), shoulderY);
+      ctx.stroke();
+      
+      ctx.moveTo(centerX + (facingDir * pixelOffset), shoulderY - 15);
+      ctx.lineTo(centerX + (facingDir * pixelOffset), shoulderY + 15);
+      ctx.stroke();
+    }
+
+    // Kyphosis (Upper Back Curve)
+    if (analysis.kyphosis && analysis.kyphosis.status !== 'Normal') {
+      const curveDeg = analysis.kyphosis.curve_degrees || 40;
+      const arcSize = Math.min(curveDeg * 1.2, 80);
+      
+      ctx.beginPath();
+      ctx.arc(centerX - (facingDir * 30), shoulderY + 40, arcSize, -Math.PI/2.5, Math.PI/2.5, facingDir === 1);
+      ctx.stroke();
+    }
+
+    // Lordosis (Lower Back Curve)
+    if (analysis.lordosis && analysis.lordosis.status !== 'Normal') {
+      const curveDeg = analysis.lordosis.curve_degrees || 30;
+      const arcSize = Math.min(curveDeg * 1.5, 70);
+      
+      ctx.beginPath();
+      ctx.arc(centerX + (facingDir * 20), hipY - 50, arcSize, -Math.PI/3, Math.PI/3, facingDir === -1);
+      ctx.stroke();
+    }
+
+    // Pelvic Tilt (Side View)
+    if (analysis.pelvic_tilt && analysis.pelvic_tilt.status !== 'Neutral') {
+      const deg = (analysis.pelvic_tilt as any).anterior_tilt_degrees || 0;
+      const rad = (deg * Math.PI) / 180;
+      const isAnterior = (analysis.pelvic_tilt.status || '').includes('Anterior') || deg > 0;
+      
+      ctx.beginPath();
+      const lineLength = 50;
+      const angle = isAnterior ? rad : -rad;
+      
+      ctx.moveTo(centerX - lineLength, hipY - (facingDir * Math.tan(angle) * lineLength));
+      ctx.lineTo(centerX + lineLength, hipY + (facingDir * Math.tan(angle) * lineLength));
+      ctx.stroke();
+    }
+
+    // Knee Position (Hyperextension/Flexion)
+    if (analysis.knee_position && analysis.knee_position.status !== 'Neutral') {
+      const deg = (analysis.knee_position as any).deviation_degrees || 0;
+      const rad = (deg * Math.PI) / 180;
+      const isHyperextended = (analysis.knee_position.status || '').includes('Hyperextended') || deg < 0;
+      
+      ctx.beginPath();
+      ctx.moveTo(centerX, hipY);
+      
+      const kneeLength = 220;
+      const angle = isHyperextended ? rad : -rad;
+      
+      const endX = centerX + (Math.sin(angle) * kneeLength);
+      const endY = hipY + (Math.cos(angle) * kneeLength);
+      ctx.lineTo(endX, endY);
+      ctx.stroke();
+    }
+  }
+}
+
 /**
- * Add deviation lines to an image after AI analysis
- * This is called after analysis is complete to add red deviation lines
+ * Adds red deviation lines to an image that has already been aligned with green lines
  */
 export async function addDeviationOverlay(
   imageData: string,
   view: 'front' | 'side-right' | 'side-left' | 'back',
-  analysis: any
+  analysis: PostureAnalysisResult
 ): Promise<string> {
   return addPostureOverlay(imageData, view, {
-    showMidline: true,
-    showShoulderLine: true,
-    showHipLine: true,
-    lineColor: '#00ff00',
-    lineWidth: 2,
+    mode: 'deviation',
     analysis
   });
+}
+
+/**
+ * Generates a placeholder image with green reference lines for the companion app
+ */
+export function generatePlaceholderWithGreenLines(
+  view: 'front' | 'side-right' | 'side-left' | 'back',
+  width: number = CONFIG.POSTURE_OVERLAY.CANVAS_SIZE.WIDTH,
+  height: number = CONFIG.POSTURE_OVERLAY.CANVAS_SIZE.HEIGHT
+): string {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) return '';
+
+  ctx.fillStyle = CONFIG.POSTURE_OVERLAY.STYLE.PLACEHOLDER_BG; 
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // DRAW REFERENCE GRID (SYSTEM ONLY)
+  // This helps MediaPipe/AI align but is usually covered by the image
+  ctx.strokeStyle = '#e2e8f0'; // very light gray
+  ctx.lineWidth = 1;
+  ctx.setLineDash([2, 2]);
+  
+  // 10% vertical grid lines
+  for (let x = 0; x <= width; x += width * 0.1) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, height);
+    ctx.stroke();
+  }
+  // 10% horizontal grid lines
+  for (let y = 0; y <= height; y += height * 0.1) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(width, y);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]); // Reset dash
+
+  const centerX = width * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.CENTER_X_PCT / 100);
+  const shoulderY = height * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.SHOULDER_Y_PCT / 100);
+  const hipY = height * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.HIP_Y_PCT / 100);
+
+  ctx.strokeStyle = CONFIG.POSTURE_OVERLAY.STYLE.LINE_COLOR;
+  ctx.lineWidth = CONFIG.POSTURE_OVERLAY.STYLE.LINE_WIDTH;
+  ctx.lineCap = 'round';
+
+  ctx.beginPath();
+  ctx.moveTo(centerX, 0);
+  ctx.lineTo(centerX, height);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(0, shoulderY);
+  ctx.lineTo(width, shoulderY);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(0, hipY);
+  ctx.lineTo(width, hipY);
+  ctx.stroke();
+
+  return canvas.toDataURL('image/jpeg', 0.95);
 }

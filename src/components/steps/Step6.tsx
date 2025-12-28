@@ -10,7 +10,7 @@ const Step6 = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-semibold text-foreground mb-2">Cardio Fitness</h2>
+        <h2 className="text-2xl font-semibold text-foreground mb-2">Metabolic Fitness</h2>
         <p className="text-muted-foreground">Choose Step Test or 3-min Treadmill and record heart rates.</p>
       </div>
 

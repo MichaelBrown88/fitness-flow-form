@@ -1,21 +1,30 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import Webcam from 'react-webcam';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { validateCompanionToken, updatePostureImage, updateInBodyImage, joinLiveSession } from '@/services/liveSessions';
 import { processInBodyScan } from '@/lib/ai/ocrEngine';
-import { Camera, AlertCircle, Loader2, RefreshCcw, CheckCircle2, Scan, X } from 'lucide-react';
+import { Camera, AlertCircle, Loader2, RefreshCcw, CheckCircle2, Scan, X, Volume2, Info } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { doc, setDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { CONFIG } from '@/config';
 
-const VIEWS = [
-  { id: 'front', label: 'FRONT', instr: 'Face the camera' },
-  { id: 'back', label: 'BACK', instr: 'Face away from camera' },
-  { id: 'side-left', label: 'LEFT SIDE', instr: 'Face to your left' },
-  { id: 'side-right', label: 'RIGHT SIDE', instr: 'Face to your right' }
-] as const;
+const VIEWS = CONFIG.POSTURE_VIEWS;
+
+// Body position validation result
+interface PoseValidation {
+  isReady: boolean;
+  message: string;
+  shortMessage: string;
+  details: {
+    tooClose: boolean;
+    tooFar: boolean;
+    notCentered: boolean;
+    missingParts: string[];
+  };
+}
 
 const Companion = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -24,8 +33,6 @@ const Companion = () => {
   const mode = searchParams.get('mode') || 'posture'; // 'posture' or 'inbody'
   const { toast } = useToast();
   
-  console.log('[COMPANION] Component mounting', { sessionId, hasToken: !!token, mode });
-
   const [isValidating, setIsValidating] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [viewIdx, setViewIdx] = useState(0);
@@ -41,21 +48,164 @@ const Companion = () => {
   const [isUploadingBackground, setIsUploadingBackground] = useState(0);
   const [isProcessingOcr, setIsProcessingOcr] = useState(false);
   const [ocrReviewData, setOcrReviewData] = useState<Record<string, string> | null>(null);
+  
+  // Real-time Pose State
+  const [poseValidation, setPoseValidation] = useState<PoseValidation>({
+    isReady: false,
+    message: "Ready to scan",
+    shortMessage: "READY",
+    details: { tooClose: false, tooFar: false, notCentered: false, missingParts: [] }
+  });
+  const [isPoseLoading, setIsPoseLoading] = useState(false);
+  const [isWaitingForPosition, setIsWaitingForPosition] = useState(false);
 
   const isVerticalRef = useRef(false);
   const isSequenceActiveRef = useRef(false);
   const viewIdxRef = useRef(0);
   const webcamRef = useRef<Webcam>(null);
   const shutterAudio = useRef<HTMLAudioElement | null>(null);
+  const poseRef = useRef<any>(null);
+  const lastAudioFeedbackRef = useRef<number>(0);
+  const isPoseReadyRef = useRef(false);
+  const checkPositionIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const nextSequenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Initialize audio safely
+  // Initialize audio and pose detector
   useEffect(() => {
     try {
-      shutterAudio.current = new Audio('https://www.soundjay.com/mechanical/camera-shutter-click-08.mp3');
+      shutterAudio.current = new Audio(CONFIG.COMPANION.AUDIO.SHUTTER_URL);
     } catch (e) {
       console.warn('[COMPANION] Audio initialization failed:', e);
     }
-  }, []);
+
+    if (mode === 'posture') {
+      initPoseDetection();
+    }
+
+    return () => {
+      if (poseRef.current) {
+        poseRef.current.close();
+      }
+    };
+  }, [mode]);
+
+  const initPoseDetection = async () => {
+    try {
+      setIsPoseLoading(true);
+      // Dynamic import to avoid heavy bundle if not needed
+      const { Pose } = await import('@mediapipe/pose');
+      
+      const pose = new Pose({
+        locateFile: (file) => `${CONFIG.AI.MEDIAPIPE.POSE_CDN}/${file}`
+      });
+
+      pose.setOptions({
+        modelComplexity: CONFIG.AI.MEDIAPIPE.MODEL_COMPLEXITY,
+        smoothLandmarks: true,
+        minDetectionConfidence: CONFIG.AI.MEDIAPIPE.MIN_DETECTION_CONFIDENCE,
+        minTrackingConfidence: CONFIG.AI.MEDIAPIPE.MIN_TRACKING_CONFIDENCE
+      });
+
+      pose.onResults(onPoseResults);
+      poseRef.current = pose;
+      console.log('[POSE] Real-time pose detector initialized');
+    } catch (e) {
+      console.error('[POSE] Initialization failed:', e);
+    } finally {
+      setIsPoseLoading(false);
+    }
+  };
+
+  const onPoseResults = (results: any) => {
+    if (!results.poseLandmarks || results.poseLandmarks.length === 0) {
+      setPoseValidation({
+        isReady: false,
+        message: "Step into the frame",
+        shortMessage: "MISSING",
+        details: { tooClose: false, tooFar: false, notCentered: false, missingParts: ['Body'] }
+      });
+      isPoseReadyRef.current = false;
+      return;
+    }
+
+    const landmarks = results.poseLandmarks;
+    const shoulderL = landmarks[11];
+    const shoulderR = landmarks[12];
+    const hipL = landmarks[23];
+    const hipR = landmarks[24];
+    const ankleL = landmarks[27];
+    const ankleR = landmarks[28];
+    const nose = landmarks[0];
+
+    // Basic Validation Logic
+    const missingParts = [];
+    if (shoulderL.visibility < 0.5 || shoulderR.visibility < 0.5) missingParts.push('Shoulders');
+    if (ankleL.visibility < 0.5 || ankleR.visibility < 0.5) missingParts.push('Feet');
+    if (nose.visibility < 0.5) missingParts.push('Head');
+
+    const bodyHeight = Math.max(ankleL.y, ankleR.y) - nose.y;
+    const bodyCenter = (shoulderL.x + shoulderR.x + hipL.x + hipR.x) / 4;
+    
+    const tooClose = bodyHeight > CONFIG.COMPANION.POSE_THRESHOLDS.TOO_CLOSE;
+    const tooFar = bodyHeight < CONFIG.COMPANION.POSE_THRESHOLDS.TOO_FAR;
+    const notCentered = Math.abs(bodyCenter - 0.5) > CONFIG.COMPANION.POSE_THRESHOLDS.NOT_CENTERED;
+
+    let message = "Perfect, hold still";
+    let shortMessage = "READY";
+    let isReady = missingParts.length === 0 && !tooClose && !tooFar && !notCentered;
+
+    if (missingParts.length > 0) {
+      message = `Full body must be visible (Missing: ${missingParts.join(', ')})`;
+      shortMessage = "INCOMPLETE";
+      isReady = false;
+    } else if (tooClose) {
+      message = "You're too close, step back";
+      shortMessage = "TOO CLOSE";
+      isReady = false;
+    } else if (tooFar) {
+      message = "You're too far, step forward";
+      shortMessage = "TOO FAR";
+      isReady = false;
+    } else if (notCentered) {
+      message = bodyCenter < 0.5 ? "Move to your right" : "Move to your left";
+      shortMessage = "CENTER BODY";
+      isReady = false;
+    }
+
+    setPoseValidation({
+      isReady,
+      message,
+      shortMessage,
+      details: { tooClose, tooFar, notCentered, missingParts }
+    });
+    isPoseReadyRef.current = isReady;
+
+    // Trigger audio feedback every 3 seconds if sequence is waiting
+    if (isWaitingForPosition && !isReady && Date.now() - lastAudioFeedbackRef.current > CONFIG.COMPANION.AUDIO.FEEDBACK_INTERVAL_MS) {
+      speak(message);
+      lastAudioFeedbackRef.current = Date.now();
+    }
+  };
+
+  // Run pose detection loop
+  useEffect(() => {
+    let requestRef: number;
+    const update = async () => {
+      if (poseRef.current && webcamRef.current?.video) {
+        try {
+          await poseRef.current.send({ image: webcamRef.current.video });
+        } catch (e) {}
+      }
+      requestRef = requestAnimationFrame(update);
+    };
+    
+    if (mode === 'posture' && isAuthorized) {
+      requestRef = requestAnimationFrame(update);
+    }
+    
+    return () => cancelAnimationFrame(requestRef);
+  }, [mode, isAuthorized]);
 
   useEffect(() => { viewIdxRef.current = viewIdx; }, [viewIdx]);
 
@@ -63,7 +213,7 @@ const Companion = () => {
     try {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1.0;
+      utterance.rate = CONFIG.COMPANION.AUDIO.SPEECH_RATE; 
       utterance.volume = 1.0;
       window.speechSynthesis.speak(utterance);
     } catch (e) {
@@ -83,21 +233,17 @@ const Companion = () => {
       }
     
     try {
-      // Optimize: Join session immediately (parallel with validation)
       const [valid] = await Promise.all([
         validateCompanionToken(sessionId, token),
         joinLiveSession(sessionId).catch(err => console.warn('[COMPANION] Join failed (non-critical):', err))
       ]);
       
-      console.log('[COMPANION] Token validation result:', valid);
-      
       setIsAuthorized(valid);
       if (valid) {
-        console.log('[COMPANION] Successfully joined session');
         if (mode === 'inbody') {
           speak("Ready. Tap to capture the InBody report.");
         } else {
-        speak("Ready. Level phone to start.");
+          speak("Ready. Level phone to start.");
         }
       } else {
         setErrorMsg("Invalid token. Please scan QR code again.");
@@ -108,17 +254,28 @@ const Companion = () => {
     } finally {
       setIsValidating(false);
     }
-  }, [sessionId, token]);
+  }, [sessionId, token, mode]);
 
   useEffect(() => { runValidation(); }, [runValidation]);
 
-  const performCapture = useCallback(async () => {
+  const performCapture = useCallback(async (forcedIdx?: number) => {
     const webcam = webcamRef.current;
 
     if (!webcam || !webcam.video) {
       speak("Camera error.");
       return;
     }
+
+    // Explicitly use the index passed to ensure we never capture to the wrong slot
+    const idx = forcedIdx !== undefined ? forcedIdx : viewIdxRef.current;
+    const viewData = VIEWS[idx];
+
+    if (!viewData) {
+      console.error('[CAPTURE] Invalid index:', idx);
+      return;
+    }
+
+    console.log(`[CAPTURE] Initiating sync for view ${idx}: ${viewData.id}`);
 
     // 1. Shutter
     try { 
@@ -136,37 +293,27 @@ const Companion = () => {
       return;
     }
 
-    // 3. Sync to App (Direct Data Pipe)
+    // 3. Sync to App
     if (sessionId) {
       setIsUploadingBackground(prev => prev + 1);
       
       if (mode === 'inbody') {
-        console.log(`[SYNC] Capturing InBody scan...`);
-        // First upload the image
         updateInBodyImage(sessionId, imageSrc)
           .then(() => {
-            console.log(`[SYNC] Image uploaded, starting OCR...`);
-            // Then process OCR locally
             setIsProcessingOcr(true);
             return processInBodyScan(imageSrc);
           })
           .then((result) => {
             if (result.fields && Object.keys(result.fields).length > 0) {
-              console.log(`[OCR] Success:`, result.fields);
               setOcrReviewData(result.fields as Record<string, string>);
               speak("Data extracted. Review and confirm.");
             } else {
-              toast({ 
-                title: "Scan failed", 
-                description: "AI couldn't find data. Please try again.",
-                variant: "destructive" 
-              });
+              toast({ title: "Scan failed", variant: "destructive" });
               speak("Scan failed. Please try again.");
             }
           })
           .catch(err => {
-            console.error(`[SYNC/OCR] FAIL:`, err);
-            toast({ title: "Error", description: "Failed to process scan.", variant: "destructive" });
+            toast({ title: "Error", variant: "destructive" });
             speak("Error processing scan.");
           })
           .finally(() => {
@@ -174,28 +321,28 @@ const Companion = () => {
             setIsUploadingBackground(prev => Math.max(0, prev - 1));
           });
       } else {
-        // Posture mode
-        const idx = viewIdxRef.current;
-        const viewData = VIEWS[idx];
-        console.log(`[SYNC] Capturing ${viewData.id}...`);
-        console.log(`[SYNC] Pumping ${viewData.label} to App...`);
-        
+        // Send image with explicit view ID
         updatePostureImage(sessionId, viewData.id, imageSrc)
           .then(() => {
-            console.log(`[SYNC] SUCCESS: ${viewData.label}`);
-            toast({ title: "Photo Sent" });
+            toast({ title: `${viewData.label} Sent` });
           })
           .catch(err => {
-            console.error(`[SYNC] FAIL: ${viewData.label}`, err);
             toast({ title: "Sync Error", variant: "destructive" });
           })
           .finally(() => setIsUploadingBackground(prev => Math.max(0, prev - 1)));
 
-        // 4. Next (posture only)
         if (idx < VIEWS.length - 1) {
           const next = idx + 1;
-          setViewIdx(next);
-          setTimeout(() => startSequence(next), 2500);
+          console.log(`[CAPTURE] Scheduling next view: ${VIEWS[next].id}`);
+          
+          // Clear any pending sequence timeout
+          if (nextSequenceTimeoutRef.current) {
+            clearTimeout(nextSequenceTimeoutRef.current);
+          }
+          
+          nextSequenceTimeoutRef.current = setTimeout(() => {
+            startSequence(next);
+          }, 4000);
         } else {
           setIsSequenceActive(false);
           isSequenceActiveRef.current = false;
@@ -208,68 +355,116 @@ const Companion = () => {
 
   const startSequence = useCallback((idx: number) => {
     if (mode === 'inbody') {
-      // InBody mode: simple tap-to-capture, no countdown or auto-start
-      // User manually taps to capture
-      return;
-    } else {
-      // Posture mode: requires level phone
-    if (!isVerticalRef.current) {
-      speak("Level the phone first.");
-      setIsSequenceActive(false);
+      performCapture();
       return;
     }
 
+    // defensive cleanup: clear ALL existing timers to prevent overlapping sequences
+    if (checkPositionIntervalRef.current) {
+      clearInterval(checkPositionIntervalRef.current);
+      checkPositionIntervalRef.current = null;
+    }
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+    if (nextSequenceTimeoutRef.current) {
+      clearTimeout(nextSequenceTimeoutRef.current);
+      nextSequenceTimeoutRef.current = null;
+    }
+
+    // Ensure state is updated to the current index immediately
+    setViewIdx(idx);
+
+    if (!isVerticalRef.current) {
+      speak("Level the phone first.");
+      return;
+    }
+
+    // New Flow: Check position first
+    setIsWaitingForPosition(true);
     setIsSequenceActive(true);
     isSequenceActiveRef.current = true;
-    speak(VIEWS[idx].instr);
     
-    setTimeout(() => {
-      let count = 5;
-      setCountdown(count);
-      const interval = setInterval(() => {
-        count -= 1;
-        if (count > 0) {
-          setCountdown(count);
-          if (count <= 3) speak(count.toString());
-        } else {
-          clearInterval(interval);
-          setCountdown(null);
-          void performCapture();
+    speak(`Prepare for ${VIEWS[idx].label}. ${VIEWS[idx].instr}.`);
+
+    // Poll for readiness
+    checkPositionIntervalRef.current = setInterval(() => {
+      if (isPoseReadyRef.current && isVerticalRef.current) {
+        if (checkPositionIntervalRef.current) {
+          clearInterval(checkPositionIntervalRef.current);
+          checkPositionIntervalRef.current = null;
         }
-      }, 1000);
-    }, 2000);
-    }
+        setIsWaitingForPosition(false);
+        speak("Position confirmed. Hold still.");
+        
+        // Start countdown
+        setTimeout(() => {
+          let count = CONFIG.COMPANION.CAPTURE.COUNTDOWN_SEC;
+          setCountdown(count);
+          
+          countdownIntervalRef.current = setInterval(() => {
+            count -= 1;
+            if (count > 0) {
+              setCountdown(count);
+              if (count <= 3) speak(count.toString());
+            } else {
+              if (countdownIntervalRef.current) {
+                clearInterval(countdownIntervalRef.current);
+                countdownIntervalRef.current = null;
+              }
+              setCountdown(null);
+              // Explicitly pass the index to avoid ref-lag or closure issues
+              console.log(`[CAPTURE] Executing capture for slot ${idx}: ${VIEWS[idx].id}`);
+              void performCapture(idx);
+            }
+          }, 1000);
+        }, 1000);
+      }
+    }, 500);
+
+    // Safety timeout - if position isn't found in 30s, cancel
+    setTimeout(() => {
+      if (checkPositionIntervalRef.current) {
+        clearInterval(checkPositionIntervalRef.current);
+        checkPositionIntervalRef.current = null;
+      }
+      if (isWaitingForPosition) {
+        setIsSequenceActive(false);
+        isSequenceActiveRef.current = false;
+        setIsWaitingForPosition(false);
+        speak("Timed out waiting for position. Try again.");
+      }
+    }, CONFIG.COMPANION.CAPTURE.SAFETY_TIMEOUT_MS);
+
   }, [performCapture, mode]);
 
   const handleOrientation = useCallback((event: DeviceOrientationEvent) => {
-    if (mode === 'inbody') {
-      // InBody mode doesn't need orientation check
-      return;
-    }
+    if (mode === 'inbody') return;
 
     const deviation = Math.abs((event.beta || 0) - 90);
-    const vertical = deviation < 4;
+    const vertical = deviation < CONFIG.COMPANION.ORIENTATION.MAX_DEVIATION_DEG;
     
+    // Auto-start first view only when level AND positioning is ready
     if (vertical && !isVerticalRef.current && !isSequenceActiveRef.current && viewIdxRef.current === 0 && isAuthorized) {
-      setTimeout(() => { if (isVerticalRef.current && !isSequenceActiveRef.current) startSequence(0); }, 1500);
+      // Don't auto-start anymore, let user tap the button to initiate the "Intelligent Sequence"
     }
 
     isVerticalRef.current = vertical;
     setIsVertical(vertical);
-  }, [isAuthorized, startSequence, mode]);
+  }, [isAuthorized, mode]);
 
   const requestPermission = async () => {
-    // Unlock Audio Context & Speech Synthesis on iOS
     try {
       if (shutterAudio.current) {
-      shutterAudio.current.play().then(() => {
+        shutterAudio.current.play().then(() => {
           if (shutterAudio.current) {
-        shutterAudio.current.pause();
-        shutterAudio.current.currentTime = 0;
+            shutterAudio.current.pause();
+            shutterAudio.current.currentTime = 0;
           }
-      }).catch(() => {});
+        }).catch(() => {});
       }
-      speak(""); // Priming speech
+      speak("Audio enabled.");
     } catch (e) {}
 
     if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
@@ -284,16 +479,11 @@ const Companion = () => {
     return () => window.removeEventListener('deviceorientation', handleOrientation);
   }, [isAuthorized, hasPermission, handleOrientation, mode]);
 
-  // InBody mode: no auto-start, user taps to capture
-
-  // Always show something, even if there's an error
   if (isValidating) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center text-white font-black uppercase">
+        <Loader2 className="h-8 w-8 text-indigo-500 animate-spin mb-4" />
         <div>Connecting...</div>
-        <div className="text-xs text-white/40 mt-4 font-normal normal-case">
-          {sessionId ? `Session: ${sessionId}` : 'No session ID'}
-        </div>
       </div>
     );
   }
@@ -303,17 +493,12 @@ const Companion = () => {
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8 text-white text-center font-black">
         <h1 className="text-2xl mb-2">Session Invalid</h1>
         <p className="mt-2 text-xs text-white/40">{errorMsg || 'Unable to connect'}</p>
-        <Button 
-          onClick={() => runValidation()} 
-          className="mt-6 bg-indigo-600 hover:bg-indigo-700"
-        >
-          Retry
-        </Button>
+        <Button onClick={() => runValidation()} className="mt-6 bg-indigo-600 hover:bg-indigo-700">Retry</Button>
       </div>
     );
   }
 
-  // Completion screen (after data sent)
+  // Completion screens...
   if (mode === 'inbody' && viewIdx === 999) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8 text-white text-center">
@@ -327,7 +512,6 @@ const Companion = () => {
     );
   }
 
-  // OCR Processing Screen
   if (mode === 'inbody' && isProcessingOcr) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8 text-white text-center">
@@ -344,7 +528,6 @@ const Companion = () => {
     );
   }
 
-  // OCR Review Screen
   if (mode === 'inbody' && ocrReviewData) {
     const fieldLabels: Record<string, string> = {
       inbodyScore: 'InBody Score',
@@ -368,27 +551,17 @@ const Companion = () => {
       if (!sessionId) return;
       try {
         setIsUploadingBackground(prev => prev + 1);
-        // Store OCR data in Firestore for the main app to pick up
         const sessionRef = doc(db, 'live_sessions', sessionId);
         await setDoc(sessionRef, {
           ocrReviewData: ocrReviewData,
           ocrDataReady: true,
           ocrDataSentAt: Timestamp.now()
         }, { merge: true });
-        
-        console.log('[OCR] Data sent to Firestore:', ocrReviewData);
-        
-        // Show success message and close after a moment
         speak("Data has been added to the app.");
         setOcrReviewData(null);
-        
-        // Set a flag to show completion screen
-        setTimeout(() => {
-          setViewIdx(999); // Use a high number to trigger completion screen
-        }, 500);
+        setTimeout(() => { setViewIdx(999); }, 500);
       } catch (err) {
-        console.error('[OCR] Failed to send data:', err);
-        toast({ title: "Error", description: "Failed to send data.", variant: "destructive" });
+        toast({ title: "Error", variant: "destructive" });
       } finally {
         setIsUploadingBackground(prev => Math.max(0, prev - 1));
       }
@@ -401,76 +574,33 @@ const Companion = () => {
             <Scan className="h-5 w-5 text-indigo-400" />
             <h1 className="text-xl font-black uppercase tracking-tight">Review Data</h1>
           </div>
-          <button 
-            onClick={() => setOcrReviewData(null)}
-            className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center"
-          >
+          <button onClick={() => setOcrReviewData(null)} className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center">
             <X className="h-4 w-4" />
           </button>
         </div>
-
-        <p className="text-white/60 text-sm mb-6">
-          Verify the extracted values. Tap any field to edit.
-        </p>
-
         <div className="flex-1 overflow-y-auto space-y-3 mb-6">
           {Object.entries(ocrReviewData).map(([key, value]) => (
             <div key={key} className="bg-white/5 rounded-xl p-4 border border-white/10">
-              <label className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-2 block">
-                {fieldLabels[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-              </label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-2 block">{fieldLabels[key] || key}</label>
               <div className="flex items-center gap-2">
                 <Input
                   type="text"
                   value={value || ''}
-                  onChange={(e) => {
-                    setOcrReviewData(prev => prev ? { ...prev, [key]: e.target.value } : null);
-                  }}
+                  onChange={(e) => setOcrReviewData(prev => prev ? { ...prev, [key]: e.target.value } : null)}
                   className="bg-white/10 border-white/20 text-white text-lg font-bold h-10 flex-1"
-                  placeholder="--"
                 />
-                <span className="text-xs text-white/40 font-bold min-w-[30px]">
-                  {key.toLowerCase().includes('kg') ? 'kg' : 
-                   key.toLowerCase().includes('pct') || key.toLowerCase().includes('fat') && key.toLowerCase().includes('pct') ? '%' : 
-                   key.toLowerCase().includes('water') || key.toLowerCase().includes('l') ? 'L' : 
-                   key.toLowerCase().includes('kcal') ? 'kcal' : ''}
-                </span>
               </div>
             </div>
           ))}
         </div>
-
         <div className="flex gap-3 pt-4 border-t border-white/10">
-          <Button
-            variant="outline"
-            onClick={() => setOcrReviewData(null)}
-            className="flex-1 bg-white/10 border-white/20 text-white"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleApply}
-            disabled={isUploadingBackground > 0}
-            className="flex-1 bg-indigo-600 text-white"
-          >
-            {isUploadingBackground > 0 ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Sending...
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-                Send to App
-              </>
-            )}
-          </Button>
+          <Button variant="outline" onClick={() => setOcrReviewData(null)} className="flex-1 bg-white/10 text-white">Cancel</Button>
+          <Button onClick={handleApply} disabled={isUploadingBackground > 0} className="flex-1 bg-indigo-600">Apply</Button>
         </div>
       </div>
     );
   }
 
-  // Posture mode completion
   if (mode === 'posture' && viewIdx >= VIEWS.length) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8 text-white text-center">
@@ -478,44 +608,68 @@ const Companion = () => {
           <CheckCircle2 className="h-10 w-10 text-emerald-500" />
         </div>
         <h1 className="text-3xl font-black uppercase tracking-tight mb-2">Sync Complete</h1>
-        <p className="text-white/60 text-sm uppercase tracking-widest">Photos are on your main app screen.</p>
+        <p className="text-white/60 text-sm uppercase tracking-widest">Return to the app.</p>
       </div>
     );
   }
 
   return (
     <div className="fixed inset-0 bg-black flex flex-col items-center justify-center overflow-hidden">
-        <Webcam
-          audio={false}
-          ref={webcamRef}
-          screenshotFormat="image/jpeg"
-          mirrored={facingMode === 'user'}
-          videoConstraints={{
-            facingMode, 
-            width: { ideal: 1280 }, 
-            height: { ideal: 720 } 
-          }}
-          className="h-full w-full object-contain z-0"
-        />
+      <Webcam
+        audio={false}
+        ref={webcamRef}
+        screenshotFormat="image/jpeg"
+        mirrored={facingMode === 'user'}
+        videoConstraints={{ 
+          facingMode, 
+          width: CONFIG.COMPANION.CAPTURE.VIDEO_CONSTRAINTS.width, 
+          height: CONFIG.COMPANION.CAPTURE.VIDEO_CONSTRAINTS.height 
+        }}
+        className="h-full w-full object-contain z-0"
+      />
 
-      {/* Header - Small text in top left like InBody */}
-      <div className="absolute top-0 left-0 right-0 h-16 flex items-center z-20 pointer-events-none">
-        {mode === 'inbody' ? (
-          <h2 className="text-sm font-black text-white/80 uppercase tracking-widest ml-6 drop-shadow-lg">INBODY SCAN</h2>
-        ) : (
-          <h2 className="text-sm font-black text-white/80 uppercase tracking-widest ml-6 drop-shadow-lg">{VIEWS[viewIdx].label}</h2>
-        )}
+      {/* Real-time Feedback Overlays */}
+      {mode === 'posture' && !isSequenceActive && (
+        <div className="absolute top-20 left-0 right-0 flex flex-col items-center gap-2 z-50 pointer-events-none px-6">
+          <div className={`px-4 py-2 rounded-full border flex items-center gap-2 transition-all ${
+            poseValidation.isReady ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' : 'bg-red-500/20 border-red-500/50 text-red-400'
+          }`}>
+            {poseValidation.isReady ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+            <span className="text-xs font-black uppercase tracking-widest">{poseValidation.message}</span>
           </div>
-          
-      {/* Guide Box - Only for posture mode, sized to fit person */}
-      {mode !== 'inbody' && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-          <div className={`w-[70%] max-w-md aspect-[1/1.6] border-[4px] rounded-[50px] transition-colors duration-500 ${isVertical ? 'border-emerald-500 shadow-[0_0_30px_#10b98166]' : 'border-red-500 shadow-[0_0_30px_#ef444466]'}`} 
-               style={{ height: 'calc(100vh - 200px)' }} />
+          <div className="px-3 py-1 rounded-full bg-black/40 border border-white/10 text-[10px] font-black text-white/80 tracking-[0.2em] uppercase shadow-lg">
+            VIEW: {VIEWS[viewIdx].label}
           </div>
+        </div>
       )}
 
-      {/* Countdown - Only for posture mode */}
+      {/* Header */}
+      <div className="absolute top-0 left-0 right-0 h-16 flex items-center z-20 pointer-events-none">
+        <div className="flex flex-col ml-6">
+          <h2 className="text-sm font-black text-white/80 uppercase tracking-widest drop-shadow-lg">
+            {mode === 'inbody' ? 'INBODY SCAN' : VIEWS[viewIdx].label}
+          </h2>
+          {isPoseLoading && <span className="text-[10px] text-white/40">Initializing AI...</span>}
+        </div>
+      </div>
+          
+      {/* Guide Box */}
+      {mode !== 'inbody' && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+          <div className={`w-[85%] max-w-lg aspect-[1/1.8] border-[4px] rounded-[50px] transition-all duration-500 ${
+            isVertical ? (poseValidation.isReady ? 'border-emerald-500 shadow-[0_0_30px_#10b98166]' : 'border-amber-500 shadow-[0_0_30px_#f59e0b66]') : 'border-red-500 shadow-[0_0_30px_#ef444466]'
+          }`} style={{ height: 'calc(100vh - 180px)' }}>
+            {/* Visual Indicators for Center/Missing */}
+            {!poseValidation.isReady && !isWaitingForPosition && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center opacity-40">
+                {poseValidation.details.notCentered && <div className="h-full w-1 bg-amber-500/50" />}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Countdown */}
       {countdown !== null && mode !== 'inbody' && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/20 z-30 pointer-events-none">
           <span className="text-[180px] font-black text-white animate-pulse">{countdown}</span>
@@ -525,27 +679,19 @@ const Companion = () => {
       {/* Footer */}
       <div className="absolute bottom-0 left-0 right-0 h-32 flex items-center justify-center z-40 px-6 pb-4">
         {mode === 'inbody' ? (
-          // InBody mode: Simple interface - just capture button
           <div className="flex items-center justify-center w-full">
-            <button onClick={() => performCapture()} className="h-16 w-16 rounded-full border-4 border-white bg-white/20 flex items-center justify-center transition-all hover:scale-105 active:scale-95">
+            <button onClick={() => performCapture()} className="h-16 w-16 rounded-full border-4 border-white bg-white/20 flex items-center justify-center transition-all">
               <Camera className="h-6 w-6 text-white" />
             </button>
           </div>
         ) : !hasPermission ? (
-          <Button onClick={requestPermission} className="bg-indigo-600 h-12 px-6 rounded-xl text-xs font-black uppercase">Enable Sensors</Button>
+          <Button onClick={requestPermission} className="bg-indigo-600 h-12 px-6 rounded-xl text-xs font-black uppercase">Enable Sensors & Audio</Button>
         ) : (
           <div className="flex items-center gap-4 w-full max-w-md justify-center">
-            {/* Flip camera button - left side */}
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => setFacingMode(prev => prev === 'user' ? 'environment' : 'user')} 
-              className="text-white/30 h-10 w-10 rounded-full bg-white/5"
-            >
+            <Button variant="ghost" size="icon" onClick={() => setFacingMode(prev => prev === 'user' ? 'environment' : 'user')} className="text-white/30 h-10 w-10 rounded-full bg-white/5">
               <RefreshCcw className="h-4 w-4" />
             </Button>
 
-            {/* Level phone status - left of button */}
             {!isVertical && (
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
@@ -553,40 +699,36 @@ const Companion = () => {
               </div>
             )}
 
-            {/* Capture button */}
-            <div className="flex items-center justify-center">
-              {!isSequenceActive ? (
-                <button 
-                  onClick={() => startSequence(viewIdx)} 
-                  disabled={!isVertical} 
-                  className={`h-16 w-16 rounded-full border-4 flex items-center justify-center transition-all ${isVertical ? 'border-white bg-white/20' : 'border-white/10 bg-white/5 opacity-40'}`}
-                >
-                  <Camera className={`h-6 w-6 ${isVertical ? 'text-white' : 'text-white/40'}`} />
-                </button>
-              ) : (
+          <div className="flex items-center justify-center">
+            {!isSequenceActive ? (
+              <button 
+                onClick={() => startSequence(viewIdx)} 
+                disabled={!isVertical} 
+                className={`h-16 w-16 rounded-full border-4 flex items-center justify-center transition-all ${isVertical ? 'border-white bg-white/20' : 'border-white/10 bg-white/5 opacity-40'}`}
+              >
+                <Camera className={`h-6 w-6 ${isVertical ? 'text-white' : 'text-white/40'}`} />
+              </button>
+            ) : (
                 <div className="flex flex-col items-center">
                   <div className="flex items-center gap-2 text-emerald-500 font-black text-[10px] uppercase tracking-widest">
                     {isUploadingBackground > 0 ? (
-                      <>
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                        Syncing...
-                      </>
+                      <><Loader2 className="h-3 w-3 animate-spin" /> Syncing...</>
+                    ) : isWaitingForPosition ? (
+                      <><Loader2 className="h-3 w-3 animate-spin text-amber-500" /> <span className="text-amber-500">Align Body...</span></>
                     ) : (
-                      <>
-                        <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                        Capturing...
-                      </>
+                      <><div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" /> Capturing...</>
                     )}
-            </div>
-          </div>
-        )}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Ready status - right of button */}
             {isVertical && !isSequenceActive && (
               <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Ready</span>
+                <div className={`h-2 w-2 rounded-full ${poseValidation.isReady ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' : 'bg-amber-500 shadow-[0_0_8px_#f59e0b]'}`} />
+                <span className={`text-[10px] font-black uppercase tracking-widest ${poseValidation.isReady ? 'text-emerald-500' : 'text-amber-500'}`}>
+                  {poseValidation.shortMessage}
+                </span>
               </div>
             )}
           </div>
