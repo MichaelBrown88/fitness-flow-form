@@ -434,7 +434,14 @@ const Companion = () => {
     setIsSequenceActive(true);
     isSequenceActiveRef.current = true;
     
-    speak(`Prepare for ${VIEWS[idx].label}. ${VIEWS[idx].instr}.`);
+    // New capture order: Front → Right → Back → Left (1/4 turn each)
+    const captureInstructions = [
+      "Face the camera",
+      "Turn 1/4 to your right",
+      "Turn 1/4 more to your right", 
+      "Turn 1/4 more to your right"
+    ];
+    speak(`Prepare for ${VIEWS[idx].label}. ${captureInstructions[idx]}.`);
 
     // Helper to start the countdown and capture
     const startCountdownAndCapture = () => {

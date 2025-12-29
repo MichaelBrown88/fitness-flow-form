@@ -39,11 +39,15 @@ export const CONFIG = {
   },
 
   // --- POSTURE VIEWS ---
+  // Capture order: Front → 1/4 turn right → 1/4 turn right → 1/4 turn right
+  // Capture sequence: [0: front, 1: side-right, 2: back, 3: side-left]
+  // Display order: [front, side-left, back, side-right]
+  // Mapping: capture[0]→front, capture[1]→side-right, capture[2]→back, capture[3]→side-left
   POSTURE_VIEWS: [
-    { id: 'front', label: 'FRONT', instr: 'Face the camera' },
-    { id: 'back', label: 'BACK', instr: 'Face away from camera' },
-    { id: 'side-left', label: 'LEFT SIDE', instr: 'Face to your left' },
-    { id: 'side-right', label: 'RIGHT SIDE', instr: 'Face to your right' }
+    { id: 'front', label: 'FRONT', instr: 'Face the camera', captureOrder: 0 },
+    { id: 'side-right', label: 'RIGHT SIDE', instr: 'Turn 1/4 to your right', captureOrder: 1 },
+    { id: 'back', label: 'BACK', instr: 'Turn 1/4 more to your right', captureOrder: 2 },
+    { id: 'side-left', label: 'LEFT SIDE', instr: 'Turn 1/4 more to your right', captureOrder: 3 }
   ] as const,
 
   // --- COMPANION APP SETTINGS ---

@@ -58,10 +58,13 @@ export async function addPostureOverlay(
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
         if (mode === 'align' && landmarkData) {
+          // Get actual landmark positions from the image
           let landmarkX = img.width * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.CENTER_X_PCT / 100);
           let landmarkShoulderY = img.height * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.SHOULDER_Y_PCT / 100);
           let landmarkHipY = img.height * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.HIP_Y_PCT / 100);
+          let landmarkHeadY = img.height * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.HEAD_Y_PCT / 100);
           
+          // Use detected landmarks if available
           if (view === 'side-right' || view === 'side-left') {
             if (landmarkData.midfoot_x_percent !== undefined) {
               landmarkX = (landmarkData.midfoot_x_percent / 100) * img.width;
@@ -78,20 +81,26 @@ export async function addPostureOverlay(
           if (landmarkData.hip_y_percent !== undefined) {
             landmarkHipY = (landmarkData.hip_y_percent / 100) * img.height;
           }
+          if (landmarkData.head_y_percent !== undefined) {
+            landmarkHeadY = (landmarkData.head_y_percent / 100) * img.height;
+          }
 
+          // Calculate scale based on torso height (shoulder to hip)
           const actualTorsoHeight = Math.abs(landmarkHipY - landmarkShoulderY);
           const targetTorsoHeight = Math.abs(targetHipY - targetShoulderY);
           
-          // Clamp scale to reasonable limits (0.5x to 4x) to prevent distortion if landmarks are wonky
+          // Clamp scale to reasonable limits (0.5x to 4x) to prevent distortion
           let scale = actualTorsoHeight > 0 ? targetTorsoHeight / actualTorsoHeight : (canvas.height / img.height);
           scale = Math.max(0.5, Math.min(4.0, scale));
 
+          // Calculate translation to center the body
           const translateX = targetCenterX - (landmarkX * scale);
           const bodyCenterY = (landmarkShoulderY + landmarkHipY) / 2;
           const targetCenterY = (targetShoulderY + targetHipY) / 2;
           const translateY = targetCenterY - (bodyCenterY * scale);
 
-          console.log(`[OVERLAY] Aligning ${view}: torso_h=${actualTorsoHeight.toFixed(0)}px, scale=${scale.toFixed(3)}, translate(${translateX.toFixed(1)}, ${translateY.toFixed(1)})`);
+          console.log(`[OVERLAY] Aligning ${view}: landmarkX=${landmarkX.toFixed(0)}px, landmarkShoulderY=${landmarkShoulderY.toFixed(0)}px, landmarkHipY=${landmarkHipY.toFixed(0)}px`);
+          console.log(`[OVERLAY] Scale=${scale.toFixed(3)}, translate(${translateX.toFixed(1)}, ${translateY.toFixed(1)})`);
 
           ctx.save();
           ctx.translate(translateX, translateY);
