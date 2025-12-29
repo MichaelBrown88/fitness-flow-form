@@ -1,42 +1,20 @@
 import React, { useMemo, useState } from 'react';
 import type { FormData } from '@/contexts/FormContext';
-import type { ScoreSummary, RoadmapPhase } from '@/lib/scoring';
-import { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
-import { CoachPlan } from '@/lib/recommendations';
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
-} from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  CheckCircle2, 
-  AlertCircle, 
-  Info, 
-  Maximize2,
-  Target as TargetIcon
-} from 'lucide-react';
-import LifestyleRadarChart from './LifestyleRadarChart';
-import CategoryRadarChart from './CategoryRadarChart';
+import type { ScoreSummary } from '@/lib/scoring';
+import type { CoachPlan } from '@/lib/recommendations';
 import OverallRadarChart from './OverallRadarChart';
-import { PostureAnalysisViewer } from './PostureAnalysisViewer';
 import { ClientReportHeader } from './ClientReportHeader';
 import { ClientReportScoreOverview } from './ClientReportScoreOverview';
 import { ClientReportCategoryTabs } from './ClientReportCategoryTabs';
 import { ClientReportGoals } from './ClientReportGoals';
 import { ClientReportLifestyle } from './ClientReportLifestyle';
+import { ClientReportRoadmap } from './ClientReportRoadmap';
+import { ClientReportFocus } from './ClientReportFocus';
+import { ClientReportWorkout } from './ClientReportWorkout';
 import {
   CATEGORY_ORDER,
   CATEGORY_COLOR,
   CATEGORY_HEX,
-  CATEGORY_EXPLANATIONS,
-  PROGRAM_PHASES,
   circleColor,
   niceLabel,
 } from './ClientReportConstants';
@@ -717,71 +695,16 @@ export default function ClientReport({
       {/* 5. Your lifestyle status */}
       <ClientReportLifestyle formData={formData} />
 
-      {/* 6. Your roadmap - Only show if form has sufficient data */}
-      {(() => {
-        // Check if form has enough data to show meaningful roadmap
-        // Need at least 2 categories with scores > 0 (not just posture)
-        const categoriesWithData = scores.categories.filter(c => c.score > 0).length;
-        const hasBodyComp = formData?.inbodyWeightKg && parseFloat(formData.inbodyWeightKg) > 0;
-        const hasStrength = formData?.pushupMaxReps && parseFloat(formData.pushupMaxReps) > 0;
-        const hasCardio = formData?.cardioRestingHr && parseFloat(formData.cardioRestingHr) > 0;
-        const hasLifestyle = formData?.sleepQuality || formData?.stressLevel;
-        const isFormComplete = categoriesWithData >= 2 || (hasBodyComp && hasStrength) || (hasStrength && hasCardio) || (hasCardio && hasLifestyle);
-        
-        if (!isFormComplete) {
-          return (
-            <section className="space-y-4">
-              <h2 className="text-2xl font-bold text-slate-900">Your roadmap</h2>
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-                <p className="text-sm text-amber-800">
-                  Complete more sections of your assessment to see your personalized roadmap and timeline.
-                </p>
-              </div>
-            </section>
-          );
-        }
-        
-        return (
-      <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-slate-900">Your roadmap</h2>
-        <div className="rounded-lg border border-primary/20 bg-brand-light p-4 shadow-sm">
-          <p className="text-sm text-slate-900 mb-3">
-            <strong>This timeline shows when you can expect to start seeing results.</strong> More sessions per week means faster progress—adjust the slider below to see how training frequency affects your timeline.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-slate-600">Sessions per week:</span>
-          <input type="range" min={3} max={5} step={1} value={sessionsPerWeek} onChange={(e) => setSessionsPerWeek(parseInt(e.target.value))} className="flex-1" />
-          <span className="text-sm font-medium text-slate-800 min-w-[60px]">{sessionsPerWeek} sessions</span>
-        </div>
-        <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          {orderedCats.map(cat => {
-            const weeks = weeksByCategory[cat.id] ?? 3;
-            const color = CATEGORY_COLOR[cat.id] || 'bg-slate-500';
-            return (
-              <div key={cat.id}>
-                <div className="mb-1 flex items-center justify-between">
-                  <span className="text-sm font-medium text-slate-800">{niceLabel(cat.id)}</span>
-                  <span className="text-xs text-slate-500">~{weeks} weeks to see improvements</span>
-                </div>
-                <div className="h-3 w-full rounded bg-slate-100">
-                  <div className={`h-3 rounded ${color}`} style={{ width: `${Math.min(100, (weeks / 26) * 100)}%` }} />
-                </div>
-              </div>
-            );
-          })}
-          <div className="mt-4 pt-3 border-t border-slate-200">
-            <p className="text-sm text-slate-700">
-              <strong>Total timeline: ~{maxWeeks} weeks with {sessionsPerWeek} sessions/week.</strong> More sessions = faster results. 
-              {sessionsPerWeek === 3 && ' Training 4-5 times per week can reduce this timeline by 15-25%.'}
-              {sessionsPerWeek === 4 && ' Training 5 times per week can reduce this timeline by an additional 10-15%.'}
-              {sessionsPerWeek === 5 && ' You\'re maximizing your training frequency for the fastest results.'}
-            </p>
-          </div>
-        </div>
-      </section>
-        );
-      })()}
+      {/* 6. Your roadmap */}
+      <ClientReportRoadmap
+        scores={scores}
+        orderedCats={orderedCats}
+        weeksByCategory={weeksByCategory}
+        maxWeeks={maxWeeks}
+        sessionsPerWeek={sessionsPerWeek}
+        setSessionsPerWeek={setSessionsPerWeek}
+        formData={formData}
+      />
 
       {/* 7. What to expect */}
       <section className="space-y-4">
@@ -806,207 +729,11 @@ export default function ClientReport({
         </div>
       </section>
 
-      {/* 8. What We'll Focus On - Enhanced Personalization */}
-      {plan?.clientScript && (
-        <section className="space-y-8">
-          <div className="space-y-2">
-            <h2 className="text-2xl font-bold text-slate-900">What We'll Focus On</h2>
-            <p className="text-sm text-slate-600 italic">"Removing the brakes to put the pedal to the metal on your goals."</p>
-          </div>
-          
-          <div className="grid gap-6">
-            {/* The Plot: Findings */}
-            <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm space-y-6">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-2xl bg-brand-light flex items-center justify-center">
-                  <TargetIcon className="h-5 w-5 text-primary" />
-                </div>
-                <h3 className="text-xl font-bold text-slate-900">1. Your Starting Point</h3>
-              </div>
-              <ul className="space-y-4">
-                {plan.clientScript.findings.map((finding: string, i: number) => (
-                  <li key={i} className="flex gap-4 items-start">
-                    <span className="h-6 w-6 rounded-full bg-brand-light text-primary flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold">{i+1}</span>
-                    <p className="text-slate-700 leading-relaxed font-medium">{finding}</p>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* The Stakes: Why it Matters */}
-            <div className="bg-slate-900 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-8 opacity-10">
-                <TargetIcon className="h-32 w-32" />
-              </div>
-              <div className="relative z-10 space-y-6">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-2xl bg-white/10 flex items-center justify-center">
-                    <AlertCircle className="h-5 w-5 text-primary/60" />
-                  </div>
-                  <h3 className="text-xl font-bold">2. Why This Matters</h3>
-                </div>
-                <div className="space-y-4">
-                  {plan.clientScript.whyItMatters.map((stake: string, i: number) => (
-                    <p key={i} className="text-white/80/90 leading-relaxed italic border-l-2 border-primary/50 pl-4">{stake}</p>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* The Strategy: Action Plan */}
-            <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm space-y-6">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-2xl bg-emerald-50 flex items-center justify-center">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                </div>
-                <h3 className="text-xl font-bold text-slate-900">3. Our Strategy</h3>
-              </div>
-              <div className="grid gap-4">
-                {plan.clientScript.actionPlan.map((action: string, i: number) => (
-                  <div key={i} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex gap-4 items-center">
-                    <div className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
-                    <p className="text-slate-700 font-bold">{action}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
+      {/* 8. What We'll Focus On */}
+      <ClientReportFocus clientScript={plan?.clientScript} />
 
       {/* 9. Sample Workout */}
-      {plan?.clientWorkout ? (
-        <section className="space-y-4">
-          <h2 className="text-xl font-bold text-slate-900">Your Sample Workout</h2>
-          
-          <div className="space-y-4">
-            {/* Warm-up */}
-            {plan.clientWorkout.warmUp.length > 0 && (
-              <div className="bg-white rounded-xl border border-slate-200 p-5">
-                <h3 className="text-sm font-bold text-slate-900 mb-3">Warm-up</h3>
-                <div className="space-y-3">
-                  {plan.clientWorkout.warmUp.map((ex, i) => (
-                    <div key={i} className="text-sm">
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-700 font-medium">{ex.name}</span>
-                        <span className="text-slate-500 text-xs">
-                          {ex.setsReps || ex.time || ''}
-                        </span>
-                      </div>
-                      {ex.addresses && (
-                        <p className="text-xs text-slate-500 italic mt-1">{ex.addresses}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Main Exercises */}
-            {plan.clientWorkout.exercises.length > 0 && (
-              <div className="bg-white rounded-xl border-2 border-primary p-5">
-                <h3 className="text-sm font-bold text-slate-900 mb-3">Main Workout</h3>
-                <div className="space-y-3">
-                  {plan.clientWorkout.exercises.map((ex, i) => (
-                    <div key={i} className="text-sm">
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-700 font-medium">{ex.name}</span>
-                        <span className="text-primary font-semibold text-xs">
-                          {ex.setsReps || ''}
-                        </span>
-                      </div>
-                      {ex.addresses && (
-                        <p className="text-xs text-slate-500 italic mt-1">{ex.addresses}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Finisher */}
-            {plan.clientWorkout.finisher && (
-              <div className="bg-white rounded-xl border border-slate-200 p-5">
-                <h3 className="text-sm font-bold text-slate-900 mb-3">Finisher</h3>
-                <div className="text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-700 font-medium">{plan.clientWorkout.finisher.name}</span>
-                    <span className="text-slate-500 text-xs">
-                      {plan.clientWorkout.finisher.setsReps || plan.clientWorkout.finisher.time || ''}
-                    </span>
-                  </div>
-                  {plan.clientWorkout.finisher.addresses && (
-                    <p className="text-xs text-slate-500 italic mt-1">{plan.clientWorkout.finisher.addresses}</p>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </section>
-      ) : plan?.prioritizedExercises ? (
-        // Fallback to old format if new format not available
-        <section className="space-y-6">
-          <h2 className="text-2xl font-bold text-slate-900">Your Sample Workout Structure</h2>
-          <p className="text-sm text-slate-600">
-            This is how we'll blend your immediate needs with your long-term goals in a typical session.
-          </p>
-          
-          <div className="grid gap-6">
-            {/* Warm-up / Prep */}
-            <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 font-bold italic">A</div>
-                  <h3 className="text-lg font-bold text-slate-900">Performance Tuning (Warm-up)</h3>
-                </div>
-                <Badge variant="outline" className="border-blue-200 text-blue-600 bg-blue-50 font-bold">5-10 MIN</Badge>
-              </div>
-              <p className="text-sm text-slate-500">We start every session by "unlocking" your restricted patterns to prepare for load.</p>
-              <div className="grid gap-3">
-                {plan.prioritizedExercises.groups.filter(g => g.priority === 'critical' || g.priority === 'important').flatMap(g => g.exercises.slice(0, 3)).map((ex, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50/50">
-                    <div>
-                      <p className="text-sm font-bold text-slate-900">{ex.name}</p>
-                      <p className="text-[10px] text-slate-500 uppercase tracking-widest">{ex.addresses.join(' • ')}</p>
-                    </div>
-                    <span className="text-xs font-medium text-slate-400">{ex.setsReps || '2 x 30s'}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Main Block */}
-            <div className="bg-white rounded-3xl border-2 border-primary p-8 shadow-md space-y-6 relative overflow-hidden">
-              <div className="absolute top-0 right-0 -mt-2 -mr-2 bg-primary text-white text-[10px] font-black px-4 py-2 rotate-12 shadow-lg">GOAL BLOCK</div>
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-2xl bg-primary flex items-center justify-center text-white font-bold italic">B</div>
-                <h3 className="text-lg font-bold text-slate-900">Main Training Block (The Work)</h3>
-              </div>
-              <p className="text-sm text-slate-500">The "heavy lifting" focused entirely on your primary goal of {goalLabel}.</p>
-              <div className="grid gap-3">
-                {plan.prioritizedExercises.goalExercises.slice(0, 3).map((goal: string, i: number) => (
-                  <div key={i} className="flex items-center gap-3 p-4 rounded-2xl bg-brand-light/50 border border-primary/10">
-                    <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center shrink-0">
-                      <TargetIcon className="h-4 w-4 text-white" />
-                    </div>
-                    <p className="text-sm font-bold text-slate-900">{goal}</p>
-                  </div>
-                ))}
-                {/* Specific exercises for the main block */}
-                {plan.prioritizedExercises.groups.find(g => g.priority === 'goal-focused')?.exercises.map((ex, i) => (
-                  <div key={`ex-${i}`} className="flex items-center justify-between p-4 rounded-2xl border border-slate-100 bg-white">
-                    <div>
-                      <p className="text-sm font-bold text-slate-900">{ex.name}</p>
-                      <p className="text-xs text-slate-500 italic mt-0.5">{ex.reason}</p>
-                    </div>
-                    <Badge className="bg-primary text-white border-none text-[10px] font-black">{ex.setsReps || '3-4 Sets'}</Badge>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-      ) : null}
+      <ClientReportWorkout plan={plan} goalLabel={goalLabel} />
 
       {/* Removed explicit expected timeframe to keep end date obscure */}
     </div>
