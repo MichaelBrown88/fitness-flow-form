@@ -628,7 +628,7 @@ const ClientDetail = () => {
         <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
             <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <Clock className="h-5 w-5 text-indigo-600" />
+              <Clock className="h-5 w-5 text-primary" />
               Complete Data Logs
             </h3>
             <Badge variant="outline" className="border-slate-200 text-slate-500 font-bold bg-white uppercase tracking-widest text-[9px]">
@@ -790,7 +790,7 @@ const ClientDetail = () => {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <GitCompare className="h-5 w-5 text-indigo-600" />
+              <GitCompare className="h-5 w-5 text-primary" />
               Assessment Comparison
             </DialogTitle>
             <DialogDescription>

@@ -90,7 +90,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
             {mode === 'ocr' ? 'InBody Scanner' : 'Posture Analysis'}
           </h3>
           {overlayText && (
-            <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-400 mt-1">{overlayText}</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-primary/60 mt-1">{overlayText}</p>
           )}
         </div>
         <div className="flex items-center gap-2">

@@ -336,19 +336,26 @@ const Companion = () => {
         updateInBodyImage(sessionId, imageSrc)
           .then(() => {
             setIsProcessingOcr(true);
-            return processInBodyScan(imageSrc);
+            
+            // Add timeout wrapper to prevent hanging
+            const timeoutPromise = new Promise<never>((_, reject) => 
+              setTimeout(() => reject(new Error('Scan timeout - please try again')), 30000)
+            );
+            
+            return Promise.race([processInBodyScan(imageSrc), timeoutPromise]);
           })
           .then((result) => {
             if (result.fields && Object.keys(result.fields).length > 0) {
               setOcrReviewData(result.fields as Record<string, string>);
               speak("Data extracted. Review and confirm.");
             } else {
-              toast({ title: "Scan failed", variant: "destructive" });
+              toast({ title: "Scan failed", description: "No data found. Try a clearer photo.", variant: "destructive" });
               speak("Scan failed. Please try again.");
             }
           })
           .catch(err => {
-            toast({ title: "Error", variant: "destructive" });
+            console.error('[OCR] Error:', err);
+            toast({ title: "Scan Error", description: err?.message || "Please try again or enter manually.", variant: "destructive" });
             speak("Error processing scan.");
           })
           .finally(() => {

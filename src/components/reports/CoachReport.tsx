@@ -70,14 +70,14 @@ export default function CoachReport({
             <h2 className="text-3xl font-bold text-slate-900">
               {clientName ? `${clientName}` : 'Client Overview'}
             </h2>
-            <p className="text-indigo-600 font-semibold uppercase tracking-wider text-xs">
+            <p className="text-primary font-semibold uppercase tracking-wider text-xs">
               Coach Assessment & Strategy
             </p>
           </div>
           
           <div className="flex flex-wrap gap-2">
             {goals.map(g => (
-              <span key={g} className="px-3 py-1 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-full text-[10px] font-black uppercase tracking-widest">
+              <span key={g} className="px-3 py-1 bg-brand-light text-primary border border-primary/10 rounded-full text-[10px] font-black uppercase tracking-widest">
                 {g.replace('-', ' ')}
               </span>
             ))}
@@ -117,7 +117,7 @@ export default function CoachReport({
       {/* FIRST SESSION SCRIPT */}
       <section className="space-y-6">
         <div className="flex items-center gap-3">
-          <div className="bg-indigo-600 p-2 rounded-lg">
+          <div className="bg-primary p-2 rounded-lg">
             <MessageSquare className="h-5 w-5 text-white" />
           </div>
           <h3 className="text-xl font-bold text-slate-900">First Session Talking Points</h3>
@@ -131,7 +131,7 @@ export default function CoachReport({
                 <ul className="space-y-2">
                   {plan.clientScript.findings.map((item, i) => (
                     <li key={i} className="flex gap-3 text-slate-700 text-sm">
-                      <span className="text-indigo-500 font-bold">•</span>
+                      <span className="text-primary font-bold">•</span>
                       {item}
                     </li>
                   ))}
@@ -179,7 +179,7 @@ export default function CoachReport({
                   <ul className="space-y-2">
                     {plan.clientScript.clientCommitment.map((item, i) => (
                       <li key={i} className="flex gap-3 text-slate-700 text-sm">
-                        <span className="text-indigo-500 font-bold">{i + 1}.</span>
+                        <span className="text-primary font-bold">{i + 1}.</span>
                         {item}
                       </li>
                     ))}
@@ -296,7 +296,7 @@ export default function CoachReport({
                         <p className="text-xs text-slate-700 leading-tight mb-2">{ex.reason}</p>
                         <div className="flex flex-wrap gap-1 mt-2">
                           {ex.sessionTypes.map((st, j) => (
-                            <span key={j} className="text-[10px] font-medium text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
+                            <span key={j} className="text-[10px] font-medium text-primary bg-brand-light px-2 py-0.5 rounded">
                               {st}
                             </span>
                           ))}
@@ -340,7 +340,7 @@ export default function CoachReport({
                       </h5>
                       <div className="space-y-3 flex-1">
                         {sortedExercises.map((ex, i) => (
-                          <div key={i} className="text-xs border-l-2 pl-3 py-0.5 border-slate-100 hover:border-indigo-200 transition-colors">
+                          <div key={i} className="text-xs border-l-2 pl-3 py-0.5 border-slate-100 hover:border-primary/20 transition-colors">
                             <div className="flex items-start justify-between mb-1">
                               <span className="font-bold text-slate-800 leading-tight">{ex.name}</span>
                               <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase shrink-0 ml-2 ${
@@ -355,7 +355,7 @@ export default function CoachReport({
                               </span>
                             </div>
                             {ex.setsReps && (
-                              <p className="text-[9px] text-indigo-600 font-bold mb-0.5">{ex.setsReps}</p>
+                              <p className="text-[9px] text-primary font-bold mb-0.5">{ex.setsReps}</p>
                             )}
                             <p className="text-[9px] text-slate-500 leading-relaxed italic">{ex.reason}</p>
                           </div>
@@ -405,7 +405,7 @@ export default function CoachReport({
       {formData?.postureAiResults && (
         <section className="space-y-6">
           <div className="flex items-center gap-3">
-            <div className="bg-indigo-600 p-2 rounded-lg">
+            <div className="bg-primary p-2 rounded-lg">
               <Activity className="h-5 w-5 text-white" />
             </div>
             <h3 className="text-xl font-bold text-slate-900">AI Posture Analysis</h3>
@@ -419,7 +419,7 @@ export default function CoachReport({
               return (
                 <div key={view} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-black uppercase tracking-widest text-indigo-500">{view.toUpperCase()} VIEW</span>
+                    <span className="text-xs font-black uppercase tracking-widest text-primary">{view.toUpperCase()} VIEW</span>
                   </div>
                   
                   {/* Posture Image with Overlay - overlay is baked into the image */}
@@ -567,7 +567,7 @@ export default function CoachReport({
                   <ul className="space-y-2">
                     {bodyComp.healthPriority.map((p, i) => (
                       <li key={i} className="text-sm text-slate-700 flex gap-2">
-                        <span className="text-indigo-500 font-bold">•</span> {p}
+                        <span className="text-primary font-bold">•</span> {p}
                       </li>
                     ))}
                   </ul>
@@ -592,9 +592,9 @@ export default function CoachReport({
                     </div>
                   )}
                   {bodyComp.trainingFocus.unilateralVolume && (
-                    <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-100">
-                      <p className="text-xs font-bold text-indigo-600 uppercase tracking-tight">Unilateral Strategy</p>
-                      <p className="text-sm text-indigo-900">{bodyComp.trainingFocus.unilateralVolume}</p>
+                    <div className="p-3 bg-brand-light rounded-xl border border-primary/10">
+                      <p className="text-xs font-bold text-primary uppercase tracking-tight">Unilateral Strategy</p>
+                      <p className="text-sm text-slate-900">{bodyComp.trainingFocus.unilateralVolume}</p>
                     </div>
                   )}
                 </div>
@@ -630,7 +630,7 @@ export default function CoachReport({
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h4 className="font-bold mb-3 text-sm uppercase tracking-widest text-slate-400">Timeframe Projection</h4>
                 <div className="flex items-baseline gap-2">
-                  <p className="text-3xl font-black text-indigo-600">{bodyComp.timeframeWeeks}</p>
+                  <p className="text-3xl font-black text-primary">{bodyComp.timeframeWeeks}</p>
                   <p className="text-xs text-slate-400 italic">Target Range</p>
                 </div>
                 <p className="text-xs text-slate-400 mt-2 leading-relaxed">

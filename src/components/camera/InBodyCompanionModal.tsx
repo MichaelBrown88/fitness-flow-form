@@ -118,7 +118,7 @@ export const InBodyCompanionModal: React.FC<InBodyCompanionModalProps> = ({
           <div className="w-full lg:w-1/2 bg-slate-50 p-8 border-r border-slate-100 flex flex-col items-center">
             <div className="flex flex-col items-center text-center mb-8">
               <div className="bg-white p-4 rounded-3xl shadow-sm mb-4">
-                <Smartphone className="h-10 w-10 text-indigo-600" />
+                <Smartphone className="h-10 w-10 text-primary" />
               </div>
               <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Remote Camera</h3>
               <p className="text-slate-500 text-xs mt-2">Scan to connect your iPhone.</p>
@@ -131,7 +131,7 @@ export const InBodyCompanionModal: React.FC<InBodyCompanionModalProps> = ({
                 </div>
               )}
               {!companionUrl && (
-                <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
               )}
             </div>
 

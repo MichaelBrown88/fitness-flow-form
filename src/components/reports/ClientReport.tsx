@@ -636,7 +636,7 @@ export default function ClientReport({
           </div>
         )}
         {goals && goals.length > 0 && (
-        <div className="inline-flex items-center gap-1.5 rounded-full bg-indigo-100 px-3 py-1.5 text-xs font-medium text-indigo-800 border border-indigo-200">
+        <div className="inline-flex items-center gap-1.5 rounded-full bg-brand-light px-3 py-1.5 text-xs font-medium text-primary border border-primary/20">
           <span>🎯</span>
           <span>Primary goal: {goalLabel}</span>
         </div>
@@ -768,7 +768,7 @@ export default function ClientReport({
                   key={cat.id} 
                   value={cat.id} 
                   className={`text-xs sm:text-sm capitalize transition-all duration-1000 ${
-                    tempHighlight === cat.id ? 'ring-2 ring-indigo-500 ring-offset-2 animate-pulse bg-indigo-50' : ''
+                    tempHighlight === cat.id ? 'ring-2 ring-primary ring-offset-2 animate-pulse bg-brand-light' : ''
                   }`}
                 >
                   <div className="flex flex-col items-center gap-1">
@@ -942,34 +942,34 @@ export default function ClientReport({
                       
                       return (
                         <div className="space-y-4">
-                          <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-5 shadow-sm">
-                            <p className="text-sm text-indigo-900 mb-3">{explanation}</p>
+                          <div className="rounded-lg border border-primary/20 bg-brand-light p-5 shadow-sm">
+                            <p className="text-sm text-slate-900 mb-3">{explanation}</p>
                             <div className="space-y-2">
-                              <p className="text-xs font-semibold text-indigo-800 uppercase tracking-wide">What this entails:</p>
-                              <ul className="list-disc pl-5 text-sm text-indigo-900 space-y-1">
+                              <p className="text-xs font-semibold text-primary uppercase tracking-wide">What this entails:</p>
+                              <ul className="list-disc pl-5 text-sm text-slate-900 space-y-1">
                                 {whatItEntails.map((item, j) => <li key={j}>{item}</li>)}
                               </ul>
                             </div>
                           </div>
                           
                           <div className="grid gap-4 md:grid-cols-2">
-                            <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 shadow-sm">
-                              <h3 className="text-base font-semibold text-indigo-800 mb-3">What we'll do first</h3>
-                              <ul className="space-y-2 text-sm text-indigo-900">
+                            <div className="rounded-lg border border-primary/20 bg-brand-light p-4 shadow-sm">
+                              <h3 className="text-base font-semibold text-primary mb-3">What we'll do first</h3>
+                              <ul className="space-y-2 text-sm text-slate-900">
                                 {goalActions.map((action, j) => (
                                   <li key={j} className="flex items-start gap-2">
-                                    <span className="text-indigo-600 mt-1">•</span>
+                                    <span className="text-primary mt-1">•</span>
                                     <span>{action}</span>
                                   </li>
                                 ))}
                               </ul>
                             </div>
-                            <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 shadow-sm">
-                              <h3 className="text-base font-semibold text-indigo-800 mb-3">What we'll do next</h3>
-                              <ul className="space-y-2 text-sm text-indigo-900">
+                            <div className="rounded-lg border border-primary/20 bg-brand-light p-4 shadow-sm">
+                              <h3 className="text-base font-semibold text-primary mb-3">What we'll do next</h3>
+                              <ul className="space-y-2 text-sm text-slate-900">
                                 {secondaryActions.map((action, j) => (
                                   <li key={j} className="flex items-start gap-2">
-                                    <span className="text-indigo-600 mt-1">•</span>
+                                    <span className="text-primary mt-1">•</span>
                                     <span>{action}</span>
                                   </li>
                                 ))}
@@ -1036,42 +1036,42 @@ export default function ClientReport({
                 
                 return (
                   <div key={i} className="space-y-4">
-                    <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-5 shadow-sm">
+                    <div className="rounded-lg border border-primary/20 bg-brand-light p-5 shadow-sm">
                       <div className="flex items-center gap-2 mb-3">
-                        <span className="inline-flex items-center rounded-full bg-indigo-600 px-3 py-1 text-sm font-medium text-white">
+                        <span className="inline-flex items-center rounded-full bg-primary px-3 py-1 text-sm font-medium text-white">
                           {goal === 'weight-loss' ? 'Weight Loss' :
                            goal === 'build-muscle' ? 'Muscle Gain' :
                            goal === 'build-strength' ? 'Strength' :
                            goal === 'improve-fitness' ? 'Fitness' : 'General Health'}
                         </span>
                       </div>
-                      <p className="text-sm text-indigo-900 mb-3">{explanation}</p>
+                      <p className="text-sm text-slate-900 mb-3">{explanation}</p>
                       <div className="space-y-2">
-                        <p className="text-xs font-semibold text-indigo-800 uppercase tracking-wide">What this entails:</p>
-                        <ul className="list-disc pl-5 text-sm text-indigo-900 space-y-1">
+                        <p className="text-xs font-semibold text-primary uppercase tracking-wide">What this entails:</p>
+                        <ul className="list-disc pl-5 text-sm text-slate-900 space-y-1">
                           {whatItEntails.map((item, j) => <li key={j}>{item}</li>)}
                         </ul>
                       </div>
                     </div>
                     
                     <div className="grid gap-4 md:grid-cols-2">
-                      <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 shadow-sm">
-                        <h3 className="text-base font-semibold text-indigo-800 mb-3">What we'll do first</h3>
-                        <ul className="space-y-2 text-sm text-indigo-900">
+                      <div className="rounded-lg border border-primary/20 bg-brand-light p-4 shadow-sm">
+                        <h3 className="text-base font-semibold text-primary mb-3">What we'll do first</h3>
+                        <ul className="space-y-2 text-sm text-slate-900">
                           {goalActions.map((action, j) => (
                             <li key={j} className="flex items-start gap-2">
-                              <span className="text-indigo-600 mt-1">•</span>
+                              <span className="text-primary mt-1">•</span>
                               <span>{action}</span>
                             </li>
                           ))}
                         </ul>
                       </div>
-                      <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 shadow-sm">
-                        <h3 className="text-base font-semibold text-indigo-800 mb-3">What we'll do next</h3>
-                        <ul className="space-y-2 text-sm text-indigo-900">
+                      <div className="rounded-lg border border-primary/20 bg-brand-light p-4 shadow-sm">
+                        <h3 className="text-base font-semibold text-primary mb-3">What we'll do next</h3>
+                        <ul className="space-y-2 text-sm text-slate-900">
                           {secondaryActions.map((action, j) => (
                             <li key={j} className="flex items-start gap-2">
-                              <span className="text-indigo-600 mt-1">•</span>
+                              <span className="text-primary mt-1">•</span>
                               <span>{action}</span>
                             </li>
                           ))}
@@ -1329,8 +1329,8 @@ export default function ClientReport({
         return (
       <section className="space-y-4">
         <h2 className="text-2xl font-bold text-slate-900">Your roadmap</h2>
-        <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 shadow-sm">
-          <p className="text-sm text-indigo-900 mb-3">
+        <div className="rounded-lg border border-primary/20 bg-brand-light p-4 shadow-sm">
+          <p className="text-sm text-slate-900 mb-3">
             <strong>This timeline shows when you can expect to start seeing results.</strong> More sessions per week means faster progress—adjust the slider below to see how training frequency affects your timeline.
           </p>
         </div>
@@ -1403,15 +1403,15 @@ export default function ClientReport({
             {/* The Plot: Findings */}
             <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm space-y-6">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-2xl bg-indigo-50 flex items-center justify-center">
-                  <TargetIcon className="h-5 w-5 text-indigo-600" />
+                <div className="h-10 w-10 rounded-2xl bg-brand-light flex items-center justify-center">
+                  <TargetIcon className="h-5 w-5 text-primary" />
                 </div>
                 <h3 className="text-xl font-bold text-slate-900">1. Your Starting Point</h3>
               </div>
               <ul className="space-y-4">
                 {plan.clientScript.findings.map((finding: string, i: number) => (
                   <li key={i} className="flex gap-4 items-start">
-                    <span className="h-6 w-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold">{i+1}</span>
+                    <span className="h-6 w-6 rounded-full bg-brand-light text-primary flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold">{i+1}</span>
                     <p className="text-slate-700 leading-relaxed font-medium">{finding}</p>
                   </li>
                 ))}
@@ -1426,13 +1426,13 @@ export default function ClientReport({
               <div className="relative z-10 space-y-6">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-2xl bg-white/10 flex items-center justify-center">
-                    <AlertCircle className="h-5 w-5 text-indigo-400" />
+                    <AlertCircle className="h-5 w-5 text-primary/60" />
                   </div>
                   <h3 className="text-xl font-bold">2. Why This Matters</h3>
                 </div>
                 <div className="space-y-4">
                   {plan.clientScript.whyItMatters.map((stake: string, i: number) => (
-                    <p key={i} className="text-indigo-100/90 leading-relaxed italic border-l-2 border-indigo-500/50 pl-4">{stake}</p>
+                    <p key={i} className="text-white/80/90 leading-relaxed italic border-l-2 border-primary/50 pl-4">{stake}</p>
                   ))}
                 </div>
               </div>
@@ -1492,20 +1492,20 @@ export default function ClientReport({
             </div>
 
             {/* Main Block */}
-            <div className="bg-white rounded-3xl border-2 border-indigo-600 p-8 shadow-md space-y-6 relative overflow-hidden">
-              <div className="absolute top-0 right-0 -mt-2 -mr-2 bg-indigo-600 text-white text-[10px] font-black px-4 py-2 rotate-12 shadow-lg">GOAL BLOCK</div>
+            <div className="bg-white rounded-3xl border-2 border-primary p-8 shadow-md space-y-6 relative overflow-hidden">
+              <div className="absolute top-0 right-0 -mt-2 -mr-2 bg-primary text-white text-[10px] font-black px-4 py-2 rotate-12 shadow-lg">GOAL BLOCK</div>
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white font-bold italic">B</div>
+                <div className="h-10 w-10 rounded-2xl bg-primary flex items-center justify-center text-white font-bold italic">B</div>
                 <h3 className="text-lg font-bold text-slate-900">Main Training Block (The Work)</h3>
               </div>
               <p className="text-sm text-slate-500">The "heavy lifting" focused entirely on your primary goal of {goalLabel}.</p>
               <div className="grid gap-3">
                 {plan.prioritizedExercises.goalExercises.slice(0, 3).map((goal: string, i: number) => (
-                  <div key={i} className="flex items-center gap-3 p-4 rounded-2xl bg-indigo-50/50 border border-indigo-100">
-                    <div className="h-8 w-8 rounded-full bg-indigo-600 flex items-center justify-center shrink-0">
+                  <div key={i} className="flex items-center gap-3 p-4 rounded-2xl bg-brand-light/50 border border-primary/10">
+                    <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center shrink-0">
                       <TargetIcon className="h-4 w-4 text-white" />
                     </div>
-                    <p className="text-sm font-bold text-indigo-900">{goal}</p>
+                    <p className="text-sm font-bold text-slate-900">{goal}</p>
                   </div>
                 ))}
                 {/* Specific exercises for the main block */}
@@ -1515,7 +1515,7 @@ export default function ClientReport({
                       <p className="text-sm font-bold text-slate-900">{ex.name}</p>
                       <p className="text-xs text-slate-500 italic mt-0.5">{ex.reason}</p>
                     </div>
-                    <Badge className="bg-indigo-600 text-white border-none text-[10px] font-black">{ex.setsReps || '3-4 Sets'}</Badge>
+                    <Badge className="bg-primary text-white border-none text-[10px] font-black">{ex.setsReps || '3-4 Sets'}</Badge>
                   </div>
                 ))}
               </div>

@@ -102,8 +102,8 @@ export const FieldControl: React.FC<FieldControlProps> = ({
                       if (isInstructionHeader) {
                         return (
                           <div key={i} className="flex items-center gap-2 mb-1">
-                            <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400">{line.replace(':', '')}</span>
+                            <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-primary/60">{line.replace(':', '')}</span>
                           </div>
                         );
                       }
@@ -112,7 +112,7 @@ export const FieldControl: React.FC<FieldControlProps> = ({
                         const [num, ...rest] = line.split('.');
                         return (
                           <div key={i} className="flex gap-3 text-[11px] leading-relaxed">
-                            <span className="font-black text-indigo-500 min-w-[12px]">{num}.</span>
+                            <span className="font-black text-primary min-w-[12px]">{num}.</span>
                             <span className="text-slate-200 font-medium">{rest.join('.').trim()}</span>
                           </div>
                         );
@@ -121,7 +121,7 @@ export const FieldControl: React.FC<FieldControlProps> = ({
                       if (isBullet) {
                         return (
                           <div key={i} className="flex gap-3 text-[11px] leading-relaxed pl-1">
-                            <span className="text-indigo-500">•</span>
+                            <span className="text-primary">•</span>
                             <span className="text-slate-200 font-medium">{line.replace('•', '').trim()}</span>
                           </div>
                         );
@@ -253,10 +253,10 @@ export const FieldControl: React.FC<FieldControlProps> = ({
                 const isSelected = value === option.value;
               const colors = [
                 'hover:border-emerald-200 hover:bg-emerald-50 text-emerald-700 border-emerald-100',
-                'hover:border-indigo-200 hover:bg-indigo-50 text-indigo-700 border-indigo-100',
+                'hover:border-primary/20 hover:bg-brand-light text-primary border-primary/10',
                 'hover:border-sky-200 hover:bg-sky-50 text-sky-700 border-sky-100',
                 'hover:border-amber-200 hover:bg-amber-50 text-amber-700 border-amber-100',
-                'hover:border-purple-200 hover:bg-purple-50 text-purple-700 border-purple-100',
+                'hover:border-fuchsia-200 hover:bg-fuchsia-50 text-fuchsia-700 border-fuchsia-100',
                 'hover:border-rose-200 hover:bg-rose-50 text-rose-700 border-rose-100',
               ];
               const colorClass = colors[idx % colors.length];
@@ -307,10 +307,10 @@ export const FieldControl: React.FC<FieldControlProps> = ({
                 const isActive = selected.includes(opt.value);
               const colors = [
                 'hover:border-emerald-200 hover:bg-emerald-50 text-emerald-700 border-emerald-100',
-                'hover:border-indigo-200 hover:bg-indigo-50 text-indigo-700 border-indigo-100',
+                'hover:border-primary/20 hover:bg-brand-light text-primary border-primary/10',
                 'hover:border-sky-200 hover:bg-sky-50 text-sky-700 border-sky-100',
                 'hover:border-amber-200 hover:bg-amber-50 text-amber-700 border-amber-100',
-                'hover:border-purple-200 hover:bg-purple-50 text-purple-700 border-purple-100',
+                'hover:border-fuchsia-200 hover:bg-fuchsia-50 text-fuchsia-700 border-fuchsia-100',
                 'hover:border-rose-200 hover:bg-rose-50 text-rose-700 border-rose-100',
               ];
               const colorClass = colors[idx % colors.length];
@@ -355,7 +355,7 @@ export const FieldControl: React.FC<FieldControlProps> = ({
             placeholder={field.placeholder}
             value={(value as string) ?? ''}
             onChange={(event) => handleChange(event.target.value)}
-            className="h-12 rounded-xl border-slate-200 focus:ring-indigo-500"
+            className="h-12 rounded-xl border-slate-200 focus:ring-primary"
           />
         );
       case 'date':
@@ -367,7 +367,7 @@ export const FieldControl: React.FC<FieldControlProps> = ({
             placeholder={field.placeholder}
             value={(value as string) ?? ''}
             onChange={(event) => handleChange(event.target.value)}
-            className="h-12 rounded-xl border-slate-200 focus:ring-indigo-500"
+            className="h-12 rounded-xl border-slate-200 focus:ring-primary"
           />
         );
       case 'email':
@@ -379,7 +379,7 @@ export const FieldControl: React.FC<FieldControlProps> = ({
             placeholder={field.placeholder}
             value={(value as string) ?? ''}
             onChange={(event) => handleChange(event.target.value)}
-            className="h-12 rounded-xl border-slate-200 focus:ring-indigo-500"
+            className="h-12 rounded-xl border-slate-200 focus:ring-primary"
           />
         );
       case 'tel':
@@ -391,7 +391,7 @@ export const FieldControl: React.FC<FieldControlProps> = ({
             placeholder={field.placeholder}
             value={(value as string) ?? ''}
             onChange={(event) => handleChange(event.target.value)}
-            className="h-12 rounded-xl border-slate-200 focus:ring-indigo-500"
+            className="h-12 rounded-xl border-slate-200 focus:ring-primary"
           />
         );
       case 'number':
@@ -405,7 +405,7 @@ export const FieldControl: React.FC<FieldControlProps> = ({
             placeholder={field.placeholder}
             value={(value as string) ?? ''}
             onChange={(event) => handleChange(event.target.value)}
-            className="h-12 rounded-xl border-slate-200 focus:ring-indigo-500"
+            className="h-12 rounded-xl border-slate-200 focus:ring-primary"
           />
         );
     }

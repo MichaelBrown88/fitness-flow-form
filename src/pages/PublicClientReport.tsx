@@ -81,7 +81,7 @@ const PublicClientReport = () => {
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
         <Suspense fallback={
           <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-slate-100">
-            <Loader2 className="h-8 w-8 animate-spin text-indigo-500 mb-4" />
+            <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
             <p className="text-sm font-black uppercase tracking-widest text-slate-400">Loading Your Report...</p>
           </div>
         }>

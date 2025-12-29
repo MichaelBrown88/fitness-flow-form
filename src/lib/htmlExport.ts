@@ -236,10 +236,10 @@ export async function generateInteractiveHtml(params: {
     const CATEGORY_ORDER = ['bodyComp','strength','cardio','movementQuality','lifestyle'];
     const CATEGORY_COLOR = {
       bodyComp: 'bg-emerald-500',
-      strength: 'bg-indigo-500',
+      strength: 'bg-brand-light0',
       cardio: 'bg-sky-500',
       movementQuality: 'bg-amber-500',
-      lifestyle: 'bg-purple-500',
+      lifestyle: 'bg-fuchsia-500',
     };
     
     const CATEGORY_EXPLANATIONS = {
@@ -252,7 +252,7 @@ export async function generateInteractiveHtml(params: {
     
     const PROGRAM_PHASES = [
       { key: 'foundation', title: 'Building the Foundation', color: 'bg-slate-800', text: 'Movement quality, posture, breathing, and consistency. Install habits that make progress inevitable.' },
-      { key: 'overload', title: 'Progressive Overload', color: 'bg-indigo-600', text: 'Gradually increase volume, intensity, or density with excellent technique to drive adaptations.' },
+      { key: 'overload', title: 'Progressive Overload', color: 'bg-primary', text: 'Gradually increase volume, intensity, or density with excellent technique to drive adaptations.' },
       { key: 'performance', title: 'Performance Development', color: 'bg-sky-600', text: 'Translate base capacity into performance—better pace, higher outputs, stronger lifts.' },
       { key: 'specialisation', title: 'Specialisation', color: 'bg-emerald-600', text: 'Emphasise your primary goal block (fat loss, hypertrophy, strength, or endurance) based on response.' },
       { key: 'mastery', title: 'Mastery', color: 'bg-amber-600', text: 'Refine strengths, shore up weak links, and consolidate results for long-term sustainability.' },

@@ -211,7 +211,7 @@ export function PostureViewCard({ view, analysis, imageUrl }: { view: string, an
             
             {/* Overlay Label */}
             <div className="absolute top-6 left-6 flex flex-col gap-2 z-10">
-              <Badge className="bg-indigo-600/90 hover:bg-indigo-600 text-white border-none text-[10px] uppercase font-black tracking-[0.2em] px-4 py-2 rounded-full shadow-lg backdrop-blur-sm">
+              <Badge className="bg-primary/90 hover:bg-primary text-white border-none text-[10px] uppercase font-black tracking-[0.2em] px-4 py-2 rounded-full shadow-lg backdrop-blur-sm">
                 {view.replace('-', ' ')} View
               </Badge>
               {analysis.spinal_curvature && analysis.spinal_curvature.status !== 'Normal' && (
@@ -262,7 +262,7 @@ export function PostureViewCard({ view, analysis, imageUrl }: { view: string, an
                     return (
                       <div key={key} className="space-y-1 animate-in fade-in slide-in-from-left-2 duration-300">
                         <div className="flex items-center gap-2">
-                          <span className="text-[9px] font-black uppercase tracking-widest text-indigo-600">{key.replace('_', ' ')}</span>
+                          <span className="text-[9px] font-black uppercase tracking-widest text-primary">{key.replace('_', ' ')}</span>
                           <span className="text-[8px] font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded uppercase">{value.status}</span>
                         </div>
                         <p className="text-[13px] font-bold text-slate-700 leading-snug">{value.description}</p>
@@ -319,7 +319,7 @@ export function PostureViewCard({ view, analysis, imageUrl }: { view: string, an
                 <div className="absolute top-0 right-0 p-6 opacity-5">
                   <Info className="h-24 w-24 text-white" />
                 </div>
-                <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400 mb-4">Summary Assessment</h5>
+                <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/60 mb-4">Summary Assessment</h5>
                 <p className="text-[15px] font-medium leading-relaxed text-slate-300 italic relative z-10">
                   "{analysis.overall_assessment || generateClientFriendlySummary(analysis, view)}"
                 </p>
