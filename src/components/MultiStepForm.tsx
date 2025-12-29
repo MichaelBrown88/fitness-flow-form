@@ -250,12 +250,6 @@ const PhaseFormContent = ({
     }
   }, [formData]);
 
-  // Determine progress percentage
-  const progressValue = useMemo(() => {
-    if (isPartialAssessment) return 0; // Hide progress for partial updates
-    const completed = visiblePhases.filter((_, i) => isPhaseCompleted(i)).length;
-    return (completed / (totalPhases - 1)) * 100;
-  }, [visiblePhases, totalPhases, isPhaseCompleted, isPartialAssessment]);
 
   const roadmap = useMemo(() => {
     try {
