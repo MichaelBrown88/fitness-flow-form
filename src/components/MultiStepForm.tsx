@@ -63,9 +63,6 @@ import { FieldControl } from './assessment/FieldControl';
 const AssessmentResults = React.lazy(() => import('./assessment/AssessmentResults'));
 
 import { processInBodyScan } from '@/lib/ai/ocrEngine';
-import { analyzePostureImage } from '@/lib/ai/postureAnalysis';
-import { detectPostureLandmarks } from '@/lib/ai/postureLandmarks';
-import { addPostureOverlay, addDeviationOverlay } from '@/lib/utils/postureOverlay';
 import { compressImageForDisplay } from '@/lib/utils/imageCompression';
 import {
   Dialog,
@@ -681,27 +678,16 @@ const PhaseFormContent = ({
       try {
         setIsProcessingOcr(true); // Re-use OCR loading mask for local analysis
         
-        // STEP 1: Detect Landmarks using MediaPipe
-        const landmarks = await detectPostureLandmarks(imageSrc, currentView);
-        console.log(`[POSTURE] Detected landmarks for ${currentView}:`, landmarks);
-
-        // STEP 2: Align and add green reference lines
-        const alignedImage = await addPostureOverlay(imageSrc, currentView, {
-          mode: 'align',
-          landmarks,
-          lineColor: '#00ff00',
-          lineWidth: 4
-        });
-
-        // STEP 3: Analyze with Gemini AI
-        toast({ title: "Analyzing posture...", description: "Gemini AI is calculating deviations..." });
-        const analysis = await analyzePostureImage(alignedImage, currentView, landmarks);
+        // Use unified processing system (ONE FLOW FOR ALL SOURCES)
+        toast({ title: "Processing posture...", description: "Aligning, calculating, and analyzing..." });
+        const { processPostureImage } = await import('@/services/postureProcessing');
+        const processed = await processPostureImage(imageSrc, currentView, undefined, 'this-device');
         
-        // STEP 4: Add red deviation lines
-        const imageWithFullOverlay = await addDeviationOverlay(alignedImage, currentView, analysis);
+        // Compress final image for storage/form
+        const compressed = await compressImageForDisplay(processed.imageWithDeviations, 800, 0.8);
         
-        // STEP 5: Compress for storage/form
-        const compressed = await compressImageForDisplay(imageWithFullOverlay, 800, 0.8);
+        // Use processed analysis
+        const analysis = processed.analysis;
         
         // Map analysis to form
         const suggestions: Partial<FormData> = {};

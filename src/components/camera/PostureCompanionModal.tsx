@@ -11,15 +11,11 @@ import { Button } from '@/components/ui/button';
 import { 
   createLiveSession, 
   subscribeToLiveSession, 
-  updatePostureAnalysis,
   type LiveSession 
 } from '@/services/liveSessions';
-import { analyzePostureImage } from '@/lib/ai/postureAnalysis';
 import { loadTestPostureImages, loadImagesFromFiles } from '@/lib/test/postureTestImages';
 import { updatePostureImage } from '@/services/liveSessions';
-import { addDeviationOverlay, generatePlaceholderWithGreenLines } from '@/lib/utils/postureOverlay';
-import { doc, setDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { generatePlaceholderWithGreenLines } from '@/lib/utils/postureOverlay';
 import { CONFIG } from '@/config';
 import { 
   Smartphone, 
@@ -54,7 +50,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
 }) => {
   const { user, profile } = useAuth();
   const [session, setSession] = useState<LiveSession | null>(null);
-  const [analyzingViews, setAnalyzingViews] = useState<Record<string, boolean>>({});
+  // Analysis is handled automatically by updatePostureImage - no separate state needed
   const [isOnline, setIsOnline] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoadingTestImages, setIsLoadingTestImages] = useState(false);
@@ -91,30 +87,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
         setIsOnline(true);
       }
 
-      // 3. AUTO-START AI ANALYSIS
-      views.forEach((view) => {
-        const imageUrl = updatedSession.postureImages[view];
-        const hasAnalysis = updatedSession.analysis[view];
-        
-        if (imageUrl && !hasAnalysis && !processedRef.current.has(`${view}-${imageUrl}`)) {
-          processedRef.current.add(`${view}-${imageUrl}`);
-          
-          // Use full-size image for AI analysis if available, otherwise use compressed
-          const fullSizeUrl = updatedSession[`postureImagesFull_${view}`];
-          const imageForAI = (typeof fullSizeUrl === 'string' ? fullSizeUrl : null) || imageUrl;
-          
-          // Get landmarks if available in session
-          const landmarks = updatedSession[`landmarks_${view}`];
-          
-          if (fullSizeUrl) {
-            console.log(`[AI] Using full-size image from Storage for ${view}`);
-          } else {
-            console.warn(`[AI] Full-size image not available for ${view}, using compressed version`);
-          }
-          
-          handleAnalyze(view, imageForAI, landmarks);
-        }
-      });
+      // Analysis is now handled automatically by updatePostureImage (unified processing system)
     });
 
     return () => unsubscribe();
@@ -138,137 +111,8 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
   const hasAllImages = views.every(v => !!session?.postureImages[v]);
   const isComplete = views.every(v => !!session?.analysis[v]);
 
-  const handleAnalyze = async (view: 'front' | 'side-right' | 'side-left' | 'back', url: string, landmarks?: any) => {
-    setAnalyzingViews(prev => ({ ...prev, [view]: true }));
-    try {
-      console.log(`[AI] Starting analysis for ${view}...`);
-      // Pass MediaPipe landmarks to AI to inform its analysis
-      const result = await analyzePostureImage(url, view, landmarks);
-      console.log(`[AI] Analysis result for ${view}:`, result);
-      
-      if (session?.id) {
-        await updatePostureAnalysis(session.id, view, result);
-        
-        // Update image with red deviation lines
-        // The image already has green reference lines (added before AI analysis)
-        // Now we add red deviation lines showing how the body deviates from the green lines
-        const sessionRef = doc(db, 'live_sessions', session.id);
-        const { getDoc } = await import('firebase/firestore');
-        const snap = await getDoc(sessionRef);
-        const latestSession = snap.exists() ? snap.data() as LiveSession : session;
-        
-        // Get image WITH green lines (should already have them from updatePostureImage)
-        // Prefer base64 from Firestore to avoid CORS issues with Storage URLs
-        let currentImage = latestSession.postureImages?.[view] || 
-                          session.postureImages?.[view] ||
-                          (latestSession[`postureImagesFull_${view}`] as string) || 
-                          (latestSession[`postureImagesStorage_${view}`] as string);
-        
-        // If still no image, use the URL we used for AI (should have green lines)
-        if (!currentImage && url) {
-          currentImage = url;
-        }
-        
-        console.log(`[OVERLAY] Image source check for ${view}:`, {
-          hasFirestoreBase64: !!latestSession.postureImages?.[view],
-          hasStorageUrl: !!latestSession[`postureImagesFull_${view}`],
-          hasLatestImage: !!latestSession.postureImages?.[view],
-          hasSessionImage: !!session.postureImages?.[view],
-          hasUrl: !!url,
-          currentImageType: currentImage ? (currentImage.startsWith('data:') ? 'base64' : currentImage.startsWith('http') ? 'url' : 'unknown') : 'none'
-        });
-        
-        if (currentImage) {
-          try {
-            console.log(`[OVERLAY] ✓ Adding red deviation lines to ${view} (green lines already present)`);
-            // Prefer base64 from Firestore to avoid CORS issues
-            let imageData = currentImage;
-            if (currentImage.startsWith('http')) {
-              // Only fetch from Storage if we don't have base64 from Firestore
-              console.log(`[OVERLAY] Fetching image with green lines from URL (no Firestore base64 available): ${currentImage}`);
-              try {
-                const response = await fetch(currentImage, { mode: 'cors' });
-                if (!response.ok) {
-                  throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                const blob = await response.blob();
-                imageData = await new Promise<string>((resolve, reject) => {
-                  const reader = new FileReader();
-                  reader.onloadend = () => resolve(reader.result as string);
-                  reader.onerror = reject;
-                  reader.readAsDataURL(blob);
-                });
-              } catch (fetchError) {
-                console.error(`[OVERLAY] Failed to fetch from Storage URL (CORS or network error):`, fetchError);
-                // If fetch fails, try to use the base64 from Firestore if available
-                const fallbackBase64 = latestSession.postureImages?.[view] || session.postureImages?.[view];
-                if (fallbackBase64 && fallbackBase64.startsWith('data:')) {
-                  console.log(`[OVERLAY] Using fallback base64 from Firestore`);
-                  imageData = fallbackBase64;
-                } else {
-                  throw new Error(`Cannot fetch image from Storage and no base64 fallback available: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}`);
-                }
-              }
-            }
-            
-            // Add red deviation lines to image that already has green reference lines
-            // The red lines show deviations FROM the green reference lines
-            const imageWithOverlay = await addDeviationOverlay(imageData, view, result);
-            console.log(`[OVERLAY] ✓ Red deviation lines added to ${view}`);
-            
-            // Update both Firestore (compressed) and Storage (full-size) with complete overlay
-            // Compress for Firestore
-            const { compressImageForDisplay } = await import('@/lib/utils/imageCompression');
-            const compressed = await compressImageForDisplay(imageWithOverlay, 800, 0.8);
-            
-            // Update Firestore with compressed version (WITH complete overlay: green + red lines)
-            // Use updateDoc with dot notation to avoid nested entity issues
-            const { updateDoc } = await import('firebase/firestore');
-            await updateDoc(sessionRef, {
-              [`postureImages.${view}`]: compressed.compressed
-            });
-            
-            // Upload full-size to Storage (overwrite original with overlay version)
-            // New structure: clients/{clientId}/sessions/{sessionId}/{view}_full.jpg
-            const { ref, uploadString, getDownloadURL } = await import('firebase/storage');
-            const { storage } = await import('@/lib/firebase');
-            const clientId = session.clientId || 'unknown';
-            const storagePath = `clients/${clientId}/sessions/${session.id}/${view}_full.jpg`;
-            const storageRef = ref(storage, storagePath);
-            const fullSizeBase64 = compressed.fullSize.split(',')[1] || compressed.fullSize;
-            const snapshot = await uploadString(storageRef, fullSizeBase64, 'base64', { contentType: 'image/jpeg' });
-            const downloadUrl = await getDownloadURL(snapshot.ref);
-            
-            // Store Storage URL (now points to image WITH overlay)
-            await setDoc(sessionRef, {
-              [`postureImagesStorage_${view}`]: downloadUrl,
-              [`postureImagesFull_${view}`]: downloadUrl
-            }, { merge: true });
-            
-            // Immediately refresh session state to show updated image with deviation lines
-            const { getDoc } = await import('firebase/firestore');
-            const snap = await getDoc(sessionRef);
-            if (snap.exists()) {
-              const updatedData = snap.data() as LiveSession;
-              setSession(updatedData);
-              console.log(`[OVERLAY] Session state updated with new image (with deviation lines) for ${view}`);
-            }
-            
-            console.log(`[OVERLAY] Added deviation lines to ${view} and updated Storage`);
-          } catch (overlayErr) {
-            console.warn(`[OVERLAY] Failed to add deviation lines:`, overlayErr);
-          }
-        }
-        
-        console.log(`[AI] Success for ${view}`);
-      }
-    } catch (err) {
-      console.error(`[AI] Failed for ${view}:`, err);
-      toast({ title: "AI Analysis Failed", description: "Could not process " + view, variant: "destructive" });
-    } finally {
-      setAnalyzingViews(prev => ({ ...prev, [view]: false }));
-    }
-  };
+  // Analysis is now handled automatically by updatePostureImage (unified processing system)
+  // No separate handleAnalyze needed - everything happens in one unified flow
 
   const handleLoadTestImages = async () => {
     if (!session?.id) {
@@ -339,10 +183,9 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
             if (!testImages[view] || !testImages[view].startsWith('data:image')) {
               throw new Error(`Invalid image data for ${view}`);
             }
-            // Call the SAME function that iPhone capture uses - no landmarks passed, so it will detect them
-            // This ensures identical alignment behavior
-            await updatePostureImage(session.id, view, testImages[view]);
-            console.log(`[MANUAL UPLOAD] Successfully processed ${view} image with alignment`);
+            // Use unified processing system - handles alignment, calculation, AI, deviation lines
+            await updatePostureImage(session.id, view, testImages[view], undefined, 'manual');
+            console.log(`[MANUAL UPLOAD] Successfully processed ${view} image (unified system)`);
             // Small delay to avoid overwhelming Firestore
             await new Promise(resolve => setTimeout(resolve, 500));
           } catch (err) {
@@ -544,12 +387,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                             title="Click to view full image"
                             onClick={() => setPreviewImage({ url: imageUrl, view })}
                           />
-                          {analyzingViews[view] && (
-                            <div className="absolute inset-0 bg-primary/40 backdrop-blur-sm flex flex-col items-center justify-center p-4 text-center">
-                              <Loader2 className="h-8 w-8 animate-spin text-white mb-2" />
-                              <span className="text-[10px] font-black uppercase tracking-widest text-white">AI Analysis...</span>
-                            </div>
-                          )}
+                          {/* Analysis status is handled by session state - check session.analysis[view] */}
                         </>
                       ) : (
                         <>

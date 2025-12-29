@@ -394,7 +394,7 @@ const Companion = () => {
         const capturedLandmarks = currentLandmarksRef.current || undefined;
         console.log(`[CAPTURE] Sending image with landmarks for view ${viewData.id}:`, capturedLandmarks);
         
-        updatePostureImage(sessionId, viewData.id, imageSrc, capturedLandmarks)
+        updatePostureImage(sessionId, viewData.id, imageSrc, capturedLandmarks, 'iphone')
           .then(() => {
             toast({ title: `${viewData.label} Sent` });
           })

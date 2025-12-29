@@ -127,8 +127,10 @@ export async function analyzePostureImage(
 
     console.log(`[POSTURE] Local metrics for ${view}:`, calculated);
 
-    // 2. TRIGGER AI FOR HYBRID REFINEMENT
-    await logAIUsage(coachUid, 'posture_analysis', 'ai_fallback', 'gemini');
+    // 2. USE AI ONLY TO CONVERT NUMBERS → USER-FRIENDLY DESCRIPTIONS
+    // AI receives calculated metrics and normative data to generate descriptions
+    // AI does NOT analyze the image - it only converts the calculated numbers into text
+    await logAIUsage(coachUid, 'posture_analysis', 'ai_description_only', 'gemini');
 
     const firebaseApp = getApp();
     const ai = getAI(firebaseApp, { backend: new VertexAIBackend() });
