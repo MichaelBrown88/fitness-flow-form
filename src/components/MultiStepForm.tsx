@@ -53,6 +53,9 @@ import { downloadElementAsPdf } from '@/lib/pdf';
 import { generateInteractiveHtml } from '@/lib/htmlExport';
 import { useSettings } from '@/hooks/useSettings';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useAssessmentNavigation } from '@/hooks/useAssessmentNavigation';
+import { useAssessmentSave } from '@/hooks/useAssessmentSave';
+import { useCameraHandler } from '@/hooks/useCameraHandler';
 import { CameraCapture } from './camera/CameraCapture';
 import { PostureCompanionModal } from './camera/PostureCompanionModal';
 import { InBodyCompanionModal } from './camera/InBodyCompanionModal';
@@ -111,46 +114,27 @@ const PhaseFormContent = ({
 
   const activeClientName = clientNameFromStorage || formData.fullName || '';
   
-  // Check for partial assessment mode
-  const getInitialPhase = () => {
-    try {
-      const partialData = sessionStorage.getItem('partialAssessment');
-      if (partialData) {
-        // In partial assessment mode, we always want to jump straight to the relevant category.
-        // Since visiblePhases is filtered, the category phase is always at index 1 (after P0).
-        return 1;
-      }
-    } catch (e) {
-      console.warn('Failed to parse partial assessment data:', e);
-    }
-    return 0;
-  };
-  
-  const [activePhaseIdx, setActivePhaseIdx] = useState(getInitialPhase());
-  const [isPartialAssessment, setIsPartialAssessment] = useState(() => {
-    try {
-      const partialData = sessionStorage.getItem('partialAssessment');
-      return !!partialData;
-    } catch {
-      return false;
-    }
-  });
-  
-  const [partialCategory, setPartialCategory] = useState<string | null>(() => {
-    try {
-      const partialData = sessionStorage.getItem('partialAssessment');
-      if (partialData) {
-        const { category } = JSON.parse(partialData);
-        return category;
-      }
-    } catch {
-      return null;
-    }
-    return null;
-  });
+  // Use navigation hook
+  const navigation = useAssessmentNavigation({ formData, orgSettings });
+  const {
+    activePhaseIdx,
+    setActivePhaseIdx,
+    visiblePhases,
+    totalPhases,
+    activePhase,
+    isResultsPhase,
+    isPartialAssessment,
+    setIsPartialAssessment,
+    partialCategory,
+    setPartialCategory,
+    isFieldVisible,
+    isSectionCompleted,
+    isPhaseCompleted,
+    progressValue,
+  } = navigation;
 
-  // Filter phases for partial assessments or modular availability
-  const visiblePhases = useMemo(() => {
+  // Legacy visiblePhases calculation (now in hook, but keeping for compatibility)
+  const visiblePhasesLegacy = useMemo(() => {
     // Mapping of assessment module keys to section IDs
     const assessmentToSectionMap: Record<string, string[]> = {
       parq: ['parq'],
