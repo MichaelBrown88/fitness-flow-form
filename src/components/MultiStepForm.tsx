@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { FormProvider, useFormContext, type FormData } from '@/contexts/FormContext';
+import { Timestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -48,18 +49,24 @@ import { useAuth } from '@/contexts/AuthContext';
 import { saveCoachAssessment } from '@/services/coachAssessments';
 import { requestShareArtifacts, sendReportEmail, type ShareArtifacts } from '@/services/share';
 import { useToast } from '@/components/ui/use-toast';
-import ClientReport from '@/components/reports/ClientReport';
-import CoachReport from '@/components/reports/CoachReport';
 import { downloadElementAsPdf } from '@/lib/pdf';
 import { generateInteractiveHtml } from '@/lib/htmlExport';
 import { useSettings } from '@/hooks/useSettings';
-import { generateDemoData } from '@/lib/demoGenerator';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { CameraCapture } from './camera/CameraCapture';
 import { PostureCompanionModal } from './camera/PostureCompanionModal';
 import { InBodyCompanionModal } from './camera/InBodyCompanionModal';
+import { SingleFieldFlow } from './assessment/SingleFieldFlow';
+import { FieldControl } from './assessment/FieldControl';
+
+// Lazy load results component
+const AssessmentResults = React.lazy(() => import('./assessment/AssessmentResults'));
+
 import { processInBodyScan } from '@/lib/ai/ocrEngine';
 import { analyzePostureImage } from '@/lib/ai/postureAnalysis';
+import { detectPostureLandmarks } from '@/lib/ai/postureLandmarks';
+import { addPostureOverlay, addDeviationOverlay } from '@/lib/utils/postureOverlay';
+import { compressImageForDisplay } from '@/lib/utils/imageCompression';
 import {
   Dialog,
   DialogContent,
@@ -69,6 +76,7 @@ import {
 } from '@/components/ui/dialog';
 
 type FieldValue = string | string[];
+// ...
 
 type IntakeSection = {
   id: string;
@@ -77,604 +85,6 @@ type IntakeSection = {
 };
 
 type SectionType = PhaseSection | IntakeSection;
-
-const labelTextClasses = 'text-xl font-bold tracking-tight text-slate-900 mb-2 block';
-const supportTextClasses = 'text-base text-slate-500 font-medium leading-relaxed mb-6';
-
-const SingleFieldFlow = ({ 
-  section, 
-  activeFieldIdx,
-  setActiveFieldIdx,
-  onComplete,
-  onShowCamera,
-  onShowPostureCompanion,
-  onShowInBodyCompanion
-}: { 
-  section: SectionType; 
-  activeFieldIdx: number;
-  setActiveFieldIdx: (idx: number | ((prev: number) => number)) => void;
-  onComplete: () => void;
-  onShowCamera?: (mode: 'ocr' | 'posture') => void;
-  onShowPostureCompanion?: () => void;
-  onShowInBodyCompanion?: () => void;
-}) => {
-  const { formData } = useFormContext();
-  const isMobile = useIsMobile();
-
-  // Filter visible fields and group paired ones
-  const steps = useMemo(() => {
-    const visible = (section.fields as PhaseField[]).filter(field => {
-    if (!('conditional' in field) || !field.conditional || !field.conditional.showWhen) return true;
-    const { showWhen } = field.conditional;
-    const dependentValue = formData[showWhen.field as keyof FormData];
-    let ok = true;
-    if (showWhen.exists !== undefined) {
-        const hasValue = (dependentValue !== undefined && dependentValue !== null && String(dependentValue).trim() !== '');
-        ok = ok && (showWhen.exists ? hasValue : !hasValue);
-    }
-    if (showWhen.value !== undefined) {
-      ok = ok && dependentValue === showWhen.value;
-    }
-    if (showWhen.notValue !== undefined) {
-      ok = ok && dependentValue !== showWhen.notValue;
-    }
-    if (showWhen.includes !== undefined) {
-      if (Array.isArray(dependentValue)) {
-        ok = ok && (dependentValue as string[]).includes(showWhen.includes);
-        } else if (typeof dependentValue === 'string') {
-          ok = ok && dependentValue === showWhen.includes;
-      } else {
-        ok = false;
-      }
-    }
-    return ok;
-  });
-
-    // Group by pairId
-    const result: PhaseField[][] = [];
-    const processedPairs = new Set<string>();
-
-    visible.forEach(field => {
-      if (field.pairId) {
-        if (!processedPairs.has(field.pairId)) {
-          const pair = visible.filter(f => f.pairId === field.pairId);
-          result.push(pair);
-          processedPairs.add(field.pairId);
-        }
-      } else {
-        result.push([field]);
-      }
-    });
-
-    return result;
-  }, [section.fields, formData]);
-
-  const currentStep = steps[activeFieldIdx];
-  const isLastField = activeFieldIdx === steps.length - 1;
-  
-  const hasValue = useMemo(() => {
-    if (!currentStep) return false;
-    return currentStep.every(field => {
-      const val = formData[field.id];
-      return val !== undefined && val !== null && val !== '' && (!Array.isArray(val) || val.length > 0);
-    });
-  }, [currentStep, formData]);
-
-  const handleNext = () => {
-    if (isLastField) {
-      onComplete();
-    } else {
-      setActiveFieldIdx(prev => prev + 1);
-    }
-  };
-
-  const handleBack = () => {
-    if (activeFieldIdx > 0) {
-      setActiveFieldIdx(prev => prev - 1);
-    }
-  };
-
-  if (!currentStep) return null;
-
-  const movementPattern = currentStep[0].pattern;
-  const isParqField = currentStep.some(f => f.type === 'parq') || section.id === 'parq';
-  const coachNotes = 'instructions' in section ? section.instructions?.coachNotes : null;
-
-  return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
-      {/* Progress within section */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400">
-          <span>{section.title} Progress</span>
-          {(!isParqField || formData.parqQuestionnaire === 'completed') && <span>{activeFieldIdx + 1} of {steps.length}</span>}
-        </div>
-        {(!isParqField || formData.parqQuestionnaire === 'completed') && <Progress value={((activeFieldIdx + 1) / steps.length) * 100} className="h-1" />}
-      </div>
-
-      <div className="bg-white rounded-3xl p-8 lg:p-10 shadow-xl shadow-indigo-100/20 border border-indigo-50 min-h-[400px] flex flex-col justify-center relative">
-
-        {movementPattern && (
-          <div className="mb-6 flex items-center justify-between">
-            <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border border-indigo-100">
-              {movementPattern}
-            </span>
-          </div>
-        )}
-
-        <div className={`grid gap-8 ${currentStep.length > 1 ? 'md:grid-cols-2' : 'grid-cols-1'}`}>
-          {currentStep.map(field => (
-            <div key={field.id} className="space-y-4">
-              {field.side && (
-                <span className={`text-[10px] font-black uppercase tracking-widest ${field.side === 'left' ? 'text-emerald-500' : 'text-indigo-500'}`}>
-                  {field.side} Side
-                </span>
-              )}
-              <FieldControl 
-                field={field}
-                onShowCamera={onShowCamera}
-                onShowPostureCompanion={onShowPostureCompanion}
-                onShowInBodyCompanion={onShowInBodyCompanion}
-              />
-            </div>
-          ))}
-        </div>
-
-        {/* InBody Scan Button - Below input fields */}
-        {section.id === 'body-comp' && onShowCamera && (
-          <div className="mt-8 pt-6 border-t border-slate-100">
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                // On desktop/iPad: show companion modal for iPhone handoff
-                // On mobile: use direct camera
-                if (!isMobile && onShowInBodyCompanion) {
-                  onShowInBodyCompanion();
-                } else {
-                  onShowCamera('ocr');
-                }
-              }}
-              className="w-full h-14 rounded-xl border-indigo-200 text-indigo-600 hover:bg-indigo-50 font-bold gap-2"
-            >
-              <Scan className="h-5 w-5" />
-              Scan InBody Report
-            </Button>
-          </div>
-        )}
-        
-        {( !isParqField || formData.parqQuestionnaire === 'completed' ) && (
-        <div className="flex items-center justify-between mt-12 pt-8 border-t border-slate-50">
-          <Button
-            variant="ghost"
-            onClick={handleBack}
-              disabled={activeFieldIdx === 0}
-            className="h-12 px-6 rounded-xl font-bold text-slate-400 hover:text-slate-900"
-          >
-            <ChevronLeft className="mr-2 h-5 w-5" />
-            Back
-          </Button>
-
-          <Button
-            onClick={handleNext}
-              disabled={!hasValue && currentStep.some(f => f.required)}
-            className={`h-12 px-8 rounded-xl font-bold transition-all ${
-                hasValue || !currentStep.some(f => f.required)
-                ? 'bg-slate-900 text-white hover:bg-slate-800'
-                : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-            }`}
-          >
-            {isLastField ? 'Section Complete' : 'Next Step'}
-            <ChevronRight className="ml-2 h-5 w-5" />
-          </Button>
-        </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-const FieldControl = ({ 
-  field,
-  onShowCamera,
-  onShowPostureCompanion,
-  onShowInBodyCompanion
-}: { 
-  field: PhaseField;
-  onShowCamera?: (mode: 'ocr' | 'posture') => void;
-  onShowPostureCompanion?: () => void;
-  onShowInBodyCompanion?: () => void;
-}) => {
-  const { formData, updateFormData } = useFormContext();
-  const isMobile = useIsMobile();
-
-  // Check conditional logic
-  const shouldShow = () => {
-    if (!('conditional' in field) || !field.conditional || !field.conditional.showWhen) return true;
-
-    const { showWhen } = field.conditional;
-    const dependentValue = formData[showWhen.field as keyof FormData];
-    let ok = true;
-    if (showWhen.exists !== undefined) {
-      const hasValue = (dependentValue !== undefined && dependentValue !== null && String(dependentValue).trim() !== '');
-      ok = ok && (showWhen.exists ? hasValue : !hasValue);
-    }
-    if (showWhen.value !== undefined) {
-      ok = ok && dependentValue === showWhen.value;
-    }
-    if (showWhen.notValue !== undefined) {
-      ok = ok && dependentValue !== showWhen.notValue;
-    }
-    if (showWhen.includes !== undefined) {
-      if (Array.isArray(dependentValue)) {
-        ok = ok && (dependentValue as string[]).includes(showWhen.includes);
-      } else if (typeof dependentValue === 'string') {
-        ok = ok && dependentValue === showWhen.includes;
-      } else {
-        ok = false;
-      }
-    }
-    return ok;
-  };
-
-  if (!shouldShow()) {
-    return null;
-  }
-
-  const handleChange = (value: FieldValue) => {
-    const updates: Partial<FormData> = { [field.id]: value } as Partial<FormData>;
-    
-    // Clear AI results if switching to manual
-    if (field.id === 'postureInputMode' && value === 'manual') {
-      updates.postureAiResults = null;
-    }
-    
-    updateFormData(updates);
-  };
-
-  const renderLabel = () => {
-    const tooltipLines = field.tooltip?.split('\n') || [];
-    const hasInstructions = tooltipLines.some(l => l.toLowerCase().includes('instructions'));
-
-    return (
-      <div className="flex flex-col gap-1 mb-2">
-        <div className="flex items-center gap-2">
-          <label htmlFor={field.id} className={labelTextClasses}>{field.label}</label>
-          {field.tooltip && (
-            <TooltipProvider>
-              <Tooltip delayDuration={200}>
-                <TooltipTrigger asChild>
-                  <button type="button" className="text-indigo-400 hover:text-indigo-600 transition-colors">
-                    <Info className="h-4 w-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent 
-                  side="right" 
-                  className="z-[100] max-w-[300px] p-5 bg-slate-900 text-white rounded-2xl border-none shadow-2xl animate-in fade-in zoom-in duration-200"
-                >
-                  <div className="space-y-3 text-left">
-                    {tooltipLines.map((line, i) => {
-                      const isInstructionHeader = line.toLowerCase().includes('instructions:');
-                      const isStep = line.match(/^\d+\./);
-                      const isBullet = line.trim().startsWith('•');
-
-                      if (isInstructionHeader) {
-                        return (
-                          <div key={i} className="flex items-center gap-2 mb-1">
-                            <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400">{line.replace(':', '')}</span>
-                          </div>
-                        );
-                      }
-
-                      if (isStep) {
-                        const [num, ...rest] = line.split('.');
-                        return (
-                          <div key={i} className="flex gap-3 text-[11px] leading-relaxed">
-                            <span className="font-black text-indigo-500 min-w-[12px]">{num}.</span>
-                            <span className="text-slate-200 font-medium">{rest.join('.').trim()}</span>
-                          </div>
-                        );
-                      }
-
-                      if (isBullet) {
-                        return (
-                          <div key={i} className="flex gap-3 text-[11px] leading-relaxed pl-1">
-                            <span className="text-indigo-500">•</span>
-                            <span className="text-slate-200 font-medium">{line.replace('•', '').trim()}</span>
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <p key={i} className="text-[11px] leading-relaxed font-medium text-slate-300">
-                          {line}
-                        </p>
-                      );
-                    })}
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-        </div>
-        
-        {field.description && <p className={supportTextClasses}>{field.description}</p>}
-      </div>
-    );
-  };
-
-  const renderInput = () => {
-    const value = formData[field.id];
-
-    // Special UI for AI Posture Scan choice
-    if (field.id === 'postureInputMode' && value === 'ai') {
-      return (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {field.options?.map((option, idx) => {
-              const isSelected = value === option.value;
-              const colorClass = idx === 0 ? 'hover:border-slate-200 hover:bg-slate-50 text-slate-700 border-slate-100' : 'hover:border-indigo-200 hover:bg-indigo-50 text-indigo-700 border-indigo-100';
-              const inputId = `${field.id}-${option.value}`;
-              
-              return (
-                <label
-                  key={option.value}
-                  htmlFor={inputId}
-                  className={`flex h-11 cursor-pointer items-center gap-3 rounded-xl border-2 px-4 text-left transition-all ${
-                    isSelected
-                      ? 'border-slate-900 bg-slate-900 text-white shadow-lg scale-[1.02]'
-                      : `bg-white text-slate-600 ${colorClass}`
-                  }`}
-                >
-                  <input 
-                    type="radio" 
-                    id={inputId} 
-                    name={field.id} 
-                    value={option.value} 
-                    checked={isSelected}
-                    onChange={() => handleChange(option.value)}
-                    className="sr-only"
-                  />
-                  <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-                    isSelected ? 'bg-white/20 border-white/20 text-white' : 'border-slate-200 bg-white'
-                  }`}>
-                    {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
-                  </div>
-                  <span className="font-bold text-xs leading-tight">{option.label}</span>
-                </label>
-              );
-            })}
-          </div>
-
-          <div className="p-8 bg-indigo-50 rounded-3xl border-2 border-dashed border-indigo-200 flex flex-col items-center text-center space-y-6 animate-in fade-in zoom-in duration-500">
-            <div className="bg-white p-4 rounded-3xl shadow-sm">
-              <Smartphone className="h-10 w-10 text-indigo-600" />
-            </div>
-            <div className="space-y-2">
-              <h4 className="text-xl font-black uppercase tracking-tight text-indigo-900">AI Posture Analysis</h4>
-              <p className="text-indigo-600/70 text-sm font-medium max-w-xs mx-auto">
-                {formData.postureAiResults 
-                  ? "Scan complete! You can re-scan if needed or continue to the next step."
-                  : "Connect your iPhone to perform a multi-view posture scan with real-time AI grading."}
-              </p>
-            </div>
-            
-            <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm">
-              {isMobile ? (
-                <Button 
-                  onClick={() => onShowCamera?.('posture')}
-                  className="flex-1 h-14 rounded-2xl bg-indigo-600 text-white font-black uppercase tracking-widest text-xs gap-3 shadow-xl shadow-indigo-200"
-                >
-                  <CameraIcon className="h-5 w-5" />
-                  Start Posture Scan
-                </Button>
-              ) : (
-                <Button 
-                  onClick={onShowPostureCompanion}
-                  className="flex-1 h-14 rounded-2xl bg-indigo-600 text-white font-black uppercase tracking-widest text-xs gap-3 shadow-xl shadow-indigo-200"
-                >
-                  <Smartphone className="h-5 w-5" />
-                  Open Remote Mode
-                </Button>
-              )}
-            </div>
-
-            {formData.postureAiResults && (
-              <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 rounded-full border border-emerald-500/20">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-700">AI Results Active</span>
-              </div>
-            )}
-          </div>
-        </div>
-      );
-    }
-
-    switch (field.type) {
-      case 'textarea':
-        return (
-          <Textarea
-            id={field.id}
-            name={field.id}
-            placeholder={field.placeholder}
-            value={(value as string) ?? ''}
-            onChange={(event) => handleChange(event.target.value)}
-            rows={4}
-            className="mt-2 rounded-xl border-slate-200 focus:ring-indigo-500"
-          />
-        );
-      case 'select':
-        // Always use a touch-optimized button grid for select fields
-          return (
-            <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {field.options?.map((option, idx) => {
-                const isSelected = value === option.value;
-              const colors = [
-                'hover:border-emerald-200 hover:bg-emerald-50 text-emerald-700 border-emerald-100',
-                'hover:border-indigo-200 hover:bg-indigo-50 text-indigo-700 border-indigo-100',
-                'hover:border-sky-200 hover:bg-sky-50 text-sky-700 border-sky-100',
-                'hover:border-amber-200 hover:bg-amber-50 text-amber-700 border-amber-100',
-                'hover:border-purple-200 hover:bg-purple-50 text-purple-700 border-purple-100',
-                'hover:border-rose-200 hover:bg-rose-50 text-rose-700 border-rose-100',
-              ];
-              const colorClass = colors[idx % colors.length];
-              
-                return (
-                  <div key={option.value} className="space-y-2">
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => handleChange(option.value)}
-                      className={`flex min-h-[44px] h-auto w-full items-center gap-3 rounded-xl border-2 px-4 py-2 text-left transition-all ${
-                        isSelected
-                          ? 'border-slate-900 bg-slate-900 text-white shadow-lg scale-[1.02]'
-                          : `bg-white text-slate-600 ${colorClass}`
-                      }`}
-                      aria-label={option.label}
-                    >
-                    <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-                      isSelected ? 'bg-white/20 border-white/20 text-white' : 'border-slate-200 bg-white'
-                      }`}>
-                      {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
-                      </div>
-                    <span className="font-bold text-xs leading-tight">{option.label}</span>
-                    </button>
-                    {isSelected && option.value === 'yes' && field.id.toLowerCase().includes('pain') && (
-                      <p className="px-2 py-1.5 rounded-lg bg-rose-50 border border-rose-100 text-[10px] font-black uppercase tracking-widest text-rose-600 flex items-center gap-2 animate-pulse shadow-sm">
-                        <span className="text-sm">⚠️</span> Safety Flag: Do not load this movement pattern.
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-          </div>
-        );
-      case 'multiselect': {
-          const selected = Array.isArray(value) ? (value as string[]) : [];
-          const toggle = (val: string) => {
-            if (selected.includes(val)) {
-              handleChange(selected.filter(v => v !== val));
-            } else {
-              handleChange([...selected, val]);
-            }
-          };
-        
-          return (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
-            {field.options?.map((opt, idx) => {
-                const isActive = selected.includes(opt.value);
-              const colors = [
-                'hover:border-emerald-200 hover:bg-emerald-50 text-emerald-700 border-emerald-100',
-                'hover:border-indigo-200 hover:bg-indigo-50 text-indigo-700 border-indigo-100',
-                'hover:border-sky-200 hover:bg-sky-50 text-sky-700 border-sky-100',
-                'hover:border-amber-200 hover:bg-amber-50 text-amber-700 border-amber-100',
-                'hover:border-purple-200 hover:bg-purple-50 text-purple-700 border-purple-100',
-                'hover:border-rose-200 hover:bg-rose-50 text-rose-700 border-rose-100',
-              ];
-              const colorClass = colors[idx % colors.length];
-
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => toggle(opt.value)}
-                    className={`flex min-h-[44px] h-auto items-center gap-3 rounded-xl border-2 px-4 py-2 text-left transition-all ${
-                      isActive
-                      ? 'border-slate-900 bg-slate-900 text-white shadow-lg scale-[1.02]'
-                      : `bg-white text-slate-600 ${colorClass}`
-                    }`}
-                    aria-pressed={isActive}
-                    aria-label={opt.label}
-                  >
-                  <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
-                    isActive ? 'bg-white/20 border-white/20 text-white' : 'border-slate-200 bg-white'
-                    }`}>
-                    {isActive ? (
-                      <Check className="h-3 w-3 stroke-[4]" />
-                    ) : (
-                      <div className="h-2 w-2 rounded-sm bg-slate-100 opacity-0 group-hover:opacity-100" />
-                    )}
-                    </div>
-                  <span className="font-bold text-xs leading-tight">{opt.label}</span>
-                  </button>
-                );
-              })}
-          </div>
-        );
-      }
-      case 'parq':
-        return <ParQQuestionnaire />;
-      case 'time':
-        return (
-          <Input
-            id={field.id}
-            name={field.id}
-            type="time"
-            placeholder={field.placeholder}
-            value={(value as string) ?? ''}
-            onChange={(event) => handleChange(event.target.value)}
-            className="h-12 rounded-xl border-slate-200 focus:ring-indigo-500"
-          />
-        );
-      case 'date':
-        return (
-          <Input
-            id={field.id}
-            name={field.id}
-            type="date"
-            placeholder={field.placeholder}
-            value={(value as string) ?? ''}
-            onChange={(event) => handleChange(event.target.value)}
-            className="h-12 rounded-xl border-slate-200 focus:ring-indigo-500"
-          />
-        );
-      case 'email':
-        return (
-          <Input
-            id={field.id}
-            name={field.id}
-            type="email"
-            placeholder={field.placeholder}
-            value={(value as string) ?? ''}
-            onChange={(event) => handleChange(event.target.value)}
-            className="h-12 rounded-xl border-slate-200 focus:ring-indigo-500"
-          />
-        );
-      case 'tel':
-        return (
-          <Input
-            id={field.id}
-            name={field.id}
-            type="tel"
-            placeholder={field.placeholder}
-            value={(value as string) ?? ''}
-            onChange={(event) => handleChange(event.target.value)}
-            className="h-12 rounded-xl border-slate-200 focus:ring-indigo-500"
-          />
-        );
-      case 'number':
-      case 'text':
-      default:
-        return (
-          <Input
-            id={field.id}
-            name={field.id}
-            type={field.type === 'number' ? 'number' : 'text'}
-            placeholder={field.placeholder}
-            value={(value as string) ?? ''}
-            onChange={(event) => handleChange(event.target.value)}
-            className="h-12 rounded-xl border-slate-200 focus:ring-indigo-500"
-          />
-        );
-    }
-  };
-
-  return (
-    <div className="space-y-1">
-      {renderLabel()}
-      {renderInput()}
-    </div>
-  );
-};
 
 const PhaseFormContent = ({ 
   demoTrigger, 
@@ -687,7 +97,7 @@ const PhaseFormContent = ({
 }) => {
   const { formData, updateFormData } = useFormContext();
   const { settings } = useSettings();
-  const { user } = useAuth();
+  const { user, profile, orgSettings } = useAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
@@ -742,10 +152,27 @@ const PhaseFormContent = ({
     return null;
   });
 
-  // Filter phases for partial assessments
+  // Filter phases for partial assessments or modular availability
   const visiblePhases = useMemo(() => {
+    // 1. First, filter by Org-level enabled modules
+    const modules = orgSettings?.modules;
+    let phases = phaseDefinitions;
+    
+    if (modules) {
+      phases = phaseDefinitions.filter(phase => {
+        if (phase.id === 'P0' || phase.id === 'P6' || phase.id === 'P7') return true;
+        if (phase.id === 'P1') return modules.lifestyle;
+        if (phase.id === 'P2') return modules.inbody;
+        if (phase.id === 'P3') return modules.movement || modules.posture;
+        if (phase.id === 'P4') return modules.strength;
+        if (phase.id === 'P5') return modules.fitness;
+        return true;
+      });
+    }
+
+    // 2. Then, filter further if in partial assessment mode
     if (!isPartialAssessment || !partialCategory) {
-      return phaseDefinitions;
+      return phases;
     }
     
     // Map category to allowed phase IDs and specific section IDs
@@ -774,11 +201,21 @@ const PhaseFormContent = ({
     
     const config = categoryConfig[partialCategory] || { phaseIds: ['P0'] };
     
-    return phaseDefinitions
+    return phases
       .filter(phase => (config.phaseIds as string[]).includes(phase.id))
       .map(phase => {
         if (!config.sectionIds) return phase;
-        const filteredSections = (phase.sections || []).filter(section => config.sectionIds!.includes(section.id));
+        
+        // Specialized logic for P3: if posture is disabled, hide posture section even in posture partial category
+        let finalSectionIds = config.sectionIds;
+        if (phase.id === 'P3' && modules && !modules.posture) {
+          finalSectionIds = finalSectionIds.filter(id => id !== 'posture');
+        }
+        if (phase.id === 'P3' && modules && !modules.movement) {
+          finalSectionIds = finalSectionIds.filter(id => !['overhead-squat', 'hinge-assessment', 'lunge-assessment', 'mobility'].includes(id));
+        }
+
+        const filteredSections = (phase.sections || []).filter(section => finalSectionIds.includes(section.id));
         if (filteredSections.length === 0 && phase.id !== 'P7') return null;
         return {
           ...phase,
@@ -786,7 +223,7 @@ const PhaseFormContent = ({
         };
       })
       .filter((p): p is NonNullable<typeof p> => p !== null);
-  }, [isPartialAssessment, partialCategory]);
+  }, [isPartialAssessment, partialCategory, orgSettings?.modules]);
 
   const isFieldVisible = useCallback((field: PhaseField, customData?: FormData) => {
     const data = customData || formData;
@@ -847,6 +284,13 @@ const PhaseFormContent = ({
     const loadCurrentAssessment = async () => {
       if (!user || !activeClientName) return;
 
+      // EXCLUSIVE COACH USE: Never pre-fill previous assessment results for a fresh assessment.
+      // This ensures coaches always start with a clean slate for each new session.
+      if (!isPartialAssessment) {
+        console.log(`[MultiStepForm] Starting fresh assessment for ${activeClientName}.`);
+        return;
+      }
+
       try {
         const { getCurrentAssessment } = await import('@/services/assessmentHistory');
         const current = await getCurrentAssessment(user.uid, activeClientName);
@@ -869,12 +313,12 @@ const PhaseFormContent = ({
           // Merge current data into form context, skipping fields in the partial category
           const updates: Partial<FormData> = {};
           Object.keys(current.formData).forEach((key) => {
-            const value = (current.formData as any)[key];
+            const value = current.formData[key as keyof FormData];
             if (value !== undefined && value !== null) {
               // Only pre-fill if it's NOT a field we are trying to update in partial mode
               const shouldSkip = fieldsToSkip.some(prefix => key.toLowerCase().includes(prefix.toLowerCase()));
               if (!isPartialAssessment || !shouldSkip) {
-                updates[key as keyof FormData] = value;
+                updates[key as keyof FormData] = value as any; // Cast back to any because updateFormData expects specific types
               }
             }
           });
@@ -890,7 +334,6 @@ const PhaseFormContent = ({
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [recentlyCompletedSections, setRecentlyCompletedSections] = useState<Set<string>>(new Set());
   const phaseRefs = useRef<Record<number, HTMLButtonElement | null>>({});
-  const [reportView, setReportView] = useState<'client' | 'coach'>('client');
   const [activeFieldIdx, setActiveFieldIdx] = useState(0);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -903,7 +346,6 @@ const PhaseFormContent = ({
     coach: null,
   });
   const [shareLoading, setShareLoading] = useState(false);
-  const reportRef = useRef<HTMLDivElement | null>(null);
   const [isDemoAssessment, setIsDemoAssessment] = useState(false);
   const [isReviewMode, setIsReviewMode] = useState(false);
   const isRunningDemoRef = useRef(false); // Prevent multiple simultaneous auto-fill runs
@@ -1008,27 +450,31 @@ const PhaseFormContent = ({
       console.warn('Cloud Functions PDF error, fallback to client-side', error);
     }
     
-    if (!reportRef.current) throw new Error('Report element not found');
+    // For client-side PDF fallback, we need the element to be visible
+    // This is less reliable now that results are in a separate component
+    // but we'll try to find it by the data-pdf-target attribute
+    const reportEl = document.querySelector('[data-pdf-target]') as HTMLElement;
+    if (!reportEl) throw new Error('Report element not found');
     
     const html2canvas = (await import('html2canvas')).default;
     const jsPDF = (await import('jspdf')).default;
     
     await new Promise(resolve => setTimeout(resolve, 300));
     
-    const canvasEl = await html2canvas(reportRef.current, {
+    const canvasEl = await html2canvas(reportEl, {
       scale: 3,
       useCORS: true,
       logging: false,
       backgroundColor: '#ffffff',
       scrollX: 0,
       scrollY: 0,
-      windowWidth: reportRef.current.scrollWidth,
-      windowHeight: reportRef.current.scrollHeight,
+      windowWidth: reportEl.scrollWidth,
+      windowHeight: reportEl.scrollHeight,
       onclone: (clonedDoc) => {
         const clonedElement = clonedDoc.querySelector(`[data-pdf-target]`) as HTMLElement;
         if (clonedElement) {
           clonedElement.style.backgroundColor = '#ffffff';
-          clonedElement.style.width = `${reportRef.current!.scrollWidth}px`;
+          clonedElement.style.width = `${reportEl.scrollWidth}px`;
           clonedElement.style.height = 'auto';
           clonedElement.style.overflow = 'visible';
           clonedDoc.querySelectorAll('button, .dropdown-menu').forEach((el) => {
@@ -1070,10 +516,10 @@ const PhaseFormContent = ({
     return { artifacts: null, blob: pdf.output('blob') };
   }, [ensureShareArtifacts, user, savingId]);
 
-  const handlePrint = useCallback(async () => {
+  const handlePrint = useCallback(async (view: 'client' | 'coach') => {
     try {
       setShareLoading(true);
-      const { blob } = await fetchReportPdfBlob(reportView);
+      const { blob } = await fetchReportPdfBlob(view);
       const blobUrl = URL.createObjectURL(blob);
       const printWindow = window.open(blobUrl, '_blank');
       if (printWindow) {
@@ -1089,14 +535,14 @@ const PhaseFormContent = ({
     } finally {
       setShareLoading(false);
     }
-  }, [fetchReportPdfBlob, reportView, toast]);
+  }, [fetchReportPdfBlob, toast]);
 
-  const handleShare = useCallback(async () => {
+  const handleShare = useCallback(async (view: 'client' | 'coach') => {
     try {
       setShareLoading(true);
       let shareUrl = window.location.origin;
       if (user && savingId) {
-          const artifacts = await ensureShareArtifacts(reportView);
+          const artifacts = await ensureShareArtifacts(view);
         shareUrl = `${window.location.origin}/share/${user.uid}/${savingId}`;
       }
       if (navigator.share) {
@@ -1110,9 +556,9 @@ const PhaseFormContent = ({
     } finally {
       setShareLoading(false);
     }
-  }, [ensureShareArtifacts, reportView, toast, user, savingId]);
+  }, [ensureShareArtifacts, toast, user, savingId]);
 
-  const handleEmailLink = useCallback(async () => {
+  const handleEmailLink = useCallback(async (view: 'client' | 'coach') => {
     const email = (formData.email || '').trim();
     if (!email) {
       toast({ title: 'Client email missing', variant: 'destructive' });
@@ -1121,26 +567,83 @@ const PhaseFormContent = ({
     if (!savingId) return;
     try {
       setShareLoading(true);
-      await sendReportEmail({ assessmentId: savingId, view: reportView, to: email, clientName: formData.fullName });
+      await sendReportEmail({ assessmentId: savingId, view, to: email, clientName: formData.fullName });
       toast({ title: 'Report emailed', description: `Sent to ${email}` });
     } catch (error) {
       toast({ title: 'Email failed', variant: 'destructive' });
     } finally {
       setShareLoading(false);
     }
-  }, [formData.email, formData.fullName, reportView, savingId, toast]);
+  }, [formData.email, formData.fullName, savingId, toast]);
 
-  const handleWhatsAppShare = useCallback(async () => {
+  const handleWhatsAppShare = useCallback(async (view: 'client' | 'coach') => {
     try {
       setShareLoading(true);
-      const artifacts = await ensureShareArtifacts(reportView);
+      const artifacts = await ensureShareArtifacts(view);
       window.open(`https://wa.me/?text=${encodeURIComponent(artifacts.whatsappText)}`, '_blank');
     } catch (error) {
       toast({ title: 'WhatsApp share failed', variant: 'destructive' });
     } finally {
       setShareLoading(false);
     }
-  }, [ensureShareArtifacts, reportView, toast]);
+  }, [ensureShareArtifacts, toast]);
+
+  const handleCopyLink = useCallback(async (view: 'client' | 'coach') => {
+    try {
+      setShareLoading(true);
+      let shareUrl = window.location.origin;
+      if (user && savingId) {
+        shareUrl = `${window.location.origin}/share/${user.uid}/${savingId}`;
+      }
+      await navigator.clipboard.writeText(shareUrl);
+      toast({ description: 'Public link copied' });
+    } catch (error) {
+      toast({ title: 'Copy failed', variant: 'destructive' });
+    } finally {
+      setShareLoading(false);
+    }
+  }, [user, savingId, toast]);
+
+  const handleDownloadPdf = useCallback(async (view: 'client' | 'coach') => {
+    const safeName = (formData.fullName || 'report').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    try {
+      setShareLoading(true);
+      const { blob } = await fetchReportPdfBlob(view);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${safeName}-${view}.pdf`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      toast({ title: 'PDF downloaded' });
+    } catch (error) {
+      toast({ title: 'Download failed', variant: 'destructive' });
+    } finally {
+      setShareLoading(false);
+    }
+  }, [fetchReportPdfBlob, formData.fullName, toast]);
+
+  const handleDownloadInteractiveHtml = useCallback(async () => {
+    try {
+      setShareLoading(true);
+      const { generateBodyCompInterpretation } = await import('@/lib/recommendations');
+      const htmlBlob = await generateInteractiveHtml({
+        formData, scores, roadmap, bodyComp: generateBodyCompInterpretation(formData, scores) || undefined, view: 'client',
+      });
+      const url = URL.createObjectURL(htmlBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${(formData.fullName || 'report').toLowerCase()}-interactive.html`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      toast({ title: 'HTML downloaded' });
+    } catch (error) {
+      console.error('HTML download failed', error);
+      toast({ title: 'Download failed', variant: 'destructive' });
+    } finally {
+      setShareLoading(false);
+    }
+  }, [formData, scores, roadmap, toast]);
 
   const handleCapture = async (imageSrc: string) => {
     if (showCamera === 'ocr') {
@@ -1173,14 +676,40 @@ const PhaseFormContent = ({
       const views: ('front' | 'side-right' | 'side-left' | 'back')[] = ['front', 'side-right', 'side-left', 'back'];
       const currentView = views[postureStep] || 'front';
       
-      toast({ title: `${currentView.toUpperCase()} captured`, description: "Analyzing posture..." });
+      toast({ title: `${currentView.toUpperCase()} captured`, description: "Processing image alignment..." });
       
       try {
         setIsProcessingOcr(true); // Re-use OCR loading mask for local analysis
-        const analysis = await analyzePostureImage(imageSrc, currentView);
+        
+        // STEP 1: Detect Landmarks using MediaPipe
+        const landmarks = await detectPostureLandmarks(imageSrc, currentView);
+        console.log(`[POSTURE] Detected landmarks for ${currentView}:`, landmarks);
+
+        // STEP 2: Align and add green reference lines
+        const alignedImage = await addPostureOverlay(imageSrc, currentView, {
+          mode: 'align',
+          landmarks,
+          lineColor: '#00ff00',
+          lineWidth: 4
+        });
+
+        // STEP 3: Analyze with Gemini AI
+        toast({ title: "Analyzing posture...", description: "Gemini AI is calculating deviations..." });
+        const analysis = await analyzePostureImage(alignedImage, currentView, landmarks);
+        
+        // STEP 4: Add red deviation lines
+        const imageWithFullOverlay = await addDeviationOverlay(alignedImage, currentView, analysis);
+        
+        // STEP 5: Compress for storage/form
+        const compressed = await compressImageForDisplay(imageWithFullOverlay, 800, 0.8);
         
         // Map analysis to form
         const suggestions: Partial<FormData> = {};
+        
+        // Store the final processed image in the form
+        const imageField = `postureImage${currentView.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('')}` as keyof FormData;
+        (suggestions as any)[imageField] = compressed.compressed;
+
         if (currentView === 'side-right' || currentView === 'side-left') {
           suggestions.postureHeadOverall = [analysis.forward_head.status.toLowerCase().includes('neutral') ? 'neutral' : 'forward-head'];
           suggestions.postureBackOverall = [analysis.kyphosis.status.toLowerCase().includes('severe') ? 'increased-kyphosis' : 'neutral'];
@@ -1194,7 +723,7 @@ const PhaseFormContent = ({
           setPostureStep(prev => prev + 1);
         } else {
           setShowCamera(false);
-          toast({ title: "Posture analysis complete", description: "Findings have been applied to the form." });
+          toast({ title: "Posture analysis complete", description: "Aligned images and findings have been applied." });
         }
       } catch (err) {
         console.error('Local posture analysis error:', err);
@@ -1259,13 +788,13 @@ const PhaseFormContent = ({
             formData, 
             scores.overall, 
             clientName,
-            category as 'inbody' | 'posture' | 'fitness' | 'strength' | 'lifestyle'
+          category as 'inbody' | 'posture' | 'fitness' | 'strength' | 'lifestyle',
+          profile?.organizationId
           );
           
           // Update client profile with last assessment date for this category
           const { createOrUpdateClientProfile } = await import('@/services/clientProfiles');
-          const { Timestamp } = await import('firebase/firestore');
-          const updateData: Record<string, any> = {};
+          const updateData: Record<string, Timestamp> = {};
           const now = Timestamp.now();
           
           if (category === 'inbody') updateData.lastInBodyDate = now;
@@ -1275,7 +804,7 @@ const PhaseFormContent = ({
           else if (category === 'lifestyle') updateData.lastLifestyleDate = now;
           
           if (Object.keys(updateData).length > 0) {
-            await createOrUpdateClientProfile(user.uid, clientName, updateData);
+            await createOrUpdateClientProfile(user.uid, clientName, updateData, profile?.organizationId);
           }
           
           // Set highlight category for the report
@@ -1285,7 +814,7 @@ const PhaseFormContent = ({
           sessionStorage.removeItem('partialAssessment');
         } else {
           // Full assessment
-          assessmentId = await saveCoachAssessment(user.uid, user.email, formData, scores.overall);
+          assessmentId = await saveCoachAssessment(user.uid, user.email, formData, scores.overall, profile?.organizationId);
         }
       } catch (parseErr) {
         // Fallback to regular save if partial data parsing fails
@@ -1315,62 +844,6 @@ const PhaseFormContent = ({
     shareCacheRef.current = { client: null, coach: null };
     setShareCache({ client: null, coach: null });
   }, [savingId]);
-
-  const handleCopyLink = useCallback(async () => {
-    try {
-      setShareLoading(true);
-      let shareUrl = window.location.origin;
-      if (user && savingId) {
-        shareUrl = `${window.location.origin}/share/${user.uid}/${savingId}`;
-      }
-      await navigator.clipboard.writeText(shareUrl);
-      toast({ description: 'Public link copied' });
-    } catch (error) {
-      toast({ title: 'Copy failed', variant: 'destructive' });
-    } finally {
-      setShareLoading(false);
-    }
-  }, [user, savingId, toast]);
-
-  const handleDownloadPdf = useCallback(async () => {
-    const safeName = (formData.fullName || 'report').toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    try {
-      setShareLoading(true);
-      const { blob } = await fetchReportPdfBlob(reportView);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${safeName}-${reportView}.pdf`;
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
-      toast({ title: 'PDF downloaded' });
-    } catch (error) {
-      toast({ title: 'Download failed', variant: 'destructive' });
-    } finally {
-      setShareLoading(false);
-    }
-  }, [fetchReportPdfBlob, formData.fullName, reportView, toast]);
-
-  const handleDownloadInteractiveHtml = useCallback(async () => {
-    if (reportView !== 'client') return;
-    try {
-      setShareLoading(true);
-      const htmlBlob = await generateInteractiveHtml({
-        formData, scores, roadmap, bodyComp: generateBodyCompInterpretation(formData, scores) || undefined, view: 'client',
-      });
-      const url = URL.createObjectURL(htmlBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${(formData.fullName || 'report').toLowerCase()}-interactive.html`;
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
-      toast({ title: 'HTML downloaded' });
-    } catch (error) {
-      toast({ title: 'Download failed', variant: 'destructive' });
-    } finally {
-      setShareLoading(false);
-    }
-  }, [formData, scores, roadmap, reportView, toast]);
 
   const isIntakeCompleted = useCallback(() => {
     const p0Sections = phaseDefinitions[0]?.sections ?? [];
@@ -1508,7 +981,6 @@ const PhaseFormContent = ({
     void handleSaveToDashboard();
     
     setIsReviewMode(false);
-    setReportView('client');
     setActivePhaseIdx(totalPhases - 1);
     
     setTimeout(() => { 
@@ -1540,6 +1012,7 @@ const PhaseFormContent = ({
     isRunningDemoRef.current = true;
     setIsDemoAssessment(true);
     try {
+      const { generateDemoData } = await import('@/lib/demoGenerator');
       const payload = await generateDemoData();
       const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
       
@@ -1615,9 +1088,9 @@ const PhaseFormContent = ({
           const fieldUpdates: Partial<FormData> = {};
           
           for (const f of currentStep) {
-            const key = f.id;
+            const key = f.id as keyof FormData;
             if (f.type === 'parq') {
-              fieldUpdates[key] = 'completed' as any;
+              fieldUpdates[key] = 'completed' as any; // Still need any because TS doesn't know f.id matches parq field
               continue;
             }
           
@@ -1644,7 +1117,7 @@ const PhaseFormContent = ({
             }
             
             if (raw !== undefined && raw !== null) {
-              fieldUpdates[key] = raw as any;
+              (fieldUpdates as any)[key] = raw;
             }
           }
           
@@ -1797,9 +1270,9 @@ const PhaseFormContent = ({
                         } 
                       }}
                     disabled={isDisabled}
-                      className={`group flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all ${isActive ? 'bg-slate-900 text-white shadow-md' : isCompleted ? 'text-indigo-600 hover:bg-indigo-50' : isDisabled ? 'text-slate-300 cursor-not-allowed' : 'text-slate-500 hover:bg-slate-50'}`}
+                      className={`group flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all ${isActive ? 'bg-slate-900 text-white shadow-md' : isCompleted ? 'text-primary hover:bg-brand-light' : isDisabled ? 'text-slate-300 cursor-not-allowed' : 'text-slate-500 hover:bg-slate-50'}`}
                     >
-                      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold border ${isActive ? 'bg-white/20 border-white/20' : isCompleted ? 'bg-indigo-600 border-indigo-600 text-white' : isDisabled ? 'bg-slate-100 border-slate-200 text-slate-300' : 'bg-white border-slate-200 text-slate-400'}`}>
+                      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold border ${isActive ? 'bg-white/20 border-white/20' : isCompleted ? 'bg-primary border-primary text-white' : isDisabled ? 'bg-slate-100 border-slate-200 text-slate-300' : 'bg-white border-slate-200 text-slate-400'}`}>
                       {isCompleted ? <Check className="h-3 w-3" /> : idx + 1}
                     </span>
                       <span className="truncate flex-1 text-left uppercase tracking-wider">{phase.title}</span>
@@ -1814,7 +1287,7 @@ const PhaseFormContent = ({
                             <button
                               key={sec.id}
                               onClick={() => toggleSection(sec.id)}
-                              className={`flex w-full items-center justify-between py-2 text-xs font-medium transition-colors ${isExpanded ? 'text-indigo-600' : isSecComp ? 'text-slate-700' : 'text-slate-400'} hover:text-indigo-500`}
+                              className={`flex w-full items-center justify-between py-2 text-xs font-medium transition-colors ${isExpanded ? 'text-primary' : isSecComp ? 'text-slate-700' : 'text-slate-400'} hover:text-primary`}
                             >
                               <span className="truncate">{sec.title}</span>
                               {isSecComp && <Check className="h-3 w-3 text-emerald-500" />}
@@ -1834,10 +1307,10 @@ const PhaseFormContent = ({
       <main className={`flex-1 bg-slate-50/50 p-6 lg:p-10 overflow-y-auto ${isPartialAssessment ? 'w-full' : ''}`}>
         <div className="mx-auto max-w-3xl space-y-8">
           <section className="space-y-2">
-            <div className="flex items-center gap-2 text-indigo-600 mb-1">
+            <div className="flex items-center gap-2 text-primary mb-1">
               <span className="text-[10px] font-bold uppercase tracking-[0.2em]">{activePhase.id}</span>
-              <div className="h-px w-8 bg-indigo-200"></div>
-              {isPartialAssessment && <span className="text-[10px] font-black uppercase tracking-widest bg-indigo-100 px-2 py-0.5 rounded text-indigo-700">Quick Update: {partialCategory}</span>}
+              <div className="h-px w-8 bg-brand-light"></div>
+              {isPartialAssessment && <span className="text-[10px] font-black uppercase tracking-widest bg-brand-light px-2 py-0.5 rounded text-primary">Quick Update: {partialCategory}</span>}
             </div>
             <h2 className="text-3xl font-bold tracking-tight text-slate-900">{activePhase.title}</h2>
             <p className="text-slate-500 text-lg leading-relaxed max-w-2xl">{activePhase.summary}</p>
@@ -1858,62 +1331,49 @@ const PhaseFormContent = ({
             {/* NEW: Show "Preview Results" for testing/partial data */}
             {activePhaseIdx >= 1 && activePhaseIdx < totalPhases - 1 && !allAssessmentsCompleted && anyAssessmentCompleted && (
               <div className="flex items-center justify-center border-t border-slate-200 pt-8">
-                <Button variant="outline" onClick={handleViewResults} className="h-14 px-10 rounded-2xl border-indigo-200 text-indigo-600 font-bold hover:bg-indigo-50 transition-all">
+                <Button variant="outline" onClick={handleViewResults} className="h-14 px-10 rounded-2xl border-primary/20 text-primary font-bold hover:bg-brand-light transition-all">
                   {isPartialAssessment ? '📊 Update Live Report' : '🔍 Preview Partial Results'}
                 </Button>
               </div>
             )}
 
             {activePhase?.id === 'P7' && (
-              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1.5 shadow-sm">
-                    <button onClick={() => setReportView('client')} className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${reportView === 'client' ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>Client Report</button>
-                    <button onClick={() => setReportView('coach')} className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${reportView === 'coach' ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>Coach Plan</button>
+              <React.Suspense fallback={
+                <div className="flex flex-col items-center justify-center py-20 gap-4">
+                  <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                  <p className="text-sm font-black uppercase tracking-widest text-slate-400">Finalizing Report...</p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild><Button variant="outline" size="lg" className="rounded-xl px-4 h-12"><Share2 className="mr-2 h-4 w-4" />Share</Button></DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-56 rounded-xl">
-                        <DropdownMenuItem onClick={handleShare} className="py-3">System Share</DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleEmailLink} className="py-3">Email PDF Link</DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleWhatsAppShare} className="py-3">WhatsApp Message</DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleCopyLink} className="py-3">Copy Report Link</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild><Button variant="outline" size="lg" className="rounded-xl px-4 h-12"><Download className="mr-2 h-4 w-4" />Export</Button></DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-56 rounded-xl">
-                        <DropdownMenuItem onClick={handleDownloadPdf} className="py-3">Download as PDF</DropdownMenuItem>
-                        {reportView === 'client' && <DropdownMenuItem onClick={handleDownloadInteractiveHtml} className="py-3">Download Interactive HTML</DropdownMenuItem>}
-                        <DropdownMenuItem onClick={handlePrint} className="py-3">Print Report</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    <Button variant="ghost" size="lg" onClick={handleStartNewAssessment} className="rounded-xl h-12">🔄 New Client</Button>
-                  </div>
-                </div>
-                <div ref={reportRef} data-pdf-target className="rounded-3xl border border-slate-200 bg-white p-10 shadow-2xl shadow-slate-200/50" style={{ minWidth: '100%', maxWidth: '100%', overflow: 'visible' }}>
-                  {reportView === 'client' ? (
-                    <ClientReport 
+              }>
+                <AssessmentResults
+                  formData={formData}
                       scores={scores} 
                       roadmap={roadmap} 
-                      goals={Array.isArray(formData.clientGoals) ? formData.clientGoals : []} 
-                      bodyComp={bodyCompInterp ? { timeframeWeeks: bodyCompInterp.timeframeWeeks } : undefined} 
-                      formData={formData} 
                       plan={plan} 
-                      highlightCategory={sessionStorage.getItem('highlightCategory') || undefined}
+                  bodyCompInterp={bodyCompInterp}
+                  savingId={savingId}
+                  onStartNew={handleStartNewAssessment}
+                  onShare={(view) => {
+                    handleShare(view);
+                  }}
+                  onDownloadPdf={(view) => {
+                    handleDownloadPdf(view);
+                  }}
+                  onDownloadHtml={handleDownloadInteractiveHtml}
+                  onPrint={(view) => {
+                    handlePrint(view);
+                  }}
+                  onCopyLink={(view) => {
+                    handleCopyLink(view);
+                  }}
+                  onEmailLink={(view) => {
+                    handleEmailLink(view);
+                  }}
+                  onWhatsAppShare={(view) => {
+                    handleWhatsAppShare(view);
+                  }}
+                  shareLoading={shareLoading}
                     />
-                  ) : (
-                    <CoachReport 
-                      plan={plan} 
-                      scores={scores} 
-                      bodyComp={bodyCompInterp} 
-                      formData={formData} 
-                      highlightCategory={sessionStorage.getItem('highlightCategory') || undefined}
-                    />
-                  )}
-                </div>
-              </div>
+              </React.Suspense>
             )}
           </section>
           <footer className="pt-12 pb-8 text-center text-[10px] font-bold uppercase tracking-widest text-slate-300">One Fitness Professional v2.1 • Confidential Client Data</footer>
@@ -1963,8 +1423,8 @@ const PhaseFormContent = ({
           <div className="flex flex-col items-center gap-8 max-w-xs text-center">
             <div className="relative h-32 w-32">
               <div className="absolute inset-0 rounded-full border-4 border-white/5" />
-              <div className="absolute inset-0 rounded-full border-4 border-t-indigo-500 animate-spin" />
-              <div className="absolute inset-4 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 animate-pulse flex items-center justify-center">
+              <div className="absolute inset-0 rounded-full border-4 border-t-primary animate-spin" />
+              <div className="absolute inset-4 rounded-full bg-gradient-to-tr from-primary to-primary/60 animate-pulse flex items-center justify-center">
                 <Loader2 className="h-10 w-10 text-white animate-spin" />
               </div>
             </div>
@@ -1983,7 +1443,7 @@ const PhaseFormContent = ({
         <DialogContent className="max-w-md rounded-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Scan className="h-5 w-5 text-indigo-600" />
+              <Scan className="h-5 w-5 text-primary" />
               Review Extracted Data
             </DialogTitle>
           </DialogHeader>
@@ -2012,7 +1472,7 @@ const PhaseFormContent = ({
                 const value = ocrReviewData[key as keyof typeof ocrReviewData] ?? '';
                 return (
                   <div key={key} className={`bg-slate-50 p-4 rounded-2xl border transition-all flex flex-col justify-between ${!value ? 'border-amber-200 bg-amber-50/30' : 'border-slate-100'}`}>
-                    <span className="text-[9px] font-black uppercase tracking-widest text-indigo-500/70 mb-2">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-primary/70 mb-2">
                       {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
                     </span>
                     <div className="flex items-baseline gap-1">

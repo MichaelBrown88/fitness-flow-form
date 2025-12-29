@@ -4,6 +4,7 @@ import Webcam from 'react-webcam';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { validateCompanionToken, updatePostureImage, updateInBodyImage, joinLiveSession } from '@/services/liveSessions';
+import { LandmarkResult } from '@/lib/ai/postureLandmarks';
 import { processInBodyScan } from '@/lib/ai/ocrEngine';
 import { Camera, AlertCircle, Loader2, RefreshCcw, CheckCircle2, Scan, X, Volume2, Info } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
@@ -26,6 +27,16 @@ interface PoseValidation {
   };
 }
 
+interface PoseResults {
+  poseLandmarks: Array<{
+    x: number;
+    y: number;
+    z: number;
+    visibility?: number;
+  }>;
+  [key: string]: any;
+}
+
 const Companion = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
   const [searchParams] = useSearchParams();
@@ -38,8 +49,8 @@ const Companion = () => {
   const [viewIdx, setViewIdx] = useState(0);
   const [isVertical, setIsVertical] = useState(false);
   const [hasPermission, setHasPermission] = useState<boolean>(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return typeof (DeviceOrientationEvent as any).requestPermission !== 'function';
+    const DeviceOrientationEventAny = DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<'granted' | 'denied'> };
+    return typeof DeviceOrientationEventAny.requestPermission !== 'function';
   });
   const [countdown, setCountdown] = useState<number | null>(null);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>((searchParams.get('mode') || 'posture') === 'inbody' ? 'environment' : 'user');
@@ -59,12 +70,13 @@ const Companion = () => {
   const [isPoseLoading, setIsPoseLoading] = useState(false);
   const [isWaitingForPosition, setIsWaitingForPosition] = useState(false);
 
+  const currentLandmarksRef = useRef<LandmarkResult | null>(null);
   const isVerticalRef = useRef(false);
   const isSequenceActiveRef = useRef(false);
   const viewIdxRef = useRef(0);
   const webcamRef = useRef<Webcam>(null);
   const shutterAudio = useRef<HTMLAudioElement | null>(null);
-  const poseRef = useRef<any>(null);
+  const poseRef = useRef<import('@mediapipe/pose').Pose | null>(null);
   const lastAudioFeedbackRef = useRef<number>(0);
   const isPoseReadyRef = useRef(false);
   const checkPositionIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -117,7 +129,7 @@ const Companion = () => {
     }
   };
 
-  const onPoseResults = (results: any) => {
+  const onPoseResults = (results: PoseResults) => {
     if (!results.poseLandmarks || results.poseLandmarks.length === 0) {
       setPoseValidation({
         isReady: false,
@@ -140,13 +152,36 @@ const Companion = () => {
 
     // Basic Validation Logic
     const missingParts = [];
-    if (shoulderL.visibility < 0.5 || shoulderR.visibility < 0.5) missingParts.push('Shoulders');
-    if (ankleL.visibility < 0.5 || ankleR.visibility < 0.5) missingParts.push('Feet');
-    if (nose.visibility < 0.5) missingParts.push('Head');
+    if ((shoulderL.visibility || 0) < 0.5 || (shoulderR.visibility || 0) < 0.5) missingParts.push('Shoulders');
+    if ((ankleL.visibility || 0) < 0.5 || (ankleR.visibility || 0) < 0.5) missingParts.push('Feet');
+    if ((nose.visibility || 0) < 0.5) missingParts.push('Head');
 
     const bodyHeight = Math.max(ankleL.y, ankleR.y) - nose.y;
     const bodyCenter = (shoulderL.x + shoulderR.x + hipL.x + hipR.x) / 4;
     
+    // Store current landmarks as percentages for alignment
+    const view = VIEWS[viewIdxRef.current].id;
+    const shoulderCenterY = (shoulderL.y + shoulderR.y) / 2;
+    const hipCenterY = (hipL.y + hipR.y) / 2;
+    const headY = nose.y;
+    
+    const landmarkResult: LandmarkResult = {
+      shoulder_y_percent: shoulderCenterY * 100,
+      hip_y_percent: hipCenterY * 100,
+      head_y_percent: headY * 100,
+      raw: results.poseLandmarks // Pass raw points for calculation
+    };
+
+    if (view === 'front' || view === 'back') {
+      landmarkResult.center_x_percent = bodyCenter * 100;
+    } else {
+      // For side views, use the ankle as the midfoot anchor
+      const ankleX = (ankleL.x + ankleR.x) / 2;
+      landmarkResult.midfoot_x_percent = ankleX * 100;
+    }
+    
+    currentLandmarksRef.current = landmarkResult;
+
     const tooClose = bodyHeight > CONFIG.COMPANION.POSE_THRESHOLDS.TOO_CLOSE;
     const tooFar = bodyHeight < CONFIG.COMPANION.POSE_THRESHOLDS.TOO_FAR;
     const notCentered = Math.abs(bodyCenter - 0.5) > CONFIG.COMPANION.POSE_THRESHOLDS.NOT_CENTERED;
@@ -321,8 +356,11 @@ const Companion = () => {
             setIsUploadingBackground(prev => Math.max(0, prev - 1));
           });
       } else {
-        // Send image with explicit view ID
-        updatePostureImage(sessionId, viewData.id, imageSrc)
+        // Send image with explicit view ID and captured landmarks for precise alignment
+        const capturedLandmarks = currentLandmarksRef.current || undefined;
+        console.log(`[CAPTURE] Sending image with landmarks for view ${viewData.id}:`, capturedLandmarks);
+        
+        updatePostureImage(sessionId, viewData.id, imageSrc, capturedLandmarks)
           .then(() => {
             toast({ title: `${viewData.label} Sent` });
           })
@@ -467,8 +505,9 @@ const Companion = () => {
       speak("Audio enabled.");
     } catch (e) {}
 
-    if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
-      const state = await (DeviceOrientationEvent as any).requestPermission();
+    const DeviceOrientationEventAny = DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<'granted' | 'denied'> };
+    if (typeof DeviceOrientationEventAny.requestPermission === 'function') {
+      const state = await DeviceOrientationEventAny.requestPermission();
       if (state === 'granted') setHasPermission(true);
     } else setHasPermission(true);
   };
@@ -482,7 +521,7 @@ const Companion = () => {
   if (isValidating) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center text-white font-black uppercase">
-        <Loader2 className="h-8 w-8 text-indigo-500 animate-spin mb-4" />
+        <Loader2 className="h-8 w-8 text-primary animate-spin mb-4" />
         <div>Connecting...</div>
       </div>
     );
@@ -493,7 +532,7 @@ const Companion = () => {
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8 text-white text-center font-black">
         <h1 className="text-2xl mb-2">Session Invalid</h1>
         <p className="mt-2 text-xs text-white/40">{errorMsg || 'Unable to connect'}</p>
-        <Button onClick={() => runValidation()} className="mt-6 bg-indigo-600 hover:bg-indigo-700">Retry</Button>
+        <Button onClick={() => runValidation()} className="mt-6 bg-primary hover:brightness-110">Retry</Button>
       </div>
     );
   }
@@ -517,8 +556,8 @@ const Companion = () => {
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8 text-white text-center">
         <div className="relative h-32 w-32 mb-8">
           <div className="absolute inset-0 rounded-full border-4 border-white/5" />
-          <div className="absolute inset-0 rounded-full border-4 border-t-indigo-500 animate-spin" />
-          <div className="absolute inset-4 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 animate-pulse flex items-center justify-center">
+          <div className="absolute inset-0 rounded-full border-4 border-t-primary animate-spin" />
+          <div className="absolute inset-4 rounded-full bg-gradient-to-tr from-primary to-brand-dark animate-pulse flex items-center justify-center">
             <Loader2 className="h-10 w-10 text-white animate-spin" />
           </div>
         </div>
@@ -571,7 +610,7 @@ const Companion = () => {
       <div className="min-h-screen bg-black text-white p-6 flex flex-col">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
-            <Scan className="h-5 w-5 text-indigo-400" />
+            <Scan className="h-5 w-5 text-primary" />
             <h1 className="text-xl font-black uppercase tracking-tight">Review Data</h1>
           </div>
           <button onClick={() => setOcrReviewData(null)} className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center">
@@ -581,7 +620,7 @@ const Companion = () => {
         <div className="flex-1 overflow-y-auto space-y-3 mb-6">
           {Object.entries(ocrReviewData).map(([key, value]) => (
             <div key={key} className="bg-white/5 rounded-xl p-4 border border-white/10">
-              <label className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-2 block">{fieldLabels[key] || key}</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-primary mb-2 block">{fieldLabels[key] || key}</label>
               <div className="flex items-center gap-2">
                 <Input
                   type="text"
@@ -595,7 +634,7 @@ const Companion = () => {
         </div>
         <div className="flex gap-3 pt-4 border-t border-white/10">
           <Button variant="outline" onClick={() => setOcrReviewData(null)} className="flex-1 bg-white/10 text-white">Cancel</Button>
-          <Button onClick={handleApply} disabled={isUploadingBackground > 0} className="flex-1 bg-indigo-600">Apply</Button>
+          <Button onClick={handleApply} disabled={isUploadingBackground > 0} className="flex-1 bg-primary">Apply</Button>
         </div>
       </div>
     );
@@ -685,7 +724,7 @@ const Companion = () => {
             </button>
           </div>
         ) : !hasPermission ? (
-          <Button onClick={requestPermission} className="bg-indigo-600 h-12 px-6 rounded-xl text-xs font-black uppercase">Enable Sensors & Audio</Button>
+          <Button onClick={requestPermission} className="bg-primary h-12 px-6 rounded-xl text-xs font-black uppercase">Enable Sensors & Audio</Button>
         ) : (
           <div className="flex items-center gap-4 w-full max-w-md justify-center">
             <Button variant="ghost" size="icon" onClick={() => setFacingMode(prev => prev === 'user' ? 'environment' : 'user')} className="text-white/30 h-10 w-10 rounded-full bg-white/5">

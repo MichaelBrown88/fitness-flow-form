@@ -127,7 +127,7 @@ export function generateCoachPlan(form: FormData, scores: ScoreSummary): CoachPl
     needsAttention: [] as string[],
   };
 
-  const goals = Array.isArray((form as any).clientGoals) ? (form as any).clientGoals as string[] : [];
+  const goals = Array.isArray(form.clientGoals) ? form.clientGoals : [];
   const primaryGoalRaw = goals[0] || 'general-health';
   
   // Derive goal ambition level from primary goal's specific level field
@@ -622,11 +622,11 @@ export function generateBodyCompInterpretation(form: FormData, scores?: ScoreSum
     bmr = 0;
   }
   if (!bmr && weight > 0) {
-    const heightCm = parseFloat((form as any).heightCm || '0');
+    const heightCm = parseFloat(form.heightCm || '0');
     // Estimate age from DOB if available
     let age = 0;
-    if ((form as any).dateOfBirth) {
-      const dob = new Date((form as any).dateOfBirth);
+    if (form.dateOfBirth) {
+      const dob = new Date(form.dateOfBirth);
       if (!Number.isNaN(dob.getTime())) {
         const today = new Date();
         age = today.getFullYear() - dob.getFullYear();

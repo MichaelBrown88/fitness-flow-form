@@ -7,6 +7,7 @@ import { sanitizeForFirestore } from '@/lib/utils/firebaseUtils';
 export type PublicReportDoc = {
   coachUid: string;
   assessmentId: string;
+  organizationId?: string; // SaaS readiness
   clientName: string;
   clientNameLower: string;
   visibility: 'public' | 'private';
@@ -25,8 +26,9 @@ export async function publishPublicReport(params: {
   assessmentId: string;
   formData: FormData;
   visibility?: 'public' | 'private';
+  organizationId?: string;
 }): Promise<string> {
-  const { coachUid, assessmentId, formData, visibility = 'public' } = params;
+  const { coachUid, assessmentId, formData, visibility = 'public', organizationId } = params;
   const id = publicReportId(coachUid, assessmentId);
   const ref = doc(getDb(), collectionName, id);
   const snapshot = await getDoc(ref);
@@ -34,6 +36,7 @@ export async function publishPublicReport(params: {
   const payload = {
     coachUid,
     assessmentId,
+    organizationId: organizationId || null,
     clientName: (formData.fullName || 'Unnamed client').trim(),
     clientNameLower: (formData.fullName || 'Unnamed client').toLowerCase(),
     visibility,

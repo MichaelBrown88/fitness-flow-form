@@ -12,12 +12,13 @@ export type AssessmentRecord = {
   computedResult: AssessmentResult;
 };
 
-export async function createAssessment(input: FormData, computedResult: AssessmentResult): Promise<string> {
+export async function createAssessment(input: FormData, computedResult: AssessmentResult, organizationId?: string): Promise<string> {
   const db = getDb();
   const ref = await addDoc(collection(db, 'assessments'), {
     createdAt: serverTimestamp(),
     input: sanitizeForFirestore(input),
     computedResult: sanitizeForFirestore(computedResult),
+    organizationId: organizationId || null,
   });
   return ref.id;
 }

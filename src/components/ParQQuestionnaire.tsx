@@ -186,13 +186,13 @@ const ParQQuestionnaire: React.FC = () => {
           <span className="text-xs font-bold uppercase tracking-widest text-slate-400">
             Screening Progress
           </span>
-          <span className="text-xs font-bold text-indigo-600">
+          <span className="text-xs font-bold text-primary">
             Question {currentQuestionIndex + 1} of {visibleQuestions.length}
           </span>
         </div>
         <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
           <div
-            className="bg-indigo-600 h-full rounded-full transition-all duration-500 ease-out"
+            className="bg-primary h-full rounded-full transition-all duration-500 ease-out"
             style={{ width: `${((currentQuestionIndex + 1) / visibleQuestions.length) * 100}%` }}
           />
         </div>
@@ -218,7 +218,7 @@ const ParQQuestionnaire: React.FC = () => {
               value={(currentAnswer as string) || ''}
               onChange={(e) => handleAnswer(e.target.value)}
               rows={4}
-              className="w-full p-5 border border-slate-200 rounded-2xl resize-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all font-medium text-slate-700"
+              className="w-full p-5 border border-slate-200 rounded-2xl resize-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all font-medium text-slate-700"
             />
           </div>
         ) : (
@@ -227,13 +227,13 @@ const ParQQuestionnaire: React.FC = () => {
             onClick={() => handleAnswer('no')}
             className={`flex h-20 items-center justify-between px-8 rounded-2xl border-2 transition-all group ${
               currentAnswer === 'no'
-                ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-md ring-1 ring-indigo-600'
+                ? 'border-primary bg-brand-light text-primary shadow-md ring-1 ring-primary'
                 : 'border-slate-100 bg-slate-50/50 hover:border-slate-200 hover:bg-white text-slate-500'
             }`}
           >
             <span className="text-xl font-bold">No</span>
             <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${
-              currentAnswer === 'no' ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-200'
+              currentAnswer === 'no' ? 'bg-primary border-primary text-white' : 'border-slate-200'
             }`}>
               {currentAnswer === 'no' && <Check className="h-5 w-5 stroke-[3]" />}
             </div>
@@ -272,7 +272,7 @@ const ParQQuestionnaire: React.FC = () => {
 
         <div className="hidden sm:block">
           {hasAnswer && !isLastQuestion && (
-            <span className="text-xs font-bold text-indigo-400 animate-pulse uppercase tracking-widest">
+            <span className="text-xs font-bold text-primary/60 animate-pulse uppercase tracking-widest">
               Auto-advancing...
             </span>
           )}

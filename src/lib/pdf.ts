@@ -1,12 +1,15 @@
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
-
 export async function downloadElementAsPdf(element: HTMLElement, fileName: string) {
   // Wait for fonts and images to load
   await new Promise(resolve => setTimeout(resolve, 300));
 
+  // Dynamic imports for heavy libraries to keep initial bundle small
+  const [html2canvas, { default: jsPDF }] = await Promise.all([
+    import('html2canvas'),
+    import('jspdf')
+  ]);
+
   // Capture the element as a high-res canvas with optimized options
-  const canvas = await html2canvas(element, {
+  const canvas = await html2canvas.default(element, {
     scale: 3, // Higher scale for better quality
     useCORS: true,
     logging: false,

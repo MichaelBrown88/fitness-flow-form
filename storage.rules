@@ -2,31 +2,9 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Posture photos organized by client for comparison features
-    // Structure: clients/{clientId}/sessions/{sessionId}/{fileName}
-    // Allow public read/write for development
-    // TODO: In production, add authentication check or client validation
-    match /clients/{clientId}/sessions/{sessionId}/{fileName} {
-      allow read, write: if true;
-    }
-    
-    // Legacy path support (for backward compatibility)
-    match /sessions/{sessionId}/{fileName} {
-      allow read, write: if true;
-    }
-    
-    // Default: deny all other paths
+    // Completely open for testing (We will tighten this later)
     match /{allPaths=**} {
-      allow read, write: if false;
+      allow read, write: if request.auth != null;
     }
   }
 }
-
-
-
-
-
-
-
-
-

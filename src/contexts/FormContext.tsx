@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
 
 export interface FormData {
   /** Client Profile */
@@ -75,7 +76,7 @@ export interface FormData {
 
   /** Phase 2 — Posture & Movement Quality */
   postureInputMode: 'manual' | 'ai';
-  postureAiResults: any; // Detailed AI analysis results
+  postureAiResults: Record<string, PostureAnalysisResult> | null; // Detailed AI analysis results
   postureImages: Record<string, string>; // Base64 images
   postureImagesStorage: Record<string, string>; // Firebase Storage URLs
   postureSeverity: string;
@@ -357,10 +358,16 @@ export const FormProvider = ({ children }: { children: ReactNode }) => {
     setFormData((prev) => ({ ...prev, ...data }));
   };
 
+  const contextValue = React.useMemo(() => ({
+    formData,
+    updateFormData,
+    currentStep,
+    setCurrentStep,
+    totalSteps
+  }), [formData, currentStep, totalSteps]);
+
   return (
-    <FormContext.Provider
-      value={{ formData, updateFormData, currentStep, setCurrentStep, totalSteps }}
-    >
+    <FormContext.Provider value={contextValue}>
       {children}
     </FormContext.Provider>
   );

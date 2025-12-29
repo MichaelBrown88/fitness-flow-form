@@ -30,10 +30,14 @@ export default function AppShell({
   variant?: 'default' | 'full-width';
   onMenuToggle?: () => void;
 }) {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading, signOut, orgSettings } = useAuth();
   const initials =
     user?.displayName?.split(' ').map((n) => n[0]).join('').toUpperCase() ||
     (user?.email ? user.email[0]?.toUpperCase() : 'C');
+
+  const brandColor = orgSettings?.brandColor || '#4f46e5';
+  const logoUrl = orgSettings?.logoUrl || '/Brand_Package_Primary_Logo_Black.svg';
+  const orgName = orgSettings?.name || 'One Fitness Professional';
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -53,13 +57,13 @@ export default function AppShell({
             )}
             <Link to="/" className="flex items-center gap-3 shrink-0">
               <img
-                src="/Brand_Package_Primary_Logo_Black.svg"
-                alt="One Fitness"
-                className="h-8 w-auto"
+                src={logoUrl}
+                alt={orgName}
+                className="h-8 w-auto max-w-[150px] object-contain"
               />
               <div className="hidden leading-tight md:block border-l border-slate-200 pl-4">
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
-                  Assessment Engine
+                  {orgName}
                 </p>
                 <p className="text-xs font-semibold text-slate-600">
                   Professional Intake
@@ -75,7 +79,7 @@ export default function AppShell({
                 variant="ghost"
                 size="icon"
                 onClick={onDemoFill}
-                className="h-9 w-9 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
+                className="h-9 w-9 text-slate-400 hover:text-primary hover:bg-brand-light"
                 title="Auto-fill demo data"
               >
                 <Sparkles className="h-5 w-5" />
@@ -92,7 +96,10 @@ export default function AppShell({
                         type="button"
                         className="flex items-center gap-2 rounded-full border border-slate-200 bg-white p-1 hover:border-slate-300 transition-colors"
                       >
-                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white shadow-sm">
+                        <span 
+                          className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white shadow-sm"
+                          style={{ backgroundColor: brandColor }}
+                        >
                           {initials}
                         </span>
                         <ChevronDown className="h-4 w-4 text-slate-400 mr-1" />

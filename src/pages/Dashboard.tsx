@@ -4,6 +4,8 @@ import AppShell from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
+import { AnalyticsDashboard } from '@/components/dashboard/AnalyticsDashboard';
+import { RecentActivity } from '@/components/dashboard/RecentActivity';
 import { 
   listCoachAssessments, 
   deleteCoachAssessment,
@@ -13,7 +15,7 @@ import {
 } from '@/services/coachAssessments';
 import { getChangeHistory, getCurrentAssessment } from '@/services/assessmentHistory';
 import { computeScores } from '@/lib/scoring';
-import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, limit, onSnapshot, where, Timestamp } from 'firebase/firestore';
 import { getDb } from '@/lib/firebase';
 import { 
   Trash2, 
@@ -57,7 +59,7 @@ type ClientGroup = {
   scoreChange?: number;
 };
 
-type Analytics = {
+export type Analytics = {
   totalClients: number;
   totalAssessments: number;
   averageScore: number;
@@ -80,7 +82,7 @@ const formatGoal = (goal: string) => {
 };
 
 const Dashboard = () => {
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [items, setItems] = useState<CoachAssessmentSummary[]>([]);
@@ -92,6 +94,8 @@ const Dashboard = () => {
   const [clientHistory, setClientHistory] = useState<CoachAssessmentSummary[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [visibleAssessmentsCount, setVisibleAssessmentsCount] = useState(20);
+  const [visibleClientsCount, setVisibleClientsCount] = useState(12);
   const [recentChanges, setRecentChanges] = useState<Array<{
     clientName: string;
     category: string;
@@ -106,6 +110,10 @@ const Dashboard = () => {
 
     // Set up real-time listener for assessments
     const assessmentsRef = collection(getDb(), 'coaches', user.uid, 'assessments');
+    
+    // SaaS Readiness: Filter by organizationId if present
+    // LEGACY SUPPORT: We fetch all and filter in memory to avoid index errors 
+    // and show assessments created before the organizationId was added.
     const q = query(assessmentsRef, orderBy('createdAt', 'desc'), limit(500));
     
     const unsubscribe = onSnapshot(q, async (snapshot) => {
@@ -114,12 +122,21 @@ const Dashboard = () => {
         const data: CoachAssessmentSummary[] = [];
         snapshot.forEach((docSnap) => {
           const docData = docSnap.data();
+          
+          // Legacy filter: If organizationId is set, only show matching ones.
+          // IF organizationId is MISSING, show it (it's legacy data from this coach).
+          const itemOrgId = docData.organizationId;
+          if (profile?.organizationId && itemOrgId && itemOrgId !== profile.organizationId) {
+            return; // Belongs to a different organization
+          }
+
           data.push({
             id: docSnap.id,
             clientName: docData.clientName || 'Unnamed client',
             createdAt: docData.createdAt || null,
             overallScore: typeof docData.overallScore === 'number' ? docData.overallScore : 0,
             goals: Array.isArray(docData.goals) ? docData.goals : [],
+            scoresSummary: docData.scoresSummary,
           });
         });
         setItems(data);
@@ -128,7 +145,7 @@ const Dashboard = () => {
         if (user) {
           (async () => {
             try {
-              const clients = await getAllClients(user.uid);
+              const clients = await getAllClients(user.uid, profile?.organizationId);
               const changes: Array<{
                 clientName: string;
                 category: string;
@@ -174,7 +191,7 @@ const Dashboard = () => {
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, [user, profile?.organizationId]);
 
   const computeAnalytics = async (assessments: CoachAssessmentSummary[], coachUid: string): Promise<Analytics> => {
     if (assessments.length === 0) {
@@ -227,13 +244,29 @@ const Dashboard = () => {
     
     for (const assessment of samples) {
       try {
+        // High Performance Path: Use pre-calculated summary if available
+        if (assessment.scoresSummary) {
+          assessment.scoresSummary.categories.forEach(cat => {
+            if (categoryScores[cat.id]) {
+              categoryScores[cat.id].push(cat.score);
+            }
+            cat.weaknesses.forEach(weakness => {
+              issueCounts[weakness] = (issueCounts[weakness] || 0) + 1;
+            });
+          });
+          continue;
+        }
+
+        // Legacy Fallback Path: Fetch full data only if summary is missing
         const full = await getCoachAssessment(user.uid, assessment.id);
         if (full?.formData) {
           const scores = computeScores(full.formData);
           
           // Collect category scores
           scores.categories.forEach(cat => {
-            categoryScores[cat.id].push(cat.score);
+            if (categoryScores[cat.id]) {
+              categoryScores[cat.id].push(cat.score);
+            }
           });
 
           // Collect weaknesses (issues)
@@ -353,7 +386,7 @@ const Dashboard = () => {
     setClientHistoryDialog(clientName);
     setLoadingHistory(true);
     try {
-      const history = await getClientAssessments(user.uid, clientName);
+      const history = await getClientAssessments(user.uid, clientName, profile?.organizationId);
       setClientHistory(history);
     } catch (err) {
       toast({
@@ -384,7 +417,7 @@ const Dashboard = () => {
     
     // Get the latest assessment to pre-fill data
     try {
-      const history = await getClientAssessments(user.uid, clientName);
+      const history = await getClientAssessments(user.uid, clientName, profile?.organizationId);
       if (history.length > 0) {
         const latest = await getCoachAssessment(user.uid, history[0].id);
         if (latest?.formData) {
@@ -426,167 +459,10 @@ const Dashboard = () => {
     >
       <div className="space-y-8">
         {/* Analytics Section */}
-        {analytics && (
-          <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Total Clients
-                  </div>
-                  <div className="mt-2 text-3xl font-semibold text-slate-900">
-                    {analytics.totalClients}
-                  </div>
-                </div>
-                <Users className="h-8 w-8 text-slate-400" />
-              </div>
-            </div>
-            <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Total Assessments
-                  </div>
-                  <div className="mt-2 text-3xl font-semibold text-slate-900">
-                    {analytics.totalAssessments}
-                  </div>
-                </div>
-                <BarChart3 className="h-8 w-8 text-slate-400" />
-              </div>
-            </div>
-            <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Average Score
-                  </div>
-                  <div className="mt-2 text-3xl font-semibold text-slate-900">
-                    {analytics.averageScore}
-                  </div>
-                </div>
-                <TrendingUp className="h-8 w-8 text-emerald-500" />
-              </div>
-            </div>
-            <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    This Month
-                  </div>
-                  <div className="mt-2 text-sm text-slate-700">
-                    <span className="font-semibold">{analytics.assessmentsThisMonth}</span> assessments
-                  </div>
-                  <div className="text-xs text-slate-500">
-                    <span className="font-semibold">{analytics.clientsThisMonth}</span> clients
-                  </div>
-                </div>
-                <Calendar className="h-8 w-8 text-slate-400" />
-              </div>
-            </div>
-          </section>
-        )}
+        <AnalyticsDashboard analytics={analytics} />
 
-        {/* Category Performance & Common Issues */}
-        {analytics && (analytics.highestCategory || analytics.lowestCategory || analytics.mostCommonIssues.length > 0) && (
-          <section className="grid gap-4 md:grid-cols-2">
-            {(analytics.highestCategory || analytics.lowestCategory) && (
-              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-                <h3 className="text-sm font-semibold text-slate-900 mb-3">Category Performance</h3>
-                <div className="space-y-3">
-                  {analytics.highestCategory && (
-                    <div className="flex items-center justify-between p-2 bg-emerald-50 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <TrendingUp className="h-4 w-4 text-emerald-600" />
-                        <span className="text-sm font-medium text-slate-700">Highest</span>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm font-semibold text-slate-900">{analytics.highestCategory.name}</div>
-                        <div className="text-xs text-slate-500">Score: {analytics.highestCategory.avgScore}</div>
-                      </div>
-                    </div>
-                  )}
-                  {analytics.lowestCategory && (
-                    <div className="flex items-center justify-between p-2 bg-amber-50 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <TrendingDown className="h-4 w-4 text-amber-600" />
-                        <span className="text-sm font-medium text-slate-700">Lowest</span>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm font-semibold text-slate-900">{analytics.lowestCategory.name}</div>
-                        <div className="text-xs text-slate-500">Score: {analytics.lowestCategory.avgScore}</div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-            {analytics.mostCommonIssues.length > 0 && (
-              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-                <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-amber-500" />
-                  Most Common Issues
-                </h3>
-                <div className="space-y-2">
-                  {analytics.mostCommonIssues.map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
-                      <span className="text-sm text-slate-700">{item.issue}</span>
-                      <span className="text-xs font-semibold text-slate-500 bg-white px-2 py-0.5 rounded">
-                        {item.count}x
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </section>
-        )}
-
-        {/* Recent Activity */}
-        {recentChanges.length > 0 && (
-          <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
-              <History className="h-4 w-4" />
-              Recent Activity
-            </h3>
-            <div className="space-y-2">
-              {recentChanges.map((change, idx) => {
-                const categoryLabels: Record<string, string> = {
-                  inbody: 'InBody',
-                  posture: 'Posture',
-                  fitness: 'Fitness',
-                  strength: 'Strength',
-                  lifestyle: 'Lifestyle',
-                  all: 'Full Assessment',
-                };
-                const typeLabels: Record<string, string> = {
-                  'full': 'Full Assessment',
-                  'partial-inbody': 'InBody Update',
-                  'partial-posture': 'Posture Update',
-                  'partial-fitness': 'Fitness Update',
-                  'partial-strength': 'Strength Update',
-                  'partial-lifestyle': 'Lifestyle Update',
-                };
-                return (
-                  <div key={idx} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="text-xs text-slate-500">
-                        {change.date.toLocaleDateString()} {change.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                      <div className="text-sm text-slate-700">
-                        <span className="font-semibold">{change.clientName}</span>
-                        {' - '}
-                        <span>{typeLabels[change.type] || change.type}</span>
-                      </div>
-                    </div>
-                    <span className="text-xs font-semibold text-slate-500 bg-white px-2 py-0.5 rounded">
-                      {categoryLabels[change.category] || change.category}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
+        {/* Recent Activity Section */}
+        <RecentActivity recentChanges={recentChanges} />
 
         {/* View Toggle */}
         <section className="space-y-4">
@@ -668,7 +544,7 @@ const Dashboard = () => {
                       </td>
                     </tr>
                   ) : (
-                    filtered.map((item) => (
+                    filtered.slice(0, visibleAssessmentsCount).map((item) => (
                       <tr key={item.id} className="hover:bg-slate-50">
                         <td className="px-4 py-2 text-sm text-slate-900">
                           {item.clientName}
@@ -711,6 +587,18 @@ const Dashboard = () => {
             </div>
           )}
 
+          {view === 'assessments' && filtered.length > visibleAssessmentsCount && (
+            <div className="flex justify-center pt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => setVisibleAssessmentsCount(prev => prev + 20)}
+                className="text-slate-600"
+              >
+                Show More Assessments
+              </Button>
+            </div>
+          )}
+
           {/* Clients View */}
           {view === 'clients' && (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -723,7 +611,7 @@ const Dashboard = () => {
                   {search ? 'No clients match that name.' : 'No clients found.'}
                 </div>
               ) : (
-                filteredClients.map((group) => (
+                filteredClients.slice(0, visibleClientsCount).map((group) => (
                   <div
                     key={group.name}
                     className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow"
@@ -811,6 +699,18 @@ const Dashboard = () => {
                   </div>
                 ))
               )}
+            </div>
+          )}
+
+          {view === 'clients' && filteredClients.length > visibleClientsCount && (
+            <div className="flex justify-center pt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => setVisibleClientsCount(prev => prev + 12)}
+                className="text-slate-600"
+              >
+                Show More Clients
+              </Button>
             </div>
           )}
         </section>

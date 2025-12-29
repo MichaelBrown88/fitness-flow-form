@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef, lazy, Suspense } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import AppShell from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
@@ -8,14 +8,16 @@ import { publishPublicReport } from '@/services/publicReports';
 import type { FormData } from '@/contexts/FormContext';
 import { computeScores, buildRoadmap, type ScoreSummary, type RoadmapPhase } from '@/lib/scoring';
 import { generateCoachPlan, generateBodyCompInterpretation } from '@/lib/recommendations';
-import ClientReport from '@/components/reports/ClientReport';
-import CoachReport from '@/components/reports/CoachReport';
 import { requestShareArtifacts, sendReportEmail, type ShareArtifacts } from '@/services/share';
 import { useToast } from '@/components/ui/use-toast';
+import { Loader2 } from 'lucide-react';
+
+const ClientReport = lazy(() => import('@/components/reports/ClientReport'));
+const CoachReport = lazy(() => import('@/components/reports/CoachReport'));
 
 const AssessmentReport = () => {
   const { id } = useParams();
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [formData, setFormData] = useState<FormData | null>(null);
@@ -139,12 +141,13 @@ const AssessmentReport = () => {
           coachUid: user.uid,
           assessmentId: id,
           formData,
+          organizationId: profile?.organizationId,
         });
       } catch (e) {
         console.error('Failed to sync public report', e);
       }
     })();
-  }, [user, id, formData]);
+  }, [user, id, formData, profile?.organizationId]);
 
   if (loading || !user) {
     return (
@@ -241,25 +244,32 @@ const AssessmentReport = () => {
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-          {view === 'client' ? (
-            <ClientReport
-              scores={scores}
-              roadmap={roadmap}
-              goals={Array.isArray(formData.clientGoals) ? formData.clientGoals : []}
-              bodyComp={bodyComp ? { timeframeWeeks: bodyComp.timeframeWeeks } : undefined}
-              formData={formData}
-              plan={plan}
-              highlightCategory={highlightCategory}
-            />
-          ) : (
-            <CoachReport
-              plan={plan}
-              scores={scores}
-              bodyComp={bodyComp}
-              formData={formData}
-              highlightCategory={highlightCategory}
-            />
-          )}
+          <Suspense fallback={
+            <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-slate-100">
+              <Loader2 className="h-8 w-8 animate-spin text-indigo-500 mb-4" />
+              <p className="text-sm font-black uppercase tracking-widest text-slate-400">Generating Report...</p>
+            </div>
+          }>
+            {view === 'client' ? (
+              <ClientReport
+                scores={scores}
+                roadmap={roadmap}
+                goals={Array.isArray(formData.clientGoals) ? formData.clientGoals : []}
+                bodyComp={bodyComp ? { timeframeWeeks: bodyComp.timeframeWeeks } : undefined}
+                formData={formData}
+                plan={plan}
+                highlightCategory={highlightCategory}
+              />
+            ) : (
+              <CoachReport
+                plan={plan}
+                scores={scores}
+                bodyComp={bodyComp}
+                formData={formData}
+                highlightCategory={highlightCategory}
+              />
+            )}
+          </Suspense>
         </div>
       </div>
     </AppShell>

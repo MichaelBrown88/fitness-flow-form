@@ -1,90 +1,69 @@
-# Roadmap: Moving from AI "Guessing" to Clinical Logic
+# Roadmap: SaaS Readiness & Codebase Optimization
 
 ## 🛠 Standard Operating Procedure (SOP) per Task
 For every task below, we must follow this exact sequence:
-1.  **Implement:** Write the code for the task.
-2.  **Test:** Manually or programmatically verify the logic works (using console logs, UI checks, or mock data).
+1.  **Implement:** Write the code/changes for the task.
+2.  **Test:** Verify the logic works (using console logs, UI checks, or mock data).
 3.  **Confirm:** Verify with the User that the behavior meets expectations.
 4.  **Push:** Commit and push the changes to GitHub.
-5.  **Complete:** Mark as completed in this document and the TODO list.
+5.  **Complete:** Mark as completed in this document.
 
 ---
 
-## Phase 1: Foundation (Data & Inputs)
-*Goal: Set up the infrastructure and capture the missing clinical data.*
+## Phase 1: Codebase Sanitization & Type Safety
+*Goal: Remove redundancy and improve maintainability.*
 
-### 1. The Clinical Database Foundation [x]
-- **Task:** Create `src/lib/clinical-data.ts`.
-- **Content:** Port the Movement Logic, Normative Benchmarks, Biological Timelines, and Lifestyle Feedback tables into structured TypeScript constants/objects.
-- **Steps:** [x] Implement | [x] Test | [x] Confirm | [x] Push | [x] Complete
+### 1. File Cleanup [x]
+- **Task:** Remove all orphaned legacy files, duplicate MD files, and `.backup` files.
+- **Status:** Completed.
 
-### 2. Movement Safety (Pain Fields) [x]
-- **Task:** Add `hasPainDiscomfort` boolean fields to the form state for OHS, Hinge, and Lunge. Update the UI in `Phase2` steps to include these toggles.
-- **Steps:** [x] Implement | [x] Test | [x] Confirm | [x] Push | [x] Complete
+### 2. Strict Typing Audit [x]
+- **Task:** Eliminate `any` types across the codebase, starting with services and contexts.
+- **Target Files:** `src/services/`, `src/contexts/FormContext.tsx`, `src/components/reports/ClientReport.tsx`, `src/components/reports/CoachReport.tsx`.
+- **Note:** Fixed linter errors in `PostureAnalysisViewer.tsx` and `Companion.tsx`.
+- **Status:** Completed.
 
-### 3. Reliable Demographic Injection [x]
-- **Task:** Ensure `age` (calculated from DOB) and `gender` are passed correctly from `FormData` into the `computeScores` and `buildRoadmap` functions.
-- **Steps:** [x] Implement | [x] Test | [x] Confirm | [x] Push | [x] Complete
-
----
-
-## Phase 2: Deterministic Logic (The "Brain")
-*Goal: Replace AI guesses with mathematical and database-driven results.*
-
-### 4. Normative Scoring Upgrade [x]
-- **Task:** Update `src/lib/scoring.ts` to use the Normative Database. 
-- **Steps:** [x] Implement | [x] Test | [x] Confirm | [x] Push | [x] Complete
-
-### 5. Movement Logic & Contraindications [x]
-- **Task:** Link visual triggers to Movement Database for Stretches, Activations, and Contraindications.
-- **Steps:** [x] Implement | [x] Test | [x] Confirm | [x] Push | [x] Complete
-
-### 6. Realistic Biological Roadmap [x]
-- **Task:** Update `buildRoadmap` in `scoring.ts` to use metabolic reality and Age Penalty Factors.
-- **Steps:** [x] Implement | [x] Test | [x] Confirm | [x] Push | [x] Complete
+### 3. Component De-bloating [x]
+- **Task:** Break down `MultiStepForm.tsx` and `ClientReport.tsx` into smaller, reusable sub-components.
+- **Status:** Completed.
 
 ---
 
-## Phase 3: Insights & Synthesis (The Report)
-*Goal: Provide deep, interconnected insights to the client.*
+## Phase 2: SaaS Multi-Tenancy Foundation
+*Goal: Prepare the architecture for organizational isolation.*
 
-### 7. Lifestyle Advice Engine [x]
-- **Task:** Map lifestyle scores to standardized "Medical Advice Blocks" from the database.
-- **Steps:** [x] Implement | [x] Test | [x] Confirm | [x] Push | [x] Complete
+### 4. Auth Context Evolution [x]
+- **Task:** Update `AuthContext.tsx` to fetch and store `organizationId` and `userRole`.
+- **Status:** Completed.
 
-### 8. The Synthesis Engine (Cross-Pillar) [x]
-- **Task:** Create a logic layer that identifies relationships between pillars.
-- **Steps:** [x] Implement | [x] Test | [x] Confirm | [x] Push | [x] Complete
+### 5. Service Layer Scoping [x]
+- **Task:** Update Firestore services to require `organizationId` for all queries and saves.
+- **Target Files:** `clientProfiles.ts`, `assessments.ts`, `assessmentHistory.ts`, `coachAssessments.ts`.
+- **Status:** Completed.
 
-### 9. Report UI Cleanup [x]
-- **Task:** Final polish of reports to prioritize deterministic data and safety flags.
-- **Steps:** [x] Implement | [x] Test | [x] Confirm | [x] Push | [x] Complete
-
-### 10. Database Reliability & Snapshot Comparison [x]
-- **Task:** Ensure full `formData` is saved in dashboard summaries and implement a robust snapshot-to-current comparison UI in Client Details.
-- **Steps:** [x] Implement | [x] Test | [x] Confirm | [x] Push | [x] Complete
-
-### 11. Codebase Sanitization & Cleanup [x]
-- **Task:** Remove all orphaned legacy files and directories to ensure a clean, configuration-driven codebase.
-- **Steps:** [x] Implement | [x] Test | [x] Confirm | [x] Push | [x] Complete
-
-### 12. InBody Segmental Analysis & Asymmetry [x]
-- **Task:** Analyze limb imbalances (>10% diff) and trunk/limb distribution to prioritize unilateral work and hypertrophy focus.
-- **Steps:** [x] Implement | [x] Test | [x] Confirm | [x] Push | [x] Complete
-
-### 13. Narrative Storytelling Engine [x]
-- **Task:** Create a narrative-driven "client script" using metaphors (speed bumps, performance tuning) to explain findings.
-- **Steps:** [x] Implement | [x] Test | [x] Confirm | [x] Push | [x] Complete
-
-### 14. Multi-Goal Support & Personalization [x]
-- **Task:** Update exercise prioritization to handle multiple client goals and ambition levels simultaneously.
-- **Steps:** [x] Implement | [x] Test | [x] Confirm | [x] Push | [x] Complete
+### 6. Security Rule Hardening [x]
+- **Task:** Update `firestore.rules` to enforce organization-level isolation.
+- **Status:** Completed.
 
 ---
 
-## Phase 4: Production & Deployment
-*Goal: Transition changes to the live environment.*
+## Phase 3: Performance & Scalability
+*Goal: Optimize app speed and resource usage.*
 
-### 15. Deployment to Production [x]
-- **Task:** Merge all changes from `camera-features` to `main` and deploy to Firebase.
-- **Steps:** [x] Implement | [x] Test | [x] Confirm | [x] Push | [x] Complete
+### 7. Import Optimization [x]
+- **Task:** Audit heavy libraries (like `lucide-react`, `recharts`, `jspdf`) and ensure tree-shaking is effective.
+- **SOP:** Used `sequentialthinking` to plan and `React.lazy` to implement chunk splitting for heavy components.
+- **Status:** Completed.
+
+### 8. State Management Optimization [x]
+- **Task:** Review `FormContext.tsx` for unnecessary re-renders during large form updates. (Implemented `useMemo` for context value).
+- **Status:** Completed.
+
+---
+
+## Phase 4: Security & Compliance
+*Goal: Harden the app for production SaaS usage.*
+
+### 9. Vulnerability Scan [ ]
+- **Task:** Run automated security scans using `stackhawk` MCP.
+- **Status:** Pending.

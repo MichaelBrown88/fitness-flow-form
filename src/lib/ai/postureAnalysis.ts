@@ -1,6 +1,9 @@
 import { getAI, VertexAIBackend, getGenerativeModel } from "firebase/ai";
 import { getApp } from "firebase/app";
 import { CONFIG } from '@/config';
+import { calculateFrontViewMetrics, calculateSideViewMetrics } from '@/lib/utils/postureMath';
+import { logAIUsage } from '@/services/aiUsage';
+import { auth } from '@/lib/firebase';
 
 export interface PostureAnalysisResult {
   // Body Landmarks (for overlay alignment) - NEW
@@ -10,7 +13,9 @@ export interface PostureAnalysisResult {
     head_y_percent?: number; // Y position of head/nose as % of image height (0-100)
     center_x_percent?: number; // X position of body center/midfoot as % of image width (0-100)
     midfoot_x_percent?: number; // X position of midfoot (for side views) as % of image width (0-100)
+    raw?: any; // The raw MediaPipe landmarks for calculation
   };
+  // ...
   // Head Position
   head_alignment?: {
     status: 'Neutral' | 'Tilted Left' | 'Tilted Right';
@@ -22,6 +27,7 @@ export interface PostureAnalysisResult {
   forward_head: {
     status: 'Neutral' | 'Mild' | 'Moderate' | 'Severe';
     deviation_degrees: number; // Positive = forward
+    deviation_cm?: number;
     description: string;
     recommendation?: string;
   };
@@ -55,7 +61,12 @@ export interface PostureAnalysisResult {
     status: 'Neutral' | 'Anterior Tilt' | 'Posterior Tilt' | 'Lateral Tilt';
     anterior_tilt_degrees?: number; // Positive = anterior tilt
     lateral_tilt_degrees?: number; // Positive = left side down
+    left_hip_elevation_cm?: number;
+    right_hip_elevation_cm?: number;
     height_difference_cm?: number;
+    hip_shift_cm?: number;
+    lateral_shift_cm?: number;
+    hip_shift_direction?: 'None' | 'Left' | 'Right';
     rotation_degrees?: number; // Pelvic rotation
     description: string;
     recommendation?: string;
@@ -101,7 +112,24 @@ export async function analyzePostureImage(
   view: 'front' | 'side-right' | 'side-left' | 'back',
   landmarks?: PostureAnalysisResult['landmarks']
 ): Promise<PostureAnalysisResult> {
+  const coachUid = auth.currentUser?.uid || 'anonymous';
+  
   try {
+    // 1. CALCULATE DETERMINISTIC METRICS FIRST (Free)
+    let calculated: any = {};
+    if (landmarks?.raw) {
+      if (view === 'front' || view === 'back') {
+        calculated = calculateFrontViewMetrics(landmarks.raw);
+      } else {
+        calculated = calculateSideViewMetrics(landmarks.raw);
+      }
+    }
+
+    console.log(`[POSTURE] Local metrics for ${view}:`, calculated);
+
+    // 2. TRIGGER AI FOR HYBRID REFINEMENT
+    await logAIUsage(coachUid, 'posture_analysis', 'ai_fallback', 'gemini');
+
     const firebaseApp = getApp();
     const ai = getAI(firebaseApp, { backend: new VertexAIBackend() });
     
@@ -113,15 +141,16 @@ export async function analyzePostureImage(
       }
     });
 
-    const quantitativeContext = landmarks ? `
-      QUANTITATIVE DATA FROM MEDIAPIPE (0-100% of image):
-      - Shoulder Line Y: ${landmarks.shoulder_y_percent?.toFixed(1)}%
-      - Hip Line Y: ${landmarks.hip_y_percent?.toFixed(1)}%
-      - Head/Nose Y: ${landmarks.head_y_percent?.toFixed(1)}%
-      - Body Center X: ${landmarks.center_x_percent?.toFixed(1)}%
-      ${landmarks.midfoot_x_percent ? `- Plumb Line Anchor X: ${landmarks.midfoot_x_percent.toFixed(1)}%` : ''}
-      Use these coordinates as your primary ground truth for alignment.
-    ` : '';
+    const quantitativeContext = `
+      LOCAL CALCULATIONS (Deterministic):
+      ${calculated.headTiltDegrees !== undefined ? `- Head Tilt: ${calculated.headTiltDegrees.toFixed(1)}°` : ''}
+      ${calculated.forwardHeadCm !== undefined ? `- Forward Head: ${calculated.forwardHeadCm.toFixed(1)}cm (${calculated.headSeverity})` : ''}
+      ${calculated.shoulderSymmetryCm !== undefined ? `- Shoulder Diff: ${calculated.shoulderSymmetryCm.toFixed(1)}cm` : ''}
+      ${calculated.hipSymmetryCm !== undefined ? `- Hip Diff: ${calculated.hipSymmetryCm.toFixed(1)}cm` : ''}
+      ${calculated.pelvicTiltDegrees !== undefined ? `- Pelvic Angle: ${calculated.pelvicTiltDegrees.toFixed(1)}°` : ''}
+      
+      Use these values as your primary source of truth for severity levels.
+    `;
 
     const viewSpecificInstructions = {
       'front': `
@@ -475,17 +504,21 @@ export async function analyzePostureImage(
     // Try to get JSON first, fallback to text extraction if needed
     try {
       const text = aiResponse.text();
+      let data: any;
       // If responseMimeType is set, text should be valid JSON
       try {
-        return JSON.parse(text);
+        data = JSON.parse(text);
       } catch {
         // Fallback: extract JSON from text if wrapped
         const startIdx = text.indexOf('{');
         const endIdx = text.lastIndexOf('}');
         if (startIdx === -1) throw new Error('Invalid AI response');
         const jsonString = text.substring(startIdx, endIdx + 1);
-        return JSON.parse(jsonString);
+        data = JSON.parse(jsonString);
       }
+
+      await logAIUsage(coachUid, 'posture_analysis', 'ai_success', 'gemini');
+      return { ...data, provider: 'hybrid' };
     } catch (parseError) {
       console.error('JSON parsing error:', parseError);
       throw new Error('Failed to parse AI response as JSON.');
@@ -493,6 +526,7 @@ export async function analyzePostureImage(
 
   } catch (err) {
     console.error('Posture Analysis Error:', err);
+    await logAIUsage(coachUid, 'posture_analysis', 'error', 'local');
     throw new Error('Failed to analyze posture image.');
   }
 }

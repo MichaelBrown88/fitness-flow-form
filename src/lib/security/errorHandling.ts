@@ -61,7 +61,7 @@ export function getSafeErrorMessage(error: unknown, context?: string): string {
  * @param context - Context for error logging
  * @returns Wrapped function with error handling
  */
-export function withSecureErrorHandling<T extends (...args: any[]) => Promise<any>>(
+export function withSecureErrorHandling<T extends (...args: unknown[]) => Promise<unknown>>(
   fn: T,
   context: string
 ): T {

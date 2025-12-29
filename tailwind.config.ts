@@ -20,8 +20,13 @@ export default {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         primary: {
-          DEFAULT: "hsl(var(--primary))",
+          DEFAULT: "var(--brand-primary)",
           foreground: "hsl(var(--primary-foreground))",
+        },
+        brand: {
+          DEFAULT: "var(--brand-primary)",
+          light: "rgb(var(--brand-primary-rgb) / 0.1)",
+          muted: "rgb(var(--brand-primary-rgb) / 0.05)",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",

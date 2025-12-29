@@ -50,6 +50,7 @@ export async function addPostureOverlay(
         const targetCenterX = canvas.width * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.CENTER_X_PCT / 100);
         const targetShoulderY = canvas.height * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.SHOULDER_Y_PCT / 100);
         const targetHipY = canvas.height * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.HIP_Y_PCT / 100);
+        const targetHeadY = canvas.height * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.HEAD_Y_PCT / 100);
         
         const landmarkData = options.landmarks || analysis?.landmarks;
         
@@ -80,7 +81,10 @@ export async function addPostureOverlay(
 
           const actualTorsoHeight = Math.abs(landmarkHipY - landmarkShoulderY);
           const targetTorsoHeight = Math.abs(targetHipY - targetShoulderY);
-          const scale = actualTorsoHeight > 0 ? targetTorsoHeight / actualTorsoHeight : (canvas.height / img.height);
+          
+          // Clamp scale to reasonable limits (0.5x to 4x) to prevent distortion if landmarks are wonky
+          let scale = actualTorsoHeight > 0 ? targetTorsoHeight / actualTorsoHeight : (canvas.height / img.height);
+          scale = Math.max(0.5, Math.min(4.0, scale));
 
           const translateX = targetCenterX - (landmarkX * scale);
           const bodyCenterY = (landmarkShoulderY + landmarkHipY) / 2;
@@ -123,6 +127,15 @@ export async function addPostureOverlay(
           ctx.lineTo(canvas.width, targetHipY);
           ctx.stroke();
         }
+
+        // Always show head line for posture views
+        ctx.setLineDash([5, 5]);
+        ctx.strokeStyle = `${lineColor}88`; // Semi-transparent
+        ctx.beginPath();
+        ctx.moveTo(0, targetHeadY);
+        ctx.lineTo(canvas.width, targetHeadY);
+        ctx.stroke();
+        ctx.setLineDash([]);
 
         if (mode === 'deviation' && analysis) {
           drawDeviations(ctx, view, analysis, targetCenterX, targetShoulderY, targetHipY);
@@ -217,8 +230,8 @@ function drawDeviations(
     const hipData = analysis.hip_alignment;
     
     if ((pelvicData && pelvicData.status !== 'Neutral') || (hipData && hipData.status !== 'Neutral')) {
-      const pelvicDiff = (pelvicData as any)?.height_difference_cm || 0;
-      const hipDiff = (hipData as any)?.height_difference_cm || 0;
+      const pelvicDiff = pelvicData?.height_difference_cm || 0;
+      const hipDiff = hipData?.height_difference_cm || 0;
       const diffCm = Math.max(pelvicDiff, hipDiff);
       
       const pelvicDesc = pelvicData?.description.toLowerCase() || '';
@@ -325,7 +338,7 @@ function drawDeviations(
 
     // Pelvic Tilt (Side View)
     if (analysis.pelvic_tilt && analysis.pelvic_tilt.status !== 'Neutral') {
-      const deg = (analysis.pelvic_tilt as any).anterior_tilt_degrees || 0;
+      const deg = analysis.pelvic_tilt.anterior_tilt_degrees || 0;
       const rad = (deg * Math.PI) / 180;
       const isAnterior = (analysis.pelvic_tilt.status || '').includes('Anterior') || deg > 0;
       
@@ -340,7 +353,7 @@ function drawDeviations(
 
     // Knee Position (Hyperextension/Flexion)
     if (analysis.knee_position && analysis.knee_position.status !== 'Neutral') {
-      const deg = (analysis.knee_position as any).deviation_degrees || 0;
+      const deg = analysis.knee_position.deviation_degrees || 0;
       const rad = (deg * Math.PI) / 180;
       const isHyperextended = (analysis.knee_position.status || '').includes('Hyperextended') || deg < 0;
       
@@ -415,6 +428,7 @@ export function generatePlaceholderWithGreenLines(
   const centerX = width * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.CENTER_X_PCT / 100);
   const shoulderY = height * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.SHOULDER_Y_PCT / 100);
   const hipY = height * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.HIP_Y_PCT / 100);
+  const headY = height * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.HEAD_Y_PCT / 100);
 
   ctx.strokeStyle = CONFIG.POSTURE_OVERLAY.STYLE.LINE_COLOR;
   ctx.lineWidth = CONFIG.POSTURE_OVERLAY.STYLE.LINE_WIDTH;
@@ -433,6 +447,14 @@ export function generatePlaceholderWithGreenLines(
   ctx.beginPath();
   ctx.moveTo(0, hipY);
   ctx.lineTo(width, hipY);
+  ctx.stroke();
+
+  // Head line (dashed)
+  ctx.setLineDash([10, 10]);
+  ctx.strokeStyle = `${CONFIG.POSTURE_OVERLAY.STYLE.LINE_COLOR}88`;
+  ctx.beginPath();
+  ctx.moveTo(0, headY);
+  ctx.lineTo(width, headY);
   ctx.stroke();
 
   return canvas.toDataURL('image/jpeg', 0.95);

@@ -41,9 +41,14 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
       setIsVertical(deviation < 5);
     };
 
-    if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
-      (DeviceOrientationEvent as any).requestPermission()
-        .then((state: string) => {
+    // Use a helper type or explicit check for the permission API
+    const DeviceOrientationEventWithPermission = DeviceOrientationEvent as unknown as {
+      requestPermission?: () => Promise<'granted' | 'denied'>;
+    };
+
+    if (typeof DeviceOrientationEventWithPermission.requestPermission === 'function') {
+      DeviceOrientationEventWithPermission.requestPermission()
+        .then((state) => {
           if (state === 'granted') {
             window.addEventListener('deviceorientation', handleOrientation);
           }

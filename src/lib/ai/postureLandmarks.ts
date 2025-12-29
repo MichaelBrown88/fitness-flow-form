@@ -3,12 +3,7 @@
  * Uses MediaPipe Pose for accurate body landmark detection
  */
 
-import * as mpPose from '@mediapipe/pose';
 import { CONFIG } from '@/config';
-
-// Handle MediaPipe's problematic ESM/Vite bundling
-const Pose = (mpPose as any).Pose || (mpPose as any).default?.Pose || (window as any).Pose;
-const POSE_LANDMARKS = (mpPose as any).POSE_LANDMARKS || (mpPose as any).default?.POSE_LANDMARKS || (window as any).POSE_LANDMARKS;
 
 export interface LandmarkResult {
   shoulder_y_percent?: number; // Y position of shoulder center as % of image height (0-100)
@@ -16,6 +11,7 @@ export interface LandmarkResult {
   head_y_percent?: number; // Y position of head center as % of image height (0-100)
   center_x_percent?: number; // X position of body midline (for front/back) as % of image width (0-100)
   midfoot_x_percent?: number; // X position of midfoot (for side views) as % of image width (0-100)
+  raw?: any; // The raw pose landmarks from MediaPipe
 }
 
 /**
@@ -53,6 +49,10 @@ export async function detectPostureLandmarks(
     // Load the image
     const img = await loadImage(imageUrl);
     console.log(`[MEDIAPIPE] Image loaded: ${img.width}x${img.height}`);
+    
+    // Dynamically import MediaPipe to avoid bloating the main bundle
+    const mpPose = await import('@mediapipe/pose');
+    const Pose = (mpPose as any).Pose || (mpPose as any).default?.Pose || (window as any).Pose;
     
     if (!Pose) {
       throw new Error('MediaPipe Pose constructor not found. Check imports or CDN.');
@@ -185,7 +185,9 @@ export async function detectPostureLandmarks(
           }
           
           // Convert to percentages (MediaPipe coordinates are normalized 0-1)
-          const result: LandmarkResult = {};
+          const result: LandmarkResult = {
+            raw: landmarks // Store raw points for calculation
+          };
           
           if (shoulderCenterY !== undefined) {
             result.shoulder_y_percent = shoulderCenterY * 100;

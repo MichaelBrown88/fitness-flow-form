@@ -27,7 +27,7 @@ export default function Stepper({
               className={cn(
                 'group flex items-center gap-2 chip',
                 isActive && 'bg-primary text-primary-foreground border-primary/60 shadow-md',
-                !isActive && isDone && 'bg-primary/15 text-white border-primary/30 hover:bg-primary/25',
+                !isActive && isDone && 'bg-brand-light text-primary border-primary/10 hover:bg-brand-muted',
                 !isActive && !isDone && 'bg-muted text-muted-foreground border-border hover:bg-muted/80'
               )}
             >
@@ -35,7 +35,7 @@ export default function Stepper({
                 className={cn(
                   'inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold',
                   isActive && 'bg-primary-foreground text-primary',
-                  !isActive && isDone && 'bg-primary/40 text-white',
+                  !isActive && isDone && 'bg-primary/20 text-primary',
                   !isActive && !isDone && 'bg-background text-muted-foreground border border-border'
                 )}
               >

@@ -1,22 +1,47 @@
 # Project Rules & Best Practices
 
+## Tech Stack
+- Frontend: React + Vite + Tailwind CSS + shadcn/ui
+- Backend: Firebase (Firestore, Auth, Functions)
+- Tools: MCP Servers (StackHawk, Context7, Tavily, Sequential Thinking)
+- Icons: Lucide React
+
 ## Strategic Planning & "Anti-Bloat" Protocol (CRITICAL)
-1. **The "Right Tool" Check:** Before implementing ANY feature using an AI API, evaluate if a specialized open-source library can do it better/cheaper.
-2. **Pushback Policy:** If I ask for a solution that is inefficient, fragile, or over-engineered, you MUST pause and warn me.
+1. **The "Right Tool" Check:** Before implementing ANY feature using an AI API (OpenAI/Gemini), you MUST evaluate if a specialized open-source library can do it better/cheaper.
+   - *Example:* Do not use AI for image alignment/landmarks; suggest `mediapipe` or `face-api.js`.
+   - *Example:* Do not use AI for simple regex or math; use standard JS libraries.
+2. **Pushback Policy:** If I ask for a solution that is inefficient, fragile, or introduces unnecessary AI cost, you MUST pause and warn me.
+   - *Say:* "I can build this with AI, but [Library X] is free, runs locally, and is 10x faster. Shall we use that instead?"
 3. **Unknown Unknowns:** Protect me from my own ignorance. If my approach violates standard architecture patterns or security best practices, explicitly highlight the risk before writing code.
 
 ## Code Quality Standards
 1. **No "Vibe Coding" artifacts:** Do not leave `console.log`, commented-out code, or `TODO` comments in final output.
-2. **Strict Typing:** Prefer clear variable names over comments. Avoid `any` types where possible.
-3. **Small Components/Functions:** If a file or function grows too large, suggest breaking it down.
-4. **No Hardcoding:** Use constants, config files, or environment variables for magic strings/colors.
+2. **Strict Typing:** Prefer clear variable names over comments. Avoid `any` types.
+3. **Small Components:** If a component exceeds 150 lines, suggest breaking it into smaller sub-components.
+4. **Functional Approach:** Use functional components and Hooks. Avoid class components.
+5. **No Hardcoding:**
+   - Colors -> Use Tailwind classes or CSS variables.
+   - Strings -> Use constants or config files.
+   - Secrets -> Use `import.meta.env`.
 
-## Security & Architecture
-1. **Security First:** Never suggest committing secrets (keys/tokens) to git. Always use environment variables.
-2. **Client vs Server:** Explicitly warn me if I attempt to write server-side logic (like DB writes or payment verification) in client-side code.
-3. **Optimized Imports:** Avoid importing entire heavy libraries when only a single function is needed.
+## UI Library (shadcn/ui)
+1. **Prefer shadcn components:** Always check `@/components/ui` first.
+2. **Importing:** Import from `@/components/ui/...`.
+3. **New Components:** If a UI element is missing, ask me to run `npx shadcn@latest add [component]`.
 
-## Documentation
-1. **Explain the "Why":** When suggesting a major architectural change or a new library, briefly explain why it is the best choice for this specific context.
+## MCP Tool Usage
+1. **Context7:** ALWAYS fetch latest docs for complex libraries before coding.
+2. **Tavily:** Use for research/real-world data (e.g., "Find standard pricing models").
+3. **StackHawk:** Scan for vulnerabilities.
+4. **Sequential Thinking:** Use for complex architectural planning (e.g., "Plan a multi-tenant DB schema").
 
+## SaaS Readiness
+1. **Multi-tenancy:** Always assume data belongs to an `organizationId`.
+2. **Security:** Never write client-side logic that should be server-side.
 
+## Connectivity & Services
+1. **Firebase:** NEVER initialize Firebase in a component. ALWAYS import `db` or `auth` from `@/services/firebase`.
+2. **External APIs:**
+   - Use the pre-configured Axios instance in `@/services/api` for HTTP requests.
+   - Do not use raw `fetch` in components; use a service function (e.g., `userService.getUser()`) that calls the API.
+   - Always type the response data if possible.

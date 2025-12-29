@@ -1,18 +1,20 @@
 import React from 'react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
 
-interface OverallRadarChartProps {
-  data: {
-    name: string;
-    value: number;
-    fullLabel: string;
-    color: string;
-  }[];
+interface RadarData {
+  name: string;
+  value: number;
+  fullLabel: string;
+  color: string;
 }
 
-const CustomTooltip = ({ active, payload }: any) => {
+interface OverallRadarChartProps {
+  data: RadarData[];
+}
+
+const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: any[] }) => {
   if (active && payload && payload.length) {
-    const data = payload[0].payload;
+    const data = payload[0].payload as RadarData;
     return (
       <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-lg">
         <p className="font-semibold text-slate-900">{data.fullLabel}</p>
@@ -23,7 +25,19 @@ const CustomTooltip = ({ active, payload }: any) => {
   return null;
 };
 
-const renderCustomAxisTick = ({ payload, x, y, textAnchor, index }: any) => {
+const renderCustomAxisTick = ({ 
+  payload, 
+  x, 
+  y, 
+  textAnchor, 
+  index 
+}: { 
+  payload: any; 
+  x: number; 
+  y: number; 
+  textAnchor: "start" | "middle" | "end" | "inherit"; 
+  index: number 
+}) => {
   // Try to find the color from the data if available
   const colors = ['#10b981', '#6366f1', '#0ea5e9', '#f59e0b', '#a855f7'];
   const color = colors[index % colors.length];

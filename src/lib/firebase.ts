@@ -1,8 +1,14 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
-import { getFirestore, type Firestore } from 'firebase/firestore';
+import { 
+  getFirestore, 
+  initializeFirestore, 
+  persistentLocalCache, 
+  persistentMultipleTabManager,
+  type Firestore 
+} from 'firebase/firestore';
 import { getAuth, type Auth } from 'firebase/auth';
 import { getFunctions, type Functions } from 'firebase/functions';
-import { getStorage, type FirebaseStorage } from 'firebase/storage';
+import { getStorage as getFirebaseStorageInstance, type FirebaseStorage } from 'firebase/storage';
 import { CONFIG } from '@/config';
 
 // SECURITY: Use environment variables for all sensitive configuration
@@ -45,15 +51,23 @@ export function getFirebaseApp(): FirebaseApp {
   return appInstance;
 }
 
-export const db = getFirestore(getFirebaseApp());
-export const auth = getAuth(getFirebaseApp());
-export const functions = getFunctions(getFirebaseApp());
-export const storage = getStorage(getFirebaseApp());
+// Modern Firestore initialization with persistent cache (v10+)
+const app = getFirebaseApp();
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager()
+  })
+});
+
+export const auth = getAuth(app);
+export const functions = getFunctions(app);
+export const storage = getFirebaseStorageInstance(app);
 
 export const getDb = () => db;
 export const getFirebaseAuth = () => auth;
 export const getFirebaseFunctions = () => functions;
 export const getFirebaseStorage = () => storage;
+export const getStorage = () => storage; // Alias for compatibility
 
 export default getFirebaseApp;
 

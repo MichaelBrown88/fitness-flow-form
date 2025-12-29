@@ -17,6 +17,7 @@ import {
   getSnapshots,
   type AssessmentSnapshot
 } from '@/services/assessmentHistory';
+import { type FormData } from '@/contexts/FormContext';
 import { computeScores } from '@/lib/scoring';
 import { AssessmentComparison } from '@/components/AssessmentComparison';
 import { Switch } from '@/components/ui/switch';
@@ -62,7 +63,7 @@ import { Badge } from '@/components/ui/badge';
 const ClientDetail = () => {
   const { clientName: encodedClientName } = useParams<{ clientName: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile: userProfile } = useAuth();
   const { toast } = useToast();
   
   const clientName = encodedClientName ? decodeURIComponent(encodedClientName) : '';
@@ -73,13 +74,13 @@ const ClientDetail = () => {
   const [editData, setEditData] = useState<Partial<ClientProfile>>({});
   const [deleteDialog, setDeleteDialog] = useState<{ id: string; date: string } | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
-  const [historicalAssessment, setHistoricalAssessment] = useState<{ formData: any; overallScore: number } | null>(null);
+  const [historicalAssessment, setHistoricalAssessment] = useState<{ formData: FormData; overallScore: number } | null>(null);
   const [loadingHistorical, setLoadingHistorical] = useState(false);
   const [showComparison, setShowComparison] = useState(false);
   const [comparisonDate, setComparisonDate] = useState<Date | undefined>(undefined);
   const [snapshots, setSnapshots] = useState<AssessmentSnapshot[]>([]);
   const [loadingSnapshots, setLoadingSnapshots] = useState(false);
-  const [comparisonTarget, setComparisonTarget] = useState<{ old: any; new: any; oldDate: Date; newDate: Date } | null>(null);
+  const [comparisonTarget, setComparisonTarget] = useState<{ old: FormData; new: FormData; oldDate: Date; newDate: Date } | null>(null);
   const [isComparisonMode, setIsComparisonMode] = useState(true);
 
   // Helper to find nearest snapshot at or before target date
@@ -135,7 +136,7 @@ const ClientDetail = () => {
     (async () => {
       try {
         setLoadingSnapshots(true);
-        const data = await getSnapshots(user.uid, clientName);
+        const data = await getSnapshots(user.uid, clientName, 100, userProfile?.organizationId);
         setSnapshots(data);
       } catch (err) {
         console.error('Failed to load snapshots:', err);
@@ -162,20 +163,20 @@ const ClientDetail = () => {
           status: p.status || 'active',
         });
       }
-    });
+    }, userProfile?.organizationId);
 
     // Load assessments
     (async () => {
       try {
         setLoading(true);
-        const data = await getClientAssessments(user.uid, clientName);
+        const data = await getClientAssessments(user.uid, clientName, userProfile?.organizationId);
         setAssessments(data);
         
         // Update profile with latest assessment date
         if (data.length > 0 && data[0].createdAt) {
           await createOrUpdateClientProfile(user.uid, clientName, {
             lastAssessmentDate: data[0].createdAt,
-          });
+          }, userProfile?.organizationId);
         }
       } finally {
         setLoading(false);
@@ -190,7 +191,7 @@ const ClientDetail = () => {
   const handleSaveProfile = async () => {
     if (!user || !clientName) return;
     try {
-      await createOrUpdateClientProfile(user.uid, clientName, editData);
+      await createOrUpdateClientProfile(user.uid, clientName, editData, userProfile?.organizationId);
       setIsEditing(false);
       toast({
         title: "Profile updated",
@@ -296,13 +297,13 @@ const ClientDetail = () => {
   // Load category scores for latest assessment
   const [categoryBreakdown, setCategoryBreakdown] = useState<Record<string, number>>({});
   const [categoryChanges, setCategoryChanges] = useState<Record<string, number>>({});
-  const [currentAssessment, setCurrentAssessment] = useState<any>(null);
+  const [currentAssessment, setCurrentAssessment] = useState<{ formData: FormData; overallScore: number } | null>(null);
   
   useEffect(() => {
     if (!user || !clientName) return;
     (async () => {
       // Load current assessment using new system
-      const current = await getCurrentAssessment(user.uid, clientName);
+      const current = await getCurrentAssessment(user.uid, clientName, userProfile?.organizationId);
       let currentBreakdown: Record<string, number> = {};
       
       if (current) {
@@ -357,7 +358,7 @@ const ClientDetail = () => {
     setLoadingHistorical(true);
     (async () => {
       try {
-        const historical = await reconstructAssessmentAtDate(user.uid, clientName, selectedDate);
+        const historical = await reconstructAssessmentAtDate(user.uid, clientName, selectedDate, userProfile?.organizationId);
         setHistoricalAssessment(historical);
       } catch (err) {
         console.error('Failed to load historical assessment:', err);
@@ -429,7 +430,7 @@ const ClientDetail = () => {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
             <div>
               <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                <Activity className="h-6 w-6 text-indigo-600" />
+                <Activity className="h-6 w-6 text-primary" />
                 Current Live Report
               </h3>
               <p className="text-sm text-slate-500 mt-1">Real-time aggregate of the most recent assessment data across all pillars.</p>
@@ -494,7 +495,7 @@ const ClientDetail = () => {
 
               {currentAssessment && (
                 <Button 
-                  className="h-11 px-6 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 shadow-md shadow-indigo-100 transition-all gap-2"
+                  className="h-11 px-6 rounded-xl bg-primary text-white font-bold hover:brightness-110 shadow-md shadow-primary/10 transition-all gap-2"
                   asChild
                 >
                   <Link to={`/coach/assessments/latest?clientName=${encodeURIComponent(clientName)}`}>
@@ -517,11 +518,11 @@ const ClientDetail = () => {
           ) : (
             <div className="grid gap-4 sm:grid-cols-5">
               {[
-                { id: 'lifestyle', label: 'Lifestyle Factors', color: 'text-purple-600', bg: 'bg-purple-500', icon: Activity },
-                { id: 'bodyComp', label: 'Body Composition', color: 'text-emerald-600', bg: 'bg-emerald-500', icon: Scan },
-                { id: 'movementQuality', label: 'Movement Quality', color: 'text-amber-600', bg: 'bg-amber-500', icon: UserCheck },
-                { id: 'strength', label: 'Muscular Strength', color: 'text-indigo-600', bg: 'bg-indigo-500', icon: Dumbbell },
-                { id: 'cardio', label: 'Metabolic Fitness', color: 'text-red-600', bg: 'bg-red-500', icon: Heart },
+                { id: 'lifestyle', label: 'Lifestyle Factors', color: 'text-primary', bg: 'bg-primary', icon: Activity },
+                { id: 'bodyComp', label: 'Body Composition', color: 'text-primary', bg: 'bg-primary', icon: Scan },
+                { id: 'movementQuality', label: 'Movement Quality', color: 'text-primary', bg: 'bg-primary', icon: UserCheck },
+                { id: 'strength', label: 'Muscular Strength', color: 'text-primary', bg: 'bg-primary', icon: Dumbbell },
+                { id: 'cardio', label: 'Metabolic Fitness', color: 'text-primary', bg: 'bg-primary', icon: Heart },
               ].map((cat) => (
                 <div key={cat.id} className="text-center p-5 rounded-2xl bg-slate-50/50 border border-slate-100/50 transition-all hover:bg-white hover:shadow-md">
                   <div className="flex justify-center mb-3">
@@ -556,24 +557,24 @@ const ClientDetail = () => {
         <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <TargetIcon className="h-5 w-5 text-indigo-600" />
+              <TargetIcon className="h-5 w-5 text-primary" />
               Quick Assessments
             </h3>
             <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Pillar Updates</span>
           </div>
           <div className="grid gap-4 grid-cols-2 md:grid-cols-5">
             {[
-              { id: 'lifestyle', label: 'Lifestyle', icon: Activity, color: 'text-purple-600', bg: 'bg-purple-50' },
-              { id: 'inbody', label: 'InBody', icon: Scan, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-              { id: 'posture', label: 'Movement', icon: UserCheck, color: 'text-amber-600', bg: 'bg-amber-50' },
-              { id: 'strength', label: 'Strength', icon: Dumbbell, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-              { id: 'fitness', label: 'Fitness', icon: Heart, color: 'text-red-600', bg: 'bg-red-50' },
+              { id: 'lifestyle', label: 'Lifestyle', icon: Activity, color: 'text-primary', bg: 'bg-brand-light' },
+              { id: 'inbody', label: 'InBody', icon: Scan, color: 'text-primary', bg: 'bg-brand-light' },
+              { id: 'posture', label: 'Movement', icon: UserCheck, color: 'text-primary', bg: 'bg-brand-light' },
+              { id: 'strength', label: 'Strength', icon: Dumbbell, color: 'text-primary', bg: 'bg-brand-light' },
+              { id: 'fitness', label: 'Fitness', icon: Heart, color: 'text-primary', bg: 'bg-brand-light' },
             ].map((action) => (
               <Button
                 key={action.id}
                 variant="outline"
-                onClick={() => handleNewAssessment(action.id as any)}
-                className="flex flex-col items-center gap-3 h-auto py-6 rounded-2xl border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/30 transition-all group shadow-sm"
+                onClick={() => handleNewAssessment(action.id as 'lifestyle' | 'inbody' | 'posture' | 'strength' | 'fitness')}
+                className="flex flex-col items-center gap-3 h-auto py-6 rounded-2xl border-slate-100 hover:border-primary/20 hover:bg-brand-light transition-all group shadow-sm"
               >
                 <div className={`h-12 w-12 rounded-xl ${action.bg} flex items-center justify-center group-hover:scale-110 transition-transform`}>
                   <action.icon className={`h-6 w-6 ${action.color}`} />

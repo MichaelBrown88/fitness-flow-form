@@ -22,6 +22,7 @@ import {
   X
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 
 interface InBodyCompanionModalProps {
@@ -37,6 +38,7 @@ export const InBodyCompanionModal: React.FC<InBodyCompanionModalProps> = ({
   onComplete,
   onStartDirectScan
 }) => {
+  const { user, profile } = useAuth();
   const [session, setSession] = useState<LiveSession | null>(null);
   const [isOnline, setIsOnline] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,7 +51,7 @@ export const InBodyCompanionModal: React.FC<InBodyCompanionModalProps> = ({
     if (isOpen && !session) {
       const init = async () => {
         try {
-          const newSession = await createLiveSession('current-client');
+          const newSession = await createLiveSession('current-client', profile?.organizationId);
           setSession(newSession);
           setError(null);
         } catch (err) {
@@ -58,7 +60,7 @@ export const InBodyCompanionModal: React.FC<InBodyCompanionModalProps> = ({
       };
       init();
     }
-  }, [isOpen, session]);
+  }, [isOpen, session, profile?.organizationId]);
 
   // 2. Listen for InBody Image
   useEffect(() => {
@@ -67,8 +69,8 @@ export const InBodyCompanionModal: React.FC<InBodyCompanionModalProps> = ({
     const unsubscribe = subscribeToLiveSession(session.id, async (updatedSession) => {
       console.log('[INBODY MODAL] Snapshot update:', {
         inbodyImage: !!updatedSession.inbodyImage,
-        inbodyImageFull: !!(updatedSession as any).inbodyImageFull,
-        inbodyImageStorage: !!(updatedSession as any).inbodyImageStorage
+        inbodyImageFull: !!updatedSession.inbodyImageFull,
+        inbodyImageStorage: !!updatedSession.inbodyImageStorage
       });
       setSession(updatedSession);
       
@@ -77,8 +79,8 @@ export const InBodyCompanionModal: React.FC<InBodyCompanionModalProps> = ({
       }
 
       // Check for OCR review data from companion app
-      const ocrData = (updatedSession as any).ocrReviewData;
-      const isOcrReady = (updatedSession as any).ocrDataReady;
+      const ocrData = updatedSession.ocrReviewData;
+      const isOcrReady = updatedSession.ocrDataReady;
       
       if (isOcrReady && ocrData && !processedRef.current) {
         console.log('[INBODY MODAL] OCR Review data received from companion:', ocrData);
@@ -86,8 +88,8 @@ export const InBodyCompanionModal: React.FC<InBodyCompanionModalProps> = ({
         
         // Pass the data directly (onComplete expects the OCR data structure)
         const formattedData = {
-          ...ocrData,
-          inbodyImage: (updatedSession as any).inbodyImageStorage || (updatedSession as any).inbodyImageFull || updatedSession.inbodyImage
+          ...(typeof ocrData === 'object' ? ocrData : {}),
+          inbodyImage: (updatedSession.inbodyImageStorage as string) || (updatedSession.inbodyImageFull as string) || updatedSession.inbodyImage
         };
         
         console.log('[INBODY MODAL] Calling onComplete with:', formattedData);
@@ -147,7 +149,7 @@ export const InBodyCompanionModal: React.FC<InBodyCompanionModalProps> = ({
               )}
 
               {isProcessing && (
-                <div className="flex items-center gap-2 text-indigo-600 bg-indigo-50 px-4 py-3 rounded-xl">
+                <div className="flex items-center gap-2 text-primary bg-brand-light px-4 py-3 rounded-xl">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span className="text-xs font-bold">Processing InBody scan...</span>
                 </div>
@@ -169,19 +171,19 @@ export const InBodyCompanionModal: React.FC<InBodyCompanionModalProps> = ({
                 <h4 className="text-lg font-black text-slate-900 mb-2">How to Use</h4>
                 <ol className="space-y-3 text-sm text-slate-600">
                   <li className="flex gap-3">
-                    <span className="font-black text-indigo-600">1.</span>
+                    <span className="font-black text-primary">1.</span>
                     <span>Open your iPhone camera app</span>
                   </li>
                   <li className="flex gap-3">
-                    <span className="font-black text-indigo-600">2.</span>
+                    <span className="font-black text-primary">2.</span>
                     <span>Scan the QR code on the left</span>
                   </li>
                   <li className="flex gap-3">
-                    <span className="font-black text-indigo-600">3.</span>
+                    <span className="font-black text-primary">3.</span>
                     <span>Position the InBody report in the frame</span>
                   </li>
                   <li className="flex gap-3">
-                    <span className="font-black text-indigo-600">4.</span>
+                    <span className="font-black text-primary">4.</span>
                     <span>The scan will be captured automatically</span>
                   </li>
                 </ol>

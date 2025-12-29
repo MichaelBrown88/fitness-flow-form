@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import type { CoachPlan, BodyCompInterpretation } from '@/lib/recommendations';
 import type { FormData } from '@/contexts/FormContext';
 import type { ScoreSummary } from '@/lib/scoring';
+import { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
 import OverallRadarChart from './OverallRadarChart';
 import { CheckCircle2, AlertCircle, MessageSquare, Target, ClipboardList, Activity } from 'lucide-react';
 
@@ -411,9 +412,9 @@ export default function CoachReport({
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {(['front', 'back', 'side-left', 'side-right'] as const)
-              .filter(view => formData.postureAiResults[view])
+              .filter(view => formData.postureAiResults?.[view])
               .map((view) => {
-              const analysis = formData.postureAiResults[view];
+              const analysis = formData.postureAiResults![view] as PostureAnalysisResult;
               const imageUrl = formData.postureImages?.[view];
               return (
                 <div key={view} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
@@ -511,7 +512,7 @@ export default function CoachReport({
                       <div className="pt-2 border-t border-slate-100">
                         <p className="text-[9px] font-bold text-slate-500 uppercase mb-1">Identified Deviations:</p>
                         <ul className="list-disc list-inside space-y-0.5">
-                          {analysis.deviations.map((dev: string, idx: number) => (
+                          {analysis.deviations.map((dev, idx) => (
                             <li key={idx} className="text-[9px] text-slate-600">{dev}</li>
                           ))}
                         </ul>
@@ -525,24 +526,25 @@ export default function CoachReport({
         </section>
       )}
 
-      {/* SEGMENTAL GUIDANCE */}
       {plan.segmentalGuidance && plan.segmentalGuidance.length > 0 && (
         <section className="space-y-6">
           <div className="flex items-center gap-3">
             <div className="bg-emerald-600 p-2 rounded-lg">
               <Activity className="h-5 w-5 text-white" />
             </div>
-            <h3 className="text-xl font-bold text-slate-900">Lean Mass Distribution</h3>
+            <h3 className="text-xl font-bold text-slate-900">InBody Segmental Guidance</h3>
           </div>
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-            <ul className="space-y-3">
-              {plan.segmentalGuidance.map((item, i) => (
-                <li key={i} className="flex gap-3 text-slate-700 text-sm">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
-                  {item}
-                </li>
-              ))}
-            </ul>
+          <div className="grid gap-4">
+            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+              <ul className="space-y-3">
+                {plan.segmentalGuidance.map((item, i) => (
+                  <li key={i} className="text-sm text-slate-700 flex gap-3">
+                    <span className="text-emerald-500 font-bold">•</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </section>
       )}

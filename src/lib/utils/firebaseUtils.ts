@@ -1,7 +1,7 @@
 /**
  * Deeply sanitize an object for Firestore by converting all undefined values to null
  */
-export function sanitizeForFirestore(obj: any): any {
+export function sanitizeForFirestore(obj: unknown): unknown {
   if (obj === undefined) return null;
   if (obj === null || typeof obj !== 'object') return obj;
   
@@ -10,11 +10,12 @@ export function sanitizeForFirestore(obj: any): any {
   
   // Handle Firestore sentinels (serverTimestamp, etc)
   // These often have a specific constructor or internal property
-  if (obj.constructor && (
-    obj.constructor.name === 'FieldValue' || 
-    obj.constructor.name === 'Timestamp' ||
-    obj._methodName !== undefined // internal marker for some sentinels
-  )) {
+  const constructorName = obj.constructor?.name;
+  if (
+    constructorName === 'FieldValue' || 
+    constructorName === 'Timestamp' ||
+    '_methodName' in obj // internal marker for some sentinels
+  ) {
     return obj;
   }
 
@@ -22,10 +23,18 @@ export function sanitizeForFirestore(obj: any): any {
     return obj.map(item => sanitizeForFirestore(item));
   }
   
-  const sanitized: Record<string, any> = {};
-  for (const [key, value] of Object.entries(obj)) {
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
     // skip internal firebase properties if any leaked in
     if (key.startsWith('_')) continue;
+
+    // OPTIMIZATION: Strip large base64 strings to prevent Firestore 1MB limit errors
+    // These should be stored in Firebase Storage instead.
+    if (typeof value === 'string' && value.startsWith('data:image/') && value.length > 10000) {
+      sanitized[key] = '(base64_removed_for_storage_limit)';
+      continue;
+    }
+
     sanitized[key] = sanitizeForFirestore(value);
   }
   return sanitized;

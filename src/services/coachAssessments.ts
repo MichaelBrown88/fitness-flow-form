@@ -2,6 +2,7 @@ import { collection, addDoc, serverTimestamp, getDocs, query, orderBy, limit, do
 import type { Timestamp } from 'firebase/firestore';
 import type { FormData } from '@/contexts/FormContext';
 import { getDb } from '@/lib/firebase';
+import { summarizeScores } from '@/lib/scoring';
 
 export type CoachAssessmentSummary = {
   id: string;
@@ -9,6 +10,14 @@ export type CoachAssessmentSummary = {
   createdAt: Timestamp | null;
   overallScore: number;
   goals: string[];
+  scoresSummary?: {
+    overall: number;
+    categories: {
+      id: string;
+      score: number;
+      weaknesses: string[];
+    }[];
+  };
 };
 
 type CoachAssessmentDoc = {
@@ -20,6 +29,11 @@ type CoachAssessmentDoc = {
   overallScore: number;
   goals: string[];
   formData: FormData;
+  organizationId?: string | null;
+  isSummary?: boolean;
+  isPartial?: boolean;
+  category?: string;
+  scoresSummary?: CoachAssessmentSummary['scoresSummary'];
 };
 
 const coachAssessmentsCollection = (coachUid: string) =>
@@ -30,17 +44,20 @@ export async function saveCoachAssessment(
   coachEmail: string | null | undefined,
   formData: FormData,
   overallScore: number,
+  organizationId?: string,
 ): Promise<string> {
   const name = (formData.fullName || 'Unnamed client').trim();
   
   // 1. Use new assessment history system (the deep structure)
   const { updateCurrentAssessment } = await import('./assessmentHistory');
-  await updateCurrentAssessment(coachUid, name, formData, overallScore, 'full', 'all');
+  await updateCurrentAssessment(coachUid, name, formData, overallScore, 'full', 'all', organizationId);
   
   // 2. ALSO update/create a summary in the flat assessments collection for the dashboard
   // We use a consistent ID based on the client name to keep the dashboard tidy
   const assessmentId = `${name.toLowerCase().replace(/\s+/g, '-')}-latest`;
-  const summaryRef = doc(getDb(), 'coaches', coachUid, 'assessments', assessmentId);
+  
+  // Pre-calculate scores summary for dashboard performance
+  const scoresSummary = summarizeScores(formData);
   
   await addDoc(collection(getDb(), 'coaches', coachUid, 'assessments'), {
     clientName: name,
@@ -48,9 +65,11 @@ export async function saveCoachAssessment(
     createdAt: serverTimestamp(),
     coachUid,
     coachEmail: coachEmail || null,
+    organizationId: organizationId || null,
     overallScore,
     goals: Array.isArray(formData.clientGoals) ? formData.clientGoals : [],
     formData: formData, // Include full data so it can be reopened from dashboard
+    scoresSummary,
     isSummary: true 
   });
   
@@ -61,12 +80,27 @@ export async function saveCoachAssessment(
 export async function listCoachAssessments(
   coachUid: string,
   max = 100,
+  organizationId?: string,
 ): Promise<CoachAssessmentSummary[]> {
-  const q = query(
-    coachAssessmentsCollection(coachUid),
-    orderBy('createdAt', 'desc'),
-    limit(max),
-  );
+  let q;
+  if (organizationId) {
+    // If we have an organizationId, we filter by it.
+    // In a full SaaS model, we might query a top-level 'assessments' collection
+    // but for now we're keeping the coach-centric structure.
+    q = query(
+      coachAssessmentsCollection(coachUid),
+      where('organizationId', '==', organizationId),
+      orderBy('createdAt', 'desc'),
+      limit(max),
+    );
+  } else {
+    q = query(
+      coachAssessmentsCollection(coachUid),
+      orderBy('createdAt', 'desc'),
+      limit(max),
+    );
+  }
+
   const snap = await getDocs(q);
   const items: CoachAssessmentSummary[] = [];
   snap.forEach((docSnap) => {
@@ -77,6 +111,7 @@ export async function listCoachAssessments(
       createdAt: (data.createdAt as Timestamp | undefined) ?? null,
       overallScore: typeof data.overallScore === 'number' ? data.overallScore : 0,
       goals: Array.isArray(data.goals) ? data.goals : [],
+      scoresSummary: data.scoresSummary,
     });
   });
   return items;
@@ -107,7 +142,12 @@ export async function getCoachAssessment(
   const snap = await getDoc(ref);
   
   if (snap.exists()) {
-    const data = snap.data();
+    const data = snap.data() as {
+      formData?: FormData;
+      overallScore?: number;
+      goals?: string[];
+      clientName?: string;
+    };
     
     // If it has formData, we're good
     if (data.formData) {
@@ -164,12 +204,23 @@ export async function deleteCoachAssessment(
 export async function getClientAssessments(
   coachUid: string,
   clientName: string,
+  organizationId?: string,
 ): Promise<CoachAssessmentSummary[]> {
-  const q = query(
-    coachAssessmentsCollection(coachUid),
-    where('clientNameLower', '==', clientName.toLowerCase()),
-    orderBy('createdAt', 'desc'),
-  );
+  let q;
+  if (organizationId) {
+    q = query(
+      coachAssessmentsCollection(coachUid),
+      where('clientNameLower', '==', clientName.toLowerCase()),
+      where('organizationId', '==', organizationId),
+      orderBy('createdAt', 'desc'),
+    );
+  } else {
+    q = query(
+      coachAssessmentsCollection(coachUid),
+      where('clientNameLower', '==', clientName.toLowerCase()),
+      orderBy('createdAt', 'desc'),
+    );
+  }
   const snap = await getDocs(q);
   const items: CoachAssessmentSummary[] = [];
   snap.forEach((docSnap) => {
@@ -180,13 +231,26 @@ export async function getClientAssessments(
       createdAt: (data.createdAt as Timestamp | undefined) ?? null,
       overallScore: typeof data.overallScore === 'number' ? data.overallScore : 0,
       goals: Array.isArray(data.goals) ? data.goals : [],
+      scoresSummary: data.scoresSummary,
     });
   });
   return items;
 }
 
-export async function getAllClients(coachUid: string): Promise<string[]> {
-  const q = query(coachAssessmentsCollection(coachUid), orderBy('createdAt', 'desc'));
+export async function getAllClients(coachUid: string, organizationId?: string): Promise<string[]> {
+  let q;
+  if (organizationId) {
+    q = query(
+      coachAssessmentsCollection(coachUid), 
+      where('organizationId', '==', organizationId),
+      orderBy('createdAt', 'desc')
+    );
+  } else {
+    q = query(
+      coachAssessmentsCollection(coachUid), 
+      orderBy('createdAt', 'desc')
+    );
+  }
   const snap = await getDocs(q);
   const clients = new Set<string>();
   snap.forEach((docSnap) => {
@@ -205,6 +269,7 @@ export async function savePartialAssessment(
   overallScore: number,
   clientName: string,
   category: 'inbody' | 'posture' | 'fitness' | 'strength' | 'lifestyle',
+  organizationId?: string,
 ): Promise<string> {
   const finalName = (clientName || formData.fullName || 'Unnamed client').trim();
   
@@ -221,7 +286,10 @@ export async function savePartialAssessment(
   const changeType = `partial-${category}` as const;
   
   // 2. Update current assessment and log change (deep structure)
-  await updateCurrentAssessment(coachUid, finalName, mergedFormData, overallScore, changeType, category);
+  await updateCurrentAssessment(coachUid, finalName, mergedFormData, overallScore, changeType, category, organizationId);
+  
+  // Pre-calculate scores summary for dashboard performance
+  const scoresSummary = summarizeScores(mergedFormData);
   
   // 3. Update summary for dashboard
   await addDoc(collection(getDb(), 'coaches', coachUid, 'assessments'), {
@@ -230,9 +298,11 @@ export async function savePartialAssessment(
     createdAt: serverTimestamp(),
     coachUid,
     coachEmail: coachEmail || null,
+    organizationId: organizationId || null,
     overallScore,
     goals: Array.isArray(mergedFormData.clientGoals) ? mergedFormData.clientGoals : [],
     formData: mergedFormData, // Include merged data for this point in time
+    scoresSummary,
     category,
     isPartial: true
   });

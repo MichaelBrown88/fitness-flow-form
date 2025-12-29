@@ -37,6 +37,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface PostureCompanionModalProps {
   isOpen: boolean;
@@ -51,6 +52,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
   onComplete,
   onStartDirectScan
 }) => {
+  const { user, profile } = useAuth();
   const [session, setSession] = useState<LiveSession | null>(null);
   const [analyzingViews, setAnalyzingViews] = useState<Record<string, boolean>>({});
   const [isOnline, setIsOnline] = useState(false);
@@ -66,7 +68,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
     if (isOpen && !session) {
       const init = async () => {
         try {
-          const newSession = await createLiveSession('current-client');
+          const newSession = await createLiveSession('current-client', profile?.organizationId);
           setSession(newSession);
           setError(null);
         } catch (err) {
@@ -75,7 +77,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
       };
       init();
     }
-  }, [isOpen, session]);
+  }, [isOpen, session, profile?.organizationId]);
 
   // 2. Listen for Photos
   useEffect(() => {
@@ -98,11 +100,11 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
           processedRef.current.add(`${view}-${imageUrl}`);
           
           // Use full-size image for AI analysis if available, otherwise use compressed
-          const fullSizeUrl = (updatedSession as any)[`postureImagesFull_${view}`];
-          const imageForAI = fullSizeUrl || imageUrl;
+          const fullSizeUrl = updatedSession[`postureImagesFull_${view}`];
+          const imageForAI = (typeof fullSizeUrl === 'string' ? fullSizeUrl : null) || imageUrl;
           
           // Get landmarks if available in session
-          const landmarks = (updatedSession as any)[`landmarks_${view}`];
+          const landmarks = updatedSession[`landmarks_${view}`];
           
           if (fullSizeUrl) {
             console.log(`[AI] Using full-size image from Storage for ${view}`);
@@ -159,8 +161,8 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
         // Prefer base64 from Firestore to avoid CORS issues with Storage URLs
         let currentImage = latestSession.postureImages?.[view] || 
                           session.postureImages?.[view] ||
-                          (latestSession as any)[`postureImagesFull_${view}`] || 
-                          (latestSession as any)[`postureImagesStorage_${view}`];
+                          (latestSession[`postureImagesFull_${view}`] as string) || 
+                          (latestSession[`postureImagesStorage_${view}`] as string);
         
         // If still no image, use the URL we used for AI (should have green lines)
         if (!currentImage && url) {
@@ -169,7 +171,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
         
         console.log(`[OVERLAY] Image source check for ${view}:`, {
           hasFirestoreBase64: !!latestSession.postureImages?.[view],
-          hasStorageUrl: !!(latestSession as any)[`postureImagesFull_${view}`],
+          hasStorageUrl: !!latestSession[`postureImagesFull_${view}`],
           hasLatestImage: !!latestSession.postureImages?.[view],
           hasSessionImage: !!session.postureImages?.[view],
           hasUrl: !!url,
@@ -375,9 +377,9 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
     const storageUrls: Record<string, string> = {};
     
     views.forEach((view) => {
-      const storageUrl = (session as any)[`postureImagesStorage_${view}`] || 
-                        (session as any)[`postureImagesFull_${view}`];
-      if (storageUrl) {
+      const storageUrl = session[`postureImagesStorage_${view}`] || 
+                        session[`postureImagesFull_${view}`];
+      if (typeof storageUrl === 'string') {
         storageUrls[view] = storageUrl;
         console.log(`[APPLY] Found Storage URL for ${view}:`, storageUrl);
       } else {
@@ -416,7 +418,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
           <div className="w-full lg:w-1/3 bg-slate-50 p-8 border-r border-slate-100 flex flex-col items-center">
             <div className="flex flex-col items-center text-center mb-8">
               <div className="bg-white p-4 rounded-3xl shadow-sm mb-4">
-                <Smartphone className="h-10 w-10 text-indigo-600" />
+                <Smartphone className="h-10 w-10 text-primary" />
               </div>
               <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Remote Camera</h3>
               <p className="text-slate-500 text-xs mt-2">Scan to connect your iPhone.</p>
@@ -428,7 +430,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                   <QRCodeSVG value={companionUrl} size={180} />
                 </div>
               ) : (
-                <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
               )}
             </div>
 
@@ -495,19 +497,19 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
               <h4 className="text-lg font-black text-slate-900 mb-2">How to Use</h4>
               <ol className="space-y-3 text-sm text-slate-600 mb-4">
                 <li className="flex gap-3">
-                  <span className="font-black text-indigo-600">1.</span>
+                  <span className="font-black text-primary">1.</span>
                   <span>Open your iPhone camera app</span>
                 </li>
                 <li className="flex gap-3">
-                  <span className="font-black text-indigo-600">2.</span>
+                  <span className="font-black text-primary">2.</span>
                   <span>Scan the QR code on the left</span>
                 </li>
                 <li className="flex gap-3">
-                  <span className="font-black text-indigo-600">3.</span>
+                  <span className="font-black text-primary">3.</span>
                   <span>Follow the on-screen instructions to capture all 4 views</span>
                 </li>
                 <li className="flex gap-3">
-                  <span className="font-black text-indigo-600">4.</span>
+                  <span className="font-black text-primary">4.</span>
                   <span>Photos will appear here as they're captured</span>
                 </li>
               </ol>
@@ -539,7 +541,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                             onClick={() => setPreviewImage({ url: imageUrl, view })}
                           />
                           {analyzingViews[view] && (
-                            <div className="absolute inset-0 bg-indigo-600/40 backdrop-blur-sm flex flex-col items-center justify-center p-4 text-center">
+                            <div className="absolute inset-0 bg-primary/40 backdrop-blur-sm flex flex-col items-center justify-center p-4 text-center">
                               <Loader2 className="h-8 w-8 animate-spin text-white mb-2" />
                               <span className="text-[10px] font-black uppercase tracking-widest text-white">AI Analysis...</span>
                             </div>
@@ -562,8 +564,8 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                     {session?.analysis[view] && (
                       <div className="mt-2 bg-slate-50 p-3 rounded-xl border border-slate-100 animate-in fade-in slide-in-from-bottom-2">
                         <div className="flex items-center gap-2 mb-2">
-                          <ShieldAlert className="h-3 w-3 text-indigo-500" />
-                          <span className="text-[8px] font-black uppercase text-indigo-500">AI Findings</span>
+                          <ShieldAlert className="h-3 w-3 text-primary" />
+                          <span className="text-[8px] font-black uppercase text-primary">AI Findings</span>
                         </div>
                         <div className="space-y-1.5">
                           {/* Side view findings */}

@@ -1,0 +1,11 @@
+# StackHawk configuration for fitness-flow-form
+app:
+  applicationId: "374698f8-8278-4676-be0d-bc0248b6b76f"
+  env: "Development"
+  host: "http://localhost:8080"
+hawk:
+  spider:
+    ajax: true # Optimized for React Single Page Apps
+    ajaxBrowser: CHROME_HEADLESS
+  scan:
+    maxDurationMinutes: 10  

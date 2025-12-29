@@ -875,6 +875,22 @@ export function computeScores(form: FormData): ScoreSummary {
   return { overall, categories, synthesis };
 }
 
+/**
+ * Lightweight summary of scores for analytics and dashboard views
+ * without needing to load the full FormData.
+ */
+export function summarizeScores(form: FormData) {
+  const scores = computeScores(form);
+  return {
+    overall: scores.overall,
+    categories: scores.categories.map(c => ({
+      id: c.id,
+      score: c.score,
+      weaknesses: c.weaknesses
+    }))
+  };
+}
+
 export type RoadmapPhase = {
   title: string;
   weeks: number;

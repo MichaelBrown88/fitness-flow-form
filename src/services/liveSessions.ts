@@ -9,30 +9,36 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { compressImageForDisplay } from '@/lib/utils/imageCompression';
-import { addPostureOverlay } from '@/lib/utils/postureOverlay';
+import { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
 import { sanitizeForFirestore } from '@/lib/utils/firebaseUtils';
+import { LandmarkResult } from '@/lib/ai/postureLandmarks';
 
 export interface LiveSession {
+// ...
   id: string;
   clientId: string;
+  organizationId?: string; // SaaS readiness
   companionToken: string;
   status: 'active' | 'completed';
   companionJoined: boolean;
   postureImages: Record<string, string>;
   inbodyImage?: string; // For InBody scan
-  analysis: Record<string, any>;
+  analysis: Record<string, PostureAnalysisResult>;
   createdAt: Timestamp;
+  // Dynamic properties from Firestore snapshots
+  [key: string]: string | number | boolean | Timestamp | Record<string, string> | Record<string, PostureAnalysisResult> | undefined | null;
 }
 
 const SESSIONS_COLLECTION = 'live_sessions';
 
-export const createLiveSession = async (clientId: string): Promise<LiveSession> => {
+export const createLiveSession = async (clientId: string, organizationId?: string): Promise<LiveSession> => {
   const sessionId = Math.random().toString(36).substring(2, 12).toUpperCase();
   const companionToken = Math.random().toString(36).substring(2, 12);
   
   const session: LiveSession = {
     id: sessionId,
     clientId,
+    organizationId: organizationId || null,
     companionToken,
     status: 'active',
     companionJoined: false,
@@ -42,7 +48,7 @@ export const createLiveSession = async (clientId: string): Promise<LiveSession> 
   };
 
   try {
-    await setDoc(doc(db, SESSIONS_COLLECTION, sessionId), session);
+    await setDoc(doc(db, SESSIONS_COLLECTION, sessionId), sanitizeForFirestore(session));
     return session;
   } catch (err) {
     console.error('[SYNC] Init Error:', err);
@@ -63,23 +69,23 @@ export const subscribeToLiveSession = (sessionId: string, callback: (session: Li
   });
 };
 
-export const updatePostureImage = async (sessionId: string, view: string, imageData: string) => {
+export const updatePostureImage = async (sessionId: string, view: string, imageData: string, providedLandmarks?: LandmarkResult) => {
   try {
     // Validate image data first
     if (!imageData || (!imageData.startsWith('data:image') && !imageData.startsWith('http'))) {
       throw new Error(`Invalid image data format for ${view}. Expected data URL or HTTP URL.`);
     }
     
-    // STEP 1: Detect landmarks to align the image
+    // STEP 1: Detect or use provided landmarks to align the image
     // We need to know where the body is before we can align it with fixed green line positions
-    let landmarks;
+    let landmarks = providedLandmarks;
     
-    // Only try landmark detection if we have valid image data
-    if (imageData.startsWith('data:image') || imageData.startsWith('http')) {
+    // Only try landmark detection if we don't have them yet
+    if (!landmarks && (imageData.startsWith('data:image') || imageData.startsWith('http'))) {
       try {
         const { detectPostureLandmarks } = await import('@/lib/ai/postureLandmarks');
         landmarks = await detectPostureLandmarks(imageData, view as 'front' | 'side-right' | 'side-left' | 'back');
-        console.log(`[ALIGN] Detected landmarks for ${view}:`, landmarks);
+        console.log(`[ALIGN] Detected landmarks for ${view} (fallback):`, landmarks);
       } catch (landmarkError) {
         console.warn(`[ALIGN] Failed to detect landmarks for ${view}, will skip alignment:`, landmarkError);
         // Continue without alignment if landmark detection fails
@@ -163,7 +169,7 @@ export const updatePostureImage = async (sessionId: string, view: string, imageD
     const sessionRef = doc(db, SESSIONS_COLLECTION, sessionId);
     console.log(`[SYNC] Updating Firestore for ${view} in session ${sessionId}`);
     
-    const updatePayload: Record<string, any> = {
+    const updatePayload: Record<string, string | Record<string, any>> = {
       [`postureImages.${view}`]: compressedImage
     };
     
@@ -269,7 +275,7 @@ export const updateInBodyImage = async (sessionId: string, imageData: string) =>
   }
 };
 
-export const updatePostureAnalysis = async (sessionId: string, view: string, analysis: any) => {
+export const updatePostureAnalysis = async (sessionId: string, view: string, analysis: PostureAnalysisResult) => {
   const sessionRef = doc(db, SESSIONS_COLLECTION, sessionId);
   // Use updateDoc with dot notation to avoid nested entity issues
   await updateDoc(sessionRef, {
@@ -280,14 +286,25 @@ export const updatePostureAnalysis = async (sessionId: string, view: string, ana
 /**
  * Get all sessions for a specific client (for comparison features)
  */
-export const getClientSessions = async (clientId: string): Promise<LiveSession[]> => {
+export const getClientSessions = async (clientId: string, organizationId?: string): Promise<LiveSession[]> => {
   const { collection, query, where, getDocs, orderBy } = await import('firebase/firestore');
   const sessionsRef = collection(db, SESSIONS_COLLECTION);
-  const q = query(
+  
+  let q;
+  if (organizationId) {
+    q = query(
+      sessionsRef,
+      where('clientId', '==', clientId),
+      where('organizationId', '==', organizationId),
+      orderBy('createdAt', 'desc')
+    );
+  } else {
+    q = query(
     sessionsRef,
     where('clientId', '==', clientId),
     orderBy('createdAt', 'desc')
   );
+  }
   
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => doc.data() as LiveSession);
@@ -296,25 +313,27 @@ export const getClientSessions = async (clientId: string): Promise<LiveSession[]
 /**
  * Get all storage URLs for a client's sessions (for before/after comparisons)
  */
-export const getClientPostureImages = async (clientId: string): Promise<Record<string, {
+export interface ClientSessionSummary {
   sessionId: string;
   createdAt: Timestamp;
   images: Record<string, string>; // view -> storage URL
-  analysis: Record<string, any>; // view -> analysis
-}>> => {
-  const sessions = await getClientSessions(clientId);
-  const result: Record<string, any> = {};
+  analysis: Record<string, PostureAnalysisResult>; // view -> analysis
+}
+
+export const getClientPostureImages = async (clientId: string, organizationId?: string): Promise<Record<string, ClientSessionSummary>> => {
+  const sessions = await getClientSessions(clientId, organizationId);
+  const result: Record<string, ClientSessionSummary> = {};
   
   for (const session of sessions) {
     const images: Record<string, string> = {};
-    const analysis: Record<string, any> = {};
+    const analysis: Record<string, PostureAnalysisResult> = {};
     
     // Get full-size storage URLs for each view
     const views: ('front' | 'back' | 'side-left' | 'side-right')[] = ['front', 'back', 'side-left', 'side-right'];
     for (const view of views) {
-      const storageUrl = (session as any)[`postureImagesFull_${view}`] || 
-                        (session as any)[`postureImagesStorage_${view}`];
-      if (storageUrl) {
+      const storageUrl = session[`postureImagesFull_${view}`] || 
+                        session[`postureImagesStorage_${view}`];
+      if (typeof storageUrl === 'string') {
         images[view] = storageUrl;
       }
       

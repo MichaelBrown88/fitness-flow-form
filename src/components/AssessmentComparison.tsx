@@ -1,5 +1,6 @@
 import React from 'react';
 import { type FormData } from '@/contexts/FormContext';
+import { FormValue } from '@/services/assessmentHistory';
 import { computeScores } from '@/lib/scoring';
 import { ArrowRight, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -20,7 +21,7 @@ export const AssessmentComparison: React.FC<AssessmentComparisonProps> = ({
   const oldScores = computeScores(oldData);
   const newScores = computeScores(newData);
 
-  const compareValue = (oldVal: any, newVal: any, label: string, format?: (v: any) => string) => {
+  const compareValue = (oldVal: FormValue, newVal: FormValue, label: string, format?: (v: FormValue) => string) => {
     const formatted = format || ((v) => String(v ?? 'N/A'));
     const oldFormatted = formatted(oldVal);
     const newFormatted = formatted(newVal);
@@ -127,7 +128,7 @@ export const AssessmentComparison: React.FC<AssessmentComparisonProps> = ({
             newData.inbodyWeightKg,
             'Weight (kg)',
             (v) => {
-              const num = parseFloat(v);
+              const num = parseFloat(String(v ?? ''));
               return !isNaN(num) ? `${num.toFixed(1)} kg` : 'N/A';
             }
           )}
@@ -136,7 +137,7 @@ export const AssessmentComparison: React.FC<AssessmentComparisonProps> = ({
             newData.inbodyBodyFatPct,
             'Body Fat %',
             (v) => {
-              const num = parseFloat(v);
+              const num = parseFloat(String(v ?? ''));
               return !isNaN(num) ? `${num.toFixed(1)}%` : 'N/A';
             }
           )}
@@ -145,7 +146,7 @@ export const AssessmentComparison: React.FC<AssessmentComparisonProps> = ({
             newData.inbodyBmi,
             'BMI',
             (v) => {
-              const num = parseFloat(v);
+              const num = parseFloat(String(v ?? ''));
               return !isNaN(num) ? num.toFixed(1) : 'N/A';
             }
           )}
@@ -154,7 +155,7 @@ export const AssessmentComparison: React.FC<AssessmentComparisonProps> = ({
             newData.cardioVo2MaxEstimate,
             'VO2 Max Estimate',
             (v) => {
-              const num = parseFloat(v);
+              const num = parseFloat(String(v ?? ''));
               return !isNaN(num) ? `${num.toFixed(1)} ml/kg/min` : 'N/A';
             }
           )}
@@ -163,7 +164,7 @@ export const AssessmentComparison: React.FC<AssessmentComparisonProps> = ({
             newData.inbodyScore,
             'InBody Score',
             (v) => {
-              const num = parseFloat(v);
+              const num = parseFloat(String(v ?? ''));
               return !isNaN(num) ? num.toFixed(0) : 'N/A';
             }
           )}
@@ -172,7 +173,7 @@ export const AssessmentComparison: React.FC<AssessmentComparisonProps> = ({
             newData.visceralFatLevel,
             'Visceral Fat Level',
             (v) => {
-              const num = parseFloat(v);
+              const num = parseFloat(String(v ?? ''));
               return !isNaN(num) ? num.toFixed(0) : 'N/A';
             }
           )}
@@ -181,7 +182,7 @@ export const AssessmentComparison: React.FC<AssessmentComparisonProps> = ({
             newData.skeletalMuscleMassKg,
             'Muscle Mass (kg)',
             (v) => {
-              const num = parseFloat(v);
+              const num = parseFloat(String(v ?? ''));
               return !isNaN(num) ? `${num.toFixed(1)} kg` : 'N/A';
             }
           )}
@@ -190,7 +191,7 @@ export const AssessmentComparison: React.FC<AssessmentComparisonProps> = ({
             newData.cardioRestingHr,
             'Resting HR',
             (v) => {
-              const num = parseFloat(v);
+              const num = parseFloat(String(v ?? ''));
               return !isNaN(num) ? `${num} bpm` : 'N/A';
             }
           )}
@@ -199,7 +200,7 @@ export const AssessmentComparison: React.FC<AssessmentComparisonProps> = ({
             newData.gripLeftKg,
             'Grip Strength (L)',
             (v) => {
-              const num = parseFloat(v);
+              const num = parseFloat(String(v ?? ''));
               return !isNaN(num) ? `${num.toFixed(1)} kg` : 'N/A';
             }
           )}
@@ -208,7 +209,7 @@ export const AssessmentComparison: React.FC<AssessmentComparisonProps> = ({
             newData.pushupsOneMinuteReps,
             'Push-ups (1 min)',
             (v) => {
-              const num = parseFloat(v);
+              const num = parseFloat(String(v ?? ''));
               return !isNaN(num) ? `${num} reps` : 'N/A';
             }
           )}

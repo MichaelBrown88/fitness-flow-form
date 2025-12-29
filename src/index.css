@@ -20,6 +20,9 @@ All colors MUST be HSL.
     --primary: 221 83% 53%;
     --primary-foreground: 210 40% 98%;
 
+    --brand-primary: #03dee2; /* Unified brand fallback */
+    --brand-primary-transparent: rgba(3, 222, 226, 0.1);
+
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222 47% 11.2%;
 
