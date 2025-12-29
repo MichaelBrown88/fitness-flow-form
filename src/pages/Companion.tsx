@@ -434,12 +434,12 @@ const Companion = () => {
     setIsSequenceActive(true);
     isSequenceActiveRef.current = true;
     
-    // New capture order: Front → Right → Back → Left (1/4 turn each)
+    // New capture order: Front → Right → Back → Left (quarter turn each)
     const captureInstructions = [
       "Face the camera",
-      "Turn 1/4 to your right",
-      "Turn 1/4 more to your right", 
-      "Turn 1/4 more to your right"
+      "Turn a quarter turn to your right",
+      "Turn a quarter turn more to your right", 
+      "Turn a quarter turn more to your right"
     ];
     speak(`Prepare for ${VIEWS[idx].label}. ${captureInstructions[idx]}.`);
 
