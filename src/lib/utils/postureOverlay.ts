@@ -162,15 +162,6 @@ export async function addPostureOverlay(
           ctx.stroke();
         }
 
-        // Always show head line for posture views
-        ctx.setLineDash([5, 5]);
-        ctx.strokeStyle = `${lineColor}88`; // Semi-transparent
-        ctx.beginPath();
-        ctx.moveTo(0, targetHeadY);
-        ctx.lineTo(canvas.width, targetHeadY);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
         if (mode === 'deviation' && analysis) {
           drawDeviations(ctx, view, analysis, targetCenterX, targetShoulderY, targetHipY);
         }
@@ -462,33 +453,27 @@ export function generatePlaceholderWithGreenLines(
   const centerX = width * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.CENTER_X_PCT / 100);
   const shoulderY = height * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.SHOULDER_Y_PCT / 100);
   const hipY = height * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.HIP_Y_PCT / 100);
-  const headY = height * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.HEAD_Y_PCT / 100);
 
   ctx.strokeStyle = CONFIG.POSTURE_OVERLAY.STYLE.LINE_COLOR;
   ctx.lineWidth = CONFIG.POSTURE_OVERLAY.STYLE.LINE_WIDTH;
   ctx.lineCap = 'round';
 
+  // Vertical midline
   ctx.beginPath();
   ctx.moveTo(centerX, 0);
   ctx.lineTo(centerX, height);
   ctx.stroke();
 
+  // Horizontal shoulder line
   ctx.beginPath();
   ctx.moveTo(0, shoulderY);
   ctx.lineTo(width, shoulderY);
   ctx.stroke();
 
+  // Horizontal hip line
   ctx.beginPath();
   ctx.moveTo(0, hipY);
   ctx.lineTo(width, hipY);
-  ctx.stroke();
-
-  // Head line (dashed)
-  ctx.setLineDash([10, 10]);
-  ctx.strokeStyle = `${CONFIG.POSTURE_OVERLAY.STYLE.LINE_COLOR}88`;
-  ctx.beginPath();
-  ctx.moveTo(0, headY);
-  ctx.lineTo(width, headY);
   ctx.stroke();
 
   return canvas.toDataURL('image/jpeg', 0.95);
