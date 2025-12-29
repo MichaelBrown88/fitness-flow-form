@@ -24,6 +24,7 @@ interface PoseValidation {
     tooFar: boolean;
     notCentered: boolean;
     missingParts: string[];
+    outOfFrame?: boolean;
   };
 }
 
@@ -65,7 +66,7 @@ const Companion = () => {
     isReady: false,
     message: "Ready to scan",
     shortMessage: "READY",
-    details: { tooClose: false, tooFar: false, notCentered: false, missingParts: [] }
+    details: { tooClose: false, tooFar: false, notCentered: false, missingParts: [], outOfFrame: false }
   });
   const [isPoseLoading, setIsPoseLoading] = useState(false);
   const [isWaitingForPosition, setIsWaitingForPosition] = useState(false);
@@ -182,15 +183,37 @@ const Companion = () => {
     
     currentLandmarksRef.current = landmarkResult;
 
+    // Frame boundaries (85% width, ~95% height)
+    const frameLeft = 0.075; // 7.5% from left
+    const frameRight = 0.925; // 92.5% from left (85% width)
+    const frameTop = 0.05; // 5% from top
+    const frameBottom = 0.95; // 95% from top
+    
+    // Check if any key landmarks are outside the frame
+    const headOut = nose.x < frameLeft || nose.x > frameRight || nose.y < frameTop;
+    const leftShoulderOut = shoulderL.x < frameLeft || shoulderL.y < frameTop;
+    const rightShoulderOut = shoulderR.x > frameRight || shoulderR.y < frameTop;
+    const leftHipOut = hipL.x < frameLeft || hipL.y > frameBottom;
+    const rightHipOut = hipR.x > frameRight || hipR.y > frameBottom;
+    const leftAnkleOut = ankleL.x < frameLeft || ankleL.y > frameBottom;
+    const rightAnkleOut = ankleR.x > frameRight || ankleR.y > frameBottom;
+    
+    const outOfFrame = headOut || leftShoulderOut || rightShoulderOut || 
+                       leftHipOut || rightHipOut || leftAnkleOut || rightAnkleOut;
+    
     const tooClose = bodyHeight > CONFIG.COMPANION.POSE_THRESHOLDS.TOO_CLOSE;
     const tooFar = bodyHeight < CONFIG.COMPANION.POSE_THRESHOLDS.TOO_FAR;
     const notCentered = Math.abs(bodyCenter - 0.5) > CONFIG.COMPANION.POSE_THRESHOLDS.NOT_CENTERED;
 
     let message = "Perfect, hold still";
     let shortMessage = "READY";
-    let isReady = missingParts.length === 0 && !tooClose && !tooFar && !notCentered;
+    let isReady = missingParts.length === 0 && !tooClose && !tooFar && !notCentered && !outOfFrame;
 
-    if (missingParts.length > 0) {
+    if (outOfFrame) {
+      message = "Please stay inside the box";
+      shortMessage = "OUT OF FRAME";
+      isReady = false;
+    } else if (missingParts.length > 0) {
       message = `Full body must be visible (Missing: ${missingParts.join(', ')})`;
       shortMessage = "INCOMPLETE";
       isReady = false;
@@ -212,7 +235,7 @@ const Companion = () => {
       isReady,
       message,
       shortMessage,
-      details: { tooClose, tooFar, notCentered, missingParts }
+      details: { tooClose, tooFar, notCentered, missingParts, outOfFrame: outOfFrame || false }
     });
     isPoseReadyRef.current = isReady;
 
@@ -689,13 +712,32 @@ const Companion = () => {
       {mode === 'posture' && !isSequenceActive && (
         <div className="absolute top-20 left-0 right-0 flex flex-col items-center gap-2 z-50 pointer-events-none px-6">
           <div className={`px-4 py-2 rounded-full border flex items-center gap-2 transition-all ${
-            poseValidation.isReady ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' : 'bg-red-500/20 border-red-500/50 text-red-400'
+            poseValidation.details?.outOfFrame
+              ? 'bg-red-500/20 border-red-500/50 text-red-400'
+              : poseValidation.isReady 
+                ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' 
+                : 'bg-amber-500/20 border-amber-500/50 text-amber-400'
           }`}>
-            {poseValidation.isReady ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+            {poseValidation.details?.outOfFrame ? <AlertCircle className="h-4 w-4" /> : poseValidation.isReady ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
             <span className="text-xs font-black uppercase tracking-widest">{poseValidation.message}</span>
           </div>
           <div className="px-3 py-1 rounded-full bg-black/40 border border-white/10 text-[10px] font-black text-white/80 tracking-[0.2em] uppercase shadow-lg">
             VIEW: {VIEWS[viewIdx].label}
+          </div>
+        </div>
+      )}
+      
+      {/* Tripod Setup Instructions - Show on first view only */}
+      {mode === 'posture' && viewIdx === 0 && !isSequenceActive && (
+        <div className="absolute top-32 left-4 right-4 z-40 pointer-events-none">
+          <div className="bg-black/80 backdrop-blur-sm rounded-xl p-4 border border-white/20 max-w-sm mx-auto">
+            <h3 className="text-xs font-black uppercase tracking-widest text-white mb-2">Tripod Setup</h3>
+            <ul className="text-[10px] text-white/80 space-y-1">
+              <li>• Set tripod height to client's hip level</li>
+              <li>• Position 6-8 feet from client</li>
+              <li>• Ensure client fills the frame</li>
+              <li>• Keep phone vertical and level</li>
+            </ul>
           </div>
         </div>
       )}
@@ -710,12 +752,18 @@ const Companion = () => {
         </div>
       </div>
           
-      {/* Guide Box */}
+      {/* Guide Box - Expanded height, restricted width */}
       {mode !== 'inbody' && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-          <div className={`w-[85%] max-w-lg aspect-[1/1.8] border-[4px] rounded-[50px] transition-all duration-500 ${
-            isVertical ? (poseValidation.isReady ? 'border-emerald-500 shadow-[0_0_30px_#10b98166]' : 'border-amber-500 shadow-[0_0_30px_#f59e0b66]') : 'border-red-500 shadow-[0_0_30px_#ef444466]'
-          }`} style={{ height: 'calc(100vh - 180px)' }}>
+          <div className={`w-[85%] max-w-lg border-[4px] rounded-[50px] transition-all duration-500 ${
+            isVertical 
+              ? (poseValidation.details?.outOfFrame 
+                  ? 'border-red-500 shadow-[0_0_30px_#ef444466]' 
+                  : poseValidation.isReady 
+                    ? 'border-emerald-500 shadow-[0_0_30px_#10b98166]' 
+                    : 'border-amber-500 shadow-[0_0_30px_#f59e0b66]')
+              : 'border-red-500 shadow-[0_0_30px_#ef444466]'
+          }`} style={{ height: 'calc(100vh - 100px)' }}>
             {/* Visual Indicators for Center/Missing */}
             {!poseValidation.isReady && !isWaitingForPosition && (
               <div className="absolute inset-0 flex flex-col items-center justify-center opacity-40">
