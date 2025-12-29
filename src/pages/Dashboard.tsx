@@ -111,10 +111,22 @@ const Dashboard = () => {
     // Set up real-time listener for assessments
     const assessmentsRef = collection(getDb(), 'coaches', user.uid, 'assessments');
     
-    // SaaS Readiness: Filter by organizationId if present
-    // LEGACY SUPPORT: We fetch all and filter in memory to avoid index errors 
-    // and show assessments created before the organizationId was added.
-    const q = query(assessmentsRef, orderBy('createdAt', 'desc'), limit(500));
+    // SaaS Readiness: Filter by organizationId at the query level for performance
+    // This requires a Firestore composite index: organizationId (asc) + createdAt (desc)
+    // For legacy data without organizationId, we'll handle it in a separate query
+    let q;
+    if (profile?.organizationId) {
+      // Primary query: Filter by organizationId at database level
+      q = query(
+        assessmentsRef,
+        where('organizationId', '==', profile.organizationId),
+        orderBy('createdAt', 'desc'),
+        limit(500)
+      );
+    } else {
+      // Fallback: No organizationId filter (legacy support)
+      q = query(assessmentsRef, orderBy('createdAt', 'desc'), limit(500));
+    }
     
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       try {
@@ -123,13 +135,6 @@ const Dashboard = () => {
         snapshot.forEach((docSnap) => {
           const docData = docSnap.data();
           
-          // Legacy filter: If organizationId is set, only show matching ones.
-          // IF organizationId is MISSING, show it (it's legacy data from this coach).
-          const itemOrgId = docData.organizationId;
-          if (profile?.organizationId && itemOrgId && itemOrgId !== profile.organizationId) {
-            return; // Belongs to a different organization
-          }
-
           data.push({
             id: docSnap.id,
             clientName: docData.clientName || 'Unnamed client',

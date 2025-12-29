@@ -84,7 +84,7 @@ export async function detectPostureLandmarks(
         }
       }, CONFIG.AI.MEDIAPIPE.TIMEOUT_MS);
       
-      pose.onResults((results: any) => {
+      pose.onResults((results: import('@/lib/types/mediapipe').MediaPipePoseResults) => {
         if (resolved) return;
         clearTimeout(timeout);
         resolved = true;

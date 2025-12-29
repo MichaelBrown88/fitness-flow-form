@@ -34,11 +34,12 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import type { PostureCompanionData } from '@/lib/types/companion';
 
 interface PostureCompanionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onComplete: (data: any) => void;
+  onComplete: (data: PostureCompanionData) => void;
   onStartDirectScan?: () => void;
 }
 

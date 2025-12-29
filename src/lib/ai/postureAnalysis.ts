@@ -13,7 +13,7 @@ export interface PostureAnalysisResult {
     head_y_percent?: number; // Y position of head/nose as % of image height (0-100)
     center_x_percent?: number; // X position of body center/midfoot as % of image width (0-100)
     midfoot_x_percent?: number; // X position of midfoot (for side views) as % of image width (0-100)
-    raw?: any; // The raw MediaPipe landmarks for calculation
+    raw?: import('@/lib/types/mediapipe').MediaPipeLandmark[]; // The raw MediaPipe landmarks for calculation
   };
   // ...
   // Head Position
@@ -116,7 +116,7 @@ export async function analyzePostureImage(
   
   try {
     // 1. CALCULATE DETERMINISTIC METRICS FIRST (Free)
-    let calculated: any = {};
+    let calculated: Partial<import('@/lib/utils/postureMath').CalculatedPostureMetrics> = {};
     if (landmarks?.raw) {
       if (view === 'front' || view === 'back') {
         calculated = calculateFrontViewMetrics(landmarks.raw);
@@ -506,7 +506,7 @@ export async function analyzePostureImage(
     // Try to get JSON first, fallback to text extraction if needed
     try {
       const text = aiResponse.text();
-      let data: any;
+      let data: PostureAnalysisResult;
       // If responseMimeType is set, text should be valid JSON
       try {
         data = JSON.parse(text);

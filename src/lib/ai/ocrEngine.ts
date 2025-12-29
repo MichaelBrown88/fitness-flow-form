@@ -155,7 +155,7 @@ export async function processInBodyScan(imageSrc: string): Promise<OcrResult> {
     // Primary: Use Gemini AI directly (fast and reliable)
     return await runGeminiOcr(imageSrc);
     
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[OCR] Gemini failed:', err);
     await logAIUsage(coachUid, 'ocr_inbody', 'error', 'gemini');
     

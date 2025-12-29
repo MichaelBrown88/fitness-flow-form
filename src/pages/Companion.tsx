@@ -35,7 +35,7 @@ interface PoseResults {
     z: number;
     visibility?: number;
   }>;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 const Companion = () => {

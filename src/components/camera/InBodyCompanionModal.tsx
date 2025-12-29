@@ -24,11 +24,12 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
+import type { InBodyCompanionData } from '@/lib/types/companion';
 
 interface InBodyCompanionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onComplete: (data: any) => void;
+  onComplete: (data: InBodyCompanionData) => void;
   onStartDirectScan?: () => void;
 }
 

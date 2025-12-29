@@ -66,7 +66,7 @@ export async function processPostureImage(
 
   // STEP 3: Calculate metrics using trigonometry (deterministic, no AI)
   console.log(`[UNIFIED] Calculating deviations using trigonometry...`);
-  let calculatedMetrics: any = {};
+  let calculatedMetrics: Partial<import('@/lib/utils/postureMath').CalculatedPostureMetrics> = {};
   if (landmarks.raw) {
     if (view === 'front' || view === 'back') {
       calculatedMetrics = calculateFrontViewMetrics(landmarks.raw);
