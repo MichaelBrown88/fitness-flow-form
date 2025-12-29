@@ -9,7 +9,8 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import CategoryRadarChart from './CategoryRadarChart';
 import { PostureAnalysisViewer } from './PostureAnalysisViewer';
 import { circleColor, niceLabel, CATEGORY_EXPLANATIONS } from './ClientReportConstants';
-import type { ScoreSummary, FormData } from '@/contexts/FormContext';
+import type { ScoreSummary } from '@/lib/scoring';
+import type { FormData } from '@/contexts/FormContext';
 
 interface ClientReportCategoryTabsProps {
   orderedCats: ScoreSummary['categories'];
