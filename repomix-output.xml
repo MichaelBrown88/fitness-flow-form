@@ -97,6 +97,10 @@ src/
     reports/
       CategoryRadarChart.tsx
       ClientReport.tsx
+      ClientReportCategoryTabs.tsx
+      ClientReportConstants.ts
+      ClientReportHeader.tsx
+      ClientReportScoreOverview.tsx
       CoachReport.tsx
       LifestyleRadarChart.tsx
       OverallRadarChart.tsx
@@ -160,10 +164,12 @@ src/
   contexts/
     AuthContext.tsx
     FormContext.tsx
+    FormContextSplit.ts
   hooks/
     use-mobile.tsx
     use-toast.ts
     useAssessmentNavigation.ts
+    useAssessmentSave.ts
     useCameraHandler.ts
     useSettings.ts
   lib/
@@ -262,423 +268,6 @@ vite.config.ts
 
 <files>
 This section contains the contents of the repository's files.
-
-<file path="src/hooks/useAssessmentNavigation.ts">
-/**
- * Hook for managing assessment navigation state and logic
- * Extracted from MultiStepForm to improve performance and separation of concerns
- */
-
-import { useState, useMemo, useCallback } from 'react';
-import { phaseDefinitions, type PhaseSection, type PhaseId } from '@/lib/phaseConfig';
-import type { FormData } from '@/contexts/FormContext';
-
-interface UseAssessmentNavigationProps {
-  formData: FormData;
-  orgSettings?: {
-    modules?: Record<string, boolean>;
-    equipmentConfig?: Record<string, boolean>;
-  };
-}
-
-export function useAssessmentNavigation({ formData, orgSettings }: UseAssessmentNavigationProps) {
-  // Partial assessment mode state
-  const [isPartialAssessment, setIsPartialAssessment] = useState(() => {
-    try {
-      const partialData = sessionStorage.getItem('partialAssessment');
-      return !!partialData;
-    } catch {
-      return false;
-    }
-  });
-
-  const [partialCategory, setPartialCategory] = useState<string | null>(() => {
-    try {
-      const partialData = sessionStorage.getItem('partialAssessment');
-      if (partialData) {
-        const { category } = JSON.parse(partialData);
-        return category;
-      }
-    } catch {
-      return null;
-    }
-    return null;
-  });
-
-  const getInitialPhase = () => {
-    try {
-      const partialData = sessionStorage.getItem('partialAssessment');
-      if (partialData) {
-        return 1; // Jump to category phase in partial mode
-      }
-    } catch (e) {
-      console.warn('Failed to parse partial assessment data:', e);
-    }
-    return 0;
-  };
-
-  const [activePhaseIdx, setActivePhaseIdx] = useState(getInitialPhase);
-
-  // Filter phases based on organization settings and partial assessment mode
-  const visiblePhases = useMemo(() => {
-    const assessmentToSectionMap: Record<string, string[]> = {
-      parq: ['parq'],
-      inbody: ['body-comp'],
-      fitness: ['fitness-assessment'],
-      posture: ['posture'],
-      overheadSquat: ['overhead-squat'],
-      hinge: ['hinge-assessment'],
-      lunge: ['lunge-assessment'],
-      mobility: ['mobility'],
-      strength: ['strength-endurance'],
-      lifestyle: ['lifestyle-overview'],
-    };
-
-    const modules = orgSettings?.modules;
-    let phases = phaseDefinitions;
-
-    // Filter phases and sections by granular assessment toggles
-    if (modules) {
-      phases = phaseDefinitions.map(phase => {
-        if (phase.id === 'P0' || phase.id === 'P6' || phase.id === 'P7') {
-          return phase;
-        }
-
-        const filteredSections = (phase.sections || []).filter(section => {
-          const enabledAssessments = Object.entries(assessmentToSectionMap)
-            .filter(([assessmentKey, sectionIds]) => sectionIds.includes(section.id))
-            .map(([assessmentKey]) => assessmentKey);
-
-          return enabledAssessments.some(assessmentKey => modules[assessmentKey as keyof typeof modules] === true);
-        });
-
-        if (filteredSections.length === 0) {
-          return null;
-        }
-
-        return {
-          ...phase,
-          sections: filteredSections
-        } as typeof phase;
-      }).filter((p): p is NonNullable<typeof p> => p !== null);
-    }
-
-    // Filter further if in partial assessment mode
-    if (!isPartialAssessment || !partialCategory) {
-      return phases;
-    }
-
-    const categoryConfig: Record<string, { phaseIds: PhaseId[]; sectionIds?: string[] }> = {
-      'inbody': { 
-        phaseIds: ['P0', 'P2', 'P7'], 
-        sectionIds: ['basic-client-info', 'parq', 'body-comp'] 
-      },
-      'posture': { 
-        phaseIds: ['P0', 'P4', 'P7'], 
-        sectionIds: ['basic-client-info', 'parq', 'posture', 'overhead-squat', 'hinge-assessment', 'lunge-assessment', 'mobility'] 
-      },
-      'fitness': { 
-        phaseIds: ['P0', 'P3', 'P7'], 
-        sectionIds: ['basic-client-info', 'parq', 'fitness-assessment'] 
-      },
-      'strength': { 
-        phaseIds: ['P0', 'P5', 'P7'], 
-        sectionIds: ['basic-client-info', 'parq', 'strength-endurance'] 
-      },
-      'lifestyle': { 
-        phaseIds: ['P0', 'P1', 'P7'], 
-        sectionIds: ['basic-client-info', 'parq', 'lifestyle-overview'] 
-      },
-    };
-
-    const config = categoryConfig[partialCategory] || { phaseIds: ['P0'] };
-
-    return phases
-      .filter(phase => (config.phaseIds as string[]).includes(phase.id))
-      .map(phase => {
-        if (!config.sectionIds) return phase;
-
-        const filteredSections = (phase.sections || []).filter(section => {
-          if (!config.sectionIds) return true;
-          if (!config.sectionIds.includes(section.id)) return false;
-
-          if (modules) {
-            const sectionAssessments = Object.entries(assessmentToSectionMap)
-              .filter(([_, sectionIds]) => sectionIds.includes(section.id))
-              .map(([assessmentKey]) => assessmentKey);
-
-            if (sectionAssessments.length > 0 && !sectionAssessments.some(key => modules[key as keyof typeof modules])) {
-              return false;
-            }
-          }
-
-          return true;
-        });
-        if (filteredSections.length === 0 && phase.id !== 'P7') return null;
-        return {
-          ...phase,
-          sections: filteredSections
-        };
-      })
-      .filter((p): p is NonNullable<typeof p> => p !== null);
-  }, [isPartialAssessment, partialCategory, orgSettings?.modules]);
-
-  const isFieldVisible = useCallback((field: { conditional?: { showWhen?: any } }, customData?: FormData) => {
-    const data = customData || formData;
-    if (!('conditional' in field) || !field.conditional || !field.conditional.showWhen) return true;
-    const { showWhen } = field.conditional;
-    const dependentValue = data[showWhen.field as keyof FormData];
-    let ok = true;
-    if (showWhen.exists !== undefined) {
-      ok = ok && (dependentValue !== undefined && dependentValue !== null && String(dependentValue).trim() !== '');
-    }
-    if (showWhen.value !== undefined) ok = ok && dependentValue === showWhen.value;
-    if (showWhen.notValue !== undefined) ok = ok && dependentValue !== showWhen.notValue;
-    if (showWhen.includes !== undefined) {
-      if (Array.isArray(dependentValue)) {
-        ok = ok && (dependentValue as string[]).includes(showWhen.includes);
-      } else if (typeof dependentValue === 'string') {
-        ok = ok && dependentValue === showWhen.includes;
-      } else {
-        ok = false;
-      }
-    }
-    return ok;
-  }, [formData]);
-
-  const isSectionCompleted = useCallback((section: PhaseSection) => {
-    const visibleFields = (section.fields as any[]).filter(f => isFieldVisible(f));
-    if (visibleFields.length === 0) return true;
-
-    const requiredFields = visibleFields.filter(f => f.required);
-
-    if (requiredFields.length > 0) {
-      return requiredFields.every(field => {
-        const value = formData[field.id];
-        if (Array.isArray(value)) return value.length > 0;
-        return value !== undefined && value !== null && value !== '';
-      });
-    }
-
-    return visibleFields.every(field => {
-      const value = formData[field.id];
-      if (Array.isArray(value)) return value.length > 0;
-      return value !== undefined && value !== null && value !== '';
-    });
-  }, [formData, isFieldVisible]);
-
-  const isPhaseCompleted = useCallback((phaseIdx: number) => {
-    const phase = visiblePhases[phaseIdx];
-    if (!phase) return false;
-    const sections = phase.sections || [];
-    if (sections.length === 0) return true;
-    return sections.every(sec => isSectionCompleted(sec as PhaseSection));
-  }, [visiblePhases, isSectionCompleted]);
-
-  const totalPhases = visiblePhases.length;
-  const activePhase = useMemo(() => {
-    return visiblePhases[activePhaseIdx] || {
-      id: 'empty',
-      title: 'No Phases Available',
-      summary: 'Phase definitions are currently being loaded or configured.',
-      sections: []
-    };
-  }, [activePhaseIdx, visiblePhases]);
-
-  const isResultsPhase = activePhase?.id === 'P7';
-
-  const progressValue = useMemo(() => {
-    if (isPartialAssessment) return 0;
-    const completed = visiblePhases.filter((_, i) => isPhaseCompleted(i)).length;
-    return (completed / (totalPhases - 1)) * 100;
-  }, [visiblePhases, totalPhases, isPhaseCompleted, isPartialAssessment]);
-
-  return {
-    activePhaseIdx,
-    setActivePhaseIdx,
-    visiblePhases,
-    totalPhases,
-    activePhase,
-    isResultsPhase,
-    isPartialAssessment,
-    setIsPartialAssessment,
-    partialCategory,
-    setPartialCategory,
-    isFieldVisible,
-    isSectionCompleted,
-    isPhaseCompleted,
-    progressValue,
-  };
-}
-</file>
-
-<file path="src/hooks/useCameraHandler.ts">
-/**
- * Hook for managing camera and companion modal state
- * Extracted from MultiStepForm to improve performance and separation of concerns
- */
-
-import { useState, useCallback } from 'react';
-import { useToast } from '@/components/ui/use-toast';
-import { processInBodyScan } from '@/lib/ai/ocrEngine';
-import { compressImageForDisplay } from '@/lib/utils/imageCompression';
-import type { FormData } from '@/contexts/FormContext';
-import type { PostureCompanionData } from '@/lib/types/companion';
-
-interface UseCameraHandlerProps {
-  formData: FormData;
-  updateFormData: (updates: Partial<FormData>) => void;
-  activePhaseId: string;
-  activePhaseIdx: number;
-  visiblePhases: Array<{ id: string }>;
-  isPartialAssessment: boolean;
-  onPhaseChange?: (idx: number) => void;
-}
-
-export function useCameraHandler({
-  formData,
-  updateFormData,
-  activePhaseId,
-  activePhaseIdx,
-  visiblePhases,
-  isPartialAssessment,
-  onPhaseChange,
-}: UseCameraHandlerProps) {
-  const { toast } = useToast();
-
-  // Camera state
-  const [showCamera, setShowCamera] = useState<false | 'ocr' | 'posture'>(false);
-  const [showPostureCompanion, setShowPostureCompanion] = useState(false);
-  const [showInBodyCompanion, setShowInBodyCompanion] = useState(false);
-  const [ocrReviewData, setOcrReviewData] = useState<Partial<FormData> | null>(null);
-  const [isProcessingOcr, setIsProcessingOcr] = useState(false);
-  const [postureStep, setPostureStep] = useState<number>(0);
-
-  const handleCapture = useCallback(async (imageSrc: string) => {
-    if (showCamera === 'ocr') {
-      setShowCamera(false);
-      setIsProcessingOcr(true);
-      
-      toast({ 
-        title: "Image Captured", 
-        description: "Gemini AI is analyzing your InBody scan...",
-      });
-
-      try {
-        const result = await processInBodyScan(imageSrc);
-        if (result.fields && Object.keys(result.fields).length > 0) {
-          setOcrReviewData(result.fields);
-        } else {
-          toast({ 
-            title: "Scan failed", 
-            description: "AI couldn't find data. Please try again with a clearer photo.",
-            variant: "destructive"
-          });
-        }
-      } catch (err) {
-        console.error('OCR error:', err);
-        toast({ title: "Scan failed", description: "An error occurred during AI analysis.", variant: "destructive" });
-      } finally {
-        setIsProcessingOcr(false);
-      }
-    } else if (showCamera === 'posture') {
-      const views: ('front' | 'side-right' | 'side-left' | 'back')[] = ['front', 'side-right', 'side-left', 'back'];
-      const currentView = views[postureStep] || 'front';
-      
-      toast({ title: `${currentView.toUpperCase()} captured`, description: "Processing image alignment..." });
-      
-      try {
-        setIsProcessingOcr(true);
-        
-        toast({ title: "Processing posture...", description: "Aligning, calculating, and analyzing..." });
-        const { processPostureImage } = await import('@/services/postureProcessing');
-        const processed = await processPostureImage(imageSrc, currentView, undefined, 'this-device');
-        
-        const compressed = await compressImageForDisplay(processed.imageWithDeviations, 800, 0.8);
-        const analysis = processed.analysis;
-        
-        const suggestions: Partial<FormData> = {};
-        
-        const imageField = `postureImage${currentView.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('')}` as keyof FormData;
-        (suggestions as Record<string, unknown>)[imageField] = compressed.compressed;
-
-        if (currentView === 'side-right' || currentView === 'side-left') {
-          suggestions.postureHeadOverall = [analysis.forward_head.status.toLowerCase().includes('neutral') ? 'neutral' : 'forward-head'];
-          suggestions.postureBackOverall = [analysis.kyphosis.status.toLowerCase().includes('severe') ? 'increased-kyphosis' : 'neutral'];
-        } else if (currentView === 'front') {
-          suggestions.postureShouldersOverall = [analysis.shoulder_alignment.status.toLowerCase().includes('neutral') ? 'neutral' : 'rounded'];
-        }
-
-        updateFormData(suggestions);
-
-        if (postureStep < views.length - 1) {
-          setPostureStep(prev => prev + 1);
-        } else {
-          setShowCamera(false);
-          toast({ title: "Posture analysis complete", description: "Aligned images and findings have been applied." });
-        }
-      } catch (err) {
-        console.error('Local posture analysis error:', err);
-        toast({ title: "Analysis failed", description: "Could not analyze posture image.", variant: "destructive" });
-        setShowCamera(false);
-      } finally {
-        setIsProcessingOcr(false);
-      }
-    }
-  }, [showCamera, postureStep, toast, updateFormData]);
-
-  const applyOcrData = useCallback(() => {
-    if (ocrReviewData) {
-      updateFormData(ocrReviewData);
-      setOcrReviewData(null);
-      toast({ title: "InBody data applied", description: "All fields have been populated." });
-      
-      if (activePhaseId === 'P2') {
-        setTimeout(() => {
-          if (isPartialAssessment) {
-            toast({ title: "Data applied", description: "You can now review the fields and click Update Report when ready." });
-          } else {
-            const nextVisibleIdx = visiblePhases.findIndex((p, i) => i > activePhaseIdx);
-            if (nextVisibleIdx !== -1 && onPhaseChange) {
-              onPhaseChange(nextVisibleIdx);
-            }
-          }
-        }, 800);
-      }
-    }
-  }, [ocrReviewData, updateFormData, activePhaseId, activePhaseIdx, visiblePhases, isPartialAssessment, onPhaseChange, toast]);
-
-  const handlePostureCompanionComplete = useCallback((data: PostureCompanionData) => {
-    updateFormData(data);
-    toast({ title: "Posture data applied", description: "AI findings have been populated." });
-  }, [updateFormData, toast]);
-
-  const handleInBodyCompanionComplete = useCallback((data: Partial<FormData>) => {
-    setOcrReviewData(data);
-    toast({ title: "InBody data applied", description: "All fields have been populated." });
-  }, [toast]);
-
-  return {
-    // State
-    showCamera,
-    setShowCamera,
-    showPostureCompanion,
-    setShowPostureCompanion,
-    showInBodyCompanion,
-    setShowInBodyCompanion,
-    ocrReviewData,
-    setOcrReviewData,
-    isProcessingOcr,
-    postureStep,
-    setPostureStep,
-    // Handlers
-    handleCapture,
-    applyOcrData,
-    handlePostureCompanionComplete,
-    handleInBodyCompanionComplete,
-  };
-}
-</file>
 
 <file path="docs/ALIGNMENT_CODE_PATH.md">
 # Alignment Code Path Verification
@@ -2282,6 +1871,276 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ recentChanges })
     </section>
   );
 };
+</file>
+
+<file path="src/components/reports/ClientReportConstants.ts">
+/**
+ * Constants and utility functions for ClientReport
+ * Extracted to reduce component size and improve maintainability
+ */
+
+export const CATEGORY_ORDER = ['bodyComp', 'strength', 'cardio', 'movementQuality', 'lifestyle'] as const;
+
+export const CATEGORY_COLOR: Record<string, string> = {
+  bodyComp: 'bg-emerald-500',
+  strength: 'bg-primary',
+  cardio: 'bg-sky-500',
+  movementQuality: 'bg-amber-500',
+  lifestyle: 'bg-primary/80',
+};
+
+export const CATEGORY_HEX: Record<string, string> = {
+  bodyComp: '#10b981',
+  strength: '#6366f1',
+  cardio: '#0ea5e9',
+  movementQuality: '#f59e0b',
+  lifestyle: '#a855f7',
+};
+
+export const CATEGORY_EXPLANATIONS: Record<string, string> = {
+  bodyComp: "Your body's makeup—muscle, fat, and water. Think of it as the foundation for everything else.",
+  strength: "How strong you are and how long you can sustain effort. This affects daily activities and injury prevention.",
+  cardio: "Your heart and lung capacity. This determines how efficiently your body uses oxygen during activity.",
+  movementQuality: "How well your joints move and how your body holds itself. Better movement quality means fewer aches and more efficient movement.",
+  lifestyle: "Your daily habits—sleep, stress, nutrition, hydration, and activity. These are the foundation that makes everything else work better.",
+};
+
+export const PROGRAM_PHASES = [
+  {
+    key: 'foundation',
+    title: 'Building the Foundation',
+    color: 'bg-slate-800',
+    text: 'Movement quality, posture, breathing, and consistency. Install habits that make progress inevitable.',
+  },
+  {
+    key: 'overload',
+    title: 'Progressive Overload',
+    color: 'bg-primary',
+    text: 'Gradually increase volume, intensity, or density with excellent technique to drive adaptations.',
+  },
+  {
+    key: 'performance',
+    title: 'Performance Development',
+    color: 'bg-sky-600',
+    text: 'Translate base capacity into performance—better pace, higher outputs, stronger lifts.',
+  },
+  {
+    key: 'specialisation',
+    title: 'Specialisation',
+    color: 'bg-emerald-600',
+    text: 'Emphasise your primary goal block (fat loss, hypertrophy, strength, or endurance) based on response.',
+  },
+  {
+    key: 'mastery',
+    title: 'Mastery',
+    color: 'bg-amber-600',
+    text: 'Refine strengths, shore up weak links, and consolidate results for long-term sustainability.',
+  },
+] as const;
+
+export function circleColor(score: number): string {
+  if (score >= 75) return 'border-green-500 text-green-700';
+  if (score >= 45) return 'border-amber-500 text-amber-700';
+  return 'border-red-500 text-red-700';
+}
+
+export function niceLabel(id: string): string {
+  switch (id) {
+    case 'bodyComp': return 'Body Composition';
+    case 'strength': return 'Muscular Strength';
+    case 'cardio': return 'Metabolic Fitness';
+    case 'movementQuality': return 'Movement Quality';
+    case 'lifestyle': return 'Lifestyle Factors';
+    default: return id;
+  }
+}
+</file>
+
+<file path="src/components/reports/ClientReportHeader.tsx">
+/**
+ * ClientReport Header Component
+ * Status badges, client name, and introduction
+ */
+
+import React from 'react';
+
+interface ClientReportHeaderProps {
+  clientName: string;
+  needsMedicalClearance: boolean;
+  goalLabel?: string;
+  lifestyleFocus: string[];
+}
+
+export function ClientReportHeader({
+  clientName,
+  needsMedicalClearance,
+  goalLabel,
+  lifestyleFocus,
+}: ClientReportHeaderProps) {
+  return (
+    <>
+      {/* Status badges at top */}
+      <section className="flex flex-wrap items-center gap-2 mb-4">
+        {needsMedicalClearance && (
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-3 py-1.5 text-xs font-medium text-red-800 border border-red-200">
+            <span>⚠️</span>
+            <span>Medical clearance recommended</span>
+          </div>
+        )}
+        {goalLabel && (
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-brand-light px-3 py-1.5 text-xs font-medium text-primary border border-primary/20">
+            <span>🎯</span>
+            <span>Primary goal: {goalLabel}</span>
+          </div>
+        )}
+        {lifestyleFocus.length > 0 && (
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1.5 text-xs font-medium text-amber-800 border border-amber-200">
+            <span>💪</span>
+            <span>Lifestyle focus: {lifestyleFocus.join(', ')}</span>
+          </div>
+        )}
+      </section>
+
+      <section className="space-y-1">
+        <h2 className="text-xl font-semibold text-slate-900">
+          {clientName ? `${clientName}, your report is ready` : 'Your report is ready'}
+        </h2>
+        <p className="text-sm text-slate-600">
+          Here's a clear overview of where you are now, what we'll focus on first, and how we'll move you toward your goals.
+        </p>
+      </section>
+
+      {/* Medical clearance warning */}
+      {needsMedicalClearance && (
+        <section className="rounded-lg border border-red-200 bg-red-50 p-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <span className="text-xl">⚠️</span>
+            <div>
+              <h3 className="text-sm font-semibold text-red-800 mb-1">Medical Clearance Required</h3>
+              <p className="text-sm text-red-700">
+                Based on your PAR-Q responses, please consult with a healthcare professional before starting your training program. 
+                You can still review your assessment results and plan, but obtain medical clearance before beginning exercise.
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+    </>
+  );
+}
+</file>
+
+<file path="src/components/reports/ClientReportScoreOverview.tsx">
+/**
+ * ClientReport Score Overview Component
+ * Overall score, category circles, and radar chart
+ */
+
+import React from 'react';
+import OverallRadarChart from './OverallRadarChart';
+import { circleColor, niceLabel, CATEGORY_HEX } from './ClientReportConstants';
+import type { ScoreSummary } from '@/lib/scoring';
+
+interface ClientReportScoreOverviewProps {
+  scores: ScoreSummary;
+  orderedCats: ScoreSummary['categories'];
+  overallRadarData: Array<{
+    name: string;
+    fullLabel: string;
+    value: number;
+    color: string;
+  }>;
+}
+
+export function ClientReportScoreOverview({
+  scores,
+  orderedCats,
+  overallRadarData,
+}: ClientReportScoreOverviewProps) {
+  return (
+    <section className="space-y-10 py-4">
+      <div className="flex flex-col items-center text-center space-y-6">
+        <div className="space-y-2">
+          <h2 className="text-3xl font-extrabold tracking-tight text-slate-900">Your Fitness Score</h2>
+          <p className="text-slate-500 font-medium">A comprehensive snapshot of your current physical condition.</p>
+        </div>
+        
+        {/* Overall score centered and prominent */}
+        <div className={`flex h-40 w-40 items-center justify-center rounded-full border-8 bg-white shadow-xl ${circleColor(scores.overall)} transition-transform hover:scale-105 duration-500`}>
+          <div className="flex flex-col items-center">
+            <span className="text-5xl font-black">{scores.overall}</span>
+            <span className="text-[10px] uppercase tracking-[0.2em] font-bold opacity-70">Overall</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Category circles in a row */}
+      <div className="flex flex-wrap items-start justify-center gap-6 md:gap-10">
+        {orderedCats.map((cat) => (
+          <div key={cat.id} className="flex flex-col items-center group">
+            <div className={`flex h-16 w-16 items-center justify-center rounded-full border-4 bg-white shadow-sm transition-all group-hover:shadow-md group-hover:-translate-y-1 ${circleColor(cat.score)}`}>
+              <span className="text-lg font-bold">{cat.score}</span>
+            </div>
+            <span className="mt-3 w-24 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider leading-tight">
+              {niceLabel(cat.id)}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Overall Profile Radar */}
+      <div className="max-w-2xl mx-auto mt-12 bg-white rounded-3xl border border-slate-100 p-8 shadow-sm">
+        <div className="text-center mb-6">
+          <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-slate-400">Profile Balance</h3>
+        </div>
+        <OverallRadarChart data={overallRadarData} />
+        <p className="text-center text-xs text-slate-400 mt-4 italic">
+          This graph shows how balanced your fitness is across all categories.
+        </p>
+      </div>
+
+      {/* Synthesis Section */}
+      {scores.synthesis && scores.synthesis.length > 0 && (
+        <div className="max-w-2xl mx-auto mt-12 space-y-4">
+          <div className="text-center mb-6">
+            <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-slate-400">Expert Synthesis</h3>
+            <p className="text-xs text-slate-500 mt-1">How your different results interact</p>
+          </div>
+          {scores.synthesis.map((item, idx) => (
+            <div 
+              key={idx} 
+              className={`rounded-2xl border p-5 shadow-sm ${
+                item.severity === 'high' ? 'border-rose-200 bg-rose-50' : 
+                item.severity === 'medium' ? 'border-amber-200 bg-amber-50' : 
+                'border-blue-200 bg-blue-50'
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-lg">
+                  {item.severity === 'high' ? '🚨' : item.severity === 'medium' ? '⚠️' : 'ℹ️'}
+                </span>
+                <h4 className={`font-bold ${
+                  item.severity === 'high' ? 'text-rose-900' : 
+                  item.severity === 'medium' ? 'text-amber-900' : 
+                  'text-blue-900'
+                }`}>
+                  {item.title}
+                </h4>
+              </div>
+              <p className={`text-sm leading-relaxed ${
+                item.severity === 'high' ? 'text-rose-800' : 
+                item.severity === 'medium' ? 'text-amber-800' : 
+                'text-blue-800'
+              }`}>
+                {item.description}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
 </file>
 
 <file path="src/components/ui/accordion.tsx">
@@ -6385,6 +6244,329 @@ import { useToast, toast } from "@/hooks/use-toast";
 export { useToast, toast };
 </file>
 
+<file path="src/contexts/FormContextSplit.ts">
+/**
+ * Split Form Context Architecture
+ * 
+ * Instead of one massive context that re-renders everything on every change,
+ * we split into logical groups that only re-render when their specific data changes.
+ * 
+ * This is a less invasive alternative to full react-hook-form migration.
+ */
+
+import { createContext, useContext, useState, useCallback, ReactNode, useMemo } from 'react';
+import type { FormData } from './FormContext';
+
+// Split form data into logical groups
+export interface ClientProfileData {
+  fullName: string;
+  email: string;
+  phone: string;
+  dateOfBirth: string;
+  gender: string;
+  assignedCoach: string;
+  clientGoals: string[];
+  heightCm: string;
+}
+
+export interface GoalTargetsData {
+  weightLossTargetKg: string;
+  muscleGainTargetKg: string;
+  strengthTargetLift: string;
+  strengthTarget1RMKg: string;
+  fitnessTargetVo2: string;
+  goalLevelWeightLoss: string;
+  goalLevelMuscle: string;
+  goalLevelStrength: string;
+  goalLevelFitness: string;
+}
+
+export interface LifestyleData {
+  activityLevel: string;
+  sleepDuration: string;
+  sleepQuality: string;
+  sleepConsistency: string;
+  stressLevel: string;
+  workHoursPerDay: string;
+  nutritionHabits: string;
+  hydrationHabits: string;
+  stepsPerDay: string;
+  sedentaryHours: string;
+  caffeineCupsPerDay: string;
+  alcoholFrequency: string;
+  lastCaffeineIntake: string;
+}
+
+export interface BodyCompData {
+  inbodyWeightKg: string;
+  inbodyBodyFatPct: string;
+  bodyFatMassKg: string;
+  inbodyBmi: string;
+  visceralFatLevel: string;
+  skeletalMuscleMassKg: string;
+  totalBodyWaterL: string;
+  waistHipRatio: string;
+  // Skinfold measurements
+  skinfoldTricepMm: string;
+  skinfoldChestMm: string;
+  skinfoldSubscapularMm: string;
+  skinfoldAxillaMm: string;
+  skinfoldAbdomenMm: string;
+  skinfoldSuprailiacMm: string;
+  skinfoldThighMm: string;
+  skinfoldBicepMm: string;
+  // Body measurements
+  waistCm: string;
+  neckCm: string;
+  hipCm: string;
+  segmentalArmRightKg: string;
+  segmentalArmLeftKg: string;
+  segmentalLegRightKg: string;
+  segmentalLegLeftKg: string;
+  segmentalTrunkKg: string;
+  bmrKcal: string;
+  inbodyScore: string;
+}
+
+export interface PostureData {
+  postureInputMode: 'manual' | 'ai';
+  postureAiResults: FormData['postureAiResults'];
+  postureImages: Record<string, string>;
+  postureImagesStorage: Record<string, string>;
+  postureSeverity: string;
+  postureForwardHead: string;
+  postureRoundedShoulders: string;
+  postureHeadOverall: string[];
+  postureShouldersOverall: string[];
+  postureBackOverall: string[];
+  postureHipsOverall: string[];
+  postureKneesOverall: string[];
+}
+
+export interface MovementData {
+  ohsKneeAlignment: string;
+  ohsHeelBehavior: string;
+  ohsLumbarControl: string;
+  ohsShoulderMobility: string;
+  ohsTorsoLean: string;
+  ohsSquatDepth: string;
+  ohsHipShift: string;
+  ohsFeetPosition: string;
+  ohsFootKneeBehavior: string;
+  ohsHasPain: string;
+  ohsPainLevel: string;
+  ohsNotes: string;
+  modifiedThomasResult: string;
+  hingeQuality: string;
+  hingeBalance: string;
+  hingeDepth: string;
+  hingeBackRounding: string;
+  hingeHasPain: string;
+  hingePainLevel: string;
+  hingeNotes: string;
+  lungeLeftKneeAlignment: string;
+  lungeLeftBalance: string;
+  lungeLeftTorso: string;
+  lungeRightKneeAlignment: string;
+  lungeRightBalance: string;
+  lungeRightTorso: string;
+  lungeHasPain: string;
+  lungePainLevel: string;
+  lungeTestNotes: string;
+  shoulderMobilityReach: string;
+  mobilityHip: string;
+  mobilityShoulder: string;
+  mobilityAnkle: string;
+  movementNotes: string;
+  pushupTest: string;
+  squatTest: string;
+}
+
+export interface FitnessData {
+  plankHoldSeconds: string;
+  plankDurationSeconds: string;
+  singleLegStanceLeftGrade: string;
+  singleLegStanceRightGrade: string;
+  cardioTestType: string;
+  cardioTestSelected: string;
+  cardioRestingHr: string;
+  cardioPost1MinHr: string;
+  cardioMedicationFlag: string;
+  cardioFinalHeartRate: string;
+  cardioVo2MaxEstimate: string;
+  cardioTestInstructions: string;
+  cardioNotes: string;
+  ymcaStepHeight: string;
+  ymcaMetronomeBpm: string;
+  ymcaPreTestHeartRate: string;
+  ymcaPost1MinHeartRate: string;
+  ymcaRecoveryHeartRate1: string;
+  ymcaRpe: string;
+  ymcaNotes: string;
+  treadmillProtocol: string;
+  treadmillIncline: string;
+  treadmillSpeed: string;
+  treadmillDurationMin: string;
+  treadmillFinalHeartRate: string;
+  treadmillRpe: string;
+  treadmillTerminationReason: string;
+  treadmillNotes: string;
+}
+
+export interface StrengthData {
+  pushupMaxReps: string;
+  squatsOneMinuteReps: string;
+  pushupsOneMinuteReps: string;
+  gripLeftKg: string;
+  gripRightKg: string;
+  gripDeadhangSeconds: string;
+  gripFarmersWalkDistanceM: string;
+  gripFarmersWalkTimeS: string;
+  gripFarmersWalkLoadKg: string;
+  gripPlatePinchKg: string;
+  chairStandReps: string;
+  dynamometerForce: string;
+}
+
+export interface ParQData {
+  parqQuestionnaire: string;
+  parq1: string;
+  parq2: string;
+  parq3: string;
+  parq4: string;
+  parq5: string;
+  parq6: string;
+  parq7: string;
+  parq8: string;
+  parq9: string;
+  parq10: string;
+  parq11: string;
+  parq12: string;
+  parq13: string;
+  parqNotes: string;
+  restingHeartRate: string;
+  restingBPSystolic: string;
+  restingBPDiastolic: string;
+  medicationsFlag: string;
+  medicationsNotes: string;
+}
+
+export interface ReportsData {
+  coachReport: string;
+  clientReport: string;
+}
+
+// Context types
+interface ClientProfileContextType {
+  data: ClientProfileData;
+  update: (updates: Partial<ClientProfileData>) => void;
+}
+
+interface GoalTargetsContextType {
+  data: GoalTargetsData;
+  update: (updates: Partial<GoalTargetsData>) => void;
+}
+
+interface LifestyleContextType {
+  data: LifestyleData;
+  update: (updates: Partial<LifestyleData>) => void;
+}
+
+interface BodyCompContextType {
+  data: BodyCompData;
+  update: (updates: Partial<BodyCompData>) => void;
+}
+
+interface PostureContextType {
+  data: PostureData;
+  update: (updates: Partial<PostureData>) => void;
+}
+
+interface MovementContextType {
+  data: MovementData;
+  update: (updates: Partial<MovementData>) => void;
+}
+
+interface FitnessContextType {
+  data: FitnessData;
+  update: (updates: Partial<FitnessData>) => void;
+}
+
+interface StrengthContextType {
+  data: StrengthData;
+  update: (updates: Partial<StrengthData>) => void;
+}
+
+interface ParQContextType {
+  data: ParQData;
+  update: (updates: Partial<ParQData>) => void;
+}
+
+interface ReportsContextType {
+  data: ReportsData;
+  update: (updates: Partial<ReportsData>) => void;
+}
+
+// Create contexts
+const ClientProfileContext = createContext<ClientProfileContextType | undefined>(undefined);
+const GoalTargetsContext = createContext<GoalTargetsContextType | undefined>(undefined);
+const LifestyleContext = createContext<LifestyleContextType | undefined>(undefined);
+const BodyCompContext = createContext<BodyCompContextType | undefined>(undefined);
+const PostureContext = createContext<PostureContextType | undefined>(undefined);
+const MovementContext = createContext<MovementContextType | undefined>(undefined);
+const FitnessContext = createContext<FitnessContextType | undefined>(undefined);
+const StrengthContext = createContext<StrengthContextType | undefined>(undefined);
+const ParQContext = createContext<ParQContextType | undefined>(undefined);
+const ReportsContext = createContext<ReportsContextType | undefined>(undefined);
+
+// Helper to create context provider
+function createContextProvider<T>(
+  Context: React.Context<T | undefined>,
+  initialData: T,
+  storageKey?: string
+) {
+  return ({ children }: { children: ReactNode }) => {
+    const getInitialData = (): T => {
+      if (storageKey) {
+        try {
+          const stored = sessionStorage.getItem(storageKey);
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            return { ...initialData, ...parsed };
+          }
+        } catch (e) {
+          console.warn(`Failed to parse ${storageKey}:`, e);
+        }
+      }
+      return initialData;
+    };
+
+    const [data, setData] = useState<T>(getInitialData);
+
+    const update = useCallback((updates: Partial<T>) => {
+      setData((prev) => {
+        const newData = { ...prev, ...updates };
+        if (storageKey) {
+          try {
+            sessionStorage.setItem(storageKey, JSON.stringify(newData));
+          } catch (e) {
+            console.warn(`Failed to save ${storageKey}:`, e);
+          }
+        }
+        return newData;
+      });
+    }, [storageKey]);
+
+    const value = useMemo(() => ({ data, update }), [data, update]);
+
+    return <Context.Provider value={value}>{children}</Context.Provider>;
+  };
+}
+
+// Export providers (to be implemented with actual initial data)
+// This is a template - actual implementation would extract from FormContext
+</file>
+
 <file path="src/hooks/use-mobile.tsx">
 import * as React from "react";
 
@@ -6594,6 +6776,650 @@ function useToast() {
 }
 
 export { useToast, toast };
+</file>
+
+<file path="src/hooks/useAssessmentNavigation.ts">
+/**
+ * Hook for managing assessment navigation state and logic
+ * Extracted from MultiStepForm to improve performance and separation of concerns
+ */
+
+import { useState, useMemo, useCallback } from 'react';
+import { phaseDefinitions, type PhaseSection, type PhaseId } from '@/lib/phaseConfig';
+import type { FormData } from '@/contexts/FormContext';
+
+interface UseAssessmentNavigationProps {
+  formData: FormData;
+  orgSettings?: {
+    modules?: Record<string, boolean>;
+    equipmentConfig?: Record<string, boolean>;
+  };
+}
+
+export function useAssessmentNavigation({ formData, orgSettings }: UseAssessmentNavigationProps) {
+  // Partial assessment mode state
+  const [isPartialAssessment, setIsPartialAssessment] = useState(() => {
+    try {
+      const partialData = sessionStorage.getItem('partialAssessment');
+      return !!partialData;
+    } catch {
+      return false;
+    }
+  });
+
+  const [partialCategory, setPartialCategory] = useState<string | null>(() => {
+    try {
+      const partialData = sessionStorage.getItem('partialAssessment');
+      if (partialData) {
+        const { category } = JSON.parse(partialData);
+        return category;
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  });
+
+  const getInitialPhase = () => {
+    try {
+      const partialData = sessionStorage.getItem('partialAssessment');
+      if (partialData) {
+        return 1; // Jump to category phase in partial mode
+      }
+    } catch (e) {
+      console.warn('Failed to parse partial assessment data:', e);
+    }
+    return 0;
+  };
+
+  const [activePhaseIdx, setActivePhaseIdx] = useState(getInitialPhase);
+
+  // Filter phases based on organization settings and partial assessment mode
+  const visiblePhases = useMemo(() => {
+    const assessmentToSectionMap: Record<string, string[]> = {
+      parq: ['parq'],
+      inbody: ['body-comp'],
+      fitness: ['fitness-assessment'],
+      posture: ['posture'],
+      overheadSquat: ['overhead-squat'],
+      hinge: ['hinge-assessment'],
+      lunge: ['lunge-assessment'],
+      mobility: ['mobility'],
+      strength: ['strength-endurance'],
+      lifestyle: ['lifestyle-overview'],
+    };
+
+    const modules = orgSettings?.modules;
+    let phases = phaseDefinitions;
+
+    // Filter phases and sections by granular assessment toggles
+    if (modules) {
+      phases = phaseDefinitions.map(phase => {
+        if (phase.id === 'P0' || phase.id === 'P6' || phase.id === 'P7') {
+          return phase;
+        }
+
+        const filteredSections = (phase.sections || []).filter(section => {
+          const enabledAssessments = Object.entries(assessmentToSectionMap)
+            .filter(([assessmentKey, sectionIds]) => sectionIds.includes(section.id))
+            .map(([assessmentKey]) => assessmentKey);
+
+          return enabledAssessments.some(assessmentKey => modules[assessmentKey as keyof typeof modules] === true);
+        });
+
+        if (filteredSections.length === 0) {
+          return null;
+        }
+
+        return {
+          ...phase,
+          sections: filteredSections
+        } as typeof phase;
+      }).filter((p): p is NonNullable<typeof p> => p !== null);
+    }
+
+    // Filter further if in partial assessment mode
+    if (!isPartialAssessment || !partialCategory) {
+      return phases;
+    }
+
+    const categoryConfig: Record<string, { phaseIds: PhaseId[]; sectionIds?: string[] }> = {
+      'inbody': { 
+        phaseIds: ['P0', 'P2', 'P7'], 
+        sectionIds: ['basic-client-info', 'parq', 'body-comp'] 
+      },
+      'posture': { 
+        phaseIds: ['P0', 'P4', 'P7'], 
+        sectionIds: ['basic-client-info', 'parq', 'posture', 'overhead-squat', 'hinge-assessment', 'lunge-assessment', 'mobility'] 
+      },
+      'fitness': { 
+        phaseIds: ['P0', 'P3', 'P7'], 
+        sectionIds: ['basic-client-info', 'parq', 'fitness-assessment'] 
+      },
+      'strength': { 
+        phaseIds: ['P0', 'P5', 'P7'], 
+        sectionIds: ['basic-client-info', 'parq', 'strength-endurance'] 
+      },
+      'lifestyle': { 
+        phaseIds: ['P0', 'P1', 'P7'], 
+        sectionIds: ['basic-client-info', 'parq', 'lifestyle-overview'] 
+      },
+    };
+
+    const config = categoryConfig[partialCategory] || { phaseIds: ['P0'] };
+
+    return phases
+      .filter(phase => (config.phaseIds as string[]).includes(phase.id))
+      .map(phase => {
+        if (!config.sectionIds) return phase;
+
+        const filteredSections = (phase.sections || []).filter(section => {
+          if (!config.sectionIds) return true;
+          if (!config.sectionIds.includes(section.id)) return false;
+
+          if (modules) {
+            const sectionAssessments = Object.entries(assessmentToSectionMap)
+              .filter(([_, sectionIds]) => sectionIds.includes(section.id))
+              .map(([assessmentKey]) => assessmentKey);
+
+            if (sectionAssessments.length > 0 && !sectionAssessments.some(key => modules[key as keyof typeof modules])) {
+              return false;
+            }
+          }
+
+          return true;
+        });
+        if (filteredSections.length === 0 && phase.id !== 'P7') return null;
+        return {
+          ...phase,
+          sections: filteredSections
+        };
+      })
+      .filter((p): p is NonNullable<typeof p> => p !== null);
+  }, [isPartialAssessment, partialCategory, orgSettings?.modules]);
+
+  const isFieldVisible = useCallback((field: { conditional?: { showWhen?: any } }, customData?: FormData) => {
+    const data = customData || formData;
+    if (!('conditional' in field) || !field.conditional || !field.conditional.showWhen) return true;
+    const { showWhen } = field.conditional;
+    const dependentValue = data[showWhen.field as keyof FormData];
+    let ok = true;
+    if (showWhen.exists !== undefined) {
+      ok = ok && (dependentValue !== undefined && dependentValue !== null && String(dependentValue).trim() !== '');
+    }
+    if (showWhen.value !== undefined) ok = ok && dependentValue === showWhen.value;
+    if (showWhen.notValue !== undefined) ok = ok && dependentValue !== showWhen.notValue;
+    if (showWhen.includes !== undefined) {
+      if (Array.isArray(dependentValue)) {
+        ok = ok && (dependentValue as string[]).includes(showWhen.includes);
+      } else if (typeof dependentValue === 'string') {
+        ok = ok && dependentValue === showWhen.includes;
+      } else {
+        ok = false;
+      }
+    }
+    return ok;
+  }, [formData]);
+
+  const isSectionCompleted = useCallback((section: PhaseSection) => {
+    const visibleFields = (section.fields as any[]).filter(f => isFieldVisible(f));
+    if (visibleFields.length === 0) return true;
+
+    const requiredFields = visibleFields.filter(f => f.required);
+
+    if (requiredFields.length > 0) {
+      return requiredFields.every(field => {
+        const value = formData[field.id];
+        if (Array.isArray(value)) return value.length > 0;
+        return value !== undefined && value !== null && value !== '';
+      });
+    }
+
+    return visibleFields.every(field => {
+      const value = formData[field.id];
+      if (Array.isArray(value)) return value.length > 0;
+      return value !== undefined && value !== null && value !== '';
+    });
+  }, [formData, isFieldVisible]);
+
+  const isPhaseCompleted = useCallback((phaseIdx: number) => {
+    const phase = visiblePhases[phaseIdx];
+    if (!phase) return false;
+    const sections = phase.sections || [];
+    if (sections.length === 0) return true;
+    return sections.every(sec => isSectionCompleted(sec as PhaseSection));
+  }, [visiblePhases, isSectionCompleted]);
+
+  const totalPhases = visiblePhases.length;
+  const activePhase = useMemo(() => {
+    return visiblePhases[activePhaseIdx] || {
+      id: 'empty',
+      title: 'No Phases Available',
+      summary: 'Phase definitions are currently being loaded or configured.',
+      sections: []
+    };
+  }, [activePhaseIdx, visiblePhases]);
+
+  const isResultsPhase = activePhase?.id === 'P7';
+
+  const progressValue = useMemo(() => {
+    if (isPartialAssessment) return 0;
+    const completed = visiblePhases.filter((_, i) => isPhaseCompleted(i)).length;
+    return (completed / (totalPhases - 1)) * 100;
+  }, [visiblePhases, totalPhases, isPhaseCompleted, isPartialAssessment]);
+
+  return {
+    activePhaseIdx,
+    setActivePhaseIdx,
+    visiblePhases,
+    totalPhases,
+    activePhase,
+    isResultsPhase,
+    isPartialAssessment,
+    setIsPartialAssessment,
+    partialCategory,
+    setPartialCategory,
+    isFieldVisible,
+    isSectionCompleted,
+    isPhaseCompleted,
+    progressValue,
+  };
+}
+</file>
+
+<file path="src/hooks/useAssessmentSave.ts">
+/**
+ * Hook for managing assessment save and share functionality
+ * Extracted from MultiStepForm to improve performance and separation of concerns
+ */
+
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { Timestamp } from 'firebase/firestore';
+import { useToast } from '@/components/ui/use-toast';
+import { saveCoachAssessment } from '@/services/coachAssessments';
+import { requestShareArtifacts, type ShareArtifacts } from '@/services/share';
+import type { FormData } from '@/contexts/FormContext';
+import type { ScoreSummary } from '@/lib/scoring';
+
+interface UseAssessmentSaveProps {
+  user: { uid: string; email: string | null | undefined } | null;
+  profile?: { organizationId?: string } | null;
+  formData: FormData;
+  scores: ScoreSummary;
+  isResultsPhase: boolean;
+  isDemoAssessment: boolean;
+}
+
+export function useAssessmentSave({
+  user,
+  profile,
+  formData,
+  scores,
+  isResultsPhase,
+  isDemoAssessment,
+}: UseAssessmentSaveProps) {
+  const { toast } = useToast();
+  const [saving, setSaving] = useState(false);
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [shareLoading, setShareLoading] = useState(false);
+  const [shareCache, setShareCache] = useState<Record<'client' | 'coach', ShareArtifacts | null>>({
+    client: null,
+    coach: null,
+  });
+  const shareCacheRef = useRef<Record<'client' | 'coach', ShareArtifacts | null>>({
+    client: null,
+    coach: null,
+  });
+
+  const handleSaveToDashboard = useCallback(async () => {
+    if (!user || saving || savingId) return;
+    
+    const clientName = (formData.fullName || 'Unnamed client').trim();
+    
+    try {
+      setSaving(true);
+      console.log(`[SYNC] Starting sync for client: ${clientName}...`);
+      
+      let assessmentId: string;
+      let category: string | null = null;
+      
+      try {
+        const partialData = sessionStorage.getItem('partialAssessment');
+        if (partialData) {
+          const { category: cat, clientName: storedName } = JSON.parse(partialData);
+          category = cat;
+          
+          const { savePartialAssessment } = await import('@/services/coachAssessments');
+          assessmentId = await savePartialAssessment(
+            user.uid, 
+            user.email, 
+            formData, 
+            scores.overall, 
+            storedName || clientName,
+            category as 'inbody' | 'posture' | 'fitness' | 'strength' | 'lifestyle',
+            profile?.organizationId
+          );
+          
+          const { createOrUpdateClientProfile } = await import('@/services/clientProfiles');
+          const updateData: Record<string, Timestamp> = {};
+          const now = Timestamp.now();
+          
+          if (category === 'inbody') updateData.lastInBodyDate = now;
+          else if (category === 'posture') updateData.lastPostureDate = now;
+          else if (category === 'fitness') updateData.lastFitnessDate = now;
+          else if (category === 'strength') updateData.lastStrengthDate = now;
+          else if (category === 'lifestyle') updateData.lastLifestyleDate = now;
+          
+          if (Object.keys(updateData).length > 0) {
+            await createOrUpdateClientProfile(user.uid, storedName || clientName, updateData, profile?.organizationId);
+          }
+          
+          sessionStorage.setItem('highlightCategory', category);
+          sessionStorage.removeItem('partialAssessment');
+        } else {
+          assessmentId = await saveCoachAssessment(user.uid, user.email, formData, scores.overall, profile?.organizationId);
+        }
+      } catch (parseErr) {
+        assessmentId = await saveCoachAssessment(user.uid, user.email, formData, scores.overall);
+      }
+      
+      setSavingId(assessmentId);
+      toast({ 
+        title: category ? 'Partial Assessment Saved' : 'Assessment Saved', 
+        description: category ? `${category.charAt(0).toUpperCase() + category.slice(1)} data updated and merged.` : `Progress for ${clientName} has been saved.` 
+      });
+    } catch (e) {
+      console.error('[SYNC] Save failed:', e);
+      toast({ title: 'Sync Error', description: 'Unable to sync with dashboard. Please check your connection.', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  }, [user, saving, savingId, formData, scores.overall, profile?.organizationId, toast]);
+
+  // Auto-save when results phase is reached
+  useEffect(() => {
+    if (isResultsPhase && user && !savingId && !saving && !isDemoAssessment) {
+      void handleSaveToDashboard();
+    }
+  }, [isResultsPhase, user, savingId, saving, isDemoAssessment, handleSaveToDashboard]);
+
+  // Clear share cache when savingId changes
+  useEffect(() => {
+    shareCacheRef.current = { client: null, coach: null };
+    setShareCache({ client: null, coach: null });
+  }, [savingId]);
+
+  const ensureShareArtifacts = useCallback(async (view: 'client' | 'coach'): Promise<ShareArtifacts> => {
+    if (shareCacheRef.current[view]) {
+      return shareCacheRef.current[view]!;
+    }
+
+    if (!user || !savingId) {
+      throw new Error('User or savingId not available');
+    }
+
+    const artifacts = await requestShareArtifacts({ assessmentId: savingId, view });
+    shareCacheRef.current[view] = artifacts;
+    setShareCache(prev => ({ ...prev, [view]: artifacts }));
+    return artifacts;
+  }, [savingId, user]);
+
+  const fetchReportPdfBlob = useCallback(async (view: 'client' | 'coach') => {
+    try {
+      if (user && savingId) {
+        const artifacts = await ensureShareArtifacts(view);
+        const response = await fetch(artifacts.pdfUrl);
+        if (response.ok) {
+          const blob = await response.blob();
+          return { artifacts, blob };
+        }
+      }
+    } catch (error) {
+      console.warn('Cloud Functions PDF error, fallback to client-side', error);
+    }
+    
+    const reportEl = document.querySelector('[data-pdf-target]') as HTMLElement;
+    if (!reportEl) throw new Error('Report element not found');
+    
+    const html2canvas = (await import('html2canvas')).default;
+    const jsPDF = (await import('jspdf')).default;
+    
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    const canvasEl = await html2canvas(reportEl, {
+      scale: 3,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+      scrollX: 0,
+      scrollY: 0,
+      windowWidth: reportEl.scrollWidth,
+      windowHeight: reportEl.scrollHeight,
+      onclone: (clonedDoc) => {
+        const clonedElement = clonedDoc.querySelector(`[data-pdf-target]`) as HTMLElement;
+        if (clonedElement) {
+          clonedElement.style.backgroundColor = '#ffffff';
+          clonedElement.style.width = `${reportEl.scrollWidth}px`;
+          clonedElement.style.height = 'auto';
+          clonedElement.style.overflow = 'visible';
+          clonedDoc.querySelectorAll('button, .dropdown-menu').forEach((el) => {
+            (el as HTMLElement).style.display = 'none';
+          });
+        }
+      },
+    });
+    
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 10;
+    const contentWidth = pageWidth - (margin * 2);
+    const imgHeight = (canvasEl.height * contentWidth) / canvasEl.width;
+    const contentHeight = pageHeight - (margin * 2);
+    const totalPages = Math.ceil(imgHeight / contentHeight);
+    
+    for (let page = 0; page < totalPages; page++) {
+      if (page > 0) pdf.addPage();
+      const sourceY = (page * contentHeight / imgHeight) * canvasEl.height;
+      const remainingHeight = imgHeight - (page * contentHeight);
+      const pageImageHeight = Math.min(contentHeight, remainingHeight);
+      const sourceHeight = (pageImageHeight / imgHeight) * canvasEl.height;
+      
+      const pageCanvas = document.createElement('canvas');
+      pageCanvas.width = canvasEl.width;
+      pageCanvas.height = Math.ceil(sourceHeight);
+      const ctx = pageCanvas.getContext('2d');
+      if (ctx && sourceHeight > 0) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+        ctx.drawImage(canvasEl, 0, sourceY, canvasEl.width, sourceHeight, 0, 0, canvasEl.width, sourceHeight);
+        const pageImgData = pageCanvas.toDataURL('image/png', 1.0);
+        pdf.addImage(pageImgData, 'PNG', margin, margin, contentWidth, pageImageHeight);
+      }
+    }
+    
+    return { artifacts: null, blob: pdf.output('blob') };
+  }, [ensureShareArtifacts, user, savingId]);
+
+  return {
+    saving,
+    savingId,
+    shareLoading,
+    setShareLoading,
+    shareCache,
+    handleSaveToDashboard,
+    ensureShareArtifacts,
+    fetchReportPdfBlob,
+  };
+}
+</file>
+
+<file path="src/hooks/useCameraHandler.ts">
+/**
+ * Hook for managing camera and companion modal state
+ * Extracted from MultiStepForm to improve performance and separation of concerns
+ */
+
+import { useState, useCallback } from 'react';
+import { useToast } from '@/components/ui/use-toast';
+import { processInBodyScan } from '@/lib/ai/ocrEngine';
+import { compressImageForDisplay } from '@/lib/utils/imageCompression';
+import type { FormData } from '@/contexts/FormContext';
+import type { PostureCompanionData } from '@/lib/types/companion';
+
+interface UseCameraHandlerProps {
+  formData: FormData;
+  updateFormData: (updates: Partial<FormData>) => void;
+  activePhaseId: string;
+  activePhaseIdx: number;
+  visiblePhases: Array<{ id: string }>;
+  isPartialAssessment: boolean;
+  onPhaseChange?: (idx: number) => void;
+}
+
+export function useCameraHandler({
+  formData,
+  updateFormData,
+  activePhaseId,
+  activePhaseIdx,
+  visiblePhases,
+  isPartialAssessment,
+  onPhaseChange,
+}: UseCameraHandlerProps) {
+  const { toast } = useToast();
+
+  // Camera state
+  const [showCamera, setShowCamera] = useState<false | 'ocr' | 'posture'>(false);
+  const [showPostureCompanion, setShowPostureCompanion] = useState(false);
+  const [showInBodyCompanion, setShowInBodyCompanion] = useState(false);
+  const [ocrReviewData, setOcrReviewData] = useState<Partial<FormData> | null>(null);
+  const [isProcessingOcr, setIsProcessingOcr] = useState(false);
+  const [postureStep, setPostureStep] = useState<number>(0);
+
+  const handleCapture = useCallback(async (imageSrc: string) => {
+    if (showCamera === 'ocr') {
+      setShowCamera(false);
+      setIsProcessingOcr(true);
+      
+      toast({ 
+        title: "Image Captured", 
+        description: "Gemini AI is analyzing your InBody scan...",
+      });
+
+      try {
+        const result = await processInBodyScan(imageSrc);
+        if (result.fields && Object.keys(result.fields).length > 0) {
+          setOcrReviewData(result.fields);
+        } else {
+          toast({ 
+            title: "Scan failed", 
+            description: "AI couldn't find data. Please try again with a clearer photo.",
+            variant: "destructive"
+          });
+        }
+      } catch (err) {
+        console.error('OCR error:', err);
+        toast({ title: "Scan failed", description: "An error occurred during AI analysis.", variant: "destructive" });
+      } finally {
+        setIsProcessingOcr(false);
+      }
+    } else if (showCamera === 'posture') {
+      const views: ('front' | 'side-right' | 'side-left' | 'back')[] = ['front', 'side-right', 'side-left', 'back'];
+      const currentView = views[postureStep] || 'front';
+      
+      toast({ title: `${currentView.toUpperCase()} captured`, description: "Processing image alignment..." });
+      
+      try {
+        setIsProcessingOcr(true);
+        
+        toast({ title: "Processing posture...", description: "Aligning, calculating, and analyzing..." });
+        const { processPostureImage } = await import('@/services/postureProcessing');
+        const processed = await processPostureImage(imageSrc, currentView, undefined, 'this-device');
+        
+        const compressed = await compressImageForDisplay(processed.imageWithDeviations, 800, 0.8);
+        const analysis = processed.analysis;
+        
+        const suggestions: Partial<FormData> = {};
+        
+        const imageField = `postureImage${currentView.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('')}` as keyof FormData;
+        (suggestions as Record<string, unknown>)[imageField] = compressed.compressed;
+
+        if (currentView === 'side-right' || currentView === 'side-left') {
+          suggestions.postureHeadOverall = [analysis.forward_head.status.toLowerCase().includes('neutral') ? 'neutral' : 'forward-head'];
+          suggestions.postureBackOverall = [analysis.kyphosis.status.toLowerCase().includes('severe') ? 'increased-kyphosis' : 'neutral'];
+        } else if (currentView === 'front') {
+          suggestions.postureShouldersOverall = [analysis.shoulder_alignment.status.toLowerCase().includes('neutral') ? 'neutral' : 'rounded'];
+        }
+
+        updateFormData(suggestions);
+
+        if (postureStep < views.length - 1) {
+          setPostureStep(prev => prev + 1);
+        } else {
+          setShowCamera(false);
+          toast({ title: "Posture analysis complete", description: "Aligned images and findings have been applied." });
+        }
+      } catch (err) {
+        console.error('Local posture analysis error:', err);
+        toast({ title: "Analysis failed", description: "Could not analyze posture image.", variant: "destructive" });
+        setShowCamera(false);
+      } finally {
+        setIsProcessingOcr(false);
+      }
+    }
+  }, [showCamera, postureStep, toast, updateFormData]);
+
+  const applyOcrData = useCallback(() => {
+    if (ocrReviewData) {
+      updateFormData(ocrReviewData);
+      setOcrReviewData(null);
+      toast({ title: "InBody data applied", description: "All fields have been populated." });
+      
+      if (activePhaseId === 'P2') {
+        setTimeout(() => {
+          if (isPartialAssessment) {
+            toast({ title: "Data applied", description: "You can now review the fields and click Update Report when ready." });
+          } else {
+            const nextVisibleIdx = visiblePhases.findIndex((p, i) => i > activePhaseIdx);
+            if (nextVisibleIdx !== -1 && onPhaseChange) {
+              onPhaseChange(nextVisibleIdx);
+            }
+          }
+        }, 800);
+      }
+    }
+  }, [ocrReviewData, updateFormData, activePhaseId, activePhaseIdx, visiblePhases, isPartialAssessment, onPhaseChange, toast]);
+
+  const handlePostureCompanionComplete = useCallback((data: PostureCompanionData) => {
+    updateFormData(data);
+    toast({ title: "Posture data applied", description: "AI findings have been populated." });
+  }, [updateFormData, toast]);
+
+  const handleInBodyCompanionComplete = useCallback((data: Partial<FormData>) => {
+    setOcrReviewData(data);
+    toast({ title: "InBody data applied", description: "All fields have been populated." });
+  }, [toast]);
+
+  return {
+    // State
+    showCamera,
+    setShowCamera,
+    showPostureCompanion,
+    setShowPostureCompanion,
+    showInBodyCompanion,
+    setShowInBodyCompanion,
+    ocrReviewData,
+    setOcrReviewData,
+    isProcessingOcr,
+    postureStep,
+    setPostureStep,
+    // Handlers
+    handleCapture,
+    applyOcrData,
+    handlePostureCompanionComplete,
+    handleInBodyCompanionComplete,
+  };
+}
 </file>
 
 <file path="src/hooks/useSettings.ts">
@@ -11701,6 +12527,153 @@ export const ThemeManager: React.FC<{ children: React.ReactNode }> = ({ children
 
   return <>{children}</>;
 };
+</file>
+
+<file path="src/components/reports/ClientReportCategoryTabs.tsx">
+/**
+ * ClientReport Category Tabs Component
+ * Displays detailed category breakdowns with radar charts
+ */
+
+import React from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import CategoryRadarChart from './CategoryRadarChart';
+import { PostureAnalysisViewer } from './PostureAnalysisViewer';
+import { circleColor, niceLabel, CATEGORY_EXPLANATIONS } from './ClientReportConstants';
+import type { ScoreSummary } from '@/lib/scoring';
+import type { FormData } from '@/contexts/FormContext';
+
+interface ClientReportCategoryTabsProps {
+  orderedCats: ScoreSummary['categories'];
+  tempHighlight?: string;
+  formData?: FormData;
+}
+
+export function ClientReportCategoryTabs({
+  orderedCats,
+  tempHighlight,
+  formData,
+}: ClientReportCategoryTabsProps) {
+  if (orderedCats.length === 0) return null;
+
+  return (
+    <section className="space-y-4">
+      <h2 className="text-2xl font-bold text-slate-900">Your fitness assessment</h2>
+      <p className="text-sm text-slate-600">
+        Explore each area of your assessment. Each category shows a detailed breakdown of your performance:
+      </p>
+      <Tabs defaultValue={orderedCats[0].id} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-5 h-auto">
+          {orderedCats.map((cat) => (
+            <TabsTrigger
+              key={cat.id}
+              value={cat.id}
+              className={`text-xs sm:text-sm capitalize transition-all duration-1000 ${
+                tempHighlight === cat.id ? 'ring-2 ring-primary ring-offset-2 animate-pulse bg-brand-light' : ''
+              }`}
+            >
+              <div className="flex flex-col items-center gap-1">
+                <div className={`h-8 w-8 rounded-full border-2 ${circleColor(cat.score)} flex items-center justify-center`}>
+                  <span className="text-xs font-semibold">{cat.score}</span>
+                </div>
+                <span className="text-center leading-tight">{niceLabel(cat.id)}</span>
+              </div>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        {orderedCats.map((cat) => {
+          const scorePercent = Math.min(100, (cat.score / 100) * 100);
+          const bgColor = cat.score >= 75 ? 'bg-green-500' : cat.score >= 45 ? 'bg-amber-500' : 'bg-red-500';
+          const jargon = CATEGORY_EXPLANATIONS[cat.id] || '';
+
+          return (
+            <TabsContent key={cat.id} value={cat.id} className="mt-4">
+              <div className="space-y-4">
+                {/* Category header with score */}
+                <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className={`h-16 w-16 rounded-full border-4 ${circleColor(cat.score)} flex items-center justify-center`}>
+                        <span className="text-xl font-bold">{cat.score}</span>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-semibold text-slate-900">{niceLabel(cat.id)}</h3>
+                        <p className="text-sm text-slate-600 mt-1">{jargon}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mb-3">
+                    <div className="h-3 w-full rounded-full bg-slate-100 overflow-hidden">
+                      <div
+                        className={`h-full ${bgColor} transition-all`}
+                        style={{ width: `${scorePercent}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Radar chart & Posture Viewer */}
+                <div className="space-y-6">
+                  <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6 text-center">
+                      Functional Mobility Breakdown
+                    </h4>
+                    <div className="flex justify-center">
+                      <div className="w-full max-w-md">
+                        <TooltipProvider>
+                          <CategoryRadarChart details={cat.details} categoryName={niceLabel(cat.id)} />
+                        </TooltipProvider>
+                      </div>
+                    </div>
+                  </div>
+
+                  {cat.id === 'movementQuality' && formData?.postureAiResults && (
+                    <div className="space-y-4">
+                      <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 px-1">
+                        Posture scan results
+                      </h4>
+                      <PostureAnalysisViewer
+                        postureResults={formData.postureAiResults}
+                        postureImages={(formData.postureImagesStorage || formData.postureImages || {}) as Record<string, string>}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Strengths and weaknesses for this category */}
+                {(cat.strengths.length > 0 || cat.weaknesses.length > 0) && (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {cat.strengths.length > 0 && (
+                      <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
+                        <h4 className="text-base font-semibold text-emerald-800 mb-2">What's working well</h4>
+                        <ul className="list-disc pl-5 text-sm text-emerald-900 space-y-1">
+                          {cat.strengths.map((s, i) => (
+                            <li key={i}>{s}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {cat.weaknesses.length > 0 && cat.score > 0 && (
+                      <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 shadow-sm">
+                        <h4 className="text-base font-semibold text-rose-800 mb-2">Areas for improvement</h4>
+                        <ul className="list-disc pl-5 text-sm text-rose-900 space-y-1">
+                          {cat.weaknesses.map((w, i) => (
+                            <li key={i}>{w}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          );
+        })}
+      </Tabs>
+    </section>
+  );
+}
 </file>
 
 <file path="src/components/reports/LifestyleRadarChart.tsx">
@@ -29671,82 +30644,20 @@ import LifestyleRadarChart from './LifestyleRadarChart';
 import CategoryRadarChart from './CategoryRadarChart';
 import OverallRadarChart from './OverallRadarChart';
 import { PostureAnalysisViewer } from './PostureAnalysisViewer';
+import { ClientReportHeader } from './ClientReportHeader';
+import { ClientReportScoreOverview } from './ClientReportScoreOverview';
+import { ClientReportCategoryTabs } from './ClientReportCategoryTabs';
+import {
+  CATEGORY_ORDER,
+  CATEGORY_COLOR,
+  CATEGORY_HEX,
+  CATEGORY_EXPLANATIONS,
+  PROGRAM_PHASES,
+  circleColor,
+  niceLabel,
+} from './ClientReportConstants';
 
 type BodyCompInterp = { timeframeWeeks: string };
-
-function circleColor(score: number): string {
-  if (score >= 75) return 'border-green-500 text-green-700';
-  if (score >= 45) return 'border-amber-500 text-amber-700';
-  return 'border-red-500 text-red-700';
-}
-
-function niceLabel(id: string): string {
-  switch (id) {
-    case 'bodyComp': return 'Body Composition';
-    case 'strength': return 'Muscular Strength';
-    case 'cardio': return 'Metabolic Fitness';
-    case 'movementQuality': return 'Movement Quality';
-    case 'lifestyle': return 'Lifestyle Factors';
-    default: return id;
-  }
-}
-
-const CATEGORY_ORDER = ['bodyComp','strength','cardio','movementQuality','lifestyle'];
-const CATEGORY_COLOR: Record<string, string> = {
-  bodyComp: 'bg-emerald-500',
-  strength: 'bg-primary',
-  cardio: 'bg-sky-500',
-  movementQuality: 'bg-amber-500',
-  lifestyle: 'bg-primary/80',
-};
-const CATEGORY_HEX: Record<string, string> = {
-  bodyComp: '#10b981',
-  strength: '#6366f1',
-  cardio: '#0ea5e9',
-  movementQuality: '#f59e0b',
-  lifestyle: '#a855f7',
-};
-
-const CATEGORY_EXPLANATIONS: Record<string, string> = {
-  bodyComp: "Your body's makeup—muscle, fat, and water. Think of it as the foundation for everything else.",
-  strength: "How strong you are and how long you can sustain effort. This affects daily activities and injury prevention.",
-  cardio: "Your heart and lung capacity. This determines how efficiently your body uses oxygen during activity.",
-  movementQuality: "How well your joints move and how your body holds itself. Better movement quality means fewer aches and more efficient movement.",
-  lifestyle: "Your daily habits—sleep, stress, nutrition, hydration, and activity. These are the foundation that makes everything else work better.",
-};
-
-const PROGRAM_PHASES = [
-  {
-    key: 'foundation',
-    title: 'Building the Foundation',
-    color: 'bg-slate-800',
-    text: 'Movement quality, posture, breathing, and consistency. Install habits that make progress inevitable.',
-  },
-  {
-    key: 'overload',
-    title: 'Progressive Overload',
-    color: 'bg-primary',
-    text: 'Gradually increase volume, intensity, or density with excellent technique to drive adaptations.',
-  },
-  {
-    key: 'performance',
-    title: 'Performance Development',
-    color: 'bg-sky-600',
-    text: 'Translate base capacity into performance—better pace, higher outputs, stronger lifts.',
-  },
-  {
-    key: 'specialisation',
-    title: 'Specialisation',
-    color: 'bg-emerald-600',
-    text: 'Emphasise your primary goal block (fat loss, hypertrophy, strength, or endurance) based on response.',
-  },
-  {
-    key: 'mastery',
-    title: 'Mastery',
-    color: 'bg-amber-600',
-    text: 'Refine strengths, shore up weak links, and consolidate results for long-term sustainability.',
-  },
-];
 
 export default function ClientReport({ 
   scores, 
@@ -30401,113 +31312,12 @@ export default function ClientReport({
         )}
       </section>
 
-      {/* 2. Category tabs with radar charts - Each fitness section gets its own tab */}
-      <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-slate-900">Your fitness assessment</h2>
-        <p className="text-sm text-slate-600">Explore each area of your assessment. Each category shows a detailed breakdown of your performance:</p>
-        {orderedCats.length > 0 && (
-          <Tabs defaultValue={orderedCats[0].id} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-5 h-auto">
-              {orderedCats.map((cat) => (
-                <TabsTrigger 
-                  key={cat.id} 
-                  value={cat.id} 
-                  className={`text-xs sm:text-sm capitalize transition-all duration-1000 ${
-                    tempHighlight === cat.id ? 'ring-2 ring-primary ring-offset-2 animate-pulse bg-brand-light' : ''
-                  }`}
-                >
-                  <div className="flex flex-col items-center gap-1">
-                    <div className={`h-8 w-8 rounded-full border-2 ${circleColor(cat.score)} flex items-center justify-center`}>
-                      <span className="text-xs font-semibold">{cat.score}</span>
-                    </div>
-                    <span className="text-center leading-tight">{niceLabel(cat.id)}</span>
-                  </div>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-            {orderedCats.map((cat) => {
-              const scorePercent = Math.min(100, (cat.score / 100) * 100);
-              const bgColor = cat.score >= 75 ? 'bg-green-500' : cat.score >= 45 ? 'bg-amber-500' : 'bg-red-500';
-              const jargon = CATEGORY_EXPLANATIONS[cat.id] || '';
-              
-              return (
-                <TabsContent key={cat.id} value={cat.id} className="mt-4">
-                  <div className="space-y-4">
-                    {/* Category header with score */}
-                    <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <div className={`h-16 w-16 rounded-full border-4 ${circleColor(cat.score)} flex items-center justify-center`}>
-                            <span className="text-xl font-bold">{cat.score}</span>
-                          </div>
-                          <div>
-                            <h3 className="text-xl font-semibold text-slate-900">{niceLabel(cat.id)}</h3>
-                            <p className="text-sm text-slate-600 mt-1">{jargon}</p>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="mb-3">
-                        <div className="h-3 w-full rounded-full bg-slate-100 overflow-hidden">
-                          <div 
-                            className={`h-full ${bgColor} transition-all`}
-                            style={{ width: `${scorePercent}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Radar chart & Posture Viewer */}
-                        <div className="space-y-6">
-                      <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-                        <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6 text-center">Functional Mobility Breakdown</h4>
-                        <div className="flex justify-center">
-                          <div className="w-full max-w-md">
-                            <TooltipProvider>
-                              <CategoryRadarChart details={cat.details} categoryName={niceLabel(cat.id)} />
-                            </TooltipProvider>
-                                  </div>
-                                </div>
-                              </div>
-
-                      {cat.id === 'movementQuality' && formData?.postureAiResults && (
-                        <div className="space-y-4">
-                          <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 px-1">Posture scan results</h4>
-                          <PostureAnalysisViewer 
-                            postureResults={formData.postureAiResults} 
-                            postureImages={(formData.postureImagesStorage || formData.postureImages || {}) as Record<string, string>} 
-                          />
-                          </div>
-                      )}
-                    </div>
-                    
-                    {/* Strengths and weaknesses for this category */}
-                    {(cat.strengths.length > 0 || cat.weaknesses.length > 0) && (
-                      <div className="grid gap-4 md:grid-cols-2">
-                        {cat.strengths.length > 0 && (
-                          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
-                            <h4 className="text-base font-semibold text-emerald-800 mb-2">What's working well</h4>
-                            <ul className="list-disc pl-5 text-sm text-emerald-900 space-y-1">
-                              {cat.strengths.map((s, i) => <li key={i}>{s}</li>)}
-                            </ul>
-                          </div>
-                        )}
-                        {cat.weaknesses.length > 0 && cat.score > 0 && (
-                          <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 shadow-sm">
-                            <h4 className="text-base font-semibold text-rose-800 mb-2">Areas for improvement</h4>
-                            <ul className="list-disc pl-5 text-sm text-rose-900 space-y-1">
-                              {cat.weaknesses.map((w, i) => <li key={i}>{w}</li>)}
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </TabsContent>
-              );
-            })}
-          </Tabs>
-        )}
-      </section>
+      {/* 2. Category tabs with radar charts */}
+      <ClientReportCategoryTabs
+        orderedCats={orderedCats}
+        tempHighlight={tempHighlight}
+        formData={formData}
+      />
 
       {/* 4. Your goals - Tabbed if multiple, expanded with explanations and discovered goals */}
       {goals && goals.length > 0 && (
@@ -31300,6 +32110,9 @@ import { downloadElementAsPdf } from '@/lib/pdf';
 import { generateInteractiveHtml } from '@/lib/htmlExport';
 import { useSettings } from '@/hooks/useSettings';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useAssessmentNavigation } from '@/hooks/useAssessmentNavigation';
+import { useAssessmentSave } from '@/hooks/useAssessmentSave';
+import { useCameraHandler } from '@/hooks/useCameraHandler';
 import { CameraCapture } from './camera/CameraCapture';
 import { PostureCompanionModal } from './camera/PostureCompanionModal';
 import { InBodyCompanionModal } from './camera/InBodyCompanionModal';
@@ -31358,46 +32171,27 @@ const PhaseFormContent = ({
 
   const activeClientName = clientNameFromStorage || formData.fullName || '';
   
-  // Check for partial assessment mode
-  const getInitialPhase = () => {
-    try {
-      const partialData = sessionStorage.getItem('partialAssessment');
-      if (partialData) {
-        // In partial assessment mode, we always want to jump straight to the relevant category.
-        // Since visiblePhases is filtered, the category phase is always at index 1 (after P0).
-        return 1;
-      }
-    } catch (e) {
-      console.warn('Failed to parse partial assessment data:', e);
-    }
-    return 0;
-  };
-  
-  const [activePhaseIdx, setActivePhaseIdx] = useState(getInitialPhase());
-  const [isPartialAssessment, setIsPartialAssessment] = useState(() => {
-    try {
-      const partialData = sessionStorage.getItem('partialAssessment');
-      return !!partialData;
-    } catch {
-      return false;
-    }
-  });
-  
-  const [partialCategory, setPartialCategory] = useState<string | null>(() => {
-    try {
-      const partialData = sessionStorage.getItem('partialAssessment');
-      if (partialData) {
-        const { category } = JSON.parse(partialData);
-        return category;
-      }
-    } catch {
-      return null;
-    }
-    return null;
-  });
+  // Use navigation hook
+  const navigation = useAssessmentNavigation({ formData, orgSettings });
+  const {
+    activePhaseIdx,
+    setActivePhaseIdx,
+    visiblePhases,
+    totalPhases,
+    activePhase,
+    isResultsPhase,
+    isPartialAssessment,
+    setIsPartialAssessment,
+    partialCategory,
+    setPartialCategory,
+    isFieldVisible,
+    isSectionCompleted,
+    isPhaseCompleted,
+    progressValue,
+  } = navigation;
 
-  // Filter phases for partial assessments or modular availability
-  const visiblePhases = useMemo(() => {
+  // Legacy visiblePhases calculation (now in hook, but keeping for compatibility)
+  const visiblePhasesLegacy = useMemo(() => {
     // Mapping of assessment module keys to section IDs
     const assessmentToSectionMap: Record<string, string[]> = {
       parq: ['parq'],
