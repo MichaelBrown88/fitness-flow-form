@@ -5,6 +5,7 @@ import type { ScoreSummary } from '@/lib/scoring';
 import { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
 import OverallRadarChart from './OverallRadarChart';
 import { CheckCircle2, AlertCircle, MessageSquare, Target, ClipboardList, Activity } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 function niceLabel(id: string): string {
   switch (id) {
@@ -240,13 +241,280 @@ export default function CoachReport({
         </div>
       </section>
 
-      {/* PRIORITIZED EXERCISE RECOMMENDATIONS */}
-      {plan.prioritizedExercises && plan.prioritizedExercises.groups && (
-      <section className="space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="bg-sky-600 p-2 rounded-lg">
-            <Activity className="h-5 w-5 text-white" />
+      {/* EXERCISE GUIDANCE */}
+      {plan.coachExerciseLists ? (
+        <section className="space-y-6">
+          <div className="flex items-center gap-2">
+            <Activity className="h-4 w-4 text-sky-600" />
+            <h3 className="text-lg font-bold text-slate-900">Exercise Program Guidance</h3>
           </div>
+          
+          {/* Priorities */}
+          <div className="bg-slate-50 rounded-lg border border-slate-200 p-4">
+            <div className="text-sm space-y-2">
+              <p><strong className="text-slate-900">Equipment Focus:</strong> <span className="text-slate-700">{plan.coachExerciseLists.priorities.equipment}</span></p>
+              <p><strong className="text-slate-900">Training Approach:</strong> <span className="text-slate-700">{plan.coachExerciseLists.priorities.focus}</span></p>
+              {plan.coachExerciseLists.priorities.keyIssues.length > 0 && (
+                <div>
+                  <strong className="text-slate-900">Key Issues to Address:</strong>
+                  <ul className="list-disc list-inside mt-1 text-slate-700">
+                    {plan.coachExerciseLists.priorities.keyIssues.map((issue, i) => (
+                      <li key={i}>{issue}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Movement Patterns */}
+          <div>
+            <h4 className="text-base font-bold text-slate-900 mb-3">By Movement Pattern</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Squat */}
+              <div className="bg-white rounded-lg border border-slate-200 p-4">
+                <h5 className="text-sm font-bold text-slate-900 mb-3">Squat</h5>
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {plan.coachExerciseLists.byMovementPattern.squat.map((ex, i) => (
+                    <div key={i} className="text-sm border-b border-slate-100 pb-2 last:border-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-slate-700 font-medium">{ex.name}</span>
+                        {ex.setsReps && (
+                          <span className="text-xs text-slate-500 shrink-0">{ex.setsReps}</span>
+                        )}
+                      </div>
+                      {ex.addresses && (
+                        <p className="text-xs text-slate-500 italic mt-1">{ex.addresses}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Hinge */}
+              <div className="bg-white rounded-lg border border-slate-200 p-4">
+                <h5 className="text-sm font-bold text-slate-900 mb-3">Hinge</h5>
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {plan.coachExerciseLists.byMovementPattern.hinge.map((ex, i) => (
+                    <div key={i} className="text-sm border-b border-slate-100 pb-2 last:border-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-slate-700 font-medium">{ex.name}</span>
+                        {ex.setsReps && (
+                          <span className="text-xs text-slate-500 shrink-0">{ex.setsReps}</span>
+                        )}
+                      </div>
+                      {ex.addresses && (
+                        <p className="text-xs text-slate-500 italic mt-1">{ex.addresses}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Push */}
+              <div className="bg-white rounded-lg border border-slate-200 p-4">
+                <h5 className="text-sm font-bold text-slate-900 mb-3">Push Movements</h5>
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {plan.coachExerciseLists.byMovementPattern.push.map((ex, i) => (
+                    <div key={i} className="text-sm border-b border-slate-100 pb-2 last:border-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-slate-700 font-medium">{ex.name}</span>
+                        {ex.setsReps && (
+                          <span className="text-xs text-slate-500 shrink-0">{ex.setsReps}</span>
+                        )}
+                      </div>
+                      {ex.addresses && (
+                        <p className="text-xs text-slate-500 italic mt-1">{ex.addresses}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Pull */}
+              <div className="bg-white rounded-lg border border-slate-200 p-4">
+                <h5 className="text-sm font-bold text-slate-900 mb-3">Pull Movements</h5>
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {plan.coachExerciseLists.byMovementPattern.pull.map((ex, i) => (
+                    <div key={i} className="text-sm border-b border-slate-100 pb-2 last:border-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-slate-700 font-medium">{ex.name}</span>
+                        {ex.setsReps && (
+                          <span className="text-xs text-slate-500 shrink-0">{ex.setsReps}</span>
+                        )}
+                      </div>
+                      {ex.addresses && (
+                        <p className="text-xs text-slate-500 italic mt-1">{ex.addresses}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Lunge */}
+              <div className="bg-white rounded-lg border border-slate-200 p-4">
+                <h5 className="text-sm font-bold text-slate-900 mb-3">Lunge</h5>
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {plan.coachExerciseLists.byMovementPattern.lunge.map((ex, i) => (
+                    <div key={i} className="text-sm border-b border-slate-100 pb-2 last:border-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-slate-700 font-medium">{ex.name}</span>
+                        {ex.setsReps && (
+                          <span className="text-xs text-slate-500 shrink-0">{ex.setsReps}</span>
+                        )}
+                      </div>
+                      {ex.addresses && (
+                        <p className="text-xs text-slate-500 italic mt-1">{ex.addresses}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Core */}
+              <div className="bg-white rounded-lg border border-slate-200 p-4">
+                <h5 className="text-sm font-bold text-slate-900 mb-3">Core</h5>
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {plan.coachExerciseLists.byMovementPattern.core.map((ex, i) => (
+                    <div key={i} className="text-sm border-b border-slate-100 pb-2 last:border-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-slate-700 font-medium">{ex.name}</span>
+                        {ex.setsReps && (
+                          <span className="text-xs text-slate-500 shrink-0">{ex.setsReps}</span>
+                        )}
+                      </div>
+                      {ex.addresses && (
+                        <p className="text-xs text-slate-500 italic mt-1">{ex.addresses}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Issue-Specific Exercises */}
+          {(plan.coachExerciseLists.issueSpecific.postural.length > 0 || 
+            plan.coachExerciseLists.issueSpecific.mobility.length > 0 || 
+            plan.coachExerciseLists.issueSpecific.asymmetry.length > 0) && (
+            <div>
+              <h4 className="text-base font-bold text-slate-900 mb-3">Issue-Specific Exercises</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Postural */}
+                {plan.coachExerciseLists.issueSpecific.postural.length > 0 && (
+                  <div className="bg-white rounded-lg border border-slate-200 p-4">
+                    <h5 className="text-sm font-bold text-slate-900 mb-3">Postural Corrections</h5>
+                    <div className="space-y-2 max-h-80 overflow-y-auto">
+                      {plan.coachExerciseLists.issueSpecific.postural.map((ex, i) => (
+                        <div key={i} className="text-sm border-b border-slate-100 pb-2 last:border-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="text-slate-700 font-medium">{ex.name}</span>
+                            {ex.setsReps && (
+                              <span className="text-xs text-slate-500 shrink-0">{ex.setsReps}</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-500 italic mt-1">{ex.addresses}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Mobility */}
+                {plan.coachExerciseLists.issueSpecific.mobility.length > 0 && (
+                  <div className="bg-white rounded-lg border border-slate-200 p-4">
+                    <h5 className="text-sm font-bold text-slate-900 mb-3">Mobility Work</h5>
+                    <div className="space-y-2 max-h-80 overflow-y-auto">
+                      {plan.coachExerciseLists.issueSpecific.mobility.map((ex, i) => (
+                        <div key={i} className="text-sm border-b border-slate-100 pb-2 last:border-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="text-slate-700 font-medium">{ex.name}</span>
+                            {ex.setsReps && (
+                              <span className="text-xs text-slate-500 shrink-0">{ex.setsReps}</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-500 italic mt-1">{ex.addresses}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Asymmetry */}
+                {plan.coachExerciseLists.issueSpecific.asymmetry.length > 0 && (
+                  <div className="bg-white rounded-lg border border-slate-200 p-4">
+                    <h5 className="text-sm font-bold text-slate-900 mb-3">Asymmetry Corrections</h5>
+                    <div className="space-y-2 max-h-80 overflow-y-auto">
+                      {plan.coachExerciseLists.issueSpecific.asymmetry.map((ex, i) => (
+                        <div key={i} className="text-sm border-b border-slate-100 pb-2 last:border-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="text-slate-700 font-medium">{ex.name}</span>
+                            {ex.setsReps && (
+                              <span className="text-xs text-slate-500 shrink-0">{ex.setsReps}</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-500 italic mt-1">{ex.addresses}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Warm-up & Cardio */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Warm-up */}
+            <div className="bg-white rounded-lg border border-slate-200 p-4">
+              <h4 className="text-sm font-bold text-slate-900 mb-3">Warm-up Options</h4>
+              <div className="space-y-2 max-h-80 overflow-y-auto">
+                {plan.coachExerciseLists.warmUp.map((ex, i) => (
+                  <div key={i} className="text-sm border-b border-slate-100 pb-2 last:border-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-slate-700 font-medium">{ex.name}</span>
+                      <span className="text-xs text-slate-500 shrink-0">
+                        {ex.setsReps || ex.time || ''}
+                      </span>
+                    </div>
+                    {ex.addresses && (
+                      <p className="text-xs text-slate-500 italic mt-1">{ex.addresses}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Cardio */}
+            {plan.coachExerciseLists.cardio.length > 0 && (
+              <div className="bg-white rounded-lg border border-slate-200 p-4">
+                <h4 className="text-sm font-bold text-slate-900 mb-3">Cardio Options</h4>
+                <div className="space-y-2 max-h-80 overflow-y-auto">
+                  {plan.coachExerciseLists.cardio.map((ex, i) => (
+                    <div key={i} className="text-sm border-b border-slate-100 pb-2 last:border-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-slate-700 font-medium">{ex.name}</span>
+                        {ex.time && (
+                          <span className="text-xs text-slate-500 shrink-0">{ex.time}</span>
+                        )}
+                      </div>
+                      {ex.addresses && (
+                        <p className="text-xs text-slate-500 italic mt-1">{ex.addresses}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      ) : plan.prioritizedExercises && plan.prioritizedExercises.groups ? (
+        // Fallback to old format
+        <section className="space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="bg-sky-600 p-2 rounded-lg">
+              <Activity className="h-5 w-5 text-white" />
+            </div>
             <h3 className="text-xl font-bold text-slate-900">Exercise Recommendations & Program Structure</h3>
           </div>
 
@@ -368,7 +636,7 @@ export default function CoachReport({
             </div>
           )}
         </section>
-      )}
+      ) : null}
 
       {/* LEGACY PROGRAMMING STRATEGIES (if no prioritized exercises) */}
       {(!plan.prioritizedExercises || plan.prioritizedExercises.groups.length === 0) && (

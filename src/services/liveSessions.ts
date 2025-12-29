@@ -226,13 +226,7 @@ export const updateInBodyImage = async (sessionId: string, imageData: string) =>
   }
 };
 
-export const updatePostureAnalysis = async (sessionId: string, view: string, analysis: PostureAnalysisResult) => {
-  const sessionRef = doc(db, SESSIONS_COLLECTION, sessionId);
-  // Use updateDoc with dot notation to avoid nested entity issues
-  await updateDoc(sessionRef, {
-    [`analysis.${view}`]: sanitizeForFirestore(analysis)
-  });
-};
+// REMOVED: updatePostureAnalysis is now redundant - analysis is handled by updatePostureImage (unified system)
 
 /**
  * Get all sessions for a specific client (for comparison features)

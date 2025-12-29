@@ -66,6 +66,20 @@ export interface FormData {
   skeletalMuscleMassKg: string;
   totalBodyWaterL: string;
   waistHipRatio: string;
+  // Alternative body composition methods
+  // Skinfold measurements (mm)
+  skinfoldTricepMm: string;
+  skinfoldChestMm: string;
+  skinfoldSubscapularMm: string;
+  skinfoldAxillaMm: string;
+  skinfoldAbdomenMm: string;
+  skinfoldSuprailiacMm: string;
+  skinfoldThighMm: string;
+  skinfoldBicepMm: string;
+  // Body measurements (cm) for US Navy method
+  waistCm: string;
+  neckCm: string;
+  hipCm: string;
   segmentalArmRightKg: string;
   segmentalArmLeftKg: string;
   segmentalLegRightKg: string;
@@ -162,6 +176,12 @@ export interface FormData {
   pushupsOneMinuteReps: string;
   gripLeftKg: string;
   gripRightKg: string;
+  // Alternative grip strength methods
+  gripDeadhangSeconds: string;
+  gripFarmersWalkDistanceM: string;
+  gripFarmersWalkTimeS: string;
+  gripFarmersWalkLoadKg: string;
+  gripPlatePinchKg: string;
   chairStandReps: string;
   dynamometerForce: string;
 
@@ -240,6 +260,17 @@ const initialFormData: FormData = {
   skeletalMuscleMassKg: '',
   totalBodyWaterL: '',
   waistHipRatio: '',
+  skinfoldTricepMm: '',
+  skinfoldChestMm: '',
+  skinfoldSubscapularMm: '',
+  skinfoldAxillaMm: '',
+  skinfoldAbdomenMm: '',
+  skinfoldSuprailiacMm: '',
+  skinfoldThighMm: '',
+  skinfoldBicepMm: '',
+  waistCm: '',
+  neckCm: '',
+  hipCm: '',
   segmentalArmRightKg: '',
   segmentalArmLeftKg: '',
   segmentalLegRightKg: '',
@@ -328,6 +359,11 @@ const initialFormData: FormData = {
   pushupsOneMinuteReps: '',
   gripLeftKg: '',
   gripRightKg: '',
+  gripDeadhangSeconds: '',
+  gripFarmersWalkDistanceM: '',
+  gripFarmersWalkTimeS: '',
+  gripFarmersWalkLoadKg: '',
+  gripPlatePinchKg: '',
   chairStandReps: '',
   dynamometerForce: '',
   coachReport: '',

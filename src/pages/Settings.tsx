@@ -5,10 +5,11 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
-import { updateOrgSettings, uploadOrgLogo, type OrgSettings } from '@/services/organizations';
+import { updateOrgSettings, uploadOrgLogo, type OrgSettings, DEFAULT_EQUIPMENT_CONFIG } from '@/services/organizations';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Upload, Palette, ShieldCheck, Box } from 'lucide-react';
+import { Loader2, Upload, Palette, ShieldCheck, Box, Settings as SettingsIcon } from 'lucide-react';
 
 const Settings = () => {
   const { settings, updateSettings } = useSettings();
@@ -211,26 +212,156 @@ const Settings = () => {
               </div>
               <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
                 <div className="divide-y divide-slate-100">
-                  {Object.entries(orgSettings?.modules || {}).map(([moduleId, enabled]) => (
-                    <div key={moduleId} className="flex items-center justify-between p-5 hover:bg-slate-50/50 transition-colors">
-                      <div className="space-y-1">
-                        <Label className="text-sm font-bold text-slate-800 capitalize">{moduleId} Assessment</Label>
-                        <p className="text-xs text-slate-500 font-medium leading-relaxed max-w-md">
-                          {moduleId === 'inbody' && 'Body composition, muscle mass, and fat analysis.'}
-                          {moduleId === 'posture' && 'AI posture analysis and alignment checks.'}
-                          {moduleId === 'movement' && 'Overhead squat, hinge, and mobility screens.'}
-                          {moduleId === 'fitness' && 'VO2 Max estimates and cardio endurance tests.'}
-                          {moduleId === 'strength' && 'Grip strength, pushups, and foundational power.'}
-                          {moduleId === 'lifestyle' && 'Sleep, stress, nutrition, and recovery habits.'}
-                        </p>
+                  {Object.entries(orgSettings?.modules || {}).map(([moduleId, enabled]) => {
+                    const assessmentLabels: Record<string, { label: string; description: string }> = {
+                      parq: { label: 'PAR-Q', description: 'Health screening questionnaire required before physical testing.' },
+                      inbody: { label: 'InBody Scan', description: 'Body composition, muscle mass, and fat analysis.' },
+                      fitness: { label: 'Metabolic Fitness', description: 'Resting heart rate and VO2 Max estimates via cardio tests.' },
+                      posture: { label: 'Posture Analysis', description: 'AI posture analysis and alignment checks.' },
+                      overheadSquat: { label: 'Overhead Squat', description: 'Movement quality assessment for overhead squat pattern.' },
+                      hinge: { label: 'Hinge Assessment', description: 'Hip hinge movement quality and range of motion.' },
+                      lunge: { label: 'Lunge Assessment', description: 'Lunge movement quality, balance, and knee tracking.' },
+                      mobility: { label: 'Mobility Screening', description: 'Joint mobility assessment for hips, shoulders, and ankles.' },
+                      strength: { label: 'Muscular Strength', description: 'Grip strength, pushups, planks, and foundational power.' },
+                      lifestyle: { label: 'Lifestyle Factors', description: 'Sleep, stress, nutrition, hydration, and recovery habits.' },
+                    };
+                    const info = assessmentLabels[moduleId] || { label: moduleId, description: '' };
+                    return (
+                      <div key={moduleId} className="flex items-center justify-between p-5 hover:bg-slate-50/50 transition-colors">
+                        <div className="space-y-1">
+                          <Label className="text-sm font-bold text-slate-800">{info.label}</Label>
+                          <p className="text-xs text-slate-500 font-medium leading-relaxed max-w-md">
+                            {info.description}
+                          </p>
+                        </div>
+                        <Switch 
+                          checked={enabled as boolean}
+                          onCheckedChange={(checked) => handleModuleToggle(moduleId as keyof OrgSettings['modules'], checked)}
+                        />
                       </div>
-                      <Switch 
-                        checked={enabled as boolean}
-                        onCheckedChange={(checked) => handleModuleToggle(moduleId as keyof OrgSettings['modules'], checked)}
-                      />
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
+              </div>
+            </section>
+
+            {/* Equipment Configuration */}
+            <section className="space-y-4">
+              <div className="flex items-center gap-2 text-slate-900 mb-2">
+                <SettingsIcon className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-bold">Equipment Configuration</h2>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-6 shadow-sm">
+                {/* Grip Strength Method */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-bold text-slate-800">Grip Strength Test Method</Label>
+                  <p className="text-xs text-slate-500">Select the equipment you use for grip strength testing.</p>
+                  <Select
+                    value={orgSettings?.equipmentConfig?.gripStrength?.method || DEFAULT_EQUIPMENT_CONFIG.gripStrength.method}
+                    onValueChange={async (value: 'dynamometer' | 'deadhang' | 'farmerswalk' | 'platepinch') => {
+                      if (!profile?.organizationId || !orgSettings) return;
+                      try {
+                        await updateOrgSettings(profile.organizationId, {
+                          equipmentConfig: {
+                            ...(orgSettings.equipmentConfig || DEFAULT_EQUIPMENT_CONFIG),
+                            gripStrength: { method: value }
+                          }
+                        });
+                        await refreshSettings();
+                        toast({ title: 'Grip strength method updated' });
+                      } catch (err) {
+                        toast({ title: 'Failed to update', variant: 'destructive' });
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="dynamometer">Dynamometer (Handgrip) - Standard kg measurement</SelectItem>
+                      <SelectItem value="deadhang">Dead Hang - Maximum hang time (seconds)</SelectItem>
+                      <SelectItem value="farmerswalk">Farmer's Walk - Distance/time with load</SelectItem>
+                      <SelectItem value="platepinch">Plate Pinch - Pinch grip weight (kg)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Body Composition Method */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-bold text-slate-800">Body Composition Method</Label>
+                  <p className="text-xs text-slate-500">Select how you measure body composition.</p>
+                  <Select
+                    value={orgSettings?.equipmentConfig?.bodyComposition?.method || DEFAULT_EQUIPMENT_CONFIG.bodyComposition.method}
+                    onValueChange={async (value: 'inbody' | 'dexa' | 'bodpod' | 'skinfold' | 'bioimpedance' | 'measurements') => {
+                      if (!profile?.organizationId || !orgSettings) return;
+                      try {
+                        await updateOrgSettings(profile.organizationId, {
+                          equipmentConfig: {
+                            ...(orgSettings.equipmentConfig || DEFAULT_EQUIPMENT_CONFIG),
+                            bodyComposition: {
+                              method: value,
+                              skinfoldMethod: value === 'skinfold' ? (orgSettings.equipmentConfig?.bodyComposition?.skinfoldMethod || 'jackson-pollock-7') : undefined
+                            }
+                          }
+                        });
+                        await refreshSettings();
+                        toast({ title: 'Body composition method updated' });
+                      } catch (err) {
+                        toast({ title: 'Failed to update', variant: 'destructive' });
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="inbody">InBody - Bioimpedance analysis</SelectItem>
+                      <SelectItem value="dexa">DEXA - Dual-energy X-ray absorptiometry</SelectItem>
+                      <SelectItem value="bodpod">BodPod - Air displacement plethysmography</SelectItem>
+                      <SelectItem value="bioimpedance">Bioimpedance Scale - Other BIA devices</SelectItem>
+                      <SelectItem value="skinfold">Skinfold Calipers - Body fat from skinfold measurements</SelectItem>
+                      <SelectItem value="measurements">Body Measurements - Tape measure (US Navy method)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Skinfold Method (conditional) */}
+                {orgSettings?.equipmentConfig?.bodyComposition?.method === 'skinfold' && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-bold text-slate-800">Skinfold Method</Label>
+                    <p className="text-xs text-slate-500">Select the skinfold measurement protocol you use.</p>
+                    <Select
+                      value={orgSettings?.equipmentConfig?.bodyComposition?.skinfoldMethod || 'jackson-pollock-7'}
+                      onValueChange={async (value: 'jackson-pollock-7' | 'jackson-pollock-3' | 'durnin-womersley-4') => {
+                        if (!profile?.organizationId || !orgSettings) return;
+                        try {
+                          await updateOrgSettings(profile.organizationId, {
+                            equipmentConfig: {
+                              ...(orgSettings.equipmentConfig || DEFAULT_EQUIPMENT_CONFIG),
+                              bodyComposition: {
+                                method: 'skinfold',
+                                skinfoldMethod: value
+                              }
+                            }
+                          });
+                          await refreshSettings();
+                          toast({ title: 'Skinfold method updated' });
+                        } catch (err) {
+                          toast({ title: 'Failed to update', variant: 'destructive' });
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="jackson-pollock-7">Jackson-Pollock 7-Site (Chest, Axilla, Tricep, Subscapular, Abdomen, Suprailiac, Thigh)</SelectItem>
+                        <SelectItem value="jackson-pollock-3">Jackson-Pollock 3-Site (Men: Chest/Abdomen/Thigh, Women: Tricep/Suprailiac/Thigh)</SelectItem>
+                        <SelectItem value="durnin-womersley-4">Durnin-Womersley 4-Site (Bicep, Tricep, Subscapular, Suprailiac)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
             </section>
           </>

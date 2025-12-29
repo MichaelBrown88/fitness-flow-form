@@ -1459,8 +1459,77 @@ export default function ClientReport({
         </section>
       )}
 
-      {/* 9. Sample Workout - Enhanced with Detail & Context */}
-      {plan?.prioritizedExercises && (
+      {/* 9. Sample Workout */}
+      {plan?.clientWorkout ? (
+        <section className="space-y-4">
+          <h2 className="text-xl font-bold text-slate-900">Your Sample Workout</h2>
+          
+          <div className="space-y-4">
+            {/* Warm-up */}
+            {plan.clientWorkout.warmUp.length > 0 && (
+              <div className="bg-white rounded-xl border border-slate-200 p-5">
+                <h3 className="text-sm font-bold text-slate-900 mb-3">Warm-up</h3>
+                <div className="space-y-3">
+                  {plan.clientWorkout.warmUp.map((ex, i) => (
+                    <div key={i} className="text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-700 font-medium">{ex.name}</span>
+                        <span className="text-slate-500 text-xs">
+                          {ex.setsReps || ex.time || ''}
+                        </span>
+                      </div>
+                      {ex.addresses && (
+                        <p className="text-xs text-slate-500 italic mt-1">{ex.addresses}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Main Exercises */}
+            {plan.clientWorkout.exercises.length > 0 && (
+              <div className="bg-white rounded-xl border-2 border-primary p-5">
+                <h3 className="text-sm font-bold text-slate-900 mb-3">Main Workout</h3>
+                <div className="space-y-3">
+                  {plan.clientWorkout.exercises.map((ex, i) => (
+                    <div key={i} className="text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-700 font-medium">{ex.name}</span>
+                        <span className="text-primary font-semibold text-xs">
+                          {ex.setsReps || ''}
+                        </span>
+                      </div>
+                      {ex.addresses && (
+                        <p className="text-xs text-slate-500 italic mt-1">{ex.addresses}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Finisher */}
+            {plan.clientWorkout.finisher && (
+              <div className="bg-white rounded-xl border border-slate-200 p-5">
+                <h3 className="text-sm font-bold text-slate-900 mb-3">Finisher</h3>
+                <div className="text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-700 font-medium">{plan.clientWorkout.finisher.name}</span>
+                    <span className="text-slate-500 text-xs">
+                      {plan.clientWorkout.finisher.setsReps || plan.clientWorkout.finisher.time || ''}
+                    </span>
+                  </div>
+                  {plan.clientWorkout.finisher.addresses && (
+                    <p className="text-xs text-slate-500 italic mt-1">{plan.clientWorkout.finisher.addresses}</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      ) : plan?.prioritizedExercises ? (
+        // Fallback to old format if new format not available
         <section className="space-y-6">
           <h2 className="text-2xl font-bold text-slate-900">Your Sample Workout Structure</h2>
           <p className="text-sm text-slate-600">
@@ -1521,14 +1590,8 @@ export default function ClientReport({
               </div>
             </div>
           </div>
-          
-          <div className="rounded-2xl bg-slate-50 border border-slate-200 p-6">
-            <p className="text-xs text-slate-600 leading-relaxed">
-              <strong>Note on Integration:</strong> We don't do "physio" separately. If you have an imbalance, we'll choose **Unilateral Variations** (one side at a time) for your main lifts. This builds the muscle you want while solving the issues you have.
-            </p>
-          </div>
         </section>
-      )}
+      ) : null}
 
       {/* Removed explicit expected timeframe to keep end date obscure */}
     </div>

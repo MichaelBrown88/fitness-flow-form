@@ -1,10 +1,12 @@
 import React, { useMemo } from 'react';
 import { useFormContext, type FormData } from '@/contexts/FormContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Scan, ChevronLeft, ChevronRight } from 'lucide-react';
 import { type PhaseField, type PhaseSection } from '@/lib/phaseConfig';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { shouldShowField } from '@/lib/utils/equipmentFieldFilter';
 import { FieldControl } from './FieldControl';
 
 type IntakeSection = {
@@ -35,11 +37,18 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
   onShowInBodyCompanion
 }) => {
   const { formData } = useFormContext();
+  const { orgSettings } = useAuth();
   const isMobile = useIsMobile();
 
   // Filter visible fields and group paired ones
   const steps = useMemo(() => {
     const visible = (section.fields as PhaseField[]).filter(field => {
+      // First check equipment-based filtering
+      if (!shouldShowField(field, orgSettings?.equipmentConfig)) {
+        return false;
+      }
+      
+      // Then check conditional logic
       if (!('conditional' in field) || !field.conditional || !field.conditional.showWhen) return true;
       const { showWhen } = field.conditional;
       const dependentValue = formData[showWhen.field as keyof FormData];
@@ -83,7 +92,7 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
     });
 
     return result;
-  }, [section.fields, formData]);
+  }, [section.fields, formData, orgSettings?.equipmentConfig]);
 
   const currentStep = steps[activeFieldIdx];
   const isLastField = activeFieldIdx === steps.length - 1;

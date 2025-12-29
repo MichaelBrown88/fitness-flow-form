@@ -3,18 +3,43 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getDb, getStorage } from '@/lib/firebase';
 import { sanitizeForFirestore } from '@/lib/utils/firebaseUtils';
 
+import type { GripStrengthMethod, BodyCompositionMethod, SkinfoldMethod } from '@/lib/utils/measurementConverters';
+
+/**
+ * Equipment configuration for assessments
+ * Allows different facilities to use different equipment while maintaining comparable scoring
+ */
+export interface EquipmentConfig {
+  gripStrength: {
+    method: GripStrengthMethod;
+  };
+  bodyComposition: {
+    method: BodyCompositionMethod;
+    skinfoldMethod?: SkinfoldMethod; // Required if method is 'skinfold'
+  };
+}
+
+/**
+ * Granular assessment toggles - each assessment can be enabled/disabled independently
+ * Section IDs map to phaseConfig section.id values
+ */
 export interface OrgSettings {
   name: string;
   logoUrl?: string;
   brandColor?: string; // hex
   modules: {
-    inbody: boolean;
-    posture: boolean;
-    movement: boolean;
-    fitness: boolean;
-    strength: boolean;
-    lifestyle: boolean;
+    parq: boolean; // P0 - PAR-Q health screening
+    inbody: boolean; // P2 - Body composition scan (section: 'body-comp')
+    fitness: boolean; // P3 - Metabolic fitness assessment (section: 'fitness-assessment')
+    posture: boolean; // P4 - Posture analysis (section: 'posture')
+    overheadSquat: boolean; // P4 - Overhead squat assessment (section: 'overhead-squat')
+    hinge: boolean; // P4 - Hinge assessment (section: 'hinge-assessment')
+    lunge: boolean; // P4 - Lunge assessment (section: 'lunge-assessment')
+    mobility: boolean; // P4 - Mobility assessment (section: 'mobility')
+    strength: boolean; // P5 - Muscular strength (section: 'strength-endurance')
+    lifestyle: boolean; // P1 - Lifestyle factors (section: 'lifestyle-overview')
   };
+  equipmentConfig?: EquipmentConfig; // Optional: defaults provided if not set
 }
 
 /**
@@ -31,17 +56,31 @@ export async function uploadOrgLogo(orgId: string, file: File): Promise<string> 
   return downloadUrl;
 }
 
+export const DEFAULT_EQUIPMENT_CONFIG: EquipmentConfig = {
+  gripStrength: {
+    method: 'dynamometer',
+  },
+  bodyComposition: {
+    method: 'inbody',
+  },
+};
+
 const DEFAULT_SETTINGS: OrgSettings = {
   name: 'New Organization',
   brandColor: '#03dee2', 
   modules: {
+    parq: true,
     inbody: true,
-    posture: true,
-    movement: true,
     fitness: true,
+    posture: true,
+    overheadSquat: true,
+    hinge: true,
+    lunge: true,
+    mobility: true,
     strength: true,
     lifestyle: true,
-  }
+  },
+  equipmentConfig: DEFAULT_EQUIPMENT_CONFIG,
 };
 
 /**
@@ -60,13 +99,25 @@ export async function getOrgSettings(orgId: string): Promise<OrgSettings> {
   }
   
   const data = snap.data() as OrgSettings;
-  // Deep merge with defaults to ensure all module keys exist
+  // Deep merge with defaults to ensure all module keys and equipment config exist
   return {
     ...DEFAULT_SETTINGS,
     ...data,
     modules: {
       ...DEFAULT_SETTINGS.modules,
       ...(data.modules || {})
+    },
+    equipmentConfig: {
+      ...DEFAULT_EQUIPMENT_CONFIG,
+      ...(data.equipmentConfig || {}),
+      gripStrength: {
+        ...DEFAULT_EQUIPMENT_CONFIG.gripStrength,
+        ...(data.equipmentConfig?.gripStrength || {})
+      },
+      bodyComposition: {
+        ...DEFAULT_EQUIPMENT_CONFIG.bodyComposition,
+        ...(data.equipmentConfig?.bodyComposition || {}),
+      }
     }
   };
 }

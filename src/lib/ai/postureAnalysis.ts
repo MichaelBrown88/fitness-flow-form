@@ -130,7 +130,7 @@ export async function analyzePostureImage(
     // 2. USE AI ONLY TO CONVERT NUMBERS → USER-FRIENDLY DESCRIPTIONS
     // AI receives calculated metrics and normative data to generate descriptions
     // AI does NOT analyze the image - it only converts the calculated numbers into text
-    await logAIUsage(coachUid, 'posture_analysis', 'ai_description_only', 'gemini');
+    await logAIUsage(coachUid, 'posture_analysis', 'ai_success', 'gemini');
 
     const firebaseApp = getApp();
     const ai = getAI(firebaseApp, { backend: new VertexAIBackend() });

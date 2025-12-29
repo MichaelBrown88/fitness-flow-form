@@ -63,7 +63,7 @@ export const phaseDefinitions = [
   {
     id: 'P0',
     title: 'Basic Client Info',
-    summary: 'Collect basic client information.',
+    summary: 'Collect basic client information and health screening.',
     gateHint: 'Complete before starting assessment.',
     sections: [
       {
@@ -76,6 +76,19 @@ export const phaseDefinitions = [
           { id: 'dateOfBirth' as keyof FormData, type: 'date' as FieldType, label: 'Date of birth', required: true, tooltip: 'Required to calculate age-adjusted health and fitness scores.' },
           { id: 'gender' as keyof FormData, type: 'select' as FieldType, label: 'Gender', required: true, options: [{ value: 'male', label: 'Male' }, { value: 'female', label: 'Female' }], tooltip: 'Used for physiological baseline comparisons (SMM, Body Fat).' },
           { id: 'assignedCoach' as keyof FormData, type: 'select' as FieldType, label: 'Assigned Coach', required: true, options: [{ value: 'coach-mike', label: 'Coach Mike' }, { value: 'coach-selina', label: 'Coach Selina' }], tooltip: 'Select the primary coach responsible for this client.' },
+        ],
+      },
+      {
+        id: 'parq',
+        title: 'PAR-Q',
+        fields: [
+          {
+            id: 'parqQuestionnaire' as keyof FormData,
+            type: 'parq' as FieldType,
+            label: 'PAR-Q Questionnaire',
+            required: true,
+            tooltip: 'Instructions:\n1. Answer each question carefully.\n2. Any "YES" answer requires medical clearance before physical testing.',
+          },
         ],
       },
     ],
@@ -129,22 +142,9 @@ export const phaseDefinitions = [
   {
     id: 'P2',
     title: 'Body Composition',
-    summary: 'PAR-Q and Inbody scan.',
+    summary: 'InBody scan and body composition analysis.',
     gateHint: 'Complete before movement assessment.',
     sections: [
-      {
-        id: 'parq',
-        title: 'Par Q',
-        fields: [
-          {
-            id: 'parqQuestionnaire' as keyof FormData,
-            type: 'parq' as FieldType,
-            label: 'PAR-Q Questionnaire',
-            required: true,
-            tooltip: 'Instructions:\n1. Answer each question carefully.\n2. Any "YES" answer requires medical clearance before physical testing.',
-          },
-        ],
-      },
       {
         id: 'body-comp',
         title: 'Body Composition',
@@ -163,6 +163,21 @@ export const phaseDefinitions = [
           { id: 'totalBodyWaterL' as keyof FormData, type: 'number' as FieldType, label: 'Total Body Water (L)', placeholder: 'e.g., 41.0', tooltip: 'The amount of fluid in your body. Helps ensure your scan results are consistent and accurate.' },
           { id: 'waistHipRatio' as keyof FormData, type: 'number' as FieldType, label: 'Waist-to-Hip Ratio (WHR)', placeholder: 'e.g., 0.92', tooltip: 'A measure of fat distribution. Lower ratios generally indicate lower risk of metabolic health issues.' },
           { id: 'visceralFatLevel' as keyof FormData, type: 'number' as FieldType, label: 'Visceral Fat Level', placeholder: 'e.g., 9', tooltip: 'The level of fat stored deep around your internal organs. Staying below 10 is ideal for health.' },
+          
+          // Body Composition - Skinfold Calipers (alternative method)
+          { id: 'skinfoldTricepMm' as keyof FormData, type: 'number' as FieldType, label: 'Tricep (mm)', placeholder: 'e.g., 12', tooltip: 'Vertical fold at midpoint of posterior tricep between shoulder and elbow.' },
+          { id: 'skinfoldChestMm' as keyof FormData, type: 'number' as FieldType, label: 'Chest (mm)', placeholder: 'e.g., 8', tooltip: 'Diagonal fold half the distance between anterior axillary line and nipple.' },
+          { id: 'skinfoldSubscapularMm' as keyof FormData, type: 'number' as FieldType, label: 'Subscapular (mm)', placeholder: 'e.g., 15', tooltip: 'Diagonal fold just below the shoulder blade.' },
+          { id: 'skinfoldAxillaMm' as keyof FormData, type: 'number' as FieldType, label: 'Axilla (mm)', placeholder: 'e.g., 10', tooltip: 'Vertical fold at the mid-axillary line, level with the xiphoid process.' },
+          { id: 'skinfoldAbdomenMm' as keyof FormData, type: 'number' as FieldType, label: 'Abdomen (mm)', placeholder: 'e.g., 20', tooltip: 'Vertical fold 2cm to the right of the umbilicus.' },
+          { id: 'skinfoldSuprailiacMm' as keyof FormData, type: 'number' as FieldType, label: 'Suprailiac (mm)', placeholder: 'e.g., 18', tooltip: 'Diagonal fold just above the iliac crest.' },
+          { id: 'skinfoldThighMm' as keyof FormData, type: 'number' as FieldType, label: 'Thigh (mm)', placeholder: 'e.g., 25', tooltip: 'Vertical fold on the front of the thigh, midpoint between hip and knee.' },
+          { id: 'skinfoldBicepMm' as keyof FormData, type: 'number' as FieldType, label: 'Bicep (mm)', placeholder: 'e.g., 5', tooltip: 'Vertical fold on the front of the bicep, midpoint between shoulder and elbow.' },
+          
+          // Body Composition - Body Measurements (alternative method - US Navy)
+          { id: 'waistCm' as keyof FormData, type: 'number' as FieldType, label: 'Waist (cm)', placeholder: 'e.g., 85', tooltip: 'Measure at the narrowest point, or at navel level if no narrowing. Keep tape horizontal.' },
+          { id: 'neckCm' as keyof FormData, type: 'number' as FieldType, label: 'Neck (cm)', placeholder: 'e.g., 38', tooltip: 'Measure just below the larynx (Adam\'s apple), keeping tape horizontal.' },
+          { id: 'hipCm' as keyof FormData, type: 'number' as FieldType, label: 'Hip (cm)', placeholder: 'e.g., 95', tooltip: 'Women only: Measure at the widest part of the hips, keeping tape horizontal.' },
 
           // Segmental Lean Analysis (kg only) — Trunk, Left arm, Right arm, Left leg, Right leg
           { id: 'segmentalTrunkKg' as keyof FormData, type: 'number' as FieldType, label: 'Trunk lean (kg)', placeholder: 'e.g., 28.5', tooltip: 'The amount of muscle in your core and torso region.' },
@@ -179,6 +194,27 @@ export const phaseDefinitions = [
   },
   {
     id: 'P3',
+    title: 'Metabolic Fitness',
+    summary: 'Resting heart rate and cardio fitness assessment.',
+    gateHint: 'Complete first physical assessment - requires resting heart rate.',
+    sections: [
+      {
+        id: 'fitness-assessment',
+        title: 'Metabolic Fitness',
+        fields: [
+          { id: 'cardioTestSelected' as keyof FormData, type: 'select' as FieldType, label: 'Select test', tooltip: 'Instructions:\n1. Choose the YMCA Step Test for a portable option.\n2. Choose the Treadmill Test for a more controlled environment.', options: [
+            { value: 'ymca-step', label: 'YMCA step test' },
+            { value: 'treadmill', label: 'Treadmill test' },
+          ]},
+          // Simplified fields common to both tests
+          { id: 'cardioRestingHr' as keyof FormData, type: 'number' as FieldType, label: 'Resting Heart Rate (bpm)', tooltip: 'Instructions:\n1. Client should sit quietly for 5 minutes.\n2. Measure pulse for 60s or use a heart rate monitor.' },
+          { id: 'cardioPost1MinHr' as keyof FormData, type: 'number' as FieldType, label: '1-min Post-Test HR (HR₆₀, bpm)', tooltip: 'Instructions:\n1. Step Test: 12" step, 96bpm for 3m.\n2. Treadmill: 1.7mph @ 10% grade for 3m.\n3. Stop test at 3:00. Record HR exactly 60s later.' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'P4',
     title: 'Movement Quality',
     summary: 'Posture, movement patterns, and mobility screens.',
     sections: [
@@ -335,11 +371,11 @@ export const phaseDefinitions = [
           { id: 'lungeRightKneeAlignment' as keyof FormData, type: 'select' as FieldType, label: 'Knee tracking', pattern: 'Lunge', side: 'right', pairId: 'lunge-knee', tooltip: 'Instructions:\n1. Watch the front knee during the descent.\n2. Note if the knee stays over the foot or caves inward.', options: [
             { value: 'tracks-straight', label: 'Tracks straight' }, { value: 'caves-inward', label: 'Caves inward (valgus)' }, { value: 'bows-outward', label: 'Bows outward (varus)' }
           ]},
-          { id: 'lungeLeftTorso' as keyof FormData, type: 'select' as FieldType, label: 'Hips position', pattern: 'Lunge', side: 'left', pairId: 'lunge-hips', tooltip: 'Instructions:\n1. Observe pelvic position at the bottom of the lunge.\n2. Note if the hips stay neutral or tilt forward/back.', options: [
-            { value: 'neutral', label: 'Neutral' }, { value: 'anterior-tilt', label: 'Anterior tilt (pelvis forward)' }, { value: 'posterior-tilt', label: 'Pelvis backward (posterior)' }
+          { id: 'lungeLeftTorso' as keyof FormData, type: 'select' as FieldType, label: 'Hip shift', pattern: 'Lunge', side: 'left', pairId: 'lunge-hips', tooltip: 'Instructions:\n1. Observe from the front or back view.\n2. Note if the hips shift to one side during the lunge.\n3. This indicates asymmetrical strength or stability.', options: [
+            { value: 'neutral', label: 'No shift (stable)' }, { value: 'shifts-left', label: 'Shifts to the left' }, { value: 'shifts-right', label: 'Shifts to the right' }
           ]},
-          { id: 'lungeRightTorso' as keyof FormData, type: 'select' as FieldType, label: 'Hips position', pattern: 'Lunge', side: 'right', pairId: 'lunge-hips', tooltip: 'Instructions:\n1. Observe pelvic position at the bottom of the lunge.\n2. Note if the hips stay neutral or tilt forward/back.', options: [
-            { value: 'neutral', label: 'Neutral' }, { value: 'anterior-tilt', label: 'Anterior tilt (pelvis forward)' }, { value: 'posterior-tilt', label: 'Pelvis backward (posterior)' }
+          { id: 'lungeRightTorso' as keyof FormData, type: 'select' as FieldType, label: 'Hip shift', pattern: 'Lunge', side: 'right', pairId: 'lunge-hips', tooltip: 'Instructions:\n1. Observe from the front or back view.\n2. Note if the hips shift to one side during the lunge.\n3. This indicates asymmetrical strength or stability.', options: [
+            { value: 'neutral', label: 'No shift (stable)' }, { value: 'shifts-left', label: 'Shifts to the left' }, { value: 'shifts-right', label: 'Shifts to the right' }
           ]},
           { id: 'lungeHasPain' as keyof FormData, type: 'select' as FieldType, label: 'Pain or Discomfort?', tooltip: 'Does the client feel any pain or discomfort during this movement?', options: [
             { value: 'no', label: 'No pain' },
@@ -370,7 +406,7 @@ export const phaseDefinitions = [
     ],
   },
   {
-    id: 'P4',
+    id: 'P5',
     title: 'Muscular Strength',
     summary: 'Basic strength and endurance metrics.',
     gateHint: 'Complete movement before strength testing.',
@@ -382,29 +418,18 @@ export const phaseDefinitions = [
           { id: 'squatsOneMinuteReps' as keyof FormData, type: 'number' as FieldType, label: 'Squats in one minute', placeholder: 'e.g., 40', tooltip: 'Instructions:\n1. Set timer for 60 seconds.\n2. Count only reps with full range of motion (thighs parallel to floor).\n3. Stop immediately when time expires.' },
           { id: 'pushupsOneMinuteReps' as keyof FormData, type: 'number' as FieldType, label: 'Pushups in one minute', placeholder: 'e.g., 25', tooltip: 'Instructions:\n1. Maintain a rigid plank position throughout.\n2. Chest must come within 2 inches of the floor.\n3. Arms must reach full lockout at the top.' },
           { id: 'plankDurationSeconds' as keyof FormData, type: 'number' as FieldType, label: 'Plank duration (seconds)', placeholder: 'e.g., 60', tooltip: 'Instructions:\n1. Hold a forearm plank with a flat back and active core.\n2. Record the total time until form breaks or knees touch.' },
+          // Grip Strength - Dynamometer (default)
           { id: 'gripLeftKg' as keyof FormData, type: 'number' as FieldType, label: 'Left hand', pattern: 'Grip Strength', side: 'left', pairId: 'grip-strength', placeholder: 'e.g., 24', tooltip: 'Instructions:\n1. Squeeze the dynamometer with maximum effort.\n2. Keep arm at your side, not touching your body.\n3. Record the best of 3 attempts.' },
           { id: 'gripRightKg' as keyof FormData, type: 'number' as FieldType, label: 'Right hand', pattern: 'Grip Strength', side: 'right', pairId: 'grip-strength', placeholder: 'e.g., 26', tooltip: 'Instructions:\n1. Squeeze the dynamometer with maximum effort.\n2. Keep arm at your side, not touching your body.\n3. Record the best of 3 attempts.' },
+          // Grip Strength - Dead Hang (alternative)
+          { id: 'gripDeadhangSeconds' as keyof FormData, type: 'number' as FieldType, label: 'Dead hang time (seconds)', pattern: 'Grip Strength', placeholder: 'e.g., 45', tooltip: 'Instructions:\n1. Hang from a pull-up bar with full grip.\n2. Record maximum time until grip fails or form breaks.\n3. Bodyweight is used to calculate equivalent grip strength.' },
+          // Grip Strength - Farmer's Walk (alternative)
+          { id: 'gripFarmersWalkDistanceM' as keyof FormData, type: 'number' as FieldType, label: 'Distance (meters)', pattern: 'Grip Strength', placeholder: 'e.g., 30', tooltip: 'Instructions:\n1. Carry weight in each hand (dumbbells, kettlebells, or farmer\'s walk handles).\n2. Walk as far as possible until grip fails.\n3. Record distance covered.' },
+          { id: 'gripFarmersWalkTimeS' as keyof FormData, type: 'number' as FieldType, label: 'Time (seconds)', pattern: 'Grip Strength', placeholder: 'e.g., 60', tooltip: 'Alternative: Record time held instead of distance.' },
+          { id: 'gripFarmersWalkLoadKg' as keyof FormData, type: 'number' as FieldType, label: 'Load per hand (kg)', pattern: 'Grip Strength', placeholder: 'e.g., 20', tooltip: 'Weight carried in each hand.' },
+          // Grip Strength - Plate Pinch (alternative)
+          { id: 'gripPlatePinchKg' as keyof FormData, type: 'number' as FieldType, label: 'Plate pinch weight (kg)', pattern: 'Grip Strength', placeholder: 'e.g., 15', tooltip: 'Instructions:\n1. Pinch grip a weight plate between thumb and fingers.\n2. Lift and hold maximum weight possible.\n3. Record weight in kg.' },
         ]
-      },
-    ],
-  },
-  {
-    id: 'P5',
-    title: 'Metabolic Fitness',
-    summary: 'Select and run cardio test.',
-    sections: [
-      {
-        id: 'fitness-assessment',
-        title: 'Metabolic Fitness',
-        fields: [
-          { id: 'cardioTestSelected' as keyof FormData, type: 'select' as FieldType, label: 'Select test', tooltip: 'Instructions:\n1. Choose the YMCA Step Test for a portable option.\n2. Choose the Treadmill Test for a more controlled environment.', options: [
-            { value: 'ymca-step', label: 'YMCA step test' },
-            { value: 'treadmill', label: 'Treadmill test' },
-          ]},
-          // Simplified fields common to both tests
-          { id: 'cardioRestingHr' as keyof FormData, type: 'number' as FieldType, label: 'Resting Heart Rate (bpm)', tooltip: 'Instructions:\n1. Client should sit quietly for 5 minutes.\n2. Measure pulse for 60s or use a heart rate monitor.' },
-          { id: 'cardioPost1MinHr' as keyof FormData, type: 'number' as FieldType, label: '1-min Post-Test HR (HR₆₀, bpm)', tooltip: 'Instructions:\n1. Step Test: 12" step, 96bpm for 3m.\n2. Treadmill: 1.7mph @ 10% grade for 3m.\n3. Stop test at 3:00. Record HR exactly 60s later.' },
-        ],
       },
     ],
   },

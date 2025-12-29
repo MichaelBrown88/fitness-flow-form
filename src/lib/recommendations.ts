@@ -2,6 +2,7 @@ import type { FormData } from '@/contexts/FormContext';
 import { type ScoreSummary, buildRoadmap } from './scoring';
 import { prioritizeExercises, type ExerciseGroup, type SessionGroup } from './exercisePrioritization';
 import { MOVEMENT_LOGIC_DB } from './clinical-data';
+import { generateClientWorkout, generateCoachExerciseLists } from './recommendationGenerator';
 
 export type CoachPlan = {
   keyIssues: string[];
@@ -34,6 +35,35 @@ export type CoachPlan = {
     goalExercises: string[];
     importantIssues: string[];
     minorIssues: string[];
+  };
+  // New unified workout structure for client
+  clientWorkout?: {
+    warmUp: Array<{ name: string; setsReps?: string; time?: string; addresses?: string }>;
+    exercises: Array<{ name: string; setsReps?: string; notes?: string; addresses?: string; type: string }>;
+    finisher?: { name: string; time?: string; setsReps?: string; addresses?: string };
+  };
+  // New comprehensive exercise guidance for coach
+  coachExerciseLists?: {
+    priorities: {
+      equipment: string;
+      focus: string;
+      keyIssues: string[];
+    };
+    byMovementPattern: {
+      squat: Array<{ name: string; setsReps?: string; notes?: string; addresses?: string }>;
+      hinge: Array<{ name: string; setsReps?: string; notes?: string; addresses?: string }>;
+      push: Array<{ name: string; setsReps?: string; notes?: string; addresses?: string }>;
+      pull: Array<{ name: string; setsReps?: string; notes?: string; addresses?: string }>;
+      lunge: Array<{ name: string; setsReps?: string; notes?: string; addresses?: string }>;
+      core: Array<{ name: string; setsReps?: string; notes?: string; addresses?: string }>;
+    };
+    issueSpecific: {
+      postural: Array<{ name: string; setsReps?: string; notes?: string; addresses: string }>;
+      mobility: Array<{ name: string; setsReps?: string; notes?: string; addresses: string }>;
+      asymmetry: Array<{ name: string; setsReps?: string; notes?: string; addresses: string }>;
+    };
+    warmUp: Array<{ name: string; setsReps?: string; time?: string; notes?: string; addresses?: string }>;
+    cardio: Array<{ name: string; time?: string; notes?: string; addresses?: string }>;
   };
 };
 
@@ -501,7 +531,7 @@ export function generateCoachPlan(form: FormData, scores: ScoreSummary): CoachPl
     blocks.push({ title: 'Performance maintenance', objectives: ['Maintain strengths', 'Prevent regression'], exercises: EXERCISES.strengthBase });
   }
 
-  // Generate prioritized exercise recommendations
+  // Generate prioritized exercise recommendations (legacy system for backward compatibility)
   const prioritizedExercises = prioritizeExercises(form, scores, {
     keyIssues: issues,
     clientScript,
@@ -511,6 +541,12 @@ export function generateCoachPlan(form: FormData, scores: ScoreSummary): CoachPl
     segmentalGuidance
   });
 
+  // Generate new unified workout for client
+  const clientWorkout = generateClientWorkout(form, scores);
+  
+  // Generate comprehensive exercise lists for coach
+  const coachExerciseLists = generateCoachExerciseLists(form, scores);
+
   return { 
     keyIssues: issues, 
     clientScript,
@@ -518,7 +554,9 @@ export function generateCoachPlan(form: FormData, scores: ScoreSummary): CoachPl
     programmingStrategies,
     movementBlocks: blocks, 
     segmentalGuidance,
-    prioritizedExercises
+    prioritizedExercises,
+    clientWorkout,
+    coachExerciseLists
   };
 }
 

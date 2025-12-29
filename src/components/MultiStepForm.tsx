@@ -151,20 +151,52 @@ const PhaseFormContent = ({
 
   // Filter phases for partial assessments or modular availability
   const visiblePhases = useMemo(() => {
-    // 1. First, filter by Org-level enabled modules
+    // Mapping of assessment module keys to section IDs
+    const assessmentToSectionMap: Record<string, string[]> = {
+      parq: ['parq'],
+      inbody: ['body-comp'],
+      fitness: ['fitness-assessment'],
+      posture: ['posture'],
+      overheadSquat: ['overhead-squat'],
+      hinge: ['hinge-assessment'],
+      lunge: ['lunge-assessment'],
+      mobility: ['mobility'],
+      strength: ['strength-endurance'],
+      lifestyle: ['lifestyle-overview'],
+    };
+
     const modules = orgSettings?.modules;
     let phases = phaseDefinitions;
     
+    // 1. Filter phases and sections by granular assessment toggles
     if (modules) {
-      phases = phaseDefinitions.filter(phase => {
-        if (phase.id === 'P0' || phase.id === 'P6' || phase.id === 'P7') return true;
-        if (phase.id === 'P1') return modules.lifestyle;
-        if (phase.id === 'P2') return modules.inbody;
-        if (phase.id === 'P3') return modules.movement || modules.posture;
-        if (phase.id === 'P4') return modules.strength;
-        if (phase.id === 'P5') return modules.fitness;
-        return true;
-      });
+      phases = phaseDefinitions.map(phase => {
+        // Always show structural phases (P0, P6, P7)
+        if (phase.id === 'P0' || phase.id === 'P6' || phase.id === 'P7') {
+          return phase;
+        }
+        
+        // Filter sections within each phase based on enabled assessments
+        const filteredSections = (phase.sections || []).filter(section => {
+          // Find which assessment module(s) this section belongs to
+          const enabledAssessments = Object.entries(assessmentToSectionMap)
+            .filter(([assessmentKey, sectionIds]) => sectionIds.includes(section.id))
+            .map(([assessmentKey]) => assessmentKey);
+          
+          // If this section belongs to any enabled assessment, show it
+          return enabledAssessments.some(assessmentKey => modules[assessmentKey as keyof typeof modules] === true);
+        });
+        
+        // If phase has no enabled sections (and isn't a structural phase), exclude it
+        if (filteredSections.length === 0) {
+          return null;
+        }
+        
+        return {
+          ...phase,
+          sections: filteredSections
+        } as typeof phase;
+      }).filter((p): p is NonNullable<typeof p> => p !== null);
     }
 
     // 2. Then, filter further if in partial assessment mode
@@ -172,27 +204,27 @@ const PhaseFormContent = ({
       return phases;
     }
     
-    // Map category to allowed phase IDs and specific section IDs
+    // Map category to allowed phase IDs and specific section IDs (updated for new phase structure)
     const categoryConfig: Record<string, { phaseIds: PhaseId[], sectionIds?: string[] }> = {
       'inbody': { 
         phaseIds: ['P0', 'P2', 'P7'], 
-        sectionIds: ['basic-client-info', 'body-comp', 'parq'] 
+        sectionIds: ['basic-client-info', 'parq', 'body-comp'] 
       },
       'posture': { 
-        phaseIds: ['P0', 'P3', 'P7'], 
-        sectionIds: ['basic-client-info', 'posture', 'overhead-squat', 'hinge-assessment', 'lunge-assessment', 'mobility'] 
+        phaseIds: ['P0', 'P4', 'P7'], 
+        sectionIds: ['basic-client-info', 'parq', 'posture', 'overhead-squat', 'hinge-assessment', 'lunge-assessment', 'mobility'] 
       },
       'fitness': { 
-        phaseIds: ['P0', 'P5', 'P7'], 
-        sectionIds: ['basic-client-info', 'fitness-assessment'] 
+        phaseIds: ['P0', 'P3', 'P7'], 
+        sectionIds: ['basic-client-info', 'parq', 'fitness-assessment'] 
       },
       'strength': { 
-        phaseIds: ['P0', 'P4', 'P7'], 
-        sectionIds: ['basic-client-info', 'strength-endurance'] 
+        phaseIds: ['P0', 'P5', 'P7'], 
+        sectionIds: ['basic-client-info', 'parq', 'strength-endurance'] 
       },
       'lifestyle': { 
         phaseIds: ['P0', 'P1', 'P7'], 
-        sectionIds: ['basic-client-info', 'lifestyle-overview'] 
+        sectionIds: ['basic-client-info', 'parq', 'lifestyle-overview'] 
       },
     };
     
@@ -203,16 +235,25 @@ const PhaseFormContent = ({
       .map(phase => {
         if (!config.sectionIds) return phase;
         
-        // Specialized logic for P3: if posture is disabled, hide posture section even in posture partial category
-        let finalSectionIds = config.sectionIds;
-        if (phase.id === 'P3' && modules && !modules.posture) {
-          finalSectionIds = finalSectionIds.filter(id => id !== 'posture');
-        }
-        if (phase.id === 'P3' && modules && !modules.movement) {
-          finalSectionIds = finalSectionIds.filter(id => !['overhead-squat', 'hinge-assessment', 'lunge-assessment', 'mobility'].includes(id));
-        }
-
-        const filteredSections = (phase.sections || []).filter(section => finalSectionIds.includes(section.id));
+        // Filter sections based on enabled assessments (granular control)
+        const filteredSections = (phase.sections || []).filter(section => {
+          if (!config.sectionIds) return true;
+          if (!config.sectionIds.includes(section.id)) return false;
+          
+          // Additional granular filtering: check if the assessment for this section is enabled
+          if (modules) {
+            const sectionAssessments = Object.entries(assessmentToSectionMap)
+              .filter(([_, sectionIds]) => sectionIds.includes(section.id))
+              .map(([assessmentKey]) => assessmentKey);
+            
+            // If this section's assessment is disabled, hide it
+            if (sectionAssessments.length > 0 && !sectionAssessments.some(key => modules[key as keyof typeof modules])) {
+              return false;
+            }
+          }
+          
+          return true;
+        });
         if (filteredSections.length === 0 && phase.id !== 'P7') return null;
         return {
           ...phase,
@@ -260,8 +301,9 @@ const PhaseFormContent = ({
       });
     }
 
-    // If there are NO required fields, at least ONE field must be filled to count as "completed"
-    return visibleFields.some(field => {
+    // If there are NO required fields, ALL fields must be filled to count as "completed"
+    // This prevents auto-advancing after just one field (like lifestyle phase)
+    return visibleFields.every(field => {
       const value = formData[field.id];
       if (Array.isArray(value)) return value.length > 0;
       return value !== undefined && value !== null && value !== '';
@@ -1314,11 +1356,11 @@ const PhaseFormContent = ({
               </div>
             )}
 
-            {/* NEW: Show "Preview Results" for testing/partial data */}
-            {activePhaseIdx >= 1 && activePhaseIdx < totalPhases - 1 && !allAssessmentsCompleted && anyAssessmentCompleted && (
+            {/* Show "Preview Results" only for partial assessments */}
+            {isPartialAssessment && activePhaseIdx >= 1 && activePhaseIdx < totalPhases - 1 && !allAssessmentsCompleted && anyAssessmentCompleted && (
               <div className="flex items-center justify-center border-t border-slate-200 pt-8">
                 <Button variant="outline" onClick={handleViewResults} className="h-14 px-10 rounded-2xl border-primary/20 text-primary font-bold hover:bg-brand-light transition-all">
-                  {isPartialAssessment ? '📊 Update Live Report' : '🔍 Preview Partial Results'}
+                  📊 Update Live Report
                 </Button>
               </div>
             )}
