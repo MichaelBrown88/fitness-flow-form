@@ -58,51 +58,76 @@ export async function addPostureOverlay(
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
         if (mode === 'align' && landmarkData) {
-          // Get actual landmark positions from the image
-          let landmarkX = img.width * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.CENTER_X_PCT / 100);
-          let landmarkShoulderY = img.height * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.SHOULDER_Y_PCT / 100);
-          let landmarkHipY = img.height * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.HIP_Y_PCT / 100);
-          let landmarkHeadY = img.height * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.HEAD_Y_PCT / 100);
+          // Target positions on canvas (where green lines will be drawn)
+          const targetCenterX = canvas.width * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.CENTER_X_PCT / 100);
+          const targetShoulderY = canvas.height * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.SHOULDER_Y_PCT / 100);
+          const targetHipY = canvas.height * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.HIP_Y_PCT / 100);
+          const targetHeadY = canvas.height * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.HEAD_Y_PCT / 100);
           
-          // Use detected landmarks if available
+          // Get detected landmark positions in SOURCE image pixels
+          let sourceLandmarkX: number;
+          let sourceShoulderY: number;
+          let sourceHipY: number;
+          
+          // Determine X landmark (center for front/back, midfoot for side)
           if (view === 'side-right' || view === 'side-left') {
             if (landmarkData.midfoot_x_percent !== undefined) {
-              landmarkX = (landmarkData.midfoot_x_percent / 100) * img.width;
+              sourceLandmarkX = (landmarkData.midfoot_x_percent / 100) * img.width;
+            } else {
+              sourceLandmarkX = img.width / 2; // Fallback to center
             }
           } else {
             if (landmarkData.center_x_percent !== undefined) {
-              landmarkX = (landmarkData.center_x_percent / 100) * img.width;
+              sourceLandmarkX = (landmarkData.center_x_percent / 100) * img.width;
+            } else {
+              sourceLandmarkX = img.width / 2; // Fallback to center
             }
           }
           
+          // Get Y positions
           if (landmarkData.shoulder_y_percent !== undefined) {
-            landmarkShoulderY = (landmarkData.shoulder_y_percent / 100) * img.height;
+            sourceShoulderY = (landmarkData.shoulder_y_percent / 100) * img.height;
+          } else {
+            sourceShoulderY = img.height * 0.25; // Fallback
           }
+          
           if (landmarkData.hip_y_percent !== undefined) {
-            landmarkHipY = (landmarkData.hip_y_percent / 100) * img.height;
-          }
-          if (landmarkData.head_y_percent !== undefined) {
-            landmarkHeadY = (landmarkData.head_y_percent / 100) * img.height;
+            sourceHipY = (landmarkData.hip_y_percent / 100) * img.height;
+          } else {
+            sourceHipY = img.height * 0.5; // Fallback
           }
 
-          // Calculate scale based on torso height (shoulder to hip)
-          const actualTorsoHeight = Math.abs(landmarkHipY - landmarkShoulderY);
+          // Calculate scale based on torso height (shoulder to hip distance)
+          const sourceTorsoHeight = Math.abs(sourceHipY - sourceShoulderY);
           const targetTorsoHeight = Math.abs(targetHipY - targetShoulderY);
           
-          // Clamp scale to reasonable limits (0.5x to 4x) to prevent distortion
-          let scale = actualTorsoHeight > 0 ? targetTorsoHeight / actualTorsoHeight : (canvas.height / img.height);
-          scale = Math.max(0.5, Math.min(4.0, scale));
+          // Calculate scale factor
+          let scale = sourceTorsoHeight > 0 ? targetTorsoHeight / sourceTorsoHeight : 1.0;
+          // Clamp scale to reasonable limits (0.3x to 3x) to prevent extreme distortion
+          scale = Math.max(0.3, Math.min(3.0, scale));
 
-          // Calculate translation to center the body
-          const translateX = targetCenterX - (landmarkX * scale);
-          const bodyCenterY = (landmarkShoulderY + landmarkHipY) / 2;
-          const targetCenterY = (targetShoulderY + targetHipY) / 2;
-          const translateY = targetCenterY - (bodyCenterY * scale);
+          // After scaling, where will the source landmarks be?
+          const scaledLandmarkX = sourceLandmarkX * scale;
+          const scaledShoulderY = sourceShoulderY * scale;
+          const scaledHipY = sourceHipY * scale;
+          
+          // Calculate translation needed to align landmarks with targets
+          // We want: targetCenterX = translateX + scaledLandmarkX
+          const translateX = targetCenterX - scaledLandmarkX;
+          
+          // For Y, align the midpoint between shoulder and hip
+          const scaledBodyCenterY = (scaledShoulderY + scaledHipY) / 2;
+          const targetBodyCenterY = (targetShoulderY + targetHipY) / 2;
+          const translateY = targetBodyCenterY - scaledBodyCenterY;
 
-          console.log(`[OVERLAY] Aligning ${view}: landmarkX=${landmarkX.toFixed(0)}px, landmarkShoulderY=${landmarkShoulderY.toFixed(0)}px, landmarkHipY=${landmarkHipY.toFixed(0)}px`);
-          console.log(`[OVERLAY] Scale=${scale.toFixed(3)}, translate(${translateX.toFixed(1)}, ${translateY.toFixed(1)})`);
+          console.log(`[OVERLAY] Aligning ${view}:`);
+          console.log(`  Source: X=${sourceLandmarkX.toFixed(0)}px, ShoulderY=${sourceShoulderY.toFixed(0)}px, HipY=${sourceHipY.toFixed(0)}px`);
+          console.log(`  Target: X=${targetCenterX.toFixed(0)}px, ShoulderY=${targetShoulderY.toFixed(0)}px, HipY=${targetHipY.toFixed(0)}px`);
+          console.log(`  Scale=${scale.toFixed(3)}, Translate(${translateX.toFixed(1)}, ${translateY.toFixed(1)})`);
 
           ctx.save();
+          // Apply transformations: first translate, then scale
+          // This ensures the scale happens around the origin, then we translate
           ctx.translate(translateX, translateY);
           ctx.scale(scale, scale);
           ctx.drawImage(img, 0, 0);
