@@ -21,20 +21,18 @@ import {
 
 type BodyCompInterp = { timeframeWeeks: string };
 
-export default function ClientReport({ 
-  scores, 
-  roadmap, 
-  goals, 
-  bodyComp, 
-  formData, 
+export default function ClientReport({
+  scores,
+  goals,
+  bodyComp,
+  formData,
   plan,
-  highlightCategory 
-}: { 
-  scores: ScoreSummary; 
-  roadmap: RoadmapPhase[]; 
-  goals?: string[]; 
-  bodyComp?: BodyCompInterp; 
-  formData?: FormData; 
+  highlightCategory,
+}: {
+  scores: ScoreSummary;
+  goals?: string[];
+  bodyComp?: BodyCompInterp;
+  formData?: FormData;
   plan?: CoachPlan;
   highlightCategory?: string;
 }) {
