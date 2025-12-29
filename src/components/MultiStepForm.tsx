@@ -65,8 +65,6 @@ import { FieldControl } from './assessment/FieldControl';
 // Lazy load results component
 const AssessmentResults = React.lazy(() => import('./assessment/AssessmentResults'));
 
-import { processInBodyScan } from '@/lib/ai/ocrEngine';
-import { compressImageForDisplay } from '@/lib/utils/imageCompression';
 import {
   Dialog,
   DialogContent,
@@ -190,42 +188,57 @@ const PhaseFormContent = ({
   const [recentlyCompletedSections, setRecentlyCompletedSections] = useState<Set<string>>(new Set());
   const phaseRefs = useRef<Record<number, HTMLButtonElement | null>>({});
   const [activeFieldIdx, setActiveFieldIdx] = useState(0);
-  const [savingId, setSavingId] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [shareCache, setShareCache] = useState<Record<'client' | 'coach', ShareArtifacts | null>>({
-    client: null,
-    coach: null,
-  });
-  const shareCacheRef = useRef<Record<'client' | 'coach', ShareArtifacts | null>>({
-    client: null,
-    coach: null,
-  });
-  const [shareLoading, setShareLoading] = useState(false);
   const [isDemoAssessment, setIsDemoAssessment] = useState(false);
   const [isReviewMode, setIsReviewMode] = useState(false);
   const isRunningDemoRef = useRef(false); // Prevent multiple simultaneous auto-fill runs
   
-  // NEW CAMERA/COMPANION STATE
-  const [showCamera, setShowCamera] = useState<false | 'ocr' | 'posture'>(false);
-  const [showPostureCompanion, setShowPostureCompanion] = useState(false);
-  const [showInBodyCompanion, setShowInBodyCompanion] = useState(false);
-  const [ocrReviewData, setOcrReviewData] = useState<Partial<FormData> | null>(null);
-  const [isProcessingOcr, setIsProcessingOcr] = useState(false);
-  const [postureStep, setPostureStep] = useState<number>(0);
+  // Use save hook
+  const saveHook = useAssessmentSave({
+    user,
+    profile,
+    formData,
+    scores,
+    isResultsPhase,
+    isDemoAssessment,
+  });
+  const {
+    saving,
+    savingId,
+    shareLoading,
+    setShareLoading,
+    handleSaveToDashboard,
+    ensureShareArtifacts,
+    fetchReportPdfBlob,
+  } = saveHook;
 
-  // Filter phases for partial assessments
+  // Use camera hook
+  const cameraHook = useCameraHandler({
+    formData,
+    updateFormData,
+    activePhaseId: activePhase.id,
+    activePhaseIdx,
+    visiblePhases,
+    isPartialAssessment,
+    onPhaseChange: setActivePhaseIdx,
+  });
+  const {
+    showCamera,
+    setShowCamera,
+    showPostureCompanion,
+    setShowPostureCompanion,
+    showInBodyCompanion,
+    setShowInBodyCompanion,
+    ocrReviewData,
+    setOcrReviewData,
+    isProcessingOcr,
+    postureStep,
+    setPostureStep,
+    handleCapture,
+    applyOcrData,
+    handlePostureCompanionComplete,
+    handleInBodyCompanionComplete,
+  } = cameraHook;
 
-  const totalPhases = visiblePhases.length;
-  const activePhase = useMemo(() => {
-    return visiblePhases[activePhaseIdx] || {
-      id: 'empty',
-      title: 'No Phases Available',
-      summary: 'Phase definitions are currently being loaded or configured.',
-      sections: []
-    };
-  }, [activePhaseIdx, visiblePhases]);
-
-  const isResultsPhase = activePhase?.id === 'P7';
 
   // Precompute reports data when needed
   const scores = useMemo(() => {
@@ -278,98 +291,6 @@ const PhaseFormContent = ({
     }
   }, [formData]);
 
-  const ensureShareArtifacts = useCallback(async (view: 'client' | 'coach') => {
-    if (!user || !savingId) {
-      throw new Error('Assessment must be saved before sharing.');
-    }
-    if (shareCacheRef.current[view]) {
-      return shareCacheRef.current[view]!;
-    }
-    const artifacts = await requestShareArtifacts({ assessmentId: savingId, view });
-    shareCacheRef.current[view] = artifacts;
-    setShareCache((prev) => ({ ...prev, [view]: artifacts }));
-    return artifacts;
-  }, [savingId, user]);
-
-  const fetchReportPdfBlob = useCallback(async (view: 'client' | 'coach') => {
-    try {
-      if (user && savingId) {
-        const artifacts = await ensureShareArtifacts(view);
-        const response = await fetch(artifacts.pdfUrl);
-        if (response.ok) {
-          const blob = await response.blob();
-          return { artifacts, blob };
-        }
-      }
-    } catch (error) {
-      console.warn('Cloud Functions PDF error, fallback to client-side', error);
-    }
-    
-    // For client-side PDF fallback, we need the element to be visible
-    // This is less reliable now that results are in a separate component
-    // but we'll try to find it by the data-pdf-target attribute
-    const reportEl = document.querySelector('[data-pdf-target]') as HTMLElement;
-    if (!reportEl) throw new Error('Report element not found');
-    
-    const html2canvas = (await import('html2canvas')).default;
-    const jsPDF = (await import('jspdf')).default;
-    
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    const canvasEl = await html2canvas(reportEl, {
-      scale: 3,
-      useCORS: true,
-      logging: false,
-      backgroundColor: '#ffffff',
-      scrollX: 0,
-      scrollY: 0,
-      windowWidth: reportEl.scrollWidth,
-      windowHeight: reportEl.scrollHeight,
-      onclone: (clonedDoc) => {
-        const clonedElement = clonedDoc.querySelector(`[data-pdf-target]`) as HTMLElement;
-        if (clonedElement) {
-          clonedElement.style.backgroundColor = '#ffffff';
-          clonedElement.style.width = `${reportEl.scrollWidth}px`;
-          clonedElement.style.height = 'auto';
-          clonedElement.style.overflow = 'visible';
-          clonedDoc.querySelectorAll('button, .dropdown-menu').forEach((el) => {
-            (el as HTMLElement).style.display = 'none';
-          });
-        }
-      },
-    });
-    
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const margin = 10;
-    const contentWidth = pageWidth - (margin * 2);
-    const imgHeight = (canvasEl.height * contentWidth) / canvasEl.width;
-    const contentHeight = pageHeight - (margin * 2);
-    const totalPages = Math.ceil(imgHeight / contentHeight);
-    
-    for (let page = 0; page < totalPages; page++) {
-      if (page > 0) pdf.addPage();
-      const sourceY = (page * contentHeight / imgHeight) * canvasEl.height;
-      const remainingHeight = imgHeight - (page * contentHeight);
-      const pageImageHeight = Math.min(contentHeight, remainingHeight);
-      const sourceHeight = (pageImageHeight / imgHeight) * canvasEl.height;
-      
-      const pageCanvas = document.createElement('canvas');
-      pageCanvas.width = canvasEl.width;
-      pageCanvas.height = Math.ceil(sourceHeight);
-      const ctx = pageCanvas.getContext('2d');
-      if (ctx && sourceHeight > 0) {
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-        ctx.drawImage(canvasEl, 0, sourceY, canvasEl.width, sourceHeight, 0, 0, canvasEl.width, sourceHeight);
-        const pageImgData = pageCanvas.toDataURL('image/png', 1.0);
-        pdf.addImage(pageImgData, 'PNG', margin, margin, contentWidth, pageImageHeight);
-      }
-    }
-    
-    return { artifacts: null, blob: pdf.output('blob') };
-  }, [ensureShareArtifacts, user, savingId]);
 
   const handlePrint = useCallback(async (view: 'client' | 'coach') => {
     try {
@@ -500,194 +421,6 @@ const PhaseFormContent = ({
     }
   }, [formData, scores, roadmap, toast]);
 
-  const handleCapture = async (imageSrc: string) => {
-    if (showCamera === 'ocr') {
-      setShowCamera(false);
-      setIsProcessingOcr(true);
-      
-      toast({ 
-        title: "Image Captured", 
-        description: "Gemini AI is analyzing your InBody scan...",
-      });
-
-      try {
-        const result = await processInBodyScan(imageSrc);
-        if (result.fields && Object.keys(result.fields).length > 0) {
-          setOcrReviewData(result.fields);
-        } else {
-          toast({ 
-            title: "Scan failed", 
-            description: "AI couldn't find data. Please try again with a clearer photo.",
-            variant: "destructive"
-          });
-        }
-      } catch (err) {
-        console.error('OCR error:', err);
-        toast({ title: "Scan failed", description: "An error occurred during AI analysis.", variant: "destructive" });
-      } finally {
-        setIsProcessingOcr(false);
-      }
-    } else if (showCamera === 'posture') {
-      const views: ('front' | 'side-right' | 'side-left' | 'back')[] = ['front', 'side-right', 'side-left', 'back'];
-      const currentView = views[postureStep] || 'front';
-      
-      toast({ title: `${currentView.toUpperCase()} captured`, description: "Processing image alignment..." });
-      
-      try {
-        setIsProcessingOcr(true); // Re-use OCR loading mask for local analysis
-        
-        // Use unified processing system (ONE FLOW FOR ALL SOURCES)
-        toast({ title: "Processing posture...", description: "Aligning, calculating, and analyzing..." });
-        const { processPostureImage } = await import('@/services/postureProcessing');
-        const processed = await processPostureImage(imageSrc, currentView, undefined, 'this-device');
-        
-        // Compress final image for storage/form
-        const compressed = await compressImageForDisplay(processed.imageWithDeviations, 800, 0.8);
-        
-        // Use processed analysis
-        const analysis = processed.analysis;
-        
-        // Map analysis to form
-        const suggestions: Partial<FormData> = {};
-        
-        // Store the final processed image in the form
-        const imageField = `postureImage${currentView.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('')}` as keyof FormData;
-        (suggestions as any)[imageField] = compressed.compressed;
-
-        if (currentView === 'side-right' || currentView === 'side-left') {
-          suggestions.postureHeadOverall = [analysis.forward_head.status.toLowerCase().includes('neutral') ? 'neutral' : 'forward-head'];
-          suggestions.postureBackOverall = [analysis.kyphosis.status.toLowerCase().includes('severe') ? 'increased-kyphosis' : 'neutral'];
-        } else if (currentView === 'front') {
-          suggestions.postureShouldersOverall = [analysis.shoulder_alignment.status.toLowerCase().includes('neutral') ? 'neutral' : 'rounded'];
-        }
-
-        updateFormData(suggestions);
-
-        if (postureStep < views.length - 1) {
-          setPostureStep(prev => prev + 1);
-        } else {
-          setShowCamera(false);
-          toast({ title: "Posture analysis complete", description: "Aligned images and findings have been applied." });
-        }
-      } catch (err) {
-        console.error('Local posture analysis error:', err);
-        toast({ title: "Analysis failed", description: "Could not analyze posture image.", variant: "destructive" });
-        setShowCamera(false);
-      } finally {
-        setIsProcessingOcr(false);
-      }
-    }
-  };
-
-  const applyOcrData = () => {
-    if (ocrReviewData) {
-      updateFormData(ocrReviewData);
-      setOcrReviewData(null);
-      toast({ title: "InBody data applied", description: "All fields have been populated." });
-      
-      // Auto-advance: if we're in the Body Composition section, move to the next phase
-      // This matches the user's request to "complete and go to the next"
-      if (activePhase.id === 'P2') {
-        setTimeout(() => {
-          if (isPartialAssessment) {
-            // No auto-results for partial assessments anymore
-            toast({ title: "Data applied", description: "You can now review the fields and click Update Report when ready." });
-          } else {
-            // Move to next visible phase (likely P3)
-            const nextVisibleIdx = visiblePhases.findIndex((p, i) => i > activePhaseIdx);
-            if (nextVisibleIdx !== -1) {
-              setActivePhaseIdx(nextVisibleIdx);
-            }
-          }
-        }, 800);
-      }
-    }
-  };
-
-  const handleSaveToDashboard = useCallback(async () => {
-    if (!user || saving || savingId) return;
-    
-    // Safety check for client name
-    const clientName = (formData.fullName || 'Unnamed client').trim();
-    
-    try {
-      setSaving(true);
-      console.log(`[SYNC] Starting sync for client: ${clientName}...`);
-      
-      // Check if this is a partial assessment
-      let assessmentId: string;
-      let category: string | null = null;
-      
-      try {
-        const partialData = sessionStorage.getItem('partialAssessment');
-        if (partialData) {
-          const { category: cat, clientName } = JSON.parse(partialData);
-          category = cat;
-          
-          // Use partial assessment save (merges with latest)
-          const { savePartialAssessment } = await import('@/services/coachAssessments');
-          assessmentId = await savePartialAssessment(
-            user.uid, 
-            user.email, 
-            formData, 
-            scores.overall, 
-            clientName,
-          category as 'inbody' | 'posture' | 'fitness' | 'strength' | 'lifestyle',
-          profile?.organizationId
-          );
-          
-          // Update client profile with last assessment date for this category
-          const { createOrUpdateClientProfile } = await import('@/services/clientProfiles');
-          const updateData: Record<string, Timestamp> = {};
-          const now = Timestamp.now();
-          
-          if (category === 'inbody') updateData.lastInBodyDate = now;
-          else if (category === 'posture') updateData.lastPostureDate = now;
-          else if (category === 'fitness') updateData.lastFitnessDate = now;
-          else if (category === 'strength') updateData.lastStrengthDate = now;
-          else if (category === 'lifestyle') updateData.lastLifestyleDate = now;
-          
-          if (Object.keys(updateData).length > 0) {
-            await createOrUpdateClientProfile(user.uid, clientName, updateData, profile?.organizationId);
-          }
-          
-          // Set highlight category for the report
-          sessionStorage.setItem('highlightCategory', category);
-          
-          // Clear partial assessment flag
-          sessionStorage.removeItem('partialAssessment');
-        } else {
-          // Full assessment
-          assessmentId = await saveCoachAssessment(user.uid, user.email, formData, scores.overall, profile?.organizationId);
-        }
-      } catch (parseErr) {
-        // Fallback to regular save if partial data parsing fails
-        assessmentId = await saveCoachAssessment(user.uid, user.email, formData, scores.overall);
-      }
-      
-      setSavingId(assessmentId);
-      toast({ 
-        title: category ? 'Partial Assessment Saved' : 'Assessment Saved', 
-        description: category ? `${category.charAt(0).toUpperCase() + category.slice(1)} data updated and merged.` : `Progress for ${clientName} has been saved.` 
-      });
-    } catch (e) {
-      console.error('[SYNC] Save failed:', e);
-      toast({ title: 'Sync Error', description: 'Unable to sync with dashboard. Please check your connection.', variant: 'destructive' });
-    } finally {
-      setSaving(false);
-    }
-  }, [user, saving, savingId, formData, scores.overall, toast]);
-
-  useEffect(() => {
-    if (isResultsPhase && user && !savingId && !saving && !isDemoAssessment) {
-      void handleSaveToDashboard();
-    }
-  }, [isResultsPhase, user, savingId, saving, isDemoAssessment, handleSaveToDashboard]);
-
-  useEffect(() => {
-    shareCacheRef.current = { client: null, coach: null };
-    setShareCache({ client: null, coach: null });
-  }, [savingId]);
 
   const isIntakeCompleted = useCallback(() => {
     const p0Sections = phaseDefinitions[0]?.sections ?? [];
@@ -1242,10 +975,7 @@ const PhaseFormContent = ({
           setShowCamera('posture');
           setPostureStep(0);
         }}
-        onComplete={(data) => {
-          updateFormData(data);
-          toast({ title: "Posture data applied", description: "AI findings have been populated." });
-        }}
+        onComplete={handlePostureCompanionComplete}
       />
 
       {/* InBody Companion Modal */}
@@ -1255,10 +985,7 @@ const PhaseFormContent = ({
         onStartDirectScan={() => {
           setShowCamera('ocr');
         }}
-        onComplete={(data) => {
-          setOcrReviewData(data);
-          toast({ title: "InBody data applied", description: "All fields have been populated." });
-        }}
+        onComplete={handleInBodyCompanionComplete}
       />
 
       {/* OCR Processing Overlay */}
