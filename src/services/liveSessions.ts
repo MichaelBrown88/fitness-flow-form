@@ -69,6 +69,25 @@ export const subscribeToLiveSession = (sessionId: string, callback: (session: Li
   });
 };
 
+/**
+ * UNIFIED ALIGNMENT FUNCTION
+ * 
+ * This function is used by BOTH:
+ * 1. iPhone Companion App capture (with real-time MediaPipe landmarks)
+ * 2. Manual file upload (detects landmarks from static image)
+ * 
+ * Both paths use the EXACT SAME alignment logic:
+ * - Same addPostureOverlay() function
+ * - Same parameters (showMidline, showShoulderLine, showHipLine, mode: 'align')
+ * - Same green line positions (50% X, 25% shoulder Y, 50% hip Y)
+ * 
+ * The only difference is landmark source:
+ * - iPhone: Uses landmarks from real-time MediaPipe detection (passed as providedLandmarks)
+ * - Manual: Detects landmarks from the uploaded image (if not provided)
+ * 
+ * Both end up calling addPostureOverlay() with identical parameters, ensuring
+ * consistent alignment regardless of input method.
+ */
 export const updatePostureImage = async (sessionId: string, view: string, imageData: string, providedLandmarks?: LandmarkResult) => {
   try {
     // Validate image data first
@@ -79,18 +98,21 @@ export const updatePostureImage = async (sessionId: string, view: string, imageD
     // STEP 1: Detect or use provided landmarks to align the image
     // We need to know where the body is before we can align it with fixed green line positions
     let landmarks = providedLandmarks;
+    const landmarkSource = providedLandmarks ? 'provided (iPhone capture)' : 'detected (manual upload)';
     
     // Only try landmark detection if we don't have them yet
     if (!landmarks && (imageData.startsWith('data:image') || imageData.startsWith('http'))) {
       try {
         const { detectPostureLandmarks } = await import('@/lib/ai/postureLandmarks');
         landmarks = await detectPostureLandmarks(imageData, view as 'front' | 'side-right' | 'side-left' | 'back');
-        console.log(`[ALIGN] Detected landmarks for ${view} (fallback):`, landmarks);
+        console.log(`[ALIGN] Detected landmarks for ${view} (${landmarkSource}):`, landmarks);
       } catch (landmarkError) {
         console.warn(`[ALIGN] Failed to detect landmarks for ${view}, will skip alignment:`, landmarkError);
         // Continue without alignment if landmark detection fails
         landmarks = undefined;
       }
+    } else if (landmarks) {
+      console.log(`[ALIGN] Using provided landmarks for ${view} (${landmarkSource}):`, landmarks);
     }
     
     // STEP 2: Align image and draw green reference lines at FIXED positions
@@ -103,16 +125,17 @@ export const updatePostureImage = async (sessionId: string, view: string, imageD
       const { addPostureOverlay } = await import('@/lib/utils/postureOverlay');
       if (landmarks) {
         // ALIGN MODE: Crop/zoom image so body aligns with fixed green line positions, then draw green lines
+        // THIS IS THE SAME CODE PATH FOR BOTH iPhone CAPTURE AND MANUAL UPLOAD
         imageWithGreenLines = await addPostureOverlay(imageData, view as 'front' | 'side-right' | 'side-left' | 'back', {
           showMidline: true,
           showShoulderLine: true,
           showHipLine: true,
           lineColor: '#00ff00',
-          lineWidth: 4, // Increased from 2 to 4 for better visibility
+          lineWidth: 4,
           mode: 'align', // Align image, then draw green lines at fixed positions
           landmarks, // Use detected landmarks for alignment
         });
-        console.log(`[ALIGN] Aligned image and added green reference lines to ${view} using landmarks`);
+        console.log(`[ALIGN] ✅ Aligned image and added green reference lines to ${view} using landmarks (${landmarkSource})`);
       } else {
         // If no landmarks, still draw green lines at fixed positions (no alignment, but green lines are the reference)
         // This ensures green lines are always present as the reference point
@@ -121,10 +144,10 @@ export const updatePostureImage = async (sessionId: string, view: string, imageD
           showShoulderLine: true,
           showHipLine: true,
           lineColor: '#00ff00',
-          lineWidth: 4, // Increased from 2 to 4 for better visibility
+          lineWidth: 4,
           mode: 'reference', // Just draw green lines at fixed positions (hardcoded reference)
         });
-        console.log(`[ALIGN] Added green reference lines to ${view} at fixed positions (no alignment - landmarks not detected)`);
+        console.log(`[ALIGN] ⚠️ Added green reference lines to ${view} at fixed positions (no alignment - landmarks not detected)`);
       }
       fullSizeImage = imageWithGreenLines;
     } catch (overlayError) {

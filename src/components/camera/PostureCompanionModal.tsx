@@ -329,20 +329,24 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
       console.log(`[TEST] Successfully loaded ${Object.keys(testImages).length} images, injecting into session...`);
       
       // Inject test images into session (this will trigger AI analysis automatically)
+      // IMPORTANT: This uses the EXACT SAME alignment code as iPhone capture
+      // Both paths call updatePostureImage() which uses addPostureOverlay() with identical parameters
       for (const view of views) {
         if (testImages[view]) {
           try {
-            console.log(`[TEST] Injecting test image for ${view}...`);
+            console.log(`[MANUAL UPLOAD] Processing ${view} image (same alignment code as iPhone capture)...`);
             // Validate image data before sending
             if (!testImages[view] || !testImages[view].startsWith('data:image')) {
               throw new Error(`Invalid image data for ${view}`);
             }
+            // Call the SAME function that iPhone capture uses - no landmarks passed, so it will detect them
+            // This ensures identical alignment behavior
             await updatePostureImage(session.id, view, testImages[view]);
-            console.log(`[TEST] Successfully injected ${view} image`);
+            console.log(`[MANUAL UPLOAD] Successfully processed ${view} image with alignment`);
             // Small delay to avoid overwhelming Firestore
             await new Promise(resolve => setTimeout(resolve, 500));
           } catch (err) {
-            console.error(`[TEST] Failed to inject ${view} image:`, err);
+            console.error(`[MANUAL UPLOAD] Failed to process ${view} image:`, err);
             // Continue with other images even if one fails
             toast({
               title: `Failed to process ${view} image`,
