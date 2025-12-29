@@ -76,47 +76,53 @@ export async function processInBodyScan(imageSrc: string): Promise<OcrResult> {
   let tesseractText = '';
   
   try {
-    // 1. ATTEMPT LOCAL OCR FIRST (Free)
-    console.log('[OCR] Attempting local Tesseract scan...');
-    const worker = await createWorker('eng');
-    const { data: { text: localText } } = await worker.recognize(imageSrc);
-    tesseractText = localText;
-    await worker.terminate();
-
-    // Check regex patterns
-    const patterns = {
-      inbodyWeightKg: /(?:Weight|WT)\s*:?\s*(\d+\.?\d*)\s*kg/i,
-      skeletalMuscleMassKg: /(?:SMM|Muscle Mass)\s*:?\s*(\d+\.?\d*)\s*kg/i,
-      inbodyBodyFatPct: /(?:PBF|Percent Body Fat|Body Fat %)\s*:?\s*(\d+\.?\d*)\s*%/i,
-      visceralFatLevel: /(?:VFL|Visceral Fat Level)\s*:?\s*(\d+)/i,
-      inbodyScore: /(?:InBody Score|Score)\s*:?\s*(\d+)/i,
-      heightCm: /(?:Height|HT)\s*:?\s*(\d+\.?\d*)\s*cm/i,
-      inbodyBmi: /(?:BMI)\s*:?\s*(\d+\.?\d*)/i,
-    };
-
-    const localFields: Partial<FormData> = {};
+    // 1. ATTEMPT LOCAL OCR FIRST (Free) - Wrapped in try-catch to not block Gemini fallback
+    let localFields: Partial<FormData> = {};
     let foundCount = 0;
-    for (const [key, pattern] of Object.entries(patterns)) {
-      const match = localText.match(pattern);
-      if (match && match[1]) {
-        (localFields as any)[key] = match[1];
-        foundCount++;
-      }
-    }
     
-    if (foundCount >= 3) {
-      console.log('[OCR] Local scan successful!');
-      await logAIUsage(coachUid, 'ocr_inbody', 'local_success', 'tesseract');
-      return {
-        fields: localFields,
-        rawText: 'Local analysis complete',
-        confidence: 0.8,
-        provider: 'local'
+    try {
+      console.log('[OCR] Attempting local Tesseract scan...');
+      const worker = await createWorker('eng');
+      const { data: { text: localText } } = await worker.recognize(imageSrc);
+      tesseractText = localText;
+      await worker.terminate();
+
+      // Check regex patterns
+      const patterns = {
+        inbodyWeightKg: /(?:Weight|WT)\s*:?\s*(\d+\.?\d*)\s*kg/i,
+        skeletalMuscleMassKg: /(?:SMM|Muscle Mass)\s*:?\s*(\d+\.?\d*)\s*kg/i,
+        inbodyBodyFatPct: /(?:PBF|Percent Body Fat|Body Fat %)\s*:?\s*(\d+\.?\d*)\s*%/i,
+        visceralFatLevel: /(?:VFL|Visceral Fat Level)\s*:?\s*(\d+)/i,
+        inbodyScore: /(?:InBody Score|Score)\s*:?\s*(\d+)/i,
+        heightCm: /(?:Height|HT)\s*:?\s*(\d+\.?\d*)\s*cm/i,
+        inbodyBmi: /(?:BMI)\s*:?\s*(\d+\.?\d*)/i,
       };
+
+      for (const [key, pattern] of Object.entries(patterns)) {
+        const match = localText.match(pattern);
+        if (match && match[1]) {
+          (localFields as any)[key] = match[1];
+          foundCount++;
+        }
+      }
+      
+      if (foundCount >= 3) {
+        console.log('[OCR] Local scan successful!');
+        await logAIUsage(coachUid, 'ocr_inbody', 'local_success', 'tesseract');
+        return {
+          fields: localFields,
+          rawText: 'Local analysis complete',
+          confidence: 0.8,
+          provider: 'local'
+        };
+      }
+    } catch (tesseractError) {
+      console.warn('[OCR] Tesseract failed, skipping to Gemini:', tesseractError);
+      // Continue to Gemini fallback
     }
 
     // 2. FALLBACK TO GEMINI (Automatic)
-    console.log('[OCR] Local scan insufficient. Falling back to Gemini AI...');
+    console.log('[OCR] Falling back to Gemini AI...');
     await logAIUsage(coachUid, 'ocr_inbody', 'ai_fallback', 'gemini');
 
     const firebaseApp = getApp();

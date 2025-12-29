@@ -31,7 +31,7 @@ import {
   RefreshCcw,
   Monitor,
   ShieldAlert,
-  TestTube,
+  ImagePlus,
   X,
   ChevronLeft,
   ChevronRight
@@ -459,7 +459,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                 className="hidden"
               />
               
-              {/* Manual Upload Button for Testing */}
+              {/* Client Photo Upload Button */}
               <Button
                 onClick={handleLoadTestImages}
                 disabled={isLoadingTestImages || !session?.id}
@@ -473,8 +473,8 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                   </>
                 ) : (
                   <>
-                    <TestTube className="h-4 w-4 mr-2" />
-                    Upload Test Images
+                    <ImagePlus className="h-4 w-4 mr-2" />
+                    Upload Client Photos
                   </>
                 )}
               </Button>
@@ -513,10 +513,10 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                   <span>Photos will appear here as they're captured</span>
                 </li>
               </ol>
-              <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
-                <p className="text-xs text-amber-800">
-                  <strong className="font-black">Testing Mode:</strong> You can also upload images manually using the "Upload Test Images" button. 
-                  Images will be automatically aligned with the green control lines for testing.
+              <div className="mt-4 p-3 bg-brand-light border border-primary/20 rounded-xl">
+                <p className="text-xs text-slate-700">
+                  <strong className="font-black">📸 Remote Photo Upload:</strong> Clients can take photos at home and send them to you. 
+                  Use the "Upload Client Photos" button to process images they've sent via email or messaging apps.
                 </p>
               </div>
             </div>
