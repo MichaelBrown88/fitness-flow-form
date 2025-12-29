@@ -333,13 +333,16 @@ const Companion = () => {
       setIsUploadingBackground(prev => prev + 1);
       
       if (mode === 'inbody') {
+        speak("Analyzing InBody report...");
+        
         updateInBodyImage(sessionId, imageSrc)
           .then(() => {
             setIsProcessingOcr(true);
+            toast({ title: "Scanning...", description: "AI is analyzing the InBody report" });
             
-            // Add timeout wrapper to prevent hanging
+            // 15 second timeout - fast enough to retry quickly
             const timeoutPromise = new Promise<never>((_, reject) => 
-              setTimeout(() => reject(new Error('Scan timeout - please try again')), 30000)
+              setTimeout(() => reject(new Error('Scan taking too long. Try again or enter manually.')), 15000)
             );
             
             return Promise.race([processInBodyScan(imageSrc), timeoutPromise]);
@@ -348,15 +351,16 @@ const Companion = () => {
             if (result.fields && Object.keys(result.fields).length > 0) {
               setOcrReviewData(result.fields as Record<string, string>);
               speak("Data extracted. Review and confirm.");
+              toast({ title: "Scan Complete!", description: "Review the extracted data below" });
             } else {
-              toast({ title: "Scan failed", description: "No data found. Try a clearer photo.", variant: "destructive" });
-              speak("Scan failed. Please try again.");
+              toast({ title: "No data found", description: "Try a clearer photo with better lighting.", variant: "destructive" });
+              speak("Could not read data. Try again.");
             }
           })
           .catch(err => {
             console.error('[OCR] Error:', err);
-            toast({ title: "Scan Error", description: err?.message || "Please try again or enter manually.", variant: "destructive" });
-            speak("Error processing scan.");
+            toast({ title: "Scan Issue", description: err?.message || "Please retake or enter values manually.", variant: "destructive" });
+            speak("Scan issue. Please try again.");
           })
           .finally(() => {
             setIsProcessingOcr(false);
@@ -421,66 +425,66 @@ const Companion = () => {
     // Ensure state is updated to the current index immediately
     setViewIdx(idx);
 
+    // Allow capture even if phone isn't perfectly vertical - just warn
     if (!isVerticalRef.current) {
-      speak("Level the phone first.");
-      return;
+      speak("Try to keep phone level.");
     }
 
-    // New Flow: Check position first
     setIsWaitingForPosition(true);
     setIsSequenceActive(true);
     isSequenceActiveRef.current = true;
     
     speak(`Prepare for ${VIEWS[idx].label}. ${VIEWS[idx].instr}.`);
 
-    // Poll for readiness
-    checkPositionIntervalRef.current = setInterval(() => {
-      if (isPoseReadyRef.current && isVerticalRef.current) {
-        if (checkPositionIntervalRef.current) {
-          clearInterval(checkPositionIntervalRef.current);
-          checkPositionIntervalRef.current = null;
-        }
-        setIsWaitingForPosition(false);
-        speak("Position confirmed. Hold still.");
-        
-        // Start countdown
-        setTimeout(() => {
-          let count = CONFIG.COMPANION.CAPTURE.COUNTDOWN_SEC;
-          setCountdown(count);
-          
-          countdownIntervalRef.current = setInterval(() => {
-            count -= 1;
-            if (count > 0) {
-              setCountdown(count);
-              if (count <= 3) speak(count.toString());
-            } else {
-              if (countdownIntervalRef.current) {
-                clearInterval(countdownIntervalRef.current);
-                countdownIntervalRef.current = null;
-              }
-              setCountdown(null);
-              // Explicitly pass the index to avoid ref-lag or closure issues
-              console.log(`[CAPTURE] Executing capture for slot ${idx}: ${VIEWS[idx].id}`);
-              void performCapture(idx);
-            }
-          }, 1000);
-        }, 1000);
-      }
-    }, 500);
-
-    // Safety timeout - if position isn't found in 30s, cancel
-    setTimeout(() => {
+    // Helper to start the countdown and capture
+    const startCountdownAndCapture = () => {
       if (checkPositionIntervalRef.current) {
         clearInterval(checkPositionIntervalRef.current);
         checkPositionIntervalRef.current = null;
       }
-      if (isWaitingForPosition) {
-        setIsSequenceActive(false);
-        isSequenceActiveRef.current = false;
-        setIsWaitingForPosition(false);
-        speak("Timed out waiting for position. Try again.");
+      setIsWaitingForPosition(false);
+      
+      let count = CONFIG.COMPANION.CAPTURE.COUNTDOWN_SEC;
+      setCountdown(count);
+      
+      countdownIntervalRef.current = setInterval(() => {
+        count -= 1;
+        if (count > 0) {
+          setCountdown(count);
+          if (count <= 3) speak(count.toString());
+        } else {
+          if (countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current);
+            countdownIntervalRef.current = null;
+          }
+          setCountdown(null);
+          console.log(`[CAPTURE] Executing capture for slot ${idx}: ${VIEWS[idx].id}`);
+          void performCapture(idx);
+        }
+      }, 1000);
+    };
+
+    // Poll for readiness - but with a fast fallback if pose detection isn't working
+    let checkCount = 0;
+    const maxChecks = 10; // 5 seconds max (500ms * 10)
+    
+    checkPositionIntervalRef.current = setInterval(() => {
+      checkCount++;
+      
+      // If pose is ready, proceed immediately
+      if (isPoseReadyRef.current) {
+        speak("Position confirmed. Hold still.");
+        setTimeout(startCountdownAndCapture, 500);
+        return;
       }
-    }, CONFIG.COMPANION.CAPTURE.SAFETY_TIMEOUT_MS);
+      
+      // FALLBACK: After 5 seconds, if pose detection isn't responding, just capture anyway
+      if (checkCount >= maxChecks) {
+        console.log('[CAPTURE] Pose detection not responding, using fallback capture');
+        speak("Hold still, capturing now.");
+        startCountdownAndCapture();
+      }
+    }, 500);
 
   }, [performCapture, mode]);
 
