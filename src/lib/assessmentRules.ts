@@ -34,11 +34,14 @@ export const PHASE_TITLES: Record<PhaseId, string> = phaseDefinitions.reduce(
 );
 
 export const PHASE_TIMELINE: Record<PhaseId, string> = {
+  P0: 'Intake',
   P1: 'Weeks 0 – 4',
   P2: 'Weeks 2 – 6',
   P3: 'Weeks 4 – 8',
   P4: 'Weeks 6 – 10',
   P5: 'Weeks 6 – 12',
+  P6: 'Results',
+  P7: 'Results',
 };
 
 const numberFrom = (value: string): number | null => {
@@ -63,7 +66,11 @@ export const ASSESSMENT_RULES: AssessmentRule[] = [
     negativeOutcome: 'Positive response (pain, heart condition, dizziness, or chronic issue).',
     coachAction: 'Halt high-intensity testing. Advised: “Consult physician for medical clearance before starting Phase 4 & 5.”',
     clientFocus: 'Adjustment: Focus on mobility and low-intensity cardio for 6 weeks.',
-    trigger: (form) => form.parqPositive === 'yes',
+    trigger: (form) => {
+      // Check if any PAR-Q question was answered 'yes'
+      const parqQuestions = ['parq1', 'parq2', 'parq3', 'parq4', 'parq5', 'parq6', 'parq7', 'parq8', 'parq9', 'parq10', 'parq11', 'parq12', 'parq13'];
+      return parqQuestions.some(q => form[q as keyof typeof form] === 'yes');
+    },
   },
   {
     id: 'visceral-fat-high',
@@ -91,8 +98,21 @@ export const ASSESSMENT_RULES: AssessmentRule[] = [
     clientFocus:
       'Adjustment: “Focus on building a muscular foundation through resistance training and optimised protein intake.”',
     trigger: (form) => {
-      const diff = numberFrom(form.segmentalLeanImbalancePct);
-      return diff !== null && diff > 5;
+      // Calculate segmental lean imbalance from available data
+      const armLeft = numberFrom(form.segmentalArmLeftKg);
+      const armRight = numberFrom(form.segmentalArmRightKg);
+      const legLeft = numberFrom(form.segmentalLegLeftKg);
+      const legRight = numberFrom(form.segmentalLegRightKg);
+      
+      if (armLeft === null || armRight === null || legLeft === null || legRight === null) {
+        return false;
+      }
+      
+      const armDiff = differencePercent(armLeft, armRight);
+      const legDiff = differencePercent(legLeft, legRight);
+      const maxDiff = Math.max(armDiff, legDiff);
+      
+      return maxDiff > 0.05; // 5% imbalance
     },
   },
   {
@@ -181,8 +201,11 @@ export const ASSESSMENT_RULES: AssessmentRule[] = [
     clientFocus:
       'Adjustment: “Practice balancing on one foot (e.g. while brushing teeth) to reduce fall risk and improve functional balance.”',
     trigger: (form) => {
-      const seconds = numberFrom(form.singleLegStanceSeconds);
-      return seconds !== null && seconds < 10;
+      // Check balance grades - if either side is 'poor' or 'fair', consider it a concern
+      const leftGrade = form.singleLegStanceLeftGrade?.toLowerCase();
+      const rightGrade = form.singleLegStanceRightGrade?.toLowerCase();
+      const poorGrades = ['poor', 'fair', 'needs-improvement'];
+      return poorGrades.includes(leftGrade || '') || poorGrades.includes(rightGrade || '');
     },
   },
   {
@@ -279,8 +302,11 @@ export const STRENGTH_RULES: StrengthRule[] = [
   {
     id: 'balance-solid',
     check: (form) => {
-      const stance = numberFrom(form.singleLegStanceSeconds);
-      return stance !== null && stance >= 20;
+      // Check if balance grades indicate good balance (excellent or good on both sides)
+      const leftGrade = form.singleLegStanceLeftGrade?.toLowerCase();
+      const rightGrade = form.singleLegStanceRightGrade?.toLowerCase();
+      const goodGrades = ['excellent', 'good', 'very-good'];
+      return goodGrades.includes(leftGrade || '') && goodGrades.includes(rightGrade || '');
     },
     message: 'Great balance control with a 20+ second single-leg stance.',
     weight: 3,

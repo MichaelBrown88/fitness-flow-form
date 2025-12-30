@@ -148,6 +148,7 @@ export interface FormData {
   cardioTestType: string;
   cardioTestSelected: string;
   cardioRestingHr: string;
+  cardioPeakHr: string;
   cardioPost1MinHr: string;
   cardioMedicationFlag: string;
   cardioFinalHeartRate: string;
@@ -333,6 +334,7 @@ const initialFormData: FormData = {
   cardioTestType: '',
   cardioTestSelected: '',
   cardioRestingHr: '',
+  cardioPeakHr: '',
   cardioPost1MinHr: '',
   cardioMedicationFlag: '',
   cardioFinalHeartRate: '',

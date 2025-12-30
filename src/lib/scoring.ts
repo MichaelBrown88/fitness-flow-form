@@ -177,17 +177,28 @@ function scoreBodyComp(form: FormData, age: number, gender: string): ScoreCatego
 function scoreCardio(form: FormData, age: number, gender: string): ScoreCategory {
   const test = (form.cardioTestSelected || '').toLowerCase();
   const rhr = parseFloat(form.cardioRestingHr || '0');
+  const peakHr = parseFloat(form.cardioPeakHr || '0');
   const hr60 = parseFloat(form.cardioPost1MinHr || '0');
   
   // Check if cardio test was actually performed
   const hasTest = !!(form.cardioTestSelected && form.cardioTestSelected.trim() !== '');
   const hasHr60 = !!(form.cardioPost1MinHr && form.cardioPost1MinHr.trim() !== '');
+  const hasPeakHr = !!(form.cardioPeakHr && form.cardioPeakHr.trim() !== '');
   const hasRhr = !!(form.cardioRestingHr && form.cardioRestingHr.trim() !== '');
   
-  // Recovery Score using normative database
-  const recoveryScore = hasHr60 
+  // Calculate Heart Rate Recovery (HRR) if we have both peak and recovery HR
+  const hrr = hasPeakHr && hasHr60 && peakHr > 0 && hr60 > 0 ? peakHr - hr60 : 0;
+  const hasHrr = hrr > 0;
+  
+  // HRR-based fitness score (0-100)
+  // Formula: Math.min(100, Math.max(0, (hrr - 5) * 2.8))
+  // This maps: ~12bpm → ~20pts, ~40bpm → ~100pts
+  const hrrScore = hasHrr ? clamp((hrr - 5) * 2.8) : 0;
+  
+  // Recovery Score using normative database (fallback if no HRR)
+  const recoveryScore = hasHr60 && !hasHrr
     ? lookupNormativeScore('Recovery HR', gender, age, hr60)
-    : 0;
+    : hasHrr ? hrrScore : 0;
 
   // VO2max estimate
   const mhr = age > 0 ? 208 - 0.7 * age : 0;
@@ -204,8 +215,11 @@ function scoreCardio(form: FormData, age: number, gender: string): ScoreCategory
     : 0;
 
   // Weighted average for metabolic fitness
+  // If we have HRR, use it as primary metric (70% weight), otherwise use recovery score
   const fitnessScore = hasTest 
-    ? clamp(recoveryScore * 0.7 + rhrScore * 0.3)
+    ? (hasHrr 
+      ? clamp(hrrScore * 0.7 + rhrScore * 0.3)
+      : clamp(recoveryScore * 0.7 + rhrScore * 0.3))
     : rhrScore;
 
   const cardioClass =
@@ -216,10 +230,22 @@ function scoreCardio(form: FormData, age: number, gender: string): ScoreCategory
       : fitnessScore >= 30 ? 'Below Average'
       : 'Poor';
 
-  // Recommendation by FitnessScore and VO2 class
+  // Recommendation by HRR and FitnessScore
   let recommendation = '';
   if (!hasTest) {
     recommendation = 'Metabolic fitness assessment not performed.';
+  } else if (hasHrr) {
+    if (hrr < 12) {
+      recommendation = 'Heart rate recovery is slow (<12bpm). Focus on low-intensity aerobic base building.';
+    } else if (hrr > 30) {
+      recommendation = 'Excellent heart rate recovery (>30bpm). Ready for high-intensity intervals.';
+    } else if (cardioClass === 'Poor' || cardioClass === 'Below Average') {
+      recommendation = 'Low aerobic base – prioritise 3–4 sessions/week of 20–40 minutes Zone 2 walking.';
+    } else if (cardioClass === 'Average') {
+      recommendation = 'Moderate aerobic base – 2–3 Zone 2 sessions plus 1 slightly harder conditioning session per week.';
+    } else {
+      recommendation = 'Solid aerobic base – maintain 2–3 cardio sessions/week; consider adding intervals/tempo for performance.';
+    }
   } else if (cardioClass === 'Poor') {
     recommendation = 'Low aerobic base – prioritise 3–4 sessions/week of 20–40 minutes Zone 2 walking.';
   } else if (cardioClass === 'Average' || cardioClass === 'Below Average') {
@@ -230,10 +256,19 @@ function scoreCardio(form: FormData, age: number, gender: string): ScoreCategory
 
   const details: ScoreDetail[] = [
     { id: 'rhr', label: 'Resting HR', value: rhr || '-', unit: 'bpm', score: Math.round(rhrScore) },
-    { id: 'hr60', label: 'Recovery', value: hr60 || '-', unit: 'bpm', score: Math.round(recoveryScore) },
-    { id: 'vo2', label: 'VO₂max Est.', value: vo2max ? vo2max.toFixed(1) : '-', unit: 'ml/kg/min', score: Math.round(recoveryScore) }, // tied to recovery for now
-    { id: 'cardioClass', label: 'Fitness Level', value: cardioClass, score: Math.round(fitnessScore) },
   ];
+  
+  // Add HRR if available, otherwise add recovery HR
+  if (hasHrr) {
+    details.push({ id: 'hrr', label: 'HR Recovery (HRR)', value: Math.round(hrr) || '-', unit: 'bpm', score: Math.round(hrrScore) });
+  } else if (hasHr60) {
+    details.push({ id: 'hr60', label: 'Recovery', value: hr60 || '-', unit: 'bpm', score: Math.round(recoveryScore) });
+  }
+  
+  details.push(
+    { id: 'vo2', label: 'VO₂max Est.', value: vo2max ? vo2max.toFixed(1) : '-', unit: 'ml/kg/min', score: Math.round(hasHrr ? hrrScore : recoveryScore) },
+    { id: 'cardioClass', label: 'Fitness Level', value: cardioClass, score: Math.round(fitnessScore) }
+  );
 
   const strengths: string[] = [];
   const weaknesses: string[] = [];
@@ -242,11 +277,13 @@ function scoreCardio(form: FormData, age: number, gender: string): ScoreCategory
   else if (hasTest && fitnessScore >= 70) strengths.push('Solid aerobic base foundation');
   
   if (hasRhr && rhrScore >= 80) strengths.push('Excellent resting heart rate (indicates low systemic stress)');
+  
+  if (hasHrr && hrr > 30) strengths.push('Excellent heart rate recovery (>30bpm drop)');
 
   // Relative weaknesses
   const items = [
     { label: 'Resting Heart Rate', score: rhrScore },
-    { label: 'Heart Rate Recovery', score: recoveryScore }
+    { label: hasHrr ? 'Heart Rate Recovery (HRR)' : 'Heart Rate Recovery', score: hasHrr ? hrrScore : recoveryScore }
   ].sort((a, b) => a.score - b.score);
 
   items.forEach(item => {
@@ -256,6 +293,11 @@ function scoreCardio(form: FormData, age: number, gender: string): ScoreCategory
       weaknesses.push(`Further refinement of ${item.label} for better recovery`);
     }
   });
+  
+  // Safety check: flag abnormal HRR
+  if (hasHrr && hrr < 12) {
+    weaknesses.push('Abnormal Heart Rate Recovery (<12bpm drop) - Consult physician if recovery consistently remains below 12bpm');
+  }
 
   return { id: 'cardio', title: 'Metabolic Fitness', score: Math.round(fitnessScore), details, strengths, weaknesses };
 }
