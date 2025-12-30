@@ -157,7 +157,7 @@ export function useAssessmentNavigation({ formData, orgSettings }: UseAssessment
       .filter((p): p is NonNullable<typeof p> => p !== null);
   }, [isPartialAssessment, partialCategory, orgSettings?.modules]);
 
-  const isFieldVisible = useCallback((field: { conditional?: { showWhen?: any } }, customData?: FormData) => {
+  const isFieldVisible = useCallback((field: { conditional?: { showWhen?: Record<string, unknown> } }, customData?: FormData) => {
     const data = customData || formData;
     if (!('conditional' in field) || !field.conditional || !field.conditional.showWhen) return true;
     const { showWhen } = field.conditional;
@@ -181,7 +181,7 @@ export function useAssessmentNavigation({ formData, orgSettings }: UseAssessment
   }, [formData]);
 
   const isSectionCompleted = useCallback((section: PhaseSection) => {
-    const visibleFields = (section.fields as any[]).filter(f => isFieldVisible(f));
+    const visibleFields = (section.fields as Array<{ conditional?: { showWhen?: Record<string, unknown> } }>).filter(f => isFieldVisible(f));
     if (visibleFields.length === 0) return true;
 
     const requiredFields = visibleFields.filter(f => f.required);

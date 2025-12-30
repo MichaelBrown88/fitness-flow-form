@@ -27,7 +27,6 @@ interface PoseResults {
     z: number;
     visibility?: number;
   }>;
-  [key: string]: unknown;
 }
 
 interface UsePoseDetectionResult {
@@ -43,7 +42,7 @@ interface UsePoseDetectionOptions {
   viewIdx: number;
   isWaitingForPosition: boolean;
   onAudioFeedback?: (message: string) => void;
-  views: Array<{ id: string; label: string }>;
+  views: ReadonlyArray<{ readonly id: string; readonly label: string }>;
   webcamVideo: HTMLVideoElement | null;
 }
 
