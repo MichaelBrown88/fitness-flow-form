@@ -125,7 +125,7 @@ export async function analyzePostureImage(
       }
     }
 
-    console.log(`[POSTURE] Local metrics for ${view}:`, calculated);
+    // Local metrics calculated
 
     // 2. USE AI ONLY TO CONVERT NUMBERS → USER-FRIENDLY DESCRIPTIONS
     // AI receives calculated metrics and normative data to generate descriptions
@@ -462,7 +462,7 @@ export async function analyzePostureImage(
     
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
       // Fetch from Storage URL and convert to base64
-      console.log('[AI] Fetching full-size image from Storage URL...');
+      // Fetching full-size image from Storage URL
       try {
         const response = await fetch(imageUrl);
         const blob = await response.blob();
@@ -477,7 +477,7 @@ export async function analyzePostureImage(
           reader.onerror = reject;
           reader.readAsDataURL(blob);
         });
-        console.log('[AI] Successfully fetched full-size image from Storage');
+        // Successfully fetched full-size image from Storage
       } catch (error) {
         console.error('[AI] Failed to fetch image from Storage URL:', error);
         throw new Error('Failed to fetch full-size image from Storage');
@@ -520,7 +520,7 @@ export async function analyzePostureImage(
       }
 
       await logAIUsage(coachUid, 'posture_analysis', 'ai_success', 'gemini');
-      return { ...data, provider: 'hybrid' };
+      return data;
     } catch (parseError) {
       console.error('JSON parsing error:', parseError);
       throw new Error('Failed to parse AI response as JSON.');

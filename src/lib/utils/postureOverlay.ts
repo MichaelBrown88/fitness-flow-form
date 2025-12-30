@@ -120,10 +120,7 @@ export async function addPostureOverlay(
           const targetBodyCenterY = (targetShoulderY + targetHipY) / 2;
           const translateY = targetBodyCenterY - scaledBodyCenterY;
 
-          console.log(`[OVERLAY] Aligning ${view}:`);
-          console.log(`  Source: X=${sourceLandmarkX.toFixed(0)}px, ShoulderY=${sourceShoulderY.toFixed(0)}px, HipY=${sourceHipY.toFixed(0)}px`);
-          console.log(`  Target: X=${targetCenterX.toFixed(0)}px, ShoulderY=${targetShoulderY.toFixed(0)}px, HipY=${targetHipY.toFixed(0)}px`);
-          console.log(`  Scale=${scale.toFixed(3)}, Translate(${translateX.toFixed(1)}, ${translateY.toFixed(1)})`);
+          // Aligning image with landmarks
 
           ctx.save();
           // Apply transformations: first translate, then scale

@@ -25,11 +25,11 @@ async function checkLearnedPatterns(rawText: string): Promise<Partial<FormData> 
     const snap = await getDocs(q);
     
     if (!snap.empty) {
-      console.log('[OCR] Found a learned pattern for this form layout!');
+       // Found a learned pattern for this form layout
       return null; // Placeholder for future template-based extraction
     }
   } catch (err) {
-    console.warn('[OCR] Pattern check failed:', err);
+    // Pattern check failed
   }
   return null;
 }
@@ -48,7 +48,7 @@ async function learnPattern(rawText: string, fields: Partial<FormData>) {
       createdAt: serverTimestamp()
     });
   } catch (err) {
-    console.warn('[OCR] Learning failed:', err);
+    // Learning failed
   }
 }
 
@@ -66,7 +66,7 @@ export const REQUIRED_SCAN_FIELDS: (keyof FormData)[] = [
 async function runGeminiOcr(imageSrc: string): Promise<OcrResult> {
   const coachUid = auth.currentUser?.uid || 'anonymous';
   
-  console.log('[OCR] Running Gemini AI analysis...');
+  // Running Gemini AI analysis
   await logAIUsage(coachUid, 'ocr_inbody', 'ai_fallback', 'gemini');
 
   const firebaseApp = getApp();
@@ -128,7 +128,9 @@ async function runGeminiOcr(imageSrc: string): Promise<OcrResult> {
   const cleanFields: Partial<FormData> = {};
   
   for (const [key, value] of Object.entries(data)) {
-    if (value !== null) (cleanFields as any)[key] = String(value);
+    if (value !== null && key in cleanFields) {
+      (cleanFields as Record<string, string>)[key] = String(value);
+    }
   }
 
   await logAIUsage(coachUid, 'ocr_inbody', 'ai_success', 'gemini');

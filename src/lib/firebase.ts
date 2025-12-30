@@ -11,6 +11,27 @@ import { getFunctions, type Functions } from 'firebase/functions';
 import { getStorage as getFirebaseStorageInstance, type FirebaseStorage } from 'firebase/storage';
 import { CONFIG } from '@/config';
 
+// Suppress noisy Firebase transport warnings in development
+// These are harmless network retry attempts that Firebase SDK handles automatically
+if (import.meta.env.DEV) {
+  const originalWarn = console.warn;
+  console.warn = (...args: unknown[]) => {
+    const message = args[0];
+    if (
+      typeof message === 'string' &&
+      (
+        message.includes('WebChannelConnection RPC') ||
+        message.includes('transport errored') ||
+        message.includes('ERR_QUIC_PROTOCOL_ERROR')
+      )
+    ) {
+      // Suppress these specific Firebase transport warnings
+      return;
+    }
+    originalWarn.apply(console, args);
+  };
+}
+
 // SECURITY: Use environment variables for all sensitive configuration
 // Never hardcode API keys, secrets, or credentials in source code
 const firebaseConfig = {

@@ -32,6 +32,7 @@ const AssessmentReport = () => {
     coach: null,
   });
   const [shareLoading, setShareLoading] = useState(false);
+  const [plan, setPlan] = useState<import('@/lib/recommendations').CoachPlan | null>(null);
 
   const ensureShareArtifacts = useCallback(async (view: 'client' | 'coach') => {
     if (!user || !id) {
@@ -149,6 +150,22 @@ const AssessmentReport = () => {
     })();
   }, [user, id, formData, profile?.organizationId]);
 
+  // Generate coach plan asynchronously (dynamic import happens inside)
+  // CRITICAL: This hook MUST be before any early returns to follow Rules of Hooks
+  useEffect(() => {
+    if (!formData || !scores) return;
+    let cancelled = false;
+    generateCoachPlan(formData, scores)
+      .then(result => {
+        if (!cancelled) setPlan(result);
+      })
+      .catch(e => {
+        console.error('Error generating coach plan:', e);
+        if (!cancelled) setPlan(null);
+      });
+    return () => { cancelled = true; };
+  }, [formData, scores]);
+
   if (loading || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-slate-600">
@@ -176,7 +193,17 @@ const AssessmentReport = () => {
     );
   }
 
-  const plan = generateCoachPlan(formData, scores);
+  if (!plan) {
+    return (
+      <AppShell title="Assessment report">
+        <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-slate-100">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+          <p className="text-sm font-black uppercase tracking-widest text-slate-400">Generating Report...</p>
+        </div>
+      </AppShell>
+    );
+  }
+
   const bodyComp = generateBodyCompInterpretation(formData, scores);
   const highlightCategory = sessionStorage.getItem('highlightCategory') || undefined;
 
@@ -253,7 +280,6 @@ const AssessmentReport = () => {
             {view === 'client' ? (
               <ClientReport
                 scores={scores}
-                roadmap={roadmap}
                 goals={Array.isArray(formData.clientGoals) ? formData.clientGoals : []}
                 bodyComp={bodyComp ? { timeframeWeeks: bodyComp.timeframeWeeks } : undefined}
                 formData={formData}

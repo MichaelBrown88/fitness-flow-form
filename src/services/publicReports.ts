@@ -46,7 +46,7 @@ export async function publishPublicReport(params: {
   };
 
   await setDoc(ref, payload, { merge: true });
-  console.log(`[SHARE] ✓ Public report published to: ${ref.path}`);
+  // Public report published
   return id;
 }
 

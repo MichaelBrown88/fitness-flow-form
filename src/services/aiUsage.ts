@@ -13,7 +13,7 @@ export interface AIUsageLog {
   organizationId?: string;
   coachUid: string;
   costEstimate?: number; // Estimated cost in USD
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -25,7 +25,7 @@ export async function logAIUsage(
   status: AIUsageStatus,
   provider: AIUsageLog['provider'],
   organizationId?: string,
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 ): Promise<void> {
   try {
     const db = getDb();

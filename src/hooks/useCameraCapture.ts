@@ -60,7 +60,7 @@ export function useCameraCapture({
         return;
       }
 
-      console.log(`[CAPTURE] Initiating sync for view ${viewIdx}: ${viewData.id}`);
+      // Initiating sync for view
 
       // Shutter sound
       try {
@@ -126,7 +126,7 @@ export function useCameraCapture({
         } else {
           // Posture mode
           const capturedLandmarks = landmarks || undefined;
-          console.log(`[CAPTURE] Sending image with landmarks for view ${viewData.id}:`, capturedLandmarks);
+          // Sending image with landmarks
 
           updatePostureImage(sessionId, viewData.id, imageSrc, capturedLandmarks, 'iphone')
             .then(() => {
@@ -140,7 +140,7 @@ export function useCameraCapture({
 
           if (viewIdx < views.length - 1) {
             const next = viewIdx + 1;
-            console.log(`[CAPTURE] Scheduling next view: ${views[next].id}`);
+            // Scheduling next view
             onNextView?.(next);
           } else {
             onSequenceComplete?.();

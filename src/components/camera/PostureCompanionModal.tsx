@@ -81,7 +81,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
     if (!session?.id) return;
 
     const unsubscribe = subscribeToLiveSession(session.id, (updatedSession) => {
-      console.log('[MODAL] Snapshot update:', updatedSession.postureImages);
+      // Snapshot update received
       setSession(updatedSession);
       // ONLY set online if companion has joined
       if (updatedSession.companionJoined) {
@@ -171,7 +171,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
         throw new Error('No images could be loaded from the uploaded files. Please check that the files are valid images.');
       }
       
-      console.log(`[TEST] Successfully loaded ${Object.keys(testImages).length} images, injecting into session...`);
+      // Successfully loaded test images
       
       // Inject test images into session (this will trigger AI analysis automatically)
       // IMPORTANT: This uses the EXACT SAME alignment code as iPhone capture
@@ -179,14 +179,14 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
       for (const view of views) {
         if (testImages[view]) {
           try {
-            console.log(`[MANUAL UPLOAD] Processing ${view} image (same alignment code as iPhone capture)...`);
+            // Processing manual upload image
             // Validate image data before sending
             if (!testImages[view] || !testImages[view].startsWith('data:image')) {
               throw new Error(`Invalid image data for ${view}`);
             }
             // Use unified processing system - handles alignment, calculation, AI, deviation lines
             await updatePostureImage(session.id, view, testImages[view], undefined, 'manual');
-            console.log(`[MANUAL UPLOAD] Successfully processed ${view} image (unified system)`);
+            // Successfully processed manual upload image
             // Small delay to avoid overwhelming Firestore
             await new Promise(resolve => setTimeout(resolve, 500));
           } catch (err) {
@@ -229,7 +229,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                         session[`postureImagesFull_${view}`];
       if (typeof storageUrl === 'string') {
         storageUrls[view] = storageUrl;
-        console.log(`[APPLY] Found Storage URL for ${view}:`, storageUrl);
+        // Found Storage URL for view
       } else {
         console.warn(`[APPLY] No Storage URL found for ${view} - image may not be stored yet`);
       }
@@ -240,14 +240,13 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
       postureAiResults: session.analysis,
       postureImages: session.postureImages, // Compressed images with overlay for display
       postureImagesStorage: storageUrls, // Full-size Storage URLs for reports/comparisons
-      // Legacy fields for backward compatibility
-      postureHeadOverall: session.analysis['side-right']?.forward_head?.status === 'Neutral' ? 'neutral' : 'forward-head',
-      postureShouldersOverall: session.analysis.front?.shoulder_alignment?.status === 'Neutral' ? 'neutral' : 'rounded',
-      postureBackOverall: session.analysis['side-right']?.kyphosis?.status !== 'Normal' ? 'increased-kyphosis' : 'neutral',
+      // Legacy fields for backward compatibility (must be arrays)
+      postureHeadOverall: session.analysis['side-right']?.forward_head?.status === 'Neutral' ? ['neutral'] : ['forward-head'],
+      postureShouldersOverall: session.analysis.front?.shoulder_alignment?.status === 'Neutral' ? ['neutral'] : ['rounded'],
+      postureBackOverall: session.analysis['side-right']?.kyphosis?.status !== 'Normal' ? ['increased-kyphosis'] : ['neutral'],
     };
     
-    console.log('[POSTURE] Applying Full AI Findings:', findings);
-    console.log('[POSTURE] Storage URLs available:', Object.keys(storageUrls).length, 'of', views.length);
+    // Applying Full AI Findings
     
     onComplete(findings);
     onClose();

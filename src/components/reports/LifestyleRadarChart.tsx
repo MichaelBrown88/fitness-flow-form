@@ -12,7 +12,15 @@ interface LifestyleRadarChartProps {
   factors: LifestyleFactor[];
 }
 
-const renderCustomAxisTick = ({ payload, x, y, textAnchor, index }: any) => {
+interface AxisTickProps {
+  payload: { value: string };
+  x: number;
+  y: number;
+  textAnchor: "start" | "middle" | "end" | "inherit";
+  index: number;
+}
+
+const renderCustomAxisTick = ({ payload, x, y, textAnchor, index }: AxisTickProps) => {
   return (
     <g>
       <text

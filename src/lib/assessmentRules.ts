@@ -227,12 +227,14 @@ export const ASSESSMENT_RULES: AssessmentRule[] = [
     testName: 'Grip Strength Test',
     negativeOutcome: 'Grip strength below age/gender norms or left/right asymmetry greater than 10%.',
     coachAction:
-      'Strength: Add farmer’s carries, plate pinches, deadlifts; emphasise weaker side when asymmetry exists.',
+      'Strength: Add farmer's carries, plate pinches, deadlifts; emphasise weaker side when asymmetry exists.',
     clientFocus:
-      'Adjustment: “Include specific grip work to build functional strength, starting with carries and holds.”',
+      'Adjustment: "Include specific grip work to build functional strength, starting with carries and holds."',
     trigger: (form) => {
+      // Only trigger if grip fields are actually filled (grip test was performed)
       const left = numberFrom(form.gripLeftKg);
       const right = numberFrom(form.gripRightKg);
+      // If either field is missing or empty, don't trigger (grip test wasn't done or is disabled)
       if (left === null || right === null) return false;
       const gender = form.gender?.toLowerCase();
       const avg = (left + right) / 2;
@@ -307,8 +309,10 @@ export const STRENGTH_RULES: StrengthRule[] = [
   {
     id: 'grip-strong',
     check: (form) => {
+      // Only check if grip fields are actually filled (grip test was performed)
       const left = numberFrom(form.gripLeftKg);
       const right = numberFrom(form.gripRightKg);
+      // If either field is missing or empty, don't trigger (grip test wasn't done or is disabled)
       if (left === null || right === null) return false;
       const gender = form.gender?.toLowerCase();
       const avg = (left + right) / 2;

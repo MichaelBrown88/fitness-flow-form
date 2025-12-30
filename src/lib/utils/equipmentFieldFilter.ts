@@ -17,18 +17,26 @@ export function shouldShowField(
 
   const fieldId = field.id as string;
 
-  // Grip strength fields
-  if (fieldId === 'gripLeftKg' || fieldId === 'gripRightKg') {
-    return equipmentConfig.gripStrength.method === 'dynamometer';
-  }
-  if (fieldId === 'gripDeadhangSeconds') {
-    return equipmentConfig.gripStrength.method === 'deadhang';
-  }
-  if (fieldId === 'gripFarmersWalkDistanceM' || fieldId === 'gripFarmersWalkTimeS' || fieldId === 'gripFarmersWalkLoadKg') {
-    return equipmentConfig.gripStrength.method === 'farmerswalk';
-  }
-  if (fieldId === 'gripPlatePinchKg') {
-    return equipmentConfig.gripStrength.method === 'platepinch';
+  // Grip strength fields - first check if grip testing is enabled
+  const isGripField = fieldId.startsWith('grip');
+  if (isGripField) {
+    // If grip testing is disabled, hide all grip fields
+    if (equipmentConfig.gripStrength.enabled === false) {
+      return false;
+    }
+    // Otherwise, show fields based on selected method
+    if (fieldId === 'gripLeftKg' || fieldId === 'gripRightKg') {
+      return equipmentConfig.gripStrength.method === 'dynamometer';
+    }
+    if (fieldId === 'gripDeadhangSeconds') {
+      return equipmentConfig.gripStrength.method === 'deadhang';
+    }
+    if (fieldId === 'gripFarmersWalkDistanceM' || fieldId === 'gripFarmersWalkTimeS' || fieldId === 'gripFarmersWalkLoadKg') {
+      return equipmentConfig.gripStrength.method === 'farmerswalk';
+    }
+    if (fieldId === 'gripPlatePinchKg') {
+      return equipmentConfig.gripStrength.method === 'platepinch';
+    }
   }
 
   // Body composition fields - InBody/DEXA/BodPod/Bioimpedance (all use same fields)

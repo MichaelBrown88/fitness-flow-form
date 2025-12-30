@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AppShell from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ import {
 } from '@/services/coachAssessments';
 import { getChangeHistory, getCurrentAssessment } from '@/services/assessmentHistory';
 import { computeScores } from '@/lib/scoring';
-import { collection, query, orderBy, limit, onSnapshot, where, Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy, limit, onSnapshot, where, Timestamp, startAfter, getDocs, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { getDb } from '@/lib/firebase';
 import { 
   Trash2, 
@@ -96,6 +96,10 @@ const Dashboard = () => {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [visibleAssessmentsCount, setVisibleAssessmentsCount] = useState(20);
   const [visibleClientsCount, setVisibleClientsCount] = useState(12);
+  const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
   const [recentChanges, setRecentChanges] = useState<Array<{
     clientName: string;
     category: string;
@@ -112,28 +116,48 @@ const Dashboard = () => {
     const assessmentsRef = collection(getDb(), 'coaches', user.uid, 'assessments');
     
     // SaaS Readiness: Filter by organizationId at the query level for performance
+    // Performance: Use limit(20) with cursor-based pagination to prevent large queries
     // This requires a Firestore composite index: organizationId (asc) + createdAt (desc)
-    // For legacy data without organizationId, we'll handle it in a separate query
+    // If index is not ready, fallback to simple query without organizationId filter
     let q;
+    let useOrgFilter = false;
+    
     if (profile?.organizationId) {
-      // Primary query: Filter by organizationId at database level
-      q = query(
-        assessmentsRef,
-        where('organizationId', '==', profile.organizationId),
-        orderBy('createdAt', 'desc'),
-        limit(500)
-      );
+      try {
+        // Try to use organizationId filter (requires composite index)
+        q = query(
+          assessmentsRef,
+          where('organizationId', '==', profile.organizationId),
+          orderBy('createdAt', 'desc'),
+          limit(20)
+        );
+        useOrgFilter = true;
+      } catch (indexError) {
+        // Index not ready - fallback to simple query and filter in memory
+        console.warn('Firestore index not ready, using fallback query:', indexError);
+        q = query(assessmentsRef, orderBy('createdAt', 'desc'), limit(20));
+        useOrgFilter = false;
+      }
     } else {
       // Fallback: No organizationId filter (legacy support)
-      q = query(assessmentsRef, orderBy('createdAt', 'desc'), limit(500));
+      q = query(assessmentsRef, orderBy('createdAt', 'desc'), limit(20));
     }
     
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       try {
         setLoadingData(true);
         const data: CoachAssessmentSummary[] = [];
+        let lastDocument: QueryDocumentSnapshot<DocumentData> | null = null;
+        
         snapshot.forEach((docSnap) => {
           const docData = docSnap.data();
+          
+          // If we're using fallback query (no index), filter by organizationId in memory
+          if (!useOrgFilter && profile?.organizationId) {
+            if (docData.organizationId !== profile.organizationId) {
+              return; // Skip documents that don't match organizationId
+            }
+          }
           
           data.push({
             id: docSnap.id,
@@ -143,8 +167,12 @@ const Dashboard = () => {
             goals: Array.isArray(docData.goals) ? docData.goals : [],
             scoresSummary: docData.scoresSummary,
           });
+          lastDocument = docSnap;
         });
+        
         setItems(data);
+        setLastDoc(lastDocument);
+        setHasMore(snapshot.size === 20); // If we got 20, there might be more
         
         // Load recent changes from assessment history
         if (user) {
@@ -191,11 +219,103 @@ const Dashboard = () => {
         setLoadingData(false);
       }
     }, (error) => {
-      console.error('Error listening to assessments:', error);
-      setLoadingData(false);
+      // If index error, try fallback query without organizationId filter
+      if (error.code === 'failed-precondition' && error.message.includes('index')) {
+        console.warn('Firestore index not ready, retrying with fallback query...');
+        // Unsubscribe from failed query
+        unsubscribe();
+        // Retry with simple query (no organizationId filter)
+        const fallbackQuery = query(assessmentsRef, orderBy('createdAt', 'desc'), limit(20));
+        const fallbackUnsubscribe = onSnapshot(fallbackQuery, async (snapshot) => {
+          try {
+            setLoadingData(true);
+            const data: CoachAssessmentSummary[] = [];
+            let lastDocument: QueryDocumentSnapshot<DocumentData> | null = null;
+            
+            snapshot.forEach((docSnap) => {
+              const docData = docSnap.data();
+              
+              // Filter by organizationId in memory if needed
+              if (profile?.organizationId && docData.organizationId !== profile.organizationId) {
+                return;
+              }
+              
+              data.push({
+                id: docSnap.id,
+                clientName: docData.clientName || 'Unnamed client',
+                createdAt: docData.createdAt || null,
+                overallScore: typeof docData.overallScore === 'number' ? docData.overallScore : 0,
+                goals: Array.isArray(docData.goals) ? docData.goals : [],
+                scoresSummary: docData.scoresSummary,
+              });
+              lastDocument = docSnap;
+            });
+            
+            setItems(data);
+            setLastDoc(lastDocument);
+            setHasMore(snapshot.size === 20);
+            
+            // Load recent changes from assessment history
+            if (user) {
+              (async () => {
+                try {
+                  const clients = await getAllClients(user.uid, profile?.organizationId);
+                  const changes: Array<{
+                    clientName: string;
+                    category: string;
+                    date: Date;
+                    type: string;
+                  }> = [];
+                  
+                  for (const clientName of clients.slice(0, 10)) {
+                    try {
+                      const history = await getChangeHistory(user.uid, clientName, 5);
+                      history.forEach(change => {
+                        changes.push({
+                          clientName,
+                          category: change.category,
+                          date: change.timestamp.toDate(),
+                          type: change.type,
+                        });
+                      });
+                    } catch (err) {
+                      // Skip if client doesn't have history yet
+                    }
+                  }
+                  
+                  changes.sort((a, b) => b.date.getTime() - a.date.getTime());
+                  setRecentChanges(changes.slice(0, 10));
+                } catch (err) {
+                  console.warn('Failed to load recent changes:', err);
+                }
+              })();
+            }
+            
+            // Compute analytics
+            const analyticsData = await computeAnalytics(data, user.uid);
+            setAnalytics(analyticsData);
+          } finally {
+            setLoadingData(false);
+          }
+        }, (fallbackError) => {
+          console.error('Error with fallback query:', fallbackError);
+          setLoadingData(false);
+        });
+        // Store fallback unsubscribe for cleanup
+        unsubscribeRef.current = fallbackUnsubscribe;
+      } else {
+        console.error('Error listening to assessments:', error);
+        setLoadingData(false);
+      }
     });
 
-    return () => unsubscribe();
+    unsubscribeRef.current = unsubscribe;
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+    };
   }, [user, profile?.organizationId]);
 
   const computeAnalytics = async (assessments: CoachAssessmentSummary[], coachUid: string): Promise<Analytics> => {
@@ -592,14 +712,75 @@ const Dashboard = () => {
             </div>
           )}
 
-          {view === 'assessments' && filtered.length > visibleAssessmentsCount && (
+          {view === 'assessments' && (filtered.length > visibleAssessmentsCount || hasMore) && (
             <div className="flex justify-center pt-4">
               <Button 
                 variant="outline" 
-                onClick={() => setVisibleAssessmentsCount(prev => prev + 20)}
+                onClick={async () => {
+                  if (hasMore && lastDoc) {
+                    // Load more from Firestore using cursor-based pagination
+                    setLoadingMore(true);
+                    try {
+                      const assessmentsRef = collection(getDb(), 'coaches', user.uid, 'assessments');
+                      let nextQuery;
+                      if (profile?.organizationId) {
+                        nextQuery = query(
+                          assessmentsRef,
+                          where('organizationId', '==', profile.organizationId),
+                          orderBy('createdAt', 'desc'),
+                          startAfter(lastDoc),
+                          limit(20)
+                        );
+                      } else {
+                        nextQuery = query(
+                          assessmentsRef,
+                          orderBy('createdAt', 'desc'),
+                          startAfter(lastDoc),
+                          limit(20)
+                        );
+                      }
+                      
+                      const nextSnapshot = await getDocs(nextQuery);
+                      const newData: CoachAssessmentSummary[] = [];
+                      let newLastDoc: QueryDocumentSnapshot<DocumentData> | null = null;
+                      
+                      nextSnapshot.forEach((docSnap) => {
+                        const docData = docSnap.data() as Record<string, unknown>;
+                        const scoresSummary = docData.scoresSummary;
+                        newData.push({
+                          id: docSnap.id,
+                          clientName: (typeof docData.clientName === 'string' ? docData.clientName : 'Unnamed client'),
+                          createdAt: (docData.createdAt instanceof Timestamp ? docData.createdAt : null),
+                          overallScore: (typeof docData.overallScore === 'number' ? docData.overallScore : 0),
+                          goals: (Array.isArray(docData.goals) ? docData.goals : []) as string[],
+                          scoresSummary: (scoresSummary && typeof scoresSummary === 'object' && 'overall' in scoresSummary && 'categories' in scoresSummary) ? scoresSummary as CoachAssessmentSummary['scoresSummary'] : undefined,
+                        });
+                        newLastDoc = docSnap;
+                      });
+                      
+                      setItems(prev => [...prev, ...newData]);
+                      setLastDoc(newLastDoc);
+                      setHasMore(nextSnapshot.size === 20);
+                      setVisibleAssessmentsCount(prev => prev + newData.length);
+                    } catch (err) {
+                      console.error('Failed to load more assessments:', err);
+                      toast({
+                        title: 'Error',
+                        description: 'Failed to load more assessments.',
+                        variant: 'destructive',
+                      });
+                    } finally {
+                      setLoadingMore(false);
+                    }
+                  } else {
+                    // Just show more from already-loaded items
+                    setVisibleAssessmentsCount(prev => prev + 20);
+                  }
+                }}
+                disabled={loadingMore}
                 className="text-slate-600"
               >
-                Show More Assessments
+                {loadingMore ? 'Loading...' : hasMore ? 'Load More from Database' : 'Show More Assessments'}
               </Button>
             </div>
           )}

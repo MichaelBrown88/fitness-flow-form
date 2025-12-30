@@ -23,7 +23,7 @@ export function useCompanionAuth(
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const runValidation = useCallback(async () => {
-    console.log('[COMPANION] Starting validation...', { sessionId, token: token ? '***' : null });
+    // Starting validation
     setIsValidating(true);
 
     if (!sessionId || !token) {

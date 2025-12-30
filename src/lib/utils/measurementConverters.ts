@@ -16,7 +16,7 @@ export interface GripStrengthConversion {
   normalizedKg: number; // Equivalent dynamometer kg
   rawValue: number;
   method: GripStrengthMethod;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -98,7 +98,7 @@ export function convertGripStrength(
   method: GripStrengthMethod,
   bodyweightKg?: number,
   gender?: 'male' | 'female',
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 ): number {
   switch (method) {
     case 'dynamometer':
@@ -119,7 +119,11 @@ export function convertGripStrength(
         console.warn('[CONVERT] Farmers walk conversion requires bodyweight');
         return rawValue;
       }
-      return convertFarmersWalkToGripStrength(distance, time || 60, loadPerHand, bodyweightKg);
+      // Convert loadPerHand to number, defaulting to 0 if not provided
+      const loadPerHandNum = typeof loadPerHand === 'number' ? loadPerHand : 0;
+      // Convert time to number, defaulting to 60 if not provided or invalid
+      const timeNum = typeof time === 'number' ? time : 60;
+      return convertFarmersWalkToGripStrength(Number(distance), timeNum, loadPerHandNum, bodyweightKg);
       
     case 'platepinch':
       return convertPlatePinchToGripStrength(rawValue);

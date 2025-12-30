@@ -132,14 +132,28 @@ const ClientDetail = () => {
   useEffect(() => {
     if (!user || !clientName) return;
 
-    // Load snapshots
+    // Load snapshots (with fallback if index not ready)
     (async () => {
       try {
         setLoadingSnapshots(true);
         const data = await getSnapshots(user.uid, clientName, 100, userProfile?.organizationId);
         setSnapshots(data);
       } catch (err) {
-        console.error('Failed to load snapshots:', err);
+        // If index error, try without organizationId filter
+        if (err && typeof err === 'object' && 'code' in err && err.code === 'failed-precondition') {
+          try {
+            const data = await getSnapshots(user.uid, clientName, 100);
+            // Filter by organizationId in memory if needed
+            const filtered = userProfile?.organizationId 
+              ? data.filter(s => (s as { organizationId?: string }).organizationId === userProfile.organizationId)
+              : data;
+            setSnapshots(filtered);
+          } catch (fallbackErr) {
+            console.error('Failed to load snapshots (fallback):', fallbackErr);
+          }
+        } else {
+          console.error('Failed to load snapshots:', err);
+        }
       } finally {
         setLoadingSnapshots(false);
       }

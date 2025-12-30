@@ -1,5 +1,24 @@
 import React from 'react';
 import { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
+
+// Type guard to check if a value is a posture analysis detail (has status property)
+type PostureAnalysisDetail = {
+  status: string;
+  description: string;
+  recommendation?: string;
+  [key: string]: unknown;
+};
+
+function isPostureDetail(value: unknown): value is PostureAnalysisDetail {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    'status' in value &&
+    'description' in value &&
+    typeof (value as { status: unknown }).status === 'string'
+  );
+}
 import { 
   Dialog, 
   DialogContent, 
@@ -248,27 +267,25 @@ export function PostureViewCard({ view, analysis, imageUrl }: { view: string, an
                 </div>
                 
                 <div className="space-y-5">
-                  {(Object.entries(analysis) as [string, any][]).map(([key, value]) => {
-                    if (
-                      !value || 
-                      typeof value !== 'object' || 
-                      Array.isArray(value) || 
-                      !value.status || 
-                      value.status === 'Neutral' || 
-                      value.status === 'Normal' || 
-                      key === 'landmarks'
-                    ) return null;
-                    
-                    return (
-                      <div key={key} className="space-y-1 animate-in fade-in slide-in-from-left-2 duration-300">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[9px] font-black uppercase tracking-widest text-primary">{key.replace('_', ' ')}</span>
-                          <span className="text-[8px] font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded uppercase">{value.status}</span>
+                  {Object.entries(analysis)
+                    .filter(([key, value]) => {
+                      if (key === 'landmarks' || key === 'overall_assessment' || key === 'deviations' || key === 'risk_flags') return false;
+                      return isPostureDetail(value);
+                    })
+                    .map(([key, value]) => {
+                      if (!isPostureDetail(value)) return null;
+                      if (value.status === 'Neutral' || value.status === 'Normal') return null;
+                      
+                      return (
+                        <div key={key} className="space-y-1 animate-in fade-in slide-in-from-left-2 duration-300">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-primary">{key.replace('_', ' ')}</span>
+                            <span className="text-[8px] font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded uppercase">{value.status}</span>
+                          </div>
+                          <p className="text-[13px] font-bold text-slate-700 leading-snug">{value.description}</p>
                         </div>
-                        <p className="text-[13px] font-bold text-slate-700 leading-snug">{value.description}</p>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
                   {isNeutral && (
                     <div className="py-8 text-center bg-emerald-50/30 rounded-2xl border border-dashed border-emerald-100">
                       <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest">Ideal Functional Range</p>
@@ -287,27 +304,24 @@ export function PostureViewCard({ view, analysis, imageUrl }: { view: string, an
                 </div>
 
                 <div className="space-y-5">
-                  {(Object.entries(analysis) as [string, any][]).map(([key, value]) => {
-                    if (
-                      !value || 
-                      typeof value !== 'object' || 
-                      Array.isArray(value) || 
-                      !value.status || 
-                      value.status === 'Neutral' || 
-                      value.status === 'Normal' || 
-                      !value.recommendation ||
-                      key === 'landmarks'
-                    ) return null;
-                    
-                    return (
-                      <div key={`rec-${key}`} className="space-y-1 animate-in fade-in slide-in-from-right-2 duration-300">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600">Action: {key.replace('_', ' ')}</span>
+                  {Object.entries(analysis)
+                    .filter(([key, value]) => {
+                      if (key === 'landmarks' || key === 'overall_assessment' || key === 'deviations' || key === 'risk_flags') return false;
+                      return isPostureDetail(value) && value.recommendation;
+                    })
+                    .map(([key, value]) => {
+                      if (!isPostureDetail(value) || !value.recommendation) return null;
+                      if (value.status === 'Neutral' || value.status === 'Normal') return null;
+                      
+                      return (
+                        <div key={`rec-${key}`} className="space-y-1 animate-in fade-in slide-in-from-right-2 duration-300">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600">Action: {key.replace('_', ' ')}</span>
+                          </div>
+                          <p className="text-[13px] font-medium text-slate-600 leading-snug italic">"{value.recommendation}"</p>
                         </div>
-                        <p className="text-[13px] font-medium text-slate-600 leading-snug italic">"{value.recommendation}"</p>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
                 </div>
               </div>
 

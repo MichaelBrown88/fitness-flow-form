@@ -6,13 +6,11 @@
 import { useState, useMemo, useCallback } from 'react';
 import { phaseDefinitions, type PhaseSection, type PhaseId } from '@/lib/phaseConfig';
 import type { FormData } from '@/contexts/FormContext';
+import type { OrgSettings } from '@/services/organizations';
 
 interface UseAssessmentNavigationProps {
   formData: FormData;
-  orgSettings?: {
-    modules?: Record<string, boolean>;
-    equipmentConfig?: Record<string, boolean>;
-  };
+  orgSettings?: Partial<OrgSettings>;
 }
 
 export function useAssessmentNavigation({ formData, orgSettings }: UseAssessmentNavigationProps) {
@@ -170,9 +168,9 @@ export function useAssessmentNavigation({ formData, orgSettings }: UseAssessment
     if (showWhen.notValue !== undefined) ok = ok && dependentValue !== showWhen.notValue;
     if (showWhen.includes !== undefined) {
       if (Array.isArray(dependentValue)) {
-        ok = ok && (dependentValue as string[]).includes(showWhen.includes);
+        ok = ok && (dependentValue as string[]).includes(String(showWhen.includes));
       } else if (typeof dependentValue === 'string') {
-        ok = ok && dependentValue === showWhen.includes;
+        ok = ok && dependentValue === String(showWhen.includes);
       } else {
         ok = false;
       }
@@ -181,7 +179,7 @@ export function useAssessmentNavigation({ formData, orgSettings }: UseAssessment
   }, [formData]);
 
   const isSectionCompleted = useCallback((section: PhaseSection) => {
-    const visibleFields = (section.fields as Array<{ conditional?: { showWhen?: Record<string, unknown> } }>).filter(f => isFieldVisible(f));
+    const visibleFields = (section.fields as Array<{ id: string; conditional?: { showWhen?: Record<string, unknown> }; required?: boolean }>).filter(f => isFieldVisible(f));
     if (visibleFields.length === 0) return true;
 
     const requiredFields = visibleFields.filter(f => f.required);

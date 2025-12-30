@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { FormProvider, useFormContext, type FormData } from '@/contexts/FormContext';
+import type { FormValue } from '@/services/assessmentHistory';
 import { Timestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -140,7 +141,7 @@ const PhaseFormContent = ({
       // EXCLUSIVE COACH USE: Never pre-fill previous assessment results for a fresh assessment.
       // This ensures coaches always start with a clean slate for each new session.
       if (!isPartialAssessment) {
-        console.log(`[MultiStepForm] Starting fresh assessment for ${activeClientName}.`);
+        // Starting fresh assessment
         return;
       }
 
@@ -148,7 +149,7 @@ const PhaseFormContent = ({
         const { getCurrentAssessment } = await import('@/services/assessmentHistory');
         const current = await getCurrentAssessment(user.uid, activeClientName);
         if (current?.formData) {
-          console.log(`[MultiStepForm] Pre-filling from current assessment for ${activeClientName}`);
+          // Pre-filling from current assessment
           
           // Determine which fields belong to the current partial assessment category
           let fieldsToSkip: string[] = [];
@@ -166,12 +167,14 @@ const PhaseFormContent = ({
           // Merge current data into form context, skipping fields in the partial category
           const updates: Partial<FormData> = {};
           Object.keys(current.formData).forEach((key) => {
-            const value = current.formData[key as keyof FormData];
+            const formKey = key as keyof FormData;
+            const value = current.formData[formKey];
             if (value !== undefined && value !== null) {
               // Only pre-fill if it's NOT a field we are trying to update in partial mode
               const shouldSkip = fieldsToSkip.some(prefix => key.toLowerCase().includes(prefix.toLowerCase()));
               if (!isPartialAssessment || !shouldSkip) {
-                updates[key as keyof FormData] = value as any; // Cast back to any because updateFormData expects specific types
+                // Type-safe assignment: ensure value matches FormData field type
+                (updates as Record<string, unknown>)[formKey] = value;
               }
             }
           });
@@ -191,6 +194,16 @@ const PhaseFormContent = ({
   const [isDemoAssessment, setIsDemoAssessment] = useState(false);
   const [isReviewMode, setIsReviewMode] = useState(false);
   const isRunningDemoRef = useRef(false); // Prevent multiple simultaneous auto-fill runs
+  
+  // Precompute reports data when needed (MUST be before useAssessmentSave)
+  const scores = useMemo(() => {
+    try {
+      return computeScores(formData);
+    } catch (e) {
+      console.error('Error computing scores:', e);
+      return { overall: 0, categories: [], synthesis: [] };
+    }
+  }, [formData]);
   
   // Use save hook
   const saveHook = useAssessmentSave({
@@ -240,17 +253,6 @@ const PhaseFormContent = ({
   } = cameraHook;
 
 
-  // Precompute reports data when needed
-  const scores = useMemo(() => {
-    try {
-      return computeScores(formData);
-    } catch (e) {
-      console.error('Error computing scores:', e);
-      return { overall: 0, categories: [], synthesis: [] };
-    }
-  }, [formData]);
-
-
   const roadmap = useMemo(() => {
     try {
       return buildRoadmap(scores, formData);
@@ -260,20 +262,35 @@ const PhaseFormContent = ({
     }
   }, [scores, formData]);
 
-  const plan = useMemo(() => {
-    try {
-      return generateCoachPlan(formData, scores);
-    } catch (e) {
-      console.error('Error generating coach plan:', e);
-      return {
-        keyIssues: [],
-        clientScript: { findings: [], whyItMatters: [], actionPlan: [], threeMonthOutlook: [], clientCommitment: [] },
-        internalNotes: { doingWell: [], needsAttention: [] },
-        programmingStrategies: [],
-        movementBlocks: [],
-        segmentalGuidance: []
-      };
-    }
+  const [plan, setPlan] = useState<import('@/lib/recommendations').CoachPlan>({
+    keyIssues: [],
+    clientScript: { findings: [], whyItMatters: [], actionPlan: [], threeMonthOutlook: [], clientCommitment: [] },
+    internalNotes: { doingWell: [], needsAttention: [] },
+    programmingStrategies: [],
+    movementBlocks: [],
+    segmentalGuidance: []
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    generateCoachPlan(formData, scores)
+      .then(result => {
+        if (!cancelled) setPlan(result);
+      })
+      .catch(e => {
+        console.error('Error generating coach plan:', e);
+        if (!cancelled) {
+          setPlan({
+            keyIssues: [],
+            clientScript: { findings: [], whyItMatters: [], actionPlan: [], threeMonthOutlook: [], clientCommitment: [] },
+            internalNotes: { doingWell: [], needsAttention: [] },
+            programmingStrategies: [],
+            movementBlocks: [],
+            segmentalGuidance: []
+          });
+        }
+      });
+    return () => { cancelled = true; };
   }, [formData, scores]);
 
   const bodyCompInterp = useMemo(() => {
@@ -661,16 +678,17 @@ const PhaseFormContent = ({
           for (const f of currentStep) {
             const key = f.id as keyof FormData;
             if (f.type === 'parq') {
-              fieldUpdates[key] = 'completed' as any; // Still need any because TS doesn't know f.id matches parq field
+              // Type-safe: parq fields are string fields in FormData
+              (fieldUpdates as Record<string, unknown>)[key] = 'completed';
               continue;
             }
           
             // Get value from payload first (which we already set at the start)
-            let raw: FieldValue = (payload as any)[key];
+            let raw: FormValue = (payload as unknown as Record<string, FormValue>)[key];
             
             // If not in payload, check current formData
             if (raw === undefined || raw === null) {
-              raw = (formData as any)[key];
+              raw = (formData as unknown as Record<string, FormValue>)[key];
             }
             
             // Check if value is empty (handle empty strings, null, undefined, empty arrays)
@@ -688,7 +706,7 @@ const PhaseFormContent = ({
             }
             
             if (raw !== undefined && raw !== null) {
-              (fieldUpdates as any)[key] = raw;
+              (fieldUpdates as Record<string, unknown>)[key] = raw;
             }
           }
           

@@ -120,7 +120,7 @@ const EXERCISES = {
   ],
 };
 
-export function generateCoachPlan(form: FormData, scores: ScoreSummary): CoachPlan {
+export async function generateCoachPlan(form: FormData, scores: ScoreSummary): Promise<CoachPlan> {
   // Check if form has ANY data - if not, return empty plan
   const hasAnyData = !!(form.inbodyWeightKg && parseFloat(form.inbodyWeightKg || '0') > 0) ||
                      !!(form.pushupMaxReps && parseFloat(form.pushupMaxReps || '0') > 0) ||
@@ -541,11 +541,11 @@ export function generateCoachPlan(form: FormData, scores: ScoreSummary): CoachPl
     segmentalGuidance
   });
 
-  // Generate new unified workout for client
-  const clientWorkout = generateClientWorkout(form, scores);
-  
-  // Generate comprehensive exercise lists for coach
-  const coachExerciseLists = generateCoachExerciseLists(form, scores);
+  // Generate new unified workout for client (dynamic import happens inside)
+  const [clientWorkout, coachExerciseLists] = await Promise.all([
+    generateClientWorkout(form, scores),
+    generateCoachExerciseLists(form, scores)
+  ]);
 
   return { 
     keyIssues: issues, 

@@ -208,7 +208,7 @@ export function usePoseDetection({
 
       pose.onResults(onPoseResults);
       poseRef.current = pose;
-      console.log('[POSE] Real-time pose detector initialized');
+      // Real-time pose detector initialized
     } catch (e) {
       console.error('[POSE] Initialization failed:', e);
     } finally {

@@ -11,7 +11,7 @@ export interface LandmarkResult {
   head_y_percent?: number; // Y position of head center as % of image height (0-100)
   center_x_percent?: number; // X position of body midline (for front/back) as % of image width (0-100)
   midfoot_x_percent?: number; // X position of midfoot (for side views) as % of image width (0-100)
-  raw?: any; // The raw pose landmarks from MediaPipe
+  raw?: import('@/lib/types/mediapipe').MediaPipeLandmark[]; // The raw pose landmarks from MediaPipe
 }
 
 /**
@@ -43,16 +43,17 @@ export async function detectPostureLandmarks(
   view: 'front' | 'side-right' | 'side-left' | 'back'
 ): Promise<LandmarkResult> {
   try {
-    console.log(`[MEDIAPIPE] Starting landmark detection for ${view}...`);
-    console.log(`[MEDIAPIPE] Image URL type: ${imageUrl.substring(0, 50)}...`);
-    
     // Load the image
     const img = await loadImage(imageUrl);
-    console.log(`[MEDIAPIPE] Image loaded: ${img.width}x${img.height}`);
     
     // Dynamically import MediaPipe to avoid bloating the main bundle
     const mpPose = await import('@mediapipe/pose');
-    const Pose = (mpPose as any).Pose || (mpPose as any).default?.Pose || (window as any).Pose;
+    type MediaPipePoseModule = {
+      Pose?: typeof import('@mediapipe/pose').Pose;
+      default?: { Pose?: typeof import('@mediapipe/pose').Pose };
+    };
+    type WindowWithPose = Window & { Pose?: typeof import('@mediapipe/pose').Pose };
+    const Pose = (mpPose as MediaPipePoseModule).Pose || (mpPose as MediaPipePoseModule).default?.Pose || (window as WindowWithPose).Pose;
     
     if (!Pose) {
       throw new Error('MediaPipe Pose constructor not found. Check imports or CDN.');
@@ -84,14 +85,14 @@ export async function detectPostureLandmarks(
         }
       }, CONFIG.AI.MEDIAPIPE.TIMEOUT_MS);
       
-      pose.onResults((results: import('@/lib/types/mediapipe').MediaPipePoseResults) => {
+      pose.onResults((results: { poseLandmarks: Array<{ x: number; y: number; z: number; visibility?: number }> }) => {
         if (resolved) return;
         clearTimeout(timeout);
         resolved = true;
         
         try {
           if (!results.poseLandmarks || results.poseLandmarks.length === 0) {
-            console.warn(`[MEDIAPIPE] No landmarks detected for ${view}`);
+            // No landmarks detected - return empty result
             pose.close();
             resolve({});
             return;
@@ -205,11 +206,10 @@ export async function detectPostureLandmarks(
             result.midfoot_x_percent = midfootX * 100;
           }
           
-          console.log(`[MEDIAPIPE] Success for ${view}: headY=${result.head_y_percent?.toFixed(1)}%, shoulderY=${result.shoulder_y_percent?.toFixed(1)}%, hipY=${result.hip_y_percent?.toFixed(1)}%, centerX=${result.center_x_percent?.toFixed(1)}%, midfootX=${result.midfoot_x_percent?.toFixed(1)}%`);
           pose.close();
           resolve(result);
         } catch (error) {
-          console.error(`[MEDIAPIPE] Error processing landmarks:`, error);
+          // Error processing landmarks
           pose.close();
           reject(error);
         }
@@ -222,7 +222,7 @@ export async function detectPostureLandmarks(
             resolved = true;
             clearTimeout(timeout);
             pose.close();
-            console.error(`[MEDIAPIPE] Error sending image:`, error);
+            // Error sending image
             reject(error);
           }
         });
@@ -231,13 +231,13 @@ export async function detectPostureLandmarks(
           resolved = true;
           clearTimeout(timeout);
           pose.close();
-          console.error(`[MEDIAPIPE] Error initializing:`, error);
+          // Error initializing
           reject(error);
         }
       });
     });
   } catch (error) {
-    console.error(`[MEDIAPIPE] Error detecting landmarks for ${view}:`, error);
+    // Error detecting landmarks
     throw error;
   }
 }

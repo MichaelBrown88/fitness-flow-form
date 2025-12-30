@@ -55,7 +55,12 @@ const App = () => (
       <Sonner />
           <AuthProvider>
             <ThemeManager>
-              <BrowserRouter>
+              <BrowserRouter
+                future={{
+                  v7_startTransition: true,
+                  v7_relativeSplatPath: true,
+                }}
+              >
               <Suspense fallback={
                 <div className="flex min-h-screen items-center justify-center bg-slate-50">
                   <div className="flex flex-col items-center gap-4">

@@ -48,7 +48,7 @@ export function useAssessmentSave({
     
     try {
       setSaving(true);
-      console.log(`[SYNC] Starting sync for client: ${clientName}...`);
+      // Starting sync for client
       
       let assessmentId: string;
       let category: string | null = null;

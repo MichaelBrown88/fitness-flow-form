@@ -12,7 +12,12 @@ interface OverallRadarChartProps {
   data: RadarData[];
 }
 
-const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: any[] }) => {
+interface TooltipPayload {
+  payload: RadarData;
+  value: number;
+}
+
+const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: TooltipPayload[] }) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload as RadarData;
     return (
@@ -25,19 +30,21 @@ const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: any[] 
   return null;
 };
 
+interface AxisTickProps {
+  payload: { value: string };
+  x: number;
+  y: number;
+  textAnchor: "start" | "middle" | "end" | "inherit";
+  index: number;
+}
+
 const renderCustomAxisTick = ({ 
   payload, 
   x, 
   y, 
   textAnchor, 
   index 
-}: { 
-  payload: any; 
-  x: number; 
-  y: number; 
-  textAnchor: "start" | "middle" | "end" | "inherit"; 
-  index: number 
-}) => {
+}: AxisTickProps) => {
   // Try to find the color from the data if available
   const colors = ['#10b981', '#6366f1', '#0ea5e9', '#f59e0b', '#a855f7'];
   const color = colors[index % colors.length];

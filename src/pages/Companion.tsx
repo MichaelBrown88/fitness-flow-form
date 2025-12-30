@@ -3,7 +3,7 @@
  * Extracted logic into reusable hooks for better maintainability
  */
 
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import Webcam from 'react-webcam';
 import { CONFIG } from '@/config';
@@ -29,9 +29,10 @@ const Companion = () => {
 
   const webcamRef = useRef<Webcam>(null);
   const shutterAudio = useRef<HTMLAudioElement | null>(null);
+  const startSequenceRef = useRef<((idx: number) => void) | null>(null);
 
   // Initialize audio
-  React.useEffect(() => {
+  useEffect(() => {
     try {
       shutterAudio.current = new Audio(CONFIG.COMPANION.AUDIO.SHUTTER_URL);
     } catch (e) {
@@ -51,8 +52,11 @@ const Companion = () => {
     useAudioFeedback();
 
   // Orientation detection
-  const { isVertical, hasPermission: hasOrientationPermission, requestPermission: requestOrientationPermission } =
-    useOrientationDetection(isAuthorized, mode);
+  const {
+    isVertical,
+    hasPermission: hasOrientationPermission,
+    requestPermission: requestOrientationPermission,
+  } = useOrientationDetection(isAuthorized, mode);
 
   // Combined permission request
   const requestPermission = useCallback(async () => {
@@ -65,27 +69,6 @@ const Companion = () => {
   // Sequence management - needs to be first to get viewIdx
   const [viewIdx, setViewIdx] = useState(0);
   const [isWaitingForPosition, setIsWaitingForPosition] = useState(false);
-
-  // Pose detection
-  const poseDetectionResult = usePoseDetection({
-    mode,
-    isAuthorized,
-    viewIdx,
-    isWaitingForPosition,
-    onAudioFeedback: speak,
-    views: VIEWS,
-    webcamVideo: webcamRef.current?.video || null,
-  });
-
-  // Camera capture
-  const handleCaptureComplete = useCallback(() => {
-    setViewIdx(VIEWS.length);
-  }, []);
-
-  // Sequence management - needs to be first to get viewIdx
-  const [viewIdx, setViewIdx] = useState(0);
-  const [isWaitingForPosition, setIsWaitingForPosition] = useState(false);
-  const startSequenceRef = useRef<((idx: number) => void) | null>(null);
 
   // Pose detection
   const poseDetectionResult = usePoseDetection({
@@ -149,13 +132,13 @@ const Companion = () => {
   });
 
   const { countdown, isSequenceActive, startSequence } = sequenceResult;
-  
-  React.useEffect(() => {
+
+  useEffect(() => {
     startSequenceRef.current = startSequence;
   }, [startSequence]);
 
   // Initial audio feedback on authorization
-  React.useEffect(() => {
+  useEffect(() => {
     if (isAuthorized && !isValidating) {
       if (mode === 'inbody') {
         speak('Ready. Tap to capture the InBody report.');
@@ -164,17 +147,6 @@ const Companion = () => {
       }
     }
   }, [isAuthorized, isValidating, mode, speak]);
-
-  // Handle InBody completion
-  React.useEffect(() => {
-    if (mode === 'inbody' && ocrReviewData === null && !isProcessingOcr && isUploading === 0) {
-      // Check if we should show completion screen
-      const checkCompletion = setTimeout(() => {
-        // Completion handled by loading states component
-      }, 100);
-      return () => clearTimeout(checkCompletion);
-    }
-  }, [mode, ocrReviewData, isProcessingOcr, isUploading]);
 
   // Loading and error states
   const loadingState = (
@@ -189,19 +161,24 @@ const Companion = () => {
     />
   );
 
-  if (isValidating || !isAuthorized || (mode === 'inbody' && viewIdx === 999) || (mode === 'posture' && viewIdx >= VIEWS.length)) {
+  if (
+    isValidating ||
+    !isAuthorized ||
+    (mode === 'inbody' && viewIdx === 999) ||
+    (mode === 'posture' && viewIdx >= VIEWS.length)
+  ) {
     return loadingState;
   }
 
   // Main UI
-  return (
+    return (
     <>
       {isProcessingOcr && (
-        <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8 text-white text-center">
-          <div className="relative h-32 w-32 mb-8">
-            <div className="absolute inset-0 rounded-full border-4 border-white/5" />
-            <div className="absolute inset-0 rounded-full border-4 border-t-primary animate-spin" />
-            <div className="absolute inset-4 rounded-full bg-gradient-to-tr from-primary to-brand-dark animate-pulse flex items-center justify-center">
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8 text-white text-center">
+        <div className="relative h-32 w-32 mb-8">
+          <div className="absolute inset-0 rounded-full border-4 border-white/5" />
+          <div className="absolute inset-0 rounded-full border-4 border-t-primary animate-spin" />
+          <div className="absolute inset-4 rounded-full bg-gradient-to-tr from-primary to-brand-dark animate-pulse flex items-center justify-center">
               <div className="h-10 w-10 text-white animate-spin" />
             </div>
           </div>

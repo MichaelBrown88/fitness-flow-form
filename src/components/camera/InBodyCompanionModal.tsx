@@ -68,11 +68,7 @@ export const InBodyCompanionModal: React.FC<InBodyCompanionModalProps> = ({
     if (!session?.id) return;
 
     const unsubscribe = subscribeToLiveSession(session.id, async (updatedSession) => {
-      console.log('[INBODY MODAL] Snapshot update:', {
-        inbodyImage: !!updatedSession.inbodyImage,
-        inbodyImageFull: !!updatedSession.inbodyImageFull,
-        inbodyImageStorage: !!updatedSession.inbodyImageStorage
-      });
+      // Snapshot update received
       setSession(updatedSession);
       
       if (updatedSession.companionJoined) {
@@ -84,7 +80,7 @@ export const InBodyCompanionModal: React.FC<InBodyCompanionModalProps> = ({
       const isOcrReady = updatedSession.ocrDataReady;
       
       if (isOcrReady && ocrData && !processedRef.current) {
-        console.log('[INBODY MODAL] OCR Review data received from companion:', ocrData);
+        // OCR Review data received from companion
         processedRef.current = 'processed'; // Mark as processed to avoid duplicate triggers
         
         // Pass the data directly (onComplete expects the OCR data structure)
@@ -93,7 +89,7 @@ export const InBodyCompanionModal: React.FC<InBodyCompanionModalProps> = ({
           inbodyImage: (updatedSession.inbodyImageStorage as string) || (updatedSession.inbodyImageFull as string) || updatedSession.inbodyImage
         };
         
-        console.log('[INBODY MODAL] Calling onComplete with:', formattedData);
+        // Calling onComplete with formatted data
         onComplete(formattedData);
         onClose();
       }
