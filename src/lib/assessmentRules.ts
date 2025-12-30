@@ -226,8 +226,8 @@ export const ASSESSMENT_RULES: AssessmentRule[] = [
     priority: 'P3',
     testName: 'Grip Strength Test',
     negativeOutcome: 'Grip strength below age/gender norms or left/right asymmetry greater than 10%.',
-    coachAction:
-      'Strength: Add farmer's carries, plate pinches, deadlifts; emphasise weaker side when asymmetry exists.',
+      coachAction:
+        "Strength: Add farmer's carries, plate pinches, deadlifts; emphasise weaker side when asymmetry exists.",
     clientFocus:
       'Adjustment: "Include specific grip work to build functional strength, starting with carries and holds."',
     trigger: (form) => {
