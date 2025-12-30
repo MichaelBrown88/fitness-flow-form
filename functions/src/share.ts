@@ -37,12 +37,55 @@ function cleanEmail(value: unknown) {
   return value.trim().toLowerCase();
 }
 
+/**
+ * Get public report by token (preferred) or by coachUid/assessmentId (legacy)
+ * Returns the token if found, or null if not found
+ */
+async function getPublicReportToken(coachUid: string, assessmentId: string): Promise<string | null> {
+  // Try to find existing token-based report
+  const query = getDb()
+    .collection('publicReports')
+    .where('coachUid', '==', coachUid)
+    .where('assessmentId', '==', assessmentId)
+    .where('visibility', '==', 'public')
+    .limit(1);
+  
+  const snapshot = await query.get();
+  if (!snapshot.empty) {
+    // Found token-based report
+    return snapshot.docs[0].id; // Document ID is the token
+  }
+  
+  // Fallback to legacy ID-based lookup
+  const legacyRef = getDb().doc(`publicReports/${coachUid}__${assessmentId}`);
+  const legacySnap = await legacyRef.get();
+  if (legacySnap.exists) {
+    // Legacy report exists but doesn't have a token yet
+    // The client will generate one on next share
+    return null;
+  }
+  
+  return null;
+}
+
 async function ensurePublicReport(coachUid: string, assessmentId: string) {
-  const ref = getDb().doc(`publicReports/${coachUid}__${assessmentId}`);
-  const snap = await ref.get();
+  // Try token-based first
+  const token = await getPublicReportToken(coachUid, assessmentId);
+  
+  if (token) {
+    const ref = getDb().doc(`publicReports/${token}`);
+    const snap = await ref.get();
+    if (snap.exists) {
+      return snap.data() as PublicReportDoc | undefined;
+    }
+  }
+  
+  // Fallback to legacy ID-based
+  const legacyRef = getDb().doc(`publicReports/${coachUid}__${assessmentId}`);
+  const snap = await legacyRef.get();
   if (!snap.exists) {
     await ensureReportArtifacts({ coachUid, assessmentId });
-    return (await ref.get()).data() as PublicReportDoc | undefined;
+    return (await legacyRef.get()).data() as PublicReportDoc | undefined;
   }
   return snap.data() as PublicReportDoc;
 }
@@ -70,7 +113,13 @@ export async function requestShareLinks(request: CallableRequest<SharePayload>) 
 
     const pdfPath = view === 'coach' ? report.artifacts.coachPdfPath : report.artifacts.clientPdfPath;
     const pdfUrl = await getSignedPdfUrl(pdfPath);
-    const shareUrl = report.shareUrl || `${APP_HOST}/share/${coachUid}/${assessmentId}`;
+    
+    // Try to get token-based URL, fallback to legacy
+    const token = await getPublicReportToken(coachUid, assessmentId);
+    const shareUrl = token 
+      ? `${APP_HOST}/r/${token}` 
+      : (report.shareUrl || `${APP_HOST}/share/${coachUid}/${assessmentId}`);
+    
     const whatsappText = `Here is your One Fitness assessment report:\n${shareUrl}`;
 
     return {
@@ -107,7 +156,12 @@ export async function sendReportEmail(request: CallableRequest<EmailPayload>) {
   if (!report || !report.artifacts) {
     throw new Error('failed-precondition');
   }
-  const shareUrl = report.shareUrl || `${APP_HOST}/share/${coachUid}/${data.assessmentId}`;
+  
+  // Try to get token-based URL, fallback to legacy
+  const token = await getPublicReportToken(coachUid, data.assessmentId);
+  const shareUrl = token 
+    ? `${APP_HOST}/r/${token}` 
+    : (report.shareUrl || `${APP_HOST}/share/${coachUid}/${data.assessmentId}`);
   const subject =
     view === 'coach'
       ? 'Coach report ready'

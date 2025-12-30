@@ -523,6 +523,24 @@ const PhaseFormContent = ({
     if (!expandedSectionId) return;
     const currentSection = allSections.find(section => section.id === expandedSectionId);
     if (!currentSection) return;
+    
+    // CRITICAL FIX: Disable auto-advance for sections that use SingleFieldFlow
+    // SingleFieldFlow handles its own field-by-field navigation
+    // Sections that use SingleFieldFlow should only advance when user clicks "Section Complete"
+    const sectionsUsingSingleFieldFlow = [
+      'lifestyle-overview',
+      'body-comp',
+      'fitness-assessment',
+      'strength-endurance',
+      'mobility',
+    ];
+    
+    if (sectionsUsingSingleFieldFlow.includes(currentSection.id)) {
+      // Don't auto-advance these sections - let SingleFieldFlow handle navigation
+      return;
+    }
+    
+    // Original logic for non-SingleFieldFlow sections (like goals, parq, etc.)
     const currentSectionCompleted = isSectionCompleted(currentSection);
     const wasRecentlyCompleted = recentlyCompletedSections.has(expandedSectionId);
     if (currentSectionCompleted && !wasRecentlyCompleted) {

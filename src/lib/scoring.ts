@@ -272,7 +272,17 @@ function scoreStrength(form: FormData, age: number, gender: string): ScoreCatego
   const hasPushups = !!(form.pushupsOneMinuteReps && form.pushupsOneMinuteReps.trim() !== '');
   const hasSquats = !!(form.squatsOneMinuteReps && form.squatsOneMinuteReps.trim() !== '');
   const hasPlank = !!(form.plankDurationSeconds && form.plankDurationSeconds.trim() !== '');
-  const hasGrip = !!(form.gripLeftKg && form.gripLeftKg.trim() !== '') || !!(form.gripRightKg && form.gripRightKg.trim() !== '');
+  
+  // Check if grip strength was tested (must have at least one non-zero value)
+  // Also check alternative grip methods (deadhang, farmers walk, plate pinch)
+  const hasGripDynamometer = !!(form.gripLeftKg && form.gripLeftKg.trim() !== '' && parseFloat(form.gripLeftKg) > 0) || 
+                              !!(form.gripRightKg && form.gripRightKg.trim() !== '' && parseFloat(form.gripRightKg) > 0);
+  const hasGripDeadhang = !!(form.gripDeadhangSeconds && form.gripDeadhangSeconds.trim() !== '' && parseFloat(form.gripDeadhangSeconds) > 0);
+  const hasGripFarmersWalk = !!(form.gripFarmersWalkDistanceM && form.gripFarmersWalkDistanceM.trim() !== '') ||
+                              !!(form.gripFarmersWalkTimeS && form.gripFarmersWalkTimeS.trim() !== '') ||
+                              !!(form.gripFarmersWalkLoadKg && form.gripFarmersWalkLoadKg.trim() !== '');
+  const hasGripPlatePinch = !!(form.gripPlatePinchKg && form.gripPlatePinchKg.trim() !== '' && parseFloat(form.gripPlatePinchKg) > 0);
+  const hasGrip = hasGripDynamometer || hasGripDeadhang || hasGripFarmersWalk || hasGripPlatePinch;
 
   // Lookup normative scores
   const pushScore = hasPushups ? lookupNormativeScore('Push-up', gender, age, pushups) : 0;
@@ -282,18 +292,45 @@ function scoreStrength(form: FormData, age: number, gender: string): ScoreCatego
   const squatScore = hasSquats ? clamp(squats * 2.5) : 0; // 40 reps ~ 100
   const gripScore = hasGrip ? clamp(gripAvg * 3) : 0; // heuristic
 
+  // Build details array - only include grip if it was actually tested
   const details: ScoreDetail[] = [
     { id: 'pushups', label: 'Pushups (1-min)', value: pushups || '-', score: Math.round(pushScore) },
     { id: 'squats', label: 'Squats (1-min)', value: squats || '-', score: Math.round(squatScore) },
     { id: 'plank', label: 'Plank hold', value: plank || '-', unit: 's', score: Math.round(plankScore) },
-    { id: 'grip', label: 'Grip (avg)', value: Math.round(gripAvg) || '-', unit: 'kg', score: Math.round(gripScore) },
   ];
+  
+  // Only add grip to details if it was actually tested
+  if (hasGrip) {
+    details.push({ id: 'grip', label: 'Grip (avg)', value: Math.round(gripAvg) || '-', unit: 'kg', score: Math.round(gripScore) });
+  }
 
   // Only count filled tests in the overall score
   const filledTests = [hasPushups, hasSquats, hasPlank, hasGrip].filter(Boolean).length;
-  const score = filledTests > 0
-    ? Math.round((pushScore * 0.3 + squatScore * 0.25 + plankScore * 0.25 + gripScore * 0.2) * (4 / filledTests))
-    : 0;
+  
+  // Calculate score weights based on available tests
+  // If grip is not tested, redistribute its weight (0.2) proportionally to other tests
+  let score: number;
+  if (filledTests === 0) {
+    score = 0;
+  } else if (hasGrip) {
+    // All tests available: use original weights
+    score = Math.round((pushScore * 0.3 + squatScore * 0.25 + plankScore * 0.25 + gripScore * 0.2) * (4 / filledTests));
+  } else {
+    // Grip not tested: redistribute its 0.2 weight proportionally
+    // Original weights without grip: pushups 0.3, squats 0.25, plank 0.25 = 0.8 total
+    // Redistribute 0.2 proportionally: pushups gets 0.075, squats gets 0.0625, plank gets 0.0625
+    // New weights: pushups 0.375, squats 0.3125, plank 0.3125 = 1.0 total
+    const availableTests = [hasPushups, hasSquats, hasPlank].filter(Boolean).length;
+    if (availableTests === 3) {
+      score = Math.round(pushScore * 0.375 + squatScore * 0.3125 + plankScore * 0.3125);
+    } else if (availableTests === 2) {
+      // If only 2 tests, weight them equally
+      score = Math.round(((hasPushups ? pushScore : 0) + (hasSquats ? squatScore : 0) + (hasPlank ? plankScore : 0)) / 2);
+    } else {
+      // If only 1 test, use it directly
+      score = Math.round((hasPushups ? pushScore : 0) + (hasSquats ? squatScore : 0) + (hasPlank ? plankScore : 0));
+    }
+  }
 
   const strengths = [];
   const weaknesses = [];
@@ -301,13 +338,13 @@ function scoreStrength(form: FormData, age: number, gender: string): ScoreCatego
   if (score >= 85) strengths.push('Exceptional foundational strength and power');
   else if (score >= 70) strengths.push('Strong muscular endurance baseline');
 
-  // Relative weaknesses
+  // Relative weaknesses - only include tests that were actually performed
   const items = [
-    { label: 'Upper Body Endurance', score: pushScore },
-    { label: 'Lower Body Endurance', score: squatScore },
-    { label: 'Core Stability', score: plankScore },
-    { label: 'Grip Strength', score: gripScore }
-  ].filter(i => (i.score > 0 || (i.label === 'Upper Body Endurance' && hasPushups) || (i.label === 'Lower Body Endurance' && hasSquats) || (i.label === 'Core Stability' && hasPlank) || (i.label === 'Grip Strength' && hasGrip)))
+    { label: 'Upper Body Endurance', score: pushScore, hasData: hasPushups },
+    { label: 'Lower Body Endurance', score: squatScore, hasData: hasSquats },
+    { label: 'Core Stability', score: plankScore, hasData: hasPlank },
+    { label: 'Grip Strength', score: gripScore, hasData: hasGrip }
+  ].filter(i => i.hasData) // Only include tests that were actually performed
    .sort((a, b) => a.score - b.score);
 
   items.slice(0, 2).forEach(item => {

@@ -6,6 +6,13 @@
  */
 
 export const CONFIG = {
+  // --- APP HOST & URLS ---
+  APP: {
+    HOST: import.meta.env.VITE_PUBLIC_APP_HOST || 
+          import.meta.env.PUBLIC_APP_HOST || 
+          window.location.origin,
+  },
+
   // --- FIREBASE & AUTH ---
   FIREBASE: {
     API_KEY: import.meta.env.VITE_FIREBASE_API_KEY,
