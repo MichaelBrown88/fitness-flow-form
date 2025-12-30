@@ -12,6 +12,7 @@ import type { GripStrengthMethod, BodyCompositionMethod, SkinfoldMethod } from '
 export interface EquipmentConfig {
   gripStrength: {
     method: GripStrengthMethod;
+    enabled: boolean; // Toggle to enable/disable grip strength testing
   };
   bodyComposition: {
     method: BodyCompositionMethod;
@@ -59,6 +60,7 @@ export async function uploadOrgLogo(orgId: string, file: File): Promise<string> 
 export const DEFAULT_EQUIPMENT_CONFIG: EquipmentConfig = {
   gripStrength: {
     method: 'dynamometer',
+    enabled: true, // Default: grip test is enabled
   },
   bodyComposition: {
     method: 'inbody',
@@ -127,5 +129,5 @@ export async function getOrgSettings(orgId: string): Promise<OrgSettings> {
  */
 export async function updateOrgSettings(orgId: string, updates: Partial<OrgSettings>): Promise<void> {
   const ref = doc(getDb(), 'organizations', orgId);
-  await updateDoc(ref, sanitizeForFirestore(updates) as any);
+  await updateDoc(ref, sanitizeForFirestore(updates) as Record<string, unknown>);
 }

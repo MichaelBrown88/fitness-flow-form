@@ -21,9 +21,9 @@ import { generateBodyCompInterpretation } from '@/lib/recommendations';
 interface AssessmentResultsProps {
   formData: FormData;
   scores: ScoreSummary;
-  roadmap: any[];
-  plan: any;
-  bodyCompInterp: any;
+  roadmap: import('@/lib/scoring').RoadmapPhase[];
+  plan: import('@/lib/recommendations').CoachPlan;
+  bodyCompInterp: import('@/lib/recommendations').BodyCompInterpretation | null;
   savingId: string | null;
   onStartNew: () => void;
   onShare: (view: 'client' | 'coach') => void;

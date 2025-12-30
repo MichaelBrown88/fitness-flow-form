@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { FormProvider, useFormContext, type FormData } from '@/contexts/FormContext';
+import type { FormValue } from '@/services/assessmentHistory';
 import { Timestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,6 +54,9 @@ import { downloadElementAsPdf } from '@/lib/pdf';
 import { generateInteractiveHtml } from '@/lib/htmlExport';
 import { useSettings } from '@/hooks/useSettings';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useAssessmentNavigation } from '@/hooks/useAssessmentNavigation';
+import { useAssessmentSave } from '@/hooks/useAssessmentSave';
+import { useCameraHandler } from '@/hooks/useCameraHandler';
 import { CameraCapture } from './camera/CameraCapture';
 import { PostureCompanionModal } from './camera/PostureCompanionModal';
 import { InBodyCompanionModal } from './camera/InBodyCompanionModal';
@@ -62,8 +66,6 @@ import { FieldControl } from './assessment/FieldControl';
 // Lazy load results component
 const AssessmentResults = React.lazy(() => import('./assessment/AssessmentResults'));
 
-import { processInBodyScan } from '@/lib/ai/ocrEngine';
-import { compressImageForDisplay } from '@/lib/utils/imageCompression';
 import {
   Dialog,
   DialogContent,
@@ -111,212 +113,25 @@ const PhaseFormContent = ({
 
   const activeClientName = clientNameFromStorage || formData.fullName || '';
   
-  // Check for partial assessment mode
-  const getInitialPhase = () => {
-    try {
-      const partialData = sessionStorage.getItem('partialAssessment');
-      if (partialData) {
-        // In partial assessment mode, we always want to jump straight to the relevant category.
-        // Since visiblePhases is filtered, the category phase is always at index 1 (after P0).
-        return 1;
-      }
-    } catch (e) {
-      console.warn('Failed to parse partial assessment data:', e);
-    }
-    return 0;
-  };
-  
-  const [activePhaseIdx, setActivePhaseIdx] = useState(getInitialPhase());
-  const [isPartialAssessment, setIsPartialAssessment] = useState(() => {
-    try {
-      const partialData = sessionStorage.getItem('partialAssessment');
-      return !!partialData;
-    } catch {
-      return false;
-    }
-  });
-  
-  const [partialCategory, setPartialCategory] = useState<string | null>(() => {
-    try {
-      const partialData = sessionStorage.getItem('partialAssessment');
-      if (partialData) {
-        const { category } = JSON.parse(partialData);
-        return category;
-      }
-    } catch {
-      return null;
-    }
-    return null;
-  });
+  // Use navigation hook
+  const navigation = useAssessmentNavigation({ formData, orgSettings });
+  const {
+    activePhaseIdx,
+    setActivePhaseIdx,
+    visiblePhases,
+    totalPhases,
+    activePhase,
+    isResultsPhase,
+    isPartialAssessment,
+    setIsPartialAssessment,
+    partialCategory,
+    setPartialCategory,
+    isFieldVisible,
+    isSectionCompleted,
+    isPhaseCompleted,
+    progressValue,
+  } = navigation;
 
-  // Filter phases for partial assessments or modular availability
-  const visiblePhases = useMemo(() => {
-    // Mapping of assessment module keys to section IDs
-    const assessmentToSectionMap: Record<string, string[]> = {
-      parq: ['parq'],
-      inbody: ['body-comp'],
-      fitness: ['fitness-assessment'],
-      posture: ['posture'],
-      overheadSquat: ['overhead-squat'],
-      hinge: ['hinge-assessment'],
-      lunge: ['lunge-assessment'],
-      mobility: ['mobility'],
-      strength: ['strength-endurance'],
-      lifestyle: ['lifestyle-overview'],
-    };
-
-    const modules = orgSettings?.modules;
-    let phases = phaseDefinitions;
-    
-    // 1. Filter phases and sections by granular assessment toggles
-    if (modules) {
-      phases = phaseDefinitions.map(phase => {
-        // Always show structural phases (P0, P6, P7)
-        if (phase.id === 'P0' || phase.id === 'P6' || phase.id === 'P7') {
-          return phase;
-        }
-        
-        // Filter sections within each phase based on enabled assessments
-        const filteredSections = (phase.sections || []).filter(section => {
-          // Find which assessment module(s) this section belongs to
-          const enabledAssessments = Object.entries(assessmentToSectionMap)
-            .filter(([assessmentKey, sectionIds]) => sectionIds.includes(section.id))
-            .map(([assessmentKey]) => assessmentKey);
-          
-          // If this section belongs to any enabled assessment, show it
-          return enabledAssessments.some(assessmentKey => modules[assessmentKey as keyof typeof modules] === true);
-        });
-        
-        // If phase has no enabled sections (and isn't a structural phase), exclude it
-        if (filteredSections.length === 0) {
-          return null;
-        }
-        
-        return {
-          ...phase,
-          sections: filteredSections
-        } as typeof phase;
-      }).filter((p): p is NonNullable<typeof p> => p !== null);
-    }
-
-    // 2. Then, filter further if in partial assessment mode
-    if (!isPartialAssessment || !partialCategory) {
-      return phases;
-    }
-    
-    // Map category to allowed phase IDs and specific section IDs (updated for new phase structure)
-    const categoryConfig: Record<string, { phaseIds: PhaseId[], sectionIds?: string[] }> = {
-      'inbody': { 
-        phaseIds: ['P0', 'P2', 'P7'], 
-        sectionIds: ['basic-client-info', 'parq', 'body-comp'] 
-      },
-      'posture': { 
-        phaseIds: ['P0', 'P4', 'P7'], 
-        sectionIds: ['basic-client-info', 'parq', 'posture', 'overhead-squat', 'hinge-assessment', 'lunge-assessment', 'mobility'] 
-      },
-      'fitness': { 
-        phaseIds: ['P0', 'P3', 'P7'], 
-        sectionIds: ['basic-client-info', 'parq', 'fitness-assessment'] 
-      },
-      'strength': { 
-        phaseIds: ['P0', 'P5', 'P7'], 
-        sectionIds: ['basic-client-info', 'parq', 'strength-endurance'] 
-      },
-      'lifestyle': { 
-        phaseIds: ['P0', 'P1', 'P7'], 
-        sectionIds: ['basic-client-info', 'parq', 'lifestyle-overview'] 
-      },
-    };
-    
-    const config = categoryConfig[partialCategory] || { phaseIds: ['P0'] };
-    
-    return phases
-      .filter(phase => (config.phaseIds as string[]).includes(phase.id))
-      .map(phase => {
-        if (!config.sectionIds) return phase;
-        
-        // Filter sections based on enabled assessments (granular control)
-        const filteredSections = (phase.sections || []).filter(section => {
-          if (!config.sectionIds) return true;
-          if (!config.sectionIds.includes(section.id)) return false;
-          
-          // Additional granular filtering: check if the assessment for this section is enabled
-          if (modules) {
-            const sectionAssessments = Object.entries(assessmentToSectionMap)
-              .filter(([_, sectionIds]) => sectionIds.includes(section.id))
-              .map(([assessmentKey]) => assessmentKey);
-            
-            // If this section's assessment is disabled, hide it
-            if (sectionAssessments.length > 0 && !sectionAssessments.some(key => modules[key as keyof typeof modules])) {
-              return false;
-            }
-          }
-          
-          return true;
-        });
-        if (filteredSections.length === 0 && phase.id !== 'P7') return null;
-        return {
-          ...phase,
-          sections: filteredSections
-        };
-      })
-      .filter((p): p is NonNullable<typeof p> => p !== null);
-  }, [isPartialAssessment, partialCategory, orgSettings?.modules]);
-
-  const isFieldVisible = useCallback((field: PhaseField, customData?: FormData) => {
-    const data = customData || formData;
-    if (!('conditional' in field) || !field.conditional || !field.conditional.showWhen) return true;
-    const { showWhen } = field.conditional;
-    const dependentValue = data[showWhen.field as keyof FormData];
-    let ok = true;
-    if (showWhen.exists !== undefined) {
-      ok = ok && (dependentValue !== undefined && dependentValue !== null && String(dependentValue).trim() !== '');
-    }
-    if (showWhen.value !== undefined) ok = ok && dependentValue === showWhen.value;
-    if (showWhen.notValue !== undefined) ok = ok && dependentValue !== showWhen.notValue;
-    if (showWhen.includes !== undefined) {
-      if (Array.isArray(dependentValue)) {
-        ok = ok && (dependentValue as string[]).includes(showWhen.includes);
-      } else if (typeof dependentValue === 'string') {
-        ok = ok && dependentValue === showWhen.includes;
-      } else {
-        ok = false;
-      }
-    }
-    return ok;
-  }, [formData]);
-
-  const isSectionCompleted = useCallback((section: PhaseSection) => {
-    const visibleFields = (section.fields as PhaseField[]).filter(f => isFieldVisible(f));
-    if (visibleFields.length === 0) return true;
-
-    const requiredFields = visibleFields.filter(f => f.required);
-    
-    // If there are required fields, they MUST all be filled
-    if (requiredFields.length > 0) {
-      return requiredFields.every(field => {
-        const value = formData[field.id];
-        if (Array.isArray(value)) return value.length > 0;
-        return value !== undefined && value !== null && value !== '';
-      });
-    }
-
-    // If there are NO required fields, ALL fields must be filled to count as "completed"
-    // This prevents auto-advancing after just one field (like lifestyle phase)
-    return visibleFields.every(field => {
-      const value = formData[field.id];
-      if (Array.isArray(value)) return value.length > 0;
-      return value !== undefined && value !== null && value !== '';
-    });
-  }, [formData, isFieldVisible]);
-
-  const isPhaseCompleted = useCallback((phaseIdx: number) => {
-    const phase = visiblePhases[phaseIdx];
-    if (!phase) return false;
-    const sections = phase.sections || [];
-    if (sections.length === 0) return true;
-    return sections.every(sec => isSectionCompleted(sec as PhaseSection));
-  }, [visiblePhases, isSectionCompleted]);
 
   // Load current assessment data when starting partial assessment
   useEffect(() => {
@@ -326,7 +141,7 @@ const PhaseFormContent = ({
       // EXCLUSIVE COACH USE: Never pre-fill previous assessment results for a fresh assessment.
       // This ensures coaches always start with a clean slate for each new session.
       if (!isPartialAssessment) {
-        console.log(`[MultiStepForm] Starting fresh assessment for ${activeClientName}.`);
+        // Starting fresh assessment
         return;
       }
 
@@ -334,7 +149,7 @@ const PhaseFormContent = ({
         const { getCurrentAssessment } = await import('@/services/assessmentHistory');
         const current = await getCurrentAssessment(user.uid, activeClientName);
         if (current?.formData) {
-          console.log(`[MultiStepForm] Pre-filling from current assessment for ${activeClientName}`);
+          // Pre-filling from current assessment
           
           // Determine which fields belong to the current partial assessment category
           let fieldsToSkip: string[] = [];
@@ -352,12 +167,14 @@ const PhaseFormContent = ({
           // Merge current data into form context, skipping fields in the partial category
           const updates: Partial<FormData> = {};
           Object.keys(current.formData).forEach((key) => {
-            const value = current.formData[key as keyof FormData];
+            const formKey = key as keyof FormData;
+            const value = current.formData[formKey];
             if (value !== undefined && value !== null) {
               // Only pre-fill if it's NOT a field we are trying to update in partial mode
               const shouldSkip = fieldsToSkip.some(prefix => key.toLowerCase().includes(prefix.toLowerCase()));
               if (!isPartialAssessment || !shouldSkip) {
-                updates[key as keyof FormData] = value as any; // Cast back to any because updateFormData expects specific types
+                // Type-safe assignment: ensure value matches FormData field type
+                (updates as Record<string, unknown>)[formKey] = value;
               }
             }
           });
@@ -374,44 +191,11 @@ const PhaseFormContent = ({
   const [recentlyCompletedSections, setRecentlyCompletedSections] = useState<Set<string>>(new Set());
   const phaseRefs = useRef<Record<number, HTMLButtonElement | null>>({});
   const [activeFieldIdx, setActiveFieldIdx] = useState(0);
-  const [savingId, setSavingId] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [shareCache, setShareCache] = useState<Record<'client' | 'coach', ShareArtifacts | null>>({
-    client: null,
-    coach: null,
-  });
-  const shareCacheRef = useRef<Record<'client' | 'coach', ShareArtifacts | null>>({
-    client: null,
-    coach: null,
-  });
-  const [shareLoading, setShareLoading] = useState(false);
   const [isDemoAssessment, setIsDemoAssessment] = useState(false);
   const [isReviewMode, setIsReviewMode] = useState(false);
   const isRunningDemoRef = useRef(false); // Prevent multiple simultaneous auto-fill runs
   
-  // NEW CAMERA/COMPANION STATE
-  const [showCamera, setShowCamera] = useState<false | 'ocr' | 'posture'>(false);
-  const [showPostureCompanion, setShowPostureCompanion] = useState(false);
-  const [showInBodyCompanion, setShowInBodyCompanion] = useState(false);
-  const [ocrReviewData, setOcrReviewData] = useState<Partial<FormData> | null>(null);
-  const [isProcessingOcr, setIsProcessingOcr] = useState(false);
-  const [postureStep, setPostureStep] = useState<number>(0);
-
-  // Filter phases for partial assessments
-
-  const totalPhases = visiblePhases.length;
-  const activePhase = useMemo(() => {
-    return visiblePhases[activePhaseIdx] || {
-      id: 'empty',
-      title: 'No Phases Available',
-      summary: 'Phase definitions are currently being loaded or configured.',
-      sections: []
-    };
-  }, [activePhaseIdx, visiblePhases]);
-
-  const isResultsPhase = activePhase?.id === 'P7';
-
-  // Precompute reports data when needed
+  // Precompute reports data when needed (MUST be before useAssessmentSave)
   const scores = useMemo(() => {
     try {
       return computeScores(formData);
@@ -420,13 +204,54 @@ const PhaseFormContent = ({
       return { overall: 0, categories: [], synthesis: [] };
     }
   }, [formData]);
+  
+  // Use save hook
+  const saveHook = useAssessmentSave({
+    user,
+    profile,
+    formData,
+    scores,
+    isResultsPhase,
+    isDemoAssessment,
+  });
+  const {
+    saving,
+    savingId,
+    shareLoading,
+    setShareLoading,
+    handleSaveToDashboard,
+    ensureShareArtifacts,
+    fetchReportPdfBlob,
+  } = saveHook;
 
-  // Determine progress percentage
-  const progressValue = useMemo(() => {
-    if (isPartialAssessment) return 0; // Hide progress for partial updates
-    const completed = visiblePhases.filter((_, i) => isPhaseCompleted(i)).length;
-    return (completed / (totalPhases - 1)) * 100;
-  }, [visiblePhases, totalPhases, isPhaseCompleted, isPartialAssessment]);
+  // Use camera hook
+  const cameraHook = useCameraHandler({
+    formData,
+    updateFormData,
+    activePhaseId: activePhase.id,
+    activePhaseIdx,
+    visiblePhases,
+    isPartialAssessment,
+    onPhaseChange: setActivePhaseIdx,
+  });
+  const {
+    showCamera,
+    setShowCamera,
+    showPostureCompanion,
+    setShowPostureCompanion,
+    showInBodyCompanion,
+    setShowInBodyCompanion,
+    ocrReviewData,
+    setOcrReviewData,
+    isProcessingOcr,
+    postureStep,
+    setPostureStep,
+    handleCapture,
+    applyOcrData,
+    handlePostureCompanionComplete,
+    handleInBodyCompanionComplete,
+  } = cameraHook;
+
 
   const roadmap = useMemo(() => {
     try {
@@ -437,20 +262,35 @@ const PhaseFormContent = ({
     }
   }, [scores, formData]);
 
-  const plan = useMemo(() => {
-    try {
-      return generateCoachPlan(formData, scores);
-    } catch (e) {
-      console.error('Error generating coach plan:', e);
-      return {
-        keyIssues: [],
-        clientScript: { findings: [], whyItMatters: [], actionPlan: [], threeMonthOutlook: [], clientCommitment: [] },
-        internalNotes: { doingWell: [], needsAttention: [] },
-        programmingStrategies: [],
-        movementBlocks: [],
-        segmentalGuidance: []
-      };
-    }
+  const [plan, setPlan] = useState<import('@/lib/recommendations').CoachPlan>({
+    keyIssues: [],
+    clientScript: { findings: [], whyItMatters: [], actionPlan: [], threeMonthOutlook: [], clientCommitment: [] },
+    internalNotes: { doingWell: [], needsAttention: [] },
+    programmingStrategies: [],
+    movementBlocks: [],
+    segmentalGuidance: []
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    generateCoachPlan(formData, scores)
+      .then(result => {
+        if (!cancelled) setPlan(result);
+      })
+      .catch(e => {
+        console.error('Error generating coach plan:', e);
+        if (!cancelled) {
+          setPlan({
+            keyIssues: [],
+            clientScript: { findings: [], whyItMatters: [], actionPlan: [], threeMonthOutlook: [], clientCommitment: [] },
+            internalNotes: { doingWell: [], needsAttention: [] },
+            programmingStrategies: [],
+            movementBlocks: [],
+            segmentalGuidance: []
+          });
+        }
+      });
+    return () => { cancelled = true; };
   }, [formData, scores]);
 
   const bodyCompInterp = useMemo(() => {
@@ -462,98 +302,6 @@ const PhaseFormContent = ({
     }
   }, [formData]);
 
-  const ensureShareArtifacts = useCallback(async (view: 'client' | 'coach') => {
-    if (!user || !savingId) {
-      throw new Error('Assessment must be saved before sharing.');
-    }
-    if (shareCacheRef.current[view]) {
-      return shareCacheRef.current[view]!;
-    }
-    const artifacts = await requestShareArtifacts({ assessmentId: savingId, view });
-    shareCacheRef.current[view] = artifacts;
-    setShareCache((prev) => ({ ...prev, [view]: artifacts }));
-    return artifacts;
-  }, [savingId, user]);
-
-  const fetchReportPdfBlob = useCallback(async (view: 'client' | 'coach') => {
-    try {
-      if (user && savingId) {
-        const artifacts = await ensureShareArtifacts(view);
-        const response = await fetch(artifacts.pdfUrl);
-        if (response.ok) {
-          const blob = await response.blob();
-          return { artifacts, blob };
-        }
-      }
-    } catch (error) {
-      console.warn('Cloud Functions PDF error, fallback to client-side', error);
-    }
-    
-    // For client-side PDF fallback, we need the element to be visible
-    // This is less reliable now that results are in a separate component
-    // but we'll try to find it by the data-pdf-target attribute
-    const reportEl = document.querySelector('[data-pdf-target]') as HTMLElement;
-    if (!reportEl) throw new Error('Report element not found');
-    
-    const html2canvas = (await import('html2canvas')).default;
-    const jsPDF = (await import('jspdf')).default;
-    
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    const canvasEl = await html2canvas(reportEl, {
-      scale: 3,
-      useCORS: true,
-      logging: false,
-      backgroundColor: '#ffffff',
-      scrollX: 0,
-      scrollY: 0,
-      windowWidth: reportEl.scrollWidth,
-      windowHeight: reportEl.scrollHeight,
-      onclone: (clonedDoc) => {
-        const clonedElement = clonedDoc.querySelector(`[data-pdf-target]`) as HTMLElement;
-        if (clonedElement) {
-          clonedElement.style.backgroundColor = '#ffffff';
-          clonedElement.style.width = `${reportEl.scrollWidth}px`;
-          clonedElement.style.height = 'auto';
-          clonedElement.style.overflow = 'visible';
-          clonedDoc.querySelectorAll('button, .dropdown-menu').forEach((el) => {
-            (el as HTMLElement).style.display = 'none';
-          });
-        }
-      },
-    });
-    
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const margin = 10;
-    const contentWidth = pageWidth - (margin * 2);
-    const imgHeight = (canvasEl.height * contentWidth) / canvasEl.width;
-    const contentHeight = pageHeight - (margin * 2);
-    const totalPages = Math.ceil(imgHeight / contentHeight);
-    
-    for (let page = 0; page < totalPages; page++) {
-      if (page > 0) pdf.addPage();
-      const sourceY = (page * contentHeight / imgHeight) * canvasEl.height;
-      const remainingHeight = imgHeight - (page * contentHeight);
-      const pageImageHeight = Math.min(contentHeight, remainingHeight);
-      const sourceHeight = (pageImageHeight / imgHeight) * canvasEl.height;
-      
-      const pageCanvas = document.createElement('canvas');
-      pageCanvas.width = canvasEl.width;
-      pageCanvas.height = Math.ceil(sourceHeight);
-      const ctx = pageCanvas.getContext('2d');
-      if (ctx && sourceHeight > 0) {
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-        ctx.drawImage(canvasEl, 0, sourceY, canvasEl.width, sourceHeight, 0, 0, canvasEl.width, sourceHeight);
-        const pageImgData = pageCanvas.toDataURL('image/png', 1.0);
-        pdf.addImage(pageImgData, 'PNG', margin, margin, contentWidth, pageImageHeight);
-      }
-    }
-    
-    return { artifacts: null, blob: pdf.output('blob') };
-  }, [ensureShareArtifacts, user, savingId]);
 
   const handlePrint = useCallback(async (view: 'client' | 'coach') => {
     try {
@@ -684,194 +432,6 @@ const PhaseFormContent = ({
     }
   }, [formData, scores, roadmap, toast]);
 
-  const handleCapture = async (imageSrc: string) => {
-    if (showCamera === 'ocr') {
-      setShowCamera(false);
-      setIsProcessingOcr(true);
-      
-      toast({ 
-        title: "Image Captured", 
-        description: "Gemini AI is analyzing your InBody scan...",
-      });
-
-      try {
-        const result = await processInBodyScan(imageSrc);
-        if (result.fields && Object.keys(result.fields).length > 0) {
-          setOcrReviewData(result.fields);
-        } else {
-          toast({ 
-            title: "Scan failed", 
-            description: "AI couldn't find data. Please try again with a clearer photo.",
-            variant: "destructive"
-          });
-        }
-      } catch (err) {
-        console.error('OCR error:', err);
-        toast({ title: "Scan failed", description: "An error occurred during AI analysis.", variant: "destructive" });
-      } finally {
-        setIsProcessingOcr(false);
-      }
-    } else if (showCamera === 'posture') {
-      const views: ('front' | 'side-right' | 'side-left' | 'back')[] = ['front', 'side-right', 'side-left', 'back'];
-      const currentView = views[postureStep] || 'front';
-      
-      toast({ title: `${currentView.toUpperCase()} captured`, description: "Processing image alignment..." });
-      
-      try {
-        setIsProcessingOcr(true); // Re-use OCR loading mask for local analysis
-        
-        // Use unified processing system (ONE FLOW FOR ALL SOURCES)
-        toast({ title: "Processing posture...", description: "Aligning, calculating, and analyzing..." });
-        const { processPostureImage } = await import('@/services/postureProcessing');
-        const processed = await processPostureImage(imageSrc, currentView, undefined, 'this-device');
-        
-        // Compress final image for storage/form
-        const compressed = await compressImageForDisplay(processed.imageWithDeviations, 800, 0.8);
-        
-        // Use processed analysis
-        const analysis = processed.analysis;
-        
-        // Map analysis to form
-        const suggestions: Partial<FormData> = {};
-        
-        // Store the final processed image in the form
-        const imageField = `postureImage${currentView.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('')}` as keyof FormData;
-        (suggestions as any)[imageField] = compressed.compressed;
-
-        if (currentView === 'side-right' || currentView === 'side-left') {
-          suggestions.postureHeadOverall = [analysis.forward_head.status.toLowerCase().includes('neutral') ? 'neutral' : 'forward-head'];
-          suggestions.postureBackOverall = [analysis.kyphosis.status.toLowerCase().includes('severe') ? 'increased-kyphosis' : 'neutral'];
-        } else if (currentView === 'front') {
-          suggestions.postureShouldersOverall = [analysis.shoulder_alignment.status.toLowerCase().includes('neutral') ? 'neutral' : 'rounded'];
-        }
-
-        updateFormData(suggestions);
-
-        if (postureStep < views.length - 1) {
-          setPostureStep(prev => prev + 1);
-        } else {
-          setShowCamera(false);
-          toast({ title: "Posture analysis complete", description: "Aligned images and findings have been applied." });
-        }
-      } catch (err) {
-        console.error('Local posture analysis error:', err);
-        toast({ title: "Analysis failed", description: "Could not analyze posture image.", variant: "destructive" });
-        setShowCamera(false);
-      } finally {
-        setIsProcessingOcr(false);
-      }
-    }
-  };
-
-  const applyOcrData = () => {
-    if (ocrReviewData) {
-      updateFormData(ocrReviewData);
-      setOcrReviewData(null);
-      toast({ title: "InBody data applied", description: "All fields have been populated." });
-      
-      // Auto-advance: if we're in the Body Composition section, move to the next phase
-      // This matches the user's request to "complete and go to the next"
-      if (activePhase.id === 'P2') {
-        setTimeout(() => {
-          if (isPartialAssessment) {
-            // No auto-results for partial assessments anymore
-            toast({ title: "Data applied", description: "You can now review the fields and click Update Report when ready." });
-          } else {
-            // Move to next visible phase (likely P3)
-            const nextVisibleIdx = visiblePhases.findIndex((p, i) => i > activePhaseIdx);
-            if (nextVisibleIdx !== -1) {
-              setActivePhaseIdx(nextVisibleIdx);
-            }
-          }
-        }, 800);
-      }
-    }
-  };
-
-  const handleSaveToDashboard = useCallback(async () => {
-    if (!user || saving || savingId) return;
-    
-    // Safety check for client name
-    const clientName = (formData.fullName || 'Unnamed client').trim();
-    
-    try {
-      setSaving(true);
-      console.log(`[SYNC] Starting sync for client: ${clientName}...`);
-      
-      // Check if this is a partial assessment
-      let assessmentId: string;
-      let category: string | null = null;
-      
-      try {
-        const partialData = sessionStorage.getItem('partialAssessment');
-        if (partialData) {
-          const { category: cat, clientName } = JSON.parse(partialData);
-          category = cat;
-          
-          // Use partial assessment save (merges with latest)
-          const { savePartialAssessment } = await import('@/services/coachAssessments');
-          assessmentId = await savePartialAssessment(
-            user.uid, 
-            user.email, 
-            formData, 
-            scores.overall, 
-            clientName,
-          category as 'inbody' | 'posture' | 'fitness' | 'strength' | 'lifestyle',
-          profile?.organizationId
-          );
-          
-          // Update client profile with last assessment date for this category
-          const { createOrUpdateClientProfile } = await import('@/services/clientProfiles');
-          const updateData: Record<string, Timestamp> = {};
-          const now = Timestamp.now();
-          
-          if (category === 'inbody') updateData.lastInBodyDate = now;
-          else if (category === 'posture') updateData.lastPostureDate = now;
-          else if (category === 'fitness') updateData.lastFitnessDate = now;
-          else if (category === 'strength') updateData.lastStrengthDate = now;
-          else if (category === 'lifestyle') updateData.lastLifestyleDate = now;
-          
-          if (Object.keys(updateData).length > 0) {
-            await createOrUpdateClientProfile(user.uid, clientName, updateData, profile?.organizationId);
-          }
-          
-          // Set highlight category for the report
-          sessionStorage.setItem('highlightCategory', category);
-          
-          // Clear partial assessment flag
-          sessionStorage.removeItem('partialAssessment');
-        } else {
-          // Full assessment
-          assessmentId = await saveCoachAssessment(user.uid, user.email, formData, scores.overall, profile?.organizationId);
-        }
-      } catch (parseErr) {
-        // Fallback to regular save if partial data parsing fails
-        assessmentId = await saveCoachAssessment(user.uid, user.email, formData, scores.overall);
-      }
-      
-      setSavingId(assessmentId);
-      toast({ 
-        title: category ? 'Partial Assessment Saved' : 'Assessment Saved', 
-        description: category ? `${category.charAt(0).toUpperCase() + category.slice(1)} data updated and merged.` : `Progress for ${clientName} has been saved.` 
-      });
-    } catch (e) {
-      console.error('[SYNC] Save failed:', e);
-      toast({ title: 'Sync Error', description: 'Unable to sync with dashboard. Please check your connection.', variant: 'destructive' });
-    } finally {
-      setSaving(false);
-    }
-  }, [user, saving, savingId, formData, scores.overall, toast]);
-
-  useEffect(() => {
-    if (isResultsPhase && user && !savingId && !saving && !isDemoAssessment) {
-      void handleSaveToDashboard();
-    }
-  }, [isResultsPhase, user, savingId, saving, isDemoAssessment, handleSaveToDashboard]);
-
-  useEffect(() => {
-    shareCacheRef.current = { client: null, coach: null };
-    setShareCache({ client: null, coach: null });
-  }, [savingId]);
 
   const isIntakeCompleted = useCallback(() => {
     const p0Sections = phaseDefinitions[0]?.sections ?? [];
@@ -963,6 +523,24 @@ const PhaseFormContent = ({
     if (!expandedSectionId) return;
     const currentSection = allSections.find(section => section.id === expandedSectionId);
     if (!currentSection) return;
+    
+    // CRITICAL FIX: Disable auto-advance for sections that use SingleFieldFlow
+    // SingleFieldFlow handles its own field-by-field navigation
+    // Sections that use SingleFieldFlow should only advance when user clicks "Section Complete"
+    const sectionsUsingSingleFieldFlow = [
+      'lifestyle-overview',
+      'body-comp',
+      'fitness-assessment',
+      'strength-endurance',
+      'mobility',
+    ];
+    
+    if (sectionsUsingSingleFieldFlow.includes(currentSection.id)) {
+      // Don't auto-advance these sections - let SingleFieldFlow handle navigation
+      return;
+    }
+    
+    // Original logic for non-SingleFieldFlow sections (like goals, parq, etc.)
     const currentSectionCompleted = isSectionCompleted(currentSection);
     const wasRecentlyCompleted = recentlyCompletedSections.has(expandedSectionId);
     if (currentSectionCompleted && !wasRecentlyCompleted) {
@@ -1118,16 +696,17 @@ const PhaseFormContent = ({
           for (const f of currentStep) {
             const key = f.id as keyof FormData;
             if (f.type === 'parq') {
-              fieldUpdates[key] = 'completed' as any; // Still need any because TS doesn't know f.id matches parq field
+              // Type-safe: parq fields are string fields in FormData
+              (fieldUpdates as Record<string, unknown>)[key] = 'completed';
               continue;
             }
           
             // Get value from payload first (which we already set at the start)
-            let raw: FieldValue = (payload as any)[key];
+            let raw: FormValue = (payload as unknown as Record<string, FormValue>)[key];
             
             // If not in payload, check current formData
             if (raw === undefined || raw === null) {
-              raw = (formData as any)[key];
+              raw = (formData as unknown as Record<string, FormValue>)[key];
             }
             
             // Check if value is empty (handle empty strings, null, undefined, empty arrays)
@@ -1145,7 +724,7 @@ const PhaseFormContent = ({
             }
             
             if (raw !== undefined && raw !== null) {
-              (fieldUpdates as any)[key] = raw;
+              (fieldUpdates as Record<string, unknown>)[key] = raw;
             }
           }
           
@@ -1426,10 +1005,7 @@ const PhaseFormContent = ({
           setShowCamera('posture');
           setPostureStep(0);
         }}
-        onComplete={(data) => {
-          updateFormData(data);
-          toast({ title: "Posture data applied", description: "AI findings have been populated." });
-        }}
+        onComplete={handlePostureCompanionComplete}
       />
 
       {/* InBody Companion Modal */}
@@ -1439,10 +1015,7 @@ const PhaseFormContent = ({
         onStartDirectScan={() => {
           setShowCamera('ocr');
         }}
-        onComplete={(data) => {
-          setOcrReviewData(data);
-          toast({ title: "InBody data applied", description: "All fields have been populated." });
-        }}
+        onComplete={handleInBodyCompanionComplete}
       />
 
       {/* OCR Processing Overlay */}

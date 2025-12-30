@@ -13,7 +13,7 @@
 
 import type { FormData } from '@/contexts/FormContext';
 import type { ScoreSummary } from './scoring';
-import { ALL_EXERCISES, type Exercise, type GoalType, type SessionType } from './exerciseDatabase';
+import type { Exercise, GoalType, SessionType } from './exerciseDatabase';
 
 export interface ClientProfile {
   goals: GoalType[];
@@ -389,12 +389,16 @@ function generateReason(exercise: Exercise, profile: ClientProfile, relevance: n
 
 /**
  * Get filtered and ranked exercises for a client
+ * Uses dynamic import to lazy-load the exercise database
  */
-export function getRankedExercises(
+export async function getRankedExercises(
   profile: ClientProfile,
   category: 'warm-up' | 'workout' | 'cardio',
   sessionType?: SessionType
-): RankedExercise[] {
+): Promise<RankedExercise[]> {
+  // Dynamic import to avoid loading large exercise database at app startup
+  const { ALL_EXERCISES } = await import('./exerciseDatabase');
+  
   const primaryGoal = profile.goals[0] || 'general-health';
   
   // Filter by category
@@ -430,15 +434,15 @@ export function getRankedExercises(
 /**
  * Get exercises organized by session type
  */
-export function getExercisesBySession(
+export async function getExercisesBySession(
   profile: ClientProfile,
   category: 'warm-up' | 'workout' | 'cardio'
-): Record<SessionType, RankedExercise[]> {
+): Promise<Record<SessionType, RankedExercise[]>> {
   const sessionTypes: SessionType[] = ['pull', 'push', 'legs', 'upper-body', 'lower-body', 'full-body', 'cardio', 'warm-up'];
   const result: Record<string, RankedExercise[]> = {};
   
   for (const sessionType of sessionTypes) {
-    result[sessionType] = getRankedExercises(profile, category, sessionType);
+    result[sessionType] = await getRankedExercises(profile, category, sessionType);
   }
   
   return result as Record<SessionType, RankedExercise[]>;

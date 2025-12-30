@@ -1,4 +1,5 @@
 import { LandmarkResult } from '@/lib/ai/postureLandmarks';
+import type { MediaPipeLandmark } from '@/lib/types/mediapipe';
 
 /**
  * UTILITY: POSTURE MATHEMATICS
@@ -50,7 +51,7 @@ function pixelsToCm(normalizedValue: number, shoulderWidthNormalized: number): n
 /**
  * Main calculation logic for Front View
  */
-export function calculateFrontViewMetrics(landmarks: any): Partial<CalculatedPostureMetrics> {
+export function calculateFrontViewMetrics(landmarks: MediaPipeLandmark[]): Partial<CalculatedPostureMetrics> {
   // Extract key points
   const leftEar = landmarks[7] || landmarks[0];
   const rightEar = landmarks[8] || landmarks[0];
@@ -88,7 +89,7 @@ export function calculateFrontViewMetrics(landmarks: any): Partial<CalculatedPos
 /**
  * Main calculation logic for Side View
  */
-export function calculateSideViewMetrics(landmarks: any): Partial<CalculatedPostureMetrics> {
+export function calculateSideViewMetrics(landmarks: MediaPipeLandmark[]): Partial<CalculatedPostureMetrics> {
   const nose = landmarks[0];
   const ear = landmarks[7] || landmarks[8];
   const shoulder = landmarks[11] || landmarks[12];

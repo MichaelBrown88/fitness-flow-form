@@ -120,7 +120,7 @@ const EXERCISES = {
   ],
 };
 
-export function generateCoachPlan(form: FormData, scores: ScoreSummary): CoachPlan {
+export async function generateCoachPlan(form: FormData, scores: ScoreSummary): Promise<CoachPlan> {
   // Check if form has ANY data - if not, return empty plan
   const hasAnyData = !!(form.inbodyWeightKg && parseFloat(form.inbodyWeightKg || '0') > 0) ||
                      !!(form.pushupMaxReps && parseFloat(form.pushupMaxReps || '0') > 0) ||
@@ -514,6 +514,19 @@ export function generateCoachPlan(form: FormData, scores: ScoreSummary): CoachPl
     issues.push('Cardiorespiratory capacity below target');
     addBlock('Aerobic base', ['Build aerobic capacity', 'Improve HR recovery'], EXERCISES.cardioBase);
   }
+  
+  // Safety check: Abnormal Heart Rate Recovery (HRR < 12bpm)
+  const peakHr = parseFloat(form.cardioPeakHr || '0');
+  const recoveryHr = parseFloat(form.cardioPost1MinHr || '0');
+  if (peakHr > 0 && recoveryHr > 0) {
+    const hrr = peakHr - recoveryHr;
+    if (hrr < 12) {
+      issues.push('Abnormal Heart Rate Recovery (<12bpm drop)');
+      clientScript.findings.push(`Heart rate recovery is slow (${Math.round(hrr)}bpm drop). This may indicate cardiovascular concerns.`);
+      clientScript.whyItMatters.push('Slow heart rate recovery can be a sign of poor cardiovascular fitness or underlying health issues. It\'s important to address this with medical guidance.');
+      clientScript.actionPlan.push('Consult physician if recovery consistently remains below 12bpm. Focus on low-intensity aerobic base building under medical supervision.');
+    }
+  }
 
   // Core/strength (only if we have strength data)
   if (hasStrengthData && (scores.categories.find(c => c.id === 'strength')?.score || 0) < 70) {
@@ -541,11 +554,11 @@ export function generateCoachPlan(form: FormData, scores: ScoreSummary): CoachPl
     segmentalGuidance
   });
 
-  // Generate new unified workout for client
-  const clientWorkout = generateClientWorkout(form, scores);
-  
-  // Generate comprehensive exercise lists for coach
-  const coachExerciseLists = generateCoachExerciseLists(form, scores);
+  // Generate new unified workout for client (dynamic import happens inside)
+  const [clientWorkout, coachExerciseLists] = await Promise.all([
+    generateClientWorkout(form, scores),
+    generateCoachExerciseLists(form, scores)
+  ]);
 
   return { 
     keyIssues: issues, 

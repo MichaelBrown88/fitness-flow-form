@@ -177,17 +177,28 @@ function scoreBodyComp(form: FormData, age: number, gender: string): ScoreCatego
 function scoreCardio(form: FormData, age: number, gender: string): ScoreCategory {
   const test = (form.cardioTestSelected || '').toLowerCase();
   const rhr = parseFloat(form.cardioRestingHr || '0');
+  const peakHr = parseFloat(form.cardioPeakHr || '0');
   const hr60 = parseFloat(form.cardioPost1MinHr || '0');
   
   // Check if cardio test was actually performed
   const hasTest = !!(form.cardioTestSelected && form.cardioTestSelected.trim() !== '');
   const hasHr60 = !!(form.cardioPost1MinHr && form.cardioPost1MinHr.trim() !== '');
+  const hasPeakHr = !!(form.cardioPeakHr && form.cardioPeakHr.trim() !== '');
   const hasRhr = !!(form.cardioRestingHr && form.cardioRestingHr.trim() !== '');
   
-  // Recovery Score using normative database
-  const recoveryScore = hasHr60 
+  // Calculate Heart Rate Recovery (HRR) if we have both peak and recovery HR
+  const hrr = hasPeakHr && hasHr60 && peakHr > 0 && hr60 > 0 ? peakHr - hr60 : 0;
+  const hasHrr = hrr > 0;
+  
+  // HRR-based fitness score (0-100)
+  // Formula: Math.min(100, Math.max(0, (hrr - 5) * 2.8))
+  // This maps: ~12bpm → ~20pts, ~40bpm → ~100pts
+  const hrrScore = hasHrr ? clamp((hrr - 5) * 2.8) : 0;
+  
+  // Recovery Score using normative database (fallback if no HRR)
+  const recoveryScore = hasHr60 && !hasHrr
     ? lookupNormativeScore('Recovery HR', gender, age, hr60)
-    : 0;
+    : hasHrr ? hrrScore : 0;
 
   // VO2max estimate
   const mhr = age > 0 ? 208 - 0.7 * age : 0;
@@ -204,8 +215,11 @@ function scoreCardio(form: FormData, age: number, gender: string): ScoreCategory
     : 0;
 
   // Weighted average for metabolic fitness
+  // If we have HRR, use it as primary metric (70% weight), otherwise use recovery score
   const fitnessScore = hasTest 
-    ? clamp(recoveryScore * 0.7 + rhrScore * 0.3)
+    ? (hasHrr 
+      ? clamp(hrrScore * 0.7 + rhrScore * 0.3)
+      : clamp(recoveryScore * 0.7 + rhrScore * 0.3))
     : rhrScore;
 
   const cardioClass =
@@ -216,10 +230,22 @@ function scoreCardio(form: FormData, age: number, gender: string): ScoreCategory
       : fitnessScore >= 30 ? 'Below Average'
       : 'Poor';
 
-  // Recommendation by FitnessScore and VO2 class
+  // Recommendation by HRR and FitnessScore
   let recommendation = '';
   if (!hasTest) {
     recommendation = 'Metabolic fitness assessment not performed.';
+  } else if (hasHrr) {
+    if (hrr < 12) {
+      recommendation = 'Heart rate recovery is slow (<12bpm). Focus on low-intensity aerobic base building.';
+    } else if (hrr > 30) {
+      recommendation = 'Excellent heart rate recovery (>30bpm). Ready for high-intensity intervals.';
+    } else if (cardioClass === 'Poor' || cardioClass === 'Below Average') {
+      recommendation = 'Low aerobic base – prioritise 3–4 sessions/week of 20–40 minutes Zone 2 walking.';
+    } else if (cardioClass === 'Average') {
+      recommendation = 'Moderate aerobic base – 2–3 Zone 2 sessions plus 1 slightly harder conditioning session per week.';
+    } else {
+      recommendation = 'Solid aerobic base – maintain 2–3 cardio sessions/week; consider adding intervals/tempo for performance.';
+    }
   } else if (cardioClass === 'Poor') {
     recommendation = 'Low aerobic base – prioritise 3–4 sessions/week of 20–40 minutes Zone 2 walking.';
   } else if (cardioClass === 'Average' || cardioClass === 'Below Average') {
@@ -230,10 +256,19 @@ function scoreCardio(form: FormData, age: number, gender: string): ScoreCategory
 
   const details: ScoreDetail[] = [
     { id: 'rhr', label: 'Resting HR', value: rhr || '-', unit: 'bpm', score: Math.round(rhrScore) },
-    { id: 'hr60', label: 'Recovery', value: hr60 || '-', unit: 'bpm', score: Math.round(recoveryScore) },
-    { id: 'vo2', label: 'VO₂max Est.', value: vo2max ? vo2max.toFixed(1) : '-', unit: 'ml/kg/min', score: Math.round(recoveryScore) }, // tied to recovery for now
-    { id: 'cardioClass', label: 'Fitness Level', value: cardioClass, score: Math.round(fitnessScore) },
   ];
+  
+  // Add HRR if available, otherwise add recovery HR
+  if (hasHrr) {
+    details.push({ id: 'hrr', label: 'HR Recovery (HRR)', value: Math.round(hrr) || '-', unit: 'bpm', score: Math.round(hrrScore) });
+  } else if (hasHr60) {
+    details.push({ id: 'hr60', label: 'Recovery', value: hr60 || '-', unit: 'bpm', score: Math.round(recoveryScore) });
+  }
+  
+  details.push(
+    { id: 'vo2', label: 'VO₂max Est.', value: vo2max ? vo2max.toFixed(1) : '-', unit: 'ml/kg/min', score: Math.round(hasHrr ? hrrScore : recoveryScore) },
+    { id: 'cardioClass', label: 'Fitness Level', value: cardioClass, score: Math.round(fitnessScore) }
+  );
 
   const strengths: string[] = [];
   const weaknesses: string[] = [];
@@ -242,11 +277,13 @@ function scoreCardio(form: FormData, age: number, gender: string): ScoreCategory
   else if (hasTest && fitnessScore >= 70) strengths.push('Solid aerobic base foundation');
   
   if (hasRhr && rhrScore >= 80) strengths.push('Excellent resting heart rate (indicates low systemic stress)');
+  
+  if (hasHrr && hrr > 30) strengths.push('Excellent heart rate recovery (>30bpm drop)');
 
   // Relative weaknesses
   const items = [
     { label: 'Resting Heart Rate', score: rhrScore },
-    { label: 'Heart Rate Recovery', score: recoveryScore }
+    { label: hasHrr ? 'Heart Rate Recovery (HRR)' : 'Heart Rate Recovery', score: hasHrr ? hrrScore : recoveryScore }
   ].sort((a, b) => a.score - b.score);
 
   items.forEach(item => {
@@ -256,6 +293,11 @@ function scoreCardio(form: FormData, age: number, gender: string): ScoreCategory
       weaknesses.push(`Further refinement of ${item.label} for better recovery`);
     }
   });
+  
+  // Safety check: flag abnormal HRR
+  if (hasHrr && hrr < 12) {
+    weaknesses.push('Abnormal Heart Rate Recovery (<12bpm drop) - Consult physician if recovery consistently remains below 12bpm');
+  }
 
   return { id: 'cardio', title: 'Metabolic Fitness', score: Math.round(fitnessScore), details, strengths, weaknesses };
 }
@@ -272,7 +314,17 @@ function scoreStrength(form: FormData, age: number, gender: string): ScoreCatego
   const hasPushups = !!(form.pushupsOneMinuteReps && form.pushupsOneMinuteReps.trim() !== '');
   const hasSquats = !!(form.squatsOneMinuteReps && form.squatsOneMinuteReps.trim() !== '');
   const hasPlank = !!(form.plankDurationSeconds && form.plankDurationSeconds.trim() !== '');
-  const hasGrip = !!(form.gripLeftKg && form.gripLeftKg.trim() !== '') || !!(form.gripRightKg && form.gripRightKg.trim() !== '');
+  
+  // Check if grip strength was tested (must have at least one non-zero value)
+  // Also check alternative grip methods (deadhang, farmers walk, plate pinch)
+  const hasGripDynamometer = !!(form.gripLeftKg && form.gripLeftKg.trim() !== '' && parseFloat(form.gripLeftKg) > 0) || 
+                              !!(form.gripRightKg && form.gripRightKg.trim() !== '' && parseFloat(form.gripRightKg) > 0);
+  const hasGripDeadhang = !!(form.gripDeadhangSeconds && form.gripDeadhangSeconds.trim() !== '' && parseFloat(form.gripDeadhangSeconds) > 0);
+  const hasGripFarmersWalk = !!(form.gripFarmersWalkDistanceM && form.gripFarmersWalkDistanceM.trim() !== '') ||
+                              !!(form.gripFarmersWalkTimeS && form.gripFarmersWalkTimeS.trim() !== '') ||
+                              !!(form.gripFarmersWalkLoadKg && form.gripFarmersWalkLoadKg.trim() !== '');
+  const hasGripPlatePinch = !!(form.gripPlatePinchKg && form.gripPlatePinchKg.trim() !== '' && parseFloat(form.gripPlatePinchKg) > 0);
+  const hasGrip = hasGripDynamometer || hasGripDeadhang || hasGripFarmersWalk || hasGripPlatePinch;
 
   // Lookup normative scores
   const pushScore = hasPushups ? lookupNormativeScore('Push-up', gender, age, pushups) : 0;
@@ -282,18 +334,45 @@ function scoreStrength(form: FormData, age: number, gender: string): ScoreCatego
   const squatScore = hasSquats ? clamp(squats * 2.5) : 0; // 40 reps ~ 100
   const gripScore = hasGrip ? clamp(gripAvg * 3) : 0; // heuristic
 
+  // Build details array - only include grip if it was actually tested
   const details: ScoreDetail[] = [
     { id: 'pushups', label: 'Pushups (1-min)', value: pushups || '-', score: Math.round(pushScore) },
     { id: 'squats', label: 'Squats (1-min)', value: squats || '-', score: Math.round(squatScore) },
     { id: 'plank', label: 'Plank hold', value: plank || '-', unit: 's', score: Math.round(plankScore) },
-    { id: 'grip', label: 'Grip (avg)', value: Math.round(gripAvg) || '-', unit: 'kg', score: Math.round(gripScore) },
   ];
+  
+  // Only add grip to details if it was actually tested
+  if (hasGrip) {
+    details.push({ id: 'grip', label: 'Grip (avg)', value: Math.round(gripAvg) || '-', unit: 'kg', score: Math.round(gripScore) });
+  }
 
   // Only count filled tests in the overall score
   const filledTests = [hasPushups, hasSquats, hasPlank, hasGrip].filter(Boolean).length;
-  const score = filledTests > 0
-    ? Math.round((pushScore * 0.3 + squatScore * 0.25 + plankScore * 0.25 + gripScore * 0.2) * (4 / filledTests))
-    : 0;
+  
+  // Calculate score weights based on available tests
+  // If grip is not tested, redistribute its weight (0.2) proportionally to other tests
+  let score: number;
+  if (filledTests === 0) {
+    score = 0;
+  } else if (hasGrip) {
+    // All tests available: use original weights
+    score = Math.round((pushScore * 0.3 + squatScore * 0.25 + plankScore * 0.25 + gripScore * 0.2) * (4 / filledTests));
+  } else {
+    // Grip not tested: redistribute its 0.2 weight proportionally
+    // Original weights without grip: pushups 0.3, squats 0.25, plank 0.25 = 0.8 total
+    // Redistribute 0.2 proportionally: pushups gets 0.075, squats gets 0.0625, plank gets 0.0625
+    // New weights: pushups 0.375, squats 0.3125, plank 0.3125 = 1.0 total
+    const availableTests = [hasPushups, hasSquats, hasPlank].filter(Boolean).length;
+    if (availableTests === 3) {
+      score = Math.round(pushScore * 0.375 + squatScore * 0.3125 + plankScore * 0.3125);
+    } else if (availableTests === 2) {
+      // If only 2 tests, weight them equally
+      score = Math.round(((hasPushups ? pushScore : 0) + (hasSquats ? squatScore : 0) + (hasPlank ? plankScore : 0)) / 2);
+    } else {
+      // If only 1 test, use it directly
+      score = Math.round((hasPushups ? pushScore : 0) + (hasSquats ? squatScore : 0) + (hasPlank ? plankScore : 0));
+    }
+  }
 
   const strengths = [];
   const weaknesses = [];
@@ -301,13 +380,13 @@ function scoreStrength(form: FormData, age: number, gender: string): ScoreCatego
   if (score >= 85) strengths.push('Exceptional foundational strength and power');
   else if (score >= 70) strengths.push('Strong muscular endurance baseline');
 
-  // Relative weaknesses
+  // Relative weaknesses - only include tests that were actually performed
   const items = [
-    { label: 'Upper Body Endurance', score: pushScore },
-    { label: 'Lower Body Endurance', score: squatScore },
-    { label: 'Core Stability', score: plankScore },
-    { label: 'Grip Strength', score: gripScore }
-  ].filter(i => (i.score > 0 || (i.label === 'Upper Body Endurance' && hasPushups) || (i.label === 'Lower Body Endurance' && hasSquats) || (i.label === 'Core Stability' && hasPlank) || (i.label === 'Grip Strength' && hasGrip)))
+    { label: 'Upper Body Endurance', score: pushScore, hasData: hasPushups },
+    { label: 'Lower Body Endurance', score: squatScore, hasData: hasSquats },
+    { label: 'Core Stability', score: plankScore, hasData: hasPlank },
+    { label: 'Grip Strength', score: gripScore, hasData: hasGrip }
+  ].filter(i => i.hasData) // Only include tests that were actually performed
    .sort((a, b) => a.score - b.score);
 
   items.slice(0, 2).forEach(item => {

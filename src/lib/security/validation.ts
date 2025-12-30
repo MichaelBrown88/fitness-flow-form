@@ -187,8 +187,8 @@ export function validateStringArray(
  * @param formData - Raw form data
  * @returns Sanitized form data
  */
-export function sanitizeFormData(formData: Record<string, any>): Record<string, any> {
-  const sanitized: Record<string, any> = {};
+export function sanitizeFormData(formData: Record<string, unknown>): Record<string, string | number | string[]> {
+  const sanitized: Record<string, string | number | string[]> = {};
   
   for (const [key, value] of Object.entries(formData)) {
     if (value === null || value === undefined) {

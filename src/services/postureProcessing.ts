@@ -39,21 +39,21 @@ export async function processPostureImage(
   providedLandmarks?: LandmarkResult,
   source: 'manual' | 'iphone' | 'this-device' = 'manual'
 ): Promise<PostureProcessingResult> {
-  console.log(`[UNIFIED] Processing ${view} image from ${source}...`);
+  // Processing image
 
   // STEP 1: Detect landmarks (or use provided)
   let landmarks: LandmarkResult;
   if (providedLandmarks) {
     landmarks = providedLandmarks;
-    console.log(`[UNIFIED] Using provided landmarks from ${source}`);
+    // Using provided landmarks
   } else {
-    console.log(`[UNIFIED] Detecting landmarks using MediaPipe...`);
+    // Detecting landmarks using MediaPipe
     landmarks = await detectPostureLandmarks(imageData, view);
-    console.log(`[UNIFIED] Landmarks detected:`, landmarks);
+    // Landmarks detected
   }
 
   // STEP 2: Align image with green reference lines
-  console.log(`[UNIFIED] Aligning image with green reference lines...`);
+  // Aligning image with green reference lines
   const alignedImage = await addPostureOverlay(imageData, view, {
     showMidline: true,
     showShoulderLine: true,
@@ -65,8 +65,8 @@ export async function processPostureImage(
   });
 
   // STEP 3: Calculate metrics using trigonometry (deterministic, no AI)
-  console.log(`[UNIFIED] Calculating deviations using trigonometry...`);
-  let calculatedMetrics: any = {};
+  // Calculating deviations using trigonometry
+  let calculatedMetrics: Partial<import('@/lib/utils/postureMath').CalculatedPostureMetrics> = {};
   if (landmarks.raw) {
     if (view === 'front' || view === 'back') {
       calculatedMetrics = calculateFrontViewMetrics(landmarks.raw);
@@ -74,21 +74,21 @@ export async function processPostureImage(
       calculatedMetrics = calculateSideViewMetrics(landmarks.raw);
     }
   }
-  console.log(`[UNIFIED] Calculated metrics:`, calculatedMetrics);
+  // Calculated metrics
 
   // STEP 4: Use AI ONLY to convert numbers → user-friendly descriptions
   // AI receives the calculated metrics and normative data to generate descriptions
-  console.log(`[UNIFIED] Using AI to generate user-friendly descriptions from calculated metrics...`);
+  // Using AI to generate user-friendly descriptions
   const analysis = await analyzePostureImage(alignedImage, view, {
     ...landmarks,
     raw: landmarks.raw, // Pass raw landmarks so AI can refine if needed
   });
 
   // STEP 5: Draw red deviation lines based on calculated metrics
-  console.log(`[UNIFIED] Drawing red deviation lines...`);
+  // Drawing red deviation lines
   const imageWithDeviations = await addDeviationOverlay(alignedImage, view, analysis);
 
-  console.log(`[UNIFIED] ✅ Complete processing for ${view} from ${source}`);
+  // Complete processing
 
   return {
     alignedImage,

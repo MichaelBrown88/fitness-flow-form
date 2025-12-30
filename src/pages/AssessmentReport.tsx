@@ -32,16 +32,23 @@ const AssessmentReport = () => {
     coach: null,
   });
   const [shareLoading, setShareLoading] = useState(false);
+  const [plan, setPlan] = useState<import('@/lib/recommendations').CoachPlan | null>(null);
 
   const ensureShareArtifacts = useCallback(async (view: 'client' | 'coach') => {
-    if (!user || !id) {
+    if (!user || !id || !formData) {
       throw new Error('Missing assessment reference.');
     }
     if (shareCache[view]) return shareCache[view]!;
-    const artifacts = await requestShareArtifacts({ assessmentId: id, view });
+    const artifacts = await requestShareArtifacts({ 
+      assessmentId: id, 
+      view,
+      coachUid: user.uid,
+      formData,
+      organizationId: profile?.organizationId,
+    });
     setShareCache((prev) => ({ ...prev, [view]: artifacts }));
     return artifacts;
-  }, [id, shareCache, user]);
+  }, [id, shareCache, user, formData, profile?.organizationId]);
 
   const handleEmailLink = useCallback(async () => {
     if (!formData || !id) return;
@@ -78,11 +85,96 @@ const AssessmentReport = () => {
     }
   }, [formData, id, toast, view]);
 
-  const handleWhatsAppShare = useCallback(async () => {
-    if (!id || typeof window === 'undefined') return;
+  const handleSystemShare = useCallback(async () => {
+    if (!id || !formData || !user || typeof window === 'undefined') return;
     try {
       setShareLoading(true);
-      const artifacts = await ensureShareArtifacts(view);
+      const artifacts = await requestShareArtifacts({
+        assessmentId: id,
+        view,
+        coachUid: user.uid,
+        formData,
+        organizationId: profile?.organizationId,
+      });
+      
+      // Use Web Share API for native sharing (AirDrop, etc.)
+      // Note: navigator.share works on:
+      // - iOS Safari (mobile) - ✅ Full support including AirDrop
+      // - Android Chrome - ✅ Full support
+      // - Desktop browsers - ⚠️ Limited support (Chrome/Edge on Windows/Mac)
+      // - Localhost - ✅ Works for testing (HTTPS or localhost)
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: `${formData.fullName || 'Client'}'s Fitness Report`,
+            text: 'Here is your interactive fitness assessment results.',
+            url: artifacts.shareUrl, // iOS treats this as an AirDrop-able link
+          });
+          toast({
+            title: 'Shared successfully',
+            description: 'The report link has been shared.',
+          });
+        } catch (shareError) {
+          // User cancelled or share failed
+          if ((shareError as Error).name !== 'AbortError') {
+            console.error('Share failed:', shareError);
+            // Fallback to clipboard
+            try {
+              await navigator.clipboard.writeText(artifacts.shareUrl);
+              toast({
+                title: 'Link copied to clipboard',
+                description: 'Share was cancelled, but the link is in your clipboard.',
+              });
+            } catch (clipboardError) {
+              // Last resort: show the URL in a toast
+              toast({
+                title: 'Share URL',
+                description: artifacts.shareUrl,
+                duration: 10000,
+              });
+            }
+          }
+        }
+      } else {
+        // Fallback for browsers without Web Share API: Copy to clipboard
+        try {
+          await navigator.clipboard.writeText(artifacts.shareUrl);
+          toast({
+            title: 'Link copied to clipboard',
+            description: 'Paste the link to share it. On mobile devices, you can use AirDrop by sharing this link.',
+          });
+        } catch (clipboardError) {
+          // Last resort: show the URL
+          toast({
+            title: 'Share URL',
+            description: artifacts.shareUrl,
+            duration: 10000,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('System share failed', error);
+      toast({
+        title: 'Unable to share',
+        description: 'Please try copying the link manually.',
+        variant: 'destructive',
+      });
+    } finally {
+      setShareLoading(false);
+    }
+  }, [id, formData, user, profile?.organizationId, view, toast]);
+
+  const handleWhatsAppShare = useCallback(async () => {
+    if (!id || !formData || !user || typeof window === 'undefined') return;
+    try {
+      setShareLoading(true);
+      const artifacts = await requestShareArtifacts({
+        assessmentId: id,
+        view,
+        coachUid: user.uid,
+        formData,
+        organizationId: profile?.organizationId,
+      });
       const url = `https://wa.me/?text=${encodeURIComponent(artifacts.whatsappText)}`;
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch (error) {
@@ -95,7 +187,7 @@ const AssessmentReport = () => {
     } finally {
       setShareLoading(false);
     }
-  }, [ensureShareArtifacts, id, toast, view]);
+  }, [id, formData, user, profile?.organizationId, view, toast]);
 
   useEffect(() => {
     if (!user || !id) return;
@@ -149,6 +241,22 @@ const AssessmentReport = () => {
     })();
   }, [user, id, formData, profile?.organizationId]);
 
+  // Generate coach plan asynchronously (dynamic import happens inside)
+  // CRITICAL: This hook MUST be before any early returns to follow Rules of Hooks
+  useEffect(() => {
+    if (!formData || !scores) return;
+    let cancelled = false;
+    generateCoachPlan(formData, scores)
+      .then(result => {
+        if (!cancelled) setPlan(result);
+      })
+      .catch(e => {
+        console.error('Error generating coach plan:', e);
+        if (!cancelled) setPlan(null);
+      });
+    return () => { cancelled = true; };
+  }, [formData, scores]);
+
   if (loading || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-slate-600">
@@ -176,7 +284,17 @@ const AssessmentReport = () => {
     );
   }
 
-  const plan = generateCoachPlan(formData, scores);
+  if (!plan) {
+    return (
+      <AppShell title="Assessment report">
+        <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-slate-100">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+          <p className="text-sm font-black uppercase tracking-widest text-slate-400">Generating Report...</p>
+        </div>
+      </AppShell>
+    );
+  }
+
   const bodyComp = generateBodyCompInterpretation(formData, scores);
   const highlightCategory = sessionStorage.getItem('highlightCategory') || undefined;
 
@@ -205,6 +323,10 @@ const AssessmentReport = () => {
             navigate('/assessment');
           }}>
             New assessment
+          </Button>
+          <Button variant="outline" onClick={handleSystemShare} disabled={shareLoading}>
+            {shareLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            📤 Share
           </Button>
           <Button variant="outline" onClick={handleEmailLink} disabled={shareLoading}>
             ✉️ Email link
@@ -253,7 +375,6 @@ const AssessmentReport = () => {
             {view === 'client' ? (
               <ClientReport
                 scores={scores}
-                roadmap={roadmap}
                 goals={Array.isArray(formData.clientGoals) ? formData.clientGoals : []}
                 bodyComp={bodyComp ? { timeframeWeeks: bodyComp.timeframeWeeks } : undefined}
                 formData={formData}

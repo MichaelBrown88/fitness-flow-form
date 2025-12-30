@@ -179,7 +179,7 @@ export async function updateCurrentAssessment(
   
   // Update current assessment
   const currentRef = getCurrentAssessmentDoc(coachUid, clientName);
-  console.log(`[SYNC] Saving current assessment to: ${currentRef.path}`);
+  // Saving current assessment
   try {
     await setDoc(currentRef, {
       formData: sanitizeForFirestore(formData),
@@ -188,7 +188,7 @@ export async function updateCurrentAssessment(
       clientName: clientName || 'Unnamed client',
       organizationId: finalOrgId,
     }, { merge: false }); // Overwrite completely
-    console.log(`[SYNC] ✓ Current assessment saved`);
+    // Current assessment saved
   } catch (err) {
     console.error(`[SYNC] ✗ Failed to save current assessment:`, err);
     throw err;
@@ -196,7 +196,7 @@ export async function updateCurrentAssessment(
   
   // Log change to history
   const historyRef = getHistoryCollection(coachUid, clientName);
-  console.log(`[SYNC] Logging change to history: ${historyRef.path}`);
+  // Logging change to history
   try {
     await addDoc(historyRef, {
       timestamp: serverTimestamp(),
@@ -206,7 +206,7 @@ export async function updateCurrentAssessment(
       updatedBy: coachUid || 'unknown',
       organizationId: finalOrgId,
     });
-    console.log(`[SYNC] ✓ History log created`);
+    // History log created
   } catch (err) {
     console.warn(`[SYNC] ✗ Failed to log history (non-critical):`, err);
     // Don't throw for history log failure, but log it
@@ -377,7 +377,9 @@ export async function reconstructAssessmentAtDate(
   // Apply changes chronologically
   for (const change of changes) {
     for (const [field, values] of Object.entries(change.changes)) {
-      (reconstructedData as any)[field] = values.new;
+      if (field in reconstructedData) {
+        (reconstructedData as unknown as Record<string, FormValue>)[field] = values.new;
+      }
     }
   }
   

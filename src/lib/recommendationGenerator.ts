@@ -36,22 +36,28 @@ const fitsSlot = (
  * Generate a structured, slot-based workout for the client
  * Structure: Warm-up (Pulse + Mobility) → Main Workout (Primary Compound → Secondary Compounds → Accessories) → Finisher
  */
-export function generateClientWorkout(
+export async function generateClientWorkout(
   form: FormData,
   scores: ScoreSummary
-): {
+): Promise<{
   warmUp: Array<{ name: string; setsReps?: string; time?: string; addresses?: string }>;
   exercises: Array<{ name: string; setsReps?: string; notes?: string; addresses?: string; type: string }>;
   finisher?: { name: string; time?: string; setsReps?: string; addresses?: string };
-} {
+}> {
   const profile = buildClientProfile(form, scores);
   const primaryGoal = profile.goals[0] || 'general-health';
   
-  // Get pool of all valid exercises
+  // Get pool of all valid exercises (dynamic import happens inside getRankedExercises)
+  const [warmUpExercises, workoutExercises, cardioExercises] = await Promise.all([
+    getRankedExercises(profile, 'warm-up', 'full-body'),
+    getRankedExercises(profile, 'workout', 'full-body'),
+    getRankedExercises(profile, 'cardio')
+  ]);
+  
   const allExercises = [
-    ...getRankedExercises(profile, 'warm-up', 'full-body'),
-    ...getRankedExercises(profile, 'workout', 'full-body'),
-    ...getRankedExercises(profile, 'cardio')
+    ...warmUpExercises,
+    ...workoutExercises,
+    ...cardioExercises
   ];
 
   const usedExerciseNames = new Set<string>();
@@ -221,15 +227,23 @@ export function generateClientWorkout(
  * Generate comprehensive coach guidance
  * Improvements: Groups by purpose (Primary Lifts vs Regression/Progression)
  */
-export function generateCoachExerciseLists(
+export async function generateCoachExerciseLists(
   form: FormData,
   scores: ScoreSummary
-) {
+): Promise<CoachPlan['coachExerciseLists']> {
   const profile = buildClientProfile(form, scores);
+  
+  // Parallel load all exercise categories (dynamic import happens inside getRankedExercises)
+  const [workoutExercises, warmUpExercises, cardioExercises] = await Promise.all([
+    getRankedExercises(profile, 'workout'),
+    getRankedExercises(profile, 'warm-up'),
+    getRankedExercises(profile, 'cardio')
+  ]);
+  
   const allRanked = [
-    ...getRankedExercises(profile, 'workout'),
-    ...getRankedExercises(profile, 'warm-up'),
-    ...getRankedExercises(profile, 'cardio')
+    ...workoutExercises,
+    ...warmUpExercises,
+    ...cardioExercises
   ];
 
   // Helper to get relevant addresses for display

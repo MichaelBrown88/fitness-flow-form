@@ -208,6 +208,7 @@ export const phaseDefinitions = [
           ]},
           // Simplified fields common to both tests
           { id: 'cardioRestingHr' as keyof FormData, type: 'number' as FieldType, label: 'Resting Heart Rate (bpm)', tooltip: 'Instructions:\n1. Client should sit quietly for 5 minutes.\n2. Measure pulse for 60s or use a heart rate monitor.' },
+          { id: 'cardioPeakHr' as keyof FormData, type: 'number' as FieldType, label: 'Peak Heart Rate (at 3 min mark)', tooltip: 'Record the highest heart rate reached right before stopping the treadmill.' },
           { id: 'cardioPost1MinHr' as keyof FormData, type: 'number' as FieldType, label: '1-min Post-Test HR (HR₆₀, bpm)', tooltip: 'Instructions:\n1. Step Test: 12" step, 96bpm for 3m.\n2. Treadmill: 1.7mph @ 10% grade for 3m.\n3. Stop test at 3:00. Record HR exactly 60s later.' },
         ],
       },

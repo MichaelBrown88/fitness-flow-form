@@ -117,7 +117,7 @@ export const updatePostureImage = async (
       const compressed = await compressImageForDisplay(processed.imageWithDeviations, 800, 0.8);
       compressedImage = compressed.compressed;
       fullSizeImage = compressed.fullSize;
-      console.log(`[COMPRESS] Compressed ${view} with deviations for display`);
+      // Compressed image with deviations for display
     } catch (compressError) {
       console.warn(`[COMPRESS] Compression failed for ${view}, using original:`, compressError);
       fullSizeImage = processed.imageWithDeviations;
@@ -125,16 +125,16 @@ export const updatePostureImage = async (
 
     // Store everything in Firestore
     const sessionRef = doc(db, SESSIONS_COLLECTION, sessionId);
-    console.log(`[SYNC] Storing processed ${view} image and analysis...`);
+    // Storing processed image and analysis
     
-    const updatePayload: Record<string, string | Record<string, any>> = {
+    const updatePayload: Record<string, unknown> = {
       [`postureImages.${view}`]: compressedImage, // Compressed version with green + red lines
       [`analysis.${view}`]: sanitizeForFirestore(processed.analysis), // Complete analysis
     };
     
     // Store landmarks for future reference
     if (processed.landmarks) {
-      updatePayload[`landmarks_${view}`] = sanitizeForFirestore(processed.landmarks);
+      updatePayload[`landmarks_${view}`] = sanitizeForFirestore(processed.landmarks) as Record<string, unknown>;
     }
     
     await updateDoc(sessionRef, updatePayload);
@@ -151,14 +151,14 @@ export const updatePostureImage = async (
     try {
       const snapshot = await uploadString(storageRef, fullSizeBase64, 'base64', { contentType: 'image/jpeg' });
       const downloadUrl = await getDownloadURL(snapshot.ref);
-      console.log(`[STORAGE] Successfully uploaded full-size ${view} to:`, downloadUrl);
+      // Successfully uploaded full-size image to Storage
       
       await setDoc(sessionRef, {
         [`postureImagesFull_${view}`]: downloadUrl,
         [`postureImagesStorage_${view}`]: downloadUrl
       }, { merge: true });
       
-      console.log(`[STORAGE] Stored Storage URL for ${view} in Firestore`);
+      // Stored Storage URL in Firestore
     } catch (storageError) {
       console.error(`[STORAGE] Failed to upload ${view} to Storage:`, storageError);
       // Don't throw - allow Firestore sync to complete even if Storage fails
@@ -181,7 +181,7 @@ export const updateInBodyImage = async (sessionId: string, imageData: string) =>
       const compressed = await compressImageForDisplay(imageData, 1200, 0.85);
       compressedImage = compressed.compressed;
       fullSizeImage = compressed.fullSize;
-      console.log(`[COMPRESS] Compressed InBody scan for display`);
+      // Compressed InBody scan for display
     } catch (compressError) {
       console.warn(`[COMPRESS] Compression failed for InBody, using original:`, compressError);
       fullSizeImage = imageData;
@@ -206,7 +206,7 @@ export const updateInBodyImage = async (sessionId: string, imageData: string) =>
     try {
       const snapshot = await uploadString(storageRef, fullSizeBase64, 'base64', { contentType: 'image/jpeg' });
       const downloadUrl = await getDownloadURL(snapshot.ref);
-      console.log(`[STORAGE] Successfully uploaded InBody scan to:`, downloadUrl);
+      // Successfully uploaded InBody scan to Storage
       
       // Store full-size URL in Firestore for OCR analysis
       await setDoc(sessionRef, {
@@ -214,7 +214,7 @@ export const updateInBodyImage = async (sessionId: string, imageData: string) =>
         inbodyImageStorage: downloadUrl
       }, { merge: true });
       
-      console.log(`[STORAGE] Stored InBody Storage URL in Firestore`);
+      // Stored InBody Storage URL in Firestore
     } catch (storageError) {
       console.error(`[STORAGE] Failed to upload InBody scan to Storage:`, storageError);
     }

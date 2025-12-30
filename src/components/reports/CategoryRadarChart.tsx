@@ -28,7 +28,16 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
   return null;
 }
 
-function renderCustomAxisTick({ payload, x, y, textAnchor, index, color }: any) {
+interface AxisTickProps {
+  payload: { value: string };
+  x: number;
+  y: number;
+  textAnchor: "start" | "middle" | "end" | "inherit";
+  index: number;
+  color?: string;
+}
+
+function renderCustomAxisTick({ payload, x, y, textAnchor, index, color }: AxisTickProps) {
   return (
     <g>
       <text
@@ -58,7 +67,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
   const baseColor = CATEGORY_COLORS[categoryName] ?? '#3b82f6';
 
-  const CustomTick = (props: any) => renderCustomAxisTick({ ...props, color: baseColor });
+  const CustomTick = (props: AxisTickProps) => renderCustomAxisTick({ ...props, color: baseColor });
   
   // Filter out details with no score or invalid values
   // For Movement Quality, we want to show all 3 main points even if score is 0
@@ -107,7 +116,7 @@ const CATEGORY_COLORS: Record<string, string> = {
           <PolarGrid stroke="#e2e8f0" />
           <PolarAngleAxis
             dataKey="name"
-            tick={<CustomTick />}
+            tick={(props) => renderCustomAxisTick({ ...props, color: baseColor })}
             tickLine={false}
             className="text-xs"
           />

@@ -252,19 +252,54 @@ const Settings = () => {
                 <h2 className="text-lg font-bold">Equipment Configuration</h2>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-6 shadow-sm">
+                {/* Grip Strength Toggle */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-sm font-bold text-slate-800">Enable Grip Strength Test</Label>
+                      <p className="text-xs text-slate-500">When disabled, grip test fields are hidden and clients won't be penalized for missing grip data.</p>
+                    </div>
+                    <Switch
+                      checked={orgSettings?.equipmentConfig?.gripStrength?.enabled !== false}
+                      onCheckedChange={async (enabled) => {
+                        if (!profile?.organizationId || !orgSettings) return;
+                        try {
+                          await updateOrgSettings(profile.organizationId, {
+                            equipmentConfig: {
+                              ...(orgSettings.equipmentConfig || DEFAULT_EQUIPMENT_CONFIG),
+                              gripStrength: {
+                                ...(orgSettings.equipmentConfig?.gripStrength || DEFAULT_EQUIPMENT_CONFIG.gripStrength),
+                                enabled
+                              }
+                            }
+                          });
+                          await refreshSettings();
+                          toast({ title: enabled ? 'Grip strength test enabled' : 'Grip strength test disabled' });
+                        } catch (err) {
+                          toast({ title: 'Failed to update', variant: 'destructive' });
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+
                 {/* Grip Strength Method */}
                 <div className="space-y-2">
                   <Label className="text-sm font-bold text-slate-800">Grip Strength Test Method</Label>
                   <p className="text-xs text-slate-500">Select the equipment you use for grip strength testing.</p>
                   <Select
                     value={orgSettings?.equipmentConfig?.gripStrength?.method || DEFAULT_EQUIPMENT_CONFIG.gripStrength.method}
+                    disabled={orgSettings?.equipmentConfig?.gripStrength?.enabled === false}
                     onValueChange={async (value: 'dynamometer' | 'deadhang' | 'farmerswalk' | 'platepinch') => {
                       if (!profile?.organizationId || !orgSettings) return;
                       try {
                         await updateOrgSettings(profile.organizationId, {
                           equipmentConfig: {
                             ...(orgSettings.equipmentConfig || DEFAULT_EQUIPMENT_CONFIG),
-                            gripStrength: { method: value }
+                            gripStrength: {
+                              ...(orgSettings.equipmentConfig?.gripStrength || DEFAULT_EQUIPMENT_CONFIG.gripStrength),
+                              method: value
+                            }
                           }
                         });
                         await refreshSettings();
