@@ -1,0 +1,55 @@
+# Project Rules & Best Practices
+
+## Tech Stack
+- Frontend: React + Vite + Tailwind CSS + shadcn/ui
+- Backend: Firebase (Firestore, Auth, Functions)
+- Tools: MCP Servers (StackHawk, Context7, Tavily, Sequential Thinking)
+- Icons: Lucide React
+
+## Strategic Planning & "Anti-Bloat" Protocol (CRITICAL)
+1. **The "Right Tool" Check:** Before implementing ANY feature using an AI API (OpenAI/Gemini), you MUST evaluate if a specialized open-source library can do it better/cheaper.
+   - *Example:* Do not use AI for image alignment/landmarks; suggest `mediapipe` or `face-api.js`.
+2. **Pushback Policy:** If I ask for a solution that is inefficient, fragile, or introduces unnecessary AI cost, you MUST pause and warn me.
+3. **Unknown Unknowns:** Protect me from my own ignorance. If my approach violates standard architecture patterns or security best practices, explicitly highlight the risk before writing code.
+
+## Performance & Efficiency Protocol (NEW & CRITICAL)
+1. **No Global State for High-Frequency Inputs:**
+   - **Rule:** Do NOT use React Context for form fields where the user types (e.g., `input`, `textarea`).
+   - **Solution:** Use **Uncontrolled Components** via `react-hook-form` or strictly local `useState`. Context triggers app-wide re-renders on every keystroke.
+2. **Lazy Load Large Assets:**
+   - **Rule:** Large static JSON/TS files (e.g., `exerciseDatabase.ts`, `clinical-data.ts`) or heavy libraries (`jspdf`, `mediapipe`) MUST NOT be imported at the top level.
+   - **Solution:** Use **Dynamic Imports** (`const x = await import(...)`) inside the function that needs them.
+3. **Scalable Database Queries:**
+   - **Rule:** Never write a Firestore query for a list view without a `limit()`.
+   - **Solution:** Always implement **Cursor-Based Pagination** (Load More) for lists that could exceed 20 items (e.g., Dashboards, Logs).
+
+## Code Quality Standards
+1. **No "Vibe Coding" artifacts:** Do not leave `console.log`, commented-out code, or `TODO` comments in final output.
+2. **Strict Typing:** Prefer clear variable names over comments. Avoid `any` types.
+3. **Small Components:** If a component exceeds 150 lines, suggest breaking it into smaller sub-components.
+4. **Functional Approach:** Use functional components and Hooks. Avoid class components.
+5. **No Hardcoding:**
+   - Colors -> Use Tailwind classes or CSS variables.
+   - Strings -> Use constants or config files.
+   - Secrets -> Use `import.meta.env`.
+
+## UI Library (shadcn/ui)
+1. **Prefer shadcn components:** Always check `@/components/ui` first.
+2. **Importing:** Import from `@/components/ui/...`.
+
+## MCP Tool Usage
+1. **Context7:** ALWAYS fetch latest docs for complex libraries before coding.
+2. **Tavily:** Use for research/real-world data.
+3. **StackHawk:** Scan for vulnerabilities.
+4. **Sequential Thinking:** Use for complex architectural planning.
+
+## SaaS Readiness
+1. **Multi-tenancy:** Always assume data belongs to an `organizationId`.
+2. **Security:** Never write client-side logic that should be server-side.
+
+## Connectivity & Services
+1. **Firebase:** NEVER initialize Firebase in a component. ALWAYS import `db` or `auth` from `@/services/firebase`.
+2. **External APIs:**
+   - Use the pre-configured Axios instance in `@/services/api` for HTTP requests.
+   - Do not use raw `fetch` in components; use a service function (e.g., `userService.getUser()`) that calls the API.
+   - Always type the response data if possible.
