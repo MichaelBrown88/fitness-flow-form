@@ -1,0 +1,391 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Apple Design Language - Neutral Colors (Fixed) */
+    --background: 0 0% 100%;           /* Pure white */
+    --background-secondary: 0 0% 96%;  /* #f5f5f7 */
+    --background-tertiary: 0 0% 90%;  /* #e5e5e7 */
+    
+    --foreground: 0 0% 11%;            /* #1d1d1f - Primary text */
+    --foreground-secondary: 0 0% 45%;  /* #6e6e73 - Secondary text */
+    --foreground-tertiary: 0 0% 53%;   /* #86868b - Tertiary text */
+    --foreground-quaternary: 0 0% 65%; /* #a1a1a6 - Disabled text */
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 11%;
+    --card-elevated: 0 0% 100%;
+    --card-subtle: 0 0% 98%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 11%;
+
+    /* Gradient System - Default: Purple Indigo */
+    --gradient-from: 258 90% 66%;      /* indigo-500 #6366f1 */
+    --gradient-to: 271 81% 56%;        /* purple-500 #a855f7 */
+    --gradient-from-hex: #6366f1;
+    --gradient-to-hex: #a855f7;
+    --gradient-light: 258 90% 97%;     /* indigo-50 */
+    --gradient-medium: 258 90% 94%;    /* indigo-100 */
+    --gradient-dark: 258 90% 51%;      /* indigo-600 */
+    
+    /* Primary uses gradient colors */
+    --primary: var(--gradient-from);
+    --primary-foreground: 0 0% 100%;
+    
+    --brand-primary: var(--gradient-from-hex);
+    --brand-primary-transparent: rgba(99, 102, 241, 0.1);
+
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 11%;
+
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 11%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 82%;                 /* #d2d2d7 */
+    --border-medium: 0 0% 78%;         /* #c7c7cc */
+    --border-dark: 0 0% 65%;           /* #a1a1a6 */
+    --input: 0 0% 82%;
+    --ring: var(--gradient-from);
+
+    /* Apple Design Tokens */
+    --radius: 0.75rem;        /* 12px - Apple's standard corner radius */
+    --radius-sm: 0.5rem;      /* 8px - Small radius */
+    --radius-lg: 1rem;        /* 16px - Large radius */
+    --radius-xl: 1.5rem;      /* 24px - Extra large radius */
+    --radius-2xl: 1.75rem;    /* 28px - 2XL radius */
+    --radius-3xl: 2rem;      /* 32px - 3XL radius */
+    --radius-full: 9999px;    /* Full rounded */
+    
+    /* Apple Typography Scale */
+    --font-size-xs: 0.75rem;   /* 12px */
+    --font-size-sm: 0.875rem;  /* 14px */
+    --font-size-base: 1rem;     /* 16px */
+    --font-size-lg: 1.125rem;   /* 18px */
+    --font-size-xl: 1.25rem;    /* 20px */
+    --font-size-2xl: 1.5rem;   /* 24px */
+    --font-size-3xl: 1.875rem; /* 30px */
+    --font-size-4xl: 2.25rem;   /* 36px */
+    
+    /* Apple Spacing Scale (matches Tailwind) */
+    --spacing-1: 0.25rem;      /* 4px */
+    --spacing-2: 0.5rem;       /* 8px */
+    --spacing-3: 0.75rem;      /* 12px */
+    --spacing-4: 1rem;         /* 16px */
+    --spacing-5: 1.25rem;      /* 20px */
+    --spacing-6: 1.5rem;       /* 24px */
+    --spacing-8: 2rem;         /* 32px */
+    --spacing-10: 2.5rem;      /* 40px */
+    --spacing-12: 3rem;        /* 48px */
+    
+    /* Apple Animation Timing */
+    --duration-fast: 150ms;
+    --duration-base: 250ms;
+    --duration-slow: 350ms;
+    --easing-apple: cubic-bezier(0.16, 1, 0.3, 1); /* Apple's standard easing */
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 11%;
+    --sidebar-primary: var(--gradient-from);
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 96%;
+    --sidebar-accent-foreground: 0 0% 11%;
+    --sidebar-border: 0 0% 82%;
+    --sidebar-ring: var(--gradient-from);
+    
+    /* Apple-style shadows */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    --shadow-colored: 0 10px 15px -3px rgba(99, 102, 241, 0.1), 0 4px 6px -2px rgba(99, 102, 241, 0.05);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    letter-spacing: -0.011em; /* Apple's standard letter spacing */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "kern" 1;
+    text-rendering: optimizeLegibility;
+  }
+}
+
+/* Design Utilities */
+@layer components {
+  .app-bg {
+    background:
+      radial-gradient(1200px 600px at 50% -200px, hsl(var(--card)) 0%, transparent 60%),
+      radial-gradient(600px 600px at 0% 0%, hsl(var(--card)) 0%, transparent 40%),
+      radial-gradient(600px 600px at 100% 0%, hsl(var(--card)) 0%, transparent 40%),
+      hsl(var(--background));
+  }
+
+  /* Apple Glassmorphism */
+  .glass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.06);
+  }
+  
+  .glass-subtle {
+    background: rgba(255, 255, 255, 0.5);
+    backdrop-filter: saturate(180%) blur(10px);
+    -webkit-backdrop-filter: saturate(180%) blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.04);
+  }
+  
+  .glass-card {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+  }
+  
+  @supports not (backdrop-filter: blur(20px)) {
+    .glass-card {
+      background: rgba(255, 255, 255, 0.95);
+    }
+  }
+  
+  .glass-button {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.1);
+  }
+  
+  .glass-button:hover {
+    background: rgba(255, 255, 255, 0.85);
+    box-shadow: 0 6px 20px 0 rgba(0, 0, 0, 0.12);
+  }
+  
+  .glass-button-active {
+    background: linear-gradient(to right, hsl(var(--gradient-from)), hsl(var(--gradient-to)));
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 16px 0 rgba(99, 102, 241, 0.2);
+  }
+  
+  .glass-label {
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: saturate(180%) blur(10px);
+    -webkit-backdrop-filter: saturate(180%) blur(10px);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.06);
+    color: hsl(var(--foreground));
+  }
+  
+  @supports not (backdrop-filter: blur(10px)) {
+    .glass-label {
+      background: rgba(255, 255, 255, 0.9);
+    }
+  }
+  
+  /* Tab animation improvements */
+  @keyframes tab-fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .tab-content-enter {
+    animation: tab-fade-in 0.3s ease-out;
+  }
+
+  .chip {
+    @apply rounded-full px-3 py-1.5 text-sm border transition-all;
+  }
+
+  .hero {
+    background:
+      radial-gradient(900px 420px at 20% -120px, hsla(200,95%,60%,0.20), transparent 60%),
+      radial-gradient(800px 520px at 120% -100px, hsla(210,90%,60%,0.12), transparent 55%),
+      linear-gradient(180deg, #07101c 0%, #0b1422 60%, transparent 100%);
+    color: white;
+  }
+
+  /* Gradient Utilities */
+  .gradient-bg {
+    background: linear-gradient(to right, hsl(var(--gradient-from)), hsl(var(--gradient-to)));
+  }
+  
+  .gradient-text {
+    background: linear-gradient(to right, hsl(var(--gradient-from)), hsl(var(--gradient-to)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .gradient-border {
+    border-image: linear-gradient(to right, hsl(var(--gradient-from)), hsl(var(--gradient-to))) 1;
+  }
+  
+  .gradient-light {
+    background-color: hsl(var(--gradient-light));
+  }
+  
+  .gradient-medium {
+    background-color: hsl(var(--gradient-medium));
+  }
+  
+  .gradient-dark {
+    color: hsl(var(--gradient-dark));
+  }
+
+  /* Apple-style shadows */
+  .shadow-apple-sm {
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .shadow-apple-md {
+    box-shadow: var(--shadow-md);
+  }
+  
+  .shadow-apple-lg {
+    box-shadow: var(--shadow-lg);
+  }
+  
+  .shadow-apple-xl {
+    box-shadow: var(--shadow-xl);
+  }
+  
+  .shadow-apple-colored {
+    box-shadow: var(--shadow-colored);
+  }
+
+  /* Motion - Apple-style animations */
+  @keyframes fade-in-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fade-in-up { 
+    animation: fade-in-up var(--duration-slow) var(--easing-apple) both; 
+  }
+
+  @keyframes scale-in {
+    from { opacity: 0; transform: scale(0.98); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .animate-scale-in { 
+    animation: scale-in var(--duration-base) var(--easing-apple) both; 
+  }
+  
+  @keyframes slide-in {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  .animate-slide-in { 
+    animation: slide-in var(--duration-base) var(--easing-apple) both; 
+  }
+  
+  /* Apple-style transitions */
+  .transition-apple {
+    transition-timing-function: var(--easing-apple);
+    transition-duration: var(--duration-base);
+  }
+  
+  /* Apple-style range slider */
+  .slider-apple::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: linear-gradient(to right, hsl(var(--gradient-from)), hsl(var(--gradient-to)));
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform var(--duration-fast) var(--easing-apple);
+  }
+  
+  .slider-apple::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+  }
+  
+  .slider-apple::-webkit-slider-thumb:active {
+    transform: scale(0.95);
+  }
+  
+  .slider-apple::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(to right, hsl(var(--gradient-from)), hsl(var(--gradient-to)));
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform var(--duration-fast) var(--easing-apple);
+  }
+  
+  .slider-apple::-moz-range-thumb:hover {
+    transform: scale(1.1);
+  }
+  
+  .slider-apple::-moz-range-thumb:active {
+    transform: scale(0.95);
+  }
+}
+
+/* Print and PDF styles */
+@media print {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  [data-pdf-target] {
+    background: white !important;
+    box-shadow: none !important;
+  }
+  
+  /* Ensure all text is visible */
+  * {
+    color: inherit !important;
+  }
+  
+  /* Prevent page breaks in the middle of sections */
+  section {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  
+  /* Ensure proper spacing */
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+}
