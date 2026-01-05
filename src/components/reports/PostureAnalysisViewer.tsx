@@ -51,30 +51,27 @@ export function generateClientFriendlySummary(analysis: PostureAnalysisResult, v
     }
     
     if (shoulderStatus === 'Asymmetric') {
-      const diff = analysis.shoulder_alignment?.height_difference_cm || 0;
-      parts.push(`Your shoulders are uneven (${diff.toFixed(1)}cm difference). This means one shoulder sits higher than the other, which can create tension and affect your movement patterns.`);
+      parts.push(`Your shoulders are uneven, with one sitting higher than the other. This can create tension and affect your movement patterns.`);
     }
     
     if (hipStatus === 'Asymmetric') {
-      const diff = analysis.hip_alignment?.height_difference_cm || 0;
-      parts.push(`Your hips are uneven (${diff.toFixed(1)}cm difference). This creates an imbalance that can lead to lower back pain and affect how you walk or stand.`);
+      parts.push(`Your hips are uneven, creating an imbalance that can lead to lower back pain and affect how you walk or stand.`);
     }
     
     if (pelvicStatus && pelvicStatus !== 'Neutral') {
-      const tilt = analysis.pelvic_tilt?.lateral_tilt_degrees || 0;
       const shift = analysis.pelvic_tilt?.lateral_shift_cm || 0;
       const direction = shift > 0 ? 'right' : shift < 0 ? 'left' : '';
       if (direction) {
-        parts.push(`Your pelvis is tilted (${Math.abs(tilt).toFixed(1)}°) and shifted ${direction} (${Math.abs(shift).toFixed(1)}cm). This is like having your foundation slightly off-center, which can cause compensation patterns throughout your body.`);
+        parts.push(`Your pelvis is tilted and shifted to the ${direction}. This is like having your foundation slightly off-center (lateral tilt), which can cause compensation patterns throughout your body.`);
       } else {
-        parts.push(`Your pelvis is tilted (${Math.abs(tilt).toFixed(1)}°). This affects how your spine and legs align, potentially causing discomfort.`);
+        parts.push(`Your pelvis is tilted to the side. This affects how your spine and legs align, potentially causing discomfort.`);
       }
     }
     
     if (spineStatus && (spineStatus.includes('Scoliosis') || spineStatus !== 'Normal')) {
       const curve = analysis.spinal_curvature?.curve_degrees || 0;
       const direction = curve > 0 ? 'right' : 'left';
-      parts.push(`Your spine shows a lateral curve (${Math.abs(curve).toFixed(1)}° to the ${direction}). This is a sideways curve known as scoliosis, which can affect your overall alignment and may cause one side of your body to work harder than the other, potentially leading to discomfort or muscle imbalances.`);
+      parts.push(`Your spine shows a lateral curve to the ${direction}. This is a sideways curve known as scoliosis, which can affect your overall alignment and may cause one side of your body to work harder than the other.`);
     }
     
     if (kneeStatus && kneeStatus !== 'Neutral') {
@@ -95,33 +92,28 @@ export function generateClientFriendlySummary(analysis: PostureAnalysisResult, v
     }
     
     if (headStatus && headStatus !== 'Neutral') {
-      const dev = analysis.forward_head?.deviation_degrees || 0;
-      const cm = analysis.forward_head?.deviation_cm || 0;
-      parts.push(`Your head is positioned forward (${dev.toFixed(1)}° or ${cm.toFixed(1)}cm ahead of ideal). Think of it like your head is leaning ahead of your shoulders - this puts extra strain on your neck and upper back muscles.`);
+      parts.push(`Your head is positioned forward. Think of it like your head is leaning ahead of your shoulders - this puts extra strain on your neck and upper back muscles.`);
     }
     
     if (shoulderStatus === 'Rounded') {
-      const forward = analysis.shoulder_alignment?.forward_position_cm || 0;
-      parts.push(`Your shoulders are rounded forward (${forward.toFixed(1)}cm ahead). This is like your shoulders are rolling inward, which can compress your chest and create tension in your upper back.`);
+      parts.push(`Your shoulders are rounded forward. This is like your shoulders are rolling inward, which can compress your chest and create tension in your upper back.`);
     }
     
     if (kyphosisStatus && kyphosisStatus !== 'Normal') {
-      const curve = analysis.kyphosis?.curve_degrees || 0;
-      parts.push(`Your upper back has an increased forward curve (${curve.toFixed(1)}°). This is called kyphosis - imagine your upper back rounding forward more than it should, which can make you appear hunched and create neck and shoulder tension.`);
+      parts.push(`Your upper back has an increased forward curve. This is called kyphosis (upper back rounding) - imagine your upper back rounding forward more than it should, which can make you appear hunched and create neck and shoulder tension.`);
     }
     
     if (lordosisStatus && lordosisStatus !== 'Normal') {
-      const curve = analysis.lordosis?.curve_degrees || 0;
-      parts.push(`Your lower back has an increased inward curve (${curve.toFixed(1)}°). This is called lordosis - it's like your lower back is arching too much, which can create compression and affect how your pelvis and hips function.`);
+      parts.push(`Your lower back has an increased inward curve. This is called lordosis (lower back arch) - it's like your lower back is arching too much, which can create compression and affect how your pelvis and hips function.`);
     }
     
     if (pelvicStatus && pelvicStatus !== 'Neutral') {
       const tilt = analysis.pelvic_tilt?.anterior_tilt_degrees || 0;
       const isAnterior = tilt > 0;
       if (isAnterior) {
-        parts.push(`Your pelvis is tilted forward (${Math.abs(tilt).toFixed(1)}° anterior tilt). This means your pelvis is rotated so the front drops down - like you're sticking your tailbone out. This can increase the curve in your lower back and affect your hip function.`);
+        parts.push(`Your pelvis is tilted forward (anterior tilt). This means your pelvis is rotated forward, which often makes the tailbone stick out and increases the curve in your lower back.`);
       } else {
-        parts.push(`Your pelvis is tilted backward (${Math.abs(tilt).toFixed(1)}° posterior tilt). This means your pelvis is rotated so the front lifts up - like you're tucking your tailbone. This can flatten your lower back and affect your hip mobility.`);
+        parts.push(`Your pelvis is tilted backward (posterior tilt). This means your pelvis is rotated backward, which can flatten your lower back and limit your hip range of motion.`);
       }
     }
   }
@@ -191,14 +183,14 @@ export function PostureViewCard({ view, analysis, imageUrl }: { view: string, an
           </div>
 
           {/* Feedback Overlay */}
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-3 pt-8 text-center">
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent p-3 pt-10 text-center">
             <div className="flex flex-col gap-0.5">
               {briefFindings.slice(0, 1).map((finding, i) => (
-                <span key={i} className={`text-[9px] font-black uppercase tracking-tight leading-none ${isNeutral ? 'text-gradient-from' : 'text-white'}`} style={isNeutral ? { color: 'hsl(var(--gradient-from))' } : undefined}>
+                <span key={i} className="text-[10px] font-black uppercase tracking-tight leading-none text-white drop-shadow-md">
                   {finding}
                 </span>
               ))}
-              <span className="text-[7px] font-medium text-white/70">Click to expand analysis</span>
+              <span className="text-[7px] font-bold text-white/80 uppercase tracking-widest mt-1">Click to expand analysis</span>
             </div>
           </div>
 
@@ -270,6 +262,24 @@ export function PostureViewCard({ view, analysis, imageUrl }: { view: string, an
                     .filter(([key, value]) => {
                       if (key === 'landmarks' || key === 'overall_assessment' || key === 'deviations' || key === 'risk_flags') return false;
                       return isPostureDetail(value);
+                    })
+                    .sort(([keyA], [keyB]) => {
+                      const order = [
+                        'head_alignment',
+                        'forward_head',
+                        'shoulder_alignment',
+                        'kyphosis',
+                        'spinal_curvature',
+                        'spine',
+                        'lordosis',
+                        'hip_alignment',
+                        'pelvic_tilt',
+                        'knee_alignment',
+                        'knee_position'
+                      ];
+                      const indexA = order.indexOf(keyA);
+                      const indexB = order.indexOf(keyB);
+                      return (indexA === -1 ? 99 : indexA) - (indexB === -1 ? 99 : indexB);
                     })
                     .map(([key, value]) => {
                       if (!isPostureDetail(value)) return null;

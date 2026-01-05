@@ -157,7 +157,7 @@ export function prioritizeExercises(
       
       // Severe spinal curvature (scoliosis >20°)
       if (analysis.spinal_curvature && analysis.spinal_curvature.curve_degrees > 20) {
-        criticalIssues.push(`Severe spinal curvature (${analysis.spinal_curvature.curve_degrees.toFixed(1)}°) - requires immediate attention`);
+        criticalIssues.push(`Severe spinal curvature (${(analysis.spinal_curvature.curve_degrees ?? 0).toFixed(1)}°) - requires immediate attention`);
         critical.push({
           name: 'Side-Specific Core Stabilization',
           setsReps: '3 x 10-15/side',
@@ -171,7 +171,7 @@ export function prioritizeExercises(
 
       // Severe head tilt (>10°)
       if (analysis.head_alignment && analysis.head_alignment.tilt_degrees > 10) {
-        criticalIssues.push(`Severe head tilt (${analysis.head_alignment.tilt_degrees.toFixed(1)}°) - high neck/shoulder injury risk`);
+        criticalIssues.push(`Severe head tilt (${(analysis.head_alignment.tilt_degrees ?? 0).toFixed(1)}°) - high neck/shoulder injury risk`);
         critical.push({
           name: 'Isolateral Neck Stabilization',
           setsReps: '3 x 10-12/side',

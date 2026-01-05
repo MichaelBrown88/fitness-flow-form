@@ -23,6 +23,11 @@ export interface GapAnalysisData {
   targetValue: string; // Numeric value for small print (e.g., "43 bpm")
   insight: string;
   status: 'red' | 'yellow' | 'green' | 'gray';
+  bodyCompGaps?: {
+    weight: { current: number; target: number; gap: number };
+    muscle: { current: number; target: number; gap: number };
+    fat: { current: number; target: number; gap: number };
+  };
   functionalGaps?: {
     endurance: { current: number; target: number; gap: number };
     core: { current: number; target: number; gap: number };
@@ -78,6 +83,9 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData): G
       
       let targetValue = '';
       let targetLabel = '';
+      let targetWeight = 0;
+      let targetMuscle = 0;
+      let bodyCompGaps: GapAnalysisData['bodyCompGaps'] = undefined;
       
       if (bf === 0) {
         targetValue = 'N/A';
@@ -85,25 +93,25 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData): G
       } else {
         const currentBF = bf;
         const weightKg = parseFloat(formData?.inbodyWeightKg || '0');
+        const currentMuscleMass = parseFloat(formData?.skeletalMuscleMassKg || '0');
         let targetBF = 0;
+        targetWeight = weightKg;
+        targetMuscle = currentMuscleMass;
         
         // For weight loss goals, calculate target body fat based on weight loss percentage
         // For muscle building without weight loss, we might maintain or slightly increase
         // For body recomposition, we lose fat while building muscle (slight deficit)
         const isWeightLossGoal = primaryGoal === 'weight-loss' || goals.includes('weight-loss');
         const isBodyRecomp = primaryGoal === 'body-recomposition' || goals.includes('body-recomposition');
+        const isMuscleGoal = primaryGoal === 'build-muscle' || goals.includes('build-muscle');
         
         if (isBodyRecomp && weightKg > 0) {
-          // Body recomposition: Use new calculation function
-          const recompLevel = (goalLevel || 'athletic') as 'healthy' | 'fit' | 'athletic' | 'shredded';
+          // Body recomposition logic
+          const recompLevel = (formData?.goalLevelBodyRecomp || 'athletic') as 'healthy' | 'fit' | 'athletic' | 'shredded';
           const genderKey = gender as 'male' | 'female';
-          
-          // Get target body fat percentage from level
           const targetBodyFat = getTargetBodyFatFromLevel(recompLevel, genderKey);
           const targetBFRange = getBodyFatRange(recompLevel, genderKey);
           
-          // Calculate target weight and muscle mass using the new function
-          const currentMuscleMass = parseFloat(formData?.skeletalMuscleMassKg || '0');
           const recompResult = calculateBodyRecomposition(
             weightKg,
             currentBF,
@@ -112,71 +120,110 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData): G
             currentMuscleMass > 0 ? currentMuscleMass : undefined
           );
           
-          // Use the target body fat directly from the calculation
-          // The calculateBodyRecomposition function already accounts for muscle gain
-          // so we use the targetBodyFat that was used in the calculation
           targetBF = targetBodyFat;
-          
-          // Ensure target is realistic and never higher than current
-          targetBF = Math.max(
-            gender === 'male' ? 8 : 15,
-            Math.min(targetBF, currentBF - 1)
-          );
+          targetWeight = recompResult.targetWeight;
+          targetMuscle = recompResult.targetMuscleMass;
           
           const levelLabel = recompLevel.charAt(0).toUpperCase() + recompLevel.slice(1);
           targetLabel = `${levelLabel} (${targetBFRange[0]}-${targetBFRange[1]}% BF)`;
-        } else if (isWeightLossGoal && weightKg > 0) {
-          // Parse weight loss percentage (e.g., "15" = 15%)
-          const weightLossPct = parseFloat(goalLevel) || 15;
-          const targetWeightLossKg = (weightKg * weightLossPct) / 100;
-          const targetWeightKg = weightKg - targetWeightLossKg;
+        } 
+        else if (isWeightLossGoal && isMuscleGoal && weightKg > 0) {
+          // COMBINED GOAL: Weight Loss + Muscle Gain (Lean Gain / Transformation)
+          // 1. Calculate Weight Loss Target in KG
+          let fatLossKg = 0;
+          const weightLossGoal = formData?.goalLevelWeightLoss || '15';
+          if (weightLossGoal.includes('kg')) {
+            fatLossKg = parseFloat(weightLossGoal.replace('kg', '')) || 5;
+          } else {
+            const weightLossPct = parseFloat(weightLossGoal) || 15;
+            fatLossKg = (weightKg * weightLossPct) / 100;
+          }
           
-          // Calculate current fat mass and lean mass
+          // 2. Calculate Muscle Gain Target in KG
+          const muscleGainGoal = formData?.goalLevelMuscle || '6';
+          const muscleGainKg = parseFloat(muscleGainGoal) || 2;
+          
+          // 3. Vector math: Net weight change
+          targetWeight = weightKg - fatLossKg + muscleGainKg;
+          targetMuscle = currentMuscleMass + muscleGainKg;
+          
+          // 4. Calculate target Body Fat %
+          const currentFatMassKg = (weightKg * currentBF) / 100;
+          const targetFatMassKg = Math.max(2, currentFatMassKg - fatLossKg); // Floor at 2kg fat
+          
+          if (targetWeight > 0) {
+            targetBF = (targetFatMassKg / targetWeight) * 100;
+          } else {
+            targetBF = currentBF * 0.8;
+          }
+          
+          targetLabel = `Transform: -${fatLossKg.toFixed(0)}kg Fat, +${muscleGainKg.toFixed(0)}kg Muscle`;
+        }
+        else if (isWeightLossGoal && weightKg > 0) {
+          // Pure Weight Loss logic
+          const weightLossGoal = formData?.goalLevelWeightLoss || '15';
+          let targetWeightLossKg = 0;
+          if (weightLossGoal.includes('kg')) {
+            targetWeightLossKg = parseFloat(weightLossGoal.replace('kg', '')) || 5;
+            targetLabel = `${targetWeightLossKg}kg Weight Loss Target`;
+          } else {
+            const weightLossPct = parseFloat(weightLossGoal) || 15;
+            targetWeightLossKg = (weightKg * weightLossPct) / 100;
+            targetLabel = `${weightLossPct}% Weight Loss Target`;
+          }
+          
+          targetWeight = weightKg - targetWeightLossKg;
           const currentFatMassKg = (weightKg * currentBF) / 100;
           const currentLeanMassKg = weightKg - currentFatMassKg;
           
-          // Assume we lose mostly fat (80% fat, 20% lean mass loss)
+          // Assume 80% fat loss, 20% lean loss
           const fatLossKg = targetWeightLossKg * 0.8;
-          const targetFatMassKg = Math.max(0, currentFatMassKg - fatLossKg);
+          const targetFatMassKg = Math.max(2, currentFatMassKg - fatLossKg);
           const targetLeanMassKg = currentLeanMassKg - (targetWeightLossKg * 0.2);
           
-          // Calculate target body fat percentage
-          if (targetWeightKg > 0) {
-            targetBF = (targetFatMassKg / targetWeightKg) * 100;
+          if (targetWeight > 0) {
+            targetBF = (targetFatMassKg / targetWeight) * 100;
           } else {
-            targetBF = currentBF * 0.75; // Fallback
+            targetBF = currentBF * 0.75;
           }
           
-          // Ensure target is realistic and never higher than current
-          targetBF = Math.max(
-            gender === 'male' ? 12 : 18,
-            Math.min(targetBF, currentBF - 2)
-          );
+          targetMuscle = currentMuscleMass * 0.98;
+        } 
+        else if (isMuscleGoal && weightKg > 0) {
+          // Pure Muscle Gain logic
+          const muscleGainKg = parseFloat(formData?.goalLevelMuscle || '6') || 6;
+          targetWeight = weightKg + muscleGainKg;
+          targetMuscle = currentMuscleMass + muscleGainKg;
           
-          targetLabel = `${weightLossPct}% Weight Loss Target`;
-        } else {
-          // For muscle building goals, maintain or slightly reduce body fat
-          const muscleGainKg = parseFloat(goalLevel) || 6;
-          // When building muscle, body fat % typically decreases slightly due to increased lean mass
-          // Calculate assuming we add muscle and maintain similar fat mass
           const currentFatMassKg = (weightKg * currentBF) / 100;
-          const newWeightKg = weightKg + muscleGainKg;
-          if (newWeightKg > 0) {
-            targetBF = (currentFatMassKg / newWeightKg) * 100;
+          if (targetWeight > 0) {
+            targetBF = (currentFatMassKg / targetWeight) * 100;
           } else {
-            targetBF = currentBF * 0.95; // Slight reduction
+            targetBF = currentBF;
           }
           
-          // Ensure target is realistic
-          targetBF = Math.max(
-            gender === 'male' ? 12 : 18,
-            Math.min(targetBF, currentBF)
-          );
+          targetLabel = `Goal: +${muscleGainKg}kg Muscle`;
+        } 
+        else {
+          // Default / General Health
+          targetBF = gender === 'male' ? 15 : 22;
+          targetWeight = weightKg;
+          targetMuscle = currentMuscleMass;
+          targetLabel = 'Healthy Range';
+          }
           
-          targetLabel = `${muscleGainKg} kg Muscle Gain Target`;
-        }
+        // Safety: Ensure target BF is realistic
+        const minBF = gender === 'male' ? 8 : 15;
+        targetBF = Math.max(minBF, targetBF);
+          
+        targetValue = `${targetBF.toFixed(1)}%`;
         
-        targetValue = `${Math.round(targetBF)}%`;
+        // Store body comp gaps for UI
+        bodyCompGaps = {
+          weight: { current: weightKg, target: targetWeight, gap: targetWeight - weightKg },
+          muscle: { current: currentMuscleMass, target: targetMuscle, gap: targetMuscle - currentMuscleMass },
+          fat: { current: currentBF, target: targetBF, gap: targetBF - currentBF }
+        };
       }
       
       let insight = '';
@@ -185,7 +232,12 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData): G
       } else if (bf > 0) {
         // Only show "high body fat" message if it's actually high
         const isHighBF = (gender === 'male' && bf > 20) || (gender === 'female' && bf > 28);
-        if (isHighBF) {
+        const isMuscleGoal = primaryGoal === 'build-muscle' || goals.includes('build-muscle');
+        
+          if (isMuscleGoal) {
+            status = 'green'; // Muscle building is usually a positive/growth phase
+            insight = `Focusing on controlled weight gain to maximize hypertrophy. Target: ${targetWeight.toFixed(1)}kg (${targetValue}).`;
+          } else if (isHighBF) {
           insight = `High body fat is creating metabolic drag.`;
         } else if ((gender === 'male' && bf <= 15) || (gender === 'female' && bf <= 22)) {
           insight = `Excellent body fat management. We'll optimize for peak performance.`;
@@ -236,13 +288,25 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData): G
         targetLabel: descriptiveTargetLabel,
         targetValue: targetValue,
         insight,
-        status
+        status,
+        bodyCompGaps
       };
     })();
     
     // Strength - Using new functional gaps calculation
     const strengthGap: GapAnalysisData = (() => {
       const genderKey = (gender || 'male') as 'male' | 'female';
+      
+      // Get ambition level for strength
+      // Map strength options (10, 20, 30, 40) to ambition levels (health, active, athletic, elite)
+      const strengthGoalValue = formData?.goalLevelStrength || '30';
+      const strengthAmbitionMap: Record<string, string> = {
+        '10': 'health',
+        '20': 'active',
+        '30': 'athletic',
+        '40': 'elite'
+      };
+      const ambitionLevel = mapFitnessGoalLevel(strengthAmbitionMap[strengthGoalValue] || 'active');
       
       // Calculate functional gaps
       const functionalGaps = calculateFunctionalGaps(
@@ -251,7 +315,9 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData): G
         pushups,
         squats,
         plankTime,
-        gripStrength > 0 ? gripStrength : undefined
+        gripStrength > 0 ? gripStrength : undefined,
+        ambitionLevel,
+        formData?.primaryTrainingStyle
       );
       
       // Determine overall status based on gaps
@@ -296,6 +362,11 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData): G
           status = 'red';
           currentLabel = 'Needs Development';
           insight = 'Functional strength requires focused development across multiple domains.';
+        }
+
+        // Add contextual insight if available
+        if (functionalGaps.contextualInsight) {
+          insight = `${insight} ${functionalGaps.contextualInsight}`;
         }
         
         // Create summary current value (endurance total)
@@ -343,10 +414,8 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData): G
       const genderKey = (gender || 'male') as 'male' | 'female';
       
       // Get fitness ambition level
-      const goalLevel = primaryGoal === 'improve-fitness' 
-        ? (formData?.goalLevelFitness || 'active')
-        : 'active';
-      const ambitionLevel = mapFitnessGoalLevel(goalLevel);
+      const fitnessGoalValue = formData?.goalLevelFitness || 'active';
+      const ambitionLevel = mapFitnessGoalLevel(fitnessGoalValue);
       
       // Calculate cardio gaps using new function
       const cardioGaps = calculateCardioAnalysis(
@@ -355,7 +424,8 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData): G
         ambitionLevel,
         rhr,
         peakHr,
-        recoveryHr
+        recoveryHr,
+        formData?.recentActivity
       );
       
       // Determine overall status based on gaps
@@ -443,6 +513,11 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData): G
         insight = 'Strong cardiovascular base. We\'ll optimize for peak performance.';
       } else {
         insight = 'Building aerobic capacity will enhance overall performance.';
+      }
+
+      // Add safety notice if available
+      if (cardioGaps.safetyNotice) {
+        insight = `${insight} ${cardioGaps.safetyNotice}`;
       }
       
       return {

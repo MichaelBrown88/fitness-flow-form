@@ -52,12 +52,27 @@ export function CoachReportPostureAnalysis({ formData }: CoachReportPostureAnaly
                 )}
 
                 <div className="space-y-3 pt-2 border-t border-slate-100">
+                  {/* Unified Top-to-Bottom Order */}
+                  {analysis.head_alignment && (
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-bold text-slate-700">Head Tilt</span>
+                        <span className="text-xs font-black text-slate-900">
+                          {analysis.head_alignment.status}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-600 leading-tight">
+                        {analysis.head_alignment.description}
+                      </p>
+                    </div>
+                  )}
+
                   {analysis.forward_head && (
                     <div className="space-y-1">
                       <div className="flex justify-between items-center">
                         <span className="text-xs font-bold text-slate-700">Forward Head Posture</span>
                         <span className="text-xs font-black text-slate-900">
-                          {analysis.forward_head.status} ({analysis.forward_head.deviation_degrees}°)
+                          {analysis.forward_head.status}
                         </span>
                       </div>
                       <p className="text-[10px] text-slate-600 leading-tight">
@@ -74,11 +89,6 @@ export function CoachReportPostureAnalysis({ formData }: CoachReportPostureAnaly
                           {analysis.shoulder_alignment.status}
                         </span>
                       </div>
-                      {analysis.shoulder_alignment.left_elevation_cm && (
-                        <span className="text-[10px] text-slate-500">
-                          Height difference: {Math.abs(analysis.shoulder_alignment.left_elevation_cm)}cm
-                        </span>
-                      )}
                       <p className="text-[10px] text-slate-600 leading-tight">
                         {analysis.shoulder_alignment.description}
                       </p>
@@ -90,10 +100,22 @@ export function CoachReportPostureAnalysis({ formData }: CoachReportPostureAnaly
                       <div className="flex justify-between items-center">
                         <span className="text-xs font-bold text-slate-700">Thoracic Kyphosis</span>
                         <span className="text-xs font-black text-slate-900">
-                          {analysis.kyphosis.status} ({analysis.kyphosis.curve_degrees}°)
+                          {analysis.kyphosis.status}
                         </span>
                       </div>
                       <p className="text-[10px] text-slate-600 leading-tight">{analysis.kyphosis.description}</p>
+                    </div>
+                  )}
+
+                  {analysis.spinal_curvature && analysis.spinal_curvature.status !== 'Normal' && (
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-bold text-slate-700">Spinal Curvature</span>
+                        <span className="text-xs font-black text-slate-900">
+                          {analysis.spinal_curvature.status}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-600 leading-tight">{analysis.spinal_curvature.description}</p>
                     </div>
                   )}
 
@@ -102,10 +124,22 @@ export function CoachReportPostureAnalysis({ formData }: CoachReportPostureAnaly
                       <div className="flex justify-between items-center">
                         <span className="text-xs font-bold text-slate-700">Lumbar Lordosis</span>
                         <span className="text-xs font-black text-slate-900">
-                          {analysis.lordosis.status} ({analysis.lordosis.curve_degrees}°)
+                          {analysis.lordosis.status}
                         </span>
                       </div>
                       <p className="text-[10px] text-slate-600 leading-tight">{analysis.lordosis.description}</p>
+                    </div>
+                  )}
+
+                  {analysis.hip_alignment && (
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-bold text-slate-700">Hip Alignment</span>
+                        <span className="text-xs font-black text-slate-900">
+                          {analysis.hip_alignment.status}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-600 leading-tight">{analysis.hip_alignment.description}</p>
                     </div>
                   )}
 
@@ -116,6 +150,26 @@ export function CoachReportPostureAnalysis({ formData }: CoachReportPostureAnaly
                         <span className="text-xs font-black text-slate-900">{analysis.pelvic_tilt.status}</span>
                       </div>
                       <p className="text-[10px] text-slate-600 leading-tight">{analysis.pelvic_tilt.description}</p>
+                    </div>
+                  )}
+
+                  {analysis.knee_alignment && (
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-bold text-slate-700">Knee Alignment</span>
+                        <span className="text-xs font-black text-slate-900">{analysis.knee_alignment.status}</span>
+                      </div>
+                      <p className="text-[10px] text-slate-600 leading-tight">{analysis.knee_alignment.description}</p>
+                    </div>
+                  )}
+
+                  {analysis.knee_position && (
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-bold text-slate-700">Knee Position</span>
+                        <span className="text-xs font-black text-slate-900">{analysis.knee_position.status}</span>
+                      </div>
+                      <p className="text-[10px] text-slate-600 leading-tight">{analysis.knee_position.description}</p>
                     </div>
                   )}
 

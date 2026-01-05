@@ -154,10 +154,10 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
             scores={scores} 
             roadmap={roadmap} 
             goals={Array.isArray(formData.clientGoals) ? formData.clientGoals : []} 
-            bodyComp={bodyCompInterp ? { timeframeWeeks: bodyCompInterp.timeframeWeeks } : undefined} 
             formData={formData} 
             plan={plan} 
             highlightCategory={sessionStorage.getItem('highlightCategory') || undefined}
+            standalone={false}
           />
         ) : (
           <CoachReport 

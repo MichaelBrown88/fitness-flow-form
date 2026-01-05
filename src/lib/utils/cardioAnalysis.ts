@@ -19,6 +19,7 @@ export interface CardioGapsResult {
     target: number;
     gap: number;
   };
+  safetyNotice?: string;
 }
 
 export type FitnessAmbitionLevel = 'health' | 'active' | 'athletic' | 'elite';
@@ -32,6 +33,7 @@ export type FitnessAmbitionLevel = 'health' | 'active' | 'athletic' | 'elite';
  * @param restingHR - Resting heart rate (bpm)
  * @param peakHR - Peak heart rate during test (bpm)
  * @param recoveryHR - Heart rate 1 minute after test (bpm)
+ * @param recentActivity - User's recent activity level (optional)
  * @returns Object with VO2, RHR, and Recovery gaps
  */
 export function calculateCardioAnalysis(
@@ -40,7 +42,8 @@ export function calculateCardioAnalysis(
   ambitionLevel: FitnessAmbitionLevel,
   restingHR: number,
   peakHR: number,
-  recoveryHR: number
+  recoveryHR: number,
+  recentActivity?: string
 ): CardioGapsResult {
   // 1. Define targets based on ambition level
   const targets = {
@@ -52,18 +55,50 @@ export function calculateCardioAnalysis(
   
   const userGoals = targets[ambitionLevel] || targets['active'];
   
+  // Ambition multipliers for "pushing for more"
+  const ambitionMultipliers = {
+    health: 1.05,
+    active: 1.10,
+    athletic: 1.15,
+    elite: 1.25
+  };
+  const multiplier = ambitionMultipliers[ambitionLevel] || 1.10;
+  
   // 2. Calculate metrics
   
   // A. Heart Rate Recovery (Peak - 1 min post)
   const currentRecovery = peakHR > 0 && recoveryHR > 0 ? peakHR - recoveryHR : 0;
-  const recoveryGap = Math.max(0, userGoals.recovery - currentRecovery);
   
-  // B. Resting Heart Rate Gap (lower is better, so gap is current - target)
-  const rhrGap = Math.max(0, restingHR - userGoals.rhr);
+  // Dynamic recovery target: Achievable step up (+25-50%) or ambition target, whichever is lower
+  let recoveryTarget = Math.max(
+    currentRecovery + 5, // Minimum 5 bpm improvement
+    Math.ceil(currentRecovery * multiplier)
+  );
+
+  // If the step-up is still below the ambition target, and they are not elite, 
+  // we might cap it towards the ambition target for higher performance
+  if (currentRecovery >= userGoals.recovery * 0.8 && recoveryTarget < userGoals.recovery) {
+    recoveryTarget = userGoals.recovery;
+  }
+  
+  const recoveryGap = Math.max(0, recoveryTarget - currentRecovery);
+  
+  // B. Resting Heart Rate Gap (lower is better)
+  // Dynamic RHR target: Achievable step down (-5 to -15%)
+  let rhrTarget = Math.min(
+    restingHR - 2, // Minimum 2 bpm improvement
+    Math.floor(restingHR * (1 / (multiplier * 0.95))) // ~5-15% reduction
+  );
+
+  // Calibration: If they are near their ambition target, floor it there
+  if (restingHR <= userGoals.rhr * 1.15 && rhrTarget > userGoals.rhr) {
+    rhrTarget = userGoals.rhr;
+  }
+  
+  const rhrGap = Math.max(0, restingHR - rhrTarget);
   
   // C. VO2 Max Calculation (ACSM Metabolic Equation)
-  // Protocol: 3 mins @ 5km/h, 10% Incline
-  // Cost of 5kph @ 10% Incline = ~26.8 ml/kg/min
+  // ... (rest of VO2 calculation)
   let currentVO2 = 0;
   
   if (peakHR > 0 && restingHR > 0 && age > 0) {
@@ -85,20 +120,34 @@ export function calculateCardioAnalysis(
     }
   }
   
-  // 3. Get dynamic VO2 target (simplified lookup)
-  // Base VO2 for 30-40 year olds
+  // 3. Get dynamic VO2 target
   let baseVO2 = gender === 'male' ? 40 : 32;
-  
-  // Adjust base down by age (approx -0.3 per year over 20)
   const ageAdjust = age > 20 ? (age - 20) * 0.3 : 0;
   baseVO2 = baseVO2 - ageAdjust;
   
-  // Apply ambition multiplier
-  // Percentile 0.5 = base, 0.75 = +50%, 0.85 = +70%, 0.95 = +90%
   const percentileMultiplier = 1 + ((userGoals.percentile - 0.5) * 2);
-  const targetVO2 = baseVO2 * percentileMultiplier;
+  let targetVO2 = baseVO2 * percentileMultiplier;
+  
+  // If already at or above target, push for more but be conservative if elite
+  if (currentVO2 >= targetVO2) {
+    // If they are already over 50 (very good) or 60 (elite), the multiplier should be smaller
+    // For extreme elite (>75), only push for very minor gains (+1%)
+    const adaptiveMultiplier = currentVO2 > 75 ? 1.01 : currentVO2 > 60 ? 1.02 : currentVO2 > 50 ? 1.05 : multiplier;
+    targetVO2 = currentVO2 * adaptiveMultiplier;
+  }
+  
+  // Hard cap for realistic targets
+  targetVO2 = Math.min(95, targetVO2);
   
   const vo2Gap = Math.max(0, targetVO2 - currentVO2);
+
+  // 4. Safety Context (Detrained status)
+  let safetyNotice = '';
+  if (recentActivity === 'stopped-6-months') {
+    safetyNotice = 'Tendon and joint durability may be low after a prolonged break. Caps on high-impact volume are recommended for weeks 1-4 to prevent overuse injuries (e.g. shin splints).';
+  } else if (recentActivity === 'stopped-3-months') {
+    safetyNotice = 'Gradual re-introduction of high-intensity work is advised to ensure connective tissue adaptation.';
+  }
   
   return {
     vo2: {
@@ -108,14 +157,15 @@ export function calculateCardioAnalysis(
     },
     rhr: {
       current: restingHR,
-      target: userGoals.rhr,
+      target: rhrTarget,
       gap: rhrGap
     },
     recovery: {
       current: currentRecovery,
-      target: userGoals.recovery,
+      target: recoveryTarget,
       gap: recoveryGap
-    }
+    },
+    ...(safetyNotice && { safetyNotice })
   };
 }
 

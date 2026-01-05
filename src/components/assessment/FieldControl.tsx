@@ -4,11 +4,12 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
-import { Check, Info, Smartphone, Camera as CameraIcon, CheckCircle2 } from 'lucide-react';
+import { Check, Info, Smartphone, Camera as CameraIcon, CheckCircle2, Star } from 'lucide-react';
 import { type PhaseField } from '@/lib/phaseConfig';
 import { useIsMobile } from '@/hooks/use-mobile';
 import ParQQuestionnaire from '../ParQQuestionnaire';
 import { getBodyFatRange } from '@/lib/utils/bodyRecomposition';
+import { useToast } from '@/hooks/use-toast';
 
 type FieldValue = string | string[];
 
@@ -30,17 +31,24 @@ export const FieldControl: React.FC<FieldControlProps> = ({
 }) => {
   const { formData, updateFormData } = useFormContext();
   const isMobile = useIsMobile();
+  const { toast } = useToast();
 
-  // Generate gender-specific options for body recomposition
+  // Generate dynamic options with recommended tags and subtitles
   const fieldOptions = useMemo(() => {
+    const history = formData.trainingHistory || 'beginner';
+    const gender = (formData.gender || 'male').toLowerCase() as 'male' | 'female';
+    const weightKg = parseFloat(formData.inbodyWeightKg || '0');
+    const bf = parseFloat(formData.inbodyBodyFatPct || '0');
+
     if (field.id === 'goalLevelBodyRecomp') {
-      const gender = (formData.gender || 'male').toLowerCase() as 'male' | 'female';
-      const isMale = gender === 'male';
+      const isBeginner = history === 'beginner';
+      const isAdvanced = history === 'advanced';
       
       return [
         { 
           value: 'healthy', 
-          label: `Healthy / Soft (${getBodyFatRange('healthy', gender)[0]}-${getBodyFatRange('healthy', gender)[1]}%)` 
+          label: `Healthy / Soft (${getBodyFatRange('healthy', gender)[0]}-${getBodyFatRange('healthy', gender)[1]}%)`,
+          subtitle: isBeginner ? 'Great entry point for your level.' : undefined
         },
         { 
           value: 'fit', 
@@ -48,16 +56,102 @@ export const FieldControl: React.FC<FieldControlProps> = ({
         },
         { 
           value: 'athletic', 
-          label: `Athletic (${getBodyFatRange('athletic', gender)[0]}-${getBodyFatRange('athletic', gender)[1]}%) (recommended)` 
+          label: `Athletic (${getBodyFatRange('athletic', gender)[0]}-${getBodyFatRange('athletic', gender)[1]}%)`,
+          isRecommended: isBeginner,
+          tag: isBeginner ? 'Recommended' : undefined,
+          subtitle: isBeginner ? 'The "Holy Grail": Build muscle and lose fat simultaneously.' : undefined
         },
         { 
           value: 'shredded', 
-          label: `Shredded (<${getBodyFatRange('shredded', gender)[1]}%)` 
+          label: `Shredded (<${getBodyFatRange('shredded', gender)[1]}%)`,
+          subtitle: isAdvanced ? 'Not Recommended: Switch to distinct phases instead.' : undefined
         },
       ];
     }
+
+    if (field.id === 'goalLevelMuscle') {
+      return [
+        { 
+          value: '2', 
+          label: '2 kg', 
+          isRecommended: history === 'advanced',
+          tag: history === 'advanced' ? 'Best Fit' : undefined,
+          subtitle: 'Realistic for Advanced Lifters focusing on weak points.' 
+        },
+        { 
+          value: '4', 
+          label: '4 kg', 
+          isRecommended: history === 'intermediate',
+          tag: history === 'intermediate' ? 'Best Fit' : undefined,
+          subtitle: 'A solid year of gains for an Intermediate lifter.' 
+        },
+        { 
+          value: '6', 
+          label: '6 kg', 
+          isRecommended: history === 'beginner',
+          tag: history === 'beginner' ? 'Recommended' : undefined,
+          subtitle: 'Maximize Newbie Gains. Great for beginners.' 
+        },
+        { 
+          value: '8', 
+          label: '8 kg', 
+          subtitle: 'Ambitious transformation. Best for Beginners.' 
+        },
+      ];
+    }
+
+    if (field.id === 'goalLevelWeightLoss') {
+      const isHighBF = (gender === 'male' && bf > 25) || (gender === 'female' && bf > 32);
+      const isLean = (gender === 'male' && bf < 15) || (gender === 'female' && bf < 22);
+      const recommendedLossPct = 0.08; // 8% sweet spot
+      const recommendedKg = weightKg * recommendedLossPct;
+
+      if (isHighBF) {
+        return [
+          { value: '5kg', label: '5 kg', subtitle: 'Initial momentum phase.' },
+          { value: '10kg', label: '10 kg', isRecommended: recommendedKg >= 7.5 && recommendedKg < 12.5, tag: 'Recommended', subtitle: 'Metabolic Reset. Significant health impact.' },
+          { value: '15kg', label: '15 kg', isRecommended: recommendedKg >= 12.5, tag: 'Recommended', subtitle: 'Aggressive transformation for high body fat.' },
+          { value: '20kg', label: '20 kg', subtitle: 'Long-term metabolic overhaul.' },
+        ];
+      } else if (isLean) {
+        return [
+          { value: '2kg', label: '2 kg', isRecommended: true, tag: 'Recommended', subtitle: 'Mini-cut. Sharpens definition while preserving muscle.' },
+          { value: '3kg', label: '3 kg', subtitle: 'Focused detail work.' },
+          { value: '4kg', label: '4 kg', subtitle: 'Significant shredding phase.' },
+          { value: '5kg', label: '5 kg', subtitle: 'Maximum safe loss for lean individuals.' },
+        ];
+      }
+      // Default options if BF unknown or moderate
+      return field.options;
+    }
+
+    if (field.id === 'goalLevelStrength') {
+      if (history === 'beginner') {
+        return [
+          { value: '10', label: 'First Pushup', isRecommended: true, tag: 'Recommended', subtitle: 'Foundation Building: Mastering your own bodyweight.' },
+          { value: '20', label: '60s Plank', subtitle: 'Core stability milestone.' },
+          { value: '30', label: 'Bodyweight Squat', subtitle: 'Lower body movement proficiency.' },
+          { value: '40', label: 'Perfect Form', subtitle: 'Neuromuscular control focus.' },
+        ];
+      } else if (history === 'intermediate') {
+        return [
+          { value: '10', label: '1.0x BW Bench', subtitle: 'Athletic Standard: Solid upper body power.' },
+          { value: '20', label: '1.5x BW Deadlift', isRecommended: true, tag: 'Recommended', subtitle: 'Posterior chain strength milestone.' },
+          { value: '30', label: '10 Pullups', subtitle: 'Relative strength achievement.' },
+          { value: '40', label: 'Strength Increase', subtitle: 'Linear progression targets.' },
+        ];
+      } else if (history === 'advanced') {
+        return [
+          { value: '10', label: '2.0x BW Deadlift', isRecommended: true, tag: 'Recommended', subtitle: 'Elite Power: High-level strength expression.' },
+          { value: '20', label: 'One-arm Pushup', subtitle: 'Advanced stability and power.' },
+          { value: '30', label: 'Human Flag', subtitle: 'The ultimate core/stability feat.' },
+          { value: '40', label: 'Genetic Peak', subtitle: 'Marginal gains and refinement.' },
+        ];
+      }
+    }
+
     return field.options;
-  }, [field.id, field.options, formData.gender]);
+  }, [field.id, field.options, formData.gender, formData.trainingHistory, formData.inbodyWeightKg, formData.inbodyBodyFatPct]);
 
   // Check conditional logic
   const shouldShow = () => {
@@ -98,6 +192,27 @@ export const FieldControl: React.FC<FieldControlProps> = ({
     // Clear AI results if switching to manual
     if (field.id === 'postureInputMode' && value === 'manual') {
       updates.postureAiResults = null;
+    }
+
+    // Advanced Lifter Warning for Muscle Gain
+    if (field.id === 'goalLevelMuscle' && formData.trainingHistory === 'advanced') {
+      const muscleVal = parseFloat(value as string);
+      if (muscleVal >= 6) {
+        toast({
+          title: "Ambitious Goal Detected",
+          description: `For an advanced lifter, ${muscleVal}kg of lean tissue is a multi-year project. We will break this down into smaller 12-week blocks for you.`,
+          duration: 6000,
+        });
+      }
+    }
+
+    // Advanced Lifter Advice for Body Recomp
+    if (field.id === 'clientGoals' && Array.isArray(value) && value.includes('body-recomposition') && formData.trainingHistory === 'advanced') {
+      toast({
+        title: "Recommendation for Advanced Lifters",
+        description: "At your level, chasing both goals often results in achieving neither. We recommend a distinct 'Build' phase followed by a 'Cut' phase.",
+        duration: 6000,
+      });
     }
     
     updateFormData(updates);
@@ -296,19 +411,37 @@ export const FieldControl: React.FC<FieldControlProps> = ({
                       key={option.value}
                       type="button"
                       onClick={() => handleChange(option.value)}
-                      className={`flex min-h-[44px] h-auto w-full items-center gap-3 rounded-xl border-2 px-4 py-2 text-left transition-all ${
+                      className={`flex min-h-[64px] h-auto w-full items-center gap-4 rounded-2xl border-2 px-5 py-3 text-left transition-all relative overflow-hidden ${
                         isSelected
                           ? 'border-slate-900 bg-slate-900 text-white shadow-lg scale-[1.02]'
                           : `bg-white text-slate-600 ${colorClass}`
                       }`}
                       aria-label={option.label}
                     >
-                    <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-                      isSelected ? 'bg-white/20 border-white/20 text-white' : 'border-slate-200 bg-white'
+                      {option.tag && (
+                        <div className={`absolute top-0 right-0 px-3 py-1 rounded-bl-xl text-[9px] font-black uppercase tracking-widest ${
+                          isSelected ? 'bg-white/20 text-white' : 'bg-slate-900 text-white'
+                        }`}>
+                          {option.tag}
+                        </div>
+                      )}
+                      
+                      <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                        isSelected ? 'bg-white/20 border-white/20 text-white' : 'border-slate-200 bg-white'
                       }`}>
-                      {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
+                        {isSelected && <Check className="h-4 w-4 stroke-[3]" />}
                       </div>
-                    <span className="font-bold text-xs leading-tight">{option.label}</span>
+                      
+                      <div className="flex flex-col py-1">
+                        <span className="font-bold text-sm leading-tight mb-0.5">{option.label}</span>
+                        {option.subtitle && (
+                          <span className={`text-[10px] font-medium leading-relaxed ${
+                            isSelected ? 'text-white/70' : 'text-slate-500'
+                          }`}>
+                            {option.subtitle}
+                          </span>
+                        )}
+                      </div>
                     </button>
                     {isSelected && option.value === 'yes' && field.id.toLowerCase().includes('pain') && (
                       <p className="px-2 py-1.5 rounded-lg bg-rose-50 border border-rose-100 text-[10px] font-black uppercase tracking-widest text-rose-600 flex items-center gap-2 animate-pulse shadow-sm">
@@ -349,7 +482,7 @@ export const FieldControl: React.FC<FieldControlProps> = ({
                     key={opt.value}
                     type="button"
                     onClick={() => toggle(opt.value)}
-                    className={`flex min-h-[44px] h-auto items-center gap-3 rounded-xl border-2 px-4 py-2 text-left transition-all ${
+                    className={`flex min-h-[64px] h-auto items-center gap-4 rounded-2xl border-2 px-5 py-3 text-left transition-all relative overflow-hidden ${
                       isActive
                       ? 'border-slate-900 bg-slate-900 text-white shadow-lg scale-[1.02]'
                       : `bg-white text-slate-600 ${colorClass}`
@@ -357,16 +490,34 @@ export const FieldControl: React.FC<FieldControlProps> = ({
                     aria-pressed={isActive}
                     aria-label={opt.label}
                   >
-                  <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
-                    isActive ? 'bg-white/20 border-white/20 text-white' : 'border-slate-200 bg-white'
-                    }`}>
-                    {isActive ? (
-                      <Check className="h-3 w-3 stroke-[4]" />
-                    ) : (
-                      <div className="h-2 w-2 rounded-sm bg-slate-100 opacity-0 group-hover:opacity-100" />
+                    {opt.tag && (
+                      <div className={`absolute top-0 right-0 px-3 py-1 rounded-bl-xl text-[9px] font-black uppercase tracking-widest ${
+                        isActive ? 'bg-white/20 text-white' : 'bg-slate-900 text-white'
+                      }`}>
+                        {opt.tag}
+                      </div>
                     )}
+
+                    <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border-2 transition-colors ${
+                      isActive ? 'bg-white/20 border-white/20 text-white' : 'border-slate-200 bg-white'
+                    }`}>
+                      {isActive ? (
+                        <Check className="h-4 w-4 stroke-[4]" />
+                      ) : (
+                        <div className="h-2 w-2 rounded-sm bg-slate-100 opacity-0 group-hover:opacity-100" />
+                      )}
                     </div>
-                  <span className="font-bold text-xs leading-tight">{opt.label}</span>
+
+                    <div className="flex flex-col py-1">
+                      <span className="font-bold text-sm leading-tight mb-0.5">{opt.label}</span>
+                      {opt.subtitle && (
+                        <span className={`text-[10px] font-medium leading-relaxed ${
+                          isActive ? 'text-white/70' : 'text-slate-500'
+                        }`}>
+                          {opt.subtitle}
+                        </span>
+                      )}
+                    </div>
                   </button>
                 );
               })}

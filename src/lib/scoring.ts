@@ -841,7 +841,7 @@ function scoreLifestyle(form: FormData, age: number, gender: string): ScoreCateg
   };
 }
 
-function generateSynthesis(categories: ScoreCategory[]): ScoreSummary['synthesis'] {
+function generateSynthesis(categories: ScoreCategory[], form: FormData): ScoreSummary['synthesis'] {
   const synthesis: ScoreSummary['synthesis'] = [];
   
   const bodyComp = categories.find(c => c.id === 'bodyComp');
@@ -921,6 +921,51 @@ function generateSynthesis(categories: ScoreCategory[]): ScoreSummary['synthesis
     });
   }
 
+  // --- GOAL-SPECIFIC OPTIMIZATION (Ensure a focus area exists) ---
+  const primaryGoal = Array.isArray(form.clientGoals) ? form.clientGoals[0] : 'general-health';
+  
+  if (primaryGoal === 'build-muscle' && (bodyComp?.score || 0) >= 70) {
+    synthesis.push({
+      title: 'Hypertrophy Specialization',
+      description: 'You have a solid base of muscle mass. The focus now shifts to specific hypertrophy protocols and caloric surplus management to break through genetic plateaus.',
+      severity: 'low'
+    });
+  }
+
+  if (primaryGoal === 'build-strength' && (strength?.score || 0) >= 70) {
+    synthesis.push({
+      title: 'Strength Expression',
+      description: 'Your foundational strength is excellent. We will transition to lower-rep, higher-intensity blocks focusing on neurological adaptations and peak force production.',
+      severity: 'low'
+    });
+  }
+
+  if (primaryGoal === 'improve-fitness' && (cardio?.score || 0) >= 70) {
+    synthesis.push({
+      title: 'Aerobic Power Optimization',
+      description: 'With a strong cardiovascular base, we can now incorporate advanced interval work and lactate threshold training to move from "Fit" to "Elite" status.',
+      severity: 'low'
+    });
+  }
+
+  // 8. Detrained Safety (Recent Activity)
+  if (form.recentActivity === 'stopped-6-months') {
+    synthesis.push({
+      title: 'Structural Durability Protocol',
+      description: 'As you have been away from consistent training for >6 months, we will prioritize connective tissue durability and gradual volume loading to prevent common overuse injuries.',
+      severity: 'medium'
+    });
+  }
+
+  // 9. Newbie Gains (Training History)
+  if (form.trainingHistory === 'beginner' && primaryGoal !== 'general-health') {
+    synthesis.push({
+      title: 'Rapid Adaptive Potential',
+      description: 'Your beginner status means you are primed for "newbie gains." We can expect significant improvements in both strength and body composition simultaneously during this initial phase.',
+      severity: 'low'
+    });
+  }
+
   // Fallback for high performers with no specific flags
   if (synthesis.length === 0 && (categories.reduce((acc, c) => acc + c.score, 0) / categories.length) > 80) {
     synthesis.push({
@@ -949,7 +994,7 @@ export function computeScores(form: FormData): ScoreSummary {
       categories.reduce((acc, c) => acc + c.score, 0) / (categories.length || 1)
     );
   
-  const synthesis = generateSynthesis(categories);
+  const synthesis = generateSynthesis(categories, form);
 
   return { overall, categories, synthesis };
 }
@@ -992,6 +1037,10 @@ export function buildRoadmap(scores: ScoreSummary, formData?: FormData): Roadmap
   const h = (parseFloat(formData?.heightCm || '0') || 0) / 100;
   const bmi = h > 0 ? weight / (h * h) : 0;
   
+  const goals = formData?.clientGoals || [];
+  const primaryGoal = goals[0] || 'general-health';
+  const ambitionLevel = formData?.goalLevelFitness || 'active'; 
+  
   // 1. FAT LOSS REALITY
   let fatLossWeeks = 0;
   let weightToLose = 0;
@@ -1003,19 +1052,21 @@ export function buildRoadmap(scores: ScoreSummary, formData?: FormData): Roadmap
      age >= parseInt(b.ageBracket.split('-')[0]) && age <= parseInt(b.ageBracket.split('-')[1]))
   );
 
-  if (weight > 0 && fatLossBenchmark) {
-    const targetBF = gender === 'male' ? 15 : 22; // Target body fat %
-    if (bf > targetBF) {
-      const currentFatKg = (weight * bf) / 100;
-      const leanMassKg = weight - currentFatKg;
-      const targetWeight = leanMassKg / (1 - targetBF / 100);
-      weightToLose = weight - targetWeight;
-      
-      // Calculate max weekly rate (e.g. 1% body weight)
-      const maxWeeklyRatePct = parseFloat(fatLossBenchmark.maxWeeklyRate) / 100;
+  const isWeightLossGoal = goals.includes('weight-loss');
+  const isMuscleGoal = goals.includes('build-muscle');
+
+  if (weight > 0 && isWeightLossGoal) {
+    const weightLossGoal = formData?.goalLevelWeightLoss || '15';
+    if (weightLossGoal.includes('kg')) {
+      weightToLose = parseFloat(weightLossGoal.replace('kg', '')) || 5;
+    } else {
+      const weightLossPct = parseFloat(weightLossGoal) || 15;
+      weightToLose = (weight * weightLossPct) / 100;
+    }
+    
+    const maxWeeklyRatePct = parseFloat(fatLossBenchmark?.maxWeeklyRate || '1') / 100;
       const weeklyLossKg = weight * maxWeeklyRatePct;
       fatLossWeeks = Math.ceil(weightToLose / (weeklyLossKg || 0.5));
-    }
   }
 
   // 2. MUSCLE GAIN REALITY
@@ -1029,14 +1080,17 @@ export function buildRoadmap(scores: ScoreSummary, formData?: FormData): Roadmap
      age >= parseInt(b.ageBracket.split('-')[0]) && age <= parseInt(b.ageBracket.split('-')[1]))
   );
 
-  if (smm > 0 && muscleBenchmark) {
-    const targetSMM = gender === 'male' ? 40 : 28; // Standard target
-    if (smm < targetSMM) {
-      muscleToGain = targetSMM - smm;
-      const weeklyGainLbs = parseFloat(muscleBenchmark.maxWeeklyRate);
-      const weeklyGainKg = weeklyGainLbs * 0.453592; // lbs to kg
-      muscleGainWeeks = Math.ceil(muscleToGain / (weeklyGainKg || 0.1));
-    }
+  if (smm > 0 && isMuscleGoal) {
+    const muscleGainGoal = formData?.goalLevelMuscle || '6';
+    muscleToGain = parseFloat(muscleGainGoal) || 2;
+    
+    // Rate based on training history
+    const history = formData?.trainingHistory || 'beginner';
+    let weeklyGainKg = 0.25; // Beginner ~1kg/month
+    if (history === 'intermediate') weeklyGainKg = 0.125; // ~0.5kg/month
+    if (history === 'advanced') weeklyGainKg = 0.05; // ~0.2kg/month
+    
+    muscleGainWeeks = Math.ceil(muscleToGain / weeklyGainKg);
   }
 
   // Posture improvement calculations

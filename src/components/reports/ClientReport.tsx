@@ -36,13 +36,17 @@ export default function ClientReport({
   goals,
   formData,
   plan,
+  bodyComp,
   previousScores,
+  standalone = true,
 }: {
   scores: ScoreSummary;
   goals?: string[];
   formData?: FormData;
   plan?: CoachPlan;
+  bodyComp?: { timeframeWeeks: number };
   previousScores?: ScoreSummary | null;
+  standalone?: boolean;
 }) {
   const orderedCats = useMemo(
     () => scores?.categories ? CATEGORY_ORDER.map(id => scores.categories.find(c => c.id === (id as 'bodyComp' | 'strength' | 'cardio' | 'movementQuality' | 'lifestyle'))).filter(Boolean) as ScoreSummary['categories'] : [],
@@ -67,16 +71,30 @@ export default function ClientReport({
   
   const areasForImprovement = useMemo(() => {
     return orderedCats
-      .filter(cat => cat.score < 70 && cat.weaknesses.length > 0) // Only categories with low scores
+      .filter(cat => {
+        // Show actual weaknesses (score < 70) 
+        // OR show optimizations (score >= 70) if they have relevant optimization messages
+        const hasWeaknesses = cat.weaknesses.length > 0;
+        return hasWeaknesses;
+      })
       .flatMap(cat => 
         cat.weaknesses
           .filter(w => {
-            // Filter out "optimization" or "refinement" messages for high-scoring categories
-            // Only show actual weaknesses, not relative weaknesses from good categories
-            const isActualWeakness = !w.toLowerCase().includes('optimization') && 
-                                     !w.toLowerCase().includes('refining') &&
-                                     !w.toLowerCase().includes('unlock further potential');
-            return isActualWeakness;
+            // If score is high, only show messages about optimization/potential/focus
+            // If score is low, show everything
+            if (cat.score >= 70) {
+              const text = w.toLowerCase();
+              const isOptimization = text.includes('optimization') || 
+                                     text.includes('refining') ||
+                                     text.includes('refinement') ||
+                                     text.includes('potential') ||
+                                     text.includes('peak') ||
+                                     text.includes('focus now shifts') ||
+                                     text.includes('enhance') ||
+                                     text.includes('build');
+              return isOptimization;
+            }
+            return true;
           })
           .map(w => ({
         category: niceLabel(cat.id),
@@ -101,9 +119,13 @@ export default function ClientReport({
     const levelWL = formData?.goalLevelWeightLoss || '15';
     let wlTarget = 0;
     if (weightKg > 0 && !isBodyRecomp) {
+      if (levelWL.includes('kg')) {
+        wlTarget = parseFloat(levelWL.replace('kg', '')) || 5;
+      } else {
       // Parse weight loss percentage (e.g., "15" = 15%)
       const weightLossPct = parseFloat(levelWL) || 15;
       wlTarget = (weightKg * weightLossPct) / 100;
+      }
       if (wlTarget < 0) wlTarget = 0;
     }
     const fatLossRate = 0.5;
@@ -142,15 +164,39 @@ export default function ClientReport({
     
     const levelMG = formData?.goalLevelMuscle || '6';
     const muscleTargetKg = parseFloat(levelMG) || 6;
-    const muscleRate = 0.15;
-    const muscleWeeks = Math.ceil(muscleTargetKg / muscleRate);
+    
+    // Dynamic muscle rate based on experience level
+    // Beginner: ~1kg/month (0.25kg/week), Intermediate: ~0.5kg/month (0.125kg/week), Advanced: ~0.2kg/month (0.05kg/week)
+    const history = formData?.trainingHistory || 'beginner';
+    let muscleRate = 0.25; 
+    if (history === 'intermediate') muscleRate = 0.125;
+    if (history === 'advanced') muscleRate = 0.05;
+    
+    let muscleWeeks = Math.ceil(muscleTargetKg / muscleRate);
+    
+    // Reduce timeline if they are already strong/athletic (muscle gain is more about refinement)
+    const strengthScore = scores.categories.find(c => c.id === 'strength')?.score || 0;
+    if (strengthScore > 70 && history !== 'beginner') muscleWeeks = Math.round(muscleWeeks * 0.7);
+    
     const levelST = formData?.goalLevelStrength || '30';
     const strengthPct = parseFloat(levelST) || 30;
-    const strengthWeeks = Math.ceil(strengthPct / 2.5) * 5;
+    
+    // Faster strength progression based on experience level
+    // Beginner: 2% per week, Intermediate: 1% per week, Advanced: 0.5% per week
+    let strengthRate = 1.0;
+    if (history === 'beginner') strengthRate = 2.0;
+    else if (history === 'intermediate') strengthRate = 1.0;
+    else if (history === 'advanced') strengthRate = 0.5;
+    
+    let strengthWeeks = Math.ceil(strengthPct / strengthRate);
+    
+    // Minimum 8 weeks for meaningful adaptation, but cap at 24 weeks per phase
+    strengthWeeks = Math.max(8, Math.min(36, strengthWeeks));
+    
     const levelFT = formData?.goalLevelFitness || 'active';
     // Fitness weeks based on ambition level
-    // Health: 12 weeks, Active: 16 weeks, Athletic: 18 weeks, Elite: 20 weeks
-    const cardioWeeks = levelFT === 'elite' ? 20 : levelFT === 'athletic' ? 18 : levelFT === 'active' ? 16 : 12;
+    // Health: 8 weeks, Active: 12 weeks, Athletic: 16 weeks, Elite: 20 weeks
+    const cardioWeeks = levelFT === 'elite' ? 20 : levelFT === 'athletic' ? 16 : levelFT === 'active' ? 12 : 8;
     const mobilityWeeks = 6;
     const postureWeeks = 6;
     
@@ -163,8 +209,8 @@ export default function ClientReport({
           base = Math.max(12, Math.max(fatLossWeeks, muscleWeeks));
         }
       }
-      if (cat.id === 'strength') base = Math.max(12, strengthWeeks);
-      if (cat.id === 'cardio') base = Math.max(12, cardioWeeks);
+      if (cat.id === 'strength') base = strengthWeeks;
+      if (cat.id === 'cardio') base = Math.max(8, cardioWeeks);
       if (cat.id === 'movementQuality') base = Math.max(mobilityWeeks, postureWeeks);
       if (cat.id === 'lifestyle') base = 4;
       map[cat.id] = base;
@@ -391,8 +437,12 @@ export default function ClientReport({
   }, [scores, formData]);
   
   // Responsive container with proper padding and max-width
-  const containerClass = "min-h-screen bg-zinc-50 text-zinc-900 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-12";
-  const contentClass = "max-w-6xl mx-auto space-y-12 md:space-y-16";
+  const containerClass = standalone 
+    ? "min-h-screen bg-zinc-50 text-zinc-900 px-4 sm:px-6 lg:px-12 py-6 sm:py-8 lg:py-12"
+    : "w-full text-zinc-900";
+  const contentClass = standalone
+    ? "max-w-[1400px] mx-auto space-y-12 md:space-y-16"
+    : "space-y-12 md:space-y-16";
   
   return (
     <div className={containerClass}>
@@ -515,7 +565,7 @@ export default function ClientReport({
             <h3 className="text-base font-bold text-zinc-900 uppercase tracking-widest">Your Starting Point</h3>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
             {/* Score Card */}
             <Card className="col-span-1 flex flex-col items-center justify-center p-6 md:p-8 text-center relative overflow-hidden min-h-[360px] md:min-h-[420px]">
               
@@ -568,7 +618,7 @@ export default function ClientReport({
             </Card>
 
             {/* Radar Chart */}
-            <Card className="col-span-1 md:col-span-2 p-6 md:p-8 relative min-h-[360px] md:min-h-[420px]">
+            <Card className="col-span-1 lg:col-span-2 p-6 md:p-8 relative min-h-[360px] md:min-h-[420px]">
               <div className="flex justify-between items-start mb-4">
             <div>
                   <h4 className="font-bold text-zinc-900 text-lg">Performance Profile</h4>
@@ -594,7 +644,7 @@ export default function ClientReport({
           </div>
           <p className="text-sm text-zinc-500 mb-6">Current metrics vs. optimal performance targets.</p>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
             {/* Body Composition */}
             <Card className="p-6 flex flex-col">
               {/* Header - outside grid - Fixed height */}
@@ -619,110 +669,62 @@ export default function ClientReport({
                 <div className="text-xs font-semibold text-gradient-dark uppercase tracking-wider text-right">Target</div>
                 
                 {/* Row 1: Weight */}
-                {formData?.inbodyWeightKg && parseFloat(formData.inbodyWeightKg) > 0 ? (() => {
-                  const currentWeight = parseFloat(formData.inbodyWeightKg);
-                  let targetWeight = currentWeight * 0.96; // Default fallback
-                  
-                  // For body recomposition, use the calculated target weight
-                  if (isBodyRecomp) {
-                    const bf = parseFloat(formData?.inbodyBodyFatPct || '0');
-                    const gender = (formData?.gender || 'male').toLowerCase() as 'male' | 'female';
-                    const recompLevel = (formData?.goalLevelBodyRecomp || 'athletic') as 'healthy' | 'fit' | 'athletic' | 'shredded';
-                    
-                    if (bf > 0) {
-                      const targetBodyFat = getTargetBodyFatFromLevel(recompLevel, gender);
-                      const currentMuscleMass = parseFloat(formData?.skeletalMuscleMassKg || '0');
-                      const recompResult = calculateBodyRecomposition(
-                        currentWeight,
-                        bf,
-                        targetBodyFat,
-                        gender,
-                        currentMuscleMass > 0 ? currentMuscleMass : undefined
-                      );
-                      targetWeight = recompResult.targetWeight;
-                    }
-                  } else if (formData?.weightLossTargetKg) {
-                    // For weight loss goals, use stored target
-                    targetWeight = parseFloat(formData.weightLossTargetKg);
-                  }
-                  
+                {gapAnalysisData[0]?.bodyCompGaps ? (() => {
+                  const { current, target } = gapAnalysisData[0].bodyCompGaps.weight;
                   return (
                     <>
                       <span className="text-sm font-medium text-zinc-700">Weight</span>
-                      <span className="text-sm text-zinc-600 text-center">{currentWeight.toFixed(1)} kg</span>
+                      <span className="text-sm text-zinc-600 text-center">{current.toFixed(1)} kg</span>
                       <ArrowRight className="w-3 h-3 text-gradient-dark flex-shrink-0 justify-self-center" />
-                      <span className="text-sm font-bold text-gradient-dark text-right">{targetWeight.toFixed(1)} kg</span>
+                      <span className="text-sm font-bold text-gradient-dark text-right">{target.toFixed(1)} kg</span>
                     </>
                   );
                 })() : (
                   <>
-                    <div></div>
-                    <div></div>
-                    <div></div>
-                    <div></div>
+                    <span className="text-sm font-medium text-zinc-700">Weight</span>
+                    <span className="text-sm text-zinc-400 text-center">--</span>
+                    <ArrowRight className="w-3 h-3 text-zinc-300 flex-shrink-0 justify-self-center" />
+                    <span className="text-sm font-bold text-zinc-400 text-right">--</span>
                   </>
                 )}
                 
                 {/* Row 2: Muscle Mass */}
-                {formData?.skeletalMuscleMassKg && parseFloat(formData.skeletalMuscleMassKg) > 0 ? (() => {
-                  const currentMuscle = parseFloat(formData.skeletalMuscleMassKg);
-                  let targetMuscle = currentMuscle * 1.025; // Default 2.5% increase
-                  
-                  // For body recomposition, use the calculated target muscle mass
-                  if (isBodyRecomp) {
-                    const weightKg = parseFloat(formData?.inbodyWeightKg || '0');
-                    const bf = parseFloat(formData?.inbodyBodyFatPct || '0');
-                    const gender = (formData?.gender || 'male').toLowerCase() as 'male' | 'female';
-                    const recompLevel = (formData?.goalLevelBodyRecomp || 'athletic') as 'healthy' | 'fit' | 'athletic' | 'shredded';
-                    
-                    if (bf > 0 && weightKg > 0) {
-                      const targetBodyFat = getTargetBodyFatFromLevel(recompLevel, gender);
-                      const recompResult = calculateBodyRecomposition(
-                        weightKg,
-                        bf,
-                        targetBodyFat,
-                        gender,
-                        currentMuscle
-                      );
-                      targetMuscle = recompResult.targetMuscleMass;
-                    }
-                  }
-                  
+                {gapAnalysisData[0]?.bodyCompGaps ? (() => {
+                  const { current, target } = gapAnalysisData[0].bodyCompGaps.muscle;
                   return (
                     <>
                       <span className="text-sm font-medium text-zinc-700">Muscle Mass</span>
-                      <span className="text-sm text-zinc-600 text-center">{currentMuscle.toFixed(1)} kg</span>
+                      <span className="text-sm text-zinc-600 text-center">{current.toFixed(1)} kg</span>
                       <ArrowRight className="w-3 h-3 text-gradient-dark flex-shrink-0 justify-self-center" />
-                      <span className="text-sm font-bold text-gradient-dark text-right">{targetMuscle.toFixed(1)} kg</span>
+                      <span className="text-sm font-bold text-gradient-dark text-right">{target.toFixed(1)} kg</span>
                     </>
                   );
                 })() : (
                   <>
-                    <div></div>
-                    <div></div>
-                    <div></div>
-                    <div></div>
+                    <span className="text-sm font-medium text-zinc-700">Muscle Mass</span>
+                    <span className="text-sm text-zinc-400 text-center">--</span>
+                    <ArrowRight className="w-3 h-3 text-zinc-300 flex-shrink-0 justify-self-center" />
+                    <span className="text-sm font-bold text-zinc-400 text-right">--</span>
                   </>
                 )}
                 
                 {/* Row 3: Body Fat */}
-                {formData?.inbodyBodyFatPct && parseFloat(formData.inbodyBodyFatPct) > 0 ? (() => {
-                  const currentBF = parseFloat(formData.inbodyBodyFatPct);
-                  const targetBF = gapAnalysisData[0]?.targetValue ? parseFloat(gapAnalysisData[0].targetValue.replace('%', '')) : currentBF * 0.85;
+                {gapAnalysisData[0]?.bodyCompGaps ? (() => {
+                  const { current, target } = gapAnalysisData[0].bodyCompGaps.fat;
                   return (
                     <>
                       <span className="text-sm font-medium text-zinc-700">Body Fat</span>
-                      <span className="text-sm text-zinc-600 text-center">{currentBF.toFixed(1)}%</span>
+                      <span className="text-sm text-zinc-600 text-center">{current.toFixed(1)}%</span>
                       <ArrowRight className="w-3 h-3 text-gradient-dark flex-shrink-0 justify-self-center" />
-                      <span className="text-sm font-bold text-gradient-dark text-right">{targetBF.toFixed(1)}%</span>
+                      <span className="text-sm font-bold text-gradient-dark text-right">{target.toFixed(1)}%</span>
                     </>
                   );
                 })() : (
                   <>
-                    <div></div>
-                    <div></div>
-                    <div></div>
-                    <div></div>
+                    <span className="text-sm font-medium text-zinc-700">Body Fat</span>
+                    <span className="text-sm text-zinc-400 text-center">--</span>
+                    <ArrowRight className="w-3 h-3 text-zinc-300 flex-shrink-0 justify-self-center" />
+                    <span className="text-sm font-bold text-zinc-400 text-right">--</span>
                   </>
                 )}
               </div>

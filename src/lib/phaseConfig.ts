@@ -11,7 +11,13 @@ export interface PhaseField {
   description?: string;
   placeholder?: string;
   tooltip?: string;
-  options?: { value: string; label: string }[];
+  options?: { 
+    value: string; 
+    label: string; 
+    subtitle?: string;
+    isRecommended?: boolean;
+    tag?: string;
+  }[];
   required?: boolean;
   readOnly?: boolean;
   pattern?: string; // Movement pattern (e.g., 'Hip Hinge', 'Lunge')
@@ -76,6 +82,43 @@ export const phaseDefinitions = [
           { id: 'dateOfBirth' as keyof FormData, type: 'date' as FieldType, label: 'Date of birth', required: true, tooltip: 'Required to calculate age-adjusted health and fitness scores.' },
           { id: 'gender' as keyof FormData, type: 'select' as FieldType, label: 'Gender', required: true, options: [{ value: 'male', label: 'Male' }, { value: 'female', label: 'Female' }], tooltip: 'Used for physiological baseline comparisons (SMM, Body Fat).' },
           { id: 'assignedCoach' as keyof FormData, type: 'select' as FieldType, label: 'Assigned Coach', required: true, options: [{ value: 'coach-mike', label: 'Coach Mike' }, { value: 'coach-selina', label: 'Coach Selina' }], tooltip: 'Select the primary coach responsible for this client.' },
+          { 
+            id: 'trainingHistory' as keyof FormData, 
+            type: 'select' as FieldType, 
+            label: 'Training History', 
+            required: true, 
+            tooltip: 'Experience level determines the speed of physiological adaptations (e.g., "Newbie Gains" vs. Diminishing Returns).',
+            options: [
+              { value: 'beginner', label: 'None / Beginner (< 6 months)' },
+              { value: 'intermediate', label: 'Intermediate (6 months – 2 years)' },
+              { value: 'advanced', label: 'Advanced (> 2 years consistent training)' }
+            ] 
+          },
+          { 
+            id: 'recentActivity' as keyof FormData, 
+            type: 'select' as FieldType, 
+            label: 'Recent Activity', 
+            required: true, 
+            tooltip: 'Current readiness determines joint/tendon durability and immediate volume tolerance.',
+            options: [
+              { value: 'currently-training', label: 'Currently Training' },
+              { value: 'stopped-3-months', label: 'Stopped < 3 months ago' },
+              { value: 'stopped-6-months', label: 'Stopped > 6 months ago' }
+            ] 
+          },
+          { 
+            id: 'primaryTrainingStyle' as keyof FormData, 
+            type: 'text' as FieldType, 
+            label: 'Primary Training Style', 
+            placeholder: 'e.g., Bodybuilding, CrossFit, Running, Yoga', 
+            tooltip: 'Provides context for functional tests (e.g., powerlifters may have high strength but lower endurance).',
+            conditional: { 
+              showWhen: { 
+                field: 'recentActivity', 
+                notValue: 'stopped-6-months' 
+              } 
+            } 
+          },
         ],
       },
       {
@@ -462,12 +505,14 @@ export const phaseDefinitions = [
             id: 'goalLevelWeightLoss' as keyof FormData,
             type: 'select' as FieldType,
             label: 'Weight loss target',
-            tooltip: 'Select your target weight loss as a percentage of your current body weight. The recommended option balances sustainability with meaningful results.',
+            tooltip: 'Select your target weight loss. This can be a percentage of your total body weight or a specific amount in kilograms.',
             options: [
               { value: '5', label: '5% body weight' },
               { value: '10', label: '10% body weight' },
               { value: '15', label: '15% body weight (recommended)' },
-              { value: '20', label: '20% body weight' },
+              { value: '5kg', label: '5 kg weight loss' },
+              { value: '10kg', label: '10 kg weight loss' },
+              { value: '15kg', label: '15 kg weight loss' },
             ],
             conditional: { showWhen: { field: 'clientGoals', includes: 'weight-loss' } },
           },

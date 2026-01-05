@@ -249,11 +249,31 @@ export async function analyzePostureImage(
       REFERENCE LINES TO USE:
       ${viewSpecificInstructions[view]}
       
+      POSTURE ANALYSIS GUIDELINES:
+      - Use simple, everyday language. Absolutely NO biomechanical jargon or technical metrics.
+      - DO NOT include ANY measurements (cm, degrees, angles, "180 degrees", etc.) in the description or recommendation fields.
+      - Use descriptive terms like "forward," "tilted," "shifted," "rounded," or "leaning."
+      - If you must use a technical term, always follow it with a simple parenthetical (e.g., "Anterior Pelvic Tilt (forward hip lean)").
+      - Address the client directly as "you."
+      - CRITICAL LANDMARK ACCURACY (SIDE VIEWS): 
+        * EAR CANAL (TRAGUS): This is your ONLY landmark for the head. It is located significantly behind the eye. 
+        * HORIZONTAL SPACING: In a true profile view, the ear canal is typically 6-10cm behind the eye. If your identified "head" point is near the eye, forehead, or nose, it is WRONG.
+        * FACE DIRECTION: If facing Left, the ear is to the RIGHT of the eye. If facing Right, the ear is to the LEFT of the eye. 
+        * PLUMB LINE: Compare the ear to the vertical line rising from the ankle.
+      
       VIEW-SPECIFIC ANALYSIS REQUIRED:
       
       ${view === 'front' || view === 'back' ? `
       FRONT/BACK VIEW SPECIFIC CHECKS:
-      1. SHOULDER ELEVATION ASYMMETRY:
+      1. HEAD TILT ASYMMETRY:
+         - Measure tilt angle in degrees
+         - Normal: < 5 degrees = "Neutral" status
+         - Mild: 5-8 degrees = "Tilted" status
+         - Moderate: 8-12 degrees = "Tilted" status
+         - Severe: > 12 degrees = "Tilted" status
+         - CRITICAL: Only report tilt if it is visually obvious and ≥5 degrees. Anything less should be "Neutral".
+      
+      2. SHOULDER ELEVATION ASYMMETRY:
          - Measure vertical height difference between left and right shoulders (in cm)
          - Report the height_difference_cm (absolute value of difference)
          - Normal: < 1.0cm difference = "Neutral" status (not visually noticeable)
@@ -314,26 +334,26 @@ export async function analyzePostureImage(
       ` : `
       SIDE VIEW SPECIFIC CHECKS (using center of mass plumb line):
       1. FORWARD HEAD POSTURE (FHP):
-         - Measure horizontal distance from ear canal to plumb line (in cm)
-         - Measure deviation angle in degrees
-         - Normal: < 2cm forward, < 5 degrees
-         - Mild: 2-4cm forward, 5-12 degrees
-         - Moderate: 4-6cm forward, 12-20 degrees
-         - Severe: > 6cm forward, > 20 degrees
+         - CRITICAL: Locate the EAR CANAL (tragus). It is behind the jawline. 
+         - DO NOT use the eye or front of the face.
+         - Measure horizontal distance from ear canal to plumb line.
+         - NO NUMBERS in the output fields. Use "Mild", "Moderate", or "Severe" based on the measurement.
       
       2. THORACIC KYPHOSIS (Upper Back Curve):
-         - Measure the degree of forward curvature in upper back
-         - Normal: 20-40 degrees
-         - Mild: 40-50 degrees
-         - Moderate: 50-60 degrees
-         - Severe: > 60 degrees
+         - Identify the curve of the upper back.
+         - NO NUMBERS in output. Use "Normal" or "Increased" (Hyperkyphosis).
       
       3. LUMBAR LORDOSIS (Lower Back Curve):
-         - Measure the degree of inward curvature in lower back
-         - Normal: 20-40 degrees
-         - Mild: 40-50 degrees
-         - Moderate: 50-60 degrees
-         - Severe: > 60 degrees
+         - Identify the curve of the lower back.
+         - NO NUMBERS in output. Use "Normal", "Increased" (Hyperlordosis), or "Decreased" (Flat Back).
+      
+      4. PELVIC TILT (Hip Lean):
+         - Identify if the pelvis is rotated forward (Anterior) or backward (Posterior).
+         - NO NUMBERS. Use "Anterior Tilt (forward hip lean)" or "Posterior Tilt (backward hip lean)".
+      
+      5. SHOULDER POSITION:
+         - Identify if shoulders are rolled forward (Rounded) or neutral.
+         - NO NUMBERS. Use "Rounded" or "Neutral".
       
       4. ANTERIOR/POSTERIOR PELVIC TILT:
          - Measure the angle between shoulder-hip-knee (or use provided pelvic angle if available)
@@ -370,13 +390,13 @@ export async function analyzePostureImage(
         "landmarks": {
           "shoulder_y_percent": number,  // Y position of shoulder center as % of image height (0-100)
           "hip_y_percent": number,        // Y position of hip center as % of image height (0-100)
-          "head_y_percent": number,       // Y position of center of head as % of image height (0-100)
+          "head_y_percent": number,       // Y position of center of head (EAR/EYE LEVEL) as % of image height (0-100)
           "center_x_percent": number      // X position of body midline (between legs) as % of image width (0-100)
         },
         "head_alignment": {
           "status": "Neutral | Tilted Left | Tilted Right",
           "tilt_degrees": number,
-          "description": "Detailed explanation of head tilt and asymmetry. IMPORTANT: Only report 'Tilted Left' or 'Tilted Right' if the tilt is ≥3 degrees and visually noticeable. Tilts < 3 degrees should be 'Neutral' to avoid unnecessary concern.",
+          "description": "Detailed explanation of head tilt and asymmetry. IMPORTANT: Only report 'Tilted Left' or 'Tilted Right' if the tilt is ≥5 degrees and visually noticeable. Tilts < 5 degrees should be 'Neutral' to avoid unnecessary concern.",
           "recommendation": "Specific corrective recommendations (only if status is not Neutral)"
         },
         "forward_head": null,

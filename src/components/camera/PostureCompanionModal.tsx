@@ -5,6 +5,7 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
+  DialogDescription,
   DialogFooter 
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -327,7 +328,9 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden rounded-3xl p-0 border-none bg-white">
         <DialogHeader className="sr-only">
           <DialogTitle>Posture Capture</DialogTitle>
-          <div className="text-xs text-slate-500">Connect your phone to capture posture images and view real-time AI results.</div>
+          <DialogDescription>
+            Connect your phone to capture posture images and view real-time AI results.
+          </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col lg:flex-row h-full">
           
@@ -480,12 +483,12 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                           <span className="text-[8px] font-black uppercase text-primary">AI Findings</span>
                         </div>
                         <div className="space-y-1.5">
-                          {/* Side view findings */}
+                          {/* Top-to-Bottom Findings (Unified Order) */}
                           {session.analysis[view].head_alignment && (
                             <div>
                               <span className="text-[9px] font-bold text-slate-600">Head: </span>
                               <span className="text-[9px] font-black text-slate-900">
-                                {session.analysis[view].head_alignment.status} ({session.analysis[view].head_alignment.tilt_degrees.toFixed(1)}°)
+                                {session.analysis[view].head_alignment.status}
                               </span>
                             </div>
                           )}
@@ -493,7 +496,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                             <div>
                               <span className="text-[9px] font-bold text-slate-600">Neck: </span>
                               <span className="text-[9px] font-black text-slate-900">
-                                {session.analysis[view].forward_head.status} ({session.analysis[view].forward_head.deviation_degrees.toFixed(1)}°)
+                                {session.analysis[view].forward_head.status}
                               </span>
                             </div>
                           )}
@@ -502,12 +505,6 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                               <span className="text-[9px] font-bold text-slate-600">Shoulders: </span>
                               <span className="text-[9px] font-black text-slate-900">
                                 {session.analysis[view].shoulder_alignment.status}
-                                {session.analysis[view].shoulder_alignment.height_difference_cm !== undefined && 
-                                  ` (${Math.abs(session.analysis[view].shoulder_alignment.height_difference_cm).toFixed(1)}cm diff)`
-                                }
-                                {session.analysis[view].shoulder_alignment.forward_position_cm !== undefined && 
-                                  ` (${Math.abs(session.analysis[view].shoulder_alignment.forward_position_cm).toFixed(1)}cm forward)`
-                                }
                               </span>
                             </div>
                           )}
@@ -515,7 +512,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                             <div>
                               <span className="text-[9px] font-bold text-slate-600">Kyphosis: </span>
                               <span className="text-[9px] font-black text-slate-900">
-                                {session.analysis[view].kyphosis.status} ({session.analysis[view].kyphosis.curve_degrees}°)
+                                {session.analysis[view].kyphosis.status}
                               </span>
                             </div>
                           )}
@@ -523,66 +520,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                             <div>
                               <span className="text-[9px] font-bold text-slate-600">Lordosis: </span>
                               <span className="text-[9px] font-black text-slate-900">
-                                {session.analysis[view].lordosis.status} ({session.analysis[view].lordosis.curve_degrees}°)
-                              </span>
-                            </div>
-                          )}
-                          {/* Front/Back view findings */}
-                          {session.analysis[view].hip_alignment && (
-                            <div>
-                              <span className="text-[9px] font-bold text-slate-600">Hips: </span>
-                              <span className="text-[9px] font-black text-slate-900">
-                                {session.analysis[view].hip_alignment.status}
-                                {session.analysis[view].hip_alignment.height_difference_cm !== undefined && 
-                                  ` (${Math.abs(session.analysis[view].hip_alignment.height_difference_cm).toFixed(1)}cm diff)`
-                                }
-                              </span>
-                            </div>
-                          )}
-                          {session.analysis[view].pelvic_tilt && (
-                            <div>
-                              <span className="text-[9px] font-bold text-slate-600">Pelvis: </span>
-                              <span className="text-[9px] font-black text-slate-900">
-                                {session.analysis[view].pelvic_tilt.status}
-                                {session.analysis[view].pelvic_tilt.lateral_tilt_degrees !== undefined && 
-                                  ` (${Math.abs(session.analysis[view].pelvic_tilt.lateral_tilt_degrees).toFixed(1)}° tilt)`
-                                }
-                                {session.analysis[view].pelvic_tilt.anterior_tilt_degrees !== undefined && 
-                                  ` (${Math.abs(session.analysis[view].pelvic_tilt.anterior_tilt_degrees).toFixed(1)}° tilt)`
-                                }
-                                {session.analysis[view].pelvic_tilt.hip_shift_cm !== undefined && session.analysis[view].pelvic_tilt.hip_shift_cm > 0 && 
-                                  ` (${Math.abs(session.analysis[view].pelvic_tilt.hip_shift_cm).toFixed(1)}cm ${session.analysis[view].pelvic_tilt.hip_shift_direction || ''} shift)`
-                                }
-                              </span>
-                            </div>
-                          )}
-                          {session.analysis[view].spinal_curvature && (
-                            <div>
-                              <span className="text-[9px] font-bold text-slate-600">Spine: </span>
-                              <span className="text-[9px] font-black text-slate-900">
-                                {session.analysis[view].spinal_curvature.status} ({session.analysis[view].spinal_curvature.curve_degrees.toFixed(1)}°)
-                              </span>
-                            </div>
-                          )}
-                          {session.analysis[view].knee_alignment && (
-                            <div>
-                              <span className="text-[9px] font-bold text-slate-600">Knees: </span>
-                              <span className="text-[9px] font-black text-slate-900">
-                                {session.analysis[view].knee_alignment.status}
-                                {session.analysis[view].knee_alignment.deviation_degrees !== undefined && 
-                                  ` (${Math.abs(session.analysis[view].knee_alignment.deviation_degrees).toFixed(1)}°)`
-                                }
-                              </span>
-                            </div>
-                          )}
-                          {session.analysis[view].knee_position && (
-                            <div>
-                              <span className="text-[9px] font-bold text-slate-600">Knees: </span>
-                              <span className="text-[9px] font-black text-slate-900">
-                                {session.analysis[view].knee_position.status}
-                                {session.analysis[view].knee_position.deviation_degrees !== undefined && 
-                                  ` (${Math.abs(session.analysis[view].knee_position.deviation_degrees).toFixed(1)}°)`
-                                }
+                                {session.analysis[view].lordosis.status}
                               </span>
                             </div>
                           )}
@@ -591,12 +529,42 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                               <span className="text-[9px] font-bold text-slate-600">Spine: </span>
                               <span className="text-[9px] font-black text-slate-900">
                                 {session.analysis[view].spinal_curvature.status}
-                                {session.analysis[view].spinal_curvature.curve_degrees !== undefined && 
-                                  ` (${Math.abs(session.analysis[view].spinal_curvature.curve_degrees).toFixed(1)}°)`
-                                }
                               </span>
                             </div>
                           )}
+                          {session.analysis[view].hip_alignment && (
+                            <div>
+                              <span className="text-[9px] font-bold text-slate-600">Hips: </span>
+                              <span className="text-[9px] font-black text-slate-900">
+                                {session.analysis[view].hip_alignment.status}
+                              </span>
+                            </div>
+                          )}
+                          {session.analysis[view].pelvic_tilt && (
+                            <div>
+                              <span className="text-[9px] font-bold text-slate-600">Pelvis: </span>
+                              <span className="text-[9px] font-black text-slate-900">
+                                {session.analysis[view].pelvic_tilt.status}
+                              </span>
+                            </div>
+                          )}
+                          {session.analysis[view].knee_alignment && (
+                            <div>
+                              <span className="text-[9px] font-bold text-slate-600">Knees: </span>
+                              <span className="text-[9px] font-black text-slate-900">
+                                {session.analysis[view].knee_alignment.status}
+                              </span>
+                            </div>
+                          )}
+                          {session.analysis[view].knee_position && (
+                            <div>
+                              <span className="text-[9px] font-bold text-slate-600">Knees: </span>
+                              <span className="text-[9px] font-black text-slate-900">
+                                {session.analysis[view].knee_position.status}
+                              </span>
+                            </div>
+                          )}
+                          
                           {session.analysis[view].deviations && session.analysis[view].deviations.length > 0 && (
                             <div className="pt-1 border-t border-slate-200">
                               <p className="text-[8px] text-slate-500 leading-tight">

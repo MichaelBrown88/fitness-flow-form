@@ -209,15 +209,25 @@ function drawDeviations(
       }
       
       const headY = (analysis.landmarks?.head_y_percent !== undefined) 
-        ? (analysis.landmarks.head_y_percent / 100) * ctx.canvas.height 
-        : shoulderY - 150;
+        ? (analysis.landmarks.head_y_percent / 100) * ctx.canvas.height + 40 // Lower more significantly to hit ear/eye level
+        : shoulderY - 100; // Better fallback closer to the head
       
-      const rad = (Math.abs(tiltDeg) * Math.PI / 180) * screenTiltDir;
+      const rad = (Math.abs(tiltDeg) * Math.PI / 180);
       const lineLength = 100;
       
       ctx.beginPath();
-      ctx.moveTo(centerX - (Math.cos(rad) * lineLength), headY + (Math.sin(rad) * lineLength));
-      ctx.lineTo(centerX + (Math.cos(rad) * lineLength), headY - (Math.sin(rad) * lineLength));
+      // Reverse screenTiltDir logic to match visual reality:
+      // Tilted Right (screenTiltDir = 1) -> Right side should be lower (Back view)
+      // Tilted Left (screenTiltDir = -1) -> Left side should be lower (Back view)
+      if (screenTiltDir === 1) {
+        // Right side lower
+        ctx.moveTo(centerX - (Math.cos(rad) * lineLength), headY - (Math.sin(rad) * lineLength));
+        ctx.lineTo(centerX + (Math.cos(rad) * lineLength), headY + (Math.sin(rad) * lineLength));
+      } else {
+        // Left side lower
+        ctx.moveTo(centerX - (Math.cos(rad) * lineLength), headY + (Math.sin(rad) * lineLength));
+        ctx.lineTo(centerX + (Math.cos(rad) * lineLength), headY - (Math.sin(rad) * lineLength));
+      }
       ctx.stroke();
     }
 

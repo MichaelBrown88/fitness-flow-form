@@ -36,6 +36,9 @@ export interface FormData {
   caffeineCupsPerDay: string;
   alcoholFrequency: string;
   lastCaffeineIntake: string;
+  trainingHistory: string;
+  recentActivity: string;
+  primaryTrainingStyle: string;
 
   /** Phase 1 — Foundational Health & Body Comp */
   parqQuestionnaire: string;
@@ -235,6 +238,9 @@ const initialFormData: FormData = {
   caffeineCupsPerDay: '',
   alcoholFrequency: '',
   lastCaffeineIntake: '',
+  trainingHistory: '',
+  recentActivity: '',
+  primaryTrainingStyle: '',
   parqQuestionnaire: '',
   restingHeartRate: '',
   restingBPSystolic: '',

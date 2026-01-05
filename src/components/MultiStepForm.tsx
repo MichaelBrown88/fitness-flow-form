@@ -912,7 +912,7 @@ const PhaseFormContent = ({
       )}
 
       <main className={`flex-1 bg-slate-50/50 p-6 lg:p-10 overflow-y-auto ${isPartialAssessment ? 'w-full' : ''}`}>
-        <div className="mx-auto max-w-3xl space-y-8">
+        <div className={`mx-auto ${activePhase?.id === 'P7' ? 'max-w-none' : 'max-w-3xl'} space-y-8`}>
           <section className="space-y-2">
             <div className="flex items-center gap-2 text-primary mb-1">
               <span className="text-[10px] font-bold uppercase tracking-[0.2em]">{activePhase.id}</span>
