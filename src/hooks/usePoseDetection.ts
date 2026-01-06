@@ -194,7 +194,15 @@ export function usePoseDetection({
     [isWaitingForPosition, onAudioFeedback, views]
   );
 
+  // Use ref for callback to avoid re-initializing MediaPipe when callback changes
+  const onPoseResultsRef = useRef(onPoseResults);
+  useEffect(() => {
+    onPoseResultsRef.current = onPoseResults;
+  }, [onPoseResults]);
+
   const initPoseDetection = useCallback(async () => {
+    if (poseRef.current) return; // Already initialized
+    
     try {
       setIsPoseLoading(true);
       const { Pose } = await import('@mediapipe/pose');
@@ -210,15 +218,15 @@ export function usePoseDetection({
         minTrackingConfidence: CONFIG.AI.MEDIAPIPE.MIN_TRACKING_CONFIDENCE,
       });
 
-      pose.onResults(onPoseResults);
+      // Use wrapper function that always calls latest callback via ref
+      pose.onResults((results) => onPoseResultsRef.current(results));
       poseRef.current = pose;
-      // Real-time pose detector initialized
     } catch (e) {
       console.error('[POSE] Initialization failed:', e);
     } finally {
       setIsPoseLoading(false);
     }
-  }, [onPoseResults]);
+  }, []); // No dependencies - only initialize once
 
   useEffect(() => {
     if (mode === 'posture') {
@@ -228,6 +236,7 @@ export function usePoseDetection({
     return () => {
       if (poseRef.current) {
         poseRef.current.close();
+        poseRef.current = null;
       }
     };
   }, [mode, initPoseDetection]);

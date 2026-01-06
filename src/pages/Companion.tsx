@@ -31,18 +31,23 @@ const Companion = () => {
   const shutterAudio = useRef<HTMLAudioElement | null>(null);
   const startSequenceRef = useRef<((idx: number) => void) | null>(null);
   const [webcamVideo, setWebcamVideo] = useState<HTMLVideoElement | null>(null);
+  const webcamCheckRef = useRef(false);
 
-  // Track when webcam video becomes available
+  // Track when webcam video becomes available (runs once until video is found)
   useEffect(() => {
+    if (webcamCheckRef.current || webcamVideo) return; // Already found or checking
+    
     const checkWebcam = () => {
-      if (webcamRef.current?.video && !webcamVideo) {
-        setWebcamVideo(webcamRef.current.video);
+      const video = webcamRef.current?.video;
+      if (video) {
+        webcamCheckRef.current = true;
+        setWebcamVideo(video);
+        clearInterval(interval);
       }
     };
     
-    // Check immediately and on interval until video is available
-    checkWebcam();
-    const interval = setInterval(checkWebcam, 100);
+    const interval = setInterval(checkWebcam, 200);
+    checkWebcam(); // Check immediately
     
     return () => clearInterval(interval);
   }, [webcamVideo]);
