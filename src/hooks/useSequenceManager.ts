@@ -51,6 +51,7 @@ export function useSequenceManager({
   const isSequenceActiveRef = useRef(false);
   const viewIdxRef = useRef(0);
   const isPoseReadyRef = useRef(isPoseReady);
+  const onCaptureRef = useRef(onCapture);
   const checkPositionIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const nextSequenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -58,6 +59,11 @@ export function useSequenceManager({
   useEffect(() => {
     isPoseReadyRef.current = isPoseReady;
   }, [isPoseReady]);
+
+  // Keep onCapture ref updated to avoid stale closures in timers
+  useEffect(() => {
+    onCaptureRef.current = onCapture;
+  }, [onCapture]);
 
   useEffect(() => {
     viewIdxRef.current = viewIdx;
@@ -128,7 +134,8 @@ export function useSequenceManager({
               clearInterval(countdownIntervalRef.current);
               countdownIntervalRef.current = null;
             }
-            onCapture(idx);
+            // Use ref to get latest capture function (avoids stale closure)
+            onCaptureRef.current(idx);
           }
         }, 1000);
       };

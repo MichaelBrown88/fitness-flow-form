@@ -30,6 +30,22 @@ const Companion = () => {
   const webcamRef = useRef<Webcam>(null);
   const shutterAudio = useRef<HTMLAudioElement | null>(null);
   const startSequenceRef = useRef<((idx: number) => void) | null>(null);
+  const [webcamVideo, setWebcamVideo] = useState<HTMLVideoElement | null>(null);
+
+  // Track when webcam video becomes available
+  useEffect(() => {
+    const checkWebcam = () => {
+      if (webcamRef.current?.video && !webcamVideo) {
+        setWebcamVideo(webcamRef.current.video);
+      }
+    };
+    
+    // Check immediately and on interval until video is available
+    checkWebcam();
+    const interval = setInterval(checkWebcam, 100);
+    
+    return () => clearInterval(interval);
+  }, [webcamVideo]);
 
   // Initialize audio
   useEffect(() => {
@@ -78,7 +94,7 @@ const Companion = () => {
     isWaitingForPosition,
     onAudioFeedback: speak,
     views: VIEWS,
-    webcamVideo: webcamRef.current?.video || null,
+    webcamVideo,
   });
 
   const handleNextView = useCallback(
