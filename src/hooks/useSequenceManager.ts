@@ -13,15 +13,16 @@ interface UseSequenceManagerOptions {
   onCapture: (viewIdx: number) => Promise<void>;
   isVertical: boolean;
   isPoseReady: boolean;
+  // External state management (shared with parent component)
+  externalViewIdx: number;
+  externalSetViewIdx: React.Dispatch<React.SetStateAction<number>>;
+  externalIsWaitingForPosition: boolean;
+  externalSetIsWaitingForPosition: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 interface UseSequenceManagerResult {
-  viewIdx: number;
-  setViewIdx: React.Dispatch<React.SetStateAction<number>>;
   countdown: number | null;
   isSequenceActive: boolean;
-  isWaitingForPosition: boolean;
-  setIsWaitingForPosition: React.Dispatch<React.SetStateAction<boolean>>;
   startSequence: (idx: number) => void;
   resetSequence: () => void;
 }
@@ -33,11 +34,19 @@ export function useSequenceManager({
   onCapture,
   isVertical,
   isPoseReady,
+  externalViewIdx,
+  externalSetViewIdx,
+  externalIsWaitingForPosition,
+  externalSetIsWaitingForPosition,
 }: UseSequenceManagerOptions): UseSequenceManagerResult {
-  const [viewIdx, setViewIdx] = useState(0);
+  // Use external state instead of internal
+  const viewIdx = externalViewIdx;
+  const setViewIdx = externalSetViewIdx;
+  const isWaitingForPosition = externalIsWaitingForPosition;
+  const setIsWaitingForPosition = externalSetIsWaitingForPosition;
+
   const [countdown, setCountdown] = useState<number | null>(null);
   const [isSequenceActive, setIsSequenceActive] = useState(false);
-  const [isWaitingForPosition, setIsWaitingForPosition] = useState(false);
 
   const isSequenceActiveRef = useRef(false);
   const viewIdxRef = useRef(0);
@@ -163,12 +172,8 @@ export function useSequenceManager({
   }, [resetSequence]);
 
   return {
-    viewIdx,
-    setViewIdx,
     countdown,
     isSequenceActive,
-    isWaitingForPosition,
-    setIsWaitingForPosition,
     startSequence,
     resetSequence,
   };

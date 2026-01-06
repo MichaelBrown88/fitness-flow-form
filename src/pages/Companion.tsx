@@ -66,7 +66,7 @@ const Companion = () => {
 
   const hasPermission = hasAudioPermission && hasOrientationPermission;
 
-  // Sequence management - needs to be first to get viewIdx
+  // Shared state for viewIdx and isWaitingForPosition (used by both pose detection and sequence manager)
   const [viewIdx, setViewIdx] = useState(0);
   const [isWaitingForPosition, setIsWaitingForPosition] = useState(false);
 
@@ -81,11 +81,6 @@ const Companion = () => {
     webcamVideo: webcamRef.current?.video || null,
   });
 
-  // Camera capture
-  const handleCaptureComplete = useCallback(() => {
-    setViewIdx(VIEWS.length);
-  }, []);
-
   const handleNextView = useCallback(
     (nextIdx: number) => {
       setTimeout(() => {
@@ -97,6 +92,7 @@ const Companion = () => {
     []
   );
 
+  // Camera capture
   const {
     isUploading,
     isProcessingOcr,
@@ -109,19 +105,20 @@ const Companion = () => {
     mode,
     views: VIEWS,
     onAudioFeedback: speak,
-    onSequenceComplete: handleCaptureComplete,
+    onSequenceComplete: () => setViewIdx(VIEWS.length),
     onNextView: handleNextView,
     shutterAudio,
   });
 
-  // Sequence management
+  // Capture handler
   const handleCapture = useCallback(
-    async (viewIdx: number) => {
-      await performCameraCapture(webcamRef, viewIdx, poseDetectionResult.currentLandmarks);
+    async (idx: number) => {
+      await performCameraCapture(webcamRef, idx, poseDetectionResult.currentLandmarks);
     },
     [performCameraCapture, poseDetectionResult.currentLandmarks]
   );
 
+  // Sequence management - pass external state setters
   const sequenceResult = useSequenceManager({
     mode,
     views: VIEWS,
@@ -129,6 +126,11 @@ const Companion = () => {
     onCapture: handleCapture,
     isVertical,
     isPoseReady: poseDetectionResult.isPoseReady,
+    // Pass external state setters so sequence manager updates shared state
+    externalViewIdx: viewIdx,
+    externalSetViewIdx: setViewIdx,
+    externalIsWaitingForPosition: isWaitingForPosition,
+    externalSetIsWaitingForPosition: setIsWaitingForPosition,
   });
 
   const { countdown, isSequenceActive, startSequence } = sequenceResult;
