@@ -28,12 +28,14 @@ export function useOrientationDetection(
   const handleOrientation = useCallback((event: DeviceOrientationEvent) => {
     if (event.beta === null || event.gamma === null) return;
 
-    const beta = Math.abs(event.beta);
+    const beta = event.beta;
     const gamma = Math.abs(event.gamma);
 
-    // Phone is vertical if beta (pitch) is close to 0 and gamma (roll) is close to 90
-    // Allow some tolerance for natural hand movement
-    const vertical = beta < 30 && gamma > 60 && gamma < 120;
+    // Phone is "vertical" (upright in portrait mode for taking photos):
+    // - beta ~90° means phone is upright (not tilted forward/back)
+    // - gamma ~0° means phone is level (not tilted left/right)
+    // Allow generous tolerance for natural hand movement
+    const vertical = beta > 50 && beta < 130 && gamma < 35;
     isVerticalRef.current = vertical;
     setIsVertical(vertical);
   }, []);

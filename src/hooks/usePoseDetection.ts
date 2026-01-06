@@ -62,8 +62,9 @@ export function usePoseDetection({
     details: { tooClose: false, tooFar: false, notCentered: false, missingParts: [], outOfFrame: false },
   });
   const [isPoseLoading, setIsPoseLoading] = useState(false);
+  const [isPoseReady, setIsPoseReady] = useState(false);
+  const [currentLandmarks, setCurrentLandmarks] = useState<LandmarkResult | null>(null);
   const currentLandmarksRef = useRef<LandmarkResult | null>(null);
-  const isPoseReadyRef = useRef(false);
   const poseRef = useRef<import('@mediapipe/pose').Pose | null>(null);
   const viewIdxRef = useRef(0);
   const lastAudioFeedbackRef = useRef(0);
@@ -81,7 +82,9 @@ export function usePoseDetection({
           shortMessage: 'MISSING',
           details: { tooClose: false, tooFar: false, notCentered: false, missingParts: ['Body'] },
         });
-        isPoseReadyRef.current = false;
+        setIsPoseReady(false);
+        setCurrentLandmarks(null);
+        currentLandmarksRef.current = null;
         return;
       }
 
@@ -122,6 +125,7 @@ export function usePoseDetection({
       }
 
       currentLandmarksRef.current = landmarkResult;
+      setCurrentLandmarks(landmarkResult);
 
       const frameLeft = 0.075;
       const frameRight = 0.925;
@@ -175,7 +179,7 @@ export function usePoseDetection({
         shortMessage,
         details: { tooClose, tooFar, notCentered, missingParts, outOfFrame: outOfFrame || false },
       });
-      isPoseReadyRef.current = isReady;
+      setIsPoseReady(isReady);
 
       if (
         isWaitingForPosition &&
@@ -251,8 +255,8 @@ export function usePoseDetection({
   return {
     poseValidation,
     isPoseLoading,
-    currentLandmarks: currentLandmarksRef.current,
-    isPoseReady: isPoseReadyRef.current,
+    currentLandmarks,
+    isPoseReady,
   };
 }
 
