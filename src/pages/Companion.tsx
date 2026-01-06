@@ -87,16 +87,15 @@ const Companion = () => {
 
   const hasPermission = hasAudioPermission && hasOrientationPermission;
 
-  // Shared state for viewIdx and isWaitingForPosition (used by both pose detection and sequence manager)
+  // View state
   const [viewIdx, setViewIdx] = useState(0);
-  const [isWaitingForPosition, setIsWaitingForPosition] = useState(false);
 
-  // Pose detection
+  // Pose detection (for guide box color feedback)
   const poseDetectionResult = usePoseDetection({
     mode,
     isAuthorized,
     viewIdx,
-    isWaitingForPosition,
+    isWaitingForPosition: false, // Not used in simplified flow
     onAudioFeedback: speak,
     views: VIEWS,
     webcamVideo,
@@ -139,19 +138,14 @@ const Companion = () => {
     [performCameraCapture, poseDetectionResult.currentLandmarks]
   );
 
-  // Sequence management - pass external state setters
+  // Sequence management - simplified
   const sequenceResult = useSequenceManager({
     mode,
     views: VIEWS,
     onAudioFeedback: speak,
     onCapture: handleCapture,
-    isVertical,
-    isPoseReady: poseDetectionResult.isPoseReady,
-    // Pass external state setters so sequence manager updates shared state
     externalViewIdx: viewIdx,
     externalSetViewIdx: setViewIdx,
-    externalIsWaitingForPosition: isWaitingForPosition,
-    externalSetIsWaitingForPosition: setIsWaitingForPosition,
   });
 
   const { countdown, isSequenceActive, startSequence } = sequenceResult;
@@ -221,7 +215,6 @@ const Companion = () => {
           poseValidation={poseDetectionResult.poseValidation}
           isPoseLoading={poseDetectionResult.isPoseLoading}
           isSequenceActive={isSequenceActive}
-          isWaitingForPosition={isWaitingForPosition}
           isUploading={isUploading}
           countdown={countdown}
           webcamRef={webcamRef}
