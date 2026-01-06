@@ -21,6 +21,7 @@ import { addPostureOverlay, addDeviationOverlay } from '@/lib/utils/postureOverl
 import { calculateFrontViewMetrics, calculateSideViewMetrics } from '@/lib/utils/postureMath';
 import { analyzePostureImage } from '@/lib/ai/postureAnalysis';
 import { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
+import { logger } from '@/lib/utils/logger';
 
 export interface PostureProcessingResult {
   alignedImage: string; // Image with green reference lines
@@ -39,21 +40,23 @@ export async function processPostureImage(
   providedLandmarks?: LandmarkResult,
   source: 'manual' | 'iphone' | 'this-device' = 'manual'
 ): Promise<PostureProcessingResult> {
+  const ctx = 'POSTURE_PROCESSING';
+  
   try {
-    console.log(`[PROCESS_POSTURE] Starting processing for ${view} (source: ${source})`);
+    logger.debug(`Starting processing for ${view} (source: ${source})`, ctx);
     
     // STEP 1: Detect landmarks (or use provided)
     let landmarks: LandmarkResult;
     if (providedLandmarks) {
       landmarks = providedLandmarks;
-      console.log(`[PROCESS_POSTURE] Using provided landmarks for ${view}`);
+      logger.debug(`Using provided landmarks for ${view}`, ctx);
     } else {
       try {
-        console.log(`[PROCESS_POSTURE] Detecting landmarks for ${view}...`);
+        logger.debug(`Detecting landmarks for ${view}...`, ctx);
         landmarks = await detectPostureLandmarks(imageData, view);
-        console.log(`[PROCESS_POSTURE] Landmarks detected for ${view}`);
+        logger.debug(`Landmarks detected for ${view}`, ctx);
       } catch (landmarkError) {
-        console.error(`[PROCESS_POSTURE] Landmark detection failed for ${view}:`, landmarkError);
+        logger.error(`Landmark detection failed for ${view}`, ctx, landmarkError);
         throw new Error(`Failed to detect landmarks: ${landmarkError instanceof Error ? landmarkError.message : 'Unknown error'}`);
       }
     }
@@ -61,7 +64,7 @@ export async function processPostureImage(
     // STEP 2: Align image with green reference lines
     let alignedImage: string;
     try {
-      console.log(`[PROCESS_POSTURE] Aligning image for ${view}...`);
+      logger.debug(`Aligning image for ${view}...`, ctx);
       alignedImage = await addPostureOverlay(imageData, view, {
         showMidline: true,
         showShoulderLine: true,
@@ -71,9 +74,9 @@ export async function processPostureImage(
         mode: 'align',
         landmarks,
       });
-      console.log(`[PROCESS_POSTURE] Image aligned for ${view}`);
+      logger.debug(`Image aligned for ${view}`, ctx);
     } catch (alignError) {
-      console.error(`[PROCESS_POSTURE] Alignment failed for ${view}:`, alignError);
+      logger.error(`Alignment failed for ${view}`, ctx, alignError);
       throw new Error(`Failed to align image: ${alignError instanceof Error ? alignError.message : 'Unknown error'}`);
     }
 
@@ -84,42 +87,66 @@ export async function processPostureImage(
         if (view === 'front' || view === 'back') {
           calculatedMetrics = calculateFrontViewMetrics(landmarks.raw);
         } else {
-          calculatedMetrics = calculateSideViewMetrics(landmarks.raw);
+          calculatedMetrics = calculateSideViewMetrics(landmarks.raw, view);
         }
-        console.log(`[PROCESS_POSTURE] Metrics calculated for ${view}`);
+        logger.debug(`Metrics calculated for ${view}`, ctx);
       } catch (metricsError) {
-        console.warn(`[PROCESS_POSTURE] Metrics calculation failed for ${view}, continuing without metrics:`, metricsError);
-        // Continue without metrics - not critical
+        logger.warn(`Metrics calculation failed for ${view}, continuing without metrics`, ctx, metricsError);
       }
     }
 
     // STEP 4: Use AI ONLY to convert numbers → user-friendly descriptions
-    let analysis;
+    let analysis: PostureAnalysisResult;
     try {
-      console.log(`[PROCESS_POSTURE] Generating AI analysis for ${view}...`);
+      logger.debug(`Generating AI analysis for ${view}...`, ctx);
       analysis = await analyzePostureImage(alignedImage, view, {
         ...landmarks,
-        raw: landmarks.raw, // Pass raw landmarks so AI can refine if needed
+        raw: landmarks.raw,
       });
-      console.log(`[PROCESS_POSTURE] AI analysis complete for ${view}`);
+      
+      // IMPORTANT: Merge MediaPipe landmarks back into analysis result
+      // The AI returns its own landmarks, but we need the RAW MediaPipe data
+      // for accurate drawing of deviation lines (especially ear position for FHP)
+      if (landmarks.raw) {
+        analysis.landmarks = {
+          ...analysis.landmarks,
+          raw: landmarks.raw,
+        };
+      }
+      
+      // OVERRIDE AI severity with MediaPipe-calculated severity (more accurate)
+      // The AI often gets severity wrong, especially for FHP on left side view
+      if (view === 'side-left' || view === 'side-right') {
+        if (calculatedMetrics.headSeverity && analysis.forward_head) {
+          const mediaPipeSeverity = calculatedMetrics.headSeverity;
+          const aiSeverity = analysis.forward_head.status;
+          
+          // Use MediaPipe calculation as source of truth
+          if (mediaPipeSeverity !== aiSeverity) {
+            logger.debug(`Overriding AI FHP severity (${aiSeverity}) with MediaPipe (${mediaPipeSeverity}) for ${view}`, ctx);
+            analysis.forward_head.status = mediaPipeSeverity;
+          }
+        }
+      }
+      
+      logger.debug(`AI analysis complete for ${view}`, ctx);
     } catch (analysisError) {
-      console.error(`[PROCESS_POSTURE] AI analysis failed for ${view}:`, analysisError);
+      logger.error(`AI analysis failed for ${view}`, ctx, analysisError);
       throw new Error(`Failed to generate analysis: ${analysisError instanceof Error ? analysisError.message : 'Unknown error'}`);
     }
 
     // STEP 5: Draw red deviation lines based on calculated metrics
     let imageWithDeviations: string;
     try {
-      console.log(`[PROCESS_POSTURE] Adding deviation overlay for ${view}...`);
+      logger.debug(`Adding deviation overlay for ${view}...`, ctx);
       imageWithDeviations = await addDeviationOverlay(alignedImage, view, analysis);
-      console.log(`[PROCESS_POSTURE] Deviation overlay added for ${view}`);
+      logger.debug(`Deviation overlay added for ${view}`, ctx);
     } catch (deviationError) {
-      console.error(`[PROCESS_POSTURE] Deviation overlay failed for ${view}, using aligned image:`, deviationError);
-      // Fallback to aligned image if deviation overlay fails
+      logger.warn(`Deviation overlay failed for ${view}, using aligned image`, ctx, deviationError);
       imageWithDeviations = alignedImage;
     }
 
-    console.log(`[PROCESS_POSTURE] Complete processing for ${view}`);
+    logger.debug(`Complete processing for ${view}`, ctx);
     return {
       alignedImage,
       imageWithDeviations,
@@ -127,7 +154,7 @@ export async function processPostureImage(
       landmarks,
     };
   } catch (error) {
-    console.error(`[PROCESS_POSTURE] Fatal error processing ${view}:`, error);
+    logger.error(`Fatal error processing ${view}`, ctx, error);
     throw error;
   }
 }

@@ -88,14 +88,21 @@ export function calculateFrontViewMetrics(landmarks: MediaPipeLandmark[]): Parti
 
 /**
  * Main calculation logic for Side View
+ * @param landmarks MediaPipe pose landmarks
+ * @param view Which side view ('side-left' or 'side-right')
  */
-export function calculateSideViewMetrics(landmarks: MediaPipeLandmark[]): Partial<CalculatedPostureMetrics> {
+export function calculateSideViewMetrics(
+  landmarks: MediaPipeLandmark[], 
+  view: 'side-left' | 'side-right' = 'side-left'
+): Partial<CalculatedPostureMetrics> {
   const nose = landmarks[0];
-  const ear = landmarks[7] || landmarks[8];
-  const shoulder = landmarks[11] || landmarks[12];
-  const hip = landmarks[23] || landmarks[24];
-  const knee = landmarks[25] || landmarks[26];
-  const ankle = landmarks[27] || landmarks[28];
+  // Use correct ear for each view: left ear (7) for side-left, right ear (8) for side-right
+  const ear = view === 'side-left' ? landmarks[7] : landmarks[8];
+  // Use correct shoulder for each view
+  const shoulder = view === 'side-left' ? landmarks[11] : landmarks[12];
+  const hip = view === 'side-left' ? landmarks[23] : landmarks[24];
+  const knee = view === 'side-left' ? landmarks[25] : landmarks[26];
+  const ankle = view === 'side-left' ? landmarks[27] : landmarks[28];
 
   if (!ear || !shoulder) return {};
 
@@ -104,8 +111,27 @@ export function calculateSideViewMetrics(landmarks: MediaPipeLandmark[]): Partia
   const torsoHeight = distance(shoulder, hip);
   const CM_PER_TORSO = 45;
 
-  // 1. Forward Head (Horizontal offset Ear vs Shoulder)
-  const headOffset = Math.abs(ear.x - shoulder.x);
+  // 1. Forward Head Posture (FHP)
+  // Compare ear position to PLUMB LINE (ideal center of mass alignment)
+  // The plumb line should pass through ankle, and ear should be above it in ideal posture
+  // We use ankle as reference, or center (0.5) if ankle isn't reliable
+  const plumbLineX = ankle?.x ?? 0.5; // Ankle position or center of image
+  
+  // Calculate how far forward the ear is from the plumb line
+  // Positive = ear forward of plumb (bad), Negative = ear behind plumb
+  // For side-left (facing left): forward is LOWER x value
+  // For side-right (facing right): forward is HIGHER x value
+  let headForwardOffset: number;
+  if (view === 'side-left') {
+    // Facing left: forward = left = lower X. If ear.x < plumbLineX, ear is forward
+    headForwardOffset = plumbLineX - ear.x;
+  } else {
+    // Facing right: forward = right = higher X. If ear.x > plumbLineX, ear is forward
+    headForwardOffset = ear.x - plumbLineX;
+  }
+  
+  // Convert to cm (only use absolute value for severity, but keep sign for direction info)
+  const headOffset = Math.max(0, headForwardOffset); // Only count forward deviation
   const headOffsetCm = (headOffset / torsoHeight) * CM_PER_TORSO;
 
   // 2. Pelvic Tilt (Approximation via Hip vs Knee vs Shoulder)

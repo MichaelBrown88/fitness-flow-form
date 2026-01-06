@@ -4,6 +4,7 @@ import { CONFIG } from '@/config';
 import { calculateFrontViewMetrics, calculateSideViewMetrics } from '@/lib/utils/postureMath';
 import { logAIUsage } from '@/services/aiUsage';
 import { auth } from '@/lib/firebase';
+import { logger } from '@/lib/utils/logger';
 
 export interface PostureAnalysisResult {
   // Body Landmarks (for overlay alignment) - NEW
@@ -121,22 +122,21 @@ export async function analyzePostureImage(
       if (view === 'front' || view === 'back') {
         calculated = calculateFrontViewMetrics(landmarks.raw);
       } else {
-        calculated = calculateSideViewMetrics(landmarks.raw);
+        calculated = calculateSideViewMetrics(landmarks.raw, view);
       }
     }
 
     // Local metrics calculated
 
     // 2. USE AI ONLY TO CONVERT NUMBERS → USER-FRIENDLY DESCRIPTIONS
-    // AI receives calculated metrics and normative data to generate descriptions
-    // AI does NOT analyze the image - it only converts the calculated numbers into text
+    const ctx = 'POSTURE_AI';
     
-    console.log(`[AI] Initializing Firebase AI for ${view}...`);
+    logger.debug(`Initializing Firebase AI for ${view}`, ctx);
     let firebaseApp;
     try {
       firebaseApp = getApp();
     } catch (appError) {
-      console.error('[AI] Failed to get Firebase app:', appError);
+      logger.error('Failed to get Firebase app', ctx, appError);
       throw new Error(`Firebase app initialization failed: ${appError instanceof Error ? appError.message : 'Unknown error'}`);
     }
     
@@ -144,11 +144,10 @@ export async function analyzePostureImage(
     try {
       ai = getAI(firebaseApp, { backend: new VertexAIBackend() });
     } catch (aiError) {
-      console.error('[AI] Failed to get AI instance:', aiError);
+      logger.error('Failed to get AI instance', ctx, aiError);
       throw new Error(`AI initialization failed: ${aiError instanceof Error ? aiError.message : 'Unknown error'}`);
     }
     
-    // Use Gemini 2.0 Flash
     let model;
     try {
       model = getGenerativeModel(ai, { 
@@ -157,9 +156,9 @@ export async function analyzePostureImage(
           responseMimeType: "application/json",
         }
       });
-      console.log(`[AI] Model initialized: ${CONFIG.AI.GEMINI.MODEL_NAME}`);
+      logger.debug(`Model initialized: ${CONFIG.AI.GEMINI.MODEL_NAME}`, ctx);
     } catch (modelError) {
-      console.error('[AI] Failed to get generative model:', modelError);
+      logger.error('Failed to get generative model', ctx, modelError);
       throw new Error(`Model initialization failed: ${modelError instanceof Error ? modelError.message : 'Unknown error'}`);
     }
 
@@ -191,52 +190,66 @@ export async function analyzePostureImage(
           * head_y_percent: Y position of nose as % of image height (0-100)
       `,
       'back': `
-        BACK VIEW ANALYSIS - CRITICAL SKELETAL CHECKS:
-        - Use the provided MediaPipe coordinates as your skeletal "ground truth".
-        - Vertical midline: Draw along the spine to the center of the heels.
-        - Analyze HEAD TILT: Look at ear alignment and head position relative to the spine.
-        - Analyze SHOULDER ASYMMETRY: Look for height differences and scapular winging/protraction.
-        - Analyze SPINAL CURVATURE (Scoliosis): Look for lateral deviation (S-curve or C-curve). Estimate Cobb angle.
-        - Analyze HIP ASYMMETRY: Measure height difference between iliac crests or gluteal folds.
-        - Analyze PELVIC TILT & SHIFT: Look for lateral tilt and displacement from the midline.
-        - CRITICAL: Report exact degrees and directions (e.g. "Right-side bulge", "Left shoulder elevated").
-        - LANDMARK PERCENTAGES:
+        BACK VIEW ANALYSIS:
+        
+        ⚠️ HEAD TILT - BE CONSERVATIVE ⚠️
+        - ONLY report head tilt if it is CLEARLY VISIBLE (one ear noticeably lower than the other)
+        - Most heads appear slightly tilted due to camera angle - this is NOT a real tilt
+        - If unsure, report "Neutral" - false positives are worse than false negatives
+        - RULE: If tilt is < 5 degrees visually, report "Neutral"
+        
+        HEAD TILT DIRECTION (BACK VIEW):
+        - When viewing someone's BACK, client-left = screen-left, client-right = screen-right
+        - "Tilted Right" means the client's RIGHT EAR is LOWER (right side of head drops)
+        - "Tilted Left" means the client's LEFT EAR is LOWER (left side of head drops)
+        - Look at which EAR is lower to determine direction
+        
+        OTHER CHECKS:
+        - Vertical midline: Along the spine to center of heels
+        - Shoulder asymmetry: Which shoulder is higher?
+        - Hip asymmetry: Which hip is higher?
+        - Spinal curvature: Any lateral deviation from the midline?
+        
+        LANDMARK PERCENTAGES:
           * center_x_percent: X position of spine as % of image width (0-100)
           * shoulder_y_percent: Y position of shoulder center as % of image height (0-100)
           * hip_y_percent: Y position of hip center as % of image height (0-100)
           * head_y_percent: Y position of head as % of image height (0-100)
       `,
       'side-right': `
-        RIGHT SIDE VIEW ANALYSIS - CENTER OF MASS PLUMB LINE:
-        - IMPORTANT: The vertical plumb line is positioned at the CENTER OF THE SCREEN (50% width)
-        - The client should be aligned so their mid-foot (just in front of ankle bone) aligns with this center plumb line
-        - Vertical plumb line: Draw from the center of the screen (through ear canal, center of shoulder joint, center of hip joint, center of knee, center of ankle)
-        - This plumb line represents ideal center of mass alignment and is always at 50% screen width
-        - Horizontal shoulder line: Reference for shoulder position
-        - Horizontal hip line: Reference for hip position
-        - Measure deviations FROM the plumb line:
-          * Forward head posture: Horizontal distance from ear canal to plumb line (in cm and degrees)
-          * Thoracic kyphosis: Degree of forward curve in upper back (normal 20-40°, mild 40-50°, moderate 50-60°, severe >60°)
-          * Lumbar lordosis: Degree of inward curve in lower back (normal 20-40°, mild 40-50°, moderate 50-60°, severe >60°)
-          * Anterior/posterior pelvic tilt: Angle of pelvic rotation (anterior = forward, posterior = backward)
-          * Rounded shoulders: Forward position of shoulders relative to plumb line
-          * Knee position: Hyperextension or flexion relative to plumb line
+        RIGHT SIDE VIEW ANALYSIS:
+        
+        CLIENT ORIENTATION:
+        - Client's RIGHT side faces camera (right shoulder visible)
+        - Face points RIGHT (nose points to right edge of image)
+        - RIGHT EAR is visible (behind the jaw, to the LEFT of the nose in image)
+        
+        ⚠️ CONSISTENCY REQUIREMENT ⚠️
+        - Your findings should be SIMILAR to the left side view (same person!)
+        - If left side showed "Moderate" FHP, right side should be similar
+        - Kyphosis, lordosis, pelvic tilt should match between views
+        - Don't report dramatically different findings between sides
+        
+        PLUMB LINE: Center of image (50% width)
+        - Compare EAR position (not eye!) to this line
       `,
       'side-left': `
-        LEFT SIDE VIEW ANALYSIS - CENTER OF MASS PLUMB LINE:
-        - IMPORTANT: The vertical plumb line is positioned at the CENTER OF THE SCREEN (50% width)
-        - The client should be aligned so their mid-foot (just in front of ankle bone) aligns with this center plumb line
-        - Vertical plumb line: Draw from the center of the screen (through ear canal, center of shoulder joint, center of hip joint, center of knee, center of ankle)
-        - This plumb line represents ideal center of mass alignment and is always at 50% screen width
-        - Horizontal shoulder line: Reference for shoulder position
-        - Horizontal hip line: Reference for hip position
-        - Measure deviations FROM the plumb line:
-          * Forward head posture: Horizontal distance from ear canal to plumb line (in cm and degrees)
-          * Thoracic kyphosis: Degree of forward curve in upper back (normal 20-40°, mild 40-50°, moderate 50-60°, severe >60°)
-          * Lumbar lordosis: Degree of inward curve in lower back (normal 20-40°, mild 40-50°, moderate 50-60°, severe >60°)
-          * Anterior/posterior pelvic tilt: Angle of pelvic rotation (anterior = forward, posterior = backward)
-          * Rounded shoulders: Forward position of shoulders relative to plumb line
-          * Knee position: Hyperextension or flexion relative to plumb line
+        LEFT SIDE VIEW ANALYSIS:
+        
+        CLIENT ORIENTATION:
+        - Client's LEFT side faces camera (left shoulder visible)
+        - Face points LEFT (nose points to left edge of image)
+        - LEFT EAR is visible (behind the jaw, to the RIGHT of the nose in image)
+        
+        ⚠️ CONSERVATIVE ASSESSMENT REQUIRED ⚠️
+        - This view often causes FALSE SEVERE readings
+        - The EAR is BEHIND the jaw - do NOT use nose/eye position
+        - If unsure about severity, choose the LOWER option
+        - "Severe" FHP should be RARE - only use for obvious cases
+        
+        PLUMB LINE: Center of image (50% width)
+        - Compare EAR position (not eye!) to this line
+        - Most people will be "Neutral" or "Mild"
       `
     };
 
@@ -250,28 +263,42 @@ export async function analyzePostureImage(
       ${viewSpecificInstructions[view]}
       
       POSTURE ANALYSIS GUIDELINES:
-      - Use simple, everyday language. Absolutely NO biomechanical jargon or technical metrics.
-      - DO NOT include ANY measurements (cm, degrees, angles, "180 degrees", etc.) in the description or recommendation fields.
-      - Use descriptive terms like "forward," "tilted," "shifted," "rounded," or "leaning."
-      - If you must use a technical term, always follow it with a simple parenthetical (e.g., "Anterior Pelvic Tilt (forward hip lean)").
-      - Address the client directly as "you."
-      - CRITICAL LANDMARK ACCURACY (SIDE VIEWS): 
-        * EAR CANAL (TRAGUS): This is your ONLY landmark for the head. It is located significantly behind the eye. 
-        * HORIZONTAL SPACING: In a true profile view, the ear canal is typically 6-10cm behind the eye. If your identified "head" point is near the eye, forehead, or nose, it is WRONG.
-        * FACE DIRECTION: If facing Left, the ear is to the RIGHT of the eye. If facing Right, the ear is to the LEFT of the eye. 
-        * PLUMB LINE: Compare the ear to the vertical line rising from the ankle.
+      
+      ⚠️ OUTPUT FORMAT - KEEP IT SIMPLE ⚠️
+      - Use SIMPLE, everyday language a client would understand
+      - NEVER include measurements (cm, degrees, angles, "180 degrees", percentages) in description or recommendation
+      - Keep descriptions to ONE SHORT SENTENCE maximum
+      - Keep recommendations to ONE actionable sentence
+      - Address the client as "you"
+      - Use terms like: "forward," "tilted," "shifted," "rounded," "leaning," "curved"
+      - For technical terms, ALWAYS add a simple explanation: "Anterior Tilt (forward hip lean)"
+      
+      EXAMPLE GOOD OUTPUT:
+      - description: "Your head sits noticeably forward of your shoulders."
+      - recommendation: "Practice chin tucks to strengthen your neck muscles."
+      
+      EXAMPLE BAD OUTPUT (DO NOT DO THIS):
+      - description: "Your head deviates 15 degrees forward with 4.2cm displacement..."
+      - recommendation: "Perform cervical retraction exercises at 10-15 degree angles..."
+      
+      CRITICAL LANDMARK ACCURACY (SIDE VIEWS): 
+      - EAR CANAL (TRAGUS) is your ONLY head landmark - it is BEHIND the jawline
+      - The ear is 6-10cm behind the eye. If your identified point is near the eye/nose/forehead, it is WRONG
+      - LEFT SIDE VIEW: Person faces LEFT, ear is to the RIGHT of the eye in the image
+      - RIGHT SIDE VIEW: Person faces RIGHT, ear is to the LEFT of the eye in the image
       
       VIEW-SPECIFIC ANALYSIS REQUIRED:
       
       ${view === 'front' || view === 'back' ? `
       FRONT/BACK VIEW SPECIFIC CHECKS:
       1. HEAD TILT ASYMMETRY:
-         - Measure tilt angle in degrees
-         - Normal: < 5 degrees = "Neutral" status
-         - Mild: 5-8 degrees = "Tilted" status
-         - Moderate: 8-12 degrees = "Tilted" status
-         - Severe: > 12 degrees = "Tilted" status
-         - CRITICAL: Only report tilt if it is visually obvious and ≥5 degrees. Anything less should be "Neutral".
+         - ONLY report head tilt if ONE EAR IS CLEARLY LOWER than the other
+         - When in doubt, report "Neutral" - most apparent tilts are camera angle artifacts
+         - Normal: < 7 degrees = "Neutral" status (DEFAULT TO THIS)
+         - Mild: 7-10 degrees = "Tilted" status (visually noticeable)
+         - Moderate: 10-15 degrees = "Tilted" status (clearly visible)
+         - Severe: > 15 degrees = "Tilted" status (obvious)
+         - CRITICAL: 90% of heads should be "Neutral". Only report tilt if OBVIOUSLY visible.
       
       2. SHOULDER ELEVATION ASYMMETRY:
          - Measure vertical height difference between left and right shoulders (in cm)
@@ -334,10 +361,18 @@ export async function analyzePostureImage(
       ` : `
       SIDE VIEW SPECIFIC CHECKS (using center of mass plumb line):
       1. FORWARD HEAD POSTURE (FHP):
-         - CRITICAL: Locate the EAR CANAL (tragus). It is behind the jawline. 
-         - DO NOT use the eye or front of the face.
-         - Measure horizontal distance from ear canal to plumb line.
-         - NO NUMBERS in the output fields. Use "Mild", "Moderate", or "Severe" based on the measurement.
+         - CRITICAL: Locate the EAR CANAL (tragus). It is BEHIND the jawline, NOT at the eye.
+         - Compare ear position to the vertical plumb line at center of image.
+         
+         ⚠️ SEVERITY GUIDELINES - BE CONSERVATIVE ⚠️
+         - "Neutral": Ear is within 2cm of plumb line (DEFAULT - use this if unsure)
+         - "Mild": Ear is 2-4cm forward of plumb line (slight forward position)
+         - "Moderate": Ear is 4-6cm forward of plumb line (noticeable forward head)
+         - "Severe": Ear is >6cm forward of plumb line (RARE - only obvious cases)
+         
+         ⚠️ CRITICAL: "Severe" should be RARE. Most people are Neutral or Mild.
+         If left and right side views show different severities, use the LOWER severity.
+         When in doubt, choose the less severe option.
       
       2. THORACIC KYPHOSIS (Upper Back Curve):
          - Identify the curve of the upper back.
@@ -396,8 +431,8 @@ export async function analyzePostureImage(
         "head_alignment": {
           "status": "Neutral | Tilted Left | Tilted Right",
           "tilt_degrees": number,
-          "description": "Detailed explanation of head tilt and asymmetry. IMPORTANT: Only report 'Tilted Left' or 'Tilted Right' if the tilt is ≥5 degrees and visually noticeable. Tilts < 5 degrees should be 'Neutral' to avoid unnecessary concern.",
-          "recommendation": "Specific corrective recommendations (only if status is not Neutral)"
+          "description": "ONE simple sentence. NO measurements. Example: 'Your head tilts slightly to the right.'",
+          "recommendation": "ONE actionable sentence if needed."
         },
         "forward_head": null,
         "shoulder_alignment": {
@@ -406,8 +441,8 @@ export async function analyzePostureImage(
           "right_elevation_cm": number,
           "height_difference_cm": number,
           "rounded_forward": boolean,
-          "description": "Detailed explanation of shoulder alignment and asymmetry. IMPORTANT: Only report 'Asymmetric' if height difference is ≥1.0cm and visually noticeable. Differences < 1.0cm should be 'Neutral'.",
-          "recommendation": "Specific corrective recommendations (only if status is not Neutral)"
+          "description": "ONE simple sentence. NO measurements. Example: 'Your right shoulder sits slightly higher than your left.'",
+          "recommendation": "ONE actionable sentence if needed."
         },
         "kyphosis": null,
         "lordosis": null,
@@ -419,34 +454,34 @@ export async function analyzePostureImage(
           "height_difference_cm": number,
           "hip_shift_cm": number,
           "hip_shift_direction": "None | Left | Right",
-          "description": "Detailed explanation of pelvic position, hip elevation, and hip shift",
-          "recommendation": "Specific corrective recommendations"
+          "description": "ONE simple sentence. NO measurements. Example: 'Your hips are level and well-aligned.'",
+          "recommendation": "ONE actionable sentence if needed."
         },
         "hip_alignment": {
           "status": "Neutral | Elevated | Depressed | Asymmetric",
           "left_elevation_cm": number,
           "right_elevation_cm": number,
           "height_difference_cm": number,
-          "description": "Detailed explanation of hip alignment and asymmetry",
-          "recommendation": "Specific corrective recommendations"
+          "description": "ONE simple sentence. NO measurements.",
+          "recommendation": "ONE actionable sentence if needed."
         },
         "knee_alignment": {
           "status": "Neutral | Valgus | Varus",
           "deviation_degrees": number,
-          "description": "Detailed explanation of knee alignment from front/back view",
-          "recommendation": "Specific corrective recommendations"
+          "description": "ONE simple sentence. NO measurements. Example: 'Your knees align well with your hips.'",
+          "recommendation": "ONE actionable sentence if needed."
         },
         ${view === 'back' ? `
         "spinal_curvature": {
           "status": "Normal | Mild Scoliosis | Moderate Scoliosis | Severe Scoliosis",
           "curve_degrees": number,
-          "description": "Detailed explanation of spinal curvature from back view",
-          "recommendation": "Specific corrective recommendations"
+          "description": "ONE simple sentence. NO measurements. Example: 'Your spine shows a slight lateral curve.'",
+          "recommendation": "ONE actionable sentence if needed."
         },
         ` : ''}
-        "deviations": ["list of all identified postural deviations from this view"],
-        "risk_flags": ["list of risk factors for pain/injury"],
-        "overall_assessment": "Comprehensive summary of all findings from ${view} view. IMPORTANT: Address the person directly as 'you' (e.g., 'You present with...', 'Your posture shows...', 'You have...'). Never use 'the individual', 'the person', or 'the subject'."
+        "deviations": ["Short list of main findings - max 3-4 items, simple language"],
+        "risk_flags": ["Brief risk factors - max 2-3 items"],
+        "overall_assessment": "2-3 sentences MAX summarizing the key findings. Address the person as 'you'. Keep it simple and encouraging. NO technical jargon or measurements."
       }
       ` : `
       {
@@ -459,44 +494,44 @@ export async function analyzePostureImage(
           "status": "Neutral | Mild | Moderate | Severe",
           "deviation_degrees": number,
           "deviation_cm": number,
-          "description": "Detailed explanation of forward head posture relative to plumb line",
-          "recommendation": "Specific exercise/stretching recommendations"
+          "description": "ONE simple sentence about head position. NO measurements. Example: 'Your head sits forward of your shoulders.'",
+          "recommendation": "ONE actionable sentence. Example: 'Practice chin tucks daily.'"
         },
         "shoulder_alignment": {
           "status": "Neutral | Rounded",
           "forward_position_cm": number,
           "rounded_forward": boolean,
-          "description": "Detailed explanation of shoulder position relative to plumb line",
-          "recommendation": "Specific corrective recommendations"
+          "description": "ONE simple sentence. NO measurements. Example: 'Your shoulders are noticeably rounded forward.'",
+          "recommendation": "ONE actionable sentence. Example: 'Stretch your chest and strengthen your upper back.'"
         },
         "kyphosis": {
           "status": "Normal | Mild | Moderate | Severe",
           "curve_degrees": number,
-          "description": "Detailed explanation of thoracic kyphosis",
-          "recommendation": "Specific strengthening/stretching recommendations"
+          "description": "ONE simple sentence. NO measurements. Example: 'Your upper back has an increased curve.'",
+          "recommendation": "ONE actionable sentence."
         },
         "lordosis": {
           "status": "Normal | Mild | Moderate | Severe",
           "curve_degrees": number,
-          "description": "Detailed explanation of lumbar lordosis",
-          "recommendation": "Specific corrective recommendations"
+          "description": "ONE simple sentence. NO measurements. Example: 'Your lower back curve appears normal.'",
+          "recommendation": "ONE actionable sentence if needed."
         },
         "pelvic_tilt": {
           "status": "Neutral | Anterior Tilt | Posterior Tilt",
-          "anterior_tilt_degrees": number, // Positive = anterior tilt (angle < 180°), Negative = posterior tilt (angle > 180°)
-          "description": "Detailed explanation of pelvic position. CRITICAL: If the pelvic angle is LESS than 180° (e.g., 171°), this is ANTERIOR TILT (pelvis rotated forward, tailbone out, increased lumbar lordosis). If the angle is MORE than 180° (e.g., 189°), this is POSTERIOR TILT (pelvis rotated backward, tailbone tucked, flattened lumbar curve).",
-          "recommendation": "Specific corrective recommendations"
+          "anterior_tilt_degrees": number, // Positive = anterior tilt, Negative = posterior tilt
+          "description": "ONE simple sentence. NO measurements. Example: 'Your pelvis tilts forward (anterior tilt).'",
+          "recommendation": "ONE actionable sentence. Example: 'Strengthen your core and stretch your hip flexors.'"
         },
         "hip_alignment": null,
         "knee_position": {
           "status": "Neutral | Hyperextended | Flexed",
           "deviation_degrees": number,
-          "description": "Detailed explanation of knee position relative to plumb line",
-          "recommendation": "Specific corrective recommendations"
+          "description": "ONE simple sentence. NO measurements.",
+          "recommendation": "ONE actionable sentence if needed."
         },
-        "deviations": ["list of all identified postural deviations from this view"],
-        "risk_flags": ["list of risk factors for pain/injury"],
-        "overall_assessment": "Comprehensive summary of all findings from ${view} view. IMPORTANT: Address the person directly as 'you' (e.g., 'You present with...', 'Your posture shows...', 'You have...'). Never use 'the individual', 'the person', or 'the subject'."
+        "deviations": ["Short list of main findings - max 3-4 items, simple language"],
+        "risk_flags": ["Brief risk factors - max 2-3 items"],
+        "overall_assessment": "2-3 sentences MAX summarizing the key findings. Address the person as 'you'. Keep it simple and encouraging. NO technical jargon or measurements."
       }
       `}
     `;
@@ -507,12 +542,10 @@ export async function analyzePostureImage(
     // 3. Raw base64 - use as-is
     let base64Data: string;
     
-    console.log(`[AI] Processing image data for ${view}...`);
+    logger.debug(`Processing image data for ${view}`, ctx);
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-      // Fetch from Storage URL and convert to base64
-      // Fetching full-size image from Storage URL
       try {
-        console.log(`[AI] Fetching image from URL: ${imageUrl.substring(0, 50)}...`);
+        logger.debug(`Fetching image from URL`, ctx);
         const response = await fetch(imageUrl);
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -522,7 +555,6 @@ export async function analyzePostureImage(
           const reader = new FileReader();
           reader.onloadend = () => {
             const result = reader.result as string;
-            // Extract base64 part
             const base64Part = result.split(',')[1] || result;
             if (!base64Part) {
               reject(new Error('Failed to extract base64 data from fetched image'));
@@ -533,33 +565,31 @@ export async function analyzePostureImage(
           reader.onerror = (err) => reject(new Error(`FileReader error: ${err}`));
           reader.readAsDataURL(blob);
         });
-        console.log(`[AI] Successfully fetched and converted image (${base64Data.length} chars)`);
+        logger.debug(`Successfully fetched image`, ctx);
       } catch (error) {
-        console.error('[AI] Failed to fetch image from Storage URL:', error);
+        logger.error('Failed to fetch image from Storage URL', ctx, error);
         throw new Error(`Failed to fetch full-size image from Storage: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     } else if (imageUrl.startsWith('data:')) {
-      // Data URL - extract base64
       const parts = imageUrl.split(',');
       if (parts.length < 2 || !parts[1]) {
         throw new Error('Invalid data URL format - missing base64 data');
       }
       base64Data = parts[1];
-      console.log(`[AI] Extracted base64 from data URL (${base64Data.length} chars)`);
+      logger.debug(`Extracted base64 from data URL`, ctx);
     } else {
-      // Assume raw base64
       if (!imageUrl || imageUrl.trim().length === 0) {
         throw new Error('Empty image data provided');
       }
       base64Data = imageUrl;
-      console.log(`[AI] Using raw base64 data (${base64Data.length} chars)`);
+      logger.debug(`Using raw base64 data`, ctx);
     }
 
     if (!base64Data || base64Data.length < 100) {
       throw new Error('Image data is too small or invalid');
     }
 
-    console.log(`[AI] Calling Gemini API for ${view}...`);
+    logger.debug(`Calling Gemini API for ${view}`, ctx);
     let result;
     try {
       result = await model.generateContent([
@@ -571,11 +601,10 @@ export async function analyzePostureImage(
           },
         },
       ]);
-      console.log(`[AI] Gemini API call successful for ${view}`);
+      logger.debug(`Gemini API call successful for ${view}`, ctx);
     } catch (apiError) {
-      console.error('[AI] Gemini API call failed:', apiError);
+      logger.error('Gemini API call failed', ctx, apiError);
       
-      // Check for billing error specifically
       const errorMessage = apiError instanceof Error ? apiError.message : String(apiError);
       if (errorMessage.includes('BILLING_DISABLED') || errorMessage.includes('billing to be enabled')) {
         const projectMatch = errorMessage.match(/project[#\s]+([a-z0-9-]+)/i);
@@ -589,57 +618,53 @@ export async function analyzePostureImage(
     let aiResponse;
     try {
       aiResponse = await result.response;
-      console.log(`[AI] Received response from Gemini for ${view}`);
+      logger.debug(`Received response from Gemini for ${view}`, ctx);
     } catch (responseError) {
-      console.error('[AI] Failed to get response from Gemini:', responseError);
+      logger.error('Failed to get response from Gemini', ctx, responseError);
       throw new Error(`Failed to get AI response: ${responseError instanceof Error ? responseError.message : 'Unknown error'}`);
     }
     
-    // Gemini 2.0 Flash with responseMimeType: "application/json" returns JSON directly
-    // Try to get JSON first, fallback to text extraction if needed
+    // Parse JSON response
     try {
       const text = aiResponse.text();
       if (!text || text.trim().length === 0) {
         throw new Error('AI returned empty response');
       }
-      console.log(`[AI] Parsing JSON response for ${view} (${text.length} chars)...`);
+      logger.debug(`Parsing JSON response for ${view}`, ctx);
       
       let data: PostureAnalysisResult;
-      // If responseMimeType is set, text should be valid JSON
       try {
         data = JSON.parse(text);
-        console.log(`[AI] Successfully parsed JSON for ${view}`);
+        logger.debug(`Successfully parsed JSON for ${view}`, ctx);
       } catch (parseErr) {
-        console.warn('[AI] Direct JSON parse failed, trying to extract JSON from text:', parseErr);
-        // Fallback: extract JSON from text if wrapped
+        logger.warn('Direct JSON parse failed, trying to extract JSON from text', ctx, parseErr);
         const startIdx = text.indexOf('{');
         const endIdx = text.lastIndexOf('}');
         if (startIdx === -1 || endIdx === -1) {
-          console.error('[AI] No JSON found in response. First 200 chars:', text.substring(0, 200));
+          logger.error('No JSON found in response', ctx);
           throw new Error(`Invalid AI response format - no JSON found. Response: ${text.substring(0, 100)}...`);
         }
         const jsonString = text.substring(startIdx, endIdx + 1);
         data = JSON.parse(jsonString);
-        console.log(`[AI] Successfully extracted and parsed JSON for ${view}`);
+        logger.debug(`Successfully extracted and parsed JSON for ${view}`, ctx);
       }
 
       await logAIUsage(coachUid, 'posture_analysis', 'ai_success', 'gemini');
-      console.log(`[AI] Analysis complete for ${view}`);
+      logger.debug(`Analysis complete for ${view}`, ctx);
       return data;
     } catch (parseError) {
-      console.error('[AI] JSON parsing error:', parseError);
+      logger.error('JSON parsing error', ctx, parseError);
       await logAIUsage(coachUid, 'posture_analysis', 'error', 'local');
       throw new Error(`Failed to parse AI response as JSON: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
     }
 
   } catch (err) {
-    console.error('[AI] Posture Analysis Error:', err);
+    logger.error('Posture Analysis Error', 'POSTURE_AI', err);
     try {
       await logAIUsage(coachUid, 'posture_analysis', 'error', 'local');
     } catch (logError) {
-      console.warn('[AI] Failed to log error:', logError);
+      logger.warn('Failed to log error', 'POSTURE_AI', logError);
     }
-    // Preserve the original error message if it's already descriptive
     if (err instanceof Error && err.message && !err.message.includes('Failed to analyze posture image')) {
       throw err;
     }

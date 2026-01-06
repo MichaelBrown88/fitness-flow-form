@@ -135,7 +135,7 @@ export function useCameraHandler({
 
   const handlePostureCompanionComplete = useCallback((data: PostureCompanionData) => {
     updateFormData(data);
-    toast({ title: "Posture data applied", description: "AI findings have been populated." });
+    toast({ title: "Posture data applied", description: "Analysis has been populated." });
   }, [updateFormData, toast]);
 
   const handleInBodyCompanionComplete = useCallback((data: Partial<FormData>) => {

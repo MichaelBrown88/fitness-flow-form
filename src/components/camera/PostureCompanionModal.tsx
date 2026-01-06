@@ -317,7 +317,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
       postureBackOverall: session.analysis['side-right']?.kyphosis?.status !== 'Normal' ? ['increased-kyphosis'] : ['neutral'],
     };
     
-    // Applying Full AI Findings
+    // Applying Posture Analysis
     
     onComplete(findings);
     onClose();
@@ -475,12 +475,12 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                       )}
                     </div>
 
-                    {/* AI FINDINGS CARD */}
+                    {/* POSTURE ANALYSIS CARD */}
                     {session?.analysis[view] && (
                       <div className="mt-2 bg-slate-50 p-3 rounded-xl border border-slate-100 animate-in fade-in slide-in-from-bottom-2">
                         <div className="flex items-center gap-2 mb-2">
                           <ShieldAlert className="h-3 w-3 text-primary" />
-                          <span className="text-[8px] font-black uppercase text-primary">AI Findings</span>
+                          <span className="text-[8px] font-black uppercase text-primary">Posture Analysis</span>
                         </div>
                         <div className="space-y-1.5">
                           {/* Top-to-Bottom Findings (Unified Order) */}
@@ -586,7 +586,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                   onClick={handleApply}
                   className="w-full h-14 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-black uppercase tracking-widest text-xs gap-3 shadow-2xl shadow-emerald-500/20"
                 >
-                  Apply AI Findings
+                  Apply Analysis
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>

@@ -142,7 +142,7 @@ export function calculateFunctionalGaps(
     if (style.includes('powerlift') || style.includes('weightlift') || style.includes('bodybuild')) {
       if (currentPlankTime < 60) {
         contextualInsight = 'Your absolute strength is likely high, but core endurance is a limiting factor for higher volume blocks.';
-      } else if (currentTotal < baseEnduranceTarget) {
+      } else if (currentTotal < enduranceTarget) {
         contextualInsight = 'Focusing on increasing metabolic work capacity will help you recover faster between heavy sets.';
       }
     } else if (style.includes('yoga') || style.includes('pilates')) {

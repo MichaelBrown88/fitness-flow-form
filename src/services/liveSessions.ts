@@ -12,6 +12,7 @@ import { compressImageForDisplay } from '@/lib/utils/imageCompression';
 import { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
 import { sanitizeForFirestore } from '@/lib/utils/firebaseUtils';
 import { LandmarkResult } from '@/lib/ai/postureLandmarks';
+import { logger } from '@/lib/utils/logger';
 
 export interface LiveSession {
 // ...
@@ -51,7 +52,7 @@ export const createLiveSession = async (clientId: string, organizationId?: strin
     await setDoc(doc(db, SESSIONS_COLLECTION, sessionId), sanitizeForFirestore(session));
     return session;
   } catch (err) {
-    console.error('[SYNC] Init Error:', err);
+    logger.error('Session init error', 'LIVE_SESSIONS', err);
     throw err;
   }
 };
@@ -100,7 +101,7 @@ export const updatePostureImage = async (
       throw new Error(`Invalid image data format for ${view}. Expected data URL or HTTP URL.`);
     }
     
-    console.log(`[UPDATE_POSTURE] Starting processing for ${view} (source: ${source})`);
+    logger.debug(`Starting processing for ${view} (source: ${source})`, 'LIVE_SESSIONS');
     
     // Use unified processing system (ONE FLOW FOR ALL SOURCES)
     const { processPostureImage } = await import('@/services/postureProcessing');
@@ -113,9 +114,9 @@ export const updatePostureImage = async (
         providedLandmarks,
         source
       );
-      console.log(`[UPDATE_POSTURE] Successfully processed ${view} image`);
+      logger.debug(`Successfully processed ${view} image`, 'LIVE_SESSIONS');
     } catch (processError) {
-      console.error(`[UPDATE_POSTURE] Processing failed for ${view}:`, processError);
+      logger.error(`Processing failed for ${view}`, 'LIVE_SESSIONS', processError);
       throw new Error(`Failed to process ${view} image: ${processError instanceof Error ? processError.message : 'Unknown processing error'}`);
     }
 
@@ -129,7 +130,7 @@ export const updatePostureImage = async (
       fullSizeImage = compressed.fullSize;
       // Compressed image with deviations for display
     } catch (compressError) {
-      console.warn(`[COMPRESS] Compression failed for ${view}, using original:`, compressError);
+      logger.warn(`Compression failed for ${view}, using original`, 'LIVE_SESSIONS', compressError);
       fullSizeImage = processed.imageWithDeviations;
     }
 
@@ -170,13 +171,12 @@ export const updatePostureImage = async (
       
       // Stored Storage URL in Firestore
     } catch (storageError) {
-      console.error(`[STORAGE] Failed to upload ${view} to Storage:`, storageError);
-      // Don't throw - allow Firestore sync to complete even if Storage fails
+      logger.error(`Failed to upload ${view} to Storage`, 'LIVE_SESSIONS', storageError);
     }
 
     return true;
   } catch (err) {
-    console.error('[UNIFIED] Posture Processing Error:', err);
+    logger.error('Posture processing error', 'LIVE_SESSIONS', err);
     throw err;
   }
 };
@@ -193,7 +193,7 @@ export const updateInBodyImage = async (sessionId: string, imageData: string) =>
       fullSizeImage = compressed.fullSize;
       // Compressed InBody scan for display
     } catch (compressError) {
-      console.warn(`[COMPRESS] Compression failed for InBody, using original:`, compressError);
+      logger.warn('Compression failed for InBody, using original', 'LIVE_SESSIONS', compressError);
       fullSizeImage = imageData;
     }
 
@@ -226,12 +226,12 @@ export const updateInBodyImage = async (sessionId: string, imageData: string) =>
       
       // Stored InBody Storage URL in Firestore
     } catch (storageError) {
-      console.error(`[STORAGE] Failed to upload InBody scan to Storage:`, storageError);
+      logger.error('Failed to upload InBody scan to Storage', 'LIVE_SESSIONS', storageError);
     }
 
     return true;
   } catch (err) {
-    console.error('[SYNC] InBody Image Error:', err);
+    logger.error('InBody image error', 'LIVE_SESSIONS', err);
     throw err;
   }
 };
@@ -418,17 +418,16 @@ export const reanalyzePostureImage = async (
           processed.analysis,
           organizationId
         );
-        console.log(`[REANALYZE] Also updated assessment document for client ${sessionData.clientId}`);
+        logger.debug(`Also updated assessment document for client ${sessionData.clientId}`, 'LIVE_SESSIONS');
       }
     } catch (assessmentError) {
-      // Non-critical - assessment might not exist yet
-      console.warn(`[REANALYZE] Could not update assessment document (non-critical):`, assessmentError);
+      logger.warn('Could not update assessment document (non-critical)', 'LIVE_SESSIONS', assessmentError);
     }
     
-    console.log(`[REANALYZE] Successfully re-analyzed ${view} view for session ${sessionId}`);
+    logger.debug(`Successfully re-analyzed ${view} view for session ${sessionId}`, 'LIVE_SESSIONS');
     return true;
   } catch (error) {
-    console.error(`[REANALYZE] Failed to re-analyze ${view} view:`, error);
+    logger.error(`Failed to re-analyze ${view} view`, 'LIVE_SESSIONS', error);
     throw error;
   }
 };

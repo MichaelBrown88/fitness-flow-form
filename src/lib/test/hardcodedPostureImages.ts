@@ -10,20 +10,10 @@
  * Or use the extract-base64.html tool in the project root
  */
 
-// TODO: Replace these with your actual base64 image data
-// You can get the base64 by:
-// 1. Opening browser console when images are loaded
-// 2. Looking for [TEST] logs that show the base64
-// 3. Or use the extract-base64.html helper
-
 export const HARDCODED_TEST_IMAGES: Record<string, string> = {
-  // Front view - replace with your actual base64
   front: '',
-  // Back view - replace with your actual base64
   back: '',
-  // Left side view - replace with your actual base64
   'side-left': '',
-  // Right side view - replace with your actual base64
   'side-right': '',
 };
 

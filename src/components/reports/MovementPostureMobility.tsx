@@ -14,6 +14,7 @@ import { Activity, AlertCircle, CheckCircle2, TrendingUp, RefreshCw } from 'luci
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { reanalyzeClientPosture } from '@/lib/utils/reanalyzePosture';
+import { logger } from '@/lib/utils/logger';
 
 interface MovementPostureMobilityProps {
   formData?: FormData;
@@ -55,7 +56,7 @@ export function MovementPostureMobility({ formData, scores }: MovementPostureMob
         throw new Error('No views were successfully re-analyzed');
       }
     } catch (error) {
-      console.error('Re-analysis failed:', error);
+      logger.error('Re-analysis failed', 'MOVEMENT_POSTURE', error);
       toast({
         title: 'Re-analysis failed',
         description: error instanceof Error ? error.message : 'Could not re-analyze posture images',
@@ -339,38 +340,13 @@ export function MovementPostureMobility({ formData, scores }: MovementPostureMob
     allFocusAreas.push(...assessment.focusAreas);
   }
   
-  // Debug: Log what we found - ALWAYS log to help diagnose issues
-  console.log('[Movement Quality] Assessment findings:', {
+  logger.debug('Assessment findings', 'MOVEMENT_QUALITY', {
     assessmentCount: assessmentFindings.length,
     hasOHS,
     hasHinge,
     hasLunge,
     allStrengths: allStrengths.length,
     allFocusAreas: allFocusAreas.length,
-    ohsData: {
-      depth: formData.ohsSquatDepth,
-      shoulder: formData.ohsShoulderMobility,
-      knee: formData.ohsKneeAlignment,
-      torsoLean: formData.ohsTorsoLean,
-      hipShift: formData.ohsHipShift
-    },
-    hingeData: {
-      depth: formData.hingeDepth,
-      rounding: formData.hingeBackRounding
-    },
-    lungeData: {
-      leftBalance: formData.lungeLeftBalance,
-      rightBalance: formData.lungeRightBalance,
-      leftKnee: formData.lungeLeftKneeAlignment,
-      rightKnee: formData.lungeRightKneeAlignment,
-      leftTorso: formData.lungeLeftTorso,
-      rightTorso: formData.lungeRightTorso
-    },
-    rawFindings: assessmentFindings.map(a => ({
-      assessment: a.assessment,
-      strengths: a.strengths,
-      focusAreas: a.focusAreas
-    }))
   });
   
   // Show all findings, but limit to reasonable number for display (2-3 items each)

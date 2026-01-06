@@ -145,4 +145,3 @@ export const getStorage = () => storage; // Alias for compatibility
 
 export default getFirebaseApp;
 
-
