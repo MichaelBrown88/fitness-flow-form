@@ -15,7 +15,7 @@ const Login = () => {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const from = (location.state as { from?: string } | null)?.from || '/';
+  const from = (location.state as { from?: string } | null)?.from || '/dashboard';
 
   if (!loading && user) {
     // Already logged in – send to main app
@@ -85,12 +85,12 @@ const Login = () => {
             </Button>
           </form>
           <p className="mt-4 text-xs text-slate-500">
-            Coach accounts are managed in the One Fitness admin. If you need access, please contact
+            Coach accounts are managed by your organization admin. If you need access, please contact
             your admin.
           </p>
           <p className="mt-2 text-xs text-slate-500">
             <Link to="/" className="text-slate-600 underline">
-              Back to assessment
+              Back to home
             </Link>
           </p>
         </div>

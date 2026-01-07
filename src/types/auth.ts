@@ -5,4 +5,5 @@ export interface UserProfile {
   organizationId: string;
   role: UserRole;
   displayName: string;
+  onboardingCompleted?: boolean;
 }

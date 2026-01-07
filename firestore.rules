@@ -9,6 +9,18 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
 
+    // Platform Admin Setup - Allow initial seeding (temporary, tighten after setup)
+    // These rules allow the one-time platform admin initialization
+    match /platform_admins/{adminId} {
+      allow read: if true;
+      allow write: if true; // Temporary: Allow initial setup
+    }
+    
+    match /platform_admin_lookup/{lookupId} {
+      allow read: if true;
+      allow write: if true; // Temporary: Allow initial setup
+    }
+
     // Public reports: Shared with clients (No auth required for viewing)
     match /publicReports/{reportId} {
       allow read: if true; 

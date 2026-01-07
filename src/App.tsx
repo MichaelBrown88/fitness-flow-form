@@ -9,6 +9,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { ThemeManager } from "./components/layout/ThemeManager";
 
 // Lazy load heavy page components
+const Landing = lazy(() => import("./pages/Landing"));
+const SignUp = lazy(() => import("./pages/SignUp"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
 const Index = lazy(() => import("./pages/Index"));
 const Results = lazy(() => import("./pages/Results"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -20,6 +23,11 @@ const PublicReportByToken = lazy(() => import("./pages/PublicReportByToken"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Companion = lazy(() => import("./pages/Companion"));
 const ClientDetail = lazy(() => import("./pages/ClientDetail"));
+
+// Platform admin pages (separate from org admin)
+const PlatformLogin = lazy(() => import("./pages/admin/PlatformLogin"));
+const PlatformDashboard = lazy(() => import("./pages/admin/PlatformDashboard"));
+const PlatformSetup = lazy(() => import("./pages/admin/PlatformSetup"));
 
 const queryClient = new QueryClient();
 
@@ -72,7 +80,19 @@ const App = () => (
                 </div>
               }>
                   <Routes>
+                    {/* Public routes (no auth required) */}
+                    <Route path="/" element={<Landing />} />
+                    <Route path="/signup" element={<SignUp />} />
                     <Route path="/login" element={<Login />} />
+                    {/* Onboarding (authenticated but incomplete onboarding) */}
+                    <Route
+                      path="/onboarding"
+                      element={
+                        <RequireAuth>
+                          <Onboarding />
+                        </RequireAuth>
+                      }
+                    />
                     {/* Public client-facing report (no auth) - Token-based secure sharing */}
                     <Route
                       path="/r/:token"
@@ -83,8 +103,9 @@ const App = () => (
                       path="/share/:coachUid/:assessmentId"
                       element={<PublicClientReport />}
                     />
+                    {/* Protected routes (auth required) */}
                     <Route
-                      path="/"
+                      path="/dashboard"
                       element={
                         <RequireAuth>
                           <Dashboard />
@@ -133,6 +154,12 @@ const App = () => (
                     />
                     {/* Companion mode (Mobile view) - No RequireAuth because it uses a token */}
                     <Route path="/companion/:sessionId" element={<Companion />} />
+                    
+                    {/* Platform admin routes (separate from org admin) */}
+                    <Route path="/admin/login" element={<PlatformLogin />} />
+                    <Route path="/admin/setup" element={<PlatformSetup />} />
+                    <Route path="/admin" element={<PlatformDashboard />} />
+                    
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>

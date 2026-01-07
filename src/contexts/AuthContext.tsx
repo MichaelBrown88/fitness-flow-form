@@ -2,9 +2,12 @@ import React, { createContext, useContext, useEffect, useState, type ReactNode }
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
   signOut as firebaseSignOut,
   type User,
 } from 'firebase/auth';
+import { setDoc } from 'firebase/firestore';
 import { doc, getDoc } from 'firebase/firestore';
 import { getFirebaseAuth, getDb } from '@/services/firebase';
 import { getOrgSettings, type OrgSettings } from '@/services/organizations';
@@ -109,13 +112,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await signInWithEmailAndPassword(auth, email, password);
   };
 
+  const signUp = async (email: string, password: string, displayName: string) => {
+    const auth = getFirebaseAuth();
+    const db = getDb();
+    
+    // Create Firebase Auth user
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const newUser = userCredential.user;
+    
+    // Update display name
+    await updateProfile(newUser, { displayName });
+    
+    // Create user profile document
+    const userProfile: UserProfile = {
+      uid: newUser.uid,
+      organizationId: `org-${newUser.uid}`, // Initial org tied to user
+      role: 'org_admin',
+      displayName,
+    };
+    
+    await setDoc(doc(db, 'userProfiles', newUser.uid), userProfile);
+    
+    // Create initial organization document
+    await setDoc(doc(db, 'organizations', `org-${newUser.uid}`), {
+      name: '', // Will be set during onboarding
+      ownerId: newUser.uid,
+      subscription: {
+        plan: 'starter',
+        status: 'trial',
+        trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days
+        billingEmail: email,
+      },
+      onboardingCompleted: false,
+      createdAt: new Date(),
+    });
+    
+    // State will be updated by onAuthStateChanged listener
+  };
+
   const signOut = async () => {
     const auth = getFirebaseAuth();
     await firebaseSignOut(auth);
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, orgSettings, loading, signIn, signOut, refreshSettings }}>
+    <AuthContext.Provider value={{ user, profile, orgSettings, loading, signIn, signUp, signOut, refreshSettings }}>
       {children}
     </AuthContext.Provider>
   );
