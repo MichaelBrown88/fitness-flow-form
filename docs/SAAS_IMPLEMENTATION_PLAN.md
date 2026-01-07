@@ -17,7 +17,14 @@ Transform the fitness assessment platform into a multi-tenant SaaS product with 
 > **WARNING: Breaking Changes**
 > - New authentication flow for gym signup vs coach login
 > - Database schema additions for organization management
-> - Potential changes to existing user roles and permissions
+
+> **ROLE STRUCTURE (Using Existing Roles)**
+> - `org_admin` - The account owner (solo coach, gym owner, or chain manager)
+> - `coach` - Team members invited by the org_admin
+> - **Subscription tier** (not role) determines features:
+>   - **Starter** (Solo Coach): 1 admin, no additional coaches
+>   - **Professional** (Gym): 1 admin + unlimited coaches, single location
+>   - **Enterprise** (Gym Chain): Multiple admins, multiple locations, white-label
 
 ---
 
@@ -95,40 +102,68 @@ Transform the fitness assessment platform into a multi-tenant SaaS product with 
 
 ### Phase 2: Gym Onboarding Flow
 
+#### `[NEW]` src/pages/SignUp.tsx
+
+**Purpose:** Public signup page for new account creation (Step 1 of the journey)
+
+**Flow:** Landing → SignUp → Email Verification → Onboarding
+
+**Form Fields:**
+- Full name
+- Email address
+- Password (with strength indicator)
+- Confirm password
+- Accept Terms of Service checkbox
+- "Create Account" CTA
+
+**Features:**
+- Social login options (Google, optional)
+- Link to existing login page
+- Password requirements displayed
+- Real-time validation
+- Redirect to email verification after signup
+
+**Post-Signup:**
+- Create Firebase Auth user
+- Create initial `userProfiles` document with `role: 'org_admin'`
+- Create initial `organizations` document with `subscription.status: 'trial'`
+- Send verification email
+- Redirect to `/onboarding` (or email verification prompt)
+
+---
+
 #### `[NEW]` src/pages/Onboarding.tsx
 
-**Purpose:** Multi-step onboarding wizard for new gym signups
+**Purpose:** Multi-step onboarding wizard for authenticated users to complete their profile
+
+**Prerequisites:** User must be authenticated (account created via SignUp)
 
 **Steps:**
 
-1. **Account Creation (Step 1/5)**
-   - Gym owner name
-   - Email (with verification)
-   - Password (with strength indicator)
-   - Accept Terms of Service
-
-2. **Gym Information (Step 2/5)**
-   - Gym name
+1. **Business Information (Step 1/4)**
+   - Business name (gym name, studio name, or "Your Name Coaching")
+   - Business type: Solo Coach / Gym / Gym Chain
    - Address (with Google Places autocomplete)
    - Phone number
    - Website (optional)
    - Logo upload
 
-3. **Branding Setup (Step 3/5)**
+2. **Branding Setup (Step 2/4)**
    - Primary brand color picker
    - Preview of branded reports
-   - Custom domain (optional, enterprise)
+   - Custom domain (optional, enterprise tier)
 
-4. **Equipment Configuration (Step 4/5)**
+3. **Equipment Configuration (Step 3/4)**
    - Body composition method (InBody, DEXA, Skinfold, etc.)
    - Grip strength equipment (Dynamometer, Deadhang, etc.)
    - Available assessment tools
    - Custom equipment notes
 
-5. **Team Setup (Step 5/5)**
+4. **Team Setup (Step 4/4)** - *Professional/Enterprise only*
    - Invite coaches (email list)
    - Set default permissions
    - Skip option (can add later)
+   - *Starter tier*: Shows upgrade prompt instead
 
 **Post-Onboarding:**
 - Welcome email with getting started guide
@@ -142,11 +177,10 @@ Transform the fitness assessment platform into a multi-tenant SaaS product with 
 **Components to create:**
 - `OnboardingLayout.tsx` - Wrapper with progress indicator
 - `StepIndicator.tsx` - Visual progress bar
-- `AccountCreationStep.tsx` - Step 1 form
-- `GymInfoStep.tsx` - Step 2 form
-- `BrandingStep.tsx` - Step 3 form with color picker
-- `EquipmentStep.tsx` - Step 4 form
-- `TeamSetupStep.tsx` - Step 5 form
+- `BusinessInfoStep.tsx` - Step 1 form (name, type, address, logo)
+- `BrandingStep.tsx` - Step 2 form with color picker
+- `EquipmentStep.tsx` - Step 3 form
+- `TeamSetupStep.tsx` - Step 4 form (or upgrade prompt for Starter)
 - `OnboardingSuccess.tsx` - Completion screen
 
 ---
@@ -179,14 +213,23 @@ Transform the fitness assessment platform into a multi-tenant SaaS product with 
 **Purpose:** TypeScript types for onboarding
 
 ```typescript
-interface GymAccountData {
-  ownerName: string;
+// Subscription tiers (determines features, not roles)
+type SubscriptionPlan = 'starter' | 'professional' | 'enterprise';
+type SubscriptionStatus = 'trial' | 'active' | 'cancelled' | 'past_due';
+
+// Business type selection during onboarding
+type BusinessType = 'solo_coach' | 'gym' | 'gym_chain';
+
+interface SignUpData {
+  fullName: string;
   email: string;
   password: string;
+  acceptedTerms: boolean;
 }
 
-interface GymProfileData {
+interface BusinessProfileData {
   name: string;
+  type: BusinessType;
   address: string;
   phone: string;
   website?: string;
@@ -196,15 +239,15 @@ interface GymProfileData {
 interface BrandingConfig {
   primaryColor: string;
   logoUrl?: string;
-  customDomain?: string;
+  customDomain?: string; // Enterprise only
 }
 
 interface OnboardingStatus {
-  accountCreated: boolean;
-  profileCompleted: boolean;
-  brandingSet: boolean;
-  equipmentConfigured: boolean;
-  teamInvited: boolean;
+  currentStep: number;
+  businessInfoCompleted: boolean;
+  brandingCompleted: boolean;
+  equipmentCompleted: boolean;
+  teamSetupCompleted: boolean; // or skipped
   completedAt?: Date;
 }
 ```
@@ -247,13 +290,16 @@ organizations/{orgId}
   - createdAt: timestamp
 ```
 
-**Update Collection: `users`**
+**Update Collection: `userProfiles`** (existing collection)
 ```
-users/{userId}
-  - role: 'gym_owner' | 'org_admin' | 'coach'
-  - onboardingCompleted: boolean
-  - invitedBy: string (userId, optional)
-  - inviteAcceptedAt: timestamp (optional)
+userProfiles/{userId}
+  - uid: string
+  - organizationId: string
+  - role: 'org_admin' | 'coach'  // Using existing roles
+  - displayName: string
+  - onboardingCompleted: boolean (NEW)
+  - invitedBy: string (userId, optional) (NEW)
+  - inviteAcceptedAt: timestamp (optional) (NEW)
 ```
 
 ---
@@ -263,11 +309,18 @@ users/{userId}
 #### `[MODIFY]` src/App.tsx
 
 **Changes:**
-- Add route: `/` → Landing (public)
-- Add route: `/onboarding` → Onboarding (authenticated, incomplete onboarding)
-- Add route: `/signup` → SignUp (public)
+- Add route: `/` → Landing (public, marketing page)
+- Add route: `/signup` → SignUp (public, creates account)
+- Add route: `/onboarding` → Onboarding (authenticated, requires account)
 - Update route guards to check onboarding status
 - Redirect incomplete onboarding to `/onboarding`
+
+**Route Flow:**
+```
+New User:     Landing → /signup → /onboarding → /dashboard
+Returning:    Landing → /login → /dashboard
+Incomplete:   /login → auto-redirect → /onboarding → /dashboard
+```
 
 ---
 
@@ -437,12 +490,12 @@ users/{userId}
 
 ### Phase 2: Onboarding Flow
 - [ ] Create onboarding components directory
+- [ ] Build SignUp.tsx page (public, account creation)
 - [ ] Build OnboardingLayout with progress indicator
-- [ ] Build AccountCreationStep (Step 1)
-- [ ] Build GymInfoStep (Step 2)
-- [ ] Build BrandingStep with color picker (Step 3)
-- [ ] Build EquipmentStep (Step 4)
-- [ ] Build TeamSetupStep (Step 5)
+- [ ] Build BusinessInfoStep (Step 1)
+- [ ] Build BrandingStep with color picker (Step 2)
+- [ ] Build EquipmentStep (Step 3)
+- [ ] Build TeamSetupStep (Step 4, or upgrade prompt)
 - [ ] Build OnboardingSuccess completion screen
 - [ ] Create Onboarding.tsx page
 - [ ] Add form validation
@@ -460,8 +513,8 @@ users/{userId}
 
 ### Phase 4: Database Schema
 - [ ] Create onboarding_sessions collection
-- [ ] Update organizations collection schema
-- [ ] Update users collection for gym_owner role
+- [ ] Update organizations collection schema (subscription, branding)
+- [ ] Update userProfiles collection (onboardingCompleted, invitedBy)
 - [ ] Add Firestore security rules
 - [ ] Create database indexes
 
