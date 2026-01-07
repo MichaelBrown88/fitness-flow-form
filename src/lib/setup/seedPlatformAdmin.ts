@@ -8,10 +8,13 @@
  * or create a temporary button during development.
  */
 
-import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { getDb } from '@/services/firebase';
+import { setDoc, getDoc } from 'firebase/firestore';
 import { logger } from '@/lib/utils/logger';
 import type { PlatformAdmin, PlatformPermission } from '@/types/platform';
+import { 
+  getPlatformAdminDoc, 
+  getPlatformAdminLookupDoc 
+} from '@/lib/database/collections';
 
 // Platform owner configuration
 const PLATFORM_OWNER = {
@@ -32,13 +35,8 @@ const PLATFORM_OWNER = {
  */
 export async function seedPlatformAdminOnce(): Promise<{ success: boolean; message: string }> {
   try {
-    const db = getDb();
-    
-    // Check if any platform admin exists with this email
-    const existingAdmins = await getDoc(doc(db, 'platform_admins', 'by_email'));
-    
     // Check the dedicated lookup document
-    const lookupRef = doc(db, 'platform_admin_lookup', PLATFORM_OWNER.email.toLowerCase().replace(/[.@]/g, '_'));
+    const lookupRef = getPlatformAdminLookupDoc(PLATFORM_OWNER.email);
     const lookupSnap = await getDoc(lookupRef);
     
     if (lookupSnap.exists()) {
@@ -60,7 +58,7 @@ export async function seedPlatformAdminOnce(): Promise<{ success: boolean; messa
     };
 
     // Store the admin record
-    await setDoc(doc(db, 'platform_admins', pendingUid), adminRecord);
+    await setDoc(getPlatformAdminDoc(pendingUid), adminRecord);
     
     // Create lookup document for quick email-based queries
     await setDoc(lookupRef, {
@@ -89,11 +87,7 @@ export async function seedPlatformAdminOnce(): Promise<{ success: boolean; messa
  */
 export async function isPlatformAdminSeeded(): Promise<boolean> {
   try {
-    const lookupRef = doc(
-      getDb(), 
-      'platform_admin_lookup', 
-      PLATFORM_OWNER.email.toLowerCase().replace(/[.@]/g, '_')
-    );
+    const lookupRef = getPlatformAdminLookupDoc(PLATFORM_OWNER.email);
     const lookupSnap = await getDoc(lookupRef);
     return lookupSnap.exists();
   } catch {

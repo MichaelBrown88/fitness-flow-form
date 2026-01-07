@@ -11,13 +11,20 @@
  */
 
 import { 
-  collection, 
   getDocs, 
-  deleteDoc, 
-  doc
+  deleteDoc
 } from 'firebase/firestore';
-import { getDb } from '@/services/firebase';
 import { logger } from '@/lib/utils/logger';
+import {
+  getOrganizationsCollection,
+  getOrganizationDoc,
+  getLegacyUserProfilesCollection,
+  getLegacyUserProfileDoc,
+  getPlatformAdminsCollection,
+  getPlatformAdminDoc,
+} from '@/lib/database/collections';
+import { collection, doc } from 'firebase/firestore';
+import { getDb } from '@/services/firebase';
 
 // Your platform admin email to KEEP
 const PLATFORM_ADMIN_EMAIL = 'michaeljbrown88@gmail.com';
@@ -59,7 +66,7 @@ export async function previewCleanup(): Promise<{
   const db = getDb();
   
   // Get all organizations and find One Fitness
-  const orgsSnapshot = await getDocs(collection(db, 'organizations'));
+  const orgsSnapshot = await getDocs(getOrganizationsCollection());
   const organizationsToDelete: { id: string; name: string }[] = [];
   let organizationToKeep: { id: string; name: string } | null = null;
   let oneFitnessOrgId: string | null = null;
@@ -75,7 +82,7 @@ export async function previewCleanup(): Promise<{
   });
   
   // Get user profiles to delete (keep One Fitness users and platform admin)
-  const usersSnapshot = await getDocs(collection(db, 'userProfiles'));
+  const usersSnapshot = await getDocs(getLegacyUserProfilesCollection());
   const userProfilesToDelete: { id: string; email?: string }[] = [];
   
   usersSnapshot.docs.forEach(userDoc => {
@@ -123,7 +130,7 @@ export async function executeCleanup(): Promise<CleanupResult> {
   
   try {
     // First, find One Fitness org ID
-    const orgsSnapshot = await getDocs(collection(db, 'organizations'));
+    const orgsSnapshot = await getDocs(getOrganizationsCollection());
     let oneFitnessOrgId: string | null = null;
     
     for (const orgDoc of orgsSnapshot.docs) {
@@ -140,7 +147,7 @@ export async function executeCleanup(): Promise<CleanupResult> {
       const data = orgDoc.data();
       if (!isOneFitnessOrg(orgDoc.id, data)) {
         try {
-          await deleteDoc(doc(db, 'organizations', orgDoc.id));
+          await deleteDoc(getOrganizationDoc(orgDoc.id));
           result.organizationsDeleted.push(`${orgDoc.id} (${data.name || 'Unnamed'})`);
           logger.info('Deleted organization:', orgDoc.id);
         } catch (e) {
@@ -150,7 +157,7 @@ export async function executeCleanup(): Promise<CleanupResult> {
     }
     
     // 2. Delete user profiles (except One Fitness user and platform admin)
-    const usersSnapshot = await getDocs(collection(db, 'userProfiles'));
+    const usersSnapshot = await getDocs(getLegacyUserProfilesCollection());
     for (const userDoc of usersSnapshot.docs) {
       const data = userDoc.data();
       const email = (data.email || '').toLowerCase();
@@ -160,7 +167,7 @@ export async function executeCleanup(): Promise<CleanupResult> {
       
       if (!isKeepEmail && !isKeepOrg) {
         try {
-          await deleteDoc(doc(db, 'userProfiles', userDoc.id));
+          await deleteDoc(getLegacyUserProfileDoc(userDoc.id));
           result.userProfilesDeleted.push(`${userDoc.id} (${data.email || 'No email'})`);
           logger.info('Deleted user profile:', userDoc.id);
         } catch (e) {
@@ -200,12 +207,12 @@ export async function executeCleanup(): Promise<CleanupResult> {
     }
     
     // 5. Clean up platform_admins (keep only the real admin)
-    const adminsSnapshot = await getDocs(collection(db, 'platform_admins'));
+    const adminsSnapshot = await getDocs(getPlatformAdminsCollection());
     for (const adminDoc of adminsSnapshot.docs) {
       const data = adminDoc.data();
       if ((data.email || '').toLowerCase() !== PLATFORM_ADMIN_EMAIL.toLowerCase()) {
         try {
-          await deleteDoc(doc(db, 'platform_admins', adminDoc.id));
+          await deleteDoc(getPlatformAdminDoc(adminDoc.id));
           result.platformAdminsDeleted.push(adminDoc.id);
         } catch (e) {
           result.errors.push(`Failed to delete admin ${adminDoc.id}: ${e}`);

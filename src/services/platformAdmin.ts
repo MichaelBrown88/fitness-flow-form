@@ -3,6 +3,8 @@
  * 
  * Handles all platform-level administration functions.
  * This is separate from organization-level services.
+ * 
+ * Uses the new hierarchical database structure from @/lib/database
  */
 
 import { 
@@ -13,9 +15,7 @@ import {
   getDocs, 
   query, 
   where,
-  orderBy,
-  limit,
-  Timestamp
+  collectionGroup
 } from 'firebase/firestore';
 import { getDb } from '@/services/firebase';
 import type { 
@@ -25,12 +25,22 @@ import type {
   AICostBreakdown 
 } from '@/types/platform';
 import { logger } from '@/lib/utils/logger';
-
-const PLATFORM_ADMINS_COLLECTION = 'platform_admins';
-const PLATFORM_METRICS_COLLECTION = 'platform_metrics';
-const ORGANIZATIONS_COLLECTION = 'organizations';
-
-const PLATFORM_ADMIN_LOOKUP_COLLECTION = 'platform_admin_lookup';
+import { 
+  PLATFORM, 
+  ORGANIZATION, 
+  LEGACY, 
+  AI_USAGE 
+} from '@/lib/database/paths';
+import {
+  getPlatformAdminsCollection,
+  getPlatformAdminDoc,
+  getPlatformAdminLookupDoc,
+  getPlatformMetricsDoc,
+  getOrganizationsCollection,
+  getLegacyRootAssessmentsCollection,
+  getLegacyUserProfilesCollection,
+  getAIUsageLogsCollection,
+} from '@/lib/database/collections';
 
 /**
  * Check if a user is a platform admin by email
@@ -38,15 +48,14 @@ const PLATFORM_ADMIN_LOOKUP_COLLECTION = 'platform_admin_lookup';
 export async function isPlatformAdmin(email: string): Promise<boolean> {
   try {
     // First check lookup collection (fast)
-    const lookupKey = email.toLowerCase().replace(/[.@]/g, '_');
-    const lookupRef = doc(getDb(), PLATFORM_ADMIN_LOOKUP_COLLECTION, lookupKey);
+    const lookupRef = getPlatformAdminLookupDoc(email);
     const lookupSnap = await getDoc(lookupRef);
     
     if (lookupSnap.exists()) return true;
     
     // Fallback to query (for backwards compatibility)
     const adminQuery = query(
-      collection(getDb(), PLATFORM_ADMINS_COLLECTION),
+      getPlatformAdminsCollection(),
       where('email', '==', email.toLowerCase())
     );
     const snapshot = await getDocs(adminQuery);
@@ -63,13 +72,12 @@ export async function isPlatformAdmin(email: string): Promise<boolean> {
 export async function getPlatformAdminByEmail(email: string): Promise<PlatformAdmin | null> {
   try {
     // First check lookup collection to get UID
-    const lookupKey = email.toLowerCase().replace(/[.@]/g, '_');
-    const lookupRef = doc(getDb(), PLATFORM_ADMIN_LOOKUP_COLLECTION, lookupKey);
+    const lookupRef = getPlatformAdminLookupDoc(email);
     const lookupSnap = await getDoc(lookupRef);
     
     if (lookupSnap.exists()) {
       const lookupData = lookupSnap.data();
-      const adminRef = doc(getDb(), PLATFORM_ADMINS_COLLECTION, lookupData.uid);
+      const adminRef = getPlatformAdminDoc(lookupData.uid);
       const adminSnap = await getDoc(adminRef);
       
       if (adminSnap.exists()) {
@@ -79,7 +87,7 @@ export async function getPlatformAdminByEmail(email: string): Promise<PlatformAd
     
     // Fallback to query
     const adminQuery = query(
-      collection(getDb(), PLATFORM_ADMINS_COLLECTION),
+      getPlatformAdminsCollection(),
       where('email', '==', email.toLowerCase())
     );
     const snapshot = await getDocs(adminQuery);
@@ -99,7 +107,7 @@ export async function getPlatformAdminByEmail(email: string): Promise<PlatformAd
  */
 export async function getPlatformAdmin(uid: string): Promise<PlatformAdmin | null> {
   try {
-    const docRef = doc(getDb(), PLATFORM_ADMINS_COLLECTION, uid);
+    const docRef = getPlatformAdminDoc(uid);
     const snapshot = await getDoc(docRef);
     
     if (!snapshot.exists()) return null;
@@ -139,11 +147,10 @@ export async function createPlatformAdmin(
       lastLoginAt: new Date(),
     };
     
-    await setDoc(doc(db, PLATFORM_ADMINS_COLLECTION, uid), admin);
+    await setDoc(getPlatformAdminDoc(uid), admin);
     
     // Update lookup to point to new UID
-    const lookupKey = normalizedEmail.replace(/[.@]/g, '_');
-    await setDoc(doc(db, PLATFORM_ADMIN_LOOKUP_COLLECTION, lookupKey), {
+    await setDoc(getPlatformAdminLookupDoc(normalizedEmail), {
       uid: uid,
       email: normalizedEmail,
       updatedAt: new Date(),
@@ -165,11 +172,10 @@ export async function createPlatformAdmin(
     createdAt: new Date(),
   };
   
-  await setDoc(doc(db, PLATFORM_ADMINS_COLLECTION, uid), admin);
+  await setDoc(getPlatformAdminDoc(uid), admin);
   
   // Create lookup entry
-  const lookupKey = normalizedEmail.replace(/[.@]/g, '_');
-  await setDoc(doc(db, PLATFORM_ADMIN_LOOKUP_COLLECTION, lookupKey), {
+  await setDoc(getPlatformAdminLookupDoc(normalizedEmail), {
     uid: uid,
     email: normalizedEmail,
     createdAt: new Date(),
@@ -183,7 +189,7 @@ export async function createPlatformAdmin(
  */
 export async function markPasswordSet(uid: string): Promise<void> {
   await setDoc(
-    doc(getDb(), PLATFORM_ADMINS_COLLECTION, uid), 
+    getPlatformAdminDoc(uid), 
     { isPasswordSet: true, lastLoginAt: new Date() }, 
     { merge: true }
   );
@@ -194,18 +200,18 @@ export async function markPasswordSet(uid: string): Promise<void> {
  */
 export async function updateLastLogin(uid: string): Promise<void> {
   await setDoc(
-    doc(getDb(), PLATFORM_ADMINS_COLLECTION, uid),
+    getPlatformAdminDoc(uid),
     { lastLoginAt: new Date() },
     { merge: true }
   );
 }
 
 /**
- * Get platform metrics
+ * Get platform metrics (cached)
  */
 export async function getPlatformMetrics(): Promise<PlatformMetrics> {
   try {
-    const docRef = doc(getDb(), PLATFORM_METRICS_COLLECTION, 'current');
+    const docRef = getPlatformMetricsDoc();
     const snapshot = await getDoc(docRef);
     
     if (!snapshot.exists()) {
@@ -230,7 +236,7 @@ export async function getLiveMetrics(): Promise<PlatformMetrics> {
     const db = getDb();
     
     // Count organizations from organizations collection
-    const orgsSnapshot = await getDocs(collection(db, ORGANIZATIONS_COLLECTION));
+    const orgsSnapshot = await getDocs(getOrganizationsCollection());
     const orgs = orgsSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
     const totalOrganizations = orgs.length;
     
@@ -243,20 +249,19 @@ export async function getLiveMetrics(): Promise<PlatformMetrics> {
       o.subscription?.status === 'trial'
     ).length;
     
-    // Count users from userProfiles collection
-    const usersSnapshot = await getDocs(collection(db, 'userProfiles'));
+    // Count users from userProfiles collection (legacy path)
+    const usersSnapshot = await getDocs(getLegacyUserProfilesCollection());
     const totalUsers = usersSnapshot.size;
     const totalCoaches = usersSnapshot.size; // All users are coaches/admins
     
-    // Count clients using collectionGroup query (clients are in coaches/{uid}/clients/)
+    // Count clients using collectionGroup query (clients are in coaches/{uid}/clients/ OR organizations/{orgId}/clients/)
     let totalClients = 0;
     try {
-      const { collectionGroup } = await import('firebase/firestore');
       const clientsSnapshot = await getDocs(collectionGroup(db, 'clients'));
       totalClients = clientsSnapshot.size;
     } catch {
       // Fallback: count unique client names from assessments
-      const assessmentsForClients = await getDocs(collection(db, 'assessments'));
+      const assessmentsForClients = await getDocs(getLegacyRootAssessmentsCollection());
       const uniqueClients = new Set<string>();
       assessmentsForClients.docs.forEach(doc => {
         const data = doc.data();
@@ -265,8 +270,8 @@ export async function getLiveMetrics(): Promise<PlatformMetrics> {
       totalClients = uniqueClients.size;
     }
     
-    // Count assessments from assessments collection
-    const assessmentsSnapshot = await getDocs(collection(db, 'assessments'));
+    // Count assessments from assessments collection (legacy root-level)
+    const assessmentsSnapshot = await getDocs(getLegacyRootAssessmentsCollection());
     const totalAssessments = assessmentsSnapshot.size;
     
     // Count this month's assessments
@@ -290,9 +295,9 @@ export async function getLiveMetrics(): Promise<PlatformMetrics> {
     // AI costs: Sum from ai_usage_logs if available
     let aiCostsMtdFils = 0;
     try {
-      const aiLogsSnapshot = await getDocs(collection(db, 'ai_usage_logs'));
-      aiLogsSnapshot.docs.forEach(doc => {
-        const data = doc.data();
+      const aiLogsSnapshot = await getDocs(getAIUsageLogsCollection());
+      aiLogsSnapshot.docs.forEach(docSnap => {
+        const data = docSnap.data();
         const logDate = data.timestamp?.toDate?.();
         if (logDate && logDate >= startOfMonth && data.costFils) {
           aiCostsMtdFils += data.costFils;
@@ -346,15 +351,15 @@ export async function getOrganizations(
     const db = getDb();
     
     // Get all organizations
-    const orgsSnapshot = await getDocs(collection(db, ORGANIZATIONS_COLLECTION));
+    const orgsSnapshot = await getDocs(getOrganizationsCollection());
     
     if (orgsSnapshot.empty) {
       logger.debug('No organizations found in database');
       return [];
     }
     
-    // Get all user profiles to count coaches per org
-    const usersSnapshot = await getDocs(collection(db, 'userProfiles'));
+    // Get all user profiles to count coaches per org (legacy path)
+    const usersSnapshot = await getDocs(getLegacyUserProfilesCollection());
     const usersByOrg = new Map<string, number>();
     const coachUidToOrgId = new Map<string, string>(); // Map coachUid to their orgId
     
@@ -369,8 +374,8 @@ export async function getOrganizations(
       }
     });
     
-    // Get assessments and count clients + assessments per org
-    const assessmentsSnapshot = await getDocs(collection(db, 'assessments'));
+    // Get assessments and count clients + assessments per org (legacy root-level)
+    const assessmentsSnapshot = await getDocs(getLegacyRootAssessmentsCollection());
     const assessmentsByOrg = new Map<string, number>();
     const clientsByOrg = new Map<string, Set<string>>(); // Use Set to count unique clients
     
