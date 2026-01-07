@@ -5,7 +5,7 @@
 
 import { getClientPostureImages, reanalyzePostureImage } from '@/services/liveSessions';
 import { updatePostureAnalysis } from '@/services/assessmentHistory';
-import { auth, storage } from '@/lib/firebase';
+import { auth, storage } from '@/services/firebase';
 import { ref, getDownloadURL, getBytes } from 'firebase/storage';
 
 /**
@@ -165,7 +165,7 @@ export async function reanalyzeClientPosture(
  * Make it available globally for console access
  */
 if (typeof window !== 'undefined') {
-  (window as any).reanalyzeClientPosture = reanalyzeClientPosture;
+  (window as Window & typeof globalThis & { reanalyzeClientPosture?: typeof reanalyzeClientPosture }).reanalyzeClientPosture = reanalyzeClientPosture;
   console.log('💡 Re-analysis utility loaded! Use: reanalyzeClientPosture("Client Name")');
 }
 

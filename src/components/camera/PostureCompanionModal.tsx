@@ -34,7 +34,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import type { PostureCompanionData } from '@/lib/types/companion';
 
 interface PostureCompanionModalProps {
@@ -43,6 +43,8 @@ interface PostureCompanionModalProps {
   onComplete: (data: PostureCompanionData) => void;
   onStartDirectScan?: () => void;
 }
+
+const views = ['front', 'back', 'side-left', 'side-right'] as const;
 
 export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
   isOpen,
@@ -98,8 +100,6 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
   const companionUrl = session 
     ? `${window.location.origin}/companion/${session.id}?token=${session.companionToken}` 
     : '';
-
-  const views = ['front', 'back', 'side-left', 'side-right'] as const;
 
   // Generate placeholder images with green lines for each view (memoized)
   const placeholderImages = useMemo(() => {
@@ -433,12 +433,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                   <span>Photos will appear here as they're captured</span>
                 </li>
               </ol>
-              <div className="mt-4 p-3 bg-brand-light border border-primary/20 rounded-xl">
-                <p className="text-xs text-slate-700">
-                  <strong className="font-black">📸 Remote Photo Upload:</strong> Clients can take photos at home and send them to you. 
-                  Use the "Upload Client Photos" button to process images they've sent via email or messaging apps.
-                </p>
-              </div>
+
             </div>
             <div className="grid grid-cols-2 gap-4 pb-20">
               {views.map((view) => {

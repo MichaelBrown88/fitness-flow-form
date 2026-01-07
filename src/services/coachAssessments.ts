@@ -1,7 +1,7 @@
 import { collection, addDoc, serverTimestamp, getDocs, query, orderBy, limit, doc, getDoc, deleteDoc, where, updateDoc } from 'firebase/firestore';
 import type { Timestamp } from 'firebase/firestore';
 import type { FormData } from '@/contexts/FormContext';
-import { getDb } from '@/lib/firebase';
+import { getDb } from '@/services/firebase';
 import { summarizeScores } from '@/lib/scoring';
 
 export type CoachAssessmentSummary = {

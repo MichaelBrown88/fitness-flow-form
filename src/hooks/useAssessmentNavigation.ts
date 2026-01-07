@@ -4,7 +4,7 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
-import { phaseDefinitions, type PhaseSection, type PhaseId } from '@/lib/phaseConfig';
+import { phaseDefinitions, type PhaseSection, type PhaseId, type PhaseField } from '@/lib/phaseConfig';
 import type { FormData } from '@/contexts/FormContext';
 import type { OrgSettings } from '@/services/organizations';
 import { shouldShowField } from '@/lib/utils/equipmentFieldFilter';
@@ -161,7 +161,7 @@ export function useAssessmentNavigation({ formData, orgSettings }: UseAssessment
     
     // First check equipment-based filtering (e.g., grip strength disabled)
     if (field.id && orgSettings?.equipmentConfig) {
-      const shouldShow = shouldShowField(field as any, orgSettings.equipmentConfig);
+      const shouldShow = shouldShowField(field as PhaseField, orgSettings.equipmentConfig);
       if (!shouldShow) return false;
     }
     

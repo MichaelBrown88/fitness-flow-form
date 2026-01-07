@@ -65,7 +65,7 @@ export interface IntakeField extends PhaseField {
 
 // intakeFields moved to P1 Lifestyle Assessment section
 
-export const phaseDefinitions = [
+export const phaseDefinitions: PhaseDefinition[] = [
   {
     id: 'P0',
     title: 'Basic Client Info',
@@ -108,10 +108,20 @@ export const phaseDefinitions = [
           },
           { 
             id: 'primaryTrainingStyle' as keyof FormData, 
-            type: 'text' as FieldType, 
+            type: 'select' as FieldType, 
             label: 'Primary Training Style', 
-            placeholder: 'e.g., Bodybuilding, CrossFit, Running, Yoga', 
             tooltip: 'Provides context for functional tests (e.g., powerlifters may have high strength but lower endurance).',
+            options: [
+              { value: 'bodybuilding', label: 'Bodybuilding / Hypertrophy' },
+              { value: 'powerlifting', label: 'Powerlifting / Strength' },
+              { value: 'crossfit', label: 'CrossFit / Functional Fitness' },
+              { value: 'calisthenics', label: 'Calisthenics / Bodyweight' },
+              { value: 'running', label: 'Running / Endurance' },
+              { value: 'yoga-pilates', label: 'Yoga / Pilates' },
+              { value: 'hiit', label: 'HIIT / Bootcamps' },
+              { value: 'sports-performance', label: 'Sports Performance' },
+              { value: 'general-wellness', label: 'General Wellness' }
+            ],
             conditional: { 
               showWhen: { 
                 field: 'recentActivity', 
@@ -533,12 +543,30 @@ export const phaseDefinitions = [
             id: 'goalLevelStrength' as keyof FormData,
             type: 'select' as FieldType,
             label: 'Strength target',
-            tooltip: 'Select your target strength increase as a percentage improvement. The recommended option balances challenge with achievable progress.',
+            tooltip: 'Select your target strength milestone. These benchmarks help calibrate your strength programming.',
             options: [
-              { value: '10', label: '10% increase' },
-              { value: '20', label: '20% increase' },
-              { value: '30', label: '30% increase (recommended)' },
-              { value: '40', label: '40% increase' },
+              // Male
+              { value: '2x-bw-deadlift', label: '2.0x BW Deadlift' },
+              { value: '1.75x-bw-squat', label: '1.75x BW Squat' },
+              { value: '1.5x-bw-bench', label: '1.5x BW Bench Press' },
+              { value: 'powerlifting-total', label: 'Maximize Total' },
+              // Female
+              { value: '1.5x-bw-deadlift', label: '1.75x/1.5x BW Deadlift' },
+              { value: '1.5x-bw-squat', label: '1.5x BW Squat' },
+              { value: '1x-bw-bench', label: '1.0x BW Bench' },
+              { value: 'chinup-mastery', label: '3 Strict Pull-ups' },
+              // Intermediate
+              { value: '1x-bw-bench', label: '1.0x BW Bench' },
+              { value: '0.75x-bw-bench', label: '0.75x BW Bench' },
+              { value: '1x-bw-squat', label: '1.0x BW Squat' },
+              { value: '1.25x-bw-deadlift', label: '1.25x BW Deadlift' },
+              { value: 'pullup-mastery', label: '10 Pull-ups' },
+              { value: 'pushup-mastery', label: '10 Pushups' },
+              // Beginner
+              { value: 'technique-mastery', label: 'Master Technique' },
+              { value: 'linear-progression', label: 'Linear Progression' },
+              { value: 'bodyweight-basics', label: 'Bodyweight Basics' },
+              { value: 'core-foundation', label: 'Core Foundation' },
             ],
             conditional: { showWhen: { field: 'clientGoals', includes: 'build-strength' } },
           },

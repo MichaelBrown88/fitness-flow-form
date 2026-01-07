@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { PostureAnalysisViewer } from './PostureAnalysisViewer';
 import { Activity, AlertCircle, CheckCircle2, TrendingUp, RefreshCw } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { reanalyzeClientPosture } from '@/lib/utils/reanalyzePosture';
 import { logger } from '@/lib/utils/logger';
 
@@ -95,15 +95,15 @@ export function MovementPostureMobility({ formData, scores }: MovementPostureMob
   Object.keys(formData).forEach(key => {
     if (key.startsWith('postureImagesFull_')) {
       const view = key.replace('postureImagesFull_', '');
-      const value = (formData as any)[key];
+      const value = (formData as unknown as Record<string, unknown>)[key];
       if (value && typeof value === 'string' && !postureImages[view]) {
         postureImages[view] = value;
       }
     }
-    // Also check for postureImagesStorage_* format
+    // Also check for postureImagesStorage_ format
     if (key.startsWith('postureImagesStorage_')) {
       const view = key.replace('postureImagesStorage_', '');
-      const value = (formData as any)[key];
+      const value = (formData as unknown as Record<string, unknown>)[key];
       if (value && typeof value === 'string' && !postureImages[view]) {
         postureImages[view] = value;
       }

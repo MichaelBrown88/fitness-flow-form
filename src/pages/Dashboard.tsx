@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AppShell from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { AnalyticsDashboard } from '@/components/dashboard/AnalyticsDashboard';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
 import { 
@@ -16,7 +16,7 @@ import {
 import { getChangeHistory, getCurrentAssessment } from '@/services/assessmentHistory';
 import { computeScores } from '@/lib/scoring';
 import { collection, query, orderBy, limit, onSnapshot, where, Timestamp, startAfter, getDocs, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
-import { getDb } from '@/lib/firebase';
+import { auth, getDb, getFirebaseAuth } from '@/services/firebase';
 import { 
   Trash2, 
   History, 
@@ -106,6 +106,131 @@ const Dashboard = () => {
     date: Date;
     type: string;
   }>>([]);
+
+  const computeAnalytics = useCallback(async (assessments: CoachAssessmentSummary[], coachUid: string): Promise<Analytics> => {
+    if (assessments.length === 0) {
+      return {
+        totalClients: 0,
+        totalAssessments: 0,
+        averageScore: 0,
+        mostCommonIssues: [],
+        highestCategory: null,
+        lowestCategory: null,
+        assessmentsThisMonth: 0,
+        clientsThisMonth: 0,
+      };
+    }
+
+    // Get unique clients
+    const uniqueClients = new Set(assessments.map(a => a.clientName));
+    
+    // Calculate average score
+    const avgScore = Math.round(
+      assessments.reduce((sum, a) => sum + (a.overallScore || 0), 0) / assessments.length
+    );
+
+    // Get assessments this month
+    const now = new Date();
+    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const assessmentsThisMonth = assessments.filter(a => 
+      a.createdAt && a.createdAt.toDate() >= thisMonth
+    ).length;
+    
+    const clientsThisMonth = new Set(
+      assessments
+        .filter(a => a.createdAt && a.createdAt.toDate() >= thisMonth)
+        .map(a => a.clientName)
+    ).size;
+
+    // Analyze most common issues and category scores
+    const issueCounts: Record<string, number> = {};
+    const categoryScores: Record<string, number[]> = {
+      bodyComp: [],
+      cardio: [],
+      strength: [],
+      movementQuality: [],
+      lifestyle: [],
+    };
+
+    // Sample assessments to analyze (limit to avoid too many reads)
+    const sampleSize = Math.min(20, assessments.length);
+    const samples = assessments.slice(0, sampleSize);
+    
+    for (const assessment of samples) {
+      try {
+        // High Performance Path: Use pre-calculated summary if available
+        if (assessment.scoresSummary) {
+          assessment.scoresSummary.categories.forEach(cat => {
+            if (categoryScores[cat.id]) {
+              categoryScores[cat.id].push(cat.score);
+            }
+            cat.weaknesses.forEach(weakness => {
+              issueCounts[weakness] = (issueCounts[weakness] || 0) + 1;
+            });
+          });
+          continue;
+        }
+
+        // Legacy Fallback Path: Fetch full data only if summary is missing
+        const full = await getCoachAssessment(user!.uid, assessment.id);
+        if (full?.formData) {
+          const scores = computeScores(full.formData);
+          
+          // Collect category scores
+          scores.categories.forEach(cat => {
+            if (categoryScores[cat.id]) {
+              categoryScores[cat.id].push(cat.score);
+            }
+          });
+
+          // Collect weaknesses (issues)
+          scores.categories.forEach(cat => {
+            cat.weaknesses.forEach(weakness => {
+              issueCounts[weakness] = (issueCounts[weakness] || 0) + 1;
+            });
+          });
+        }
+      } catch (err) {
+        console.warn(`Failed to load assessment ${assessment.id} for analytics:`, err);
+      }
+    }
+
+    // Find most common issues
+    const mostCommonIssues = Object.entries(issueCounts)
+      .map(([issue, count]) => ({ issue, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    // Calculate average scores per category
+    const categoryAverages = Object.entries(categoryScores)
+      .map(([id, scores]) => ({
+        id,
+        name: id === 'bodyComp' ? 'Body Composition' :
+              id === 'cardio' ? 'Cardiovascular' :
+              id === 'strength' ? 'Strength' :
+              id === 'movementQuality' ? 'Movement Quality' :
+              'Lifestyle',
+        avgScore: scores.length > 0 
+          ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+          : 0
+      }))
+      .filter(c => c.avgScore > 0);
+
+    const sortedCategories = [...categoryAverages].sort((a, b) => b.avgScore - a.avgScore);
+    const highestCategory = sortedCategories[0] || null;
+    const lowestCategory = sortedCategories[sortedCategories.length - 1] || null;
+
+    return {
+      totalClients: uniqueClients.size,
+      totalAssessments: assessments.length,
+      averageScore: avgScore,
+      mostCommonIssues,
+      highestCategory: highestCategory ? { name: highestCategory.name, avgScore: highestCategory.avgScore } : null,
+      lowestCategory: lowestCategory ? { name: lowestCategory.name, avgScore: lowestCategory.avgScore } : null,
+      assessmentsThisMonth,
+      clientsThisMonth,
+    };
+  }, [user]);
 
   useEffect(() => {
     if (!user) {
@@ -316,132 +441,7 @@ const Dashboard = () => {
         unsubscribeRef.current = null;
       }
     };
-  }, [user, profile?.organizationId]);
-
-  const computeAnalytics = async (assessments: CoachAssessmentSummary[], coachUid: string): Promise<Analytics> => {
-    if (assessments.length === 0) {
-      return {
-        totalClients: 0,
-        totalAssessments: 0,
-        averageScore: 0,
-        mostCommonIssues: [],
-        highestCategory: null,
-        lowestCategory: null,
-        assessmentsThisMonth: 0,
-        clientsThisMonth: 0,
-      };
-    }
-
-    // Get unique clients
-    const uniqueClients = new Set(assessments.map(a => a.clientName));
-    
-    // Calculate average score
-    const avgScore = Math.round(
-      assessments.reduce((sum, a) => sum + (a.overallScore || 0), 0) / assessments.length
-    );
-
-    // Get assessments this month
-    const now = new Date();
-    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const assessmentsThisMonth = assessments.filter(a => 
-      a.createdAt && a.createdAt.toDate() >= thisMonth
-    ).length;
-    
-    const clientsThisMonth = new Set(
-      assessments
-        .filter(a => a.createdAt && a.createdAt.toDate() >= thisMonth)
-        .map(a => a.clientName)
-    ).size;
-
-    // Analyze most common issues and category scores
-    const issueCounts: Record<string, number> = {};
-    const categoryScores: Record<string, number[]> = {
-      bodyComp: [],
-      cardio: [],
-      strength: [],
-      movementQuality: [],
-      lifestyle: [],
-    };
-
-    // Sample assessments to analyze (limit to avoid too many reads)
-    const sampleSize = Math.min(20, assessments.length);
-    const samples = assessments.slice(0, sampleSize);
-    
-    for (const assessment of samples) {
-      try {
-        // High Performance Path: Use pre-calculated summary if available
-        if (assessment.scoresSummary) {
-          assessment.scoresSummary.categories.forEach(cat => {
-            if (categoryScores[cat.id]) {
-              categoryScores[cat.id].push(cat.score);
-            }
-            cat.weaknesses.forEach(weakness => {
-              issueCounts[weakness] = (issueCounts[weakness] || 0) + 1;
-            });
-          });
-          continue;
-        }
-
-        // Legacy Fallback Path: Fetch full data only if summary is missing
-        const full = await getCoachAssessment(user.uid, assessment.id);
-        if (full?.formData) {
-          const scores = computeScores(full.formData);
-          
-          // Collect category scores
-          scores.categories.forEach(cat => {
-            if (categoryScores[cat.id]) {
-              categoryScores[cat.id].push(cat.score);
-            }
-          });
-
-          // Collect weaknesses (issues)
-          scores.categories.forEach(cat => {
-            cat.weaknesses.forEach(weakness => {
-              issueCounts[weakness] = (issueCounts[weakness] || 0) + 1;
-            });
-          });
-        }
-      } catch (err) {
-        console.warn(`Failed to load assessment ${assessment.id} for analytics:`, err);
-      }
-    }
-
-    // Find most common issues
-    const mostCommonIssues = Object.entries(issueCounts)
-      .map(([issue, count]) => ({ issue, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-
-    // Calculate average scores per category
-    const categoryAverages = Object.entries(categoryScores)
-      .map(([id, scores]) => ({
-        id,
-        name: id === 'bodyComp' ? 'Body Composition' :
-              id === 'cardio' ? 'Cardiovascular' :
-              id === 'strength' ? 'Strength' :
-              id === 'movementQuality' ? 'Movement Quality' :
-              'Lifestyle',
-        avgScore: scores.length > 0 
-          ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
-          : 0
-      }))
-      .filter(c => c.avgScore > 0);
-
-    const sortedCategories = [...categoryAverages].sort((a, b) => b.avgScore - a.avgScore);
-    const highestCategory = sortedCategories[0] || null;
-    const lowestCategory = sortedCategories[sortedCategories.length - 1] || null;
-
-    return {
-      totalClients: uniqueClients.size,
-      totalAssessments: assessments.length,
-      averageScore: avgScore,
-      mostCommonIssues,
-      highestCategory: highestCategory ? { name: highestCategory.name, avgScore: highestCategory.avgScore } : null,
-      lowestCategory: lowestCategory ? { name: lowestCategory.name, avgScore: lowestCategory.avgScore } : null,
-      assessmentsThisMonth,
-      clientsThisMonth,
-    };
-  };
+  }, [user, profile?.organizationId, computeAnalytics]);
 
   const clientGroups = useMemo(() => {
     const groups = new Map<string, CoachAssessmentSummary[]>();

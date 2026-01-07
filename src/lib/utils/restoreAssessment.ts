@@ -51,7 +51,7 @@ export async function restoreClientAssessment(
           if (!finalOrgId) {
             try {
               const { doc, getDoc } = await import('firebase/firestore');
-              const { getDb } = await import('@/lib/firebase');
+              const { getDb } = await import('@/services/firebase');
               const profileDoc = await getDoc(doc(getDb(), 'userProfiles', auth.currentUser.uid));
               if (profileDoc.exists()) {
                 const profileData = profileDoc.data();
@@ -254,7 +254,7 @@ export async function recoverMissingPostureImages(
   organizationId?: string
 ): Promise<{ recovered: string[]; missing: string[] }> {
   try {
-    const { auth } = await import('@/lib/firebase');
+    const { auth } = await import('@/services/firebase');
     const user = auth.currentUser;
     
     if (!user) {
@@ -266,7 +266,7 @@ export async function recoverMissingPostureImages(
     if (!finalOrgId && user) {
       try {
         const { getDoc, doc } = await import('firebase/firestore');
-        const { getDb } = await import('@/lib/firebase');
+        const { getDb } = await import('@/services/firebase');
         const profileRef = doc(getDb(), 'users', user.uid);
         const profileSnap = await getDoc(profileRef);
         if (profileSnap.exists()) {
@@ -348,7 +348,7 @@ export async function recoverMissingPostureImages(
     
     // Search Storage directly by trying different client ID formats and listing sessions
     try {
-      const { storage } = await import('@/lib/firebase');
+      const { storage } = await import('@/services/firebase');
       const { ref, listAll, getDownloadURL } = await import('firebase/storage');
       
       // Try different client ID formats
@@ -508,7 +508,7 @@ export async function recoverMissingPostureImages(
       
       // Update ALL existing assessment documents for this client in the dashboard
       try {
-        const { getDb } = await import('@/lib/firebase');
+        const { getDb } = await import('@/services/firebase');
         const { collection, query, where, getDocs, updateDoc, doc } = await import('firebase/firestore');
         
         // Find all assessment documents for this client
@@ -599,12 +599,21 @@ export async function restoreAssessmentAsJSON(
   }, null, 2);
 }
 
+declare global {
+  interface Window {
+    restoreClientAssessment: typeof restoreClientAssessment;
+    restoreAssessmentAsJSON: typeof restoreAssessmentAsJSON;
+    loadRestoredAssessment: typeof loadRestoredAssessment;
+    recoverMissingPostureImages: typeof recoverMissingPostureImages;
+  }
+}
+
 // Make it available globally for console access
 if (typeof window !== 'undefined') {
-  (window as any).restoreClientAssessment = restoreClientAssessment;
-  (window as any).restoreAssessmentAsJSON = restoreAssessmentAsJSON;
-  (window as any).loadRestoredAssessment = loadRestoredAssessment;
-  (window as any).recoverMissingPostureImages = recoverMissingPostureImages;
+  window.restoreClientAssessment = restoreClientAssessment;
+  window.restoreAssessmentAsJSON = restoreAssessmentAsJSON;
+  window.loadRestoredAssessment = loadRestoredAssessment;
+  window.recoverMissingPostureImages = recoverMissingPostureImages;
   console.log('💾 Restore utility loaded!');
   console.log('💾 Use: restoreClientAssessment(undefined, "Hisham MM Abdoh")');
   console.log('💾 Or: restoreClientAssessment("your-coach-uid", "Hisham MM Abdoh")');

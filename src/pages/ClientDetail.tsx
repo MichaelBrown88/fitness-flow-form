@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as UICalendar } from '@/components/ui/calendar';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { getClientAssessments, type CoachAssessmentSummary } from '@/services/coachAssessments';
 import { getClientProfile, createOrUpdateClientProfile, subscribeToClientProfile, type ClientProfile } from '@/services/clientProfiles';
 import { getCoachAssessment } from '@/services/coachAssessments';
@@ -158,7 +158,7 @@ const ClientDetail = () => {
         setLoadingSnapshots(false);
       }
     })();
-  }, [user, clientName]);
+  }, [user, clientName, userProfile?.organizationId]);
 
   useEffect(() => {
     if (!user || !clientName) return;
@@ -200,7 +200,7 @@ const ClientDetail = () => {
     return () => {
       unsubscribeProfile();
     };
-  }, [user, clientName]);
+  }, [user, clientName, userProfile?.organizationId]);
 
   const handleSaveProfile = async () => {
     if (!user || !clientName) return;
@@ -318,7 +318,7 @@ const ClientDetail = () => {
     (async () => {
       // Load current assessment using new system
       const current = await getCurrentAssessment(user.uid, clientName, userProfile?.organizationId);
-      let currentBreakdown: Record<string, number> = {};
+      const currentBreakdown: Record<string, number> = {};
       
       if (current) {
         setCurrentAssessment(current);
@@ -360,7 +360,7 @@ const ClientDetail = () => {
         }
       }
     })();
-  }, [user, clientName, assessments, snapshots]);
+  }, [user, clientName, assessments, snapshots, userProfile?.organizationId]);
 
   // Load historical assessment when date is selected
   useEffect(() => {
@@ -381,7 +381,7 @@ const ClientDetail = () => {
         setLoadingHistorical(false);
       }
     })();
-  }, [user, clientName, selectedDate]);
+  }, [user, clientName, selectedDate, userProfile?.organizationId]);
 
   if (!user) {
     return (

@@ -5,13 +5,14 @@
 
 import React from 'react';
 import { Card } from '@/components/ui/card';
+import type { CoachPlan } from '@/lib/recommendations';
 import type { ScoreSummary } from '@/lib/scoring';
 import type { FormData } from '@/contexts/FormContext';
 
 interface BlueprintProps {
   scores: ScoreSummary;
   formData?: FormData;
-  plan?: any;
+  plan?: CoachPlan;
 }
 
 interface StrategicPillar {

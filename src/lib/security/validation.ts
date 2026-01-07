@@ -20,7 +20,8 @@ export function sanitizeString(input: string | null | undefined, maxLength: numb
   // Remove null bytes and control characters (except newlines and tabs)
   let sanitized = input
     .replace(/\0/g, '')
-    .replace(/[\x01-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u001F\u007F]/g, '') // This regex now removes all ASCII control characters, including newlines and tabs.
     .trim();
   
   // Enforce maximum length

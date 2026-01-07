@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback, useEffect } from 'react';
+import React, { useRef, useState, useCallback, useEffect, Suspense, lazy } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { 
@@ -13,9 +13,9 @@ import {
   Loader2,
   Eye
 } from 'lucide-react';
-import ClientReport from '@/components/reports/ClientReport';
-import CoachReport from '@/components/reports/CoachReport';
-import { useAuth } from '@/contexts/AuthContext';
+const ClientReport = lazy(() => import('@/components/reports/ClientReport'));
+const CoachReport = lazy(() => import('@/components/reports/CoachReport'));
+import { useAuth } from '@/hooks/useAuth';
 import { type FormData } from '@/contexts/FormContext';
 import { type ScoreSummary } from '@/lib/scoring';
 import { generateBodyCompInterpretation } from '@/lib/recommendations';
@@ -149,25 +149,30 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
         className="rounded-3xl border border-slate-200 bg-white p-6 lg:p-10 shadow-2xl shadow-slate-200/50" 
         style={{ minWidth: '100%', maxWidth: '100%', overflow: 'visible' }}
       >
-        {reportView === 'client' ? (
-          <ClientReport 
-            scores={scores} 
-            roadmap={roadmap} 
-            goals={Array.isArray(formData.clientGoals) ? formData.clientGoals : []} 
-            formData={formData} 
-            plan={plan} 
-            highlightCategory={sessionStorage.getItem('highlightCategory') || undefined}
-            standalone={false}
-          />
-        ) : (
-          <CoachReport 
-            plan={plan} 
-            scores={scores} 
-            bodyComp={bodyCompInterp} 
-            formData={formData} 
-            highlightCategory={sessionStorage.getItem('highlightCategory') || undefined}
-          />
-        )}
+        <Suspense fallback={
+          <div className="flex flex-col items-center justify-center py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+            <p className="text-sm font-black uppercase tracking-widest text-slate-400">Loading Report...</p>
+          </div>
+        }>
+          {reportView === 'client' ? (
+            <ClientReport 
+              scores={scores} 
+              goals={Array.isArray(formData.clientGoals) ? formData.clientGoals : []} 
+              formData={formData} 
+              plan={plan} 
+              standalone={false}
+            />
+          ) : (
+            <CoachReport 
+              plan={plan} 
+              scores={scores} 
+              bodyComp={bodyCompInterp} 
+              formData={formData} 
+              highlightCategory={sessionStorage.getItem('highlightCategory') || undefined}
+            />
+          )}
+        </Suspense>
       </div>
     </div>
   );

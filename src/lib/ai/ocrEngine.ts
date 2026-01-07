@@ -3,7 +3,7 @@ import { getApp } from "firebase/app";
 import { FormData } from '../../contexts/FormContext';
 import { CONFIG } from '@/config';
 import { logAIUsage } from '@/services/aiUsage';
-import { auth, db } from '@/lib/firebase';
+import { getFirebaseFunctions, auth, db } from '@/services/firebase';
 import { collection, query, where, getDocs, limit, addDoc, serverTimestamp } from 'firebase/firestore';
 
 export interface OcrResult {

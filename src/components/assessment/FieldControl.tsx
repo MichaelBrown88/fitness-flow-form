@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useFormContext, type FormData } from '@/contexts/FormContext';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -32,6 +32,14 @@ export const FieldControl: React.FC<FieldControlProps> = ({
   const { formData, updateFormData } = useFormContext();
   const isMobile = useIsMobile();
   const { toast } = useToast();
+
+  // Local state for text-based inputs to prevent global re-renders on every keystroke
+  const [localValue, setLocalValue] = useState<FieldValue>((formData[field.id] as FieldValue) || '');
+
+  // Sync local state when global state changes (e.g. from Demo auto-fill)
+  useEffect(() => {
+    setLocalValue((formData[field.id] as FieldValue) || '');
+  }, [formData, field.id]);
 
   // Generate dynamic options with recommended tags and subtitles
   const fieldOptions = useMemo(() => {
@@ -126,26 +134,38 @@ export const FieldControl: React.FC<FieldControlProps> = ({
     }
 
     if (field.id === 'goalLevelStrength') {
+      const isMale = gender === 'male';
+
       if (history === 'beginner') {
         return [
-          { value: '10', label: 'First Pushup', isRecommended: true, tag: 'Recommended', subtitle: 'Foundation Building: Mastering your own bodyweight.' },
-          { value: '20', label: '60s Plank', subtitle: 'Core stability milestone.' },
-          { value: '30', label: 'Bodyweight Squat', subtitle: 'Lower body movement proficiency.' },
-          { value: '40', label: 'Perfect Form', subtitle: 'Neuromuscular control focus.' },
+          { value: 'technique-mastery', label: 'Master Technique', isRecommended: true, tag: 'Recommended', subtitle: 'Learn to Squat, Bench, and Deadlift safely.' },
+          { value: 'linear-progression', label: 'Linear Progression', subtitle: 'Add weight to the bar every session.' },
+          { value: 'bodyweight-basics', label: 'Bodyweight Basics', subtitle: isMale ? 'First strict pushup and pullup.' : 'First strict pushup and bodyweight row.' },
+          { value: 'core-foundation', label: 'Core Foundation', subtitle: 'Build stability and protect the lower back.' },
         ];
       } else if (history === 'intermediate') {
-        return [
-          { value: '10', label: '1.0x BW Bench', subtitle: 'Athletic Standard: Solid upper body power.' },
-          { value: '20', label: '1.5x BW Deadlift', isRecommended: true, tag: 'Recommended', subtitle: 'Posterior chain strength milestone.' },
-          { value: '30', label: '10 Pullups', subtitle: 'Relative strength achievement.' },
-          { value: '40', label: 'Strength Increase', subtitle: 'Linear progression targets.' },
+        return isMale ? [
+          { value: '1x-bw-bench', label: '1.0x BW Bench Press', subtitle: 'The gym benchmark for upper body strength.' },
+          { value: '1.5x-bw-squat', label: '1.5x BW Squat', isRecommended: true, tag: 'Recommended', subtitle: 'Strong foundation for legs and core.' },
+          { value: '1.5x-bw-deadlift', label: '1.5x BW Deadlift', subtitle: 'Solid posterior chain mechanics.' },
+          { value: 'pullup-mastery', label: '10 Strict Pull-ups', subtitle: 'Excellent relative strength.' },
+        ] : [
+          { value: '0.75x-bw-bench', label: '0.75x BW Bench Press', subtitle: 'Strong upper body foundation.' },
+          { value: '1x-bw-squat', label: '1.0x BW Squat', isRecommended: true, tag: 'Recommended', subtitle: 'Athletic benchmark for lower body.' },
+          { value: '1.25x-bw-deadlift', label: '1.25x BW Deadlift', subtitle: 'Solid posterior chain mechanics.' },
+          { value: 'pushup-mastery', label: '10 Strict Pushups', subtitle: 'Excellent relative strength.' },
         ];
       } else if (history === 'advanced') {
-        return [
-          { value: '10', label: '2.0x BW Deadlift', isRecommended: true, tag: 'Recommended', subtitle: 'Elite Power: High-level strength expression.' },
-          { value: '20', label: 'One-arm Pushup', subtitle: 'Advanced stability and power.' },
-          { value: '30', label: 'Human Flag', subtitle: 'The ultimate core/stability feat.' },
-          { value: '40', label: 'Genetic Peak', subtitle: 'Marginal gains and refinement.' },
+        return isMale ? [
+          { value: '2x-bw-deadlift', label: '2.0x BW Deadlift', isRecommended: true, tag: 'Recommended', subtitle: 'Gold standard for posterior chain strength.' },
+          { value: '1.75x-bw-squat', label: '1.75x BW Squat', subtitle: 'Elite lower body development.' },
+          { value: '1.5x-bw-bench', label: '1.5x BW Bench Press', subtitle: 'Exceptional upper body power.' },
+          { value: 'powerlifting-total', label: 'Maximize Total', subtitle: 'Focus on SBD (Squat/Bench/Deadlift) total.' },
+        ] : [
+          { value: '1.5x-bw-deadlift', label: '1.75x BW Deadlift', isRecommended: true, tag: 'Recommended', subtitle: 'Elite standard for posterior chain strength.' },
+          { value: '1.5x-bw-squat', label: '1.5x BW Squat', subtitle: 'Elite lower body development.' },
+          { value: '1x-bw-bench', label: '1.0x BW Bench Press', subtitle: 'Exceptional upper body power.' },
+          { value: 'chinup-mastery', label: '3 Strict Pull-ups', subtitle: 'Elite relative strength.' },
         ];
       }
     }
@@ -383,8 +403,9 @@ export const FieldControl: React.FC<FieldControlProps> = ({
             id={field.id}
             name={field.id}
             placeholder={field.placeholder}
-            value={(value as string) ?? ''}
-            onChange={(event) => handleChange(event.target.value)}
+            value={(localValue as string) ?? ''}
+            onChange={(event) => setLocalValue(event.target.value)}
+            onBlur={() => handleChange(localValue)}
             rows={4}
             className="mt-2 rounded-xl border-slate-200 focus:ring-primary"
           />
@@ -533,8 +554,9 @@ export const FieldControl: React.FC<FieldControlProps> = ({
             name={field.id}
             type="time"
             placeholder={field.placeholder}
-            value={(value as string) ?? ''}
-            onChange={(event) => handleChange(event.target.value)}
+            value={(localValue as string) ?? ''}
+            onChange={(event) => setLocalValue(event.target.value)}
+            onBlur={() => handleChange(localValue)}
             className="h-12 rounded-xl border-slate-200 focus:ring-primary"
           />
         );
@@ -545,8 +567,9 @@ export const FieldControl: React.FC<FieldControlProps> = ({
             name={field.id}
             type="date"
             placeholder={field.placeholder}
-            value={(value as string) ?? ''}
-            onChange={(event) => handleChange(event.target.value)}
+            value={(localValue as string) ?? ''}
+            onChange={(event) => setLocalValue(event.target.value)}
+            onBlur={() => handleChange(localValue)}
             className="h-12 rounded-xl border-slate-200 focus:ring-primary"
           />
         );
@@ -557,8 +580,9 @@ export const FieldControl: React.FC<FieldControlProps> = ({
             name={field.id}
             type="email"
             placeholder={field.placeholder}
-            value={(value as string) ?? ''}
-            onChange={(event) => handleChange(event.target.value)}
+            value={(localValue as string) ?? ''}
+            onChange={(event) => setLocalValue(event.target.value)}
+            onBlur={() => handleChange(localValue)}
             className="h-12 rounded-xl border-slate-200 focus:ring-primary"
           />
         );
@@ -569,8 +593,9 @@ export const FieldControl: React.FC<FieldControlProps> = ({
             name={field.id}
             type="tel"
             placeholder={field.placeholder}
-            value={(value as string) ?? ''}
-            onChange={(event) => handleChange(event.target.value)}
+            value={(localValue as string) ?? ''}
+            onChange={(event) => setLocalValue(event.target.value)}
+            onBlur={() => handleChange(localValue)}
             className="h-12 rounded-xl border-slate-200 focus:ring-primary"
           />
         );
@@ -583,8 +608,9 @@ export const FieldControl: React.FC<FieldControlProps> = ({
             name={field.id}
             type={field.type === 'number' ? 'number' : 'text'}
             placeholder={field.placeholder}
-            value={(value as string) ?? ''}
-            onChange={(event) => handleChange(event.target.value)}
+            value={(localValue as string) ?? ''}
+            onChange={(event) => setLocalValue(event.target.value)}
+            onBlur={() => handleChange(localValue)}
             className="h-12 rounded-xl border-slate-200 focus:ring-primary"
           />
         );

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useFormContext, type FormData } from '@/contexts/FormContext';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Scan, ChevronLeft, ChevronRight } from 'lucide-react';

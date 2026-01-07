@@ -6,29 +6,10 @@ import {
   type User,
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
-import { getFirebaseAuth, getDb } from '@/lib/firebase';
+import { getFirebaseAuth, getDb } from '@/services/firebase';
 import { getOrgSettings, type OrgSettings } from '@/services/organizations';
-
-export type UserRole = 'org_admin' | 'coach';
-
-export interface UserProfile {
-  uid: string;
-  organizationId: string;
-  role: UserRole;
-  displayName: string;
-}
-
-interface AuthContextValue {
-  user: User | null;
-  profile: UserProfile | null;
-  orgSettings: OrgSettings | null;
-  loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signOut: () => Promise<void>;
-  refreshSettings: () => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+import type { UserRole, UserProfile } from '@/types/auth';
+import { AuthContext } from '@/hooks/useAuth';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -93,7 +74,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setOrgSettings({
               name: 'Organization Name',
               brandColor: '#03dee2', // Use a default brand color instead of indigo
-              modules: { inbody: true, posture: true, movement: true, fitness: true, strength: true, lifestyle: true }
+              modules: { 
+                parq: true,
+                inbody: true, 
+                fitness: true, 
+                posture: true, 
+                overheadSquat: true,
+                hinge: true,
+                lunge: true,
+                mobility: true,
+                strength: true, 
+                lifestyle: true 
+              }
             });
           }
 
@@ -129,12 +121,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext);
-  if (!ctx) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return ctx;
-}
+
 
 

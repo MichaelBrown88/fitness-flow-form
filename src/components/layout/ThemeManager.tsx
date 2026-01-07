@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { getGradient, type GradientId } from '@/lib/design/gradients';
 
 /**

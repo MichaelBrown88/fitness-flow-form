@@ -133,7 +133,7 @@ export function GapAnalysis({ scores, formData }: GapAnalysisProps) {
     let currentValue = 'N/A';
     let currentLabel = 'Not measured';
     let currentColor = 'gray';
-    let currentPushups = pushups;
+    const currentPushups = pushups;
     
     // Get age for normative comparison
     const age = formData?.dateOfBirth ? calculateAge(formData.dateOfBirth) : 0;

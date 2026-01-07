@@ -6,7 +6,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { doc, setDoc, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getStorage, db } from '@/services/firebase';
 import { updatePostureImage, updateInBodyImage } from '@/services/liveSessions';
 import { processInBodyScan } from '@/lib/ai/ocrEngine';
 import { LandmarkResult } from '@/lib/ai/postureLandmarks';

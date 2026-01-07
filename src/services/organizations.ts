@@ -1,6 +1,6 @@
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { getDb, getStorage } from '@/lib/firebase';
+import { getDb, getStorage } from '@/services/firebase';
 import { sanitizeForFirestore } from '@/lib/utils/firebaseUtils';
 
 import type { GripStrengthMethod, BodyCompositionMethod, SkinfoldMethod } from '@/lib/utils/measurementConverters';

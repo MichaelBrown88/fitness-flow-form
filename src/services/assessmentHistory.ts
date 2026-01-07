@@ -1,8 +1,8 @@
-import { 
-  doc, 
-  getDoc, 
-  setDoc, 
-  updateDoc, 
+import {
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
   collection,
   addDoc,
   query,
@@ -11,20 +11,33 @@ import {
   limit,
   getDocs,
   serverTimestamp,
-  Timestamp 
-} from 'firebase/firestore';
-import { getDb } from '@/lib/firebase';
-import type { FormData } from '@/contexts/FormContext';
-import { sanitizeForFirestore } from '@/lib/utils/firebaseUtils';
-import { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
+  Timestamp,
+} from "firebase/firestore";
+import { getDb } from "@/services/firebase";
+import type { FormData } from "@/contexts/FormContext";
+import { sanitizeForFirestore } from "@/lib/utils/firebaseUtils";
+import { PostureAnalysisResult } from "@/lib/ai/postureAnalysis";
 
-export type FormValue = string | number | boolean | null | string[] | Record<string, string> | Record<string, PostureAnalysisResult>;
+export type FormValue =
+  | string
+  | number
+  | boolean
+  | null
+  | string[]
+  | Record<string, string>
+  | Record<string, PostureAnalysisResult>;
 
 export type AssessmentChange = {
   id?: string;
   timestamp: Timestamp;
-  type: 'full' | 'partial-inbody' | 'partial-posture' | 'partial-fitness' | 'partial-strength' | 'partial-lifestyle';
-  category: 'inbody' | 'posture' | 'fitness' | 'strength' | 'lifestyle' | 'all';
+  type:
+    | "full"
+    | "partial-inbody"
+    | "partial-posture"
+    | "partial-fitness"
+    | "partial-strength"
+    | "partial-lifestyle";
+  category: "inbody" | "posture" | "fitness" | "strength" | "lifestyle" | "all";
   changes: Record<string, { old: FormValue; new: FormValue }>;
   updatedBy: string;
 };
@@ -32,25 +45,47 @@ export type AssessmentChange = {
 export type AssessmentSnapshot = {
   id?: string;
   timestamp: Timestamp;
-  type: 'monthly' | 'full-assessment' | 'manual';
+  type: "monthly" | "full-assessment" | "manual";
   formData: FormData;
   overallScore: number;
   notes?: string;
 };
 
 const getClientSlug = (clientName: string) => {
-  const safeName = (clientName || 'unnamed-client').trim() || 'unnamed-client';
-  return safeName.toLowerCase().replace(/\s+/g, '-');
+  const safeName = (clientName || "unnamed-client").trim() || "unnamed-client";
+  return safeName.toLowerCase().replace(/\s+/g, "-");
 };
 
 const getCurrentAssessmentDoc = (coachUid: string, clientName: string) =>
-  doc(getDb(), 'coaches', coachUid, 'assessments', getClientSlug(clientName), 'current', 'data');
+  doc(
+    getDb(),
+    "coaches",
+    coachUid,
+    "assessments",
+    getClientSlug(clientName),
+    "current",
+    "data"
+  );
 
 const getHistoryCollection = (coachUid: string, clientName: string) =>
-  collection(getDb(), 'coaches', coachUid, 'assessments', getClientSlug(clientName), 'history');
+  collection(
+    getDb(),
+    "coaches",
+    coachUid,
+    "assessments",
+    getClientSlug(clientName),
+    "history"
+  );
 
 const getSnapshotsCollection = (coachUid: string, clientName: string) =>
-  collection(getDb(), 'coaches', coachUid, 'assessments', getClientSlug(clientName), 'snapshots');
+  collection(
+    getDb(),
+    "coaches",
+    coachUid,
+    "assessments",
+    getClientSlug(clientName),
+    "snapshots"
+  );
 
 /**
  * Get the current assessment for a client
@@ -58,8 +93,13 @@ const getSnapshotsCollection = (coachUid: string, clientName: string) =>
 export async function getCurrentAssessment(
   coachUid: string,
   clientName: string,
-  organizationId?: string,
-): Promise<{ formData: FormData; overallScore: number; lastUpdated: Timestamp | null; organizationId?: string } | null> {
+  organizationId?: string
+): Promise<{
+  formData: FormData;
+  overallScore: number;
+  lastUpdated: Timestamp | null;
+  organizationId?: string;
+} | null> {
   const ref = getCurrentAssessmentDoc(coachUid, clientName);
   const snap = await getDoc(ref);
   if (!snap.exists()) return null;
@@ -69,16 +109,22 @@ export async function getCurrentAssessment(
     lastUpdated?: Timestamp;
     organizationId?: string;
   };
-  
+
   // Security check: if organizationId is provided, verify it matches
-  if (organizationId && data.organizationId && data.organizationId !== organizationId) {
-    console.warn(`[SECURITY] Organization ID mismatch for client ${clientName}`);
+  if (
+    organizationId &&
+    data.organizationId &&
+    data.organizationId !== organizationId
+  ) {
+    console.warn(
+      `[SECURITY] Organization ID mismatch for client ${clientName}`
+    );
     return null;
   }
 
   return {
     formData: (data.formData as FormData) ?? ({} as FormData),
-    overallScore: typeof data.overallScore === 'number' ? data.overallScore : 0,
+    overallScore: typeof data.overallScore === "number" ? data.overallScore : 0,
     lastUpdated: (data.lastUpdated as Timestamp | undefined) ?? null,
     organizationId: data.organizationId,
   };
@@ -90,63 +136,112 @@ export async function getCurrentAssessment(
 function calculateChanges(
   oldData: FormData,
   newData: FormData,
-  category?: 'inbody' | 'posture' | 'fitness' | 'strength' | 'lifestyle' | 'all',
+  category?: "inbody" | "posture" | "fitness" | "strength" | "lifestyle" | "all"
 ): Record<string, { old: FormValue; new: FormValue }> {
   const changes: Record<string, { old: FormValue; new: FormValue }> = {};
-  
+
   // Define field categories
   const categoryFields: Record<string, string[]> = {
     inbody: [
-      'inbodyWeightKg', 'inbodyBodyFatPct', 'bodyFatMassKg', 'inbodyBmi',
-      'visceralFatLevel', 'skeletalMuscleMassKg', 'totalBodyWaterL',
-      'waistHipRatio', 'segmentalArmRightKg', 'segmentalArmLeftKg',
-      'segmentalLegRightKg', 'segmentalLegLeftKg', 'segmentalTrunkKg',
-      'bmrKcal', 'inbodyScore'
+      "inbodyWeightKg",
+      "inbodyBodyFatPct",
+      "bodyFatMassKg",
+      "inbodyBmi",
+      "visceralFatLevel",
+      "skeletalMuscleMassKg",
+      "totalBodyWaterL",
+      "waistHipRatio",
+      "segmentalArmRightKg",
+      "segmentalArmLeftKg",
+      "segmentalLegRightKg",
+      "segmentalLegLeftKg",
+      "segmentalTrunkKg",
+      "bmrKcal",
+      "inbodyScore",
     ],
     posture: [
-      'postureInputMode', 'postureAiResults', 'postureSeverity',
-      'postureForwardHead', 'postureRoundedShoulders', 'postureHeadOverall',
-      'postureShouldersOverall', 'postureBackOverall', 'postureHipsOverall',
-      'postureKneesOverall'
+      "postureInputMode",
+      "postureAiResults",
+      "postureSeverity",
+      "postureForwardHead",
+      "postureRoundedShoulders",
+      "postureHeadOverall",
+      "postureShouldersOverall",
+      "postureBackOverall",
+      "postureHipsOverall",
+      "postureKneesOverall",
     ],
     fitness: [
-      'cardioTestType', 'cardioTestSelected', 'cardioRestingHr',
-      'cardioPost1MinHr', 'cardioMedicationFlag', 'cardioFinalHeartRate',
-      'cardioVo2MaxEstimate', 'cardioTestInstructions', 'cardioNotes',
-      'ymcaStepHeight', 'ymcaMetronomeBpm', 'ymcaPreTestHeartRate',
-      'ymcaPost1MinHeartRate', 'ymcaRecoveryHeartRate1', 'ymcaRpe',
-      'ymcaNotes', 'treadmillProtocol', 'treadmillIncline', 'treadmillSpeed',
-      'treadmillDurationMin', 'treadmillFinalHeartRate', 'treadmillRpe',
-      'treadmillTerminationReason', 'treadmillNotes'
+      "cardioTestType",
+      "cardioTestSelected",
+      "cardioRestingHr",
+      "cardioPost1MinHr",
+      "cardioMedicationFlag",
+      "cardioFinalHeartRate",
+      "cardioVo2MaxEstimate",
+      "cardioTestInstructions",
+      "cardioNotes",
+      "ymcaStepHeight",
+      "ymcaMetronomeBpm",
+      "ymcaPreTestHeartRate",
+      "ymcaPost1MinHeartRate",
+      "ymcaRecoveryHeartRate1",
+      "ymcaRpe",
+      "ymcaNotes",
+      "treadmillProtocol",
+      "treadmillIncline",
+      "treadmillSpeed",
+      "treadmillDurationMin",
+      "treadmillFinalHeartRate",
+      "treadmillRpe",
+      "treadmillTerminationReason",
+      "treadmillNotes",
     ],
     strength: [
-      'pushupMaxReps', 'squatsOneMinuteReps', 'pushupsOneMinuteReps',
-      'gripLeftKg', 'gripRightKg', 'chairStandReps', 'dynamometerForce'
+      "pushupMaxReps",
+      "squatsOneMinuteReps",
+      "pushupsOneMinuteReps",
+      "gripLeftKg",
+      "gripRightKg",
+      "chairStandReps",
+      "dynamometerForce",
     ],
     lifestyle: [
-      'activityLevel', 'sleepDuration', 'sleepQuality', 'sleepConsistency',
-      'stressLevel', 'workHoursPerDay', 'nutritionHabits', 'hydrationHabits',
-      'stepsPerDay', 'sedentaryHours', 'caffeineCupsPerDay',
-      'alcoholFrequency', 'lastCaffeineIntake'
+      "activityLevel",
+      "sleepDuration",
+      "sleepQuality",
+      "sleepConsistency",
+      "stressLevel",
+      "workHoursPerDay",
+      "nutritionHabits",
+      "hydrationHabits",
+      "stepsPerDay",
+      "sedentaryHours",
+      "caffeineCupsPerDay",
+      "alcoholFrequency",
+      "lastCaffeineIntake",
     ],
   };
-  
-  const fieldsToCheck = category 
+
+  const fieldsToCheck = category
     ? categoryFields[category] || []
     : Object.keys(newData);
-  
+
   for (const field of fieldsToCheck) {
     const oldValue = oldData[field as keyof FormData];
     const newValue = newData[field as keyof FormData];
-    
-    if (oldValue !== newValue && (oldValue !== undefined || newValue !== undefined)) {
+
+    if (
+      oldValue !== newValue &&
+      (oldValue !== undefined || newValue !== undefined)
+    ) {
       changes[field] = {
         old: oldValue ?? null,
         new: newValue ?? null,
       };
     }
   }
-  
+
   return changes;
 }
 
@@ -158,42 +253,54 @@ export async function updateCurrentAssessment(
   clientName: string,
   formData: FormData,
   overallScore: number,
-  changeType: AssessmentChange['type'],
-  category?: AssessmentChange['category'],
-  organizationId?: string,
+  changeType: AssessmentChange["type"],
+  category?: AssessmentChange["category"],
+  organizationId?: string
 ): Promise<void> {
   // Get current assessment
-  const current = await getCurrentAssessment(coachUid, clientName, organizationId);
+  const current = await getCurrentAssessment(
+    coachUid,
+    clientName,
+    organizationId
+  );
   const oldData = current?.formData ?? ({} as FormData);
-  
+
   // Use organizationId from current doc if not provided
   const finalOrgId = organizationId || current?.organizationId || null;
-  
+
   // Calculate changes - filter out 'all' category for calculateChanges
-  const changes = calculateChanges(oldData, formData, category === 'all' ? undefined : category);
-  
+  const changes = calculateChanges(
+    oldData,
+    formData,
+    category === "all" ? undefined : category
+  );
+
   // If no changes, skip update
   if (Object.keys(changes).length === 0) {
     return;
   }
-  
+
   // Update current assessment
   const currentRef = getCurrentAssessmentDoc(coachUid, clientName);
   // Saving current assessment
   try {
-    await setDoc(currentRef, {
-      formData: sanitizeForFirestore(formData),
-      overallScore: overallScore ?? 0,
-      lastUpdated: serverTimestamp(),
-      clientName: clientName || 'Unnamed client',
-      organizationId: finalOrgId,
-    }, { merge: false }); // Overwrite completely
+    await setDoc(
+      currentRef,
+      {
+        formData: sanitizeForFirestore(formData),
+        overallScore: overallScore ?? 0,
+        lastUpdated: serverTimestamp(),
+        clientName: clientName || "Unnamed client",
+        organizationId: finalOrgId,
+      },
+      { merge: false }
+    ); // Overwrite completely
     // Current assessment saved
   } catch (err) {
     console.error(`[SYNC] ✗ Failed to save current assessment:`, err);
     throw err;
   }
-  
+
   // Log change to history
   const historyRef = getHistoryCollection(coachUid, clientName);
   // Logging change to history
@@ -201,9 +308,9 @@ export async function updateCurrentAssessment(
     await addDoc(historyRef, {
       timestamp: serverTimestamp(),
       type: changeType,
-      category: category || 'all',
+      category: category || "all",
       changes: sanitizeForFirestore(changes),
-      updatedBy: coachUid || 'unknown',
+      updatedBy: coachUid || "unknown",
       organizationId: finalOrgId,
     });
     // History log created
@@ -211,18 +318,30 @@ export async function updateCurrentAssessment(
     console.warn(`[SYNC] ✗ Failed to log history (non-critical):`, err);
     // Don't throw for history log failure, but log it
   }
-  
+
   // Check if we should create a snapshot (monthly, full assessment, or partial update)
   const now = new Date();
-  const shouldCreateSnapshot = 
-    changeType === 'full' ||
-    changeType.startsWith('partial-') || // Create snapshots for partial updates too
+  const shouldCreateSnapshot =
+    changeType === "full" ||
+    changeType.startsWith("partial-") || // Create snapshots for partial updates too
     (now.getDate() === 1 && !current?.lastUpdated); // First of month
-  
+
   if (shouldCreateSnapshot) {
-    const snapshotType = changeType === 'full' ? 'full-assessment' : 
-                        changeType.startsWith('partial-') ? 'manual' : 'monthly';
-    await createSnapshot(coachUid, clientName, formData, overallScore, snapshotType, undefined, finalOrgId || undefined);
+    const snapshotType =
+      changeType === "full"
+        ? "full-assessment"
+        : changeType.startsWith("partial-")
+        ? "manual"
+        : "monthly";
+    await createSnapshot(
+      coachUid,
+      clientName,
+      formData,
+      overallScore,
+      snapshotType,
+      undefined,
+      finalOrgId || undefined
+    );
   }
 }
 
@@ -234,9 +353,9 @@ export async function createSnapshot(
   clientName: string,
   formData: FormData,
   overallScore: number,
-  snapshotType: AssessmentSnapshot['type'] = 'manual',
+  snapshotType: AssessmentSnapshot["type"] = "manual",
   notes?: string,
-  organizationId?: string,
+  organizationId?: string
 ): Promise<string> {
   const snapshotsRef = getSnapshotsCollection(coachUid, clientName);
   const docRef = await addDoc(snapshotsRef, {
@@ -256,25 +375,25 @@ export async function createSnapshot(
 export async function getChangeHistory(
   coachUid: string,
   clientName: string,
-  limitCount: number = 100,
+  limitCount: number = 100
 ): Promise<AssessmentChange[]> {
   const historyRef = getHistoryCollection(coachUid, clientName);
-  const q = query(historyRef, orderBy('timestamp', 'desc'), limit(limitCount));
+  const q = query(historyRef, orderBy("timestamp", "desc"), limit(limitCount));
   const snap = await getDocs(q);
-  
+
   const changes: AssessmentChange[] = [];
   snap.forEach((docSnap) => {
     const data = docSnap.data() as Partial<AssessmentChange>;
     changes.push({
       id: docSnap.id,
       timestamp: (data.timestamp as Timestamp) ?? Timestamp.now(),
-      type: data.type as AssessmentChange['type'],
-      category: data.category as AssessmentChange['category'],
+      type: data.type as AssessmentChange["type"],
+      category: data.category as AssessmentChange["category"],
       changes: data.changes ?? {},
-      updatedBy: data.updatedBy ?? '',
+      updatedBy: data.updatedBy ?? "",
     });
   });
-  
+
   return changes;
 }
 
@@ -285,37 +404,38 @@ export async function getSnapshots(
   coachUid: string,
   clientName: string,
   limitCount: number = 50,
-  organizationId?: string,
+  organizationId?: string
 ): Promise<AssessmentSnapshot[]> {
   const snapshotsRef = getSnapshotsCollection(coachUid, clientName);
-  
+
   let q;
   if (organizationId) {
     q = query(
-      snapshotsRef, 
-      where('organizationId', '==', organizationId),
-      orderBy('timestamp', 'desc'), 
+      snapshotsRef,
+      where("organizationId", "==", organizationId),
+      orderBy("timestamp", "desc"),
       limit(limitCount)
     );
   } else {
-    q = query(snapshotsRef, orderBy('timestamp', 'desc'), limit(limitCount));
+    q = query(snapshotsRef, orderBy("timestamp", "desc"), limit(limitCount));
   }
-  
+
   const snap = await getDocs(q);
-  
+
   const snapshots: AssessmentSnapshot[] = [];
   snap.forEach((docSnap) => {
     const data = docSnap.data() as Partial<AssessmentSnapshot>;
     snapshots.push({
       id: docSnap.id,
       timestamp: (data.timestamp as Timestamp) ?? Timestamp.now(),
-      type: data.type as AssessmentSnapshot['type'],
+      type: data.type as AssessmentSnapshot["type"],
       formData: (data.formData as FormData) ?? ({} as FormData),
-      overallScore: typeof data.overallScore === 'number' ? data.overallScore : 0,
+      overallScore:
+        typeof data.overallScore === "number" ? data.overallScore : 0,
       notes: data.notes,
     });
   });
-  
+
   return snapshots;
 }
 
@@ -326,40 +446,56 @@ export async function reconstructAssessmentAtDate(
   coachUid: string,
   clientName: string,
   targetDate: Date,
-  organizationId?: string,
+  organizationId?: string
 ): Promise<{ formData: FormData; overallScore: number } | null> {
   const targetTimestamp = Timestamp.fromDate(targetDate);
-  
+
   // Find nearest snapshot before target date
-  const snapshots = await getSnapshots(coachUid, clientName, 100, organizationId);
+  const snapshots = await getSnapshots(
+    coachUid,
+    clientName,
+    100,
+    organizationId
+  );
   const nearestSnapshot = snapshots
-    .filter(s => s.timestamp.toDate() <= targetDate)
+    .filter((s) => s.timestamp.toDate() <= targetDate)
     .sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis())[0];
-  
+
   // Start with snapshot or empty
-  let reconstructedData: FormData = nearestSnapshot?.formData ?? ({} as FormData);
+  const reconstructedData: FormData =
+    nearestSnapshot?.formData ?? ({} as FormData);
   let reconstructedScore = nearestSnapshot?.overallScore ?? 0;
-  
+
   // Get all changes between snapshot and target date
   const historyRef = getHistoryCollection(coachUid, clientName);
   let q;
   if (organizationId) {
     q = query(
       historyRef,
-      where('organizationId', '==', organizationId),
-      where('timestamp', '>', nearestSnapshot?.timestamp ?? Timestamp.fromDate(new Date(0))),
-      where('timestamp', '<=', targetTimestamp),
-      orderBy('timestamp', 'asc')
+      where("organizationId", "==", organizationId),
+      where(
+        "timestamp",
+        ">",
+        nearestSnapshot?.timestamp ?? Timestamp.fromDate(new Date(0))
+      ),
+      where("timestamp", "<=", targetTimestamp),
+      orderBy("timestamp", "asc"),
+      limit(100)
     );
   } else {
     q = query(
-    historyRef,
-    where('timestamp', '>', nearestSnapshot?.timestamp ?? Timestamp.fromDate(new Date(0))),
-    where('timestamp', '<=', targetTimestamp),
-    orderBy('timestamp', 'asc')
-  );
+      historyRef,
+      where(
+        "timestamp",
+        ">",
+        nearestSnapshot?.timestamp ?? Timestamp.fromDate(new Date(0))
+      ),
+      where("timestamp", "<=", targetTimestamp),
+      orderBy("timestamp", "asc"),
+      limit(100)
+    );
   }
-  
+
   const changesSnap = await getDocs(q);
   const changes: AssessmentChange[] = [];
   changesSnap.forEach((docSnap) => {
@@ -367,31 +503,32 @@ export async function reconstructAssessmentAtDate(
     changes.push({
       id: docSnap.id,
       timestamp: (data.timestamp as Timestamp) ?? Timestamp.now(),
-      type: data.type as AssessmentChange['type'],
-      category: data.category as AssessmentChange['category'],
+      type: data.type as AssessmentChange["type"],
+      category: data.category as AssessmentChange["category"],
       changes: data.changes ?? {},
-      updatedBy: data.updatedBy ?? '',
+      updatedBy: data.updatedBy ?? "",
     });
   });
-  
+
   // Apply changes chronologically
   for (const change of changes) {
     for (const [field, values] of Object.entries(change.changes)) {
       if (field in reconstructedData) {
-        (reconstructedData as unknown as Record<string, FormValue>)[field] = values.new;
+        (reconstructedData as unknown as Record<string, FormValue>)[field] =
+          values.new;
       }
     }
   }
-  
+
   // Recalculate score if we have the computeScores function available
   try {
-    const { computeScores } = await import('@/lib/scoring');
+    const { computeScores } = await import("@/lib/scoring");
     const scores = computeScores(reconstructedData);
     reconstructedScore = scores.overall;
   } catch (e) {
-    console.warn('Could not recalculate score:', e);
+    console.warn("Could not recalculate score:", e);
   }
-  
+
   return {
     formData: reconstructedData,
     overallScore: reconstructedScore,
@@ -405,32 +542,39 @@ export async function reconstructAssessmentAtDate(
 export async function updatePostureAnalysis(
   coachUid: string,
   clientName: string,
-  view: 'front' | 'back' | 'side-left' | 'side-right',
+  view: "front" | "back" | "side-left" | "side-right",
   analysis: PostureAnalysisResult,
-  organizationId?: string,
+  organizationId?: string
 ): Promise<void> {
   const currentRef = getCurrentAssessmentDoc(coachUid, clientName);
   const currentSnap = await getDoc(currentRef);
-  
+
   if (!currentSnap.exists()) {
     throw new Error(`No current assessment found for client ${clientName}`);
   }
-  
-  const currentData = currentSnap.data() as { formData?: FormData; organizationId?: string };
-  
+
+  const currentData = currentSnap.data() as {
+    formData?: FormData;
+    organizationId?: string;
+  };
+
   // Security check
-  if (organizationId && currentData.organizationId && currentData.organizationId !== organizationId) {
-    throw new Error('Organization ID mismatch');
+  if (
+    organizationId &&
+    currentData.organizationId &&
+    currentData.organizationId !== organizationId
+  ) {
+    throw new Error("Organization ID mismatch");
   }
-  
+
   const formData = currentData.formData || ({} as FormData);
   const updatedPostureResults = {
     ...(formData.postureAiResults || {}),
     [view]: analysis,
   };
-  
+
   await updateDoc(currentRef, {
-    'formData.postureAiResults': sanitizeForFirestore(updatedPostureResults),
+    "formData.postureAiResults": sanitizeForFirestore(updatedPostureResults),
   });
 }
 
@@ -440,23 +584,25 @@ export async function updatePostureAnalysis(
 export function compareAssessments(
   oldData: FormData,
   newData: FormData,
-  _category?: string,
+  _category?: string
 ): Record<string, { old: FormValue; new: FormValue; changed: boolean }> {
-  const comparison: Record<string, { old: FormValue; new: FormValue; changed: boolean }> = {};
+  const comparison: Record<
+    string,
+    { old: FormValue; new: FormValue; changed: boolean }
+  > = {};
   const allFields = new Set([...Object.keys(oldData), ...Object.keys(newData)]);
-  
+
   for (const field of allFields) {
     const oldValue = oldData[field as keyof FormData] as FormValue;
     const newValue = newData[field as keyof FormData] as FormValue;
     const changed = oldValue !== newValue;
-    
+
     comparison[field] = {
       old: oldValue ?? null,
       new: newValue ?? null,
       changed,
     };
   }
-  
+
   return comparison;
 }
-

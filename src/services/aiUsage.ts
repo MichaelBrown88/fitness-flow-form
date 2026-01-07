@@ -1,5 +1,5 @@
 import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
-import { getDb } from '@/lib/firebase';
+import { getDb } from '@/services/firebase';
 
 export type AIUsageType = 'ocr_inbody' | 'posture_analysis' | 'exercise_recommendation';
 export type AIUsageStatus = 'local_success' | 'ai_fallback' | 'ai_success' | 'error';
@@ -72,7 +72,7 @@ export async function getAIUsageStats(
   const startTime = new Date();
   startTime.setDate(startTime.getDate() - days);
   
-  let q = query(
+  const q = query(
     usageRef,
     where('coachUid', '==', coachUid),
     where('timestamp', '>=', Timestamp.fromDate(startTime)),

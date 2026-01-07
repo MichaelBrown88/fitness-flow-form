@@ -22,7 +22,7 @@ import {
   X
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import type { InBodyCompanionData } from '@/lib/types/companion';
 

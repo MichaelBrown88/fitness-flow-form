@@ -6,7 +6,7 @@
  * 3. How we'll help (Blueprint, Sample Workout, Timeline)
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, lazy, Suspense } from 'react';
 import type { FormData } from '@/contexts/FormContext';
 import type { ScoreSummary } from '@/lib/scoring';
 import type { CoachPlan } from '@/lib/recommendations';
@@ -20,13 +20,13 @@ import { Badge } from '@/components/ui/badge';
 import { 
   Scale, Dumbbell, Heart, CheckCircle2, AlertCircle,
   Activity, BarChart3, Target, Trophy, Clock, 
-  Flame, Zap, Lock, MessageSquare, Repeat, Play, ArrowRight, Lightbulb
+  Flame, Zap, Lock, MessageSquare, Repeat, Play, ArrowRight, Lightbulb, Loader2
 } from 'lucide-react';
 import { CATEGORY_ORDER, circleColor, niceLabel } from './ClientReportConstants';
 import { useGapAnalysisData } from './useGapAnalysisData';
 import { LifestyleFactorsBar } from './LifestyleFactorsBar';
 import { MovementPostureMobility } from './MovementPostureMobility';
-import CoachReport from './CoachReport';
+const CoachReport = lazy(() => import('./CoachReport'));
 import { generateBodyCompInterpretation } from '@/lib/recommendations';
 import { calculateAge } from '@/lib/scoring';
 import { calculateBodyRecomposition, getTargetBodyFatFromLevel, getBodyFatRange } from '@/lib/utils/bodyRecomposition';
@@ -48,12 +48,17 @@ export default function ClientReport({
   previousScores?: ScoreSummary | null;
   standalone?: boolean;
 }) {
+  const safeScores = useMemo(() => {
+    if (scores && scores.categories) return scores;
+    return { overall: 0, categories: [], grade: 'N/A', percentile: 0 } as unknown as ScoreSummary;
+  }, [scores]);
+
   const orderedCats = useMemo(
-    () => scores?.categories ? CATEGORY_ORDER.map(id => scores.categories.find(c => c.id === (id as 'bodyComp' | 'strength' | 'cardio' | 'movementQuality' | 'lifestyle'))).filter(Boolean) as ScoreSummary['categories'] : [],
-    [scores?.categories]
+    () => safeScores.categories ? CATEGORY_ORDER.map(id => safeScores.categories.find(c => c.id === (id as 'bodyComp' | 'strength' | 'cardio' | 'movementQuality' | 'lifestyle'))).filter(Boolean) as ScoreSummary['categories'] : [],
+    [safeScores.categories]
   );
   
-  const archetype = useMemo(() => determineArchetype(scores, formData), [scores, formData]);
+  const archetype = useMemo(() => determineArchetype(safeScores, formData), [safeScores, formData]);
   
   // Strengths and areas for improvement - only show if data is consistent
   const strengths = useMemo(() => {
@@ -175,7 +180,7 @@ export default function ClientReport({
     let muscleWeeks = Math.ceil(muscleTargetKg / muscleRate);
     
     // Reduce timeline if they are already strong/athletic (muscle gain is more about refinement)
-    const strengthScore = scores.categories.find(c => c.id === 'strength')?.score || 0;
+    const strengthScore = safeScores.categories.find(c => c.id === 'strength')?.score || 0;
     if (strengthScore > 70 && history !== 'beginner') muscleWeeks = Math.round(muscleWeeks * 0.7);
     
     const levelST = formData?.goalLevelStrength || '30';
@@ -216,7 +221,7 @@ export default function ClientReport({
       map[cat.id] = base;
     }
     return map;
-  }, [orderedCats, formData]);
+  }, [orderedCats, formData, goals, isBodyRecomp, safeScores.categories]);
   
   const maxWeeks = useMemo(() => Math.max(...orderedCats.map(c => weeksByCategory[c.id] ?? 0), 0), [orderedCats, weeksByCategory]);
   
@@ -244,14 +249,7 @@ export default function ClientReport({
     return hasBodyComp || hasStrength || hasCardio || hasPosture || hasLifestyle;
   }, [formData]);
   
-  if (!scores || !scores.categories || scores.categories.length === 0 || !hasAnyData) {
-    return (
-      <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-        <p className="font-semibold mb-2">No assessment data available</p>
-        <p>Please complete at least one section of the assessment to generate a report.</p>
-      </div>
-    );
-  }
+
   
   // Prepare radar chart data - use full labels
   const overallRadarData = useMemo(() => {
@@ -279,7 +277,7 @@ export default function ClientReport({
   }, [previousScores]);
 
   // Get gap analysis data
-  const gapAnalysisData = useGapAnalysisData(scores, formData);
+  const gapAnalysisData = useGapAnalysisData(safeScores, formData);
   
   // Format date
   const reportDate = useMemo(() => {
@@ -289,9 +287,9 @@ export default function ClientReport({
 
   // Get blueprint pillars data - ordered and deduplicated
   const blueprintPillars = useMemo(() => {
-    const movement = scores.categories.find(c => c.id === 'movementQuality') || { score: 0 };
-    const bodyComp = scores.categories.find(c => c.id === 'bodyComp') || { score: 0 };
-    const strength = scores.categories.find(c => c.id === 'strength') || { score: 0 };
+    const movement = safeScores.categories.find(c => c.id === 'movementQuality') || { score: 0 };
+    const bodyComp = safeScores.categories.find(c => c.id === 'bodyComp') || { score: 0 };
+    const strength = safeScores.categories.find(c => c.id === 'strength') || { score: 0 };
     
     const headPos = Array.isArray(formData?.postureHeadOverall) ? formData.postureHeadOverall : [formData?.postureHeadOverall];
     const shoulderPos = Array.isArray(formData?.postureShouldersOverall) ? formData.postureShouldersOverall : [formData?.postureShouldersOverall];
@@ -434,12 +432,21 @@ export default function ClientReport({
     ).sort((a, b) => a.order - b.order);
     
     return uniquePillars.slice(0, 3);
-  }, [scores, formData]);
+  }, [safeScores, formData]);
   
   // Responsive container with proper padding and max-width
   const containerClass = standalone 
     ? "min-h-screen bg-zinc-50 text-zinc-900 px-4 sm:px-6 lg:px-12 py-6 sm:py-8 lg:py-12"
     : "w-full text-zinc-900";
+  if (!scores || !scores.categories || scores.categories.length === 0 || !hasAnyData) {
+    return (
+      <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        <p className="font-semibold mb-2">No assessment data available</p>
+        <p>Please complete at least one section of the assessment to generate a report.</p>
+      </div>
+    );
+  }
+
   const contentClass = standalone
     ? "max-w-[1400px] mx-auto space-y-12 md:space-y-16"
     : "space-y-12 md:space-y-16";
@@ -540,19 +547,26 @@ export default function ClientReport({
         
         {/* Show coach report or client report */}
         {activeView === 'coach' ? (
-          plan ? (
-            <CoachReport
-              plan={plan}
-              scores={scores}
-              bodyComp={formData ? generateBodyCompInterpretation(formData) : undefined}
-              formData={formData}
-            />
-          ) : (
-            <div className="bg-white rounded-xl p-8 border border-zinc-200">
-              <h2 className="text-xl font-bold text-zinc-900 mb-4">Coach Report</h2>
-              <p className="text-zinc-600">Generating coach plan...</p>
+          <Suspense fallback={
+            <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-zinc-200">
+              <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+              <p className="text-sm font-black uppercase tracking-widest text-zinc-400">Loading Coach Plan...</p>
             </div>
-          )
+          }>
+            {plan ? (
+              <CoachReport
+                plan={plan}
+                scores={scores}
+                bodyComp={formData ? generateBodyCompInterpretation(formData) : undefined}
+                formData={formData}
+              />
+            ) : (
+              <div className="bg-white rounded-xl p-8 border border-zinc-200">
+                <h2 className="text-xl font-bold text-zinc-900 mb-4">Coach Report</h2>
+                <p className="text-zinc-600">Generating coach plan...</p>
+              </div>
+            )}
+          </Suspense>
         ) : (
           <>
         
@@ -1129,7 +1143,7 @@ export default function ClientReport({
                 }
                 
                   // Get "What We'll Address" items
-                  const addressingItems: Array<{ icon: any; title: string; desc: string }> = [];
+                  const addressingItems: Array<{ icon: React.ElementType; title: string; desc: string }> = [];
                   
                   if (goal === 'weight-loss' || goal === 'body-recomposition') {
                     const bf = parseFloat(formData?.inbodyBodyFatPct || '0');
@@ -1280,7 +1294,7 @@ export default function ClientReport({
                         <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Sample Protocol</span>
                       </div>
                       <div className="space-y-3">
-                        {pillar.protocol.map((row: any, rIdx: number) => (
+                        {pillar.protocol.map((row: { name: string; setsReps: string }, rIdx: number) => (
                           <div key={rIdx} className="flex justify-between items-center text-xs">
                             <span className="font-bold text-zinc-700">{row.name}</span>
                             <span className="text-zinc-500 glass-label px-2.5 py-1 rounded">{row.setsReps}</span>

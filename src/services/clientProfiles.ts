@@ -1,5 +1,5 @@
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp, onSnapshot, Timestamp } from 'firebase/firestore';
-import { getDb } from '@/lib/firebase';
+import { getDb } from '@/services/firebase';
 
 export type ClientProfile = {
   clientName: string;

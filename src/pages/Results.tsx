@@ -114,14 +114,14 @@ const Results = () => {
   }, [computedResult]);
 
   const strengths = computedResult?.strengths ?? [];
-  const coachGuide = computedResult?.coachGuide ?? [];
 
   const coachGuideBySession = useMemo(() => {
-    if (!coachGuide.length) return {};
+    const list = computedResult?.coachGuide ?? [];
+    if (!list.length) return {};
 
-    const grouped: Record<string, typeof coachGuide> = {};
+    const grouped: Record<string, typeof list> = {};
 
-    for (const item of coachGuide) {
+    for (const item of list) {
       const category = categorizeExercise(item.action);
       if (!grouped[category]) {
         grouped[category] = [];
@@ -138,7 +138,7 @@ const Results = () => {
     }
 
     return grouped;
-  }, [coachGuide]);
+  }, [computedResult?.coachGuide]);
 
   if (loading) {
     return (

@@ -1,4 +1,4 @@
-import { getDb } from '@/lib/firebase';
+import { getDb } from '@/services/firebase';
 import { addDoc, collection, doc, getDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import type { FormData } from '@/contexts/FormContext';
 import type { AssessmentResult } from '@/lib/assessmentLogic';

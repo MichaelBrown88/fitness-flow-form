@@ -111,7 +111,7 @@ export function convertGripStrength(
       }
       return convertDeadHangToGripStrength(rawValue, bodyweightKg, gender);
       
-    case 'farmerswalk':
+    case 'farmerswalk': {
       const loadPerHand = metadata?.loadPerHandKg;
       const distance = metadata?.distanceMeters || rawValue; // If rawValue is distance
       const time = metadata?.timeSeconds;
@@ -124,6 +124,7 @@ export function convertGripStrength(
       // Convert time to number, defaulting to 60 if not provided or invalid
       const timeNum = typeof time === 'number' ? time : 60;
       return convertFarmersWalkToGripStrength(Number(distance), timeNum, loadPerHandNum, bodyweightKg);
+    }
       
     case 'platepinch':
       return convertPlatePinchToGripStrength(rawValue);

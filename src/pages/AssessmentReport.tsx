@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useCallback, useRef, lazy, Suspense } fro
 import { useNavigate, useParams } from 'react-router-dom';
 import AppShell from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { getCoachAssessment } from '@/services/coachAssessments';
 import { publishPublicReport } from '@/services/publicReports';
 import type { FormData } from '@/contexts/FormContext';
@@ -344,7 +344,7 @@ const AssessmentReport = () => {
         setLoadingData(false);
       }
     })();
-  }, [user, id]);
+  }, [user, id, profile?.organizationId]);
 
   useEffect(() => {
     setShareCache({ client: null, coach: null });

@@ -3,7 +3,7 @@ import { getApp } from "firebase/app";
 import { CONFIG } from '@/config';
 import { calculateFrontViewMetrics, calculateSideViewMetrics } from '@/lib/utils/postureMath';
 import { logAIUsage } from '@/services/aiUsage';
-import { auth } from '@/lib/firebase';
+import { getFirebaseFunctions, getStorage, auth } from '@/services/firebase';
 import { logger } from '@/lib/utils/logger';
 
 export interface PostureAnalysisResult {

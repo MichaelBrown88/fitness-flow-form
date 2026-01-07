@@ -94,7 +94,7 @@ export default function OverallRadarChart({ data, previousData }: OverallRadarCh
           <PolarGrid stroke="#e4e4e7" strokeDasharray="3 3" />
           <PolarAngleAxis
             dataKey="name"
-            tick={({ payload, x, y, textAnchor }: any) => {
+            tick={({ payload, x, y, textAnchor }: { payload: { value: string }; x: number; y: number; textAnchor: "start" | "middle" | "end" | "inherit" }) => {
               // Handle longer labels with better spacing
               const label = payload.value;
               const isLongLabel = label.length > 12;
@@ -123,7 +123,7 @@ export default function OverallRadarChart({ data, previousData }: OverallRadarCh
           {previousData && (
             <Radar
               name="Previous"
-              dataKey={(entry: any) => {
+              dataKey={(entry: RadarData) => {
                 const prev = previousData.find(p => p.name === entry.name);
                 return prev ? prev.value : 0;
               }}
@@ -140,7 +140,7 @@ export default function OverallRadarChart({ data, previousData }: OverallRadarCh
           {hasImprovements && previousData && (
             <Radar
               name="Improvement"
-              dataKey={(entry: any) => {
+              dataKey={(entry: RadarData) => {
                 const prev = previousData.find(p => p.name === entry.name);
                 if (!prev) return 0;
                 // For improved areas: show current value (green fills 0 to current)
@@ -172,7 +172,7 @@ export default function OverallRadarChart({ data, previousData }: OverallRadarCh
           {hasRegressions && previousData && (
             <Radar
               name="Regression"
-              dataKey={(entry: any) => {
+              dataKey={(entry: RadarData) => {
                 const prev = previousData.find(p => p.name === entry.name);
                 if (!prev) return 0;
                 // For regressed areas: show previous value (red fills 0 to previous)

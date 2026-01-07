@@ -1,4 +1,4 @@
-import { db, storage } from '@/lib/firebase';
+import { db, storage } from '@/services/firebase';
 import { 
   doc, 
   setDoc, 
@@ -407,7 +407,7 @@ export const reanalyzePostureImage = async (
     // Also update the assessment document if it exists
     try {
       const { updatePostureAnalysis } = await import('@/services/assessmentHistory');
-      const { auth } = await import('@/lib/firebase');
+      const { auth } = await import('@/services/firebase');
       const coachUid = auth.currentUser?.uid;
       
       if (coachUid && sessionData.clientId) {

@@ -35,7 +35,7 @@ import {
 } from 'lucide-react';
 
 // Generate client-friendly summary if overall_assessment is missing
-export function generateClientFriendlySummary(analysis: PostureAnalysisResult, view: string): string {
+function generateClientFriendlySummary(analysis: PostureAnalysisResult, view: string): string {
   const parts: string[] = [];
   
   // Front/Back view summaries
@@ -353,7 +353,7 @@ export function PostureAnalysisViewer({
             postureImages?.[view] || 
             postureImages?.[`postureImagesStorage_${view}`] ||
             postureImages?.[`postureImagesFull_${view}`] ||
-            (postureImages as any)?.[`postureImages_${view}`] ||
+            postureImages?.[`postureImages_${view}`] ||
             ''
           }
         />

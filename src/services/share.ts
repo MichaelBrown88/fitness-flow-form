@@ -1,5 +1,5 @@
 import { httpsCallable } from 'firebase/functions';
-import { getFirebaseFunctions } from '@/lib/firebase';
+import { getFirebaseFunctions, getDb } from '@/services/firebase';
 import { CONFIG } from '@/config';
 import { publishPublicReport } from './publicReports';
 
