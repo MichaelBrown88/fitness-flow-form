@@ -63,6 +63,12 @@ coverage/
 *.temp
 .cache/
 
+# Build cache
+.vite/
+
+# Generated files
+repomix-output.xml
+
 # Package manager lock files (optional - uncomment if you want to ignore them)
 # package-lock.json
 # yarn.lock
