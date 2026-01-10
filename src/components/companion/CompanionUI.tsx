@@ -214,12 +214,12 @@ export function CompanionUI({
       {/* Footer Controls */}
       <div className="absolute bottom-0 left-0 right-0 h-28 flex items-center justify-center z-40 px-6 pb-6">
         {mode === 'inbody' ? (
-          <button
-            onClick={onCapture}
+            <button
+              onClick={onCapture}
             className="h-16 w-16 rounded-full border-4 border-white bg-white/20 flex items-center justify-center"
-          >
-            <Camera className="h-6 w-6 text-white" />
-          </button>
+            >
+              <Camera className="h-6 w-6 text-white" />
+            </button>
         ) : !hasPermission ? (
           <Button onClick={requestPermission} className="bg-primary h-12 px-6 rounded-xl text-xs font-black uppercase">
             Enable Camera
@@ -237,8 +237,8 @@ export function CompanionUI({
             </Button>
 
             {/* Main capture button */}
-            <button
-              onClick={onStartSequence}
+                <button
+                  onClick={onStartSequence}
               disabled={!isVertical || isSequenceActive}
               className={`h-20 w-20 rounded-full border-4 flex items-center justify-center transition-all ${
                 isSequenceActive
@@ -246,8 +246,8 @@ export function CompanionUI({
                   : isVertical
                   ? 'border-white bg-white/20 active:scale-95'
                   : 'border-white/20 bg-white/5 opacity-50'
-              }`}
-            >
+                  }`}
+                >
               {isSequenceActive ? (
                 <Loader2 className="h-8 w-8 text-emerald-500 animate-spin" />
               ) : (

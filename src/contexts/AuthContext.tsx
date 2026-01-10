@@ -129,11 +129,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       organizationId: `org-${newUser.uid}`, // Initial org tied to user
       role: 'org_admin',
       displayName,
+      onboardingCompleted: false, // Explicitly set to false for new users
     };
     
     await setDoc(doc(db, 'userProfiles', newUser.uid), userProfile);
     
-    // Create initial organization document
+    // Create initial organization document (minimal, will be populated during onboarding)
     await setDoc(doc(db, 'organizations', `org-${newUser.uid}`), {
       name: '', // Will be set during onboarding
       ownerId: newUser.uid,
@@ -142,9 +143,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         status: 'trial',
         trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days
         billingEmail: email,
+        clientSeats: 10, // Default, will be updated in Phase 1
       },
-      onboardingCompleted: false,
       createdAt: new Date(),
+      // onboardingCompletedAt will be set when onboarding is complete
     });
     
     // State will be updated by onAuthStateChanged listener

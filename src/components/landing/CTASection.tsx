@@ -21,7 +21,7 @@ export function CTASection() {
           </h2>
           <p className="text-lg text-indigo-100 mb-10 max-w-2xl mx-auto">
             Join hundreds of fitness professionals who are saving time and delivering better results 
-            with AI-powered assessments.
+            with evidence-based assessments powered by our Clinical Logic Engine.
           </p>
           
           {user ? (
@@ -34,7 +34,7 @@ export function CTASection() {
           ) : (
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Button asChild size="lg" className="bg-white text-indigo-600 hover:bg-indigo-50 px-8 h-14 text-lg rounded-2xl shadow-xl">
-                <Link to="/signup">
+                <Link to="/onboarding">
                   Start Your Free Trial
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>

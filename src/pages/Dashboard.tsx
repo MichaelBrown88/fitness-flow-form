@@ -87,6 +87,27 @@ const Dashboard = () => {
   const { toast } = useToast();
   const [items, setItems] = useState<CoachAssessmentSummary[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+
+  // Redirect to onboarding if not completed
+  useEffect(() => {
+    if (!loading && user && profile && !profile.onboardingCompleted) {
+      // Double-check org status
+      import('firebase/firestore').then(({ getDoc, doc }) => {
+        import('@/services/firebase').then(({ getDb }) => {
+          getDoc(doc(getDb(), 'organizations', profile.organizationId)).then((orgDoc) => {
+            if (orgDoc.exists()) {
+              const orgData = orgDoc.data();
+              if (!orgData.onboardingCompletedAt) {
+                navigate('/onboarding', { replace: true });
+              }
+            } else {
+              navigate('/onboarding', { replace: true });
+            }
+          });
+        });
+      });
+    }
+  }, [loading, user, profile, navigate]);
   const [search, setSearch] = useState('');
   const [view, setView] = useState<'assessments' | 'clients'>('assessments');
   const [deleteDialog, setDeleteDialog] = useState<{ id: string; name: string } | null>(null);

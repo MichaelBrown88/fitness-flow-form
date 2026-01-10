@@ -71,31 +71,31 @@ export function useSequenceManager({
       onAudioFeedback?.(viewNames[idx] || views[idx]?.label || 'Next view');
 
       // Start countdown immediately (3 seconds)
-      setCountdown(3);
+        setCountdown(3);
       onAudioFeedback?.('3');
 
-      let count = 3;
-      countdownIntervalRef.current = setInterval(() => {
-        count -= 1;
-        if (count > 0) {
-          setCountdown(count);
-          onAudioFeedback?.(count.toString());
-        } else {
+        let count = 3;
+        countdownIntervalRef.current = setInterval(() => {
+          count -= 1;
+          if (count > 0) {
+            setCountdown(count);
+            onAudioFeedback?.(count.toString());
+          } else {
           // Countdown finished - capture!
-          setCountdown(null);
-          if (countdownIntervalRef.current) {
-            clearInterval(countdownIntervalRef.current);
-            countdownIntervalRef.current = null;
-          }
+            setCountdown(null);
+            if (countdownIntervalRef.current) {
+              clearInterval(countdownIntervalRef.current);
+              countdownIntervalRef.current = null;
+            }
           
           // Capture the image
           onCaptureRef.current(idx);
           
           // Reset after capture
-          setTimeout(() => {
+        setTimeout(() => {
             setIsSequenceActive(false);
           }, 500);
-        }
+          }
       }, 1000);
     },
     [mode, views, onAudioFeedback, resetSequence, setViewIdx]

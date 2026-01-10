@@ -3,219 +3,435 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import {
   OnboardingLayout,
+  WelcomeStep,
+  IdentityStep,
   BusinessInfoStep,
+  LocationStep,
+  MarketingStep,
   BrandingStep,
   EquipmentStep,
-  TeamSetupStep,
+  PackageSelectionStep,
   OnboardingSuccess,
 } from '@/components/onboarding';
 import type {
+  IdentityData,
   BusinessProfileData,
+  MarketingData,
   BrandingConfig,
   EquipmentConfig,
-  TeamSetupData,
   OnboardingData,
 } from '@/types/onboarding';
 import { BUSINESS_TYPES } from '@/types/onboarding';
 import { logger } from '@/lib/utils/logger';
-import { doc, updateDoc, setDoc } from 'firebase/firestore';
+import { isTestEmail, makeTestEmailUnique } from '@/lib/utils/testAccountHelper';
+import { doc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
 import { getDb } from '@/services/firebase';
 import { uploadOrgLogo } from '@/services/organizations';
+import { calculateMonthlyFee } from '@/lib/pricing';
+import type { SubscriptionPlan } from '@/lib/pricing';
 
 export default function Onboarding() {
-  const { user, profile, loading, refreshSettings } = useAuth();
+  const { user, profile, loading, refreshSettings, signUp, signIn } = useAuth();
   const navigate = useNavigate();
-  const [currentStep, setCurrentStep] = useState(0);
+  const [step, setStep] = useState(0); // 0 = welcome, 1-7 = steps, 8 = success
+  
+  // Debug: Log when component renders - NEW 8-STEP FLOW v2.0
+  useEffect(() => {
+    console.log('🎯 NEW ONBOARDING FLOW v2.0 LOADED: Current step =', step, '| Total steps: 8');
+  }, [step]);
   const [isComplete, setIsComplete] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savingMessage, setSavingMessage] = useState('Setting up your account...');
+  const [hasCheckedStatus, setHasCheckedStatus] = useState(false);
 
-  // Onboarding data state
+  // Onboarding data state - accumulates as user progresses
   const [onboardingData, setOnboardingData] = useState<Partial<OnboardingData>>({
+    identity: undefined,
     businessProfile: undefined,
+    marketing: undefined,
     branding: undefined,
     equipment: undefined,
-    teamSetup: undefined,
   });
 
-  // Redirect if not authenticated
+  // Check onboarding status and resume if needed (only if user is authenticated)
   useEffect(() => {
-    if (!loading && !user) {
-      navigate('/signup', { replace: true });
-    }
-  }, [user, loading, navigate]);
+    const checkOnboardingStatus = async () => {
+      if (loading) return;
+      // Don't check if user is actively progressing through onboarding (step > 0)
+      if (hasCheckedStatus && step > 0) return;
+      if (hasCheckedStatus && !user) return; // Already checked when unauthenticated
 
-  // Redirect if onboarding is already complete
-  useEffect(() => {
-    if (!loading && profile?.onboardingCompleted) {
-      navigate('/dashboard', { replace: true });
+      // If user just authenticated (hasCheckedStatus was false, now user exists)
+      // and we're past the welcome screen, don't reset - they're in the middle of onboarding
+      if (user && profile && step > 1) {
+        setHasCheckedStatus(true);
+        return; // Don't reset, let them continue
+      }
+
+      // If user is authenticated, check their onboarding status
+      if (user && profile) {
+        try {
+          const orgDoc = await getDoc(doc(getDb(), 'organizations', profile.organizationId));
+          if (orgDoc.exists()) {
+            const orgData = orgDoc.data();
+
+            // If fully complete, redirect to dashboard
+            if (orgData.onboardingCompletedAt || profile.onboardingCompleted) {
+              navigate('/dashboard', { replace: true });
+              setHasCheckedStatus(true);
+              return;
+            }
+
+            // If partially complete but user is already progressing, don't reset
+            if (step > 0) {
+              setHasCheckedStatus(true);
+              return;
+            }
+
+            // Otherwise, start fresh
+            setStep(0);
+            setHasCheckedStatus(true);
+          } else {
+            // New user, but if already on a step, don't reset
+            if (step > 0) {
+              setHasCheckedStatus(true);
+              return;
+            }
+            setStep(0);
+            setHasCheckedStatus(true);
+          }
+        } catch (error) {
+          logger.error('Failed to check onboarding status:', error);
+          if (step === 0) {
+            setStep(0);
+          }
+          setHasCheckedStatus(true);
+        }
+      } else {
+        // Not authenticated yet - allow them to start onboarding (will create account at step 1)
+        if (step === 0) {
+          setStep(0);
+        }
+        setHasCheckedStatus(true);
+      }
+    };
+
+    checkOnboardingStatus();
+  }, [user, profile, loading, navigate, hasCheckedStatus, step]);
+
+  // Note: We allow unauthenticated users to start onboarding (they'll create account after step 1)
+
+  // Step handlers
+  const handleWelcomeNext = () => {
+    setStep(1);
+  };
+
+  const handleIdentityNext = async (data: IdentityData) => {
+    // Save identity data
+    setOnboardingData((prev) => ({ ...prev, identity: data }));
+
+    // If user is not authenticated, create account now (or sign in if email exists)
+    if (!user) {
+      try {
+        setSaving(true);
+        setSavingMessage('Creating your account...');
+        
+        const originalEmail = data.email.trim();
+        
+        // Try to create account with original email first
+        try {
+          await signUp(
+            originalEmail,
+            data.password,
+            `${data.firstName} ${data.lastName}`.trim()
+          );
+          
+          logger.info('Account created successfully, continuing onboarding');
+          setSaving(false);
+          setSavingMessage(''); // Clear any error messages
+          setStep(2); // Continue to business info step
+        } catch (signUpError: unknown) {
+          // Check if error is "email already in use"
+          const errorCode = signUpError && typeof signUpError === 'object' && 'code' in signUpError 
+            ? (signUpError as { code: string }).code 
+            : null;
+          
+          if (errorCode === 'auth/email-already-in-use') {
+            // For test emails in development, try making it unique and retry signup
+            if (import.meta.env.DEV && isTestEmail(originalEmail)) {
+              const uniqueEmail = makeTestEmailUnique(originalEmail);
+              logger.debug(`Test email already in use, trying unique version: ${uniqueEmail}`);
+              setSavingMessage(`Email exists. Using unique version: ${uniqueEmail}`);
+              
+              try {
+                // Try signup with unique email
+                await signUp(
+                  uniqueEmail,
+                  data.password,
+                  `${data.firstName} ${data.lastName}`.trim()
+                );
+                logger.info('Account created with unique test email');
+                // Update saved data with unique email
+                setOnboardingData((prev) => ({
+                  ...prev,
+                  identity: { ...data, email: uniqueEmail }
+                }));
+                setSaving(false);
+                setSavingMessage('');
+                setStep(2);
+                return; // Success with unique email, exit early
+              } catch (uniqueSignUpError) {
+                logger.debug('Unique email also in use, will try sign-in instead');
+                // Fall through to sign-in attempt with original email
+              }
+            }
+            
+            // Email exists, try to sign in instead with original email
+            logger.info('Email already exists, attempting to sign in...');
+            setSavingMessage('Email already exists. Signing you in...');
+            
+            try {
+              // Use original email for sign-in (account exists with that email)
+              await signIn(originalEmail, data.password);
+              logger.info('Signed in successfully, continuing onboarding');
+              setSaving(false);
+              setSavingMessage(''); // Clear any error messages
+              setStep(2); // Continue to business info step
+            } catch (signInError: unknown) {
+              // Sign in failed - wrong password or other issue
+              const signInMessage = signInError instanceof Error 
+                ? signInError.message 
+                : 'Unable to sign in. This email is already registered. Please use the correct password or try a different email.';
+              
+              // Check if it's a wrong password error
+              const signInErrorCode = signInError && typeof signInError === 'object' && 'code' in signInError 
+                ? (signInError as { code: string }).code 
+                : null;
+              
+              if (signInErrorCode === 'auth/wrong-password' || signInErrorCode === 'auth/invalid-credential') {
+                setSavingMessage('This email is already registered. Please check your password or go to the login page.');
+              } else if (signInErrorCode === 'auth/user-not-found') {
+                setSavingMessage('This email is not registered. Please check your email address.');
+              } else {
+                setSavingMessage(signInMessage);
+              }
+              
+              logger.error('Sign in failed:', signInError instanceof Error ? signInError.message : String(signInError));
+              setSaving(false);
+              // Stay on identity step so user can retry
+            }
+          } else {
+            // Different error, throw it
+            throw signUpError;
+          }
+        }
+      } catch (error) {
+        logger.error('Failed to create account:', error);
+        setSaving(false);
+                setSavingMessage(error instanceof Error ? error.message : String(error));
+        // Stay on identity step so user can retry - step will remain 1
+      }
+    } else {
+      // Already authenticated, just continue
+      setStep(2);
     }
-  }, [profile, loading, navigate]);
+  };
+
+  const handleBusinessNext = (data: Partial<BusinessProfileData>) => {
+    setOnboardingData((prev) => ({
+      ...prev,
+      businessProfile: { ...prev.businessProfile, ...data } as BusinessProfileData,
+    }));
+    setStep(3);
+  };
+
+  const handleLocationNext = (data: Partial<BusinessProfileData>) => {
+    setOnboardingData((prev) => ({
+      ...prev,
+      businessProfile: { ...prev.businessProfile, ...data } as BusinessProfileData,
+    }));
+    setStep(4);
+  };
+
+  const handleMarketingNext = (data: MarketingData) => {
+    setOnboardingData((prev) => ({ ...prev, marketing: data }));
+    setStep(5);
+  };
+
+  const handleBrandingNext = (data: Partial<BrandingConfig>) => {
+    setOnboardingData((prev) => ({
+      ...prev,
+      branding: { ...prev.branding, ...data } as BrandingConfig,
+    }));
+    setStep(6);
+  };
+
+  const handleEquipmentNext = (data: EquipmentConfig) => {
+    setOnboardingData((prev) => ({ ...prev, equipment: data }));
+    setStep(7);
+  };
+
+  const handleCapacityNext = async (seats: number) => {
+    // Update branding with seats, then save everything
+    const finalData = {
+      ...onboardingData,
+      branding: {
+        ...onboardingData.branding,
+        clientSeats: seats,
+      } as BrandingConfig,
+    };
+    await completeOnboarding(finalData);
+  };
+
+  const handleBack = () => {
+    if (step > 0) {
+      setStep(step - 1);
+    }
+  };
 
   // Get subscription plan based on business type
-  const getSubscriptionPlan = () => {
+  const getSubscriptionPlan = (): SubscriptionPlan => {
     const businessType = onboardingData.businessProfile?.type;
     const config = BUSINESS_TYPES.find(b => b.value === businessType);
     return config?.recommendedPlan || 'starter';
   };
 
-  // Step handlers
-  const handleBusinessInfoNext = (data: BusinessProfileData) => {
-    setOnboardingData((prev) => ({ ...prev, businessProfile: data }));
-    setCurrentStep(1);
-    logger.debug('Business info step completed');
-  };
-
-  const handleBrandingNext = (data: BrandingConfig) => {
-    setOnboardingData((prev) => ({ ...prev, branding: data }));
-    setCurrentStep(2);
-    logger.debug('Branding step completed');
-  };
-
-  const handleEquipmentNext = (data: EquipmentConfig) => {
-    setOnboardingData((prev) => ({ ...prev, equipment: data }));
-    setCurrentStep(3);
-    logger.debug('Equipment step completed');
-  };
-
-  const handleTeamSetupNext = async (data: TeamSetupData) => {
-    setOnboardingData((prev) => ({ ...prev, teamSetup: data }));
-    
-    // Save all onboarding data to Firestore
-    await saveOnboardingData({ ...onboardingData, teamSetup: data });
-  };
-
-  const saveOnboardingData = async (finalData: Partial<OnboardingData>) => {
+  // Complete onboarding and save all data
+  const completeOnboarding = async (finalData: Partial<OnboardingData>) => {
     if (!user || !profile) return;
 
     setSaving(true);
+    setSavingMessage('Finalizing your setup...');
+
     try {
       const db = getDb();
       const orgId = profile.organizationId;
+      const plan = getSubscriptionPlan();
+      const seats = finalData.branding?.clientSeats || 15;
+      const monthlyFee = calculateMonthlyFee(plan, seats);
 
-      // Step 1: Upload logo if provided
+      // Upload logo if provided (logo upload happens later in settings, but check just in case)
       let logoUrl: string | undefined;
-      if (finalData.businessProfile?.logoFile) {
+      if (finalData.branding?.logoFile) {
         setSavingMessage('Uploading your logo...');
         try {
-          logoUrl = await uploadOrgLogo(orgId, finalData.businessProfile.logoFile);
+          logoUrl = await uploadOrgLogo(orgId, finalData.branding.logoFile);
           logger.debug('Logo uploaded successfully');
         } catch (logoError) {
           logger.error('Logo upload failed, continuing without logo:', logoError);
         }
       }
 
-      // Step 2: Prepare equipment config in the format OrgSettings expects
-      setSavingMessage('Configuring your assessments...');
+      // Map equipment config to our database format
       const equipmentConfig = finalData.equipment ? {
         bodyComposition: {
-          method: finalData.equipment.bodyCompositionMethod === 'none' 
-            ? 'measurements' 
-            : finalData.equipment.bodyCompositionMethod,
-          skinfoldMethod: finalData.equipment.skinfoldMethod,
+          method: finalData.equipment.scanner
+            ? 'inbody'
+            : finalData.equipment.bodyCompositionMethod || 'measurements',
+          // Only include skinfoldMethod if scanner is disabled and method is provided
+          ...(finalData.equipment.scanner ? {} : (finalData.equipment.skinfoldMethod ? { skinfoldMethod: finalData.equipment.skinfoldMethod } : {})),
         },
         gripStrength: {
-          method: finalData.equipment.gripStrengthEnabled ? 'dynamometer' : 'none',
-          enabled: finalData.equipment.gripStrengthEnabled,
+          method: finalData.equipment.dynamometer ? 'dynamometer' : 'none',
+          enabled: finalData.equipment.dynamometer ?? false,
+        },
+        treadmill: {
+          enabled: finalData.equipment.treadmill ?? false,
         },
       } : undefined;
 
-      // Step 3: Update organization document
-      setSavingMessage('Saving your settings...');
+      // Update organization with all onboarding data
+      setSavingMessage('Saving your configuration...');
       await updateDoc(doc(db, 'organizations', orgId), {
-        // Business info
-        name: finalData.businessProfile?.name,
-        type: finalData.businessProfile?.type,
-        address: finalData.businessProfile?.address,
-        phone: finalData.businessProfile?.phone,
+        // Identity/Basic Info
+        name: finalData.businessProfile?.name || '',
+        type: finalData.businessProfile?.type || 'solo_coach',
+        
+        // Location
+        address: finalData.businessProfile?.address || '',
+        city: finalData.businessProfile?.city || null,
+        state: finalData.businessProfile?.state || null,
+        zip: finalData.businessProfile?.zip || null,
+        phone: finalData.identity?.phone || '',
         website: finalData.businessProfile?.website || null,
-        
-        // Logo
-        logoUrl: logoUrl || null,
-        
+        instagram: finalData.businessProfile?.instagram || null,
+
         // Branding
+        logoUrl: logoUrl || null,
         gradientId: finalData.branding?.gradientId || 'purple-indigo',
-        
+
         // Equipment
         equipmentConfig,
-        
+
         // Subscription
         subscription: {
-          plan: getSubscriptionPlan(),
+          plan,
           status: 'trial',
           trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-          clientSeats: finalData.branding?.clientSeats || 10,
+          clientSeats: seats,
+          amountFils: Math.ceil(monthlyFee * 1000),
+          billingEmail: finalData.identity?.email || user.email || '',
         },
-        
+
+        // Marketing data (stored for analytics)
+        marketing: finalData.marketing ? {
+          referralSource: finalData.marketing.referralSource || null,
+          primaryGoal: finalData.marketing.primaryGoal || null,
+        } : null,
+
+        // Business age (for analytics)
+        businessAge: finalData.businessProfile?.businessAge || null,
+
         // Metadata
         onboardingCompletedAt: new Date(),
         updatedAt: new Date(),
       });
 
-      // Step 4: Update user profile to mark onboarding as complete
+      // Update user profile
       await updateDoc(doc(db, 'userProfiles', user.uid), {
         onboardingCompleted: true,
-        displayName: finalData.businessProfile?.name || profile.displayName,
+        displayName: finalData.identity
+          ? `${finalData.identity.firstName} ${finalData.identity.lastName}`
+          : finalData.businessProfile?.name || profile.displayName,
+        email: finalData.identity?.email || user.email || null,
         updatedAt: new Date(),
       });
 
-      // Step 5: Save onboarding session for audit/recovery
+      // Save onboarding session for audit/recovery
       await setDoc(doc(db, 'onboarding_sessions', user.uid), {
         userId: user.uid,
         organizationId: orgId,
-        data: {
-          businessProfile: {
-            name: finalData.businessProfile?.name,
-            type: finalData.businessProfile?.type,
-            address: finalData.businessProfile?.address,
-            phone: finalData.businessProfile?.phone,
-            website: finalData.businessProfile?.website,
-          },
-          branding: finalData.branding,
-          equipment: finalData.equipment,
-          teamSetup: finalData.teamSetup,
-        },
+        data: finalData,
         completedAt: new Date(),
-      });
-
-      // Step 6: Handle coach invites if any
-      if (finalData.teamSetup?.coachEmails && finalData.teamSetup.coachEmails.length > 0) {
-        setSavingMessage('Preparing invitations...');
-        // TODO: Implement coach invitation emails in Phase 6
-        logger.info('Coach invitations to send:', finalData.teamSetup.coachEmails);
-      }
+      }, { merge: true });
 
       // Refresh settings so the app picks up the new configuration
       await refreshSettings();
 
       logger.info('Onboarding completed successfully');
       setIsComplete(true);
+      setStep(8); // Show success screen
     } catch (error) {
-      logger.error('Failed to save onboarding data:', error);
-      // TODO: Show error toast
+      logger.error('Failed to complete onboarding:', error);
       setSavingMessage('Something went wrong. Please try again.');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleBack = () => {
-    setCurrentStep((prev) => Math.max(0, prev - 1));
-  };
-
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-50 to-white">
-        <div className="animate-pulse text-foreground-secondary">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-[#F5F5F7]">
+        <div className="animate-pulse text-slate-500">Loading...</div>
       </div>
     );
   }
 
   // Success state
-  if (isComplete) {
+  if (isComplete || step === 8) {
     return (
-      <OnboardingLayout currentStep={4}>
+      <OnboardingLayout currentStep={-1} onBack={undefined}>
         <OnboardingSuccess businessName={onboardingData.businessProfile?.name || 'Your Business'} />
       </OnboardingLayout>
     );
@@ -224,43 +440,77 @@ export default function Onboarding() {
   // Saving state overlay
   if (saving) {
     return (
-      <OnboardingLayout currentStep={currentStep}>
+      <OnboardingLayout currentStep={-1} onBack={undefined}>
         <div className="flex flex-col items-center justify-center py-16">
           <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4" />
-          <p className="text-foreground-secondary">{savingMessage}</p>
+          <p className="text-slate-500">{savingMessage}</p>
         </div>
       </OnboardingLayout>
     );
   }
 
   // Render current step
+  // NEW 8-STEP FLOW: Welcome(0) -> Identity(1) -> Business(2) -> Location(3) -> Marketing(4) -> Branding(5) -> Equipment(6) -> Capacity(7) -> Success(8)
+  const getCurrentStep = () => {
+    if (step === 0) return -1; // Welcome - no progress dots
+    if (step >= 8) return -1; // Success - no progress dots
+    return step - 1; // Steps 1-7 map to progress dots 0-6
+  };
+
   return (
-    <OnboardingLayout currentStep={currentStep}>
-      {currentStep === 0 && (
-        <BusinessInfoStep
-          data={onboardingData.businessProfile}
-          onNext={handleBusinessInfoNext}
+    <OnboardingLayout
+      currentStep={getCurrentStep()}
+      onBack={step > 0 ? handleBack : undefined}
+    >
+      {step === 0 && <WelcomeStep onNext={handleWelcomeNext} />}
+      {step === 1 && (
+        <IdentityStep
+          data={onboardingData.identity}
+          onNext={handleIdentityNext}
+          error={savingMessage && savingMessage.includes('email') ? savingMessage : null}
         />
       )}
-      {currentStep === 1 && (
+      {step === 2 && (
+        <BusinessInfoStep
+          data={onboardingData.businessProfile}
+          onNext={handleBusinessNext}
+          onBack={handleBack}
+        />
+      )}
+      {step === 3 && (
+        <LocationStep
+          data={onboardingData.businessProfile}
+          onNext={handleLocationNext}
+          onBack={handleBack}
+        />
+      )}
+      {step === 4 && (
+        <MarketingStep
+          data={onboardingData.marketing}
+          onNext={handleMarketingNext}
+          onBack={handleBack}
+        />
+      )}
+      {step === 5 && (
         <BrandingStep
           data={onboardingData.branding}
+          companyName={onboardingData.businessProfile?.name}
           onNext={handleBrandingNext}
           onBack={handleBack}
         />
       )}
-      {currentStep === 2 && (
+      {step === 6 && (
         <EquipmentStep
           data={onboardingData.equipment}
           onNext={handleEquipmentNext}
           onBack={handleBack}
         />
       )}
-      {currentStep === 3 && (
-        <TeamSetupStep
-          data={onboardingData.teamSetup}
-          subscriptionPlan={getSubscriptionPlan()}
-          onNext={handleTeamSetupNext}
+      {step === 7 && (
+        <PackageSelectionStep
+          data={onboardingData.branding}
+          businessType={onboardingData.businessProfile?.type}
+          onNext={handleCapacityNext}
           onBack={handleBack}
         />
       )}

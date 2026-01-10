@@ -61,7 +61,7 @@ const PublicClientReport = () => {
       <AppShell title="Your fitness report">
         <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-700">
           <p>{error ?? 'This report is not available.'}</p>
-          <Button onClick={() => navigate('/')}>Back to One Fitness</Button>
+          <Button onClick={() => navigate('/')}>Back to Home</Button>
         </div>
       </AppShell>
     );
@@ -76,7 +76,7 @@ const PublicClientReport = () => {
           ? `${formData.fullName}, your report is ready`
           : 'Your report is ready'
       }
-      subtitle="Saved assessment report from your One Fitness coach."
+      subtitle="Saved assessment report from your coach."
     >
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
         <Suspense fallback={

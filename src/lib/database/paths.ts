@@ -146,3 +146,12 @@ export const AI_USAGE = {
   },
 } as const;
 
+/**
+ * System stats - aggregated platform metrics
+ */
+export const SYSTEM_STATS = {
+  /** System stats collection */
+  collection: () => 'system_stats' as const,
+  /** Global metrics document (single source of truth for platform KPIs) */
+  globalMetrics: () => 'system_stats/global_metrics' as const,
+} as const;

@@ -1,13 +1,5 @@
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Switch } from '@/components/ui/switch';
-import { ArrowRight, ArrowLeft, Scale, Grip } from 'lucide-react';
-import {
-  BODY_COMPOSITION_METHODS,
-  SKINFOLD_METHODS,
-  type EquipmentConfig,
-} from '@/types/onboarding';
+import { Scale, Timer, Dumbbell, Check, Smartphone } from 'lucide-react';
+import type { EquipmentConfig } from '@/types/onboarding';
 import { useState } from 'react';
 
 interface EquipmentStepProps {
@@ -17,179 +9,151 @@ interface EquipmentStepProps {
 }
 
 export function EquipmentStep({ data, onNext, onBack }: EquipmentStepProps) {
-  const [bodyCompositionMethod, setBodyCompositionMethod] = useState<EquipmentConfig['bodyCompositionMethod']>(
-    data?.bodyCompositionMethod || 'inbody'
-  );
-  const [skinfoldMethod, setSkinfoldMethod] = useState<EquipmentConfig['skinfoldMethod']>(
-    data?.skinfoldMethod || 'jackson-pollock-7'
-  );
-  const [gripStrengthEnabled, setGripStrengthEnabled] = useState(
-    data?.gripStrengthEnabled ?? true
-  );
+  const [scanner, setScanner] = useState(data?.scanner ?? false);
+  const [treadmill, setTreadmill] = useState(data?.treadmill ?? false);
+  const [dynamometer, setDynamometer] = useState(data?.dynamometer ?? false);
 
   const handleSubmit = () => {
-    onNext({
-      bodyCompositionMethod,
-      skinfoldMethod: bodyCompositionMethod === 'skinfold' ? skinfoldMethod : undefined,
-      gripStrengthEnabled,
-      gripStrengthMethod: gripStrengthEnabled ? 'dynamometer' : 'none',
-    });
+    // Map the simple toggles to our EquipmentConfig format
+    const equipmentConfig: EquipmentConfig = {
+      scanner,
+      treadmill,
+      dynamometer,
+      // Map scanner to bodyCompositionMethod
+      bodyCompositionMethod: scanner ? 'inbody' : 'measurements',
+      // Map dynamometer to gripStrengthEnabled
+      gripStrengthEnabled: dynamometer,
+      gripStrengthMethod: dynamometer ? 'dynamometer' : 'none',
+    };
+    
+    onNext(equipmentConfig);
   };
 
   return (
-    <div className="animate-fade-in-up">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-foreground mb-2">
-          Configure your assessments
-        </h1>
-        <p className="text-foreground-secondary">
-          Tell us what equipment you have. This customizes your assessment flow so you only see relevant fields.
-        </p>
+    <div className="space-y-8 animate-fade-in-up max-w-5xl mx-auto">
+      <div className="text-center mb-10">
+        <h3 className="text-3xl font-bold text-slate-900 mb-2">Configure Protocols</h3>
+        <p className="text-slate-500">Toggle what you have. We'll auto-enable alternative test logic for what you don't.</p>
       </div>
 
-      <div className="space-y-8">
-        {/* Body Composition Method */}
-        <div className="space-y-4">
-          <Label className="flex items-center gap-2 text-base">
-            <Scale className="w-5 h-5" />
-            Body Composition Method
-          </Label>
-          <p className="text-sm text-foreground-secondary">
-            How do you measure body composition? This determines what data fields appear during assessments.
-          </p>
-          
-          <RadioGroup
-            value={bodyCompositionMethod}
-            onValueChange={(value) => setBodyCompositionMethod(value as EquipmentConfig['bodyCompositionMethod'])}
-            className="grid grid-cols-1 gap-2"
-          >
-            {BODY_COMPOSITION_METHODS.map((method) => (
-              <label
-                key={method.value}
-                className={`flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                  bodyCompositionMethod === method.value
-                    ? 'border-indigo-500 bg-indigo-50/50'
-                    : 'border-border hover:border-indigo-200'
-                }`}
-              >
-                <RadioGroupItem value={method.value} className="mt-1" />
-                <div className="flex-1">
-                  <span className={`font-medium ${
-                    bodyCompositionMethod === method.value ? 'text-indigo-600' : 'text-foreground'
-                  }`}>
-                    {method.label}
-                  </span>
-                  <p className="text-xs text-foreground-tertiary mt-0.5">
-                    {method.description}
-                  </p>
-                </div>
-              </label>
-            ))}
-          </RadioGroup>
-        </div>
-
-        {/* Skinfold Method (conditional) */}
-        {bodyCompositionMethod === 'skinfold' && (
-          <div className="space-y-4 animate-fade-in-up">
-            <Label className="text-base">Skinfold Protocol</Label>
-            <p className="text-sm text-foreground-secondary">
-              Which skinfold measurement protocol do you use?
-            </p>
-            
-            <RadioGroup
-              value={skinfoldMethod}
-              onValueChange={(value) => setSkinfoldMethod(value as EquipmentConfig['skinfoldMethod'])}
-              className="grid grid-cols-1 gap-2"
-            >
-              {SKINFOLD_METHODS.map((method) => (
-                <label
-                  key={method.value}
-                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                    skinfoldMethod === method.value
-                      ? 'border-indigo-500 bg-indigo-50/50'
-                      : 'border-border hover:border-indigo-200'
-                  }`}
-                >
-                  <RadioGroupItem value={method.value} />
-                  <span className={`text-sm ${
-                    skinfoldMethod === method.value ? 'text-indigo-600 font-medium' : 'text-foreground'
-                  }`}>
-                    {method.label}
-                  </span>
-                </label>
-              ))}
-            </RadioGroup>
-          </div>
-        )}
-
-        {/* Grip Strength Toggle */}
-        <div className="space-y-4">
-          <div className="flex items-start justify-between gap-4 p-4 rounded-xl border border-border">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
-                <Grip className="w-5 h-5 text-foreground-secondary" />
-              </div>
-              <div>
-                <Label className="text-base cursor-pointer">Grip Strength Testing</Label>
-                <p className="text-sm text-foreground-secondary mt-0.5">
-                  Do you have a hand dynamometer for grip strength testing?
-                </p>
-              </div>
+      {/* Equipment Cards Grid */}
+      <div className="grid md:grid-cols-3 gap-6">
+        {/* Scanner Card */}
+        <div
+          onClick={() => setScanner(!scanner)}
+          className={`relative p-6 rounded-[2rem] border-2 cursor-pointer transition-all duration-300 overflow-hidden ${
+            scanner ? 'bg-white border-indigo-600 shadow-2xl shadow-indigo-100/50' : 'bg-slate-50 border-slate-200 hover:bg-white hover:border-slate-300'
+          }`}
+        >
+          <div className="flex justify-between items-start mb-6">
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${scanner ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-400'}`}>
+              <Scale size={28} />
             </div>
-            <Switch
-              checked={gripStrengthEnabled}
-              onCheckedChange={setGripStrengthEnabled}
-            />
+            <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors ${scanner ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300'}`}>
+              {scanner && <Check size={16} />}
+            </div>
           </div>
-          
-          {!gripStrengthEnabled && (
-            <p className="text-xs text-foreground-tertiary px-4">
-              Grip strength fields will be hidden from your assessments.
-            </p>
-          )}
+          <h4 className="text-xl font-bold text-slate-900 mb-1">BIA Scanner</h4>
+          <p className="text-sm text-slate-500 mb-6 min-h-[40px]">InBody, Evolt, Tanita or other connected scales.</p>
+
+          <div className={`p-4 rounded-xl text-xs font-bold transition-colors ${scanner ? 'bg-indigo-50 text-indigo-700' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'}`}>
+            {scanner ? '✓ Digital Integration Active' : '✨ Enabling Tape & Skinfold UI'}
+          </div>
         </div>
 
-        {/* Summary */}
-        <div className="p-4 rounded-xl bg-slate-50 border border-border">
-          <h3 className="font-medium text-foreground mb-2">Your Assessment Configuration</h3>
-          <ul className="text-sm text-foreground-secondary space-y-1">
-            <li>• Body composition: <span className="font-medium text-foreground">
-              {BODY_COMPOSITION_METHODS.find(m => m.value === bodyCompositionMethod)?.label}
-            </span></li>
-            {bodyCompositionMethod === 'skinfold' && (
-              <li>• Skinfold protocol: <span className="font-medium text-foreground">
-                {SKINFOLD_METHODS.find(m => m.value === skinfoldMethod)?.label}
-              </span></li>
-            )}
-            <li>• Grip strength: <span className="font-medium text-foreground">
-              {gripStrengthEnabled ? 'Enabled (dynamometer)' : 'Disabled'}
-            </span></li>
-          </ul>
-          <p className="text-xs text-foreground-tertiary mt-3">
-            You can change these settings anytime in Settings → Equipment.
+        {/* Treadmill Card */}
+        <div
+          onClick={() => setTreadmill(!treadmill)}
+          className={`relative p-6 rounded-[2rem] border-2 cursor-pointer transition-all duration-300 overflow-hidden ${
+            treadmill ? 'bg-white border-indigo-600 shadow-2xl shadow-indigo-100/50' : 'bg-slate-50 border-slate-200 hover:bg-white hover:border-slate-300'
+          }`}
+        >
+          <div className="flex justify-between items-start mb-6">
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${treadmill ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-400'}`}>
+              <Timer size={28} />
+            </div>
+            <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors ${treadmill ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300'}`}>
+              {treadmill && <Check size={16} />}
+            </div>
+          </div>
+          <h4 className="text-xl font-bold text-slate-900 mb-1">Cardio Equip.</h4>
+          <p className="text-sm text-slate-500 mb-6 min-h-[40px]">Treadmill, Bike or Rower with watt/speed readout.</p>
+
+          <div className={`p-4 rounded-xl text-xs font-bold transition-colors ${treadmill ? 'bg-indigo-50 text-indigo-700' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'}`}>
+            {treadmill ? '✓ Protocol Library Active' : '✨ Enabling Step-Test UI'}
+          </div>
+        </div>
+
+        {/* Dynamometer Card */}
+        <div
+          onClick={() => setDynamometer(!dynamometer)}
+          className={`relative p-6 rounded-[2rem] border-2 cursor-pointer transition-all duration-300 overflow-hidden ${
+            dynamometer ? 'bg-white border-indigo-600 shadow-2xl shadow-indigo-100/50' : 'bg-slate-50 border-slate-200 hover:bg-white hover:border-slate-300'
+          }`}
+        >
+          <div className="flex justify-between items-start mb-6">
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${dynamometer ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-400'}`}>
+              <Dumbbell size={28} />
+            </div>
+            <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors ${dynamometer ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300'}`}>
+              {dynamometer && <Check size={16} />}
+            </div>
+          </div>
+          <h4 className="text-xl font-bold text-slate-900 mb-1">Dynamometer</h4>
+          <p className="text-sm text-slate-500 mb-6 min-h-[40px]">Hand-grip strength testing device.</p>
+
+          <div className={`p-4 rounded-xl text-xs font-bold transition-colors ${dynamometer ? 'bg-indigo-50 text-indigo-700' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'}`}>
+            {dynamometer ? '✓ Input Fields Active' : '✨ Enabling Dead-Hang UI'}
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Scanning Note */}
+      <div className="bg-white/50 border border-indigo-100 p-6 rounded-2xl flex items-center gap-4 max-w-2xl mx-auto shadow-sm">
+        <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+          <Smartphone size={24} />
+        </div>
+        <div>
+          <h4 className="text-sm font-bold text-indigo-900">Mobile Scanning Engine</h4>
+          <p className="text-sm text-slate-600">AI Posture Analysis, ROM testing, and Sit-and-Reach computer vision are <b>automatically enabled</b> for all devices.</p>
+        </div>
+      </div>
+
+      {/* Mobile Scanning Note */}
+      <div className="bg-white/50 border border-indigo-100 p-6 rounded-2xl flex items-center gap-4 max-w-2xl mx-auto shadow-sm">
+        <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+          <Smartphone size={24} />
+        </div>
+        <div>
+          <h4 className="text-sm font-bold text-indigo-900">Mobile Scanning Engine</h4>
+          <p className="text-sm text-slate-600">
+            Since you're on iOS/iPadOS, AI Posture Analysis, ROM testing, and Sit-and-Reach computer vision are <b>automatically enabled</b> for your build.
           </p>
         </div>
+      </div>
 
-        {/* Navigation */}
-        <div className="flex gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onBack}
-            className="flex-1 h-12 rounded-xl"
-          >
-            <ArrowLeft className="mr-2 w-4 h-4" />
-            Back
-          </Button>
-          <Button
-            type="button"
-            onClick={handleSubmit}
-            className="flex-1 h-12 gradient-bg text-white rounded-xl font-semibold"
-          >
-            Continue
-            <ArrowRight className="ml-2 w-4 h-4" />
-          </Button>
-        </div>
+      {/* Navigation */}
+      <div className="flex gap-3 pt-4">
+        <button
+          type="button"
+          onClick={onBack}
+          className="flex-1 h-12 rounded-2xl bg-white border border-slate-200 font-bold text-lg flex items-center justify-center gap-2 hover:bg-slate-50 transition-all shadow-sm text-slate-600"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Back
+        </button>
+        <button
+          type="button"
+          onClick={handleSubmit}
+          className="flex-1 h-12 rounded-2xl bg-slate-900 text-white font-bold text-lg flex items-center justify-center gap-2 hover:bg-slate-800 transition-all shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-95"
+        >
+          Continue
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
       </div>
     </div>
   );

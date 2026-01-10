@@ -1,104 +1,90 @@
 import { ONBOARDING_STEPS } from '@/types/onboarding';
-import { Check } from 'lucide-react';
+import { X, ArrowLeft, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 
 interface OnboardingLayoutProps {
   currentStep: number;
   children: React.ReactNode;
+  onBack?: () => void;
 }
 
-export function OnboardingLayout({ currentStep, children }: OnboardingLayoutProps) {
+const GlassPanel = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
+  <div className={`bg-white/70 backdrop-blur-3xl border border-white/50 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] ${className}`}>
+    {children}
+  </div>
+);
+
+export function OnboardingLayout({ currentStep, children, onBack }: OnboardingLayoutProps) {
+  const navigate = useNavigate();
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  useEffect(() => {
+    setIsAnimating(true);
+    const timer = setTimeout(() => setIsAnimating(false), 300);
+    return () => clearTimeout(timer);
+  }, [currentStep]);
+
+  const handleClose = () => {
+    if (confirm('Are you sure you want to leave? Your progress will be saved.')) {
+      navigate('/dashboard');
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-      {/* Header */}
-      <header className="border-b border-border/50 bg-white/80 backdrop-blur-xl sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg gradient-bg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">FF</span>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8">
+      {/* Landing page visible in background with blur overlay */}
+      <div className="absolute inset-0 bg-gradient-to-b from-slate-50 to-white" />
+      <div className="absolute inset-0 bg-slate-900/30 backdrop-blur-sm transition-opacity duration-700" />
+
+      {/* Main Modal - 25% smaller */}
+      <GlassPanel className={`w-full max-w-4xl h-full md:h-[67.5vh] rounded-[2.5rem] relative overflow-hidden flex flex-col transition-all duration-500 ${isAnimating ? 'opacity-50 scale-[0.99]' : 'opacity-100 scale-100'}`}>
+        
+        {/* Background Decor */}
+        <div className="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] bg-indigo-100/50 rounded-full blur-3xl -z-10" />
+        <div className="absolute bottom-[-20%] left-[-10%] w-[500px] h-[500px] bg-blue-100/50 rounded-full blur-3xl -z-10" />
+
+        {/* Header */}
+        <div className="px-8 py-6 md:py-8 flex justify-between items-center z-20 border-b border-white/50">
+          {currentStep >= 0 && onBack ? (
+            <button 
+              onClick={onBack} 
+              className="w-10 h-10 rounded-full bg-white border border-slate-100 flex items-center justify-center hover:bg-slate-50 text-slate-500 transition-colors shadow-sm"
+            >
+              <ArrowLeft size={20} />
+            </button>
+          ) : <div className="w-10"></div>}
+          
+          {/* Progress Dots */}
+          {currentStep >= 0 && currentStep < ONBOARDING_STEPS.length && (
+            <div className="flex gap-2">
+              {ONBOARDING_STEPS.map((_, index) => (
+                <div 
+                  key={index} 
+                  className={`h-1.5 rounded-full transition-all duration-700 ease-out ${
+                    index === currentStep ? 'w-8 bg-indigo-600' : 
+                    index < currentStep ? 'w-2 bg-indigo-200' : 'w-2 bg-slate-200'
+                  }`}
+                />
+              ))}
             </div>
-            <span className="font-semibold text-lg">FitnessFlow</span>
-          </div>
-          <div className="text-sm text-foreground-secondary">
-            Step {currentStep + 1} of {ONBOARDING_STEPS.length}
-          </div>
-        </div>
-      </header>
+          )}
+          {currentStep < 0 && <div className="flex gap-2"><div className="w-0"></div></div>}
+          {currentStep >= ONBOARDING_STEPS.length && <div className="flex gap-2"><div className="w-0"></div></div>}
 
-      {/* Progress bar */}
-      <div className="bg-white border-b border-border/50">
-        <div className="container mx-auto px-4 py-6">
-          <StepIndicator currentStep={currentStep} />
+          <button 
+            onClick={handleClose} 
+            className="w-10 h-10 rounded-full bg-white border border-slate-100 flex items-center justify-center hover:bg-slate-50 text-slate-500 transition-colors shadow-sm"
+          >
+            <X size={20} />
+          </button>
         </div>
-      </div>
 
-      {/* Content */}
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-2xl mx-auto">
+        {/* Content Scroll Area */}
+        <div className="flex-1 overflow-y-auto px-6 md:px-12 py-6 md:py-8 relative z-10">
           {children}
         </div>
-      </main>
+      </GlassPanel>
     </div>
   );
 }
-
-interface StepIndicatorProps {
-  currentStep: number;
-}
-
-function StepIndicator({ currentStep }: StepIndicatorProps) {
-  return (
-    <div className="flex items-center justify-between">
-      {ONBOARDING_STEPS.map((step, index) => {
-        const isCompleted = index < currentStep;
-        const isCurrent = index === currentStep;
-        const isUpcoming = index > currentStep;
-
-        return (
-          <div key={step.id} className="flex items-center flex-1">
-            {/* Step circle */}
-            <div className="flex flex-col items-center">
-              <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all ${
-                  isCompleted
-                    ? 'bg-emerald-500 text-white'
-                    : isCurrent
-                    ? 'gradient-bg text-white shadow-lg'
-                    : 'bg-slate-100 text-foreground-tertiary'
-                }`}
-              >
-                {isCompleted ? (
-                  <Check className="w-5 h-5" />
-                ) : (
-                  <span>{index + 1}</span>
-                )}
-              </div>
-              <div className="mt-2 text-center">
-                <p
-                  className={`text-sm font-medium ${
-                    isCurrent ? 'text-foreground' : 'text-foreground-secondary'
-                  }`}
-                >
-                  {step.label}
-                </p>
-                <p className="text-xs text-foreground-tertiary hidden sm:block">
-                  {step.description}
-                </p>
-              </div>
-            </div>
-
-            {/* Connector line */}
-            {index < ONBOARDING_STEPS.length - 1 && (
-              <div
-                className={`flex-1 h-0.5 mx-4 rounded-full ${
-                  index < currentStep ? 'bg-emerald-500' : 'bg-slate-200'
-                }`}
-              />
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-export { StepIndicator };

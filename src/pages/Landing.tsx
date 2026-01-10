@@ -1,59 +1,23 @@
 import { useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowRight } from 'lucide-react';
 import {
   Navbar,
   HeroSection,
+  HowItWorksSection,
+  ScannerShowcase,
+  UnderTheHood,
   FeaturesSection,
-  FeatureCard,
   TestimonialsSection,
   TestimonialCard,
+  ROIComparison,
+  BuiltByExperts,
   PricingSection,
   PricingCard,
   FAQSection,
   CTASection,
   Footer,
 } from '@/components/landing';
-import {
-  Camera,
-  FileText,
-  Users,
-  TrendingUp,
-  Zap,
-  Shield,
-} from 'lucide-react';
-
-// Feature data
-const features = [
-  {
-    icon: Camera,
-    title: 'AI Posture Analysis',
-    description: 'Advanced AI automatically analyzes posture from photos, identifying deviations and generating professional reports in seconds.',
-  },
-  {
-    icon: FileText,
-    title: 'Automated Reports',
-    description: 'Beautiful, branded PDF reports generated instantly. Share with clients via secure links or download for offline use.',
-  },
-  {
-    icon: Users,
-    title: 'Team Collaboration',
-    description: 'Invite coaches to your team, manage permissions, and collaborate on client assessments seamlessly.',
-  },
-  {
-    icon: TrendingUp,
-    title: 'Progress Tracking',
-    description: 'Track client progress over time with visual comparisons and trend analysis. Show real results.',
-  },
-  {
-    icon: Zap,
-    title: '90% Faster Assessments',
-    description: 'What used to take hours now takes minutes. Spend more time coaching, less time on paperwork.',
-  },
-  {
-    icon: Shield,
-    title: 'Secure & Private',
-    description: 'Enterprise-grade security with encrypted data storage. Your clients\' data is always protected.',
-  },
-];
 
 // Testimonial data
 const testimonials = [
@@ -64,7 +28,7 @@ const testimonials = [
     company: 'Elite Fitness Studio',
   },
   {
-    quote: 'The AI posture analysis is incredibly accurate. It catches things I might miss, and the visual reports make it easy to explain findings to clients.',
+    quote: 'The Clinical Logic Engine is incredibly accurate. It catches biomechanical issues I might miss, and the evidence-based reports make it easy to explain findings to clients with confidence.',
     author: 'Marcus Johnson',
     role: 'Gym Owner',
     company: 'Iron Works Gym',
@@ -85,7 +49,7 @@ const pricingPlans = [
     price: '$29',
     features: [
       { text: 'Unlimited assessments', included: true },
-      { text: 'AI posture analysis', included: true },
+      { text: 'Clinical Logic Engine analysis', included: true },
       { text: 'Branded PDF reports', included: true },
       { text: 'Client portal access', included: true },
       { text: 'Team members', included: false },
@@ -128,8 +92,8 @@ const pricingPlans = [
 // FAQ data
 const faqItems = [
   {
-    question: 'How does the AI posture analysis work?',
-    answer: 'Our AI uses advanced computer vision to analyze photos of your clients. It identifies key landmarks on the body and measures deviations from ideal alignment. The analysis happens in seconds and generates detailed findings that you can review and include in client reports.',
+    question: 'How does the Clinical Logic Engine work?',
+    answer: 'Our proprietary Clinical Logic Engine uses deterministic algorithms (not AI guessing) to analyze biomechanical data. It maps 360+ key points on the body against a database of 5,000+ validated clinical benchmarks. Each measurement is compared to normative data, and our engine generates evidence-based findings in seconds. You can review and customize all results before generating client reports.',
   },
   {
     question: 'Can I customize the reports with my branding?',
@@ -160,23 +124,15 @@ export default function Landing() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen landing-page">
       <Navbar />
       
       <main>
         <HeroSection />
-        
-        <FeaturesSection>
-          {features.map((feature, index) => (
-            <FeatureCard
-              key={feature.title}
-              icon={feature.icon}
-              title={feature.title}
-              description={feature.description}
-              index={index}
-            />
-          ))}
-        </FeaturesSection>
+        <HowItWorksSection />
+        <ScannerShowcase />
+        <UnderTheHood />
+        <FeaturesSection />
 
         <TestimonialsSection>
           {testimonials.map((testimonial, index) => (
@@ -190,6 +146,10 @@ export default function Landing() {
             />
           ))}
         </TestimonialsSection>
+
+        <ROIComparison />
+
+        <BuiltByExperts />
 
         <PricingSection>
           {pricingPlans.map((plan, index) => (
@@ -212,6 +172,16 @@ export default function Landing() {
       </main>
 
       <Footer />
+      
+      {/* Sticky Bottom CTA for Mobile */}
+      <div className="fixed bottom-6 left-6 right-6 z-40 md:hidden">
+        <Link 
+          to="/onboarding"
+          className="w-full bg-slate-900 text-white py-4 rounded-full font-bold shadow-xl flex items-center justify-center gap-2"
+        >
+          Start Free Trial <ArrowRight size={18} />
+        </Link>
+      </div>
     </div>
   );
 }

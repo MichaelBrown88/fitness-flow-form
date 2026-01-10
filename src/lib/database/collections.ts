@@ -7,7 +7,7 @@
 
 import { collection, doc, CollectionReference, DocumentReference } from 'firebase/firestore';
 import { getDb } from '@/services/firebase';
-import { PLATFORM, ORGANIZATION, LEGACY, PUBLIC, AI_USAGE } from './paths';
+import { PLATFORM, ORGANIZATION, LEGACY, PUBLIC, AI_USAGE, SYSTEM_STATS } from './paths';
 
 // ============================================================================
 // PLATFORM COLLECTIONS
@@ -179,3 +179,11 @@ export function getPlatformMetricsDoc(): DocumentReference {
   return doc(getDb(), PLATFORM.metrics.current());
 }
 
+// ============================================================================
+// SYSTEM STATS (Aggregated Counters)
+// ============================================================================
+
+/** Get system stats global metrics document */
+export function getSystemStatsDoc(): DocumentReference {
+  return doc(getDb(), SYSTEM_STATS.globalMetrics());
+}

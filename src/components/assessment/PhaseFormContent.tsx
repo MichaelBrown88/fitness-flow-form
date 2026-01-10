@@ -701,7 +701,9 @@ export const PhaseFormContent = ({
               </React.Suspense>
             )}
           </section>
-          <footer className="pt-12 pb-8 text-center text-[10px] font-bold uppercase tracking-widest text-slate-300">One Fitness Professional v2.1 • Confidential Client Data</footer>
+          <footer className="pt-12 pb-8 text-center text-[10px] font-bold uppercase tracking-widest text-slate-300">
+            {orgSettings?.name || 'FitnessFlow'} Professional v2.1 • Confidential Client Data
+          </footer>
         </div>
       </main>
 

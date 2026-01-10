@@ -13,28 +13,53 @@ export interface SignUpData {
   acceptedTerms: boolean;
 }
 
-// Business profile data (Step 1)
+// Identity data (Step 1) - includes signup credentials
+export interface IdentityData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  password: string;
+  confirmPassword: string;
+  acceptedTerms: boolean;
+}
+
+// Business profile data (Step 2)
 export interface BusinessProfileData {
   name: string;
   type: BusinessType;
+  businessAge?: 'new' | 'growing' | 'established';
   address: string;
-  phone: string;
+  city?: string;
+  state?: string;
+  zip?: string;
   website?: string;
-  logoFile?: File; // File object for upload
+  instagram?: string;
 }
 
-// Branding config (Step 2)
+// Marketing data (Step 4)
+export interface MarketingData {
+  referralSource?: string;
+  primaryGoal?: string;
+}
+
+// Branding config (Step 5)
 export interface BrandingConfig {
-  gradientId: string; // References gradient system
-  clientSeats: number; // Number of client seats needed
+  gradientId: string; // References gradient system - maps to brand color
+  clientSeats: number; // Number of client seats needed (from Step 7)
+  logoFile?: File; // Logo file for upload (optional - added later)
 }
 
-// Equipment config (Step 3) - Matches OrgSettings.equipmentConfig
+// Equipment config (Step 6) - Simplified to match new UI
 export interface EquipmentConfig {
-  bodyCompositionMethod: 'inbody' | 'dexa' | 'bodpod' | 'skinfold' | 'bioimpedance' | 'measurements' | 'none';
+  scanner: boolean; // BIA Scanner
+  treadmill: boolean; // Cardio Equipment
+  dynamometer: boolean; // Grip strength
+  // Mapped to OrgSettings.equipmentConfig format when saving
+  bodyCompositionMethod?: 'inbody' | 'dexa' | 'bodpod' | 'skinfold' | 'bioimpedance' | 'measurements' | 'none';
   skinfoldMethod?: 'jackson-pollock-7' | 'jackson-pollock-3' | 'durnin-womersley-4';
-  gripStrengthEnabled: boolean;
-  gripStrengthMethod: 'dynamometer' | 'none';
+  gripStrengthEnabled?: boolean;
+  gripStrengthMethod?: 'dynamometer' | 'none';
 }
 
 // Team setup data (Step 4)
@@ -43,12 +68,14 @@ export interface TeamSetupData {
   skipped: boolean;
 }
 
-// Full onboarding data
+// Full onboarding data (new 8-step flow)
 export interface OnboardingData {
+  identity: IdentityData;
   businessProfile: BusinessProfileData;
+  marketing: MarketingData;
   branding: BrandingConfig;
   equipment: EquipmentConfig;
-  teamSetup: TeamSetupData;
+  teamSetup?: TeamSetupData; // Optional, not in the new flow
 }
 
 // Onboarding status tracking
@@ -152,10 +179,13 @@ export const BUSINESS_TYPES = [
   },
 ] as const;
 
-// Onboarding steps configuration
+// Onboarding steps configuration (matches the new 8-step flow)
 export const ONBOARDING_STEPS = [
-  { id: 'business', label: 'Business Info', description: 'Tell us about your business' },
+  { id: 'identity', label: 'Identity', description: 'Your basic information' },
+  { id: 'business', label: 'Business', description: 'Tell us about your facility' },
+  { id: 'location', label: 'Location', description: 'Where are you located' },
+  { id: 'marketing', label: 'Marketing', description: 'How did you find us' },
   { id: 'branding', label: 'Branding', description: 'Customize your look' },
-  { id: 'equipment', label: 'Equipment', description: 'Configure assessments' },
-  { id: 'team', label: 'Team', description: 'Invite your coaches' },
+  { id: 'equipment', label: 'Equipment', description: 'Configure protocols' },
+  { id: 'capacity', label: 'Capacity', description: 'Select your plan' },
 ] as const;

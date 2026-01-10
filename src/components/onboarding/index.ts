@@ -1,6 +1,12 @@
-export { OnboardingLayout, StepIndicator } from './OnboardingLayout';
+export { OnboardingLayout } from './OnboardingLayout';
+export { WelcomeStep } from './WelcomeStep';
+export { IdentityStep } from './IdentityStep';
 export { BusinessInfoStep } from './BusinessInfoStep';
+export { LocationStep } from './LocationStep';
+export { MarketingStep } from './MarketingStep';
+export { PackageSelectionStep } from './PackageSelectionStep';
 export { BrandingStep } from './BrandingStep';
 export { EquipmentStep } from './EquipmentStep';
 export { TeamSetupStep } from './TeamSetupStep';
 export { OnboardingSuccess } from './OnboardingSuccess';
+export { OptionCard, GlassInput, GlassPanel } from './SharedOnboardingComponents';

@@ -103,10 +103,13 @@ export async function getOrgSettings(orgId: string): Promise<OrgSettings> {
   }
   
   const data = snap.data() as OrgSettings;
-  // Deep merge with defaults to ensure all module keys and equipment config exist
+  // Return actual data - only use defaults for missing/null/undefined fields
+  // This prevents overwriting user-entered values with defaults when reloading
   return {
-    ...DEFAULT_SETTINGS,
-    ...data,
+    name: data.name ?? DEFAULT_SETTINGS.name,
+    brandColor: data.brandColor ?? DEFAULT_SETTINGS.brandColor,
+    gradientId: data.gradientId ?? DEFAULT_SETTINGS.gradientId,
+    logoUrl: data.logoUrl,
     modules: {
       ...DEFAULT_SETTINGS.modules,
       ...(data.modules || {})

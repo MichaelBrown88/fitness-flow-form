@@ -100,6 +100,4 @@ if (typeof window !== 'undefined') {
   (window as unknown as { seedPlatformAdmin: typeof seedPlatformAdminOnce }).seedPlatformAdmin = seedPlatformAdminOnce;
 }
 
-// Also export cleanup functions
-export { previewCleanup, executeCleanup as cleanupOrganizations } from './cleanupOrganizations';
 

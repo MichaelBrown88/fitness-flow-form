@@ -1,8 +1,4 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { ArrowRight, ArrowLeft, Users, Plus, X, Mail, Crown } from 'lucide-react';
 import type { TeamSetupData, SubscriptionPlan } from '@/types/onboarding';
 
@@ -131,68 +127,60 @@ export function TeamSetupStep({ data, subscriptionPlan, onNext, onBack }: TeamSe
   }
 
   return (
-    <div className="animate-fade-in-up">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-foreground mb-2">
-          Invite your team
-        </h1>
-        <p className="text-foreground-secondary">
-          Add coaches to your team. They'll receive an email invitation to join.
-        </p>
+    <div className="space-y-8 animate-fade-in-up max-w-4xl mx-auto">
+      <div>
+        <h3 className="text-3xl font-bold text-slate-900 mb-2">Invite your team</h3>
+        <p className="text-slate-500">Add coaches to your team. They'll receive an email invitation to join.</p>
       </div>
 
       <div className="space-y-6">
         {/* Email input */}
         <div className="space-y-2">
-          <Label className="flex items-center gap-2">
-            <Users className="w-4 h-4" />
-            Coach email addresses
-          </Label>
+          <label className="block text-sm font-bold text-slate-700 mb-2">Coach email addresses</label>
           <div className="flex gap-2">
-            <Input
+            <input
               type="email"
               value={currentEmail}
               onChange={(e) => setCurrentEmail(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="coach@yourgym.com"
-              className={emailError ? 'border-red-500 flex-1' : 'flex-1'}
+              className={`flex-1 px-5 py-4 rounded-2xl bg-white/50 border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all font-medium ${emailError ? 'border-red-500' : ''}`}
             />
-            <Button
+            <button
               type="button"
               onClick={handleAddEmail}
-              variant="outline"
-              className="px-4"
+              className="px-6 py-4 rounded-2xl bg-white border border-slate-200 hover:bg-slate-50 transition-all font-medium"
             >
-              <Plus className="w-4 h-4" />
-            </Button>
+              <Plus className="w-5 h-5" />
+            </button>
           </div>
           {emailError && (
-            <p className="text-xs text-red-500">{emailError}</p>
+            <p className="text-xs text-red-500 mt-1">{emailError}</p>
           )}
         </div>
 
         {/* Email list */}
         {emails.length > 0 && (
           <div className="space-y-2">
-            <Label className="text-foreground-secondary text-sm">
+            <label className="block text-sm font-bold text-slate-700 mb-2">
               {emails.length} coach{emails.length !== 1 ? 'es' : ''} to invite
-            </Label>
+            </label>
             <div className="space-y-2">
               {emails.map((email) => (
                 <div
                   key={email}
-                  className="flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-border"
+                  className="flex items-center justify-between p-4 rounded-xl bg-white/60 border border-slate-200"
                 >
                   <div className="flex items-center gap-3">
-                    <Mail className="w-4 h-4 text-foreground-tertiary" />
-                    <span className="text-sm">{email}</span>
+                    <Mail className="w-5 h-5 text-slate-400" />
+                    <span className="text-sm font-medium text-slate-900">{email}</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => handleRemoveEmail(email)}
-                    className="text-foreground-tertiary hover:text-red-500 transition-colors"
+                    className="text-slate-400 hover:text-red-500 transition-colors p-1"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
               ))}
@@ -202,43 +190,42 @@ export function TeamSetupStep({ data, subscriptionPlan, onNext, onBack }: TeamSe
 
         {/* Empty state */}
         {emails.length === 0 && (
-          <div className="p-8 rounded-xl border-2 border-dashed border-border text-center">
-            <Users className="w-8 h-8 text-foreground-tertiary mx-auto mb-2" />
-            <p className="text-foreground-secondary text-sm">
+          <div className="p-8 rounded-2xl border-2 border-dashed border-slate-300 bg-white/40 text-center">
+            <Users className="w-10 h-10 text-slate-400 mx-auto mb-3" />
+            <p className="text-slate-500 text-sm font-medium">
               No coaches added yet. Add email addresses above or skip for now.
             </p>
           </div>
         )}
 
         {/* Navigation */}
-        <div className="flex gap-3 pt-4">
-          <Button
+        <div className="flex justify-between pt-4 border-t border-white/50 mt-8">
+          <button
             type="button"
-            variant="outline"
             onClick={onBack}
-            className="flex-1 h-12 rounded-xl"
+            className="px-8 py-4 rounded-2xl bg-white border border-slate-200 font-bold text-lg flex items-center gap-2 hover:bg-slate-50 transition-all shadow-sm"
           >
-            <ArrowLeft className="mr-2 w-4 h-4" />
+            <ArrowLeft size={20} />
             Back
-          </Button>
+          </button>
           {emails.length === 0 ? (
-            <Button
+            <button
               type="button"
               onClick={handleSkip}
-              className="flex-1 h-12 gradient-bg text-white rounded-xl font-semibold"
+              className="px-8 py-4 rounded-2xl bg-slate-900 text-white font-bold text-lg flex items-center gap-2 hover:bg-slate-800 transition-all shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-95"
             >
               Skip for now
-              <ArrowRight className="ml-2 w-4 h-4" />
-            </Button>
+              <ArrowRight size={20} />
+            </button>
           ) : (
-            <Button
+            <button
               type="button"
               onClick={handleSubmit}
-              className="flex-1 h-12 gradient-bg text-white rounded-xl font-semibold"
+              className="px-8 py-4 rounded-2xl bg-slate-900 text-white font-bold text-lg flex items-center gap-2 hover:bg-slate-800 transition-all shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-95"
             >
               Send invites & continue
-              <ArrowRight className="ml-2 w-4 h-4" />
-            </Button>
+              <ArrowRight size={20} />
+            </button>
           )}
         </div>
       </div>

@@ -8,25 +8,25 @@ interface TestimonialCardProps {
   index?: number;
 }
 
+import { Star } from 'lucide-react';
+
 export function TestimonialCard({ quote, author, role, company, index = 0 }: TestimonialCardProps) {
+  // Generate a simple avatar URL or use initials
+  const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(author)}&background=6366f1&color=fff&size=128`;
+  
   return (
-    <div 
-      className="relative p-6 rounded-2xl glass-card animate-fade-in-up"
-      style={{ animationDelay: `${index * 150}ms` }}
-    >
-      <Quote className="w-8 h-8 text-indigo-200 mb-4" />
-      <blockquote className="text-foreground mb-6 leading-relaxed">
-        "{quote}"
-      </blockquote>
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-400 flex items-center justify-center text-white font-bold">
-          {author.charAt(0)}
-        </div>
+    <div className="backdrop-blur-2xl bg-white/60 border border-white/50 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:bg-white/80 transition-all duration-500 p-8">
+      <div className="flex items-center gap-4 mb-6">
+        <img src={avatarUrl} alt={author} className="w-12 h-12 rounded-full object-cover" />
         <div>
-          <p className="font-semibold text-foreground text-sm">{author}</p>
-          <p className="text-foreground-tertiary text-xs">{role}, {company}</p>
+          <h4 className="font-bold text-slate-900">{author}</h4>
+          <p className="text-xs font-bold text-slate-400 uppercase">{role}</p>
         </div>
       </div>
+      <div className="flex gap-1 text-amber-400 mb-4">
+        {[1,2,3,4,5].map(s => <Star key={s} size={16} fill="currentColor" />)}
+      </div>
+      <p className="text-slate-600 leading-relaxed font-medium">"{quote}"</p>
     </div>
   );
 }

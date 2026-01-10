@@ -197,9 +197,6 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
         
         if (matchedView) {
           fileMap[matchedView] = file;
-          console.log(`[UPLOAD] Matched ${file.name} to view: ${matchedView}`);
-        } else {
-          console.warn(`[UPLOAD] Could not match ${file.name} to any view`);
         }
       });
       
@@ -209,15 +206,12 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
       }
       
       // Load images from files
-      console.log(`[UPLOAD] Loading ${Object.keys(fileMap).length} images from files...`);
       const testImages = await loadImagesFromFiles(fileMap);
       
       // Validate that we have at least one image
       if (Object.keys(testImages).length === 0) {
         throw new Error('No images could be loaded from the uploaded files. Please check that the files are valid images (JPEG, PNG, HEIC, etc.).');
       }
-      
-      console.log(`[UPLOAD] Successfully loaded ${Object.keys(testImages).length} images:`, Object.keys(testImages));
       
       // Inject test images into session (this will trigger AI analysis automatically)
       // IMPORTANT: This uses the EXACT SAME alignment code as iPhone capture
@@ -230,12 +224,9 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
       for (const view of views) {
         if (testImages[view]) {
           try {
-            console.log(`[UPLOAD] Processing ${view} image...`);
-            
             // Validate image data before sending
             if (!testImages[view] || !testImages[view].startsWith('data:image')) {
               const errorMsg = `Invalid image data format for ${view}. Expected data URL.`;
-              console.error(`[UPLOAD] ${errorMsg}`);
               errors.push(`${view}: ${errorMsg}`);
               failCount++;
               continue;
@@ -249,14 +240,12 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
             );
             
             await Promise.race([processingPromise, timeoutPromise]);
-            console.log(`[UPLOAD] Successfully processed ${view} image`);
             successCount++;
             
             // Small delay to avoid overwhelming Firestore
             await new Promise(resolve => setTimeout(resolve, 500));
           } catch (err) {
             const errorMsg = err instanceof Error ? err.message : 'Unknown error';
-            console.error(`[MANUAL UPLOAD] Failed to process ${view} image:`, err);
             errors.push(`${view}: ${errorMsg}`);
             failCount++;
             // Continue with other images even if one fails

@@ -36,7 +36,7 @@ export default function AppShell({
     (user?.email ? user.email[0]?.toUpperCase() : 'C');
 
   const logoUrl = orgSettings?.logoUrl || '/Brand_Package_Primary_Logo_Black.svg';
-  const orgName = orgSettings?.name || 'One Fitness Professional';
+  const orgName = orgSettings?.name || 'Your Organization';
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">

@@ -3,32 +3,154 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Allow any authenticated user to read/write all documents during SaaS migration
-    // We will tighten this once the foundation is verified.
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    // =========================================================
+    // 🛡️ HELPER FUNCTIONS
+    // =========================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
     }
-
-    // Platform Admin Setup - Allow initial seeding (temporary, tighten after setup)
-    // These rules allow the one-time platform admin initialization
+    
+    function getUserProfile() {
+      return get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data;
+    }
+    
+    // Check if user is a platform admin (check platform_admins collection)
+    function isPlatformAdmin() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/platform_admins/$(request.auth.uid));
+    }
+    
+    function isOrgMember(orgId) {
+      let profile = getUserProfile();
+      return isAuthenticated() && profile.organizationId == orgId;
+    }
+    
+    function isOrgAdmin(orgId) {
+      let profile = getUserProfile();
+      return isOrgMember(orgId) && profile.role == 'org_admin';
+    }
+    
+    // Check if organization has granted data access permission to platform admin
+    // Comped organizations (like One Fitness - owner's company) automatically have access
+    function hasDataAccessPermission(orgId) {
+      let orgData = get(/databases/$(database)/documents/organizations/$(orgId)).data;
+      // Comped organizations get automatic access (owner's company for testing)
+      if (orgData.subscription?.isComped == true) {
+        return true;
+      }
+      // Check if explicit permission granted
+      return orgData.dataAccessPermission?.platformAdminAccess == true;
+    }
+    
+    // =========================================================
+    // 📂 COLLECTION RULES
+    // =========================================================
+    
+    // 1. ORGANIZATIONS
+    match /organizations/{orgId} {
+      // Platform admin can read org metadata, but NOT sensitive data (assessments, clients) without permission
+      // Org members can read their own org
+      allow read: if isPlatformAdmin() || isOrgMember(orgId);
+      allow write: if isPlatformAdmin() || isOrgAdmin(orgId);
+      
+      // Subcollections: Coaches, Clients, Assessments - GDPR/HIPAA protected
+      match /coaches/{coachId} {
+        // Platform admin needs explicit permission OR org is platform owner (One Fitness)
+        allow read: if (isPlatformAdmin() && hasDataAccessPermission(orgId)) || 
+                    isOrgMember(orgId);
+        allow write: if isOrgMember(orgId); // Only org members can write
+        
+        match /{allChildren=**} {
+          allow read: if (isPlatformAdmin() && hasDataAccessPermission(orgId)) || 
+                      isOrgMember(orgId);
+          allow write: if isOrgMember(orgId);
+        }
+      }
+      
+      match /clients/{clientId} {
+        allow read: if (isPlatformAdmin() && hasDataAccessPermission(orgId)) || 
+                    isOrgMember(orgId);
+        allow write: if isOrgMember(orgId);
+      }
+      
+      match /assessments/{assessmentId} {
+        allow read: if (isPlatformAdmin() && hasDataAccessPermission(orgId)) || 
+                    isOrgMember(orgId);
+        allow write: if isOrgMember(orgId);
+      }
+      
+      // Settings and other non-sensitive subcollections
+      match /settings/{document=**} {
+        allow read: if isPlatformAdmin() || isOrgMember(orgId);
+        allow write: if isPlatformAdmin() || isOrgAdmin(orgId);
+      }
+    }
+    
+    // 2. USER PROFILES
+    match /userProfiles/{userId} {
+      allow read: if request.auth.uid == userId 
+                  || isPlatformAdmin()
+                  || (isAuthenticated() && 
+                      get(/databases/$(database)/documents/userProfiles/$(userId)).data.organizationId == 
+                      getUserProfile().organizationId);
+      
+      allow write: if request.auth.uid == userId || isPlatformAdmin();
+    }
+    
+    // 3. COACHES & LEGACY DATA
+    match /coaches/{coachId}/{document=**} {
+      let coachOrgId = get(/databases/$(database)/documents/userProfiles/$(coachId)).data.organizationId;
+      allow read, write: if request.auth.uid == coachId ||
+                         (isAuthenticated() && 
+                          coachOrgId == getUserProfile().organizationId &&
+                          getUserProfile().role == 'org_admin') ||
+                         (isPlatformAdmin() && coachOrgId != null && hasDataAccessPermission(coachOrgId));
+    }
+    
+    // 4. SYSTEM STATS (Platform Admin Only)
+    match /system_stats/{document} {
+      allow read: if isPlatformAdmin();
+      allow write: if false; // Only Cloud Functions (server-side)
+    }
+    
+    // 5. AI USAGE LOGS
+    match /ai_usage_logs/{logId} {
+      allow read: if isPlatformAdmin() || 
+                  (isAuthenticated() && 
+                   resource.data.organizationId == getUserProfile().organizationId);
+      allow create: if isAuthenticated(); // App creates logs
+      allow write: if false; // Only Cloud Functions update costs
+    }
+    
+    // 6. PLATFORM ADMINS (Read-only after setup)
     match /platform_admins/{adminId} {
-      allow read: if true;
-      allow write: if true; // Temporary: Allow initial setup
+      allow read: if isAuthenticated(); // Anyone authenticated can check
+      allow write: if false; // Only server-side (Cloud Functions)
     }
     
     match /platform_admin_lookup/{lookupId} {
-      allow read: if true;
-      allow write: if true; // Temporary: Allow initial setup
-    }
-
-    // Public reports: Shared with clients (No auth required for viewing)
-    match /publicReports/{reportId} {
-      allow read: if true; 
+      allow read: if isAuthenticated();
+      allow write: if false; // Only server-side
     }
     
-    // Live Sessions: Used by Companion Camera (No auth required for updates)
+    // =========================================================
+    // 🔓 PUBLIC ROUTES
+    // =========================================================
+    
+    match /publicReports/{reportId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+    
     match /live_sessions/{sessionId} {
-      allow read, update: if true;
+      // GDPR/HIPAA: Scope by organizationId - users can only access sessions from their org
+      // Platform admin needs explicit permission
+      allow read, update: if isAuthenticated() && 
+                           (resource.data.organizationId == getUserProfile().organizationId ||
+                            (isPlatformAdmin() && resource.data.organizationId != null && 
+                             hasDataAccessPermission(resource.data.organizationId)));
+      allow create: if isAuthenticated();
     }
   }
 }

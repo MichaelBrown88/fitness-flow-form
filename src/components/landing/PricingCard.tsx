@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
 import { Check } from 'lucide-react';
+import React from 'react';
 
 interface PricingFeature {
   text: string;
@@ -28,87 +28,88 @@ export function PricingCard({
   ctaText = 'Get Started',
   index = 0,
 }: PricingCardProps) {
-  return (
-    <div 
-      className={`relative p-8 rounded-3xl animate-fade-in-up ${
-        highlighted 
-          ? 'bg-gradient-to-br from-indigo-600 to-purple-600 text-white shadow-2xl scale-105' 
-          : 'bg-white border border-border/50 hover:border-indigo-200 hover:shadow-lg'
-      } transition-all duration-300`}
-      style={{ animationDelay: `${index * 100}ms` }}
-    >
-      {highlighted && (
-        <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-          <span className="px-4 py-1 text-xs font-semibold bg-amber-400 text-amber-900 rounded-full">
+  const GlassCard: React.FC<{ children?: React.ReactNode; className?: string }> = ({ children, className = "" }) => (
+    <div className={`backdrop-blur-2xl bg-white/60 border border-white/50 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:bg-white/80 transition-all duration-500 ${className}`}>
+      {children}
+    </div>
+  );
+
+  if (highlighted) {
+    return (
+      <div className="relative transform md:-translate-y-4">
+        <div className="absolute inset-0 bg-gradient-to-b from-indigo-500 to-violet-600 rounded-[32px] blur-sm opacity-20"></div>
+        <GlassCard className="p-10 relative bg-white border-indigo-100 shadow-2xl">
+          <div className="absolute top-0 right-0 bg-gradient-to-l from-indigo-600 to-violet-600 text-white text-[10px] font-bold uppercase tracking-widest px-4 py-2 rounded-bl-2xl rounded-tr-2xl">
             Most Popular
-          </span>
-        </div>
-      )}
-
-      <div className="mb-6">
-        <h3 className={`text-xl font-bold mb-2 ${highlighted ? 'text-white' : 'text-foreground'}`}>
-          {name}
-        </h3>
-        <p className={`text-sm ${highlighted ? 'text-indigo-100' : 'text-foreground-secondary'}`}>
-          {description}
-        </p>
+          </div>
+          <h3 className="text-xl font-bold mb-2 text-slate-900">{name}</h3>
+          <p className="text-sm text-slate-500 mb-8 font-medium">{description}</p>
+          <div className="flex items-baseline gap-1 mb-8">
+            <span className="text-5xl font-bold text-slate-900">{price}</span>
+            <span className="text-slate-400 font-medium">{period}</span>
+          </div>
+          <Link 
+            to="/onboarding"
+            className="w-full py-4 rounded-xl bg-slate-900 text-white hover:bg-slate-800 transition-colors font-bold mb-8 shadow-xl shadow-slate-900/10 block text-center"
+          >
+            Start Free Trial
+          </Link>
+          <ul className="space-y-4 text-sm text-slate-600 font-medium">
+            {features.map((feature, i) => (
+              <li key={i} className="flex items-center gap-3">
+                {feature.included ? (
+                  <>
+                    <Check size={18} className="text-indigo-600"/> <span>{feature.text}</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-[18px] h-[18px] rounded-full bg-slate-100 flex items-center justify-center">
+                      <div className="w-1.5 h-1.5 rounded-full bg-slate-300"></div>
+                    </div>
+                    <span className="text-slate-400 line-through">{feature.text}</span>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        </GlassCard>
       </div>
+    );
+  }
 
-      <div className="mb-6">
-        <span className={`text-4xl font-bold ${highlighted ? 'text-white' : 'text-foreground'}`}>
-          {price}
-        </span>
-        {price !== 'Custom' && (
-          <span className={`text-sm ${highlighted ? 'text-indigo-100' : 'text-foreground-secondary'}`}>
-            {period}
-          </span>
-        )}
+  return (
+    <GlassCard className="p-10 bg-white/70 hover:shadow-xl transition-all">
+      <h3 className="text-xl font-bold mb-2 text-slate-900">{name}</h3>
+      <p className="text-sm text-slate-500 mb-8 font-medium">{description}</p>
+      <div className="flex items-baseline gap-1 mb-8">
+        <span className="text-5xl font-bold text-slate-900">{price}</span>
+        {price !== 'Custom' && <span className="text-slate-400 font-medium">{period}</span>}
       </div>
-
-      <ul className="space-y-3 mb-8">
+      <Link 
+        to={ctaText === 'Contact Sales' ? '/contact' : '/onboarding'}
+        className="w-full py-4 rounded-xl bg-white border border-slate-200 text-slate-900 font-bold hover:bg-slate-50 transition-colors mb-8 shadow-sm block text-center"
+      >
+        {ctaText}
+      </Link>
+      <ul className="space-y-4 text-sm text-slate-600 font-medium">
         {features.map((feature, i) => (
-          <li key={i} className="flex items-start gap-3">
-            <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
-              feature.included 
-                ? highlighted 
-                  ? 'bg-white/20' 
-                  : 'bg-indigo-100'
-                : 'bg-slate-100'
-            }`}>
-              <Check className={`w-3 h-3 ${
-                feature.included
-                  ? highlighted
-                    ? 'text-white'
-                    : 'text-indigo-600'
-                  : 'text-slate-400'
-              }`} />
-            </div>
-            <span className={`text-sm ${
-              feature.included
-                ? highlighted
-                  ? 'text-white'
-                  : 'text-foreground'
-                : highlighted
-                  ? 'text-indigo-200 line-through'
-                  : 'text-foreground-tertiary line-through'
-            }`}>
-              {feature.text}
-            </span>
+          <li key={i} className="flex items-center gap-3">
+            {feature.included ? (
+              <>
+                <Check size={18} className="text-indigo-600"/> <span>{feature.text}</span>
+              </>
+            ) : (
+              <>
+                <div className="w-[18px] h-[18px] rounded-full bg-slate-100 flex items-center justify-center">
+                  <div className="w-1.5 h-1.5 rounded-full bg-slate-300"></div>
+                </div>
+                <span className="text-slate-400 line-through">{feature.text}</span>
+              </>
+            )}
           </li>
         ))}
       </ul>
-
-      <Button 
-        asChild 
-        className={`w-full h-12 rounded-xl font-semibold ${
-          highlighted 
-            ? 'bg-white text-indigo-600 hover:bg-indigo-50' 
-            : 'gradient-bg text-white'
-        }`}
-      >
-        <Link to="/signup">{ctaText}</Link>
-      </Button>
-    </div>
+    </GlassCard>
   );
 }
 
