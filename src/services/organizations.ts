@@ -3,20 +3,34 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getDb, getStorage } from '@/services/firebase';
 import { sanitizeForFirestore } from '@/lib/utils/firebaseUtils';
 
-import type { GripStrengthMethod, BodyCompositionMethod, SkinfoldMethod } from '@/lib/utils/measurementConverters';
 
 /**
  * Equipment configuration for assessments
- * Allows different facilities to use different equipment while maintaining comparable scoring
+ * Simple enabled/disabled toggle for each piece of equipment.
+ * When disabled, assessments automatically show ALL equipment-free alternative methods.
+ * 
+ * Equipment Structure (ALL equipment types use ONLY enabled: boolean):
+ * - bodyComposition.enabled: true = analyzer (InBody, DEXA, etc.), false = body measurements + skinfold test (clients can still bring reports)
+ * - gripStrength.enabled: true = dynamometer, false = deadhang + pinch test options
+ * - cardioEquipment.enabled: true = treadmill/bike/rower, false = step test
+ * - heartRateSensor.enabled: true = HR sensor integration, false = manual pulse check
  */
 export interface EquipmentConfig {
-  gripStrength: {
-    method: GripStrengthMethod;
-    enabled: boolean; // Toggle to enable/disable grip strength testing
-  };
+  // Body Composition Analyser (BIA Scanner, InBody, DEXA, etc.)
   bodyComposition: {
-    method: BodyCompositionMethod;
-    skinfoldMethod?: SkinfoldMethod; // Required if method is 'skinfold'
+    enabled: boolean; // true = use analyzer, false = body measurements + skinfold + allow client reports
+  };
+  // Grip Strength Equipment (Dynamometer)
+  gripStrength: {
+    enabled: boolean; // true = dynamometer, false = deadhang + pinch test options
+  };
+  // Cardio Equipment (Treadmill, Bike, Rower with watt/speed readout)
+  cardioEquipment: {
+    enabled: boolean; // true = treadmill/bike/rower, false = step test
+  };
+  // Heart Rate Sensor (Polar, Garmin, chest strap, etc.)
+  heartRateSensor: {
+    enabled: boolean; // true = HR sensor integration, false = manual pulse check
   };
 }
 
@@ -42,6 +56,8 @@ export interface OrgSettings {
     lifestyle: boolean; // P1 - Lifestyle factors (section: 'lifestyle-overview')
   };
   equipmentConfig?: EquipmentConfig; // Optional: defaults provided if not set
+  // Platform admin controlled features
+  demoAutoFillEnabled?: boolean; // Demo persona auto-fill (for affiliates/sales demos) - OFF by default
 }
 
 /**
@@ -59,12 +75,17 @@ export async function uploadOrgLogo(orgId: string, file: File): Promise<string> 
 }
 
 export const DEFAULT_EQUIPMENT_CONFIG: EquipmentConfig = {
-  gripStrength: {
-    method: 'dynamometer',
-    enabled: true, // Default: grip test is enabled
-  },
   bodyComposition: {
-    method: 'inbody',
+    enabled: false, // Default: no analyzer → shows body measurements + skinfold (clients can bring reports)
+  },
+  gripStrength: {
+    enabled: false, // Default: no dynamometer → shows deadhang + pinch test options
+  },
+  cardioEquipment: {
+    enabled: false, // Default: no treadmill/bike/rower → shows step test
+  },
+  heartRateSensor: {
+    enabled: false, // Default: no HR sensor → shows manual pulse check
   },
 };
 
@@ -85,10 +106,12 @@ const DEFAULT_SETTINGS: OrgSettings = {
     lifestyle: true,
   },
   equipmentConfig: DEFAULT_EQUIPMENT_CONFIG,
+  demoAutoFillEnabled: false, // OFF by default - platform admin controlled for affiliates/sales demos
 };
 
 /**
  * Get organization settings
+ * Automatically migrates old equipmentConfig structure to new simplified structure
  */
 export async function getOrgSettings(orgId: string): Promise<OrgSettings> {
   if (!orgId) throw new Error('Organization ID is required');
@@ -102,9 +125,83 @@ export async function getOrgSettings(orgId: string): Promise<OrgSettings> {
     return DEFAULT_SETTINGS;
   }
   
-  const data = snap.data() as OrgSettings;
-  // Return actual data - only use defaults for missing/null/undefined fields
-  // This prevents overwriting user-entered values with defaults when reloading
+  const data = snap.data() as OrgSettings & { equipmentConfig?: any };
+  
+  // Migrate old equipmentConfig structure to new simplified structure
+  const oldEquipmentConfig = data.equipmentConfig || {};
+  
+  // Handle old "treadmill" field → migrate to "cardioEquipment"
+  // Old structure might have treadmill.enabled or treadmill as boolean
+  const oldTreadmillValue = oldEquipmentConfig.treadmill;
+  const oldTreadmillEnabled = typeof oldTreadmillValue === 'object' 
+    ? (oldTreadmillValue?.enabled ?? false)
+    : (typeof oldTreadmillValue === 'boolean' ? oldTreadmillValue : false);
+  
+  const cardioEquipmentEnabled = oldEquipmentConfig.cardioEquipment?.enabled ?? oldTreadmillEnabled;
+  
+  // Determine bodyComposition.enabled from old structure
+  // If bodyComposition has method but no enabled, infer enabled from method
+  // method = "measurements" or "none" → enabled = false
+  // method = "inbody", "dexa", etc. → enabled = true
+  const oldBodyComp = oldEquipmentConfig.bodyComposition || {};
+  const bodyCompEnabled = oldBodyComp.enabled !== undefined 
+    ? oldBodyComp.enabled 
+    : (oldBodyComp.method !== undefined && 
+       oldBodyComp.method !== 'measurements' && 
+       oldBodyComp.method !== 'none');
+  
+  // Determine gripStrength.enabled from old structure
+  // method = "none" or "deadhang" → enabled = false (equipment-free)
+  // method = "dynamometer", etc. → enabled = true
+  const oldGripStrength = oldEquipmentConfig.gripStrength || {};
+  const gripStrengthEnabled = oldGripStrength.enabled !== undefined
+    ? oldGripStrength.enabled
+    : (oldGripStrength.method !== undefined && 
+       oldGripStrength.method !== 'none' && 
+       oldGripStrength.method !== 'deadhang');
+  
+  // Build clean equipment config (only enabled fields, no method fields)
+  const cleanEquipmentConfig: EquipmentConfig = {
+    bodyComposition: {
+      enabled: bodyCompEnabled,
+    },
+    gripStrength: {
+      enabled: gripStrengthEnabled,
+    },
+    cardioEquipment: {
+      enabled: cardioEquipmentEnabled,
+    },
+    heartRateSensor: {
+      enabled: oldEquipmentConfig.heartRateSensor?.enabled ?? DEFAULT_EQUIPMENT_CONFIG.heartRateSensor.enabled,
+    },
+  };
+  
+  // Check if migration is needed (old structure detected)
+  const hasOldTreadmillField = oldEquipmentConfig.treadmill !== undefined;
+  const hasMethodFields = 
+    oldBodyComp.method !== undefined ||
+    oldGripStrength.method !== undefined ||
+    oldEquipmentConfig.cardioEquipment?.method !== undefined;
+  const hasMissingEnabledField = oldBodyComp.enabled === undefined;
+  const needsMigration = hasOldTreadmillField || hasMethodFields || hasMissingEnabledField;
+  
+  if (needsMigration) {
+    // Migrate to new structure: overwrite entire equipmentConfig with clean structure
+    // This removes all old fields (method, treadmill, gradientId in wrong place, etc.)
+    // and replaces with only enabled fields for each equipment type
+    try {
+      await updateDoc(ref, {
+        equipmentConfig: cleanEquipmentConfig,
+        updatedAt: new Date(),
+      });
+      console.log(`✅ Migrated equipmentConfig for org ${orgId}: cleaned old structure (removed method fields, migrated treadmill→cardioEquipment)`);
+    } catch (error) {
+      console.warn('Failed to migrate equipmentConfig structure:', error);
+      // Continue with cleaned structure even if migration fails
+    }
+  }
+  
+  // Return cleaned data structure
   return {
     name: data.name ?? DEFAULT_SETTINGS.name,
     brandColor: data.brandColor ?? DEFAULT_SETTINGS.brandColor,
@@ -114,25 +211,63 @@ export async function getOrgSettings(orgId: string): Promise<OrgSettings> {
       ...DEFAULT_SETTINGS.modules,
       ...(data.modules || {})
     },
-    equipmentConfig: {
-      ...DEFAULT_EQUIPMENT_CONFIG,
-      ...(data.equipmentConfig || {}),
-      gripStrength: {
-        ...DEFAULT_EQUIPMENT_CONFIG.gripStrength,
-        ...(data.equipmentConfig?.gripStrength || {})
-      },
-      bodyComposition: {
-        ...DEFAULT_EQUIPMENT_CONFIG.bodyComposition,
-        ...(data.equipmentConfig?.bodyComposition || {}),
-      }
-    }
+    equipmentConfig: cleanEquipmentConfig,
+    demoAutoFillEnabled: data.demoAutoFillEnabled ?? DEFAULT_SETTINGS.demoAutoFillEnabled,
   };
 }
 
 /**
  * Update organization settings
+ * Automatically cleans equipmentConfig to remove method fields (ensures only enabled field exists)
  */
 export async function updateOrgSettings(orgId: string, updates: Partial<OrgSettings>): Promise<void> {
   const ref = doc(getDb(), 'organizations', orgId);
+  
+  // If updating equipmentConfig, ensure only enabled field is saved (remove any method fields)
+  if (updates.equipmentConfig) {
+    updates.equipmentConfig = {
+      bodyComposition: {
+        enabled: updates.equipmentConfig.bodyComposition?.enabled ?? false,
+      },
+      gripStrength: {
+        enabled: updates.equipmentConfig.gripStrength?.enabled ?? false,
+      },
+      cardioEquipment: {
+        enabled: updates.equipmentConfig.cardioEquipment?.enabled ?? false,
+      },
+      heartRateSensor: {
+        enabled: updates.equipmentConfig.heartRateSensor?.enabled ?? false,
+      },
+    };
+  }
+  
   await updateDoc(ref, sanitizeForFirestore(updates) as Record<string, unknown>);
+}
+
+/**
+ * Migrate organization's equipmentConfig to simplified structure
+ * This can be called manually to fix existing organizations
+ * Run from browser console: await window.migrateEquipmentConfig?.('org-xxx')
+ */
+export async function migrateEquipmentConfig(orgId: string): Promise<{ success: boolean; message: string }> {
+  try {
+    // getOrgSettings will automatically detect and migrate old structure if needed
+    await getOrgSettings(orgId);
+    return { 
+      success: true, 
+      message: `Equipment config migrated successfully for org ${orgId}. All equipment now uses only 'enabled' field.` 
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: `Failed to migrate: ${error instanceof Error ? error.message : String(error)}`
+    };
+  }
+}
+
+// Expose migration function to window in development for easy console access
+if (import.meta.env.DEV && typeof window !== 'undefined') {
+  (window as any).migrateEquipmentConfig = migrateEquipmentConfig;
+  console.log('%cEquipment Migration Utility', 'color: #6366f1; font-weight: bold;');
+  console.log('Use: await window.migrateEquipmentConfig("org-xxx") to migrate an organization');
 }

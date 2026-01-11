@@ -16,6 +16,7 @@ const Index = lazy(() => import("./pages/Index"));
 const Results = lazy(() => import("./pages/Results"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Login = lazy(() => import("./pages/Login"));
+const SignOut = lazy(() => import("./pages/SignOut"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const AssessmentReport = lazy(() => import("./pages/AssessmentReport"));
 const PublicClientReport = lazy(() => import("./pages/PublicClientReport"));
@@ -90,6 +91,7 @@ const App = () => (
                     <Route path="/" element={<Landing />} />
                     <Route path="/signup" element={<Onboarding />} /> {/* Redirect signup to onboarding */}
                     <Route path="/login" element={<Login />} />
+                    <Route path="/signout" element={<SignOut />} /> {/* Force sign out route */}
                     <Route path="/terms" element={<Terms />} />
                     <Route path="/privacy" element={<Privacy />} />
                     {/* Onboarding - allows unauthenticated access (will create account at step 1) */}

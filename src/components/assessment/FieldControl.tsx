@@ -4,12 +4,16 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Check, Info, Smartphone, Camera as CameraIcon, CheckCircle2, Star } from 'lucide-react';
 import { type PhaseField } from '@/lib/phaseConfig';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useAuth } from '@/hooks/useAuth';
 import ParQQuestionnaire from '../ParQQuestionnaire';
 import { getBodyFatRange } from '@/lib/utils/bodyRecomposition';
 import { useToast } from '@/hooks/use-toast';
+import { getDynamicTooltip } from '@/lib/utils/dynamicTooltips';
+import { getOrgCoaches } from '@/services/coachManagement';
 
 type FieldValue = string | string[];
 
@@ -30,16 +34,120 @@ export const FieldControl: React.FC<FieldControlProps> = ({
   onShowInBodyCompanion
 }) => {
   const { formData, updateFormData } = useFormContext();
+  const { orgSettings, profile, user } = useAuth();
   const isMobile = useIsMobile();
   const { toast } = useToast();
 
   // Local state for text-based inputs to prevent global re-renders on every keystroke
   const [localValue, setLocalValue] = useState<FieldValue>((formData[field.id] as FieldValue) || '');
+  
+  // State for org coaches (for assignedCoach field)
+  const [orgCoaches, setOrgCoaches] = useState<Array<{
+    uid: string;
+    displayName: string;
+    email?: string;
+    role: string;
+    clientCount: number;
+    assessmentCount: number;
+  }>>([]);
+  const [loadingCoaches, setLoadingCoaches] = useState(false);
 
   // Sync local state when global state changes (e.g. from Demo auto-fill)
   useEffect(() => {
     setLocalValue((formData[field.id] as FieldValue) || '');
   }, [formData, field.id]);
+
+  // Load org coaches for assignedCoach field
+  useEffect(() => {
+    if (field.id === 'assignedCoach' && profile?.organizationId) {
+      setLoadingCoaches(true);
+      getOrgCoaches(profile.organizationId)
+        .then((coaches) => {
+          setOrgCoaches(coaches);
+          
+          // Auto-select first coach if no coach is selected and coaches exist
+          // Don't default to admin - admin is not a coach unless explicitly added
+          if (!formData.assignedCoach && coaches.length > 0) {
+            updateFormData({ assignedCoach: coaches[0].uid });
+            setLocalValue(coaches[0].uid);
+          }
+        })
+        .catch((error) => {
+          console.error('Error loading coaches:', error);
+          setOrgCoaches([]);
+        })
+        .finally(() => {
+          setLoadingCoaches(false);
+        });
+    }
+  }, [field.id, profile?.organizationId, formData.assignedCoach, updateFormData]);
+
+  // Auto-select cardio test based on equipment if not already selected
+  useEffect(() => {
+    if (field.id === 'cardioTestSelected' && !localValue) {
+      const hasCardioEquipment = orgSettings?.equipmentConfig?.cardioEquipment?.enabled ?? false;
+      if (!hasCardioEquipment) {
+        // Auto-select step test if no cardio equipment
+        updateFormData({ [field.id]: 'ymca-step' });
+        setLocalValue('ymca-step');
+      }
+    }
+  }, [field.id, localValue, orgSettings?.equipmentConfig?.cardioEquipment?.enabled, updateFormData]);
+
+  // Load org coaches for assignedCoach field
+  useEffect(() => {
+    if (field.id === 'assignedCoach' && profile?.organizationId) {
+      setLoadingCoaches(true);
+      getOrgCoaches(profile.organizationId)
+        .then((coaches) => {
+          // Include admin if they're not already in the list
+          const adminInList = coaches.some(c => c.uid === user?.uid);
+          let coachesList = coaches;
+          
+          if (!adminInList && user && profile.role === 'org_admin') {
+            // Add admin as first option
+            coachesList = [{
+              uid: user.uid,
+              displayName: profile.displayName || user.displayName || user.email || 'Admin',
+              email: user.email || undefined,
+              role: 'org_admin',
+              clientCount: 0,
+              assessmentCount: 0,
+            }, ...coaches];
+          }
+          
+          setOrgCoaches(coachesList);
+          
+          // Auto-select admin if no coach is selected and coaches exist
+          if (!formData.assignedCoach && coachesList.length > 0) {
+            const adminCoach = coachesList.find(c => c.role === 'org_admin') || coachesList[0];
+            updateFormData({ assignedCoach: adminCoach.uid });
+            setLocalValue(adminCoach.uid);
+          }
+        })
+        .catch((error) => {
+          console.error('Error loading coaches:', error);
+          // Fallback to admin if error
+          if (user && profile?.role === 'org_admin') {
+            setOrgCoaches([{
+              uid: user.uid,
+              displayName: profile.displayName || user.displayName || user.email || 'Admin',
+              email: user.email || undefined,
+              role: 'org_admin',
+              clientCount: 0,
+              assessmentCount: 0,
+            }]);
+            if (!formData.assignedCoach) {
+              updateFormData({ assignedCoach: user.uid });
+              setLocalValue(user.uid);
+            }
+          }
+        })
+        .finally(() => {
+          setLoadingCoaches(false);
+        });
+    }
+  }, [field.id, profile?.organizationId, user?.uid, profile?.role, profile?.displayName, user?.displayName, user?.email, formData.assignedCoach, updateFormData]);
 
   // Generate dynamic options with recommended tags and subtitles
   const fieldOptions = useMemo(() => {
@@ -47,6 +155,17 @@ export const FieldControl: React.FC<FieldControlProps> = ({
     const gender = (formData.gender || 'male').toLowerCase() as 'male' | 'female';
     const weightKg = parseFloat(formData.inbodyWeightKg || '0');
     const bf = parseFloat(formData.inbodyBodyFatPct || '0');
+
+    // Filter cardio test options based on equipment
+    if (field.id === 'cardioTestSelected' && field.options) {
+      const hasCardioEquipment = orgSettings?.equipmentConfig?.cardioEquipment?.enabled ?? false;
+      // If no cardio equipment, only show step test option
+      if (!hasCardioEquipment) {
+        return field.options.filter(opt => opt.value === 'ymca-step');
+      }
+      // If cardio equipment available, show both options
+      return field.options;
+    }
 
     if (field.id === 'goalLevelBodyRecomp') {
       const isBeginner = history === 'beginner';
@@ -171,7 +290,7 @@ export const FieldControl: React.FC<FieldControlProps> = ({
     }
 
     return field.options;
-  }, [field.id, field.options, formData.gender, formData.trainingHistory, formData.inbodyWeightKg, formData.inbodyBodyFatPct]);
+  }, [field.id, field.options, formData.gender, formData.trainingHistory, formData.inbodyWeightKg, formData.inbodyBodyFatPct, orgSettings?.equipmentConfig?.cardioEquipment?.enabled]);
 
   // Check conditional logic
   const shouldShow = () => {
@@ -239,13 +358,15 @@ export const FieldControl: React.FC<FieldControlProps> = ({
   };
 
   const renderLabel = () => {
-    const tooltipLines = field.tooltip?.split('\n') || [];
+    // Generate equipment-aware dynamic tooltip
+    const dynamicTooltip = getDynamicTooltip(field, orgSettings?.equipmentConfig, field.tooltip, formData);
+    const tooltipLines = dynamicTooltip?.split('\n') || [];
 
     return (
       <div className="flex flex-col gap-1 mb-2">
         <div className="flex items-center gap-2">
           <label htmlFor={field.id} className={labelTextClasses}>{field.label}</label>
-          {field.tooltip && (
+          {dynamicTooltip && (
             <TooltipProvider>
               <Tooltip delayDuration={200}>
                 <TooltipTrigger asChild>
@@ -411,9 +532,110 @@ export const FieldControl: React.FC<FieldControlProps> = ({
           />
         );
       case 'select':
-        // Always use a touch-optimized button grid for select fields
-          return (
-            <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+        // Special handling for assignedCoach field - org-specific coaches
+        if (field.id === 'assignedCoach') {
+          const coachesList = orgCoaches.length > 0 ? orgCoaches : [];
+          const selectedCoachUid = (localValue as string) || '';
+          
+          // Show buttons for 1-6 coaches, dropdown for 7+
+          if (coachesList.length <= 6) {
+            return (
+              <div className="mt-2">
+                {loadingCoaches ? (
+                  <div className="text-sm text-slate-500">Loading coaches...</div>
+                ) : coachesList.length === 0 ? (
+                  <div className="p-4 rounded-xl border-2 border-amber-200 bg-amber-50 text-amber-700">
+                    <p className="text-sm font-bold mb-1">No coaches available</p>
+                    <p className="text-xs">You must add at least one coach in your organization settings before creating assessments.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {coachesList.map((coach, idx) => {
+                      const isSelected = selectedCoachUid === coach.uid;
+                      const colors = [
+                        'hover:border-emerald-200 hover:bg-emerald-50 text-emerald-700 border-emerald-100',
+                        'hover:border-primary/20 hover:bg-brand-light text-primary border-primary/10',
+                        'hover:border-sky-200 hover:bg-sky-50 text-sky-700 border-sky-100',
+                        'hover:border-amber-200 hover:bg-amber-50 text-amber-700 border-amber-100',
+                        'hover:border-fuchsia-200 hover:bg-fuchsia-50 text-fuchsia-700 border-fuchsia-100',
+                        'hover:border-rose-200 hover:bg-rose-50 text-rose-700 border-rose-100',
+                      ];
+                      const colorClass = colors[idx % colors.length];
+                      
+                      return (
+                        <button
+                          key={coach.uid}
+                          type="button"
+                          onClick={() => handleChange(coach.uid)}
+                          className={`flex min-h-[64px] h-auto w-full items-center gap-4 rounded-2xl border-2 px-5 py-3 text-left transition-all ${
+                            isSelected
+                              ? 'border-slate-900 bg-slate-900 text-white shadow-lg scale-[1.02]'
+                              : `bg-white text-slate-600 ${colorClass}`
+                          }`}
+                        >
+                          <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                            isSelected ? 'bg-white/20 border-white/20 text-white' : 'border-slate-200 bg-white'
+                          }`}>
+                            {isSelected && <Check className="h-4 w-4 stroke-[3]" />}
+                          </div>
+                          
+                          <div className="flex flex-col py-1">
+                            <span className="font-bold text-sm leading-tight mb-0.5">
+                              {coach.displayName}
+                            </span>
+                            {coach.email && (
+                              <span className={`text-[10px] font-medium leading-relaxed ${
+                                isSelected ? 'text-white/70' : 'text-slate-500'
+                              }`}>
+                                {coach.email}
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          } else {
+            // 7+ coaches - use dropdown
+            return (
+              <div className="mt-2">
+                {loadingCoaches ? (
+                  <div className="text-sm text-slate-500">Loading coaches...</div>
+                ) : (
+                  <Select
+                    value={selectedCoachUid}
+                    onValueChange={(value) => handleChange(value)}
+                  >
+                    <SelectTrigger className="h-14 rounded-2xl border-2 border-slate-200 bg-white text-slate-900 font-bold">
+                      <SelectValue placeholder="Select a coach" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-2xl">
+                      {coachesList.map((coach) => (
+                        <SelectItem key={coach.uid} value={coach.uid} className="py-3">
+                          <div className="flex flex-col">
+                            <span className="font-bold">
+                              {coach.displayName}
+                            </span>
+                            {coach.email && (
+                              <span className="text-xs text-slate-500">{coach.email}</span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            );
+          }
+        }
+        
+        // Default select field rendering (button grid)
+        return (
+          <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
             {fieldOptions?.map((option, idx) => {
                 const isSelected = value === option.value;
               const colors = [

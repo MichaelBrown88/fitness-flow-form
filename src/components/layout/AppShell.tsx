@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Sparkles, ChevronDown, Menu } from 'lucide-react';
+import { Sparkles, ChevronDown, Menu, Building2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,12 +30,14 @@ export default function AppShell({
   variant?: 'default' | 'full-width';
   onMenuToggle?: () => void;
 }) {
-  const { user, loading, signOut, orgSettings } = useAuth();
+  const { user, loading, signOut, orgSettings, profile } = useAuth();
   const initials =
     user?.displayName?.split(' ').map((n) => n[0]).join('').toUpperCase() ||
     (user?.email ? user.email[0]?.toUpperCase() : 'C');
 
-  const logoUrl = orgSettings?.logoUrl || '/Brand_Package_Primary_Logo_Black.svg';
+  // Use organization logo if uploaded, otherwise use SaaS default (FitnessFlow)
+  const hasOrgLogo = orgSettings?.logoUrl && orgSettings.logoUrl.trim() !== '';
+  const logoUrl = hasOrgLogo ? orgSettings.logoUrl : null; // null means use SaaS default
   const orgName = orgSettings?.name || 'Your Organization';
 
   return (
@@ -55,11 +57,22 @@ export default function AppShell({
               </Button>
             )}
             <Link to="/" className="flex items-center gap-3 shrink-0">
-              <img
-                src={logoUrl}
-                alt={orgName}
-                className="h-8 w-auto max-w-[150px] object-contain"
-              />
+              {logoUrl ? (
+                // Organization custom logo
+                <img
+                  src={logoUrl}
+                  alt={orgName}
+                  className="h-8 w-auto max-w-[150px] object-contain"
+                />
+              ) : (
+                // SaaS default logo (FitnessFlow)
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
+                    FF
+                  </div>
+                  <span className="text-lg font-bold tracking-tight text-slate-900 hidden sm:inline">FitnessFlow</span>
+                </div>
+              )}
               <div className="hidden leading-tight md:block border-l border-slate-200 pl-4">
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
                   {orgName}
@@ -114,6 +127,14 @@ export default function AppShell({
                       <DropdownMenuItem asChild>
                         <Link to="/">Dashboard</Link>
                       </DropdownMenuItem>
+                      {profile?.role === 'org_admin' && (
+                        <DropdownMenuItem asChild>
+                          <Link to="/org/dashboard" className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4" />
+                            Organization
+                          </Link>
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem asChild>
                         <Link to="/settings">Settings</Link>
                       </DropdownMenuItem>

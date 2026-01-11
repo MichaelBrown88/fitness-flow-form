@@ -782,13 +782,30 @@ export async function getOrganizationDetails(orgId: string): Promise<Organizatio
     const actualAICostsMTD = await getOrgAICostsByFeature(orgId);
     const totalAICostsMTD = actualAICostsMTD.reduce((sum, item) => sum + item.costFils, 0);
     
+    // Extract subscription details
+    const plan = data.subscription?.plan || 'free';
+    const clientSeats = data.subscription?.clientSeats || 0;
+    const isComped = data.subscription?.isComped === true;
+    
+    // Use stored amountFils (source of truth) and convert to KWD
+    // amountFils is stored in fils (1 KWD = 1000 fils) to avoid floating point precision issues
+    // If amountFils doesn't exist, calculate it as fallback
+    const storedAmountFils = data.subscription?.amountFils;
+    const monthlyFeeKwd = isComped 
+      ? 0 
+      : (storedAmountFils !== undefined && storedAmountFils !== null)
+        ? storedAmountFils / 1000  // Convert fils to KWD
+        : calculateMonthlyFee(plan, clientSeats);  // Fallback calculation
+    
     return {
       id: orgSnap.id,
       name: data.name || 'Unnamed Organization',
       type: data.type || 'solo_coach',
-      plan: data.subscription?.plan || 'free',
+      plan,
       status: data.subscription?.status || 'none',
-      isComped: data.subscription?.isComped === true,
+      isComped,
+      clientSeats,
+      monthlyFeeKwd,
       coachCount: stats.coachCount || 0,
       clientCount: stats.clientCount || 0,
       assessmentCount: stats.assessmentCount || 0,
@@ -806,6 +823,7 @@ export async function getOrganizationDetails(orgId: string): Promise<Organizatio
       gradientId: data.gradientId,
       equipmentConfig: data.equipmentConfig,
       modules: data.modules,
+      demoAutoFillEnabled: data.demoAutoFillEnabled ?? false, // Platform admin controlled - OFF by default
       onboardingCompletedAt: data.onboardingCompletedAt?.toDate?.(),
       metadata: data.metadata,
       // GDPR/HIPAA compliance
@@ -844,6 +862,8 @@ export async function updateOrganizationDetails(
     if (updates.logoUrl !== undefined) updateData.logoUrl = updates.logoUrl;
     if (updates.gradientId !== undefined) updateData.gradientId = updates.gradientId;
     if (updates.adminEmail !== undefined) updateData.adminEmail = updates.adminEmail;
+    // Platform admin controlled features
+    if (updates.demoAutoFillEnabled !== undefined) updateData.demoAutoFillEnabled = updates.demoAutoFillEnabled;
 
     // Handle data access permission updates (GDPR/HIPAA)
     if (updates.dataAccessPermission !== undefined) {

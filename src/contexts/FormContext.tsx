@@ -80,8 +80,18 @@ export interface FormData {
   skinfoldSuprailiacMm: string;
   skinfoldThighMm: string;
   skinfoldBicepMm: string;
-  // Body measurements (cm) for US Navy method
+  // Body measurements (cm) - simplified method for body composition
+  shouldersCm: string;
+  chestCm: string;
+  armLeftCm: string;
+  armRightCm: string;
   waistCm: string;
+  hipsCm: string;
+  thighLeftCm: string;
+  thighRightCm: string;
+  calfLeftCm: string;
+  calfRightCm: string;
+  // Legacy fields (kept for backward compatibility)
   neckCm: string;
   hipCm: string;
   segmentalArmRightKg: string;
@@ -91,6 +101,10 @@ export interface FormData {
   segmentalTrunkKg: string;
   bmrKcal: string;
   inbodyScore: string;
+  // Body composition method selection
+  bodyCompMethod: string; // 'measurements' | 'analyzer' - user's choice for body composition assessment
+  // Optional analyzer fields toggle (for client reports when equipment disabled)
+  showAnalyzerFields: string; // 'yes' | 'no' - toggles visibility of analyzer fields when equipment is disabled
 
   /** Phase 2 — Posture & Movement Quality */
   postureInputMode: 'manual' | 'ai';
@@ -179,6 +193,7 @@ export interface FormData {
   pushupMaxReps: string;
   squatsOneMinuteReps: string;
   pushupsOneMinuteReps: string;
+  gripTestMethod: string; // 'deadhang' | 'pinch' - selection when equipment is disabled
   gripLeftKg: string;
   gripRightKg: string;
   // Alternative grip strength methods
@@ -186,7 +201,7 @@ export interface FormData {
   gripFarmersWalkDistanceM: string;
   gripFarmersWalkTimeS: string;
   gripFarmersWalkLoadKg: string;
-  gripPlatePinchKg: string;
+  gripPlatePinchSeconds: string; // Time in seconds holding standardized weight (10kg female, 15kg male)
   chairStandReps: string;
   dynamometerForce: string;
 
@@ -278,8 +293,17 @@ const initialFormData: FormData = {
   skinfoldThighMm: '',
   skinfoldBicepMm: '',
   waistCm: '',
+  shouldersCm: '',
+  chestCm: '',
+  armLeftCm: '',
+  armRightCm: '',
   neckCm: '',
-  hipCm: '',
+  hipsCm: '',
+  thighLeftCm: '',
+  thighRightCm: '',
+  calfLeftCm: '',
+  calfRightCm: '',
+  hipCm: '', // Legacy field - kept for backward compatibility
   segmentalArmRightKg: '',
   segmentalArmLeftKg: '',
   segmentalLegRightKg: '',
@@ -367,17 +391,20 @@ const initialFormData: FormData = {
   pushupMaxReps: '',
   squatsOneMinuteReps: '',
   pushupsOneMinuteReps: '',
+  gripTestMethod: '',
   gripLeftKg: '',
   gripRightKg: '',
   gripDeadhangSeconds: '',
   gripFarmersWalkDistanceM: '',
   gripFarmersWalkTimeS: '',
   gripFarmersWalkLoadKg: '',
-  gripPlatePinchKg: '',
+  gripPlatePinchSeconds: '',
   chairStandReps: '',
   dynamometerForce: '',
   coachReport: '',
   clientReport: '',
+  bodyCompMethod: '',
+  showAnalyzerFields: 'no',
 };
 
 export const FormProvider = ({ children }: { children: ReactNode }) => {

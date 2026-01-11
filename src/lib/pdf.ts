@@ -104,8 +104,8 @@ export async function downloadElementAsPdf(element: HTMLElement, fileName: strin
   pdf.setProperties({
     title: fileName.replace('.pdf', ''),
     subject: 'Fitness Assessment Report',
-    author: 'One Fitness',
-    creator: 'One Fitness Assessment Engine',
+    author: 'FitnessFlow',
+    creator: 'FitnessFlow Assessment Engine',
   });
 
   pdf.save(fileName);

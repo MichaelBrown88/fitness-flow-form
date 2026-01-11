@@ -1,6 +1,7 @@
 import type { FormData } from '@/contexts/FormContext';
 import { CONFIG } from '@/config';
 import { NORMATIVE_SCORING_DB, type NormativeBenchmark, MOVEMENT_LOGIC_DB, LIFESTYLE_FEEDBACK_DB, GOAL_TIMELINE_DB } from './clinical-data';
+import { convertGripStrength, calculateBodyFatFromMeasurements } from './utils/measurementConverters';
 
 export type ScoreDetail = {
   id: string;
@@ -106,32 +107,112 @@ export function calculateAge(dob: string): number {
   return age;
 }
 
+/**
+ * Score body composition based on analyzer data OR body measurements
+ * Priority: Analyzer data (if available) > Body measurements (US Navy method)
+ * Results are standardized so both methods produce comparable scores.
+ */
 function scoreBodyComp(form: FormData, age: number, gender: string): ScoreCategory {
   const weight = parseFloat(form.inbodyWeightKg || '0');
-  // ... rest of logic uses gender/age as needed ...
-
-  const bodyFat = parseFloat(form.inbodyBodyFatPct || '0');
-  const smm = parseFloat(form.skeletalMuscleMassKg || '0');
+  const height = parseFloat(form.heightCm || '0');
+  const genderLower = (gender || 'male').toLowerCase() as 'male' | 'female';
+  
+  // Check if analyzer data exists
+  const hasAnalyzerData = !!(form.inbodyBodyFatPct || form.skeletalMuscleMassKg || form.inbodyScore);
+  
+  let bodyFat = parseFloat(form.inbodyBodyFatPct || '0');
+  let smm = parseFloat(form.skeletalMuscleMassKg || '0');
+  let whr = parseFloat(form.waistHipRatio || '0');
+  let visceral = parseFloat(form.visceralFatLevel || '0');
+  
+  // If no analyzer data, calculate from body measurements
+  if (!hasAnalyzerData) {
+    const waistCm = parseFloat(form.waistCm || '0');
+    const neckCm = parseFloat(form.neckCm || '0');
+    const hipsCm = parseFloat(form.hipsCm || form.hipCm || '0');
+    
+    // Calculate body fat % from measurements (US Navy method)
+    if (waistCm > 0 && neckCm > 0 && height > 0) {
+      bodyFat = calculateBodyFatFromMeasurements(waistCm, neckCm, height, genderLower, hipsCm > 0 ? hipsCm : undefined);
+    }
+    
+    // Calculate WHR from measurements
+    if (waistCm > 0 && hipsCm > 0) {
+      whr = waistCm / hipsCm;
+    }
+    
+    // Estimate visceral fat from waist measurement (rough correlation)
+    // Visceral fat level roughly correlates with waist circumference
+    // Typical range: waist < 80cm = low visceral (<5), 80-90cm = moderate (5-10), >90cm = high (>10)
+    if (waistCm > 0 && visceral === 0) {
+      if (genderLower === 'male') {
+        if (waistCm < 80) visceral = 5;
+        else if (waistCm < 90) visceral = 7;
+        else if (waistCm < 100) visceral = 10;
+        else visceral = 12;
+      } else {
+        if (waistCm < 70) visceral = 4;
+        else if (waistCm < 80) visceral = 6;
+        else if (waistCm < 90) visceral = 9;
+        else visceral = 11;
+      }
+    }
+    
+    // Estimate skeletal muscle mass from measurements and body fat %
+    // Rough estimation based on arm, chest, thigh circumferences and body fat %
+    if (smm === 0 && weight > 0 && bodyFat > 0) {
+      const armLeft = parseFloat(form.armLeftCm || '0');
+      const armRight = parseFloat(form.armRightCm || '0');
+      const chest = parseFloat(form.chestCm || '0');
+      const thighLeft = parseFloat(form.thighLeftCm || '0');
+      const thighRight = parseFloat(form.thighRightCm || '0');
+      
+      // Average limb circumferences
+      const avgArm = (armLeft + armRight) / 2;
+      const avgThigh = (thighLeft + thighRight) / 2;
+      
+      // Rough estimation: Muscle mass correlates with limb circumference and inversely with body fat %
+      // Formula: SMM ≈ (weight × (1 - BF%/100)) × muscle_factor
+      // Muscle factor adjusted by limb measurements
+      if (avgArm > 0 && avgThigh > 0 && chest > 0) {
+        const leanBodyMass = weight * (1 - bodyFat / 100);
+        // Muscle typically represents 40-50% of lean body mass
+        // Adjust based on limb measurements (larger limbs = more muscle)
+        const baseMuscleFactor = 0.45; // 45% of lean mass is muscle
+        const limbFactor = Math.min(1.2, 1 + ((avgArm - 30) / 100) + ((avgThigh - 50) / 200));
+        smm = leanBodyMass * baseMuscleFactor * limbFactor;
+      } else if (weight > 0 && bodyFat > 0) {
+        // Fallback: simple estimation from weight and body fat %
+        const leanBodyMass = weight * (1 - bodyFat / 100);
+        smm = leanBodyMass * 0.45; // 45% of lean mass is muscle
+      }
+    }
+  }
+  
   const bfm = parseFloat(form.bodyFatMassKg || (weight > 0 && bodyFat > 0 ? ((weight * bodyFat) / 100).toFixed(1) : '0'));
-  const whr = parseFloat(form.waistHipRatio || '0');
   const bmr = parseFloat(form.bmrKcal || '0');
   const inbodyScore = parseFloat(form.inbodyScore || '0');
-  const bmi = parseFloat(form.inbodyBmi || '0');
+  const bmi = parseFloat(form.inbodyBmi || (weight > 0 && height > 0 ? (weight / ((height / 100) ** 2)).toFixed(1) : '0'));
   const tbw = parseFloat(form.totalBodyWaterL || '0');
 
-  // Heuristic scoring
+  // Standardized scoring (works the same whether data comes from analyzer or measurements)
   const bfScore = bodyFat > 0 ? clamp(100 - (bodyFat - CONFIG.SCORING.THRESHOLDS.BF_HEALTHY_MIN) * 3) : 0;
-  const smmScore = smm > 0 ? clamp((smm / (weight || 1)) * CONFIG.SCORING.THRESHOLDS.SMM_RATIO_SCALE) : 0; // rough ratio scaled
-  const visceral = parseFloat(form.visceralFatLevel || '0');
+  const smmScore = smm > 0 ? clamp((smm / (weight || 1)) * CONFIG.SCORING.THRESHOLDS.SMM_RATIO_SCALE) : 0;
   const visceralScore = visceral > 0 ? clamp(100 - (visceral - CONFIG.SCORING.THRESHOLDS.VISCERAL_RISK_START) * 10) : 0;
-  const whrScore = whr > 0 ? clamp(100 - Math.max(0, (whr - CONFIG.SCORING.THRESHOLDS.WHR_RISK_START) * 150)) : 0; // rough, gender-agnostic heuristic
+  const whrScore = whr > 0 ? clamp(100 - Math.max(0, (whr - CONFIG.SCORING.THRESHOLDS.WHR_RISK_START) * 150)) : 0;
+
+  // Format values for display (show calculated values when from measurements)
+  const bodyFatDisplay = hasAnalyzerData ? (form.inbodyBodyFatPct || '-') : (bodyFat > 0 ? bodyFat.toFixed(1) : '-');
+  const smmDisplay = hasAnalyzerData ? (form.skeletalMuscleMassKg || '-') : (smm > 0 ? smm.toFixed(1) : '-');
+  const visceralDisplay = hasAnalyzerData ? (form.visceralFatLevel || '-') : (visceral > 0 ? visceral.toFixed(0) : '-');
+  const whrDisplay = hasAnalyzerData ? (form.waistHipRatio || '-') : (whr > 0 ? whr.toFixed(2) : '-');
 
   const details: ScoreDetail[] = [
-    { id: 'bf', label: 'Body Fat %', value: form.inbodyBodyFatPct || '-', unit: '%', score: Math.round(bfScore) },
-    { id: 'smm', label: 'Skeletal Muscle Mass', value: form.skeletalMuscleMassKg || '-', unit: 'kg', score: Math.round(smmScore) },
-    { id: 'visceral', label: 'Visceral Fat Level', value: form.visceralFatLevel || '-', score: Math.round(visceralScore) },
-    { id: 'bfm', label: 'Body Fat Mass', value: isNaN(bfm) ? '-' : bfm, unit: 'kg', score: Math.round(bfScore) },
-    { id: 'whr', label: 'Waist-to-Hip Ratio', value: form.waistHipRatio || '-', score: Math.round(whrScore) },
+    { id: 'bf', label: 'Body Fat %', value: bodyFatDisplay, unit: '%', score: Math.round(bfScore) },
+    { id: 'smm', label: 'Skeletal Muscle Mass', value: smmDisplay, unit: 'kg', score: Math.round(smmScore) },
+    { id: 'visceral', label: 'Visceral Fat Level', value: visceralDisplay, score: Math.round(visceralScore) },
+    { id: 'bfm', label: 'Body Fat Mass', value: isNaN(bfm) ? '-' : bfm.toFixed(1), unit: 'kg', score: Math.round(bfScore) },
+    { id: 'whr', label: 'Waist-to-Hip Ratio', value: whrDisplay, score: Math.round(whrScore) },
     ...(bmi ? [{ id: 'bmi', label: 'BMI', value: bmi, score: 100 }] as ScoreDetail[] : []),
     ...(tbw ? [{ id: 'tbw', label: 'Total Body Water', value: tbw, unit: 'L', score: 100 }] as ScoreDetail[] : []),
     ...(bmr ? [{ id: 'bmr', label: 'BMR', value: bmr, unit: 'kcal', score: 100 }] as ScoreDetail[] : []),
@@ -306,9 +387,6 @@ function scoreStrength(form: FormData, age: number, gender: string): ScoreCatego
   const pushups = parseFloat(form.pushupsOneMinuteReps || '0');
   const squats = parseFloat(form.squatsOneMinuteReps || '0');
   const plank = parseFloat(form.plankDurationSeconds || '0');
-  const gripLeft = parseFloat(form.gripLeftKg || '0');
-  const gripRight = parseFloat(form.gripRightKg || '0');
-  const gripAvg = (gripLeft + gripRight) / 2;
   
   // Check if fields were actually filled (not skipped)
   const hasPushups = !!(form.pushupsOneMinuteReps && form.pushupsOneMinuteReps.trim() !== '');
@@ -323,8 +401,47 @@ function scoreStrength(form: FormData, age: number, gender: string): ScoreCatego
   const hasGripFarmersWalk = !!(form.gripFarmersWalkDistanceM && form.gripFarmersWalkDistanceM.trim() !== '') ||
                               !!(form.gripFarmersWalkTimeS && form.gripFarmersWalkTimeS.trim() !== '') ||
                               !!(form.gripFarmersWalkLoadKg && form.gripFarmersWalkLoadKg.trim() !== '');
-  const hasGripPlatePinch = !!(form.gripPlatePinchKg && form.gripPlatePinchKg.trim() !== '' && parseFloat(form.gripPlatePinchKg) > 0);
+  const hasGripPlatePinch = !!(form.gripPlatePinchSeconds && form.gripPlatePinchSeconds.trim() !== '' && parseFloat(form.gripPlatePinchSeconds) > 0);
   const hasGrip = hasGripDynamometer || hasGripDeadhang || hasGripFarmersWalk || hasGripPlatePinch;
+
+  // Calculate standardized grip strength (convert all methods to equivalent dynamometer kg)
+  // This ensures all grip methods (dynamometer, deadhang, farmerswalk, platepinch) are scored consistently
+  let gripAvg = 0;
+  if (hasGrip) {
+    const bodyweightKg = parseFloat(form.inbodyWeightKg || '0');
+    const genderTyped = (gender || 'male').toLowerCase() as 'male' | 'female';
+    
+    if (hasGripDynamometer) {
+      // Dynamometer: already in kg, just average left/right
+      const gripLeft = parseFloat(form.gripLeftKg || '0');
+      const gripRight = parseFloat(form.gripRightKg || '0');
+      gripAvg = (gripLeft + gripRight) / 2;
+    } else if (hasGripDeadhang) {
+      // Dead hang: convert time (seconds) to equivalent dynamometer kg
+      const hangTime = parseFloat(form.gripDeadhangSeconds || '0');
+      gripAvg = convertGripStrength(hangTime, 'deadhang', bodyweightKg, genderTyped);
+    } else if (hasGripFarmersWalk) {
+      // Farmer's walk: convert distance/time/load to equivalent dynamometer kg
+      const distance = parseFloat(form.gripFarmersWalkDistanceM || '0');
+      const time = parseFloat(form.gripFarmersWalkTimeS || '0');
+      const load = parseFloat(form.gripFarmersWalkLoadKg || '0');
+      gripAvg = convertGripStrength(distance, 'farmerswalk', bodyweightKg, genderTyped, {
+        loadPerHandKg: load,
+        distanceMeters: distance,
+        timeSeconds: time
+      });
+    } else if (hasGripPlatePinch) {
+      // Plate pinch: time-based with standardized weight (10kg female, 15kg male)
+      // Convert time to equivalent dynamometer kg using standardized weight
+      const pinchTime = parseFloat(form.gripPlatePinchSeconds || '0');
+      const standardizedWeight = genderTyped === 'male' ? 15 : 10; // 15kg for male, 10kg for female
+      // Use time-based conversion: longer hold = stronger grip
+      // Formula: estimated grip strength ≈ standardized_weight × (1 + time_factor)
+      const timeFactor = Math.min(1.0, pinchTime / 60); // Normalize to 60s max
+      const estimatedKg = standardizedWeight * (1 + timeFactor * 0.5);
+      gripAvg = Math.max(20, Math.min(80, estimatedKg)); // Clamp to reasonable range
+    }
+  }
 
   // Lookup normative scores
   const pushScore = hasPushups ? lookupNormativeScore('Push-up', gender, age, pushups) : 0;

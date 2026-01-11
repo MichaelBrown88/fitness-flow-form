@@ -11,6 +11,7 @@ import { NORMATIVE_SCORING_DB } from '@/lib/clinical-data';
 import { calculateBodyRecomposition, getTargetBodyFatFromLevel, getBodyFatRange } from '@/lib/utils/bodyRecomposition';
 import { calculateFunctionalGaps } from '@/lib/utils/functionalStrength';
 import { calculateCardioAnalysis, mapFitnessGoalLevel } from '@/lib/utils/cardioAnalysis';
+import { convertGripStrength } from '@/lib/utils/measurementConverters';
 
 export interface GapAnalysisData {
   title: string;
@@ -31,7 +32,14 @@ export interface GapAnalysisData {
   functionalGaps?: {
     endurance: { current: number; target: number; gap: number };
     core: { current: number; target: number; gap: number };
-    strength?: { current: number; target: number; gap: number };
+    strength?: { 
+      current: number; 
+      target: number; 
+      gap: number;
+      method?: 'dynamometer' | 'deadhang' | 'pinch' | null;
+      currentTime?: number;
+      targetTime?: number;
+    };
   };
   cardioGaps?: {
     vo2: { current: number; target: number; gap: number };
@@ -48,9 +56,45 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData): G
     const pushups = parseFloat(formData?.pushupsOneMinuteReps || formData?.pushupMaxReps || '0');
     const squats = parseFloat(formData?.squatsOneMinuteReps || '0');
     const plankTime = parseFloat(formData?.plankDurationSeconds || '0');
+    // Grip strength - handle all three methods
     const gripLeft = parseFloat(formData?.gripLeftKg || '0');
     const gripRight = parseFloat(formData?.gripRightKg || '0');
-    const gripStrength = Math.max(gripLeft, gripRight); // Use max of left/right
+    const gripDeadhang = parseFloat(formData?.gripDeadhangSeconds || '0');
+    const gripPinchTime = parseFloat(formData?.gripPlatePinchSeconds || '0');
+    const gripTestMethod = formData?.gripTestMethod || '';
+    const genderKey = (gender || 'male').toLowerCase() as 'male' | 'female';
+    
+    // Determine which grip method was used and get standardized value
+    let gripStrength: number | undefined;
+    let gripMethod: 'dynamometer' | 'deadhang' | 'pinch' | null = null;
+    let gripDisplayValue: string = 'N/A';
+    let gripCurrentTime: number | undefined; // For time-based methods
+    let gripStandardizedWeight: number | undefined; // For pinch test
+    
+    if (gripLeft > 0 || gripRight > 0) {
+      gripStrength = Math.max(gripLeft, gripRight);
+      gripMethod = 'dynamometer';
+      gripDisplayValue = `${gripStrength.toFixed(1)} kg`;
+    } else if (gripDeadhang > 0) {
+      gripMethod = 'deadhang';
+      gripCurrentTime = gripDeadhang;
+      gripDisplayValue = `${gripDeadhang.toFixed(0)}s`;
+      // Convert deadhang time to equivalent kg for gap analysis
+      const bodyweightKg = parseFloat(formData?.inbodyWeightKg || '0');
+      if (bodyweightKg > 0) {
+        gripStrength = convertGripStrength(gripDeadhang, 'deadhang', bodyweightKg, genderKey);
+      }
+    } else if (gripPinchTime > 0 || gripTestMethod === 'pinch') {
+      gripMethod = 'pinch';
+      gripCurrentTime = gripPinchTime;
+      gripStandardizedWeight = genderKey === 'male' ? 15 : 10; // 15kg for male, 10kg for female
+      gripDisplayValue = `${gripPinchTime.toFixed(0)}s (${gripStandardizedWeight}kg)`;
+      // Convert pinch time to equivalent kg for gap analysis
+      const timeFactor = Math.min(1.0, gripPinchTime / 60); // Normalize to 60s max
+      gripStrength = gripStandardizedWeight * (1 + timeFactor * 0.5);
+      gripStrength = Math.max(20, Math.min(80, gripStrength)); // Clamp to reasonable range
+    }
+    
     const bodyWeight = parseFloat(formData?.inbodyWeightKg || '0');
     const restingHr = parseFloat(formData?.cardioRestingHr || '0');
     
@@ -308,7 +352,7 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData): G
       };
       const ambitionLevel = mapFitnessGoalLevel(strengthAmbitionMap[strengthGoalValue] || 'active');
       
-      // Calculate functional gaps
+      // Calculate functional gaps (pass grip method info for time-based targets)
       const functionalGaps = calculateFunctionalGaps(
         genderKey,
         bodyWeight,
@@ -316,6 +360,8 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData): G
         squats,
         plankTime,
         gripStrength > 0 ? gripStrength : undefined,
+        gripCurrentTime,
+        gripMethod,
         ambitionLevel,
         formData?.primaryTrainingStyle
       );
@@ -369,9 +415,20 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData): G
           insight = `${insight} ${functionalGaps.contextualInsight}`;
         }
         
-        // Create summary current value (endurance total)
+        // Create summary current value (endurance total or grip strength)
         if (hasEnduranceData) {
           currentValue = `${functionalGaps.endurance.current} total reps`;
+        } else if (hasStrengthData && functionalGaps.strength) {
+          // Show grip strength based on method
+          if (gripMethod === 'deadhang' && functionalGaps.strength.currentTime !== undefined) {
+            currentValue = `${functionalGaps.strength.currentTime.toFixed(0)}s hang`;
+          } else if (gripMethod === 'pinch' && functionalGaps.strength.currentTime !== undefined && gripStandardizedWeight) {
+            currentValue = `${functionalGaps.strength.currentTime.toFixed(0)}s (${gripStandardizedWeight}kg)`;
+          } else if (gripMethod === 'dynamometer') {
+            currentValue = `${functionalGaps.strength.current.toFixed(1)} kg`;
+          } else {
+            currentValue = 'Assessment needed';
+          }
         } else {
           currentValue = 'Assessment needed';
         }
@@ -380,6 +437,20 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData): G
         if (hasEnduranceData) {
           targetValue = `${functionalGaps.endurance.target} total reps`;
           targetLabel = 'Functional Strength Target';
+        } else if (hasStrengthData && functionalGaps.strength) {
+          // Show grip strength target based on method
+          if (gripMethod === 'deadhang' && functionalGaps.strength.targetTime !== undefined) {
+            targetValue = `${functionalGaps.strength.targetTime.toFixed(0)}s hang`;
+            targetLabel = 'Dead Hang Target';
+          } else if (gripMethod === 'pinch' && functionalGaps.strength.targetTime !== undefined && gripStandardizedWeight) {
+            targetValue = `${functionalGaps.strength.targetTime.toFixed(0)}s (${gripStandardizedWeight}kg)`;
+            targetLabel = 'Pinch Test Target';
+          } else if (gripMethod === 'dynamometer') {
+            targetValue = `${functionalGaps.strength.target.toFixed(1)} kg`;
+            targetLabel = 'Grip Strength Target';
+          } else {
+            targetValue = 'N/A';
+          }
         } else {
           targetValue = 'N/A';
         }

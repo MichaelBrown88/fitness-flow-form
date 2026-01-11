@@ -1,7 +1,8 @@
 import { ONBOARDING_STEPS } from '@/types/onboarding';
-import { X, ArrowLeft, ChevronRight } from 'lucide-react';
+import { X, ArrowLeft, ChevronRight, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 
 interface OnboardingLayoutProps {
   currentStep: number;
@@ -17,6 +18,7 @@ const GlassPanel = ({ children, className = "" }: { children: React.ReactNode; c
 
 export function OnboardingLayout({ currentStep, children, onBack }: OnboardingLayoutProps) {
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
   const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
@@ -25,9 +27,31 @@ export function OnboardingLayout({ currentStep, children, onBack }: OnboardingLa
     return () => clearTimeout(timer);
   }, [currentStep]);
 
-  const handleClose = () => {
+  const handleClose = async () => {
     if (confirm('Are you sure you want to leave? Your progress will be saved.')) {
+      // If user is stuck (has account but incomplete onboarding), offer sign out
+      if (user) {
+        const wantsSignOut = confirm('You are currently logged in. Would you like to sign out instead?');
+        if (wantsSignOut) {
+          await signOut();
+          // Clear all storage
+          localStorage.clear();
+          sessionStorage.clear();
+          navigate('/', { replace: true });
+          return;
+        }
+      }
       navigate('/dashboard');
+    }
+  };
+
+  const handleSignOut = async () => {
+    if (confirm('Sign out and clear all data? You can start fresh with a new account.')) {
+      await signOut();
+      // Clear all storage
+      localStorage.clear();
+      sessionStorage.clear();
+      navigate('/', { replace: true });
     }
   };
 
@@ -72,12 +96,24 @@ export function OnboardingLayout({ currentStep, children, onBack }: OnboardingLa
           {currentStep < 0 && <div className="flex gap-2"><div className="w-0"></div></div>}
           {currentStep >= ONBOARDING_STEPS.length && <div className="flex gap-2"><div className="w-0"></div></div>}
 
-          <button 
-            onClick={handleClose} 
-            className="w-10 h-10 rounded-full bg-white border border-slate-100 flex items-center justify-center hover:bg-slate-50 text-slate-500 transition-colors shadow-sm"
-          >
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Sign Out button (only show if user is logged in) */}
+            {user && (
+              <button
+                onClick={handleSignOut}
+                className="w-10 h-10 rounded-full bg-white border border-slate-100 flex items-center justify-center hover:bg-red-50 hover:border-red-200 text-slate-500 hover:text-red-600 transition-colors shadow-sm"
+                title="Sign out and start fresh"
+              >
+                <LogOut size={18} />
+              </button>
+            )}
+            <button 
+              onClick={handleClose} 
+              className="w-10 h-10 rounded-full bg-white border border-slate-100 flex items-center justify-center hover:bg-slate-50 text-slate-500 transition-colors shadow-sm"
+            >
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         {/* Content Scroll Area */}

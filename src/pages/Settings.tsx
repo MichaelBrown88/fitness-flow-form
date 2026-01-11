@@ -13,7 +13,6 @@ import { Loader2, Upload, Palette, ShieldCheck, Box, Settings as SettingsIcon } 
 import { getAllGradients, type GradientId } from '@/lib/design/gradients';
 
 const Settings = () => {
-  const { settings, updateSettings } = useSettings();
   const { user, profile, orgSettings, refreshSettings } = useAuth();
   const { toast } = useToast();
   const [localOrgName, setLocalOrgName] = useState(orgSettings?.name || '');
@@ -22,8 +21,8 @@ const Settings = () => {
   const [isUploading, setIsUploading] = useState(false);
   const gradients = getAllGradients();
 
-  // Owners are always admins
-  const isAdmin = profile?.role === 'org_admin' || !profile;
+  // Check if user is an organization admin (coaches have limited access)
+  const isAdmin = profile?.role === 'org_admin';
 
   useEffect(() => {
     if (orgSettings) {
@@ -98,38 +97,31 @@ const Settings = () => {
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary opacity-80">Access Level</p>
             <div className="flex items-center gap-3">
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary text-white shadow-sm shadow-primary/20">
-                🛡️ Organization Admin
+                {isAdmin ? '🛡️ Organization Admin' : '👤 Coach'}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Personal Preferences */}
-        <section className="space-y-4">
-          <div className="flex items-center gap-2 text-slate-900 mb-2">
-            <ShieldCheck className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-bold">Coach Preferences</h2>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="demo-auto-fill" className="text-sm font-bold text-slate-800">
-                  Auto-fill Demo Persona
-                </Label>
-                <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                  Enable the AI-powered demo persona auto-fill feature.
-                </p>
-              </div>
-              <Switch
-                id="demo-auto-fill"
-                checked={settings.demoAutoFillEnabled}
-                onCheckedChange={(checked) => updateSettings({ demoAutoFillEnabled: checked })}
-              />
+        {/* Coach Personal Profile (visible to all) */}
+        {!isAdmin && (
+          <section className="space-y-4">
+            <div className="flex items-center gap-2 text-slate-900 mb-2">
+              <ShieldCheck className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-bold">Coach Profile</h2>
             </div>
-          </div>
-        </section>
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <p className="text-sm text-slate-600">
+                You are a coach. Contact your organization admin to update your profile or change organization settings.
+              </p>
+              <p className="text-xs text-slate-500 mt-2">
+                Only organization administrators can manage branding, equipment, and assessment modules.
+              </p>
+            </div>
+          </section>
+        )}
 
-        {/* Organization Settings */}
+        {/* Organization Settings (Admin Only) */}
         {isAdmin && (
           <>
             <section className="space-y-4">
@@ -252,7 +244,7 @@ const Settings = () => {
                   {Object.entries(orgSettings?.modules || {}).map(([moduleId, enabled]) => {
                     const assessmentLabels: Record<string, { label: string; description: string }> = {
                       parq: { label: 'PAR-Q', description: 'Health screening questionnaire required before physical testing.' },
-                      inbody: { label: 'InBody Scan', description: 'Body composition, muscle mass, and fat analysis.' },
+                      inbody: { label: 'Body Composition', description: 'Body composition, muscle mass, and fat analysis using your configured equipment.' },
                       fitness: { label: 'Metabolic Fitness', description: 'Resting heart rate and VO2 Max estimates via cardio tests.' },
                       posture: { label: 'Posture Analysis', description: 'AI posture analysis and alignment checks.' },
                       overheadSquat: { label: 'Overhead Squat', description: 'Movement quality assessment for overhead squat pattern.' },
@@ -288,30 +280,44 @@ const Settings = () => {
                 <SettingsIcon className="h-5 w-5 text-primary" />
                 <h2 className="text-lg font-bold">Equipment Configuration</h2>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-6 shadow-sm">
-                {/* Grip Strength Toggle */}
-                <div className="space-y-2">
+              <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-8 shadow-sm">
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Configure the equipment available at your facility. Enable equipment to unlock advanced assessment protocols. You can add equipment at any time.
+                </p>
+
+                {/* 1. Body Composition Analyser */}
+                <div className="space-y-4 pb-6 border-b border-slate-100">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <Label className="text-sm font-bold text-slate-800">Enable Grip Strength Test</Label>
-                      <p className="text-xs text-slate-500">When disabled, grip test fields are hidden and clients won't be penalized for missing grip data.</p>
+                    <div className="flex-1">
+                      <Label className="text-sm font-bold text-slate-800">Body Composition Analyser</Label>
+                      <p className="text-xs text-slate-500 mt-1">
+                        {orgSettings?.equipmentConfig?.bodyComposition?.enabled 
+                          ? 'Enabled: Assessments will use analyzer (InBody, DEXA, etc.)'
+                          : 'Disabled: Assessments will use body measurements + skinfold test (clients can still bring their own reports)'}
+                      </p>
                     </div>
                     <Switch
-                      checked={orgSettings?.equipmentConfig?.gripStrength?.enabled !== false}
+                      checked={orgSettings?.equipmentConfig?.bodyComposition?.enabled ?? false}
                       onCheckedChange={async (enabled) => {
                         if (!profile?.organizationId || !orgSettings) return;
                         try {
                           await updateOrgSettings(profile.organizationId, {
                             equipmentConfig: {
                               ...(orgSettings.equipmentConfig || DEFAULT_EQUIPMENT_CONFIG),
-                              gripStrength: {
-                                ...(orgSettings.equipmentConfig?.gripStrength || DEFAULT_EQUIPMENT_CONFIG.gripStrength),
-                                enabled
+                              bodyComposition: {
+                                enabled,
                               }
                             }
                           });
                           await refreshSettings();
-                          toast({ title: enabled ? 'Grip strength test enabled' : 'Grip strength test disabled' });
+                          toast({ 
+                            title: enabled 
+                              ? 'Body composition analyser enabled' 
+                              : 'Body composition analyser disabled - using equipment-free alternatives',
+                            description: enabled 
+                              ? 'Future assessments will use analyzer fields' 
+                              : 'Future assessments will use body measurements + skinfold (clients can bring reports)'
+                          });
                         } catch (err) {
                           toast({ title: 'Failed to update', variant: 'destructive' });
                         }
@@ -320,120 +326,128 @@ const Settings = () => {
                   </div>
                 </div>
 
-                {/* Grip Strength Method */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-bold text-slate-800">Grip Strength Test Method</Label>
-                  <p className="text-xs text-slate-500">Select the equipment you use for grip strength testing.</p>
-                  <Select
-                    value={orgSettings?.equipmentConfig?.gripStrength?.method || DEFAULT_EQUIPMENT_CONFIG.gripStrength.method}
-                    disabled={orgSettings?.equipmentConfig?.gripStrength?.enabled === false}
-                    onValueChange={async (value: 'dynamometer' | 'deadhang' | 'farmerswalk' | 'platepinch') => {
-                      if (!profile?.organizationId || !orgSettings) return;
-                      try {
-                        await updateOrgSettings(profile.organizationId, {
-                          equipmentConfig: {
-                            ...(orgSettings.equipmentConfig || DEFAULT_EQUIPMENT_CONFIG),
-                            gripStrength: {
-                              ...(orgSettings.equipmentConfig?.gripStrength || DEFAULT_EQUIPMENT_CONFIG.gripStrength),
-                              method: value
-                            }
-                          }
-                        });
-                        await refreshSettings();
-                        toast({ title: 'Grip strength method updated' });
-                      } catch (err) {
-                        toast({ title: 'Failed to update', variant: 'destructive' });
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="dynamometer">Dynamometer (Handgrip) - Standard kg measurement</SelectItem>
-                      <SelectItem value="deadhang">Dead Hang - Maximum hang time (seconds)</SelectItem>
-                      <SelectItem value="farmerswalk">Farmer's Walk - Distance/time with load</SelectItem>
-                      <SelectItem value="platepinch">Plate Pinch - Pinch grip weight (kg)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Body Composition Method */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-bold text-slate-800">Body Composition Method</Label>
-                  <p className="text-xs text-slate-500">Select how you measure body composition.</p>
-                  <Select
-                    value={orgSettings?.equipmentConfig?.bodyComposition?.method || DEFAULT_EQUIPMENT_CONFIG.bodyComposition.method}
-                    onValueChange={async (value: 'inbody' | 'dexa' | 'bodpod' | 'skinfold' | 'bioimpedance' | 'measurements') => {
-                      if (!profile?.organizationId || !orgSettings) return;
-                      try {
-                        await updateOrgSettings(profile.organizationId, {
-                          equipmentConfig: {
-                            ...(orgSettings.equipmentConfig || DEFAULT_EQUIPMENT_CONFIG),
-                            bodyComposition: {
-                              method: value,
-                              skinfoldMethod: value === 'skinfold' ? (orgSettings.equipmentConfig?.bodyComposition?.skinfoldMethod || 'jackson-pollock-7') : undefined
-                            }
-                          }
-                        });
-                        await refreshSettings();
-                        toast({ title: 'Body composition method updated' });
-                      } catch (err) {
-                        toast({ title: 'Failed to update', variant: 'destructive' });
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="inbody">InBody - Bioimpedance analysis</SelectItem>
-                      <SelectItem value="dexa">DEXA - Dual-energy X-ray absorptiometry</SelectItem>
-                      <SelectItem value="bodpod">BodPod - Air displacement plethysmography</SelectItem>
-                      <SelectItem value="bioimpedance">Bioimpedance Scale - Other BIA devices</SelectItem>
-                      <SelectItem value="skinfold">Skinfold Calipers - Body fat from skinfold measurements</SelectItem>
-                      <SelectItem value="measurements">Body Measurements - Tape measure (US Navy method)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Skinfold Method (conditional) */}
-                {orgSettings?.equipmentConfig?.bodyComposition?.method === 'skinfold' && (
-                  <div className="space-y-2">
-                    <Label className="text-sm font-bold text-slate-800">Skinfold Method</Label>
-                    <p className="text-xs text-slate-500">Select the skinfold measurement protocol you use.</p>
-                    <Select
-                      value={orgSettings?.equipmentConfig?.bodyComposition?.skinfoldMethod || 'jackson-pollock-7'}
-                      onValueChange={async (value: 'jackson-pollock-7' | 'jackson-pollock-3' | 'durnin-womersley-4') => {
+                {/* 2. Dynamometer / Grip Strength */}
+                <div className="space-y-4 pb-6 border-b border-slate-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <Label className="text-sm font-bold text-slate-800">Dynamometer / Grip Strength Equipment</Label>
+                      <p className="text-xs text-slate-500 mt-1">
+                        {orgSettings?.equipmentConfig?.gripStrength?.enabled 
+                          ? 'Enabled: Assessments will use dynamometer'
+                          : 'Disabled: Assessments will use deadhang + pinch test options (equipment-free)'}
+                      </p>
+                    </div>
+                    <Switch
+                      checked={orgSettings?.equipmentConfig?.gripStrength?.enabled ?? false}
+                      onCheckedChange={async (enabled) => {
                         if (!profile?.organizationId || !orgSettings) return;
                         try {
                           await updateOrgSettings(profile.organizationId, {
                             equipmentConfig: {
                               ...(orgSettings.equipmentConfig || DEFAULT_EQUIPMENT_CONFIG),
-                              bodyComposition: {
-                                method: 'skinfold',
-                                skinfoldMethod: value
+                              gripStrength: {
+                                enabled,
                               }
                             }
                           });
                           await refreshSettings();
-                          toast({ title: 'Skinfold method updated' });
+                          toast({ 
+                            title: enabled 
+                              ? 'Grip strength equipment enabled' 
+                              : 'Grip strength equipment disabled - using equipment-free alternatives',
+                            description: enabled 
+                              ? 'Future assessments will use dynamometer' 
+                              : 'Future assessments will use deadhang + pinch test options'
+                          });
                         } catch (err) {
                           toast({ title: 'Failed to update', variant: 'destructive' });
                         }
                       }}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="jackson-pollock-7">Jackson-Pollock 7-Site (Chest, Axilla, Tricep, Subscapular, Abdomen, Suprailiac, Thigh)</SelectItem>
-                        <SelectItem value="jackson-pollock-3">Jackson-Pollock 3-Site (Men: Chest/Abdomen/Thigh, Women: Tricep/Suprailiac/Thigh)</SelectItem>
-                        <SelectItem value="durnin-womersley-4">Durnin-Womersley 4-Site (Bicep, Tricep, Subscapular, Suprailiac)</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    />
                   </div>
-                )}
+                </div>
+
+                {/* 3. Heart Rate Sensor */}
+                <div className="space-y-4 pb-6 border-b border-slate-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <Label className="text-sm font-bold text-slate-800">Heart Rate Sensor</Label>
+                      <p className="text-xs text-slate-500 mt-1">
+                        {orgSettings?.equipmentConfig?.heartRateSensor?.enabled 
+                          ? 'Enabled: Assessments will use HR sensor integration'
+                          : 'Disabled: Assessments will use manual pulse counting (equipment-free)'}
+                      </p>
+                    </div>
+                    <Switch
+                      checked={orgSettings?.equipmentConfig?.heartRateSensor?.enabled ?? false}
+                      onCheckedChange={async (enabled) => {
+                        if (!profile?.organizationId || !orgSettings) return;
+                        try {
+                          await updateOrgSettings(profile.organizationId, {
+                            equipmentConfig: {
+                              ...(orgSettings.equipmentConfig || DEFAULT_EQUIPMENT_CONFIG),
+                              heartRateSensor: {
+                                enabled
+                              }
+                            }
+                          });
+                          await refreshSettings();
+                          toast({ 
+                            title: enabled 
+                              ? 'Heart rate sensor enabled' 
+                              : 'Heart rate sensor disabled - using manual pulse counting',
+                            description: enabled 
+                              ? 'Future assessments will use HR sensor integration' 
+                              : 'Future assessments will use manual pulse counting'
+                          });
+                        } catch (err) {
+                          toast({ title: 'Failed to update', variant: 'destructive' });
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* 4. Cardio Equipment */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <Label className="text-sm font-bold text-slate-800">Cardio Equipment</Label>
+                      <p className="text-xs text-slate-500 mt-1">
+                        {orgSettings?.equipmentConfig?.cardioEquipment?.enabled 
+                          ? 'Enabled: Assessments will use treadmill/bike/rower protocols'
+                          : 'Disabled: Assessments will use step test (equipment-free)'}
+                      </p>
+                    </div>
+                    <Switch
+                      checked={orgSettings?.equipmentConfig?.cardioEquipment?.enabled ?? false}
+                      onCheckedChange={async (enabled) => {
+                        if (!profile?.organizationId || !orgSettings) return;
+                        try {
+                          await updateOrgSettings(profile.organizationId, {
+                            equipmentConfig: {
+                              ...(orgSettings.equipmentConfig || DEFAULT_EQUIPMENT_CONFIG),
+                              cardioEquipment: {
+                                enabled
+                              }
+                            }
+                          });
+                          await refreshSettings();
+                          toast({ 
+                            title: enabled 
+                              ? 'Cardio equipment enabled' 
+                              : 'Cardio equipment disabled - using step test',
+                            description: enabled 
+                              ? 'Future assessments will use treadmill/bike/rower' 
+                              : 'Future assessments will use step test'
+                          });
+                        } catch (err) {
+                          toast({ title: 'Failed to update', variant: 'destructive' });
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
               </div>
             </section>
           </>

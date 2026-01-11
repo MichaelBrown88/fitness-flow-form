@@ -49,7 +49,7 @@ export async function requestShareArtifacts(params: {
   }
   
   const clientName = formData.fullName || 'your client';
-  const whatsappText = `Here is ${clientName}'s One Fitness assessment report:\n${shareUrl}`;
+  const whatsappText = `Here is ${clientName}'s FitnessFlow assessment report:\n${shareUrl}`;
   
   return {
     shareUrl,

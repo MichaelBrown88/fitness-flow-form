@@ -18,6 +18,9 @@ export interface FunctionalGapsResult {
     current: number;
     target: number;
     gap: number;
+    method?: 'dynamometer' | 'deadhang' | 'pinch' | null;
+    currentTime?: number;
+    targetTime?: number;
   };
   contextualInsight?: string;
 }
@@ -30,7 +33,9 @@ export interface FunctionalGapsResult {
  * @param currentPushUps - Current pushup reps
  * @param currentSquats - Current squat reps
  * @param currentPlankTime - Current plank time in seconds
- * @param currentGripStrength - Current grip strength in kg (max dominant hand, optional)
+ * @param currentGripStrength - Current grip strength in kg (normalized from any method), optional
+ * @param currentGripTime - Current grip time in seconds (for deadhang or pinch), optional
+ * @param gripMethod - 'dynamometer' | 'deadhang' | 'pinch' | null
  * @param ambitionLevel - 'health' | 'active' | 'athletic' | 'elite'
  * @param trainingStyle - User's primary training style (optional)
  * @returns Object with endurance, core, and optionally strength gaps
@@ -42,6 +47,8 @@ export function calculateFunctionalGaps(
   currentSquats: number,
   currentPlankTime: number,
   currentGripStrength?: number,
+  currentGripTime?: number,
+  gripMethod?: 'dynamometer' | 'deadhang' | 'pinch' | null,
   ambitionLevel: 'health' | 'active' | 'athletic' | 'elite' = 'active',
   trainingStyle?: string
 ): FunctionalGapsResult {
@@ -104,7 +111,16 @@ export function calculateFunctionalGaps(
   const coreGap = Math.max(0, coreTarget - currentPlankTime);
 
   // 3. OVERALL STRENGTH (Grip Force) - Optional
-  let strengthResult: { current: number; target: number; gap: number } | undefined;
+  // Standardized formula works for all three methods: dynamometer (kg), deadhang (time), pinch (time)
+  let strengthResult: { 
+    current: number; 
+    target: number; 
+    gap: number; 
+    method?: 'dynamometer' | 'deadhang' | 'pinch' | null; 
+    currentTime?: number; 
+    targetTime?: number 
+  } | undefined;
+  
   if (currentGripStrength !== undefined && currentGripStrength > 0 && bodyWeight > 0) {
     const baseMultiplier = gender === 'male' ? 0.6 : 0.4;
     const goldStandardStrength = bodyWeight * baseMultiplier;
@@ -117,6 +133,7 @@ export function calculateFunctionalGaps(
     };
     const sMultiplier = strengthMultipliers[ambitionLevel] || 1.10;
 
+    // Calculate target in normalized kg (works for all methods)
     let strengthTarget = Math.max(
       currentGripStrength + 2, // Minimum 2kg improvement
       currentGripStrength * sMultiplier
@@ -128,10 +145,27 @@ export function calculateFunctionalGaps(
     
     const strengthGap = Math.max(0, strengthTarget - currentGripStrength);
     
+    // For time-based methods, calculate target time
+    let targetTime: number | undefined;
+    if (gripMethod === 'deadhang' && currentGripTime !== undefined) {
+      // Deadhang: target time based on normalized strength improvement
+      // Formula: target_time ≈ current_time × (target_strength / current_strength)
+      const timeMultiplier = strengthTarget / currentGripStrength;
+      targetTime = Math.ceil(currentGripTime * timeMultiplier);
+    } else if (gripMethod === 'pinch' && currentGripTime !== undefined) {
+      // Pinch: target time based on normalized strength improvement
+      // Same formula as deadhang
+      const timeMultiplier = strengthTarget / currentGripStrength;
+      targetTime = Math.ceil(currentGripTime * timeMultiplier);
+    }
+    
     strengthResult = {
       current: currentGripStrength,
       target: strengthTarget,
-      gap: strengthGap
+      gap: strengthGap,
+      method: (gripMethod ?? undefined) as 'dynamometer' | 'deadhang' | 'pinch' | null | undefined,
+      currentTime: currentGripTime,
+      targetTime
     };
   }
 

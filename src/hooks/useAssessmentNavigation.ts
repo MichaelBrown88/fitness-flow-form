@@ -161,7 +161,7 @@ export function useAssessmentNavigation({ formData, orgSettings }: UseAssessment
     
     // First check equipment-based filtering (e.g., grip strength disabled)
     if (field.id && orgSettings?.equipmentConfig) {
-      const shouldShow = shouldShowField(field as PhaseField, orgSettings.equipmentConfig);
+      const shouldShow = shouldShowField(field as PhaseField, orgSettings.equipmentConfig, data);
       if (!shouldShow) return false;
     }
     

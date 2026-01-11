@@ -13,6 +13,18 @@ export default defineConfig(({ mode }) => ({
     }
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+  optimizeDeps: {
+    force: true, // Temporarily force re-optimization - set back to false after first successful load
+    include: [
+      'react',
+      'react-dom',
+      'react-router-dom',
+      'react-webcam',
+      'qrcode.react',
+      '@radix-ui/react-progress',
+      '@radix-ui/react-visually-hidden',
+    ],
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

@@ -10,10 +10,13 @@ import { saveCoachAssessment, updateCoachAssessment } from '@/services/coachAsse
 import { requestShareArtifacts, type ShareArtifacts } from '@/services/share';
 import type { FormData } from '@/contexts/FormContext';
 import type { ScoreSummary } from '@/lib/scoring';
+import { logger } from '@/lib/utils/logger';
+
+import type { UserProfile } from '@/types/auth';
 
 interface UseAssessmentSaveProps {
   user: { uid: string; email: string | null | undefined } | null;
-  profile?: { organizationId?: string } | null;
+  profile?: UserProfile | null;
   formData: FormData;
   scores: ScoreSummary;
   isResultsPhase: boolean;
@@ -94,7 +97,8 @@ export function useAssessmentSave({
             scores.overall, 
             storedName || clientName,
             category as 'inbody' | 'posture' | 'fitness' | 'strength' | 'lifestyle',
-            profile?.organizationId
+            profile?.organizationId,
+            profile
           );
           
           const { createOrUpdateClientProfile } = await import('@/services/clientProfiles');
@@ -114,10 +118,11 @@ export function useAssessmentSave({
           sessionStorage.setItem('highlightCategory', category);
           sessionStorage.removeItem('partialAssessment');
         } else {
-          assessmentId = await saveCoachAssessment(user.uid, user.email, formData, scores.overall, profile?.organizationId);
+          assessmentId = await saveCoachAssessment(user.uid, user.email, formData, scores.overall, profile?.organizationId, profile);
         }
       } catch (parseErr) {
-        assessmentId = await saveCoachAssessment(user.uid, user.email, formData, scores.overall);
+        // If parse error occurs, still try to save but with profile for validation
+        assessmentId = await saveCoachAssessment(user.uid, user.email, formData, scores.overall, profile?.organizationId, profile);
       }
       
       setSavingId(assessmentId);
@@ -126,8 +131,24 @@ export function useAssessmentSave({
         description: category ? `${category.charAt(0).toUpperCase() + category.slice(1)} data updated and merged.` : `Progress for ${clientName} has been saved.` 
       });
     } catch (e) {
-      console.error('[SYNC] Save failed:', e);
-      toast({ title: 'Sync Error', description: 'Unable to sync with dashboard. Please check your connection.', variant: 'destructive' });
+      // Use logger for consistency with project rules
+      logger.error('[SYNC] Save failed:', e instanceof Error ? e.message : String(e));
+      
+      // Check if it's an organizationId validation error
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      if (errorMessage.includes('Organization ID is required')) {
+        toast({ 
+          title: 'Unable to Save Assessment', 
+          description: 'Organization ID is missing. Please refresh the page and try again. If the problem persists, contact support.', 
+          variant: 'destructive' 
+        });
+      } else {
+        toast({ 
+          title: 'Sync Error', 
+          description: 'Unable to sync with dashboard. Please check your connection and try again.', 
+          variant: 'destructive' 
+        });
+      }
     } finally {
       setSaving(false);
     }
@@ -155,7 +176,17 @@ export function useAssessmentSave({
       throw new Error('User or savingId not available');
     }
 
-    const artifacts = await requestShareArtifacts({ assessmentId: savingId, view });
+    if (!profile) {
+      throw new Error('Profile not available for sharing');
+    }
+
+    const artifacts = await requestShareArtifacts({ 
+      assessmentId: savingId, 
+      view,
+      coachUid: user.uid,
+      formData,
+      organizationId: profile.organizationId
+    });
     shareCacheRef.current[view] = artifacts;
     setShareCache(prev => ({ ...prev, [view]: artifacts }));
     return artifacts;

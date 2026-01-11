@@ -52,6 +52,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { logger } from '@/lib/utils/logger';
 
 const OrganizationManage = () => {
@@ -645,6 +646,43 @@ const OrganizationManage = () => {
                   <span className="text-sm text-amber-400 font-medium">
                     {new Intl.NumberFormat('en-KW', { style: 'currency', currency: 'KWD' }).format((org.aiCostsMtdCents || 0) / 1000)}
                   </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Platform Features */}
+            <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
+              <h2 className="text-white font-semibold mb-4">Platform Features</h2>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+                  <div className="flex-1">
+                    <Label className="text-sm font-semibold text-white mb-1 block">
+                      Demo Auto-Fill (Affiliate/Sales Tool)
+                    </Label>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      Enable the AI-powered demo persona auto-fill feature for affiliates and sales demonstrations.
+                      <br />
+                      <span className="text-amber-400 font-medium">Platform admin controlled - OFF by default.</span>
+                    </p>
+                  </div>
+                  <Switch
+                    checked={org?.demoAutoFillEnabled ?? false}
+                    disabled={saving || !org}
+                    onCheckedChange={async (enabled) => {
+                      if (!orgId || !org) return;
+                      try {
+                        setSaving(true);
+                        await updateOrganizationDetails(orgId, { demoAutoFillEnabled: enabled });
+                        setOrg({ ...org, demoAutoFillEnabled: enabled });
+                        logger.info(`Demo auto-fill ${enabled ? 'enabled' : 'disabled'} for org ${orgId}`);
+                      } catch (error) {
+                        logger.error('Failed to update demo auto-fill:', error);
+                        alert(`Failed to update demo auto-fill: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                      } finally {
+                        setSaving(false);
+                      }
+                    }}
+                  />
                 </div>
               </div>
             </div>

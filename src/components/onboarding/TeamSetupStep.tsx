@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ArrowRight, ArrowLeft, Users, Plus, X, Mail, Crown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import type { TeamSetupData, SubscriptionPlan } from '@/types/onboarding';
 
 interface TeamSetupStepProps {
@@ -14,7 +15,8 @@ export function TeamSetupStep({ data, subscriptionPlan, onNext, onBack }: TeamSe
   const [currentEmail, setCurrentEmail] = useState('');
   const [emailError, setEmailError] = useState<string | null>(null);
 
-  const canInviteTeam = subscriptionPlan !== 'starter';
+  // All plans can add coaches now - at least one coach is required
+  const canInviteTeam = true;
 
   const handleAddEmail = () => {
     setEmailError(null);
@@ -49,15 +51,15 @@ export function TeamSetupStep({ data, subscriptionPlan, onNext, onBack }: TeamSe
     }
   };
 
-  const handleSkip = () => {
-    onNext({ coachEmails: [], skipped: true });
-  };
-
   const handleSubmit = () => {
+    if (emails.length === 0) {
+      setEmailError('You must add at least one coach to continue. If you are also a coach, add your own email.');
+      return;
+    }
     onNext({ coachEmails: emails, skipped: false });
   };
 
-  // Show upgrade prompt for Starter plan
+  // Note: canInviteTeam is now always true, but keeping this for future plan restrictions if needed
   if (!canInviteTeam) {
     return (
       <div className="animate-fade-in-up">
@@ -115,8 +117,9 @@ export function TeamSetupStep({ data, subscriptionPlan, onNext, onBack }: TeamSe
           </Button>
           <Button
             type="button"
-            onClick={handleSkip}
-            className="flex-1 h-12 gradient-bg text-white rounded-xl font-semibold"
+            onClick={handleSubmit}
+            disabled={emails.length === 0}
+            className="flex-1 h-12 gradient-bg text-white rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Continue
             <ArrowRight className="ml-2 w-4 h-4" />
@@ -129,8 +132,9 @@ export function TeamSetupStep({ data, subscriptionPlan, onNext, onBack }: TeamSe
   return (
     <div className="space-y-8 animate-fade-in-up max-w-4xl mx-auto">
       <div>
-        <h3 className="text-3xl font-bold text-slate-900 mb-2">Invite your team</h3>
-        <p className="text-slate-500">Add coaches to your team. They'll receive an email invitation to join.</p>
+        <h3 className="text-3xl font-bold text-slate-900 mb-2">Add your coaches</h3>
+        <p className="text-slate-500 mb-1">You must add at least one coach to continue.</p>
+        <p className="text-sm text-slate-400">If you are also a coach, add your own email address. Coaches will receive an invitation link to join your organization.</p>
       </div>
 
       <div className="space-y-6">
@@ -190,10 +194,13 @@ export function TeamSetupStep({ data, subscriptionPlan, onNext, onBack }: TeamSe
 
         {/* Empty state */}
         {emails.length === 0 && (
-          <div className="p-8 rounded-2xl border-2 border-dashed border-slate-300 bg-white/40 text-center">
-            <Users className="w-10 h-10 text-slate-400 mx-auto mb-3" />
-            <p className="text-slate-500 text-sm font-medium">
-              No coaches added yet. Add email addresses above or skip for now.
+          <div className="p-8 rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50/50 text-center">
+            <Users className="w-10 h-10 text-amber-400 mx-auto mb-3" />
+            <p className="text-amber-700 text-sm font-bold mb-1">
+              At least one coach is required
+            </p>
+            <p className="text-amber-600 text-xs font-medium">
+              Add email addresses above. If you are also a coach, add your own email.
             </p>
           </div>
         )}
@@ -208,25 +215,19 @@ export function TeamSetupStep({ data, subscriptionPlan, onNext, onBack }: TeamSe
             <ArrowLeft size={20} />
             Back
           </button>
-          {emails.length === 0 ? (
-            <button
-              type="button"
-              onClick={handleSkip}
-              className="px-8 py-4 rounded-2xl bg-slate-900 text-white font-bold text-lg flex items-center gap-2 hover:bg-slate-800 transition-all shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-95"
-            >
-              Skip for now
-              <ArrowRight size={20} />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleSubmit}
-              className="px-8 py-4 rounded-2xl bg-slate-900 text-white font-bold text-lg flex items-center gap-2 hover:bg-slate-800 transition-all shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-95"
-            >
-              Send invites & continue
-              <ArrowRight size={20} />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={emails.length === 0}
+            className={`px-8 py-4 rounded-2xl font-bold text-lg flex items-center gap-2 transition-all shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-95 ${
+              emails.length === 0
+                ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                : 'bg-slate-900 text-white hover:bg-slate-800'
+            }`}
+          >
+            Continue
+            <ArrowRight size={20} />
+          </button>
         </div>
       </div>
     </div>

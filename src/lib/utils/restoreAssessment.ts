@@ -110,7 +110,8 @@ export async function restoreClientAssessment(
                 null,
                 latestSnapshot.formData,
                 latestSnapshot.overallScore,
-                finalOrgId
+                finalOrgId,
+                null // profile - not available in utility function, relying on explicit orgId
               );
               console.log('[RESTORE] ✓ Created new assessment entry in dashboard');
               console.log('[RESTORE] ✓ Refresh the dashboard page to see it!');
@@ -190,7 +191,8 @@ export async function restoreClientAssessment(
             null, // coachEmail - not needed
             current.formData,
             current.overallScore,
-            finalOrgId
+            finalOrgId,
+            null // profile - not available in utility function, relying on explicit orgId
           );
           console.log('[RESTORE] ✓ Created new assessment entry in dashboard');
           console.log('[RESTORE] ✓ Assessment ID:', assessmentId);
@@ -551,10 +553,11 @@ export async function recoverMissingPostureImages(
         const { saveCoachAssessment } = await import('@/services/coachAssessments');
         await saveCoachAssessment(
           user.uid,
-          null,
+          null, // coachEmail
           updatedFormData,
           current.overallScore,
-          finalOrgId
+          finalOrgId,
+          null // profile - not available in utility function, relying on explicit orgId
         );
         console.log('[RECOVER] ✓ Created new assessment entry');
         console.log('[RECOVER] ⚠️ IMPORTANT: Please do a HARD REFRESH (Cmd+Shift+R or Ctrl+Shift+R) to see the recovered image!');

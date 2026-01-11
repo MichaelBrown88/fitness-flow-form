@@ -3,6 +3,8 @@ import type { Timestamp } from 'firebase/firestore';
 import type { FormData } from '@/contexts/FormContext';
 import { getDb } from '@/services/firebase';
 import { summarizeScores } from '@/lib/scoring';
+import { validateOrganizationId } from '@/lib/utils/validateOrganizationId';
+import type { UserProfile } from '@/types/auth';
 
 export type CoachAssessmentSummary = {
   id: string;
@@ -45,21 +47,23 @@ export async function saveCoachAssessment(
   formData: FormData,
   overallScore: number,
   organizationId?: string,
+  profile?: UserProfile | null,
 ): Promise<string> {
   const name = (formData.fullName || 'Unnamed client').trim();
   
+  // Validate organizationId before proceeding
+  const validOrgId = validateOrganizationId(organizationId, profile);
+  
   // 1. Use new assessment history system (the deep structure)
   const { updateCurrentAssessment } = await import('./assessmentHistory');
-  await updateCurrentAssessment(coachUid, name, formData, overallScore, 'full', 'all', organizationId);
+  await updateCurrentAssessment(coachUid, name, formData, overallScore, 'full', 'all', validOrgId);
   
   // 2. ALSO update/create a summary in the flat assessments collection for the dashboard
-  // We use a consistent ID based on the client name to keep the dashboard tidy
-  const assessmentId = `${name.toLowerCase().replace(/\s+/g, '-')}-latest`;
-  
   // Pre-calculate scores summary for dashboard performance
   const scoresSummary = summarizeScores(formData);
   
-  await addDoc(collection(getDb(), 'coaches', coachUid, 'assessments'), {
+  // Create assessment summary document and capture the actual Firestore document ID
+  const docRef = await addDoc(collection(getDb(), 'coaches', coachUid, 'assessments'), {
     clientName: name,
     clientNameLower: name.toLowerCase(),
     createdAt: serverTimestamp(),
@@ -73,8 +77,8 @@ export async function saveCoachAssessment(
     isSummary: true 
   });
   
-  // Return a consistent ID for the current assessment
-  return `${coachUid}-${name.toLowerCase().replace(/\s+/g, '-')}-current`;
+  // Return the actual Firestore document ID for reliable navigation and report loading
+  return docRef.id;
 }
 
 export async function listCoachAssessments(
@@ -270,8 +274,12 @@ export async function savePartialAssessment(
   clientName: string,
   category: 'inbody' | 'posture' | 'fitness' | 'strength' | 'lifestyle',
   organizationId?: string,
+  profile?: UserProfile | null,
 ): Promise<string> {
   const finalName = (clientName || formData.fullName || 'Unnamed client').trim();
+  
+  // Validate organizationId before proceeding
+  const validOrgId = validateOrganizationId(organizationId, profile);
   
   // 1. Get current assessment to merge with
   const { getCurrentAssessment, updateCurrentAssessment } = await import('./assessmentHistory');
@@ -286,19 +294,19 @@ export async function savePartialAssessment(
   const changeType = `partial-${category}` as const;
   
   // 2. Update current assessment and log change (deep structure)
-  await updateCurrentAssessment(coachUid, finalName, mergedFormData, overallScore, changeType, category, organizationId);
+  await updateCurrentAssessment(coachUid, finalName, mergedFormData, overallScore, changeType, category, validOrgId);
   
   // Pre-calculate scores summary for dashboard performance
   const scoresSummary = summarizeScores(mergedFormData);
   
-  // 3. Update summary for dashboard
-  await addDoc(collection(getDb(), 'coaches', coachUid, 'assessments'), {
+  // 3. Update summary for dashboard and capture the actual Firestore document ID
+  const docRef = await addDoc(collection(getDb(), 'coaches', coachUid, 'assessments'), {
     clientName: finalName,
     clientNameLower: finalName.toLowerCase(),
     createdAt: serverTimestamp(),
     coachUid,
     coachEmail: coachEmail || null,
-    organizationId: organizationId || null,
+    organizationId: validOrgId,
     overallScore,
     goals: Array.isArray(mergedFormData.clientGoals) ? mergedFormData.clientGoals : [],
     formData: mergedFormData, // Include merged data for this point in time
@@ -307,8 +315,8 @@ export async function savePartialAssessment(
     isPartial: true
   });
   
-  // Return consistent ID
-  return `${coachUid}-${finalName.toLowerCase().replace(/\s+/g, '-')}-current`;
+  // Return the actual Firestore document ID for reliable navigation and report loading
+  return docRef.id;
 }
 
 /**

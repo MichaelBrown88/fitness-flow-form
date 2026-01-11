@@ -1,9 +1,10 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useFormContext, type FormData } from '@/contexts/FormContext';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Scan, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Scan, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 import { type PhaseField, type PhaseSection } from '@/lib/phaseConfig';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { shouldShowField } from '@/lib/utils/equipmentFieldFilter';
@@ -36,15 +37,16 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
   onShowPostureCompanion,
   onShowInBodyCompanion
 }) => {
-  const { formData } = useFormContext();
+  const { formData, updateFormData } = useFormContext();
   const { orgSettings } = useAuth();
   const isMobile = useIsMobile();
+  const [showInBodyOptions, setShowInBodyOptions] = useState(false);
 
   // Filter visible fields and group paired ones
   const steps = useMemo(() => {
     const visible = (section.fields as PhaseField[]).filter(field => {
-      // First check equipment-based filtering
-      if (!shouldShowField(field, orgSettings?.equipmentConfig)) {
+      // First check equipment-based filtering (pass formData for conditional analyzer fields)
+      if (!shouldShowField(field, orgSettings?.equipmentConfig, formData)) {
         return false;
       }
       
@@ -145,43 +147,139 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
           </div>
         )}
 
-        <div className={`grid gap-8 ${currentStep.length > 1 ? 'md:grid-cols-2' : 'grid-cols-1'}`}>
-          {currentStep.map(field => (
-            <div key={field.id} className="space-y-4">
-              {field.side && (
-                <span className={`text-[10px] font-black uppercase tracking-widest ${field.side === 'left' ? 'text-emerald-500' : 'text-primary'}`}>
-                  {field.side} Side
-                </span>
-              )}
-              <FieldControl 
-                field={field}
-                onShowCamera={onShowCamera}
-                onShowPostureCompanion={onShowPostureCompanion}
-                onShowInBodyCompanion={onShowInBodyCompanion}
-              />
+        {/* Body Composition Method Selection - Show at start of body-comp section */}
+        {section.id === 'body-comp' && !formData.bodyCompMethod && (
+          <div className="mb-8 space-y-4">
+            <h3 className="text-xl font-bold text-slate-900 mb-4">Choose Assessment Method</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Button
+                onClick={() => updateFormData({ bodyCompMethod: 'measurements' })}
+                className="h-24 rounded-2xl border-2 border-primary/20 hover:bg-brand-light hover:border-primary/40 transition-all flex flex-col items-center justify-center gap-2"
+              >
+                <div className="text-2xl">📏</div>
+                <div className="font-bold text-sm">Body Measurements</div>
+                <div className="text-xs text-slate-600 font-medium">Tape measure method</div>
+              </Button>
+              <Button
+                onClick={() => updateFormData({ bodyCompMethod: 'analyzer' })}
+                className="h-24 rounded-2xl border-2 border-primary/20 hover:bg-brand-light hover:border-primary/40 transition-all flex flex-col items-center justify-center gap-2"
+              >
+                <div className="text-2xl">📊</div>
+                <div className="font-bold text-sm">Body Composition Analysis</div>
+                <div className="text-xs text-slate-600 font-medium">Analyzer report method</div>
+              </Button>
             </div>
-          ))}
-        </div>
+          </div>
+        )}
 
-        {/* InBody Scan Button - Below input fields */}
-        {section.id === 'body-comp' && onShowCamera && (
-          <div className="mt-8 pt-6 border-t border-slate-100">
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                // On desktop/iPad: show companion modal for iPhone handoff
-                // On mobile: use direct camera
-                if (!isMobile && onShowInBodyCompanion) {
-                  onShowInBodyCompanion();
-                } else {
-                  onShowCamera('ocr');
-                }
-              }}
-              className="w-full h-14 rounded-xl border-primary/20 text-primary hover:bg-brand-light font-bold gap-2"
-            >
-              <Scan className="h-5 w-5" />
-              Scan InBody Report
-            </Button>
+        {/* Show fields only if method is selected */}
+        {section.id === 'body-comp' && formData.bodyCompMethod && (
+          <>
+            <div className={`grid gap-8 ${currentStep.length > 1 ? 'md:grid-cols-2' : 'grid-cols-1'}`}>
+              {currentStep.map(field => (
+                <div key={field.id} className="space-y-4">
+                  {field.side && (
+                    <span className={`text-[10px] font-black uppercase tracking-widest ${field.side === 'left' ? 'text-emerald-500' : 'text-primary'}`}>
+                      {field.side} Side
+                    </span>
+                  )}
+                  <FieldControl 
+                    field={field}
+                    onShowCamera={onShowCamera}
+                    onShowPostureCompanion={onShowPostureCompanion}
+                    onShowInBodyCompanion={onShowInBodyCompanion}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* Body Comp Analysis Report Button - Only show for analyzer method */}
+            {formData.bodyCompMethod === 'analyzer' && onShowCamera && (
+              <div className="mt-8 pt-6 border-t border-slate-100">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowInBodyOptions(true)}
+                  className="w-full h-14 rounded-xl border-primary/20 text-primary hover:bg-brand-light font-bold gap-2"
+                >
+                  <FileText className="h-5 w-5" />
+                  Body Comp Analysis Report
+                </Button>
+                
+                {/* Options Dialog */}
+                <Dialog open={showInBodyOptions} onOpenChange={setShowInBodyOptions}>
+                  <DialogContent className="max-w-md rounded-3xl">
+                    <DialogHeader>
+                      <DialogTitle className="text-xl font-black">Body Comp Analysis Report</DialogTitle>
+                      <DialogDescription>
+                        Choose how you want to enter the analyzer data
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-3 py-4">
+                      <Button
+                        onClick={() => {
+                          // Set flag to show analyzer fields for manual entry
+                          updateFormData({ showAnalyzerFields: 'yes' });
+                          setShowInBodyOptions(false);
+                        }}
+                        className="w-full h-16 rounded-2xl bg-primary text-white font-bold gap-3 justify-start px-6"
+                      >
+                        <FileText className="h-5 w-5" />
+                        <div className="text-left">
+                          <div className="font-black text-sm">Manual Entry</div>
+                          <div className="text-xs opacity-90">Enter values from the report manually</div>
+                        </div>
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setShowInBodyOptions(false);
+                          // On desktop/iPad: show companion modal for iPhone handoff
+                          // On mobile: use direct camera
+                          if (!isMobile && onShowInBodyCompanion) {
+                            onShowInBodyCompanion();
+                          } else {
+                            onShowCamera?.('ocr');
+                          }
+                        }}
+                        variant="outline"
+                        className="w-full h-16 rounded-2xl border-2 border-primary/20 hover:bg-brand-light gap-3 justify-start px-6"
+                      >
+                        <Scan className="h-5 w-5 text-primary" />
+                        <div className="text-left">
+                          <div className="font-black text-sm text-slate-900">Scan Report</div>
+                          <div className="text-xs text-slate-600">Use OCR to automatically extract data</div>
+                        </div>
+                      </Button>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="ghost" onClick={() => setShowInBodyOptions(false)}>
+                        Cancel
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* For non-body-comp sections, show fields normally */}
+        {section.id !== 'body-comp' && (
+          <div className={`grid gap-8 ${currentStep.length > 1 ? 'md:grid-cols-2' : 'grid-cols-1'}`}>
+            {currentStep.map(field => (
+              <div key={field.id} className="space-y-4">
+                {field.side && (
+                  <span className={`text-[10px] font-black uppercase tracking-widest ${field.side === 'left' ? 'text-emerald-500' : 'text-primary'}`}>
+                    {field.side} Side
+                  </span>
+                )}
+                <FieldControl 
+                  field={field}
+                  onShowCamera={onShowCamera}
+                  onShowPostureCompanion={onShowPostureCompanion}
+                  onShowInBodyCompanion={onShowInBodyCompanion}
+                />
+              </div>
+            ))}
           </div>
         )}
         

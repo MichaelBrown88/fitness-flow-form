@@ -81,7 +81,7 @@ export const phaseDefinitions: PhaseDefinition[] = [
           { id: 'phone' as keyof FormData, type: 'tel' as FieldType, label: 'Phone number', required: true, placeholder: '(555) 123-4567', tooltip: 'Used for SMS notifications and contact.' },
           { id: 'dateOfBirth' as keyof FormData, type: 'date' as FieldType, label: 'Date of birth', required: true, tooltip: 'Required to calculate age-adjusted health and fitness scores.' },
           { id: 'gender' as keyof FormData, type: 'select' as FieldType, label: 'Gender', required: true, options: [{ value: 'male', label: 'Male' }, { value: 'female', label: 'Female' }], tooltip: 'Used for physiological baseline comparisons (SMM, Body Fat).' },
-          { id: 'assignedCoach' as keyof FormData, type: 'select' as FieldType, label: 'Assigned Coach', required: true, options: [{ value: 'coach-mike', label: 'Coach Mike' }, { value: 'coach-selina', label: 'Coach Selina' }], tooltip: 'Select the primary coach responsible for this client.' },
+          { id: 'assignedCoach' as keyof FormData, type: 'select' as FieldType, label: 'Assigned Coach', required: true, tooltip: 'Select the primary coach responsible for this client. Coaches are specific to your organization.' },
           { 
             id: 'trainingHistory' as keyof FormData, 
             type: 'select' as FieldType, 
@@ -202,45 +202,147 @@ export const phaseDefinitions: PhaseDefinition[] = [
         id: 'body-comp',
         title: 'Body Composition',
         fields: [
-          { id: 'heightCm' as keyof FormData, type: 'number' as FieldType, label: 'Height (cm)', required: true, placeholder: 'e.g., 175', tooltip: 'Required for BMI and body composition calculations. This is often found at the top of your InBody scan.' },
-          // InBody Score first per 270 summary
-          { id: 'inbodyScore' as keyof FormData, type: 'number' as FieldType, label: 'InBody Score', placeholder: 'e.g., 78', tooltip: 'A combined health score that increases as you gain muscle and lose body fat.' },
-          // Order aligned to InBody 270 printout (approximate)
-          // Body Composition (top)
-          { id: 'inbodyWeightKg' as keyof FormData, type: 'number' as FieldType, label: 'Weight (kg)', placeholder: 'e.g., 78.2', tooltip: 'Your total body mass. Use this as a baseline for trends, not as the only measure of progress.' },
-          { id: 'skeletalMuscleMassKg' as keyof FormData, type: 'number' as FieldType, label: 'Skeletal Muscle Mass (kg)', placeholder: 'e.g., 36.4', tooltip: 'The weight of the muscles you can strengthen and grow. More muscle boosts metabolism and functional strength.' },
-          { id: 'bodyFatMassKg' as keyof FormData, type: 'number' as FieldType, label: 'Body Fat Mass (kg)', placeholder: 'e.g., 21.3', tooltip: 'The total weight of fat in your body. We use this to track actual fat loss versus just weight changes.' },
-          { id: 'inbodyBodyFatPct' as keyof FormData, type: 'number' as FieldType, label: 'Body Fat (%)', placeholder: 'e.g., 18.5', tooltip: 'The percentage of your body weight that is fat. This is a primary indicator of long-term health risk.' },
-          // Obesity / Hydration
-          { id: 'inbodyBmi' as keyof FormData, type: 'number' as FieldType, label: 'BMI', placeholder: 'e.g., 24.8', tooltip: 'A general score based on your height and weight. Useful for broad health category tracking.' },
-          { id: 'totalBodyWaterL' as keyof FormData, type: 'number' as FieldType, label: 'Total Body Water (L)', placeholder: 'e.g., 41.0', tooltip: 'The amount of fluid in your body. Helps ensure your scan results are consistent and accurate.' },
-          { id: 'waistHipRatio' as keyof FormData, type: 'number' as FieldType, label: 'Waist-to-Hip Ratio (WHR)', placeholder: 'e.g., 0.92', tooltip: 'A measure of fat distribution. Lower ratios generally indicate lower risk of metabolic health issues.' },
-          { id: 'visceralFatLevel' as keyof FormData, type: 'number' as FieldType, label: 'Visceral Fat Level', placeholder: 'e.g., 9', tooltip: 'The level of fat stored deep around your internal organs. Staying below 10 is ideal for health.' },
+          { id: 'heightCm' as keyof FormData, type: 'number' as FieldType, label: 'Height (cm)', required: true, placeholder: 'e.g., 175', tooltip: 'Required for BMI and body composition calculations.' },
+          { id: 'inbodyWeightKg' as keyof FormData, type: 'number' as FieldType, label: 'Weight (kg)', required: true, placeholder: 'e.g., 78.2', tooltip: 'Required for BMI and body composition calculations.' },
           
-          // Body Composition - Skinfold Calipers (alternative method)
-          { id: 'skinfoldTricepMm' as keyof FormData, type: 'number' as FieldType, label: 'Tricep (mm)', placeholder: 'e.g., 12', tooltip: 'Vertical fold at midpoint of posterior tricep between shoulder and elbow.' },
-          { id: 'skinfoldChestMm' as keyof FormData, type: 'number' as FieldType, label: 'Chest (mm)', placeholder: 'e.g., 8', tooltip: 'Diagonal fold half the distance between anterior axillary line and nipple.' },
-          { id: 'skinfoldSubscapularMm' as keyof FormData, type: 'number' as FieldType, label: 'Subscapular (mm)', placeholder: 'e.g., 15', tooltip: 'Diagonal fold just below the shoulder blade.' },
-          { id: 'skinfoldAxillaMm' as keyof FormData, type: 'number' as FieldType, label: 'Axilla (mm)', placeholder: 'e.g., 10', tooltip: 'Vertical fold at the mid-axillary line, level with the xiphoid process.' },
-          { id: 'skinfoldAbdomenMm' as keyof FormData, type: 'number' as FieldType, label: 'Abdomen (mm)', placeholder: 'e.g., 20', tooltip: 'Vertical fold 2cm to the right of the umbilicus.' },
-          { id: 'skinfoldSuprailiacMm' as keyof FormData, type: 'number' as FieldType, label: 'Suprailiac (mm)', placeholder: 'e.g., 18', tooltip: 'Diagonal fold just above the iliac crest.' },
-          { id: 'skinfoldThighMm' as keyof FormData, type: 'number' as FieldType, label: 'Thigh (mm)', placeholder: 'e.g., 25', tooltip: 'Vertical fold on the front of the thigh, midpoint between hip and knee.' },
-          { id: 'skinfoldBicepMm' as keyof FormData, type: 'number' as FieldType, label: 'Bicep (mm)', placeholder: 'e.g., 5', tooltip: 'Vertical fold on the front of the bicep, midpoint between shoulder and elbow.' },
+          // Body Composition - Body Measurements (STANDARD for all users)
+          // When analyzer data is not used, these measurements are used to calculate body composition scores
+          // Measurements taken separately for left/right limbs to detect imbalances
+          { id: 'shouldersCm' as keyof FormData, type: 'number' as FieldType, label: 'Shoulders (cm)', placeholder: 'e.g., 110', tooltip: 'Optional: Measure around the widest part of the shoulders. Used for muscle mass estimation when analyzer data is not available.' },
+          { id: 'chestCm' as keyof FormData, type: 'number' as FieldType, label: 'Chest (cm)', placeholder: 'e.g., 100', tooltip: 'Optional: Measure around the chest at nipple level. Used for muscle mass estimation when analyzer data is not available.' },
+          { id: 'armLeftCm' as keyof FormData, type: 'number' as FieldType, label: 'Left Arm (cm)', side: 'left', pairId: 'arm-circumference', placeholder: 'e.g., 32', tooltip: 'Optional: Measure around the midpoint of the upper arm (bicep). Used for muscle mass estimation when analyzer data is not available.' },
+          { id: 'armRightCm' as keyof FormData, type: 'number' as FieldType, label: 'Right Arm (cm)', side: 'right', pairId: 'arm-circumference', placeholder: 'e.g., 33', tooltip: 'Optional: Measure around the midpoint of the upper arm (bicep). Used for muscle mass estimation when analyzer data is not available.' },
+          { id: 'waistCm' as keyof FormData, type: 'number' as FieldType, label: 'Waist (cm)', placeholder: 'e.g., 85', tooltip: 'Measure at the narrowest point, or at navel level. Required for body fat calculation (US Navy method) when analyzer data is not available.' },
+          { id: 'neckCm' as keyof FormData, type: 'number' as FieldType, label: 'Neck (cm)', placeholder: 'e.g., 38', tooltip: 'Measure just below the larynx (Adam\'s apple). Required for body fat calculation (US Navy method) when analyzer data is not available.' },
+          { id: 'hipsCm' as keyof FormData, type: 'number' as FieldType, label: 'Hips (cm)', placeholder: 'e.g., 95', tooltip: 'Measure at the widest part of the hips. Required for women\'s body fat calculation when analyzer data is not available.' },
+          { id: 'thighLeftCm' as keyof FormData, type: 'number' as FieldType, label: 'Left Thigh (cm)', side: 'left', pairId: 'thigh-circumference', placeholder: 'e.g., 58', tooltip: 'Optional: Measure around the midpoint of the thigh. Used for muscle mass estimation when analyzer data is not available.' },
+          { id: 'thighRightCm' as keyof FormData, type: 'number' as FieldType, label: 'Right Thigh (cm)', side: 'right', pairId: 'thigh-circumference', placeholder: 'e.g., 59', tooltip: 'Optional: Measure around the midpoint of the thigh. Used for muscle mass estimation when analyzer data is not available.' },
+          { id: 'calfLeftCm' as keyof FormData, type: 'number' as FieldType, label: 'Left Calf (cm)', side: 'left', pairId: 'calf-circumference', placeholder: 'e.g., 38', tooltip: 'Optional: Measure around the widest part of the calf. Used for progress tracking.' },
+          { id: 'calfRightCm' as keyof FormData, type: 'number' as FieldType, label: 'Right Calf (cm)', side: 'right', pairId: 'calf-circumference', placeholder: 'e.g., 38', tooltip: 'Optional: Measure around the widest part of the calf. Used for progress tracking.' },
           
-          // Body Composition - Body Measurements (alternative method - US Navy)
-          { id: 'waistCm' as keyof FormData, type: 'number' as FieldType, label: 'Waist (cm)', placeholder: 'e.g., 85', tooltip: 'Measure at the narrowest point, or at navel level if no narrowing. Keep tape horizontal.' },
-          { id: 'neckCm' as keyof FormData, type: 'number' as FieldType, label: 'Neck (cm)', placeholder: 'e.g., 38', tooltip: 'Measure just below the larynx (Adam\'s apple), keeping tape horizontal.' },
-          { id: 'hipCm' as keyof FormData, type: 'number' as FieldType, label: 'Hip (cm)', placeholder: 'e.g., 95', tooltip: 'Women only: Measure at the widest part of the hips, keeping tape horizontal.' },
-
-          // Segmental Lean Analysis (kg only) — Trunk, Left arm, Right arm, Left leg, Right leg
-          { id: 'segmentalTrunkKg' as keyof FormData, type: 'number' as FieldType, label: 'Trunk lean (kg)', placeholder: 'e.g., 28.5', tooltip: 'The amount of muscle in your core and torso region.' },
-          { id: 'segmentalArmLeftKg' as keyof FormData, type: 'number' as FieldType, label: 'Left arm', side: 'left', pairId: 'arm-lean', placeholder: 'e.g., 3.1', tooltip: 'Muscle mass in your left arm. Compare with your right side to check for balance.' },
-          { id: 'segmentalArmRightKg' as keyof FormData, type: 'number' as FieldType, label: 'Right arm', side: 'right', pairId: 'arm-lean', placeholder: 'e.g., 3.2', tooltip: 'Muscle mass in your right arm. Compare with your right side to check for balance.' },
-          { id: 'segmentalLegLeftKg' as keyof FormData, type: 'number' as FieldType, label: 'Left leg', side: 'left', pairId: 'leg-lean', placeholder: 'e.g., 9.1', tooltip: 'Muscle mass in your left leg. Compare with your right side to check for balance.' },
-          { id: 'segmentalLegRightKg' as keyof FormData, type: 'number' as FieldType, label: 'Right leg', side: 'right', pairId: 'leg-lean', placeholder: 'e.g., 9.7', tooltip: 'Muscle mass in your right leg. Compare with your left side to check for balance.' },
-
-          // SECTION 4 — METABOLIC BASELINE
-          { id: 'bmrKcal' as keyof FormData, type: 'number' as FieldType, label: 'BMR (kcal)', placeholder: 'e.g., 1620', tooltip: 'The calories your body burns at rest. This helps us set your personalized nutrition targets.' },
+          // Body Composition - Analyzer Fields (InBody/DEXA - shown when equipment enabled OR when client brings report)
+          // Note: The "Scan InBody Report" button is shown below these fields in SingleFieldFlow component
+          // These fields are hidden when equipment is disabled UNLESS analyzer data has been entered
+          { 
+            id: 'inbodyScore' as keyof FormData, 
+            type: 'number' as FieldType, 
+            label: 'InBody Score', 
+            placeholder: 'e.g., 78', 
+            tooltip: 'A combined health score that increases as you gain muscle and lose body fat.',
+            conditional: { showWhen: { field: 'showAnalyzerFields', value: 'yes' } }
+          },
+          { 
+            id: 'skeletalMuscleMassKg' as keyof FormData, 
+            type: 'number' as FieldType, 
+            label: 'Skeletal Muscle Mass (kg)', 
+            placeholder: 'e.g., 36.4', 
+            tooltip: 'The weight of the muscles you can strengthen and grow. More muscle boosts metabolism and functional strength.',
+            conditional: { showWhen: { field: 'showAnalyzerFields', value: 'yes' } }
+          },
+          { 
+            id: 'bodyFatMassKg' as keyof FormData, 
+            type: 'number' as FieldType, 
+            label: 'Body Fat Mass (kg)', 
+            placeholder: 'e.g., 21.3', 
+            tooltip: 'The total weight of fat in your body. We use this to track actual fat loss versus just weight changes.',
+            conditional: { showWhen: { field: 'showAnalyzerFields', value: 'yes' } }
+          },
+          { 
+            id: 'inbodyBodyFatPct' as keyof FormData, 
+            type: 'number' as FieldType, 
+            label: 'Body Fat (%)', 
+            placeholder: 'e.g., 18.5', 
+            tooltip: 'The percentage of your body weight that is fat. This is a primary indicator of long-term health risk.',
+            conditional: { showWhen: { field: 'showAnalyzerFields', value: 'yes' } }
+          },
+          { 
+            id: 'inbodyBmi' as keyof FormData, 
+            type: 'number' as FieldType, 
+            label: 'BMI', 
+            placeholder: 'e.g., 24.8', 
+            tooltip: 'A general score based on your height and weight. Useful for broad health category tracking.',
+            conditional: { showWhen: { field: 'showAnalyzerFields', value: 'yes' } }
+          },
+          { 
+            id: 'totalBodyWaterL' as keyof FormData, 
+            type: 'number' as FieldType, 
+            label: 'Total Body Water (L)', 
+            placeholder: 'e.g., 41.0', 
+            tooltip: 'The amount of fluid in your body. Helps ensure your scan results are consistent and accurate.',
+            conditional: { showWhen: { field: 'showAnalyzerFields', value: 'yes' } }
+          },
+          { 
+            id: 'waistHipRatio' as keyof FormData, 
+            type: 'number' as FieldType, 
+            label: 'Waist-to-Hip Ratio (WHR)', 
+            placeholder: 'e.g., 0.92', 
+            tooltip: 'A measure of fat distribution. Lower ratios generally indicate lower risk of metabolic health issues.',
+            conditional: { showWhen: { field: 'showAnalyzerFields', value: 'yes' } }
+          },
+          { 
+            id: 'visceralFatLevel' as keyof FormData, 
+            type: 'number' as FieldType, 
+            label: 'Visceral Fat Level', 
+            placeholder: 'e.g., 9', 
+            tooltip: 'The level of fat stored deep around your internal organs. Staying below 10 is ideal for health.',
+            conditional: { showWhen: { field: 'showAnalyzerFields', value: 'yes' } }
+          },
+          { 
+            id: 'segmentalTrunkKg' as keyof FormData, 
+            type: 'number' as FieldType, 
+            label: 'Trunk lean (kg)', 
+            placeholder: 'e.g., 28.5', 
+            tooltip: 'The amount of muscle in your core and torso region.',
+            conditional: { showWhen: { field: 'showAnalyzerFields', value: 'yes' } }
+          },
+          { 
+            id: 'segmentalArmLeftKg' as keyof FormData, 
+            type: 'number' as FieldType, 
+            label: 'Left arm', 
+            side: 'left', 
+            pairId: 'arm-lean', 
+            placeholder: 'e.g., 3.1', 
+            tooltip: 'Muscle mass in your left arm. Compare with your right side to check for balance.',
+            conditional: { showWhen: { field: 'showAnalyzerFields', value: 'yes' } }
+          },
+          { 
+            id: 'segmentalArmRightKg' as keyof FormData, 
+            type: 'number' as FieldType, 
+            label: 'Right arm', 
+            side: 'right', 
+            pairId: 'arm-lean', 
+            placeholder: 'e.g., 3.2', 
+            tooltip: 'Muscle mass in your right arm. Compare with your right side to check for balance.',
+            conditional: { showWhen: { field: 'showAnalyzerFields', value: 'yes' } }
+          },
+          { 
+            id: 'segmentalLegLeftKg' as keyof FormData, 
+            type: 'number' as FieldType, 
+            label: 'Left leg', 
+            side: 'left', 
+            pairId: 'leg-lean', 
+            placeholder: 'e.g., 9.1', 
+            tooltip: 'Muscle mass in your left leg. Compare with your right side to check for balance.',
+            conditional: { showWhen: { field: 'showAnalyzerFields', value: 'yes' } }
+          },
+          { 
+            id: 'segmentalLegRightKg' as keyof FormData, 
+            type: 'number' as FieldType, 
+            label: 'Right leg', 
+            side: 'right', 
+            pairId: 'leg-lean', 
+            placeholder: 'e.g., 9.7', 
+            tooltip: 'Muscle mass in your right leg. Compare with your left side to check for balance.',
+            conditional: { showWhen: { field: 'showAnalyzerFields', value: 'yes' } }
+          },
+          { 
+            id: 'bmrKcal' as keyof FormData, 
+            type: 'number' as FieldType, 
+            label: 'BMR (kcal)', 
+            placeholder: 'e.g., 1620', 
+            tooltip: 'The calories your body burns at rest. This helps us set your personalized nutrition targets.',
+            conditional: { showWhen: { field: 'showAnalyzerFields', value: 'yes' } }
+          },
         ]
       }
     ],
@@ -259,10 +361,10 @@ export const phaseDefinitions: PhaseDefinition[] = [
             { value: 'ymca-step', label: 'YMCA step test' },
             { value: 'treadmill', label: 'Treadmill test' },
           ]},
-          // Simplified fields common to both tests
-          { id: 'cardioRestingHr' as keyof FormData, type: 'number' as FieldType, label: 'Resting Heart Rate (bpm)', tooltip: 'Instructions:\n1. Client should sit quietly for 5 minutes.\n2. Measure pulse for 60s or use a heart rate monitor.' },
-          { id: 'cardioPeakHr' as keyof FormData, type: 'number' as FieldType, label: 'Peak Heart Rate (at 3 min mark)', tooltip: 'Record the highest heart rate reached right before stopping the treadmill.' },
-          { id: 'cardioPost1MinHr' as keyof FormData, type: 'number' as FieldType, label: '1-min Post-Test HR (HR₆₀, bpm)', tooltip: 'Instructions:\n1. Step Test: 12" step, 96bpm for 3m.\n2. Treadmill: 1.7mph @ 10% grade for 3m.\n3. Stop test at 3:00. Record HR exactly 60s later.' },
+          // Standardized fields for both tests (same 3 readings for both treadmill and step test)
+          { id: 'cardioRestingHr' as keyof FormData, type: 'number' as FieldType, label: 'Resting Heart Rate (bpm)', tooltip: 'Instructions:\n1. Client should sit quietly for 5 minutes.\n2. Measure pulse for 60s or use a heart rate monitor.\n3. Record before starting the test.' },
+          { id: 'cardioPeakHr' as keyof FormData, type: 'number' as FieldType, label: 'Peak Heart Rate (bpm)', tooltip: 'Record the highest heart rate reached just after completing the test (at the 3-minute mark).\n\nStep Test: Record HR immediately after stepping down.\nTreadmill: Record HR right before stopping.' },
+          { id: 'cardioPost1MinHr' as keyof FormData, type: 'number' as FieldType, label: 'Recovery Heart Rate (bpm)', tooltip: 'Instructions:\n1. Stop the test at exactly 3:00.\n2. Have client sit down immediately.\n3. Wait exactly 60 seconds.\n4. Record heart rate at the 1-minute mark.\n\nBoth tests use the same recovery measurement.' },
         ],
       },
     ],
@@ -472,17 +574,18 @@ export const phaseDefinitions: PhaseDefinition[] = [
           { id: 'squatsOneMinuteReps' as keyof FormData, type: 'number' as FieldType, label: 'Squats in one minute', placeholder: 'e.g., 40', tooltip: 'Instructions:\n1. Set timer for 60 seconds.\n2. Count only reps with full range of motion (thighs parallel to floor).\n3. Stop immediately when time expires.' },
           { id: 'pushupsOneMinuteReps' as keyof FormData, type: 'number' as FieldType, label: 'Pushups in one minute', placeholder: 'e.g., 25', tooltip: 'Instructions:\n1. Maintain a rigid plank position throughout.\n2. Chest must come within 2 inches of the floor.\n3. Arms must reach full lockout at the top.' },
           { id: 'plankDurationSeconds' as keyof FormData, type: 'number' as FieldType, label: 'Plank duration (seconds)', placeholder: 'e.g., 60', tooltip: 'Instructions:\n1. Hold a forearm plank with a flat back and active core.\n2. Record the total time until form breaks or knees touch.' },
-          // Grip Strength - Dynamometer (default)
+          // Grip Strength - Test Method Selection (shown when equipment is disabled)
+          { id: 'gripTestMethod' as keyof FormData, type: 'select' as FieldType, label: 'Select grip test method', pattern: 'Grip Strength', tooltip: 'Choose the test method based on your client\'s needs and available equipment.', options: [
+            { value: 'deadhang', label: 'Dead Hang Test' },
+            { value: 'pinch', label: 'Plate Pinch Test' },
+          ]},
+          // Grip Strength - Dynamometer (default when equipment enabled)
           { id: 'gripLeftKg' as keyof FormData, type: 'number' as FieldType, label: 'Left hand', pattern: 'Grip Strength', side: 'left', pairId: 'grip-strength', placeholder: 'e.g., 24', tooltip: 'Instructions:\n1. Squeeze the dynamometer with maximum effort.\n2. Keep arm at your side, not touching your body.\n3. Record the best of 3 attempts.' },
           { id: 'gripRightKg' as keyof FormData, type: 'number' as FieldType, label: 'Right hand', pattern: 'Grip Strength', side: 'right', pairId: 'grip-strength', placeholder: 'e.g., 26', tooltip: 'Instructions:\n1. Squeeze the dynamometer with maximum effort.\n2. Keep arm at your side, not touching your body.\n3. Record the best of 3 attempts.' },
-          // Grip Strength - Dead Hang (alternative)
+          // Grip Strength - Dead Hang (alternative when equipment disabled)
           { id: 'gripDeadhangSeconds' as keyof FormData, type: 'number' as FieldType, label: 'Dead hang time (seconds)', pattern: 'Grip Strength', placeholder: 'e.g., 45', tooltip: 'Instructions:\n1. Hang from a pull-up bar with full grip.\n2. Record maximum time until grip fails or form breaks.\n3. Bodyweight is used to calculate equivalent grip strength.' },
-          // Grip Strength - Farmer's Walk (alternative)
-          { id: 'gripFarmersWalkDistanceM' as keyof FormData, type: 'number' as FieldType, label: 'Distance (meters)', pattern: 'Grip Strength', placeholder: 'e.g., 30', tooltip: 'Instructions:\n1. Carry weight in each hand (dumbbells, kettlebells, or farmer\'s walk handles).\n2. Walk as far as possible until grip fails.\n3. Record distance covered.' },
-          { id: 'gripFarmersWalkTimeS' as keyof FormData, type: 'number' as FieldType, label: 'Time (seconds)', pattern: 'Grip Strength', placeholder: 'e.g., 60', tooltip: 'Alternative: Record time held instead of distance.' },
-          { id: 'gripFarmersWalkLoadKg' as keyof FormData, type: 'number' as FieldType, label: 'Load per hand (kg)', pattern: 'Grip Strength', placeholder: 'e.g., 20', tooltip: 'Weight carried in each hand.' },
-          // Grip Strength - Plate Pinch (alternative)
-          { id: 'gripPlatePinchKg' as keyof FormData, type: 'number' as FieldType, label: 'Plate pinch weight (kg)', pattern: 'Grip Strength', placeholder: 'e.g., 15', tooltip: 'Instructions:\n1. Pinch grip a weight plate between thumb and fingers.\n2. Lift and hold maximum weight possible.\n3. Record weight in kg.' },
+          // Grip Strength - Plate Pinch (alternative when equipment disabled)
+          { id: 'gripPlatePinchSeconds' as keyof FormData, type: 'number' as FieldType, label: 'Plate pinch time (seconds)', pattern: 'Grip Strength', placeholder: 'e.g., 30', tooltip: 'Instructions:\n1. Pinch grip a standardized weight plate (10kg for females, 15kg for males).\n2. Lift and hold for maximum time.\n3. Record time in seconds until grip fails.' },
         ]
       },
     ],

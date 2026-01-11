@@ -15,7 +15,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { requestShareArtifacts, sendReportEmail } from '@/services/share';
 import { useToast } from '@/components/ui/use-toast';
 import { generateInteractiveHtml } from '@/lib/htmlExport';
-import { useSettings } from '@/hooks/useSettings';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAssessmentNavigation } from '@/hooks/useAssessmentNavigation';
 import { useAssessmentSave } from '@/hooks/useAssessmentSave';
@@ -47,7 +46,6 @@ export const PhaseFormContent = ({
   setSidebarOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
 }) => {
   const { formData, updateFormData } = useFormContext();
-  const { settings } = useSettings();
   const { user, profile, orgSettings } = useAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();

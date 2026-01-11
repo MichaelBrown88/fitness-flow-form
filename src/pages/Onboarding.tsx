@@ -10,6 +10,7 @@ import {
   MarketingStep,
   BrandingStep,
   EquipmentStep,
+  TeamSetupStep,
   PackageSelectionStep,
   OnboardingSuccess,
 } from '@/components/onboarding';
@@ -19,6 +20,7 @@ import type {
   MarketingData,
   BrandingConfig,
   EquipmentConfig,
+  TeamSetupData,
   OnboardingData,
 } from '@/types/onboarding';
 import { BUSINESS_TYPES } from '@/types/onboarding';
@@ -28,7 +30,10 @@ import { doc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
 import { getDb } from '@/services/firebase';
 import { uploadOrgLogo } from '@/services/organizations';
 import { calculateMonthlyFee } from '@/lib/pricing';
-import type { SubscriptionPlan } from '@/lib/pricing';
+import type { SubscriptionPlan as PricingSubscriptionPlan } from '@/lib/pricing';
+import type { SubscriptionPlan } from '@/types/onboarding';
+import { addCoachToOrganization } from '@/services/coachManagement';
+import { createCoachInvitationLink } from '@/services/coachManagement';
 
 export default function Onboarding() {
   const { user, profile, loading, refreshSettings, signUp, signIn } = useAuth();
@@ -51,22 +56,16 @@ export default function Onboarding() {
     marketing: undefined,
     branding: undefined,
     equipment: undefined,
+    teamSetup: undefined,
   });
 
   // Check onboarding status and resume if needed (only if user is authenticated)
   useEffect(() => {
     const checkOnboardingStatus = async () => {
       if (loading) return;
-      // Don't check if user is actively progressing through onboarding (step > 0)
-      if (hasCheckedStatus && step > 0) return;
-      if (hasCheckedStatus && !user) return; // Already checked when unauthenticated
-
-      // If user just authenticated (hasCheckedStatus was false, now user exists)
-      // and we're past the welcome screen, don't reset - they're in the middle of onboarding
-      if (user && profile && step > 1) {
-        setHasCheckedStatus(true);
-        return; // Don't reset, let them continue
-      }
+      
+      // Prevent multiple checks - only run once per mount or when user/auth state actually changes
+      if (hasCheckedStatus) return;
 
       // If user is authenticated, check their onboarding status
       if (user && profile) {
@@ -82,18 +81,18 @@ export default function Onboarding() {
               return;
             }
 
-            // If partially complete but user is already progressing, don't reset
+            // Otherwise, if user is already on a step, let them continue
             if (step > 0) {
               setHasCheckedStatus(true);
               return;
             }
 
-            // Otherwise, start fresh
+            // Start at welcome screen
             setStep(0);
             setHasCheckedStatus(true);
           } else {
-            // New user, but if already on a step, don't reset
-            if (step > 0) {
+            // New user - start at welcome screen
+            if (step === 0) {
               setHasCheckedStatus(true);
               return;
             }
@@ -102,22 +101,19 @@ export default function Onboarding() {
           }
         } catch (error) {
           logger.error('Failed to check onboarding status:', error);
-          if (step === 0) {
-            setStep(0);
-          }
+          // On error, allow them to proceed (don't block onboarding)
+          setStep(step > 0 ? step : 0);
           setHasCheckedStatus(true);
         }
       } else {
         // Not authenticated yet - allow them to start onboarding (will create account at step 1)
-        if (step === 0) {
-          setStep(0);
-        }
+        setStep(step > 0 ? step : 0);
         setHasCheckedStatus(true);
       }
     };
 
     checkOnboardingStatus();
-  }, [user, profile, loading, navigate, hasCheckedStatus, step]);
+  }, [user, profile, loading, navigate]); // Removed hasCheckedStatus and step from dependencies to prevent loops
 
   // Note: We allow unauthenticated users to start onboarding (they'll create account after step 1)
 
@@ -138,10 +134,24 @@ export default function Onboarding() {
         
         const originalEmail = data.email.trim();
         
-        // Try to create account with original email first
+        // For test emails in development, automatically use unique version to avoid conflicts
+        const emailToUse = import.meta.env.DEV && isTestEmail(originalEmail)
+          ? makeTestEmailUnique(originalEmail)
+          : originalEmail;
+        
+        if (emailToUse !== originalEmail) {
+          logger.debug(`Using unique test email: ${emailToUse} (original: ${originalEmail})`);
+          // Update saved data with unique email silently (no message needed)
+          setOnboardingData((prev) => ({
+            ...prev,
+            identity: { ...data, email: emailToUse }
+          }));
+        }
+        
+        // Try to create account
         try {
           await signUp(
-            originalEmail,
+            emailToUse,
             data.password,
             `${data.firstName} ${data.lastName}`.trim()
           );
@@ -157,42 +167,13 @@ export default function Onboarding() {
             : null;
           
           if (errorCode === 'auth/email-already-in-use') {
-            // For test emails in development, try making it unique and retry signup
-            if (import.meta.env.DEV && isTestEmail(originalEmail)) {
-              const uniqueEmail = makeTestEmailUnique(originalEmail);
-              logger.debug(`Test email already in use, trying unique version: ${uniqueEmail}`);
-              setSavingMessage(`Email exists. Using unique version: ${uniqueEmail}`);
-              
-              try {
-                // Try signup with unique email
-                await signUp(
-                  uniqueEmail,
-                  data.password,
-                  `${data.firstName} ${data.lastName}`.trim()
-                );
-                logger.info('Account created with unique test email');
-                // Update saved data with unique email
-                setOnboardingData((prev) => ({
-                  ...prev,
-                  identity: { ...data, email: uniqueEmail }
-                }));
-                setSaving(false);
-                setSavingMessage('');
-                setStep(2);
-                return; // Success with unique email, exit early
-              } catch (uniqueSignUpError) {
-                logger.debug('Unique email also in use, will try sign-in instead');
-                // Fall through to sign-in attempt with original email
-              }
-            }
-            
-            // Email exists, try to sign in instead with original email
+            // Email exists, try to sign in instead
             logger.info('Email already exists, attempting to sign in...');
             setSavingMessage('Email already exists. Signing you in...');
             
             try {
-              // Use original email for sign-in (account exists with that email)
-              await signIn(originalEmail, data.password);
+              // Use the email we tried (might be unique test email)
+              await signIn(emailToUse, data.password);
               logger.info('Signed in successfully, continuing onboarding');
               setSaving(false);
               setSavingMessage(''); // Clear any error messages
@@ -271,6 +252,11 @@ export default function Onboarding() {
     setStep(7);
   };
 
+  const handleTeamSetupNext = (data: TeamSetupData) => {
+    setOnboardingData((prev) => ({ ...prev, teamSetup: data }));
+    setStep(8);
+  };
+
   const handleCapacityNext = async (seats: number) => {
     // Update branding with seats, then save everything
     const finalData = {
@@ -322,21 +308,24 @@ export default function Onboarding() {
         }
       }
 
-      // Map equipment config to our database format
+      // Map equipment config to simplified enabled/disabled structure
+      // When disabled, assessments automatically show ALL equipment-free alternatives:
+      // - bodyComposition: enabled=false → body measurements + skinfold test (clients can still bring reports)
+      // - gripStrength: enabled=false → deadhang + pinch test options
+      // - cardioEquipment: enabled=false → step test
+      // - heartRateSensor: enabled=false → manual pulse check
       const equipmentConfig = finalData.equipment ? {
         bodyComposition: {
-          method: finalData.equipment.scanner
-            ? 'inbody'
-            : finalData.equipment.bodyCompositionMethod || 'measurements',
-          // Only include skinfoldMethod if scanner is disabled and method is provided
-          ...(finalData.equipment.scanner ? {} : (finalData.equipment.skinfoldMethod ? { skinfoldMethod: finalData.equipment.skinfoldMethod } : {})),
+          enabled: finalData.equipment.scanner ?? false,
         },
         gripStrength: {
-          method: finalData.equipment.dynamometer ? 'dynamometer' : 'none',
           enabled: finalData.equipment.dynamometer ?? false,
         },
-        treadmill: {
+        cardioEquipment: {
           enabled: finalData.equipment.treadmill ?? false,
+        },
+        heartRateSensor: {
+          enabled: false, // Default to false, can be enabled later in settings
         },
       } : undefined;
 
@@ -397,6 +386,56 @@ export default function Onboarding() {
         updatedAt: new Date(),
       });
 
+      // Add coaches from team setup (required - at least one coach must be added)
+      if (finalData.teamSetup && !finalData.teamSetup.skipped && finalData.teamSetup.coachEmails.length > 0) {
+        setSavingMessage('Adding coaches to your organization...');
+        const coachResults = await Promise.allSettled(
+          finalData.teamSetup.coachEmails.map(async (email) => {
+            try {
+              // Try to add coach directly (if they already exist in Firebase Auth)
+              const result = await addCoachToOrganization(orgId, email);
+              if (result.success) {
+                return { email, success: true, coachUid: result.coachUid };
+              } else {
+                // If coach doesn't exist, create invitation link (smart link)
+                const inviteLink = await createCoachInvitationLink(orgId, email);
+                return { email, success: false, inviteLink, error: result.error };
+              }
+            } catch (error) {
+              logger.error(`Error processing coach ${email}:`, error);
+              // Create invitation link as fallback
+              try {
+                const inviteLink = await createCoachInvitationLink(orgId, email);
+                return { email, success: false, inviteLink, error: error instanceof Error ? error.message : 'Unknown error' };
+              } catch (inviteError) {
+                logger.error(`Error creating invitation for ${email}:`, inviteError);
+                return { email, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+              }
+            }
+          })
+        );
+
+        // Log results
+        const successful = coachResults.filter(r => r.status === 'fulfilled' && 'value' in r && r.value.success).length;
+        const withInvites = coachResults.filter(r => r.status === 'fulfilled' && 'value' in r && !r.value.success && r.value.inviteLink).length;
+        logger.info(`Onboarding: Added ${successful} existing coaches, created ${withInvites} invitation links`);
+        
+        // Store invitation links in organization document for admin reference
+        const inviteLinks: Array<{ email: string; link: string }> = [];
+        coachResults.forEach(r => {
+          if (r.status === 'fulfilled' && 'value' in r && !r.value.success && r.value.inviteLink) {
+            inviteLinks.push({ email: r.value.email, link: r.value.inviteLink });
+          }
+        });
+        
+        if (inviteLinks.length > 0) {
+          await updateDoc(doc(db, 'organizations', orgId), {
+            pendingCoachInvitations: inviteLinks,
+            updatedAt: new Date(),
+          });
+        }
+      }
+
       // Save onboarding session for audit/recovery
       await setDoc(doc(db, 'onboarding_sessions', user.uid), {
         userId: user.uid,
@@ -406,11 +445,18 @@ export default function Onboarding() {
       }, { merge: true });
 
       // Refresh settings so the app picks up the new configuration
-      await refreshSettings();
+      // Await to ensure settings are loaded before showing success screen
+      try {
+        await refreshSettings();
+        logger.info('Onboarding completed successfully - settings refreshed');
+      } catch (err) {
+        // Settings refresh failed, but don't block onboarding completion
+        // Settings will load on dashboard navigation
+        logger.warn('Onboarding completed but settings refresh failed:', err instanceof Error ? err.message : String(err));
+      }
 
-      logger.info('Onboarding completed successfully');
       setIsComplete(true);
-      setStep(8); // Show success screen
+      setStep(9); // Show success screen (only after refresh attempt completes)
     } catch (error) {
       logger.error('Failed to complete onboarding:', error);
       setSavingMessage('Something went wrong. Please try again.');
@@ -453,8 +499,8 @@ export default function Onboarding() {
   // NEW 8-STEP FLOW: Welcome(0) -> Identity(1) -> Business(2) -> Location(3) -> Marketing(4) -> Branding(5) -> Equipment(6) -> Capacity(7) -> Success(8)
   const getCurrentStep = () => {
     if (step === 0) return -1; // Welcome - no progress dots
-    if (step >= 8) return -1; // Success - no progress dots
-    return step - 1; // Steps 1-7 map to progress dots 0-6
+    if (step >= 9) return -1; // Success - no progress dots
+    return step - 1; // Steps 1-8 map to progress dots 0-7
   };
 
   return (
@@ -507,6 +553,14 @@ export default function Onboarding() {
         />
       )}
       {step === 7 && (
+        <TeamSetupStep
+          data={onboardingData.teamSetup}
+          subscriptionPlan={getSubscriptionPlan()}
+          onNext={handleTeamSetupNext}
+          onBack={handleBack}
+        />
+      )}
+      {step === 8 && (
         <PackageSelectionStep
           data={onboardingData.branding}
           businessType={onboardingData.businessProfile?.type}

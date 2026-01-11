@@ -99,6 +99,7 @@ export interface OrganizationDetails extends OrganizationSummary {
   gradientId?: string; // Branding gradient
   equipmentConfig?: Record<string, unknown>;
   modules?: Record<string, boolean>;
+  demoAutoFillEnabled?: boolean; // Platform admin controlled - demo persona auto-fill (for affiliates/sales)
   onboardingCompletedAt?: Date;
   metadata?: {
     isTest?: boolean;

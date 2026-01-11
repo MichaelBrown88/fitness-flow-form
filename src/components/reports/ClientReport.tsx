@@ -838,12 +838,30 @@ export default function ClientReport({
                 {(() => {
                   const functionalGaps = gapAnalysisData[1]?.functionalGaps;
                   if (functionalGaps?.strength) {
+                    const strength = functionalGaps.strength;
+                    // Display based on method
+                    let currentDisplay: string;
+                    let targetDisplay: string;
+                    
+                    if (strength.method === 'deadhang' && strength.currentTime !== undefined && strength.targetTime !== undefined) {
+                      currentDisplay = `${strength.currentTime.toFixed(0)}s`;
+                      targetDisplay = `${strength.targetTime.toFixed(0)}s`;
+                    } else if (strength.method === 'pinch' && strength.currentTime !== undefined && strength.targetTime !== undefined) {
+                      const standardizedWeight = (formData?.gender || '').toLowerCase() === 'female' ? 10 : 15;
+                      currentDisplay = `${strength.currentTime.toFixed(0)}s (${standardizedWeight}kg)`;
+                      targetDisplay = `${strength.targetTime.toFixed(0)}s (${standardizedWeight}kg)`;
+                    } else {
+                      // Dynamometer or fallback
+                      currentDisplay = `${strength.current.toFixed(1)} kg`;
+                      targetDisplay = `${strength.target.toFixed(1)} kg`;
+                    }
+                    
                     return (
                       <>
                         <span className="text-sm font-medium text-zinc-700">Overall Strength</span>
-                        <span className="text-sm text-zinc-600 text-center">{functionalGaps.strength.current.toFixed(1)} kg</span>
+                        <span className="text-sm text-zinc-600 text-center">{currentDisplay}</span>
                         <ArrowRight className="w-3 h-3 text-gradient-dark flex-shrink-0 justify-self-center" />
-                        <span className="text-sm font-bold text-gradient-dark text-right">{functionalGaps.strength.target.toFixed(1)} kg</span>
+                        <span className="text-sm font-bold text-gradient-dark text-right">{targetDisplay}</span>
                       </>
                     );
                   }

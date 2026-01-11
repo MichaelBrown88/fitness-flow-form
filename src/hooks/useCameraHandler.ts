@@ -114,7 +114,8 @@ export function useCameraHandler({
 
   const applyOcrData = useCallback(() => {
     if (ocrReviewData) {
-      updateFormData(ocrReviewData);
+      // Set flag to show analyzer fields after OCR data is applied
+      updateFormData({ ...ocrReviewData, showAnalyzerFields: 'yes' });
       setOcrReviewData(null);
       toast({ title: "InBody data applied", description: "All fields have been populated." });
       
@@ -139,8 +140,9 @@ export function useCameraHandler({
   }, [updateFormData, toast]);
 
   const handleInBodyCompanionComplete = useCallback((data: Partial<FormData>) => {
+    // Store data for review - applyOcrData will set the flag when applied
     setOcrReviewData(data);
-    toast({ title: "InBody data applied", description: "All fields have been populated." });
+    toast({ title: "InBody data received", description: "Review and apply the extracted data." });
   }, [toast]);
 
   return {
