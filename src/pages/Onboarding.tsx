@@ -34,6 +34,7 @@ import type { SubscriptionPlan as PricingSubscriptionPlan } from '@/lib/pricing'
 import type { SubscriptionPlan } from '@/types/onboarding';
 import { addCoachToOrganization } from '@/services/coachManagement';
 import { createCoachInvitationLink } from '@/services/coachManagement';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 
 export default function Onboarding() {
   const { user, profile, loading, refreshSettings, signUp, signIn } = useAuth();
@@ -504,10 +505,11 @@ export default function Onboarding() {
   };
 
   return (
-    <OnboardingLayout
-      currentStep={getCurrentStep()}
-      onBack={step > 0 ? handleBack : undefined}
-    >
+    <ErrorBoundary>
+      <OnboardingLayout
+        currentStep={getCurrentStep()}
+        onBack={step > 0 ? handleBack : undefined}
+      >
       {step === 0 && <WelcomeStep onNext={handleWelcomeNext} />}
       {step === 1 && (
         <IdentityStep
@@ -569,5 +571,6 @@ export default function Onboarding() {
         />
       )}
     </OnboardingLayout>
+    </ErrorBoundary>
   );
 }

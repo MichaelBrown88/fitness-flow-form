@@ -30,6 +30,24 @@ const CoachReport = lazy(() => import('./CoachReport'));
 import { generateBodyCompInterpretation } from '@/lib/recommendations';
 import { calculateAge } from '@/lib/scoring';
 import { calculateBodyRecomposition, getTargetBodyFatFromLevel, getBodyFatRange } from '@/lib/utils/bodyRecomposition';
+import { generateBlueprint } from '@/lib/strategy/blueprintEngine';
+
+// Helper function to truncate insights to consistent length
+const truncateInsight = (insight: string, maxLength: number = 120): string => {
+  if (!insight || insight.length <= maxLength) return insight;
+  // Truncate at the last complete sentence before maxLength
+  const truncated = insight.substring(0, maxLength);
+  const lastPeriod = truncated.lastIndexOf('.');
+  const lastSpace = truncated.lastIndexOf(' ');
+  
+  // Prefer ending at a sentence, otherwise at a word
+  if (lastPeriod > maxLength * 0.7) {
+    return truncated.substring(0, lastPeriod + 1);
+  } else if (lastSpace > maxLength * 0.7) {
+    return truncated.substring(0, lastSpace) + '...';
+  }
+  return truncated + '...';
+};
 
 export default function ClientReport({
   scores,
@@ -234,7 +252,15 @@ export default function ClientReport({
   
   // State for roadmap slider
   const [sessionsPerWeek, setSessionsPerWeek] = useState(3);
-  const [activeView, setActiveView] = useState<'client' | 'coach'>('client' as 'client' | 'coach');
+  // In standalone/public mode, always show client report (no coach tab)
+  const [activeView, setActiveView] = useState<'client' | 'coach'>(standalone ? 'client' : 'client');
+  
+  // Force client view if standalone (prevent switching to coach report)
+  React.useEffect(() => {
+    if (standalone && activeView === 'coach') {
+      setActiveView('client');
+    }
+  }, [standalone, activeView]);
   
   // Check if form has data
   const hasAnyData = useMemo(() => {
@@ -285,159 +311,29 @@ export default function ClientReport({
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   }, []);
 
-  // Get blueprint pillars data - ordered and deduplicated
+  // Get blueprint pillars data - using centralized strategy engine
   const blueprintPillars = useMemo(() => {
-    const movement = safeScores.categories.find(c => c.id === 'movementQuality') || { score: 0 };
-    const bodyComp = safeScores.categories.find(c => c.id === 'bodyComp') || { score: 0 };
-    const strength = safeScores.categories.find(c => c.id === 'strength') || { score: 0 };
+    if (!formData || !safeScores) return [];
     
-    const headPos = Array.isArray(formData?.postureHeadOverall) ? formData.postureHeadOverall : [formData?.postureHeadOverall];
-    const shoulderPos = Array.isArray(formData?.postureShouldersOverall) ? formData.postureShouldersOverall : [formData?.postureShouldersOverall];
-    const kneeValgus = formData?.ohsKneeAlignment === 'valgus' || formData?.lungeLeftKneeAlignment === 'valgus' || formData?.lungeRightKneeAlignment === 'valgus';
-    const visceral = parseFloat(formData?.visceralFatLevel || '0');
-    const goals = formData?.clientGoals || [];
-    const primaryGoal = goals[0] || 'general-health';
+    const pillars = generateBlueprint(formData, safeScores);
     
-    const pillars: Array<{ title: string; weeks: string; color: string; headline: string; description: string; protocol: Array<{ name: string; setsReps: string }>; order: number }> = [];
-    
-    // Pillar 1: Structural Restoration (always first if needed, weeks 1-8)
-    if (movement.score < 70 || headPos.includes('forward-head') || shoulderPos.includes('rounded') || kneeValgus) {
-      let focus = '';
-      let exercises: Array<{ name: string; setsReps: string }> = [];
-      
-      if (kneeValgus) {
-        focus = 'FIXING THE VALGUS KNEE & TECH NECK';
-        exercises = [
-          { name: 'Knee Banded Walks', setsReps: '2 x 15 steps' },
-          { name: 'Chin Tucks', setsReps: '2 x 10 reps' },
-          { name: 'Single Leg Touchdowns', setsReps: '3 x 8/side' }
-        ];
-      } else if (headPos.includes('forward-head') || shoulderPos.includes('rounded')) {
-        focus = 'FIXING TECH NECK & POSTURE';
-        exercises = [
-          { name: 'Chin Tucks', setsReps: '2 x 10 reps' },
-          { name: 'Wall Angels', setsReps: '2 x 12 reps' },
-          { name: 'Band Pull-Aparts', setsReps: '2 x 15 reps' }
-        ];
-      } else {
-        focus = 'IMPROVING MOVEMENT QUALITY';
-        exercises = [
-          { name: 'Hip Mobility Drills', setsReps: '2 x 10 reps' },
-          { name: 'Shoulder CARs', setsReps: '2 x 5 each direction' },
-          { name: 'Ankle Mobility', setsReps: '2 x 8/side' }
-        ];
-      }
-      
-      pillars.push({
-        title: 'Structural Restoration',
-        weeks: 'Weeks 1-8',
-        color: 'blue',
-        headline: focus,
-        description: 'We cannot load a dysfunctional pattern. Phase 1 prioritizes joint stacking so you can train pain-free.',
-        protocol: exercises,
-        order: 1
-      });
-    }
-    
-    // Pillar 2: Metabolic Fire (weeks 1-16, overlaps with structural)
-    if (bodyComp.score < 70 || visceral >= 10 || primaryGoal === 'weight-loss') {
-      pillars.push({
-        title: 'Metabolic Fire',
-        weeks: 'Weeks 1-16',
-        color: 'red',
-        headline: 'TARGETING VISCERAL FAT',
-        description: 'Shifting your body from sugar-burning to fat-burning through Zone 2 cardio and nutrient timing.',
-        protocol: [
-          { name: 'Incline Walk (12%)', setsReps: '30 mins' },
-          { name: 'Nasal Breathing', setsReps: 'Continuous' },
-          { name: 'Heart Rate Target', setsReps: '135-145 BPM' }
-        ],
-        order: 2
-      });
-    }
-    
-    // Pillar 3: Strength Expression (weeks 8-24, comes after structural)
-    if (strength.score >= 60 || primaryGoal === 'build-strength' || primaryGoal === 'build-muscle') {
-      pillars.push({
-        title: 'Strength Expression',
-        weeks: 'Weeks 8-24',
-        color: 'green',
-        headline: 'BUILDING POWER',
-        description: 'Progressive overload and strength development.',
-        protocol: [
-          { name: 'Compound Lifts', setsReps: '3-4 x 6-8' },
-          { name: 'Accessory Work', setsReps: '3 x 10-12' },
-          { name: 'Progressive Overload', setsReps: 'Weekly' }
-        ],
-        order: 3
-      });
-    }
-    
-    // Fill to 3 pillars if needed, ensuring no duplicates
-    const existingTitles = new Set(pillars.map(p => p.title));
-    
-    if (pillars.length < 3) {
-      if (!existingTitles.has('Structural Restoration')) {
-        pillars.push({
-          title: 'Structural Restoration',
-          weeks: 'Weeks 1-8',
-          color: 'blue',
-          headline: 'MOVEMENT QUALITY',
-          description: 'Building a solid foundation of movement patterns and joint stability.',
-          protocol: [
-            { name: 'Hip Mobility', setsReps: '2 x 10 reps' },
-            { name: 'Shoulder Mobility', setsReps: '2 x 10 reps' },
-            { name: 'Core Activation', setsReps: '2 x 12 reps' }
-          ],
-          order: 1
-        });
-      }
-      
-      if (pillars.length < 3 && !existingTitles.has('Metabolic Fire')) {
-        pillars.push({
-          title: 'Metabolic Fire',
-          weeks: 'Weeks 1-16',
-          color: 'red',
-          headline: 'FAT LOSS & ENERGY',
-          description: 'Optimizing metabolism through strategic training and nutrition.',
-          protocol: [
-            { name: 'Zone 2 Cardio', setsReps: '30-45 mins' },
-            { name: 'Metabolic Circuits', setsReps: '3-4 rounds' },
-            { name: 'Recovery Walks', setsReps: 'Daily' }
-          ],
-          order: 2
-        });
-      }
-      
-      if (pillars.length < 3 && !existingTitles.has('Strength Expression')) {
-        pillars.push({
-          title: 'Strength Expression',
-          weeks: 'Weeks 8-24',
-          color: 'green',
-          headline: 'BUILDING POWER',
-          description: 'Progressive overload and strength development.',
-          protocol: [
-            { name: 'Compound Lifts', setsReps: '3-4 x 6-8' },
-            { name: 'Accessory Work', setsReps: '3 x 10-12' },
-            { name: 'Progressive Overload', setsReps: 'Weekly' }
-          ],
-          order: 3
-        });
-      }
-    }
-    
-    // Sort by order and remove duplicates by title
-    const uniquePillars = Array.from(
-      new Map(pillars.map(p => [p.title, p])).values()
-    ).sort((a, b) => a.order - b.order);
-    
-    return uniquePillars.slice(0, 3);
+    // Map to component format (add order field)
+    return pillars.map((pillar, idx) => ({
+      title: pillar.title,
+      weeks: pillar.timeframe,
+      color: pillar.color,
+      headline: pillar.focus,
+      description: pillar.description,
+      protocol: pillar.protocol,
+      order: idx + 1,
+      category: pillar.category
+    }));
   }, [safeScores, formData]);
   
   // Responsive container with proper padding and max-width
   const containerClass = standalone 
-    ? "min-h-screen bg-zinc-50 text-zinc-900 px-4 sm:px-6 lg:px-12 py-6 sm:py-8 lg:py-12"
-    : "w-full text-zinc-900";
+    ? "min-h-screen bg-zinc-50 text-zinc-900 px-3 sm:px-4 md:px-6 lg:px-8 xl:px-12 py-2 sm:py-4 md:py-6 lg:py-8 xl:py-12 overflow-x-hidden"
+    : "w-full text-zinc-900 overflow-x-hidden";
   if (!scores || !scores.categories || scores.categories.length === 0 || !hasAnyData) {
     return (
       <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
@@ -448,75 +344,78 @@ export default function ClientReport({
   }
 
   const contentClass = standalone
-    ? "max-w-[1400px] mx-auto space-y-12 md:space-y-16"
-    : "space-y-12 md:space-y-16";
+    ? "max-w-[1400px] mx-auto space-y-4 sm:space-y-6 md:space-y-8 lg:space-y-10 xl:space-y-12 2xl:space-y-16 w-full min-w-0"
+    : "space-y-4 sm:space-y-6 md:space-y-8 lg:space-y-10 xl:space-y-12 2xl:space-y-16 w-full min-w-0";
   
   return (
     <div className={containerClass}>
-      <div className={contentClass}>
+      <div className={`${contentClass} overflow-x-hidden`}>
         
       {/* Header */}
-        <div className="space-y-8">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <span className="inline-flex items-center rounded-full glass-label px-4 py-1.5 text-xs font-semibold text-zinc-700">
+        <div className="space-y-2 sm:space-y-3 md:space-y-4 lg:space-y-5 xl:space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-3 md:gap-4 lg:gap-6">
+            <div className="space-y-1 sm:space-y-1.5 md:space-y-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
+                <span className="inline-flex items-center rounded-full glass-label px-2 sm:px-2.5 md:px-3 py-0.5 sm:py-1 text-[9px] sm:text-[10px] md:text-xs font-semibold text-zinc-700">
                   Assessment Report
                 </span>
-                <span className="text-xs text-zinc-400 font-medium">{reportDate}</span>
+                <span className="text-[9px] sm:text-[10px] md:text-xs text-zinc-400 font-medium">{reportDate}</span>
               </div>
-              <h1 className="text-4xl md:text-6xl font-black tracking-tight text-zinc-900">
+              <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-black tracking-tight text-zinc-900 leading-tight">
                 {clientName || 'Your Assessment Report'}
         </h1>
-              <p className="text-zinc-500 font-medium text-base">
+              <p className="text-[10px] sm:text-xs md:text-sm lg:text-base text-zinc-500 font-medium leading-snug">
                 Your personalized journey to better health and performance.
               </p>
             </div>
             
-            <div className="flex glass-button p-1.5 rounded-2xl gap-1">
-              <button 
-                onClick={() => setActiveView('client')}
-                className={`px-6 py-2.5 text-sm font-semibold rounded-xl transition-apple ${
-                  activeView === 'client' 
-                    ? 'glass-button-active' 
-                    : 'text-zinc-600 hover:text-zinc-900'
-                }`}
-              >
-                Client Report
-              </button>
-              <button 
-                onClick={() => setActiveView('coach')}
-                className={`px-6 py-2.5 text-sm font-semibold rounded-xl transition-apple ${
-                  activeView === 'coach' 
-                    ? 'glass-button-active' 
-                    : 'text-zinc-600 hover:text-zinc-900'
-                }`}
-              >
-                Coach Report
-              </button>
-            </div>
+            {/* Only show toggle if not in standalone/public mode */}
+            {!standalone && (
+              <div className="flex glass-button p-1.5 rounded-2xl gap-1">
+                <button 
+                  onClick={() => setActiveView('client')}
+                  className={`px-6 py-2.5 text-sm font-semibold rounded-xl transition-apple ${
+                    activeView === 'client' 
+                      ? 'glass-button-active' 
+                      : 'text-zinc-600 hover:text-zinc-900'
+                  }`}
+                >
+                  Client Report
+                </button>
+                <button 
+                  onClick={() => setActiveView('coach')}
+                  className={`px-6 py-2.5 text-sm font-semibold rounded-xl transition-apple ${
+                    activeView === 'coach' 
+                      ? 'glass-button-active' 
+                      : 'text-zinc-600 hover:text-zinc-900'
+                  }`}
+                >
+                  Coach Report
+                </button>
+              </div>
+            )}
           </div>
         </div>
         
         {/* Client Info Bar */}
         {formData && (
-          <div className="glass-subtle rounded-xl px-6 py-4 mb-6">
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs">
+          <div className="glass-subtle rounded-lg sm:rounded-xl px-2 sm:px-3 md:px-4 lg:px-5 py-1.5 sm:py-2 md:py-2.5 lg:py-3 mb-2 sm:mb-3 md:mb-4 lg:mb-5">
+            <div className="flex flex-nowrap items-center gap-x-1.5 sm:gap-x-2 md:gap-x-3 lg:gap-x-4 overflow-x-auto scrollbar-hide text-[8px] sm:text-[9px] md:text-[10px]">
               {formData.gender && (
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1 shrink-0">
                   <span className="text-zinc-500">Gender</span>
                   <span className="text-zinc-700 font-semibold capitalize">{formData.gender}</span>
             </div>
               )}
               {formData.dateOfBirth && (
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1 shrink-0">
                   <span className="text-zinc-500">•</span>
                   <span className="text-zinc-500">Age</span>
                   <span className="text-zinc-700 font-semibold">{calculateAge(formData.dateOfBirth)}</span>
           </div>
               )}
               {formData.heightCm && parseFloat(formData.heightCm) > 0 && (
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1 shrink-0">
                   <span className="text-zinc-500">•</span>
                   <span className="text-zinc-500">Height</span>
                   <span className="text-zinc-700 font-semibold">
@@ -528,14 +427,14 @@ export default function ClientReport({
         </div>
               )}
               {formData.inbodyWeightKg && parseFloat(formData.inbodyWeightKg) > 0 && (
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1 shrink-0">
                   <span className="text-zinc-500">•</span>
                   <span className="text-zinc-500">Weight</span>
                   <span className="text-zinc-700 font-semibold">{parseFloat(formData.inbodyWeightKg).toFixed(1)} kg</span>
                 </div>
               )}
               {formData.inbodyBmi && parseFloat(formData.inbodyBmi) > 0 && (
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1 shrink-0">
                   <span className="text-zinc-500">•</span>
                   <span className="text-zinc-500">BMI</span>
                   <span className="text-zinc-700 font-semibold">{parseFloat(formData.inbodyBmi).toFixed(1)}</span>
@@ -571,20 +470,20 @@ export default function ClientReport({
           <>
         
         {/* Starting Point */}
-        <section>
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-gradient-light text-zinc-900 rounded-lg">
-              <Activity className="w-5 h-5" />
+        <section className="w-full min-w-0 overflow-x-hidden">
+          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 mb-2 sm:mb-3 md:mb-4 lg:mb-5 xl:mb-6">
+            <div className="p-1 sm:p-1.5 md:p-2 bg-gradient-light text-zinc-900 rounded-lg">
+              <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
             </div>
-            <h3 className="text-base font-bold text-zinc-900 uppercase tracking-widest">Your Starting Point</h3>
+            <h3 className="text-[10px] sm:text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">Your Starting Point</h3>
           </div>
           
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
             {/* Score Card */}
-            <Card className="col-span-1 flex flex-col items-center justify-center p-6 md:p-8 text-center relative overflow-hidden min-h-[360px] md:min-h-[420px]">
+            <Card className="col-span-1 flex flex-col items-center justify-center p-3 sm:p-4 md:p-6 lg:p-8 text-center relative overflow-hidden min-h-[280px] sm:min-h-[320px] md:min-h-[360px] lg:min-h-[420px]">
               
               {/* Circular Progress Gauge */}
-              <div className="relative w-48 h-48 md:w-64 md:h-64 flex items-center justify-center mb-6 md:mb-8 mt-2 md:mt-4">
+                <div className="relative w-36 h-36 sm:w-40 sm:h-40 md:w-48 md:h-48 lg:w-56 lg:h-56 xl:w-64 xl:h-64 flex items-center justify-center mb-3 sm:mb-4 md:mb-6 lg:mb-8 mt-1 sm:mt-2 md:mt-3 lg:mt-4">
                 <svg className="w-full h-full" viewBox="0 0 100 100">
                   <circle 
                     cx="50" cy="50" r="42" 
@@ -613,35 +512,35 @@ export default function ClientReport({
                   </defs>
                 </svg>
                 
-                <div className="absolute inset-0 flex flex-col items-center justify-center pt-4 md:pt-6">
-                  <span className="text-5xl md:text-7xl font-black text-zinc-900 tracking-tighter">{scores.overall}</span>
-                  <span className="text-[9px] md:text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em] mt-1 md:mt-2">Overall Score</span>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-zinc-900 tracking-tighter leading-none">{scores.overall}</span>
+                  <span className="text-[8px] sm:text-[9px] md:text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em] mt-1 sm:mt-1.5 md:mt-2">Overall Score</span>
                 </div>
               </div>
 
               {/* Badge */}
-              <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-gradient-light text-zinc-900 text-sm font-bold border border-gradient-medium mb-6 shadow-sm">
-                <Trophy className="w-4 h-4 fill-current text-zinc-900" />
-                {archetype.name}
+              <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 md:px-5 py-1.5 sm:py-2 rounded-full bg-gradient-light text-zinc-900 text-xs sm:text-sm font-bold border border-gradient-medium mb-4 sm:mb-5 md:mb-6">
+                <Trophy className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 fill-current text-zinc-900" />
+                <span className="text-center">{archetype.name}</span>
               </div>
 
               {/* Description */}
-              <p className="text-sm text-zinc-500 font-medium leading-relaxed max-w-[260px] mx-auto">
+              <p className="text-[10px] sm:text-xs md:text-sm text-zinc-500 font-medium leading-relaxed max-w-[240px] sm:max-w-[260px] mx-auto">
                 {archetype.description}
               </p>
             </Card>
 
             {/* Radar Chart */}
-            <Card className="col-span-1 lg:col-span-2 p-6 md:p-8 relative min-h-[360px] md:min-h-[420px]">
-              <div className="flex justify-between items-start mb-4">
+            <Card className="col-span-1 lg:col-span-2 p-3 sm:p-4 md:p-5 lg:p-8 relative min-h-[280px] sm:min-h-[320px] md:min-h-[360px] lg:min-h-[420px]">
+              <div className="flex justify-between items-start mb-3 sm:mb-4">
             <div>
-                  <h4 className="font-bold text-zinc-900 text-lg">Performance Profile</h4>
-                  <p className="text-xs text-zinc-500 mt-1 uppercase tracking-wide font-semibold">
+                  <h4 className="text-sm font-bold text-zinc-900">Performance Profile</h4>
+                  <p className="text-[10px] sm:text-xs text-zinc-500 mt-0.5 sm:mt-1">
                     Visualizing your current baseline across health pillars.
                   </p>
             </div>
           </div>
-              <div className="h-[280px] md:h-[320px] w-full mt-2 md:mt-4">
+              <div className="h-[240px] sm:h-[260px] md:h-[280px] lg:h-[320px] w-full mt-1 sm:mt-2 md:mt-4">
                 <OverallRadarChart data={overallRadarData} previousData={previousRadarData} />
         </div>
             </Card>
@@ -649,20 +548,21 @@ export default function ClientReport({
         </section>
         
         {/* Gap Analysis */}
-        <section>
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-gradient-light text-zinc-900 rounded-lg">
-              <BarChart3 className="w-5 h-5" />
+        <section className="w-full min-w-0 overflow-x-hidden">
+          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 mb-2 sm:mb-3 md:mb-4 lg:mb-5 xl:mb-6">
+            <div className="p-1 sm:p-1.5 md:p-2 bg-gradient-light text-zinc-900 rounded-lg">
+              <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
             </div>
-            <h3 className="text-base font-bold text-zinc-900 uppercase tracking-widest">Gap Analysis</h3>
+            <h3 className="text-[10px] sm:text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">Gap Analysis</h3>
           </div>
-          <p className="text-sm text-zinc-500 mb-6">Current metrics vs. optimal performance targets.</p>
+          <p className="text-[10px] sm:text-xs md:text-sm text-zinc-500 mb-3 sm:mb-4 md:mb-5 lg:mb-6">Current metrics vs. optimal performance targets.</p>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
+          {/* Desktop: Grid Layout (lg+) */}
+          <div className="hidden lg:grid grid-cols-3 gap-4 sm:gap-5 md:gap-6 mb-6 md:mb-8">
             {/* Body Composition */}
-            <Card className="p-6 flex flex-col">
+            <Card className="p-4 sm:p-5 md:p-6 flex flex-col">
               {/* Header - outside grid - Fixed height */}
-              <div className="flex items-center justify-between mb-6 h-[44px]">
+              <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6 h-[44px]">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-gradient-light text-zinc-900 rounded-lg">
                     <Scale className="w-5 h-5" />
@@ -674,88 +574,89 @@ export default function ClientReport({
                 </Badge>
               </div>
               
-              {/* Metrics Grid - Consistent across all cards - Fixed 3 rows */}
-              <div className="grid grid-cols-[1fr_auto_auto_1fr] gap-x-3 gap-y-3 mb-6 min-h-[140px]">
-                {/* Column Headers */}
-                <div></div>
-                <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider text-center">Current</div>
-                <div></div>
-                <div className="text-xs font-semibold text-gradient-dark uppercase tracking-wider text-right">Target</div>
+              {/* Metrics Layout - Single header, stats aligned below */}
+              <div className="flex flex-col justify-between flex-1 min-h-[140px] mb-6">
+                {/* Header Row - Current and Target labels centered over right-aligned stats */}
+                <div className="flex items-center justify-end gap-2 mb-3">
+                  <span className="text-[9px] text-zinc-400 uppercase tracking-wider text-center w-16">Current</span>
+                  <div className="w-3"></div>
+                  <span className="text-[9px] text-zinc-400 uppercase tracking-wider text-center w-16">Target</span>
+                </div>
                 
-                {/* Row 1: Weight */}
-                {gapAnalysisData[0]?.bodyCompGaps ? (() => {
-                  const { current, target } = gapAnalysisData[0].bodyCompGaps.weight;
-                  return (
-                    <>
-                      <span className="text-sm font-medium text-zinc-700">Weight</span>
-                      <span className="text-sm text-zinc-600 text-center">{current.toFixed(1)} kg</span>
-                      <ArrowRight className="w-3 h-3 text-gradient-dark flex-shrink-0 justify-self-center" />
-                      <span className="text-sm font-bold text-gradient-dark text-right">{target.toFixed(1)} kg</span>
-                    </>
-                  );
-                })() : (
-                  <>
-                    <span className="text-sm font-medium text-zinc-700">Weight</span>
-                    <span className="text-sm text-zinc-400 text-center">--</span>
-                    <ArrowRight className="w-3 h-3 text-zinc-300 flex-shrink-0 justify-self-center" />
-                    <span className="text-sm font-bold text-zinc-400 text-right">--</span>
-                  </>
-                )}
+                {/* Row 1: Weight - Top */}
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-zinc-700 text-left whitespace-nowrap flex-shrink-0">Body Weight (kg)</span>
+                  <div className="flex items-center gap-2">
+                    {gapAnalysisData[0]?.bodyCompGaps ? (
+                      <>
+                        <span className="text-sm text-zinc-600 text-right w-16">{gapAnalysisData[0].bodyCompGaps.weight.current.toFixed(1)}</span>
+                        <ArrowRight className="w-3 h-3 text-gradient-dark flex-shrink-0" />
+                        <span className="text-sm font-bold text-gradient-dark text-right w-16">{gapAnalysisData[0].bodyCompGaps.weight.target.toFixed(1)}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-sm text-zinc-400 text-right w-16">--</span>
+                        <ArrowRight className="w-3 h-3 text-zinc-300 flex-shrink-0" />
+                        <span className="text-sm font-bold text-zinc-400 text-right w-16">--</span>
+                      </>
+                    )}
+                  </div>
+                </div>
                 
-                {/* Row 2: Muscle Mass */}
-                {gapAnalysisData[0]?.bodyCompGaps ? (() => {
-                  const { current, target } = gapAnalysisData[0].bodyCompGaps.muscle;
-                  return (
-                    <>
-                      <span className="text-sm font-medium text-zinc-700">Muscle Mass</span>
-                      <span className="text-sm text-zinc-600 text-center">{current.toFixed(1)} kg</span>
-                      <ArrowRight className="w-3 h-3 text-gradient-dark flex-shrink-0 justify-self-center" />
-                      <span className="text-sm font-bold text-gradient-dark text-right">{target.toFixed(1)} kg</span>
-                    </>
-                  );
-                })() : (
-                  <>
-                    <span className="text-sm font-medium text-zinc-700">Muscle Mass</span>
-                    <span className="text-sm text-zinc-400 text-center">--</span>
-                    <ArrowRight className="w-3 h-3 text-zinc-300 flex-shrink-0 justify-self-center" />
-                    <span className="text-sm font-bold text-zinc-400 text-right">--</span>
-                  </>
-                )}
+                {/* Row 2: Muscle Mass - Middle */}
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-zinc-700 text-left whitespace-nowrap flex-shrink-0">Muscle Mass (kg)</span>
+                  <div className="flex items-center gap-2">
+                    {gapAnalysisData[0]?.bodyCompGaps ? (
+                      <>
+                        <span className="text-sm text-zinc-600 text-right w-16">{gapAnalysisData[0].bodyCompGaps.muscle.current.toFixed(1)}</span>
+                        <ArrowRight className="w-3 h-3 text-gradient-dark flex-shrink-0" />
+                        <span className="text-sm font-bold text-gradient-dark text-right w-16">{gapAnalysisData[0].bodyCompGaps.muscle.target.toFixed(1)}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-sm text-zinc-400 text-right w-16">--</span>
+                        <ArrowRight className="w-3 h-3 text-zinc-300 flex-shrink-0" />
+                        <span className="text-sm font-bold text-zinc-400 text-right w-16">--</span>
+                      </>
+                    )}
+                  </div>
+                </div>
                 
-                {/* Row 3: Body Fat */}
-                {gapAnalysisData[0]?.bodyCompGaps ? (() => {
-                  const { current, target } = gapAnalysisData[0].bodyCompGaps.fat;
-                  return (
-                    <>
-                      <span className="text-sm font-medium text-zinc-700">Body Fat</span>
-                      <span className="text-sm text-zinc-600 text-center">{current.toFixed(1)}%</span>
-                      <ArrowRight className="w-3 h-3 text-gradient-dark flex-shrink-0 justify-self-center" />
-                      <span className="text-sm font-bold text-gradient-dark text-right">{target.toFixed(1)}%</span>
-                    </>
-                  );
-                })() : (
-                  <>
-                    <span className="text-sm font-medium text-zinc-700">Body Fat</span>
-                    <span className="text-sm text-zinc-400 text-center">--</span>
-                    <ArrowRight className="w-3 h-3 text-zinc-300 flex-shrink-0 justify-self-center" />
-                    <span className="text-sm font-bold text-zinc-400 text-right">--</span>
-                  </>
-                )}
+                {/* Row 3: Body Fat - Bottom */}
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-zinc-700 text-left whitespace-nowrap flex-shrink-0">Body Fat (%)</span>
+                  <div className="flex items-center gap-2">
+                    {gapAnalysisData[0]?.bodyCompGaps ? (
+                      <>
+                        <span className="text-sm text-zinc-600 text-right w-16">{gapAnalysisData[0].bodyCompGaps.fat.current.toFixed(1)}</span>
+                        <ArrowRight className="w-3 h-3 text-gradient-dark flex-shrink-0" />
+                        <span className="text-sm font-bold text-gradient-dark text-right w-16">{gapAnalysisData[0].bodyCompGaps.fat.target.toFixed(1)}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-sm text-zinc-400 text-right w-16">--</span>
+                        <ArrowRight className="w-3 h-3 text-zinc-300 flex-shrink-0" />
+                        <span className="text-sm font-bold text-zinc-400 text-right w-16">--</span>
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
               
               {/* Coach Insight - outside grid, aligned at bottom */}
-              <div className="pt-4 border-t border-zinc-100">
-                <div className="flex items-start gap-2">
-                  <Lightbulb className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-zinc-600 leading-relaxed">{gapAnalysisData[0]?.insight}</p>
+              <div className="pt-3 sm:pt-4 border-t border-zinc-100">
+                <div className="flex items-start gap-1.5 sm:gap-2">
+                  <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                  <p className="text-[10px] sm:text-xs text-zinc-600 leading-relaxed">{truncateInsight(gapAnalysisData[0]?.insight || '')}</p>
                 </div>
               </div>
             </Card>
             
             {/* Functional Strength */}
-            <Card className="p-6 flex flex-col">
+            <Card className="p-4 sm:p-5 md:p-6 flex flex-col">
               {/* Header - outside grid - Fixed height */}
-              <div className="flex items-center justify-between mb-6 h-[44px]">
+              <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6 h-[44px]">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-gradient-light text-zinc-900 rounded-lg">
                     <Dumbbell className="w-5 h-5" />
@@ -769,127 +670,128 @@ export default function ClientReport({
                 </Badge>
               </div>
               
-              {/* Metrics Grid - Same structure as other cards - Fixed 3 rows */}
-              <div className="grid grid-cols-[1fr_auto_auto_1fr] gap-x-3 gap-y-3 mb-6 min-h-[140px]">
-                {/* Column Headers */}
-                <div></div>
-                <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider text-center">Current</div>
-                <div></div>
-                <div className="text-xs font-semibold text-gradient-dark uppercase tracking-wider text-right">Target</div>
+              {/* Metrics Layout - Single header, stats aligned below */}
+              <div className="flex flex-col justify-between flex-1 min-h-[140px] mb-6">
+                {/* Header Row - Current and Target labels centered over stats */}
+                <div className="flex items-center justify-end gap-2 mb-3 pr-0.5">
+                  <span className="text-[9px] text-zinc-400 uppercase tracking-wider text-center w-16">Current</span>
+                  <div className="w-3"></div>
+                  <span className="text-[9px] text-zinc-400 uppercase tracking-wider text-center w-16">Target</span>
+                </div>
                 
-                {/* Row 1: Muscular Endurance (Pushups + Squats) */}
-                {(() => {
-                  const functionalGaps = gapAnalysisData[1]?.functionalGaps;
-                  if (functionalGaps) {
-                    return (
+                {/* Row 1: Muscular Endurance - Top */}
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-zinc-700 text-left whitespace-nowrap flex-shrink-0">Muscular Endurance (reps)</span>
+                  <div className="flex items-center gap-2">
+                    {gapAnalysisData[1]?.functionalGaps ? (
                       <>
-                        <span className="text-sm font-medium text-zinc-700">Muscular Endurance</span>
-                        <span className="text-sm text-zinc-600 text-center">{functionalGaps.endurance.current} reps</span>
-                        <ArrowRight className="w-3 h-3 text-gradient-dark flex-shrink-0 justify-self-center" />
-                        <span className="text-sm font-bold text-gradient-dark text-right">{functionalGaps.endurance.target} reps</span>
+                        <span className="text-sm text-zinc-600 text-right w-16">{gapAnalysisData[1].functionalGaps.endurance.current}</span>
+                        <ArrowRight className="w-3 h-3 text-gradient-dark flex-shrink-0" />
+                        <span className="text-sm font-bold text-gradient-dark text-right w-16">{gapAnalysisData[1].functionalGaps.endurance.target}</span>
                       </>
-                    );
-                  }
-                  return (
-                    <>
-                      <div></div>
-                      <div></div>
-                      <div></div>
-                      <div></div>
-                    </>
-                  );
-                })()}
+                    ) : (
+                      <>
+                        <span className="text-sm text-zinc-400 text-right w-16">--</span>
+                        <ArrowRight className="w-3 h-3 text-zinc-300 flex-shrink-0" />
+                        <span className="text-sm font-bold text-zinc-400 text-right w-16">--</span>
+                      </>
+                    )}
+                  </div>
+                </div>
                 
-                {/* Row 2: Core Stability (Plank) */}
-                {(() => {
-                  const functionalGaps = gapAnalysisData[1]?.functionalGaps;
-                  if (functionalGaps) {
-                    const currentSeconds = functionalGaps.core.current;
-                    const targetSeconds = functionalGaps.core.target;
-                    const currentMinutes = Math.floor(currentSeconds / 60);
-                    const currentSecs = currentSeconds % 60;
-                    const targetMinutes = Math.floor(targetSeconds / 60);
-                    const targetSecs = targetSeconds % 60;
-                    
-                    return (
+                {/* Row 2: Core Stability - Middle */}
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-zinc-700 text-left whitespace-nowrap flex-shrink-0">Core Stability (time)</span>
+                  <div className="flex items-center gap-2">
+                    {gapAnalysisData[1]?.functionalGaps ? (() => {
+                      const functionalGaps = gapAnalysisData[1].functionalGaps;
+                      const currentSeconds = functionalGaps.core.current;
+                      const targetSeconds = functionalGaps.core.target;
+                      const currentMinutes = Math.floor(currentSeconds / 60);
+                      const currentSecs = currentSeconds % 60;
+                      const targetMinutes = Math.floor(targetSeconds / 60);
+                      const targetSecs = targetSeconds % 60;
+                      const currentDisplay = currentMinutes > 0 ? `${currentMinutes}:${currentSecs.toString().padStart(2, '0')}` : `${currentSeconds}s`;
+                      const targetDisplay = targetMinutes > 0 ? `${targetMinutes}:${targetSecs.toString().padStart(2, '0')}` : `${targetSeconds}s`;
+                      return (
+                        <>
+                          <span className="text-sm text-zinc-600 text-right w-16">{currentDisplay}</span>
+                          <ArrowRight className="w-3 h-3 text-gradient-dark flex-shrink-0" />
+                          <span className="text-sm font-bold text-gradient-dark text-right w-16">{targetDisplay}</span>
+                        </>
+                      );
+                    })() : (
                       <>
-                        <span className="text-sm font-medium text-zinc-700">Core Stability</span>
-                        <span className="text-sm text-zinc-600 text-center">
-                          {currentMinutes > 0 ? `${currentMinutes}:${currentSecs.toString().padStart(2, '0')}` : `${currentSeconds}s`}
-                        </span>
-                        <ArrowRight className="w-3 h-3 text-gradient-dark flex-shrink-0 justify-self-center" />
-                        <span className="text-sm font-bold text-gradient-dark text-right">
-                          {targetMinutes > 0 ? `${targetMinutes}:${targetSecs.toString().padStart(2, '0')}` : `${targetSeconds}s`}
-                        </span>
+                        <span className="text-sm text-zinc-400 text-right w-16">--</span>
+                        <ArrowRight className="w-3 h-3 text-zinc-300 flex-shrink-0" />
+                        <span className="text-sm font-bold text-zinc-400 text-right w-16">--</span>
                       </>
-                    );
-                  }
-                  return (
-                    <>
-                      <div></div>
-                      <div></div>
-                      <div></div>
-                      <div></div>
-                    </>
-                  );
-                })()}
+                    )}
+                  </div>
+                </div>
                 
-                {/* Row 3: Overall Strength (Grip) - Optional */}
-                {(() => {
-                  const functionalGaps = gapAnalysisData[1]?.functionalGaps;
-                  if (functionalGaps?.strength) {
-                    const strength = functionalGaps.strength;
-                    // Display based on method
-                    let currentDisplay: string;
-                    let targetDisplay: string;
-                    
-                    if (strength.method === 'deadhang' && strength.currentTime !== undefined && strength.targetTime !== undefined) {
-                      currentDisplay = `${strength.currentTime.toFixed(0)}s`;
-                      targetDisplay = `${strength.targetTime.toFixed(0)}s`;
-                    } else if (strength.method === 'pinch' && strength.currentTime !== undefined && strength.targetTime !== undefined) {
-                      const standardizedWeight = (formData?.gender || '').toLowerCase() === 'female' ? 10 : 15;
-                      currentDisplay = `${strength.currentTime.toFixed(0)}s (${standardizedWeight}kg)`;
-                      targetDisplay = `${strength.targetTime.toFixed(0)}s (${standardizedWeight}kg)`;
-                    } else {
-                      // Dynamometer or fallback
-                      currentDisplay = `${strength.current.toFixed(1)} kg`;
-                      targetDisplay = `${strength.target.toFixed(1)} kg`;
-                    }
-                    
-                    return (
+                {/* Row 3: Overall Strength - Bottom */}
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-zinc-700 text-left whitespace-nowrap flex-shrink-0">
+                    {gapAnalysisData[1]?.functionalGaps?.strength ? (() => {
+                      const strength = gapAnalysisData[1].functionalGaps.strength;
+                      if (strength.method === 'deadhang' && strength.currentTime !== undefined && strength.targetTime !== undefined) {
+                        return 'Overall Strength (s)';
+                      } else if (strength.method === 'pinch' && strength.currentTime !== undefined && strength.targetTime !== undefined) {
+                        const standardizedWeight = (formData?.gender || '').toLowerCase() === 'female' ? 10 : 15;
+                        return `Overall Strength (s, ${standardizedWeight}kg)`;
+                      } else {
+                        return 'Overall Strength (kg)';
+                      }
+                    })() : 'Overall Strength'}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {gapAnalysisData[1]?.functionalGaps?.strength ? (() => {
+                      const strength = gapAnalysisData[1].functionalGaps.strength;
+                      let currentDisplay: string;
+                      let targetDisplay: string;
+                      
+                      if (strength.method === 'deadhang' && strength.currentTime !== undefined && strength.targetTime !== undefined) {
+                        currentDisplay = `${strength.currentTime.toFixed(0)}`;
+                        targetDisplay = `${strength.targetTime.toFixed(0)}`;
+                      } else if (strength.method === 'pinch' && strength.currentTime !== undefined && strength.targetTime !== undefined) {
+                        currentDisplay = `${strength.currentTime.toFixed(0)}`;
+                        targetDisplay = `${strength.targetTime.toFixed(0)}`;
+                      } else {
+                        currentDisplay = `${strength.current.toFixed(1)}`;
+                        targetDisplay = `${strength.target.toFixed(1)}`;
+                      }
+                      return (
+                        <>
+                          <span className="text-sm text-zinc-600 text-right w-16">{currentDisplay}</span>
+                          <ArrowRight className="w-3 h-3 text-gradient-dark flex-shrink-0" />
+                          <span className="text-sm font-bold text-gradient-dark text-right w-16">{targetDisplay}</span>
+                        </>
+                      );
+                    })() : (
                       <>
-                        <span className="text-sm font-medium text-zinc-700">Overall Strength</span>
-                        <span className="text-sm text-zinc-600 text-center">{currentDisplay}</span>
-                        <ArrowRight className="w-3 h-3 text-gradient-dark flex-shrink-0 justify-self-center" />
-                        <span className="text-sm font-bold text-gradient-dark text-right">{targetDisplay}</span>
+                        <span className="text-sm text-zinc-400 text-right w-16">--</span>
+                        <ArrowRight className="w-3 h-3 text-zinc-300 flex-shrink-0" />
+                        <span className="text-sm font-bold text-zinc-400 text-right w-16">--</span>
                       </>
-                    );
-                  }
-                  // Empty placeholder if no grip data
-                  return (
-                    <>
-                      <div></div>
-                      <div></div>
-                      <div></div>
-                      <div></div>
-                    </>
-                  );
-                })()}
+                    )}
+                  </div>
+                </div>
               </div>
               
               {/* Coach Insight - outside grid, aligned at bottom */}
-              <div className="pt-4 border-t border-zinc-100">
-                <div className="flex items-start gap-2">
-                  <Lightbulb className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-zinc-600 leading-relaxed">{gapAnalysisData[1]?.insight}</p>
+              <div className="pt-3 sm:pt-4 border-t border-zinc-100">
+                <div className="flex items-start gap-1.5 sm:gap-2">
+                  <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                  <p className="text-[10px] sm:text-xs text-zinc-600 leading-relaxed">{truncateInsight(gapAnalysisData[1]?.insight || '')}</p>
                 </div>
               </div>
             </Card>
             
             {/* Metabolic Fitness */}
-            <Card className="p-6 flex flex-col">
+            <Card className="p-4 sm:p-5 md:p-6 flex flex-col">
               {/* Header - outside grid - Fixed height */}
-              <div className="flex items-center justify-between mb-6 h-[44px]">
+              <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6 h-[44px]">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-gradient-light text-zinc-900 rounded-lg">
                     <Heart className="w-5 h-5" />
@@ -905,103 +807,492 @@ export default function ClientReport({
                 </Badge>
               </div>
               
-              {/* Metrics Grid - Same structure as other cards - Fixed 3 rows */}
-              <div className="grid grid-cols-[1fr_auto_auto_1fr] gap-x-3 gap-y-3 mb-6 min-h-[140px]">
-                {/* Column Headers */}
-                <div></div>
-                <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider text-center">Current</div>
-                <div></div>
-                <div className="text-xs font-semibold text-gradient-dark uppercase tracking-wider text-right">Target</div>
+              {/* Metrics Layout - Single header, stats aligned below */}
+              <div className="flex flex-col justify-between flex-1 min-h-[140px] mb-6">
+                {/* Header Row - Current and Target labels centered over stats */}
+                <div className="flex items-center justify-end gap-2 mb-3 pr-0.5">
+                  <span className="text-[9px] text-zinc-400 uppercase tracking-wider text-center w-16">Current</span>
+                  <div className="w-3"></div>
+                  <span className="text-[9px] text-zinc-400 uppercase tracking-wider text-center w-16">Target</span>
+                </div>
                 
-                {/* Row 1: Resting HR */}
-                {(() => {
-                  const cardioGaps = gapAnalysisData[2]?.cardioGaps;
-                  if (cardioGaps && cardioGaps.rhr.current > 0) {
-                    return (
+                {/* Row 1: Resting HR - Top */}
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-zinc-700 text-left whitespace-nowrap flex-shrink-0">Resting HR (bpm)</span>
+                  <div className="flex items-center gap-2">
+                    {gapAnalysisData[2]?.cardioGaps && gapAnalysisData[2].cardioGaps.rhr.current > 0 ? (
                       <>
-                        <span className="text-sm font-medium text-zinc-700">Resting HR</span>
-                        <span className="text-sm text-zinc-600 text-center">{Math.round(cardioGaps.rhr.current)} bpm</span>
-                        <ArrowRight className="w-3 h-3 text-gradient-dark flex-shrink-0 justify-self-center" />
-                        <span className="text-sm font-bold text-gradient-dark text-right">{Math.round(cardioGaps.rhr.target)} bpm</span>
+                        <span className="text-sm text-zinc-600 text-right w-16">{Math.round(gapAnalysisData[2].cardioGaps.rhr.current)}</span>
+                        <ArrowRight className="w-3 h-3 text-gradient-dark flex-shrink-0" />
+                        <span className="text-sm font-bold text-gradient-dark text-right w-16">{Math.round(gapAnalysisData[2].cardioGaps.rhr.target)}</span>
                       </>
-                    );
-                  }
-                  return (
-                    <>
-                      <div></div>
-                      <div></div>
-                      <div></div>
-                      <div></div>
-                    </>
-                  );
-                })()}
+                    ) : (
+                      <>
+                        <span className="text-sm text-zinc-400 text-right w-16">--</span>
+                        <ArrowRight className="w-3 h-3 text-zinc-300 flex-shrink-0" />
+                        <span className="text-sm font-bold text-zinc-400 text-right w-16">--</span>
+                      </>
+                    )}
+                  </div>
+                </div>
                 
-                {/* Row 2: Recovery HR */}
-                {(() => {
-                  const cardioGaps = gapAnalysisData[2]?.cardioGaps;
-                  if (cardioGaps && cardioGaps.recovery.current > 0) {
-                    return (
+                {/* Row 2: Recovery HR - Middle */}
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-zinc-700 text-left whitespace-nowrap flex-shrink-0">Recovery HR (bpm)</span>
+                  <div className="flex items-center gap-2">
+                    {gapAnalysisData[2]?.cardioGaps && gapAnalysisData[2].cardioGaps.recovery.current > 0 ? (
                       <>
-                        <span className="text-sm font-medium text-zinc-700">Recovery HR</span>
-                        <span className="text-sm text-zinc-600 text-center">{Math.round(cardioGaps.recovery.current)} bpm</span>
-                        <ArrowRight className="w-3 h-3 text-gradient-dark flex-shrink-0 justify-self-center" />
-                        <span className="text-sm font-bold text-gradient-dark text-right">{Math.round(cardioGaps.recovery.target)} bpm</span>
+                        <span className="text-sm text-zinc-600 text-right w-16">{Math.round(gapAnalysisData[2].cardioGaps.recovery.current)}</span>
+                        <ArrowRight className="w-3 h-3 text-gradient-dark flex-shrink-0" />
+                        <span className="text-sm font-bold text-gradient-dark text-right w-16">{Math.round(gapAnalysisData[2].cardioGaps.recovery.target)}</span>
                       </>
-                    );
-                  }
-                  return (
-                    <>
-                      <div></div>
-                      <div></div>
-                      <div></div>
-                      <div></div>
-                    </>
-                  );
-                })()}
+                    ) : (
+                      <>
+                        <span className="text-sm text-zinc-400 text-right w-16">--</span>
+                        <ArrowRight className="w-3 h-3 text-zinc-300 flex-shrink-0" />
+                        <span className="text-sm font-bold text-zinc-400 text-right w-16">--</span>
+                      </>
+                    )}
+                  </div>
+                </div>
                 
-                {/* Row 3: VO2 Max */}
-                {(() => {
-                  const cardioGaps = gapAnalysisData[2]?.cardioGaps;
-                  if (cardioGaps && cardioGaps.vo2.current > 0) {
-                    return (
+                {/* Row 3: VO2 Max - Bottom */}
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-zinc-700 text-left whitespace-nowrap flex-shrink-0">VO2 Max (ml/kg/min)</span>
+                  <div className="flex items-center gap-2">
+                    {gapAnalysisData[2]?.cardioGaps && gapAnalysisData[2].cardioGaps.vo2.current > 0 ? (
                       <>
-                        <span className="text-sm font-medium text-zinc-700">VO2 Max</span>
-                        <span className="text-sm text-zinc-600 text-center">{cardioGaps.vo2.current.toFixed(1)} ml/kg/min</span>
-                        <ArrowRight className="w-3 h-3 text-gradient-dark flex-shrink-0 justify-self-center" />
-                        <span className="text-sm font-bold text-gradient-dark text-right">{cardioGaps.vo2.target.toFixed(1)} ml/kg/min</span>
+                        <span className="text-sm text-zinc-600 text-right w-16">{gapAnalysisData[2].cardioGaps.vo2.current.toFixed(1)}</span>
+                        <ArrowRight className="w-3 h-3 text-gradient-dark flex-shrink-0" />
+                        <span className="text-sm font-bold text-gradient-dark text-right w-16">{gapAnalysisData[2].cardioGaps.vo2.target.toFixed(1)}</span>
                       </>
-                    );
-                  }
-                  return (
-                    <>
-                      <div></div>
-                      <div></div>
-                      <div></div>
-                      <div></div>
-                    </>
-                  );
-                })()}
+                    ) : (
+                      <>
+                        <span className="text-sm text-zinc-400 text-right w-16">--</span>
+                        <ArrowRight className="w-3 h-3 text-zinc-300 flex-shrink-0" />
+                        <span className="text-sm font-bold text-zinc-400 text-right w-16">--</span>
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
               
               {/* Coach Insight - outside grid, aligned at bottom */}
-              <div className="pt-4 border-t border-zinc-100">
-                <div className="flex items-start gap-2">
-                  <Lightbulb className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-zinc-600 leading-relaxed">{gapAnalysisData[2]?.insight}</p>
+              <div className="pt-3 sm:pt-4 border-t border-zinc-100">
+                <div className="flex items-start gap-1.5 sm:gap-2">
+                  <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                  <p className="text-[10px] sm:text-xs text-zinc-600 leading-relaxed">{truncateInsight(gapAnalysisData[2]?.insight || '')}</p>
                 </div>
               </div>
             </Card>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
-            <Card className="p-6">
-              <h4 className="text-sm font-bold text-zinc-900 mb-4 flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-gradient-dark" />
+          {/* Mobile/Tablet: Tabs Layout (below lg) */}
+          <Tabs defaultValue="body-comp" className="w-full mb-6 md:mb-8 lg:hidden">
+            <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0 mb-3 sm:mb-4 scrollbar-hide">
+              <TabsList className="w-full sm:w-auto justify-start rounded-lg sm:rounded-xl glass-button h-auto p-1 sm:p-1.5 gap-1 inline-flex min-w-max sm:min-w-0">
+                <TabsTrigger
+                  value="body-comp"
+                  className="text-[9px] sm:text-[10px] font-semibold px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-md transition-apple whitespace-nowrap shrink-0 data-[state=active]:glass-button-active data-[state=active]:text-white data-[state=inactive]:text-zinc-600 data-[state=inactive]:hover:text-zinc-900"
+                >
+                  Body Composition
+                </TabsTrigger>
+                <TabsTrigger
+                  value="strength"
+                  className="text-[9px] sm:text-[10px] font-semibold px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-md transition-apple whitespace-nowrap shrink-0 data-[state=active]:glass-button-active data-[state=active]:text-white data-[state=inactive]:text-zinc-600 data-[state=inactive]:hover:text-zinc-900"
+                >
+                  Functional Strength
+                </TabsTrigger>
+                <TabsTrigger
+                  value="metabolic"
+                  className="text-[9px] sm:text-[10px] font-semibold px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-md transition-apple whitespace-nowrap shrink-0 data-[state=active]:glass-button-active data-[state=active]:text-white data-[state=inactive]:text-zinc-600 data-[state=inactive]:hover:text-zinc-900"
+                >
+                  Metabolic Fitness
+                </TabsTrigger>
+              </TabsList>
+            </div>
+            
+            <div className="space-y-4 sm:space-y-5 md:space-y-6">
+            {/* Body Composition */}
+            <TabsContent value="body-comp" className="m-0">
+            <Card className="p-5 sm:p-6 md:p-7 flex flex-col">
+              {/* Header - outside grid - Fixed height */}
+              <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6 h-[44px]">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-gradient-light text-zinc-900 rounded-lg">
+                    <Scale className="w-5 h-5" />
+                  </div>
+                  <h4 className="text-sm font-bold text-zinc-900">Body Composition</h4>
+                </div>
+                <Badge className="glass-button-active text-white border-transparent whitespace-nowrap">
+                  {gapAnalysisData[0]?.status === 'red' ? 'Priority Focus' : 'Optimize'}
+                </Badge>
+              </div>
+              
+              {/* Metrics Layout - Single header, stats aligned below */}
+              <div className="flex flex-col justify-between flex-1 min-h-[120px] sm:min-h-[140px] mb-4 sm:mb-5 md:mb-6">
+                {/* Header Row - Current and Target labels right-aligned to match stats */}
+                <div className="flex items-center mb-3" style={{ width: '140px', marginLeft: 'auto', justifyContent: 'space-between', paddingRight: '2px' }}>
+                  <span className="text-[9px] text-zinc-400 uppercase tracking-wider text-right whitespace-nowrap" style={{ width: '64px' }}>Current</span>
+                  <div style={{ width: '12px', height: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}></div>
+                  <span className="text-[9px] text-zinc-400 uppercase tracking-wider text-right whitespace-nowrap" style={{ width: '64px' }}>Target</span>
+                </div>
+                
+                {/* Row 1: Weight - Top */}
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-zinc-700 text-left whitespace-nowrap flex-shrink-0">Body Weight (kg)</span>
+                  <div className="flex items-center" style={{ width: '140px', flexShrink: 0, justifyContent: 'space-between', paddingRight: '2px' }}>
+                    {gapAnalysisData[0]?.bodyCompGaps ? (
+                      <>
+                        <span className="text-sm text-zinc-600 text-right whitespace-nowrap" style={{ width: '64px' }}>{gapAnalysisData[0].bodyCompGaps.weight.current.toFixed(1)}</span>
+                        <div style={{ width: '12px', height: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                          <ArrowRight className="w-3 h-3 text-gradient-dark flex-shrink-0" />
+                        </div>
+                        <span className="text-sm font-bold text-gradient-dark text-right whitespace-nowrap" style={{ width: '64px' }}>{gapAnalysisData[0].bodyCompGaps.weight.target.toFixed(1)}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-sm text-zinc-400 text-right whitespace-nowrap" style={{ width: '64px' }}>--</span>
+                        <div style={{ width: '12px', height: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                          <ArrowRight className="w-3 h-3 text-zinc-300 flex-shrink-0" />
+                        </div>
+                        <span className="text-sm font-bold text-zinc-400 text-right whitespace-nowrap" style={{ width: '64px' }}>--</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Row 2: Muscle Mass - Middle */}
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-zinc-700 text-left whitespace-nowrap flex-shrink-0">Muscle Mass (kg)</span>
+                  <div className="flex items-center" style={{ width: '140px', flexShrink: 0, justifyContent: 'space-between', paddingRight: '2px' }}>
+                    {gapAnalysisData[0]?.bodyCompGaps ? (
+                      <>
+                        <span className="text-sm text-zinc-600 text-right whitespace-nowrap" style={{ width: '64px' }}>{gapAnalysisData[0].bodyCompGaps.muscle.current.toFixed(1)}</span>
+                        <div style={{ width: '12px', height: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                          <ArrowRight className="w-3 h-3 text-gradient-dark flex-shrink-0" />
+                        </div>
+                        <span className="text-sm font-bold text-gradient-dark text-right whitespace-nowrap" style={{ width: '64px' }}>{gapAnalysisData[0].bodyCompGaps.muscle.target.toFixed(1)}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-sm text-zinc-400 text-right whitespace-nowrap" style={{ width: '64px' }}>--</span>
+                        <div style={{ width: '12px', height: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                          <ArrowRight className="w-3 h-3 text-zinc-300 flex-shrink-0" />
+                        </div>
+                        <span className="text-sm font-bold text-zinc-400 text-right whitespace-nowrap" style={{ width: '64px' }}>--</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Row 3: Body Fat - Bottom */}
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-zinc-700 text-left whitespace-nowrap flex-shrink-0">Body Fat (%)</span>
+                  <div className="flex items-center" style={{ width: '140px', flexShrink: 0, justifyContent: 'space-between', paddingRight: '2px' }}>
+                    {gapAnalysisData[0]?.bodyCompGaps ? (
+                      <>
+                        <span className="text-sm text-zinc-600 text-right whitespace-nowrap" style={{ width: '64px' }}>{gapAnalysisData[0].bodyCompGaps.fat.current.toFixed(1)}</span>
+                        <div style={{ width: '12px', height: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                          <ArrowRight className="w-3 h-3 text-gradient-dark flex-shrink-0" />
+                        </div>
+                        <span className="text-sm font-bold text-gradient-dark text-right whitespace-nowrap" style={{ width: '64px' }}>{gapAnalysisData[0].bodyCompGaps.fat.target.toFixed(1)}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-sm text-zinc-400 text-right whitespace-nowrap" style={{ width: '64px' }}>--</span>
+                        <div style={{ width: '12px', height: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                          <ArrowRight className="w-3 h-3 text-zinc-300 flex-shrink-0" />
+                        </div>
+                        <span className="text-sm font-bold text-zinc-400 text-right whitespace-nowrap" style={{ width: '64px' }}>--</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Coach Insight - outside grid, aligned at bottom */}
+              <div className="pt-3 sm:pt-4 border-t border-zinc-100">
+                <div className="flex items-start gap-1.5 sm:gap-2">
+                  <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                  <p className="text-[10px] sm:text-xs text-zinc-600 leading-relaxed">{truncateInsight(gapAnalysisData[0]?.insight || '')}</p>
+                </div>
+              </div>
+            </Card>
+            </TabsContent>
+            
+            {/* Functional Strength */}
+            <TabsContent value="strength" className="m-0">
+            <Card className="p-5 sm:p-6 md:p-7 flex flex-col">
+              {/* Header - outside grid - Fixed height */}
+              <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6 h-[44px]">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-gradient-light text-zinc-900 rounded-lg">
+                    <Dumbbell className="w-5 h-5" />
+                  </div>
+                  <h4 className="text-sm font-bold text-zinc-900">Functional Strength</h4>
+                </div>
+                <Badge className="glass-button-active text-white border-transparent whitespace-nowrap">
+                  {gapAnalysisData[1]?.status === 'red'
+                    ? 'Priority Focus'
+                    : 'Optimize'}
+                </Badge>
+              </div>
+
+              {/* Metrics Layout - Single header, stats aligned below */}
+              <div className="flex flex-col justify-between flex-1 min-h-[120px] sm:min-h-[140px] mb-4 sm:mb-5 md:mb-6">
+                {/* Header Row - Current and Target labels right-aligned to match stats */}
+                <div className="flex items-center mb-3" style={{ width: '140px', marginLeft: 'auto', justifyContent: 'space-between', paddingRight: '2px' }}>
+                  <span className="text-[9px] text-zinc-400 uppercase tracking-wider text-right whitespace-nowrap" style={{ width: '64px' }}>Current</span>
+                  <div style={{ width: '12px', height: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}></div>
+                  <span className="text-[9px] text-zinc-400 uppercase tracking-wider text-right whitespace-nowrap" style={{ width: '64px' }}>Target</span>
+                </div>
+                
+                {/* Row 1: Muscular Endurance - Top */}
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-zinc-700 text-left whitespace-nowrap flex-shrink-0">Muscular Endurance (reps)</span>
+                  <div className="flex items-center" style={{ width: '140px', flexShrink: 0, justifyContent: 'space-between', paddingRight: '2px' }}>
+                    {gapAnalysisData[1]?.functionalGaps ? (
+                      <>
+                        <span className="text-sm text-zinc-600 text-right whitespace-nowrap" style={{ width: '64px' }}>{gapAnalysisData[1].functionalGaps.endurance.current}</span>
+                        <div style={{ width: '12px', height: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                          <ArrowRight className="w-3 h-3 text-gradient-dark flex-shrink-0" />
+                        </div>
+                        <span className="text-sm font-bold text-gradient-dark text-right whitespace-nowrap" style={{ width: '64px' }}>{gapAnalysisData[1].functionalGaps.endurance.target}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-sm text-zinc-400 text-right whitespace-nowrap" style={{ width: '64px' }}>--</span>
+                        <div style={{ width: '12px', height: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                          <ArrowRight className="w-3 h-3 text-zinc-300 flex-shrink-0" />
+                        </div>
+                        <span className="text-sm font-bold text-zinc-400 text-right whitespace-nowrap" style={{ width: '64px' }}>--</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Row 2: Core Stability - Middle */}
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-zinc-700 text-left whitespace-nowrap flex-shrink-0">Core Stability (secs)</span>
+                  <div className="flex items-center" style={{ width: '140px', flexShrink: 0, justifyContent: 'space-between', paddingRight: '2px' }}>
+                    {gapAnalysisData[1]?.functionalGaps ? (() => {
+                      const functionalGaps = gapAnalysisData[1].functionalGaps;
+                      const currentSeconds = functionalGaps.core.current;
+                      const targetSeconds = functionalGaps.core.target;
+                      const currentMinutes = Math.floor(currentSeconds / 60);
+                      const currentSecs = currentSeconds % 60;
+                      const targetMinutes = Math.floor(targetSeconds / 60);
+                      const targetSecs = targetSeconds % 60;
+                      const currentDisplay = currentMinutes > 0 ? `${currentMinutes}:${currentSecs.toString().padStart(2, '0')}` : `${currentSeconds}`;
+                      const targetDisplay = targetMinutes > 0 ? `${targetMinutes}:${targetSecs.toString().padStart(2, '0')}` : `${targetSeconds}`;
+                      return (
+                        <>
+                          <span className="text-sm text-zinc-600 text-right whitespace-nowrap" style={{ width: '64px' }}>{currentDisplay}</span>
+                          <div style={{ width: '12px', height: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                            <ArrowRight className="w-3 h-3 text-gradient-dark flex-shrink-0" />
+                          </div>
+                          <span className="text-sm font-bold text-gradient-dark text-right whitespace-nowrap" style={{ width: '64px' }}>{targetDisplay}</span>
+                        </>
+                      );
+                    })() : (
+                      <>
+                        <span className="text-sm text-zinc-400 text-right whitespace-nowrap" style={{ width: '64px' }}>--</span>
+                        <div style={{ width: '12px', height: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                          <ArrowRight className="w-3 h-3 text-zinc-300 flex-shrink-0" />
+                        </div>
+                        <span className="text-sm font-bold text-zinc-400 text-right whitespace-nowrap" style={{ width: '64px' }}>--</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Row 3: Overall Strength - Bottom */}
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-zinc-700 text-left whitespace-nowrap flex-shrink-0">
+                    {gapAnalysisData[1]?.functionalGaps?.strength ? (() => {
+                      const strength = gapAnalysisData[1].functionalGaps.strength;
+                      if (strength.method === 'deadhang' && strength.currentTime !== undefined && strength.targetTime !== undefined) {
+                        return 'Overall Strength (s)';
+                      } else if (strength.method === 'pinch' && strength.currentTime !== undefined && strength.targetTime !== undefined) {
+                        const standardizedWeight = (formData?.gender || '').toLowerCase() === 'female' ? 10 : 15;
+                        return `Overall Strength (s, ${standardizedWeight}kg)`;
+                      } else {
+                        return 'Overall Strength (kg)';
+                      }
+                    })() : 'Overall Strength'}
+                  </span>
+                  <div className="flex items-center" style={{ width: '140px', flexShrink: 0, justifyContent: 'space-between', paddingRight: '2px' }}>
+                    {gapAnalysisData[1]?.functionalGaps?.strength ? (() => {
+                      const strength = gapAnalysisData[1].functionalGaps.strength;
+                      let currentDisplay: string;
+                      let targetDisplay: string;
+                      
+                      if (strength.method === 'deadhang' && strength.currentTime !== undefined && strength.targetTime !== undefined) {
+                        currentDisplay = `${strength.currentTime.toFixed(0)}`;
+                        targetDisplay = `${strength.targetTime.toFixed(0)}`;
+                      } else if (strength.method === 'pinch' && strength.currentTime !== undefined && strength.targetTime !== undefined) {
+                        currentDisplay = `${strength.currentTime.toFixed(0)}`;
+                        targetDisplay = `${strength.targetTime.toFixed(0)}`;
+                      } else {
+                        currentDisplay = `${strength.current.toFixed(1)}`;
+                        targetDisplay = `${strength.target.toFixed(1)}`;
+                      }
+                      return (
+                        <>
+                          <span className="text-sm text-zinc-600 text-right whitespace-nowrap" style={{ width: '64px' }}>{currentDisplay}</span>
+                          <div style={{ width: '12px', height: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                            <ArrowRight className="w-3 h-3 text-gradient-dark flex-shrink-0" />
+                          </div>
+                          <span className="text-sm font-bold text-gradient-dark text-right whitespace-nowrap" style={{ width: '64px' }}>{targetDisplay}</span>
+                        </>
+                      );
+                    })() : (
+                      <>
+                        <span className="text-sm text-zinc-400 text-right whitespace-nowrap" style={{ width: '64px' }}>--</span>
+                        <div style={{ width: '12px', height: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                          <ArrowRight className="w-3 h-3 text-zinc-300 flex-shrink-0" />
+                        </div>
+                        <span className="text-sm font-bold text-zinc-400 text-right whitespace-nowrap" style={{ width: '64px' }}>--</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Coach Insight - outside grid, aligned at bottom */}
+              <div className="pt-3 sm:pt-4 border-t border-zinc-100">
+                <div className="flex items-start gap-1.5 sm:gap-2">
+                  <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                  <p className="text-[10px] sm:text-xs text-zinc-600 leading-relaxed">{truncateInsight(gapAnalysisData[1]?.insight || '')}</p>
+                </div>
+              </div>
+            </Card>
+            </TabsContent>
+            
+            {/* Metabolic Fitness */}
+            <TabsContent value="metabolic" className="m-0">
+            <Card className="p-5 sm:p-6 md:p-7 flex flex-col">
+              {/* Header - outside grid - Fixed height */}
+              <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6 h-[44px]">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-gradient-light text-zinc-900 rounded-lg">
+                    <Heart className="w-5 h-5" />
+                  </div>
+                  <h4 className="text-sm font-bold text-zinc-900">Metabolic Fitness</h4>
+                </div>
+                <Badge className="glass-button-active text-white border-transparent whitespace-nowrap">
+                  {gapAnalysisData[2]?.status === 'red'
+                    ? 'Priority Focus'
+                    : gapAnalysisData[2]?.status === 'yellow' || (goals || []).includes('improve-fitness')
+                    ? 'Optimize'
+                    : 'Maintain'}
+                </Badge>
+              </div>
+
+              {/* Metrics Layout - Single header, stats aligned below */}
+              <div className="flex flex-col justify-between flex-1 min-h-[120px] sm:min-h-[140px] mb-4 sm:mb-5 md:mb-6">
+                {/* Header Row - Current and Target labels right-aligned to match stats */}
+                <div className="flex items-center mb-3" style={{ width: '140px', marginLeft: 'auto', justifyContent: 'space-between', paddingRight: '2px' }}>
+                  <span className="text-[9px] text-zinc-400 uppercase tracking-wider text-right whitespace-nowrap" style={{ width: '64px' }}>Current</span>
+                  <div style={{ width: '12px', height: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}></div>
+                  <span className="text-[9px] text-zinc-400 uppercase tracking-wider text-right whitespace-nowrap" style={{ width: '64px' }}>Target</span>
+                </div>
+                
+                {/* Row 1: Resting HR - Top */}
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-zinc-700 text-left whitespace-nowrap flex-shrink-0">Resting HR (bpm)</span>
+                  <div className="flex items-center" style={{ width: '140px', flexShrink: 0, justifyContent: 'space-between', paddingRight: '2px' }}>
+                    {gapAnalysisData[2]?.cardioGaps && gapAnalysisData[2].cardioGaps.rhr.current > 0 ? (
+                      <>
+                        <span className="text-sm text-zinc-600 text-right whitespace-nowrap" style={{ width: '64px' }}>{Math.round(gapAnalysisData[2].cardioGaps.rhr.current)}</span>
+                        <div style={{ width: '12px', height: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                          <ArrowRight className="w-3 h-3 text-gradient-dark flex-shrink-0" />
+                        </div>
+                        <span className="text-sm font-bold text-gradient-dark text-right whitespace-nowrap" style={{ width: '64px' }}>{Math.round(gapAnalysisData[2].cardioGaps.rhr.target)}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-sm text-zinc-400 text-right whitespace-nowrap" style={{ width: '64px' }}>--</span>
+                        <div style={{ width: '12px', height: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                          <ArrowRight className="w-3 h-3 text-zinc-300 flex-shrink-0" />
+                        </div>
+                        <span className="text-sm font-bold text-zinc-400 text-right whitespace-nowrap" style={{ width: '64px' }}>--</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Row 2: Recovery HR - Middle */}
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-zinc-700 text-left whitespace-nowrap flex-shrink-0">Recovery HR (bpm)</span>
+                  <div className="flex items-center" style={{ width: '140px', flexShrink: 0, justifyContent: 'space-between', paddingRight: '2px' }}>
+                    {gapAnalysisData[2]?.cardioGaps && gapAnalysisData[2].cardioGaps.recovery.current > 0 ? (
+                      <>
+                        <span className="text-sm text-zinc-600 text-right whitespace-nowrap" style={{ width: '64px' }}>{Math.round(gapAnalysisData[2].cardioGaps.recovery.current)}</span>
+                        <div style={{ width: '12px', height: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                          <ArrowRight className="w-3 h-3 text-gradient-dark flex-shrink-0" />
+                        </div>
+                        <span className="text-sm font-bold text-gradient-dark text-right whitespace-nowrap" style={{ width: '64px' }}>{Math.round(gapAnalysisData[2].cardioGaps.recovery.target)}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-sm text-zinc-400 text-right whitespace-nowrap" style={{ width: '64px' }}>--</span>
+                        <div style={{ width: '12px', height: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                          <ArrowRight className="w-3 h-3 text-zinc-300 flex-shrink-0" />
+                        </div>
+                        <span className="text-sm font-bold text-zinc-400 text-right whitespace-nowrap" style={{ width: '64px' }}>--</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Row 3: VO2 Max - Bottom */}
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-zinc-700 text-left whitespace-nowrap flex-shrink-0">VO2 Max (ml/kg/min)</span>
+                  <div className="flex items-center" style={{ width: '140px', flexShrink: 0, justifyContent: 'space-between', paddingRight: '2px' }}>
+                    {gapAnalysisData[2]?.cardioGaps && gapAnalysisData[2].cardioGaps.vo2.current > 0 ? (
+                      <>
+                        <span className="text-sm text-zinc-600 text-right whitespace-nowrap" style={{ width: '64px' }}>{gapAnalysisData[2].cardioGaps.vo2.current.toFixed(1)}</span>
+                        <div style={{ width: '12px', height: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                          <ArrowRight className="w-3 h-3 text-gradient-dark flex-shrink-0" />
+                        </div>
+                        <span className="text-sm font-bold text-gradient-dark text-right whitespace-nowrap" style={{ width: '64px' }}>{gapAnalysisData[2].cardioGaps.vo2.target.toFixed(1)}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-sm text-zinc-400 text-right whitespace-nowrap" style={{ width: '64px' }}>--</span>
+                        <div style={{ width: '12px', height: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                          <ArrowRight className="w-3 h-3 text-zinc-300 flex-shrink-0" />
+                        </div>
+                        <span className="text-sm font-bold text-zinc-400 text-right whitespace-nowrap" style={{ width: '64px' }}>--</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Coach Insight - outside grid, aligned at bottom */}
+              <div className="pt-3 sm:pt-4 border-t border-zinc-100">
+                <div className="flex items-start gap-1.5 sm:gap-2">
+                  <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                  <p className="text-[10px] sm:text-xs text-zinc-600 leading-relaxed">{truncateInsight(gapAnalysisData[2]?.insight || '')}</p>
+                </div>
+              </div>
+            </Card>
+            </TabsContent>
+            </div>
+          </Tabs>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:gap-5 lg:gap-6 mb-4 sm:mb-5 md:mb-6 lg:mb-8">
+            <Card className="p-4 sm:p-5 md:p-6 lg:p-7">
+              <h4 className="text-sm font-bold text-zinc-900 mb-2 sm:mb-3 md:mb-4 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-gradient-dark" />
                 Key Strengths
               </h4>
-              <ul className="space-y-3">
+              <ul className="space-y-2 sm:space-y-3">
                 {strengths.map((item, i) => (
-                  <li key={i} className="text-sm text-zinc-600 flex items-start gap-3">
+                  <li key={i} className="text-xs sm:text-sm text-zinc-600 flex items-start gap-2 sm:gap-3">
                     <div className="w-1.5 h-1.5 rounded-full bg-gradient-from mt-2 shrink-0" style={{ backgroundColor: 'hsl(var(--gradient-from))' }} />
                     {item.strength}
                   </li>
@@ -1009,21 +1300,21 @@ export default function ClientReport({
               </ul>
             </Card>
             
-            <Card className="p-6">
-              <h4 className="text-sm font-bold text-zinc-900 mb-4 flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-amber-500" />
+            <Card className="p-4 sm:p-5 md:p-6 lg:p-7">
+              <h4 className="text-sm font-bold text-zinc-900 mb-2 sm:mb-3 md:mb-4 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" />
                 Primary Focus Areas
               </h4>
-              <ul className="space-y-3">
+              <ul className="space-y-2 sm:space-y-3">
                 {areasForImprovement.map((item, i) => (
-                  <li key={i} className="text-sm text-zinc-600 flex items-start gap-3">
+                  <li key={i} className="text-xs sm:text-sm text-zinc-600 flex items-start gap-2 sm:gap-3">
                     <div className="w-1.5 h-1.5 rounded-full bg-amber-300 mt-2 shrink-0" />
                     {item.weakness}
                   </li>
                 ))}
               </ul>
             </Card>
-            </div>
+          </div>
       </section>
         
       {/* Lifestyle Factors - Thin Bar */}
@@ -1033,31 +1324,33 @@ export default function ClientReport({
       
       {/* Movement, Posture & Mobility */}
       <section>
-        <MovementPostureMobility formData={formData} scores={scores} />
+            <MovementPostureMobility formData={formData} scores={scores} standalone={standalone} />
       </section>
       
         {/* Destination */}
-        <section>
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-gradient-light text-zinc-900 rounded-lg">
-              <Target className="w-5 h-5" />
+        <section className="w-full min-w-0 overflow-x-hidden">
+          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 mb-2 sm:mb-3 md:mb-4 lg:mb-5 xl:mb-6">
+            <div className="p-1 sm:p-1.5 md:p-2 bg-gradient-light text-zinc-900 rounded-lg">
+              <Target className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
             </div>
-            <h3 className="text-base font-bold text-zinc-900 uppercase tracking-widest">Your Destination</h3>
+            <h3 className="text-[10px] sm:text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">Your Destination</h3>
           </div>
           
         {goals && goals.length > 0 && (
             <Tabs defaultValue={goals[0]} className="w-full">
-              <TabsList className="w-full justify-start rounded-xl glass-button h-auto p-2 gap-1 mb-4">
-                {goals.map((g, idx) => (
+              <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0 mb-3 sm:mb-4 scrollbar-hide">
+                <TabsList className="w-full sm:w-auto justify-start rounded-lg sm:rounded-xl glass-button h-auto p-1 sm:p-1.5 gap-1 inline-flex min-w-max sm:min-w-0">
+                  {goals.map((g, idx) => (
                   <TabsTrigger
                   key={idx}
-                    value={g}
-                    className="text-sm font-semibold px-5 py-2.5 rounded-xl transition-apple whitespace-nowrap data-[state=active]:glass-button-active data-[state=active]:text-white data-[state=inactive]:text-zinc-600 data-[state=inactive]:hover:text-zinc-900"
-                  >
-                    {g.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
+                      value={g}
+                      className="text-[9px] sm:text-[10px] font-semibold px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-md transition-apple whitespace-nowrap shrink-0 data-[state=active]:glass-button-active data-[state=active]:text-white data-[state=inactive]:text-zinc-600 data-[state=inactive]:hover:text-zinc-900"
+                    >
+                      {g.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </div>
               
               <Card className="rounded-xl">
                 {goals.map((goal, idx) => {
@@ -1207,10 +1500,10 @@ export default function ClientReport({
                   }
                   
                   return (
-                    <TabsContent key={idx} value={goal} className="p-8 md:p-10 m-0 tab-content-enter">
-                      <div className="flex flex-col md:flex-row gap-10">
-                        <div className="flex-1">
-                          <h4 className="text-lg font-bold text-zinc-900 mb-3">
+                    <TabsContent key={idx} value={goal} className="p-4 sm:p-5 md:p-6 lg:p-8 xl:p-10 m-0 tab-content-enter">
+                      <div className="flex flex-col md:flex-row gap-4 sm:gap-6 md:gap-8 lg:gap-10">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-base sm:text-lg font-bold text-zinc-900 mb-2 sm:mb-3">
                             {goal === 'body-recomposition' ? 'Body Recomposition Protocol' :
                              goal === 'weight-loss' ? 'Weight Loss Protocol' :
                              goal === 'build-muscle' ? 'Hypertrophy & Strength Protocol' :
@@ -1218,19 +1511,19 @@ export default function ClientReport({
                              goal === 'improve-fitness' ? 'Athletic Performance Protocol' :
                              'General Health Protocol'}
                           </h4>
-                          <p className="text-sm text-zinc-600 leading-relaxed mb-8">
+                          <p className="text-xs sm:text-sm text-zinc-600 leading-relaxed mb-4 sm:mb-6 md:mb-8">
                             {explanation}
                           </p>
                           
-                          <div className="bg-gradient-light/50 rounded-xl p-6 border border-gradient-medium/50">
-                            <p className="text-xs font-bold text-gradient-dark uppercase tracking-wide mb-4">What This Entails:</p>
-                            <ul className="space-y-4">
+                          <div className="bg-gradient-light/50 rounded-xl p-3 sm:p-4 md:p-5 lg:p-6 border border-gradient-medium/50">
+                            <p className="text-[10px] sm:text-xs font-bold text-gradient-dark uppercase tracking-wide mb-3 sm:mb-4">What This Entails:</p>
+                            <ul className="space-y-2 sm:space-y-3 md:space-y-4">
                               {whatItEntails.map((item, j) => (
-                                <li key={j} className="flex items-start gap-3">
-                                  <div className="glass-label p-0.5 rounded-full mt-0.5">
-                                    <CheckCircle2 className="w-3.5 h-3.5 text-gradient-dark" />
+                                <li key={j} className="flex items-start gap-2 sm:gap-3">
+                                  <div className="glass-label p-0.5 rounded-full mt-0.5 shrink-0">
+                                    <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gradient-dark" />
             </div>
-                                  <span className="text-sm text-zinc-700">{item}</span>
+                                  <span className="text-xs sm:text-sm text-zinc-700 leading-relaxed">{item}</span>
                                 </li>
                               ))}
                             </ul>
@@ -1238,17 +1531,17 @@ export default function ClientReport({
           </div>
 
                         {addressingItems.length > 0 && (
-                          <div className="flex-1 border-t md:border-t-0 md:border-l border-zinc-100 pt-8 md:pt-0 md:pl-6 lg:pl-10 min-w-0">
-                            <p className="text-xs font-bold text-zinc-900 uppercase tracking-wide mb-6">What We'll Address</p>
-                            <ul className="space-y-6">
+                          <div className="flex-1 border-t md:border-t-0 md:border-l border-zinc-100 pt-6 sm:pt-8 md:pt-0 md:pl-4 lg:pl-6 xl:pl-10 min-w-0">
+                            <p className="text-[10px] sm:text-xs font-bold text-zinc-900 uppercase tracking-wide mb-3 sm:mb-4 md:mb-6">What We'll Address</p>
+                            <ul className="space-y-3 sm:space-y-4 md:space-y-6">
                               {addressingItems.map((item, i) => (
-                                <li key={i} className="flex items-start gap-3 md:gap-4 group">
-                                  <div className="p-2 md:p-2.5 glass-label text-zinc-600 rounded-lg shrink-0 group-hover:bg-white/80 group-hover:text-gradient-dark transition-apple">
-                                    <item.icon className="w-4 h-4 md:w-5 md:h-5" />
+                                <li key={i} className="flex items-start gap-2 sm:gap-3 md:gap-4 group">
+                                  <div className="p-1.5 sm:p-2 md:p-2.5 glass-label text-zinc-600 rounded-lg shrink-0 group-hover:bg-white/80 group-hover:text-gradient-dark transition-apple">
+                                    <item.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
                                   </div>
                                   <div className="min-w-0 flex-1">
-                                    <span className="font-bold text-zinc-900 text-xs md:text-sm block mb-1">{item.title}</span>
-                                    <span className="text-xs md:text-sm text-zinc-500 block leading-relaxed">{item.desc}</span>
+                                    <span className="font-bold text-zinc-900 text-[10px] sm:text-xs md:text-sm block mb-0.5 sm:mb-1">{item.title}</span>
+                                    <span className="text-[10px] sm:text-xs md:text-sm text-zinc-500 block leading-relaxed">{item.desc}</span>
                                   </div>
                 </li>
               ))}
@@ -1265,21 +1558,24 @@ export default function ClientReport({
       </section>
         
         {/* Blueprint */}
-        <section>
-          <div className="mb-6">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-gradient-light text-zinc-900 rounded-lg">
-                <Trophy className="w-5 h-5" />
+        <section className="w-full min-w-0 overflow-x-hidden">
+          <div className="mb-3 sm:mb-4 md:mb-5 lg:mb-6">
+            <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 mb-2 sm:mb-3">
+              <div className="p-1 sm:p-1.5 md:p-2 bg-gradient-light text-zinc-900 rounded-lg">
+                <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
               </div>
-              <h3 className="text-base font-bold text-zinc-900 uppercase tracking-widest">The Blueprint</h3>
+              <h3 className="text-[10px] sm:text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">The Blueprint</h3>
             </div>
-            <p className="text-zinc-500 text-sm ml-12">
+            <p className="text-[10px] sm:text-xs md:text-sm text-zinc-500 ml-0 sm:ml-8 md:ml-12">
               3 Strategic Pillars designed to bridge the gap from where you are to where you want to be.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
-            {blueprintPillars.map((pillar, idx) => {
+          {blueprintPillars.length > 0 && (
+            <>
+              {/* Desktop: Grid Layout (lg+) */}
+              <div className="hidden lg:grid grid-cols-3 gap-4 sm:gap-5 md:gap-6">
+                {blueprintPillars.map((pillar, idx) => {
               const isBlue = pillar.color === 'blue';
               const isRed = pillar.color === 'red';
               
@@ -1289,7 +1585,7 @@ export default function ClientReport({
 
               return (
                 <Card key={idx} className="overflow-hidden flex flex-col">
-                  <div className="p-6 md:p-8 flex-1">
+                  <div className="p-4 sm:p-5 md:p-6 lg:p-8 flex-1">
                     <div className="flex justify-between items-start mb-6">
                       <Badge className={`${badgeBg} border-transparent`}>
                         {pillar.weeks}
@@ -1297,12 +1593,12 @@ export default function ClientReport({
                       {isBlue && <Lock className={`w-5 h-5 ${iconColor}`} />}
                       {isRed && <Play className={`w-5 h-5 ${iconColor}`} />}
                       {!isBlue && !isRed && <Trophy className={`w-5 h-5 ${iconColor}`} />}
-          </div>
+                    </div>
 
-                    <h4 className="text-sm font-black uppercase tracking-wide text-zinc-900 mb-2">{pillar.title}</h4>
-                    <div className={`text-xs font-bold ${textColor} mb-5`}>{pillar.headline}</div>
+                    <h4 className="text-sm font-bold text-zinc-900 mb-2">{pillar.title}</h4>
+                    <div className={`text-xs font-semibold ${textColor} mb-4`}>{pillar.headline}</div>
                     
-                    <p className="text-sm text-zinc-600 leading-relaxed mb-8">
+                    <p className="text-xs sm:text-sm text-zinc-600 leading-relaxed mb-6">
                       {pillar.description}
                     </p>
 
@@ -1324,49 +1620,119 @@ export default function ClientReport({
                 </Card>
               );
             })}
-          </div>
+              </div>
+
+              {/* Mobile/Tablet: Tabs Layout (below lg) */}
+              <Tabs defaultValue={`pillar-0`} className="w-full lg:hidden">
+                <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0 mb-3 sm:mb-4 scrollbar-hide">
+                  <TabsList className="w-full sm:w-auto justify-start rounded-lg sm:rounded-xl glass-button h-auto p-1 sm:p-1.5 gap-1 inline-flex min-w-max sm:min-w-0">
+                    {blueprintPillars.map((pillar, idx) => (
+                      <TabsTrigger
+                        key={idx}
+                        value={`pillar-${idx}`}
+                        className="text-[9px] sm:text-[10px] font-semibold px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-md transition-apple whitespace-nowrap shrink-0 data-[state=active]:glass-button-active data-[state=active]:text-white data-[state=inactive]:text-zinc-600 data-[state=inactive]:hover:text-zinc-900"
+                      >
+                        {pillar.title}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </div>
+                
+                <div className="space-y-4 sm:space-y-5 md:space-y-6">
+                  {blueprintPillars.map((pillar, idx) => {
+              const isBlue = pillar.color === 'blue';
+              const isRed = pillar.color === 'red';
+              
+              const badgeBg = 'glass-button-active text-white';
+              const textColor = 'text-gradient-dark';
+              const iconColor = 'text-gradient-dark';
+
+              return (
+                <TabsContent key={idx} value={`pillar-${idx}`} className="m-0">
+                <Card className="overflow-hidden flex flex-col">
+                  <div className="p-4 sm:p-5 md:p-6 lg:p-8 flex-1">
+                    <div className="flex justify-between items-start mb-4 sm:mb-5 md:mb-6">
+                      <Badge className={`${badgeBg} border-transparent text-[10px] sm:text-xs`}>
+                        {pillar.weeks}
+                      </Badge>
+                      {isBlue && <Lock className={`w-5 h-5 ${iconColor}`} />}
+                      {isRed && <Play className={`w-5 h-5 ${iconColor}`} />}
+                      {!isBlue && !isRed && <Trophy className={`w-5 h-5 ${iconColor}`} />}
+                    </div>
+
+                    <h4 className="text-xs sm:text-sm font-black uppercase tracking-wide text-zinc-900 mb-1.5 sm:mb-2">{pillar.title}</h4>
+                    <div className={`text-[10px] sm:text-xs font-bold ${textColor} mb-3 sm:mb-4 md:mb-5`}>{pillar.headline}</div>
+                    
+                    <p className="text-xs sm:text-sm text-zinc-600 leading-relaxed mb-4 sm:mb-6 md:mb-8">
+                      {pillar.description}
+                    </p>
+
+                    <div className="glass-subtle rounded-xl p-3 sm:p-4 md:p-5">
+                      <div className="flex items-center gap-1.5 sm:gap-2 mb-3 sm:mb-4 pb-2 sm:pb-3 border-b border-zinc-200">
+                        <Play className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-zinc-400 fill-current" />
+                        <span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Sample Protocol</span>
+                      </div>
+                      <div className="space-y-2 sm:space-y-3">
+                        {pillar.protocol.map((row: { name: string; setsReps: string }, rIdx: number) => (
+                          <div key={rIdx} className="flex justify-between items-center text-[10px] sm:text-xs gap-2">
+                            <span className="font-bold text-zinc-700 flex-1 min-w-0">{row.name}</span>
+                            <span className="text-zinc-500 glass-label px-2 sm:px-2.5 py-0.5 sm:py-1 rounded text-[9px] sm:text-[10px] shrink-0">{row.setsReps}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+                </TabsContent>
+              );
+            })}
+                </div>
+              </Tabs>
+            </>
+          )}
         </section>
         
         {/* Timeline & Workout */}
-        <section>
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 md:gap-8 mb-6 md:mb-8">
+        <section className="w-full min-w-0 overflow-x-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 md:gap-6 lg:gap-8 mb-6 md:mb-8">
             {/* Timeline - Full Width */}
-            <div className="xl:col-span-12 flex flex-col">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-gradient-light text-zinc-900 rounded-lg">
-                  <Clock className="w-5 h-5" />
+            <div className="lg:col-span-12 flex flex-col">
+              <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 mb-2 sm:mb-3 md:mb-4 lg:mb-5 xl:mb-6">
+                <div className="p-1 sm:p-1.5 md:p-2 bg-gradient-light text-zinc-900 rounded-lg">
+                  <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
                 </div>
-                <h3 className="text-base font-bold text-zinc-900 uppercase tracking-widest">Your Timeline</h3>
+                <h3 className="text-[10px] sm:text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">Your Timeline</h3>
               </div>
               
-              <Card className="p-6 rounded-2xl">
-                <div className="glass-subtle rounded-xl p-4 mb-6">
-                  <p className="text-sm text-zinc-600 leading-relaxed">
+              <Card className="p-4 sm:p-5 md:p-6 rounded-2xl overflow-hidden">
+                <div className="glass-subtle rounded-xl p-3 sm:p-4 mb-4 sm:mb-5 md:mb-6">
+                  <p className="text-xs sm:text-sm text-zinc-600 leading-relaxed">
                     <span className="font-bold text-zinc-900">This timeline shows when you can expect to start seeing results.</span> More sessions per week means faster progress—adjust the slider below to see how training frequency affects your timeline.
                   </p>
                 </div>
                 
-                <div className="flex items-center gap-6 mb-6">
-                  <span className="text-sm font-medium text-zinc-500 whitespace-nowrap">Sessions per week:</span>
-                  <div className="flex-grow">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 md:gap-4 mb-4 sm:mb-5 md:mb-6 w-full min-w-0">
+                  <span className="text-xs sm:text-sm font-medium text-zinc-500 shrink-0 w-full sm:w-auto">Sessions per week:</span>
+                  <div className="flex-grow w-full sm:w-auto min-w-0 max-w-full">
                     <input 
                       type="range" min={3} max={5} step={1}
                       value={sessionsPerWeek}
                       onChange={(e) => setSessionsPerWeek(parseInt(e.target.value))}
-                      className="w-full h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer hover:bg-zinc-300 transition-colors slider-apple"
+                      className="w-full h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer hover:bg-zinc-300 transition-colors slider-apple max-w-full"
+                      style={{ maxWidth: '100%' }}
                     />
-                    <div className="flex justify-between text-[10px] text-zinc-400 font-bold uppercase mt-2 px-1">
-                      <span>3 Sessions</span>
-                      <span>4 Sessions</span>
-                      <span>5 Sessions</span>
+                    <div className="flex justify-between text-[9px] sm:text-[10px] text-zinc-400 font-bold uppercase mt-1.5 sm:mt-2 px-1 max-w-full">
+                      <span className="shrink-0">3</span>
+                      <span className="shrink-0">4</span>
+                      <span className="shrink-0">5</span>
                     </div>
                   </div>
-                  <span className="font-bold text-zinc-900 bg-gradient-light px-3 py-1 rounded-lg whitespace-nowrap min-w-[90px] text-center text-sm">
+                  <span className="font-bold text-zinc-900 bg-gradient-light px-2.5 sm:px-3 py-1 rounded-lg shrink-0 text-center text-xs sm:text-sm w-full sm:w-auto sm:min-w-[90px]">
                     {sessionsPerWeek} / Week
                   </span>
                 </div>
                 
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4 w-full">
                   {orderedCats.map((cat, i) => {
                     const weeks = Math.round((weeksByCategory[cat.id] ?? 0) * (sessionsPerWeek === 3 ? 1 : sessionsPerWeek === 4 ? 0.85 : 0.70));
                     const width = (weeks / 40) * 100;
@@ -1374,15 +1740,15 @@ export default function ClientReport({
                     const gradientClass = "gradient-bg";
 
                     return (
-                      <div key={i} className="group">
-                        <div className="flex justify-between text-xs font-bold mb-2">
-                          <span className="text-zinc-800">{niceLabel(cat.id)}</span>
-                          <span className="text-zinc-400 font-medium">~{weeks} weeks</span>
+                      <div key={i} className="group w-full min-w-0">
+                        <div className="flex justify-between items-center gap-2 text-xs font-bold mb-2 w-full min-w-0">
+                          <span className="text-zinc-800 truncate flex-1 min-w-0">{niceLabel(cat.id)}</span>
+                          <span className="text-zinc-400 font-medium shrink-0 text-left text-[10px] sm:text-xs">~{weeks} weeks</span>
                         </div>
-                        <div className="h-2.5 w-full bg-zinc-100 rounded-full overflow-hidden relative shadow-inner">
+                        <div className="h-2.5 w-full bg-zinc-100 rounded-full overflow-hidden relative max-w-full">
                           <div 
-                            className={`h-full rounded-full ${gradientClass} transition-all duration-700 ease-out shadow-sm`} 
-                            style={{ width: `${width}%` }} 
+                            className={`h-full rounded-full ${gradientClass} transition-all duration-700 ease-out`} 
+                            style={{ width: `${Math.min(100, width)}%` }} 
           />
         </div>
                       </div>
@@ -1390,10 +1756,10 @@ export default function ClientReport({
                   })}
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-zinc-100">
-                  <p className="text-xs text-zinc-500 leading-relaxed text-center">
-                    <span className="text-zinc-900 font-bold">Total estimated timeline: ~{Math.round(maxWeeks * (sessionsPerWeek === 3 ? 1 : sessionsPerWeek === 4 ? 0.85 : 0.70))} weeks.</span><br/>
-                    Increasing frequency can reduce this timeline by up to 30%.
+                <div className="mt-4 sm:mt-5 md:mt-6 pt-3 sm:pt-4 border-t border-zinc-100 w-full">
+                  <p className="text-[10px] sm:text-xs text-zinc-500 leading-relaxed text-center break-words">
+                    <span className="text-zinc-900 font-bold">Total estimated timeline: ~{Math.round(maxWeeks * (sessionsPerWeek === 3 ? 1 : sessionsPerWeek === 4 ? 0.85 : 0.70))} weeks.</span><br className="hidden sm:block"/>
+                    <span className="block sm:inline">Increasing frequency can reduce this timeline by up to 30%.</span>
                   </p>
                 </div>
               </Card>
@@ -1401,66 +1767,66 @@ export default function ClientReport({
           </div>
 
           {/* Non-Negotiables */}
-          <Card className="bg-zinc-900 text-white p-8 md:p-10 rounded-2xl shadow-2xl shadow-zinc-900/20 ring-1 ring-zinc-800">
-            <div className="flex flex-col md:flex-row md:items-start gap-8 md:gap-12">
-              <div className="md:w-1/3">
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="p-2.5 gradient-bg rounded-lg shadow-lg shadow-apple-colored">
-                    <CheckCircle2 className="w-6 h-6 text-white" />
+          <Card className="bg-zinc-900 text-white p-5 sm:p-6 md:p-8 lg:p-10 rounded-2xl ring-1 ring-zinc-800 overflow-hidden">
+            <div className="flex flex-col md:flex-row md:items-start gap-6 sm:gap-8 md:gap-10 lg:gap-12 w-full min-w-0">
+              <div className="md:w-1/3 min-w-0">
+                <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-5">
+                  <div className="p-2 sm:p-2.5 gradient-bg rounded-lg">
+                    <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                   </div>
-                  <h4 className="text-2xl font-black text-white tracking-tight">Non-Negotiables</h4>
+                  <h4 className="text-xl sm:text-2xl font-black text-white tracking-tight">Non-Negotiables</h4>
                 </div>
-                <p className="text-sm text-zinc-400 leading-relaxed mb-8">
+                <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed mb-4 sm:mb-6 md:mb-8">
                   We handle the programming, the tracking, and the analysis. Your job is simple but demanding: execute the plan.
                 </p>
-                <div className="inline-block px-5 py-3 bg-white/5 rounded-xl border border-white/5 backdrop-blur-sm">
-                  <p className="text-xs font-bold text-white/80 uppercase tracking-wider">
+                <div className="inline-block px-4 sm:px-5 py-2 sm:py-3 bg-white/5 rounded-xl border border-white/5 backdrop-blur-sm">
+                  <p className="text-[10px] sm:text-xs font-bold text-white/80 uppercase tracking-wider break-words">
                     "As long as you do your part, we'll do ours."
                   </p>
                 </div>
               </div>
 
-              <div className="md:w-2/3 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
-                <div className="flex gap-4 p-5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 transition-all duration-300 group">
-                  <div className="p-2 bg-zinc-800 rounded-lg h-fit group-hover:bg-gradient-from/20 group-hover:text-gradient-from transition-colors">
-                    <Repeat className="w-5 h-5 text-zinc-400 group-hover:text-gradient-from" />
+              <div className="md:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:gap-5 w-full min-w-0">
+                <div className="flex gap-3 sm:gap-4 p-4 sm:p-5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 transition-all duration-300 group min-w-0">
+                  <div className="p-1.5 sm:p-2 bg-zinc-800 rounded-lg h-fit group-hover:bg-gradient-from/20 group-hover:text-gradient-from transition-colors shrink-0">
+                    <Repeat className="w-4 h-4 sm:w-5 sm:h-5 text-zinc-400 group-hover:text-gradient-from" />
                   </div>
-                  <div>
-                    <div className="text-sm font-bold text-white mb-1.5">Consistency is King</div>
-                    <div className="text-xs text-zinc-400 leading-relaxed group-hover:text-zinc-300">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs sm:text-sm font-bold text-white mb-1 sm:mb-1.5">Consistency is King</div>
+                    <div className="text-[10px] sm:text-xs text-zinc-400 leading-relaxed group-hover:text-zinc-300 break-words">
                       Show up. 90% attendance is the baseline. Missing sessions compounds negatively over time.
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-4 p-5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 transition-all duration-300 group">
-                  <div className="p-2 bg-zinc-800 rounded-lg h-fit group-hover:bg-gradient-from/20 group-hover:text-gradient-from transition-colors">
-                    <Zap className="w-5 h-5 text-zinc-400 group-hover:text-gradient-from" />
+                <div className="flex gap-3 sm:gap-4 p-4 sm:p-5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 transition-all duration-300 group min-w-0">
+                  <div className="p-1.5 sm:p-2 bg-zinc-800 rounded-lg h-fit group-hover:bg-gradient-from/20 group-hover:text-gradient-from transition-colors shrink-0">
+                    <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-zinc-400 group-hover:text-gradient-from" />
                   </div>
-                  <div>
-                    <div className="text-sm font-bold text-white mb-1.5">Maximum Effort</div>
-                    <div className="text-xs text-zinc-400 leading-relaxed group-hover:text-zinc-300">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs sm:text-sm font-bold text-white mb-1 sm:mb-1.5">Maximum Effort</div>
+                    <div className="text-[10px] sm:text-xs text-zinc-400 leading-relaxed group-hover:text-zinc-300 break-words">
                       We track the weights, you bring the intensity. Leave nothing in the tank when you're on the floor.
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-4 p-5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 transition-all duration-300 group">
-                  <div className="p-2 bg-zinc-800 rounded-lg h-fit group-hover:bg-gradient-from/20 group-hover:text-gradient-from transition-colors">
-                    <Lock className="w-5 h-5 text-zinc-400 group-hover:text-gradient-from" />
+                <div className="flex gap-3 sm:gap-4 p-4 sm:p-5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 transition-all duration-300 group min-w-0">
+                  <div className="p-1.5 sm:p-2 bg-zinc-800 rounded-lg h-fit group-hover:bg-gradient-from/20 group-hover:text-gradient-from transition-colors shrink-0">
+                    <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-zinc-400 group-hover:text-gradient-from" />
                   </div>
-                  <div>
-                    <div className="text-sm font-bold text-white mb-1.5">Trust the Process</div>
-                    <div className="text-xs text-zinc-400 leading-relaxed group-hover:text-zinc-300">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs sm:text-sm font-bold text-white mb-1 sm:mb-1.5">Trust the Process</div>
+                    <div className="text-[10px] sm:text-xs text-zinc-400 leading-relaxed group-hover:text-zinc-300 break-words">
                       Adherence to the macro cycle is mandatory. Don't freelance. We optimize the plan, you execute it.
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-4 p-5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 transition-all duration-300 group">
-                  <div className="p-2 bg-zinc-800 rounded-lg h-fit group-hover:bg-gradient-from/20 group-hover:text-gradient-from transition-colors">
-                    <MessageSquare className="w-5 h-5 text-zinc-400 group-hover:text-gradient-from" />
+                <div className="flex gap-3 sm:gap-4 p-4 sm:p-5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 transition-all duration-300 group min-w-0">
+                  <div className="p-1.5 sm:p-2 bg-zinc-800 rounded-lg h-fit group-hover:bg-gradient-from/20 group-hover:text-gradient-from transition-colors shrink-0">
+                    <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-zinc-400 group-hover:text-gradient-from" />
                   </div>
-                  <div>
-                    <div className="text-sm font-bold text-white mb-1.5">Open Communication</div>
-                    <div className="text-xs text-zinc-400 leading-relaxed group-hover:text-zinc-300">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs sm:text-sm font-bold text-white mb-1 sm:mb-1.5">Open Communication</div>
+                    <div className="text-[10px] sm:text-xs text-zinc-400 leading-relaxed group-hover:text-zinc-300 break-words">
                       If something feels off, tell us immediately. We can't adjust what we don't know about.
                     </div>
                   </div>

@@ -48,7 +48,24 @@ const PublicReportByToken = () => {
           return;
         }
         
-        const fd = data.formData;
+        // Try to fetch live data from the assessment if available
+        // This ensures clients always see the most current version
+        let fd = data.formData;
+        try {
+          if (data.assessmentId && data.coachUid) {
+            const { getCoachAssessment } = await import('@/services/coachAssessments');
+            const liveData = await getCoachAssessment(data.coachUid, data.assessmentId, data.clientName);
+            if (liveData && liveData.formData) {
+              // Use live data if available (more current)
+              fd = liveData.formData;
+            }
+          }
+        } catch (liveErr) {
+          // If live fetch fails, use snapshot data (non-blocking)
+          const { logger } = await import('@/lib/utils/logger');
+          logger.warn('Failed to fetch live assessment data, using snapshot:', liveErr);
+        }
+        
         setFormData(fd);
         const s = computeScores(fd);
         setScores(s);
@@ -59,8 +76,9 @@ const PublicReportByToken = () => {
           .then(result => {
             setPlan(result);
           })
-          .catch(e => {
-            console.error('Error generating coach plan:', e);
+          .catch(async (e) => {
+            const { logger } = await import('@/lib/utils/logger');
+            logger.error('Error generating coach plan:', e);
             // Continue without plan - report is still viewable
           });
       } catch (e) {
@@ -75,7 +93,7 @@ const PublicReportByToken = () => {
 
   if (loading) {
     return (
-      <AppShell title="Your fitness report">
+      <AppShell title="Your fitness report" mode="public">
         <div className="flex flex-col items-center justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
           <p className="text-sm text-slate-600">Loading your report…</p>
@@ -86,10 +104,9 @@ const PublicReportByToken = () => {
 
   if (!formData || !scores) {
     return (
-      <AppShell title="Your fitness report">
+      <AppShell title="Your fitness report" mode="public">
         <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-700">
           <p>{error ?? 'This report is not available.'}</p>
-          <Button onClick={() => navigate('/')}>Back to Home</Button>
         </div>
       </AppShell>
     );
@@ -100,7 +117,7 @@ const PublicReportByToken = () => {
   // Wait for plan to load before showing report
   if (!plan) {
     return (
-      <AppShell title="Your fitness report">
+      <AppShell title="Your fitness report" mode="public">
         <div className="flex flex-col items-center justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
           <p className="text-sm font-black uppercase tracking-widest text-slate-400">Generating Report...</p>
@@ -110,15 +127,8 @@ const PublicReportByToken = () => {
   }
 
   return (
-    <AppShell
-      title={
-        formData.fullName
-          ? `${formData.fullName}, your report is ready`
-          : 'Your report is ready'
-      }
-      subtitle="Saved assessment report from your coach."
-    >
-      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+    <AppShell title="Your fitness report" mode="public">
+      <div className="max-w-4xl mx-auto">
         <Suspense fallback={
           <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-slate-100">
             <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
@@ -128,9 +138,13 @@ const PublicReportByToken = () => {
           <ClientReport
             scores={scores}
             goals={Array.isArray(formData.clientGoals) ? formData.clientGoals : []}
-            bodyComp={bodyComp ? { timeframeWeeks: bodyComp.timeframeWeeks } : undefined}
+            bodyComp={bodyComp ? { timeframeWeeks: (() => {
+              const match = bodyComp.timeframeWeeks.match(/\d+/);
+              return match ? parseInt(match[0], 10) : 12;
+            })() } : undefined}
             formData={formData}
             plan={plan}
+            standalone={true}
           />
         </Suspense>
       </div>

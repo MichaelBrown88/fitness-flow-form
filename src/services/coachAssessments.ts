@@ -69,13 +69,29 @@ export async function saveCoachAssessment(
     createdAt: serverTimestamp(),
     coachUid,
     coachEmail: coachEmail || null,
-    organizationId: organizationId || null,
+    organizationId: validOrgId, // Use validated organizationId (never null)
     overallScore,
     goals: Array.isArray(formData.clientGoals) ? formData.clientGoals : [],
     formData: formData, // Include full data so it can be reopened from dashboard
     scoresSummary,
     isSummary: true 
   });
+  
+  // Update public report if one exists (keeps shared links live)
+  // Note: This is non-blocking - if public report update fails, assessment save still succeeds
+  try {
+    const { publishPublicReport } = await import('./publicReports');
+    await publishPublicReport({
+      coachUid,
+      assessmentId: docRef.id,
+      formData,
+      organizationId: validOrgId,
+    });
+  } catch (err) {
+    // Non-blocking: public report update failure shouldn't block assessment save
+    const { logger } = await import('@/lib/utils/logger');
+    logger.warn('Failed to update public report after assessment save:', err);
+  }
   
   // Return the actual Firestore document ID for reliable navigation and report loading
   return docRef.id;
@@ -315,6 +331,22 @@ export async function savePartialAssessment(
     isPartial: true
   });
   
+  // Update public report if one exists (keeps shared links live)
+  // Note: This is non-blocking - if public report update fails, assessment save still succeeds
+  try {
+    const { publishPublicReport } = await import('./publicReports');
+    await publishPublicReport({
+      coachUid,
+      assessmentId: docRef.id,
+      formData: mergedFormData,
+      organizationId: validOrgId,
+    });
+  } catch (err) {
+    // Non-blocking: public report update failure shouldn't block assessment save
+    const { logger } = await import('@/lib/utils/logger');
+    logger.warn('Failed to update public report after partial assessment save:', err);
+  }
+  
   // Return the actual Firestore document ID for reliable navigation and report loading
   return docRef.id;
 }
@@ -357,6 +389,21 @@ export async function updateCoachAssessment(
   const clientName = (formData.fullName || 'Unnamed client').trim();
   const { updateCurrentAssessment } = await import('./assessmentHistory');
   await updateCurrentAssessment(coachUid, clientName, formData, overallScore, 'full', 'all', organizationId || existingData.organizationId || undefined);
+  
+  // Update public report if one exists (keeps shared links live)
+  try {
+    const { publishPublicReport } = await import('./publicReports');
+    await publishPublicReport({
+      coachUid,
+      assessmentId,
+      formData,
+      organizationId: organizationId || existingData.organizationId || undefined,
+    });
+  } catch (err) {
+    // Non-blocking: public report update failure shouldn't block assessment update
+    const { logger } = await import('@/lib/utils/logger');
+    logger.warn('Failed to update public report after assessment update:', err);
+  }
 }
 
 

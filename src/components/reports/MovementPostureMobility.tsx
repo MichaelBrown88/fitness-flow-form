@@ -19,9 +19,10 @@ import { logger } from '@/lib/utils/logger';
 interface MovementPostureMobilityProps {
   formData?: FormData;
   scores: ScoreSummary;
+  standalone?: boolean;
 }
 
-export function MovementPostureMobility({ formData, scores }: MovementPostureMobilityProps) {
+export function MovementPostureMobility({ formData, scores, standalone = false }: MovementPostureMobilityProps) {
   const { toast } = useToast();
   const { profile } = useAuth();
   const [isReanalyzing, setIsReanalyzing] = useState(false);
@@ -408,31 +409,40 @@ export function MovementPostureMobility({ formData, scores }: MovementPostureMob
         <div className="p-2 bg-gradient-light text-zinc-900 rounded-lg">
           <Activity className="w-5 h-5" />
         </div>
-        <h3 className="text-base font-bold text-zinc-900 uppercase tracking-widest">
+        <h3 className="text-[10px] sm:text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">
           Posture, Movement & Mobility
         </h3>
       </div>
       
       {/* Posture Analysis - Full Width */}
             {hasPostureImages && hasPostureAnalysis && (
-              <Card className="p-6 border-none shadow-lg shadow-zinc-200/40 bg-white ring-1 ring-zinc-100">
-                <div className="flex items-center justify-between mb-6">
-                  <h4 className="text-sm font-bold text-zinc-900">Posture Analysis</h4>
-                  <div className="flex items-center gap-2">
-                    <Badge className="glass-button-active text-white">
+              <Card className="p-4 sm:p-5 md:p-6 border-none bg-white ring-1 ring-zinc-100">
+                <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6">
+                  <h4 className="text-xs sm:text-sm font-bold text-zinc-900">Posture Analysis</h4>
+                  {/* Only show interactive buttons if not in standalone/public mode */}
+                  {!standalone && (
+                    <div className="flex items-center gap-2">
+                      <Badge className="glass-button-active text-white text-[10px] sm:text-xs">
+                        {Object.keys(formData.postureAiResults || {}).length} Views
+                      </Badge>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleReanalyze}
+                        disabled={isReanalyzing}
+                        className="text-[10px] sm:text-xs h-7 sm:h-8"
+                      >
+                        <RefreshCw className={`w-3 h-3 mr-1 sm:mr-1.5 ${isReanalyzing ? 'animate-spin' : ''}`} />
+                        {isReanalyzing ? 'Re-analyzing...' : 'Re-analyze'}
+                      </Button>
+                    </div>
+                  )}
+                  {/* Show view count badge in standalone mode */}
+                  {standalone && (
+                    <Badge className="glass-button-active text-white text-[10px] sm:text-xs">
                       {Object.keys(formData.postureAiResults || {}).length} Views
                     </Badge>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleReanalyze}
-                      disabled={isReanalyzing}
-                      className="text-xs"
-                    >
-                      <RefreshCw className={`w-3 h-3 mr-1.5 ${isReanalyzing ? 'animate-spin' : ''}`} />
-                      {isReanalyzing ? 'Re-analyzing...' : 'Re-analyze'}
-                    </Button>
-                  </div>
+                  )}
                 </div>
                 <PostureAnalysisViewer 
                   postureResults={formData.postureAiResults || {}}
@@ -442,9 +452,9 @@ export function MovementPostureMobility({ formData, scores }: MovementPostureMob
             )}
       
       {/* Movement & Mobility - 2 Column Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 md:gap-6">
         {/* Movement Quality Card */}
-        <Card className="p-6 border-none shadow-lg shadow-zinc-200/40 bg-white ring-1 ring-zinc-100">
+        <Card className="p-4 sm:p-5 md:p-6 border-none shadow-lg shadow-zinc-200/40 bg-white ring-1 ring-zinc-100">
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-sm font-bold text-zinc-900 flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-gradient-dark" />

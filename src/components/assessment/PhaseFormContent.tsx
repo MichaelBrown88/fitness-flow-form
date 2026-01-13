@@ -314,18 +314,19 @@ export const PhaseFormContent = ({
   const handleCopyLink = useCallback(async (view: 'client' | 'coach') => {
     try {
       setShareLoading(true);
-      let shareUrl = window.location.origin;
-      if (user && savingId) {
-        shareUrl = `${window.location.origin}/share/${user.uid}/${savingId}`;
-      }
-      await navigator.clipboard.writeText(shareUrl);
-      toast({ description: 'Public link copied' });
+      // Use the share artifacts to get the proper /r/:token URL
+      const artifacts = await ensureShareArtifacts(view);
+      await navigator.clipboard.writeText(artifacts.shareUrl);
+      toast({ 
+        title: 'Link Copied!', 
+        description: 'Send this URL to your client. They can view it on any device.' 
+      });
     } catch (error) {
       toast({ title: 'Copy failed', variant: 'destructive' });
     } finally {
       setShareLoading(false);
     }
-  }, [user, savingId, toast, setShareLoading]);
+  }, [ensureShareArtifacts, toast, setShareLoading]);
 
   const handleDownloadPdf = useCallback(async (view: 'client' | 'coach') => {
     const safeName = (formData.fullName || 'report').toLowerCase().replace(/[^a-z0-9]+/g, '-');

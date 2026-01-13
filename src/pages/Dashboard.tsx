@@ -4,6 +4,7 @@ import AppShell from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { AnalyticsDashboard } from '@/components/dashboard/AnalyticsDashboard';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
 import { 
@@ -594,7 +595,8 @@ const Dashboard = () => {
   const coachFirstName = user?.displayName ? user.displayName.split(' ')[0] : 'Coach';
 
   return (
-    <AppShell
+    <ErrorBoundary>
+      <AppShell
       title={`${coachFirstName}'s dashboard`}
       subtitle="Manage clients, view assessments, and track progress."
       actions={
@@ -603,7 +605,7 @@ const Dashboard = () => {
         </Button>
       }
     >
-      <div className="space-y-8">
+      <div className="space-y-4 sm:space-y-6 md:space-y-8">
         {/* Analytics Section */}
         <AnalyticsDashboard analytics={analytics} />
 
@@ -611,12 +613,12 @@ const Dashboard = () => {
         <RecentActivity recentChanges={recentChanges} />
 
         {/* View Toggle */}
-        <section className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
+        <section className="space-y-3 sm:space-y-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               <button
                 onClick={() => setView('assessments')}
-                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-colors ${
                   view === 'assessments'
                     ? 'bg-slate-900 text-white'
                     : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
@@ -626,7 +628,7 @@ const Dashboard = () => {
               </button>
               <button
                 onClick={() => setView('clients')}
-                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-colors ${
                   view === 'clients'
                     ? 'bg-slate-900 text-white'
                     : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
@@ -635,35 +637,35 @@ const Dashboard = () => {
                 By Client
               </button>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               <Input
                 placeholder={view === 'assessments' ? "Search assessments…" : "Search clients…"}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-8 w-56 text-sm"
+                className="h-8 sm:h-9 w-full sm:w-56 text-xs sm:text-sm"
               />
             </div>
           </div>
 
           {/* Assessments View */}
           {view === 'assessments' && (
-            <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
-              <table className="min-w-full divide-y divide-slate-200 text-sm">
+            <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm -mx-4 sm:mx-0">
+              <table className="min-w-full divide-y divide-slate-200 text-xs sm:text-sm">
                 <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <th className="px-2 sm:px-3 md:px-4 py-2 text-left text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-slate-500">
                       Client
                     </th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <th className="px-2 sm:px-3 md:px-4 py-2 text-left text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-slate-500 hidden sm:table-cell">
                       Date
                     </th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <th className="px-2 sm:px-3 md:px-4 py-2 text-left text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-slate-500">
                       Overall
                     </th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <th className="px-2 sm:px-3 md:px-4 py-2 text-left text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-slate-500 hidden md:table-cell">
                       Goals
                     </th>
-                    <th className="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <th className="px-2 sm:px-3 md:px-4 py-2 text-right text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-slate-500">
                       Actions
                     </th>
                   </tr>
@@ -692,36 +694,44 @@ const Dashboard = () => {
                   ) : (
                     filtered.slice(0, visibleAssessmentsCount).map((item) => (
                       <tr key={item.id} className="hover:bg-slate-50">
-                        <td className="px-4 py-2 text-sm text-slate-900">
-                          {item.clientName}
+                        <td className="px-2 sm:px-3 md:px-4 py-2 text-xs sm:text-sm text-slate-900">
+                          <div className="flex flex-col">
+                            <span className="font-medium">{item.clientName}</span>
+                            <span className="text-[10px] sm:hidden text-slate-500 mt-0.5">
+                              {item.createdAt
+                                ? item.createdAt.toDate().toLocaleDateString()
+                                : '—'}
+                            </span>
+                          </div>
                         </td>
-                        <td className="px-4 py-2 text-sm text-slate-600">
+                        <td className="px-2 sm:px-3 md:px-4 py-2 text-xs sm:text-sm text-slate-600 hidden sm:table-cell">
                           {item.createdAt
                             ? item.createdAt.toDate().toLocaleDateString()
                             : '—'}
                         </td>
-                        <td className="px-4 py-2 text-sm text-slate-800 font-medium">
+                        <td className="px-2 sm:px-3 md:px-4 py-2 text-xs sm:text-sm text-slate-800 font-medium">
                           {item.overallScore || '—'}
                         </td>
-                        <td className="px-4 py-2 text-xs text-slate-600">
+                        <td className="px-2 sm:px-3 md:px-4 py-2 text-[10px] sm:text-xs text-slate-600 hidden md:table-cell">
                           {item.goals && item.goals.length
                             ? item.goals.map(formatGoal).slice(0, 2).join(', ')
                             : '—'}
                         </td>
-                        <td className="px-4 py-2 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button variant="outline" size="sm" asChild>
+                        <td className="px-2 sm:px-3 md:px-4 py-2 text-right">
+                          <div className="flex items-center justify-end gap-1 sm:gap-2">
+                            <Button variant="outline" size="sm" asChild className="text-[10px] sm:text-xs h-7 sm:h-8 px-2 sm:px-3">
                               <Link to={`/coach/assessments/${item.id}`}>
-                                Open
+                                <span className="hidden sm:inline">Open</span>
+                                <span className="sm:hidden">View</span>
                               </Link>
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => setDeleteDialog({ id: item.id, name: item.clientName })}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50 h-7 w-7 sm:h-8 sm:w-8 p-0"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                             </Button>
                           </div>
                         </td>
@@ -808,25 +818,25 @@ const Dashboard = () => {
 
           {/* Clients View */}
           {view === 'clients' && (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {loadingData ? (
-                <div className="col-span-full text-center text-sm text-slate-500 py-8">
+                <div className="col-span-full text-center text-xs sm:text-sm text-slate-500 py-6 sm:py-8">
                   Loading clients…
                 </div>
               ) : filteredClients.length === 0 ? (
-                <div className="col-span-full text-center text-sm text-slate-500 py-8">
+                <div className="col-span-full text-center text-xs sm:text-sm text-slate-500 py-6 sm:py-8">
                   {search ? 'No clients match that name.' : 'No clients found.'}
                 </div>
               ) : (
                 filteredClients.slice(0, visibleClientsCount).map((group) => (
                   <div
                     key={group.name}
-                    className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow"
+                    className="rounded-lg border border-slate-200 bg-white p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow"
                   >
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h3 className="text-lg font-semibold text-slate-900">{group.name}</h3>
-                        <p className="text-xs text-slate-500 mt-1">
+                    <div className="flex items-start justify-between mb-2 sm:mb-3">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-base sm:text-lg font-semibold text-slate-900 truncate">{group.name}</h3>
+                        <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 sm:mt-1">
                           {group.assessments.length} assessment{group.assessments.length !== 1 ? 's' : ''}
                         </p>
                       </div>
@@ -843,13 +853,13 @@ const Dashboard = () => {
                         </div>
                       )}
                     </div>
-                    <div className="space-y-2 mb-3">
-                      <div className="flex items-center justify-between text-sm">
+                    <div className="space-y-1.5 sm:space-y-2 mb-2 sm:mb-3">
+                      <div className="flex items-center justify-between text-xs sm:text-sm">
                         <span className="text-slate-600">Latest Score</span>
                         <span className="font-semibold text-slate-900">{group.latestScore}</span>
                       </div>
                       {group.latestDate && (
-                        <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center justify-between text-xs sm:text-sm">
                           <span className="text-slate-600">Last Assessment</span>
                           <span className="text-slate-500">
                             {group.latestDate.toLocaleDateString()}
@@ -857,24 +867,26 @@ const Dashboard = () => {
                         </div>
                       )}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => navigate(`/client/${encodeURIComponent(group.name)}`)}
-                        className="flex-1"
+                        className="flex-1 text-xs sm:text-sm h-8 sm:h-9"
                       >
                         <History className="h-3 w-3 mr-1" />
-                        View Dashboard
+                        <span className="hidden sm:inline">View Dashboard</span>
+                        <span className="sm:hidden">Dashboard</span>
                       </Button>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
                             size="sm"
-                            className="flex-1 bg-slate-900 text-white hover:bg-slate-800"
+                            className="flex-1 bg-slate-900 text-white hover:bg-slate-800 text-xs sm:text-sm h-8 sm:h-9"
                           >
                             <UserPlus className="h-3 w-3 mr-1" />
-                            New Assessment
+                            <span className="hidden sm:inline">New Assessment</span>
+                            <span className="sm:hidden">New</span>
                             <ChevronDown className="h-3 w-3 ml-1" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -1022,6 +1034,7 @@ const Dashboard = () => {
         </DialogContent>
       </Dialog>
     </AppShell>
+    </ErrorBoundary>
   );
 };
 

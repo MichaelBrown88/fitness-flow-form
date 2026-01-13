@@ -122,7 +122,18 @@ export function useAssessmentSave({
         }
       } catch (parseErr) {
         // If parse error occurs, still try to save but with profile for validation
-        assessmentId = await saveCoachAssessment(user.uid, user.email, formData, scores.overall, profile?.organizationId, profile);
+        try {
+          assessmentId = await saveCoachAssessment(user.uid, user.email, formData, scores.overall, profile?.organizationId, profile);
+        } catch (saveErr) {
+          logger.error('Failed to save assessment:', saveErr);
+          toast({
+            title: 'Failed to save assessment',
+            description: 'Please refresh and try again. If the problem persists, contact support.',
+            variant: 'destructive'
+          });
+          setSaving(false);
+          return; // Exit early on save failure
+        }
       }
       
       setSavingId(assessmentId);

@@ -11,7 +11,8 @@ import {
   Share2, 
   Download, 
   Loader2,
-  Eye
+  Eye,
+  Link as LinkIcon
 } from 'lucide-react';
 const ClientReport = lazy(() => import('@/components/reports/ClientReport'));
 const CoachReport = lazy(() => import('@/components/reports/CoachReport'));
@@ -95,6 +96,18 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
         </div>
         
         <div className="flex flex-wrap gap-2">
+          {/* Primary: Copy Live Link Button */}
+          <Button 
+            onClick={() => onCopyLink(reportView)}
+            size="lg" 
+            className="bg-indigo-600 text-white gap-2 shadow-lg hover:bg-indigo-700 rounded-xl px-4 h-12" 
+            disabled={shareLoading}
+          >
+            {shareLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LinkIcon className="h-4 w-4" />}
+            Copy Live Link
+          </Button>
+
+          {/* Secondary: Share Options */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="lg" className="rounded-xl px-4 h-12" disabled={shareLoading}>
@@ -104,12 +117,12 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 rounded-xl">
               <DropdownMenuItem onClick={() => onShare(reportView)} className="py-3 text-sm font-medium">System Share</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onEmailLink(reportView)} className="py-3 text-sm font-medium">Email PDF Link</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onEmailLink(reportView)} className="py-3 text-sm font-medium">Email Link</DropdownMenuItem>
               <DropdownMenuItem onClick={() => onWhatsAppShare(reportView)} className="py-3 text-sm font-medium">WhatsApp Message</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onCopyLink(reportView)} className="py-3 text-sm font-medium">Copy Report Link</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
+          {/* Tertiary: Export Options */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="lg" className="rounded-xl px-4 h-12" disabled={shareLoading}>

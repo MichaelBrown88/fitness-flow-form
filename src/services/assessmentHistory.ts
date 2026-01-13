@@ -297,7 +297,9 @@ export async function updateCurrentAssessment(
     ); // Overwrite completely
     // Current assessment saved
   } catch (err) {
-    console.error(`[SYNC] ✗ Failed to save current assessment:`, err);
+    // Use logger for consistency with project rules
+    const { logger } = await import('@/lib/utils/logger');
+    logger.error(`[SYNC] ✗ Failed to save current assessment:`, err);
     throw err;
   }
 
@@ -315,7 +317,9 @@ export async function updateCurrentAssessment(
     });
     // History log created
   } catch (err) {
-    console.warn(`[SYNC] ✗ Failed to log history (non-critical):`, err);
+    // Use logger for consistency with project rules
+    const { logger } = await import('@/lib/utils/logger');
+    logger.warn(`[SYNC] ✗ Failed to log history (non-critical):`, err);
     // Don't throw for history log failure, but log it
   }
 

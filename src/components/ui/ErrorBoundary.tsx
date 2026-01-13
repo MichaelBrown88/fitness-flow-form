@@ -1,0 +1,71 @@
+import React from 'react';
+import { ErrorBoundary as ReactErrorBoundary } from 'react-error-boundary';
+import { Button } from '@/components/ui/button';
+import { AlertCircle, Home } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { logger } from '@/lib/utils/logger';
+
+interface ErrorFallbackProps {
+  error: Error;
+  resetErrorBoundary: () => void;
+}
+
+function ErrorFallback({ error, resetErrorBoundary }: ErrorFallbackProps) {
+  const navigate = useNavigate();
+
+  // Log error for debugging
+  React.useEffect(() => {
+    logger.error('Error boundary caught error:', error.message || String(error));
+  }, [error]);
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+      <div className="max-w-md w-full rounded-2xl border border-slate-200 bg-white p-8 shadow-xl">
+        <div className="flex flex-col items-center text-center space-y-4">
+          <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
+            <AlertCircle className="w-8 h-8 text-red-600" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900">Something went wrong</h2>
+          <p className="text-sm text-slate-600">
+            We encountered an unexpected error. Please try again or return to the dashboard.
+          </p>
+          <div className="flex gap-3 w-full mt-6">
+            <Button
+              variant="outline"
+              onClick={() => navigate('/dashboard')}
+              className="flex-1"
+            >
+              <Home className="w-4 h-4 mr-2" />
+              Go to Dashboard
+            </Button>
+            <Button
+              onClick={resetErrorBoundary}
+              className="flex-1"
+            >
+              Try Again
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+  fallback?: React.ComponentType<ErrorFallbackProps>;
+}
+
+export function ErrorBoundary({ children, fallback }: ErrorBoundaryProps) {
+  return (
+    <ReactErrorBoundary
+      FallbackComponent={fallback || ErrorFallback}
+      onError={(error, info) => {
+        logger.error('Error boundary error:', error.message || String(error));
+        logger.error('Error boundary info:', info.componentStack || String(info));
+      }}
+    >
+      {children}
+    </ReactErrorBoundary>
+  );
+}

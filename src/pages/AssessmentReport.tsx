@@ -17,6 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 // Load re-analysis utility
 import '@/lib/utils/reanalyzePosture';
 // Load restore utility
@@ -364,7 +365,10 @@ const AssessmentReport = () => {
           organizationId: profile?.organizationId,
         });
       } catch (e) {
-        console.error('Failed to sync public report', e);
+        const { logger } = await import('@/lib/utils/logger');
+        logger.error('Failed to sync public report', e);
+        // Non-blocking error - report still works, just sharing may not work
+        // Don't show toast as this is background operation
       }
     })();
   }, [user, id, formData, profile?.organizationId]);
@@ -378,8 +382,9 @@ const AssessmentReport = () => {
       .then(result => {
         if (!cancelled) setPlan(result);
       })
-      .catch(e => {
-        console.error('Error generating coach plan:', e);
+      .catch(async (e) => {
+        const { logger } = await import('@/lib/utils/logger');
+        logger.error('Error generating coach plan:', e);
         if (!cancelled) setPlan(null);
       });
     return () => { cancelled = true; };
@@ -427,10 +432,11 @@ const AssessmentReport = () => {
   const highlightCategory = sessionStorage.getItem('highlightCategory') || undefined;
 
   return (
-    <AppShell
-      title=""
-      variant="full-width"
-      actions={
+    <ErrorBoundary>
+      <AppShell
+        title=""
+        variant="full-width"
+        actions={
         <div className="flex gap-2">
           <Button 
             variant="outline" 
@@ -509,6 +515,7 @@ const AssessmentReport = () => {
         />
       </Suspense>
     </AppShell>
+    </ErrorBoundary>
   );
 };
 

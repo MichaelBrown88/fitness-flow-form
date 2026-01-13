@@ -4,6 +4,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import AppShell from '@/components/layout/AppShell';
 import { PhaseFormContent } from './assessment/PhaseFormContent';
 import { useAuth } from '@/hooks/useAuth';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 
 const MultiStepForm = () => {
   const [demoTrigger, setDemoTrigger] = useState(0);
@@ -16,19 +17,21 @@ const MultiStepForm = () => {
   const showDemoFill = orgSettings?.demoAutoFillEnabled === true;
   
   return (
-    <TooltipProvider delayDuration={0}>
-      <FormProvider>
-        <AppShell 
-          title="Fitness Assessment" 
-          showDemoFill={showDemoFill} 
-          onDemoFill={handleDemoFill}
-          variant="full-width"
-          onMenuToggle={() => setSidebarOpen(prev => !prev)}
-        >
-          <PhaseFormContent demoTrigger={demoTrigger} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-        </AppShell>
-      </FormProvider>
-    </TooltipProvider>
+    <ErrorBoundary>
+      <TooltipProvider delayDuration={0}>
+        <FormProvider>
+          <AppShell 
+            title="Fitness Assessment" 
+            showDemoFill={showDemoFill} 
+            onDemoFill={handleDemoFill}
+            variant="full-width"
+            onMenuToggle={() => setSidebarOpen(prev => !prev)}
+          >
+            <PhaseFormContent demoTrigger={demoTrigger} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+          </AppShell>
+        </FormProvider>
+      </TooltipProvider>
+    </ErrorBoundary>
   );
 };
 

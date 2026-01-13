@@ -190,7 +190,7 @@ export function PostureViewCard({ view, analysis, imageUrl }: { view: string, an
                   {finding}
                 </span>
               ))}
-              <span className="text-[7px] font-bold text-white/80 uppercase tracking-widest mt-1">Click to expand analysis</span>
+              <span className="text-[7px] sm:text-[8px] font-bold text-white/80 uppercase tracking-widest mt-1">Click to expand analysis</span>
             </div>
           </div>
 
@@ -343,7 +343,7 @@ export function PostureAnalysisViewer({
   if (availableViews.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-4 gap-3 md:gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
       {availableViews.map((view) => (
         <PostureViewCard 
           key={view}
