@@ -47,20 +47,23 @@ export function useCameraCapture({
 
   const performCapture = useCallback(
     async (webcamRef: React.RefObject<Webcam>, viewIdx: number, landmarks?: LandmarkResult | null) => {
+      console.log('[CAPTURE] performCapture called', { viewIdx, mode, sessionId, hasWebcam: !!webcamRef.current });
+      
       const webcam = webcamRef.current;
 
       if (!webcam || !webcam.video) {
+        console.error('[CAPTURE] Webcam not available', { webcam: !!webcam, video: !!webcam?.video });
         onAudioFeedback?.('Camera error.');
         return;
       }
 
       const viewData = views[viewIdx];
       if (!viewData) {
-        console.error('[CAPTURE] Invalid index:', viewIdx);
+        console.error('[CAPTURE] Invalid index:', viewIdx, 'views length:', views.length);
         return;
       }
 
-      // Initiating sync for view
+      console.log('[CAPTURE] Initiating sync for view', viewData.id);
 
       // Shutter sound
       try {
@@ -74,77 +77,92 @@ export function useCameraCapture({
       // Screenshot
       const imageSrc = webcam.getScreenshot();
       if (!imageSrc) {
+        console.error('[CAPTURE] Screenshot failed');
         onAudioFeedback?.('Capture failed.');
         return;
       }
 
+      console.log('[CAPTURE] Screenshot captured, length:', imageSrc.length);
+
       // Sync to App
-      if (sessionId) {
-        setIsUploading((prev) => prev + 1);
+      if (!sessionId) {
+        console.error('[CAPTURE] No sessionId provided');
+        return;
+      }
 
-        if (mode === 'inbody') {
-          onAudioFeedback?.('Analyzing InBody report...');
+      setIsUploading((prev) => prev + 1);
 
-          updateInBodyImage(sessionId, imageSrc)
-            .then(() => {
-              setIsProcessingOcr(true);
-              toast({ title: 'Scanning...', description: 'AI is analyzing the InBody report' });
+      if (mode === 'inbody') {
+        console.log('[CAPTURE] InBody mode - processing OCR');
+        onAudioFeedback?.('Analyzing InBody report...');
 
-              const timeoutPromise = new Promise<never>((_, reject) =>
-                setTimeout(() => reject(new Error('Scan taking too long. Try again or enter manually.')), 15000)
-              );
+        updateInBodyImage(sessionId, imageSrc)
+          .then(() => {
+            console.log('[CAPTURE] InBody image uploaded, starting OCR');
+            setIsProcessingOcr(true);
+            toast({ title: 'Scanning...', description: 'AI is analyzing the InBody report' });
 
-              return Promise.race([processInBodyScan(imageSrc), timeoutPromise]);
-            })
-            .then((result) => {
-              if (result.fields && Object.keys(result.fields).length > 0) {
-                setOcrReviewData(result.fields as Record<string, string>);
-                onAudioFeedback?.('Data extracted. Review and confirm.');
-                toast({ title: 'Scan Complete!', description: 'Review the extracted data below' });
-              } else {
-                toast({
-                  title: 'No data found',
-                  description: 'Try a clearer photo with better lighting.',
-                  variant: 'destructive',
-                });
-                onAudioFeedback?.('Could not read data. Try again.');
-              }
-            })
-            .catch((err: unknown) => {
-              console.error('[OCR] Error:', err);
+            const timeoutPromise = new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error('Scan taking too long. Try again or enter manually.')), 15000)
+            );
+
+            return Promise.race([processInBodyScan(imageSrc), timeoutPromise]);
+          })
+          .then((result) => {
+            console.log('[CAPTURE] OCR result', result);
+            if (result.fields && Object.keys(result.fields).length > 0) {
+              setOcrReviewData(result.fields as Record<string, string>);
+              onAudioFeedback?.('Data extracted. Review and confirm.');
+              toast({ title: 'Scan Complete!', description: 'Review the extracted data below' });
+            } else {
               toast({
-                title: 'Scan Issue',
-                description: err instanceof Error ? err.message : 'Please retake or enter values manually.',
+                title: 'No data found',
+                description: 'Try a clearer photo with better lighting.',
                 variant: 'destructive',
               });
-              onAudioFeedback?.('Scan issue. Please try again.');
-            })
-            .finally(() => {
-              setIsProcessingOcr(false);
-              setIsUploading((prev) => Math.max(0, prev - 1));
+              onAudioFeedback?.('Could not read data. Try again.');
+            }
+          })
+          .catch((err: unknown) => {
+            console.error('[CAPTURE] OCR Error:', err);
+            toast({
+              title: 'Scan Issue',
+              description: err instanceof Error ? err.message : 'Please retake or enter values manually.',
+              variant: 'destructive',
             });
+            onAudioFeedback?.('Scan issue. Please try again.');
+          })
+          .finally(() => {
+            setIsProcessingOcr(false);
+            setIsUploading((prev) => Math.max(0, prev - 1));
+          });
+      } else {
+        // Posture mode
+        console.log('[CAPTURE] Posture mode - uploading image', { view: viewData.id, hasLandmarks: !!landmarks });
+        const capturedLandmarks = landmarks || undefined;
+        
+        updatePostureImage(sessionId, viewData.id, imageSrc, capturedLandmarks, 'iphone')
+          .then(() => {
+            console.log('[CAPTURE] Posture image uploaded successfully');
+            toast({ title: `${viewData.label} Sent` });
+          })
+          .catch((err: unknown) => {
+            console.error('[CAPTURE] Upload error:', err);
+            toast({ title: 'Sync Error', variant: 'destructive' });
+          })
+          .finally(() => {
+            setIsUploading((prev) => Math.max(0, prev - 1));
+            console.log('[CAPTURE] Upload complete, checking next view', { viewIdx, totalViews: views.length });
+          });
+
+        if (viewIdx < views.length - 1) {
+          const next = viewIdx + 1;
+          console.log('[CAPTURE] Scheduling next view', next);
+          // Scheduling next view
+          onNextView?.(next);
         } else {
-          // Posture mode
-          const capturedLandmarks = landmarks || undefined;
-          // Sending image with landmarks
-
-          updatePostureImage(sessionId, viewData.id, imageSrc, capturedLandmarks, 'iphone')
-            .then(() => {
-              toast({ title: `${viewData.label} Sent` });
-            })
-            .catch((err: unknown) => {
-              console.error('[CAPTURE] Upload error:', err);
-              toast({ title: 'Sync Error', variant: 'destructive' });
-            })
-            .finally(() => setIsUploading((prev) => Math.max(0, prev - 1)));
-
-          if (viewIdx < views.length - 1) {
-            const next = viewIdx + 1;
-            // Scheduling next view
-            onNextView?.(next);
-          } else {
-            onSequenceComplete?.();
-          }
+          console.log('[CAPTURE] Sequence complete');
+          onSequenceComplete?.();
         }
       }
     },

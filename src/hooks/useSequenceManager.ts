@@ -54,7 +54,10 @@ export function useSequenceManager({
 
   const startSequence = useCallback(
     (idx: number) => {
+      console.log('[SEQUENCE] startSequence called', { mode, idx, viewsLength: views.length });
+      
       if (mode === 'inbody') {
+        console.log('[SEQUENCE] InBody mode - capturing immediately');
         onCaptureRef.current(idx);
         return;
       }
@@ -65,37 +68,44 @@ export function useSequenceManager({
       // Set the view index
       setViewIdx(idx);
       setIsSequenceActive(true);
+      console.log('[SEQUENCE] Sequence started for view', idx);
 
       // Audio feedback for the view
       const viewNames = ['Front', 'Right Side', 'Back', 'Left Side'];
       onAudioFeedback?.(viewNames[idx] || views[idx]?.label || 'Next view');
 
       // Start countdown immediately (3 seconds)
-        setCountdown(3);
+      setCountdown(3);
       onAudioFeedback?.('3');
+      console.log('[SEQUENCE] Countdown started: 3');
 
-        let count = 3;
-        countdownIntervalRef.current = setInterval(() => {
-          count -= 1;
-          if (count > 0) {
-            setCountdown(count);
-            onAudioFeedback?.(count.toString());
-          } else {
+      let count = 3;
+      countdownIntervalRef.current = setInterval(() => {
+        count -= 1;
+        console.log('[SEQUENCE] Countdown tick', count);
+        if (count > 0) {
+          setCountdown(count);
+          onAudioFeedback?.(count.toString());
+        } else {
           // Countdown finished - capture!
-            setCountdown(null);
-            if (countdownIntervalRef.current) {
-              clearInterval(countdownIntervalRef.current);
-              countdownIntervalRef.current = null;
-            }
-          
-          // Capture the image
-          onCaptureRef.current(idx);
-          
-          // Reset after capture
-        setTimeout(() => {
-            setIsSequenceActive(false);
-          }, 500);
+          console.log('[SEQUENCE] Countdown finished - capturing');
+          setCountdown(null);
+          if (countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current);
+            countdownIntervalRef.current = null;
           }
+        
+          // Capture the image
+          onCaptureRef.current(idx).catch((err) => {
+            console.error('[SEQUENCE] Capture failed', err);
+          });
+        
+          // Reset after capture
+          setTimeout(() => {
+            setIsSequenceActive(false);
+            console.log('[SEQUENCE] Sequence reset');
+          }, 500);
+        }
       }, 1000);
     },
     [mode, views, onAudioFeedback, resetSequence, setViewIdx]

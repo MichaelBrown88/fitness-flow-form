@@ -236,22 +236,27 @@ export function CompanionUI({
               <RefreshCcw className="h-4 w-4" />
             </Button>
 
-            {/* Main capture button */}
+            {/* Main capture button - allow capture even if not perfectly vertical */}
                 <button
-                  onClick={onStartSequence}
-              disabled={!isVertical || isSequenceActive}
+                  onClick={() => {
+                    console.log('[COMPANION] Capture button clicked', { isVertical, isSequenceActive, viewIdx });
+                    if (!isSequenceActive) {
+                      onStartSequence();
+                    }
+                  }}
+              disabled={isSequenceActive}
               className={`h-20 w-20 rounded-full border-4 flex items-center justify-center transition-all ${
                 isSequenceActive
                   ? 'border-emerald-500 bg-emerald-500/20'
                   : isVertical
                   ? 'border-white bg-white/20 active:scale-95'
-                  : 'border-white/20 bg-white/5 opacity-50'
+                  : 'border-white/40 bg-white/10 active:scale-95'
                   }`}
                 >
               {isSequenceActive ? (
                 <Loader2 className="h-8 w-8 text-emerald-500 animate-spin" />
               ) : (
-                <Camera className={`h-8 w-8 ${isVertical ? 'text-white' : 'text-white/30'}`} />
+                <Camera className="h-8 w-8 text-white" />
               )}
             </button>
 
