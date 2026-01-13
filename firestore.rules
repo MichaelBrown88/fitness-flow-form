@@ -36,11 +36,13 @@ service cloud.firestore {
     function hasDataAccessPermission(orgId) {
       let orgData = get(/databases/$(database)/documents/organizations/$(orgId)).data;
       // Comped organizations get automatic access (owner's company for testing)
-      if (orgData.subscription?.isComped == true) {
-        return true;
-      }
       // Check if explicit permission granted
-      return orgData.dataAccessPermission?.platformAdminAccess == true;
+      return (orgData.keys().hasAll(['subscription']) && 
+              orgData.subscription.keys().hasAll(['isComped']) && 
+              orgData.subscription.isComped == true) || 
+             (orgData.keys().hasAll(['dataAccessPermission']) && 
+              orgData.dataAccessPermission.keys().hasAll(['platformAdminAccess']) && 
+              orgData.dataAccessPermission.platformAdminAccess == true);
     }
     
     // =========================================================
@@ -99,13 +101,24 @@ service cloud.firestore {
     }
     
     // 3. COACHES & LEGACY DATA
-    match /coaches/{coachId}/{document=**} {
-      let coachOrgId = get(/databases/$(database)/documents/userProfiles/$(coachId)).data.organizationId;
+    match /coaches/{coachId} {
       allow read, write: if request.auth.uid == coachId ||
                          (isAuthenticated() && 
-                          coachOrgId == getUserProfile().organizationId &&
+                          get(/databases/$(database)/documents/userProfiles/$(coachId)).data.organizationId == getUserProfile().organizationId &&
                           getUserProfile().role == 'org_admin') ||
-                         (isPlatformAdmin() && coachOrgId != null && hasDataAccessPermission(coachOrgId));
+                         (isPlatformAdmin() && 
+                          get(/databases/$(database)/documents/userProfiles/$(coachId)).data.organizationId != null && 
+                          hasDataAccessPermission(get(/databases/$(database)/documents/userProfiles/$(coachId)).data.organizationId));
+      
+      match /{document=**} {
+        allow read, write: if request.auth.uid == coachId ||
+                           (isAuthenticated() && 
+                            get(/databases/$(database)/documents/userProfiles/$(coachId)).data.organizationId == getUserProfile().organizationId &&
+                            getUserProfile().role == 'org_admin') ||
+                           (isPlatformAdmin() && 
+                            get(/databases/$(database)/documents/userProfiles/$(coachId)).data.organizationId != null && 
+                            hasDataAccessPermission(get(/databases/$(database)/documents/userProfiles/$(coachId)).data.organizationId));
+      }
     }
     
     // 4. SYSTEM STATS (Platform Admin Only)
