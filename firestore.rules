@@ -165,12 +165,12 @@ service cloud.firestore {
       allow create: if isAuthenticated();
       
       // Allow updates if:
-      // 1. User is authenticated (normal flow)
-      // 2. OR session exists and is being updated (mobile handoff - token validated client-side)
-      // This allows mobile users to upload images via QR code without requiring authentication
-      // The companionToken provides security - it's validated client-side before allowing updates
+      // 1. User is authenticated (normal flow from main app)
+      // 2. OR session exists (mobile handoff via QR code - token validated client-side)
+      // Security: SessionId and companionToken are random, validated client-side before allowing updates
+      // This allows mobile users to upload images without requiring authentication
       allow update: if isAuthenticated() || 
-                     (resource != null && resource.data.keys().hasAll(['companionToken']));
+                     exists(/databases/$(database)/documents/live_sessions/$(sessionId));
       
       // Additional permission for platform admins with data access
       allow read: if isPlatformAdmin() && 
