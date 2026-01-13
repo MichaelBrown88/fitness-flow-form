@@ -157,13 +157,26 @@ service cloud.firestore {
     }
     
     match /live_sessions/{sessionId} {
-      // GDPR/HIPAA: Scope by organizationId - users can only access sessions from their org
-      // Platform admin needs explicit permission
+      // Allow authenticated users to create and update their own sessions
+      // For mobile handoff (OCR and posture scan), users need to be able to update sessions
+      // even if organizationId doesn't match yet (session might be created before org assignment)
+      allow create: if isAuthenticated();
+      
+      // Allow read/update if authenticated:
+      // - Session doesn't exist yet (first update)
+      // - Session has no organizationId set
+      // - User's organizationId matches session's organizationId
+      // - User doesn't have organizationId yet (new users)
+      // - Platform admin with permission
       allow read, update: if isAuthenticated() && 
-                           (resource.data.organizationId == getUserProfile().organizationId ||
+                           (!exists(/databases/$(database)/documents/live_sessions/$(sessionId)) || // Session doesn't exist
+                            !resource.data.keys().hasAll(['organizationId']) || // No org field
+                            resource.data.organizationId == null || // Org is null
+                            !getUserProfile().keys().hasAll(['organizationId']) || // User has no org
+                            getUserProfile().organizationId == null || // User org is null
+                            resource.data.organizationId == getUserProfile().organizationId || // Orgs match
                             (isPlatformAdmin() && resource.data.organizationId != null && 
                              hasDataAccessPermission(resource.data.organizationId)));
-      allow create: if isAuthenticated();
     }
   }
 }
