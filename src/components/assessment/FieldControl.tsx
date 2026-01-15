@@ -161,10 +161,8 @@ export function FieldControl({
             id={field.id}
             type={field.type === 'number' ? 'number' : field.type || 'text'}
             placeholder={field.placeholder}
-            localValue={localValue}
-            setLocalValue={setLocalValue}
-            handleChange={handleChange}
-            debouncedHandleChange={debouncedHandleChange}
+            value={formData[field.id] as string}
+            onValueChange={(val: string) => handleChange(val)}
           />
         );
     }

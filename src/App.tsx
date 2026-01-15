@@ -20,7 +20,7 @@ const SignOut = lazy(() => import("./pages/SignOut"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const AssessmentReport = lazy(() => import("./pages/AssessmentReport"));
 const PublicClientReport = lazy(() => import("./pages/PublicClientReport"));
-const PublicReportByToken = lazy(() => import("./pages/PublicReportByToken"));
+const PublicReportViewer = lazy(() => import("./pages/PublicReportViewer"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Companion = lazy(() => import("./pages/Companion"));
 const ClientDetail = lazy(() => import("./pages/ClientDetail"));
@@ -99,7 +99,7 @@ const App = () => (
                     {/* Public client-facing report (no auth) - Token-based secure sharing */}
                     <Route
                       path="/r/:token"
-                      element={<PublicReportByToken />}
+                      element={<PublicReportViewer />}
                     />
                     {/* Legacy route for backward compatibility */}
                     <Route

@@ -3623,16 +3623,13 @@ export function buildRoadmap(scores: ScoreSummary, formData?: FormData): Roadmap
 // FILE: src/pages/AssessmentReport.tsx
 // ##########################################
 
-import { useEffect, useMemo, useState, useCallback, useRef, lazy, Suspense } from 'react';
+import { useEffect, useState, useCallback, lazy, Suspense } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useAssessmentLogic } from '@/hooks/useAssessmentLogic';
 import AppShell from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { getCoachAssessment } from '@/services/coachAssessments';
-import { publishPublicReport } from '@/services/publicReports';
-import type { FormData } from '@/contexts/FormContext';
-import { computeScores, buildRoadmap, type ScoreSummary, type RoadmapPhase } from '@/lib/scoring';
-import { generateCoachPlan, generateBodyCompInterpretation } from '@/lib/recommendations';
+import { generateBodyCompInterpretation } from '@/lib/recommendations';
 import { requestShareArtifacts, sendReportEmail, type ShareArtifacts } from '@/services/share';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Share2, ChevronDown, Link as LinkIcon, Mail, MessageCircle } from 'lucide-react';
@@ -3652,29 +3649,34 @@ import '@/lib/utils/restoreAssessment';
 const ClientReport = lazy(() => import('@/components/reports/ClientReport'));
 const CoachReport = lazy(() => import('@/components/reports/CoachReport'));
 
+import { ROUTES } from '@/constants/routes';
+
 const AssessmentReport = () => {
   const { id } = useParams();
-  const { user, profile, loading } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [formData, setFormData] = useState<FormData | null>(null);
-  const [scores, setScores] = useState<ScoreSummary | null>(null);
-  const [roadmap, setRoadmap] = useState<RoadmapPhase[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [loadingData, setLoadingData] = useState(true);
-  const publishedKeyRef = useRef<string | null>(null);
+  
+  // Use new Logic Hook
+  const { 
+    formData, 
+    scores, 
+    plan, 
+    previousScores, 
+    loading, 
+    error, 
+    planError 
+  } = useAssessmentLogic(id);
+
   const [shareCache, setShareCache] = useState<Record<'client' | 'coach', ShareArtifacts | null>>({
     client: null,
     coach: null,
   });
   const [shareLoading, setShareLoading] = useState(false);
-  const [plan, setPlan] = useState<import('@/lib/recommendations').CoachPlan | null>(null);
-  const [previousScores, setPreviousScores] = useState<ScoreSummary | null>(null);
 
+  // Sharing Handlers (kept in UI layer as they interact with user actions/toasts)
   const ensureShareArtifacts = useCallback(async (view: 'client' | 'coach' = 'client') => {
-    if (!user || !id || !formData) {
-      throw new Error('Missing assessment reference.');
-    }
+    if (!user || !id || !formData) throw new Error('Missing assessment reference.');
     if (shareCache[view]) return shareCache[view]!;
     const artifacts = await requestShareArtifacts({ 
       assessmentId: id, 
@@ -3691,32 +3693,16 @@ const AssessmentReport = () => {
     if (!formData || !id) return;
     const email = (formData.email || '').trim();
     if (!email) {
-      toast({
-        title: 'Client email missing',
-        description: 'Add an email to the intake before emailing a report.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Client email missing', description: 'Add an email to the intake before emailing a report.', variant: 'destructive' });
       return;
     }
     try {
       setShareLoading(true);
-      await sendReportEmail({
-        assessmentId: id,
-        view: 'client', // Default to client view
-        to: email,
-        clientName: formData.fullName,
-      });
-      toast({
-        title: 'Report emailed',
-        description: `Sent to ${email}`,
-      });
-    } catch (error) {
-      console.error('Email share failed', error);
-      toast({
-        title: 'Email not sent',
-        description: 'Check your Firebase functions SendGrid configuration.',
-        variant: 'destructive',
-      });
+      await sendReportEmail({ assessmentId: id, view: 'client', to: email, clientName: formData.fullName });
+      toast({ title: 'Report emailed', description: `Sent to ${email}` });
+    } catch (e) {
+      console.error('Email share failed', e);
+      toast({ title: 'Email not sent', description: 'Check configuration.', variant: 'destructive' });
     } finally {
       setShareLoading(false);
     }
@@ -3727,19 +3713,12 @@ const AssessmentReport = () => {
     try {
       setShareLoading(true);
       const artifacts = await requestShareArtifacts({
-        assessmentId: id,
-        view: 'client',
-        coachUid: user.uid,
-        formData,
-        organizationId: profile?.organizationId,
+        assessmentId: id, view: 'client', coachUid: user.uid, formData, organizationId: profile?.organizationId,
       });
       await navigator.clipboard.writeText(artifacts.shareUrl);
-      toast({
-        title: 'Live Link Copied',
-        description: 'Anyone with this link can view the interactive report.',
-      });
-    } catch (error) {
-      console.error('Copy link failed', error);
+      toast({ title: 'Live Link Copied', description: 'Anyone with this link can view the interactive report.' });
+    } catch (e) {
+      console.error('Copy link failed', e);
       toast({ title: 'Copy failed', variant: 'destructive' });
     } finally {
       setShareLoading(false);
@@ -3751,14 +3730,8 @@ const AssessmentReport = () => {
     try {
       setShareLoading(true);
       const artifacts = await requestShareArtifacts({
-        assessmentId: id,
-        view: 'client', // Default to client view
-        coachUid: user.uid,
-        formData,
-        organizationId: profile?.organizationId,
+        assessmentId: id, view: 'client', coachUid: user.uid, formData, organizationId: profile?.organizationId,
       });
-      
-      // Use Web Share API for native sharing (AirDrop, etc.)
       if (navigator.share) {
         try {
           await navigator.share({
@@ -3766,26 +3739,16 @@ const AssessmentReport = () => {
             text: 'Here is your interactive fitness assessment results.',
             url: artifacts.shareUrl,
           });
-          toast({
-            title: 'Shared successfully',
-            description: 'The report link has been shared.',
-          });
+          toast({ title: 'Shared successfully', description: 'The report link has been shared.' });
         } catch (shareError) {
-          if ((shareError as Error).name !== 'AbortError') {
-            console.error('Share failed:', shareError);
-          }
+          if ((shareError as Error).name !== 'AbortError') console.error('Share failed:', shareError);
         }
       } else {
-        // Fallback checks
         handleCopyLink();
       }
-    } catch (error) {
-      console.error('System share failed', error);
-      toast({
-        title: 'Unable to share',
-        description: 'Please try copying the link manually.',
-        variant: 'destructive',
-      });
+    } catch (e) {
+      console.error('System share failed', e);
+      toast({ title: 'Unable to share', description: 'Please try copying the link manually.', variant: 'destructive' });
     } finally {
       setShareLoading(false);
     }
@@ -3796,228 +3759,25 @@ const AssessmentReport = () => {
     try {
       setShareLoading(true);
       const artifacts = await requestShareArtifacts({
-        assessmentId: id,
-        view: 'client', // Default to client view
-        coachUid: user.uid,
-        formData,
-        organizationId: profile?.organizationId,
+        assessmentId: id, view: 'client', coachUid: user.uid, formData, organizationId: profile?.organizationId,
       });
       const url = `https://wa.me/?text=${encodeURIComponent(artifacts.whatsappText)}`;
       window.open(url, '_blank', 'noopener,noreferrer');
-    } catch (error) {
-      console.error('WhatsApp share failed', error);
-      toast({
-        title: 'Unable to share via WhatsApp',
-        description: 'Copy the link instead.',
-        variant: 'destructive',
-      });
+    } catch (e) {
+      console.error('WhatsApp share failed', e);
+      toast({ title: 'Unable to share via WhatsApp', description: 'Copy the link instead.', variant: 'destructive' });
     } finally {
       setShareLoading(false);
     }
   }, [id, formData, user, profile?.organizationId, toast]);
 
-  useEffect(() => {
-    if (!user || !id) return;
-    (async () => {
-      try {
-        setLoadingData(true);
-        // Get clientName from query params if available
-        const params = new URLSearchParams(window.location.search);
-        const clientName = params.get('clientName');
-        
-        const data = await getCoachAssessment(user.uid, id, clientName || undefined);
-        if (!data) {
-          setError('Assessment not found for this coach.');
-          return;
-        }
-        let fd = data.formData;
-        
-        // Check for posture data in formData
-        const hasPostureImages = fd.postureImages && typeof fd.postureImages === 'object' && Object.keys(fd.postureImages).length > 0;
-        const hasPostureStorage = fd.postureImagesStorage && typeof fd.postureImagesStorage === 'object' && Object.keys(fd.postureImagesStorage).length > 0;
-        const hasPostureAnalysis = fd.postureAiResults && typeof fd.postureAiResults === 'object' && Object.keys(fd.postureAiResults).length > 0;
-        
-        // If posture data is missing, try to fetch from current assessment or live sessions
-        if ((!hasPostureImages && !hasPostureStorage) || !hasPostureAnalysis) {
-          const clientNameForLookup = clientName || fd.fullName;
-          if (clientNameForLookup && user) {
-            try {
-              // First, try to get from current assessment (might have posture data)
-              const { getCurrentAssessment } = await import('@/services/assessmentHistory');
-              const current = await getCurrentAssessment(user.uid, clientNameForLookup, profile?.organizationId);
-              
-              if (current?.formData) {
-                const currentPostureImages = current.formData.postureImagesStorage || current.formData.postureImages;
-                const currentPostureAnalysis = current.formData.postureAiResults;
-                
-                // If no images at all, replace with current assessment images
-                if ((!hasPostureImages && !hasPostureStorage) && currentPostureImages && typeof currentPostureImages === 'object' && Object.keys(currentPostureImages).length > 0) {
-                  fd = {
-                    ...fd,
-                    postureImagesStorage: currentPostureImages,
-                  };
-                } else if (currentPostureImages && typeof currentPostureImages === 'object') {
-                  // Merge missing images from current assessment (fill in gaps)
-                  const existingImages = fd.postureImagesStorage || fd.postureImages || {};
-                  const mergedImages = { ...existingImages };
-                  let hasNewImages = false;
-                  
-                  // Check each view and add if missing
-                  Object.entries(currentPostureImages).forEach(([view, url]) => {
-                    if (!mergedImages[view] && url) {
-                      mergedImages[view] = url;
-                      hasNewImages = true;
-                    }
-                  });
-                  
-                  if (hasNewImages) {
-                    fd = {
-                      ...fd,
-                      postureImagesStorage: mergedImages,
-                    };
-                  }
-                }
-                
-                if (!hasPostureAnalysis && currentPostureAnalysis && typeof currentPostureAnalysis === 'object' && Object.keys(currentPostureAnalysis).length > 0) {
-                  fd = {
-                    ...fd,
-                    postureAiResults: currentPostureAnalysis,
-                  };
-                }
-              }
-              
-              // If still missing, try live sessions
-              const stillMissingImages = !fd.postureImagesStorage && !fd.postureImages;
-              const stillMissingAnalysis = !fd.postureAiResults;
-              
-              if ((stillMissingImages || stillMissingAnalysis)) {
-                const { getClientPostureImages } = await import('@/services/liveSessions');
-                const sessions = await getClientPostureImages(clientNameForLookup, profile?.organizationId);
-                
-                const sessionsWithPosture = Object.values(sessions).filter(s => 
-                  (s.images && Object.keys(s.images).length > 0) || (s.analysis && Object.keys(s.analysis).length > 0)
-                );
-                
-                if (sessionsWithPosture.length > 0) {
-                  const latestSession = sessionsWithPosture.sort((a, b) => 
-                    b.createdAt.toMillis() - a.createdAt.toMillis()
-                  )[0];
-                  
-                  if (stillMissingImages && latestSession.images && Object.keys(latestSession.images).length > 0) {
-                    fd = {
-                      ...fd,
-                      postureImagesStorage: { ...fd.postureImagesStorage, ...latestSession.images },
-                    };
-                  }
-                  
-                  if (stillMissingAnalysis && latestSession.analysis && Object.keys(latestSession.analysis).length > 0) {
-                    fd = {
-                      ...fd,
-                      postureAiResults: { ...fd.postureAiResults, ...latestSession.analysis },
-                    };
-                  }
-                }
-              }
-            } catch (err) {
-              console.warn('[AssessmentReport] Failed to fetch posture images:', err);
-              // Continue without posture data
-            }
-          }
-        }
-        
-        setFormData(fd);
-        const s = computeScores(fd);
-        setScores(s);
-        setRoadmap(buildRoadmap(s, fd));
-        
-        // Try to get previous assessment for comparison
-        try {
-          const clientNameForLookup = clientName || fd.fullName;
-          if (clientNameForLookup && user) {
-            const { getSnapshots } = await import('@/services/assessmentHistory');
-            const snapshots = await getSnapshots(user.uid, clientNameForLookup, 10, profile?.organizationId);
-            
-            // Get the most recent snapshot before the current assessment
-            // If viewing a specific assessment, find snapshots before that date
-            // Otherwise, get the second most recent snapshot (first is likely the current one)
-            if (snapshots.length > 1) {
-              // Get the second most recent snapshot
-              const previousSnapshot = snapshots[1];
-              if (previousSnapshot?.formData) {
-                const prevScores = computeScores(previousSnapshot.formData);
-                setPreviousScores(prevScores);
-              }
-            }
-          }
-        } catch (err) {
-          console.warn('[AssessmentReport] Failed to load previous assessment for comparison:', err);
-          // Continue without previous data
-        }
-      } catch (e) {
-        setError(
-          e instanceof Error ? e.message : 'Unable to load this assessment.',
-        );
-      } finally {
-        setLoadingData(false);
-      }
-    })();
-  }, [user, id, profile?.organizationId]);
-
-  useEffect(() => {
-    setShareCache({ client: null, coach: null });
-  }, [id]);
-
-  useEffect(() => {
-    if (!user || !id || !formData) return;
-    const publishKey = `${user.uid}__${id}`;
-    if (publishedKeyRef.current === publishKey) return;
-    publishedKeyRef.current = publishKey;
-    (async () => {
-      try {
-        await publishPublicReport({
-          coachUid: user.uid,
-          assessmentId: id,
-          formData,
-          organizationId: profile?.organizationId,
-        });
-      } catch (e) {
-        const { logger } = await import('@/lib/utils/logger');
-        logger.error('Failed to sync public report', e);
-        // Non-blocking error - report still works, just sharing may not work
-        // Don't show toast as this is background operation
-      }
-    })();
-  }, [user, id, formData, profile?.organizationId]);
-
-  // Generate coach plan asynchronously (dynamic import happens inside)
-  // CRITICAL: This hook MUST be before any early returns to follow Rules of Hooks
-  useEffect(() => {
-    if (!formData || !scores) return;
-    let cancelled = false;
-    generateCoachPlan(formData, scores)
-      .then(result => {
-        if (!cancelled) setPlan(result);
-      })
-      .catch(async (e) => {
-        const { logger } = await import('@/lib/utils/logger');
-        logger.error('Error generating coach plan:', e);
-        if (!cancelled) setPlan(null);
-      });
-    return () => { cancelled = true; };
-  }, [formData, scores]);
-
-  if (loading || !user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-slate-600">
-        Checking coach session…
-      </div>
-    );
-  }
-
-  if (loadingData) {
+  if (loading) {
     return (
       <AppShell title="Assessment report">
-        <div className="py-10 text-sm text-slate-600">Loading assessment…</div>
+        <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-slate-100">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+          <p className="text-sm font-black uppercase tracking-widest text-slate-400">Loading Assessment...</p>
+        </div>
       </AppShell>
     );
   }
@@ -4027,7 +3787,26 @@ const AssessmentReport = () => {
       <AppShell title="Assessment report">
         <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-700">
           <p>{error ?? 'Assessment not available.'}</p>
-          <Button onClick={() => navigate('/assessment')}>New assessment</Button>
+          <Button onClick={() => navigate(ROUTES.ASSESSMENT)}>New assessment</Button>
+        </div>
+      </AppShell>
+    );
+  }
+
+  // Handle Plan Generation Failure gracefully
+  if (planError) {
+     return (
+      <AppShell title="Assessment report" variant="full-width">
+        <div className="flex flex-col items-center justify-center py-20 bg-amber-50 rounded-xl border border-amber-200 p-8 text-center max-w-2xl mx-auto mt-10">
+          <div className="bg-amber-100 p-3 rounded-full mb-4">
+             <Loader2 className="h-6 w-6 text-amber-600" /> 
+           </div> 
+          <h3 className="text-lg font-bold text-amber-900 mb-2">Report Generation Issue</h3>
+          <p className="text-amber-700 mb-6">We encountered an issue creating the AI Coach Plan. The raw assessment data is safe, but the recommendations could not be generated.</p>
+          <div className="flex gap-4">
+            <Button variant="outline" onClick={() => window.location.reload()}>Retry</Button>
+            <Button onClick={() => navigate(ROUTES.DASHBOARD)}>Return to Dashboard</Button>
+          </div>
         </div>
       </AppShell>
     );
@@ -4044,6 +3823,7 @@ const AssessmentReport = () => {
     );
   }
 
+  // Calculate generic body comp for display logic
   const bodyComp = generateBodyCompInterpretation(formData, scores);
   const highlightCategory = sessionStorage.getItem(STORAGE_KEYS.HIGHLIGHT_CATEGORY) || undefined;
 

@@ -20,7 +20,7 @@ const ClientReport = lazy(() => import('@/components/reports/ClientReport'));
  * Security: The token is a UUID, making it impossible to guess
  * other clients' reports without the exact token.
  */
-const PublicReportByToken = () => {
+const PublicReportViewer = () => {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const [formData, setFormData] = useState<FormData | null>(null);
@@ -41,12 +41,9 @@ const PublicReportByToken = () => {
     (async () => {
       try {
         setLoading(true);
-        console.log('[PublicReport] Fetching report for token:', token);
         const data = await getPublicReportByToken(token);
-        console.log('[PublicReport] Data received:', data ? 'Found' : 'Null');
         
         if (!data) {
-          console.error('[PublicReport] Report lookup failed for token:', token);
           setError('This report is no longer available or has expired.');
           setLoading(false);
           return;
@@ -75,22 +72,10 @@ const PublicReportByToken = () => {
           }
         }
         
-        // Try to fetch live data from the assessment if available
-        // This ensures clients always see the most current version
-        let fd = data.formData;
-        try {
-          if (data.assessmentId && data.coachUid) {
-            const { getCoachAssessment } = await import('@/services/coachAssessments');
-            const liveData = await getCoachAssessment(data.coachUid, data.assessmentId, data.clientName);
-            if (liveData && liveData.formData) {
-              // Use live data if available (more current)
-              fd = liveData.formData;
-            }
-          }
-        } catch (liveErr) {
-          // If live fetch fails, use snapshot data (non-blocking)
-          console.warn('Failed to fetch live assessment data, using snapshot:', liveErr);
-        }
+        // Use sanitized form data from the public report
+        // We do NOT attempt to fetch "live" updates here to strictly respect the snapshot state
+        // and avoid permission issues (Air-Gapping)
+        const fd = data.formData;
         
         setFormData(fd);
         const s = computeScores(fd);
@@ -187,5 +172,5 @@ const PublicReportByToken = () => {
   );
 };
 
-export default PublicReportByToken;
+export default PublicReportViewer;
 

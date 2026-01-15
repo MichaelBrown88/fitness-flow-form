@@ -1,38 +1,30 @@
-import React from 'react';
-import { Input } from '@/components/ui/input';
+import { SmartInput } from '@/components/ui/SmartInput';
 import type { FieldValue } from '../hooks/useFieldControl';
 
 interface FieldInputProps {
   id: string;
   type: string;
   placeholder?: string;
-  localValue: FieldValue;
-  setLocalValue: (val: FieldValue) => void;
-  handleChange: (val: FieldValue) => void;
-  debouncedHandleChange: (val: FieldValue) => void;
+  // New props for SmartInput pattern
+  value: FieldValue;
+  onValueChange: (val: string) => void;
 }
 
 export const FieldInput: React.FC<FieldInputProps> = ({
   id,
   type,
   placeholder,
-  localValue,
-  setLocalValue,
-  handleChange,
-  debouncedHandleChange,
+  value,
+  onValueChange,
 }) => {
   return (
-    <Input
+    <SmartInput
       id={id}
       name={id}
       type={type}
       placeholder={placeholder}
-      value={(localValue as string) ?? ''}
-      onChange={(event) => {
-        setLocalValue(event.target.value);
-        debouncedHandleChange(event.target.value);
-      }}
-      onBlur={() => handleChange(localValue)}
+      value={(value as string) ?? ''}
+      onValueChange={onValueChange}
       className="h-12 rounded-xl border-slate-200 focus:ring-primary"
     />
   );
