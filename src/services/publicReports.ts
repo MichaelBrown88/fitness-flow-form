@@ -3,6 +3,7 @@ import type { Timestamp } from 'firebase/firestore';
 import type { FormData } from '@/contexts/FormContext';
 import { getDb } from '@/services/firebase';
 import { sanitizeForFirestore } from '@/lib/utils/firebaseUtils';
+import { COLLECTIONS } from '@/constants/collections';
 
 export type PublicReportDoc = {
   shareToken: string; // UUID token used as document ID
@@ -18,8 +19,6 @@ export type PublicReportDoc = {
   formData: FormData;
 };
 
-const collectionName = 'publicReports';
-
 /**
  * Generate a secure random token for public report sharing
  * Uses crypto.randomUUID() for cryptographically secure tokens
@@ -30,6 +29,25 @@ function generateShareToken(): string {
   }
   // Fallback for environments without crypto.randomUUID
   return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}-${Math.random().toString(36).substring(2, 15)}`;
+}
+
+/**
+ * Sanitize FormData for public consumption
+ * Strictly whitelists fields and removes PII (Email, Phone)
+ */
+function sanitizeFormDataForPublic(formData: FormData): FormData {
+  // Create a shallow copy first
+  const sanitized = { ...formData };
+  
+  // Remove PII that isn't needed for the report
+  // We keep 'fullName' as it's used for display, but email/phone are definitely private
+  sanitized.email = '';
+  sanitized.phone = '';
+  sanitized.assignedCoach = ''; // internal reference, not needed for client view
+  
+  // We can add more sensitive fields here if needed
+  
+  return sanitized;
 }
 
 /**
@@ -48,7 +66,7 @@ export async function publishPublicReport(params: {
   // Check if a public report already exists for this assessment
   // We'll query by assessmentId to find existing token
   const existingQuery = query(
-    collection(getDb(), collectionName),
+    collection(getDb(), COLLECTIONS.PUBLIC_REPORTS),
     where('coachUid', '==', coachUid),
     where('assessmentId', '==', assessmentId),
     where('visibility', '==', 'public'),
@@ -70,17 +88,19 @@ export async function publishPublicReport(params: {
     isNew = true;
   }
 
-  const ref = doc(getDb(), collectionName, shareToken);
+  const ref = doc(getDb(), COLLECTIONS.PUBLIC_REPORTS, shareToken);
   const snapshot = await getDoc(ref);
+
+  const safeFormData = sanitizeFormDataForPublic(formData);
 
   const payload = {
     coachUid,
     assessmentId,
     organizationId: organizationId || null,
-    clientName: (formData.fullName || 'Unnamed client').trim(),
-    clientNameLower: (formData.fullName || 'Unnamed client').toLowerCase(),
+    clientName: (safeFormData.fullName || 'Unnamed client').trim(),
+    clientNameLower: (safeFormData.fullName || 'Unnamed client').toLowerCase(),
     visibility,
-    formData: sanitizeForFirestore(formData) as FormData,
+    formData: sanitizeForFirestore(safeFormData) as FormData,
     updatedAt: serverTimestamp(),
     expiresAt: null, // No expiry by default
     ...(isNew && !snapshot.exists() ? { createdAt: serverTimestamp() } : {}),
@@ -98,7 +118,7 @@ export async function publishPublicReport(params: {
  * This is the secure way to access public reports
  */
 export async function getPublicReportByToken(token: string): Promise<PublicReportDoc | null> {
-  const ref = doc(getDb(), collectionName, token);
+  const ref = doc(getDb(), COLLECTIONS.PUBLIC_REPORTS, token);
   try {
     const snapshot = await getDoc(ref);
     if (!snapshot.exists()) {
@@ -140,7 +160,7 @@ export async function getPublicReport(params: {
 }): Promise<PublicReportDoc | null> {
   const { coachUid, assessmentId } = params;
   const q = query(
-    collection(getDb(), collectionName),
+    collection(getDb(), COLLECTIONS.PUBLIC_REPORTS),
     where('coachUid', '==', coachUid),
     where('assessmentId', '==', assessmentId),
     where('visibility', '==', 'public'),

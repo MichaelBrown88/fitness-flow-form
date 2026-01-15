@@ -27,6 +27,8 @@ import '@/lib/utils/restoreAssessment';
 const ClientReport = lazy(() => import('@/components/reports/ClientReport'));
 const CoachReport = lazy(() => import('@/components/reports/CoachReport'));
 
+import { ROUTES } from '@/constants/routes';
+
 const AssessmentReport = () => {
   const { id } = useParams();
   const { user, profile, loading } = useAuth();
@@ -36,6 +38,7 @@ const AssessmentReport = () => {
   const [scores, setScores] = useState<ScoreSummary | null>(null);
   const [roadmap, setRoadmap] = useState<RoadmapPhase[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [planError, setPlanError] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const publishedKeyRef = useRef<string | null>(null);
   const [shareCache, setShareCache] = useState<Record<'client' | 'coach', ShareArtifacts | null>>({
@@ -369,14 +372,21 @@ const AssessmentReport = () => {
   useEffect(() => {
     if (!formData || !scores) return;
     let cancelled = false;
+    
+    // Reset plan and error on new data
+    setPlan(null);
+    setPlanError(false);
+
     generateCoachPlan(formData, scores)
       .then(result => {
         if (!cancelled) setPlan(result);
       })
       .catch(async (e) => {
+        if (cancelled) return;
         const { logger } = await import('@/lib/utils/logger');
         logger.error('Error generating coach plan:', e);
-        if (!cancelled) setPlan(null);
+        // Set error state so UI can render fallback instead of infinite loading
+        setPlanError(true);
       });
     return () => { cancelled = true; };
   }, [formData, scores]);
@@ -402,7 +412,26 @@ const AssessmentReport = () => {
       <AppShell title="Assessment report">
         <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-700">
           <p>{error ?? 'Assessment not available.'}</p>
-          <Button onClick={() => navigate('/assessment')}>New assessment</Button>
+          <Button onClick={() => navigate(ROUTES.ASSESSMENT)}>New assessment</Button>
+        </div>
+      </AppShell>
+    );
+  }
+
+  // Handle Plan Generation Failure gracefully
+  if (planError) {
+     return (
+      <AppShell title="Assessment report" variant="full-width">
+        <div className="flex flex-col items-center justify-center py-20 bg-amber-50 rounded-xl border border-amber-200 p-8 text-center max-w-2xl mx-auto mt-10">
+          <div className="bg-amber-100 p-3 rounded-full mb-4">
+             <Loader2 className="h-6 w-6 text-amber-600" /> 
+           </div> 
+          <h3 className="text-lg font-bold text-amber-900 mb-2">Report Generation Issue</h3>
+          <p className="text-amber-700 mb-6">We encountered an issue creating the AI Coach Plan. The raw assessment data is safe, but the recommendations could not be generated.</p>
+          <div className="flex gap-4">
+            <Button variant="outline" onClick={() => window.location.reload()}>Retry</Button>
+            <Button onClick={() => navigate(ROUTES.DASHBOARD)}>Return to Dashboard</Button>
+          </div>
         </div>
       </AppShell>
     );
