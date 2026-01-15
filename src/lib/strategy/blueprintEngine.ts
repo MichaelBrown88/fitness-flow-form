@@ -374,7 +374,7 @@ export function generateBlueprint(
   }
 
   // ============================================
-  // 5. RECOVERY OPTIMIZATION
+  // 5. RECOVERY OPTIMIZATION (Crisis)
   // ============================================
   const hasLifestyleIssues = lifestyle.score < 70;
   const recoverySynthesis = synthesis.find(s => 
@@ -397,6 +397,68 @@ export function generateBlueprint(
       ],
       category: 'lifestyle'
     });
+  }
+
+  // ============================================
+  // 6. ENSURE 3 PILLARS (Optimization Fallbacks)
+  // ============================================
+  if (candidates.length < 3) {
+    // Try adding Cardio Optimization
+    if (!candidates.find(p => p.category === 'cardio') && cardio.score < 90) {
+      candidates.push({
+        id: 'cardio-opt',
+        title: 'Aerobic Optimization',
+        priority: 4,
+        focus: 'PEAK CARDIOVASCULAR EFFICIENCY',
+        description: 'Refining your aerobic engine to improve recovery between sets and daily energy levels.',
+        timeframe: getTimeframeFromRoadmap(roadmap, 'cardio'),
+        color: 'red',
+        protocol: [
+          { name: 'Zone 2 Cardio', setsReps: '2x/week, 30-40 mins' },
+          { name: 'Recovery Walks', setsReps: 'Daily 15-20 mins' },
+          { name: 'Heart Rate Monitoring', setsReps: 'Track recovery speed' }
+        ],
+        category: 'cardio'
+      });
+    }
+
+    // Try adding Metabolic Optimization
+    if (candidates.length < 3 && !candidates.find(p => p.category === 'bodyComp') && bodyComp.score < 90) {
+      candidates.push({
+        id: 'metabolic-opt',
+        title: 'Metabolic Refinement',
+        priority: 5,
+        focus: 'OPTIMIZING BODY COMPOSITION',
+        description: 'Fine-tuning your nutritional timing and metabolic flexibility to maintain or refine your already solid baseline.',
+        timeframe: getTimeframeFromRoadmap(roadmap, 'bodyComp'),
+        color: 'red',
+        protocol: [
+          { name: 'Nutrient Timing', setsReps: 'Pre/Post workout focus' },
+          { name: 'Protein Optimization', setsReps: '1.8g - 2.2g per kg' },
+          { name: 'Micro-nutrient Focus', setsReps: 'Quality food sources' }
+        ],
+        category: 'bodyComp'
+      });
+    }
+
+    // Lifestyle Fallback (always available)
+    if (candidates.length < 3 && !candidates.find(p => p.category === 'lifestyle')) {
+      candidates.push({
+        id: 'lifestyle-opt',
+        title: 'Longevity & Recovery',
+        priority: 6,
+        focus: 'MAXIMIZING ADAPTATION',
+        description: 'Focusing on the 1% gains in sleep quality and stress management to ensure long-term progress.',
+        timeframe: getTimeframeFromRoadmap(roadmap, 'lifestyle'),
+        color: 'blue',
+        protocol: [
+          { name: 'Sleep Optimization', setsReps: '7-9h consistent' },
+          { name: 'Daily Decompression', setsReps: '10 mins breathwork' },
+          { name: 'Hydration Strategy', setsReps: '3-4L progressive' }
+        ],
+        category: 'lifestyle'
+      });
+    }
   }
 
   // Sort by priority (lower = higher priority) and return top 3

@@ -71,6 +71,11 @@ export async function isPlatformAdmin(email: string): Promise<boolean> {
     const snapshot = await getDocs(adminQuery);
     return !snapshot.empty;
   } catch (error) {
+    // If it's a permission error, we want the caller to know so it can decide to proceed anyway
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'permission-denied') {
+      logger.warn('Permission denied checking admin status - likely unauthenticated');
+      throw error;
+    }
     logger.error('Error checking platform admin status:', error);
     return false;
   }

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Camera, Loader2, RefreshCcw, Scan, X } from 'lucide-react';
 import { CONFIG } from '@/config';
+import { logger } from '@/lib/utils/logger';
 
 const VIEWS = CONFIG.POSTURE_VIEWS;
 
@@ -239,7 +240,7 @@ export function CompanionUI({
             {/* Main capture button - allow capture even if not perfectly vertical */}
                 <button
                   onClick={() => {
-                    console.log('[COMPANION] Capture button clicked', { isVertical, isSequenceActive, viewIdx });
+                    logger.debug('Capture button clicked', 'COMPANION', { isVertical, isSequenceActive, viewIdx });
                     if (!isSequenceActive) {
                       onStartSequence();
                     }

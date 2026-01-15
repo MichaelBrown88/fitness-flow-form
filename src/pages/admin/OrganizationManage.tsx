@@ -329,7 +329,7 @@ const OrganizationManage = () => {
                     {editing ? (
                       <Select
                         value={org.type || 'gym'}
-                        onValueChange={(value: any) => setOrg({ ...org, type: value })}
+                        onValueChange={(value: OrganizationDetails['type']) => setOrg({ ...org, type: value })}
                       >
                         <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
                           <SelectValue />
@@ -443,7 +443,7 @@ const OrganizationManage = () => {
                   {editing ? (
                     <Select
                       value={org.plan || 'free'}
-                      onValueChange={(value: any) => {
+                      onValueChange={(value: string) => {
                         setOrg({ ...org, plan: value as OrganizationDetails['plan'] });
                       }}
                     >
@@ -496,7 +496,7 @@ const OrganizationManage = () => {
                   {editing ? (
                     <Select
                       value={org.status || 'none'}
-                      onValueChange={(value: any) => {
+                      onValueChange={(value: string) => {
                         setOrg({ ...org, status: value as OrganizationDetails['status'] });
                       }}
                     >

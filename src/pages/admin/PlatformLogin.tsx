@@ -66,8 +66,17 @@ const PlatformLogin = () => {
         setStep('set-password');
       }
     } catch (err) {
-      logger.error('Email verification failed:', err);
-      setError('Unable to verify email. Please try again.');
+      // If we got a permission error, it just means the DB is locked for logged-out users.
+      // We should allow them to try logging in anyway.
+      const firebaseError = err as { code?: string };
+      if (firebaseError?.code === 'permission-denied') {
+        logger.info('Proceeding to password step despite permission error');
+        setAdminName('Admin');
+        setStep('password');
+      } else {
+        logger.error('Email verification failed:', undefined, err);
+        setError('Unable to verify email. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -98,7 +107,7 @@ const PlatformLogin = () => {
       } else {
         setError('Login failed. Please try again.');
       }
-      logger.error('Platform admin login failed:', err);
+      logger.error('Platform admin login failed:', undefined, err);
     } finally {
       setLoading(false);
     }
@@ -124,25 +133,44 @@ const PlatformLogin = () => {
     try {
       const auth = getFirebaseAuth();
       
-      // Create the Firebase Auth account
-      const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
-      
-      // Update the platform admin record with the real UID and mark password as set
-      await createPlatformAdmin(userCredential.user.uid, email.trim(), adminName);
-      await markPasswordSet(userCredential.user.uid);
-      
-      logger.info('Platform admin account created:', email);
-      navigate('/admin', { replace: true });
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Account creation failed';
-      if (message.includes('email-already-in-use')) {
-        // Account exists but password not set in our records - try to login
-        setError('Account exists. Please enter your password.');
-        setStep('password');
-      } else {
-        setError('Unable to create account. Please try again.');
-        logger.error('Platform admin account creation failed:', err);
+      try {
+        // Try to create the Firebase Auth account
+        const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+        
+        // Update the platform admin record with the real UID and mark password as set
+        await createPlatformAdmin(userCredential.user.uid, email.trim(), adminName);
+        await markPasswordSet(userCredential.user.uid);
+        
+        logger.info('Platform admin account created:', email);
+        navigate('/admin', { replace: true });
+      } catch (signUpErr) {
+        // If account exists, try to sign in with the provided password
+        const firebaseSignUpError = signUpErr as { code?: string };
+        if (firebaseSignUpError?.code === 'auth/email-already-in-use') {
+          logger.info('Account exists, attempting auto-fix via sign-in');
+          try {
+            const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+            
+            // If sign-in works, it means the password provided is correct!
+            // We just need to ensure the Firestore record is set up.
+            await createPlatformAdmin(userCredential.user.uid, email.trim(), adminName);
+            await markPasswordSet(userCredential.user.uid);
+            await updateLastLogin(userCredential.user.uid);
+            
+            logger.info('Platform admin auto-fixed via sign-in:', email);
+            navigate('/admin', { replace: true });
+          } catch (signInErr) {
+            // Sign-in failed (wrong password for existing account)
+            setError('Account already exists. Please enter your correct password.');
+            setStep('password');
+          }
+        } else {
+          throw signUpErr;
+        }
       }
+    } catch (err) {
+      setError('Unable to create account. Please try again.');
+      logger.error('Platform admin account creation failed:', undefined, err);
     } finally {
       setLoading(false);
     }

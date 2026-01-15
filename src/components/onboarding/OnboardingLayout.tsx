@@ -8,6 +8,7 @@ interface OnboardingLayoutProps {
   currentStep: number;
   children: React.ReactNode;
   onBack?: () => void;
+  onBypass?: () => void;
 }
 
 const GlassPanel = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
@@ -16,7 +17,7 @@ const GlassPanel = ({ children, className = "" }: { children: React.ReactNode; c
   </div>
 );
 
-export function OnboardingLayout({ currentStep, children, onBack }: OnboardingLayoutProps) {
+export function OnboardingLayout({ currentStep, children, onBack, onBypass }: OnboardingLayoutProps) {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const [isAnimating, setIsAnimating] = useState(false);
@@ -105,6 +106,15 @@ export function OnboardingLayout({ currentStep, children, onBack }: OnboardingLa
                 title="Sign out and start fresh"
               >
                 <LogOut size={16} className="sm:w-[18px] sm:h-[18px]" />
+              </button>
+            )}
+            {user && onBypass && (
+              <button
+                onClick={onBypass}
+                className="h-8 sm:h-10 px-3 sm:px-4 rounded-full bg-white border border-slate-100 flex items-center justify-center hover:bg-slate-50 text-slate-500 hover:text-primary transition-colors shadow-sm text-[10px] sm:text-xs font-bold uppercase tracking-wider"
+                title="Bypass onboarding (for legacy users)"
+              >
+                Skip Onboarding
               </button>
             )}
             <button 

@@ -11,6 +11,7 @@ import { updatePostureImage, updateInBodyImage } from '@/services/liveSessions';
 import { processInBodyScan } from '@/lib/ai/ocrEngine';
 import { LandmarkResult } from '@/lib/ai/postureLandmarks';
 import type Webcam from 'react-webcam';
+import { logger } from '@/lib/utils/logger';
 
 interface UseCameraCaptureOptions {
   sessionId: string | undefined;
@@ -47,58 +48,58 @@ export function useCameraCapture({
 
   const performCapture = useCallback(
     async (webcamRef: React.RefObject<Webcam>, viewIdx: number, landmarks?: LandmarkResult | null) => {
-      console.log('[CAPTURE] performCapture called', { viewIdx, mode, sessionId, hasWebcam: !!webcamRef.current });
+      logger.debug('performCapture called', 'useCameraCapture', { viewIdx, mode, sessionId, hasWebcam: !!webcamRef.current });
       
       const webcam = webcamRef.current;
 
       if (!webcam || !webcam.video) {
-        console.error('[CAPTURE] Webcam not available', { webcam: !!webcam, video: !!webcam?.video });
+        logger.error('Webcam not available', 'useCameraCapture', { webcam: !!webcam, video: !!webcam?.video });
         onAudioFeedback?.('Camera error.');
         return;
       }
 
       const viewData = views[viewIdx];
       if (!viewData) {
-        console.error('[CAPTURE] Invalid index:', viewIdx, 'views length:', views.length);
+        logger.error('Invalid index', 'useCameraCapture', { viewIdx, viewsLength: views.length });
         return;
       }
 
-      console.log('[CAPTURE] Initiating sync for view', viewData.id);
+      logger.debug('Initiating sync for view', 'useCameraCapture', { viewId: viewData.id });
 
       // Shutter sound
       try {
         if (shutterAudio.current) {
-          void shutterAudio.current.play().catch((e) => console.warn('[AUDIO] Shutter failed:', e));
+          void shutterAudio.current.play().catch((e) => logger.warn('Shutter audio failed', 'useCameraCapture:audio', e));
         }
       } catch (e) {
-        console.warn('[AUDIO] Shutter error:', e);
+        logger.warn('Shutter audio error', 'useCameraCapture:audio', e);
       }
 
       // Screenshot
       const imageSrc = webcam.getScreenshot();
       if (!imageSrc) {
-        console.error('[CAPTURE] Screenshot failed');
+        logger.error('Screenshot failed', 'useCameraCapture');
         onAudioFeedback?.('Capture failed.');
         return;
       }
 
-      console.log('[CAPTURE] Screenshot captured, length:', imageSrc.length);
+      logger.debug('Screenshot captured', 'useCameraCapture', { imageLength: imageSrc.length });
 
       // Sync to App
       if (!sessionId) {
-        console.error('[CAPTURE] No sessionId provided');
+        logger.error('No sessionId provided', 'useCameraCapture');
         return;
       }
 
       setIsUploading((prev) => prev + 1);
 
       if (mode === 'inbody') {
-        console.log('[CAPTURE] InBody mode - processing OCR');
+        logger.debug('InBody mode - processing OCR', 'useCameraCapture');
         onAudioFeedback?.('Analyzing InBody report...');
 
         updateInBodyImage(sessionId, imageSrc)
           .then(() => {
-            console.log('[CAPTURE] InBody image uploaded, starting OCR');
+            logger.debug('InBody image uploaded, starting OCR', 'useCameraCapture');
             setIsProcessingOcr(true);
             toast({ title: 'Scanning...', description: 'AI is analyzing the InBody report' });
 
@@ -109,7 +110,7 @@ export function useCameraCapture({
             return Promise.race([processInBodyScan(imageSrc), timeoutPromise]);
           })
           .then((result) => {
-            console.log('[CAPTURE] OCR result', result);
+            logger.debug('OCR result received', 'useCameraCapture', result);
             if (result.fields && Object.keys(result.fields).length > 0) {
               setOcrReviewData(result.fields as Record<string, string>);
               onAudioFeedback?.('Data extracted. Review and confirm.');
@@ -124,7 +125,7 @@ export function useCameraCapture({
             }
           })
           .catch((err: unknown) => {
-            console.error('[CAPTURE] OCR Error:', err);
+            logger.error('OCR Error', 'useCameraCapture', err);
             toast({
               title: 'Scan Issue',
               description: err instanceof Error ? err.message : 'Please retake or enter values manually.',
@@ -138,30 +139,30 @@ export function useCameraCapture({
           });
       } else {
         // Posture mode
-        console.log('[CAPTURE] Posture mode - uploading image', { view: viewData.id, hasLandmarks: !!landmarks });
+        logger.debug('Posture mode - uploading image', 'useCameraCapture', { view: viewData.id, hasLandmarks: !!landmarks });
         const capturedLandmarks = landmarks || undefined;
         
         updatePostureImage(sessionId, viewData.id, imageSrc, capturedLandmarks, 'iphone')
           .then(() => {
-            console.log('[CAPTURE] Posture image uploaded successfully');
+            logger.debug('Posture image uploaded successfully', 'useCameraCapture');
             toast({ title: `${viewData.label} Sent` });
           })
           .catch((err: unknown) => {
-            console.error('[CAPTURE] Upload error:', err);
+            logger.error('Upload error', 'useCameraCapture', err);
             toast({ title: 'Sync Error', variant: 'destructive' });
           })
           .finally(() => {
             setIsUploading((prev) => Math.max(0, prev - 1));
-            console.log('[CAPTURE] Upload complete, checking next view', { viewIdx, totalViews: views.length });
+            logger.debug('Upload complete, checking next view', 'useCameraCapture', { viewIdx, totalViews: views.length });
           });
 
         if (viewIdx < views.length - 1) {
           const next = viewIdx + 1;
-          console.log('[CAPTURE] Scheduling next view', next);
+          logger.debug('Scheduling next view', 'useCameraCapture', { next });
           // Scheduling next view
           onNextView?.(next);
         } else {
-          console.log('[CAPTURE] Sequence complete');
+          logger.debug('Sequence complete', 'useCameraCapture');
           onSequenceComplete?.();
         }
       }
@@ -186,7 +187,7 @@ export function useCameraCapture({
       onAudioFeedback?.('Data has been added to the app.');
       setOcrReviewData(null);
     } catch (err: unknown) {
-      console.error('[OCR] Apply error:', err);
+      logger.error('OCR Apply error', 'useCameraCapture', err);
       toast({ title: 'Error', variant: 'destructive' });
     } finally {
       setIsUploading((prev) => Math.max(0, prev - 1));

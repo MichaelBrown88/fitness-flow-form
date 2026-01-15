@@ -1,7 +1,7 @@
 import React from 'react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
 
-interface RadarData {
+export interface RadarData {
   name: string;
   value: number;
   fullLabel: string;

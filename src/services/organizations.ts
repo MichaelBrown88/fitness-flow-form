@@ -2,6 +2,7 @@ import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getDb, getStorage } from '@/services/firebase';
 import { sanitizeForFirestore } from '@/lib/utils/firebaseUtils';
+import { logger } from '@/lib/utils/logger';
 
 
 /**
@@ -51,11 +52,12 @@ export interface OrgSettings {
     overheadSquat: boolean; // P4 - Overhead squat assessment (section: 'overhead-squat')
     hinge: boolean; // P4 - Hinge assessment (section: 'hinge-assessment')
     lunge: boolean; // P4 - Lunge assessment (section: 'lunge-assessment')
-    mobility: boolean; // P4 - Mobility assessment (section: 'mobility')
-    strength: boolean; // P5 - Muscular strength (section: 'strength-endurance')
-    lifestyle: boolean; // P1 - Lifestyle factors (section: 'lifestyle-overview')
+    mobility: boolean; // P5 - Joint mobility screen (section: 'mobility')
+    strength: boolean; // P6 - Strength & endurance tests (section: 'strength')
+    lifestyle: boolean; // P7 - Lifestyle & habits questionnaire (section: 'lifestyle')
   };
-  equipmentConfig?: EquipmentConfig; // Optional: defaults provided if not set
+  equipmentConfig: EquipmentConfig;
+  onboardingCompletedAt?: any; // Firestore Timestamp
   // Platform admin controlled features
   demoAutoFillEnabled?: boolean; // Demo persona auto-fill (for affiliates/sales demos) - OFF by default
 }
@@ -125,25 +127,31 @@ export async function getOrgSettings(orgId: string): Promise<OrgSettings> {
     return DEFAULT_SETTINGS;
   }
   
-  const data = snap.data() as OrgSettings & { equipmentConfig?: any };
+  const data = snap.data() as OrgSettings & { equipmentConfig?: Record<string, unknown> };
+  
+  // Define type for old equipment config structure (for migration)
+  interface OldEquipmentItem {
+    enabled?: boolean;
+    method?: string;
+  }
   
   // Migrate old equipmentConfig structure to new simplified structure
-  const oldEquipmentConfig = data.equipmentConfig || {};
+  const oldEquipmentConfig = (data.equipmentConfig as Record<string, unknown>) || {};
   
   // Handle old "treadmill" field → migrate to "cardioEquipment"
   // Old structure might have treadmill.enabled or treadmill as boolean
   const oldTreadmillValue = oldEquipmentConfig.treadmill;
-  const oldTreadmillEnabled = typeof oldTreadmillValue === 'object' 
-    ? (oldTreadmillValue?.enabled ?? false)
+  const oldTreadmillEnabled = typeof oldTreadmillValue === 'object' && oldTreadmillValue !== null
+    ? ((oldTreadmillValue as OldEquipmentItem)?.enabled ?? false)
     : (typeof oldTreadmillValue === 'boolean' ? oldTreadmillValue : false);
   
-  const cardioEquipmentEnabled = oldEquipmentConfig.cardioEquipment?.enabled ?? oldTreadmillEnabled;
+  const cardioEquipmentEnabled = (oldEquipmentConfig.cardioEquipment as OldEquipmentItem | undefined)?.enabled ?? oldTreadmillEnabled;
   
   // Determine bodyComposition.enabled from old structure
   // If bodyComposition has method but no enabled, infer enabled from method
   // method = "measurements" or "none" → enabled = false
   // method = "inbody", "dexa", etc. → enabled = true
-  const oldBodyComp = oldEquipmentConfig.bodyComposition || {};
+  const oldBodyComp = (oldEquipmentConfig.bodyComposition as OldEquipmentItem | undefined) || {};
   const bodyCompEnabled = oldBodyComp.enabled !== undefined 
     ? oldBodyComp.enabled 
     : (oldBodyComp.method !== undefined && 
@@ -153,7 +161,7 @@ export async function getOrgSettings(orgId: string): Promise<OrgSettings> {
   // Determine gripStrength.enabled from old structure
   // method = "none" or "deadhang" → enabled = false (equipment-free)
   // method = "dynamometer", etc. → enabled = true
-  const oldGripStrength = oldEquipmentConfig.gripStrength || {};
+  const oldGripStrength = (oldEquipmentConfig.gripStrength as OldEquipmentItem | undefined) || {};
   const gripStrengthEnabled = oldGripStrength.enabled !== undefined
     ? oldGripStrength.enabled
     : (oldGripStrength.method !== undefined && 
@@ -172,7 +180,7 @@ export async function getOrgSettings(orgId: string): Promise<OrgSettings> {
       enabled: cardioEquipmentEnabled,
     },
     heartRateSensor: {
-      enabled: oldEquipmentConfig.heartRateSensor?.enabled ?? DEFAULT_EQUIPMENT_CONFIG.heartRateSensor.enabled,
+      enabled: (oldEquipmentConfig.heartRateSensor as OldEquipmentItem | undefined)?.enabled ?? DEFAULT_EQUIPMENT_CONFIG.heartRateSensor.enabled,
     },
   };
   
@@ -194,9 +202,9 @@ export async function getOrgSettings(orgId: string): Promise<OrgSettings> {
         equipmentConfig: cleanEquipmentConfig,
         updatedAt: new Date(),
       });
-      console.log(`✅ Migrated equipmentConfig for org ${orgId}: cleaned old structure (removed method fields, migrated treadmill→cardioEquipment)`);
+      logger.info(`Migrated equipmentConfig for org ${orgId}: cleaned old structure (removed method fields, migrated treadmill→cardioEquipment)`, 'organizations');
     } catch (error) {
-      console.warn('Failed to migrate equipmentConfig structure:', error);
+      logger.warn('Failed to migrate equipmentConfig structure', 'organizations', error);
       // Continue with cleaned structure even if migration fails
     }
   }
@@ -267,7 +275,6 @@ export async function migrateEquipmentConfig(orgId: string): Promise<{ success: 
 
 // Expose migration function to window in development for easy console access
 if (import.meta.env.DEV && typeof window !== 'undefined') {
-  (window as any).migrateEquipmentConfig = migrateEquipmentConfig;
-  console.log('%cEquipment Migration Utility', 'color: #6366f1; font-weight: bold;');
-  console.log('Use: await window.migrateEquipmentConfig("org-xxx") to migrate an organization');
+  (window as Window & { migrateEquipmentConfig?: typeof migrateEquipmentConfig }).migrateEquipmentConfig = migrateEquipmentConfig;
+  logger.info('Equipment Migration Utility loaded. Use: await window.migrateEquipmentConfig("org-xxx")', 'organizations');
 }

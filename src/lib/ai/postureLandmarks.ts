@@ -4,6 +4,7 @@
  */
 
 import { CONFIG } from '@/config';
+import { logger } from '@/lib/utils/logger';
 
 export interface LandmarkResult {
   shoulder_y_percent?: number; // Y position of shoulder center as % of image height (0-100)
@@ -43,19 +44,19 @@ export async function detectPostureLandmarks(
   view: 'front' | 'side-right' | 'side-left' | 'back'
 ): Promise<LandmarkResult> {
   try {
-    console.log(`[MEDIAPIPE] Starting landmark detection for ${view}...`);
-    console.log(`[MEDIAPIPE] Image URL type: ${imageUrl.substring(0, 50)}...`);
+    logger.debug(`Starting landmark detection for ${view}`, 'MEDIAPIPE');
+    logger.debug(`Image URL type: ${imageUrl.substring(0, 50)}...`, 'MEDIAPIPE');
     
     // Load the image
     const img = await loadImage(imageUrl);
-    console.log(`[MEDIAPIPE] Image loaded: ${img.width}x${img.height}`);
+    logger.debug(`Image loaded: ${img.width}x${img.height}`, 'MEDIAPIPE');
     
     // Dynamically import MediaPipe to avoid bloating the main bundle
     let mpPose;
     try {
       mpPose = await import('@mediapipe/pose');
     } catch (importError) {
-      console.error('[LANDMARKS] Failed to import MediaPipe:', importError);
+      logger.error('Failed to import MediaPipe', 'LANDMARKS', importError);
       throw new Error('Failed to load MediaPipe library. Please check your internet connection and try again.');
     }
     
@@ -77,7 +78,7 @@ export async function detectPostureLandmarks(
         const primaryUrl = `${CONFIG.AI.MEDIAPIPE.POSE_CDN}/${file}`;
         // Fallback to unpkg if jsdelivr fails
         const fallbackUrl = `https://unpkg.com/@mediapipe/pose/${file}`;
-        console.log(`[LANDMARKS] Loading MediaPipe file: ${file} from ${primaryUrl}`);
+        logger.debug(`Loading MediaPipe file: ${file} from ${primaryUrl}`, 'LANDMARKS');
         return primaryUrl;
       }
     });
@@ -108,7 +109,7 @@ export async function detectPostureLandmarks(
         
         try {
           if (!results.poseLandmarks || results.poseLandmarks.length === 0) {
-            console.warn(`[MEDIAPIPE] No landmarks detected for ${view}`);
+            logger.warn(`No landmarks detected for ${view}`, 'MEDIAPIPE');
             pose.close();
             resolve({});
             return;
@@ -222,11 +223,12 @@ export async function detectPostureLandmarks(
             result.midfoot_x_percent = midfootX * 100;
           }
           
-          console.log(`[MEDIAPIPE] Success for ${view}: headY=${result.head_y_percent?.toFixed(1)}%, shoulderY=${result.shoulder_y_percent?.toFixed(1)}%, hipY=${result.hip_y_percent?.toFixed(1)}%, centerX=${result.center_x_percent?.toFixed(1)}%, midfootX=${result.midfoot_x_percent?.toFixed(1)}%`);
+          
+          logger.debug(`Success for ${view}: headY=${result.head_y_percent?.toFixed(1)}%, shoulderY=${result.shoulder_y_percent?.toFixed(1)}%, hipY=${result.hip_y_percent?.toFixed(1)}%, centerX=${result.center_x_percent?.toFixed(1)}%, midfootX=${result.midfoot_x_percent?.toFixed(1)}%`, 'MEDIAPIPE');
           pose.close();
           resolve(result);
         } catch (error) {
-          console.error(`[MEDIAPIPE] Error processing landmarks:`, error);
+          logger.error(`Error processing landmarks:`, 'MEDIAPIPE', error);
           pose.close();
           reject(error);
         }
@@ -239,7 +241,7 @@ export async function detectPostureLandmarks(
             resolved = true;
             clearTimeout(timeout);
             pose.close();
-            console.error(`[MEDIAPIPE] Error sending image:`, error);
+            logger.error(`Error sending image:`, 'MEDIAPIPE', error);
             // Provide more helpful error message
             const errorMsg = error instanceof Error ? error.message : String(error);
             if (errorMsg.includes('fetch') || errorMsg.includes('Failed to fetch')) {
@@ -254,7 +256,7 @@ export async function detectPostureLandmarks(
           resolved = true;
           clearTimeout(timeout);
           pose.close();
-          console.error(`[MEDIAPIPE] Error initializing:`, error);
+          logger.error(`Error initializing:`, 'MEDIAPIPE', error);
           const errorMsg = error instanceof Error ? error.message : String(error);
           if (errorMsg.includes('fetch') || errorMsg.includes('Failed to fetch')) {
             reject(new Error('Failed to load MediaPipe model files. Please check your internet connection and try again.'));
@@ -265,7 +267,7 @@ export async function detectPostureLandmarks(
       });
     });
   } catch (error) {
-    console.error(`[MEDIAPIPE] Error detecting landmarks for ${view}:`, error);
+    logger.error(`Error detecting landmarks for ${view}:`, 'MEDIAPIPE', error);
     throw error;
   }
 }

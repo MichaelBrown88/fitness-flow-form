@@ -7,8 +7,7 @@ import {
   signOut as firebaseSignOut,
   type User,
 } from 'firebase/auth';
-import { setDoc } from 'firebase/firestore';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, setDoc, collection, query, limit, getDocs, updateDoc } from 'firebase/firestore';
 import { getFirebaseAuth, getDb } from '@/services/firebase';
 import { getOrgSettings, type OrgSettings } from '@/services/organizations';
 import type { UserRole, UserProfile } from '@/types/auth';
@@ -68,163 +67,129 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const auth = getFirebaseAuth();
+    const db = getDb();
     
-    // Check for stale auth state on mount (user deleted while browser was closed)
-    const checkStaleAuth = async () => {
-      const currentUser = auth.currentUser;
-      if (currentUser) {
-        try {
-          // Try to refresh token - if user was deleted, this will fail
-          await currentUser.getIdToken(true);
-          previousUserIdRef.current = currentUser.uid;
-          
-          // Also verify user profile exists in Firestore
-          try {
-            const profileDoc = await getDoc(doc(getDb(), 'userProfiles', currentUser.uid));
-            if (!profileDoc.exists()) {
-              // User profile doesn't exist - user was likely deleted
-              logger.warn('User profile not found - user may have been deleted');
-              clearLocalAuthStorage();
-              await firebaseSignOut(auth);
-              setUser(null);
-              setProfile(null);
-              setOrgSettings(null);
-              setLoading(false);
-              return;
-            }
-          } catch (profileError) {
-            // If we can't check profile, continue anyway (might be network issue)
-            logger.debug('Could not verify user profile:', profileError);
-          }
-        } catch (tokenError) {
-          // User was deleted - clear everything
-          logger.warn('Stale auth detected - user was deleted:', tokenError);
-          clearLocalAuthStorage();
-          await firebaseSignOut(auth);
-          setUser(null);
-          setProfile(null);
-          setOrgSettings(null);
-          setLoading(false);
-        }
-      }
-    };
-    
-    // Run check on mount (with slight delay to ensure Firebase is ready)
-    const timeoutId = setTimeout(() => {
-      void checkStaleAuth();
-    }, 100);
-    
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      // Detect if user was deleted (user becomes null but we didn't manually sign out)
+    let unsubProfile: (() => void) | null = null;
+    let unsubSettings: (() => void) | null = null;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+      // 1. Cleanup old listeners
+      if (unsubProfile) { unsubProfile(); unsubProfile = null; }
+      if (unsubSettings) { unsubSettings(); unsubSettings = null; }
+
+      // 2. Handle manual deletion/signout detection
       const hadUserBefore = previousUserIdRef.current !== null;
       const userWasDeleted = hadUserBefore && !firebaseUser && !manualSignOutRef.current;
       
       if (userWasDeleted) {
-        // User was deleted from Firebase Console - clear all local storage
-        logger.warn('User account was deleted - clearing local authentication storage');
+        logger.warn('User account was deleted - clearing local auth state');
         clearLocalAuthStorage();
         previousUserIdRef.current = null;
       }
       
-      // Update previous user ID
-      if (firebaseUser) {
-        previousUserIdRef.current = firebaseUser.uid;
-      }
-      
-      // Reset manual sign out flag after handling
-      if (manualSignOutRef.current) {
-        manualSignOutRef.current = false;
-      }
-      
       setUser(firebaseUser);
       
-      if (firebaseUser) {
-        // Validate user still exists by checking token (catch any deletion that happened during session)
-        try {
-          await firebaseUser.getIdToken(true); // Force token refresh to validate user exists
-        } catch (tokenError) {
-          // Token refresh failed - user was likely deleted
-          logger.warn('Token refresh failed - user may have been deleted:', tokenError);
-          clearLocalAuthStorage();
-          await firebaseSignOut(auth);
-          setUser(null);
-          setProfile(null);
-          setOrgSettings(null);
-          previousUserIdRef.current = null;
-          setLoading(false);
-          return;
-        }
-        try {
-          const profileDoc = await getDoc(doc(getDb(), 'userProfiles', firebaseUser.uid));
-          let currentProfile: UserProfile;
-          
-          if (profileDoc.exists()) {
-            currentProfile = profileDoc.data() as UserProfile;
-            
-            // Force Admin role for the owner if not set (SaaS Migration Safety)
-            if (!currentProfile.role || currentProfile.role === 'coach') {
-              currentProfile.role = 'org_admin';
-            }
-          } else {
-            // SaaS Readiness: Automatically grant Admin status to the owner/main coach
-            currentProfile = {
-              uid: firebaseUser.uid,
-              organizationId: `org-${firebaseUser.uid}`, 
-              role: 'org_admin', 
-              displayName: firebaseUser.displayName || 'Coach',
-            };
-            
-            // Background save
-            import('firebase/firestore').then(({ setDoc, doc }) => {
-              setDoc(doc(getDb(), 'userProfiles', firebaseUser.uid), currentProfile, { merge: true })
-                .catch(e => console.warn('[AUTH] Background profile sync skipped:', e));
-            });
-          }
-          
-          // Even if save fails, the state now reflects the correct Admin role
-          setProfile(currentProfile);
-          
-          // Fetch Org Settings - Provide a local fallback if the database is locked
-          try {
-            const settings = await getOrgSettings(currentProfile.organizationId);
-            setOrgSettings(settings);
-          } catch (settingsErr) {
-            console.warn('[AUTH] Database settings locked, using local defaults:', settingsErr);
-            // Fallback to default modules so the UI remains functional
-            setOrgSettings({
-              name: 'Organization Name',
-              brandColor: '#03dee2', // Use a default brand color instead of indigo
-              modules: { 
-                parq: true,
-                inbody: true, 
-                fitness: true, 
-                posture: true, 
-                overheadSquat: true,
-                hinge: true,
-                lunge: true,
-                mobility: true,
-                strength: true, 
-                lifestyle: true 
-              }
-            });
-          }
-
-        } catch (err) {
-          console.error('Failed to fetch user profile:', err);
-          setProfile(null);
-          setOrgSettings(null);
-        }
-      } else {
+      if (!firebaseUser) {
         setProfile(null);
         setOrgSettings(null);
+        setLoading(false);
+        previousUserIdRef.current = null;
+        return;
       }
-      
-      setLoading(false);
+
+      previousUserIdRef.current = firebaseUser.uid;
+
+      // 3. Subscribe to User Profile
+      const profileRef = doc(db, 'userProfiles', firebaseUser.uid);
+      unsubProfile = onSnapshot(profileRef, async (profileSnap) => {
+        let currentProfile: UserProfile;
+
+        if (profileSnap.exists()) {
+          currentProfile = profileSnap.data() as UserProfile;
+          // Apply safety defaults
+          if (!currentProfile.role) currentProfile.role = 'org_admin';
+          
+          // Legacy Auto-Heal: If onboarding is NOT complete, check if they have assessments
+          if (currentProfile.onboardingCompleted === false) {
+            try {
+              const assessmentsRef = collection(db, 'coaches', firebaseUser.uid, 'assessments');
+              const assessmentSnap = await getDocs(query(assessmentsRef, limit(1)));
+              
+              if (!assessmentSnap.empty) {
+                logger.info('[AUTH] Legacy user detected with assessments. Auto-completing onboarding.');
+                await updateDoc(profileRef, { 
+                  onboardingCompleted: true,
+                  updatedAt: new Date()
+                });
+                // Snapshot will trigger again with updated data
+                return;
+              }
+            } catch (err) {
+              logger.debug('[AUTH] Legacy check skipped:', err);
+            }
+          }
+        } else {
+          // Provision missing profile
+          currentProfile = {
+            uid: firebaseUser.uid,
+            organizationId: `org-${firebaseUser.uid}`,
+            role: 'org_admin',
+            displayName: firebaseUser.displayName || 'Coach',
+            onboardingCompleted: false
+          };
+          setDoc(profileRef, currentProfile, { merge: true })
+            .catch(e => logger.warn('[AUTH] Profile sync skipped:', e));
+        }
+
+        setProfile(currentProfile);
+
+        // 4. Subscribe to Org Settings
+        if (currentProfile.organizationId) {
+          if (unsubSettings) unsubSettings();
+          const orgRef = doc(db, 'organizations', currentProfile.organizationId);
+          unsubSettings = onSnapshot(orgRef, (orgSnap) => {
+            if (orgSnap.exists()) {
+              const orgData = orgSnap.data();
+              setOrgSettings({
+                name: orgData.name || 'Your Organization',
+                brandColor: orgData.brandColor || '#03dee2',
+                gradientId: orgData.gradientId || 'purple-indigo',
+                logoUrl: orgData.logoUrl,
+                modules: {
+                  parq: true,
+                  inbody: true,
+                  fitness: true,
+                  posture: true,
+                  overheadSquat: true,
+                  hinge: true,
+                  lunge: true,
+                  mobility: true,
+                  strength: true,
+                  lifestyle: true,
+                  ...(orgData.modules || {})
+                },
+                equipmentConfig: orgData.equipmentConfig,
+                onboardingCompletedAt: orgData.onboardingCompletedAt
+              } as OrgSettings);
+            }
+            setLoading(false);
+          }, (err) => {
+            logger.error('Settings snapshot error:', err.message);
+            setLoading(false);
+          });
+        } else {
+          setLoading(false);
+        }
+      }, (err) => {
+        logger.error('Profile snapshot error:', err.message);
+        setLoading(false);
+      });
     });
+
     return () => {
-      unsubscribe();
-      // Cleanup timeout if component unmounts
-      if (timeoutId) clearTimeout(timeoutId);
+      unsubscribeAuth();
+      if (unsubProfile) unsubProfile();
+      if (unsubSettings) unsubSettings();
     };
   }, []);
 

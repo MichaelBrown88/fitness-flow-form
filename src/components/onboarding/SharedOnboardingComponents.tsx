@@ -16,7 +16,7 @@ export const OptionCard = ({
 }: {
   selected: boolean;
   onClick: () => void;
-  icon?: any;
+  icon?: React.ElementType;
   title: string;
   subtitle?: string;
   children?: React.ReactNode;

@@ -17,6 +17,7 @@ import { getDb } from "@/services/firebase";
 import type { FormData } from "@/contexts/FormContext";
 import { sanitizeForFirestore } from "@/lib/utils/firebaseUtils";
 import { PostureAnalysisResult } from "@/lib/ai/postureAnalysis";
+import { logger } from "@/lib/utils/logger";
 
 export type FormValue =
   | string
@@ -116,8 +117,9 @@ export async function getCurrentAssessment(
     data.organizationId &&
     data.organizationId !== organizationId
   ) {
-    console.warn(
-      `[SECURITY] Organization ID mismatch for client ${clientName}`
+    logger.warn(
+      `Organization ID mismatch for client ${clientName}`,
+      'assessmentHistory:security'
     );
     return null;
   }
@@ -530,7 +532,7 @@ export async function reconstructAssessmentAtDate(
     const scores = computeScores(reconstructedData);
     reconstructedScore = scores.overall;
   } catch (e) {
-    console.warn("Could not recalculate score:", e);
+    logger.warn("Could not recalculate score", 'assessmentHistory', e);
   }
 
   return {

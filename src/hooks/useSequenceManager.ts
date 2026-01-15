@@ -4,6 +4,7 @@
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { logger } from '@/lib/utils/logger';
 
 interface UseSequenceManagerOptions {
   mode: 'posture' | 'inbody';
@@ -54,10 +55,10 @@ export function useSequenceManager({
 
   const startSequence = useCallback(
     (idx: number) => {
-      console.log('[SEQUENCE] startSequence called', { mode, idx, viewsLength: views.length });
+      logger.debug('startSequence called', 'useSequenceManager', { mode, idx, viewsLength: views.length });
       
       if (mode === 'inbody') {
-        console.log('[SEQUENCE] InBody mode - capturing immediately');
+        logger.debug('InBody mode - capturing immediately', 'useSequenceManager');
         onCaptureRef.current(idx);
         return;
       }
@@ -68,7 +69,7 @@ export function useSequenceManager({
       // Set the view index
       setViewIdx(idx);
       setIsSequenceActive(true);
-      console.log('[SEQUENCE] Sequence started for view', idx);
+      logger.debug('Sequence started for view', 'useSequenceManager', { idx });
 
       // Audio feedback for the view
       const viewNames = ['Front', 'Right Side', 'Back', 'Left Side'];
@@ -77,18 +78,18 @@ export function useSequenceManager({
       // Start countdown immediately (3 seconds)
       setCountdown(3);
       onAudioFeedback?.('3');
-      console.log('[SEQUENCE] Countdown started: 3');
+      logger.debug('Countdown started: 3', 'useSequenceManager');
 
       let count = 3;
       countdownIntervalRef.current = setInterval(() => {
         count -= 1;
-        console.log('[SEQUENCE] Countdown tick', count);
+        logger.debug('Countdown tick', 'useSequenceManager', { count });
         if (count > 0) {
           setCountdown(count);
           onAudioFeedback?.(count.toString());
         } else {
           // Countdown finished - capture!
-          console.log('[SEQUENCE] Countdown finished - capturing');
+          logger.debug('Countdown finished - capturing', 'useSequenceManager');
           setCountdown(null);
           if (countdownIntervalRef.current) {
             clearInterval(countdownIntervalRef.current);
@@ -97,13 +98,13 @@ export function useSequenceManager({
         
           // Capture the image
           onCaptureRef.current(idx).catch((err) => {
-            console.error('[SEQUENCE] Capture failed', err);
+            logger.error('Capture failed', 'useSequenceManager', err);
           });
         
           // Reset after capture
           setTimeout(() => {
             setIsSequenceActive(false);
-            console.log('[SEQUENCE] Sequence reset');
+            logger.debug('Sequence reset', 'useSequenceManager');
           }, 500);
         }
       }, 1000);
