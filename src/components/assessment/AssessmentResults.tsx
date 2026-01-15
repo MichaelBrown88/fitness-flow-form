@@ -30,9 +30,6 @@ interface AssessmentResultsProps {
   savingId: string | null;
   onStartNew: () => void;
   onShare: (view: 'client' | 'coach') => void;
-  onDownloadPdf: (view: 'client' | 'coach') => void;
-  onDownloadHtml: () => void;
-  onPrint: (view: 'client' | 'coach') => void;
   onCopyLink: (view: 'client' | 'coach') => void;
   onEmailLink: (view: 'client' | 'coach') => void;
   onWhatsAppShare: (view: 'client' | 'coach') => void;
@@ -48,9 +45,6 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
   savingId,
   onStartNew,
   onShare,
-  onDownloadPdf,
-  onDownloadHtml,
-  onPrint,
   onCopyLink,
   onEmailLink,
   onWhatsAppShare,
@@ -122,22 +116,6 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Tertiary: Export Options */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="lg" className="rounded-xl px-4 h-12" disabled={shareLoading}>
-                {shareLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                Export
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 rounded-xl">
-              <DropdownMenuItem onClick={() => onDownloadPdf(reportView)} className="py-3 text-sm font-medium">Download as PDF</DropdownMenuItem>
-              {reportView === 'client' && (
-                <DropdownMenuItem onClick={onDownloadHtml} className="py-3 text-sm font-medium">Download Interactive HTML</DropdownMenuItem>
-              )}
-              <DropdownMenuItem onClick={() => onPrint(reportView)} className="py-3 text-sm font-medium">Print Report</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
 
           {lastUpdatedAssessmentId && (
             <Button 

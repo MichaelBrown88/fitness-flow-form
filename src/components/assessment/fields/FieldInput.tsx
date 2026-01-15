@@ -9,6 +9,7 @@ interface FieldInputProps {
   localValue: FieldValue;
   setLocalValue: (val: FieldValue) => void;
   handleChange: (val: FieldValue) => void;
+  debouncedHandleChange: (val: FieldValue) => void;
 }
 
 export const FieldInput: React.FC<FieldInputProps> = ({
@@ -18,6 +19,7 @@ export const FieldInput: React.FC<FieldInputProps> = ({
   localValue,
   setLocalValue,
   handleChange,
+  debouncedHandleChange,
 }) => {
   return (
     <Input
@@ -26,7 +28,10 @@ export const FieldInput: React.FC<FieldInputProps> = ({
       type={type}
       placeholder={placeholder}
       value={(localValue as string) ?? ''}
-      onChange={(event) => setLocalValue(event.target.value)}
+      onChange={(event) => {
+        setLocalValue(event.target.value);
+        debouncedHandleChange(event.target.value);
+      }}
       onBlur={() => handleChange(localValue)}
       className="h-12 rounded-xl border-slate-200 focus:ring-primary"
     />

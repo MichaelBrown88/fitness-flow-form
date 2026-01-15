@@ -14,6 +14,7 @@ import { getChangeHistory } from '@/services/assessmentHistory';
 import { computeScores } from '@/lib/scoring';
 import { collection, query, orderBy, limit, onSnapshot, where, Timestamp, startAfter, getDocs, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { getDb } from '@/services/firebase';
+import { STORAGE_KEYS } from '@/constants/storageKeys';
 
 export type Analytics = {
   totalClients: number;
@@ -179,8 +180,10 @@ export function useDashboardData() {
     }
   }, [loading, user, profile, navigate]);
 
+  const isInitialLoadRef = useRef(true);
+
   useEffect(() => {
-    if (!user) return;
+    if (loading || !profile || !user) return;
 
     const assessmentsRef = collection(getDb(), 'coaches', user.uid, 'assessments');
     let q;
@@ -206,7 +209,9 @@ export function useDashboardData() {
     
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       try {
-        setLoadingData(true);
+        if (isInitialLoadRef.current) {
+          setLoadingData(true);
+        }
         const data: CoachAssessmentSummary[] = [];
         let lastDocument: QueryDocumentSnapshot<DocumentData> | null = null;
         
@@ -271,16 +276,22 @@ export function useDashboardData() {
         const analyticsData = await computeAnalytics(data, user.uid);
         setAnalytics(analyticsData);
       } finally {
+        isInitialLoadRef.current = false;
         setLoadingData(false);
       }
     }, (error) => {
       if (error.code === 'failed-precondition' && error.message.includes('index')) {
-        console.warn('Firestore index not ready, retrying with fallback query...');
-        unsubscribe();
+        console.warn('Firestore index not ready, retrying with fallback query:', error);
+        if (unsubscribeRef.current) {
+          unsubscribeRef.current(); // Unsubscribe from the initial query
+          unsubscribeRef.current = null;
+        }
         const fallbackQuery = query(assessmentsRef, orderBy('createdAt', 'desc'), limit(20));
         const fallbackUnsubscribe = onSnapshot(fallbackQuery, async (snapshot) => {
           try {
-            setLoadingData(true);
+            if (isInitialLoadRef.current) {
+              setLoadingData(true);
+            }
             const data: CoachAssessmentSummary[] = [];
             let lastDocument: QueryDocumentSnapshot<DocumentData> | null = null;
             
@@ -309,10 +320,15 @@ export function useDashboardData() {
             const analyticsData = await computeAnalytics(data, user.uid);
             setAnalytics(analyticsData);
           } finally {
+            isInitialLoadRef.current = false;
             setLoadingData(false);
           }
         });
         unsubscribeRef.current = fallbackUnsubscribe;
+        setLoadingData(false);
+      } else {
+        console.error('onSnapshot error:', error);
+        setLoadingData(false);
       }
     });
 
@@ -323,7 +339,7 @@ export function useDashboardData() {
         unsubscribeRef.current = null;
       }
     };
-  }, [user, profile?.organizationId, computeAnalytics]);
+  }, [user, profile, loading, computeAnalytics]);
 
   const clientGroups = useMemo(() => {
     const groups = new Map<string, CoachAssessmentSummary[]>();
@@ -408,18 +424,18 @@ export function useDashboardData() {
   const handleNewAssessmentForClient = async (clientName: string, category?: string) => {
     if (!user) return;
     if (category) {
-      sessionStorage.setItem('partialAssessment', JSON.stringify({ category, clientName }));
+      sessionStorage.setItem(STORAGE_KEYS.PARTIAL_ASSESSMENT, JSON.stringify({ category, clientName }));
     } else {
-      sessionStorage.removeItem('partialAssessment');
+      sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
     }
-    sessionStorage.removeItem('isDemoAssessment');
-    sessionStorage.removeItem('prefillClientData');
+    sessionStorage.removeItem(STORAGE_KEYS.IS_DEMO);
+    sessionStorage.removeItem(STORAGE_KEYS.PREFILL_CLIENT);
     try {
       const history = await getClientAssessments(user.uid, clientName, profile?.organizationId);
       if (history.length > 0) {
         const latest = await getCoachAssessment(user.uid, history[0].id);
         if (latest?.formData) {
-          sessionStorage.setItem('prefillClientData', JSON.stringify({
+          sessionStorage.setItem(STORAGE_KEYS.PREFILL_CLIENT, JSON.stringify({
             clientName: latest.formData.fullName,
             dateOfBirth: latest.formData.dateOfBirth,
             email: latest.formData.email,

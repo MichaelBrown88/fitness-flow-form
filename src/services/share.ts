@@ -9,7 +9,6 @@ type ShareView = 'client' | 'coach';
 
 export type ShareArtifacts = {
   shareUrl: string;
-  pdfUrl: string;
   whatsappText: string;
 };
 
@@ -33,27 +32,15 @@ export async function requestShareArtifacts(params: {
     formData,
     organizationId,
   });
-  
+
   // Generate the secure share URL using the token
   const shareUrl = `${CONFIG.APP.HOST}/r/${shareToken}`;
-  
-  // Get PDF URL from Cloud Function (if available)
-  let pdfUrl = '';
-  try {
-    const callable = httpsCallable(functions, CONFIG.AI.FUNCTIONS.REQUEST_REPORT_SHARE);
-    const result = await callable({ assessmentId, view });
-    const artifacts = result.data as ShareArtifacts;
-    pdfUrl = artifacts.pdfUrl || '';
-  } catch (err) {
-    console.warn('[SHARE] PDF generation not available:', err);
-  }
-  
+
   const clientName = formData.fullName || 'your client';
   const whatsappText = `Here is ${clientName}'s FitnessFlow assessment report:\n${shareUrl}`;
-  
+
   return {
     shareUrl,
-    pdfUrl,
     whatsappText,
   };
 }
@@ -62,10 +49,3 @@ export async function sendReportEmail(params: { assessmentId: string; view: Shar
   const callable = httpsCallable(functions, CONFIG.AI.FUNCTIONS.EMAIL_REPORT);
   await callable(params);
 }
-
-
-
-
-
-
-

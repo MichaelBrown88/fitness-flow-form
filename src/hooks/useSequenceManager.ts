@@ -76,17 +76,19 @@ export function useSequenceManager({
       onAudioFeedback?.(viewNames[idx] || views[idx]?.label || 'Next view');
 
       // Start countdown immediately (3 seconds)
+      const countRef = { current: 3 };
       setCountdown(3);
       onAudioFeedback?.('3');
       logger.debug('Countdown started: 3', 'useSequenceManager');
 
-      let count = 3;
       countdownIntervalRef.current = setInterval(() => {
-        count -= 1;
-        logger.debug('Countdown tick', 'useSequenceManager', { count });
-        if (count > 0) {
-          setCountdown(count);
-          onAudioFeedback?.(count.toString());
+        countRef.current -= 1;
+        const currentCount = countRef.current;
+        logger.debug('Countdown tick', 'useSequenceManager', { count: currentCount });
+        
+        if (currentCount > 0) {
+          setCountdown(currentCount);
+          onAudioFeedback?.(currentCount.toString());
         } else {
           // Countdown finished - capture!
           logger.debug('Countdown finished - capturing', 'useSequenceManager');
@@ -108,6 +110,7 @@ export function useSequenceManager({
           }, 500);
         }
       }, 1000);
+
     },
     [mode, views, onAudioFeedback, resetSequence, setViewIdx]
   );

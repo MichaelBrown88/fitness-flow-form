@@ -10,7 +10,8 @@ import { computeScores, buildRoadmap, type ScoreSummary, type RoadmapPhase } fro
 import { generateCoachPlan, generateBodyCompInterpretation } from '@/lib/recommendations';
 import { requestShareArtifacts, sendReportEmail, type ShareArtifacts } from '@/services/share';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Share2 } from 'lucide-react';
+import { Loader2, Share2, ChevronDown, Link as LinkIcon, Mail, MessageCircle } from 'lucide-react';
+import { STORAGE_KEYS } from '@/constants/storageKeys';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -96,6 +97,30 @@ const AssessmentReport = () => {
     }
   }, [formData, id, toast]);
 
+  const handleCopyLink = useCallback(async () => {
+    if (!id || !formData || !user) return;
+    try {
+      setShareLoading(true);
+      const artifacts = await requestShareArtifacts({
+        assessmentId: id,
+        view: 'client',
+        coachUid: user.uid,
+        formData,
+        organizationId: profile?.organizationId,
+      });
+      await navigator.clipboard.writeText(artifacts.shareUrl);
+      toast({
+        title: 'Live Link Copied',
+        description: 'Anyone with this link can view the interactive report.',
+      });
+    } catch (error) {
+      console.error('Copy link failed', error);
+      toast({ title: 'Copy failed', variant: 'destructive' });
+    } finally {
+      setShareLoading(false);
+    }
+  }, [id, formData, user, profile?.organizationId, toast]);
+
   const handleSystemShare = useCallback(async () => {
     if (!id || !formData || !user || typeof window === 'undefined') return;
     try {
@@ -109,59 +134,25 @@ const AssessmentReport = () => {
       });
       
       // Use Web Share API for native sharing (AirDrop, etc.)
-      // Note: navigator.share works on:
-      // - iOS Safari (mobile) - ✅ Full support including AirDrop
-      // - Android Chrome - ✅ Full support
-      // - Desktop browsers - ⚠️ Limited support (Chrome/Edge on Windows/Mac)
-      // - Localhost - ✅ Works for testing (HTTPS or localhost)
       if (navigator.share) {
         try {
           await navigator.share({
             title: `${formData.fullName || 'Client'}'s Fitness Report`,
             text: 'Here is your interactive fitness assessment results.',
-            url: artifacts.shareUrl, // iOS treats this as an AirDrop-able link
+            url: artifacts.shareUrl,
           });
           toast({
             title: 'Shared successfully',
             description: 'The report link has been shared.',
           });
         } catch (shareError) {
-          // User cancelled or share failed
           if ((shareError as Error).name !== 'AbortError') {
             console.error('Share failed:', shareError);
-            // Fallback to clipboard
-            try {
-              await navigator.clipboard.writeText(artifacts.shareUrl);
-              toast({
-                title: 'Link copied to clipboard',
-                description: 'Share was cancelled, but the link is in your clipboard.',
-              });
-            } catch (clipboardError) {
-              // Last resort: show the URL in a toast
-              toast({
-                title: 'Share URL',
-                description: artifacts.shareUrl,
-                duration: 10000,
-              });
-            }
           }
         }
       } else {
-        // Fallback for browsers without Web Share API: Copy to clipboard
-        try {
-          await navigator.clipboard.writeText(artifacts.shareUrl);
-          toast({
-            title: 'Link copied to clipboard',
-            description: 'Paste the link to share it. On mobile devices, you can use AirDrop by sharing this link.',
-          });
-        } catch (clipboardError) {
-          // Last resort: show the URL
-          toast({
-            title: 'Share URL',
-            description: artifacts.shareUrl,
-            duration: 10000,
-          });
-        }
+        // Fallback checks
+        handleCopyLink();
       }
     } catch (error) {
       console.error('System share failed', error);
@@ -173,7 +164,7 @@ const AssessmentReport = () => {
     } finally {
       setShareLoading(false);
     }
-  }, [id, formData, user, profile?.organizationId, toast]);
+  }, [id, formData, user, profile?.organizationId, toast, handleCopyLink]);
 
   const handleWhatsAppShare = useCallback(async () => {
     if (!id || !formData || !user || typeof window === 'undefined') return;
@@ -429,7 +420,7 @@ const AssessmentReport = () => {
   }
 
   const bodyComp = generateBodyCompInterpretation(formData, scores);
-  const highlightCategory = sessionStorage.getItem('highlightCategory') || undefined;
+  const highlightCategory = sessionStorage.getItem(STORAGE_KEYS.HIGHLIGHT_CATEGORY) || undefined;
 
   return (
     <ErrorBoundary>
@@ -456,15 +447,15 @@ const AssessmentReport = () => {
             onClick={() => {
               if (!id || !formData) return;
               // Store assessment data for editing
-              sessionStorage.setItem('editAssessmentData', JSON.stringify({
+              sessionStorage.setItem(STORAGE_KEYS.EDIT_ASSESSMENT, JSON.stringify({
                 assessmentId: id,
                 formData: formData,
                 clientName: formData.fullName,
               }));
               // Clear other assessment modes
-              sessionStorage.removeItem('partialAssessment');
-              sessionStorage.removeItem('prefillClientData');
-              sessionStorage.removeItem('isDemoAssessment');
+              sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
+              sessionStorage.removeItem(STORAGE_KEYS.PREFILL_CLIENT);
+              sessionStorage.removeItem(STORAGE_KEYS.IS_DEMO);
               navigate('/assessment');
             }}
           >
@@ -472,31 +463,53 @@ const AssessmentReport = () => {
           </Button>
           <Button onClick={() => {
             // Clear any partial assessment data to ensure full assessment
-            sessionStorage.removeItem('partialAssessment');
-            sessionStorage.removeItem('editAssessmentData');
+            sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
+            sessionStorage.removeItem(STORAGE_KEYS.EDIT_ASSESSMENT);
             navigate('/assessment');
           }}>
             New assessment
           </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" disabled={shareLoading}>
-                {shareLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Share2 className="mr-2 h-4 w-4" />}
-                Share
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 rounded-xl">
-              <DropdownMenuItem onClick={handleSystemShare} className="py-3 text-sm font-medium">
-                System Share
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleEmailLink} className="py-3 text-sm font-medium">
-                Email PDF Link
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleWhatsAppShare} className="py-3 text-sm font-medium">
-                WhatsApp Message
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex -space-x-px">
+            <Button
+              variant="outline"
+              className="rounded-r-none focus:z-10"
+              onClick={handleCopyLink}
+              disabled={shareLoading}
+            >
+              {shareLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <LinkIcon className="mr-2 h-4 w-4" />
+              )}
+              Share Live Link
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="rounded-l-none px-2 focus:z-10"
+                  disabled={shareLoading}
+                >
+                  <ChevronDown className="h-4 w-4" />
+                  <span className="sr-only">More share options</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 rounded-xl">
+                <DropdownMenuItem onClick={handleSystemShare} className="py-3 text-sm font-medium">
+                  <Share2 className="mr-2 h-4 w-4" />
+                  System Share
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleEmailLink} className="py-3 text-sm font-medium">
+                  <Mail className="mr-2 h-4 w-4" />
+                  Email Report Link
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleWhatsAppShare} className="py-3 text-sm font-medium">
+                  <MessageCircle className="mr-2 h-4 w-4" />
+                  WhatsApp Message
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       }
     >

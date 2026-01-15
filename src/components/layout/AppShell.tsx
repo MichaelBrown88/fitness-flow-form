@@ -21,6 +21,9 @@ export default function AppShell({
   variant = 'default',
   onMenuToggle,
   mode = 'coach',
+  // New opt-in branding props for public/unauthenticated views
+  publicLogoUrl,
+  publicOrgName,
 }: {
   title: string;
   subtitle?: string;
@@ -31,16 +34,18 @@ export default function AppShell({
   variant?: 'default' | 'full-width';
   onMenuToggle?: () => void;
   mode?: 'coach' | 'public';
+  publicLogoUrl?: string | null;
+  publicOrgName?: string;
 }) {
   const { user, loading, signOut, orgSettings, profile } = useAuth();
   const initials =
     user?.displayName?.split(' ').map((n) => n[0]).join('').toUpperCase() ||
     (user?.email ? user.email[0]?.toUpperCase() : 'C');
 
-  // Use organization logo if uploaded, otherwise use SaaS default (FitnessFlow)
-  const hasOrgLogo = orgSettings?.logoUrl && orgSettings.logoUrl.trim() !== '';
-  const logoUrl = hasOrgLogo ? orgSettings.logoUrl : null; // null means use SaaS default
-  const orgName = orgSettings?.name || 'Your Organization';
+  // Use public branding if provided (for unauthenticated routes), otherwise fallback to auth context
+  const hasOrgLogo = publicLogoUrl || (orgSettings?.logoUrl && orgSettings.logoUrl.trim() !== '');
+  const logoUrl = publicLogoUrl !== undefined ? publicLogoUrl : (hasOrgLogo ? orgSettings?.logoUrl : null);
+  const orgName = publicOrgName || orgSettings?.name || 'Your Organization';
 
   // Public mode: stripped-down layout for client reports
   if (mode === 'public') {

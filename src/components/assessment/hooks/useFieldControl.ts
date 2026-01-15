@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useFormContext, type FormData } from '@/contexts/FormContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { getOrgCoaches } from '@/services/coachManagement';
 import { getBodyFatRange } from '@/lib/utils/bodyRecomposition';
+import { safeParse } from '@/lib/utils/numbers';
 import type { PhaseField } from '@/types/assessment';
 
 export type FieldValue = string | number | string[] | null;
@@ -28,10 +29,11 @@ export function useFieldControl({ field }: UseFieldControlProps) {
   }>>([]);
   const [loadingCoaches, setLoadingCoaches] = useState(false);
 
+  const fieldValue = formData[field.id as keyof FormData];
   // Sync local state when global state changes
   useEffect(() => {
-    setLocalValue((formData[field.id as keyof FormData] as FieldValue) || '');
-  }, [formData, field.id]);
+    setLocalValue((fieldValue as FieldValue) || '');
+  }, [fieldValue, field.id]);
 
   // Load org coaches for assignedCoach field
   useEffect(() => {
@@ -100,8 +102,8 @@ export function useFieldControl({ field }: UseFieldControlProps) {
   const fieldOptions = useMemo(() => {
     const history = formData.trainingHistory || 'beginner';
     const gender = (formData.gender || 'male').toLowerCase() as 'male' | 'female';
-    const weightKg = parseFloat(formData.inbodyWeightKg || '0');
-    const bf = parseFloat(formData.inbodyBodyFatPct || '0');
+    const weightKg = safeParse(formData.inbodyWeightKg);
+    const bf = safeParse(formData.inbodyBodyFatPct);
 
     if (field.id === 'cardioTestSelected' && field.options) {
       const hasCardioEquipment = orgSettings?.equipmentConfig?.cardioEquipment?.enabled ?? false;
@@ -174,7 +176,7 @@ export function useFieldControl({ field }: UseFieldControlProps) {
     return ok;
   }, [field, formData]);
 
-  const handleChange = (value: FieldValue) => {
+  const handleChange = useCallback((value: FieldValue) => {
     const updates: Partial<FormData> = { [field.id]: value } as Partial<FormData>;
     
     if (field.id === 'postureInputMode' && value === 'manual') {
@@ -182,7 +184,7 @@ export function useFieldControl({ field }: UseFieldControlProps) {
     }
 
     if (field.id === 'goalLevelMuscle' && formData.trainingHistory === 'advanced') {
-      const muscleVal = parseFloat(value as string);
+      const muscleVal = safeParse(value as string);
       if (muscleVal >= 6) {
         toast({
           title: "Ambitious Goal Detected",
@@ -201,7 +203,29 @@ export function useFieldControl({ field }: UseFieldControlProps) {
     }
     
     updateFormData(updates);
-  };
+  }, [field.id, formData.trainingHistory, updateFormData, toast]);
+
+  // Debounced version for high-frequency inputs
+  const debouncedUpdateTimer = useRef<NodeJS.Timeout | null>(null);
+  
+  const debouncedHandleChange = useCallback((value: FieldValue) => {
+    if (debouncedUpdateTimer.current) {
+      clearTimeout(debouncedUpdateTimer.current);
+    }
+    
+    debouncedUpdateTimer.current = setTimeout(() => {
+      handleChange(value);
+    }, 500);
+  }, [handleChange]);
+
+  // Cleanup timer
+  useEffect(() => {
+    return () => {
+      if (debouncedUpdateTimer.current) {
+        clearTimeout(debouncedUpdateTimer.current);
+      }
+    };
+  }, []);
 
   return {
     localValue,
@@ -211,6 +235,7 @@ export function useFieldControl({ field }: UseFieldControlProps) {
     fieldOptions,
     shouldShow,
     handleChange,
+    debouncedHandleChange,
     orgSettings,
     formData,
   };

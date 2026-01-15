@@ -8,6 +8,7 @@ interface FieldTextAreaProps {
   localValue: FieldValue;
   setLocalValue: (val: FieldValue) => void;
   handleChange: (val: FieldValue) => void;
+  debouncedHandleChange: (val: FieldValue) => void;
 }
 
 export const FieldTextArea: React.FC<FieldTextAreaProps> = ({
@@ -16,6 +17,7 @@ export const FieldTextArea: React.FC<FieldTextAreaProps> = ({
   localValue,
   setLocalValue,
   handleChange,
+  debouncedHandleChange,
 }) => {
   return (
     <Textarea
@@ -23,7 +25,10 @@ export const FieldTextArea: React.FC<FieldTextAreaProps> = ({
       name={id}
       placeholder={placeholder}
       value={(localValue as string) ?? ''}
-      onChange={(event) => setLocalValue(event.target.value)}
+      onChange={(event) => {
+        setLocalValue(event.target.value);
+        debouncedHandleChange(event.target.value);
+      }}
       onBlur={() => handleChange(localValue)}
       rows={4}
       className="mt-2 rounded-xl border-slate-200 focus:ring-primary"

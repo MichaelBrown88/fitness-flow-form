@@ -4,6 +4,7 @@ import AppShell from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getAssessmentById, type AssessmentRecord } from '@/services/assessments';
+import { generateAssessmentResults } from '@/lib/assessmentLogic';
 import type { PriorityBand } from '@/lib/negativeOutcomes';
 
 const priorityStyles: Record<PriorityBand, string> = {
@@ -79,8 +80,11 @@ const Results = () => {
     })();
   }, [id]);
 
-  const computedResult = record?.computedResult;
   const input = record?.input;
+  const computedResult = useMemo(() => {
+    if (!input) return null;
+    return generateAssessmentResults(input);
+  }, [input]);
 
   const roadmapByPhase = useMemo(() => {
     if (!computedResult) {

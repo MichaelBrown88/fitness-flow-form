@@ -27,6 +27,7 @@ const PublicReportByToken = () => {
   const [scores, setScores] = useState<ScoreSummary | null>(null);
   const [roadmap, setRoadmap] = useState<RoadmapPhase[]>([]);
   const [plan, setPlan] = useState<import('@/lib/recommendations').CoachPlan | null>(null);
+  const [orgDetails, setOrgDetails] = useState<{ name: string; logoUrl?: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -40,12 +41,38 @@ const PublicReportByToken = () => {
     (async () => {
       try {
         setLoading(true);
+        console.log('[PublicReport] Fetching report for token:', token);
         const data = await getPublicReportByToken(token);
+        console.log('[PublicReport] Data received:', data ? 'Found' : 'Null');
         
         if (!data) {
+          console.error('[PublicReport] Report lookup failed for token:', token);
           setError('This report is no longer available or has expired.');
           setLoading(false);
           return;
+        }
+
+        // Set page title immediately for better UX
+        if (data.clientName) {
+          document.title = `${data.clientName}'s Fitness Report | FitnessFlow`;
+        }
+
+        // Fetch organization details for branding if organizationId is present
+        if (data.organizationId) {
+          try {
+            const { getOrgSettings } = await import('@/services/organizations');
+            const settings = await getOrgSettings(data.organizationId);
+            setOrgDetails({
+              name: settings.name,
+              logoUrl: settings.logoUrl,
+            });
+            // Update title with org name if available
+            if (settings.name && data.clientName) {
+              document.title = `${data.clientName}'s Fitness Report | ${settings.name}`;
+            }
+          } catch (orgErr) {
+            console.warn('[PublicReport] Failed to fetch organization branding:', orgErr);
+          }
         }
         
         // Try to fetch live data from the assessment if available
@@ -62,8 +89,7 @@ const PublicReportByToken = () => {
           }
         } catch (liveErr) {
           // If live fetch fails, use snapshot data (non-blocking)
-          const { logger } = await import('@/lib/utils/logger');
-          logger.warn('Failed to fetch live assessment data, using snapshot:', liveErr);
+          console.warn('Failed to fetch live assessment data, using snapshot:', liveErr);
         }
         
         setFormData(fd);
@@ -77,8 +103,7 @@ const PublicReportByToken = () => {
             setPlan(result);
           })
           .catch(async (e) => {
-            const { logger } = await import('@/lib/utils/logger');
-            logger.error('Error generating coach plan:', e);
+            console.error('Error generating coach plan:', e);
             // Continue without plan - report is still viewable
           });
       } catch (e) {
@@ -117,7 +142,12 @@ const PublicReportByToken = () => {
   // Wait for plan to load before showing report
   if (!plan) {
     return (
-      <AppShell title="Your fitness report" mode="public">
+      <AppShell 
+        title={`${formData.fullName}'s Report`} 
+        mode="public"
+        publicLogoUrl={orgDetails?.logoUrl}
+        publicOrgName={orgDetails?.name}
+      >
         <div className="flex flex-col items-center justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
           <p className="text-sm font-black uppercase tracking-widest text-slate-400">Generating Report...</p>
@@ -127,7 +157,12 @@ const PublicReportByToken = () => {
   }
 
   return (
-    <AppShell title="Your fitness report" mode="public">
+    <AppShell 
+      title={`${formData.fullName}'s Report`} 
+      mode="public"
+      publicLogoUrl={orgDetails?.logoUrl}
+      publicOrgName={orgDetails?.name}
+    >
       <div className="max-w-4xl mx-auto">
         <Suspense fallback={
           <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-slate-100">

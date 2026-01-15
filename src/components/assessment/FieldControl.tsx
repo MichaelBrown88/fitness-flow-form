@@ -41,6 +41,7 @@ export function FieldControl({
     fieldOptions,
     shouldShow,
     handleChange,
+    debouncedHandleChange,
     orgSettings,
     formData,
   } = useFieldControl({ field });
@@ -115,6 +116,7 @@ export function FieldControl({
             localValue={localValue}
             setLocalValue={setLocalValue}
             handleChange={handleChange}
+            debouncedHandleChange={debouncedHandleChange}
           />
         );
       case 'select':
@@ -162,6 +164,7 @@ export function FieldControl({
             localValue={localValue}
             setLocalValue={setLocalValue}
             handleChange={handleChange}
+            debouncedHandleChange={debouncedHandleChange}
           />
         );
     }

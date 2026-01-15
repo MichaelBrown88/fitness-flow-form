@@ -1,7 +1,8 @@
 import type { FormData } from '@/contexts/FormContext';
-import type { ScoreSummary } from './scoring';
+import type { ScoreCategory, ScoreSummary } from './scoring';
 import type { CoachPlan } from './recommendations';
 import { MOVEMENT_LOGIC_DB } from './clinical-data';
+import { safeParse } from './utils/numbers';
 
 export type ExercisePriority = 'critical' | 'goal-focused' | 'important' | 'minor';
 
@@ -58,11 +59,12 @@ export function prioritizeExercises(
   const importantIssues: string[] = [];
   const minorIssues: string[] = [];
 
-  const gender = (form.gender || '').toLowerCase();
-  const bf = parseFloat(form.inbodyBodyFatPct || '0');
-  const visceral = parseFloat(form.visceralFatLevel || '0');
-  const w = parseFloat(form.inbodyWeightKg || '0');
-  const h = (parseFloat(form.heightCm || '0') || 0) / 100;
+  // Data Extraction
+  const gender = (form.gender || 'male').toLowerCase();
+  const bf = safeParse(form.inbodyBodyFatPct);
+  const visceral = safeParse(form.visceralFatLevel);
+  const w = safeParse(form.inbodyWeightKg);
+  const h = (safeParse(form.heightCm)) / 100;
   const healthyMax = h > 0 ? 25 * h * h : 0;
   const bmi = h > 0 ? w / (h * h) : 0;
   
@@ -231,8 +233,8 @@ export function prioritizeExercises(
       goalExercises.push(isMuscle ? 'Muscle building' : 'Strength building');
       
       // Personalized based on InBody SMM
-      const smm = parseFloat(form.skeletalMuscleMassKg || '0');
-      const weight = parseFloat(form.inbodyWeightKg || '0');
+      const smm = safeParse(form.skeletalMuscleMassKg);
+      const weight = safeParse(form.inbodyWeightKg);
       const smmPct = weight > 0 ? (smm / weight) * 100 : 0;
       
       const repRange = isMuscle ? '8-12 reps' : '3-6 reps';
@@ -303,11 +305,11 @@ export function prioritizeExercises(
   // INBODY-SPECIFIC PERSONALIZATION (Asymmetry & Distribution)
   // ============================================
   
-  const ra = parseFloat(form.segmentalArmRightKg || '0');
-  const la = parseFloat(form.segmentalArmLeftKg || '0');
-  const rl = parseFloat(form.segmentalLegRightKg || '0');
-  const ll = parseFloat(form.segmentalLegLeftKg || '0');
-  const trunk = parseFloat(form.segmentalTrunkKg || '0');
+  const ra = safeParse(form.segmentalArmRightKg);
+  const la = safeParse(form.segmentalArmLeftKg);
+  const rl = safeParse(form.segmentalLegRightKg);
+  const ll = safeParse(form.segmentalLegLeftKg);
+  const trunk = safeParse(form.segmentalTrunkKg);
 
   // Asymmetry Detection (>10% difference)
   if (ra > 0 && la > 0) {

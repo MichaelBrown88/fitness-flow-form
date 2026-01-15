@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
+import { STORAGE_KEYS } from '@/constants/storageKeys';
 
 export interface FormData {
   /** Client Profile */
@@ -412,7 +413,7 @@ export const FormProvider = ({ children }: { children: ReactNode }) => {
   const getInitialData = (): FormData => {
     try {
       // Check for edit assessment data first (has priority)
-      const editData = sessionStorage.getItem('editAssessmentData');
+      const editData = sessionStorage.getItem(STORAGE_KEYS.EDIT_ASSESSMENT);
       if (editData) {
         const parsed = JSON.parse(editData);
         if (parsed.formData) {
@@ -422,10 +423,10 @@ export const FormProvider = ({ children }: { children: ReactNode }) => {
       }
       
       // Check for pre-filled client data from dashboard
-      const prefillData = sessionStorage.getItem('prefillClientData');
+      const prefillData = sessionStorage.getItem(STORAGE_KEYS.PREFILL_CLIENT);
       if (prefillData) {
         const data = JSON.parse(prefillData);
-        sessionStorage.removeItem('prefillClientData');
+        sessionStorage.removeItem(STORAGE_KEYS.PREFILL_CLIENT);
         return { ...initialFormData, ...data };
       }
     } catch (e) {

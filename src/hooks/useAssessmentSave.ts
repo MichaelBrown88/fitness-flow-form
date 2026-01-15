@@ -11,6 +11,7 @@ import { requestShareArtifacts, type ShareArtifacts } from '@/services/share';
 import type { FormData } from '@/contexts/FormContext';
 import type { ScoreSummary } from '@/lib/scoring';
 import { logger } from '@/lib/utils/logger';
+import { STORAGE_KEYS } from '@/constants/storageKeys';
 
 import type { UserProfile } from '@/types/auth';
 
@@ -58,7 +59,7 @@ export function useAssessmentSave({
       
       try {
         // Check for edit mode first
-        const editData = sessionStorage.getItem('editAssessmentData');
+        const editData = sessionStorage.getItem(STORAGE_KEYS.EDIT_ASSESSMENT);
         if (editData) {
           const parsed = JSON.parse(editData);
           if (parsed.assessmentId) {
@@ -71,9 +72,9 @@ export function useAssessmentSave({
               profile?.organizationId
             );
             assessmentId = parsed.assessmentId;
-            sessionStorage.removeItem('editAssessmentData');
+            sessionStorage.removeItem(STORAGE_KEYS.EDIT_ASSESSMENT);
             // Store the assessment ID for potential navigation
-            sessionStorage.setItem('lastUpdatedAssessmentId', assessmentId);
+            sessionStorage.setItem(STORAGE_KEYS.LAST_UPDATED_ID, assessmentId);
             toast({ 
               title: 'Assessment Updated', 
               description: `Assessment for ${clientName} has been updated without changing the original date.` 
@@ -84,7 +85,7 @@ export function useAssessmentSave({
           }
         }
         
-        const partialData = sessionStorage.getItem('partialAssessment');
+        const partialData = sessionStorage.getItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
         if (partialData) {
           const { category: cat, clientName: storedName } = JSON.parse(partialData);
           category = cat;
@@ -115,8 +116,8 @@ export function useAssessmentSave({
             await createOrUpdateClientProfile(user.uid, storedName || clientName, updateData, profile?.organizationId);
           }
           
-          sessionStorage.setItem('highlightCategory', category);
-          sessionStorage.removeItem('partialAssessment');
+          sessionStorage.setItem(STORAGE_KEYS.HIGHLIGHT_CATEGORY, category);
+          sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
         } else {
           assessmentId = await saveCoachAssessment(user.uid, user.email, formData, scores.overall, profile?.organizationId, profile);
         }
@@ -163,7 +164,7 @@ export function useAssessmentSave({
     } finally {
       setSaving(false);
     }
-  }, [user, saving, savingId, formData, scores.overall, profile?.organizationId, toast]);
+  }, [user, saving, savingId, formData, scores.overall, profile, toast]);
 
   // Auto-save when results phase is reached
   useEffect(() => {
@@ -201,84 +202,7 @@ export function useAssessmentSave({
     shareCacheRef.current[view] = artifacts;
     setShareCache(prev => ({ ...prev, [view]: artifacts }));
     return artifacts;
-  }, [savingId, user]);
-
-  const fetchReportPdfBlob = useCallback(async (view: 'client' | 'coach') => {
-    try {
-      if (user && savingId) {
-        const artifacts = await ensureShareArtifacts(view);
-        const response = await fetch(artifacts.pdfUrl);
-        if (response.ok) {
-          const blob = await response.blob();
-          return { artifacts, blob };
-        }
-      }
-    } catch (error) {
-      console.warn('Cloud Functions PDF error, fallback to client-side', error);
-    }
-    
-    const reportEl = document.querySelector('[data-pdf-target]') as HTMLElement;
-    if (!reportEl) throw new Error('Report element not found');
-    
-    const html2canvas = (await import('html2canvas')).default;
-    const jsPDF = (await import('jspdf')).default;
-    
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    const canvasEl = await html2canvas(reportEl, {
-      scale: 3,
-      useCORS: true,
-      logging: false,
-      backgroundColor: '#ffffff',
-      scrollX: 0,
-      scrollY: 0,
-      windowWidth: reportEl.scrollWidth,
-      windowHeight: reportEl.scrollHeight,
-      onclone: (clonedDoc) => {
-        const clonedElement = clonedDoc.querySelector(`[data-pdf-target]`) as HTMLElement;
-        if (clonedElement) {
-          clonedElement.style.backgroundColor = '#ffffff';
-          clonedElement.style.width = `${reportEl.scrollWidth}px`;
-          clonedElement.style.height = 'auto';
-          clonedElement.style.overflow = 'visible';
-          clonedDoc.querySelectorAll('button, .dropdown-menu').forEach((el) => {
-            (el as HTMLElement).style.display = 'none';
-          });
-        }
-      },
-    });
-    
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const margin = 10;
-    const contentWidth = pageWidth - (margin * 2);
-    const imgHeight = (canvasEl.height * contentWidth) / canvasEl.width;
-    const contentHeight = pageHeight - (margin * 2);
-    const totalPages = Math.ceil(imgHeight / contentHeight);
-    
-    for (let page = 0; page < totalPages; page++) {
-      if (page > 0) pdf.addPage();
-      const sourceY = (page * contentHeight / imgHeight) * canvasEl.height;
-      const remainingHeight = imgHeight - (page * contentHeight);
-      const pageImageHeight = Math.min(contentHeight, remainingHeight);
-      const sourceHeight = (pageImageHeight / imgHeight) * canvasEl.height;
-      
-      const pageCanvas = document.createElement('canvas');
-      pageCanvas.width = canvasEl.width;
-      pageCanvas.height = Math.ceil(sourceHeight);
-      const ctx = pageCanvas.getContext('2d');
-      if (ctx && sourceHeight > 0) {
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-        ctx.drawImage(canvasEl, 0, sourceY, canvasEl.width, sourceHeight, 0, 0, canvasEl.width, sourceHeight);
-        const pageImgData = pageCanvas.toDataURL('image/png', 1.0);
-        pdf.addImage(pageImgData, 'PNG', margin, margin, contentWidth, pageImageHeight);
-      }
-    }
-    
-    return { artifacts: null, blob: pdf.output('blob') };
-  }, [ensureShareArtifacts, user, savingId]);
+  }, [savingId, user, formData, profile]);
 
   return {
     saving,
@@ -288,7 +212,5 @@ export function useAssessmentSave({
     shareCache,
     handleSaveToDashboard,
     ensureShareArtifacts,
-    fetchReportPdfBlob,
   };
 }
-

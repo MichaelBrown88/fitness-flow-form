@@ -3,6 +3,7 @@ import { type ScoreSummary, buildRoadmap } from './scoring';
 import { prioritizeExercises, type ExerciseGroup, type SessionGroup } from './exercisePrioritization';
 import { MOVEMENT_LOGIC_DB } from './clinical-data';
 import { generateClientWorkout, generateCoachExerciseLists } from './recommendationGenerator';
+import { safeParse } from './utils/numbers';
 
 export type CoachPlan = {
   keyIssues: string[];
@@ -122,10 +123,10 @@ const EXERCISES = {
 
 export async function generateCoachPlan(form: FormData, scores: ScoreSummary): Promise<CoachPlan> {
   // Check if form has ANY data - if not, return empty plan
-  const hasAnyData = !!(form.inbodyWeightKg && parseFloat(form.inbodyWeightKg || '0') > 0) ||
-                     !!(form.pushupMaxReps && parseFloat(form.pushupMaxReps || '0') > 0) ||
-                     !!(form.pushupsOneMinuteReps && parseFloat(form.pushupsOneMinuteReps || '0') > 0) ||
-                     !!(form.cardioRestingHr && parseFloat(form.cardioRestingHr || '0') > 0) ||
+  const hasAnyData = !!(form.inbodyWeightKg && safeParse(form.inbodyWeightKg) > 0) ||
+                     !!(form.pushupMaxReps && safeParse(form.pushupMaxReps) > 0) ||
+                     !!(form.pushupsOneMinuteReps && safeParse(form.pushupsOneMinuteReps) > 0) ||
+                     !!(form.cardioRestingHr && safeParse(form.cardioRestingHr) > 0) ||
                      !!(form.postureAiResults || form.postureHeadOverall || form.postureShouldersOverall) ||
                      !!(form.sleepQuality || form.stressLevel || form.hydrationHabits || form.nutritionHabits);
   
@@ -171,7 +172,7 @@ export async function generateCoachPlan(form: FormData, scores: ScoreSummary): P
   // Convert numeric goal values to descriptive text
   let levelText = 'foundational';
   if (primaryGoalRaw === 'weight-loss') {
-    const pct = parseFloat(goalAmbition) || 15;
+    const pct = safeParse(goalAmbition) || 15;
     if (pct >= 20) levelText = 'elite-level';
     else if (pct >= 15) levelText = 'above-average';
     else if (pct >= 10) levelText = 'moderate';
@@ -183,13 +184,13 @@ export async function generateCoachPlan(form: FormData, scores: ScoreSummary): P
     else if (recompLevel === 'fit') levelText = 'moderate';
     else levelText = 'foundational';
   } else if (primaryGoalRaw === 'build-muscle') {
-    const kg = parseFloat(goalAmbition) || 6;
+    const kg = safeParse(goalAmbition) || 6;
     if (kg >= 8) levelText = 'elite-level';
     else if (kg >= 6) levelText = 'above-average';
     else if (kg >= 4) levelText = 'moderate';
     else levelText = 'foundational';
   } else if (primaryGoalRaw === 'build-strength') {
-    const pct = parseFloat(goalAmbition) || 30;
+    const pct = safeParse(goalAmbition) || 30;
     if (pct >= 40) levelText = 'elite-level';
     else if (pct >= 30) levelText = 'above-average';
     else if (pct >= 20) levelText = 'moderate';
@@ -203,16 +204,16 @@ export async function generateCoachPlan(form: FormData, scores: ScoreSummary): P
   }
   
   // Data Extraction for Narrative
-  const weight = parseFloat(form.inbodyWeightKg || '0');
+  const weight = safeParse(form.inbodyWeightKg);
   const gender = (form.gender || '').toLowerCase();
-  const bf = parseFloat(form.inbodyBodyFatPct || '0');
-  const visceral = parseFloat(form.visceralFatLevel || '0');
-  const smm = parseFloat(form.skeletalMuscleMassKg || '0');
-  const ra = parseFloat(form.segmentalArmRightKg || '0');
-  const la = parseFloat(form.segmentalArmLeftKg || '0');
-  const rl = parseFloat(form.segmentalLegRightKg || '0');
-  const ll = parseFloat(form.segmentalLegLeftKg || '0');
-  const trunk = parseFloat(form.segmentalTrunkKg || '0');
+  const bf = safeParse(form.inbodyBodyFatPct);
+  const visceral = safeParse(form.visceralFatLevel);
+  const smm = safeParse(form.skeletalMuscleMassKg);
+  const ra = safeParse(form.segmentalArmRightKg);
+  const la = safeParse(form.segmentalArmLeftKg);
+  const rl = safeParse(form.segmentalLegRightKg);
+  const ll = safeParse(form.segmentalLegLeftKg);
+  const trunk = safeParse(form.segmentalTrunkKg);
   
   // Check for Hisham MM Abdoh - custom considerations
   const clientName = (form.fullName || '').toLowerCase().trim();
@@ -394,8 +395,8 @@ export async function generateCoachPlan(form: FormData, scores: ScoreSummary): P
   const movementScore = scores.categories.find(c => c.id === 'movementQuality')?.score || 0;
   const lifestyleScore = scores.categories.find(c => c.id === 'lifestyle')?.score || 0;
 
-  const w = parseFloat(form.inbodyWeightKg || '0');
-  const h = (parseFloat(form.heightCm || '0') || 0) / 100;
+  const w = safeParse(form.inbodyWeightKg);
+  const h = safeParse(form.heightCm) / 100;
   const healthyMax = h > 0 ? 25 * h * h : 0;
 
   const roadmap = buildRoadmap(scores, form);
@@ -560,10 +561,10 @@ export async function generateCoachPlan(form: FormData, scores: ScoreSummary): P
   }
 
   // Segmental lean imbalance (arms/legs)
-  const armR = parseFloat(form.segmentalArmRightKg || '0');
-  const armL = parseFloat(form.segmentalArmLeftKg || '0');
-  const legR = parseFloat(form.segmentalLegRightKg || '0');
-  const legL = parseFloat(form.segmentalLegLeftKg || '0');
+  const armR = safeParse(form.segmentalArmRightKg);
+  const armL = safeParse(form.segmentalArmLeftKg);
+  const legR = safeParse(form.segmentalLegRightKg);
+  const legL = safeParse(form.segmentalLegLeftKg);
   const pct = (a: number, b: number) => {
     const hi = Math.max(a, b);
     const lo = Math.min(a, b);
@@ -611,8 +612,8 @@ export async function generateCoachPlan(form: FormData, scores: ScoreSummary): P
   }
   
   // Safety check: Abnormal Heart Rate Recovery (HRR < 12bpm)
-  const peakHr = parseFloat(form.cardioPeakHr || '0');
-  const recoveryHr = parseFloat(form.cardioPost1MinHr || '0');
+  const peakHr = safeParse(form.cardioPeakHr);
+  const recoveryHr = safeParse(form.cardioPost1MinHr);
   if (peakHr > 0 && recoveryHr > 0) {
     const hrr = peakHr - recoveryHr;
     if (hrr < 12) {
@@ -670,14 +671,14 @@ export async function generateCoachPlan(form: FormData, scores: ScoreSummary): P
 
 export function generateBodyCompInterpretation(form: FormData, scores?: ScoreSummary): BodyCompInterpretation | null {
   const gender = (form.gender || '').toLowerCase();
-  const weight = parseFloat(form.inbodyWeightKg || '0');
-  const bf = parseFloat(form.inbodyBodyFatPct || '0');
-  const smm = parseFloat(form.skeletalMuscleMassKg || '0');
-  const bfm = parseFloat(form.bodyFatMassKg || (weight > 0 && bf > 0 ? ((weight * bf) / 100).toFixed(1) : '0'));
-  const visceral = parseFloat(form.visceralFatLevel || '0');
-  const whr = parseFloat(form.waistHipRatio || '0');
-  let bmr = parseFloat(form.bmrKcal || '0');
-  const tbw = parseFloat(form.totalBodyWaterL || '0');
+  const weight = safeParse(form.inbodyWeightKg);
+  const bf = safeParse(form.inbodyBodyFatPct);
+  const smm = safeParse(form.skeletalMuscleMassKg);
+  const bfm = safeParse(form.bodyFatMassKg || (weight > 0 && bf > 0 ? ((weight * bf) / 100).toFixed(1) : '0'));
+  const visceral = safeParse(form.visceralFatLevel);
+  const whr = safeParse(form.waistHipRatio);
+  let bmr = safeParse(form.bmrKcal);
+  const tbw = safeParse(form.totalBodyWaterL);
   
   // Check if we have any actual body composition data
   const hasBodyCompData = weight > 0 || bf > 0 || smm > 0 || visceral > 0 || whr > 0 || bmr > 0 || tbw > 0;
@@ -709,11 +710,11 @@ export function generateBodyCompInterpretation(form: FormData, scores?: ScoreSum
   const maxWeeks = totalWeeks + 4;
 
   // Segmental kg
-  const armR = parseFloat(form.segmentalArmRightKg || '0');
-  const armL = parseFloat(form.segmentalArmLeftKg || '0');
-  const legR = parseFloat(form.segmentalLegRightKg || '0');
-  const legL = parseFloat(form.segmentalLegLeftKg || '0');
-  const trunkKg = parseFloat(form.segmentalTrunkKg || '0');
+  const armR = safeParse(form.segmentalArmRightKg);
+  const armL = safeParse(form.segmentalArmLeftKg);
+  const legR = safeParse(form.segmentalLegRightKg);
+  const legL = safeParse(form.segmentalLegLeftKg);
+  const trunkKg = safeParse(form.segmentalTrunkKg);
 
   // Flags
   const lowSmm = gender === 'male' ? smm > 0 && smm < 33 : gender === 'female' ? smm > 0 && smm < 24 : smm > 0 && smm < 28.5;
@@ -736,7 +737,7 @@ export function generateBodyCompInterpretation(form: FormData, scores?: ScoreSum
   const poorSleep = ['poor', 'fair'].includes((form.sleepQuality || '').toLowerCase());
   const highStress = ['high', 'very-high'].includes((form.stressLevel || '').toLowerCase());
   const lowHydration = ['poor', 'fair'].includes((form.hydrationHabits || '').toLowerCase());
-  const sedentary = parseFloat(form.sedentaryHours || '0') >= 8;
+  const sedentary = safeParse(form.sedentaryHours) >= 8;
   const recoveryFlags = (highVisceral || borderlineVisceral) && (poorSleep || highStress || lowHydration || sedentary);
 
   const healthPriority: string[] = [];
@@ -768,7 +769,7 @@ export function generateBodyCompInterpretation(form: FormData, scores?: ScoreSum
     bmr = 0;
   }
   if (!bmr && weight > 0) {
-    const heightCm = parseFloat(form.heightCm || '0');
+    const heightCm = safeParse(form.heightCm);
     // Estimate age from DOB if available
     let age = 0;
     if (form.dateOfBirth) {

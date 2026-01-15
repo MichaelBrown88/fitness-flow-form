@@ -1,4 +1,4 @@
-import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, serverTimestamp, setDoc, Timestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getDb, getStorage } from '@/services/firebase';
 import { sanitizeForFirestore } from '@/lib/utils/firebaseUtils';
@@ -57,7 +57,7 @@ export interface OrgSettings {
     lifestyle: boolean; // P7 - Lifestyle & habits questionnaire (section: 'lifestyle')
   };
   equipmentConfig: EquipmentConfig;
-  onboardingCompletedAt?: any; // Firestore Timestamp
+  onboardingCompletedAt?: Timestamp; // Firestore Timestamp
   // Platform admin controlled features
   demoAutoFillEnabled?: boolean; // Demo persona auto-fill (for affiliates/sales demos) - OFF by default
 }
@@ -184,30 +184,9 @@ export async function getOrgSettings(orgId: string): Promise<OrgSettings> {
     },
   };
   
-  // Check if migration is needed (old structure detected)
-  const hasOldTreadmillField = oldEquipmentConfig.treadmill !== undefined;
-  const hasMethodFields = 
-    oldBodyComp.method !== undefined ||
-    oldGripStrength.method !== undefined ||
-    oldEquipmentConfig.cardioEquipment?.method !== undefined;
-  const hasMissingEnabledField = oldBodyComp.enabled === undefined;
-  const needsMigration = hasOldTreadmillField || hasMethodFields || hasMissingEnabledField;
-  
-  if (needsMigration) {
-    // Migrate to new structure: overwrite entire equipmentConfig with clean structure
-    // This removes all old fields (method, treadmill, gradientId in wrong place, etc.)
-    // and replaces with only enabled fields for each equipment type
-    try {
-      await updateDoc(ref, {
-        equipmentConfig: cleanEquipmentConfig,
-        updatedAt: new Date(),
-      });
-      logger.info(`Migrated equipmentConfig for org ${orgId}: cleaned old structure (removed method fields, migrated treadmill→cardioEquipment)`, 'organizations');
-    } catch (error) {
-      logger.warn('Failed to migrate equipmentConfig structure', 'organizations', error);
-      // Continue with cleaned structure even if migration fails
-    }
-  }
+  // Migration is performed in-memory during every fetch.
+  // The automatic updateDoc call has been removed to ensure getOrgSettings is a pure read operation.
+  // Manual migration can still be triggered via migrateEquipmentConfig.
   
   // Return cleaned data structure
   return {

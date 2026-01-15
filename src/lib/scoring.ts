@@ -2,6 +2,7 @@ import type { FormData } from '@/contexts/FormContext';
 import { CONFIG } from '@/config';
 import { NORMATIVE_SCORING_DB, type NormativeBenchmark, MOVEMENT_LOGIC_DB, LIFESTYLE_FEEDBACK_DB, GOAL_TIMELINE_DB } from './clinical-data';
 import { convertGripStrength, calculateBodyFatFromMeasurements } from './utils/measurementConverters';
+import { safeParse } from './utils/numbers';
 
 export type ScoreDetail = {
   id: string;
@@ -54,7 +55,7 @@ function lookupNormativeScore(testName: string, gender: string, age: number, val
   // Find the correct age bracket
   const benchmark = benchmarks.find(b => {
     if (b.ageBracket.includes('+')) {
-      const minAge = parseInt(b.ageBracket.replace('+', ''));
+      const minAge = safeParse(b.ageBracket.replace('+', ''));
       return age >= minAge;
     }
     const [min, max] = b.ageBracket.split('-').map(Number);
@@ -113,23 +114,23 @@ export function calculateAge(dob: string): number {
  * Results are standardized so both methods produce comparable scores.
  */
 function scoreBodyComp(form: FormData, age: number, gender: string): ScoreCategory {
-  const weight = parseFloat(form.inbodyWeightKg || '0');
-  const height = parseFloat(form.heightCm || '0');
+  const weight = safeParse(form.inbodyWeightKg);
+  const height = safeParse(form.heightCm);
   const genderLower = (gender || 'male').toLowerCase() as 'male' | 'female';
   
   // Check if analyzer data exists
   const hasAnalyzerData = !!(form.inbodyBodyFatPct || form.skeletalMuscleMassKg || form.inbodyScore);
   
-  let bodyFat = parseFloat(form.inbodyBodyFatPct || '0');
-  let smm = parseFloat(form.skeletalMuscleMassKg || '0');
-  let whr = parseFloat(form.waistHipRatio || '0');
-  let visceral = parseFloat(form.visceralFatLevel || '0');
+  let bodyFat = safeParse(form.inbodyBodyFatPct);
+  let smm = safeParse(form.skeletalMuscleMassKg);
+  let whr = safeParse(form.waistHipRatio);
+  let visceral = safeParse(form.visceralFatLevel);
   
   // If no analyzer data, calculate from body measurements
   if (!hasAnalyzerData) {
-    const waistCm = parseFloat(form.waistCm || '0');
-    const neckCm = parseFloat(form.neckCm || '0');
-    const hipsCm = parseFloat(form.hipsCm || form.hipCm || '0');
+    const waistCm = safeParse(form.waistCm);
+    const neckCm = safeParse(form.neckCm);
+    const hipsCm = safeParse(form.hipsCm || form.hipCm);
     
     // Calculate body fat % from measurements (US Navy method)
     if (waistCm > 0 && neckCm > 0 && height > 0) {
@@ -161,11 +162,11 @@ function scoreBodyComp(form: FormData, age: number, gender: string): ScoreCatego
     // Estimate skeletal muscle mass from measurements and body fat %
     // Rough estimation based on arm, chest, thigh circumferences and body fat %
     if (smm === 0 && weight > 0 && bodyFat > 0) {
-      const armLeft = parseFloat(form.armLeftCm || '0');
-      const armRight = parseFloat(form.armRightCm || '0');
-      const chest = parseFloat(form.chestCm || '0');
-      const thighLeft = parseFloat(form.thighLeftCm || '0');
-      const thighRight = parseFloat(form.thighRightCm || '0');
+      const armLeft = safeParse(form.armLeftCm);
+      const armRight = safeParse(form.armRightCm);
+      const chest = safeParse(form.chestCm);
+      const thighLeft = safeParse(form.thighLeftCm);
+      const thighRight = safeParse(form.thighRightCm);
       
       // Average limb circumferences
       const avgArm = (armLeft + armRight) / 2;
@@ -189,11 +190,11 @@ function scoreBodyComp(form: FormData, age: number, gender: string): ScoreCatego
     }
   }
   
-  const bfm = parseFloat(form.bodyFatMassKg || (weight > 0 && bodyFat > 0 ? ((weight * bodyFat) / 100).toFixed(1) : '0'));
-  const bmr = parseFloat(form.bmrKcal || '0');
-  const inbodyScore = parseFloat(form.inbodyScore || '0');
-  const bmi = parseFloat(form.inbodyBmi || (weight > 0 && height > 0 ? (weight / ((height / 100) ** 2)).toFixed(1) : '0'));
-  const tbw = parseFloat(form.totalBodyWaterL || '0');
+  const bfm = safeParse(form.bodyFatMassKg || (weight > 0 && bodyFat > 0 ? ((weight * bodyFat) / 100).toFixed(1) : '0'));
+  const bmr = safeParse(form.bmrKcal);
+  const inbodyScore = safeParse(form.inbodyScore);
+  const bmi = safeParse(form.inbodyBmi || (weight > 0 && height > 0 ? (weight / ((height / 100) ** 2)).toFixed(1) : '0'));
+  const tbw = safeParse(form.totalBodyWaterL);
 
   // Standardized scoring (works the same whether data comes from analyzer or measurements)
   const bfScore = bodyFat > 0 ? clamp(100 - (bodyFat - CONFIG.SCORING.THRESHOLDS.BF_HEALTHY_MIN) * 3) : 0;
@@ -257,9 +258,9 @@ function scoreBodyComp(form: FormData, age: number, gender: string): ScoreCatego
 
 function scoreCardio(form: FormData, age: number, gender: string): ScoreCategory {
   const test = (form.cardioTestSelected || '').toLowerCase();
-  const rhr = parseFloat(form.cardioRestingHr || '0');
-  const peakHr = parseFloat(form.cardioPeakHr || '0');
-  const hr60 = parseFloat(form.cardioPost1MinHr || '0');
+  const rhr = safeParse(form.cardioRestingHr);
+  const peakHr = safeParse(form.cardioPeakHr);
+  const hr60 = safeParse(form.cardioPost1MinHr);
   
   // Check if cardio test was actually performed
   const hasTest = !!(form.cardioTestSelected && form.cardioTestSelected.trim() !== '');
@@ -384,9 +385,9 @@ function scoreCardio(form: FormData, age: number, gender: string): ScoreCategory
 }
 
 function scoreStrength(form: FormData, age: number, gender: string): ScoreCategory {
-  const pushups = parseFloat(form.pushupsOneMinuteReps || '0');
-  const squats = parseFloat(form.squatsOneMinuteReps || '0');
-  const plank = parseFloat(form.plankDurationSeconds || '0');
+  const pushups = safeParse(form.pushupsOneMinuteReps);
+  const squats = safeParse(form.squatsOneMinuteReps);
+  const plank = safeParse(form.plankDurationSeconds);
   
   // Check if fields were actually filled (not skipped)
   const hasPushups = !!(form.pushupsOneMinuteReps && form.pushupsOneMinuteReps.trim() !== '');
@@ -395,36 +396,36 @@ function scoreStrength(form: FormData, age: number, gender: string): ScoreCatego
   
   // Check if grip strength was tested (must have at least one non-zero value)
   // Also check alternative grip methods (deadhang, farmers walk, plate pinch)
-  const hasGripDynamometer = !!(form.gripLeftKg && form.gripLeftKg.trim() !== '' && parseFloat(form.gripLeftKg) > 0) || 
-                              !!(form.gripRightKg && form.gripRightKg.trim() !== '' && parseFloat(form.gripRightKg) > 0);
-  const hasGripDeadhang = !!(form.gripDeadhangSeconds && form.gripDeadhangSeconds.trim() !== '' && parseFloat(form.gripDeadhangSeconds) > 0);
+  const hasGripDynamometer = !!(form.gripLeftKg && form.gripLeftKg.trim() !== '' && safeParse(form.gripLeftKg) > 0) || 
+                              !!(form.gripRightKg && form.gripRightKg.trim() !== '' && safeParse(form.gripRightKg) > 0);
+  const hasGripDeadhang = !!(form.gripDeadhangSeconds && form.gripDeadhangSeconds.trim() !== '' && safeParse(form.gripDeadhangSeconds) > 0);
   const hasGripFarmersWalk = !!(form.gripFarmersWalkDistanceM && form.gripFarmersWalkDistanceM.trim() !== '') ||
                               !!(form.gripFarmersWalkTimeS && form.gripFarmersWalkTimeS.trim() !== '') ||
                               !!(form.gripFarmersWalkLoadKg && form.gripFarmersWalkLoadKg.trim() !== '');
-  const hasGripPlatePinch = !!(form.gripPlatePinchSeconds && form.gripPlatePinchSeconds.trim() !== '' && parseFloat(form.gripPlatePinchSeconds) > 0);
+  const hasGripPlatePinch = !!(form.gripPlatePinchSeconds && form.gripPlatePinchSeconds.trim() !== '' && safeParse(form.gripPlatePinchSeconds) > 0);
   const hasGrip = hasGripDynamometer || hasGripDeadhang || hasGripFarmersWalk || hasGripPlatePinch;
 
   // Calculate standardized grip strength (convert all methods to equivalent dynamometer kg)
   // This ensures all grip methods (dynamometer, deadhang, farmerswalk, platepinch) are scored consistently
   let gripAvg = 0;
   if (hasGrip) {
-    const bodyweightKg = parseFloat(form.inbodyWeightKg || '0');
+    const bodyweightKg = safeParse(form.inbodyWeightKg);
     const genderTyped = (gender || 'male').toLowerCase() as 'male' | 'female';
     
     if (hasGripDynamometer) {
       // Dynamometer: already in kg, just average left/right
-      const gripLeft = parseFloat(form.gripLeftKg || '0');
-      const gripRight = parseFloat(form.gripRightKg || '0');
+      const gripLeft = safeParse(form.gripLeftKg);
+      const gripRight = safeParse(form.gripRightKg);
       gripAvg = (gripLeft + gripRight) / 2;
     } else if (hasGripDeadhang) {
       // Dead hang: convert time (seconds) to equivalent dynamometer kg
-      const hangTime = parseFloat(form.gripDeadhangSeconds || '0');
+      const hangTime = safeParse(form.gripDeadhangSeconds);
       gripAvg = convertGripStrength(hangTime, 'deadhang', bodyweightKg, genderTyped);
     } else if (hasGripFarmersWalk) {
       // Farmer's walk: convert distance/time/load to equivalent dynamometer kg
-      const distance = parseFloat(form.gripFarmersWalkDistanceM || '0');
-      const time = parseFloat(form.gripFarmersWalkTimeS || '0');
-      const load = parseFloat(form.gripFarmersWalkLoadKg || '0');
+      const distance = safeParse(form.gripFarmersWalkDistanceM);
+      const time = safeParse(form.gripFarmersWalkTimeS);
+      const load = safeParse(form.gripFarmersWalkLoadKg);
       gripAvg = convertGripStrength(distance, 'farmerswalk', bodyweightKg, genderTyped, {
         loadPerHandKg: load,
         distanceMeters: distance,
@@ -433,7 +434,7 @@ function scoreStrength(form: FormData, age: number, gender: string): ScoreCatego
     } else if (hasGripPlatePinch) {
       // Plate pinch: time-based with standardized weight (10kg female, 15kg male)
       // Convert time to equivalent dynamometer kg using standardized weight
-      const pinchTime = parseFloat(form.gripPlatePinchSeconds || '0');
+      const pinchTime = safeParse(form.gripPlatePinchSeconds);
       const standardizedWeight = genderTyped === 'male' ? 15 : 10; // 15kg for male, 10kg for female
       // Use time-based conversion: longer hold = stronger grip
       // Formula: estimated grip strength ≈ standardized_weight × (1 + time_factor)
@@ -830,8 +831,8 @@ function scoreLifestyle(form: FormData, age: number, gender: string): ScoreCateg
   const stress = (form.stressLevel || '').toLowerCase();
   const hydration = (form.hydrationHabits || '').toLowerCase();
   const nutrition = (form.nutritionHabits || '').toLowerCase();
-  const steps = parseFloat(form.stepsPerDay || '0');
-  const sedentary = parseFloat(form.sedentaryHours || '0');
+  const steps = safeParse(form.stepsPerDay);
+  const sedentary = safeParse(form.sedentaryHours);
   
   // Check if ANY lifestyle data was entered
   const hasLifestyleData = !!(sleepQ || sleepC || stress || hydration || nutrition || steps > 0 || sedentary > 0);
@@ -1146,12 +1147,11 @@ export function buildRoadmap(scores: ScoreSummary, formData?: FormData): Roadmap
   // Calculate realistic timeframes based on actual findings
   const gender = (formData?.gender || 'any').toLowerCase();
   const age = calculateAge(formData?.dateOfBirth || '');
-
-  const weight = parseFloat(formData?.inbodyWeightKg || '0');
-  const bf = parseFloat(formData?.inbodyBodyFatPct || '0');
-  const smm = parseFloat(formData?.skeletalMuscleMassKg || '0');
-  const visceral = parseFloat(formData?.visceralFatLevel || '0');
-  const h = (parseFloat(formData?.heightCm || '0') || 0) / 100;
+  const weight = safeParse(formData?.inbodyWeightKg);
+  const bf = safeParse(formData?.inbodyBodyFatPct);
+  const smm = safeParse(formData?.skeletalMuscleMassKg);
+  const visceral = safeParse(formData?.visceralFatLevel);
+  const h = (safeParse(formData?.heightCm)) / 100;
   const bmi = h > 0 ? weight / (h * h) : 0;
   
   const goals = formData?.clientGoals || [];
@@ -1165,8 +1165,9 @@ export function buildRoadmap(scores: ScoreSummary, formData?: FormData): Roadmap
   const fatLossBenchmark = GOAL_TIMELINE_DB.find(b => 
     b.goalType === 'fat_loss' && 
     (b.gender === 'any' || b.gender === gender) &&
-    (b.ageBracket.includes('+') ? age >= parseInt(b.ageBracket) : 
-     age >= parseInt(b.ageBracket.split('-')[0]) && age <= parseInt(b.ageBracket.split('-')[1]))
+    (b.ageBracket.includes('+') ? age >= safeParse(b.ageBracket) : 
+     age >= safeParse(b.ageBracket.split('-')[0]) && age <= safeParse(b.ageBracket.split('-')[1]))
+
   );
 
   const isWeightLossGoal = goals.includes('weight-loss');
@@ -1175,13 +1176,13 @@ export function buildRoadmap(scores: ScoreSummary, formData?: FormData): Roadmap
   if (weight > 0 && isWeightLossGoal) {
     const weightLossGoal = formData?.goalLevelWeightLoss || '15';
     if (weightLossGoal.includes('kg')) {
-      weightToLose = parseFloat(weightLossGoal.replace('kg', '')) || 5;
+      weightToLose = safeParse(weightLossGoal.replace('kg', '')) || 5;
     } else {
-      const weightLossPct = parseFloat(weightLossGoal) || 15;
+      const weightLossPct = safeParse(weightLossGoal) || 15;
       weightToLose = (weight * weightLossPct) / 100;
     }
     
-    const maxWeeklyRatePct = parseFloat(fatLossBenchmark?.maxWeeklyRate || '1') / 100;
+    const maxWeeklyRatePct = safeParse(fatLossBenchmark?.maxWeeklyRate || '1') / 100;
       const weeklyLossKg = weight * maxWeeklyRatePct;
       fatLossWeeks = Math.ceil(weightToLose / (weeklyLossKg || 0.5));
   }
@@ -1193,13 +1194,13 @@ export function buildRoadmap(scores: ScoreSummary, formData?: FormData): Roadmap
   const muscleBenchmark = GOAL_TIMELINE_DB.find(b => 
     b.goalType === 'muscle_gain' && 
     (b.gender === 'any' || b.gender === gender) &&
-    (b.ageBracket.includes('+') ? age >= parseInt(b.ageBracket) : 
-     age >= parseInt(b.ageBracket.split('-')[0]) && age <= parseInt(b.ageBracket.split('-')[1]))
+    (b.ageBracket.includes('+') ? age >= safeParse(b.ageBracket) : 
+     age >= safeParse(b.ageBracket.split('-')[0]) && age <= safeParse(b.ageBracket.split('-')[1]))
   );
 
   if (smm > 0 && isMuscleGoal) {
     const muscleGainGoal = formData?.goalLevelMuscle || '6';
-    muscleToGain = parseFloat(muscleGainGoal) || 2;
+    muscleToGain = safeParse(muscleGainGoal) || 2;
     
     // Rate based on training history
     const history = formData?.trainingHistory || 'beginner';

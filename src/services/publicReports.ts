@@ -99,25 +99,35 @@ export async function publishPublicReport(params: {
  */
 export async function getPublicReportByToken(token: string): Promise<PublicReportDoc | null> {
   const ref = doc(getDb(), collectionName, token);
-  const snapshot = await getDoc(ref);
-  if (!snapshot.exists()) return null;
+  try {
+    const snapshot = await getDoc(ref);
+    if (!snapshot.exists()) {
+      console.warn(`[getPublicReportByToken] Document does not exist: ${token}`);
+      return null;
+    }
   
-  const data = snapshot.data() as Omit<PublicReportDoc, 'shareToken'>;
+    const data = snapshot.data() as Omit<PublicReportDoc, 'shareToken'>;
   
-  // Check if report is expired
-  if (data.expiresAt && data.expiresAt.toMillis() < Date.now()) {
-    return null; // Report has expired
+    // Check if report is expired
+    if (data.expiresAt && data.expiresAt.toMillis() < Date.now()) {
+      console.warn(`[getPublicReportByToken] Report expired: ${token}`);
+      return null; // Report has expired
+    }
+  
+    // Check visibility
+    if (data.visibility !== 'public') {
+      console.warn(`[getPublicReportByToken] Report not public: ${data.visibility}`);
+      return null; // Report is not public
+    }
+    
+    return {
+      shareToken: token,
+      ...data,
+    } as PublicReportDoc;
+  } catch (err) {
+    console.error(`[getPublicReportByToken] Error fetching doc:`, err);
+    throw err;
   }
-  
-  // Check visibility
-  if (data.visibility !== 'public') {
-    return null; // Report is not public
-  }
-  
-  return {
-    shareToken: token,
-    ...data,
-  } as PublicReportDoc;
 }
 
 /**

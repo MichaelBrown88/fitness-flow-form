@@ -158,7 +158,6 @@ export const PhaseFormContent = ({
     setShareLoading,
     handleSaveToDashboard,
     ensureShareArtifacts,
-    fetchReportPdfBlob,
   } = saveHook;
 
   const cameraHook = useCameraHandler({
@@ -239,27 +238,6 @@ export const PhaseFormContent = ({
   }, [formData]);
 
 
-  const handlePrint = useCallback(async (view: 'client' | 'coach') => {
-    try {
-      setShareLoading(true);
-      const { blob } = await fetchReportPdfBlob(view);
-      const blobUrl = URL.createObjectURL(blob);
-      const printWindow = window.open(blobUrl, '_blank');
-      if (printWindow) {
-        printWindow.addEventListener('load', () => {
-          printWindow.focus();
-          printWindow.print();
-        }, { once: true });
-      }
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
-    } catch (error) {
-      console.error('Print failed', error);
-      toast({ title: 'Print failed', variant: 'destructive' });
-    } finally {
-      setShareLoading(false);
-    }
-  }, [fetchReportPdfBlob, toast, setShareLoading]);
-
   const handleShare = useCallback(async (view: 'client' | 'coach') => {
     try {
       setShareLoading(true);
@@ -328,46 +306,6 @@ export const PhaseFormContent = ({
     }
   }, [ensureShareArtifacts, toast, setShareLoading]);
 
-  const handleDownloadPdf = useCallback(async (view: 'client' | 'coach') => {
-    const safeName = (formData.fullName || 'report').toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    try {
-      setShareLoading(true);
-      const { blob } = await fetchReportPdfBlob(view);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${safeName}-${view}.pdf`;
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
-      toast({ title: 'PDF downloaded' });
-    } catch (error) {
-      toast({ title: 'Download failed', variant: 'destructive' });
-    } finally {
-      setShareLoading(false);
-    }
-  }, [fetchReportPdfBlob, formData.fullName, toast, setShareLoading]);
-
-  const handleDownloadInteractiveHtml = useCallback(async () => {
-    try {
-      setShareLoading(true);
-      const { generateBodyCompInterpretation } = await import('@/lib/recommendations');
-      const htmlBlob = await generateInteractiveHtml({
-        formData, scores, roadmap, bodyComp: generateBodyCompInterpretation(formData, scores) || undefined, view: 'client',
-      });
-      const url = URL.createObjectURL(htmlBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${(formData.fullName || 'report').toLowerCase()}-interactive.html`;
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
-      toast({ title: 'HTML downloaded' });
-    } catch (error) {
-      console.error('HTML download failed', error);
-      toast({ title: 'Download failed', variant: 'destructive' });
-    } finally {
-      setShareLoading(false);
-    }
-  }, [formData, scores, roadmap, toast, setShareLoading]);
 
 
   const isIntakeCompleted = useCallback(() => {
@@ -678,13 +616,6 @@ export const PhaseFormContent = ({
                   onStartNew={handleStartNewAssessment}
                   onShare={(view) => {
                     handleShare(view);
-                  }}
-                  onDownloadPdf={(view) => {
-                    handleDownloadPdf(view);
-                  }}
-                  onDownloadHtml={handleDownloadInteractiveHtml}
-                  onPrint={(view) => {
-                    handlePrint(view);
                   }}
                   onCopyLink={(view) => {
                     handleCopyLink(view);
