@@ -1,55 +1,54 @@
 # Project Rules & Best Practices
 
 ## Tech Stack
-- Frontend: React + Vite + Tailwind CSS + shadcn/ui
-- Backend: Firebase (Firestore, Auth, Functions)
-- Tools: MCP Servers (StackHawk, Context7, Tavily, Sequential Thinking)
-- Icons: Lucide React
+
+- **Frontend**: React + Vite + Tailwind CSS + shadcn/ui
+- **Backend**: Firebase (Firestore, Auth, Functions)
+- **Tools**: MCP Servers (StackHawk, Context7, Tavily, Sequential Thinking)
+- **Icons**: Lucide React
 
 ## Strategic Planning & "Anti-Bloat" Protocol (CRITICAL)
-1. **The "Right Tool" Check:** Before implementing ANY feature using an AI API (OpenAI/Gemini), you MUST evaluate if a specialized open-source library can do it better/cheaper.
-   - *Example:* Do not use AI for image alignment/landmarks; suggest `mediapipe` or `face-api.js`.
-2. **Pushback Policy:** If I ask for a solution that is inefficient, fragile, or introduces unnecessary AI cost, you MUST pause and warn me.
-3. **Unknown Unknowns:** Protect me from my own ignorance. If my approach violates standard architecture patterns or security best practices, explicitly highlight the risk before writing code.
 
-## Performance & Efficiency Protocol (NEW & CRITICAL)
-1. **No Global State for High-Frequency Inputs:**
-   - **Rule:** Do NOT use React Context for form fields where the user types (e.g., `input`, `textarea`).
-   - **Solution:** Use **Uncontrolled Components** via `react-hook-form` or strictly local `useState`. Context triggers app-wide re-renders on every keystroke.
-2. **Lazy Load Large Assets:**
-   - **Rule:** Large static JSON/TS files (e.g., `exerciseDatabase.ts`, `clinical-data.ts`) or heavy libraries (`jspdf`, `mediapipe`) MUST NOT be imported at the top level.
-   - **Solution:** Use **Dynamic Imports** (`const x = await import(...)`) inside the function that needs them.
-3. **Scalable Database Queries:**
-   - **Rule:** Never write a Firestore query for a list view without a `limit()`.
-   - **Solution:** Always implement **Cursor-Based Pagination** (Load More) for lists that could exceed 20 items (e.g., Dashboards, Logs).
+- **The "Right Tool" Check**: Before implementing ANY feature using an AI API, you MUST evaluate if a specialized open-source library can do it better/cheaper.
+  - _Example_: Do not use AI for image alignment; suggest mediapipe or face-api.js.
+- **Pushback Policy**: If I ask for a solution that is inefficient, fragile, or introduces unnecessary AI cost, you MUST pause and warn me.
+- **Unknown Unknowns**: Protect me from my own ignorance. If my approach violates standard architecture patterns or security best practices, explicitly highlight the risk before writing code.
+
+## Architecture & Logic Isolation (NEW)
+
+- **Logic/UI Separation**: Components should primarily handle rendering. Heavy logic, data fetching, and side effects MUST be extracted into Custom Hooks (e.g., `useAssessmentLogic`).
+  - _Red Flag_: If a component has more `useEffect` logic than JSX, it needs refactoring.
+- **Public View Isolation (Air-Gap)**: NEVER render "Coach/Admin" components in a public route by hiding features with flags. Create dedicated "Viewer" components (e.g., `PublicReportViewer`) that strictly consume public-safe data.
+
+## Performance & Efficiency Protocol
+
+- **No Global State for High-Frequency Inputs**:
+  - **Rule**: Do NOT use Context directly on `onChange` for inputs.
+  - **Solution**: Use Debounced Local State (SmartInput pattern) or react-hook-form. Sync to global state only on `onBlur` or after a delay.
+- **Lazy Load Large Assets**:
+  - **Rule**: Heavy libraries (jspdf, mediapipe, html2canvas) and large static datasets MUST use Dynamic Imports (`await import(...)`) inside the function that needs them.
+- **Scalable Database Queries**:
+  - **Rule**: Never write a Firestore query for a list view without a `limit()`.
+  - **Solution**: Always implement Cursor-Based Pagination for lists > 20 items.
 
 ## Code Quality Standards
-1. **No "Vibe Coding" artifacts:** Do not leave `console.log`, commented-out code, or `TODO` comments in final output.
-2. **Strict Typing:** Prefer clear variable names over comments. Avoid `any` types.
-3. **Small Components:** If a component exceeds 150 lines, suggest breaking it into smaller sub-components.
-4. **Functional Approach:** Use functional components and Hooks. Avoid class components.
-5. **No Hardcoding:**
-   - Colors -> Use Tailwind classes or CSS variables.
-   - Strings -> Use constants or config files.
-   - Secrets -> Use `import.meta.env`.
 
-## UI Library (shadcn/ui)
-1. **Prefer shadcn components:** Always check `@/components/ui` first.
-2. **Importing:** Import from `@/components/ui/...`.
+1. **No "Vibe Coding" artifacts**: No `console.log`, commented-out code, or `TODO` comments in final output.
+2. **Strict Typing**: Avoid `any`. Use `unknown` or specific interfaces. Use `safeParse` helpers for math/logic to prevent `NaN` crashes.
+3. **Small Components**: If a component exceeds 150 lines, break it into sub-components.
+4. **Functional Approach**: Use functional components and Hooks only.
+5. **Zero Magic Strings**: All keys/paths must be defined in `@/constants` (e.g., `STORAGE_KEYS`, `ROUTES`).
+6. **No Hardcoding**:
+   - Colors -> Tailwind classes/CSS variables.
+   - Secrets -> `import.meta.env`.
 
-## MCP Tool Usage
-1. **Context7:** ALWAYS fetch latest docs for complex libraries before coding.
-2. **Tavily:** Use for research/real-world data.
-3. **StackHawk:** Scan for vulnerabilities.
-4. **Sequential Thinking:** Use for complex architectural planning.
+## SaaS Readiness & Security
 
-## SaaS Readiness
-1. **Multi-tenancy:** Always assume data belongs to an `organizationId`.
-2. **Security:** Never write client-side logic that should be server-side.
+- **Multi-tenancy**: Always verify data belongs to the correct `organizationId`.
+- **Server-Side Security**: Never perform sensitive logic (e.g., PDF generation, emails) client-side if it exposes secrets. Use Cloud Functions.
+- **Data Safety**: Never trust user input in calculations. Use helper functions to sanitize numbers before math operations.
 
 ## Connectivity & Services
-1. **Firebase:** NEVER initialize Firebase in a component. ALWAYS import `db` or `auth` from `@/services/firebase`.
-2. **External APIs:**
-   - Use the pre-configured Axios instance in `@/services/api` for HTTP requests.
-   - Do not use raw `fetch` in components; use a service function (e.g., `userService.getUser()`) that calls the API.
-   - Always type the response data if possible.
+
+- **Firebase**: NEVER initialize Firebase in a component. Import `db` or `auth` from `@/services/firebase`.
+- **External APIs**: Use the pre-configured Axios instance in `@/services/api`. Do not use raw `fetch` in components.
