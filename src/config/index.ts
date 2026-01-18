@@ -35,7 +35,7 @@ export const CONFIG = {
     },
     // Gemini AI Settings
     GEMINI: {
-      MODEL_NAME: "gemini-2.0-flash",
+      MODEL_NAME: "gemini-2.5-flash", // Stable Gemini 2.5 Flash (gemini-3-flash-preview requires special access - use gemini-2.5-flash for production)
       BACKEND: "VertexAIBackend", // Internal Firebase AI backend
     },
     // Firebase Cloud Functions

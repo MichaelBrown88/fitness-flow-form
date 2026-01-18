@@ -327,7 +327,7 @@ function drawDeviations(
     }
   } else {
     // ============================================
-    // SIDE VIEW DEVIATIONS - Clean angle indicators
+    // SIDE VIEW DEVIATIONS - Simplified, essential only
     // ============================================
     
     const rawLandmarks = analysis.landmarks?.raw;
@@ -337,8 +337,6 @@ function drawDeviations(
     let earY: number | null = null;
     let shoulderLandmarkX: number | null = null;
     let shoulderLandmarkY: number | null = null;
-    let hipLandmarkX: number | null = null;
-    let hipLandmarkY: number | null = null;
     
     if (rawLandmarks && rawLandmarks.length > 24) {
       // Ear: 7 = Left, 8 = Right
@@ -354,8 +352,16 @@ function drawDeviations(
         shoulderLandmarkX = shoulderLandmark.x * ctx.canvas.width;
         shoulderLandmarkY = shoulderLandmark.y * ctx.canvas.height;
       }
-      
-      // Hip: 23 = Left, 24 = Right
+    }
+    
+    // =====================================================
+    // SIMPLIFIED - Essential deviations only
+    // =====================================================
+    
+    // Get hip landmarks for pelvic tilt
+    let hipLandmarkX: number | null = null;
+    let hipLandmarkY: number | null = null;
+    if (rawLandmarks && rawLandmarks.length > 24) {
       const hipLandmark = view === 'side-left' ? rawLandmarks[23] : rawLandmarks[24];
       if (hipLandmark?.x !== undefined && hipLandmark?.y !== undefined) {
         hipLandmarkX = hipLandmark.x * ctx.canvas.width;
@@ -363,36 +369,25 @@ function drawDeviations(
       }
     }
     
-    // =====================================================
-    // CLEAN DEVIATION LINES - Simple lines and arcs only
-    // =====================================================
-    
     // -----------------------------------------
-    // 1. FORWARD HEAD POSTURE - Diagonal line from plumb to ear
+    // 1. FORWARD HEAD POSTURE - Straight horizontal line from plumb to ear
     // -----------------------------------------
     const fhpStatus = analysis.forward_head?.status;
     const hasForwardHead = fhpStatus && fhpStatus !== 'Neutral';
     
     if (hasForwardHead) {
-      // Determine ear position - use MediaPipe if available, otherwise estimate
+      // Use MediaPipe ear position if available, otherwise estimate
       let targetEarX = earX;
       let targetEarY = earY;
       
-      // If ear not detected, estimate based on shoulder position
       if (targetEarX === null || targetEarY === null) {
-        // Estimate ear position: above and forward of shoulder
-        const estimatedForward = facingDir * 60; // 60px forward
+        // Estimate: forward and above shoulder level
+        const estimatedForward = facingDir * 50;
         targetEarX = (shoulderLandmarkX || centerX) + estimatedForward;
-        targetEarY = shoulderY - 120; // Above shoulder
+        targetEarY = shoulderY - 100;
       }
       
-      // Main diagonal line from shoulder-level on plumb to ear position
-      ctx.beginPath();
-      ctx.moveTo(centerX, shoulderY);
-      ctx.lineTo(targetEarX, targetEarY);
-      ctx.stroke();
-      
-      // Horizontal line showing forward displacement
+      // Straight horizontal line showing forward displacement
       ctx.beginPath();
       ctx.moveTo(centerX, targetEarY);
       ctx.lineTo(targetEarX, targetEarY);
@@ -400,7 +395,7 @@ function drawDeviations(
     }
 
     // -----------------------------------------
-    // 2. ROUNDED SHOULDERS - Horizontal line from plumb to shoulder
+    // 2. SHOULDER ROUNDING/FORWARD POSITION - Straight horizontal line from plumb to shoulder
     // -----------------------------------------
     const shoulderStatus = analysis.shoulder_alignment?.status;
     const isRoundedShoulders = analysis.shoulder_alignment?.rounded_forward || 
@@ -408,7 +403,7 @@ function drawDeviations(
                                (analysis.shoulder_alignment?.forward_position_cm || 0) > 0;
     
     if (isRoundedShoulders && shoulderLandmarkX !== null && shoulderLandmarkY !== null) {
-      // Horizontal line from plumb to actual shoulder position
+      // Straight horizontal line from plumb to actual shoulder position
       ctx.beginPath();
       ctx.moveTo(centerX, shoulderLandmarkY);
       ctx.lineTo(shoulderLandmarkX, shoulderLandmarkY);
@@ -416,102 +411,31 @@ function drawDeviations(
     }
 
     // -----------------------------------------
-    // 3. KYPHOSIS - Arc on upper back (BEHIND the shoulder)
-    // -----------------------------------------
-    const kyphosisStatus = analysis.kyphosis?.status;
-    if (kyphosisStatus && kyphosisStatus !== 'Normal') {
-      // Position arc BEHIND the body (opposite to facing direction)
-      // Use shoulder landmark as reference point
-      const shoulderX = shoulderLandmarkX || centerX;
-      
-      // Offset BEHIND the shoulder (opposite to facing direction)
-      // facingDir = -1 (facing left) → offset to the RIGHT (+)
-      // facingDir = +1 (facing right) → offset to the LEFT (-)
-      const behindOffset = -facingDir * 40;
-      const arcCenterX = shoulderX + behindOffset;
-      const arcCenterY = shoulderY + 60;
-      
-      const arcRadius = kyphosisStatus === 'Severe' ? 60 : kyphosisStatus === 'Moderate' ? 50 : 40;
-      
-      ctx.beginPath();
-      // Draw arc that curves BACKWARD (shows the kyphotic bulge)
-      // For left-facing: arc bulges RIGHT (backward)
-      // For right-facing: arc bulges LEFT (backward)
-      if (facingDir === -1) {
-        // Facing left: draw arc that curves to the right (backward)
-        ctx.arc(arcCenterX, arcCenterY, arcRadius, Math.PI * 0.7, Math.PI * 1.3, false);
-      } else {
-        // Facing right: draw arc that curves to the left (backward)
-        ctx.arc(arcCenterX, arcCenterY, arcRadius, -Math.PI * 0.3, Math.PI * 0.3, false);
-      }
-      ctx.stroke();
-    }
-
-    // -----------------------------------------
-    // 4. LORDOSIS - Arc on lower back
-    // -----------------------------------------
-    const lordosisStatus = analysis.lordosis?.status;
-    if (lordosisStatus && lordosisStatus !== 'Normal') {
-      const backOffsetX = -facingDir * 40;
-      const arcCenterY = hipY - 50;
-      const arcRadius = lordosisStatus === 'Severe' ? 50 : lordosisStatus === 'Moderate' ? 40 : 30;
-      
-      ctx.beginPath();
-      // Arc opens toward the front (in facing direction) showing inward curve
-      const startAngle = facingDir === 1 ? -Math.PI * 0.4 : Math.PI * 0.6;
-      const endAngle = facingDir === 1 ? Math.PI * 0.4 : Math.PI * 1.4;
-      ctx.arc(centerX + backOffsetX, arcCenterY, arcRadius, startAngle, endAngle, false);
-      ctx.stroke();
-    }
-
-    // -----------------------------------------
-    // 5. PELVIC TILT - Angled line at hip level
+    // 3. PELVIC TILT - Straight angled line through hips
     // -----------------------------------------
     const pelvicStatus = analysis.pelvic_tilt?.status;
     if (pelvicStatus && pelvicStatus !== 'Neutral') {
       const statusLower = (pelvicStatus || '').toLowerCase();
       const isAnterior = statusLower.includes('anterior');
-      
       const pelvicY = hipLandmarkY || hipY;
-      const lineLength = 140;
+      const lineLength = 120;
       
-      // Subtle visual angle (8-10 degrees)
-      const visualAngleDeg = 10;
+      // Visual angle for tilt (8-10 degrees)
+      const visualAngleDeg = isAnterior ? 10 : 8;
       const rad = (visualAngleDeg * Math.PI) / 180;
       const verticalOffset = Math.tan(rad) * lineLength;
       
       // ANTERIOR TILT: Front of pelvis drops DOWN
       // - Facing LEFT (facingDir=-1): LEFT end should be LOWER (front)
       // - Facing RIGHT (facingDir=1): RIGHT end should be LOWER (front)
-      // POSTERIOR TILT: Front of pelvis rises UP (opposite)
-      
       const tiltSign = isAnterior ? 1 : -1;
       
-      // Correct math: front end goes DOWN for anterior
       const leftY = pelvicY - (facingDir * tiltSign * verticalOffset);
       const rightY = pelvicY + (facingDir * tiltSign * verticalOffset);
       
       ctx.beginPath();
       ctx.moveTo(centerX - lineLength, leftY);
       ctx.lineTo(centerX + lineLength, rightY);
-      ctx.stroke();
-    }
-
-    // Knee Position (Hyperextension/Flexion)
-    if (analysis.knee_position && analysis.knee_position.status !== 'Neutral') {
-      const deg = analysis.knee_position.deviation_degrees || 0;
-      const rad = (deg * Math.PI) / 180;
-      const isHyperextended = (analysis.knee_position.status || '').includes('Hyperextended') || deg < 0;
-      
-      ctx.beginPath();
-      ctx.moveTo(centerX, hipY);
-      
-      const kneeLength = 220;
-      const angle = isHyperextended ? rad : -rad;
-      
-      const endX = centerX + (Math.sin(angle) * kneeLength);
-      const endY = hipY + (Math.cos(angle) * kneeLength);
-      ctx.lineTo(endX, endY);
       ctx.stroke();
     }
   }

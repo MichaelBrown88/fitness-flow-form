@@ -73,7 +73,7 @@ export function usePoseDetection({
     viewIdxRef.current = viewIdx;
   }, [viewIdx]);
 
-  const onPoseResults = useCallback(
+      const onPoseResults = useCallback(
     (results: PoseResults) => {
       if (!results.poseLandmarks || results.poseLandmarks.length === 0) {
         setPoseValidation({
@@ -85,7 +85,16 @@ export function usePoseDetection({
         setIsPoseReady(false);
         setCurrentLandmarks(null);
         currentLandmarksRef.current = null;
+        // Log when no pose detected (throttled)
+        if (Math.random() < 0.05) {
+          console.log('[POSE] No landmarks detected');
+        }
         return;
+      }
+      
+      // Log when pose detected (throttled)
+      if (Math.random() < 0.01) {
+        console.log('[POSE] Landmarks detected:', results.poseLandmarks.length, 'points');
       }
 
       const landmarks = results.poseLandmarks;
@@ -181,6 +190,20 @@ export function usePoseDetection({
       });
       setIsPoseReady(isReady);
 
+      // Log pose validation state (throttled)
+      if (Math.random() < 0.02) {
+        console.log('[POSE] Validation:', {
+          isReady,
+          message,
+          tooClose,
+          tooFar,
+          notCentered,
+          missingParts: missingParts.length,
+          outOfFrame,
+          isWaitingForPosition
+        });
+      }
+
       if (
         isWaitingForPosition &&
         !isReady &&
@@ -243,22 +266,35 @@ export function usePoseDetection({
 
   useEffect(() => {
     let requestRef: number;
+    let frameCount = 0;
     const update = async () => {
       if (poseRef.current && webcamVideo) {
         try {
           await poseRef.current.send({ image: webcamVideo });
+          frameCount++;
+          // Log every 30 frames (~1 second at 30fps) for debugging
+          if (frameCount % 30 === 0) {
+            console.log('[POSE] Processing frame', frameCount, 'video:', webcamVideo.videoWidth, 'x', webcamVideo.videoHeight);
+          }
         } catch (e) {
-          // Ignore errors
+          console.error('[POSE] Error sending frame:', e);
+        }
+      } else {
+        if (frameCount === 0) {
+          console.warn('[POSE] Not processing - poseRef:', !!poseRef.current, 'webcamVideo:', !!webcamVideo, 'mode:', mode, 'isAuthorized:', isAuthorized);
         }
       }
       requestRef = requestAnimationFrame(update);
     };
 
     if (mode === 'posture' && isAuthorized) {
+      console.log('[POSE] Starting pose detection loop');
       requestRef = requestAnimationFrame(update);
     }
 
-    return () => cancelAnimationFrame(requestRef);
+    return () => {
+      if (requestRef) cancelAnimationFrame(requestRef);
+    };
   }, [mode, isAuthorized, webcamVideo]);
 
   return {

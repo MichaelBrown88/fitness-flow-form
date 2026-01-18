@@ -26,8 +26,9 @@ export interface LiveSession {
   inbodyImage?: string; // For InBody scan
   analysis: Record<string, PostureAnalysisResult>;
   createdAt: Timestamp;
+  companionLogs?: Array<{ timestamp: Timestamp; message: string; level: 'info' | 'warn' | 'error' }>; // Mobile companion logs
   // Dynamic properties from Firestore snapshots
-  [key: string]: string | number | boolean | Timestamp | Record<string, string> | Record<string, PostureAnalysisResult> | undefined | null;
+  [key: string]: string | number | boolean | Timestamp | Record<string, string> | Record<string, PostureAnalysisResult> | Array<{ timestamp: Timestamp; message: string; level: 'info' | 'warn' | 'error' }> | undefined | null;
 }
 
 const SESSIONS_COLLECTION = 'live_sessions';
@@ -334,6 +335,46 @@ export const validateCompanionToken = async (sessionId: string, token: string): 
  * This is useful when the analysis logic has been improved/corrected
  * Updates both the live session and the assessment document if the client has one
  */
+/**
+ * Log a message from the mobile companion app to Firestore
+ * This allows desktop to see what's happening on mobile
+ */
+export const logCompanionMessage = async (
+  sessionId: string,
+  message: string,
+  level: 'info' | 'warn' | 'error' = 'info'
+): Promise<void> => {
+  try {
+    const sessionRef = doc(db, SESSIONS_COLLECTION, sessionId);
+    const sessionSnap = await getDoc(sessionRef);
+    
+    if (!sessionSnap.exists()) {
+      console.warn(`[COMPANION LOG] Session ${sessionId} not found, cannot log message`);
+      return;
+    }
+    
+    const existingLogs = (sessionSnap.data() as LiveSession).companionLogs || [];
+    const newLog = {
+      timestamp: Timestamp.now(),
+      message,
+      level
+    };
+    
+    // Keep only last 50 logs to avoid document size issues
+    const updatedLogs = [...existingLogs.slice(-49), newLog];
+    
+    await updateDoc(sessionRef, {
+      companionLogs: updatedLogs
+    });
+    
+    // Also log to console for immediate visibility
+    const logMethod = level === 'error' ? console.error : level === 'warn' ? console.warn : console.log;
+    logMethod(`[COMPANION ${sessionId}] ${message}`);
+  } catch (err) {
+    console.error('[COMPANION LOG] Failed to log message:', err);
+  }
+};
+
 export const reanalyzePostureImage = async (
   sessionId: string,
   view: 'front' | 'back' | 'side-left' | 'side-right',

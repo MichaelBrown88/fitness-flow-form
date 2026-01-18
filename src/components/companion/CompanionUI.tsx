@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Camera, Loader2, RefreshCcw, Scan, X } from 'lucide-react';
 import { CONFIG } from '@/config';
-import { logger } from '@/lib/utils/logger';
 
 const VIEWS = CONFIG.POSTURE_VIEWS;
 
@@ -46,6 +45,8 @@ interface CompanionUIProps {
   setOcrReviewData: React.Dispatch<React.SetStateAction<Record<string, string> | null>>;
   onApplyOcr: () => Promise<void>;
   isProcessingOcr: boolean;
+  flowState?: 'permissions' | 'waiting_level' | 'waiting_pose' | 'ready' | 'capturing' | 'complete';
+  guideBoxState?: { color: 'red' | 'amber' | 'green'; message: string };
 }
 
 export function CompanionUI({
@@ -68,6 +69,8 @@ export function CompanionUI({
   setOcrReviewData,
   onApplyOcr,
   isProcessingOcr,
+  flowState = 'permissions',
+  guideBoxState,
 }: CompanionUIProps) {
   const fieldLabels: Record<string, string> = {
     inbodyScore: 'InBody Score',
@@ -87,8 +90,14 @@ export function CompanionUI({
     segmentalLegRightKg: 'Right Leg (kg)',
   };
 
-  // Determine guide box color: green = ready, amber = adjusting, red = out of frame or phone not level
+  // Determine guide box color from flow state
   const getGuideBoxColor = () => {
+    if (guideBoxState) {
+      if (guideBoxState.color === 'green') return 'border-emerald-500 shadow-[0_0_30px_#10b98166]';
+      if (guideBoxState.color === 'red') return 'border-red-500 shadow-[0_0_30px_#ef444466]';
+      return 'border-amber-500 shadow-[0_0_30px_#f59e0b66]';
+    }
+    // Fallback
     if (!isVertical) return 'border-red-500 shadow-[0_0_30px_#ef444466]';
     if (poseValidation.details?.outOfFrame) return 'border-red-500 shadow-[0_0_30px_#ef444466]';
     if (poseValidation.isReady) return 'border-emerald-500 shadow-[0_0_30px_#10b98166]';
@@ -176,21 +185,22 @@ export function CompanionUI({
         className="h-full w-full object-contain z-0"
       />
 
-      {/* Minimal Header - just the view name */}
-      <div className="absolute top-4 left-0 right-0 flex justify-center z-20 pointer-events-none">
-        <div className="px-4 py-2 rounded-full bg-black/60 backdrop-blur-sm">
+      {/* Minimal Header - just the view name, small gap at top */}
+      <div className="absolute top-3 left-0 right-0 flex justify-center z-20 pointer-events-none">
+        <div className="px-4 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
           <span className="text-xs font-black text-white uppercase tracking-widest">
             {mode === 'inbody' ? 'INBODY SCAN' : VIEWS[viewIdx]?.label || 'Ready'}
           </span>
         </div>
       </div>
 
-      {/* Guide Box - Narrower and color-coded */}
+      {/* Guide Box - Almost full height for maximum client visibility */}
       {mode !== 'inbody' && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 pt-12">
+          {/* Guide box - wide and tall, almost full screen height */}
           <div
-            className={`w-[60%] max-w-xs border-[4px] rounded-[40px] transition-all duration-300 ${getGuideBoxColor()}`}
-            style={{ height: 'calc(100vh - 140px)' }}
+            className={`w-[85%] max-w-md border-[4px] rounded-[40px] transition-all duration-300 ${getGuideBoxColor()}`}
+            style={{ height: 'calc(100vh - 60px)' }}
           />
         </div>
       )}
@@ -212,67 +222,42 @@ export function CompanionUI({
         </div>
       )}
 
-      {/* Footer Controls */}
-      <div className="absolute bottom-0 left-0 right-0 h-28 flex items-center justify-center z-40 px-6 pb-6">
-        {mode === 'inbody' ? (
+      {/* Footer Controls - Only 2 buttons: Permission and Start Sequence */}
+      {/* Hide all buttons during sequence - only guide box colors and audio cues guide the client */}
+      {!isSequenceActive && (
+        <div className="absolute bottom-6 left-0 right-0 flex items-center justify-center z-40 px-6">
+          {mode === 'inbody' ? (
             <button
               onClick={onCapture}
-            className="h-16 w-16 rounded-full border-4 border-white bg-white/20 flex items-center justify-center"
+              className="h-16 w-16 rounded-full border-4 border-white bg-white/20 flex items-center justify-center"
             >
               <Camera className="h-6 w-6 text-white" />
             </button>
-        ) : !hasPermission ? (
-          <Button onClick={requestPermission} className="bg-primary h-12 px-6 rounded-xl text-xs font-black uppercase">
-            Enable Camera
-          </Button>
-        ) : (
-          <div className="flex items-center gap-6">
-            {/* Flip camera button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setFacingMode(facingMode === 'user' ? 'environment' : 'user')}
-              className="text-white/40 h-10 w-10 rounded-full bg-white/10"
+          ) : !hasPermission ? (
+            // Button 1: Permission
+            <Button 
+              onClick={requestPermission} 
+              className="bg-primary h-14 px-8 rounded-xl text-sm font-black uppercase shadow-lg"
             >
-              <RefreshCcw className="h-4 w-4" />
+              Enable Camera & Motion
             </Button>
-
-            {/* Main capture button - allow capture even if not perfectly vertical */}
-                <button
-                  onClick={() => {
-                    logger.debug('Capture button clicked', 'COMPANION', { isVertical, isSequenceActive, viewIdx });
-                    if (!isSequenceActive) {
-                      onStartSequence();
-                    }
-                  }}
-              disabled={isSequenceActive}
-              className={`h-20 w-20 rounded-full border-4 flex items-center justify-center transition-all ${
-                isSequenceActive
-                  ? 'border-emerald-500 bg-emerald-500/20'
-                  : isVertical
-                  ? 'border-white bg-white/20 active:scale-95'
-                  : 'border-white/40 bg-white/10 active:scale-95'
-                  }`}
-                >
-              {isSequenceActive ? (
-                <Loader2 className="h-8 w-8 text-emerald-500 animate-spin" />
-              ) : (
-                <Camera className="h-8 w-8 text-white" />
-              )}
-            </button>
-
-            {/* Status indicator */}
-            <div className="w-10 flex justify-center">
-              {!isVertical && (
-                <div className="h-3 w-3 rounded-full bg-red-500 animate-pulse" />
-              )}
-              {isVertical && isUploading > 0 && (
-                <Loader2 className="h-4 w-4 text-white/60 animate-spin" />
-              )}
-            </div>
-          </div>
-        )}
-      </div>
+          ) : flowState === 'ready' ? (
+            // Button 2: Start Sequence (only when ready, before sequence starts)
+            <Button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (flowState === 'ready' && !isSequenceActive) {
+                  onStartSequence();
+                }
+              }}
+              className="bg-emerald-500 hover:bg-emerald-600 h-16 px-10 rounded-xl text-base font-black uppercase shadow-lg text-white"
+            >
+              Start Capture
+            </Button>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }

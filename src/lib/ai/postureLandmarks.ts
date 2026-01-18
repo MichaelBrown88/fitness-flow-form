@@ -71,38 +71,36 @@ export async function detectPostureLandmarks(
       throw new Error('MediaPipe Pose constructor not found. Check imports or CDN.');
     }
     
-    // Initialize MediaPipe Pose with fallback CDN options
-    const pose = new Pose({
-      locateFile: (file: string) => {
-        // Try primary CDN first
-        const primaryUrl = `${CONFIG.AI.MEDIAPIPE.POSE_CDN}/${file}`;
-        // Fallback to unpkg if jsdelivr fails
-        const fallbackUrl = `https://unpkg.com/@mediapipe/pose/${file}`;
-        logger.debug(`Loading MediaPipe file: ${file} from ${primaryUrl}`, 'LANDMARKS');
-        return primaryUrl;
-      }
-    });
-  
-    pose.setOptions({
-      modelComplexity: CONFIG.AI.MEDIAPIPE.MODEL_COMPLEXITY,
-      enableSegmentation: false,
-      smoothLandmarks: true,
-      minDetectionConfidence: CONFIG.AI.MEDIAPIPE.MIN_DETECTION_CONFIDENCE,
-      minTrackingConfidence: CONFIG.AI.MEDIAPIPE.MIN_TRACKING_CONFIDENCE
-    });
-    
-    // Process the image and get landmarks
+    // Helper function to create and configure a Pose instance
+    const createPoseInstance = (useFallback = false) => {
+      return new Pose({
+        locateFile: (file: string) => {
+          if (useFallback) {
+            const fallbackUrl = `https://unpkg.com/@mediapipe/pose/${file}`;
+            logger.debug(`Loading MediaPipe file: ${file} from fallback CDN: ${fallbackUrl}`, 'LANDMARKS');
+            return fallbackUrl;
+          } else {
+            const primaryUrl = `${CONFIG.AI.MEDIAPIPE.POSE_CDN}/${file}`;
+            logger.debug(`Loading MediaPipe file: ${file} from primary CDN: ${primaryUrl}`, 'LANDMARKS');
+            return primaryUrl;
+          }
+        }
+      });
+    };
+
+    // Process the image and get landmarks with retry logic
     return new Promise((resolve, reject) => {
       let resolved = false;
+      let currentPose: InstanceType<typeof Pose> | null = null;
       const timeout = setTimeout(() => {
         if (!resolved) {
           resolved = true;
-          pose.close();
+          if (currentPose) currentPose.close();
           reject(new Error('MediaPipe landmark detection timeout'));
         }
       }, CONFIG.AI.MEDIAPIPE.TIMEOUT_MS);
       
-      pose.onResults((results: { poseLandmarks: Array<{ x: number; y: number; z: number; visibility?: number }> }) => {
+      const processResults = (results: { poseLandmarks: Array<{ x: number; y: number; z: number; visibility?: number }> }) => {
         if (resolved) return;
         clearTimeout(timeout);
         resolved = true;
@@ -110,7 +108,7 @@ export async function detectPostureLandmarks(
         try {
           if (!results.poseLandmarks || results.poseLandmarks.length === 0) {
             logger.warn(`No landmarks detected for ${view}`, 'MEDIAPIPE');
-            pose.close();
+            if (currentPose) currentPose.close();
             resolve({});
             return;
           }
@@ -225,40 +223,57 @@ export async function detectPostureLandmarks(
           
           
           logger.debug(`Success for ${view}: headY=${result.head_y_percent?.toFixed(1)}%, shoulderY=${result.shoulder_y_percent?.toFixed(1)}%, hipY=${result.hip_y_percent?.toFixed(1)}%, centerX=${result.center_x_percent?.toFixed(1)}%, midfootX=${result.midfoot_x_percent?.toFixed(1)}%`, 'MEDIAPIPE');
-          pose.close();
+          if (currentPose) currentPose.close();
           resolve(result);
         } catch (error) {
           logger.error(`Error processing landmarks:`, 'MEDIAPIPE', error);
-          pose.close();
+          if (currentPose) currentPose.close();
           reject(error);
         }
-      });
+      };
       
-      // Initialize and send the image
-      pose.initialize().then(() => {
-        pose.send({ image: img }).catch((error) => {
-          if (!resolved) {
-            resolved = true;
-            clearTimeout(timeout);
-            pose.close();
-            logger.error(`Error sending image:`, 'MEDIAPIPE', error);
-            // Provide more helpful error message
-            const errorMsg = error instanceof Error ? error.message : String(error);
-            if (errorMsg.includes('fetch') || errorMsg.includes('Failed to fetch')) {
-              reject(new Error('Failed to load MediaPipe model files. Please check your internet connection and try again.'));
-            } else {
-              reject(new Error(`MediaPipe processing failed: ${errorMsg}`));
-            }
+      // Initialize and send the image with retry logic
+      const initializeWithRetry = async (retries = 2, useFallback = false): Promise<void> => {
+        try {
+          // Close previous instance if retrying
+          if (currentPose) {
+            currentPose.close();
           }
-        });
-      }).catch((error) => {
+          
+          currentPose = createPoseInstance(useFallback);
+          currentPose.setOptions({
+            modelComplexity: CONFIG.AI.MEDIAPIPE.MODEL_COMPLEXITY,
+            enableSegmentation: false,
+            smoothLandmarks: true,
+            minDetectionConfidence: CONFIG.AI.MEDIAPIPE.MIN_DETECTION_CONFIDENCE,
+            minTrackingConfidence: CONFIG.AI.MEDIAPIPE.MIN_TRACKING_CONFIDENCE
+          });
+          
+          currentPose.onResults(processResults);
+          
+          await currentPose.initialize();
+          await currentPose.send({ image: img });
+        } catch (error) {
+          if (retries > 0 && !resolved) {
+            logger.warn(`MediaPipe initialization failed, retrying with ${useFallback ? 'primary' : 'fallback'} CDN... (${retries} attempts left)`, 'MEDIAPIPE');
+            // Wait a bit before retrying
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Try fallback CDN on retry
+            return initializeWithRetry(retries - 1, !useFallback);
+          } else {
+            throw error;
+          }
+        }
+      };
+
+      initializeWithRetry().catch((error) => {
         if (!resolved) {
           resolved = true;
           clearTimeout(timeout);
-          pose.close();
-          logger.error(`Error initializing:`, 'MEDIAPIPE', error);
+          if (currentPose) currentPose.close();
+          logger.error(`Error initializing MediaPipe after retries:`, 'MEDIAPIPE', error);
           const errorMsg = error instanceof Error ? error.message : String(error);
-          if (errorMsg.includes('fetch') || errorMsg.includes('Failed to fetch')) {
+          if (errorMsg.includes('fetch') || errorMsg.includes('Failed to fetch') || errorMsg.includes('Load failed')) {
             reject(new Error('Failed to load MediaPipe model files. Please check your internet connection and try again.'));
           } else {
             reject(new Error(`MediaPipe initialization failed: ${errorMsg}`));

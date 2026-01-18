@@ -3,6 +3,8 @@ import App from "./App.tsx";
 import "./index.css";
 // Load restore utility globally
 import '@/lib/utils/restoreAssessment';
+// Load test helpers
+import '@/lib/utils/testHelpers';
 // Load cleanup utilities (available in browser console)
 // Admin/debugging utilities (available in browser console via window.*)
 import '@/lib/setup/admin/cleanupOrganizations';

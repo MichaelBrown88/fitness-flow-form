@@ -127,8 +127,17 @@ async function runGeminiOcr(imageSrc: string): Promise<OcrResult> {
   const data = JSON.parse(aiText.substring(startIdx, endIdx + 1));
   const cleanFields: Partial<FormData> = {};
   
+  // List of valid FormData fields for InBody
+  const validInBodyFields = [
+    'heightCm', 'inbodyScore', 'inbodyWeightKg', 'skeletalMuscleMassKg',
+    'bodyFatMassKg', 'inbodyBodyFatPct', 'inbodyBmi', 'totalBodyWaterL',
+    'waistHipRatio', 'visceralFatLevel', 'bmrKcal', 'segmentalTrunkKg',
+    'segmentalArmLeftKg', 'segmentalArmRightKg', 'segmentalLegLeftKg', 'segmentalLegRightKg'
+  ];
+  
   for (const [key, value] of Object.entries(data)) {
-    if (value !== null && key in cleanFields) {
+    // Only assign if value is not null and key is a valid InBody field
+    if (value !== null && validInBodyFields.includes(key)) {
       (cleanFields as Record<string, string>)[key] = String(value);
     }
   }

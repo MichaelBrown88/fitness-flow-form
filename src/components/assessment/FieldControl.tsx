@@ -1,10 +1,12 @@
 import React from 'react';
 import ParQQuestionnaire from '@/components/ParQQuestionnaire';
-import { Check } from 'lucide-react';
+import { Check, Smartphone, Camera as CameraIcon, CheckCircle2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   RadioGroup,
   RadioGroupItem,
 } from '@/components/ui/radio-group';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Hook
 import { useFieldControl } from './hooks/useFieldControl';
@@ -15,7 +17,6 @@ import { FieldTextArea } from './fields/FieldTextArea';
 import { FieldSelect } from './fields/FieldSelect';
 import { FieldMultiSelect } from './fields/FieldMultiSelect';
 import { FieldInput } from './fields/FieldInput';
-import { FieldAIPosture } from './fields/FieldAIPosture';
 import { FieldAssignedCoach } from './fields/FieldAssignedCoach';
 
 import type { PhaseField } from '@/lib/phaseConfig';
@@ -33,6 +34,7 @@ export function FieldControl({
   onShowPostureCompanion,
   onShowInBodyCompanion
 }: FieldControlProps) {
+  const isMobile = useIsMobile();
   const {
     localValue,
     setLocalValue,
@@ -60,9 +62,7 @@ export function FieldControl({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {fieldOptions?.map((option, idx) => {
               const isSelected = value === option.value;
-              const colorClass = idx === 0 
-                ? 'hover:border-slate-200 hover:bg-slate-50 text-slate-700 border-slate-100' 
-                : 'hover:border-primary/20 hover:bg-brand-light text-primary border-primary/10';
+              const colorClass = idx === 0 ? 'hover:border-slate-200 hover:bg-slate-50 text-slate-700 border-slate-100' : 'hover:border-primary/20 hover:bg-brand-light text-primary border-primary/10';
               const inputId = `${field.id}-${option.value}`;
               
               return (
@@ -95,14 +95,46 @@ export function FieldControl({
             })}
           </div>
 
-          <FieldAIPosture 
-            id={field.id}
-            value={value as string}
-            hasResults={!!formData.postureAiResults}
-            onShowCamera={onShowCamera}
-            onShowPostureCompanion={onShowPostureCompanion}
-            handleChange={handleChange}
-          />
+          <div className="p-8 bg-brand-light rounded-3xl border-2 border-dashed border-primary/20 flex flex-col items-center text-center space-y-6 animate-in fade-in zoom-in duration-500">
+            <div className="bg-white p-4 rounded-3xl shadow-sm">
+              <Smartphone className="h-10 w-10 text-primary" />
+            </div>
+            <div className="space-y-2">
+              <h4 className="text-xl font-black uppercase tracking-tight text-slate-900">AI Posture Analysis</h4>
+              <p className="text-primary/70 text-sm font-medium max-w-xs mx-auto">
+                {formData.postureAiResults 
+                  ? "Scan complete! You can re-scan if needed or continue to the next step."
+                  : "Connect your iPhone to perform a multi-view posture scan with real-time AI grading."}
+              </p>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm">
+              {isMobile ? (
+                <Button 
+                  onClick={() => onShowCamera?.('posture')}
+                  className="flex-1 h-14 rounded-2xl bg-primary text-white font-black uppercase tracking-widest text-xs gap-3 shadow-xl shadow-primary/20"
+                >
+                  <CameraIcon className="h-5 w-5" />
+                  Start Posture Scan
+                </Button>
+              ) : (
+                <Button 
+                  onClick={onShowPostureCompanion}
+                  className="flex-1 h-14 rounded-2xl bg-primary text-white font-black uppercase tracking-widest text-xs gap-3 shadow-xl shadow-primary/20"
+                >
+                  <Smartphone className="h-5 w-5" />
+                  Open Remote Mode
+                </Button>
+              )}
+            </div>
+
+            {formData.postureAiResults && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 rounded-full border border-emerald-500/20">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-700">AI Results Active</span>
+              </div>
+            )}
+          </div>
         </div>
       );
     }

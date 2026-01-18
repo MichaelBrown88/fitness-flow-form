@@ -79,7 +79,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
     }
   }, [isOpen, session, profile?.organizationId]);
 
-  // 2. Listen for Photos
+  // 2. Listen for Photos and Logs
   useEffect(() => {
     if (!session?.id) return;
 
@@ -89,6 +89,15 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
       // ONLY set online if companion has joined
       if (updatedSession.companionJoined) {
         setIsOnline(true);
+      }
+
+      // Display companion logs in console for debugging
+      if (updatedSession.companionLogs && Array.isArray(updatedSession.companionLogs)) {
+        const newLogs = updatedSession.companionLogs.slice(-5); // Show last 5 logs
+        newLogs.forEach((log: { timestamp: any; message: string; level: 'info' | 'warn' | 'error' }) => {
+          const logMethod = log.level === 'error' ? console.error : log.level === 'warn' ? console.warn : console.log;
+          logMethod(`[MOBILE ${session.id}] ${log.message}`);
+        });
       }
 
       // Analysis is now handled automatically by updatePostureImage (unified processing system)
