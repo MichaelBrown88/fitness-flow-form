@@ -72,16 +72,18 @@ export async function detectPostureLandmarks(
     }
     
     // Helper function to create and configure a Pose instance
+    // Primary: local assets in /public/mediapipe/
+    // Fallback: CDN (jsdelivr)
     const createPoseInstance = (useFallback = false) => {
       return new Pose({
         locateFile: (file: string) => {
           if (useFallback) {
-            const fallbackUrl = `https://unpkg.com/@mediapipe/pose/${file}`;
+            const fallbackUrl = `${CONFIG.AI.MEDIAPIPE.POSE_CDN_FALLBACK}/${file}`;
             logger.debug(`Loading MediaPipe file: ${file} from fallback CDN: ${fallbackUrl}`, 'LANDMARKS');
             return fallbackUrl;
           } else {
             const primaryUrl = `${CONFIG.AI.MEDIAPIPE.POSE_CDN}/${file}`;
-            logger.debug(`Loading MediaPipe file: ${file} from primary CDN: ${primaryUrl}`, 'LANDMARKS');
+            logger.debug(`Loading MediaPipe file: ${file} from local assets: ${primaryUrl}`, 'LANDMARKS');
             return primaryUrl;
           }
         }

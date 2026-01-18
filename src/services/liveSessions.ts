@@ -15,7 +15,6 @@ import { LandmarkResult } from '@/lib/ai/postureLandmarks';
 import { logger } from '@/lib/utils/logger';
 
 export interface LiveSession {
-// ...
   id: string;
   clientId: string;
   organizationId?: string; // SaaS readiness
@@ -26,6 +25,7 @@ export interface LiveSession {
   inbodyImage?: string; // For InBody scan
   analysis: Record<string, PostureAnalysisResult>;
   createdAt: Timestamp;
+  lastHeartbeat?: Timestamp; // Updated every 5s by mobile companion for connection monitoring
   companionLogs?: Array<{ timestamp: Timestamp; message: string; level: 'info' | 'warn' | 'error' }>; // Mobile companion logs
   // Dynamic properties from Firestore snapshots
   [key: string]: string | number | boolean | Timestamp | Record<string, string> | Record<string, PostureAnalysisResult> | Array<{ timestamp: Timestamp; message: string; level: 'info' | 'warn' | 'error' }> | undefined | null;
@@ -61,6 +61,23 @@ export const createLiveSession = async (clientId: string, organizationId?: strin
 export const joinLiveSession = async (sessionId: string) => {
   const sessionRef = doc(db, SESSIONS_COLLECTION, sessionId);
   await updateDoc(sessionRef, { companionJoined: true });
+};
+
+/**
+ * Update session heartbeat - called every 5 seconds from mobile companion
+ * Allows desktop to detect connection drops
+ */
+export const updateHeartbeat = async (sessionId: string): Promise<void> => {
+  try {
+    const sessionRef = doc(db, SESSIONS_COLLECTION, sessionId);
+    await updateDoc(sessionRef, { 
+      lastHeartbeat: Timestamp.now(),
+      companionJoined: true 
+    });
+  } catch (err) {
+    // Silently fail - heartbeat is non-critical
+    console.warn('[HEARTBEAT] Update failed:', err);
+  }
 };
 
 export const subscribeToLiveSession = (sessionId: string, callback: (session: LiveSession) => void) => {
@@ -153,9 +170,12 @@ export const updatePostureImage = async (
 
     // Upload FULL-SIZE image with green + red lines to Storage (for reports/comparisons)
     const sessionDoc = await getDoc(doc(db, SESSIONS_COLLECTION, sessionId));
-    const clientId = sessionDoc.exists() ? (sessionDoc.data() as LiveSession).clientId : 'unknown';
+    const sessionData = sessionDoc.exists() ? (sessionDoc.data() as LiveSession) : null;
+    const clientId = sessionData?.clientId || 'unknown';
+    const orgId = sessionData?.organizationId || 'default';
     
-    const storagePath = `clients/${clientId}/sessions/${sessionId}/${view}_full.jpg`;
+    // SaaS-isolated storage path: organizations/{orgId}/clients/{clientId}/sessions/{sessionId}/...
+    const storagePath = `organizations/${orgId}/clients/${clientId}/sessions/${sessionId}/${view}_full.jpg`;
     const storageRef = ref(storage, storagePath);
     
     const fullSizeBase64 = fullSizeImage.split(',')[1] || fullSizeImage;
@@ -207,9 +227,12 @@ export const updateInBodyImage = async (sessionId: string, imageData: string) =>
 
     // Upload FULL-SIZE version to Storage (for OCR analysis)
     const sessionDoc = await getDoc(doc(db, SESSIONS_COLLECTION, sessionId));
-    const clientId = sessionDoc.exists() ? (sessionDoc.data() as LiveSession).clientId : 'unknown';
+    const sessionData = sessionDoc.exists() ? (sessionDoc.data() as LiveSession) : null;
+    const clientId = sessionData?.clientId || 'unknown';
+    const orgId = sessionData?.organizationId || 'default';
     
-    const storagePath = `clients/${clientId}/sessions/${sessionId}/inbody_scan.jpg`;
+    // SaaS-isolated storage path: organizations/{orgId}/clients/{clientId}/sessions/{sessionId}/...
+    const storagePath = `organizations/${orgId}/clients/${clientId}/sessions/${sessionId}/inbody_scan.jpg`;
     const storageRef = ref(storage, storagePath);
     
     const fullSizeBase64 = fullSizeImage.split(',')[1] || fullSizeImage;

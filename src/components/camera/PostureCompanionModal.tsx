@@ -1,23 +1,22 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+/**
+ * PostureCompanionModal
+ * 
+ * Modal for mobile companion posture capture with QR code connection,
+ * real-time image sync, and AI analysis display.
+ */
+
+import React from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { 
   Dialog, 
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
-  DialogDescription,
-  DialogFooter 
+  DialogDescription
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { 
-  createLiveSession, 
-  subscribeToLiveSession, 
-  type LiveSession 
-} from '@/services/liveSessions';
-import { loadTestPostureImages, loadImagesFromFiles } from '@/lib/test/postureTestImages';
-import { updatePostureImage } from '@/services/liveSessions';
-import { generatePlaceholderWithGreenLines } from '@/lib/utils/postureOverlay';
-import { CONFIG } from '@/config';
+import { usePostureCompanion } from '@/hooks/usePostureCompanion';
+import type { PostureCompanionData } from '@/lib/types/companion';
 import { 
   Smartphone, 
   CheckCircle2, 
@@ -25,17 +24,10 @@ import {
   AlertCircle, 
   Camera, 
   ArrowRight,
-  RefreshCcw,
-  Monitor,
   ShieldAlert,
   ImagePlus,
-  X,
-  ChevronLeft,
-  ChevronRight
+  X
 } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
-import { useAuth } from '@/hooks/useAuth';
-import type { PostureCompanionData } from '@/lib/types/companion';
 
 interface PostureCompanionModalProps {
   isOpen: boolean;
@@ -44,282 +36,33 @@ interface PostureCompanionModalProps {
   onStartDirectScan?: () => void;
 }
 
-const views = ['front', 'back', 'side-left', 'side-right'] as const;
-
 export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
   isOpen,
   onClose,
   onComplete,
   onStartDirectScan
 }) => {
-  const { user, profile } = useAuth();
-  const [session, setSession] = useState<LiveSession | null>(null);
-  // Analysis is handled automatically by updatePostureImage - no separate state needed
-  const [isOnline, setIsOnline] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoadingTestImages, setIsLoadingTestImages] = useState(false);
-  const [previewImage, setPreviewImage] = useState<{ url: string; view: string } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const { toast } = useToast();
-  const processedRef = useRef<Set<string>>(new Set());
-
-  // 1. Create Session
-  useEffect(() => {
-    if (isOpen && !session) {
-      const init = async () => {
-        try {
-          const newSession = await createLiveSession('current-client', profile?.organizationId);
-          setSession(newSession);
-          setError(null);
-        } catch (err) {
-          setError("Connection failed. Please check your internet.");
-        }
-      };
-      init();
-    }
-  }, [isOpen, session, profile?.organizationId]);
-
-  // 2. Listen for Photos and Logs
-  useEffect(() => {
-    if (!session?.id) return;
-
-    const unsubscribe = subscribeToLiveSession(session.id, (updatedSession) => {
-      // Snapshot update received
-      setSession(updatedSession);
-      // ONLY set online if companion has joined
-      if (updatedSession.companionJoined) {
-        setIsOnline(true);
-      }
-
-      // Display companion logs in console for debugging
-      if (updatedSession.companionLogs && Array.isArray(updatedSession.companionLogs)) {
-        const newLogs = updatedSession.companionLogs.slice(-5); // Show last 5 logs
-        newLogs.forEach((log: { timestamp: any; message: string; level: 'info' | 'warn' | 'error' }) => {
-          const logMethod = log.level === 'error' ? console.error : log.level === 'warn' ? console.warn : console.log;
-          logMethod(`[MOBILE ${session.id}] ${log.message}`);
-        });
-      }
-
-      // Analysis is now handled automatically by updatePostureImage (unified processing system)
-    });
-
-    return () => unsubscribe();
-  }, [session?.id]);
-
-  const companionUrl = session 
-    ? `${window.location.origin}/companion/${session.id}?token=${session.companionToken}` 
-    : '';
-
-  // Generate placeholder images with green lines for each view (memoized)
-  const placeholderImages = useMemo(() => {
-    const placeholders: Record<string, string> = {};
-    views.forEach(view => {
-      placeholders[view] = generatePlaceholderWithGreenLines(view);
-    });
-    return placeholders;
-  }, []); // Only generate once on mount
-  
-  const hasAllImages = views.every(v => !!session?.postureImages[v]);
-  const isComplete = views.every(v => !!session?.analysis[v]);
-
-  // Analysis is now handled automatically by updatePostureImage (unified processing system)
-  // No separate handleAnalyze needed - everything happens in one unified flow
-
-  const handleLoadTestImages = async () => {
-    if (!session?.id) {
-      toast({ 
-        title: "Session not ready", 
-        description: "Please wait for the session to initialize before uploading images.", 
-        variant: "destructive" 
-      });
-      return;
-    }
-
-    if (isLoadingTestImages) {
-      toast({ 
-        title: "Upload in progress", 
-        description: "Please wait for the current upload to complete.", 
-        variant: "destructive" 
-      });
-      return;
-    }
-
-    // Prompt for file upload
-    try {
-      fileInputRef.current?.click();
-    } catch (err) {
-      console.error('[UPLOAD] Failed to trigger file input:', err);
-      toast({ 
-        title: "Upload failed", 
-        description: "Could not open file selector. Please try again.", 
-        variant: "destructive" 
-      });
-    }
-  };
-
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!session?.id) {
-      toast({
-        title: "No active session",
-        description: "Please wait for the session to initialize before uploading images.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    const files = event.target.files;
-    if (!files || files.length === 0) {
-      toast({
-        title: "No files selected",
-        description: "Please select one or more image files to upload.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsLoadingTestImages(true);
-    try {
-      toast({ title: "Loading images...", description: `Processing ${files.length} uploaded file(s)` });
-      
-      // Map files to views (user should upload in order)
-      const fileArray = Array.from(files);
-      const fileMap: Record<string, File> = {};
-      
-      fileArray.forEach((file, index) => {
-        const fileName = file.name.toLowerCase();
-        let matchedView: string | null = null;
-        
-        // Try to match by filename - improved matching for variations
-        if (fileName.includes('front')) {
-          matchedView = 'front';
-        } else if (fileName.includes('right side') || fileName.includes('side-right') || 
-                   (fileName.includes('right') && !fileName.includes('left'))) {
-          matchedView = 'side-right';
-        } else if (fileName.includes('left side') || fileName.includes('side-left') || 
-                   (fileName.includes('left') && !fileName.includes('right'))) {
-          matchedView = 'side-left';
-        } else if (fileName.includes('back') || fileName.includes('rear')) {
-          matchedView = 'back';
-        } else if (index < views.length) {
-          matchedView = views[index]; // Fallback to order
-        }
-        
-        if (matchedView) {
-          fileMap[matchedView] = file;
-        }
-      });
-      
-      // Check if we matched any files
-      if (Object.keys(fileMap).length === 0) {
-        throw new Error('Could not match uploaded files to views. Please name files with "front", "back", "side-left", or "side-right" in the filename, or upload them in order: Front, Back, Side-Left, Side-Right.');
-      }
-      
-      // Load images from files
-      const testImages = await loadImagesFromFiles(fileMap);
-      
-      // Validate that we have at least one image
-      if (Object.keys(testImages).length === 0) {
-        throw new Error('No images could be loaded from the uploaded files. Please check that the files are valid images (JPEG, PNG, HEIC, etc.).');
-      }
-      
-      // Inject test images into session (this will trigger AI analysis automatically)
-      // IMPORTANT: This uses the EXACT SAME alignment code as iPhone capture
-      // Both paths call updatePostureImage() which uses addPostureOverlay() with identical parameters
-      let successCount = 0;
-      let failCount = 0;
-      const errors: string[] = [];
-      
-      // Process images sequentially to avoid overwhelming the system
-      for (const view of views) {
-        if (testImages[view]) {
-          try {
-            // Validate image data before sending
-            if (!testImages[view] || !testImages[view].startsWith('data:image')) {
-              const errorMsg = `Invalid image data format for ${view}. Expected data URL.`;
-              errors.push(`${view}: ${errorMsg}`);
-              failCount++;
-              continue;
-            }
-            
-            // Use unified processing system - handles alignment, calculation, AI, deviation lines
-            // Add timeout to prevent hanging
-            const processingPromise = updatePostureImage(session.id, view, testImages[view], undefined, 'manual');
-            const timeoutPromise = new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Processing timeout after 60 seconds')), 60000)
-            );
-            
-            await Promise.race([processingPromise, timeoutPromise]);
-            successCount++;
-            
-            // Small delay to avoid overwhelming Firestore
-            await new Promise(resolve => setTimeout(resolve, 500));
-          } catch (err) {
-            const errorMsg = err instanceof Error ? err.message : 'Unknown error';
-            errors.push(`${view}: ${errorMsg}`);
-            failCount++;
-            // Continue with other images even if one fails
-          }
-        }
-      }
-      
-      if (successCount > 0) {
-        toast({ 
-          title: "Images uploaded successfully", 
-          description: `${successCount} image(s) processed. AI analysis will start automatically.${failCount > 0 ? ` ${failCount} image(s) failed.` : ''}` 
-        });
-      } else {
-        const errorDetails = errors.length > 0 ? ` Errors: ${errors.join('; ')}` : '';
-        throw new Error(`All ${failCount} image(s) failed to process.${errorDetails} Check browser console for details.`);
-      }
-    } catch (error) {
-      console.error('[UPLOAD] Failed to upload images:', error);
-      toast({ 
-        title: "Upload failed", 
-        description: error instanceof Error ? error.message : "Could not upload images. Check console for details.", 
-        variant: "destructive" 
-      });
-    } finally {
-      setIsLoadingTestImages(false);
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  };
-
-  const handleApply = async () => {
-    if (!session) return;
-    
-    // Get Storage URLs for all images (for reports and comparisons)
-    const storageUrls: Record<string, string> = {};
-    
-    views.forEach((view) => {
-      const storageUrl = session[`postureImagesStorage_${view}`] || 
-                        session[`postureImagesFull_${view}`];
-      if (typeof storageUrl === 'string') {
-        storageUrls[view] = storageUrl;
-        // Found Storage URL for view
-      } else {
-        console.warn(`[APPLY] No Storage URL found for ${view} - image may not be stored yet`);
-      }
-    });
-    
-    // Map comprehensive AI results for the report
-    const findings = {
-      postureAiResults: session.analysis,
-      postureImages: session.postureImages, // Compressed images with overlay for display
-      postureImagesStorage: storageUrls, // Full-size Storage URLs for reports/comparisons
-      // Legacy fields for backward compatibility (must be arrays)
-      postureHeadOverall: session.analysis['side-right']?.forward_head?.status === 'Neutral' ? ['neutral'] : ['forward-head'],
-      postureShouldersOverall: session.analysis.front?.shoulder_alignment?.status === 'Neutral' ? ['neutral'] : ['rounded'],
-      postureBackOverall: session.analysis['side-right']?.kyphosis?.status !== 'Normal' ? ['increased-kyphosis'] : ['neutral'],
-    };
-    
-    // Applying Posture Analysis
-    
-    onComplete(findings);
-    onClose();
-  };
+  const {
+    session,
+    companionUrl,
+    connectionState,
+    isLoadingTestImages,
+    previewImage,
+    setPreviewImage,
+    fileInputRef,
+    placeholderImages,
+    hasAllImages,
+    views,
+    handleLoadTestImages,
+    handleFileUpload,
+    handleApply,
+    handleDirectScan,
+  } = usePostureCompanion({
+    isOpen,
+    onComplete,
+    onClose,
+    onStartDirectScan
+  });
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -353,10 +96,21 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
             </div>
 
             <div className="w-full space-y-3">
-              {isOnline ? (
+              {/* 3-tier connection state indicator */}
+              {connectionState === 'online' ? (
                 <div className="flex items-center gap-2 text-emerald-600 bg-emerald-50 px-4 py-3 rounded-xl">
                   <CheckCircle2 className="h-4 w-4" />
                   <span className="text-xs font-bold">Phone Connected</span>
+                </div>
+              ) : connectionState === 'unstable' ? (
+                <div className="flex items-center gap-2 text-amber-600 bg-amber-50 px-4 py-3 rounded-xl">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-xs font-bold">Attempting to Reconnect...</span>
+                </div>
+              ) : connectionState === 'disconnected' ? (
+                <div className="flex items-center gap-2 text-red-600 bg-red-50 px-4 py-3 rounded-xl">
+                  <AlertCircle className="h-4 w-4" />
+                  <span className="text-xs font-bold">Connection Lost - Scan to Reconnect</span>
                 </div>
               ) : (
                 <div className="flex items-center gap-2 text-slate-500 bg-slate-100 px-4 py-3 rounded-xl">
@@ -399,7 +153,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
               
               {onStartDirectScan && (
                 <Button
-                  onClick={() => { onClose(); onStartDirectScan(); }}
+                  onClick={handleDirectScan}
                   variant="outline"
                   className="w-full"
                 >
@@ -431,8 +185,8 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                   <span>Photos will appear here as they're captured</span>
                 </li>
               </ol>
-
             </div>
+
             <div className="grid grid-cols-2 gap-4 pb-20">
               {views.map((view) => {
                 const imageUrl = session?.postureImages[view];
@@ -444,20 +198,15 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                     </div>
                     <div className="aspect-[3/4] rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 overflow-hidden relative flex items-center justify-center">
                       {imageUrl ? (
-                        <>
-                          {/* Image with overlay - overlay is added during storage, so it's already in the image */}
-                          <img 
-                            src={imageUrl} 
-                            className="w-full h-full object-cover animate-in fade-in zoom-in duration-500 cursor-pointer hover:opacity-90 transition-opacity" 
-                            alt={view}
-                            title="Click to view full image"
-                            onClick={() => setPreviewImage({ url: imageUrl, view })}
-                          />
-                          {/* Analysis status is handled by session state - check session.analysis[view] */}
-                        </>
+                        <img 
+                          src={imageUrl} 
+                          className="w-full h-full object-cover animate-in fade-in zoom-in duration-500 cursor-pointer hover:opacity-90 transition-opacity" 
+                          alt={view}
+                          title="Click to view full image"
+                          onClick={() => setPreviewImage({ url: imageUrl, view })}
+                        />
                       ) : (
                         <>
-                          {/* Placeholder with green reference lines */}
                           <img 
                             src={placeholderImages[view]} 
                             className="w-full h-full object-cover" 
@@ -476,7 +225,6 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                           <span className="text-[8px] font-black uppercase text-primary">Posture Analysis</span>
                         </div>
                         <div className="space-y-1.5">
-                          {/* Top-to-Bottom Findings (Unified Order) */}
                           {session.analysis[view].head_alignment && (
                             <div>
                               <span className="text-[9px] font-bold text-slate-600">Head: </span>
@@ -619,4 +367,3 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
     </Dialog>
   );
 };
-

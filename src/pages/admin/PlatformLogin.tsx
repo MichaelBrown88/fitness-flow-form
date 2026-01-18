@@ -92,10 +92,13 @@ const PlatformLogin = () => {
       const auth = getFirebaseAuth();
       const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
       
-      // Update last login
-      await updateLastLogin(userCredential.user.uid);
+      // Update last login (non-blocking - don't fail login if this fails)
+      // Note: This may fail due to Firestore rules that restrict client-side writes
+      updateLastLogin(userCredential.user.uid).catch((updateErr) => {
+        logger.warn('Failed to update last login (non-critical)', 'PLATFORM_LOGIN', updateErr);
+      });
       
-      logger.info('Platform admin logged in:', email);
+      logger.info('Platform admin logged in', 'PLATFORM_LOGIN', { email });
       navigate('/admin', { replace: true });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Login failed';
@@ -137,27 +140,36 @@ const PlatformLogin = () => {
         // Try to create the Firebase Auth account
         const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
         
-        // Update the platform admin record with the real UID and mark password as set
-        await createPlatformAdmin(userCredential.user.uid, email.trim(), adminName);
-        await markPasswordSet(userCredential.user.uid);
+        // Update the platform admin record (non-blocking - may fail due to Firestore rules)
+        // The admin record should already exist from initial platform setup
+        Promise.all([
+          createPlatformAdmin(userCredential.user.uid, email.trim(), adminName),
+          markPasswordSet(userCredential.user.uid)
+        ]).catch((updateErr) => {
+          logger.warn('Failed to update admin record (non-critical)', 'PLATFORM_LOGIN', updateErr);
+        });
         
-        logger.info('Platform admin account created:', email);
+        logger.info('Platform admin account created', 'PLATFORM_LOGIN', { email });
         navigate('/admin', { replace: true });
       } catch (signUpErr) {
         // If account exists, try to sign in with the provided password
         const firebaseSignUpError = signUpErr as { code?: string };
         if (firebaseSignUpError?.code === 'auth/email-already-in-use') {
-          logger.info('Account exists, attempting auto-fix via sign-in');
+          logger.info('Account exists, attempting auto-fix via sign-in', 'PLATFORM_LOGIN');
           try {
             const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
             
             // If sign-in works, it means the password provided is correct!
-            // We just need to ensure the Firestore record is set up.
-            await createPlatformAdmin(userCredential.user.uid, email.trim(), adminName);
-            await markPasswordSet(userCredential.user.uid);
-            await updateLastLogin(userCredential.user.uid);
+            // Update records (non-blocking - may fail due to Firestore rules)
+            Promise.all([
+              createPlatformAdmin(userCredential.user.uid, email.trim(), adminName),
+              markPasswordSet(userCredential.user.uid),
+              updateLastLogin(userCredential.user.uid)
+            ]).catch((updateErr) => {
+              logger.warn('Failed to update admin record (non-critical)', 'PLATFORM_LOGIN', updateErr);
+            });
             
-            logger.info('Platform admin auto-fixed via sign-in:', email);
+            logger.info('Platform admin auto-fixed via sign-in', 'PLATFORM_LOGIN', { email });
             navigate('/admin', { replace: true });
           } catch (signInErr) {
             // Sign-in failed (wrong password for existing account)

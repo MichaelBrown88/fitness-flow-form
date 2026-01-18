@@ -41,6 +41,7 @@ interface CompanionUIProps {
   webcamRef: React.RefObject<Webcam>;
   onCapture: () => void;
   onStartSequence: () => void;
+  onCancelSequence?: () => void; // Cancel button handler
   ocrReviewData: Record<string, string> | null;
   setOcrReviewData: React.Dispatch<React.SetStateAction<Record<string, string> | null>>;
   onApplyOcr: () => Promise<void>;
@@ -65,6 +66,7 @@ export function CompanionUI({
   webcamRef,
   onCapture,
   onStartSequence,
+  onCancelSequence,
   ocrReviewData,
   setOcrReviewData,
   onApplyOcr,
@@ -185,13 +187,29 @@ export function CompanionUI({
         className="h-full w-full object-contain z-0"
       />
 
-      {/* Minimal Header - just the view name, small gap at top */}
-      <div className="absolute top-3 left-0 right-0 flex justify-center z-20 pointer-events-none">
+      {/* Minimal Header - view name + cancel button during sequence */}
+      <div className="absolute top-3 left-0 right-0 flex justify-between items-center z-20 px-4">
+        {/* Cancel button - only visible during capture sequence */}
+        {isSequenceActive && onCancelSequence ? (
+          <button
+            onClick={onCancelSequence}
+            className="h-10 w-10 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center"
+          >
+            <X className="h-5 w-5 text-white" />
+          </button>
+        ) : (
+          <div className="w-10" /> // Spacer for centering
+        )}
+        
+        {/* View label */}
         <div className="px-4 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
           <span className="text-xs font-black text-white uppercase tracking-widest">
             {mode === 'inbody' ? 'INBODY SCAN' : VIEWS[viewIdx]?.label || 'Ready'}
           </span>
         </div>
+        
+        {/* Right spacer for centering */}
+        <div className="w-10" />
       </div>
 
       {/* Guide Box - Almost full height for maximum client visibility */}

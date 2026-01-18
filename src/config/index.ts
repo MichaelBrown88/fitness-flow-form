@@ -25,9 +25,10 @@ export const CONFIG = {
 
   // --- AI & MACHINE LEARNING ---
   AI: {
-    // MediaPipe Settings
+    // MediaPipe Settings - Using local assets for reliability and CSP compliance
     MEDIAPIPE: {
-      POSE_CDN: "https://cdn.jsdelivr.net/npm/@mediapipe/pose",
+      POSE_CDN: "/mediapipe", // Local path - assets stored in public/mediapipe/
+      POSE_CDN_FALLBACK: "https://cdn.jsdelivr.net/npm/@mediapipe/pose", // CDN fallback
       TIMEOUT_MS: 15000,
       MODEL_COMPLEXITY: 1, // 0=light, 1=full, 2=heavy
       MIN_DETECTION_CONFIDENCE: 0.5,

@@ -1,24 +1,11 @@
-import { useEffect, useState, useMemo } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import AppShell from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as UICalendar } from '@/components/ui/calendar';
-import { useAuth } from '@/hooks/useAuth';
-import { getClientAssessments, type CoachAssessmentSummary } from '@/services/coachAssessments';
-import { getClientProfile, createOrUpdateClientProfile, subscribeToClientProfile, type ClientProfile } from '@/services/clientProfiles';
-import { getCoachAssessment } from '@/services/coachAssessments';
-import { 
-  getCurrentAssessment, 
-  reconstructAssessmentAtDate, 
-  getChangeHistory,
-  getSnapshots,
-  type AssessmentSnapshot
-} from '@/services/assessmentHistory';
-import { type FormData } from '@/contexts/FormContext';
-import { computeScores } from '@/lib/scoring';
+import { useClientDetail } from '@/hooks/useClientDetail';
 import { AssessmentComparison } from '@/components/AssessmentComparison';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -32,14 +19,10 @@ import {
   TrendingDown,
   Calendar as CalendarIcon,
   Target as TargetIcon,
-  BarChart3,
   FileText,
-  Tag,
-  User,
   Mail,
   Phone,
   Cake,
-  AlertCircle,
   Activity,
   Dumbbell,
   Heart,
@@ -49,7 +32,6 @@ import {
   GitCompare,
   History,
 } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
 import {
   Dialog,
   DialogContent,
@@ -61,327 +43,47 @@ import {
 import { Badge } from '@/components/ui/badge';
 
 const ClientDetail = () => {
-  const { clientName: encodedClientName } = useParams<{ clientName: string }>();
-  const navigate = useNavigate();
-  const { user, profile: userProfile } = useAuth();
-  const { toast } = useToast();
-  
-  const clientName = encodedClientName ? decodeURIComponent(encodedClientName) : '';
-  const [assessments, setAssessments] = useState<CoachAssessmentSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState<ClientProfile | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editData, setEditData] = useState<Partial<ClientProfile>>({});
-  const [deleteDialog, setDeleteDialog] = useState<{ id: string; date: string } | null>(null);
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
-  const [historicalAssessment, setHistoricalAssessment] = useState<{ formData: FormData; overallScore: number } | null>(null);
-  const [loadingHistorical, setLoadingHistorical] = useState(false);
-  const [showComparison, setShowComparison] = useState(false);
-  const [comparisonDate, setComparisonDate] = useState<Date | undefined>(undefined);
-  const [snapshots, setSnapshots] = useState<AssessmentSnapshot[]>([]);
-  const [loadingSnapshots, setLoadingSnapshots] = useState(false);
-  const [comparisonTarget, setComparisonTarget] = useState<{ old: FormData; new: FormData; oldDate: Date; newDate: Date } | null>(null);
-  const [isComparisonMode, setIsComparisonMode] = useState(true);
-
-  // Helper to find nearest snapshot at or before target date
-  const handleDateSelection = async (date: Date) => {
-    if (!user || !clientName || !snapshots.length) return;
+  const {
+    // URL and Auth
+    clientName,
+    user,
     
-    setSelectedDate(date);
+    // Loading states
+    loading,
     
-    // Find nearest snapshot that is <= selected date
-    const sortedSnapshots = [...snapshots].sort((a, b) => b.timestamp.toDate().getTime() - a.timestamp.toDate().getTime());
-    const nearest = sortedSnapshots.find(s => s.timestamp.toDate().getTime() <= date.getTime()) || sortedSnapshots[sortedSnapshots.length - 1];
+    // Data
+    assessments,
+    profile,
+    snapshots,
+    currentAssessment,
+    categoryBreakdown,
+    categoryChanges,
+    stats,
     
-    if (nearest) {
-      if (isComparisonMode) {
-        if (currentAssessment) {
-          setComparisonTarget({
-            old: nearest.formData,
-            new: currentAssessment.formData,
-            oldDate: nearest.timestamp.toDate(),
-            newDate: new Date()
-          });
-          setShowComparison(true);
-        } else {
-          toast({ title: "Current data not loaded", variant: "destructive" });
-        }
-      } else {
-        navigate(`/coach/assessments/${nearest.id}?clientName=${encodeURIComponent(clientName)}`);
-      }
-    }
-  };
-
-  const handleQuickJump = (months: number | 'first' | 'last') => {
-    if (!snapshots.length) return;
+    // UI State
+    isEditing,
+    editData,
+    deleteDialog,
+    selectedDate,
+    showComparison,
+    comparisonTarget,
+    isComparisonMode,
     
-    let targetDate = new Date();
-    if (months === 'first') {
-      const sorted = [...snapshots].sort((a, b) => a.timestamp.toDate().getTime() - b.timestamp.toDate().getTime());
-      targetDate = sorted[0].timestamp.toDate();
-    } else if (months === 'last') {
-      const sorted = [...snapshots].sort((a, b) => b.timestamp.toDate().getTime() - a.timestamp.toDate().getTime());
-      targetDate = sorted[0].timestamp.toDate();
-    } else {
-      targetDate.setMonth(targetDate.getMonth() - months);
-    }
+    // Setters
+    setIsEditing,
+    setEditData,
+    setDeleteDialog,
+    setShowComparison,
+    setIsComparisonMode,
     
-    handleDateSelection(targetDate);
-  };
-
-  useEffect(() => {
-    if (!user || !clientName) return;
-
-    // Load snapshots (with fallback if index not ready)
-    (async () => {
-      try {
-        setLoadingSnapshots(true);
-        const data = await getSnapshots(user.uid, clientName, 100, userProfile?.organizationId);
-        setSnapshots(data);
-      } catch (err) {
-        // If index error, try without organizationId filter
-        if (err && typeof err === 'object' && 'code' in err && err.code === 'failed-precondition') {
-          try {
-            const data = await getSnapshots(user.uid, clientName, 100);
-            // Filter by organizationId in memory if needed
-            const filtered = userProfile?.organizationId 
-              ? data.filter(s => (s as { organizationId?: string }).organizationId === userProfile.organizationId)
-              : data;
-            setSnapshots(filtered);
-          } catch (fallbackErr) {
-            console.error('Failed to load snapshots (fallback):', fallbackErr);
-          }
-        } else {
-          console.error('Failed to load snapshots:', err);
-        }
-      } finally {
-        setLoadingSnapshots(false);
-      }
-    })();
-  }, [user, clientName, userProfile?.organizationId]);
-
-  useEffect(() => {
-    if (!user || !clientName) return;
-
-    // Subscribe to profile updates
-    const unsubscribeProfile = subscribeToClientProfile(user.uid, clientName, (p) => {
-      setProfile(p);
-      if (p) {
-        setEditData({
-          email: p.email || '',
-          phone: p.phone || '',
-          dateOfBirth: p.dateOfBirth || '',
-          gender: p.gender || '',
-          notes: p.notes || '',
-          tags: p.tags || [],
-          status: p.status || 'active',
-        });
-      }
-    }, userProfile?.organizationId);
-
-    // Load assessments
-    (async () => {
-      try {
-        setLoading(true);
-        const data = await getClientAssessments(user.uid, clientName, userProfile?.organizationId);
-        setAssessments(data);
-        
-        // Update profile with latest assessment date
-        if (data.length > 0 && data[0].createdAt) {
-          await createOrUpdateClientProfile(user.uid, clientName, {
-            lastAssessmentDate: data[0].createdAt,
-          }, userProfile?.organizationId);
-        }
-      } finally {
-        setLoading(false);
-      }
-    })();
-
-    return () => {
-      unsubscribeProfile();
-    };
-  }, [user, clientName, userProfile?.organizationId]);
-
-  const handleSaveProfile = async () => {
-    if (!user || !clientName) return;
-    try {
-      await createOrUpdateClientProfile(user.uid, clientName, editData, userProfile?.organizationId);
-      setIsEditing(false);
-      toast({
-        title: "Profile updated",
-        description: "Client profile has been saved.",
-      });
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: "Failed to update profile.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleNewAssessment = async (category?: 'inbody' | 'posture' | 'fitness' | 'strength' | 'lifestyle') => {
-    if (!user) return;
-    
-    // Set partial assessment mode immediately if category specified
-    // This must happen before any awaits to ensure it's ready for the next page
-    if (category) {
-      sessionStorage.setItem('partialAssessment', JSON.stringify({
-        category,
-        clientName,
-      }));
-    } else {
-      sessionStorage.removeItem('partialAssessment');
-    }
-    
-    sessionStorage.removeItem('isDemoAssessment');
-    sessionStorage.removeItem('prefillClientData');
-
-    // Get latest assessment to pre-fill
-    if (assessments.length > 0) {
-      try {
-        const latest = await getCoachAssessment(user.uid, assessments[0].id);
-        if (latest?.formData) {
-          sessionStorage.setItem('prefillClientData', JSON.stringify({
-            clientName: latest.formData.fullName,
-            dateOfBirth: latest.formData.dateOfBirth,
-            email: latest.formData.email,
-            phone: latest.formData.phone,
-          }));
-        }
-      } catch (e) {
-        console.error('Failed to pre-fill data:', e);
-      }
-    }
-    
-    navigate('/assessment');
-  };
-
-  const handleDeleteAssessment = async (id: string) => {
-    if (!user) return;
-    try {
-      const { deleteCoachAssessment } = await import('@/services/coachAssessments');
-      await deleteCoachAssessment(user.uid, id);
-      setAssessments(assessments.filter(a => a.id !== id));
-      toast({
-        title: "Assessment deleted",
-        description: "The assessment has been removed.",
-      });
-      setDeleteDialog(null);
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: "Failed to delete assessment.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Calculate stats
-  const stats = useMemo(() => {
-    if (assessments.length === 0) {
-      return {
-        totalAssessments: 0,
-        averageScore: 0,
-        latestScore: 0,
-        scoreChange: 0,
-        trend: 'neutral' as const,
-        categoryScores: {} as Record<string, number[]>,
-      };
-    }
-
-    const latest = assessments[0];
-    const previous = assessments[1];
-    const scoreChange = previous ? (latest.overallScore || 0) - (previous.overallScore || 0) : 0;
-    
-    const avgScore = Math.round(
-      assessments.reduce((sum, a) => sum + (a.overallScore || 0), 0) / assessments.length
-    );
-
-    return {
-      totalAssessments: assessments.length,
-      averageScore: avgScore,
-      latestScore: latest.overallScore || 0,
-      scoreChange,
-      trend: scoreChange > 0 ? 'up' as const : scoreChange < 0 ? 'down' as const : 'neutral' as const,
-      categoryScores: {} as Record<string, number[]>,
-    };
-  }, [assessments]);
-
-  // Load category scores for latest assessment
-  const [categoryBreakdown, setCategoryBreakdown] = useState<Record<string, number>>({});
-  const [categoryChanges, setCategoryChanges] = useState<Record<string, number>>({});
-  const [currentAssessment, setCurrentAssessment] = useState<{ formData: FormData; overallScore: number } | null>(null);
-  
-  useEffect(() => {
-    if (!user || !clientName) return;
-    (async () => {
-      // Load current assessment using new system
-      const current = await getCurrentAssessment(user.uid, clientName, userProfile?.organizationId);
-      const currentBreakdown: Record<string, number> = {};
-      
-      if (current) {
-        setCurrentAssessment(current);
-        const scores = computeScores(current.formData);
-        scores.categories.forEach(cat => {
-          currentBreakdown[cat.id] = cat.score;
-        });
-        setCategoryBreakdown(currentBreakdown);
-      } else if (assessments.length > 0) {
-        // Fallback to old system
-        const latest = await getCoachAssessment(user.uid, assessments[0].id);
-        if (latest?.formData) {
-          setCurrentAssessment({ formData: latest.formData, overallScore: latest.overallScore });
-          const scores = computeScores(latest.formData);
-          scores.categories.forEach(cat => {
-            currentBreakdown[cat.id] = cat.score;
-          });
-          setCategoryBreakdown(currentBreakdown);
-        }
-      }
-
-      // Calculate changes from previous snapshot
-      if (currentBreakdown && snapshots.length > 0) {
-        const prevSnapshot = snapshots[0]; // Most recent snapshot (could be the same as current if just saved)
-        // If the most recent snapshot is from "now" (last 5 mins), look at the one before it
-        const latestSnapshot = snapshots.find(s => {
-          const diff = Date.now() - s.timestamp.toDate().getTime();
-          return diff > 5 * 60 * 1000; // More than 5 minutes ago
-        }) || snapshots[1]; // Or just the second one if available
-
-        if (latestSnapshot) {
-          const prevScores = computeScores(latestSnapshot.formData);
-          const changes: Record<string, number> = {};
-          prevScores.categories.forEach(cat => {
-            const currentScore = currentBreakdown[cat.id] || 0;
-            changes[cat.id] = currentScore - cat.score;
-          });
-          setCategoryChanges(changes);
-        }
-      }
-    })();
-  }, [user, clientName, assessments, snapshots, userProfile?.organizationId]);
-
-  // Load historical assessment when date is selected
-  useEffect(() => {
-    if (!user || !clientName || !selectedDate) {
-      setHistoricalAssessment(null);
-      return;
-    }
-    
-    setLoadingHistorical(true);
-    (async () => {
-      try {
-        const historical = await reconstructAssessmentAtDate(user.uid, clientName, selectedDate, userProfile?.organizationId);
-        setHistoricalAssessment(historical);
-      } catch (err) {
-        console.error('Failed to load historical assessment:', err);
-        setHistoricalAssessment(null);
-      } finally {
-        setLoadingHistorical(false);
-      }
-    })();
-  }, [user, clientName, selectedDate, userProfile?.organizationId]);
+    // Handlers
+    handleDateSelection,
+    handleQuickJump,
+    handleSaveProfile,
+    handleNewAssessment,
+    handleDeleteAssessment,
+    navigateBack,
+  } = useClientDetail();
 
   if (!user) {
     return (
@@ -411,7 +113,7 @@ const ClientDetail = () => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate('/')}
+            onClick={navigateBack}
             className="h-8 w-8 p-0"
           >
             <ArrowLeft className="h-4 w-4" />

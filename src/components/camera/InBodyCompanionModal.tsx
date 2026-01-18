@@ -63,7 +63,7 @@ export const InBodyCompanionModal: React.FC<InBodyCompanionModalProps> = ({
     }
   }, [isOpen, session, profile?.organizationId]);
 
-  // 2. Listen for InBody Image
+  // 2. Listen for InBody Image - with optimistic UI
   useEffect(() => {
     if (!session?.id) return;
 
@@ -75,13 +75,30 @@ export const InBodyCompanionModal: React.FC<InBodyCompanionModalProps> = ({
         setIsOnline(true);
       }
 
+      // Optimistic UI: Show "Processing..." as soon as inbodyImage is detected
+      // Don't wait for ocrDataReady - this gives immediate feedback
+      const hasInbodyImage = !!(updatedSession.inbodyImage || 
+                               updatedSession.inbodyImageStorage || 
+                               updatedSession.inbodyImageFull);
+      
+      if (hasInbodyImage && !isProcessing && processedRef.current !== 'processing') {
+        console.log('[INBODY] Image detected - showing processing state');
+        setIsProcessing(true);
+        processedRef.current = 'processing';
+        toast({
+          title: "Scanning document...",
+          description: "Extracting data from your InBody report"
+        });
+      }
+
       // Check for OCR review data from companion app
       const ocrData = updatedSession.ocrReviewData;
       const isOcrReady = updatedSession.ocrDataReady;
       
-      if (isOcrReady && ocrData && !processedRef.current) {
+      if (isOcrReady && ocrData && processedRef.current !== 'completed') {
         // OCR Review data received from companion
-        processedRef.current = 'processed'; // Mark as processed to avoid duplicate triggers
+        processedRef.current = 'completed'; // Mark as completed to avoid duplicate triggers
+        setIsProcessing(false);
         
         // Pass the data directly (onComplete expects the OCR data structure)
         const formattedData = {

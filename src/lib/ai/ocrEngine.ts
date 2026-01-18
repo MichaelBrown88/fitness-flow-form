@@ -61,6 +61,69 @@ export const REQUIRED_SCAN_FIELDS: (keyof FormData)[] = [
 ];
 
 /**
+ * Pre-crop InBody image to focus on data table area
+ * Removes logo (top 10%) and footer (bottom 15%), plus side margins (5%)
+ * This reduces token usage and improves Gemini extraction accuracy
+ */
+async function cropInBodyImage(imageSrc: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        if (!ctx) {
+          // Fallback to original if canvas not available
+          resolve(imageSrc);
+          return;
+        }
+        
+        // Crop coordinates: y: 10% to 85%, x: 5% to 95%
+        // This removes typical InBody report headers/footers while keeping data table
+        const cropX = Math.floor(img.width * 0.05);
+        const cropY = Math.floor(img.height * 0.10);
+        const cropWidth = Math.floor(img.width * 0.90);
+        const cropHeight = Math.floor(img.height * 0.75);
+        
+        canvas.width = cropWidth;
+        canvas.height = cropHeight;
+        
+        ctx.drawImage(
+          img,
+          cropX, cropY, cropWidth, cropHeight, // Source rectangle
+          0, 0, cropWidth, cropHeight // Destination rectangle
+        );
+        
+        // Return as JPEG with good quality
+        const croppedImage = canvas.toDataURL('image/jpeg', 0.9);
+        console.log(`[OCR] Cropped image: ${img.width}x${img.height} -> ${cropWidth}x${cropHeight}`);
+        resolve(croppedImage);
+      } catch (error) {
+        console.warn('[OCR] Crop failed, using original:', error);
+        resolve(imageSrc);
+      }
+    };
+    
+    img.onerror = () => {
+      console.warn('[OCR] Image load failed for cropping, using original');
+      resolve(imageSrc);
+    };
+    
+    // Load the image
+    if (imageSrc.startsWith('data:')) {
+      img.src = imageSrc;
+    } else if (imageSrc.startsWith('http')) {
+      img.src = imageSrc;
+    } else {
+      img.src = `data:image/jpeg;base64,${imageSrc}`;
+    }
+  });
+}
+
+/**
  * Fast Gemini-only OCR (primary path now for speed)
  */
 async function runGeminiOcr(imageSrc: string): Promise<OcrResult> {
@@ -158,13 +221,20 @@ async function runGeminiOcr(imageSrc: string): Promise<OcrResult> {
  * Strategy: Go straight to Gemini for reliability. Tesseract was too slow
  * to load and often failed. We can revisit local OCR later with a pre-loaded
  * web worker if needed.
+ * 
+ * Optimization: Pre-crop image to focus on data table, reducing token usage
  */
 export async function processInBodyScan(imageSrc: string): Promise<OcrResult> {
   const coachUid = auth.currentUser?.uid || 'anonymous';
   
   try {
+    // Pre-crop image to focus on data table (removes logo/footer margins)
+    // This reduces token usage and improves extraction accuracy
+    console.log('[OCR] Pre-cropping InBody image...');
+    const croppedImage = await cropInBodyImage(imageSrc);
+    
     // Primary: Use Gemini AI directly (fast and reliable)
-    return await runGeminiOcr(imageSrc);
+    return await runGeminiOcr(croppedImage);
     
   } catch (err: unknown) {
     console.error('[OCR] Gemini failed:', err);

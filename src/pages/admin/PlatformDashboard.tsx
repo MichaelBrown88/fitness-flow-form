@@ -5,21 +5,8 @@
  * Uses aggregated system_stats for efficient single-document reads.
  */
 
-import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { getFirebaseAuth } from '@/services/firebase';
-import { 
-  getPlatformAdmin, 
-  getLiveMetrics, 
-  getOrganizations,
-  getAssessmentChartData,
-  getAICostsByFeature,
-  getOrgAICostsByFeature,
-  getOrgCoachesWithStats,
-} from '@/services/platformAdmin';
+import { usePlatformDashboard } from '@/hooks/usePlatformDashboard';
 import { formatMonthlyFee } from '@/lib/pricing';
-import type { PlatformAdmin, PlatformMetrics, OrganizationSummary } from '@/types/platform';
 import { 
   Shield, 
   LogOut, 
@@ -28,10 +15,7 @@ import {
   DollarSign, 
   Cpu,
   TrendingUp,
-  TrendingDown,
-  Clock,
   Activity,
-  ChevronRight,
   RefreshCw,
   FileText,
   ArrowUpRight,
@@ -41,225 +25,36 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { logger } from '@/lib/utils/logger';
-
-type SortField = 'name' | 'assessments' | 'aiCost' | 'lastActive';
-type SortDirection = 'asc' | 'desc';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const PlatformDashboard = () => {
-  const navigate = useNavigate();
-  const [admin, setAdmin] = useState<PlatformAdmin | null>(null);
-  const [metrics, setMetrics] = useState<PlatformMetrics | null>(null);
-  const [organizations, setOrganizations] = useState<OrganizationSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [expandedOrgId, setExpandedOrgId] = useState<string | null>(null);
-  const [selectedOrg, setSelectedOrg] = useState<OrganizationSummary | null>(null);
-  const [sortField, setSortField] = useState<SortField>('name');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
-  const [assessmentChartData, setAssessmentChartData] = useState<Array<{ date: string; assessments: number }>>([]);
-  const [aiCostsByFeature, setAiCostsByFeature] = useState<Array<{ feature: string; count: number; costFils: number }>>([]);
-  const [orgAiCostsByFeature, setOrgAiCostsByFeature] = useState<Record<string, Array<{ feature: string; count: number; costFils: number }>>>({});
-  const [orgCoachesWithStats, setOrgCoachesWithStats] = useState<Record<string, Array<{ uid: string; displayName: string; email?: string; role: string; assessmentCount: number; clientCount: number }>>>({});
-
-  useEffect(() => {
-    const auth = getFirebaseAuth();
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        navigate('/admin/login', { replace: true });
-        return;
-      }
-
-      // Verify this user is a platform admin
-      const adminData = await getPlatformAdmin(user.uid);
-      if (!adminData) {
-        logger.warn('User is not a platform admin:', user.email);
-        await signOut(auth);
-        navigate('/admin/login', { replace: true });
-        return;
-      }
-
-      setAdmin(adminData);
-      await loadDashboardData();
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [navigate]);
-
-  const loadDashboardData = async () => {
-    try {
-      const [metricsData, orgsData, chartData, featureCosts] = await Promise.all([
-        getLiveMetrics(),
-        getOrganizations(50),
-        getAssessmentChartData(),
-        getAICostsByFeature()
-      ]);
-      setMetrics(metricsData);
-      setOrganizations(orgsData);
-      setAssessmentChartData(chartData);
-      setAiCostsByFeature(featureCosts);
-      
-      // Load AI costs by feature and coaches with stats for each organization
-      // GDPR/HIPAA: Only load detailed data if permission granted
-      const orgCosts: Record<string, Array<{ feature: string; count: number; costFils: number }>> = {};
-      const coachesStats: Record<string, Array<{ uid: string; displayName: string; email?: string; role: string; assessmentCount: number; clientCount: number }>> = {};
-      for (const org of orgsData) {
-        try {
-          const [costs, coaches] = await Promise.all([
-            getOrgAICostsByFeature(org.id).catch(() => []), // AI costs don't require permission (aggregated)
-            // Only fetch coach stats if data access permission granted OR org is comped
-            (org.dataAccessPermission?.platformAdminAccess === true || 
-             org.isComped === true
-              ? getOrgCoachesWithStats(org.id).catch(() => [])
-              : Promise.resolve([]))
-          ]);
-          orgCosts[org.id] = costs;
-          coachesStats[org.id] = coaches;
-        } catch (e) {
-          logger.warn(`Failed to load data for org ${org.id}:`, e);
-        }
-      }
-      setOrgAiCostsByFeature(orgCosts);
-      setOrgCoachesWithStats(coachesStats);
-    } catch (error) {
-      logger.error('Failed to load dashboard data:', error);
-    }
-  };
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await loadDashboardData();
-    setRefreshing(false);
-  };
-
-  const handleSignOut = async () => {
-    const auth = getFirebaseAuth();
-    await signOut(auth);
-    navigate('/admin/login', { replace: true });
-  };
-
-  const formatCurrency = (fils: number) => {
-    // Kuwait uses fils (1 KWD = 1000 fils)
-    // Input is in fils, convert to KWD and show 3 decimal places to display fils
-    const kwd = fils / 1000;
-    return new Intl.NumberFormat('en-KW', {
-      style: 'currency',
-      currency: 'KWD',
-      minimumFractionDigits: 3, // Show 3 decimal places (fils precision)
-      maximumFractionDigits: 3,
-    }).format(kwd);
-  };
-
-  const formatNumber = (num: number) => {
-    return new Intl.NumberFormat('en-US').format(num);
-  };
-
-  const getStatusColor = (status: string, isComped?: boolean) => {
-    if (isComped) return 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30';
-    switch (status) {
-      case 'active': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
-      case 'trial': return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
-      case 'cancelled': return 'bg-red-500/20 text-red-400 border-red-500/30';
-      case 'past_due': return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
-      default: return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
-    }
-  };
-
-  const getStatusLabel = (status: string, isComped?: boolean) => {
-    if (isComped) return 'Comped';
-    return status;
-  };
-
-  const getActivityColor = (daysSince: number) => {
-    if (daysSince < 2) return 'text-emerald-400';
-    if (daysSince < 7) return 'text-amber-400';
-    if (daysSince < 30) return 'text-orange-400';
-    return 'text-red-400';
-  };
-
-  const getDaysSince = (date?: Date) => {
-    if (!date) return 999;
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    return Math.floor(diff / (1000 * 60 * 60 * 24));
-  };
-
-  // Calculate unit economics
-  const unitEconomics = useMemo(() => {
-    if (!metrics) return null;
-
-    const avgCostPerAssessment = metrics.totalAssessments > 0
-      ? metrics.aiCostsMtdCents / metrics.totalAssessments
-      : 0;
-
-    const assessmentsPerCoach = metrics.totalCoaches > 0
-      ? metrics.totalAssessments / metrics.totalCoaches
-      : 0;
-
-    const activeRatio = metrics.totalCoaches > 0
-      ? (metrics.totalOrganizations / metrics.totalCoaches) * 100
-      : 0;
-
-    return {
-      avgCostPerAssessment,
-      assessmentsPerCoach,
-      activeRatio,
-    };
-  }, [metrics]);
-
-  // Format feature names for display
-  const formatFeatureName = (feature: string) => {
-    return feature
-      .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-  };
-
-  // Sorted organizations
-  const sortedOrganizations = useMemo(() => {
-    const sorted = [...organizations].sort((a, b) => {
-      let aVal: number | string;
-      let bVal: number | string;
-
-      switch (sortField) {
-        case 'name':
-          aVal = a.name.toLowerCase();
-          bVal = b.name.toLowerCase();
-          break;
-        case 'assessments':
-          aVal = a.assessmentCount;
-          bVal = b.assessmentCount;
-          break;
-        case 'aiCost':
-          aVal = a.aiCostsMtdCents;
-          bVal = b.aiCostsMtdCents;
-          break;
-        case 'lastActive':
-          aVal = a.lastActiveDate?.getTime() || 0;
-          bVal = b.lastActiveDate?.getTime() || 0;
-          break;
-        default:
-          return 0;
-      }
-
-      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
-      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
-      return 0;
-    });
-
-    return sorted;
-  }, [organizations, sortField, sortDirection]);
-
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
-    }
-  };
+  const {
+    admin,
+    loading,
+    refreshing,
+    metrics,
+    sortedOrganizations,
+    assessmentChartData,
+    aiCostsByFeature,
+    orgAiCostsByFeature,
+    orgCoachesWithStats,
+    unitEconomics,
+    selectedOrg,
+    sortField,
+    sortDirection,
+    setSelectedOrg,
+    handleRefresh,
+    handleSignOut,
+    handleSort,
+    navigateToOrg,
+    formatCurrency,
+    formatNumber,
+    formatFeatureName,
+    getStatusColor,
+    getStatusLabel,
+    getActivityColor,
+    getDaysSince,
+  } = usePlatformDashboard();
 
   if (loading) {
     return (
@@ -391,7 +186,6 @@ const PlatformDashboard = () => {
                     stroke="#64748b"
                     style={{ fontSize: '12px' }}
                     tickFormatter={(value) => {
-                      // Format YYYY-MM-DD to MM/DD
                       const parts = value.split('-');
                       return `${parts[1]}/${parts[2]}`;
                     }}
@@ -479,10 +273,10 @@ const PlatformDashboard = () => {
         <div className="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
             <h2 className="text-white font-semibold">Organizations</h2>
-            <span className="text-xs text-slate-500">{organizations.length} total</span>
+            <span className="text-xs text-slate-500">{sortedOrganizations.length} total</span>
           </div>
           
-          {organizations.length === 0 ? (
+          {sortedOrganizations.length === 0 ? (
             <div className="px-5 py-12 text-center">
               <Building2 className="w-12 h-12 text-slate-700 mx-auto mb-3" />
               <p className="text-slate-500">No organizations yet</p>
@@ -663,7 +457,7 @@ const PlatformDashboard = () => {
                                     </div>
                                   </div>
                                   
-                                  {/* Coaches with Assessment Counts - GDPR/HIPAA: Only show if permission granted */}
+                                  {/* Coaches with Assessment Counts */}
                                   {orgCoachesWithStats[selectedOrg.id] && orgCoachesWithStats[selectedOrg.id].length > 0 ? (
                                     <div className="pt-4 border-t border-slate-800">
                                       <h4 className="text-sm font-medium text-slate-300 mb-3">Coaches & Activity</h4>
@@ -690,7 +484,7 @@ const PlatformDashboard = () => {
                                       <div className="pt-4 border-t border-slate-800">
                                         <div className="p-3 bg-slate-800/30 rounded-lg border border-amber-500/30">
                                           <p className="text-xs text-amber-400">
-                                            🔒 Data access restricted. Visit organization details to request access.
+                                            Data access restricted. Visit organization details to request access.
                                           </p>
                                         </div>
                                       </div>
@@ -720,9 +514,7 @@ const PlatformDashboard = () => {
                                       size="sm"
                                       variant="outline"
                                       className="text-xs border-slate-700 text-slate-300 hover:bg-slate-700"
-                                      onClick={() => {
-                                        navigate(`/admin/organizations/${selectedOrg.id}`);
-                                      }}
+                                      onClick={() => navigateToOrg(selectedOrg.id)}
                                     >
                                       <Settings className="w-3 h-3 mr-1" />
                                       Manage Subscription
