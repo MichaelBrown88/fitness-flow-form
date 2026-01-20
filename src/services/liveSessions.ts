@@ -263,10 +263,11 @@ export const updateInBodyImage = async (sessionId: string, imageData: string) =>
 // REMOVED: updatePostureAnalysis is now redundant - analysis is handled by updatePostureImage (unified system)
 
 /**
- * Get all sessions for a specific client (for comparison features)
+ * Get sessions for a specific client (for comparison features)
+ * Limited to most recent sessions to prevent unbounded queries
  */
-export const getClientSessions = async (clientId: string, organizationId?: string): Promise<LiveSession[]> => {
-  const { collection, query, where, getDocs } = await import('firebase/firestore');
+export const getClientSessions = async (clientId: string, organizationId?: string, maxResults = 20): Promise<LiveSession[]> => {
+  const { collection, query, where, getDocs, limit } = await import('firebase/firestore');
   const sessionsRef = collection(db, SESSIONS_COLLECTION);
   
   let q;
@@ -275,13 +276,15 @@ export const getClientSessions = async (clientId: string, organizationId?: strin
     q = query(
       sessionsRef,
       where('clientId', '==', clientId),
-      where('organizationId', '==', organizationId)
+      where('organizationId', '==', organizationId),
+      limit(maxResults)
     );
   } else {
     // Query without orderBy to avoid index requirement - we'll sort in memory
     q = query(
       sessionsRef,
-      where('clientId', '==', clientId)
+      where('clientId', '==', clientId),
+      limit(maxResults)
     );
   }
   

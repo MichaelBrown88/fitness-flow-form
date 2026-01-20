@@ -225,6 +225,7 @@ export async function getClientAssessments(
   coachUid: string,
   clientName: string,
   organizationId?: string,
+  maxResults = 50,
 ): Promise<CoachAssessmentSummary[]> {
   let q;
   if (organizationId) {
@@ -233,12 +234,14 @@ export async function getClientAssessments(
       where('clientNameLower', '==', clientName.toLowerCase()),
       where('organizationId', '==', organizationId),
       orderBy('createdAt', 'desc'),
+      limit(maxResults),
     );
   } else {
     q = query(
       coachAssessmentsCollection(coachUid),
       where('clientNameLower', '==', clientName.toLowerCase()),
       orderBy('createdAt', 'desc'),
+      limit(maxResults),
     );
   }
   const snap = await getDocs(q);
@@ -257,18 +260,20 @@ export async function getClientAssessments(
   return items;
 }
 
-export async function getAllClients(coachUid: string, organizationId?: string): Promise<string[]> {
+export async function getAllClients(coachUid: string, organizationId?: string, maxAssessments = 500): Promise<string[]> {
   let q;
   if (organizationId) {
     q = query(
       coachAssessmentsCollection(coachUid), 
       where('organizationId', '==', organizationId),
-      orderBy('createdAt', 'desc')
+      orderBy('createdAt', 'desc'),
+      limit(maxAssessments)
     );
   } else {
     q = query(
       coachAssessmentsCollection(coachUid), 
-      orderBy('createdAt', 'desc')
+      orderBy('createdAt', 'desc'),
+      limit(maxAssessments)
     );
   }
   const snap = await getDocs(q);
