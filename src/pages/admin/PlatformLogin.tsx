@@ -45,32 +45,45 @@ const PlatformLogin = () => {
     setLoading(true);
 
     try {
-      const isAdmin = await isPlatformAdmin(email.trim().toLowerCase());
+      // Add timeout to prevent hanging on Firestore queries
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('timeout')), 8000)
+      );
       
-      if (!isAdmin) {
+      const checkAdmin = async () => {
+        const isAdmin = await isPlatformAdmin(email.trim().toLowerCase());
+        
+        if (!isAdmin) {
+          return { isAdmin: false, admin: null };
+        }
+
+        const admin = await getPlatformAdminByEmail(email.trim().toLowerCase());
+        return { isAdmin: true, admin };
+      };
+      
+      const result = await Promise.race([checkAdmin(), timeoutPromise]);
+      
+      if (!result.isAdmin) {
         setError('This email is not authorized for platform administration.');
         setLoading(false);
         return;
       }
 
-      // Check if they've set their password yet
-      const admin = await getPlatformAdminByEmail(email.trim().toLowerCase());
-      
-      if (admin && admin.isPasswordSet) {
+      if (result.admin && result.admin.isPasswordSet) {
         // Existing admin - go to password entry
-        setAdminName(admin.displayName);
+        setAdminName(result.admin.displayName);
         setStep('password');
       } else {
         // First time - need to set password
-        setAdminName(admin?.displayName || 'Admin');
+        setAdminName(result.admin?.displayName || 'Admin');
         setStep('set-password');
       }
     } catch (err) {
-      // If we got a permission error, it just means the DB is locked for logged-out users.
-      // We should allow them to try logging in anyway.
-      const firebaseError = err as { code?: string };
-      if (firebaseError?.code === 'permission-denied') {
-        logger.info('Proceeding to password step despite permission error');
+      // If we got a permission error or timeout, proceed to password step
+      // The actual auth will happen with Firebase Auth which has its own validation
+      const firebaseError = err as { code?: string; message?: string };
+      if (firebaseError?.code === 'permission-denied' || firebaseError?.message === 'timeout') {
+        logger.info('Proceeding to password step (permission denied or timeout)');
         setAdminName('Admin');
         setStep('password');
       } else {
