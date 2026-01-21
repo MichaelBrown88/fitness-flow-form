@@ -198,7 +198,8 @@ export function useAssessmentSave({
       view,
       coachUid: user.uid,
       formData,
-      organizationId: profile.organizationId
+      organizationId: profile.organizationId,
+      profile
     });
     shareCacheRef.current[view] = artifacts;
     setShareCache(prev => ({ ...prev, [view]: artifacts }));

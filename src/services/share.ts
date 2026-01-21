@@ -2,6 +2,7 @@ import { httpsCallable } from 'firebase/functions';
 import { getFirebaseFunctions, getDb } from '@/services/firebase';
 import { CONFIG } from '@/config';
 import { publishPublicReport } from './publicReports';
+import type { UserProfile } from '@/types/auth';
 
 const functions = getFirebaseFunctions();
 
@@ -22,8 +23,9 @@ export async function requestShareArtifacts(params: {
   coachUid: string;
   formData: import('@/contexts/FormContext').FormData;
   organizationId?: string;
+  profile?: UserProfile | null;
 }): Promise<ShareArtifacts> {
-  const { assessmentId, view, coachUid, formData, organizationId } = params;
+  const { assessmentId, view, coachUid, formData, organizationId, profile } = params;
   
   // First, ensure a public report exists (generates token if needed)
   const shareToken = await publishPublicReport({
@@ -31,6 +33,7 @@ export async function requestShareArtifacts(params: {
     assessmentId,
     formData,
     organizationId,
+    profile,
   });
 
   // Generate the secure share URL using the token

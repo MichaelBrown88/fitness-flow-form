@@ -59,6 +59,7 @@ const AssessmentReport = () => {
       coachUid: user.uid,
       formData,
       organizationId: profile?.organizationId,
+      profile: profile || null,
     });
     setShareCache((prev) => ({ ...prev, [view]: artifacts }));
     return artifacts;
@@ -88,7 +89,7 @@ const AssessmentReport = () => {
     try {
       setShareLoading(true);
       const artifacts = await requestShareArtifacts({
-        assessmentId: id, view: 'client', coachUid: user.uid, formData, organizationId: profile?.organizationId,
+        assessmentId: id, view: 'client', coachUid: user.uid, formData, organizationId: profile?.organizationId, profile: profile || null,
       });
       await navigator.clipboard.writeText(artifacts.shareUrl);
       toast({ title: 'Live Link Copied', description: 'Anyone with this link can view the interactive report.' });
@@ -105,7 +106,7 @@ const AssessmentReport = () => {
     try {
       setShareLoading(true);
       const artifacts = await requestShareArtifacts({
-        assessmentId: id, view: 'client', coachUid: user.uid, formData, organizationId: profile?.organizationId,
+        assessmentId: id, view: 'client', coachUid: user.uid, formData, organizationId: profile?.organizationId, profile: profile || null,
       });
       if (navigator.share) {
         try {
@@ -134,7 +135,7 @@ const AssessmentReport = () => {
     try {
       setShareLoading(true);
       const artifacts = await requestShareArtifacts({
-        assessmentId: id, view: 'client', coachUid: user.uid, formData, organizationId: profile?.organizationId,
+        assessmentId: id, view: 'client', coachUid: user.uid, formData, organizationId: profile?.organizationId, profile: profile || null,
       });
       const url = `https://wa.me/?text=${encodeURIComponent(artifacts.whatsappText)}`;
       window.open(url, '_blank', 'noopener,noreferrer');

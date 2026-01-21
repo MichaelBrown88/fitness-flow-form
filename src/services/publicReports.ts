@@ -5,6 +5,8 @@ import { getDb } from '@/services/firebase';
 import { sanitizeForFirestore } from '@/lib/utils/firebaseUtils';
 import { COLLECTIONS } from '@/constants/collections';
 import { logger } from '@/lib/utils/logger';
+import { validateOrganizationId } from '@/lib/utils/validateOrganizationId';
+import type { UserProfile } from '@/types/auth';
 
 export type PublicReportDoc = {
   shareToken: string; // UUID token used as document ID
@@ -61,11 +63,12 @@ export async function publishPublicReport(params: {
   formData: FormData;
   visibility?: 'public' | 'private';
   organizationId?: string;
+  profile?: UserProfile | null;
 }): Promise<string> {
-  const { coachUid, assessmentId, formData, visibility = 'public', organizationId } = params;
+  const { coachUid, assessmentId, formData, visibility = 'public', organizationId, profile } = params;
   
-  // Check if a public report already exists for this assessment
-  // We'll query by assessmentId to find existing token
+  // Validate organizationId before proceeding
+  // If updating existing report, verify ownership
   const existingQuery = query(
     collection(getDb(), COLLECTIONS.PUBLIC_REPORTS),
     where('coachUid', '==', coachUid),
@@ -78,16 +81,32 @@ export async function publishPublicReport(params: {
 
   let shareToken: string;
   let isNew = false;
+  let existingReport: PublicReportDoc | null = null;
 
   if (!existingSnapshot.empty) {
     // Reuse existing token
     const existingDoc = existingSnapshot.docs[0];
     shareToken = existingDoc.id;
+    existingReport = {
+      shareToken: existingDoc.id,
+      ...existingDoc.data(),
+    } as PublicReportDoc;
+    
+    // Verify ownership: if existing report has orgId, validate it matches
+    if (existingReport.organizationId) {
+      const validOrgId = validateOrganizationId(organizationId || existingReport.organizationId, profile);
+      if (existingReport.organizationId !== validOrgId) {
+        throw new Error('Cannot update report: Organization mismatch. This report belongs to a different organization.');
+      }
+    }
   } else {
     // Generate new secure token
     shareToken = generateShareToken();
     isNew = true;
   }
+
+  // Validate organizationId for new reports or when updating
+  const validOrgId = validateOrganizationId(organizationId || existingReport?.organizationId, profile);
 
   const ref = doc(getDb(), COLLECTIONS.PUBLIC_REPORTS, shareToken);
   const snapshot = await getDoc(ref);
@@ -97,7 +116,7 @@ export async function publishPublicReport(params: {
   const payload = {
     coachUid,
     assessmentId,
-    organizationId: organizationId || null,
+    organizationId: validOrgId, // Use validated organizationId (never null)
     clientName: (safeFormData.fullName || 'Unnamed client').trim(),
     clientNameLower: (safeFormData.fullName || 'Unnamed client').toLowerCase(),
     visibility,

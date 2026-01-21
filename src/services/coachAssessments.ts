@@ -86,6 +86,7 @@ export async function saveCoachAssessment(
       assessmentId: docRef.id,
       formData,
       organizationId: validOrgId,
+      profile,
     });
   } catch (err) {
     // Non-blocking: public report update failure shouldn't block assessment save

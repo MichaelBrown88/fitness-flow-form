@@ -137,6 +137,7 @@ export function useAssessmentLogic(assessmentId: string | undefined) {
                 assessmentId,
                 formData: fd,
                 organizationId: profile?.organizationId,
+                profile,
             }).catch(e => logger.error('Background publish failed', e));
         }
 
