@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getOrgCoaches } from '@/services/coachManagement';
 import { getBodyFatRange } from '@/lib/utils/bodyRecomposition';
 import { safeParse } from '@/lib/utils/numbers';
+import { logger } from '@/lib/utils/logger';
 import type { PhaseField } from '@/types/assessment';
 
 export type FieldValue = string | number | string[] | null;
@@ -64,7 +65,7 @@ export function useFieldControl({ field }: UseFieldControlProps) {
           }
         })
         .catch((error) => {
-          console.error('Error loading coaches:', error);
+          logger.error('Error loading coaches:', error);
           if (user && profile?.role === 'org_admin') {
             const adminCoach = {
               uid: user.uid,

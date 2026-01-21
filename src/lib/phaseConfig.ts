@@ -659,7 +659,6 @@ export const phaseDefinitions: PhaseDefinition[] = [
               { value: '1x-bw-bench', label: '1.0x BW Bench' },
               { value: 'chinup-mastery', label: '3 Strict Pull-ups' },
               // Intermediate
-              { value: '1x-bw-bench', label: '1.0x BW Bench' },
               { value: '0.75x-bw-bench', label: '0.75x BW Bench' },
               { value: '1x-bw-squat', label: '1.0x BW Squat' },
               { value: '1.25x-bw-deadlift', label: '1.25x BW Deadlift' },

@@ -76,7 +76,7 @@ export const updateHeartbeat = async (sessionId: string): Promise<void> => {
     });
   } catch (err) {
     // Silently fail - heartbeat is non-critical
-    console.warn('[HEARTBEAT] Update failed:', err);
+    logger.warn('[HEARTBEAT] Update failed:', err);
   }
 };
 

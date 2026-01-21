@@ -1,6 +1,7 @@
 import { useCallback, useRef } from 'react';
 import type { FormData } from '@/contexts/FormContext';
 import { phaseDefinitions } from '@/lib/phaseConfig';
+import { logger } from '@/lib/utils/logger';
 
 export const useDemoAssessment = (
   updateFormData: (data: Partial<FormData>) => void,
@@ -16,7 +17,7 @@ export const useDemoAssessment = (
   const runDemoSequential = useCallback(async () => {
     // Prevent multiple simultaneous runs
     if (isRunningDemoRef.current || isDemoAssessment) {
-      console.warn('[DEMO] Auto-fill already in progress, skipping...');
+      logger.warn('[DEMO] Auto-fill already in progress, skipping...');
       return;
     }
     
@@ -70,7 +71,7 @@ export const useDemoAssessment = (
         }
       }
     } catch (error) {
-      console.error('[DEMO] Sequence failed:', error);
+      logger.error('[DEMO] Sequence failed:', error);
     } finally {
       isRunningDemoRef.current = false;
       // Keep isDemoAssessment = true so UI knows we are in demo mode (some fields might behave differently)

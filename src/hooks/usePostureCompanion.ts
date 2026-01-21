@@ -18,6 +18,7 @@ import { generatePlaceholderWithGreenLines } from '@/lib/utils/postureOverlay';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import type { PostureCompanionData } from '@/lib/types/companion';
+import { logger } from '@/lib/utils/logger';
 
 // Connection state for 3-tier heartbeat monitoring
 export type ConnectionState = 'offline' | 'online' | 'unstable' | 'disconnected';
@@ -162,7 +163,7 @@ export function usePostureCompanion({
       } else {
         setConnectionState('disconnected');
         if (isOnline) {
-          console.log('[HEARTBEAT] Connection lost - mobile companion disconnected');
+          logger.debug('[HEARTBEAT] Connection lost - mobile companion disconnected');
           toast({
             title: "Connection Lost",
             description: "Mobile companion disconnected. Scan QR code to reconnect.",
@@ -224,7 +225,7 @@ export function usePostureCompanion({
     try {
       fileInputRef.current?.click();
     } catch (err) {
-      console.error('[UPLOAD] Failed to trigger file input:', err);
+      logger.error('[UPLOAD] Failed to trigger file input:', err);
       toast({ 
         title: "Upload failed", 
         description: "Could not open file selector. Please try again.", 
@@ -335,7 +336,7 @@ export function usePostureCompanion({
         throw new Error(`All ${failCount} image(s) failed to process.${errorDetails} Check browser console for details.`);
       }
     } catch (error) {
-      console.error('[UPLOAD] Failed to upload images:', error);
+      logger.error('[UPLOAD] Failed to upload images:', error);
       toast({ 
         title: "Upload failed", 
         description: error instanceof Error ? error.message : "Could not upload images. Check console for details.", 
@@ -361,7 +362,7 @@ export function usePostureCompanion({
       if (typeof storageUrl === 'string') {
         storageUrls[view] = storageUrl;
       } else {
-        console.warn(`[APPLY] No Storage URL found for ${view} - image may not be stored yet`);
+        logger.warn(`[APPLY] No Storage URL found for ${view} - image may not be stored yet`);
       }
     });
     

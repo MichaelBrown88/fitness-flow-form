@@ -5,6 +5,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { CONFIG } from '@/config';
+import { logger } from '@/lib/utils/logger';
 
 interface UseAudioFeedbackResult {
   speak: (text: string) => void;
@@ -25,7 +26,7 @@ export function useAudioFeedback(): UseAudioFeedbackResult {
     try {
       shutterAudio.current = new Audio(CONFIG.COMPANION.AUDIO.SHUTTER_URL);
     } catch (e) {
-      console.warn('[COMPANION] Audio initialization failed:', e);
+      logger.warn('[COMPANION] Audio initialization failed:', e);
     }
   }, []);
 
@@ -37,7 +38,7 @@ export function useAudioFeedback(): UseAudioFeedbackResult {
       utterance.volume = 1.0;
       window.speechSynthesis.speak(utterance);
     } catch (e) {
-      console.warn('[AUDIO] Speech failed:', e);
+      logger.warn('[AUDIO] Speech failed:', e);
     }
   };
 

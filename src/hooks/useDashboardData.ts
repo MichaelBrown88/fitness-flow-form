@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/components/ui/use-toast';
+import { logger } from '@/lib/utils/logger';
 import { 
   listCoachAssessments, 
   deleteCoachAssessment,
@@ -132,7 +133,7 @@ export function useDashboardData() {
           });
         }
       } catch (err) {
-        console.warn(`Failed to load assessment ${assessment.id} for analytics:`, err);
+        logger.warn(`Failed to load assessment ${assessment.id} for analytics:`, err);
       }
     }
 
@@ -199,7 +200,7 @@ export function useDashboardData() {
         );
         useOrgFilter = true;
       } catch (indexError) {
-        console.warn('Firestore index not ready, using fallback query:', indexError);
+        logger.warn('Firestore index not ready, using fallback query:', indexError);
         q = query(assessmentsRef, orderBy('createdAt', 'desc'), limit(20));
         useOrgFilter = false;
       }
@@ -261,14 +262,14 @@ export function useDashboardData() {
                     });
                   });
                 } catch (err) {
-                  console.warn('Failed to load history for client:', clientName, err);
+                  logger.warn('Failed to load history for client:', clientName, err);
                 }
               }
               
               changes.sort((a, b) => b.date.getTime() - a.date.getTime());
               setRecentChanges(changes.slice(0, 10));
             } catch (err) {
-              console.warn('Failed to load recent changes:', err);
+              logger.warn('Failed to load recent changes:', err);
             }
           })();
         }
@@ -281,7 +282,7 @@ export function useDashboardData() {
       }
     }, (error) => {
       if (error.code === 'failed-precondition' && error.message.includes('index')) {
-        console.warn('Firestore index not ready, retrying with fallback query:', error);
+        logger.warn('Firestore index not ready, retrying with fallback query:', error);
         if (unsubscribeRef.current) {
           unsubscribeRef.current(); // Unsubscribe from the initial query
           unsubscribeRef.current = null;
@@ -327,7 +328,7 @@ export function useDashboardData() {
         unsubscribeRef.current = fallbackUnsubscribe;
         setLoadingData(false);
       } else {
-        console.error('onSnapshot error:', error);
+        logger.error('onSnapshot error:', error);
         setLoadingData(false);
       }
     });
@@ -444,7 +445,7 @@ export function useDashboardData() {
         }
       }
     } catch (e) {
-      console.error('Failed to pre-fill data:', e);
+      logger.error('Failed to pre-fill data:', e);
     }
     navigate('/assessment');
   };
@@ -494,7 +495,7 @@ export function useDashboardData() {
         setHasMore(nextSnapshot.size === 20);
         setVisibleAssessmentsCount(prev => prev + newData.length);
       } catch (err) {
-        console.error('Failed to load more assessments:', err);
+        logger.error('Failed to load more assessments:', err);
         toast({
           title: 'Error',
           description: 'Failed to load more assessments.',

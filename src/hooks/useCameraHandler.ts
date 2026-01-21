@@ -9,6 +9,7 @@ import { processInBodyScan } from '@/lib/ai/ocrEngine';
 import { compressImageForDisplay } from '@/lib/utils/imageCompression';
 import type { FormData } from '@/contexts/FormContext';
 import type { PostureCompanionData } from '@/lib/types/companion';
+import { logger } from '@/lib/utils/logger';
 
 interface UseCameraHandlerProps {
   formData: FormData;
@@ -61,7 +62,7 @@ export function useCameraHandler({
           });
         }
       } catch (err) {
-        console.error('OCR error:', err);
+        logger.error('OCR error:', err);
         toast({ title: "Scan failed", description: "An error occurred during AI analysis.", variant: "destructive" });
       } finally {
         setIsProcessingOcr(false);
@@ -103,7 +104,7 @@ export function useCameraHandler({
           toast({ title: "Posture analysis complete", description: "Aligned images and findings have been applied." });
         }
       } catch (err) {
-        console.error('Local posture analysis error:', err);
+        logger.error('Local posture analysis error:', err);
         toast({ title: "Analysis failed", description: "Could not analyze posture image.", variant: "destructive" });
         setShowCamera(false);
       } finally {

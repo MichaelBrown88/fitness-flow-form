@@ -11,6 +11,7 @@ import { updatePostureImage, updateInBodyImage } from '@/services/liveSessions';
 import { processInBodyScan } from '@/lib/ai/ocrEngine';
 import { LandmarkResult } from '@/lib/ai/postureLandmarks';
 import type Webcam from 'react-webcam';
+import { logger } from '@/lib/utils/logger';
 
 interface UseCameraCaptureOptions {
   sessionId: string | undefined;
@@ -29,10 +30,10 @@ const logCaptureMessage = async (sessionId: string | undefined, message: string,
       const { logCompanionMessage } = await import('@/services/liveSessions');
       await logCompanionMessage(sessionId, message, level);
     } catch (err) {
-      console.error('[CAPTURE] Failed to log:', err);
+      logger.error('[CAPTURE] Failed to log:', err);
     }
   }
-  console.log(`[CAPTURE] ${message}`);
+  logger.debug(`[CAPTURE] ${message}`);
 };
 
 interface UseCameraCaptureResult {
@@ -85,7 +86,7 @@ export function useCameraCapture({
       const viewData = views[viewIdx];
       if (!viewData) {
         await logCaptureMessage(sessionId, `Invalid view index: ${viewIdx}`, 'error');
-        console.error('[CAPTURE] Invalid index:', viewIdx);
+        logger.error('[CAPTURE] Invalid index:', viewIdx);
         return;
       }
       
@@ -96,10 +97,10 @@ export function useCameraCapture({
       // Shutter sound
       try {
         if (shutterAudio.current) {
-          void shutterAudio.current.play().catch((e) => console.warn('[AUDIO] Shutter failed:', e));
+          void shutterAudio.current.play().catch((e) => logger.warn('[AUDIO] Shutter failed:', e));
         }
       } catch (e) {
-        console.warn('[AUDIO] Shutter error:', e);
+        logger.warn('[AUDIO] Shutter error:', e);
       }
 
       // Screenshot
@@ -138,7 +139,7 @@ export function useCameraCapture({
                     ocrDataUpdated: Timestamp.now(),
                   }, { merge: true });
                 } catch (saveError) {
-                  console.error('[OCR] Failed to save to session:', saveError);
+                  logger.error('[OCR] Failed to save to session:', saveError);
                 }
                 
                 setOcrReviewData(result.fields as Record<string, string>);
@@ -154,7 +155,7 @@ export function useCameraCapture({
               }
             })
             .catch((err: unknown) => {
-              console.error('[OCR] Error:', err);
+              logger.error('[OCR] Error:', err);
               toast({
                 title: 'Scan Issue',
                 description: err instanceof Error ? err.message : 'Please retake or enter values manually.',
@@ -178,7 +179,7 @@ export function useCameraCapture({
             })
             .catch(async (err: unknown) => {
               await logCaptureMessage(sessionId, `Upload error for ${viewData.label}: ${err instanceof Error ? err.message : String(err)}`, 'error');
-              console.error('[CAPTURE] Upload error:', err);
+              logger.error('[CAPTURE] Upload error:', err);
               toast({ title: 'Sync Error', variant: 'destructive' });
             })
             .finally(() => setIsUploading((prev) => Math.max(0, prev - 1)));
@@ -213,7 +214,7 @@ export function useCameraCapture({
       onAudioFeedback?.('Data has been added to the app.');
       setOcrReviewData(null);
     } catch (err: unknown) {
-      console.error('[OCR] Apply error:', err);
+      logger.error('[OCR] Apply error:', err);
       toast({ title: 'Error', variant: 'destructive' });
     } finally {
       setIsUploading((prev) => Math.max(0, prev - 1));

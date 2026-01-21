@@ -91,11 +91,13 @@ service cloud.firestore {
     
     // 2. USER PROFILES
     match /userProfiles/{userId} {
+      // Allow reading:
+      // - Your own profile
+      // - Platform admin can read all
+      // - Org members can read profiles in their org (enables collection queries with where(organizationId))
       allow read: if request.auth.uid == userId 
                   || isPlatformAdmin()
-                  || (isAuthenticated() && 
-                      get(/databases/$(database)/documents/userProfiles/$(userId)).data.organizationId == 
-                      getUserProfile().organizationId);
+                  || (isAuthenticated() && resource.data.organizationId == getUserProfile().organizationId);
       
       allow write: if request.auth.uid == userId || isPlatformAdmin();
     }

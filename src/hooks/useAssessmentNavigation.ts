@@ -8,6 +8,7 @@ import { phaseDefinitions, type PhaseSection, type PhaseId, type PhaseField } fr
 import type { FormData } from '@/contexts/FormContext';
 import type { OrgSettings } from '@/services/organizations';
 import { shouldShowField } from '@/lib/utils/equipmentFieldFilter';
+import { logger } from '@/lib/utils/logger';
 
 interface UseAssessmentNavigationProps {
   formData: FormData;
@@ -45,7 +46,7 @@ export function useAssessmentNavigation({ formData, orgSettings }: UseAssessment
         return 1; // Jump to category phase in partial mode
       }
     } catch (e) {
-      console.warn('Failed to parse partial assessment data:', e);
+      logger.warn('Failed to parse partial assessment data:', e);
     }
     return 0;
   };

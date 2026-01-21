@@ -6,6 +6,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { CONFIG } from '@/config';
 import { LandmarkResult } from '@/lib/ai/postureLandmarks';
+import { logger } from '@/lib/utils/logger';
 
 interface PoseValidation {
   isReady: boolean;
@@ -87,14 +88,14 @@ export function usePoseDetection({
         currentLandmarksRef.current = null;
         // Log when no pose detected (throttled)
         if (Math.random() < 0.05) {
-          console.log('[POSE] No landmarks detected');
+          logger.debug('[POSE] No landmarks detected');
         }
         return;
       }
       
       // Log when pose detected (throttled)
       if (Math.random() < 0.01) {
-        console.log('[POSE] Landmarks detected:', results.poseLandmarks.length, 'points');
+        logger.debug('[POSE] Landmarks detected:', results.poseLandmarks.length, 'points');
       }
 
       const landmarks = results.poseLandmarks;
@@ -192,7 +193,7 @@ export function usePoseDetection({
 
       // Log pose validation state (throttled)
       if (Math.random() < 0.02) {
-        console.log('[POSE] Validation:', {
+        logger.debug('[POSE] Validation:', {
           isReady,
           message,
           tooClose,
@@ -245,7 +246,7 @@ export function usePoseDetection({
       pose.onResults((results) => onPoseResultsRef.current(results));
       poseRef.current = pose;
     } catch (e) {
-      console.error('[POSE] Initialization failed:', e);
+      logger.error('[POSE] Initialization failed:', e);
     } finally {
       setIsPoseLoading(false);
     }
@@ -274,21 +275,21 @@ export function usePoseDetection({
           frameCount++;
           // Log every 30 frames (~1 second at 30fps) for debugging
           if (frameCount % 30 === 0) {
-            console.log('[POSE] Processing frame', frameCount, 'video:', webcamVideo.videoWidth, 'x', webcamVideo.videoHeight);
+            logger.debug('[POSE] Processing frame', frameCount, 'video:', webcamVideo.videoWidth, 'x', webcamVideo.videoHeight);
           }
         } catch (e) {
-          console.error('[POSE] Error sending frame:', e);
+          logger.error('[POSE] Error sending frame:', e);
         }
       } else {
         if (frameCount === 0) {
-          console.warn('[POSE] Not processing - poseRef:', !!poseRef.current, 'webcamVideo:', !!webcamVideo, 'mode:', mode, 'isAuthorized:', isAuthorized);
+          logger.warn('[POSE] Not processing - poseRef:', !!poseRef.current, 'webcamVideo:', !!webcamVideo, 'mode:', mode, 'isAuthorized:', isAuthorized);
         }
       }
       requestRef = requestAnimationFrame(update);
     };
 
     if (mode === 'posture' && isAuthorized) {
-      console.log('[POSE] Starting pose detection loop');
+      logger.debug('[POSE] Starting pose detection loop');
       requestRef = requestAnimationFrame(update);
     }
 

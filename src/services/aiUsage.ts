@@ -1,5 +1,6 @@
 import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, limit, Timestamp, doc, getDoc } from 'firebase/firestore';
 import { getDb } from '@/services/firebase';
+import { logger } from '@/lib/utils/logger';
 
 export type AIUsageType = 'ocr_inbody' | 'posture_analysis' | 'exercise_recommendation';
 export type AIUsageStatus = 'local_success' | 'ai_fallback' | 'ai_success' | 'error';
@@ -47,7 +48,7 @@ export async function logAIUsage(
         }
       } catch (e) {
         // If lookup fails, continue without organizationId (will be backfilled later)
-        console.warn('[AI-USAGE] Failed to lookup organizationId for coach:', coachUid, e);
+        logger.warn('[AI-USAGE] Failed to lookup organizationId for coach:', coachUid, e);
       }
     }
     
@@ -80,7 +81,7 @@ export async function logAIUsage(
       metadata: metadata || {}
     });
   } catch (err) {
-    console.warn('[AI-USAGE] Failed to log usage:', err);
+    logger.warn('[AI-USAGE] Failed to log usage:', err);
   }
 }
 

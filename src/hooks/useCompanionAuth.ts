@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { validateCompanionToken, joinLiveSession } from '@/services/liveSessions';
+import { logger } from '@/lib/utils/logger';
 
 interface UseCompanionAuthResult {
   isValidating: boolean;
@@ -27,7 +28,7 @@ export function useCompanionAuth(
     setIsValidating(true);
 
     if (!sessionId || !token) {
-      console.error('[COMPANION] Missing session info');
+      logger.error('[COMPANION] Missing session info');
       setErrorMsg('Missing Session Info');
       setIsValidating(false);
       return;
@@ -36,7 +37,7 @@ export function useCompanionAuth(
     try {
       const [valid] = await Promise.all([
         validateCompanionToken(sessionId, token),
-        joinLiveSession(sessionId).catch((err) => console.warn('[COMPANION] Join failed (non-critical):', err)),
+        joinLiveSession(sessionId).catch((err) => logger.warn('[COMPANION] Join failed (non-critical):', err)),
       ]);
 
       setIsAuthorized(valid);
@@ -44,7 +45,7 @@ export function useCompanionAuth(
         setErrorMsg('Invalid token. Please scan QR code again.');
       }
     } catch (e) {
-      console.error('[COMPANION] Handshake Error:', e);
+      logger.error('[COMPANION] Handshake Error:', e);
       setErrorMsg(`Connection Error: ${e instanceof Error ? e.message : 'Unknown error'}`);
     } finally {
       setIsValidating(false);

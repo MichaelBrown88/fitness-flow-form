@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/utils/logger';
 
 interface Settings {
   demoAutoFillEnabled: boolean;
@@ -18,7 +19,7 @@ export function useSettings() {
         return { ...DEFAULT_SETTINGS, ...JSON.parse(stored) };
       }
     } catch (e) {
-      console.warn('Failed to load settings from localStorage', e);
+      logger.warn('Failed to load settings from localStorage', e);
     }
     return DEFAULT_SETTINGS;
   });
@@ -27,7 +28,7 @@ export function useSettings() {
     try {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     } catch (e) {
-      console.warn('Failed to save settings to localStorage', e);
+      logger.warn('Failed to save settings to localStorage', e);
     }
   }, [settings]);
 

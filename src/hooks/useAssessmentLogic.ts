@@ -6,6 +6,7 @@ import type { FormData } from '@/contexts/FormContext';
 import { computeScores, buildRoadmap, type ScoreSummary, type RoadmapPhase } from '@/lib/scoring';
 import { generateCoachPlan } from '@/lib/recommendations';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
+import { logger } from '@/lib/utils/logger';
 
 export function useAssessmentLogic(assessmentId: string | undefined) {
   const { user, profile } = useAuth();
@@ -85,7 +86,7 @@ export function useAssessmentLogic(assessmentId: string | undefined) {
                  }
               }
             } catch (err) {
-              console.warn('[useAssessmentLogic] Failed to enrich posture data:', err);
+              logger.warn('[useAssessmentLogic] Failed to enrich posture data:', err);
             }
           }
         }
@@ -115,7 +116,7 @@ export function useAssessmentLogic(assessmentId: string | undefined) {
                 }
              }
         } catch (e) {
-            console.warn('Failed to fetch previous scores', e);
+            logger.warn('Failed to fetch previous scores', e);
         }
 
         // 5. Generate Plan (Async)
@@ -123,7 +124,7 @@ export function useAssessmentLogic(assessmentId: string | undefined) {
             const plan = await generateCoachPlan(fd, scores);
             if (isMounted) setState(prev => ({ ...prev, plan, loading: false }));
         } catch (planErr) {
-            console.error('Plan generation failed', planErr);
+            logger.error('Plan generation failed', planErr);
             if (isMounted) setState(prev => ({ ...prev, planError: true, loading: false }));
         }
         
@@ -136,7 +137,7 @@ export function useAssessmentLogic(assessmentId: string | undefined) {
                 assessmentId,
                 formData: fd,
                 organizationId: profile?.organizationId,
-            }).catch(e => console.error('Background publish failed', e));
+            }).catch(e => logger.error('Background publish failed', e));
         }
 
       } catch (err) {

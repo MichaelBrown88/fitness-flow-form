@@ -9,6 +9,7 @@
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { logger } from '@/lib/utils/logger';
 
 interface UseSequenceManagerOptions {
   mode: 'posture' | 'inbody';
@@ -79,7 +80,7 @@ export function useSequenceManager({
 
   // Cancel sequence - user can abort at any time
   const cancelSequence = useCallback(() => {
-    console.log('[SEQUENCE] User cancelled sequence');
+    logger.debug('[SEQUENCE] User cancelled sequence');
     isCancelledRef.current = true;
     
     // Log cancellation
@@ -98,14 +99,14 @@ export function useSequenceManager({
     async (idx: number) => {
       // Check if cancelled
       if (isCancelledRef.current) {
-        console.log(`[SEQUENCE ${idx}] Sequence was cancelled - ignoring`);
+        logger.debug(`[SEQUENCE ${idx}] Sequence was cancelled - ignoring`);
         return;
       }
 
       // CRITICAL: Check lock SYNCHRONOUSLY before any async operations
       // Allow continuing the sequence for subsequent views (idx > 0 when lock is held)
       if (isLockedRef.current && idx === 0) {
-        console.log(`[SEQUENCE ${idx}] Sequence already active/locked - ignoring initial start`);
+        logger.debug(`[SEQUENCE ${idx}] Sequence already active/locked - ignoring initial start`);
         if (sessionIdRef.current) {
           import('@/services/liveSessions').then(({ logCompanionMessage }) => {
             logCompanionMessage(sessionIdRef.current!, `Sequence already active/locked - ignoring startSequence call (idx: ${idx})`, 'warn');
@@ -125,10 +126,10 @@ export function useSequenceManager({
             const { logCompanionMessage } = await import('@/services/liveSessions');
             await logCompanionMessage(sessionIdRef.current, msg, level);
           } catch (err) {
-            console.error('[SEQUENCE] Failed to log:', err);
+            logger.error('[SEQUENCE] Failed to log:', err);
           }
         }
-        console.log(`[SEQUENCE ${idx}] ${msg}`);
+        logger.debug(`[SEQUENCE ${idx}] ${msg}`);
       };
 
       await logMessage(`startSequence called for view ${idx}`, 'info');
@@ -218,7 +219,7 @@ export function useSequenceManager({
             })
             .catch(async (err) => {
               await logMessage(`Capture failed: ${err instanceof Error ? err.message : String(err)}`, 'error');
-              console.error('[POSTURE] Capture failed', err);
+              logger.error('[POSTURE] Capture failed', err);
               setIsSequenceActive(false);
               isLockedRef.current = false;
             });

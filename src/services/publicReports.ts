@@ -4,6 +4,7 @@ import type { FormData } from '@/contexts/FormContext';
 import { getDb } from '@/services/firebase';
 import { sanitizeForFirestore } from '@/lib/utils/firebaseUtils';
 import { COLLECTIONS } from '@/constants/collections';
+import { logger } from '@/lib/utils/logger';
 
 export type PublicReportDoc = {
   shareToken: string; // UUID token used as document ID
@@ -122,7 +123,7 @@ export async function getPublicReportByToken(token: string): Promise<PublicRepor
   try {
     const snapshot = await getDoc(ref);
     if (!snapshot.exists()) {
-      console.warn(`[getPublicReportByToken] Document does not exist: ${token}`);
+      logger.warn(`[getPublicReportByToken] Document does not exist: ${token}`);
       return null;
     }
   
@@ -130,13 +131,13 @@ export async function getPublicReportByToken(token: string): Promise<PublicRepor
   
     // Check if report is expired
     if (data.expiresAt && data.expiresAt.toMillis() < Date.now()) {
-      console.warn(`[getPublicReportByToken] Report expired: ${token}`);
+      logger.warn(`[getPublicReportByToken] Report expired: ${token}`);
       return null; // Report has expired
     }
   
     // Check visibility
     if (data.visibility !== 'public') {
-      console.warn(`[getPublicReportByToken] Report not public: ${data.visibility}`);
+      logger.warn(`[getPublicReportByToken] Report not public: ${data.visibility}`);
       return null; // Report is not public
     }
     
@@ -145,7 +146,7 @@ export async function getPublicReportByToken(token: string): Promise<PublicRepor
       ...data,
     } as PublicReportDoc;
   } catch (err) {
-    console.error(`[getPublicReportByToken] Error fetching doc:`, err);
+    logger.error(`[getPublicReportByToken] Error fetching doc:`, err);
     throw err;
   }
 }
