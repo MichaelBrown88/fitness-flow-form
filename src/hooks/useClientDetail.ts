@@ -22,6 +22,7 @@ import {
 import { type FormData } from '@/contexts/FormContext';
 import { computeScores } from '@/lib/scoring';
 import { logger } from '@/lib/utils/logger';
+import { UI_TOASTS } from '@/constants/ui';
 
 // Types
 export interface ClientStats {
@@ -183,7 +184,7 @@ export function useClientDetail(): UseClientDetailResult {
           });
           setShowComparison(true);
         } else {
-          toast({ title: "Current data not loaded", variant: "destructive" });
+          toast({ title: UI_TOASTS.ERROR.CURRENT_DATA_NOT_LOADED, variant: "destructive" });
         }
       } else {
         navigate(`/coach/assessments/${nearest.id}?clientName=${encodeURIComponent(clientName)}`);
@@ -220,8 +221,8 @@ export function useClientDetail(): UseClientDetailResult {
       await createOrUpdateClientProfile(user.uid, clientName, editData, userProfile?.organizationId, userProfile);
       setIsEditing(false);
       toast({
-        title: "Profile updated",
-        description: "Client profile has been saved.",
+        title: UI_TOASTS.SUCCESS.PROFILE_UPDATED,
+        description: UI_TOASTS.SUCCESS.PROFILE_SAVED,
       });
     } catch (err) {
       logger.error('Failed to update profile', 'CLIENT_DETAIL', err);
@@ -280,15 +281,15 @@ export function useClientDetail(): UseClientDetailResult {
       await deleteCoachAssessment(user.uid, id, userProfile?.organizationId, userProfile);
       setAssessments(prev => prev.filter(a => a.id !== id));
       toast({
-        title: "Assessment deleted",
-        description: "The assessment has been removed.",
+        title: UI_TOASTS.SUCCESS.ASSESSMENT_DELETED,
+        description: UI_TOASTS.SUCCESS.ASSESSMENT_REMOVED,
       });
       setDeleteDialog(null);
     } catch (err) {
       logger.error('Failed to delete assessment', 'CLIENT_DETAIL', err);
       toast({
-        title: "Error",
-        description: "Failed to delete assessment.",
+        title: UI_TOASTS.ERROR.GENERIC,
+        description: UI_TOASTS.ERROR.FAILED_TO_DELETE,
         variant: "destructive",
       });
     }

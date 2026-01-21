@@ -19,6 +19,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import type { PostureCompanionData } from '@/lib/types/companion';
 import { logger } from '@/lib/utils/logger';
+import { UI_TOASTS } from '@/constants/ui';
 
 // Connection state for 3-tier heartbeat monitoring
 export type ConnectionState = 'offline' | 'online' | 'unstable' | 'disconnected';
@@ -165,8 +166,8 @@ export function usePostureCompanion({
         if (isOnline) {
           logger.debug('[HEARTBEAT] Connection lost - mobile companion disconnected');
           toast({
-            title: "Connection Lost",
-            description: "Mobile companion disconnected. Scan QR code to reconnect.",
+            title: UI_TOASTS.ERROR.CONNECTION_LOST,
+            description: UI_TOASTS.ERROR.CONNECTION_LOST_DESC,
             variant: "destructive"
           });
         }
@@ -206,8 +207,8 @@ export function usePostureCompanion({
   const handleLoadTestImages = useCallback(() => {
     if (!session?.id) {
       toast({ 
-        title: "Session not ready", 
-        description: "Please wait for the session to initialize before uploading images.", 
+        title: UI_TOASTS.ERROR.SESSION_NOT_READY, 
+        description: UI_TOASTS.ERROR.SESSION_NOT_READY_DESC, 
         variant: "destructive" 
       });
       return;
@@ -215,8 +216,8 @@ export function usePostureCompanion({
 
     if (isLoadingTestImages) {
       toast({ 
-        title: "Upload in progress", 
-        description: "Please wait for the current upload to complete.", 
+        title: UI_TOASTS.ERROR.UPLOAD_IN_PROGRESS, 
+        description: UI_TOASTS.ERROR.UPLOAD_IN_PROGRESS_DESC, 
         variant: "destructive" 
       });
       return;
@@ -227,8 +228,8 @@ export function usePostureCompanion({
     } catch (err) {
       logger.error('[UPLOAD] Failed to trigger file input:', err);
       toast({ 
-        title: "Upload failed", 
-        description: "Could not open file selector. Please try again.", 
+        title: UI_TOASTS.ERROR.UPLOAD_FAILED, 
+        description: UI_TOASTS.ERROR.UPLOAD_FAILED_DESC, 
         variant: "destructive" 
       });
     }
@@ -238,8 +239,8 @@ export function usePostureCompanion({
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!session?.id) {
       toast({
-        title: "No active session",
-        description: "Please wait for the session to initialize before uploading images.",
+        title: UI_TOASTS.ERROR.NO_ACTIVE_SESSION,
+        description: UI_TOASTS.ERROR.NO_ACTIVE_SESSION_DESC,
         variant: "destructive"
       });
       return;
@@ -248,8 +249,8 @@ export function usePostureCompanion({
     const files = event.target.files;
     if (!files || files.length === 0) {
       toast({
-        title: "No files selected",
-        description: "Please select one or more image files to upload.",
+        title: UI_TOASTS.ERROR.NO_FILES_SELECTED,
+        description: UI_TOASTS.ERROR.NO_FILES_SELECTED_DESC,
         variant: "destructive"
       });
       return;
@@ -257,7 +258,7 @@ export function usePostureCompanion({
 
     setIsLoadingTestImages(true);
     try {
-      toast({ title: "Loading images...", description: `Processing ${files.length} uploaded file(s)` });
+      toast({ title: UI_TOASTS.SUCCESS.LOADING_IMAGES, description: `Processing ${files.length} uploaded file(s)` });
       
       const fileArray = Array.from(files);
       const fileMap: Record<string, File> = {};
@@ -328,7 +329,7 @@ export function usePostureCompanion({
       
       if (successCount > 0) {
         toast({ 
-          title: "Images uploaded successfully", 
+          title: UI_TOASTS.SUCCESS.IMAGES_UPLOADED, 
           description: `${successCount} image(s) processed. AI analysis will start automatically.${failCount > 0 ? ` ${failCount} image(s) failed.` : ''}` 
         });
       } else {
@@ -338,7 +339,7 @@ export function usePostureCompanion({
     } catch (error) {
       logger.error('[UPLOAD] Failed to upload images:', error);
       toast({ 
-        title: "Upload failed", 
+        title: UI_TOASTS.ERROR.UPLOAD_FAILED, 
         description: error instanceof Error ? error.message : "Could not upload images. Check console for details.", 
         variant: "destructive" 
       });

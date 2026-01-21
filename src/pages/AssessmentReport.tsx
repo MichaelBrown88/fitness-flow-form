@@ -25,6 +25,7 @@ const ClientReport = lazy(() => import('@/components/reports/ClientReport'));
 const CoachReport = lazy(() => import('@/components/reports/CoachReport'));
 
 import { ROUTES } from '@/constants/routes';
+import { UI_TOASTS } from '@/constants/ui';
 
 const AssessmentReport = () => {
   const { id } = useParams();
@@ -69,16 +70,16 @@ const AssessmentReport = () => {
     if (!formData || !id) return;
     const email = (formData.email || '').trim();
     if (!email) {
-      toast({ title: 'Client email missing', description: 'Add an email to the intake before emailing a report.', variant: 'destructive' });
+      toast({ title: UI_TOASTS.ERROR.CLIENT_EMAIL_MISSING, description: UI_TOASTS.ERROR.CLIENT_EMAIL_MISSING_DESC, variant: 'destructive' });
       return;
     }
     try {
       setShareLoading(true);
       await sendReportEmail({ assessmentId: id, view: 'client', to: email, clientName: formData.fullName });
-      toast({ title: 'Report emailed', description: `Sent to ${email}` });
+      toast({ title: UI_TOASTS.SUCCESS.REPORT_EMAILED, description: `Sent to ${email}` });
     } catch (e) {
       console.error('Email share failed', e);
-      toast({ title: 'Email not sent', description: 'Check configuration.', variant: 'destructive' });
+      toast({ title: UI_TOASTS.ERROR.EMAIL_NOT_SENT, description: UI_TOASTS.ERROR.EMAIL_NOT_SENT_DESC, variant: 'destructive' });
     } finally {
       setShareLoading(false);
     }
@@ -92,10 +93,10 @@ const AssessmentReport = () => {
         assessmentId: id, view: 'client', coachUid: user.uid, formData, organizationId: profile?.organizationId, profile: profile || null,
       });
       await navigator.clipboard.writeText(artifacts.shareUrl);
-      toast({ title: 'Live Link Copied', description: 'Anyone with this link can view the interactive report.' });
+      toast({ title: UI_TOASTS.SUCCESS.LINK_COPIED, description: UI_TOASTS.SUCCESS.LINK_COPIED_DESC });
     } catch (e) {
       console.error('Copy link failed', e);
-      toast({ title: 'Copy failed', variant: 'destructive' });
+      toast({ title: UI_TOASTS.ERROR.COPY_FAILED, variant: 'destructive' });
     } finally {
       setShareLoading(false);
     }
@@ -115,7 +116,7 @@ const AssessmentReport = () => {
             text: 'Here is your interactive fitness assessment results.',
             url: artifacts.shareUrl,
           });
-          toast({ title: 'Shared successfully', description: 'The report link has been shared.' });
+          toast({ title: UI_TOASTS.SUCCESS.SHARED_SUCCESSFULLY, description: UI_TOASTS.SUCCESS.SHARED_DESC });
         } catch (shareError) {
           if ((shareError as Error).name !== 'AbortError') console.error('Share failed:', shareError);
         }
@@ -124,7 +125,7 @@ const AssessmentReport = () => {
       }
     } catch (e) {
       console.error('System share failed', e);
-      toast({ title: 'Unable to share', description: 'Please try copying the link manually.', variant: 'destructive' });
+      toast({ title: UI_TOASTS.ERROR.UNABLE_TO_SHARE, description: UI_TOASTS.ERROR.UNABLE_TO_SHARE_DESC, variant: 'destructive' });
     } finally {
       setShareLoading(false);
     }
@@ -141,7 +142,7 @@ const AssessmentReport = () => {
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch (e) {
       console.error('WhatsApp share failed', e);
-      toast({ title: 'Unable to share via WhatsApp', description: 'Copy the link instead.', variant: 'destructive' });
+      toast({ title: UI_TOASTS.ERROR.UNABLE_TO_SHARE_WHATSAPP, description: UI_TOASTS.ERROR.UNABLE_TO_SHARE_WHATSAPP_DESC, variant: 'destructive' });
     } finally {
       setShareLoading(false);
     }

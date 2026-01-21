@@ -12,6 +12,7 @@ import type { FormData } from '@/contexts/FormContext';
 import type { ScoreSummary } from '@/lib/scoring';
 import { logger } from '@/lib/utils/logger';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
+import { UI_TOASTS } from '@/constants/ui';
 
 import type { UserProfile } from '@/types/auth';
 
@@ -77,7 +78,7 @@ export function useAssessmentSave({
             // Store the assessment ID for potential navigation
             sessionStorage.setItem(STORAGE_KEYS.LAST_UPDATED_ID, assessmentId);
             toast({ 
-              title: 'Assessment Updated', 
+              title: UI_TOASTS.SUCCESS.ASSESSMENT_UPDATED, 
               description: `Assessment for ${clientName} has been updated without changing the original date.` 
             });
             setSavingId(assessmentId);
@@ -129,8 +130,8 @@ export function useAssessmentSave({
         } catch (saveErr) {
           logger.error('Failed to save assessment:', saveErr);
           toast({
-            title: 'Failed to save assessment',
-            description: 'Please refresh and try again. If the problem persists, contact support.',
+            title: UI_TOASTS.ERROR.FAILED_TO_SAVE,
+            description: UI_TOASTS.ERROR.FAILED_TO_SAVE_DESC,
             variant: 'destructive'
           });
           setSaving(false);
@@ -140,7 +141,7 @@ export function useAssessmentSave({
       
       setSavingId(assessmentId);
       toast({ 
-        title: category ? 'Partial Assessment Saved' : 'Assessment Saved', 
+        title: category ? UI_TOASTS.SUCCESS.PARTIAL_ASSESSMENT_SAVED : UI_TOASTS.SUCCESS.ASSESSMENT_SAVED, 
         description: category ? `${category.charAt(0).toUpperCase() + category.slice(1)} data updated and merged.` : `Progress for ${clientName} has been saved.` 
       });
     } catch (e) {
@@ -151,14 +152,14 @@ export function useAssessmentSave({
       const errorMessage = e instanceof Error ? e.message : String(e);
       if (errorMessage.includes('Organization ID is required')) {
         toast({ 
-          title: 'Unable to Save Assessment', 
-          description: 'Organization ID is missing. Please refresh the page and try again. If the problem persists, contact support.', 
+          title: UI_TOASTS.ERROR.UNABLE_TO_SAVE, 
+          description: UI_TOASTS.ERROR.UNABLE_TO_SAVE_DESC, 
           variant: 'destructive' 
         });
       } else {
         toast({ 
-          title: 'Sync Error', 
-          description: 'Unable to sync with dashboard. Please check your connection and try again.', 
+          title: UI_TOASTS.ERROR.SYNC_ERROR, 
+          description: UI_TOASTS.ERROR.SYNC_ERROR_DESC, 
           variant: 'destructive' 
         });
       }

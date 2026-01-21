@@ -16,6 +16,7 @@ import { computeScores } from '@/lib/scoring';
 import { collection, query, orderBy, limit, onSnapshot, where, Timestamp, startAfter, getDocs, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { getDb } from '@/services/firebase';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
+import { UI_TOASTS } from '@/constants/ui';
 
 export type Analytics = {
   totalClients: number;
@@ -391,14 +392,14 @@ export function useDashboardData() {
     try {
       await deleteCoachAssessment(user.uid, deleteDialog.id, profile?.organizationId, profile);
       toast({
-        title: "Assessment deleted",
+        title: UI_TOASTS.SUCCESS.ASSESSMENT_DELETED,
         description: `Assessment for ${deleteDialog.name} has been removed.`,
       });
       setDeleteDialog(null);
     } catch (err) {
       toast({
-        title: "Error",
-        description: err instanceof Error ? err.message : "Failed to delete assessment. Please try again.",
+        title: UI_TOASTS.ERROR.GENERIC,
+        description: err instanceof Error ? err.message : UI_TOASTS.ERROR.FAILED_TO_DELETE,
         variant: "destructive",
       });
     }
@@ -413,8 +414,8 @@ export function useDashboardData() {
       setClientHistory(history);
     } catch (err) {
       toast({
-        title: "Error",
-        description: "Failed to load client history.",
+        title: UI_TOASTS.ERROR.GENERIC,
+        description: UI_TOASTS.ERROR.FAILED_TO_LOAD,
         variant: "destructive",
       });
     } finally {
@@ -497,8 +498,8 @@ export function useDashboardData() {
       } catch (err) {
         logger.error('Failed to load more assessments:', err);
         toast({
-          title: 'Error',
-          description: 'Failed to load more assessments.',
+          title: UI_TOASTS.ERROR.GENERIC,
+          description: UI_TOASTS.ERROR.FAILED_TO_LOAD_MORE,
           variant: 'destructive',
         });
       } finally {
