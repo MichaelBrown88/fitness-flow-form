@@ -52,7 +52,7 @@ export const InBodyCompanionModal: React.FC<InBodyCompanionModalProps> = ({
     if (isOpen && !session) {
       const init = async () => {
         try {
-          const newSession = await createLiveSession('current-client', profile?.organizationId);
+          const newSession = await createLiveSession('current-client', profile?.organizationId, profile);
           setSession(newSession);
           setError(null);
         } catch (err) {

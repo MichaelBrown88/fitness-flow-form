@@ -101,7 +101,7 @@ export function usePostureCompanion({
     if (isOpen && !session) {
       const init = async () => {
         try {
-          const newSession = await createLiveSession('current-client', profile?.organizationId);
+          const newSession = await createLiveSession('current-client', profile?.organizationId, profile);
           setSession(newSession);
           setError(null);
         } catch (err) {
@@ -309,7 +309,7 @@ export function usePostureCompanion({
               continue;
             }
             
-            const processingPromise = updatePostureImage(session.id, view, testImages[view], undefined, 'manual');
+            const processingPromise = updatePostureImage(session.id, view, testImages[view], undefined, 'manual', profile?.organizationId, profile);
             const timeoutPromise = new Promise((_, reject) => 
               setTimeout(() => reject(new Error('Processing timeout after 60 seconds')), 60000)
             );

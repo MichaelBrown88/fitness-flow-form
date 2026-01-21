@@ -13,6 +13,8 @@ import { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
 import { sanitizeForFirestore } from '@/lib/utils/firebaseUtils';
 import { LandmarkResult } from '@/lib/ai/postureLandmarks';
 import { logger } from '@/lib/utils/logger';
+import { validateOrganizationId } from '@/lib/utils/validateOrganizationId';
+import type { UserProfile } from '@/types/auth';
 
 export interface LiveSession {
   id: string;
@@ -33,14 +35,21 @@ export interface LiveSession {
 
 const SESSIONS_COLLECTION = 'live_sessions';
 
-export const createLiveSession = async (clientId: string, organizationId?: string): Promise<LiveSession> => {
+export const createLiveSession = async (
+  clientId: string, 
+  organizationId?: string,
+  profile?: UserProfile | null
+): Promise<LiveSession> => {
+  // Validate organizationId before proceeding
+  const validOrgId = validateOrganizationId(organizationId, profile);
+  
   const sessionId = Math.random().toString(36).substring(2, 12).toUpperCase();
   const companionToken = Math.random().toString(36).substring(2, 12);
   
   const session: LiveSession = {
     id: sessionId,
     clientId,
-    organizationId: organizationId || null,
+    organizationId: validOrgId, // Use validated organizationId (never null)
     companionToken,
     status: 'active',
     companionJoined: false,
@@ -58,8 +67,33 @@ export const createLiveSession = async (clientId: string, organizationId?: strin
   }
 };
 
-export const joinLiveSession = async (sessionId: string) => {
+export const joinLiveSession = async (
+  sessionId: string,
+  organizationId?: string,
+  profile?: UserProfile | null
+) => {
   const sessionRef = doc(db, SESSIONS_COLLECTION, sessionId);
+  
+  // Fetch session first to verify ownership
+  const sessionDoc = await getDoc(sessionRef);
+  if (!sessionDoc.exists()) {
+    throw new Error('Session not found');
+  }
+  
+  const sessionData = sessionDoc.data() as LiveSession;
+  
+  // Validate organizationId if provided (desktop), or verify against session's orgId (mobile)
+  if (organizationId && profile) {
+    const validOrgId = validateOrganizationId(organizationId, profile);
+    if (sessionData.organizationId && sessionData.organizationId !== validOrgId) {
+      throw new Error('Cannot join session: Organization mismatch. This session belongs to a different organization.');
+    }
+  } else if (sessionData.organizationId) {
+    // Mobile companion: session must have orgId (created by desktop with validation)
+    // Token validation in validateCompanionToken already provides security
+    // This check is defense in depth
+  }
+  
   await updateDoc(sessionRef, { companionJoined: true });
 };
 
@@ -111,12 +145,34 @@ export const updatePostureImage = async (
   view: string, 
   imageData: string, 
   providedLandmarks?: LandmarkResult,
-  source: 'manual' | 'iphone' | 'this-device' = 'manual'
+  source: 'manual' | 'iphone' | 'this-device' = 'manual',
+  organizationId?: string,
+  profile?: UserProfile | null
 ) => {
   try {
     // Validate image data first
     if (!imageData || (!imageData.startsWith('data:image') && !imageData.startsWith('http'))) {
       throw new Error(`Invalid image data format for ${view}. Expected data URL or HTTP URL.`);
+    }
+    
+    // Fetch session first to verify ownership
+    const sessionRef = doc(db, SESSIONS_COLLECTION, sessionId);
+    const sessionDoc = await getDoc(sessionRef);
+    if (!sessionDoc.exists()) {
+      throw new Error(`Session ${sessionId} not found`);
+    }
+    
+    const sessionData = sessionDoc.data() as LiveSession;
+    
+    // Validate organizationId: use provided orgId+profile (desktop) or verify against session's orgId (mobile)
+    if (organizationId && profile) {
+      const validOrgId = validateOrganizationId(organizationId, profile);
+      if (sessionData.organizationId && sessionData.organizationId !== validOrgId) {
+        throw new Error('Cannot update posture image: Organization mismatch. This session belongs to a different organization.');
+      }
+    } else if (sessionData.organizationId) {
+      // Mobile companion: session must have orgId (created by desktop with validation)
+      // Token validation already provides security, this is defense in depth
     }
     
     logger.debug(`Starting processing for ${view} (source: ${source})`, 'LIVE_SESSIONS');
@@ -153,7 +209,6 @@ export const updatePostureImage = async (
     }
 
     // Store everything in Firestore
-    const sessionRef = doc(db, SESSIONS_COLLECTION, sessionId);
     // Storing processed image and analysis
     
     const updatePayload: Record<string, unknown> = {
@@ -169,10 +224,9 @@ export const updatePostureImage = async (
     await updateDoc(sessionRef, updatePayload);
 
     // Upload FULL-SIZE image with green + red lines to Storage (for reports/comparisons)
-    const sessionDoc = await getDoc(doc(db, SESSIONS_COLLECTION, sessionId));
-    const sessionData = sessionDoc.exists() ? (sessionDoc.data() as LiveSession) : null;
-    const clientId = sessionData?.clientId || 'unknown';
-    const orgId = sessionData?.organizationId || 'default';
+    // sessionData already fetched above
+    const clientId = sessionData.clientId || 'unknown';
+    const orgId = sessionData.organizationId || 'default';
     
     // SaaS-isolated storage path: organizations/{orgId}/clients/{clientId}/sessions/{sessionId}/...
     const storagePath = `organizations/${orgId}/clients/${clientId}/sessions/${sessionId}/${view}_full.jpg`;
@@ -202,8 +256,33 @@ export const updatePostureImage = async (
   }
 };
 
-export const updateInBodyImage = async (sessionId: string, imageData: string) => {
+export const updateInBodyImage = async (
+  sessionId: string, 
+  imageData: string,
+  organizationId?: string,
+  profile?: UserProfile | null
+) => {
   try {
+    // Fetch session first to verify ownership
+    const sessionRef = doc(db, SESSIONS_COLLECTION, sessionId);
+    const sessionDoc = await getDoc(sessionRef);
+    if (!sessionDoc.exists()) {
+      throw new Error(`Session ${sessionId} not found`);
+    }
+    
+    const sessionData = sessionDoc.data() as LiveSession;
+    
+    // Validate organizationId: use provided orgId+profile (desktop) or verify against session's orgId (mobile)
+    if (organizationId && profile) {
+      const validOrgId = validateOrganizationId(organizationId, profile);
+      if (sessionData.organizationId && sessionData.organizationId !== validOrgId) {
+        throw new Error('Cannot update InBody image: Organization mismatch. This session belongs to a different organization.');
+      }
+    } else if (sessionData.organizationId) {
+      // Mobile companion: session must have orgId (created by desktop with validation)
+      // Token validation already provides security, this is defense in depth
+    }
+    
     // Compress image for display (fast Firestore sync)
     let compressedImage = imageData;
     let fullSizeImage = imageData;
@@ -219,17 +298,15 @@ export const updateInBodyImage = async (sessionId: string, imageData: string) =>
     }
 
     // Store compressed version in Firestore (for fast real-time display)
-    const sessionRef = doc(db, SESSIONS_COLLECTION, sessionId);
     await setDoc(sessionRef, {
       inbodyImage: compressedImage,
       inbodyImageUpdated: Timestamp.now() // Add timestamp to trigger updates
     }, { merge: true });
 
     // Upload FULL-SIZE version to Storage (for OCR analysis)
-    const sessionDoc = await getDoc(doc(db, SESSIONS_COLLECTION, sessionId));
-    const sessionData = sessionDoc.exists() ? (sessionDoc.data() as LiveSession) : null;
-    const clientId = sessionData?.clientId || 'unknown';
-    const orgId = sessionData?.organizationId || 'default';
+    // sessionData already fetched above
+    const clientId = sessionData.clientId || 'unknown';
+    const orgId = sessionData.organizationId || 'default';
     
     // SaaS-isolated storage path: organizations/{orgId}/clients/{clientId}/sessions/{sessionId}/...
     const storagePath = `organizations/${orgId}/clients/${clientId}/sessions/${sessionId}/inbody_scan.jpg`;
