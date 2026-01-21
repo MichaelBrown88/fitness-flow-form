@@ -389,7 +389,7 @@ export function useDashboardData() {
   const handleDelete = async () => {
     if (!user || !deleteDialog) return;
     try {
-      await deleteCoachAssessment(user.uid, deleteDialog.id);
+      await deleteCoachAssessment(user.uid, deleteDialog.id, profile?.organizationId, profile);
       toast({
         title: "Assessment deleted",
         description: `Assessment for ${deleteDialog.name} has been removed.`,
@@ -398,7 +398,7 @@ export function useDashboardData() {
     } catch (err) {
       toast({
         title: "Error",
-        description: "Failed to delete assessment. Please try again.",
+        description: err instanceof Error ? err.message : "Failed to delete assessment. Please try again.",
         variant: "destructive",
       });
     }

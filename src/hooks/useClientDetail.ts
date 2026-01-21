@@ -277,7 +277,7 @@ export function useClientDetail(): UseClientDetailResult {
     if (!user) return;
     try {
       const { deleteCoachAssessment } = await import('@/services/coachAssessments');
-      await deleteCoachAssessment(user.uid, id);
+      await deleteCoachAssessment(user.uid, id, userProfile?.organizationId, userProfile);
       setAssessments(prev => prev.filter(a => a.id !== id));
       toast({
         title: "Assessment deleted",

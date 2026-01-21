@@ -216,8 +216,30 @@ export async function getCoachAssessment(
 export async function deleteCoachAssessment(
   coachUid: string,
   assessmentId: string,
+  organizationId?: string,
+  profile?: UserProfile | null,
 ): Promise<void> {
   const ref = doc(getDb(), 'coaches', coachUid, 'assessments', assessmentId);
+  
+  // Fetch document first to verify ownership
+  const assessmentDoc = await getDoc(ref);
+  if (!assessmentDoc.exists()) {
+    throw new Error('Assessment not found');
+  }
+  
+  const existingData = assessmentDoc.data() as CoachAssessmentDoc;
+  
+  // Validate organizationId before proceeding
+  // Use provided orgId, fall back to existing, then validate
+  const orgIdToValidate = organizationId || existingData.organizationId;
+  const validOrgId = validateOrganizationId(orgIdToValidate, profile);
+  
+  // Verify ownership: if existing doc has orgId, it must match validated orgId
+  if (existingData.organizationId && existingData.organizationId !== validOrgId) {
+    throw new Error('Cannot delete assessment: Organization mismatch. This assessment belongs to a different organization.');
+  }
+  
+  // Proceed with deletion
   await deleteDoc(ref);
 }
 
@@ -365,6 +387,7 @@ export async function updateCoachAssessment(
   formData: FormData,
   overallScore: number,
   organizationId?: string,
+  profile?: UserProfile | null,
 ): Promise<void> {
   const db = getDb();
   const ref = doc(db, 'coaches', coachUid, 'assessments', assessmentId);
@@ -376,6 +399,12 @@ export async function updateCoachAssessment(
   }
   
   const existingData = existingDoc.data() as CoachAssessmentDoc;
+  
+  // Validate organizationId before proceeding
+  // Use provided orgId, fall back to existing, then validate
+  const orgIdToValidate = organizationId || existingData.organizationId;
+  const validOrgId = validateOrganizationId(orgIdToValidate, profile);
+  
   const scoresSummary = summarizeScores(formData);
   
   // Update the document while preserving createdAt
@@ -386,14 +415,14 @@ export async function updateCoachAssessment(
     goals: Array.isArray(formData.clientGoals) ? formData.clientGoals : [],
     formData: formData,
     scoresSummary,
-    organizationId: organizationId || existingData.organizationId || null,
+    organizationId: validOrgId, // Use validated organizationId (never null)
     // Note: createdAt is NOT included here, so it will be preserved
   });
   
   // Also update the current assessment in the history system
   const clientName = (formData.fullName || 'Unnamed client').trim();
   const { updateCurrentAssessment } = await import('./assessmentHistory');
-  await updateCurrentAssessment(coachUid, clientName, formData, overallScore, 'full', 'all', organizationId || existingData.organizationId || undefined);
+  await updateCurrentAssessment(coachUid, clientName, formData, overallScore, 'full', 'all', validOrgId);
   
   // Update public report if one exists (keeps shared links live)
   try {
@@ -402,7 +431,7 @@ export async function updateCoachAssessment(
       coachUid,
       assessmentId,
       formData,
-      organizationId: organizationId || existingData.organizationId || undefined,
+      organizationId: validOrgId,
     });
   } catch (err) {
     // Non-blocking: public report update failure shouldn't block assessment update

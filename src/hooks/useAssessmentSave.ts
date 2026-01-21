@@ -69,7 +69,8 @@ export function useAssessmentSave({
               parsed.assessmentId,
               formData,
               scores.overall,
-              profile?.organizationId
+              profile?.organizationId,
+              profile
             );
             assessmentId = parsed.assessmentId;
             sessionStorage.removeItem(STORAGE_KEYS.EDIT_ASSESSMENT);
