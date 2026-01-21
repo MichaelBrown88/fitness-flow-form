@@ -1,5 +1,7 @@
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp, onSnapshot, Timestamp } from 'firebase/firestore';
 import { getDb } from '@/services/firebase';
+import { validateOrganizationId } from '@/lib/utils/validateOrganizationId';
+import type { UserProfile } from '@/types/auth';
 
 export type ClientProfile = {
   clientName: string;
@@ -47,20 +49,32 @@ export async function createOrUpdateClientProfile(
   clientName: string,
   data: Partial<Omit<ClientProfile, 'clientName' | 'createdAt' | 'updatedAt'>>,
   organizationId?: string,
+  profile?: UserProfile | null,
 ): Promise<void> {
   const ref = clientProfileDoc(coachUid, clientName);
   const snap = await getDoc(ref);
   
+  // Validate organizationId before proceeding
+  // Use provided orgId, fall back to existing, then validate
+  const existingData = snap.exists() ? (snap.data() as ClientProfile) : null;
+  const orgIdToValidate = organizationId || existingData?.organizationId;
+  const validOrgId = validateOrganizationId(orgIdToValidate, profile);
+  
   if (snap.exists()) {
+    // Verify ownership: if existing doc has orgId, it must match validated orgId
+    if (existingData?.organizationId && existingData.organizationId !== validOrgId) {
+      throw new Error('Cannot update client profile: Organization mismatch. This client belongs to a different organization.');
+    }
+    
     await updateDoc(ref, {
       ...data,
-      organizationId: organizationId || (snap.data() as ClientProfile).organizationId || null,
+      organizationId: validOrgId, // Use validated organizationId (never null)
       updatedAt: serverTimestamp(),
     });
   } else {
     await setDoc(ref, {
       clientName,
-      organizationId: organizationId || null,
+      organizationId: validOrgId, // Use validated organizationId (never null)
       assignedCoachUid: coachUid,
       ...data,
       createdAt: serverTimestamp(),

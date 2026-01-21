@@ -217,7 +217,7 @@ export function useClientDetail(): UseClientDetailResult {
   const handleSaveProfile = useCallback(async () => {
     if (!user || !clientName) return;
     try {
-      await createOrUpdateClientProfile(user.uid, clientName, editData, userProfile?.organizationId);
+      await createOrUpdateClientProfile(user.uid, clientName, editData, userProfile?.organizationId, userProfile);
       setIsEditing(false);
       toast({
         title: "Profile updated",

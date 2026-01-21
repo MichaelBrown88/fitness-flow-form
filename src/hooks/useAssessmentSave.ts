@@ -114,7 +114,7 @@ export function useAssessmentSave({
           else if (category === 'lifestyle') updateData.lastLifestyleDate = now;
           
           if (Object.keys(updateData).length > 0) {
-            await createOrUpdateClientProfile(user.uid, storedName || clientName, updateData, profile?.organizationId);
+            await createOrUpdateClientProfile(user.uid, storedName || clientName, updateData, profile?.organizationId, profile);
           }
           
           sessionStorage.setItem(STORAGE_KEYS.HIGHLIGHT_CATEGORY, category);
