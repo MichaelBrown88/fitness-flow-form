@@ -370,7 +370,7 @@ export function useClientDetail(): UseClientDetailResult {
           if (formData?.dateOfBirth) profileUpdate.dateOfBirth = formData.dateOfBirth;
           if (formData?.gender) profileUpdate.gender = formData.gender;
           
-          await createOrUpdateClientProfile(user.uid, clientName, profileUpdate, userProfile?.organizationId);
+          await createOrUpdateClientProfile(user.uid, clientName, profileUpdate, userProfile?.organizationId, userProfile);
         }
       } finally {
         setLoading(false);
