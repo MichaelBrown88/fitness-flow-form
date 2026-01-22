@@ -61,39 +61,57 @@ export async function processPostureImage(
       }
     }
 
-    // STEP 2: Align image with green reference lines
-    let alignedImage: string;
-    try {
-      logger.debug(`Aligning image for ${view}...`, ctx);
-      alignedImage = await addPostureOverlay(imageData, view, {
-        showMidline: true,
-        showShoulderLine: true,
-        showHipLine: true,
-        lineColor: '#00ff00',
-        lineWidth: 4,
-        mode: 'align',
-        landmarks,
-      });
-      logger.debug(`Image aligned for ${view}`, ctx);
-    } catch (alignError) {
-      logger.error(`Alignment failed for ${view}`, ctx, alignError);
-      throw new Error(`Failed to align image: ${alignError instanceof Error ? alignError.message : 'Unknown error'}`);
-    }
-
-    // STEP 3: Calculate metrics using trigonometry (deterministic, no AI)
-    let calculatedMetrics: Partial<import('@/lib/utils/postureMath').CalculatedPostureMetrics> = {};
-    if (landmarks.raw) {
-      try {
-        if (view === 'front' || view === 'back') {
-          calculatedMetrics = calculateFrontViewMetrics(landmarks.raw);
-        } else {
-          calculatedMetrics = calculateSideViewMetrics(landmarks.raw, view);
+    // STEP 2 & 3: Run alignment and metrics calculation in PARALLEL
+    // Both only depend on landmarks, so we can execute them simultaneously
+    logger.debug(`Starting parallel alignment + metrics for ${view}...`, ctx);
+    
+    // Metrics calculation helper (wrapped for Promise.all)
+    const calculateMetricsAsync = (): Promise<Partial<import('@/lib/utils/postureMath').CalculatedPostureMetrics>> => {
+      return new Promise((resolve) => {
+        if (!landmarks.raw) {
+          resolve({});
+          return;
         }
-        logger.debug(`Metrics calculated for ${view}`, ctx);
-      } catch (metricsError) {
-        logger.warn(`Metrics calculation failed for ${view}, continuing without metrics`, ctx, metricsError);
+        try {
+          const metrics = view === 'front' || view === 'back'
+            ? calculateFrontViewMetrics(landmarks.raw)
+            : calculateSideViewMetrics(landmarks.raw, view);
+          logger.debug(`Metrics calculated for ${view}`, ctx);
+          resolve(metrics);
+        } catch (metricsError) {
+          logger.warn(`Metrics calculation failed for ${view}, continuing without metrics`, ctx, metricsError);
+          resolve({});
+        }
+      });
+    };
+    
+    // Alignment helper (wrapped for error handling)
+    const alignImageAsync = async (): Promise<string> => {
+      try {
+        const aligned = await addPostureOverlay(imageData, view, {
+          showMidline: true,
+          showShoulderLine: true,
+          showHipLine: true,
+          lineColor: '#00ff00',
+          lineWidth: 4,
+          mode: 'align',
+          landmarks,
+        });
+        logger.debug(`Image aligned for ${view}`, ctx);
+        return aligned;
+      } catch (alignError) {
+        logger.error(`Alignment failed for ${view}`, ctx, alignError);
+        throw new Error(`Failed to align image: ${alignError instanceof Error ? alignError.message : 'Unknown error'}`);
       }
-    }
+    };
+    
+    // Execute alignment and metrics in parallel
+    const [alignedImage, calculatedMetrics] = await Promise.all([
+      alignImageAsync(),
+      calculateMetricsAsync(),
+    ]);
+    
+    logger.debug(`Parallel alignment + metrics complete for ${view}`, ctx);
 
     // STEP 4: Use AI ONLY to convert numbers → user-friendly descriptions
     let analysis: PostureAnalysisResult;
