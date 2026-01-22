@@ -25,6 +25,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import type { InBodyCompanionData } from '@/lib/types/companion';
+import { CONFIG } from '@/config';
+import { logger } from '@/lib/utils/logger';
 
 interface InBodyCompanionModalProps {
   isOpen: boolean;
@@ -63,6 +65,45 @@ export const InBodyCompanionModal: React.FC<InBodyCompanionModalProps> = ({
     }
   }, [isOpen, session, profile?.organizationId]);
 
+  // 1.5 Pre-warm Firebase AI when modal opens (while user scans QR code)
+  // This initializes the Gemini model so OCR starts faster when image arrives
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const prewarmFirebaseAI = async () => {
+      try {
+        logger.debug('[PREWARM] Starting Firebase AI pre-warm...');
+        
+        // Dynamic imports - follows "Lazy Load Large Assets" rule
+        const [{ getAI, VertexAIBackend, getGenerativeModel }, { getApp }] = await Promise.all([
+          import('firebase/ai'),
+          import('firebase/app')
+        ]);
+        
+        const firebaseApp = getApp();
+        const ai = getAI(firebaseApp, { 
+          backend: new VertexAIBackend() 
+        });
+        
+        // Initialize the model - this establishes the connection
+        getGenerativeModel(ai, { 
+          model: CONFIG.AI.GEMINI.MODEL_NAME,
+          generationConfig: {
+            responseMimeType: "application/json",
+          }
+        });
+        
+        logger.debug('[PREWARM] Firebase AI pre-warm complete - model ready');
+      } catch (err) {
+        // Silent fail - pre-warming is non-critical optimization
+        logger.debug('[PREWARM] Firebase AI pre-warm failed (non-critical):', err);
+      }
+    };
+
+    // Run pre-warming in background (don't block session creation)
+    prewarmFirebaseAI();
+  }, [isOpen]);
+
   // 2. Listen for InBody Image - with optimistic UI
   useEffect(() => {
     if (!session?.id) return;
@@ -82,7 +123,7 @@ export const InBodyCompanionModal: React.FC<InBodyCompanionModalProps> = ({
                                updatedSession.inbodyImageFull);
       
       if (hasInbodyImage && !isProcessing && processedRef.current !== 'processing') {
-        console.log('[INBODY] Image detected - showing processing state');
+        logger.debug('[INBODY] Image detected - showing processing state');
         setIsProcessing(true);
         processedRef.current = 'processing';
         toast({
