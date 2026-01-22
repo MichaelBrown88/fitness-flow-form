@@ -186,7 +186,22 @@ export const updatePostureImage = async (
         imageData,
         view as 'front' | 'side-right' | 'side-left' | 'back',
         providedLandmarks,
-        source
+        source,
+        // Progress callback - update Firestore with intermediate results
+        async (progress) => {
+          try {
+            // When wireframe is ready, show it immediately in the UI
+            if (progress.stage === 'wireframe' && progress.wireframeImage) {
+              logger.debug(`Storing wireframe for ${view} (intermediate)`, 'LIVE_SESSIONS');
+              await updateDoc(sessionRef, {
+                [`postureImages.${view}`]: progress.wireframeImage, // Show wireframe immediately
+              });
+            }
+          } catch (progressError) {
+            // Non-critical - don't fail the whole process
+            logger.warn(`Failed to update progress for ${view}`, 'LIVE_SESSIONS', progressError);
+          }
+        }
       );
       logger.debug(`Successfully processed ${view} image`, 'LIVE_SESSIONS');
     } catch (processError) {

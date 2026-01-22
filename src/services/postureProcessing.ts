@@ -31,20 +31,39 @@ export interface PostureProcessingResult {
   landmarks: LandmarkResult; // Detected landmarks
 }
 
+// Progress stages for UI feedback
+export type ProcessingStage = 'detecting' | 'wireframe' | 'aligning' | 'analyzing' | 'complete';
+
+export interface ProcessingProgress {
+  stage: ProcessingStage;
+  view: string;
+  wireframeImage?: string; // Available at 'wireframe' stage
+  alignedImage?: string; // Available at 'aligning' stage
+}
+
+// Callback type for progress updates
+export type OnProgressCallback = (progress: ProcessingProgress) => void;
+
 /**
  * UNIFIED PROCESSING FUNCTION
  * Processes a posture image from ANY source using the same flow
+ * 
+ * @param onProgress - Optional callback for intermediate progress updates (wireframe, aligned image)
  */
 export async function processPostureImage(
   imageData: string,
   view: 'front' | 'side-right' | 'side-left' | 'back',
   providedLandmarks?: LandmarkResult,
-  source: 'manual' | 'iphone' | 'this-device' = 'manual'
+  source: 'manual' | 'iphone' | 'this-device' = 'manual',
+  onProgress?: OnProgressCallback
 ): Promise<PostureProcessingResult> {
   const ctx = 'POSTURE_PROCESSING';
   
   try {
     logger.debug(`Starting processing for ${view} (source: ${source})`, ctx);
+    
+    // Emit detecting stage
+    onProgress?.({ stage: 'detecting', view });
     
     // STEP 1: Detect landmarks (or use provided)
     let landmarks: LandmarkResult;
@@ -75,12 +94,18 @@ export async function processPostureImage(
           opacity: 0.9,
         });
         logger.debug(`Wireframe generated for ${view}`, ctx);
+        
+        // Emit wireframe stage with image - UI can display this immediately
+        onProgress?.({ stage: 'wireframe', view, wireframeImage });
       } catch (wireframeError) {
         // Non-critical - continue without wireframe
         logger.warn(`Wireframe generation failed for ${view}, continuing`, ctx, wireframeError);
       }
     }
 
+    // Emit aligning stage
+    onProgress?.({ stage: 'aligning', view });
+    
     // STEP 2 & 3: Run alignment and metrics calculation in PARALLEL
     // Both only depend on landmarks, so we can execute them simultaneously
     logger.debug(`Starting parallel alignment + metrics for ${view}...`, ctx);
@@ -133,6 +158,9 @@ export async function processPostureImage(
     
     logger.debug(`Parallel alignment + metrics complete for ${view}`, ctx);
 
+    // Emit analyzing stage
+    onProgress?.({ stage: 'analyzing', view });
+    
     // STEP 4: Use AI ONLY to convert numbers → user-friendly descriptions
     let analysis: PostureAnalysisResult;
     try {
