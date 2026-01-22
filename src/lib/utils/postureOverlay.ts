@@ -639,23 +639,199 @@ function getViewSpecificConfig(view: 'front' | 'back' | 'side-left' | 'side-righ
   }
 }
 
+// Alignment thresholds (in normalized coordinates, roughly pixels/image_size)
+const ALIGNMENT_THRESHOLDS = {
+  SHOULDER_LEVEL: 0.02,    // ~2% of image height = shoulder level threshold
+  HIP_LEVEL: 0.02,         // ~2% of image height = hip level threshold
+  HEAD_TILT: 0.015,        // ~1.5% for ear level (head tilt)
+  VERTICAL_PLUMB: 0.03,    // ~3% horizontal deviation from vertical plumb line
+  KNEE_ALIGNMENT: 0.025,   // ~2.5% for knee valgus/varus
+};
+
+// Colors for alignment visualization
+const ALIGNMENT_COLORS = {
+  GOOD: '#22c55e',         // Green - aligned
+  GOOD_LINE: 'rgba(34, 197, 94, 0.9)',
+  DEVIATION: '#ef4444',    // Red - deviation
+  DEVIATION_LINE: 'rgba(239, 68, 68, 0.9)',
+  NEUTRAL: 'rgba(255, 255, 255, 0.6)', // White - skeleton connections
+  POINT_GOOD: '#22c55e',
+  POINT_DEVIATION: '#ef4444',
+  POINT_NEUTRAL: '#ffffff',
+};
+
+/**
+ * Calculates alignment status for front/back view landmarks
+ */
+function calculateFrontBackAlignments(
+  landmarks: Array<{ x: number; y: number; z?: number; visibility?: number }>,
+  canvasWidth: number,
+  canvasHeight: number
+): {
+  shoulders: { aligned: boolean; leftY: number; rightY: number; diff: number };
+  hips: { aligned: boolean; leftY: number; rightY: number; diff: number };
+  head: { aligned: boolean; leftY: number; rightY: number; diff: number };
+  knees: { aligned: boolean; leftX: number; rightX: number; leftAnkleX: number; rightAnkleX: number };
+} {
+  // Shoulders: landmarks 11 (left) and 12 (right)
+  const leftShoulder = landmarks[11];
+  const rightShoulder = landmarks[12];
+  const shoulderLeftY = (leftShoulder?.y ?? 0) * canvasHeight;
+  const shoulderRightY = (rightShoulder?.y ?? 0) * canvasHeight;
+  const shoulderDiff = Math.abs(leftShoulder?.y - rightShoulder?.y) || 0;
+  
+  // Hips: landmarks 23 (left) and 24 (right)
+  const leftHip = landmarks[23];
+  const rightHip = landmarks[24];
+  const hipLeftY = (leftHip?.y ?? 0) * canvasHeight;
+  const hipRightY = (rightHip?.y ?? 0) * canvasHeight;
+  const hipDiff = Math.abs(leftHip?.y - rightHip?.y) || 0;
+  
+  // Head/Ears: landmarks 7 (left ear) and 8 (right ear)
+  const leftEar = landmarks[7];
+  const rightEar = landmarks[8];
+  const earLeftY = (leftEar?.y ?? 0) * canvasHeight;
+  const earRightY = (rightEar?.y ?? 0) * canvasHeight;
+  const earDiff = Math.abs(leftEar?.y - rightEar?.y) || 0;
+  
+  // Knees: landmarks 25 (left) and 26 (right), ankles 27 (left) and 28 (right)
+  const leftKnee = landmarks[25];
+  const rightKnee = landmarks[26];
+  const leftAnkle = landmarks[27];
+  const rightAnkle = landmarks[28];
+  
+  // Check for knee valgus/varus by comparing knee X to ankle X
+  const leftKneeX = (leftKnee?.x ?? 0) * canvasWidth;
+  const rightKneeX = (rightKnee?.x ?? 0) * canvasWidth;
+  const leftAnkleX = (leftAnkle?.x ?? 0) * canvasWidth;
+  const rightAnkleX = (rightAnkle?.x ?? 0) * canvasWidth;
+  
+  // Knees should be roughly above ankles (within threshold)
+  const leftKneeDeviation = Math.abs((leftKnee?.x ?? 0) - (leftAnkle?.x ?? 0));
+  const rightKneeDeviation = Math.abs((rightKnee?.x ?? 0) - (rightAnkle?.x ?? 0));
+  const kneeAligned = leftKneeDeviation < ALIGNMENT_THRESHOLDS.KNEE_ALIGNMENT && 
+                       rightKneeDeviation < ALIGNMENT_THRESHOLDS.KNEE_ALIGNMENT;
+  
+  return {
+    shoulders: {
+      aligned: shoulderDiff < ALIGNMENT_THRESHOLDS.SHOULDER_LEVEL,
+      leftY: shoulderLeftY,
+      rightY: shoulderRightY,
+      diff: shoulderDiff,
+    },
+    hips: {
+      aligned: hipDiff < ALIGNMENT_THRESHOLDS.HIP_LEVEL,
+      leftY: hipLeftY,
+      rightY: hipRightY,
+      diff: hipDiff,
+    },
+    head: {
+      aligned: earDiff < ALIGNMENT_THRESHOLDS.HEAD_TILT,
+      leftY: earLeftY,
+      rightY: earRightY,
+      diff: earDiff,
+    },
+    knees: {
+      aligned: kneeAligned,
+      leftX: leftKneeX,
+      rightX: rightKneeX,
+      leftAnkleX,
+      rightAnkleX,
+    },
+  };
+}
+
+/**
+ * Calculates alignment status for side view landmarks (plumb line check)
+ */
+function calculateSideViewAlignments(
+  landmarks: Array<{ x: number; y: number; z?: number; visibility?: number }>,
+  view: 'side-left' | 'side-right',
+  canvasWidth: number,
+  canvasHeight: number
+): {
+  ear: { x: number; y: number; forwardOfPlumb: boolean };
+  shoulder: { x: number; y: number; forwardOfPlumb: boolean };
+  hip: { x: number; y: number };
+  knee: { x: number; y: number; forwardOfPlumb: boolean };
+  ankle: { x: number; y: number };
+  plumbX: number; // Ideal vertical line X position (based on ankle)
+} {
+  // Use appropriate landmarks based on which side we're viewing
+  const earIdx = view === 'side-left' ? 7 : 8;
+  const shoulderIdx = view === 'side-left' ? 11 : 12;
+  const hipIdx = view === 'side-left' ? 23 : 24;
+  const kneeIdx = view === 'side-left' ? 25 : 26;
+  const ankleIdx = view === 'side-left' ? 27 : 28;
+  
+  const ear = landmarks[earIdx];
+  const shoulder = landmarks[shoulderIdx];
+  const hip = landmarks[hipIdx];
+  const knee = landmarks[kneeIdx];
+  const ankle = landmarks[ankleIdx];
+  
+  // Plumb line is based on ankle position (where feet contact ground)
+  const plumbX = (ankle?.x ?? 0.5) * canvasWidth;
+  
+  const earX = (ear?.x ?? 0) * canvasWidth;
+  const earY = (ear?.y ?? 0) * canvasHeight;
+  const shoulderX = (shoulder?.x ?? 0) * canvasWidth;
+  const shoulderY = (shoulder?.y ?? 0) * canvasHeight;
+  const hipX = (hip?.x ?? 0) * canvasWidth;
+  const hipY = (hip?.y ?? 0) * canvasHeight;
+  const kneeX = (knee?.x ?? 0) * canvasWidth;
+  const kneeY = (knee?.y ?? 0) * canvasHeight;
+  const ankleX = (ankle?.x ?? 0) * canvasWidth;
+  const ankleY = (ankle?.y ?? 0) * canvasHeight;
+  
+  // For side view, "forward" depends on which side
+  // Side-left: facing left, so forward = smaller X
+  // Side-right: facing right, so forward = larger X
+  const forwardDir = view === 'side-left' ? -1 : 1;
+  const threshold = ALIGNMENT_THRESHOLDS.VERTICAL_PLUMB * canvasWidth;
+  
+  // Check if each point is forward of the plumb line
+  const earDeviation = earX - plumbX;
+  const shoulderDeviation = shoulderX - plumbX;
+  const kneeDeviation = kneeX - plumbX;
+  
+  return {
+    ear: {
+      x: earX,
+      y: earY,
+      forwardOfPlumb: Math.abs(earDeviation) > threshold && (earDeviation * forwardDir) > 0,
+    },
+    shoulder: {
+      x: shoulderX,
+      y: shoulderY,
+      forwardOfPlumb: Math.abs(shoulderDeviation) > threshold && (shoulderDeviation * forwardDir) > 0,
+    },
+    hip: { x: hipX, y: hipY },
+    knee: {
+      x: kneeX,
+      y: kneeY,
+      forwardOfPlumb: Math.abs(kneeDeviation) > threshold,
+    },
+    ankle: { x: ankleX, y: ankleY },
+    plumbX,
+  };
+}
+
 /**
  * Draws view-specific MediaPipe pose landmarks wireframe on an image
- * Only shows landmarks relevant to the posture assessment for that view
+ * with GREEN lines for aligned landmarks and RED lines for deviations
  * 
  * @param imageData - Base64 image data
  * @param landmarks - Raw MediaPipe landmarks array (33 points)
  * @param view - Which view we're assessing (determines which landmarks to show)
  * @param options - Drawing options
- * @returns Base64 image with wireframe overlay
+ * @returns Base64 image with wireframe overlay showing alignment analysis
  */
 export async function drawLandmarkWireframe(
   imageData: string,
   landmarks: Array<{ x: number; y: number; z?: number; visibility?: number }>,
   view: 'front' | 'back' | 'side-left' | 'side-right' = 'front',
   options: {
-    pointColor?: string;
-    lineColor?: string;
     pointRadius?: number;
     lineWidth?: number;
     showLabels?: boolean;
@@ -663,12 +839,10 @@ export async function drawLandmarkWireframe(
   } = {}
 ): Promise<string> {
   const {
-    pointColor = '#00ff00',
-    lineColor = 'rgba(0, 255, 0, 0.7)',
-    pointRadius = 6,
-    lineWidth = 3,
+    pointRadius = 8,
+    lineWidth = 4,
     showLabels = false,
-    opacity = 0.9,
+    opacity = 1.0,
   } = options;
 
   // Get view-specific connections and landmarks
@@ -694,65 +868,259 @@ export async function drawLandmarkWireframe(
         
         // Set global alpha for wireframe
         ctx.globalAlpha = opacity;
-        
-        // Draw connections (skeleton lines) - VIEW SPECIFIC
-        ctx.strokeStyle = lineColor;
-        ctx.lineWidth = lineWidth;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         
-        for (const [startIdx, endIdx] of viewConfig.connections) {
-          const start = landmarks[startIdx];
-          const end = landmarks[endIdx];
+        if (view === 'front' || view === 'back') {
+          // ========== FRONT/BACK VIEW WITH ALIGNMENT ANALYSIS ==========
+          const alignments = calculateFrontBackAlignments(landmarks, canvas.width, canvas.height);
           
-          if (!start || !end) continue;
+          // Get landmark positions
+          const getPos = (idx: number) => ({
+            x: (landmarks[idx]?.x ?? 0) * canvas.width,
+            y: (landmarks[idx]?.y ?? 0) * canvas.height,
+            visible: (landmarks[idx]?.visibility ?? 1) > 0.3,
+          });
           
-          // Skip if visibility is too low
-          const startVis = start.visibility ?? 1;
-          const endVis = end.visibility ?? 1;
-          if (startVis < 0.3 || endVis < 0.3) continue;
+          // Draw skeleton connections first (neutral color)
+          ctx.strokeStyle = ALIGNMENT_COLORS.NEUTRAL;
+          ctx.lineWidth = lineWidth - 1;
           
-          const startX = start.x * canvas.width;
-          const startY = start.y * canvas.height;
-          const endX = end.x * canvas.width;
-          const endY = end.y * canvas.height;
+          // Torso lines (neutral - just for reference)
+          const connections = [[11, 23], [12, 24], [23, 25], [24, 26], [25, 27], [26, 28]];
+          for (const [startIdx, endIdx] of connections) {
+            const start = getPos(startIdx);
+            const end = getPos(endIdx);
+            if (!start.visible || !end.visible) continue;
+            
+            ctx.beginPath();
+            ctx.moveTo(start.x, start.y);
+            ctx.lineTo(end.x, end.y);
+            ctx.stroke();
+          }
           
-          ctx.beginPath();
-          ctx.moveTo(startX, startY);
-          ctx.lineTo(endX, endY);
-          ctx.stroke();
-        }
-        
-        // Draw landmark points - ONLY VIEW-SPECIFIC LANDMARKS
-        ctx.fillStyle = pointColor;
-        
-        for (const index of viewConfig.landmarks) {
-          const landmark = landmarks[index];
-          if (!landmark) continue;
+          // ===== HEAD/EAR LINE (Alignment Check) =====
+          if (view === 'front') { // Only show ear line on front view
+            const leftEar = getPos(7);
+            const rightEar = getPos(8);
+            if (leftEar.visible && rightEar.visible) {
+              ctx.strokeStyle = alignments.head.aligned ? ALIGNMENT_COLORS.GOOD_LINE : ALIGNMENT_COLORS.DEVIATION_LINE;
+              ctx.lineWidth = lineWidth;
+              ctx.beginPath();
+              ctx.moveTo(leftEar.x, leftEar.y);
+              ctx.lineTo(rightEar.x, rightEar.y);
+              ctx.stroke();
+            }
+          }
           
-          const visibility = landmark.visibility ?? 1;
-          if (visibility < 0.3) continue;
+          // ===== SHOULDER LINE (Alignment Check) =====
+          const leftShoulder = getPos(11);
+          const rightShoulder = getPos(12);
+          if (leftShoulder.visible && rightShoulder.visible) {
+            ctx.strokeStyle = alignments.shoulders.aligned ? ALIGNMENT_COLORS.GOOD_LINE : ALIGNMENT_COLORS.DEVIATION_LINE;
+            ctx.lineWidth = lineWidth;
+            ctx.beginPath();
+            ctx.moveTo(leftShoulder.x, leftShoulder.y);
+            ctx.lineTo(rightShoulder.x, rightShoulder.y);
+            ctx.stroke();
+          }
           
-          const x = landmark.x * canvas.width;
-          const y = landmark.y * canvas.height;
+          // ===== HIP LINE (Alignment Check) =====
+          const leftHip = getPos(23);
+          const rightHip = getPos(24);
+          if (leftHip.visible && rightHip.visible) {
+            ctx.strokeStyle = alignments.hips.aligned ? ALIGNMENT_COLORS.GOOD_LINE : ALIGNMENT_COLORS.DEVIATION_LINE;
+            ctx.lineWidth = lineWidth;
+            ctx.beginPath();
+            ctx.moveTo(leftHip.x, leftHip.y);
+            ctx.lineTo(rightHip.x, rightHip.y);
+            ctx.stroke();
+          }
           
-          // Draw point with white outline for visibility
-          ctx.strokeStyle = '#ffffff';
+          // ===== KNEE ALIGNMENT (Check for valgus/varus) =====
+          const leftKnee = getPos(25);
+          const rightKnee = getPos(26);
+          const leftAnkle = getPos(27);
+          const rightAnkle = getPos(28);
+          
+          // Draw knee-to-ankle lines with alignment color
+          if (leftKnee.visible && leftAnkle.visible) {
+            const leftAligned = Math.abs(landmarks[25]?.x - landmarks[27]?.x) < ALIGNMENT_THRESHOLDS.KNEE_ALIGNMENT;
+            ctx.strokeStyle = leftAligned ? ALIGNMENT_COLORS.GOOD_LINE : ALIGNMENT_COLORS.DEVIATION_LINE;
+            ctx.lineWidth = lineWidth;
+            ctx.beginPath();
+            ctx.moveTo(leftKnee.x, leftKnee.y);
+            ctx.lineTo(leftAnkle.x, leftAnkle.y);
+            ctx.stroke();
+          }
+          
+          if (rightKnee.visible && rightAnkle.visible) {
+            const rightAligned = Math.abs(landmarks[26]?.x - landmarks[28]?.x) < ALIGNMENT_THRESHOLDS.KNEE_ALIGNMENT;
+            ctx.strokeStyle = rightAligned ? ALIGNMENT_COLORS.GOOD_LINE : ALIGNMENT_COLORS.DEVIATION_LINE;
+            ctx.lineWidth = lineWidth;
+            ctx.beginPath();
+            ctx.moveTo(rightKnee.x, rightKnee.y);
+            ctx.lineTo(rightAnkle.x, rightAnkle.y);
+            ctx.stroke();
+          }
+          
+          // Draw landmark points with appropriate colors
+          const pointsToCheck = [
+            { idx: 0, check: null }, // Nose - neutral
+            { idx: 7, check: view === 'front' ? alignments.head.aligned : null }, // Left ear
+            { idx: 8, check: view === 'front' ? alignments.head.aligned : null }, // Right ear
+            { idx: 11, check: alignments.shoulders.aligned }, // Left shoulder
+            { idx: 12, check: alignments.shoulders.aligned }, // Right shoulder
+            { idx: 23, check: alignments.hips.aligned }, // Left hip
+            { idx: 24, check: alignments.hips.aligned }, // Right hip
+            { idx: 25, check: alignments.knees.aligned }, // Left knee
+            { idx: 26, check: alignments.knees.aligned }, // Right knee
+            { idx: 27, check: null }, // Left ankle - neutral
+            { idx: 28, check: null }, // Right ankle - neutral
+          ];
+          
+          for (const { idx, check } of pointsToCheck) {
+            const pos = getPos(idx);
+            if (!pos.visible) continue;
+            if (!viewConfig.landmarks.includes(idx)) continue;
+            
+            // Determine point color
+            let fillColor = ALIGNMENT_COLORS.POINT_NEUTRAL;
+            if (check === true) fillColor = ALIGNMENT_COLORS.POINT_GOOD;
+            else if (check === false) fillColor = ALIGNMENT_COLORS.POINT_DEVIATION;
+            
+            // Draw point with outline
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, pointRadius, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            ctx.fillStyle = fillColor;
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, pointRadius - 1, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          
+        } else {
+          // ========== SIDE VIEW WITH PLUMB LINE ANALYSIS ==========
+          const alignments = calculateSideViewAlignments(landmarks, view, canvas.width, canvas.height);
+          
+          // Draw vertical plumb line (reference line from ankle up)
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
           ctx.lineWidth = 2;
+          ctx.setLineDash([10, 10]);
           ctx.beginPath();
-          ctx.arc(x, y, pointRadius, 0, Math.PI * 2);
+          ctx.moveTo(alignments.plumbX, 0);
+          ctx.lineTo(alignments.plumbX, canvas.height);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          
+          // Draw the postural chain: Ear → Shoulder → Hip → Knee → Ankle
+          // Each segment colored based on alignment
+          ctx.lineWidth = lineWidth;
+          
+          // Ear to Shoulder
+          const earAligned = !alignments.ear.forwardOfPlumb;
+          ctx.strokeStyle = earAligned ? ALIGNMENT_COLORS.GOOD_LINE : ALIGNMENT_COLORS.DEVIATION_LINE;
+          ctx.beginPath();
+          ctx.moveTo(alignments.ear.x, alignments.ear.y);
+          ctx.lineTo(alignments.shoulder.x, alignments.shoulder.y);
           ctx.stroke();
           
-          ctx.fillStyle = pointColor;
-          ctx.beginPath();
-          ctx.arc(x, y, pointRadius - 1, 0, Math.PI * 2);
-          ctx.fill();
+          // If ear is forward, draw horizontal deviation line to plumb
+          if (!earAligned) {
+            ctx.strokeStyle = ALIGNMENT_COLORS.DEVIATION_LINE;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(alignments.ear.x, alignments.ear.y);
+            ctx.lineTo(alignments.plumbX, alignments.ear.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+          }
           
-          // Optionally draw labels
-          if (showLabels) {
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 12px Arial';
-            ctx.fillText(String(index), x + pointRadius + 4, y + 4);
+          // Shoulder to Hip
+          const shoulderAligned = !alignments.shoulder.forwardOfPlumb;
+          ctx.strokeStyle = shoulderAligned ? ALIGNMENT_COLORS.GOOD_LINE : ALIGNMENT_COLORS.DEVIATION_LINE;
+          ctx.beginPath();
+          ctx.moveTo(alignments.shoulder.x, alignments.shoulder.y);
+          ctx.lineTo(alignments.hip.x, alignments.hip.y);
+          ctx.stroke();
+          
+          // If shoulder is forward, draw horizontal deviation line to plumb
+          if (!shoulderAligned) {
+            ctx.strokeStyle = ALIGNMENT_COLORS.DEVIATION_LINE;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(alignments.shoulder.x, alignments.shoulder.y);
+            ctx.lineTo(alignments.plumbX, alignments.shoulder.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+          }
+          
+          // Hip to Knee (usually aligned - reference)
+          ctx.strokeStyle = ALIGNMENT_COLORS.GOOD_LINE;
+          ctx.beginPath();
+          ctx.moveTo(alignments.hip.x, alignments.hip.y);
+          ctx.lineTo(alignments.knee.x, alignments.knee.y);
+          ctx.stroke();
+          
+          // Knee to Ankle
+          const kneeAligned = !alignments.knee.forwardOfPlumb;
+          ctx.strokeStyle = kneeAligned ? ALIGNMENT_COLORS.GOOD_LINE : ALIGNMENT_COLORS.DEVIATION_LINE;
+          ctx.beginPath();
+          ctx.moveTo(alignments.knee.x, alignments.knee.y);
+          ctx.lineTo(alignments.ankle.x, alignments.ankle.y);
+          ctx.stroke();
+          
+          // Draw arm for rounded shoulder detection
+          const elbowIdx = view === 'side-left' ? 13 : 14;
+          const wristIdx = view === 'side-left' ? 15 : 16;
+          const shoulderIdx = view === 'side-left' ? 11 : 12;
+          
+          const elbow = landmarks[elbowIdx];
+          const wrist = landmarks[wristIdx];
+          const shoulder = landmarks[shoulderIdx];
+          
+          if (elbow && wrist && shoulder && (elbow.visibility ?? 1) > 0.3) {
+            ctx.strokeStyle = ALIGNMENT_COLORS.NEUTRAL;
+            ctx.lineWidth = lineWidth - 1;
+            
+            // Shoulder to elbow
+            ctx.beginPath();
+            ctx.moveTo((shoulder.x) * canvas.width, (shoulder.y) * canvas.height);
+            ctx.lineTo((elbow.x) * canvas.width, (elbow.y) * canvas.height);
+            ctx.stroke();
+            
+            // Elbow to wrist
+            if ((wrist.visibility ?? 1) > 0.3) {
+              ctx.beginPath();
+              ctx.moveTo((elbow.x) * canvas.width, (elbow.y) * canvas.height);
+              ctx.lineTo((wrist.x) * canvas.width, (wrist.y) * canvas.height);
+              ctx.stroke();
+            }
+          }
+          
+          // Draw landmark points
+          const sidePoints = [
+            { x: alignments.ear.x, y: alignments.ear.y, aligned: earAligned },
+            { x: alignments.shoulder.x, y: alignments.shoulder.y, aligned: shoulderAligned },
+            { x: alignments.hip.x, y: alignments.hip.y, aligned: true }, // Hip is reference
+            { x: alignments.knee.x, y: alignments.knee.y, aligned: kneeAligned },
+            { x: alignments.ankle.x, y: alignments.ankle.y, aligned: true }, // Ankle is reference
+          ];
+          
+          for (const point of sidePoints) {
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(point.x, point.y, pointRadius, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            ctx.fillStyle = point.aligned ? ALIGNMENT_COLORS.POINT_GOOD : ALIGNMENT_COLORS.POINT_DEVIATION;
+            ctx.beginPath();
+            ctx.arc(point.x, point.y, pointRadius - 1, 0, Math.PI * 2);
+            ctx.fill();
           }
         }
         
@@ -769,6 +1137,13 @@ export async function drawLandmarkWireframe(
     img.src = imageData;
   });
 }
+
+// Full pose connections for debug wireframe
+const DEBUG_POSE_CONNECTIONS: [number, number][] = [
+  [11, 12], [11, 23], [12, 24], [23, 24],
+  [11, 13], [13, 15], [12, 14], [14, 16],
+  [23, 25], [25, 27], [24, 26], [26, 28],
+];
 
 /**
  * Generates a wireframe-only visualization (no background image)
@@ -806,7 +1181,7 @@ export function generateWireframeOnly(
   ctx.lineWidth = 2;
   ctx.lineCap = 'round';
   
-  for (const [startIdx, endIdx] of POSE_CONNECTIONS) {
+  for (const [startIdx, endIdx] of DEBUG_POSE_CONNECTIONS) {
     const start = landmarks[startIdx];
     const end = landmarks[endIdx];
     
