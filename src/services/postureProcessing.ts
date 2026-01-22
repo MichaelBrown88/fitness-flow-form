@@ -81,17 +81,18 @@ export async function processPostureImage(
       }
     }
 
-    // STEP 1.5: Generate wireframe visualization (optional, for debugging/UX)
+    // STEP 1.5: Generate view-specific wireframe visualization
+    // Shows only landmarks relevant to posture assessment for this view
     let wireframeImage: string | undefined;
     if (landmarks.raw && landmarks.raw.length > 0) {
       try {
-        logger.debug(`Generating wireframe for ${view}...`, ctx);
-        wireframeImage = await drawLandmarkWireframe(imageData, landmarks.raw, {
+        logger.debug(`Generating view-specific wireframe for ${view}...`, ctx);
+        wireframeImage = await drawLandmarkWireframe(imageData, landmarks.raw, view, {
           pointColor: '#00ff00',
-          lineColor: 'rgba(0, 255, 0, 0.7)',
-          pointRadius: 5,
-          lineWidth: 2,
-          opacity: 0.9,
+          lineColor: 'rgba(0, 255, 0, 0.8)',
+          pointRadius: 8,
+          lineWidth: 3,
+          opacity: 0.95,
         });
         logger.debug(`Wireframe generated for ${view}`, ctx);
         

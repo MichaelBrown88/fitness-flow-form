@@ -525,45 +525,134 @@ export function generatePlaceholderWithGreenLines(
 }
 
 /**
- * MediaPipe Pose landmark connections for skeleton drawing
- * Each pair represents a line connecting two landmarks
+ * MediaPipe Pose Landmark Indices Reference:
+ * 0: nose, 1-6: eyes, 7-8: ears, 9-10: mouth
+ * 11-12: shoulders (L/R), 13-14: elbows, 15-16: wrists, 17-22: hands
+ * 23-24: hips (L/R), 25-26: knees, 27-28: ankles, 29-32: feet
  */
-const POSE_CONNECTIONS: [number, number][] = [
-  // Face
-  [0, 1], [1, 2], [2, 3], [3, 7],  // Left eye
-  [0, 4], [4, 5], [5, 6], [6, 8],  // Right eye
-  [9, 10], // Mouth
-  
-  // Torso
-  [11, 12], // Shoulders
-  [11, 23], [12, 24], // Shoulder to hips
-  [23, 24], // Hips
-  
-  // Left arm
-  [11, 13], [13, 15], [15, 17], [15, 19], [15, 21], [17, 19],
-  
-  // Right arm
-  [12, 14], [14, 16], [16, 18], [16, 20], [16, 22], [18, 20],
-  
-  // Left leg
-  [23, 25], [25, 27], [27, 29], [27, 31], [29, 31],
-  
-  // Right leg
-  [24, 26], [26, 28], [28, 30], [28, 32], [30, 32],
-];
 
 /**
- * Draws MediaPipe pose landmarks wireframe on an image
- * Shows the skeleton structure to visualize what MediaPipe detected
+ * VIEW-SPECIFIC LANDMARK CONNECTIONS
+ * Only draw landmarks relevant to what we're assessing in each view
+ */
+
+// FRONT VIEW: Head tilt, shoulder level, hip level, knee alignment
+// Looking for: lateral asymmetry, tilts
+const FRONT_VIEW_CONNECTIONS: [number, number][] = [
+  // Head - ears for tilt detection
+  [7, 8],   // Ear to ear (head tilt line)
+  
+  // Shoulders
+  [11, 12], // Shoulder line
+  
+  // Torso - vertical alignment
+  [11, 23], // Left shoulder to hip
+  [12, 24], // Right shoulder to hip
+  
+  // Hips
+  [23, 24], // Hip line
+  
+  // Legs - knee alignment
+  [23, 25], // Left hip to knee
+  [24, 26], // Right hip to knee
+  [25, 27], // Left knee to ankle
+  [26, 28], // Right knee to ankle
+];
+
+// Landmarks to draw for front view
+const FRONT_VIEW_LANDMARKS = [0, 7, 8, 11, 12, 23, 24, 25, 26, 27, 28];
+
+// BACK VIEW: Head tilt, shoulder level, spinal curves, hip level, knee alignment
+// Looking for: scoliosis, lateral asymmetry (NO face landmarks)
+const BACK_VIEW_CONNECTIONS: [number, number][] = [
+  // Shoulders
+  [11, 12], // Shoulder line
+  
+  // Spine approximation (shoulder midpoint to hip midpoint shown via torso lines)
+  [11, 23], // Left side torso
+  [12, 24], // Right side torso
+  
+  // Hips
+  [23, 24], // Hip line
+  
+  // Legs
+  [23, 25], // Left hip to knee
+  [24, 26], // Right hip to knee
+  [25, 27], // Left knee to ankle
+  [26, 28], // Right knee to ankle
+];
+
+// Landmarks for back view (no face/eyes)
+const BACK_VIEW_LANDMARKS = [11, 12, 23, 24, 25, 26, 27, 28];
+
+// SIDE-LEFT VIEW: Ear-shoulder-hip-knee-ankle plumb line, arm position for rounded shoulders
+// Looking for: forward head, rounded shoulders, kyphosis, lordosis, pelvic tilt
+const SIDE_LEFT_CONNECTIONS: [number, number][] = [
+  // Plumb line landmarks (vertical alignment)
+  [7, 11],  // Left ear to shoulder
+  [11, 23], // Shoulder to hip
+  [23, 25], // Hip to knee
+  [25, 27], // Knee to ankle
+  
+  // Arm for rounded shoulder detection
+  [11, 13], // Shoulder to elbow
+  [13, 15], // Elbow to wrist
+];
+
+// Landmarks for side-left view (left side of body)
+const SIDE_LEFT_LANDMARKS = [7, 11, 13, 15, 23, 25, 27];
+
+// SIDE-RIGHT VIEW: Mirror of side-left using right-side landmarks
+const SIDE_RIGHT_CONNECTIONS: [number, number][] = [
+  // Plumb line landmarks (vertical alignment)
+  [8, 12],  // Right ear to shoulder
+  [12, 24], // Shoulder to hip
+  [24, 26], // Hip to knee
+  [26, 28], // Knee to ankle
+  
+  // Arm for rounded shoulder detection
+  [12, 14], // Shoulder to elbow
+  [14, 16], // Elbow to wrist
+];
+
+// Landmarks for side-right view (right side of body)
+const SIDE_RIGHT_LANDMARKS = [8, 12, 14, 16, 24, 26, 28];
+
+/**
+ * Get view-specific connections and landmarks
+ */
+function getViewSpecificConfig(view: 'front' | 'back' | 'side-left' | 'side-right'): {
+  connections: [number, number][];
+  landmarks: number[];
+} {
+  switch (view) {
+    case 'front':
+      return { connections: FRONT_VIEW_CONNECTIONS, landmarks: FRONT_VIEW_LANDMARKS };
+    case 'back':
+      return { connections: BACK_VIEW_CONNECTIONS, landmarks: BACK_VIEW_LANDMARKS };
+    case 'side-left':
+      return { connections: SIDE_LEFT_CONNECTIONS, landmarks: SIDE_LEFT_LANDMARKS };
+    case 'side-right':
+      return { connections: SIDE_RIGHT_CONNECTIONS, landmarks: SIDE_RIGHT_LANDMARKS };
+    default:
+      return { connections: FRONT_VIEW_CONNECTIONS, landmarks: FRONT_VIEW_LANDMARKS };
+  }
+}
+
+/**
+ * Draws view-specific MediaPipe pose landmarks wireframe on an image
+ * Only shows landmarks relevant to the posture assessment for that view
  * 
  * @param imageData - Base64 image data
  * @param landmarks - Raw MediaPipe landmarks array (33 points)
+ * @param view - Which view we're assessing (determines which landmarks to show)
  * @param options - Drawing options
  * @returns Base64 image with wireframe overlay
  */
 export async function drawLandmarkWireframe(
   imageData: string,
   landmarks: Array<{ x: number; y: number; z?: number; visibility?: number }>,
+  view: 'front' | 'back' | 'side-left' | 'side-right' = 'front',
   options: {
     pointColor?: string;
     lineColor?: string;
@@ -575,12 +664,15 @@ export async function drawLandmarkWireframe(
 ): Promise<string> {
   const {
     pointColor = '#00ff00',
-    lineColor = 'rgba(0, 255, 0, 0.6)',
-    pointRadius = 4,
-    lineWidth = 2,
+    lineColor = 'rgba(0, 255, 0, 0.7)',
+    pointRadius = 6,
+    lineWidth = 3,
     showLabels = false,
-    opacity = 0.8,
+    opacity = 0.9,
   } = options;
+
+  // Get view-specific connections and landmarks
+  const viewConfig = getViewSpecificConfig(view);
 
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -603,13 +695,13 @@ export async function drawLandmarkWireframe(
         // Set global alpha for wireframe
         ctx.globalAlpha = opacity;
         
-        // Draw connections (skeleton lines)
+        // Draw connections (skeleton lines) - VIEW SPECIFIC
         ctx.strokeStyle = lineColor;
         ctx.lineWidth = lineWidth;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         
-        for (const [startIdx, endIdx] of POSE_CONNECTIONS) {
+        for (const [startIdx, endIdx] of viewConfig.connections) {
           const start = landmarks[startIdx];
           const end = landmarks[endIdx];
           
@@ -631,31 +723,38 @@ export async function drawLandmarkWireframe(
           ctx.stroke();
         }
         
-        // Draw landmark points
+        // Draw landmark points - ONLY VIEW-SPECIFIC LANDMARKS
         ctx.fillStyle = pointColor;
         
-        landmarks.forEach((landmark, index) => {
-          if (!landmark) return;
+        for (const index of viewConfig.landmarks) {
+          const landmark = landmarks[index];
+          if (!landmark) continue;
           
           const visibility = landmark.visibility ?? 1;
-          if (visibility < 0.3) return;
+          if (visibility < 0.3) continue;
           
           const x = landmark.x * canvas.width;
           const y = landmark.y * canvas.height;
           
-          // Draw point
+          // Draw point with white outline for visibility
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
           ctx.beginPath();
           ctx.arc(x, y, pointRadius, 0, Math.PI * 2);
+          ctx.stroke();
+          
+          ctx.fillStyle = pointColor;
+          ctx.beginPath();
+          ctx.arc(x, y, pointRadius - 1, 0, Math.PI * 2);
           ctx.fill();
           
           // Optionally draw labels
           if (showLabels) {
             ctx.fillStyle = '#ffffff';
-            ctx.font = '10px Arial';
-            ctx.fillText(String(index), x + pointRadius + 2, y + 3);
-            ctx.fillStyle = pointColor;
+            ctx.font = 'bold 12px Arial';
+            ctx.fillText(String(index), x + pointRadius + 4, y + 4);
           }
-        });
+        }
         
         // Reset alpha
         ctx.globalAlpha = 1;
