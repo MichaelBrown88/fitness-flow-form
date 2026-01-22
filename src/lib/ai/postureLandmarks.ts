@@ -1,6 +1,10 @@
 /**
  * MediaPipe-based landmark detection for image alignment
  * Uses MediaPipe Pose for accurate body landmark detection
+ * 
+ * IMPORTANT: MediaPipe WASM has global state and cannot handle concurrent initializations.
+ * This module implements a mutex/queue pattern to serialize MediaPipe access while
+ * allowing other processing (alignment, AI analysis) to happen in parallel.
  */
 
 import { CONFIG } from '@/config';
@@ -14,6 +18,51 @@ export interface LandmarkResult {
   midfoot_x_percent?: number; // X position of midfoot (for side views) as % of image width (0-100)
   raw?: import('@/lib/types/mediapipe').MediaPipeLandmark[]; // The raw pose landmarks from MediaPipe
 }
+
+/**
+ * MUTEX PATTERN for MediaPipe
+ * MediaPipe WASM cannot handle concurrent initializations - only one at a time.
+ * This queue ensures sequential access while allowing parallel processing elsewhere.
+ */
+class MediaPipeMutex {
+  private queue: Array<() => Promise<void>> = [];
+  private isProcessing = false;
+  
+  async acquire<T>(fn: () => Promise<T>): Promise<T> {
+    return new Promise((resolve, reject) => {
+      const execute = async () => {
+        try {
+          const result = await fn();
+          resolve(result);
+        } catch (error) {
+          reject(error);
+        } finally {
+          this.isProcessing = false;
+          this.processNext();
+        }
+      };
+      
+      this.queue.push(execute);
+      
+      if (!this.isProcessing) {
+        this.processNext();
+      }
+    });
+  }
+  
+  private processNext() {
+    if (this.queue.length === 0 || this.isProcessing) return;
+    
+    this.isProcessing = true;
+    const next = this.queue.shift();
+    if (next) {
+      next();
+    }
+  }
+}
+
+// Single mutex instance for all MediaPipe operations
+const mediaPipeMutex = new MediaPipeMutex();
 
 /**
  * Convert image URL/data URL to HTMLImageElement
@@ -38,13 +87,32 @@ function loadImage(imageUrl: string): Promise<HTMLImageElement> {
 
 /**
  * Detect posture landmarks using MediaPipe Pose
+ * 
+ * IMPORTANT: This function uses a mutex to ensure only one MediaPipe instance
+ * runs at a time. Multiple calls will be queued and processed sequentially.
+ * This is necessary because MediaPipe WASM has global state that conflicts
+ * when multiple instances are initialized simultaneously.
  */
 export async function detectPostureLandmarks(
   imageUrl: string,
   view: 'front' | 'side-right' | 'side-left' | 'back'
 ): Promise<LandmarkResult> {
+  // Use mutex to ensure only one MediaPipe instance runs at a time
+  return mediaPipeMutex.acquire(async () => {
+    return detectPostureLandmarksInternal(imageUrl, view);
+  });
+}
+
+/**
+ * Internal implementation of landmark detection
+ * Only called through the mutex to prevent concurrent WASM conflicts
+ */
+async function detectPostureLandmarksInternal(
+  imageUrl: string,
+  view: 'front' | 'side-right' | 'side-left' | 'back'
+): Promise<LandmarkResult> {
   try {
-    logger.debug(`Starting landmark detection for ${view}`, 'MEDIAPIPE');
+    logger.debug(`[MUTEX] Starting landmark detection for ${view}`, 'MEDIAPIPE');
     logger.debug(`Image URL type: ${imageUrl.substring(0, 50)}...`, 'MEDIAPIPE');
     
     // Load the image
