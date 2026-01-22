@@ -523,3 +523,215 @@ export function generatePlaceholderWithGreenLines(
 
   return canvas.toDataURL('image/jpeg', 0.95);
 }
+
+/**
+ * MediaPipe Pose landmark connections for skeleton drawing
+ * Each pair represents a line connecting two landmarks
+ */
+const POSE_CONNECTIONS: [number, number][] = [
+  // Face
+  [0, 1], [1, 2], [2, 3], [3, 7],  // Left eye
+  [0, 4], [4, 5], [5, 6], [6, 8],  // Right eye
+  [9, 10], // Mouth
+  
+  // Torso
+  [11, 12], // Shoulders
+  [11, 23], [12, 24], // Shoulder to hips
+  [23, 24], // Hips
+  
+  // Left arm
+  [11, 13], [13, 15], [15, 17], [15, 19], [15, 21], [17, 19],
+  
+  // Right arm
+  [12, 14], [14, 16], [16, 18], [16, 20], [16, 22], [18, 20],
+  
+  // Left leg
+  [23, 25], [25, 27], [27, 29], [27, 31], [29, 31],
+  
+  // Right leg
+  [24, 26], [26, 28], [28, 30], [28, 32], [30, 32],
+];
+
+/**
+ * Draws MediaPipe pose landmarks wireframe on an image
+ * Shows the skeleton structure to visualize what MediaPipe detected
+ * 
+ * @param imageData - Base64 image data
+ * @param landmarks - Raw MediaPipe landmarks array (33 points)
+ * @param options - Drawing options
+ * @returns Base64 image with wireframe overlay
+ */
+export async function drawLandmarkWireframe(
+  imageData: string,
+  landmarks: Array<{ x: number; y: number; z?: number; visibility?: number }>,
+  options: {
+    pointColor?: string;
+    lineColor?: string;
+    pointRadius?: number;
+    lineWidth?: number;
+    showLabels?: boolean;
+    opacity?: number;
+  } = {}
+): Promise<string> {
+  const {
+    pointColor = '#00ff00',
+    lineColor = 'rgba(0, 255, 0, 0.6)',
+    pointRadius = 4,
+    lineWidth = 2,
+    showLabels = false,
+    opacity = 0.8,
+  } = options;
+
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        
+        if (!ctx) {
+          reject(new Error('Could not get canvas context'));
+          return;
+        }
+        
+        // Draw the original image
+        ctx.drawImage(img, 0, 0);
+        
+        // Set global alpha for wireframe
+        ctx.globalAlpha = opacity;
+        
+        // Draw connections (skeleton lines)
+        ctx.strokeStyle = lineColor;
+        ctx.lineWidth = lineWidth;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        
+        for (const [startIdx, endIdx] of POSE_CONNECTIONS) {
+          const start = landmarks[startIdx];
+          const end = landmarks[endIdx];
+          
+          if (!start || !end) continue;
+          
+          // Skip if visibility is too low
+          const startVis = start.visibility ?? 1;
+          const endVis = end.visibility ?? 1;
+          if (startVis < 0.3 || endVis < 0.3) continue;
+          
+          const startX = start.x * canvas.width;
+          const startY = start.y * canvas.height;
+          const endX = end.x * canvas.width;
+          const endY = end.y * canvas.height;
+          
+          ctx.beginPath();
+          ctx.moveTo(startX, startY);
+          ctx.lineTo(endX, endY);
+          ctx.stroke();
+        }
+        
+        // Draw landmark points
+        ctx.fillStyle = pointColor;
+        
+        landmarks.forEach((landmark, index) => {
+          if (!landmark) return;
+          
+          const visibility = landmark.visibility ?? 1;
+          if (visibility < 0.3) return;
+          
+          const x = landmark.x * canvas.width;
+          const y = landmark.y * canvas.height;
+          
+          // Draw point
+          ctx.beginPath();
+          ctx.arc(x, y, pointRadius, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Optionally draw labels
+          if (showLabels) {
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '10px Arial';
+            ctx.fillText(String(index), x + pointRadius + 2, y + 3);
+            ctx.fillStyle = pointColor;
+          }
+        });
+        
+        // Reset alpha
+        ctx.globalAlpha = 1;
+        
+        resolve(canvas.toDataURL('image/jpeg', 0.95));
+      } catch (error) {
+        reject(error);
+      }
+    };
+    
+    img.onerror = () => reject(new Error('Failed to load image for wireframe'));
+    img.src = imageData;
+  });
+}
+
+/**
+ * Generates a wireframe-only visualization (no background image)
+ * Useful for debugging landmark detection
+ */
+export function generateWireframeOnly(
+  landmarks: Array<{ x: number; y: number; z?: number; visibility?: number }>,
+  width: number = 400,
+  height: number = 600,
+  options: {
+    pointColor?: string;
+    lineColor?: string;
+    backgroundColor?: string;
+  } = {}
+): string {
+  const {
+    pointColor = '#00ff00',
+    lineColor = 'rgba(0, 255, 0, 0.8)',
+    backgroundColor = '#1a1a2e',
+  } = options;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  
+  if (!ctx) return '';
+  
+  // Dark background
+  ctx.fillStyle = backgroundColor;
+  ctx.fillRect(0, 0, width, height);
+  
+  // Draw connections
+  ctx.strokeStyle = lineColor;
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  
+  for (const [startIdx, endIdx] of POSE_CONNECTIONS) {
+    const start = landmarks[startIdx];
+    const end = landmarks[endIdx];
+    
+    if (!start || !end) continue;
+    
+    const startVis = start.visibility ?? 1;
+    const endVis = end.visibility ?? 1;
+    if (startVis < 0.3 || endVis < 0.3) continue;
+    
+    ctx.beginPath();
+    ctx.moveTo(start.x * width, start.y * height);
+    ctx.lineTo(end.x * width, end.y * height);
+    ctx.stroke();
+  }
+  
+  // Draw points
+  ctx.fillStyle = pointColor;
+  landmarks.forEach((landmark) => {
+    if (!landmark || (landmark.visibility ?? 1) < 0.3) return;
+    
+    ctx.beginPath();
+    ctx.arc(landmark.x * width, landmark.y * height, 4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  
+  return canvas.toDataURL('image/png');
+}

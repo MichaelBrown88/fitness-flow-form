@@ -17,7 +17,7 @@
  */
 
 import { LandmarkResult, detectPostureLandmarks } from '@/lib/ai/postureLandmarks';
-import { addPostureOverlay, addDeviationOverlay } from '@/lib/utils/postureOverlay';
+import { addPostureOverlay, addDeviationOverlay, drawLandmarkWireframe } from '@/lib/utils/postureOverlay';
 import { calculateFrontViewMetrics, calculateSideViewMetrics } from '@/lib/utils/postureMath';
 import { analyzePostureImage } from '@/lib/ai/postureAnalysis';
 import { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
@@ -26,6 +26,7 @@ import { logger } from '@/lib/utils/logger';
 export interface PostureProcessingResult {
   alignedImage: string; // Image with green reference lines
   imageWithDeviations: string; // Image with green + red deviation lines
+  wireframeImage?: string; // Image with MediaPipe skeleton overlay (for debugging/visualization)
   analysis: PostureAnalysisResult; // Complete analysis with metrics and descriptions
   landmarks: LandmarkResult; // Detected landmarks
 }
@@ -58,6 +59,25 @@ export async function processPostureImage(
       } catch (landmarkError) {
         logger.error(`Landmark detection failed for ${view}`, ctx, landmarkError);
         throw new Error(`Failed to detect landmarks: ${landmarkError instanceof Error ? landmarkError.message : 'Unknown error'}`);
+      }
+    }
+
+    // STEP 1.5: Generate wireframe visualization (optional, for debugging/UX)
+    let wireframeImage: string | undefined;
+    if (landmarks.raw && landmarks.raw.length > 0) {
+      try {
+        logger.debug(`Generating wireframe for ${view}...`, ctx);
+        wireframeImage = await drawLandmarkWireframe(imageData, landmarks.raw, {
+          pointColor: '#00ff00',
+          lineColor: 'rgba(0, 255, 0, 0.7)',
+          pointRadius: 5,
+          lineWidth: 2,
+          opacity: 0.9,
+        });
+        logger.debug(`Wireframe generated for ${view}`, ctx);
+      } catch (wireframeError) {
+        // Non-critical - continue without wireframe
+        logger.warn(`Wireframe generation failed for ${view}, continuing`, ctx, wireframeError);
       }
     }
 
@@ -168,6 +188,7 @@ export async function processPostureImage(
     return {
       alignedImage,
       imageWithDeviations,
+      wireframeImage,
       analysis,
       landmarks,
     };

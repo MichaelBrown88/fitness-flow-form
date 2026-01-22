@@ -47,6 +47,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
     companionUrl,
     connectionState,
     isLoadingTestImages,
+    processingStatus,
     previewImage,
     setPreviewImage,
     fileInputRef,
@@ -63,6 +64,19 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
     onClose,
     onStartDirectScan
   });
+
+  // Helper to get processing status label
+  const getStatusLabel = (stage: string): string => {
+    switch (stage) {
+      case 'converting': return 'Converting...';
+      case 'detecting': return 'Detecting landmarks...';
+      case 'aligning': return 'Aligning image...';
+      case 'analyzing': return 'AI Analysis...';
+      case 'complete': return 'Complete';
+      case 'error': return 'Error';
+      default: return '';
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -190,11 +204,16 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
             <div className="grid grid-cols-2 gap-4 pb-20">
               {views.map((view) => {
                 const imageUrl = session?.postureImages[view];
+                const status = processingStatus[view];
+                const isProcessing = status !== 'idle' && status !== 'complete' && status !== 'error';
+                const statusLabel = getStatusLabel(status);
+                
                 return (
                   <div key={view} className="flex flex-col gap-2">
                     <div className="flex items-center justify-between px-1">
                       <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{view}</span>
-                      {imageUrl && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
+                      {status === 'complete' && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
+                      {status === 'error' && <AlertCircle className="h-3 w-3 text-red-500" />}
                     </div>
                     <div className="aspect-[3/4] rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 overflow-hidden relative flex items-center justify-center">
                       {imageUrl ? (
@@ -214,6 +233,16 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                           />
                           <Camera className="absolute h-6 w-6 text-slate-300" />
                         </>
+                      )}
+                      
+                      {/* Processing Status Overlay */}
+                      {isProcessing && (
+                        <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-3 animate-in fade-in duration-300">
+                          <Loader2 className="h-8 w-8 text-white animate-spin" />
+                          <span className="text-white text-xs font-bold uppercase tracking-wide">
+                            {statusLabel}
+                          </span>
+                        </div>
                       )}
                     </div>
 
