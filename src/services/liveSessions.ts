@@ -196,6 +196,8 @@ export const updatePostureImage = async (
               await updateDoc(sessionRef, {
                 [`postureImages.${view}`]: progress.wireframeImage, // Show wireframe immediately
               });
+              // Give UI time to render the wireframe (minimum 1.5s display)
+              await new Promise(resolve => setTimeout(resolve, 1500));
             }
           } catch (progressError) {
             // Non-critical - don't fail the whole process
