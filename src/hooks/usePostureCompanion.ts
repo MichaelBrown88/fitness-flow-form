@@ -20,6 +20,7 @@ import { useAuth } from '@/hooks/useAuth';
 import type { PostureCompanionData } from '@/lib/types/companion';
 import { logger } from '@/lib/utils/logger';
 import { UI_TOASTS } from '@/constants/ui';
+import { CONFIG } from '@/config';
 
 // Connection state for 3-tier heartbeat monitoring
 export type ConnectionState = 'offline' | 'online' | 'unstable' | 'disconnected';
@@ -112,6 +113,47 @@ export function usePostureCompanion({
       init();
     }
   }, [isOpen, session, profile?.organizationId]);
+
+  // Pre-warm MediaPipe when modal opens (while user scans QR code)
+  // This loads WASM/model files into browser cache, reducing latency when capture starts
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const prewarmMediaPipe = async () => {
+      try {
+        logger.debug('[PREWARM] Starting MediaPipe pre-warm...');
+        
+        // Dynamic import - follows "Lazy Load Large Assets" rule
+        const { Pose } = await import('@mediapipe/pose');
+        
+        const pose = new Pose({
+          locateFile: (file: string) => `${CONFIG.AI.MEDIAPIPE.POSE_CDN}/${file}`,
+        });
+        
+        pose.setOptions({
+          modelComplexity: CONFIG.AI.MEDIAPIPE.MODEL_COMPLEXITY,
+          smoothLandmarks: true,
+          minDetectionConfidence: CONFIG.AI.MEDIAPIPE.MIN_DETECTION_CONFIDENCE,
+          minTrackingConfidence: CONFIG.AI.MEDIAPIPE.MIN_TRACKING_CONFIDENCE,
+        });
+        
+        // Initialize loads WASM and model files - browser caches them
+        await pose.initialize();
+        
+        // Close immediately - we just wanted to cache the files
+        pose.close();
+        
+        logger.debug('[PREWARM] MediaPipe pre-warm complete - files cached');
+      } catch (err) {
+        // Silent fail - pre-warming is non-critical optimization
+        // Capture will still work, just with slightly longer initial load
+        logger.debug('[PREWARM] MediaPipe pre-warm failed (non-critical):', err);
+      }
+    };
+
+    // Run pre-warming in background (don't block session creation)
+    prewarmMediaPipe();
+  }, [isOpen]);
 
   // Subscribe to session updates
   useEffect(() => {
