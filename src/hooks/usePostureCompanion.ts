@@ -15,12 +15,12 @@ import {
 } from '@/services/liveSessions';
 import { loadImagesFromFiles } from '@/lib/test/postureTestImages';
 import { generatePlaceholderWithGreenLines } from '@/lib/utils/postureOverlay';
+import { prewarmMediaPipe } from '@/lib/ai/mediapipeSingleton';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import type { PostureCompanionData } from '@/lib/types/companion';
 import { logger } from '@/lib/utils/logger';
 import { UI_TOASTS } from '@/constants/ui';
-import { CONFIG } from '@/config';
 
 // Connection state for 3-tier heartbeat monitoring
 export type ConnectionState = 'offline' | 'online' | 'unstable' | 'disconnected';
@@ -136,44 +136,12 @@ export function usePostureCompanion({
     }
   }, [isOpen, session, profile?.organizationId]);
 
-  // Pre-warm MediaPipe when modal opens (while user scans QR code)
-  // This loads WASM/model files into browser cache, reducing latency when capture starts
+  // Pre-warm MediaPipe singleton when modal opens (while user scans QR code)
+  // This initializes the singleton instance ONCE, keeping it alive for all detections
   useEffect(() => {
     if (!isOpen) return;
-
-    const prewarmMediaPipe = async () => {
-      try {
-        logger.debug('[PREWARM] Starting MediaPipe pre-warm...');
-        
-        // Dynamic import - follows "Lazy Load Large Assets" rule
-        const { Pose } = await import('@mediapipe/pose');
-        
-        const pose = new Pose({
-          locateFile: (file: string) => `${CONFIG.AI.MEDIAPIPE.POSE_CDN}/${file}`,
-        });
-        
-        pose.setOptions({
-          modelComplexity: CONFIG.AI.MEDIAPIPE.MODEL_COMPLEXITY,
-          smoothLandmarks: true,
-          minDetectionConfidence: CONFIG.AI.MEDIAPIPE.MIN_DETECTION_CONFIDENCE,
-          minTrackingConfidence: CONFIG.AI.MEDIAPIPE.MIN_TRACKING_CONFIDENCE,
-        });
-        
-        // Initialize loads WASM and model files - browser caches them
-        await pose.initialize();
-        
-        // Close immediately - we just wanted to cache the files
-        pose.close();
-        
-        logger.debug('[PREWARM] MediaPipe pre-warm complete - files cached');
-      } catch (err) {
-        // Silent fail - pre-warming is non-critical optimization
-        // Capture will still work, just with slightly longer initial load
-        logger.debug('[PREWARM] MediaPipe pre-warm failed (non-critical):', err);
-      }
-    };
-
-    // Run pre-warming in background (don't block session creation)
+    
+    // Prewarm the singleton (non-blocking, keeps instance alive)
     prewarmMediaPipe();
   }, [isOpen]);
 
@@ -331,7 +299,7 @@ export function usePostureCompanion({
     });
     
     try {
-      toast({ title: UI_TOASTS.SUCCESS.LOADING_IMAGES, description: `Processing ${files.length} uploaded file(s) in parallel` });
+      toast({ title: UI_TOASTS.SUCCESS.LOADING_IMAGES, description: `Processing ${files.length} uploaded file(s)...` });
       
       const fileArray = Array.from(files);
       const fileMap: Record<string, File> = {};
@@ -409,8 +377,10 @@ export function usePostureCompanion({
             return result;
           })();
           
+          // Increased timeout to 180s to accommodate AI analysis time
+          // Each view: ~2s MediaPipe + ~10-15s AI + network latency
           const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Processing timeout after 90 seconds')), 90000)
+            setTimeout(() => reject(new Error('Processing timeout after 180 seconds')), 180000)
           );
           
           await Promise.race([processingPromise, timeoutPromise]);
@@ -424,32 +394,34 @@ export function usePostureCompanion({
         }
       };
       
-      // PARALLEL PROCESSING: Process all views simultaneously
+      // SEQUENTIAL PROCESSING: Process one view at a time to avoid browser overload
+      // MediaPipe can only handle one detection at a time anyway (singleton queue)
       const viewsToProcess = VIEWS.filter(view => testImages[view]);
-      const results = await Promise.allSettled(viewsToProcess.map(view => processView(view)));
       
-      // Count successes and failures
       let successCount = 0;
       let failCount = 0;
       const errors: string[] = [];
       
-      results.forEach((result, index) => {
-        const view = viewsToProcess[index];
-        if (result.status === 'fulfilled' && result.value.success) {
+      for (const view of viewsToProcess) {
+        const result = await processView(view);
+        
+        if (result.success) {
           successCount++;
         } else {
           failCount++;
-          const errorMsg = result.status === 'fulfilled' 
-            ? result.value.error 
-            : result.reason?.message || 'Unknown error';
-          errors.push(`${view}: ${errorMsg}`);
+          if (result.error) {
+            errors.push(`${view}: ${result.error}`);
+          }
         }
-      });
+        
+        // Small delay between views to keep UI responsive
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
       
       if (successCount > 0) {
         toast({ 
           title: UI_TOASTS.SUCCESS.IMAGES_UPLOADED, 
-          description: `${successCount} image(s) processed in parallel. AI analysis complete.${failCount > 0 ? ` ${failCount} image(s) failed.` : ''}` 
+          description: `${successCount} image(s) processed successfully.${failCount > 0 ? ` ${failCount} failed.` : ''}` 
         });
       } else {
         const errorDetails = errors.length > 0 ? ` Errors: ${errors.join('; ')}` : '';

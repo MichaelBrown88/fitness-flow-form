@@ -17,7 +17,7 @@
  */
 
 import { LandmarkResult, detectPostureLandmarks } from '@/lib/ai/postureLandmarks';
-import { addPostureOverlay, addDeviationOverlay, drawLandmarkWireframe } from '@/lib/utils/postureOverlay';
+import { cropAndCenterImage, drawLandmarkWireframe } from '@/lib/utils/postureOverlay';
 import { calculateFrontViewMetrics, calculateSideViewMetrics } from '@/lib/utils/postureMath';
 import { analyzePostureImage } from '@/lib/ai/postureAnalysis';
 import { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
@@ -81,13 +81,13 @@ export async function processPostureImage(
       }
     }
 
-    // STEP 1.5: Generate view-specific wireframe visualization
-    // Shows only landmarks relevant to posture assessment for this view
-    let wireframeImage: string | undefined;
+    // STEP 2: Draw wireframe on ORIGINAL image first (landmarks are in original coordinates)
+    // This ensures landmarks align perfectly with the image
+    let wireframeOnOriginal: string | undefined;
     if (landmarks.raw && landmarks.raw.length > 0) {
       try {
-        logger.debug(`Generating view-specific wireframe for ${view}...`, ctx);
-        wireframeImage = await drawLandmarkWireframe(imageData, landmarks.raw, view, {
+        logger.debug(`Generating wireframe on original image for ${view}...`, ctx);
+        wireframeOnOriginal = await drawLandmarkWireframe(imageData, landmarks.raw, view, {
           pointColor: '#00ff00',
           lineColor: 'rgba(0, 255, 0, 0.8)',
           pointRadius: 8,
@@ -95,85 +95,64 @@ export async function processPostureImage(
           opacity: 0.95,
         });
         logger.debug(`Wireframe generated for ${view}`, ctx);
-        
-        // Emit wireframe stage with image - UI can display this immediately
-        onProgress?.({ stage: 'wireframe', view, wireframeImage });
       } catch (wireframeError) {
-        // Non-critical - continue without wireframe
-        logger.warn(`Wireframe generation failed for ${view}, continuing`, ctx, wireframeError);
+        logger.warn(`Wireframe generation failed for ${view}, using original`, ctx, wireframeError);
+        wireframeOnOriginal = imageData;
       }
+    } else {
+      wireframeOnOriginal = imageData;
     }
-
+    
     // Emit aligning stage
     onProgress?.({ stage: 'aligning', view });
     
-    // STEP 2 & 3: Run alignment and metrics calculation in PARALLEL
-    // Both only depend on landmarks, so we can execute them simultaneously
-    logger.debug(`Starting parallel alignment + metrics for ${view}...`, ctx);
+    // STEP 3: Crop and center the wireframe image (skeleton moves with the subject)
+    // This ensures proper framing while keeping landmarks aligned
+    let wireframeImage: string;
+    let croppedImage: string;
+    try {
+      logger.debug(`Cropping wireframe for ${view}...`, ctx);
+      // Crop the wireframe (with skeleton overlay)
+      wireframeImage = await cropAndCenterImage(wireframeOnOriginal, view, landmarks);
+      // Also crop original for AI analysis (clean, no overlay)
+      croppedImage = await cropAndCenterImage(imageData, view, landmarks);
+      logger.debug(`Images cropped for ${view}`, ctx);
+      
+      // Emit wireframe stage - this IS the final visualization
+      onProgress?.({ stage: 'wireframe', view, wireframeImage });
+    } catch (cropError) {
+      logger.warn(`Cropping failed for ${view}, using uncropped`, ctx, cropError);
+      wireframeImage = wireframeOnOriginal;
+      croppedImage = imageData;
+    }
     
-    // Metrics calculation helper (wrapped for Promise.all)
-    const calculateMetricsAsync = (): Promise<Partial<import('@/lib/utils/postureMath').CalculatedPostureMetrics>> => {
-      return new Promise((resolve) => {
-        if (!landmarks.raw) {
-          resolve({});
-          return;
-        }
-        try {
-          const metrics = view === 'front' || view === 'back'
-            ? calculateFrontViewMetrics(landmarks.raw)
-            : calculateSideViewMetrics(landmarks.raw, view);
-          logger.debug(`Metrics calculated for ${view}`, ctx);
-          resolve(metrics);
-        } catch (metricsError) {
-          logger.warn(`Metrics calculation failed for ${view}, continuing without metrics`, ctx, metricsError);
-          resolve({});
-        }
-      });
-    };
-    
-    // Alignment helper (wrapped for error handling)
-    const alignImageAsync = async (): Promise<string> => {
+    // STEP 4: Calculate metrics (synchronous, fast)
+    let calculatedMetrics: Partial<import('@/lib/utils/postureMath').CalculatedPostureMetrics> = {};
+    if (landmarks.raw) {
       try {
-        const aligned = await addPostureOverlay(imageData, view, {
-          showMidline: true,
-          showShoulderLine: true,
-          showHipLine: true,
-          lineColor: '#00ff00',
-          lineWidth: 4,
-          mode: 'align',
-          landmarks,
-        });
-        logger.debug(`Image aligned for ${view}`, ctx);
-        return aligned;
-      } catch (alignError) {
-        logger.error(`Alignment failed for ${view}`, ctx, alignError);
-        throw new Error(`Failed to align image: ${alignError instanceof Error ? alignError.message : 'Unknown error'}`);
+        calculatedMetrics = view === 'front' || view === 'back'
+          ? calculateFrontViewMetrics(landmarks.raw)
+          : calculateSideViewMetrics(landmarks.raw, view);
+        logger.debug(`Metrics calculated for ${view}`, ctx);
+      } catch (metricsError) {
+        logger.warn(`Metrics calculation failed for ${view}`, ctx, metricsError);
       }
-    };
-    
-    // Execute alignment and metrics in parallel
-    const [alignedImage, calculatedMetrics] = await Promise.all([
-      alignImageAsync(),
-      calculateMetricsAsync(),
-    ]);
-    
-    logger.debug(`Parallel alignment + metrics complete for ${view}`, ctx);
+    }
 
     // Emit analyzing stage
     onProgress?.({ stage: 'analyzing', view });
     
-    // STEP 4: Use AI ONLY to convert numbers → user-friendly descriptions
+    // STEP 5: Use AI to generate user-friendly descriptions
     let analysis: PostureAnalysisResult;
     try {
       logger.debug(`Generating AI analysis for ${view}...`, ctx);
-      analysis = await analyzePostureImage(alignedImage, view, {
+      // Use the cropped image for AI analysis (cleaner, no wireframe overlay)
+      analysis = await analyzePostureImage(croppedImage, view, {
         ...landmarks,
         raw: landmarks.raw,
       });
       
-      // IMPORTANT: Merge MediaPipe landmarks back into analysis result
-      // The AI returns its own landmarks, but we need the RAW MediaPipe data
-      // for accurate drawing of deviation lines (especially ear position for FHP)
+      // Merge MediaPipe landmarks back into analysis result
       if (landmarks.raw) {
         analysis.landmarks = {
           ...analysis.landmarks,
@@ -181,14 +160,12 @@ export async function processPostureImage(
         };
       }
       
-      // OVERRIDE AI severity with MediaPipe-calculated severity (more accurate)
-      // The AI often gets severity wrong, especially for FHP on left side view
+      // Override AI severity with MediaPipe-calculated severity (more accurate)
       if (view === 'side-left' || view === 'side-right') {
         if (calculatedMetrics.headSeverity && analysis.forward_head) {
           const mediaPipeSeverity = calculatedMetrics.headSeverity;
           const aiSeverity = analysis.forward_head.status;
           
-          // Use MediaPipe calculation as source of truth
           if (mediaPipeSeverity !== aiSeverity) {
             logger.debug(`Overriding AI FHP severity (${aiSeverity}) with MediaPipe (${mediaPipeSeverity}) for ${view}`, ctx);
             analysis.forward_head.status = mediaPipeSeverity;
@@ -202,21 +179,13 @@ export async function processPostureImage(
       throw new Error(`Failed to generate analysis: ${analysisError instanceof Error ? analysisError.message : 'Unknown error'}`);
     }
 
-    // STEP 5: Draw red deviation lines based on calculated metrics
-    let imageWithDeviations: string;
-    try {
-      logger.debug(`Adding deviation overlay for ${view}...`, ctx);
-      imageWithDeviations = await addDeviationOverlay(alignedImage, view, analysis);
-      logger.debug(`Deviation overlay added for ${view}`, ctx);
-    } catch (deviationError) {
-      logger.warn(`Deviation overlay failed for ${view}, using aligned image`, ctx, deviationError);
-      imageWithDeviations = alignedImage;
-    }
-
     logger.debug(`Complete processing for ${view}`, ctx);
+    
+    // Return wireframe as the primary visualization
+    // The wireframe already contains color-coded alignment indicators
     return {
-      alignedImage,
-      imageWithDeviations,
+      alignedImage: croppedImage, // Clean cropped image (no lines) for AI
+      imageWithDeviations: wireframeImage, // Cropped wireframe IS the deviation visualization
       wireframeImage,
       analysis,
       landmarks,
@@ -227,3 +196,143 @@ export async function processPostureImage(
   }
 }
 
+/**
+ * Compare left vs right side view analysis results
+ * Logs differences and suggests possible causes
+ */
+export function compareSideViews(
+  leftAnalysis: PostureAnalysisResult | null,
+  rightAnalysis: PostureAnalysisResult | null
+): void {
+  console.log('\n' + '═'.repeat(60));
+  console.log('📊 SIDE VIEW COMPARISON: LEFT vs RIGHT');
+  console.log('═'.repeat(60));
+  
+  if (!leftAnalysis || !rightAnalysis) {
+    console.log('⚠️ Missing analysis data for comparison');
+    return;
+  }
+  
+  // Forward Head Posture comparison
+  const leftFHP = leftAnalysis.forward_head;
+  const rightFHP = rightAnalysis.forward_head;
+  
+  console.log('\n🔍 FORWARD HEAD POSTURE:');
+  console.log(`   Left Side:  ${leftFHP?.status} (${leftFHP?.deviation_cm?.toFixed(1) || '?'}cm)`);
+  console.log(`   Right Side: ${rightFHP?.status} (${rightFHP?.deviation_cm?.toFixed(1) || '?'}cm)`);
+  
+  if (leftFHP?.status !== rightFHP?.status) {
+    console.log(`   ⚠️ ASYMMETRY DETECTED!`);
+    console.log(`   Possible causes:`);
+    console.log(`   - Rotational component to posture (torso twist)`);
+    console.log(`   - Dominant side compensation`);
+    console.log(`   - Habitual head turn preference`);
+    console.log(`   - Scoliosis affecting head position`);
+  }
+  
+  // Shoulder comparison
+  const leftShoulder = leftAnalysis.shoulder_alignment;
+  const rightShoulder = rightAnalysis.shoulder_alignment;
+  
+  console.log('\n🔍 SHOULDER POSITION:');
+  console.log(`   Left Side:  ${leftShoulder?.status} (rounded: ${leftShoulder?.rounded_forward})`);
+  console.log(`   Right Side: ${rightShoulder?.status} (rounded: ${rightShoulder?.rounded_forward})`);
+  
+  if (leftShoulder?.rounded_forward !== rightShoulder?.rounded_forward) {
+    console.log(`   ⚠️ ASYMMETRY DETECTED!`);
+    console.log(`   Possible causes:`);
+    console.log(`   - Unilateral pec tightness`);
+    console.log(`   - Rotator cuff imbalance`);
+    console.log(`   - Thoracic rotation`);
+  }
+  
+  // Kyphosis comparison
+  const leftKyphosis = leftAnalysis.kyphosis;
+  const rightKyphosis = rightAnalysis.kyphosis;
+  
+  console.log('\n🔍 KYPHOSIS (Upper Back):');
+  console.log(`   Left Side:  ${leftKyphosis?.status}`);
+  console.log(`   Right Side: ${rightKyphosis?.status}`);
+  
+  // Lordosis comparison
+  const leftLordosis = leftAnalysis.lordosis;
+  const rightLordosis = rightAnalysis.lordosis;
+  
+  console.log('\n🔍 LORDOSIS (Lower Back):');
+  console.log(`   Left Side:  ${leftLordosis?.status}`);
+  console.log(`   Right Side: ${rightLordosis?.status}`);
+  
+  // Pelvic Tilt comparison
+  const leftPelvis = leftAnalysis.pelvic_tilt;
+  const rightPelvis = rightAnalysis.pelvic_tilt;
+  
+  console.log('\n🔍 PELVIC TILT:');
+  console.log(`   Left Side:  ${leftPelvis?.status}`);
+  console.log(`   Right Side: ${rightPelvis?.status}`);
+  
+  if (leftPelvis?.status !== rightPelvis?.status) {
+    console.log(`   ⚠️ ASYMMETRY DETECTED!`);
+    console.log(`   Possible causes:`);
+    console.log(`   - Pelvic rotation (one hip forward)`);
+    console.log(`   - Hip flexor length difference`);
+    console.log(`   - Leg length discrepancy`);
+  }
+  
+  // Summary
+  console.log('\n' + '─'.repeat(60));
+  console.log('📋 CORRECTIVE EXERCISE PRIORITIES:');
+  
+  // Determine which side has more issues
+  const leftIssues = [
+    leftFHP?.status !== 'Neutral',
+    leftShoulder?.rounded_forward,
+    leftKyphosis?.status !== 'Normal',
+    leftPelvis?.status !== 'Neutral'
+  ].filter(Boolean).length;
+  
+  const rightIssues = [
+    rightFHP?.status !== 'Neutral',
+    rightShoulder?.rounded_forward,
+    rightKyphosis?.status !== 'Normal',
+    rightPelvis?.status !== 'Neutral'
+  ].filter(Boolean).length;
+  
+  if (leftIssues > rightIssues) {
+    console.log(`   ⚡ LEFT SIDE shows more deviations (${leftIssues} vs ${rightIssues})`);
+    console.log(`   Focus on: Left-side mobility and right-side strengthening`);
+  } else if (rightIssues > leftIssues) {
+    console.log(`   ⚡ RIGHT SIDE shows more deviations (${rightIssues} vs ${leftIssues})`);
+    console.log(`   Focus on: Right-side mobility and left-side strengthening`);
+  } else {
+    console.log(`   ✓ Both sides show similar findings (${leftIssues} issues each)`);
+  }
+  
+  // Specific recommendations
+  if (leftFHP?.status !== 'Neutral' || rightFHP?.status !== 'Neutral') {
+    console.log(`\n   For Forward Head:`);
+    console.log(`   - Chin tucks (2x daily)`);
+    console.log(`   - Upper trap stretches`);
+    console.log(`   - Deep neck flexor strengthening`);
+  }
+  
+  if (leftShoulder?.rounded_forward || rightShoulder?.rounded_forward) {
+    console.log(`\n   For Rounded Shoulders:`);
+    console.log(`   - Doorway pec stretch`);
+    console.log(`   - Face pulls`);
+    console.log(`   - Wall angels`);
+  }
+  
+  if (leftPelvis?.status?.includes('Anterior') || rightPelvis?.status?.includes('Anterior')) {
+    console.log(`\n   For Anterior Pelvic Tilt:`);
+    console.log(`   - Hip flexor stretch (especially psoas)`);
+    console.log(`   - Glute bridges`);
+    console.log(`   - Dead bugs for core stability`);
+  }
+  
+  console.log('\n' + '═'.repeat(60) + '\n');
+}
+
+// Make comparison function available globally for console use
+if (typeof window !== 'undefined') {
+  (window as Window & { compareSideViews?: typeof compareSideViews }).compareSideViews = compareSideViews;
+}

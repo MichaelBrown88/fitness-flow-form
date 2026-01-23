@@ -401,16 +401,16 @@ const Companion = () => {
   // Loading states
   if (isValidating || !isAuthorized || flowState === 'complete') {
     return (
-      <CompanionLoadingStates
-        isValidating={isValidating}
-        isAuthorized={isAuthorized}
-        errorMsg={errorMsg}
-        onRetry={runValidation}
-        mode={mode}
+    <CompanionLoadingStates
+      isValidating={isValidating}
+      isAuthorized={isAuthorized}
+      errorMsg={errorMsg}
+      onRetry={runValidation}
+      mode={mode}
         viewIdx={currentView}
-        totalViews={VIEWS.length}
-      />
-    );
+      totalViews={VIEWS.length}
+    />
+  );
   }
 
   // Determine guide box state
@@ -427,21 +427,21 @@ const Companion = () => {
 
   const guideBoxState = getGuideBoxState();
 
-  return (
-    <CompanionUI
-      mode={mode}
+    return (
+        <CompanionUI
+          mode={mode}
       viewIdx={currentView}
-      facingMode={facingMode}
+          facingMode={facingMode}
       setFacingMode={() => {}}
-      isVertical={isVertical}
-      hasPermission={hasPermission}
-      requestPermission={requestPermission}
-      poseValidation={poseDetectionResult.poseValidation}
-      isPoseLoading={poseDetectionResult.isPoseLoading}
+          isVertical={isVertical}
+          hasPermission={hasPermission}
+          requestPermission={requestPermission}
+          poseValidation={poseDetectionResult.poseValidation}
+          isPoseLoading={poseDetectionResult.isPoseLoading}
       isSequenceActive={flowState === 'capturing'}
       isUploading={isUploading ? 1 : 0}
-      countdown={countdown}
-      webcamRef={webcamRef}
+          countdown={countdown}
+          webcamRef={webcamRef}
       onCapture={() => {}}
       onStartSequence={startSequence}
       onCancelSequence={cancelSequence}

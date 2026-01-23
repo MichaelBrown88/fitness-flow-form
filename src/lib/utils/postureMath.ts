@@ -19,6 +19,14 @@ export interface CalculatedPostureMetrics {
   shoulderSeverity: 'Neutral' | 'Asymmetric';
   hipSeverity: 'Neutral' | 'Asymmetric';
   pelvicSeverity: 'Neutral' | 'Mild' | 'Moderate' | 'Severe';
+  
+  // Head Pitch (Frankfurt Plane) - Side view
+  headPitchDegrees: number;
+  headPitchStatus: 'Level' | 'Looking Up' | 'Looking Down';
+  
+  // Lateral Hip Shift - Front/Back view
+  hipShiftPercent: number;
+  hipShiftDirection: 'None' | 'Left' | 'Right';
 }
 
 /**
@@ -59,31 +67,67 @@ export function calculateFrontViewMetrics(landmarks: MediaPipeLandmark[]): Parti
   const rightShoulder = landmarks[12];
   const leftHip = landmarks[23];
   const rightHip = landmarks[24];
+  const leftAnkle = landmarks[27];
+  const rightAnkle = landmarks[28];
 
   if (!leftShoulder || !rightShoulder) return {};
 
   const shoulderWidth = distance(leftShoulder, rightShoulder);
 
-  // 1. Head Tilt (Angle of line between ears vs horizontal)
-  const earDeltaY = leftEar.y - rightEar.y;
-  const earDeltaX = leftEar.x - rightEar.x;
-  const headTilt = Math.atan2(earDeltaY, earDeltaX) * (180 / Math.PI);
+  // 1. Head Tilt (vertical difference between ears)
+  // Use simple Y difference * scaling factor instead of atan2 (which wraps around for back view)
+  // Positive = right ear lower (head tilting right), Negative = left ear lower (head tilting left)
+  const earDeltaY = rightEar.y - leftEar.y; // positive if right ear is lower (higher Y)
+  // Scale: 1% of image height ≈ 2-3 degrees of tilt (approximate based on typical head size)
+  const headTilt = earDeltaY * 100 * 2.5; // Convert to approximate degrees
 
   // 2. Shoulder Symmetry
   const shoulderDiff = Math.abs(leftShoulder.y - rightShoulder.y);
   const shoulderDiffCm = pixelsToCm(shoulderDiff, shoulderWidth);
 
-  // 3. Hip Symmetry
+  // 3. Hip Symmetry (vertical difference)
   const hipDiff = leftHip && rightHip ? Math.abs(leftHip.y - rightHip.y) : 0;
   const hipDiffCm = pixelsToCm(hipDiff, shoulderWidth);
 
-  return {
+  // 4. Lateral Hip Shift (horizontal offset from stance center)
+  // Hip center should be directly above the midpoint between ankles
+  let hipShiftPercent = 0;
+  let hipShiftDirection: 'None' | 'Left' | 'Right' = 'None';
+  
+  if (leftHip && rightHip && leftAnkle && rightAnkle) {
+    const hipCenterX = (leftHip.x + rightHip.x) / 2;
+    const stanceCenterX = (leftAnkle.x + rightAnkle.x) / 2;
+    
+    // Calculate shift as percentage of shoulder width (normalized)
+    const shiftRaw = hipCenterX - stanceCenterX;
+    hipShiftPercent = Math.abs(shiftRaw / shoulderWidth) * 100;
+    
+    // Determine direction with 2% tolerance threshold
+    if (hipShiftPercent > 2) {
+      // Note: MediaPipe X coordinates increase from Left (0) to Right (1)
+      // If hip center X > stance center X, hips are shifted to the RIGHT
+      hipShiftDirection = shiftRaw > 0 ? 'Right' : 'Left';
+    }
+  }
+
+  const metrics = {
     headTiltDegrees: headTilt,
     shoulderSymmetryCm: shoulderDiffCm,
     hipSymmetryCm: hipDiffCm,
     shoulderSeverity: shoulderDiffCm > 1.0 ? 'Asymmetric' : 'Neutral',
-    hipSeverity: hipDiffCm > 1.0 ? 'Asymmetric' : 'Neutral'
+    hipSeverity: hipDiffCm > 1.0 ? 'Asymmetric' : 'Neutral',
+    hipShiftPercent,
+    hipShiftDirection,
   };
+  
+  // Log calculated metrics for front/back view
+  console.log(`\n📊 [CALCULATED METRICS - FRONT/BACK VIEW]`);
+  console.log(`   Head Tilt: ${headTilt.toFixed(1)}°`);
+  console.log(`   Shoulder Diff: ${shoulderDiffCm.toFixed(2)}cm (${metrics.shoulderSeverity})`);
+  console.log(`   Hip Diff: ${hipDiffCm.toFixed(2)}cm (${metrics.hipSeverity})`);
+  console.log(`   Hip Shift: ${hipShiftPercent.toFixed(1)}% ${hipShiftDirection}`);
+  
+  return metrics;
 }
 
 /**
@@ -98,6 +142,8 @@ export function calculateSideViewMetrics(
   const nose = landmarks[0];
   // Use correct ear for each view: left ear (7) for side-left, right ear (8) for side-right
   const ear = view === 'side-left' ? landmarks[7] : landmarks[8];
+  // Use correct eye (outer) for each view: left outer (3) for side-left, right outer (6) for side-right
+  const eye = view === 'side-left' ? landmarks[3] : landmarks[6];
   // Use correct shoulder for each view
   const shoulder = view === 'side-left' ? landmarks[11] : landmarks[12];
   const hip = view === 'side-left' ? landmarks[23] : landmarks[24];
@@ -134,14 +180,59 @@ export function calculateSideViewMetrics(
   const headOffset = Math.max(0, headForwardOffset); // Only count forward deviation
   const headOffsetCm = (headOffset / torsoHeight) * CM_PER_TORSO;
 
-  // 2. Pelvic Tilt (Approximation via Hip vs Knee vs Shoulder)
+  // 2. Head Pitch (Frankfurt Plane) - Ear to Eye angle
+  // In a level head, ear canal and outer eye should be roughly horizontal (0°)
+  // Looking Down (Tucked): Eye Y is higher (lower value) than Ear Y (ears above eyes visually)
+  // Looking Up (Extended): Eye Y is lower (higher value) than Ear Y
+  let headPitchDegrees = 0;
+  let headPitchStatus: 'Level' | 'Looking Up' | 'Looking Down' = 'Level';
+  
+  if (eye && ear) {
+    // Note: In image coordinates, Y increases downward
+    // deltaY = eye.y - ear.y
+    // Positive deltaY means eye is below ear on screen (looking up)
+    // Negative deltaY means eye is above ear on screen (looking down)
+    const deltaY = eye.y - ear.y;
+    const deltaX = Math.abs(eye.x - ear.x);
+    
+    // Calculate angle relative to horizontal
+    headPitchDegrees = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
+    
+    // Determine status based on thresholds
+    // Positive angle (>10°) = eye below ear = looking up
+    // Negative angle (<-10°) = eye above ear = looking down (tucked)
+    if (headPitchDegrees > 10) {
+      headPitchStatus = 'Looking Up';
+    } else if (headPitchDegrees < -10) {
+      headPitchStatus = 'Looking Down';
+    } else {
+      headPitchStatus = 'Level';
+    }
+  }
+
+  // 3. Pelvic Tilt (Approximation via Hip vs Knee vs Shoulder)
   // This is a complex calculation in 2D, but we can look at the hip position relative to shoulder/knee
   const pelvicAngle = calculateAngle(shoulder, hip, knee);
 
-  return {
+  const headSeverity = headOffsetCm < 2 ? 'Neutral' : headOffsetCm < 4 ? 'Mild' : headOffsetCm < 6 ? 'Moderate' : 'Severe';
+  
+  const metrics = {
     forwardHeadCm: headOffsetCm,
-    headSeverity: headOffsetCm < 2 ? 'Neutral' : headOffsetCm < 4 ? 'Mild' : headOffsetCm < 6 ? 'Moderate' : 'Severe',
-    pelvicTiltDegrees: pelvicAngle
+    headSeverity,
+    pelvicTiltDegrees: pelvicAngle,
+    headPitchDegrees,
+    headPitchStatus,
   };
+  
+  // Log calculated metrics for side view
+  console.log(`\n📊 [CALCULATED METRICS - ${view.toUpperCase()}]`);
+  console.log(`   Forward Head: ${headOffsetCm.toFixed(2)}cm (${headSeverity})`);
+  console.log(`   Head Pitch: ${headPitchDegrees.toFixed(1)}° (${headPitchStatus})`);
+  console.log(`   Pelvic Angle: ${pelvicAngle.toFixed(1)}°`);
+  console.log(`   Plumb Line X: ${(plumbLineX * 100).toFixed(1)}%`);
+  console.log(`   Ear X: ${((ear?.x ?? 0) * 100).toFixed(1)}%`);
+  console.log(`   Ear-Plumb Diff: ${((ear?.x ?? 0.5) - plumbLineX).toFixed(3)} (${view === 'side-left' ? 'negative=forward' : 'positive=forward'})`);
+  
+  return metrics;
 }
 

@@ -65,17 +65,24 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
     onStartDirectScan
   });
 
-  // Helper to get processing status label
+  // Helper to get processing status label with user-friendly copy
   const getStatusLabel = (stage: string): string => {
     switch (stage) {
-      case 'converting': return 'Converting...';
-      case 'detecting': return 'Detecting landmarks...';
-      case 'aligning': return 'Aligning image...';
-      case 'analyzing': return 'AI Analysis...';
+      case 'converting': return 'Converting image...';
+      case 'detecting': return 'Detecting pose...';
+      case 'wireframe': return 'Analyzing posture...';
+      case 'aligning': return 'Processing...';
+      case 'analyzing': return 'Generating insights...';
       case 'complete': return 'Complete';
       case 'error': return 'Error';
       default: return '';
     }
+  };
+  
+  // Check if wireframe is shown but AI still processing (show lighter overlay)
+  const isWireframeButAnalyzing = (view: string): boolean => {
+    const status = processingStatus[view as keyof typeof processingStatus];
+    return status === 'wireframe' || status === 'analyzing';
   };
 
   return (
@@ -217,13 +224,13 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                     </div>
                     <div className="aspect-[3/4] rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 overflow-hidden relative flex items-center justify-center">
                       {imageUrl ? (
-                        <img 
-                          src={imageUrl} 
-                          className="w-full h-full object-cover animate-in fade-in zoom-in duration-500 cursor-pointer hover:opacity-90 transition-opacity" 
-                          alt={view}
-                          title="Click to view full image"
-                          onClick={() => setPreviewImage({ url: imageUrl, view })}
-                        />
+                          <img 
+                            src={imageUrl} 
+                            className="w-full h-full object-cover animate-in fade-in zoom-in duration-500 cursor-pointer hover:opacity-90 transition-opacity" 
+                            alt={view}
+                            title="Click to view full image"
+                            onClick={() => setPreviewImage({ url: imageUrl, view })}
+                          />
                       ) : (
                         <>
                           <img 
@@ -235,13 +242,23 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                         </>
                       )}
                       
-                      {/* Processing Status Overlay */}
-                      {isProcessing && (
-                        <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-3 animate-in fade-in duration-300">
+                      {/* Processing Status Overlay - Only show full overlay before wireframe is ready */}
+                      {isProcessing && !isWireframeButAnalyzing(view) && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 animate-in fade-in duration-300 bg-black/60">
                           <Loader2 className="h-8 w-8 text-white animate-spin" />
-                          <span className="text-white text-xs font-bold uppercase tracking-wide">
+                          <span className="text-xs font-bold uppercase tracking-wide text-white">
                             {statusLabel}
                           </span>
+                        </div>
+                      )}
+                      
+                      {/* Subtle pill indicator when wireframe is visible but AI still working */}
+                      {isWireframeButAnalyzing(view) && (
+                        <div className="absolute bottom-2 left-2 right-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                          <div className="flex items-center justify-center gap-1.5 bg-black/60 backdrop-blur-sm text-white/90 text-[10px] font-medium py-1.5 px-3 rounded-full">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            <span>{statusLabel}</span>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -387,7 +404,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
               />
               <div className="absolute bottom-4 left-4 right-4 text-center">
                 <p className="text-white text-sm font-bold uppercase">{previewImage.view.replace('-', ' ')} View</p>
-                <p className="text-white/60 text-xs mt-1">Reference lines: Red vertical (midline/plumb), Red horizontal (shoulders/hips)</p>
+                <p className="text-white/60 text-xs mt-1">Green = aligned | Orange = mild | Red = significant deviation | Cyan dashed = reference lines</p>
               </div>
             </div>
           </DialogContent>

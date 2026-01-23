@@ -65,11 +65,11 @@ const Dashboard = () => {
           
           <DashboardHeader coachFirstName={coachFirstName} />
 
-          {/* Analytics Section */}
-          <AnalyticsDashboard analytics={analytics} />
+        {/* Analytics Section */}
+        <AnalyticsDashboard analytics={analytics} />
 
-          {/* Recent Activity Section */}
-          <RecentActivity recentChanges={recentChanges} />
+        {/* Recent Activity Section */}
+        <RecentActivity recentChanges={recentChanges} />
 
           {/* Main Content Actions */}
           <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 md:p-8 shadow-sm">
@@ -80,8 +80,8 @@ const Dashboard = () => {
               setSearch={setSearch}
             />
 
-            {/* Assessments View */}
-            {view === 'assessments' && (
+          {/* Assessments View */}
+          {view === 'assessments' && (
               <AssessmentsTable 
                 loadingData={loadingData}
                 filtered={filtered}
@@ -92,10 +92,10 @@ const Dashboard = () => {
                 onLoadMore={loadMoreAssessments}
                 onDelete={(id, name) => setDeleteDialog({ id, name })}
               />
-            )}
+          )}
 
-            {/* Clients View */}
-            {view === 'clients' && (
+          {/* Clients View */}
+          {view === 'clients' && (
               <ClientsGrid 
                 loadingData={loadingData}
                 filteredClients={filteredClients}
@@ -118,7 +118,7 @@ const Dashboard = () => {
           loadingHistory={loadingHistory}
           onNewAssessment={handleNewAssessmentForClient}
         />
-      </AppShell>
+    </AppShell>
     </ErrorBoundary>
   );
 };

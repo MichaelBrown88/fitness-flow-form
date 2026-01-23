@@ -240,8 +240,8 @@ export const updatePostureImage = async (
                 3,
                 `wireframe update for ${view}`
               );
-              // Give UI time to render the wireframe (minimum 1.5s display)
-              await new Promise(resolve => setTimeout(resolve, 1500));
+              // Give UI time to render the wireframe (reduced from 1.5s to 0.75s to improve total processing time)
+              await new Promise(resolve => setTimeout(resolve, 750));
             }
           } catch (progressError) {
             // Non-critical - don't fail the whole process

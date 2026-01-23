@@ -456,7 +456,8 @@ export async function addDeviationOverlay(
 }
 
 /**
- * Generates a placeholder image with green reference lines for the companion app
+ * Generates a clean placeholder image for the companion app
+ * Simple gradient background with view label - no figure/silhouette
  */
 export function generatePlaceholderWithGreenLines(
   view: 'front' | 'side-right' | 'side-left' | 'back',
@@ -470,58 +471,145 @@ export function generatePlaceholderWithGreenLines(
 
   if (!ctx) return '';
 
-  ctx.fillStyle = CONFIG.POSTURE_OVERLAY.STYLE.PLACEHOLDER_BG; 
+  // Subtle gradient background
+  const gradient = ctx.createLinearGradient(0, 0, 0, height);
+  gradient.addColorStop(0, '#f8fafc'); // slate-50
+  gradient.addColorStop(1, '#e2e8f0'); // slate-200
+  ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // DRAW REFERENCE GRID (SYSTEM ONLY)
-  // This helps MediaPipe/AI align but is usually covered by the image
-  ctx.strokeStyle = '#e2e8f0'; // very light gray
+  const centerX = width / 2;
+
+  // Subtle crosshairs to indicate where to stand
+  ctx.strokeStyle = '#cbd5e1'; // slate-300
   ctx.lineWidth = 1;
-  ctx.setLineDash([2, 2]);
+  ctx.setLineDash([8, 8]);
   
-  // 10% vertical grid lines
-  for (let x = 0; x <= width; x += width * 0.1) {
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, height);
-    ctx.stroke();
-  }
-  // 10% horizontal grid lines
-  for (let y = 0; y <= height; y += height * 0.1) {
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(width, y);
-    ctx.stroke();
-  }
-  ctx.setLineDash([]); // Reset dash
-
-  const centerX = width * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.CENTER_X_PCT / 100);
-  const shoulderY = height * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.SHOULDER_Y_PCT / 100);
-  const hipY = height * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.HIP_Y_PCT / 100);
-
-  ctx.strokeStyle = CONFIG.POSTURE_OVERLAY.STYLE.LINE_COLOR;
-  ctx.lineWidth = CONFIG.POSTURE_OVERLAY.STYLE.LINE_WIDTH;
-  ctx.lineCap = 'round';
-
-  // Vertical midline
+  // Vertical center line (lower third)
   ctx.beginPath();
-  ctx.moveTo(centerX, 0);
-  ctx.lineTo(centerX, height);
+  ctx.moveTo(centerX, height * 0.6);
+  ctx.lineTo(centerX, height * 0.85);
   ctx.stroke();
-
-  // Horizontal shoulder line
+  
+  // Horizontal line for feet position
   ctx.beginPath();
-  ctx.moveTo(0, shoulderY);
-  ctx.lineTo(width, shoulderY);
+  ctx.moveTo(width * 0.3, height * 0.85);
+  ctx.lineTo(width * 0.7, height * 0.85);
   ctx.stroke();
+  
+  ctx.setLineDash([]); // Reset line dash
 
-  // Horizontal hip line
-  ctx.beginPath();
-  ctx.moveTo(0, hipY);
-  ctx.lineTo(width, hipY);
-  ctx.stroke();
+  // View label
+  ctx.fillStyle = '#64748b'; // slate-500
+  ctx.font = 'bold 16px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(view.toUpperCase().replace('-', ' '), centerX, height - 30);
+  
+  // Instruction text
+  ctx.fillStyle = '#94a3b8'; // slate-400
+  ctx.font = '12px system-ui, sans-serif';
+  ctx.fillText('Upload or capture image', centerX, height - 12);
 
   return canvas.toDataURL('image/jpeg', 0.95);
+}
+
+/**
+ * Crop and center an image based on detected landmarks
+ * ONLY does alignment - no reference lines drawn
+ */
+export async function cropAndCenterImage(
+  imageData: string,
+  view: 'front' | 'side-right' | 'side-left' | 'back',
+  landmarks: { 
+    shoulder_y_percent?: number; 
+    hip_y_percent?: number; 
+    center_x_percent?: number; 
+    midfoot_x_percent?: number 
+  }
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        const width = CONFIG.POSTURE_OVERLAY.CANVAS_SIZE.WIDTH;
+        const height = CONFIG.POSTURE_OVERLAY.CANVAS_SIZE.HEIGHT;
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        
+        if (!ctx) {
+          reject(new Error('Could not get canvas context'));
+          return;
+        }
+        
+        // Target positions on canvas
+        const targetCenterX = width * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.CENTER_X_PCT / 100);
+        const targetShoulderY = height * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.SHOULDER_Y_PCT / 100);
+        const targetHipY = height * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.HIP_Y_PCT / 100);
+        
+        // Get source landmark positions
+        let sourceLandmarkX: number;
+        let sourceShoulderY: number;
+        let sourceHipY: number;
+        
+        // X position based on view
+        if (view === 'side-right' || view === 'side-left') {
+          sourceLandmarkX = landmarks.midfoot_x_percent !== undefined
+            ? (landmarks.midfoot_x_percent / 100) * img.width
+            : img.width / 2;
+        } else {
+          sourceLandmarkX = landmarks.center_x_percent !== undefined
+            ? (landmarks.center_x_percent / 100) * img.width
+            : img.width / 2;
+        }
+        
+        // Y positions
+        sourceShoulderY = landmarks.shoulder_y_percent !== undefined
+          ? (landmarks.shoulder_y_percent / 100) * img.height
+          : img.height * 0.25;
+        
+        sourceHipY = landmarks.hip_y_percent !== undefined
+          ? (landmarks.hip_y_percent / 100) * img.height
+          : img.height * 0.5;
+        
+        // Calculate scale based on torso height
+        const sourceTorsoHeight = Math.abs(sourceHipY - sourceShoulderY);
+        const targetTorsoHeight = Math.abs(targetHipY - targetShoulderY);
+        
+        let scale = sourceTorsoHeight > 0 ? targetTorsoHeight / sourceTorsoHeight : 1.0;
+        scale = Math.max(0.3, Math.min(3.0, scale)); // Clamp scale
+        
+        // Calculate translation
+        const scaledLandmarkX = sourceLandmarkX * scale;
+        const scaledShoulderY = sourceShoulderY * scale;
+        const scaledHipY = sourceHipY * scale;
+        
+        const translateX = targetCenterX - scaledLandmarkX;
+        const scaledBodyCenterY = (scaledShoulderY + scaledHipY) / 2;
+        const targetBodyCenterY = (targetShoulderY + targetHipY) / 2;
+        const translateY = targetBodyCenterY - scaledBodyCenterY;
+        
+        // Draw cropped/centered image (no lines)
+        ctx.fillStyle = '#f1f5f9'; // Light background for any gaps
+        ctx.fillRect(0, 0, width, height);
+        
+        ctx.save();
+        ctx.translate(translateX, translateY);
+        ctx.scale(scale, scale);
+        ctx.drawImage(img, 0, 0);
+        ctx.restore();
+        
+        resolve(canvas.toDataURL('image/jpeg', 0.92));
+      } catch (error) {
+        reject(error);
+      }
+    };
+    
+    img.onerror = () => reject(new Error('Failed to load image'));
+    img.src = imageData;
+  });
 }
 
 /**
@@ -639,187 +727,743 @@ function getViewSpecificConfig(view: 'front' | 'back' | 'side-left' | 'side-righ
   }
 }
 
-// Alignment thresholds (in normalized coordinates, roughly pixels/image_size)
-const ALIGNMENT_THRESHOLDS = {
-  SHOULDER_LEVEL: 0.02,    // ~2% of image height = shoulder level threshold
-  HIP_LEVEL: 0.02,         // ~2% of image height = hip level threshold
-  HEAD_TILT: 0.015,        // ~1.5% for ear level (head tilt)
-  VERTICAL_PLUMB: 0.03,    // ~3% horizontal deviation from vertical plumb line
-  KNEE_ALIGNMENT: 0.025,   // ~2.5% for knee valgus/varus
+// =============================================================================
+// POSTURE ASSESSMENT THRESHOLDS (Clinical Standards)
+// =============================================================================
+
+/**
+ * Clinical thresholds for posture assessment
+ * These are based on normalized coordinates (0-1) where applicable
+ * and clinical standards for postural deviations
+ */
+export const POSTURE_THRESHOLDS = {
+  // Front/Back View - Level checks (as fraction of image height)
+  SHOULDER_LEVEL: {
+    GOOD: 0.015,      // <1.5% = good (level)
+    MILD: 0.03,       // 1.5-3% = mild asymmetry
+    MODERATE: 0.05,   // 3-5% = moderate
+    SEVERE: 0.08,     // >5% = severe
+  },
+  HIP_LEVEL: {
+    GOOD: 0.015,
+    MILD: 0.03,
+    MODERATE: 0.05,
+    SEVERE: 0.08,
+  },
+  HEAD_TILT: {
+    GOOD: 0.012,      // <1.2% = good (level)
+    MILD: 0.025,      // 1.2-2.5% = mild tilt
+    MODERATE: 0.04,   // 2.5-4% = moderate
+    SEVERE: 0.06,     // >4% = severe
+  },
+  
+  // Front/Back View - Hip Shift (lateral displacement as fraction of body width)
+  HIP_SHIFT: {
+    GOOD: 0.02,       // <2% of shoulder width = centered
+    MILD: 0.05,       // 2-5% = mild shift
+    MODERATE: 0.08,   // 5-8% = moderate
+    SEVERE: 0.12,     // >8% = severe
+  },
+  
+  // Front/Back View - Lateral Head Tilt (nose/chin off midline)
+  LATERAL_HEAD: {
+    GOOD: 0.02,       // <2% = centered
+    MILD: 0.04,       // 2-4% = mild
+    MODERATE: 0.06,   // 4-6% = moderate
+    SEVERE: 0.10,     // >6% = severe
+  },
+  
+  // Front/Back View - Leg alignment (knee deviation from hip-ankle line)
+  LEG_ALIGNMENT: {
+    GOOD: 0.02,       // <2% = straight alignment
+    MILD: 0.04,       // 2-4% = mild valgus/varus
+    MODERATE: 0.06,   // 4-6% = moderate
+    SEVERE: 0.10,     // >6% = severe
+  },
+  
+  // Back View - Scoliosis (spine midpoint deviation from shoulder-hip midline)
+  SCOLIOSIS: {
+    GOOD: 0.015,      // <1.5% = normal
+    MILD: 0.03,       // 1.5-3% = mild curvature
+    MODERATE: 0.05,   // 3-5% = moderate
+    SEVERE: 0.08,     // >5% = severe
+  },
+  
+  // Side View - Plumb line deviations (as fraction of image width)
+  PLUMB_LINE: {
+    GOOD: 0.025,      // <2.5% = on plumb
+    MILD: 0.05,       // 2.5-5% = mild forward
+    MODERATE: 0.08,   // 5-8% = moderate
+    SEVERE: 0.12,     // >8% = severe
+  },
+  
+  // Side View - Kyphosis (upper back rounding)
+  KYPHOSIS: {
+    NORMAL_MAX: 40,   // degrees - normal thoracic kyphosis up to 40°
+    MILD: 50,         // 40-50° = mild
+    MODERATE: 60,     // 50-60° = moderate
+    SEVERE: 70,       // >60° = severe
+  },
+  
+  // Side View - Lordosis (lower back curve)
+  LORDOSIS: {
+    NORMAL_MIN: 30,   // degrees - normal lumbar lordosis 30-50°
+    NORMAL_MAX: 50,
+    HYPER_MILD: 60,   // 50-60° = mild hyperlordosis
+    HYPER_MOD: 70,    // 60-70° = moderate
+    HYPER_SEV: 80,    // >70° = severe
+    HYPO_MILD: 20,    // 20-30° = mild hypolordosis (flat back)
+    HYPO_MOD: 10,     // 10-20° = moderate
+  },
+  
+  // Side View - Pelvic Tilt
+  PELVIC_TILT: {
+    NEUTRAL_MIN: 5,   // degrees - normal anterior tilt 5-15°
+    NEUTRAL_MAX: 15,
+    ANT_MILD: 20,     // 15-20° = mild anterior
+    ANT_MOD: 25,      // 20-25° = moderate
+    ANT_SEV: 30,      // >25° = severe
+    POST_THRESHOLD: 5, // <5° = posterior tilt
+  },
+  
+  // Side View - Head Up/Down (ear vs eye vertical relationship)
+  HEAD_UPDOWN: {
+    NEUTRAL: 0.02,    // Ear within 2% of eye level = neutral
+    UP: 0.04,         // Ear >2% above eye = looking up
+    DOWN: 0.04,       // Ear >2% below eye = looking down
+  },
 };
 
 // Colors for alignment visualization
 const ALIGNMENT_COLORS = {
-  GOOD: '#22c55e',         // Green - aligned
+  // Control lines (ideal position) - dashed green
+  CONTROL: 'rgba(34, 197, 94, 0.6)',
+  CONTROL_DASHED: [8, 8] as number[],
+  
+  // Good alignment - solid green
+  GOOD: '#22c55e',
   GOOD_LINE: 'rgba(34, 197, 94, 0.9)',
-  DEVIATION: '#ef4444',    // Red - deviation
+  
+  // Deviation - solid red
+  DEVIATION: '#ef4444',
   DEVIATION_LINE: 'rgba(239, 68, 68, 0.9)',
-  NEUTRAL: 'rgba(255, 255, 255, 0.6)', // White - skeleton connections
+  
+  // Mild deviation - orange
+  MILD_DEVIATION: '#f97316',
+  MILD_LINE: 'rgba(249, 115, 22, 0.9)',
+  
+  // Neutral/skeleton - white
+  NEUTRAL: 'rgba(255, 255, 255, 0.6)',
+  
+  // Point colors
   POINT_GOOD: '#22c55e',
   POINT_DEVIATION: '#ef4444',
+  POINT_MILD: '#f97316',
   POINT_NEUTRAL: '#ffffff',
+  
+  // Midline - cyan
+  MIDLINE: 'rgba(6, 182, 212, 0.7)',
 };
 
 /**
- * Calculates alignment status for front/back view landmarks
+ * Severity levels for posture deviations
+ */
+type SeverityLevel = 'good' | 'mild' | 'moderate' | 'severe';
+
+/**
+ * Get severity level based on value and thresholds
+ */
+function getSeverity(value: number, thresholds: { GOOD: number; MILD: number; MODERATE: number; SEVERE: number }): SeverityLevel {
+  if (value < thresholds.GOOD) return 'good';
+  if (value < thresholds.MILD) return 'mild';
+  if (value < thresholds.MODERATE) return 'moderate';
+  return 'severe';
+}
+
+/**
+ * Get color based on severity level
+ */
+function getSeverityColor(severity: SeverityLevel): string {
+  switch (severity) {
+    case 'good': return ALIGNMENT_COLORS.GOOD_LINE;
+    case 'mild': return ALIGNMENT_COLORS.MILD_LINE;
+    case 'moderate':
+    case 'severe': return ALIGNMENT_COLORS.DEVIATION_LINE;
+  }
+}
+
+/**
+ * Get point color based on severity level
+ */
+function getSeverityPointColor(severity: SeverityLevel): string {
+  switch (severity) {
+    case 'good': return ALIGNMENT_COLORS.POINT_GOOD;
+    case 'mild': return ALIGNMENT_COLORS.POINT_MILD;
+    case 'moderate':
+    case 'severe': return ALIGNMENT_COLORS.POINT_DEVIATION;
+  }
+}
+
+/**
+ * Calculate line from hip to ankle and measure knee deviation
+ * Returns the deviation of knee from the hip-ankle line (for valgus/varus detection)
+ */
+function calculateKneeDeviation(
+  hipX: number, hipY: number,
+  kneeX: number, kneeY: number,
+  ankleX: number, ankleY: number
+): { deviation: number; direction: 'valgus' | 'varus' | 'neutral' } {
+  // Calculate the expected X position of the knee if it were on the hip-ankle line
+  // Using linear interpolation: kneeExpectedX = hipX + (ankleX - hipX) * ((kneeY - hipY) / (ankleY - hipY))
+  const t = (kneeY - hipY) / (ankleY - hipY);
+  const expectedKneeX = hipX + (ankleX - hipX) * t;
+  
+  // Deviation is the horizontal distance from expected position
+  const deviation = kneeX - expectedKneeX;
+  
+  // Normalize by body width (approximate as hip-to-hip distance or use canvas)
+  const direction = Math.abs(deviation) < 0.01 ? 'neutral' : (deviation < 0 ? 'valgus' : 'varus');
+  
+  return { deviation, direction };
+}
+
+/**
+ * Extended alignment data for front/back views
+ */
+interface FrontBackAlignments {
+  // Shoulder level
+  shoulders: {
+    severity: SeverityLevel;
+    leftY: number;
+    rightY: number;
+    diff: number;
+    higherSide: 'left' | 'right' | 'level';
+  };
+  // Hip level
+  hips: {
+    severity: SeverityLevel;
+    leftY: number;
+    rightY: number;
+    diff: number;
+    higherSide: 'left' | 'right' | 'level';
+  };
+  // Head tilt (ear level)
+  headTilt: {
+    severity: SeverityLevel;
+    leftY: number;
+    rightY: number;
+    diff: number;
+    tiltDirection: 'left' | 'right' | 'level';
+  };
+  // Hip shift (lateral displacement)
+  hipShift: {
+    severity: SeverityLevel;
+    midpointX: number;
+    bodyMidlineX: number;
+    shiftAmount: number;
+    shiftDirection: 'left' | 'right' | 'centered';
+  };
+  // Lateral head position (nose off midline)
+  lateralHead: {
+    severity: SeverityLevel;
+    noseX: number;
+    midlineX: number;
+    offset: number;
+    direction: 'left' | 'right' | 'centered';
+  };
+  // Left leg alignment (hip-knee-ankle)
+  leftLeg: {
+    severity: SeverityLevel;
+    hipPos: { x: number; y: number };
+    kneePos: { x: number; y: number };
+    anklePos: { x: number; y: number };
+    kneeDeviation: number;
+    direction: 'valgus' | 'varus' | 'neutral';
+  };
+  // Right leg alignment
+  rightLeg: {
+    severity: SeverityLevel;
+    hipPos: { x: number; y: number };
+    kneePos: { x: number; y: number };
+    anklePos: { x: number; y: number };
+    kneeDeviation: number;
+    direction: 'valgus' | 'varus' | 'neutral';
+  };
+  // Scoliosis (back view only) - spine deviation from shoulder-hip midline
+  scoliosis?: {
+    severity: SeverityLevel;
+    shoulderMidX: number;
+    hipMidX: number;
+    spineMidX: number;
+    deviation: number;
+    direction: 'left' | 'right' | 'straight';
+  };
+  // Body midline X position
+  bodyMidlineX: number;
+}
+
+/**
+ * Calculates comprehensive alignment status for front/back view landmarks
  */
 function calculateFrontBackAlignments(
   landmarks: Array<{ x: number; y: number; z?: number; visibility?: number }>,
   canvasWidth: number,
-  canvasHeight: number
-): {
-  shoulders: { aligned: boolean; leftY: number; rightY: number; diff: number };
-  hips: { aligned: boolean; leftY: number; rightY: number; diff: number };
-  head: { aligned: boolean; leftY: number; rightY: number; diff: number };
-  knees: { aligned: boolean; leftX: number; rightX: number; leftAnkleX: number; rightAnkleX: number };
-} {
-  // Shoulders: landmarks 11 (left) and 12 (right)
-  const leftShoulder = landmarks[11];
-  const rightShoulder = landmarks[12];
-  const shoulderLeftY = (leftShoulder?.y ?? 0) * canvasHeight;
-  const shoulderRightY = (rightShoulder?.y ?? 0) * canvasHeight;
-  const shoulderDiff = Math.abs(leftShoulder?.y - rightShoulder?.y) || 0;
-  
-  // Hips: landmarks 23 (left) and 24 (right)
-  const leftHip = landmarks[23];
-  const rightHip = landmarks[24];
-  const hipLeftY = (leftHip?.y ?? 0) * canvasHeight;
-  const hipRightY = (rightHip?.y ?? 0) * canvasHeight;
-  const hipDiff = Math.abs(leftHip?.y - rightHip?.y) || 0;
-  
-  // Head/Ears: landmarks 7 (left ear) and 8 (right ear)
+  canvasHeight: number,
+  isBackView: boolean = false
+): FrontBackAlignments {
+  // Landmark positions (normalized 0-1)
+  const nose = landmarks[0];
   const leftEar = landmarks[7];
   const rightEar = landmarks[8];
-  const earLeftY = (leftEar?.y ?? 0) * canvasHeight;
-  const earRightY = (rightEar?.y ?? 0) * canvasHeight;
-  const earDiff = Math.abs(leftEar?.y - rightEar?.y) || 0;
-  
-  // Knees: landmarks 25 (left) and 26 (right), ankles 27 (left) and 28 (right)
+  const leftShoulder = landmarks[11];
+  const rightShoulder = landmarks[12];
+  const leftHip = landmarks[23];
+  const rightHip = landmarks[24];
   const leftKnee = landmarks[25];
   const rightKnee = landmarks[26];
   const leftAnkle = landmarks[27];
   const rightAnkle = landmarks[28];
   
-  // Check for knee valgus/varus by comparing knee X to ankle X
-  const leftKneeX = (leftKnee?.x ?? 0) * canvasWidth;
-  const rightKneeX = (rightKnee?.x ?? 0) * canvasWidth;
-  const leftAnkleX = (leftAnkle?.x ?? 0) * canvasWidth;
-  const rightAnkleX = (rightAnkle?.x ?? 0) * canvasWidth;
+  // Calculate body midline (average of shoulders and hips X positions)
+  const shoulderMidX = ((leftShoulder?.x ?? 0.5) + (rightShoulder?.x ?? 0.5)) / 2;
+  const hipMidX = ((leftHip?.x ?? 0.5) + (rightHip?.x ?? 0.5)) / 2;
+  const bodyMidlineX = (shoulderMidX + hipMidX) / 2;
   
-  // Knees should be roughly above ankles (within threshold)
-  const leftKneeDeviation = Math.abs((leftKnee?.x ?? 0) - (leftAnkle?.x ?? 0));
-  const rightKneeDeviation = Math.abs((rightKnee?.x ?? 0) - (rightAnkle?.x ?? 0));
-  const kneeAligned = leftKneeDeviation < ALIGNMENT_THRESHOLDS.KNEE_ALIGNMENT && 
-                       rightKneeDeviation < ALIGNMENT_THRESHOLDS.KNEE_ALIGNMENT;
+  // ===== SHOULDER LEVEL =====
+  const shoulderDiff = Math.abs((leftShoulder?.y ?? 0) - (rightShoulder?.y ?? 0));
+  const shoulderSeverity = getSeverity(shoulderDiff, POSTURE_THRESHOLDS.SHOULDER_LEVEL);
+  const shoulderHigherSide = shoulderDiff < POSTURE_THRESHOLDS.SHOULDER_LEVEL.GOOD ? 'level' :
+    ((leftShoulder?.y ?? 0) < (rightShoulder?.y ?? 0) ? 'left' : 'right');
+  
+  // ===== HIP LEVEL =====
+  const hipDiff = Math.abs((leftHip?.y ?? 0) - (rightHip?.y ?? 0));
+  const hipSeverity = getSeverity(hipDiff, POSTURE_THRESHOLDS.HIP_LEVEL);
+  const hipHigherSide = hipDiff < POSTURE_THRESHOLDS.HIP_LEVEL.GOOD ? 'level' :
+    ((leftHip?.y ?? 0) < (rightHip?.y ?? 0) ? 'left' : 'right');
+  
+  // ===== HEAD TILT (ear level) =====
+  const earDiff = Math.abs((leftEar?.y ?? 0) - (rightEar?.y ?? 0));
+  const headTiltSeverity = getSeverity(earDiff, POSTURE_THRESHOLDS.HEAD_TILT);
+  const tiltDirection = earDiff < POSTURE_THRESHOLDS.HEAD_TILT.GOOD ? 'level' :
+    ((leftEar?.y ?? 0) < (rightEar?.y ?? 0) ? 'right' : 'left'); // Lower ear = tilt toward that side
+  
+  // ===== HIP SHIFT =====
+  const hipShiftAmount = Math.abs(hipMidX - bodyMidlineX);
+  const hipShiftSeverity = getSeverity(hipShiftAmount, POSTURE_THRESHOLDS.HIP_SHIFT);
+  const hipShiftDirection = hipShiftAmount < POSTURE_THRESHOLDS.HIP_SHIFT.GOOD ? 'centered' :
+    (hipMidX < bodyMidlineX ? 'left' : 'right');
+  
+  // ===== LATERAL HEAD (nose off midline) =====
+  const noseOffset = Math.abs((nose?.x ?? bodyMidlineX) - bodyMidlineX);
+  const lateralHeadSeverity = getSeverity(noseOffset, POSTURE_THRESHOLDS.LATERAL_HEAD);
+  const lateralHeadDirection = noseOffset < POSTURE_THRESHOLDS.LATERAL_HEAD.GOOD ? 'centered' :
+    ((nose?.x ?? bodyMidlineX) < bodyMidlineX ? 'left' : 'right');
+  
+  // ===== LEFT LEG ALIGNMENT =====
+  const leftKneeDevResult = calculateKneeDeviation(
+    (leftHip?.x ?? 0), (leftHip?.y ?? 0),
+    (leftKnee?.x ?? 0), (leftKnee?.y ?? 0),
+    (leftAnkle?.x ?? 0), (leftAnkle?.y ?? 0)
+  );
+  const leftLegSeverity = getSeverity(Math.abs(leftKneeDevResult.deviation), POSTURE_THRESHOLDS.LEG_ALIGNMENT);
+  
+  // ===== RIGHT LEG ALIGNMENT =====
+  const rightKneeDevResult = calculateKneeDeviation(
+    (rightHip?.x ?? 0), (rightHip?.y ?? 0),
+    (rightKnee?.x ?? 0), (rightKnee?.y ?? 0),
+    (rightAnkle?.x ?? 0), (rightAnkle?.y ?? 0)
+  );
+  const rightLegSeverity = getSeverity(Math.abs(rightKneeDevResult.deviation), POSTURE_THRESHOLDS.LEG_ALIGNMENT);
+  
+  // ===== SCOLIOSIS (back view only) =====
+  let scoliosis: FrontBackAlignments['scoliosis'];
+  if (isBackView) {
+    // Estimate spine midpoint as average of shoulder and hip midpoints
+    // A more accurate method would use actual spine landmarks if available
+    const spineMidX = (shoulderMidX + hipMidX) / 2;
+    // Check deviation of mid-torso from the shoulder-hip line
+    // For scoliosis, we look at whether landmarks 11-12 midpoint differs from 23-24 midpoint
+    const scoliosisDeviation = Math.abs(shoulderMidX - hipMidX);
+    const scoliosisSeverity = getSeverity(scoliosisDeviation, POSTURE_THRESHOLDS.SCOLIOSIS);
+    const scoliosisDirection = scoliosisDeviation < POSTURE_THRESHOLDS.SCOLIOSIS.GOOD ? 'straight' :
+      (shoulderMidX < hipMidX ? 'right' : 'left'); // Curve bulges opposite to shoulder shift
+    
+    scoliosis = {
+      severity: scoliosisSeverity,
+      shoulderMidX: shoulderMidX * canvasWidth,
+      hipMidX: hipMidX * canvasWidth,
+      spineMidX: spineMidX * canvasWidth,
+      deviation: scoliosisDeviation,
+      direction: scoliosisDirection,
+    };
+  }
   
   return {
     shoulders: {
-      aligned: shoulderDiff < ALIGNMENT_THRESHOLDS.SHOULDER_LEVEL,
-      leftY: shoulderLeftY,
-      rightY: shoulderRightY,
+      severity: shoulderSeverity,
+      leftY: (leftShoulder?.y ?? 0) * canvasHeight,
+      rightY: (rightShoulder?.y ?? 0) * canvasHeight,
       diff: shoulderDiff,
+      higherSide: shoulderHigherSide,
     },
     hips: {
-      aligned: hipDiff < ALIGNMENT_THRESHOLDS.HIP_LEVEL,
-      leftY: hipLeftY,
-      rightY: hipRightY,
+      severity: hipSeverity,
+      leftY: (leftHip?.y ?? 0) * canvasHeight,
+      rightY: (rightHip?.y ?? 0) * canvasHeight,
       diff: hipDiff,
+      higherSide: hipHigherSide,
     },
-    head: {
-      aligned: earDiff < ALIGNMENT_THRESHOLDS.HEAD_TILT,
-      leftY: earLeftY,
-      rightY: earRightY,
+    headTilt: {
+      severity: headTiltSeverity,
+      leftY: (leftEar?.y ?? 0) * canvasHeight,
+      rightY: (rightEar?.y ?? 0) * canvasHeight,
       diff: earDiff,
+      tiltDirection,
     },
-    knees: {
-      aligned: kneeAligned,
-      leftX: leftKneeX,
-      rightX: rightKneeX,
-      leftAnkleX,
-      rightAnkleX,
+    hipShift: {
+      severity: hipShiftSeverity,
+      midpointX: hipMidX * canvasWidth,
+      bodyMidlineX: bodyMidlineX * canvasWidth,
+      shiftAmount: hipShiftAmount,
+      shiftDirection: hipShiftDirection,
     },
+    lateralHead: {
+      severity: lateralHeadSeverity,
+      noseX: (nose?.x ?? bodyMidlineX) * canvasWidth,
+      midlineX: bodyMidlineX * canvasWidth,
+      offset: noseOffset,
+      direction: lateralHeadDirection,
+    },
+    leftLeg: {
+      severity: leftLegSeverity,
+      hipPos: { x: (leftHip?.x ?? 0) * canvasWidth, y: (leftHip?.y ?? 0) * canvasHeight },
+      kneePos: { x: (leftKnee?.x ?? 0) * canvasWidth, y: (leftKnee?.y ?? 0) * canvasHeight },
+      anklePos: { x: (leftAnkle?.x ?? 0) * canvasWidth, y: (leftAnkle?.y ?? 0) * canvasHeight },
+      kneeDeviation: leftKneeDevResult.deviation,
+      direction: leftKneeDevResult.direction,
+    },
+    rightLeg: {
+      severity: rightLegSeverity,
+      hipPos: { x: (rightHip?.x ?? 0) * canvasWidth, y: (rightHip?.y ?? 0) * canvasHeight },
+      kneePos: { x: (rightKnee?.x ?? 0) * canvasWidth, y: (rightKnee?.y ?? 0) * canvasHeight },
+      anklePos: { x: (rightAnkle?.x ?? 0) * canvasWidth, y: (rightAnkle?.y ?? 0) * canvasHeight },
+      kneeDeviation: rightKneeDevResult.deviation,
+      direction: rightKneeDevResult.direction,
+    },
+    scoliosis,
+    bodyMidlineX: bodyMidlineX * canvasWidth,
   };
 }
 
 /**
- * Calculates alignment status for side view landmarks (plumb line check)
+ * Extended side view alignments
+ */
+interface SideViewAlignments {
+  // Plumb line reference (from ankle)
+  plumbX: number;
+  
+  // Ear position (forward head posture)
+  ear: {
+    x: number;
+    y: number;
+    severity: SeverityLevel;
+    forwardAmount: number;
+    isForward: boolean;
+  };
+  
+  // Eye position (for head up/down check)
+  eye: {
+    x: number;
+    y: number;
+  };
+  
+  // Head up/down tilt
+  headUpDown: {
+    status: 'neutral' | 'up' | 'down';
+    severity: SeverityLevel;
+    earEyeDiff: number;
+  };
+  
+  // Shoulder position (rounded shoulders)
+  shoulder: {
+    x: number;
+    y: number;
+    severity: SeverityLevel;
+    forwardAmount: number;
+    isForward: boolean;
+  };
+  
+  // Hip position (relative to plumb)
+  hip: {
+    x: number;
+    y: number;
+    severity: SeverityLevel;
+    forwardAmount: number;
+    isForward: boolean;
+  };
+  
+  // Knee position (hyperextension check)
+  knee: {
+    x: number;
+    y: number;
+    status: 'neutral' | 'hyperextended' | 'flexed';
+    deviation: number;
+  };
+  
+  // Ankle (base of plumb)
+  ankle: {
+    x: number;
+    y: number;
+  };
+  
+  // Kyphosis (upper back curve) - estimated from shoulder-spine angle
+  kyphosis: {
+    severity: SeverityLevel;
+    curveIndicator: number; // Higher = more curve
+  };
+  
+  // Lordosis (lower back curve) - estimated from hip-spine angle
+  lordosis: {
+    severity: SeverityLevel;
+    curveIndicator: number;
+    type: 'normal' | 'hyper' | 'hypo';
+  };
+  
+  // Pelvic tilt
+  pelvicTilt: {
+    severity: SeverityLevel;
+    type: 'neutral' | 'anterior' | 'posterior';
+    tiltIndicator: number;
+  };
+}
+
+/**
+ * Calculates comprehensive alignment status for side view landmarks
  */
 function calculateSideViewAlignments(
   landmarks: Array<{ x: number; y: number; z?: number; visibility?: number }>,
   view: 'side-left' | 'side-right',
   canvasWidth: number,
   canvasHeight: number
-): {
-  ear: { x: number; y: number; forwardOfPlumb: boolean };
-  shoulder: { x: number; y: number; forwardOfPlumb: boolean };
-  hip: { x: number; y: number };
-  knee: { x: number; y: number; forwardOfPlumb: boolean };
-  ankle: { x: number; y: number };
-  plumbX: number; // Ideal vertical line X position (based on ankle)
-} {
+): SideViewAlignments {
   // Use appropriate landmarks based on which side we're viewing
+  const eyeIdx = view === 'side-left' ? 2 : 5; // Left eye outer / Right eye outer
   const earIdx = view === 'side-left' ? 7 : 8;
   const shoulderIdx = view === 'side-left' ? 11 : 12;
   const hipIdx = view === 'side-left' ? 23 : 24;
   const kneeIdx = view === 'side-left' ? 25 : 26;
   const ankleIdx = view === 'side-left' ? 27 : 28;
   
+  const eye = landmarks[eyeIdx];
   const ear = landmarks[earIdx];
   const shoulder = landmarks[shoulderIdx];
   const hip = landmarks[hipIdx];
   const knee = landmarks[kneeIdx];
   const ankle = landmarks[ankleIdx];
   
-  // Plumb line is based on ankle position (where feet contact ground)
+  // Plumb line is based on ankle position
   const plumbX = (ankle?.x ?? 0.5) * canvasWidth;
+  const ankleY = (ankle?.y ?? 0.9) * canvasHeight;
   
-  const earX = (ear?.x ?? 0) * canvasWidth;
-  const earY = (ear?.y ?? 0) * canvasHeight;
-  const shoulderX = (shoulder?.x ?? 0) * canvasWidth;
-  const shoulderY = (shoulder?.y ?? 0) * canvasHeight;
-  const hipX = (hip?.x ?? 0) * canvasWidth;
-  const hipY = (hip?.y ?? 0) * canvasHeight;
-  const kneeX = (knee?.x ?? 0) * canvasWidth;
-  const kneeY = (knee?.y ?? 0) * canvasHeight;
-  const ankleX = (ankle?.x ?? 0) * canvasWidth;
-  const ankleY = (ankle?.y ?? 0) * canvasHeight;
-  
-  // For side view, "forward" depends on which side
-  // Side-left: facing left, so forward = smaller X
-  // Side-right: facing right, so forward = larger X
+  // For side view, "forward" depends on which side the person is facing
+  // Side-left: facing left, so forward = smaller X (left on screen)
+  // Side-right: facing right, so forward = larger X (right on screen)
   const forwardDir = view === 'side-left' ? -1 : 1;
-  const threshold = ALIGNMENT_THRESHOLDS.VERTICAL_PLUMB * canvasWidth;
   
-  // Check if each point is forward of the plumb line
-  const earDeviation = earX - plumbX;
-  const shoulderDeviation = shoulderX - plumbX;
-  const kneeDeviation = kneeX - plumbX;
+  // Convert all positions to canvas coordinates
+  const earX = (ear?.x ?? 0.5) * canvasWidth;
+  const earY = (ear?.y ?? 0.1) * canvasHeight;
+  const eyeX = (eye?.x ?? 0.5) * canvasWidth;
+  const eyeY = (eye?.y ?? 0.1) * canvasHeight;
+  const shoulderX = (shoulder?.x ?? 0.5) * canvasWidth;
+  const shoulderY = (shoulder?.y ?? 0.25) * canvasHeight;
+  const hipX = (hip?.x ?? 0.5) * canvasWidth;
+  const hipY = (hip?.y ?? 0.5) * canvasHeight;
+  const kneeX = (knee?.x ?? 0.5) * canvasWidth;
+  const kneeY = (knee?.y ?? 0.75) * canvasHeight;
+  const ankleX = (ankle?.x ?? 0.5) * canvasWidth;
+  
+  // ===== EAR (Forward Head Posture) =====
+  const earDeviation = (earX - plumbX) * forwardDir; // Positive = forward
+  const earDeviationNorm = Math.abs((ear?.x ?? 0.5) - (ankle?.x ?? 0.5));
+  const earSeverity = getSeverity(earDeviationNorm, POSTURE_THRESHOLDS.PLUMB_LINE);
+  const earIsForward = earDeviation > POSTURE_THRESHOLDS.PLUMB_LINE.GOOD * canvasWidth;
+  
+  // ===== HEAD UP/DOWN TILT =====
+  // Compare ear Y to eye Y - if ear is above eye level, looking up; if below, looking down
+  const earEyeYDiff = ((ear?.y ?? 0) - (eye?.y ?? 0)); // Positive = ear lower than eye (looking up)
+  const headUpDownStatus = Math.abs(earEyeYDiff) < POSTURE_THRESHOLDS.HEAD_UPDOWN.NEUTRAL ? 'neutral' :
+    (earEyeYDiff > 0 ? 'up' : 'down'); // If ear is lower (higher Y), head is tilted back (looking up)
+  const headUpDownSeverity = Math.abs(earEyeYDiff) < POSTURE_THRESHOLDS.HEAD_UPDOWN.NEUTRAL ? 'good' :
+    (Math.abs(earEyeYDiff) < POSTURE_THRESHOLDS.HEAD_UPDOWN.UP ? 'mild' : 'moderate');
+  
+  // ===== SHOULDER (Rounded) =====
+  const shoulderDeviation = (shoulderX - plumbX) * forwardDir;
+  const shoulderDeviationNorm = Math.abs((shoulder?.x ?? 0.5) - (ankle?.x ?? 0.5));
+  const shoulderSeverity = getSeverity(shoulderDeviationNorm, POSTURE_THRESHOLDS.PLUMB_LINE);
+  const shoulderIsForward = shoulderDeviation > POSTURE_THRESHOLDS.PLUMB_LINE.GOOD * canvasWidth;
+  
+  // ===== HIP POSITION =====
+  const hipDeviation = (hipX - plumbX) * forwardDir;
+  const hipDeviationNorm = Math.abs((hip?.x ?? 0.5) - (ankle?.x ?? 0.5));
+  const hipSeverity = getSeverity(hipDeviationNorm, POSTURE_THRESHOLDS.PLUMB_LINE);
+  const hipIsForward = hipDeviation > POSTURE_THRESHOLDS.PLUMB_LINE.GOOD * canvasWidth;
+  
+  // ===== KNEE (Hyperextension) =====
+  const kneeDeviation = (kneeX - plumbX) * forwardDir;
+  const kneeStatus = Math.abs(kneeDeviation) < POSTURE_THRESHOLDS.PLUMB_LINE.GOOD * canvasWidth ? 'neutral' :
+    (kneeDeviation < 0 ? 'hyperextended' : 'flexed');
+  
+  // ===== KYPHOSIS (Upper back curve) =====
+  // Estimate by checking if upper back (shoulder area) is significantly behind the plumb
+  // A person with kyphosis will have their shoulder behind their hip in the sagittal plane
+  const kyphosisIndicator = Math.abs(shoulderDeviation - hipDeviation) / canvasWidth;
+  const kyphosisSeverity = shoulderX * forwardDir < hipX * forwardDir && Math.abs(shoulderDeviation) > POSTURE_THRESHOLDS.PLUMB_LINE.MILD * canvasWidth
+    ? getSeverity(kyphosisIndicator, POSTURE_THRESHOLDS.PLUMB_LINE)
+    : 'good';
+  
+  // ===== LORDOSIS (Lower back curve) =====
+  // Estimate by checking the relationship between hip and lower spine
+  // For now, use hip forward position as an indicator (anterior tilt often accompanies hyperlordosis)
+  const lordosisIndicator = hipDeviationNorm;
+  const lordosisSeverity = getSeverity(lordosisIndicator, POSTURE_THRESHOLDS.PLUMB_LINE);
+  const lordosisType = lordosisSeverity === 'good' ? 'normal' :
+    (hipIsForward ? 'hyper' : 'hypo');
+  
+  // ===== PELVIC TILT =====
+  // Estimate from hip-knee-ankle angle and hip forward position
+  // Anterior tilt: hip forward of plumb, increased lordosis
+  // Posterior tilt: hip behind plumb, flat back
+  const pelvicTiltIndicator = hipDeviationNorm;
+  const pelvicTiltType = Math.abs(hipDeviation) < POSTURE_THRESHOLDS.PLUMB_LINE.GOOD * canvasWidth ? 'neutral' :
+    (hipIsForward ? 'anterior' : 'posterior');
+  const pelvicTiltSeverity = getSeverity(pelvicTiltIndicator, POSTURE_THRESHOLDS.PLUMB_LINE);
   
   return {
+    plumbX,
     ear: {
       x: earX,
       y: earY,
-      forwardOfPlumb: Math.abs(earDeviation) > threshold && (earDeviation * forwardDir) > 0,
+      severity: earSeverity,
+      forwardAmount: earDeviation,
+      isForward: earIsForward,
+    },
+    eye: {
+      x: eyeX,
+      y: eyeY,
+    },
+    headUpDown: {
+      status: headUpDownStatus,
+      severity: headUpDownSeverity as SeverityLevel,
+      earEyeDiff: earEyeYDiff,
     },
     shoulder: {
       x: shoulderX,
       y: shoulderY,
-      forwardOfPlumb: Math.abs(shoulderDeviation) > threshold && (shoulderDeviation * forwardDir) > 0,
+      severity: shoulderSeverity,
+      forwardAmount: shoulderDeviation,
+      isForward: shoulderIsForward,
     },
-    hip: { x: hipX, y: hipY },
+    hip: {
+      x: hipX,
+      y: hipY,
+      severity: hipSeverity,
+      forwardAmount: hipDeviation,
+      isForward: hipIsForward,
+    },
     knee: {
       x: kneeX,
       y: kneeY,
-      forwardOfPlumb: Math.abs(kneeDeviation) > threshold,
+      status: kneeStatus,
+      deviation: kneeDeviation,
     },
-    ankle: { x: ankleX, y: ankleY },
-    plumbX,
+    ankle: {
+      x: ankleX,
+      y: ankleY,
+    },
+    kyphosis: {
+      severity: kyphosisSeverity,
+      curveIndicator: kyphosisIndicator,
+    },
+    lordosis: {
+      severity: lordosisSeverity,
+      curveIndicator: lordosisIndicator,
+      type: lordosisType,
+    },
+    pelvicTilt: {
+      severity: pelvicTiltSeverity,
+      type: pelvicTiltType,
+      tiltIndicator: pelvicTiltIndicator,
+    },
   };
 }
 
 /**
+ * Helper to draw a dashed control line (ideal alignment reference)
+ */
+function drawControlLine(
+  ctx: CanvasRenderingContext2D,
+  x1: number, y1: number,
+  x2: number, y2: number,
+  color: string = ALIGNMENT_COLORS.CONTROL
+): void {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.setLineDash(ALIGNMENT_COLORS.CONTROL_DASHED);
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+    ctx.stroke();
+  ctx.restore();
+}
+
+/**
+ * Helper to draw an alignment line (actual position)
+ */
+function drawAlignmentLine(
+  ctx: CanvasRenderingContext2D,
+  x1: number, y1: number,
+  x2: number, y2: number,
+  severity: SeverityLevel,
+  lineWidth: number = 4
+): void {
+  ctx.strokeStyle = getSeverityColor(severity);
+  ctx.lineWidth = lineWidth;
+  ctx.setLineDash([]);
+    ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+    ctx.stroke();
+  }
+
+/**
+ * Helper to draw a landmark point
+ */
+function drawLandmarkPoint(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number,
+  severity: SeverityLevel | null,
+  radius: number = 8
+): void {
+  // Outline
+  ctx.strokeStyle = '#000000';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.stroke();
+  
+  // Fill
+  ctx.fillStyle = severity !== null ? getSeverityPointColor(severity) : ALIGNMENT_COLORS.POINT_NEUTRAL;
+  ctx.beginPath();
+  ctx.arc(x, y, radius - 1, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/**
  * Draws view-specific MediaPipe pose landmarks wireframe on an image
- * with GREEN lines for aligned landmarks and RED lines for deviations
+ * with GREEN lines for aligned landmarks, ORANGE for mild deviations, and RED for significant deviations
+ * Also draws dashed GREEN "control" lines showing ideal alignment positions
  * 
  * @param imageData - Base64 image data
  * @param landmarks - Raw MediaPipe landmarks array (33 points)
@@ -836,17 +1480,15 @@ export async function drawLandmarkWireframe(
     lineWidth?: number;
     showLabels?: boolean;
     opacity?: number;
+    pointColor?: string;
+    lineColor?: string;
   } = {}
 ): Promise<string> {
   const {
     pointRadius = 8,
     lineWidth = 4,
-    showLabels = false,
     opacity = 1.0,
   } = options;
-
-  // Get view-specific connections and landmarks
-  const viewConfig = getViewSpecificConfig(view);
 
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -868,146 +1510,234 @@ export async function drawLandmarkWireframe(
         
         // Set global alpha for wireframe
         ctx.globalAlpha = opacity;
-        ctx.lineCap = 'round';
+  ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         
         if (view === 'front' || view === 'back') {
-          // ========== FRONT/BACK VIEW WITH ALIGNMENT ANALYSIS ==========
-          const alignments = calculateFrontBackAlignments(landmarks, canvas.width, canvas.height);
+          // ========== FRONT/BACK VIEW WITH COMPREHENSIVE ALIGNMENT ANALYSIS ==========
+          const isBackView = view === 'back';
+          const alignments = calculateFrontBackAlignments(landmarks, canvas.width, canvas.height, isBackView);
           
-          // Get landmark positions
+          // Get landmark positions helper
           const getPos = (idx: number) => ({
             x: (landmarks[idx]?.x ?? 0) * canvas.width,
             y: (landmarks[idx]?.y ?? 0) * canvas.height,
             visible: (landmarks[idx]?.visibility ?? 1) > 0.3,
           });
           
-          // Draw skeleton connections first (neutral color)
-          ctx.strokeStyle = ALIGNMENT_COLORS.NEUTRAL;
-          ctx.lineWidth = lineWidth - 1;
+          // ===== 1. VERTICAL MIDLINE (Control Line) =====
+          drawControlLine(ctx, alignments.bodyMidlineX, 0, alignments.bodyMidlineX, canvas.height, ALIGNMENT_COLORS.MIDLINE);
           
-          // Torso lines (neutral - just for reference)
-          const connections = [[11, 23], [12, 24], [23, 25], [24, 26], [25, 27], [26, 28]];
-          for (const [startIdx, endIdx] of connections) {
-            const start = getPos(startIdx);
-            const end = getPos(endIdx);
-            if (!start.visible || !end.visible) continue;
-            
-            ctx.beginPath();
-            ctx.moveTo(start.x, start.y);
-            ctx.lineTo(end.x, end.y);
-            ctx.stroke();
+          // ===== 2. HORIZONTAL CONTROL LINES (ideal levels) =====
+          const avgShoulderY = (alignments.shoulders.leftY + alignments.shoulders.rightY) / 2;
+          const avgHipY = (alignments.hips.leftY + alignments.hips.rightY) / 2;
+          const avgEarY = (alignments.headTilt.leftY + alignments.headTilt.rightY) / 2;
+          
+          // Shoulder level control line
+          drawControlLine(ctx, 0, avgShoulderY, canvas.width, avgShoulderY);
+          // Hip level control line
+          drawControlLine(ctx, 0, avgHipY, canvas.width, avgHipY);
+          // Head level control line (for front view)
+          if (!isBackView) {
+            drawControlLine(ctx, 0, avgEarY, canvas.width, avgEarY);
           }
           
-          // ===== HEAD/EAR LINE (Alignment Check) =====
-          if (view === 'front') { // Only show ear line on front view
+          // ===== 3. TORSO SKELETON (neutral reference) =====
+          ctx.strokeStyle = ALIGNMENT_COLORS.NEUTRAL;
+          ctx.lineWidth = lineWidth - 1;
+          ctx.setLineDash([]);
+          
+          // Left torso
+          const leftShoulder = getPos(11);
+          const leftHip = getPos(23);
+          if (leftShoulder.visible && leftHip.visible) {
+  ctx.beginPath();
+            ctx.moveTo(leftShoulder.x, leftShoulder.y);
+            ctx.lineTo(leftHip.x, leftHip.y);
+  ctx.stroke();
+          }
+
+          // Right torso
+          const rightShoulder = getPos(12);
+          const rightHip = getPos(24);
+          if (rightShoulder.visible && rightHip.visible) {
+  ctx.beginPath();
+            ctx.moveTo(rightShoulder.x, rightShoulder.y);
+            ctx.lineTo(rightHip.x, rightHip.y);
+  ctx.stroke();
+          }
+          
+          // ===== 4. HEAD TILT (Ear-to-Ear Line) - Front view only =====
+          if (!isBackView) {
             const leftEar = getPos(7);
             const rightEar = getPos(8);
             if (leftEar.visible && rightEar.visible) {
-              ctx.strokeStyle = alignments.head.aligned ? ALIGNMENT_COLORS.GOOD_LINE : ALIGNMENT_COLORS.DEVIATION_LINE;
-              ctx.lineWidth = lineWidth;
-              ctx.beginPath();
-              ctx.moveTo(leftEar.x, leftEar.y);
-              ctx.lineTo(rightEar.x, rightEar.y);
-              ctx.stroke();
+              drawAlignmentLine(ctx, leftEar.x, leftEar.y, rightEar.x, rightEar.y, alignments.headTilt.severity, lineWidth);
             }
           }
           
-          // ===== SHOULDER LINE (Alignment Check) =====
-          const leftShoulder = getPos(11);
-          const rightShoulder = getPos(12);
+          // ===== 5. LATERAL HEAD POSITION (Nose off midline) - Front view only =====
+          if (!isBackView && alignments.lateralHead.severity !== 'good') {
+            const nose = getPos(0);
+            if (nose.visible) {
+              // Draw deviation line from nose to midline
+              ctx.strokeStyle = getSeverityColor(alignments.lateralHead.severity);
+              ctx.lineWidth = 2;
+              ctx.setLineDash([5, 5]);
+  ctx.beginPath();
+              ctx.moveTo(nose.x, nose.y);
+              ctx.lineTo(alignments.bodyMidlineX, nose.y);
+  ctx.stroke();
+              ctx.setLineDash([]);
+            }
+          }
+          
+          // ===== 6. SHOULDER LINE =====
           if (leftShoulder.visible && rightShoulder.visible) {
-            ctx.strokeStyle = alignments.shoulders.aligned ? ALIGNMENT_COLORS.GOOD_LINE : ALIGNMENT_COLORS.DEVIATION_LINE;
-            ctx.lineWidth = lineWidth;
-            ctx.beginPath();
-            ctx.moveTo(leftShoulder.x, leftShoulder.y);
-            ctx.lineTo(rightShoulder.x, rightShoulder.y);
-            ctx.stroke();
+            drawAlignmentLine(ctx, leftShoulder.x, leftShoulder.y, rightShoulder.x, rightShoulder.y, alignments.shoulders.severity, lineWidth);
           }
           
-          // ===== HIP LINE (Alignment Check) =====
-          const leftHip = getPos(23);
-          const rightHip = getPos(24);
+          // ===== 7. HIP LINE =====
           if (leftHip.visible && rightHip.visible) {
-            ctx.strokeStyle = alignments.hips.aligned ? ALIGNMENT_COLORS.GOOD_LINE : ALIGNMENT_COLORS.DEVIATION_LINE;
-            ctx.lineWidth = lineWidth;
-            ctx.beginPath();
-            ctx.moveTo(leftHip.x, leftHip.y);
-            ctx.lineTo(rightHip.x, rightHip.y);
-            ctx.stroke();
+            drawAlignmentLine(ctx, leftHip.x, leftHip.y, rightHip.x, rightHip.y, alignments.hips.severity, lineWidth);
           }
           
-          // ===== KNEE ALIGNMENT (Check for valgus/varus) =====
-          const leftKnee = getPos(25);
-          const rightKnee = getPos(26);
-          const leftAnkle = getPos(27);
-          const rightAnkle = getPos(28);
-          
-          // Draw knee-to-ankle lines with alignment color
-          if (leftKnee.visible && leftAnkle.visible) {
-            const leftAligned = Math.abs(landmarks[25]?.x - landmarks[27]?.x) < ALIGNMENT_THRESHOLDS.KNEE_ALIGNMENT;
-            ctx.strokeStyle = leftAligned ? ALIGNMENT_COLORS.GOOD_LINE : ALIGNMENT_COLORS.DEVIATION_LINE;
-            ctx.lineWidth = lineWidth;
-            ctx.beginPath();
-            ctx.moveTo(leftKnee.x, leftKnee.y);
-            ctx.lineTo(leftAnkle.x, leftAnkle.y);
-            ctx.stroke();
-          }
-          
-          if (rightKnee.visible && rightAnkle.visible) {
-            const rightAligned = Math.abs(landmarks[26]?.x - landmarks[28]?.x) < ALIGNMENT_THRESHOLDS.KNEE_ALIGNMENT;
-            ctx.strokeStyle = rightAligned ? ALIGNMENT_COLORS.GOOD_LINE : ALIGNMENT_COLORS.DEVIATION_LINE;
-            ctx.lineWidth = lineWidth;
-            ctx.beginPath();
-            ctx.moveTo(rightKnee.x, rightKnee.y);
-            ctx.lineTo(rightAnkle.x, rightAnkle.y);
-            ctx.stroke();
-          }
-          
-          // Draw landmark points with appropriate colors
-          const pointsToCheck = [
-            { idx: 0, check: null }, // Nose - neutral
-            { idx: 7, check: view === 'front' ? alignments.head.aligned : null }, // Left ear
-            { idx: 8, check: view === 'front' ? alignments.head.aligned : null }, // Right ear
-            { idx: 11, check: alignments.shoulders.aligned }, // Left shoulder
-            { idx: 12, check: alignments.shoulders.aligned }, // Right shoulder
-            { idx: 23, check: alignments.hips.aligned }, // Left hip
-            { idx: 24, check: alignments.hips.aligned }, // Right hip
-            { idx: 25, check: alignments.knees.aligned }, // Left knee
-            { idx: 26, check: alignments.knees.aligned }, // Right knee
-            { idx: 27, check: null }, // Left ankle - neutral
-            { idx: 28, check: null }, // Right ankle - neutral
-          ];
-          
-          for (const { idx, check } of pointsToCheck) {
-            const pos = getPos(idx);
-            if (!pos.visible) continue;
-            if (!viewConfig.landmarks.includes(idx)) continue;
-            
-            // Determine point color
-            let fillColor = ALIGNMENT_COLORS.POINT_NEUTRAL;
-            if (check === true) fillColor = ALIGNMENT_COLORS.POINT_GOOD;
-            else if (check === false) fillColor = ALIGNMENT_COLORS.POINT_DEVIATION;
-            
-            // Draw point with outline
-            ctx.strokeStyle = '#000000';
+          // ===== 8. HIP SHIFT (Pelvis off midline) =====
+          if (alignments.hipShift.severity !== 'good') {
+            // Draw deviation line from hip midpoint to body midline
+            ctx.strokeStyle = getSeverityColor(alignments.hipShift.severity);
             ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
             ctx.beginPath();
-            ctx.arc(pos.x, pos.y, pointRadius, 0, Math.PI * 2);
+            ctx.moveTo(alignments.hipShift.midpointX, avgHipY);
+            ctx.lineTo(alignments.bodyMidlineX, avgHipY);
             ctx.stroke();
+            ctx.setLineDash([]);
+          }
+          
+          // ===== 9. LEFT LEG ALIGNMENT (Hip-Knee-Ankle) =====
+          const leftKnee = getPos(25);
+          const leftAnkle = getPos(27);
+          if (leftHip.visible && leftKnee.visible && leftAnkle.visible) {
+            // Draw control line (hip to ankle - ideal straight line)
+            drawControlLine(ctx, leftHip.x, leftHip.y, leftAnkle.x, leftAnkle.y);
             
-            ctx.fillStyle = fillColor;
-            ctx.beginPath();
-            ctx.arc(pos.x, pos.y, pointRadius - 1, 0, Math.PI * 2);
-            ctx.fill();
+            // Draw actual leg segments with severity colors
+            // Hip to knee
+            drawAlignmentLine(ctx, leftHip.x, leftHip.y, leftKnee.x, leftKnee.y, alignments.leftLeg.severity, lineWidth);
+            // Knee to ankle
+            drawAlignmentLine(ctx, leftKnee.x, leftKnee.y, leftAnkle.x, leftAnkle.y, alignments.leftLeg.severity, lineWidth);
+            
+            // If deviation, draw horizontal line showing knee deviation from ideal
+            if (alignments.leftLeg.severity !== 'good') {
+              const idealKneeX = alignments.leftLeg.hipPos.x + 
+                (alignments.leftLeg.anklePos.x - alignments.leftLeg.hipPos.x) * 
+                ((alignments.leftLeg.kneePos.y - alignments.leftLeg.hipPos.y) / 
+                 (alignments.leftLeg.anklePos.y - alignments.leftLeg.hipPos.y));
+              ctx.strokeStyle = getSeverityColor(alignments.leftLeg.severity);
+              ctx.lineWidth = 2;
+              ctx.setLineDash([3, 3]);
+              ctx.beginPath();
+              ctx.moveTo(leftKnee.x, leftKnee.y);
+              ctx.lineTo(idealKneeX, leftKnee.y);
+              ctx.stroke();
+              ctx.setLineDash([]);
+            }
+          }
+          
+          // ===== 10. RIGHT LEG ALIGNMENT (Hip-Knee-Ankle) =====
+          const rightKnee = getPos(26);
+          const rightAnkle = getPos(28);
+          if (rightHip.visible && rightKnee.visible && rightAnkle.visible) {
+            // Draw control line (hip to ankle - ideal straight line)
+            drawControlLine(ctx, rightHip.x, rightHip.y, rightAnkle.x, rightAnkle.y);
+            
+            // Draw actual leg segments
+            drawAlignmentLine(ctx, rightHip.x, rightHip.y, rightKnee.x, rightKnee.y, alignments.rightLeg.severity, lineWidth);
+            drawAlignmentLine(ctx, rightKnee.x, rightKnee.y, rightAnkle.x, rightAnkle.y, alignments.rightLeg.severity, lineWidth);
+            
+            // If deviation, draw horizontal line showing knee deviation
+            if (alignments.rightLeg.severity !== 'good') {
+              const idealKneeX = alignments.rightLeg.hipPos.x + 
+                (alignments.rightLeg.anklePos.x - alignments.rightLeg.hipPos.x) * 
+                ((alignments.rightLeg.kneePos.y - alignments.rightLeg.hipPos.y) / 
+                 (alignments.rightLeg.anklePos.y - alignments.rightLeg.hipPos.y));
+              ctx.strokeStyle = getSeverityColor(alignments.rightLeg.severity);
+              ctx.lineWidth = 2;
+              ctx.setLineDash([3, 3]);
+              ctx.beginPath();
+              ctx.moveTo(rightKnee.x, rightKnee.y);
+              ctx.lineTo(idealKneeX, rightKnee.y);
+              ctx.stroke();
+              ctx.setLineDash([]);
+            }
+          }
+          
+          // ===== 11. SCOLIOSIS CHECK (Back view only) =====
+          if (isBackView && alignments.scoliosis) {
+            const scoliosis = alignments.scoliosis;
+            if (scoliosis.severity !== 'good') {
+              // Draw the spine midline (actual)
+              ctx.strokeStyle = getSeverityColor(scoliosis.severity);
+              ctx.lineWidth = lineWidth;
+              ctx.setLineDash([]);
+              
+              // Draw curved spine indicator (from shoulder mid to hip mid)
+              const midTorsoY = (avgShoulderY + avgHipY) / 2;
+              const curveBulge = scoliosis.direction === 'left' ? -30 : 30;
+              
+              ctx.beginPath();
+              ctx.moveTo(scoliosis.shoulderMidX, avgShoulderY);
+              ctx.quadraticCurveTo(
+                scoliosis.shoulderMidX + curveBulge,
+                midTorsoY,
+                scoliosis.hipMidX,
+                avgHipY
+              );
+              ctx.stroke();
+              
+              // Draw ideal straight line (control)
+              drawControlLine(ctx, alignments.bodyMidlineX, avgShoulderY, alignments.bodyMidlineX, avgHipY);
+            }
+          }
+          
+          // ===== DRAW LANDMARK POINTS =====
+          // Build points array - exclude face landmarks for back view
+          const frontBackPoints: Array<{ pos: ReturnType<typeof getPos>; severity: SeverityLevel | null }> = [];
+          
+          // Face landmarks only for front view
+          if (!isBackView) {
+            frontBackPoints.push(
+              { pos: getPos(0), severity: alignments.lateralHead.severity }, // Nose
+              { pos: getPos(7), severity: alignments.headTilt.severity }, // Left ear
+              { pos: getPos(8), severity: alignments.headTilt.severity }, // Right ear
+            );
+          }
+          
+          // Body landmarks for both views
+          frontBackPoints.push(
+            { pos: getPos(11), severity: alignments.shoulders.severity }, // Left shoulder
+            { pos: getPos(12), severity: alignments.shoulders.severity }, // Right shoulder
+            { pos: getPos(23), severity: alignments.hips.severity }, // Left hip
+            { pos: getPos(24), severity: alignments.hips.severity }, // Right hip
+            { pos: getPos(25), severity: alignments.leftLeg.severity }, // Left knee
+            { pos: getPos(26), severity: alignments.rightLeg.severity }, // Right knee
+            { pos: getPos(27), severity: 'good' }, // Left ankle (reference - always green)
+            { pos: getPos(28), severity: 'good' }, // Right ankle (reference - always green)
+          );
+          
+          for (const { pos, severity } of frontBackPoints) {
+            if (pos.visible) {
+              drawLandmarkPoint(ctx, pos.x, pos.y, severity, pointRadius);
+            }
           }
           
         } else {
-          // ========== SIDE VIEW WITH PLUMB LINE ANALYSIS ==========
+          // ========== SIDE VIEW WITH COMPREHENSIVE PLUMB LINE ANALYSIS ==========
           const alignments = calculateSideViewAlignments(landmarks, view, canvas.width, canvas.height);
           
-          // Draw vertical plumb line (reference line from ankle up)
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+          // ===== 1. VERTICAL PLUMB LINE (Control - from ankle up) =====
+          ctx.strokeStyle = ALIGNMENT_COLORS.MIDLINE;
           ctx.lineWidth = 2;
           ctx.setLineDash([10, 10]);
           ctx.beginPath();
@@ -1016,21 +1746,14 @@ export async function drawLandmarkWireframe(
           ctx.stroke();
           ctx.setLineDash([]);
           
-          // Draw the postural chain: Ear → Shoulder → Hip → Knee → Ankle
-          // Each segment colored based on alignment
-          ctx.lineWidth = lineWidth;
-          
-          // Ear to Shoulder
-          const earAligned = !alignments.ear.forwardOfPlumb;
-          ctx.strokeStyle = earAligned ? ALIGNMENT_COLORS.GOOD_LINE : ALIGNMENT_COLORS.DEVIATION_LINE;
-          ctx.beginPath();
-          ctx.moveTo(alignments.ear.x, alignments.ear.y);
-          ctx.lineTo(alignments.shoulder.x, alignments.shoulder.y);
-          ctx.stroke();
+          // ===== 2. EAR POSITION (Forward Head Posture) =====
+          // Draw ear-to-shoulder segment
+          drawAlignmentLine(ctx, alignments.ear.x, alignments.ear.y, alignments.shoulder.x, alignments.shoulder.y, alignments.ear.severity, lineWidth);
           
           // If ear is forward, draw horizontal deviation line to plumb
-          if (!earAligned) {
-            ctx.strokeStyle = ALIGNMENT_COLORS.DEVIATION_LINE;
+          if (alignments.ear.isForward) {
+            ctx.strokeStyle = getSeverityColor(alignments.ear.severity);
+            ctx.lineWidth = 2;
             ctx.setLineDash([5, 5]);
             ctx.beginPath();
             ctx.moveTo(alignments.ear.x, alignments.ear.y);
@@ -1039,17 +1762,27 @@ export async function drawLandmarkWireframe(
             ctx.setLineDash([]);
           }
           
-          // Shoulder to Hip
-          const shoulderAligned = !alignments.shoulder.forwardOfPlumb;
-          ctx.strokeStyle = shoulderAligned ? ALIGNMENT_COLORS.GOOD_LINE : ALIGNMENT_COLORS.DEVIATION_LINE;
-          ctx.beginPath();
-          ctx.moveTo(alignments.shoulder.x, alignments.shoulder.y);
-          ctx.lineTo(alignments.hip.x, alignments.hip.y);
-          ctx.stroke();
+          // ===== 3. HEAD UP/DOWN INDICATOR =====
+          if (alignments.headUpDown.status !== 'neutral') {
+            // Draw a small arc near the head indicating tilt direction
+            ctx.strokeStyle = getSeverityColor(alignments.headUpDown.severity);
+            ctx.lineWidth = 2;
+            ctx.setLineDash([3, 3]);
+            const arrowDir = alignments.headUpDown.status === 'up' ? -1 : 1;
+            ctx.beginPath();
+            ctx.moveTo(alignments.ear.x, alignments.ear.y);
+            ctx.lineTo(alignments.ear.x, alignments.ear.y + arrowDir * 20);
+            ctx.stroke();
+            ctx.setLineDash([]);
+          }
           
-          // If shoulder is forward, draw horizontal deviation line to plumb
-          if (!shoulderAligned) {
-            ctx.strokeStyle = ALIGNMENT_COLORS.DEVIATION_LINE;
+          // ===== 4. SHOULDER POSITION (Rounded Shoulders) =====
+          drawAlignmentLine(ctx, alignments.shoulder.x, alignments.shoulder.y, alignments.hip.x, alignments.hip.y, alignments.shoulder.severity, lineWidth);
+          
+          // If shoulder is forward, draw horizontal deviation line
+          if (alignments.shoulder.isForward) {
+            ctx.strokeStyle = getSeverityColor(alignments.shoulder.severity);
+            ctx.lineWidth = 2;
             ctx.setLineDash([5, 5]);
             ctx.beginPath();
             ctx.moveTo(alignments.shoulder.x, alignments.shoulder.y);
@@ -1058,22 +1791,77 @@ export async function drawLandmarkWireframe(
             ctx.setLineDash([]);
           }
           
-          // Hip to Knee (usually aligned - reference)
-          ctx.strokeStyle = ALIGNMENT_COLORS.GOOD_LINE;
-          ctx.beginPath();
-          ctx.moveTo(alignments.hip.x, alignments.hip.y);
-          ctx.lineTo(alignments.knee.x, alignments.knee.y);
-          ctx.stroke();
+          // ===== 5. HIP POSITION =====
+          drawAlignmentLine(ctx, alignments.hip.x, alignments.hip.y, alignments.knee.x, alignments.knee.y, alignments.hip.severity, lineWidth);
           
-          // Knee to Ankle
-          const kneeAligned = !alignments.knee.forwardOfPlumb;
-          ctx.strokeStyle = kneeAligned ? ALIGNMENT_COLORS.GOOD_LINE : ALIGNMENT_COLORS.DEVIATION_LINE;
-          ctx.beginPath();
-          ctx.moveTo(alignments.knee.x, alignments.knee.y);
-          ctx.lineTo(alignments.ankle.x, alignments.ankle.y);
-          ctx.stroke();
+          // If hip is forward, draw horizontal deviation line
+          if (alignments.hip.isForward) {
+            ctx.strokeStyle = getSeverityColor(alignments.hip.severity);
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(alignments.hip.x, alignments.hip.y);
+            ctx.lineTo(alignments.plumbX, alignments.hip.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+          }
           
-          // Draw arm for rounded shoulder detection
+          // ===== 6. KNEE POSITION =====
+          const kneeSeverity = alignments.knee.status === 'neutral' ? 'good' : 
+            (Math.abs(alignments.knee.deviation) > POSTURE_THRESHOLDS.PLUMB_LINE.MODERATE * canvas.width ? 'moderate' : 'mild');
+          drawAlignmentLine(ctx, alignments.knee.x, alignments.knee.y, alignments.ankle.x, alignments.ankle.y, kneeSeverity, lineWidth);
+          
+          // ===== 7. KYPHOSIS INDICATOR (Upper back curve) =====
+          if (alignments.kyphosis.severity !== 'good') {
+            // Draw curved indicator in upper back area
+            const midBackY = alignments.shoulder.y + (alignments.hip.y - alignments.shoulder.y) * 0.3;
+            const curveDepth = alignments.kyphosis.severity === 'severe' ? 40 : 
+                              (alignments.kyphosis.severity === 'moderate' ? 25 : 15);
+            const curveX = view === 'side-left' ? alignments.shoulder.x + curveDepth : alignments.shoulder.x - curveDepth;
+            
+            ctx.strokeStyle = getSeverityColor(alignments.kyphosis.severity);
+            ctx.lineWidth = 3;
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            ctx.moveTo(alignments.shoulder.x, alignments.shoulder.y);
+            ctx.quadraticCurveTo(curveX, midBackY, alignments.shoulder.x, alignments.shoulder.y + (alignments.hip.y - alignments.shoulder.y) * 0.5);
+            ctx.stroke();
+          }
+          
+          // ===== 8. LORDOSIS INDICATOR (Lower back curve) =====
+          if (alignments.lordosis.severity !== 'good') {
+            const lowerBackY = alignments.shoulder.y + (alignments.hip.y - alignments.shoulder.y) * 0.7;
+            const curveDepth = alignments.lordosis.severity === 'severe' ? 35 :
+                              (alignments.lordosis.severity === 'moderate' ? 20 : 10);
+            const curveX = view === 'side-left' ? alignments.hip.x - curveDepth : alignments.hip.x + curveDepth;
+            
+            ctx.strokeStyle = getSeverityColor(alignments.lordosis.severity);
+            ctx.lineWidth = 3;
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            ctx.moveTo(alignments.shoulder.x, lowerBackY);
+            ctx.quadraticCurveTo(curveX, (lowerBackY + alignments.hip.y) / 2, alignments.hip.x, alignments.hip.y);
+            ctx.stroke();
+          }
+          
+          // ===== 9. PELVIC TILT INDICATOR =====
+          if (alignments.pelvicTilt.type !== 'neutral') {
+            // Draw angled line at hip level showing tilt direction
+            const tiltAngle = alignments.pelvicTilt.type === 'anterior' ? 15 : -10;
+            const tiltLength = 50;
+            const tiltRad = (tiltAngle * Math.PI) / 180;
+            const tiltDir = view === 'side-left' ? 1 : -1;
+            
+            ctx.strokeStyle = getSeverityColor(alignments.pelvicTilt.severity);
+            ctx.lineWidth = 3;
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            ctx.moveTo(alignments.hip.x - tiltLength * tiltDir, alignments.hip.y + Math.sin(tiltRad) * tiltLength);
+            ctx.lineTo(alignments.hip.x + tiltLength * tiltDir, alignments.hip.y - Math.sin(tiltRad) * tiltLength);
+            ctx.stroke();
+          }
+          
+          // ===== 10. ARM (for rounded shoulder context) =====
           const elbowIdx = view === 'side-left' ? 13 : 14;
           const wristIdx = view === 'side-left' ? 15 : 16;
           const shoulderIdx = view === 'side-left' ? 11 : 12;
@@ -1082,18 +1870,17 @@ export async function drawLandmarkWireframe(
           const wrist = landmarks[wristIdx];
           const shoulder = landmarks[shoulderIdx];
           
-          if (elbow && wrist && shoulder && (elbow.visibility ?? 1) > 0.3) {
+          if (elbow && shoulder && (elbow.visibility ?? 1) > 0.3) {
             ctx.strokeStyle = ALIGNMENT_COLORS.NEUTRAL;
             ctx.lineWidth = lineWidth - 1;
+            ctx.setLineDash([]);
             
-            // Shoulder to elbow
             ctx.beginPath();
             ctx.moveTo((shoulder.x) * canvas.width, (shoulder.y) * canvas.height);
             ctx.lineTo((elbow.x) * canvas.width, (elbow.y) * canvas.height);
             ctx.stroke();
             
-            // Elbow to wrist
-            if ((wrist.visibility ?? 1) > 0.3) {
+            if (wrist && (wrist.visibility ?? 1) > 0.3) {
               ctx.beginPath();
               ctx.moveTo((elbow.x) * canvas.width, (elbow.y) * canvas.height);
               ctx.lineTo((wrist.x) * canvas.width, (wrist.y) * canvas.height);
@@ -1101,26 +1888,17 @@ export async function drawLandmarkWireframe(
             }
           }
           
-          // Draw landmark points
+          // ===== DRAW LANDMARK POINTS =====
           const sidePoints = [
-            { x: alignments.ear.x, y: alignments.ear.y, aligned: earAligned },
-            { x: alignments.shoulder.x, y: alignments.shoulder.y, aligned: shoulderAligned },
-            { x: alignments.hip.x, y: alignments.hip.y, aligned: true }, // Hip is reference
-            { x: alignments.knee.x, y: alignments.knee.y, aligned: kneeAligned },
-            { x: alignments.ankle.x, y: alignments.ankle.y, aligned: true }, // Ankle is reference
+            { x: alignments.ear.x, y: alignments.ear.y, severity: alignments.ear.severity },
+            { x: alignments.shoulder.x, y: alignments.shoulder.y, severity: alignments.shoulder.severity },
+            { x: alignments.hip.x, y: alignments.hip.y, severity: alignments.hip.severity },
+            { x: alignments.knee.x, y: alignments.knee.y, severity: kneeSeverity as SeverityLevel },
+            { x: alignments.ankle.x, y: alignments.ankle.y, severity: null }, // Ankle is reference
           ];
           
           for (const point of sidePoints) {
-            ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(point.x, point.y, pointRadius, 0, Math.PI * 2);
-            ctx.stroke();
-            
-            ctx.fillStyle = point.aligned ? ALIGNMENT_COLORS.POINT_GOOD : ALIGNMENT_COLORS.POINT_DEVIATION;
-            ctx.beginPath();
-            ctx.arc(point.x, point.y, pointRadius - 1, 0, Math.PI * 2);
-            ctx.fill();
+            drawLandmarkPoint(ctx, point.x, point.y, point.severity, pointRadius);
           }
         }
         

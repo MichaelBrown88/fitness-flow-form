@@ -1,358 +1,220 @@
 /**
- * MediaPipe-based landmark detection for image alignment
- * Uses MediaPipe Pose for accurate body landmark detection
+ * MediaPipe-based landmark detection for posture analysis
  * 
- * IMPORTANT: MediaPipe WASM has global state and cannot handle concurrent initializations.
- * This module implements a mutex/queue pattern to serialize MediaPipe access while
- * allowing other processing (alignment, AI analysis) to happen in parallel.
+ * Uses a SINGLETON MediaPipe Pose instance to avoid WebGL context thrashing.
+ * All detections are queued and processed sequentially (MediaPipe limitation).
+ * 
+ * @see ./mediapipeSingleton.ts for the singleton implementation
  */
 
 import { CONFIG } from '@/config';
 import { logger } from '@/lib/utils/logger';
+import { getPoseInstance, queueDetection } from './mediapipeSingleton';
 
 export interface LandmarkResult {
-  shoulder_y_percent?: number; // Y position of shoulder center as % of image height (0-100)
-  hip_y_percent?: number; // Y position of hip center as % of image height (0-100)
-  head_y_percent?: number; // Y position of head center as % of image height (0-100)
-  center_x_percent?: number; // X position of body midline (for front/back) as % of image width (0-100)
-  midfoot_x_percent?: number; // X position of midfoot (for side views) as % of image width (0-100)
-  raw?: import('@/lib/types/mediapipe').MediaPipeLandmark[]; // The raw pose landmarks from MediaPipe
+  shoulder_y_percent?: number;
+  hip_y_percent?: number;
+  head_y_percent?: number;
+  center_x_percent?: number;
+  midfoot_x_percent?: number;
+  raw?: import('@/lib/types/mediapipe').MediaPipeLandmark[];
 }
 
 /**
- * MUTEX PATTERN for MediaPipe
- * MediaPipe WASM cannot handle concurrent initializations - only one at a time.
- * This queue ensures sequential access while allowing parallel processing elsewhere.
- */
-class MediaPipeMutex {
-  private queue: Array<() => Promise<void>> = [];
-  private isProcessing = false;
-  
-  async acquire<T>(fn: () => Promise<T>): Promise<T> {
-    return new Promise((resolve, reject) => {
-      const execute = async () => {
-        try {
-          const result = await fn();
-          resolve(result);
-        } catch (error) {
-          reject(error);
-        } finally {
-          this.isProcessing = false;
-          this.processNext();
-        }
-      };
-      
-      this.queue.push(execute);
-      
-      if (!this.isProcessing) {
-        this.processNext();
-      }
-    });
-  }
-  
-  private processNext() {
-    if (this.queue.length === 0 || this.isProcessing) return;
-    
-    this.isProcessing = true;
-    const next = this.queue.shift();
-    if (next) {
-      next();
-    }
-  }
-}
-
-// Single mutex instance for all MediaPipe operations
-const mediaPipeMutex = new MediaPipeMutex();
-
-/**
- * Convert image URL/data URL to HTMLImageElement
+ * Load an image from URL or data URL into an HTMLImageElement
  */
 function loadImage(imageUrl: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
-    img.onerror = reject;
+    img.onerror = () => reject(new Error('Failed to load image'));
     
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-      img.src = imageUrl;
-    } else if (imageUrl.startsWith('data:')) {
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || imageUrl.startsWith('data:')) {
       img.src = imageUrl;
     } else {
-      // Assume it's base64
       img.src = `data:image/jpeg;base64,${imageUrl}`;
     }
   });
 }
 
 /**
+ * Extract structured landmark data from raw MediaPipe results
+ */
+function processLandmarks(
+  landmarks: Array<{ x: number; y: number; z: number; visibility?: number }>,
+  view: string
+): LandmarkResult {
+  // MediaPipe Pose landmark indices:
+  // 0: NOSE, 2: LEFT_EYE, 5: RIGHT_EYE, 7: LEFT_EAR, 8: RIGHT_EAR
+  // 11: LEFT_SHOULDER, 12: RIGHT_SHOULDER
+  // 23: LEFT_HIP, 24: RIGHT_HIP
+  // 27: LEFT_ANKLE, 28: RIGHT_ANKLE
+  // 31: LEFT_FOOT_INDEX, 32: RIGHT_FOOT_INDEX
+  
+  const nose = landmarks[0];
+  const leftEar = landmarks[7];
+  const rightEar = landmarks[8];
+  const leftShoulder = landmarks[11];
+  const rightShoulder = landmarks[12];
+  const leftHip = landmarks[23];
+  const rightHip = landmarks[24];
+  const leftAnkle = landmarks[27];
+  const rightAnkle = landmarks[28];
+  const leftFootIndex = landmarks[31];
+  const rightFootIndex = landmarks[32];
+  
+  const result: LandmarkResult = {
+    raw: landmarks
+  };
+  
+  // Head center (nose or average of ears)
+  if (nose) {
+    result.head_y_percent = nose.y * 100;
+  } else if (leftEar && rightEar) {
+    result.head_y_percent = ((leftEar.y + rightEar.y) / 2) * 100;
+  }
+  
+  // Shoulder center
+  if (leftShoulder && rightShoulder) {
+    result.shoulder_y_percent = ((leftShoulder.y + rightShoulder.y) / 2) * 100;
+  } else if (leftShoulder) {
+    result.shoulder_y_percent = leftShoulder.y * 100;
+  } else if (rightShoulder) {
+    result.shoulder_y_percent = rightShoulder.y * 100;
+  }
+  
+  // Hip center
+  let hipCenterX: number | undefined;
+  if (leftHip && rightHip) {
+    result.hip_y_percent = ((leftHip.y + rightHip.y) / 2) * 100;
+    hipCenterX = (leftHip.x + rightHip.x) / 2;
+  } else if (leftHip) {
+    result.hip_y_percent = leftHip.y * 100;
+    hipCenterX = leftHip.x;
+  } else if (rightHip) {
+    result.hip_y_percent = rightHip.y * 100;
+    hipCenterX = rightHip.x;
+  }
+  
+  // View-specific calculations
+  if (view === 'front' || view === 'back') {
+    // Body midline = hip center X
+    if (hipCenterX !== undefined) {
+      result.center_x_percent = hipCenterX * 100;
+    }
+  } else {
+    // Side views: plumb line anchored at ankle (clinical standard)
+    const ankle = view === 'side-right' ? rightAnkle : leftAnkle;
+    const foot = view === 'side-right' ? rightFootIndex : leftFootIndex;
+    
+    if (ankle) {
+      result.midfoot_x_percent = ankle.x * 100;
+    } else if (foot) {
+      result.midfoot_x_percent = foot.x * 100;
+    }
+  }
+  
+  return result;
+}
+
+/**
  * Detect posture landmarks using MediaPipe Pose
  * 
- * IMPORTANT: This function uses a mutex to ensure only one MediaPipe instance
- * runs at a time. Multiple calls will be queued and processed sequentially.
- * This is necessary because MediaPipe WASM has global state that conflicts
- * when multiple instances are initialized simultaneously.
+ * Uses the singleton instance and queues detection requests.
+ * Only one detection runs at a time to prevent onResults callback conflicts.
  */
 export async function detectPostureLandmarks(
   imageUrl: string,
   view: 'front' | 'side-right' | 'side-left' | 'back'
 ): Promise<LandmarkResult> {
-  // Use mutex to ensure only one MediaPipe instance runs at a time
-  return mediaPipeMutex.acquire(async () => {
+  // Queue this detection to run after any pending ones
+  return queueDetection(async () => {
     return detectPostureLandmarksInternal(imageUrl, view);
   });
 }
 
 /**
- * Internal implementation of landmark detection
- * Only called through the mutex to prevent concurrent WASM conflicts
+ * Internal detection implementation
+ * Called through the queue to ensure sequential execution
  */
 async function detectPostureLandmarksInternal(
   imageUrl: string,
-  view: 'front' | 'side-right' | 'side-left' | 'back'
+  view: string
 ): Promise<LandmarkResult> {
+  const ctx = 'MEDIAPIPE';
+  
   try {
-    logger.debug(`[MUTEX] Starting landmark detection for ${view}`, 'MEDIAPIPE');
-    logger.debug(`Image URL type: ${imageUrl.substring(0, 50)}...`, 'MEDIAPIPE');
+    logger.debug(`[DETECT] Starting detection for ${view}`, ctx);
+    
+    // Get the singleton instance (initializes on first call)
+    const pose = await getPoseInstance();
     
     // Load the image
     const img = await loadImage(imageUrl);
-    logger.debug(`Image loaded: ${img.width}x${img.height}`, 'MEDIAPIPE');
+    logger.debug(`[DETECT] Image loaded: ${img.width}x${img.height}`, ctx);
     
-    // Dynamically import MediaPipe to avoid bloating the main bundle
-    let mpPose;
-    try {
-      mpPose = await import('@mediapipe/pose');
-    } catch (importError) {
-      logger.error('Failed to import MediaPipe', 'LANDMARKS', importError);
-      throw new Error('Failed to load MediaPipe library. Please check your internet connection and try again.');
-    }
-    
-    type MediaPipePoseModule = {
-      Pose?: typeof import('@mediapipe/pose').Pose;
-      default?: { Pose?: typeof import('@mediapipe/pose').Pose };
-    };
-    type WindowWithPose = Window & { Pose?: typeof import('@mediapipe/pose').Pose };
-    const Pose = (mpPose as MediaPipePoseModule).Pose || (mpPose as MediaPipePoseModule).default?.Pose || (window as WindowWithPose).Pose;
-    
-    if (!Pose) {
-      throw new Error('MediaPipe Pose constructor not found. Check imports or CDN.');
-    }
-    
-    // Helper function to create and configure a Pose instance
-    // Primary: local assets in /public/mediapipe/
-    // Fallback: CDN (jsdelivr)
-    const createPoseInstance = (useFallback = false) => {
-      return new Pose({
-        locateFile: (file: string) => {
-          if (useFallback) {
-            const fallbackUrl = `${CONFIG.AI.MEDIAPIPE.POSE_CDN_FALLBACK}/${file}`;
-            logger.debug(`Loading MediaPipe file: ${file} from fallback CDN: ${fallbackUrl}`, 'LANDMARKS');
-            return fallbackUrl;
-          } else {
-            const primaryUrl = `${CONFIG.AI.MEDIAPIPE.POSE_CDN}/${file}`;
-            logger.debug(`Loading MediaPipe file: ${file} from local assets: ${primaryUrl}`, 'LANDMARKS');
-            return primaryUrl;
-          }
-        }
-      });
-    };
-
-    // Process the image and get landmarks with retry logic
+    // Process with timeout
     return new Promise((resolve, reject) => {
       let resolved = false;
-      let currentPose: InstanceType<typeof Pose> | null = null;
-      const timeout = setTimeout(() => {
+      
+      // Detection timeout
+      const timeoutId = setTimeout(() => {
         if (!resolved) {
           resolved = true;
-          if (currentPose) currentPose.close();
-          reject(new Error('MediaPipe landmark detection timeout'));
+          logger.error(`[DETECT] Timeout for ${view}`, ctx);
+          reject(new Error(`Landmark detection timed out for ${view}`));
         }
       }, CONFIG.AI.MEDIAPIPE.TIMEOUT_MS);
       
-      const processResults = (results: { poseLandmarks: Array<{ x: number; y: number; z: number; visibility?: number }> }) => {
+      // Set up result handler (will be called when detection completes)
+      pose.onResults((results) => {
         if (resolved) return;
-        clearTimeout(timeout);
+        
+        clearTimeout(timeoutId);
         resolved = true;
         
-        try {
-          if (!results.poseLandmarks || results.poseLandmarks.length === 0) {
-            logger.warn(`No landmarks detected for ${view}`, 'MEDIAPIPE');
-            if (currentPose) currentPose.close();
-            resolve({});
-            return;
-          }
-          
-          const landmarks = results.poseLandmarks;
-          
-          // Use indices directly as POSE_LANDMARKS might be missing due to import issues
-          // Indices based on MediaPipe Pose topology:
-          // 11: LEFT_SHOULDER, 12: RIGHT_SHOULDER
-          // 23: LEFT_HIP, 24: RIGHT_HIP
-          // 27: LEFT_ANKLE, 28: RIGHT_ANKLE
-          // 31: LEFT_FOOT_INDEX, 32: RIGHT_FOOT_INDEX
-          
-          const nose = landmarks[0];
-          const leftEye = landmarks[2];
-          const rightEye = landmarks[5];
-          const leftEar = landmarks[7];
-          const rightEar = landmarks[8];
-          const leftShoulder = landmarks[11];
-          const rightShoulder = landmarks[12];
-          const leftHip = landmarks[23];
-          const rightHip = landmarks[24];
-          const leftAnkle = landmarks[27];
-          const rightAnkle = landmarks[28];
-          const leftFootIndex = landmarks[31];
-          const rightFootIndex = landmarks[32];
-          
-          // Calculate head center (average of nose/ears/eyes if available)
-          let headCenterY: number | undefined;
-          if (nose) {
-            headCenterY = nose.y;
-          } else if (leftEar && rightEar) {
-            headCenterY = (leftEar.y + rightEar.y) / 2;
-          }
-          
-          // Calculate shoulder center (average of left and right shoulders)
-          let shoulderCenterX: number | undefined;
-          let shoulderCenterY: number | undefined;
-          
-          if (leftShoulder && rightShoulder) {
-            shoulderCenterX = (leftShoulder.x + rightShoulder.x) / 2;
-            shoulderCenterY = (leftShoulder.y + rightShoulder.y) / 2;
-          } else if (leftShoulder) {
-            shoulderCenterX = leftShoulder.x;
-            shoulderCenterY = leftShoulder.y;
-          } else if (rightShoulder) {
-            shoulderCenterX = rightShoulder.x;
-            shoulderCenterY = rightShoulder.y;
-          }
-          
-          // Calculate hip center (average of left and right hips)
-          let hipCenterX: number | undefined;
-          let hipCenterY: number | undefined;
-          
-          if (leftHip && rightHip) {
-            hipCenterX = (leftHip.x + rightHip.x) / 2;
-            hipCenterY = (leftHip.y + rightHip.y) / 2;
-          } else if (leftHip) {
-            hipCenterX = leftHip.x;
-            hipCenterY = leftHip.y;
-          } else if (rightHip) {
-            hipCenterX = rightHip.x;
-            hipCenterY = rightHip.y;
-          }
-          
-          // For front/back views: calculate body midline (center between hips)
-          // For side views: calculate midfoot position (average of ankle/foot positions)
-          let centerX: number | undefined;
-          let midfootX: number | undefined;
-          
-          if (view === 'front' || view === 'back') {
-            // Body midline is the center X between the hips
-            if (hipCenterX !== undefined) {
-              centerX = hipCenterX;
-            }
-          } else {
-            // For side views, anchor the plumb line to the ANKLE (Lateral Malleolus)
-            // This is the clinical standard for a postural plumb line.
-            const ankle = view === 'side-right' ? rightAnkle : leftAnkle;
-            
-            if (ankle) {
-              midfootX = ankle.x;
-            } else {
-              // Fallback to average of whatever we have
-              const foot = view === 'side-right' ? rightFootIndex : leftFootIndex;
-              if (foot) {
-                midfootX = foot.x;
-              }
-            }
-          }
-          
-          // Convert to percentages (MediaPipe coordinates are normalized 0-1)
-          const result: LandmarkResult = {
-            raw: landmarks // Store raw points for calculation
-          };
-          
-          if (shoulderCenterY !== undefined) {
-            result.shoulder_y_percent = shoulderCenterY * 100;
-          }
-          if (hipCenterY !== undefined) {
-            result.hip_y_percent = hipCenterY * 100;
-          }
-          if (headCenterY !== undefined) {
-            result.head_y_percent = headCenterY * 100;
-          }
-          if (centerX !== undefined) {
-            result.center_x_percent = centerX * 100;
-          }
-          if (midfootX !== undefined) {
-            result.midfoot_x_percent = midfootX * 100;
-          }
-          
-          
-          logger.debug(`Success for ${view}: headY=${result.head_y_percent?.toFixed(1)}%, shoulderY=${result.shoulder_y_percent?.toFixed(1)}%, hipY=${result.hip_y_percent?.toFixed(1)}%, centerX=${result.center_x_percent?.toFixed(1)}%, midfootX=${result.midfoot_x_percent?.toFixed(1)}%`, 'MEDIAPIPE');
-          if (currentPose) currentPose.close();
-          resolve(result);
-        } catch (error) {
-          logger.error(`Error processing landmarks:`, 'MEDIAPIPE', error);
-          if (currentPose) currentPose.close();
-          reject(error);
+        if (!results.poseLandmarks || results.poseLandmarks.length === 0) {
+          logger.warn(`[DETECT] No landmarks found for ${view}`, ctx);
+          resolve({});
+          return;
         }
-      };
+        
+        const result = processLandmarks(results.poseLandmarks, view);
+        
+        // Detailed landmark logging for debugging
+        const landmarks = results.poseLandmarks;
+        console.log(`\n📍 [MEDIAPIPE RAW LANDMARKS - ${view.toUpperCase()}]`);
+        console.log(`   Nose (0):        x=${landmarks[0]?.x.toFixed(3)}, y=${landmarks[0]?.y.toFixed(3)}`);
+        console.log(`   Left Eye (2):    x=${landmarks[2]?.x.toFixed(3)}, y=${landmarks[2]?.y.toFixed(3)}`);
+        console.log(`   Right Eye (5):   x=${landmarks[5]?.x.toFixed(3)}, y=${landmarks[5]?.y.toFixed(3)}`);
+        console.log(`   Left Ear (7):    x=${landmarks[7]?.x.toFixed(3)}, y=${landmarks[7]?.y.toFixed(3)}`);
+        console.log(`   Right Ear (8):   x=${landmarks[8]?.x.toFixed(3)}, y=${landmarks[8]?.y.toFixed(3)}`);
+        console.log(`   Left Shoulder (11):  x=${landmarks[11]?.x.toFixed(3)}, y=${landmarks[11]?.y.toFixed(3)}`);
+        console.log(`   Right Shoulder (12): x=${landmarks[12]?.x.toFixed(3)}, y=${landmarks[12]?.y.toFixed(3)}`);
+        console.log(`   Left Hip (23):   x=${landmarks[23]?.x.toFixed(3)}, y=${landmarks[23]?.y.toFixed(3)}`);
+        console.log(`   Right Hip (24):  x=${landmarks[24]?.x.toFixed(3)}, y=${landmarks[24]?.y.toFixed(3)}`);
+        console.log(`   Left Knee (25):  x=${landmarks[25]?.x.toFixed(3)}, y=${landmarks[25]?.y.toFixed(3)}`);
+        console.log(`   Right Knee (26): x=${landmarks[26]?.x.toFixed(3)}, y=${landmarks[26]?.y.toFixed(3)}`);
+        console.log(`   Left Ankle (27): x=${landmarks[27]?.x.toFixed(3)}, y=${landmarks[27]?.y.toFixed(3)}`);
+        console.log(`   Right Ankle (28):x=${landmarks[28]?.x.toFixed(3)}, y=${landmarks[28]?.y.toFixed(3)}`);
+        
+        logger.debug(`[DETECT] Success for ${view}: headY=${result.head_y_percent?.toFixed(1)}%, shoulderY=${result.shoulder_y_percent?.toFixed(1)}%`, ctx);
+        resolve(result);
+      });
       
-      // Initialize and send the image with retry logic
-      const initializeWithRetry = async (retries = 2, useFallback = false): Promise<void> => {
-        try {
-          // Close previous instance if retrying
-          if (currentPose) {
-            currentPose.close();
-          }
-          
-          currentPose = createPoseInstance(useFallback);
-          currentPose.setOptions({
-            modelComplexity: CONFIG.AI.MEDIAPIPE.MODEL_COMPLEXITY,
-            enableSegmentation: false,
-            smoothLandmarks: true,
-            minDetectionConfidence: CONFIG.AI.MEDIAPIPE.MIN_DETECTION_CONFIDENCE,
-            minTrackingConfidence: CONFIG.AI.MEDIAPIPE.MIN_TRACKING_CONFIDENCE
-          });
-          
-          currentPose.onResults(processResults);
-          
-          await currentPose.initialize();
-          await currentPose.send({ image: img });
-        } catch (error) {
-          if (retries > 0 && !resolved) {
-            logger.warn(`MediaPipe initialization failed, retrying with ${useFallback ? 'primary' : 'fallback'} CDN... (${retries} attempts left)`, 'MEDIAPIPE');
-            // Wait a bit before retrying
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            // Try fallback CDN on retry
-            return initializeWithRetry(retries - 1, !useFallback);
-          } else {
-            throw error;
-          }
-        }
-      };
-
-      initializeWithRetry().catch((error) => {
+      // Send image for detection
+      pose.send({ image: img }).catch((error) => {
         if (!resolved) {
           resolved = true;
-          clearTimeout(timeout);
-          if (currentPose) currentPose.close();
-          logger.error(`Error initializing MediaPipe after retries:`, 'MEDIAPIPE', error);
-          const errorMsg = error instanceof Error ? error.message : String(error);
-          if (errorMsg.includes('fetch') || errorMsg.includes('Failed to fetch') || errorMsg.includes('Load failed')) {
-            reject(new Error('Failed to load MediaPipe model files. Please check your internet connection and try again.'));
-          } else {
-            reject(new Error(`MediaPipe initialization failed: ${errorMsg}`));
-          }
+          clearTimeout(timeoutId);
+          logger.error(`[DETECT] Send failed for ${view}`, ctx, error);
+          reject(error);
         }
       });
     });
   } catch (error) {
-    logger.error(`Error detecting landmarks for ${view}:`, 'MEDIAPIPE', error);
+    logger.error(`[DETECT] Detection failed for ${view}`, ctx, error);
     throw error;
   }
 }
