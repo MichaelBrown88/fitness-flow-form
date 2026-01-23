@@ -352,6 +352,38 @@ export async function analyzePostureImage(
       
       DO NOT leave recommendation empty or null if a deviation is found!
       
+      ⚠️ COACHING INTELLIGENCE - CONNECT THE DOTS ⚠️
+      
+      1. HEAD PITCH CONTEXT (Side Views Only):
+         - Check the Head Pitch value from LOCAL CALCULATIONS above
+         - If Head Pitch indicates "Looking Down" (negative degrees < -10°), the Forward Head measurement is INFLATED
+         - When client is looking down, REDUCE Forward Head severity by one level:
+           * "Severe" → "Moderate" (add note: "Your downward gaze may have contributed to this reading")
+           * "Moderate" → "Mild"
+           * "Mild" → Keep as "Mild" but soften language
+         - In description, acknowledge: "Note: Your head was angled slightly downward during the scan."
+      
+      2. COMPENSATION PATTERN DETECTION (Front/Back Views):
+         - If BOTH Hip Shift AND Shoulder Asymmetry are detected in the same view:
+           * These are likely RELATED compensations, not separate issues
+           * Connect them: "Your elevated [left/right] shoulder and [opposite] hip shift suggest a compensation pattern—your body may be favoring one side for stability."
+           * Recommend unilateral (single-side) exercises to address the root cause
+         - If Hip Shift > 5% AND Shoulder Diff > 1.5cm, this is a significant compensation pattern
+      
+      3. DEVIATIONS ARRAY - QUALITY OVER QUANTITY:
+         - ONLY include findings that are actual deviations (NOT "Neutral" or "Normal")
+         - DO NOT list neutral/normal findings - they add noise
+         - If a metric is within normal range, skip it entirely
+         - Exception: If ALL metrics are normal, include ONE positive statement: "Your posture alignment is excellent"
+         - Maximum 3-4 items, prioritized by severity (worst first)
+         - Use coaching language that explains WHY it matters biomechanically
+      
+      4. OVERALL ASSESSMENT - COACHING TONE:
+         - Start with what's GOOD (acknowledge any neutral/normal findings briefly)
+         - Then address deviations with biomechanical context (explain the "why")
+         - End with an encouraging, actionable next step
+         - Example: "Your frontal alignment shows good symmetry—great foundation! From the side, we see some forward head posture and anterior pelvic tilt, which often go together. Focus on chin tucks and hip flexor stretches."
+      
       CRITICAL LANDMARK ACCURACY (SIDE VIEWS): 
       - EAR CANAL (TRAGUS) is your ONLY head landmark - it is BEHIND the jawline
       - The ear is 6-10cm behind the eye. If your identified point is near the eye/nose/forehead, it is WRONG
@@ -427,7 +459,17 @@ export async function analyzePostureImage(
          - Report curve_degrees (positive for right-side bulge, negative for left-side bulge)
          - CRITICAL: If you see ANY lateral deviation, you MUST report it here, not just in overall_assessment.
       
-      IMPORTANT: You MUST analyze ALL of the above checks (shoulders, hips, pelvic tilt, hip shift, knee alignment, and spinal curvature for back view).
+      8. COMPENSATION PATTERN ANALYSIS:
+         - Cross-reference Hip Shift with Shoulder Asymmetry from the LOCAL CALCULATIONS
+         - If BOTH are present (Hip Shift > 2% AND Shoulder Diff > 1cm):
+           * These are likely RELATED - the body compensates for one imbalance with another
+           * Classic pattern: Elevated LEFT shoulder + RIGHT hip shift = favoring right side
+           * Classic pattern: Elevated RIGHT shoulder + LEFT hip shift = favoring left side
+         - In overall_assessment, CONNECT these findings:
+           * Example: "We see a compensation pattern where your left shoulder sits higher while your hips shift right. This often happens when your body favors one side for stability. Unilateral (single-side) exercises will help correct this imbalance."
+         - DO NOT report hip shift and shoulder asymmetry as separate, unrelated issues if both are present
+      
+      IMPORTANT: You MUST analyze ALL of the above checks (shoulders, hips, pelvic tilt, hip shift, knee alignment, compensation patterns, and spinal curvature for back view).
       DO NOT analyze forward head posture, kyphosis, or lordosis from this view - these require side view.
       ` : `
       SIDE VIEW SPECIFIC CHECKS (using center of mass plumb line):
@@ -435,14 +477,24 @@ export async function analyzePostureImage(
          - CRITICAL: Locate the EAR CANAL (tragus). It is BEHIND the jawline, NOT at the eye.
          - Compare ear position to the vertical plumb line at center of image.
          
-         ⚠️ SEVERITY GUIDELINES - BE CONSERVATIVE ⚠️
+         ⚠️ HEAD PITCH ADJUSTMENT - CHECK FIRST! ⚠️
+         - Look at the Head Pitch value from LOCAL CALCULATIONS above
+         - If Head Pitch shows "Looking Down" (< -10°):
+           * The client's downward gaze INFLATES the forward head measurement
+           * REDUCE severity by ONE level before reporting
+           * Add a note in description about the gaze affecting the reading
+         - Example: If measurement says 9cm (Severe) but pitch is -15° (Looking Down):
+           * Report as "Moderate" not "Severe"
+           * Description: "Your head sits forward of your shoulders. Note: Your downward gaze during the scan may have exaggerated this measurement."
+         
+         ⚠️ SEVERITY GUIDELINES (AFTER pitch adjustment) ⚠️
          - "Neutral": Ear is within 2cm of plumb line (DEFAULT - use this if unsure)
          - "Mild": Ear is 2-4cm forward of plumb line (slight forward position)
          - "Moderate": Ear is 4-6cm forward of plumb line (noticeable forward head)
-         - "Severe": Ear is >6cm forward of plumb line (RARE - only obvious cases)
+         - "Severe": Ear is >6cm forward AND Head Pitch is "Level" (RARE - only if NOT looking down)
          
          ⚠️ CRITICAL: "Severe" should be RARE. Most people are Neutral or Mild.
-         If left and right side views show different severities, use the LOWER severity.
+         If Head Pitch indicates "Looking Down", automatically reduce severity by one level.
          When in doubt, choose the less severe option.
       
       2. THORACIC KYPHOSIS (Upper Back Curve):
@@ -578,9 +630,17 @@ export async function analyzePostureImage(
           "recommendation": "ONE actionable sentence if scoliosis found."
         },
         ` : ''}
-        "deviations": ["Short list of main findings - max 3-4 items, simple language"],
-        "risk_flags": ["Brief risk factors - max 2-3 items"],
-        "overall_assessment": "2-3 sentences MAX summarizing the key findings. Address the person as 'you'. Keep it simple and encouraging. NO technical jargon or measurements."
+        "deviations": [
+          "ONLY actual deviations - DO NOT list 'Neutral' or 'Normal' findings",
+          "Max 3-4 items, sorted by severity (worst first)",
+          "Use coaching language explaining WHY it matters",
+          "If hip shift + shoulder asymmetry both present, combine as 'Compensation pattern: elevated [side] shoulder with [opposite] hip shift'",
+          "If ALL metrics are normal, use: 'Your posture alignment is excellent'",
+          "GOOD examples: 'Forward head posture (can lead to neck tension)', 'Compensation pattern with elevated left shoulder and right hip shift'",
+          "BAD examples: 'Head: Neutral', 'Shoulders: Normal' (don't list these!)"
+        ],
+        "risk_flags": ["Brief risk factors - max 2-3 items, only if significant issues found"],
+        "overall_assessment": "2-3 sentences MAX. Start with what's GOOD, then address deviations with biomechanical context, end with encouraging action step. Address as 'you'. NO measurements or jargon."
       }
       ` : `
       {
@@ -639,9 +699,17 @@ export async function analyzePostureImage(
           "description": "ONE simple sentence. NO measurements. Example: 'Your knees are in a neutral position.' or 'Your knees show slight hyperextension.'",
           "recommendation": "ONE actionable sentence if needed."
         },
-        "deviations": ["Short list of main findings - max 3-4 items, simple language"],
-        "risk_flags": ["Brief risk factors - max 2-3 items"],
-        "overall_assessment": "2-3 sentences MAX summarizing the key findings. Address the person as 'you'. Keep it simple and encouraging. NO technical jargon or measurements."
+        "deviations": [
+          "ONLY actual deviations - DO NOT list 'Neutral' or 'Normal' findings",
+          "Max 3-4 items, sorted by severity (worst first)",
+          "Use coaching language explaining WHY it matters",
+          "If head pitch was 'Looking Down', note this affected forward head reading",
+          "If ALL metrics are normal, use: 'Your posture alignment is excellent'",
+          "GOOD examples: 'Forward head posture (can lead to neck tension)', 'Anterior pelvic tilt (may inhibit glute activation)'",
+          "BAD examples: 'Kyphosis: Normal', 'Knees: Neutral' (don't list these!)"
+        ],
+        "risk_flags": ["Brief risk factors - max 2-3 items, only if significant issues found"],
+        "overall_assessment": "2-3 sentences MAX. Start with what's GOOD, then address deviations with biomechanical context, end with encouraging action step. Address as 'you'. NO measurements or jargon."
       }
       `}
     `;
