@@ -1,5 +1,11 @@
 import { PostureAnalysisResult } from '../ai/postureAnalysis';
 import { CONFIG } from '@/config';
+import {
+  POSTURE_THRESHOLDS,
+  SeverityLevel,
+  calculateKneeDeviation,
+  getSeverity,
+} from '@/lib/utils/postureAlignment';
 
 interface OverlayOptions {
   showMidline?: boolean;
@@ -54,7 +60,8 @@ export async function addPostureOverlay(
         
         const landmarkData = options.landmarks || analysis?.landmarks;
         
-        ctx.fillStyle = '#ffffff';
+        // Pure black background - matches dark mode UI
+        ctx.fillStyle = '#000000';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
         if (mode === 'align' && landmarkData) {
@@ -471,17 +478,17 @@ export function generatePlaceholderWithGreenLines(
 
   if (!ctx) return '';
 
-  // Subtle gradient background
+  // Dark gradient background - matches dark mode UI
   const gradient = ctx.createLinearGradient(0, 0, 0, height);
-  gradient.addColorStop(0, '#f8fafc'); // slate-50
-  gradient.addColorStop(1, '#e2e8f0'); // slate-200
+  gradient.addColorStop(0, '#0f172a'); // slate-900
+  gradient.addColorStop(1, '#1e293b'); // slate-800
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   const centerX = width / 2;
 
   // Subtle crosshairs to indicate where to stand
-  ctx.strokeStyle = '#cbd5e1'; // slate-300
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)'; // Light lines for dark bg
   ctx.lineWidth = 1;
   ctx.setLineDash([8, 8]);
   
@@ -499,14 +506,14 @@ export function generatePlaceholderWithGreenLines(
   
   ctx.setLineDash([]); // Reset line dash
 
-  // View label
-  ctx.fillStyle = '#64748b'; // slate-500
+  // View label - Light text for dark bg
+  ctx.fillStyle = '#94a3b8'; // slate-400
   ctx.font = 'bold 16px system-ui, sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText(view.toUpperCase().replace('-', ' '), centerX, height - 30);
   
   // Instruction text
-  ctx.fillStyle = '#94a3b8'; // slate-400
+  ctx.fillStyle = '#64748b'; // slate-500
   ctx.font = '12px system-ui, sans-serif';
   ctx.fillText('Upload or capture image', centerX, height - 12);
 
@@ -592,7 +599,8 @@ export async function cropAndCenterImage(
         const translateY = targetBodyCenterY - scaledBodyCenterY;
         
         // Draw cropped/centered image (no lines)
-        ctx.fillStyle = '#f1f5f9'; // Light background for any gaps
+        // Black background for gaps - matches dark mode UI
+        ctx.fillStyle = '#000000';
         ctx.fillRect(0, 0, width, height);
         
         ctx.save();
@@ -727,133 +735,27 @@ function getViewSpecificConfig(view: 'front' | 'back' | 'side-left' | 'side-righ
   }
 }
 
-// =============================================================================
-// POSTURE ASSESSMENT THRESHOLDS (Clinical Standards)
-// =============================================================================
 
-/**
- * Clinical thresholds for posture assessment
- * These are based on normalized coordinates (0-1) where applicable
- * and clinical standards for postural deviations
- */
-export const POSTURE_THRESHOLDS = {
-  // Front/Back View - Level checks (as fraction of image height)
-  SHOULDER_LEVEL: {
-    GOOD: 0.015,      // <1.5% = good (level)
-    MILD: 0.03,       // 1.5-3% = mild asymmetry
-    MODERATE: 0.05,   // 3-5% = moderate
-    SEVERE: 0.08,     // >5% = severe
-  },
-  HIP_LEVEL: {
-    GOOD: 0.015,
-    MILD: 0.03,
-    MODERATE: 0.05,
-    SEVERE: 0.08,
-  },
-  HEAD_TILT: {
-    GOOD: 0.012,      // <1.2% = good (level)
-    MILD: 0.025,      // 1.2-2.5% = mild tilt
-    MODERATE: 0.04,   // 2.5-4% = moderate
-    SEVERE: 0.06,     // >4% = severe
-  },
-  
-  // Front/Back View - Hip Shift (lateral displacement as fraction of body width)
-  HIP_SHIFT: {
-    GOOD: 0.02,       // <2% of shoulder width = centered
-    MILD: 0.05,       // 2-5% = mild shift
-    MODERATE: 0.08,   // 5-8% = moderate
-    SEVERE: 0.12,     // >8% = severe
-  },
-  
-  // Front/Back View - Lateral Head Tilt (nose/chin off midline)
-  LATERAL_HEAD: {
-    GOOD: 0.02,       // <2% = centered
-    MILD: 0.04,       // 2-4% = mild
-    MODERATE: 0.06,   // 4-6% = moderate
-    SEVERE: 0.10,     // >6% = severe
-  },
-  
-  // Front/Back View - Leg alignment (knee deviation from hip-ankle line)
-  LEG_ALIGNMENT: {
-    GOOD: 0.02,       // <2% = straight alignment
-    MILD: 0.04,       // 2-4% = mild valgus/varus
-    MODERATE: 0.06,   // 4-6% = moderate
-    SEVERE: 0.10,     // >6% = severe
-  },
-  
-  // Back View - Scoliosis (spine midpoint deviation from shoulder-hip midline)
-  SCOLIOSIS: {
-    GOOD: 0.015,      // <1.5% = normal
-    MILD: 0.03,       // 1.5-3% = mild curvature
-    MODERATE: 0.05,   // 3-5% = moderate
-    SEVERE: 0.08,     // >5% = severe
-  },
-  
-  // Side View - Plumb line deviations (as fraction of image width)
-  PLUMB_LINE: {
-    GOOD: 0.025,      // <2.5% = on plumb
-    MILD: 0.05,       // 2.5-5% = mild forward
-    MODERATE: 0.08,   // 5-8% = moderate
-    SEVERE: 0.12,     // >8% = severe
-  },
-  
-  // Side View - Kyphosis (upper back rounding)
-  KYPHOSIS: {
-    NORMAL_MAX: 40,   // degrees - normal thoracic kyphosis up to 40°
-    MILD: 50,         // 40-50° = mild
-    MODERATE: 60,     // 50-60° = moderate
-    SEVERE: 70,       // >60° = severe
-  },
-  
-  // Side View - Lordosis (lower back curve)
-  LORDOSIS: {
-    NORMAL_MIN: 30,   // degrees - normal lumbar lordosis 30-50°
-    NORMAL_MAX: 50,
-    HYPER_MILD: 60,   // 50-60° = mild hyperlordosis
-    HYPER_MOD: 70,    // 60-70° = moderate
-    HYPER_SEV: 80,    // >70° = severe
-    HYPO_MILD: 20,    // 20-30° = mild hypolordosis (flat back)
-    HYPO_MOD: 10,     // 10-20° = moderate
-  },
-  
-  // Side View - Pelvic Tilt
-  PELVIC_TILT: {
-    NEUTRAL_MIN: 5,   // degrees - normal anterior tilt 5-15°
-    NEUTRAL_MAX: 15,
-    ANT_MILD: 20,     // 15-20° = mild anterior
-    ANT_MOD: 25,      // 20-25° = moderate
-    ANT_SEV: 30,      // >25° = severe
-    POST_THRESHOLD: 5, // <5° = posterior tilt
-  },
-  
-  // Side View - Head Up/Down (ear vs eye vertical relationship)
-  HEAD_UPDOWN: {
-    NEUTRAL: 0.02,    // Ear within 2% of eye level = neutral
-    UP: 0.04,         // Ear >2% above eye = looking up
-    DOWN: 0.04,       // Ear >2% below eye = looking down
-  },
-};
-
-// Colors for alignment visualization
+// Colors for alignment visualization - INCREASED VISIBILITY
 const ALIGNMENT_COLORS = {
-  // Control lines (ideal position) - dashed green
-  CONTROL: 'rgba(34, 197, 94, 0.6)',
-  CONTROL_DASHED: [8, 8] as number[],
+  // Control lines (ideal position) - dashed green - MORE VISIBLE
+  CONTROL: 'rgba(34, 197, 94, 0.8)',
+  CONTROL_DASHED: [10, 6] as number[],
   
-  // Good alignment - solid green
+  // Good alignment - solid green - BRIGHTER
   GOOD: '#22c55e',
-  GOOD_LINE: 'rgba(34, 197, 94, 0.9)',
+  GOOD_LINE: 'rgba(34, 197, 94, 1.0)',
   
-  // Deviation - solid red
+  // Deviation - solid red - BRIGHTER, FULL OPACITY
   DEVIATION: '#ef4444',
-  DEVIATION_LINE: 'rgba(239, 68, 68, 0.9)',
+  DEVIATION_LINE: 'rgba(239, 68, 68, 1.0)',
   
-  // Mild deviation - orange
+  // Mild deviation - orange - BRIGHTER
   MILD_DEVIATION: '#f97316',
-  MILD_LINE: 'rgba(249, 115, 22, 0.9)',
+  MILD_LINE: 'rgba(249, 115, 22, 1.0)',
   
   // Neutral/skeleton - white
-  NEUTRAL: 'rgba(255, 255, 255, 0.6)',
+  NEUTRAL: 'rgba(255, 255, 255, 0.7)',
   
   // Point colors
   POINT_GOOD: '#22c55e',
@@ -861,24 +763,10 @@ const ALIGNMENT_COLORS = {
   POINT_MILD: '#f97316',
   POINT_NEUTRAL: '#ffffff',
   
-  // Midline - cyan
-  MIDLINE: 'rgba(6, 182, 212, 0.7)',
+  // Midline - cyan - MORE VISIBLE
+  MIDLINE: 'rgba(6, 182, 212, 0.85)',
 };
 
-/**
- * Severity levels for posture deviations
- */
-type SeverityLevel = 'good' | 'mild' | 'moderate' | 'severe';
-
-/**
- * Get severity level based on value and thresholds
- */
-function getSeverity(value: number, thresholds: { GOOD: number; MILD: number; MODERATE: number; SEVERE: number }): SeverityLevel {
-  if (value < thresholds.GOOD) return 'good';
-  if (value < thresholds.MILD) return 'mild';
-  if (value < thresholds.MODERATE) return 'moderate';
-  return 'severe';
-}
 
 /**
  * Get color based on severity level
@@ -904,28 +792,6 @@ function getSeverityPointColor(severity: SeverityLevel): string {
   }
 }
 
-/**
- * Calculate line from hip to ankle and measure knee deviation
- * Returns the deviation of knee from the hip-ankle line (for valgus/varus detection)
- */
-function calculateKneeDeviation(
-  hipX: number, hipY: number,
-  kneeX: number, kneeY: number,
-  ankleX: number, ankleY: number
-): { deviation: number; direction: 'valgus' | 'varus' | 'neutral' } {
-  // Calculate the expected X position of the knee if it were on the hip-ankle line
-  // Using linear interpolation: kneeExpectedX = hipX + (ankleX - hipX) * ((kneeY - hipY) / (ankleY - hipY))
-  const t = (kneeY - hipY) / (ankleY - hipY);
-  const expectedKneeX = hipX + (ankleX - hipX) * t;
-  
-  // Deviation is the horizontal distance from expected position
-  const deviation = kneeX - expectedKneeX;
-  
-  // Normalize by body width (approximate as hip-to-hip distance or use canvas)
-  const direction = Math.abs(deviation) < 0.01 ? 'neutral' : (deviation < 0 ? 'valgus' : 'varus');
-  
-  return { deviation, direction };
-}
 
 /**
  * Extended alignment data for front/back views
@@ -1028,6 +894,7 @@ function calculateFrontBackAlignments(
   const shoulderMidX = ((leftShoulder?.x ?? 0.5) + (rightShoulder?.x ?? 0.5)) / 2;
   const hipMidX = ((leftHip?.x ?? 0.5) + (rightHip?.x ?? 0.5)) / 2;
   const bodyMidlineX = (shoulderMidX + hipMidX) / 2;
+  const ankleMidX = ((leftAnkle?.x ?? bodyMidlineX) + (rightAnkle?.x ?? bodyMidlineX)) / 2;
   
   // ===== SHOULDER LEVEL =====
   const shoulderDiff = Math.abs((leftShoulder?.y ?? 0) - (rightShoulder?.y ?? 0));
@@ -1048,7 +915,7 @@ function calculateFrontBackAlignments(
     ((leftEar?.y ?? 0) < (rightEar?.y ?? 0) ? 'right' : 'left'); // Lower ear = tilt toward that side
   
   // ===== HIP SHIFT =====
-  const hipShiftAmount = Math.abs(hipMidX - bodyMidlineX);
+  const hipShiftAmount = Math.abs(hipMidX - ankleMidX);
   const hipShiftSeverity = getSeverity(hipShiftAmount, POSTURE_THRESHOLDS.HIP_SHIFT);
   const hipShiftDirection = hipShiftAmount < POSTURE_THRESHOLDS.HIP_SHIFT.GOOD ? 'centered' :
     (hipMidX < bodyMidlineX ? 'left' : 'right');
@@ -1592,28 +1459,53 @@ export async function drawLandmarkWireframe(
             }
           }
           
-          // ===== 6. SHOULDER LINE =====
+          // ===== 6. SHOULDER LINE + ASYMMETRY INDICATOR =====
           if (leftShoulder.visible && rightShoulder.visible) {
             drawAlignmentLine(ctx, leftShoulder.x, leftShoulder.y, rightShoulder.x, rightShoulder.y, alignments.shoulders.severity, lineWidth);
-          }
-          
-          // ===== 7. HIP LINE =====
-          if (leftHip.visible && rightHip.visible) {
-            drawAlignmentLine(ctx, leftHip.x, leftHip.y, rightHip.x, rightHip.y, alignments.hips.severity, lineWidth);
-          }
-          
-          // ===== 8. HIP SHIFT (Pelvis off midline) =====
-          if (alignments.hipShift.severity !== 'good') {
-            // Draw deviation line from hip midpoint to body midline
-            ctx.strokeStyle = getSeverityColor(alignments.hipShift.severity);
-            ctx.lineWidth = 2;
-            ctx.setLineDash([5, 5]);
+            
+            // ALWAYS draw horizontal reference line at average shoulder height
+            const avgShoulderY = (leftShoulder.y + rightShoulder.y) / 2;
+            const shoulderLineColor = getSeverityColor(alignments.shoulders.severity);
+            ctx.strokeStyle = shoulderLineColor;
+            ctx.lineWidth = alignments.shoulders.severity === 'good' ? 2 : 4;
+            ctx.setLineDash(alignments.shoulders.severity === 'good' ? [8, 8] : [6, 4]);
             ctx.beginPath();
-            ctx.moveTo(alignments.hipShift.midpointX, avgHipY);
-            ctx.lineTo(alignments.bodyMidlineX, avgHipY);
+            ctx.moveTo(leftShoulder.x - 40, avgShoulderY);
+            ctx.lineTo(rightShoulder.x + 40, avgShoulderY);
             ctx.stroke();
             ctx.setLineDash([]);
           }
+          
+          // ===== 7. HIP LINE + ASYMMETRY INDICATOR =====
+          if (leftHip.visible && rightHip.visible) {
+            drawAlignmentLine(ctx, leftHip.x, leftHip.y, rightHip.x, rightHip.y, alignments.hips.severity, lineWidth);
+            
+            // ALWAYS draw horizontal reference line at average hip height
+            const avgHipYRef = (leftHip.y + rightHip.y) / 2;
+            const hipLineColor = getSeverityColor(alignments.hips.severity);
+            ctx.strokeStyle = hipLineColor;
+            ctx.lineWidth = alignments.hips.severity === 'good' ? 2 : 4;
+            ctx.setLineDash(alignments.hips.severity === 'good' ? [8, 8] : [6, 4]);
+            ctx.beginPath();
+            ctx.moveTo(leftHip.x - 40, avgHipYRef);
+            ctx.lineTo(rightHip.x + 40, avgHipYRef);
+            ctx.stroke();
+            ctx.setLineDash([]);
+          }
+          
+          // ===== 8. HIP SHIFT (Pelvis off midline) =====
+          // ALWAYS draw hip shift indicator - green if centered, red/amber if shifted
+          const hipShiftColor = getSeverityColor(alignments.hipShift.severity);
+          ctx.strokeStyle = hipShiftColor;
+          ctx.lineWidth = alignments.hipShift.severity === 'good' ? 2 : 4;
+          ctx.setLineDash(alignments.hipShift.severity === 'good' ? [8, 8] : [6, 4]);
+          ctx.beginPath();
+          // Draw from hip midpoint to body midline (extend beyond for visibility)
+          const hipShiftExtend = 30;
+          ctx.moveTo(Math.min(alignments.hipShift.midpointX, alignments.bodyMidlineX) - hipShiftExtend, avgHipY);
+          ctx.lineTo(Math.max(alignments.hipShift.midpointX, alignments.bodyMidlineX) + hipShiftExtend, avgHipY);
+          ctx.stroke();
+          ctx.setLineDash([]);
           
           // ===== 9. LEFT LEG ALIGNMENT (Hip-Knee-Ankle) =====
           const leftKnee = getPos(25);
@@ -1628,21 +1520,21 @@ export async function drawLandmarkWireframe(
             // Knee to ankle
             drawAlignmentLine(ctx, leftKnee.x, leftKnee.y, leftAnkle.x, leftAnkle.y, alignments.leftLeg.severity, lineWidth);
             
-            // If deviation, draw horizontal line showing knee deviation from ideal
-            if (alignments.leftLeg.severity !== 'good') {
-              const idealKneeX = alignments.leftLeg.hipPos.x + 
-                (alignments.leftLeg.anklePos.x - alignments.leftLeg.hipPos.x) * 
-                ((alignments.leftLeg.kneePos.y - alignments.leftLeg.hipPos.y) / 
-                 (alignments.leftLeg.anklePos.y - alignments.leftLeg.hipPos.y));
-              ctx.strokeStyle = getSeverityColor(alignments.leftLeg.severity);
-              ctx.lineWidth = 2;
-              ctx.setLineDash([3, 3]);
-              ctx.beginPath();
-              ctx.moveTo(leftKnee.x, leftKnee.y);
-              ctx.lineTo(idealKneeX, leftKnee.y);
-              ctx.stroke();
-              ctx.setLineDash([]);
-            }
+            // ALWAYS draw horizontal knee alignment indicator (green if aligned, amber/red if deviated)
+            const idealKneeXLeft = alignments.leftLeg.hipPos.x + 
+              (alignments.leftLeg.anklePos.x - alignments.leftLeg.hipPos.x) * 
+              ((alignments.leftLeg.kneePos.y - alignments.leftLeg.hipPos.y) / 
+               (alignments.leftLeg.anklePos.y - alignments.leftLeg.hipPos.y));
+            ctx.strokeStyle = getSeverityColor(alignments.leftLeg.severity);
+            ctx.lineWidth = alignments.leftLeg.severity === 'good' ? 2 : 4;
+            ctx.setLineDash(alignments.leftLeg.severity === 'good' ? [6, 6] : [4, 3]);
+            ctx.beginPath();
+            // Extend line for visibility
+            const leftKneeExtend = 20;
+            ctx.moveTo(Math.min(leftKnee.x, idealKneeXLeft) - leftKneeExtend, leftKnee.y);
+            ctx.lineTo(Math.max(leftKnee.x, idealKneeXLeft) + leftKneeExtend, leftKnee.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
           }
           
           // ===== 10. RIGHT LEG ALIGNMENT (Hip-Knee-Ankle) =====
@@ -1656,21 +1548,21 @@ export async function drawLandmarkWireframe(
             drawAlignmentLine(ctx, rightHip.x, rightHip.y, rightKnee.x, rightKnee.y, alignments.rightLeg.severity, lineWidth);
             drawAlignmentLine(ctx, rightKnee.x, rightKnee.y, rightAnkle.x, rightAnkle.y, alignments.rightLeg.severity, lineWidth);
             
-            // If deviation, draw horizontal line showing knee deviation
-            if (alignments.rightLeg.severity !== 'good') {
-              const idealKneeX = alignments.rightLeg.hipPos.x + 
-                (alignments.rightLeg.anklePos.x - alignments.rightLeg.hipPos.x) * 
-                ((alignments.rightLeg.kneePos.y - alignments.rightLeg.hipPos.y) / 
-                 (alignments.rightLeg.anklePos.y - alignments.rightLeg.hipPos.y));
-              ctx.strokeStyle = getSeverityColor(alignments.rightLeg.severity);
-              ctx.lineWidth = 2;
-              ctx.setLineDash([3, 3]);
-              ctx.beginPath();
-              ctx.moveTo(rightKnee.x, rightKnee.y);
-              ctx.lineTo(idealKneeX, rightKnee.y);
-              ctx.stroke();
-              ctx.setLineDash([]);
-            }
+            // ALWAYS draw horizontal knee alignment indicator (green if aligned, amber/red if deviated)
+            const idealKneeXRight = alignments.rightLeg.hipPos.x + 
+              (alignments.rightLeg.anklePos.x - alignments.rightLeg.hipPos.x) * 
+              ((alignments.rightLeg.kneePos.y - alignments.rightLeg.hipPos.y) / 
+               (alignments.rightLeg.anklePos.y - alignments.rightLeg.hipPos.y));
+            ctx.strokeStyle = getSeverityColor(alignments.rightLeg.severity);
+            ctx.lineWidth = alignments.rightLeg.severity === 'good' ? 2 : 4;
+            ctx.setLineDash(alignments.rightLeg.severity === 'good' ? [6, 6] : [4, 3]);
+            ctx.beginPath();
+            // Extend line for visibility
+            const rightKneeExtend = 20;
+            ctx.moveTo(Math.min(rightKnee.x, idealKneeXRight) - rightKneeExtend, rightKnee.y);
+            ctx.lineTo(Math.max(rightKnee.x, idealKneeXRight) + rightKneeExtend, rightKnee.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
           }
           
           // ===== 11. SCOLIOSIS CHECK (Back view only) =====
@@ -1746,65 +1638,68 @@ export async function drawLandmarkWireframe(
           ctx.stroke();
           ctx.setLineDash([]);
           
+          // ===== 1b. HORIZONTAL CONTROL LINES (like front view) =====
+          // Head level control line (at ear height for head pitch reference)
+          drawControlLine(ctx, 0, alignments.ear.y, canvas.width, alignments.ear.y);
+          // Hip level control line (for pelvic tilt reference)
+          drawControlLine(ctx, 0, alignments.hip.y, canvas.width, alignments.hip.y);
+          
           // ===== 2. EAR POSITION (Forward Head Posture) =====
           // Draw ear-to-shoulder segment
           drawAlignmentLine(ctx, alignments.ear.x, alignments.ear.y, alignments.shoulder.x, alignments.shoulder.y, alignments.ear.severity, lineWidth);
           
           // If ear is forward, draw horizontal deviation line to plumb
-          if (alignments.ear.isForward) {
-            ctx.strokeStyle = getSeverityColor(alignments.ear.severity);
-            ctx.lineWidth = 2;
-            ctx.setLineDash([5, 5]);
-            ctx.beginPath();
-            ctx.moveTo(alignments.ear.x, alignments.ear.y);
-            ctx.lineTo(alignments.plumbX, alignments.ear.y);
-            ctx.stroke();
-            ctx.setLineDash([]);
-          }
+          // ALWAYS draw ear/head horizontal alignment line (shows FHP alignment)
+          const earLineSeverity = alignments.ear.severity;
+          const earLineColor = getSeverityColor(earLineSeverity);
+          ctx.strokeStyle = earLineColor;
+          ctx.lineWidth = earLineSeverity === 'good' ? 2 : 4;
+          ctx.setLineDash(earLineSeverity === 'good' ? [8, 8] : [6, 4]);
+          ctx.beginPath();
+          const earLineExtend = 60;
+          ctx.moveTo(Math.min(alignments.ear.x, alignments.plumbX) - earLineExtend, alignments.ear.y);
+          ctx.lineTo(Math.max(alignments.ear.x, alignments.plumbX) + earLineExtend, alignments.ear.y);
+          ctx.stroke();
+          ctx.setLineDash([]);
           
-          // ===== 3. HEAD UP/DOWN INDICATOR =====
-          if (alignments.headUpDown.status !== 'neutral') {
-            // Draw a small arc near the head indicating tilt direction
-            ctx.strokeStyle = getSeverityColor(alignments.headUpDown.severity);
-            ctx.lineWidth = 2;
-            ctx.setLineDash([3, 3]);
-            const arrowDir = alignments.headUpDown.status === 'up' ? -1 : 1;
-            ctx.beginPath();
-            ctx.moveTo(alignments.ear.x, alignments.ear.y);
-            ctx.lineTo(alignments.ear.x, alignments.ear.y + arrowDir * 20);
-            ctx.stroke();
-            ctx.setLineDash([]);
-          }
+          // ===== 3. HEAD PITCH (Ear-to-Eye Line) =====
+          // Draw line from ear to eye showing head pitch
+          const headPitchSeverity = alignments.headUpDown.severity;
+          drawAlignmentLine(ctx, alignments.ear.x, alignments.ear.y, alignments.eye.x, alignments.eye.y, headPitchSeverity, lineWidth + 1);
           
           // ===== 4. SHOULDER POSITION (Rounded Shoulders) =====
           drawAlignmentLine(ctx, alignments.shoulder.x, alignments.shoulder.y, alignments.hip.x, alignments.hip.y, alignments.shoulder.severity, lineWidth);
           
-          // If shoulder is forward, draw horizontal deviation line
-          if (alignments.shoulder.isForward) {
-            ctx.strokeStyle = getSeverityColor(alignments.shoulder.severity);
-            ctx.lineWidth = 2;
-            ctx.setLineDash([5, 5]);
-            ctx.beginPath();
-            ctx.moveTo(alignments.shoulder.x, alignments.shoulder.y);
-            ctx.lineTo(alignments.plumbX, alignments.shoulder.y);
-            ctx.stroke();
-            ctx.setLineDash([]);
-          }
+          // ALWAYS draw shoulder horizontal alignment line
+          const shoulderLineSeverity = alignments.shoulder.severity;
+          const shoulderLineColor = getSeverityColor(shoulderLineSeverity);
+          ctx.strokeStyle = shoulderLineColor;
+          ctx.lineWidth = shoulderLineSeverity === 'good' ? 2 : 4;
+          ctx.setLineDash(shoulderLineSeverity === 'good' ? [8, 8] : [6, 4]);
+          ctx.beginPath();
+          const shoulderLineExtend = 60;
+          ctx.moveTo(Math.min(alignments.shoulder.x, alignments.plumbX) - shoulderLineExtend, alignments.shoulder.y);
+          ctx.lineTo(Math.max(alignments.shoulder.x, alignments.plumbX) + shoulderLineExtend, alignments.shoulder.y);
+          ctx.stroke();
+          ctx.setLineDash([]);
           
           // ===== 5. HIP POSITION =====
           drawAlignmentLine(ctx, alignments.hip.x, alignments.hip.y, alignments.knee.x, alignments.knee.y, alignments.hip.severity, lineWidth);
           
-          // If hip is forward, draw horizontal deviation line
-          if (alignments.hip.isForward) {
-            ctx.strokeStyle = getSeverityColor(alignments.hip.severity);
-            ctx.lineWidth = 2;
-            ctx.setLineDash([5, 5]);
-            ctx.beginPath();
-            ctx.moveTo(alignments.hip.x, alignments.hip.y);
-            ctx.lineTo(alignments.plumbX, alignments.hip.y);
-            ctx.stroke();
-            ctx.setLineDash([]);
-          }
+          // ALWAYS draw horizontal hip deviation line (shows alignment to plumb)
+          // Make it longer and more visible - extends beyond plumb on both sides
+          const hipLineSeverity = alignments.hip.severity;
+          const hipLineColor = getSeverityColor(hipLineSeverity);
+          ctx.strokeStyle = hipLineColor;
+          ctx.lineWidth = hipLineSeverity === 'good' ? 2 : 4; // Thicker for deviations
+          ctx.setLineDash(hipLineSeverity === 'good' ? [8, 8] : [6, 4]);
+          ctx.beginPath();
+          // Extend line 80px beyond plumb on each side for visibility
+          const hipLineExtend = 80;
+          ctx.moveTo(Math.min(alignments.hip.x, alignments.plumbX) - hipLineExtend, alignments.hip.y);
+          ctx.lineTo(Math.max(alignments.hip.x, alignments.plumbX) + hipLineExtend, alignments.hip.y);
+          ctx.stroke();
+          ctx.setLineDash([]);
           
           // ===== 6. KNEE POSITION =====
           const kneeSeverity = alignments.knee.status === 'neutral' ? 'good' : 

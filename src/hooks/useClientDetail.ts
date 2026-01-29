@@ -23,6 +23,7 @@ import { type FormData } from '@/contexts/FormContext';
 import { computeScores } from '@/lib/scoring';
 import { logger } from '@/lib/utils/logger';
 import { UI_TOASTS } from '@/constants/ui';
+import { STORAGE_KEYS } from '@/constants/storageKeys';
 
 // Types
 export interface ClientStats {
@@ -242,23 +243,25 @@ export function useClientDetail(): UseClientDetailResult {
     
     // Set partial assessment mode immediately if category specified
     if (category) {
-      sessionStorage.setItem('partialAssessment', JSON.stringify({
+      sessionStorage.setItem(STORAGE_KEYS.PARTIAL_ASSESSMENT, JSON.stringify({
         category,
         clientName,
       }));
     } else {
-      sessionStorage.removeItem('partialAssessment');
+      sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
     }
     
-    sessionStorage.removeItem('isDemoAssessment');
-    sessionStorage.removeItem('prefillClientData');
+    // CRITICAL: Clear all previous assessment modes to prevent data bleed
+    sessionStorage.removeItem(STORAGE_KEYS.IS_DEMO);
+    sessionStorage.removeItem(STORAGE_KEYS.PREFILL_CLIENT);
+    sessionStorage.removeItem(STORAGE_KEYS.EDIT_ASSESSMENT);
 
     // Get latest assessment to pre-fill
     if (assessments.length > 0) {
       try {
         const latest = await getCoachAssessment(user.uid, assessments[0].id);
         if (latest?.formData) {
-          sessionStorage.setItem('prefillClientData', JSON.stringify({
+          sessionStorage.setItem(STORAGE_KEYS.PREFILL_CLIENT, JSON.stringify({
             clientName: latest.formData.fullName,
             dateOfBirth: latest.formData.dateOfBirth,
             email: latest.formData.email,

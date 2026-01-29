@@ -1,24 +1,13 @@
 import React from 'react';
 import { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
-
-// Type guard to check if a value is a posture analysis detail (has status property)
-type PostureAnalysisDetail = {
-  status: string;
-  description: string;
-  recommendation?: string;
-  [key: string]: unknown;
-};
-
-function isPostureDetail(value: unknown): value is PostureAnalysisDetail {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    !Array.isArray(value) &&
-    'status' in value &&
-    'description' in value &&
-    typeof (value as { status: unknown }).status === 'string'
-  );
-}
+import { PostureHolisticSummary } from './PostureHolisticSummary';
+import {
+  calculateFrontBackDeviationSummary,
+  calculateSideViewDeviationSummary,
+  getSeverity,
+  POSTURE_THRESHOLDS,
+  SeverityLevel,
+} from '@/lib/utils/postureAlignment';
 import { 
   Dialog, 
   DialogContent, 
@@ -30,124 +19,579 @@ import { Badge } from "@/components/ui/badge";
 import { 
   CheckCircle2, 
   AlertCircle, 
-  Info, 
   Maximize2
 } from 'lucide-react';
 
-// Generate client-friendly summary if overall_assessment is missing
-function generateClientFriendlySummary(analysis: PostureAnalysisResult, view: string): string {
-  const parts: string[] = [];
+type Severity = SeverityLevel;
+
+/**
+ * Calculate deviation severities from raw MediaPipe landmarks
+ * Uses the SAME thresholds as the wireframe drawing
+ */
+function calculateDeviationsFromLandmarks(
+  landmarks: Array<{ x: number; y: number; z?: number; visibility?: number }> | undefined,
+  view: 'front' | 'back' | 'side-left' | 'side-right'
+): {
+  shoulder: Severity;
+  hipLevel: Severity;
+  hipShift: Severity;
+  headTilt: Severity;
+  leftLeg: Severity;
+  rightLeg: Severity;
+  forwardHead: Severity;
+  pelvicTilt: Severity;
+  leftKneeDirection: 'straight' | 'valgus' | 'varus';
+  rightKneeDirection: 'straight' | 'valgus' | 'varus';
+} {
+  const defaults = {
+    shoulder: 'good' as Severity,
+    hipLevel: 'good' as Severity,
+    hipShift: 'good' as Severity,
+    headTilt: 'good' as Severity,
+    leftLeg: 'good' as Severity,
+    rightLeg: 'good' as Severity,
+    forwardHead: 'good' as Severity,
+    pelvicTilt: 'good' as Severity,
+    leftKneeDirection: 'straight' as const,
+    rightKneeDirection: 'straight' as const,
+  };
   
-  // Front/Back view summaries
-  if (view === 'front' || view === 'back') {
-    const shoulderStatus = analysis.shoulder_alignment?.status;
-    const hipStatus = analysis.hip_alignment?.status;
-    const pelvicStatus = analysis.pelvic_tilt?.status;
-    const kneeStatus = analysis.knee_position?.status;
-    const spineStatus = analysis.spinal_curvature?.status;
-    
-    if (shoulderStatus === 'Neutral' && hipStatus === 'Neutral' && pelvicStatus === 'Neutral' && kneeStatus === 'Neutral' && (spineStatus === 'Normal' || !spineStatus)) {
-      return "Your posture looks well-balanced from this view. Your shoulders, hips, and knees are aligned evenly, which is great for movement efficiency and injury prevention.";
-    }
-    
-    if (shoulderStatus === 'Asymmetric') {
-      parts.push(`Your shoulders are uneven, with one sitting higher than the other. This can create tension and affect your movement patterns.`);
-    }
-    
-    if (hipStatus === 'Asymmetric') {
-      parts.push(`Your hips are uneven, creating an imbalance that can lead to lower back pain and affect how you walk or stand.`);
-    }
-    
-    if (pelvicStatus && pelvicStatus !== 'Neutral') {
-      const shift = analysis.pelvic_tilt?.lateral_shift_cm || 0;
-      const direction = shift > 0 ? 'right' : shift < 0 ? 'left' : '';
-      if (direction) {
-        parts.push(`Your pelvis is tilted and shifted to the ${direction}. This is like having your foundation slightly off-center (lateral tilt), which can cause compensation patterns throughout your body.`);
-      } else {
-        parts.push(`Your pelvis is tilted to the side. This affects how your spine and legs align, potentially causing discomfort.`);
-      }
-    }
-    
-    if (spineStatus && (spineStatus.includes('Scoliosis') || spineStatus !== 'Normal')) {
-      const curve = analysis.spinal_curvature?.curve_degrees || 0;
-      const direction = curve > 0 ? 'right' : 'left';
-      parts.push(`Your spine shows a lateral curve to the ${direction}. This is a sideways curve known as scoliosis, which can affect your overall alignment and may cause one side of your body to work harder than the other.`);
-    }
-    
-    if (kneeStatus && kneeStatus !== 'Neutral') {
-      parts.push(`Your knees show some misalignment. This can affect how force travels through your legs and may contribute to joint stress over time.`);
-    }
+  const isSideView = view === 'side-left' || view === 'side-right';
+  
+  if (!landmarks || landmarks.length < 33) return defaults;
+  
+  if (!isSideView) {
+    const summary = calculateFrontBackDeviationSummary(landmarks, view);
+    return {
+      ...defaults,
+      shoulder: summary.shoulder,
+      hipLevel: summary.hipLevel,
+      hipShift: summary.hipShift,
+      headTilt: summary.headTilt,
+      leftLeg: summary.leftLeg,
+      rightLeg: summary.rightLeg,
+      leftKneeDirection: summary.leftKneeDirection,
+      rightKneeDirection: summary.rightKneeDirection,
+    };
   }
-  
-  // Side view summaries
-  if (view === 'side-right' || view === 'side-left') {
-    const headStatus = analysis.forward_head?.status;
-    const shoulderStatus = analysis.shoulder_alignment?.status;
-    const kyphosisStatus = analysis.kyphosis?.status;
-    const lordosisStatus = analysis.lordosis?.status;
-    const pelvicStatus = analysis.pelvic_tilt?.status;
-    
-    if (headStatus === 'Neutral' && shoulderStatus === 'Neutral' && kyphosisStatus === 'Normal' && lordosisStatus === 'Normal' && pelvicStatus === 'Neutral') {
-      return "Your side profile shows good alignment. Your head, shoulders, and hips stack nicely, which means your body is efficiently supporting itself without extra strain.";
-    }
-    
-    if (headStatus && headStatus !== 'Neutral') {
-      parts.push(`Your head is positioned forward. Think of it like your head is leaning ahead of your shoulders - this puts extra strain on your neck and upper back muscles.`);
-    }
-    
-    if (shoulderStatus === 'Rounded') {
-      parts.push(`Your shoulders are rounded forward. This is like your shoulders are rolling inward, which can compress your chest and create tension in your upper back.`);
-    }
-    
-    if (kyphosisStatus && kyphosisStatus !== 'Normal') {
-      parts.push(`Your upper back has an increased forward curve. This is called kyphosis (upper back rounding) - imagine your upper back rounding forward more than it should, which can make you appear hunched and create neck and shoulder tension.`);
-    }
-    
-    if (lordosisStatus && lordosisStatus !== 'Normal') {
-      parts.push(`Your lower back has an increased inward curve. This is called lordosis (lower back arch) - it's like your lower back is arching too much, which can create compression and affect how your pelvis and hips function.`);
-    }
-    
-    if (pelvicStatus && pelvicStatus !== 'Neutral') {
-      const tilt = analysis.pelvic_tilt?.anterior_tilt_degrees || 0;
-      const isAnterior = tilt > 0;
-      if (isAnterior) {
-        parts.push(`Your pelvis is tilted forward (anterior tilt). This means your pelvis is rotated forward, which often makes the tailbone stick out and increases the curve in your lower back.`);
-      } else {
-        parts.push(`Your pelvis is tilted backward (posterior tilt). This means your pelvis is rotated backward, which can flatten your lower back and limit your hip range of motion.`);
-      }
-    }
-  }
-  
-  if (parts.length === 0) {
-    return "Your posture appears well-aligned from this view. Keep up the good work with your movement patterns!";
-  }
-  
-  return parts.join(' ');
+
+  const summary = calculateSideViewDeviationSummary(landmarks, view);
+  return {
+    ...defaults,
+    forwardHead: summary.forwardHead,
+    pelvicTilt: summary.pelvicTilt,
+  };
 }
 
-export function PostureViewCard({ view, analysis, imageUrl }: { view: string, analysis: PostureAnalysisResult, imageUrl: string }) {
-  // High-level summary of findings for the preview
-  const getBriefFindings = () => {
-    const brief: string[] = [];
-    if (analysis.forward_head && analysis.forward_head.status !== 'Neutral') {
-      brief.push(`${analysis.forward_head.status} FHP`);
-    }
-    if (analysis.head_alignment && analysis.head_alignment.status !== 'Neutral') {
-      brief.push(`Head Tilt`);
-    }
-    if (analysis.shoulder_alignment && analysis.shoulder_alignment.status !== 'Neutral') {
-      brief.push('Shoulder Asymmetry');
-    }
-    if (analysis.spinal_curvature && analysis.spinal_curvature.status !== 'Normal') {
-      brief.push('Spinal Curvature');
-    }
-    if (analysis.pelvic_tilt && analysis.pelvic_tilt.status !== 'Neutral') {
-      brief.push('Pelvic Tilt');
-    }
-    return brief.length > 0 ? brief : ['Neutral Alignment'];
-  };
+/**
+ * Consolidated deviation labels - no repetition, brief text
+ * Groups related issues (e.g., both knees = "Knees")
+ */
+interface DeviationItem {
+  key: string;
+  label: string;
+  recommendation: string;
+  side: 'left' | 'right' | 'center';
+  severity: Severity;
+}
 
-  const briefFindings = getBriefFindings();
+type RawLandmarks = Array<{ x: number; y: number; z?: number; visibility?: number }>;
+
+function getRawLandmarkYPercent(landmarks: RawLandmarks | undefined, idx: number): number | null {
+  const point = landmarks?.[idx];
+  if (!point || typeof point.y !== 'number') return null;
+  const percent = point.y * 100;
+  return Math.max(5, Math.min(95, percent));
+}
+
+function getAverageYPercent(landmarks: RawLandmarks | undefined, idxA: number, idxB: number): number | null {
+  const a = getRawLandmarkYPercent(landmarks, idxA);
+  const b = getRawLandmarkYPercent(landmarks, idxB);
+  if (a === null || b === null) return null;
+  return Math.max(5, Math.min(95, (a + b) / 2));
+}
+
+function getSideViewPlumbSeverity(
+  landmarks: RawLandmarks | undefined,
+  view: 'side-left' | 'side-right',
+  idx: number
+): Severity {
+  if (!landmarks || landmarks.length < 33) return 'good';
+  const ankleIdx = view === 'side-left' ? 27 : 28;
+  const landmark = landmarks[idx];
+  const ankle = landmarks[ankleIdx];
+  if (!landmark || !ankle) return 'good';
+  const deviation = Math.abs(landmark.x - ankle.x);
+  return getSeverity(deviation, POSTURE_THRESHOLDS.PLUMB_LINE);
+}
+
+function getHeadPitchSeverity(landmarks: RawLandmarks | undefined, view: 'side-left' | 'side-right'): Severity {
+  if (!landmarks || landmarks.length < 9) return 'good';
+  const eyeIdx = view === 'side-left' ? 2 : 5;
+  const earIdx = view === 'side-left' ? 7 : 8;
+  const eye = landmarks[eyeIdx];
+  const ear = landmarks[earIdx];
+  if (!eye || !ear) return 'good';
+  const earEyeDiff = Math.abs(ear.y - eye.y);
+  if (earEyeDiff < POSTURE_THRESHOLDS.HEAD_UPDOWN.NEUTRAL) return 'good';
+  if (earEyeDiff < POSTURE_THRESHOLDS.HEAD_UPDOWN.UP) return 'mild';
+  return 'moderate';
+}
+
+function getAiStatusSeverity(status?: string): Severity {
+  if (!status) return 'good';
+  const normalized = status.toLowerCase();
+  if (normalized.includes('severe')) return 'severe';
+  if (normalized.includes('moderate')) return 'moderate';
+  if (normalized.includes('mild')) return 'mild';
+  return 'good';
+}
+
+function getAnchorForItem(
+  item: DeviationItem,
+  landmarks: RawLandmarks | undefined,
+  view: 'front' | 'back' | 'side-left' | 'side-right'
+): number | null {
+  if (!landmarks) return null;
+  const isSideView = view === 'side-left' || view === 'side-right';
+  switch (item.key) {
+    case 'head_tilt':
+      return getAverageYPercent(landmarks, 7, 8);
+    case 'head_pitch':
+    case 'forward_head':
+      return getRawLandmarkYPercent(landmarks, view === 'side-left' ? 7 : 8);
+    case 'shoulders':
+    case 'rounded_shoulders':
+      return getAverageYPercent(landmarks, 11, 12);
+    case 'upper_back':
+      return getAverageYPercent(landmarks, 11, 12);
+    case 'spine': {
+      const shoulder = getAverageYPercent(landmarks, 11, 12);
+      const hip = getAverageYPercent(landmarks, 23, 24);
+      if (shoulder === null || hip === null) return null;
+      return Math.max(5, Math.min(95, (shoulder + hip) / 2));
+    }
+    case 'hip_shift':
+    case 'pelvic_tilt':
+    case 'forward_hips':
+    case 'lower_back':
+      return getAverageYPercent(landmarks, 23, 24);
+    case 'left_knee':
+      return getRawLandmarkYPercent(landmarks, 25);
+    case 'right_knee':
+      return getRawLandmarkYPercent(landmarks, 26);
+    default:
+      return isSideView ? getAverageYPercent(landmarks, 23, 24) : null;
+  }
+}
+
+function getScreenSide(
+  side: 'left' | 'right' | 'center',
+  view: 'front' | 'back' | 'side-left' | 'side-right'
+): 'left' | 'right' | 'center' {
+  if (side === 'center') return 'center';
+  if (view === 'front') return side === 'left' ? 'right' : 'left';
+  return side;
+}
+
+function getSeverityTone(severity: Severity) {
+  if (severity === 'mild') {
+    return { dot: 'bg-amber-500', text: 'text-amber-300' };
+  }
+  return { dot: 'bg-red-500', text: 'text-red-400' };
+}
+
+/**
+ * Get deviations that can actually be detected from the given view
+ * Uses MediaPipe-calculated severities (same as wireframe) - NOT AI descriptions
+ * This ensures labels match what's shown as red lines on the skeleton
+ */
+function getConsolidatedDeviations(
+  analysis: PostureAnalysisResult, 
+  view: 'front' | 'back' | 'side-left' | 'side-right' = 'front'
+): DeviationItem[] {
+  const items: DeviationItem[] = [];
+  const isSideView = view === 'side-left' || view === 'side-right';
+  const isFrontBackView = view === 'front' || view === 'back';
+  const isBadStatus = (status?: string) => {
+    if (!status) return false;
+    const normalized = status.toLowerCase();
+    return !['neutral', 'normal', 'good', 'level', 'centered', 'straight'].includes(normalized);
+  };
+  
+  // Calculate deviations from raw landmarks (same thresholds as wireframe)
+  const calc = calculateDeviationsFromLandmarks(analysis.landmarks?.raw, view);
+  
+  // === SIDE VIEW: Forward head, pelvic tilt (kyphosis/lordosis need visual AI) ===
+  if (isSideView) {
+    // Forward Head Posture - calculated from landmarks
+    if (calc.forwardHead !== 'good') {
+      items.push({
+        key: 'forward_head',
+        label: 'Forward Head',
+        recommendation: analysis.forward_head?.recommendation || 'Chin tucks and neck stretches',
+        side: 'left',
+        severity: calc.forwardHead
+      });
+    }
+    
+    // Pelvic Tilt - calculated from landmarks
+    if (calc.pelvicTilt !== 'good') {
+      const forwardDir = view === 'side-left' ? -1 : 1;
+      const hip = analysis.landmarks?.raw?.[view === 'side-left' ? 23 : 24];
+      const ankle = analysis.landmarks?.raw?.[view === 'side-left' ? 27 : 28];
+      const hipForward = hip && ankle ? (hip.x - ankle.x) * forwardDir > 0 : undefined;
+      const pelvicLabel = hipForward ? 'Anterior Pelvic Tilt' : 'Posterior Pelvic Tilt';
+      items.push({
+        key: 'pelvic_tilt',
+        label: pelvicLabel,
+        recommendation: analysis.pelvic_tilt?.recommendation || 'Hip flexor stretches and glute activation',
+        side: 'right',
+        severity: calc.pelvicTilt
+      });
+    }
+
+    // Head pitch - use MediaPipe ear/eye relationship
+    if (analysis.head_updown?.status && analysis.head_updown.status !== 'Neutral') {
+      const pitchSeverity = getHeadPitchSeverity(analysis.landmarks?.raw, view);
+      items.push({
+        key: 'head_pitch',
+        label: analysis.head_updown.status === 'Looking Down' ? 'Head Pitch Down' : 'Head Pitch Up',
+        recommendation: analysis.head_updown?.recommendation || 'Reset gaze to neutral and relax the neck',
+        side: 'left',
+        severity: pitchSeverity
+      });
+    }
+
+    // Rounded shoulders / forward shoulders (plumb-line based)
+    const shoulderSeverity = getSideViewPlumbSeverity(analysis.landmarks?.raw, view, view === 'side-left' ? 11 : 12);
+    const hasRoundedShoulders = analysis.shoulder_alignment?.rounded_forward || analysis.shoulder_alignment?.status === 'Rounded';
+    if (shoulderSeverity !== 'good' || hasRoundedShoulders) {
+      items.push({
+        key: 'rounded_shoulders',
+        label: hasRoundedShoulders ? 'Rounded Shoulders' : 'Shoulders Forward',
+        recommendation: analysis.shoulder_alignment?.recommendation || 'Open the chest and strengthen upper back',
+        side: 'left',
+        severity: shoulderSeverity !== 'good' ? shoulderSeverity : 'mild'
+      });
+    }
+
+    // Forward hips (plumb-line based)
+    const hipSeverity = getSideViewPlumbSeverity(analysis.landmarks?.raw, view, view === 'side-left' ? 23 : 24);
+    if (hipSeverity !== 'good' || analysis.hip_alignment?.status === 'Forward') {
+      items.push({
+        key: 'forward_hips',
+        label: 'Forward Hips',
+        recommendation: analysis.hip_alignment?.recommendation || 'Stack ribs over hips; focus on core control',
+        side: 'right',
+        severity: hipSeverity !== 'good' ? hipSeverity : 'mild'
+      });
+    }
+    
+    // Kyphosis/Lordosis still need AI (can't calculate from landmarks alone)
+    if (isBadStatus(analysis.kyphosis?.status)) {
+      items.push({
+        key: 'upper_back',
+        label: 'Upper Back',
+        recommendation: analysis.kyphosis?.recommendation || 'Thoracic extensions and chest stretches',
+        side: 'right',
+        severity: getAiStatusSeverity(analysis.kyphosis?.status)
+      });
+    }
+    
+    if (isBadStatus(analysis.lordosis?.status)) {
+      items.push({
+        key: 'lower_back',
+        label: 'Lower Back',
+        recommendation: analysis.lordosis?.recommendation || 'Core strengthening and hip flexor stretches',
+        side: 'left',
+        severity: getAiStatusSeverity(analysis.lordosis?.status)
+      });
+    }
+  }
+  
+  // === FRONT/BACK VIEW: All calculated from landmarks ===
+  if (isFrontBackView) {
+    // Head Tilt - calculated
+    if (calc.headTilt !== 'good') {
+      items.push({
+        key: 'head_tilt',
+        label: 'Head Tilt',
+        recommendation: analysis.head_alignment?.recommendation || 'Neck mobility and stretches',
+        side: 'left',
+        severity: calc.headTilt
+      });
+    }
+    
+    // Shoulder asymmetry - calculated
+    if (calc.shoulder !== 'good') {
+      items.push({
+        key: 'shoulders',
+        label: 'Shoulders',
+        recommendation: analysis.shoulder_alignment?.recommendation || 'Release upper trap on high side',
+        side: 'right',
+        severity: calc.shoulder
+      });
+    }
+    
+    // Hip Shift - calculated
+    if (calc.hipShift !== 'good') {
+      items.push({
+        key: 'hip_shift',
+        label: 'Hip Shift',
+        recommendation: analysis.hip_shift?.recommendation || 'Strengthen gluteus medius',
+        side: 'left',
+        severity: calc.hipShift
+      });
+    }
+    
+    // Scoliosis - still needs AI (visual assessment)
+    if (isBadStatus(analysis.spinal_curvature?.status)) {
+      items.push({
+        key: 'spine',
+        label: 'Spine',
+        recommendation: analysis.spinal_curvature?.recommendation || 'Core stability exercises',
+        side: 'right',
+        severity: getAiStatusSeverity(analysis.spinal_curvature?.status)
+      });
+    }
+    
+    // Knee alignment - calculated from landmarks
+    if (calc.leftLeg !== 'good') {
+      items.push({
+        key: 'left_knee',
+        label: `Left Knee ${calc.leftKneeDirection === 'valgus' ? 'Valgus' : 'Varus'}`,
+        recommendation: analysis.left_leg_alignment?.recommendation || 'Hip abductor and glute strengthening',
+        side: 'left',
+        severity: calc.leftLeg
+      });
+    }
+
+    if (calc.rightLeg !== 'good') {
+      items.push({
+        key: 'right_knee',
+        label: `Right Knee ${calc.rightKneeDirection === 'valgus' ? 'Valgus' : 'Varus'}`,
+        recommendation: analysis.right_leg_alignment?.recommendation || 'Hip abductor and glute strengthening',
+        side: 'right',
+        severity: calc.rightLeg
+      });
+    }
+  }
+  
+  return items;
+}
+
+/**
+ * Positioned labels - vertically aligned to match body regions
+ * Head issues at top, hip issues in middle, knee issues at bottom
+ */
+function PositionedLabels({ 
+  analysis, 
+  side,
+  view
+}: { 
+  analysis: PostureAnalysisResult; 
+  side: 'left' | 'right' | 'all';
+  view: 'front' | 'back' | 'side-left' | 'side-right';
+}) {
+  // Get deviations filtered by what's detectable from this view
+  const allDeviations = getConsolidatedDeviations(analysis, view);
+  
+  const withScreenSide = allDeviations.map((item) => ({
+    item,
+    screenSide: getScreenSide(item.side, view),
+  }));
+
+  // Filter by side (or show all for mobile)
+  const deviations = side === 'all'
+    ? withScreenSide
+    : withScreenSide.filter(d => d.screenSide === side || d.screenSide === 'center');
+  
+  if (deviations.length === 0) {
+    return null;
+  }
+  
+  // For mobile - simple horizontal layout
+  if (side === 'all') {
+    return (
+      <div className="flex flex-wrap justify-center gap-3">
+        {deviations.map(({ item }, i) => {
+          const tone = getSeverityTone(item.severity);
+          return (
+            <div key={i} className="flex items-center gap-1.5">
+              <div className={`h-1.5 w-1.5 rounded-full ${tone.dot}`} />
+              <span className={`text-[9px] font-bold uppercase tracking-wide ${tone.text}`}>
+                {item.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+  
+  // Desktop - positioned vertically by body region
+  // Returns absolutely positioned items within the flex column
+  const positioned = deviations
+    .map(({ item, screenSide }) => {
+      const anchorPosition = getAnchorForItem(item, analysis.landmarks?.raw, view);
+      const position = anchorPosition ?? getVerticalPosition(item.label);
+      return { item, screenSide, position };
+    })
+    .sort((a, b) => a.position - b.position)
+    .map((entry, index, list) => {
+      if (index === 0) return entry;
+      const prev = list[index - 1];
+      if (entry.position - prev.position < 6) {
+        return { ...entry, position: Math.min(95, prev.position + 6) };
+      }
+      return entry;
+    });
+
+  return (
+    <div className="relative h-full">
+      {positioned.map(({ item, screenSide, position }, i) => {
+        const tone = getSeverityTone(item.severity);
+        
+        return (
+          <div 
+            key={i}
+            className="absolute w-full"
+            style={{ top: `${position}%`, transform: 'translateY(-50%)' }}
+          >
+            <div className={`${screenSide === 'left' ? 'text-left' : 'text-right'}`}>
+              <div className={`inline-flex items-center gap-1.5 mb-0.5 ${screenSide === 'right' ? 'flex-row-reverse' : ''}`}>
+                <div className={`h-1.5 w-1.5 rounded-full shrink-0 ${tone.dot}`} />
+                <span className={`text-[10px] font-bold uppercase tracking-wide ${tone.text}`}>
+                  {item.label}
+                </span>
+              </div>
+              <p className={`text-[9px] text-white/60 leading-snug whitespace-normal break-words ${screenSide === 'left' ? 'pl-3' : 'pr-3'}`}>
+                {item.recommendation}
+              </p>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Get vertical position (%) based on body region
+ */
+function getVerticalPosition(label: string): number {
+  // Positions as % of container height, accounting for py-12 padding (~10% top/bottom)
+  // Body regions mapped to where they appear in a full-body photo
+  const positions: Record<string, number> = {
+    // Head region (~10-18% of visible area)
+    'Forward Head': 12,
+    'Head Tilt': 12,
+    'Head': 12,
+    'Head Pitch Up': 12,
+    'Head Pitch Down': 12,
+    
+    // Shoulder/upper torso region (~20-30%)
+    'Shoulders': 24,
+    'Rounded Shoulders': 24,
+    'Upper Back': 28,  // Kyphosis - upper thoracic
+    
+    // Mid/lower torso (~35-50%)
+    'Spine': 38,
+    'Thoracic': 32,
+    'Lower Back': 42,  // Lordosis - lumbar region
+    
+    // Hip/pelvis region (~48-56%)
+    'Hip Shift': 50,
+    'Pelvis': 52,
+    'Pelvic Tilt': 52,
+    'Forward Hips': 52,
+    
+    // Knee region (~68-75%)
+    'Knee Valgus': 70,
+    'Knee Varus': 70,
+    'Knee Alignment': 70,
+    'Knees': 70,
+    'Left Knee Valgus': 70,
+    'Left Knee Varus': 70,
+    'Right Knee Valgus': 70,
+    'Right Knee Varus': 70,
+    
+    // Ankle region (~82-88%)
+    'Ankles': 84,
+  };
+  return positions[label] ?? 50;
+}
+
+/**
+ * Get brief findings for the preview card
+ * Any deviation that shows a red line on the wireframe should be listed here
+ */
+function getBriefFindings(analysis: PostureAnalysisResult, view: 'front' | 'back' | 'side-left' | 'side-right'): string[] {
+  const brief: string[] = [];
+  const calc = calculateDeviationsFromLandmarks(analysis.landmarks?.raw, view);
+  
+  // Side view deviations (math-driven)
+  if (calc.forwardHead !== 'good') {
+    brief.push('Forward Head');
+  }
+  if (analysis.head_updown?.status && analysis.head_updown.status !== 'Neutral') {
+    brief.push(analysis.head_updown.status === 'Looking Down' ? 'Head Pitch Down' : 'Head Pitch Up');
+  }
+  if (analysis.shoulder_alignment?.rounded_forward || analysis.shoulder_alignment?.status === 'Rounded') {
+    brief.push('Rounded Shoulders');
+  }
+  if (analysis.hip_alignment?.status === 'Forward') {
+    brief.push('Forward Hips');
+  }
+  if (analysis.kyphosis && analysis.kyphosis.status !== 'Normal') {
+    brief.push('Kyphosis');
+  }
+  if (analysis.lordosis && analysis.lordosis.status !== 'Normal') {
+    brief.push('Lordosis');
+  }
+  if (calc.pelvicTilt !== 'good') {
+    brief.push('Pelvic Tilt');
+  }
+  
+  // Front/Back view deviations
+  if (calc.headTilt !== 'good') {
+    brief.push('Head Tilt');
+  }
+  if (calc.shoulder !== 'good') {
+    brief.push('Shoulder Asymmetry');
+  }
+  if (calc.hipShift !== 'good') {
+    brief.push('Hip Shift');
+  }
+  if (analysis.spinal_curvature && analysis.spinal_curvature.status !== 'Normal') {
+      brief.push('Spinal Curvature');
+  }
+  
+  // Leg alignment (valgus/varus) - KEY for knee issues
+  if (calc.leftKneeDirection !== 'straight') {
+    brief.push(`Left Knee ${calc.leftKneeDirection === 'valgus' ? 'Valgus' : 'Varus'}`);
+  }
+  if (calc.rightKneeDirection !== 'straight') {
+    brief.push(`Right Knee ${calc.rightKneeDirection === 'valgus' ? 'Valgus' : 'Varus'}`);
+  }
+  
+    return brief.length > 0 ? brief : ['Neutral Alignment'];
+}
+
+/**
+ * Individual posture view card with expandable dialog
+ */
+export function PostureViewCard({ 
+  view, 
+  analysis, 
+  imageUrl 
+}: { 
+  view: string; 
+  analysis: PostureAnalysisResult; 
+  imageUrl: string;
+}) {
+  const briefFindings = getBriefFindings(analysis, view as 'front' | 'back' | 'side-left' | 'side-right');
   const isNeutral = briefFindings[0] === 'Neutral Alignment';
 
   return (
@@ -172,13 +616,13 @@ export function PostureViewCard({ view, analysis, imageUrl }: { view: string, an
             )}
           </div>
 
-          {/* Image Portal (Cropped to head/shoulders) */}
+          {/* Image */}
           <div className="aspect-[4/5] w-full overflow-hidden bg-slate-50">
             <img 
               src={imageUrl} 
               alt={view}
               className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
-              style={{ objectPosition: 'center 10%' }} // Focus on head/neck area
+              style={{ objectPosition: 'center 10%' }}
             />
           </div>
 
@@ -190,11 +634,13 @@ export function PostureViewCard({ view, analysis, imageUrl }: { view: string, an
                   {finding}
                 </span>
               ))}
-              <span className="text-[7px] sm:text-[8px] font-bold text-white/80 uppercase tracking-widest mt-1">Click to expand analysis</span>
+              <span className="text-[7px] sm:text-[8px] font-bold text-white/80 uppercase tracking-widest mt-1">
+                Click to expand analysis
+              </span>
             </div>
           </div>
 
-          {/* Action Overlay */}
+          {/* Hover Action Overlay */}
           <div className="absolute inset-0 flex items-center justify-center bg-primary/10 opacity-0 transition-opacity group-hover:opacity-100">
             <div className="rounded-full bg-white/90 p-2 shadow-lg scale-75 group-hover:scale-100 transition-transform">
               <Maximize2 className="h-4 w-4 text-primary" />
@@ -203,133 +649,76 @@ export function PostureViewCard({ view, analysis, imageUrl }: { view: string, an
         </div>
       </DialogTrigger>
 
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden p-0 border-none sm:rounded-[32px] shadow-2xl bg-white flex flex-col">
+      {/* Expanded Dialog - Pure black, image raw */}
+      <DialogContent className="!bg-black !border-0 !p-0 !shadow-none max-w-[98vw] max-h-[98vh] w-auto h-auto overflow-hidden">
         <DialogHeader className="sr-only">
-          <DialogTitle>Posture Analysis Details - {view.replace('-', ' ')} View</DialogTitle>
+          <DialogTitle>Posture Analysis - {view.replace('-', ' ')} View</DialogTitle>
         </DialogHeader>
         
-        <div className="flex flex-col md:flex-row h-full min-h-[600px]">
-          {/* Left: Image - Same height as feedback */}
-          <div className="w-full md:w-1/2 bg-[#0a0d14] relative overflow-hidden flex-shrink-0">
-            <div className="absolute inset-0 flex items-center justify-center">
+        {/* Close Button */}
+        <button 
+          className="absolute top-4 right-4 z-50 h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+          onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))}
+        >
+          <span className="text-white text-xl leading-none">×</span>
+        </button>
+        
+        {/* View Badge */}
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40">
+          <span className="text-white/50 text-[11px] uppercase font-semibold tracking-widest">
+            {view.replace('-', ' ')}
+          </span>
+        </div>
+        
+        {/* Layout: Labels | Image | Labels - black on all sides */}
+        <div className="flex items-center justify-center bg-black py-12">
+          {/* Left Labels */}
+          <div className="hidden md:flex flex-col justify-center w-40 shrink-0 p-3 self-stretch">
+            <PositionedLabels analysis={analysis} side="left" view={view} />
+          </div>
+          
+          {/* THE IMAGE - raw, with vertical padding for black above/below */}
               <img 
                 src={imageUrl} 
                 alt={view} 
-                className="w-full h-full object-cover" 
-                style={{ objectPosition: 'center' }} 
-              />
-            </div>
-            
-            {/* Overlay Label */}
-            <div className="absolute top-6 left-6 flex flex-col gap-2 z-10">
-              <Badge className="bg-primary/90 hover:bg-primary text-white border-none text-[10px] uppercase font-black tracking-[0.2em] px-4 py-2 rounded-full shadow-lg backdrop-blur-sm">
-                {view.replace('-', ' ')} View
-              </Badge>
-              {analysis.spinal_curvature && analysis.spinal_curvature.status !== 'Normal' && (
-                <Badge className="bg-red-600/90 text-white border-none text-[9px] uppercase font-black tracking-widest px-3 py-1.5 rounded-full shadow-lg animate-pulse backdrop-blur-sm">
-                  Scoliosis Flag
-                </Badge>
-              )}
-            </div>
-
-            {/* Bottom Legend */}
-            <div className="absolute bottom-4 left-6 right-6 flex items-center justify-center gap-6 z-10">
-              <div className="flex items-center gap-2 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
-                <div className="h-1.5 w-1.5 rounded-full bg-[#00ff00]" />
-                <span className="text-[8px] font-black uppercase tracking-widest text-white/80">Target</span>
-              </div>
-              <div className="flex items-center gap-2 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
-                <div className="h-1.5 w-1.5 rounded-full bg-[#ff0000]" />
-                <span className="text-[8px] font-black uppercase tracking-widest text-white/80">Deviations</span>
-              </div>
-            </div>
+            className="max-h-[75vh] max-w-[70vw] md:max-w-[55vw] block"
+          />
+          
+          {/* Right Labels */}
+          <div className="hidden md:flex flex-col justify-center w-40 shrink-0 p-3 self-stretch">
+            <PositionedLabels analysis={analysis} side="right" view={view} />
           </div>
-
-          {/* Right: Feedback Section - Same height as image, scrollable */}
-          <div className="w-full md:w-1/2 p-6 md:p-8 bg-white overflow-y-auto flex-shrink-0">
-            <div className="space-y-8">
-              {/* Deviations Section */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
-                  <div className="h-8 w-8 rounded-xl bg-red-50 flex items-center justify-center">
-                    <AlertCircle className="h-4 w-4 text-red-500" />
-                  </div>
-                  <h4 className="text-xs font-black uppercase tracking-[0.2em] text-slate-900">Identified Deviations</h4>
                 </div>
                 
-                <div className="space-y-4">
-                  {Object.entries(analysis)
-                    .filter(([key, value]) => {
-                      if (key === 'landmarks' || key === 'overall_assessment' || key === 'deviations' || key === 'risk_flags') return false;
-                      return isPostureDetail(value);
-                    })
-                    .sort(([keyA], [keyB]) => {
-                      const order = [
-                        'head_alignment',
-                        'forward_head',
-                        'shoulder_alignment',
-                        'kyphosis',
-                        'spinal_curvature',
-                        'spine',
-                        'lordosis',
-                        'hip_alignment',
-                        'pelvic_tilt',
-                        'knee_alignment',
-                        'knee_position'
-                      ];
-                      const indexA = order.indexOf(keyA);
-                      const indexB = order.indexOf(keyB);
-                      return (indexA === -1 ? 99 : indexA) - (indexB === -1 ? 99 : indexB);
-                    })
-                    .map(([key, value]) => {
-                      if (!isPostureDetail(value)) return null;
-                      if (value.status === 'Neutral' || value.status === 'Normal') return null;
-                      
-                      return (
-                        <div key={key} className="space-y-2 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-primary">{key.replace(/_/g, ' ')}</span>
-                            <span className="text-[9px] font-bold text-red-500 bg-red-50 px-2 py-1 rounded uppercase">{value.status}</span>
+        {/* Legend - minimal */}
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-black/80 px-3 py-1 rounded-full">
+          <div className="flex items-center gap-1">
+            <div className="h-2 w-2 rounded-full bg-green-500" />
+            <span className="text-[8px] uppercase text-white/50">Aligned</span>
                           </div>
-                          <p className="text-sm font-medium text-slate-700 leading-relaxed">{value.description}</p>
-                          {value.recommendation && (
-                            <div className="mt-2 pt-2 border-t border-slate-200">
-                              <p className="text-xs font-semibold text-gradient-dark mb-1">Recommendation:</p>
-                              <p className="text-xs text-slate-600 leading-relaxed italic">"{value.recommendation}"</p>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  {isNeutral && (
-                    <div className="py-8 text-center bg-gradient-light/30 rounded-2xl border border-dashed border-gradient-medium">
-                      <CheckCircle2 className="h-8 w-8 text-gradient-dark mx-auto mb-2" />
-                      <p className="text-sm font-bold text-gradient-dark uppercase tracking-widest">Ideal Functional Range</p>
-                    </div>
-                  )}
+          <div className="flex items-center gap-1">
+            <div className="h-2 w-2 rounded-full bg-amber-500" />
+            <span className="text-[8px] uppercase text-white/50">Minor</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="h-2 w-2 rounded-full bg-red-500" />
+            <span className="text-[8px] uppercase text-white/50">Deviation</span>
                 </div>
               </div>
 
-              {/* Summary Assessment */}
-              <div className="pt-6 border-t border-slate-100">
-                <div className="bg-slate-900 rounded-2xl p-6 text-white relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-4 opacity-5">
-                    <Info className="h-16 w-16 text-white" />
-                  </div>
-                  <h5 className="text-xs font-black uppercase tracking-[0.2em] text-primary/60 mb-3">Summary Assessment</h5>
-                  <p className="text-sm font-medium leading-relaxed text-slate-300 italic relative z-10">
-                    "{analysis.overall_assessment || generateClientFriendlySummary(analysis, view)}"
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
+        {/* Mobile Labels */}
+        <div className="md:hidden absolute top-10 left-2 right-2">
+          <PositionedLabels analysis={analysis} side="all" view={view} />
         </div>
       </DialogContent>
     </Dialog>
   );
 }
 
+/**
+ * Main posture analysis viewer component
+ * Displays 4 posture view cards in a grid with a holistic summary below
+ */
 export function PostureAnalysisViewer({ 
   postureResults, 
   postureImages 
@@ -342,23 +731,35 @@ export function PostureAnalysisViewer({
   
   if (availableViews.length === 0) return null;
 
+  /**
+   * Get image URL for a view, checking multiple possible key formats
+   */
+  const getImageUrl = (view: string): string => {
+    return postureImages?.[view] || 
+           postureImages?.[`postureImagesStorage_${view}`] ||
+           postureImages?.[`postureImagesFull_${view}`] ||
+           postureImages?.[`postureImages_${view}`] ||
+           '';
+  };
+
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+    <div className="space-y-3">
+      {/* 4 Image Cards Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
       {availableViews.map((view) => (
         <PostureViewCard 
           key={view}
           view={view}
           analysis={postureResults[view]}
-          imageUrl={
-            postureImages?.[view] || 
-            postureImages?.[`postureImagesStorage_${view}`] ||
-            postureImages?.[`postureImagesFull_${view}`] ||
-            postureImages?.[`postureImages_${view}`] ||
-            ''
-          }
+            imageUrl={getImageUrl(view)}
         />
       ))}
+      </div>
+
+      {/* Holistic Summary - Condensed Full Width Below Images */}
+      {availableViews.length >= 2 && (
+        <PostureHolisticSummary results={postureResults} />
+      )}
     </div>
   );
 }
-

@@ -430,8 +430,10 @@ export function useDashboardData() {
     } else {
       sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
     }
+    // CRITICAL: Clear all previous assessment modes to prevent data bleed
     sessionStorage.removeItem(STORAGE_KEYS.IS_DEMO);
     sessionStorage.removeItem(STORAGE_KEYS.PREFILL_CLIENT);
+    sessionStorage.removeItem(STORAGE_KEYS.EDIT_ASSESSMENT);
     try {
       const history = await getClientAssessments(user.uid, clientName, profile?.organizationId);
       if (history.length > 0) {

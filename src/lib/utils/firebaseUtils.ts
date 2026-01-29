@@ -3,6 +3,7 @@
  */
 export function sanitizeForFirestore(obj: unknown): unknown {
   if (obj === undefined) return null;
+  if (typeof obj === 'number' && !Number.isFinite(obj)) return null;
   if (obj === null || typeof obj !== 'object') return obj;
   
   // Handle common non-plain objects that shouldn't be recursed

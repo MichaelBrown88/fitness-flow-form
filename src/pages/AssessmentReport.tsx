@@ -164,7 +164,13 @@ const AssessmentReport = () => {
       <AppShell title="Assessment report">
         <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-700">
           <p>{error ?? 'Assessment not available.'}</p>
-          <Button onClick={() => navigate(ROUTES.ASSESSMENT)}>New assessment</Button>
+          <Button onClick={() => {
+            // CRITICAL: Clear all assessment modes to prevent data bleed
+            sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
+            sessionStorage.removeItem(STORAGE_KEYS.EDIT_ASSESSMENT);
+            sessionStorage.removeItem(STORAGE_KEYS.IS_DEMO);
+            navigate(ROUTES.ASSESSMENT);
+          }}>New assessment</Button>
         </div>
       </AppShell>
     );

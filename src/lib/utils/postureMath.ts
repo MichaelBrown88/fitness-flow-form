@@ -1,5 +1,6 @@
 import { LandmarkResult } from '@/lib/ai/postureLandmarks';
 import type { MediaPipeLandmark } from '@/lib/types/mediapipe';
+import { calculateFrontBackDeviationSummary } from '@/lib/utils/postureAlignment';
 
 /**
  * UTILITY: POSTURE MATHEMATICS
@@ -14,6 +15,15 @@ export interface CalculatedPostureMetrics {
   hipSymmetryCm: number;
   pelvicTiltDegrees: number;
   kneeValgusDegrees: number;
+  leftLegAlignmentStatus?: 'Straight' | 'Valgus' | 'Varus';
+  rightLegAlignmentStatus?: 'Straight' | 'Valgus' | 'Varus';
+  leftLegSeverity?: 'Good' | 'Mild' | 'Moderate' | 'Severe';
+  rightLegSeverity?: 'Good' | 'Mild' | 'Moderate' | 'Severe';
+  leftKneeDeviationPercent?: number;
+  rightKneeDeviationPercent?: number;
+  kneeAlignmentStatus?: 'Neutral' | 'Valgus' | 'Varus';
+  leftKneeIsValgus?: boolean;
+  rightKneeIsValgus?: boolean;
   // Severity levels
   headSeverity: 'Neutral' | 'Mild' | 'Moderate' | 'Severe';
   shoulderSeverity: 'Neutral' | 'Asymmetric';
@@ -56,10 +66,25 @@ function pixelsToCm(normalizedValue: number, shoulderWidthNormalized: number): n
   return (normalizedValue / shoulderWidthNormalized) * CM_PER_SHOULDER;
 }
 
+function toReportSeverity(severity: 'good' | 'mild' | 'moderate' | 'severe'): 'Good' | 'Mild' | 'Moderate' | 'Severe' {
+  switch (severity) {
+    case 'mild':
+      return 'Mild';
+    case 'moderate':
+      return 'Moderate';
+    case 'severe':
+      return 'Severe';
+    default:
+      return 'Good';
+  }
+}
+
 /**
- * Main calculation logic for Front View
+ * Main calculation logic for Front/Back View
+ * @param landmarks MediaPipe pose landmarks
+ * @param view 'front' or 'back' - affects left/right interpretation
  */
-export function calculateFrontViewMetrics(landmarks: MediaPipeLandmark[]): Partial<CalculatedPostureMetrics> {
+export function calculateFrontViewMetrics(landmarks: MediaPipeLandmark[], view: 'front' | 'back' = 'front'): Partial<CalculatedPostureMetrics> {
   // Extract key points
   const leftEar = landmarks[7] || landmarks[0];
   const rightEar = landmarks[8] || landmarks[0];
@@ -104,9 +129,16 @@ export function calculateFrontViewMetrics(landmarks: MediaPipeLandmark[]): Parti
     
     // Determine direction with 2% tolerance threshold
     if (hipShiftPercent > 2) {
-      // Note: MediaPipe X coordinates increase from Left (0) to Right (1)
-      // If hip center X > stance center X, hips are shifted to the RIGHT
-      hipShiftDirection = shiftRaw > 0 ? 'Right' : 'Left';
+      // Note: MediaPipe X coordinates increase from Left (0) to Right (1) of the IMAGE
+      // FRONT VIEW: If hipCenterX > stanceCenterX, hips are shifted to subject's RIGHT
+      // BACK VIEW: If hipCenterX > stanceCenterX, hips are shifted to subject's LEFT (image is mirrored)
+      if (view === 'back') {
+        // Back view: image right = subject's left
+        hipShiftDirection = shiftRaw > 0 ? 'Left' : 'Right';
+      } else {
+        // Front view: image right = subject's right
+        hipShiftDirection = shiftRaw > 0 ? 'Right' : 'Left';
+      }
     }
   }
 
@@ -119,15 +151,49 @@ export function calculateFrontViewMetrics(landmarks: MediaPipeLandmark[]): Parti
     hipShiftPercent,
     hipShiftDirection,
   };
+
+  const legSummary = calculateFrontBackDeviationSummary(landmarks, view);
+  const leftLegAlignmentStatus = legSummary.leftKneeDirection === 'valgus'
+    ? 'Valgus'
+    : legSummary.leftKneeDirection === 'varus'
+      ? 'Varus'
+      : 'Straight';
+  const rightLegAlignmentStatus = legSummary.rightKneeDirection === 'valgus'
+    ? 'Valgus'
+    : legSummary.rightKneeDirection === 'varus'
+      ? 'Varus'
+      : 'Straight';
+  const leftLegSeverity = toReportSeverity(legSummary.leftLeg);
+  const rightLegSeverity = toReportSeverity(legSummary.rightLeg);
+  const leftKneeDeviationPercent = Math.abs(legSummary.leftKneeDeviation) * 100;
+  const rightKneeDeviationPercent = Math.abs(legSummary.rightKneeDeviation) * 100;
+  const kneeAlignmentStatus = leftLegAlignmentStatus === 'Valgus' || rightLegAlignmentStatus === 'Valgus'
+    ? 'Valgus'
+    : leftLegAlignmentStatus === 'Varus' || rightLegAlignmentStatus === 'Varus'
+      ? 'Varus'
+      : 'Neutral';
+  const leftKneeIsValgus = legSummary.leftKneeIsValgus;
+  const rightKneeIsValgus = legSummary.rightKneeIsValgus;
   
   // Log calculated metrics for front/back view
-  console.log(`\n📊 [CALCULATED METRICS - FRONT/BACK VIEW]`);
+  console.log(`\n📊 [CALCULATED METRICS - ${view.toUpperCase()} VIEW]`);
   console.log(`   Head Tilt: ${headTilt.toFixed(1)}°`);
   console.log(`   Shoulder Diff: ${shoulderDiffCm.toFixed(2)}cm (${metrics.shoulderSeverity})`);
   console.log(`   Hip Diff: ${hipDiffCm.toFixed(2)}cm (${metrics.hipSeverity})`);
-  console.log(`   Hip Shift: ${hipShiftPercent.toFixed(1)}% ${hipShiftDirection}`);
+  console.log(`   Hip Shift: ${hipShiftPercent.toFixed(1)}% ${hipShiftDirection} (${view === 'back' ? 'mirrored for back view' : 'subject perspective'})`);
   
-  return metrics;
+  return {
+    ...metrics,
+    leftLegAlignmentStatus,
+    rightLegAlignmentStatus,
+    leftLegSeverity,
+    rightLegSeverity,
+    leftKneeDeviationPercent,
+    rightKneeDeviationPercent,
+    kneeAlignmentStatus,
+    leftKneeIsValgus,
+    rightKneeIsValgus,
+  };
 }
 
 /**
@@ -190,8 +256,8 @@ export function calculateSideViewMetrics(
   if (eye && ear) {
     // Note: In image coordinates, Y increases downward
     // deltaY = eye.y - ear.y
-    // Positive deltaY means eye is below ear on screen (looking up)
-    // Negative deltaY means eye is above ear on screen (looking down)
+    // Positive deltaY means eye is below ear on screen (looking down)
+    // Negative deltaY means eye is above ear on screen (looking up)
     const deltaY = eye.y - ear.y;
     const deltaX = Math.abs(eye.x - ear.x);
     
@@ -199,12 +265,12 @@ export function calculateSideViewMetrics(
     headPitchDegrees = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
     
     // Determine status based on thresholds
-    // Positive angle (>10°) = eye below ear = looking up
-    // Negative angle (<-10°) = eye above ear = looking down (tucked)
+    // Positive angle (>10°) = eye below ear = looking down
+    // Negative angle (<-10°) = eye above ear = looking up
     if (headPitchDegrees > 10) {
-      headPitchStatus = 'Looking Up';
-    } else if (headPitchDegrees < -10) {
       headPitchStatus = 'Looking Down';
+    } else if (headPitchDegrees < -10) {
+      headPitchStatus = 'Looking Up';
     } else {
       headPitchStatus = 'Level';
     }

@@ -17,7 +17,7 @@
  */
 
 import { LandmarkResult, detectPostureLandmarks } from '@/lib/ai/postureLandmarks';
-import { cropAndCenterImage, drawLandmarkWireframe } from '@/lib/utils/postureOverlay';
+import { drawLandmarkWireframe } from '@/lib/utils/postureOverlay';
 import { calculateFrontViewMetrics, calculateSideViewMetrics } from '@/lib/utils/postureMath';
 import { analyzePostureImage } from '@/lib/ai/postureAnalysis';
 import { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
@@ -32,7 +32,7 @@ export interface PostureProcessingResult {
 }
 
 // Progress stages for UI feedback
-export type ProcessingStage = 'detecting' | 'wireframe' | 'aligning' | 'analyzing' | 'complete';
+export type ProcessingStage = 'detecting' | 'wireframe' | 'analyzing' | 'complete';
 
 export interface ProcessingProgress {
   stage: ProcessingStage;
@@ -103,35 +103,21 @@ export async function processPostureImage(
       wireframeOnOriginal = imageData;
     }
     
-    // Emit aligning stage
-    onProgress?.({ stage: 'aligning', view });
+    // STEP 3: Use wireframe on original image directly (no cropping/resizing)
+    // This preserves the original image dimensions - no borders added
+    const wireframeImage = wireframeOnOriginal;
+    const croppedImage = imageData; // Original for AI analysis
     
-    // STEP 3: Crop and center the wireframe image (skeleton moves with the subject)
-    // This ensures proper framing while keeping landmarks aligned
-    let wireframeImage: string;
-    let croppedImage: string;
-    try {
-      logger.debug(`Cropping wireframe for ${view}...`, ctx);
-      // Crop the wireframe (with skeleton overlay)
-      wireframeImage = await cropAndCenterImage(wireframeOnOriginal, view, landmarks);
-      // Also crop original for AI analysis (clean, no overlay)
-      croppedImage = await cropAndCenterImage(imageData, view, landmarks);
-      logger.debug(`Images cropped for ${view}`, ctx);
-      
-      // Emit wireframe stage - this IS the final visualization
-      onProgress?.({ stage: 'wireframe', view, wireframeImage });
-    } catch (cropError) {
-      logger.warn(`Cropping failed for ${view}, using uncropped`, ctx, cropError);
-      wireframeImage = wireframeOnOriginal;
-      croppedImage = imageData;
-    }
+    // Emit wireframe stage immediately
+    onProgress?.({ stage: 'wireframe', view, wireframeImage });
+    logger.debug(`Using original dimensions for ${view} (no crop)`, ctx);
     
     // STEP 4: Calculate metrics (synchronous, fast)
     let calculatedMetrics: Partial<import('@/lib/utils/postureMath').CalculatedPostureMetrics> = {};
     if (landmarks.raw) {
       try {
         calculatedMetrics = view === 'front' || view === 'back'
-          ? calculateFrontViewMetrics(landmarks.raw)
+          ? calculateFrontViewMetrics(landmarks.raw, view)
           : calculateSideViewMetrics(landmarks.raw, view);
         logger.debug(`Metrics calculated for ${view}`, ctx);
       } catch (metricsError) {
@@ -156,6 +142,7 @@ export async function processPostureImage(
       if (landmarks.raw) {
         analysis.landmarks = {
           ...analysis.landmarks,
+          ...landmarks,
           raw: landmarks.raw,
         };
       }

@@ -82,7 +82,8 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
   // Check if wireframe is shown but AI still processing (show lighter overlay)
   const isWireframeButAnalyzing = (view: string): boolean => {
     const status = processingStatus[view as keyof typeof processingStatus];
-    return status === 'wireframe' || status === 'analyzing';
+    // 'detecting' = wireframe being drawn, 'analyzing' = AI analyzing, 'aligning' = processing
+    return status === 'detecting' || status === 'analyzing' || status === 'aligning';
   };
 
   return (
@@ -263,103 +264,12 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                       )}
                     </div>
 
-                    {/* POSTURE ANALYSIS CARD */}
-                    {session?.analysis[view] && (
-                      <div className="mt-2 bg-slate-50 p-3 rounded-xl border border-slate-100 animate-in fade-in slide-in-from-bottom-2">
-                        <div className="flex items-center gap-2 mb-2">
-                          <ShieldAlert className="h-3 w-3 text-primary" />
-                          <span className="text-[8px] font-black uppercase text-primary">Posture Analysis</span>
-                        </div>
-                        <div className="space-y-1.5">
-                          {session.analysis[view].head_alignment && (
-                            <div>
-                              <span className="text-[9px] font-bold text-slate-600">Head: </span>
-                              <span className="text-[9px] font-black text-slate-900">
-                                {session.analysis[view].head_alignment.status}
-                              </span>
-                            </div>
-                          )}
-                          {session.analysis[view].forward_head && (
-                            <div>
-                              <span className="text-[9px] font-bold text-slate-600">Neck: </span>
-                              <span className="text-[9px] font-black text-slate-900">
-                                {session.analysis[view].forward_head.status}
-                              </span>
-                            </div>
-                          )}
-                          {session.analysis[view].shoulder_alignment && (
-                            <div>
-                              <span className="text-[9px] font-bold text-slate-600">Shoulders: </span>
-                              <span className="text-[9px] font-black text-slate-900">
-                                {session.analysis[view].shoulder_alignment.status}
-                              </span>
-                            </div>
-                          )}
-                          {session.analysis[view].kyphosis && (
-                            <div>
-                              <span className="text-[9px] font-bold text-slate-600">Kyphosis: </span>
-                              <span className="text-[9px] font-black text-slate-900">
-                                {session.analysis[view].kyphosis.status}
-                              </span>
-                            </div>
-                          )}
-                          {session.analysis[view].lordosis && (
-                            <div>
-                              <span className="text-[9px] font-bold text-slate-600">Lordosis: </span>
-                              <span className="text-[9px] font-black text-slate-900">
-                                {session.analysis[view].lordosis.status}
-                              </span>
-                            </div>
-                          )}
-                          {session.analysis[view].spinal_curvature && (
-                            <div>
-                              <span className="text-[9px] font-bold text-slate-600">Spine: </span>
-                              <span className="text-[9px] font-black text-slate-900">
-                                {session.analysis[view].spinal_curvature.status}
-                              </span>
-                            </div>
-                          )}
-                          {session.analysis[view].hip_alignment && (
-                            <div>
-                              <span className="text-[9px] font-bold text-slate-600">Hips: </span>
-                              <span className="text-[9px] font-black text-slate-900">
-                                {session.analysis[view].hip_alignment.status}
-                              </span>
-                            </div>
-                          )}
-                          {session.analysis[view].pelvic_tilt && (
-                            <div>
-                              <span className="text-[9px] font-bold text-slate-600">Pelvis: </span>
-                              <span className="text-[9px] font-black text-slate-900">
-                                {session.analysis[view].pelvic_tilt.status}
-                              </span>
-                            </div>
-                          )}
-                          {session.analysis[view].knee_alignment && (
-                            <div>
-                              <span className="text-[9px] font-bold text-slate-600">Knees: </span>
-                              <span className="text-[9px] font-black text-slate-900">
-                                {session.analysis[view].knee_alignment.status}
-                              </span>
-                            </div>
-                          )}
-                          {session.analysis[view].knee_position && (
-                            <div>
-                              <span className="text-[9px] font-bold text-slate-600">Knees: </span>
-                              <span className="text-[9px] font-black text-slate-900">
-                                {session.analysis[view].knee_position.status}
-                              </span>
-                            </div>
-                          )}
-                          
-                          {session.analysis[view].deviations && session.analysis[view].deviations.length > 0 && (
-                            <div className="pt-1 border-t border-slate-200">
-                              <p className="text-[8px] text-slate-500 leading-tight">
-                                {session.analysis[view].deviations.slice(0, 3).join(', ')}
-                              </p>
-                            </div>
-                          )}
-                        </div>
+                    {/* POSTURE SUMMARY - Simple per-view text (max 150 chars) */}
+                    {session?.analysis[view]?.overall_assessment && (
+                      <div className="mt-2 bg-slate-50 p-2 rounded-lg border border-slate-100 animate-in fade-in slide-in-from-bottom-2">
+                        <p className="text-[9px] text-slate-600 leading-snug whitespace-normal break-words">
+                          {session.analysis[view].overall_assessment}
+                        </p>
                       </div>
                     )}
                   </div>

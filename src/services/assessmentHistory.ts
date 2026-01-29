@@ -612,3 +612,86 @@ export function compareAssessments(
 
   return comparison;
 }
+
+/**
+ * Restore a client's current assessment from a specific snapshot
+ * Useful for recovering from accidental overwrites
+ */
+export async function restoreFromSnapshot(
+  coachUid: string,
+  clientName: string,
+  snapshotId?: string,
+  organizationId?: string
+): Promise<{ success: boolean; message: string; restoredScore?: number }> {
+  try {
+    // Get all snapshots for this client
+    const snapshots = await getSnapshots(coachUid, clientName, 50, organizationId);
+    
+    if (snapshots.length === 0) {
+      return { success: false, message: `No snapshots found for client "${clientName}"` };
+    }
+    
+    // Find the snapshot to restore (either by ID or use the second most recent)
+    let snapshotToRestore: AssessmentSnapshot | undefined;
+    
+    if (snapshotId) {
+      snapshotToRestore = snapshots.find(s => s.id === snapshotId);
+      if (!snapshotToRestore) {
+        return { success: false, message: `Snapshot with ID "${snapshotId}" not found` };
+      }
+    } else {
+      // Use the second snapshot (first is probably the corrupted one)
+      if (snapshots.length < 2) {
+        // Only one snapshot - use it
+        snapshotToRestore = snapshots[0];
+      } else {
+        snapshotToRestore = snapshots[1]; // Second most recent
+      }
+    }
+    
+    // Log what we're doing
+    const snapshotDate = snapshotToRestore.timestamp?.toDate?.()?.toLocaleString?.() || 'unknown date';
+    logger.info(`[RESTORE] Restoring "${clientName}" from snapshot ${snapshotToRestore.id} (${snapshotDate})`, 'assessmentHistory');
+    
+    // Get the current assessment ref
+    const currentRef = getCurrentAssessmentDoc(coachUid, clientName);
+    
+    // Restore the snapshot to current
+    await setDoc(
+      currentRef,
+      {
+        formData: sanitizeForFirestore(snapshotToRestore.formData),
+        overallScore: snapshotToRestore.overallScore ?? 0,
+        lastUpdated: serverTimestamp(),
+        clientName: clientName,
+        organizationId: organizationId || null,
+      },
+      { merge: false }
+    );
+    
+    return {
+      success: true,
+      message: `Successfully restored "${clientName}" from snapshot dated ${snapshotDate}`,
+      restoredScore: snapshotToRestore.overallScore,
+    };
+  } catch (error) {
+    logger.error(`[RESTORE] Failed to restore from snapshot:`, error);
+    return { success: false, message: `Restore failed: ${error}` };
+  }
+}
+
+/**
+ * List available snapshots for a client (for debugging/recovery)
+ */
+export async function listClientSnapshots(
+  coachUid: string,
+  clientName: string
+): Promise<{ id: string; date: string; score: number; type: string }[]> {
+  const snapshots = await getSnapshots(coachUid, clientName, 20);
+  return snapshots.map(s => ({
+    id: s.id || 'unknown',
+    date: s.timestamp?.toDate?.()?.toLocaleString?.() || 'unknown',
+    score: s.overallScore,
+    type: s.type,
+  }));
+}

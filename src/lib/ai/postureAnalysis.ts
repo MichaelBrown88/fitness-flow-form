@@ -151,6 +151,22 @@ export interface PostureAnalysisResult {
   deviations: string[]; // List of all identified deviations
   risk_flags: string[]; // Risk factors for injury/pain
   overall_assessment: string; // Comprehensive summary
+  
+  // MediaPipe-calculated severities (ground truth for wireframe colors)
+  // These override AI determinations for label display
+  calculated?: {
+    shoulderSeverity?: 'good' | 'mild' | 'moderate' | 'severe';
+    hipLevelSeverity?: 'good' | 'mild' | 'moderate' | 'severe';
+    hipShiftSeverity?: 'good' | 'mild' | 'moderate' | 'severe';
+    headTiltSeverity?: 'good' | 'mild' | 'moderate' | 'severe';
+    leftLegSeverity?: 'good' | 'mild' | 'moderate' | 'severe';
+    rightLegSeverity?: 'good' | 'mild' | 'moderate' | 'severe';
+    forwardHeadSeverity?: 'good' | 'mild' | 'moderate' | 'severe';
+    pelvicTiltSeverity?: 'good' | 'mild' | 'moderate' | 'severe';
+    kyphosisSeverity?: 'good' | 'mild' | 'moderate' | 'severe';
+    lordosisSeverity?: 'good' | 'mild' | 'moderate' | 'severe';
+    spineSeverity?: 'good' | 'mild' | 'moderate' | 'severe';
+  };
 }
 
 export async function analyzePostureImage(
@@ -165,7 +181,7 @@ export async function analyzePostureImage(
     let calculated: Partial<import('@/lib/utils/postureMath').CalculatedPostureMetrics> = {};
     if (landmarks?.raw) {
       if (view === 'front' || view === 'back') {
-        calculated = calculateFrontViewMetrics(landmarks.raw);
+        calculated = calculateFrontViewMetrics(landmarks.raw, view);
       } else {
         calculated = calculateSideViewMetrics(landmarks.raw, view);
       }
@@ -207,17 +223,10 @@ export async function analyzePostureImage(
       throw new Error(`Model initialization failed: ${modelError instanceof Error ? modelError.message : 'Unknown error'}`);
     }
 
+    const metricsJson = JSON.stringify(calculated ?? {}, null, 2);
     const quantitativeContext = `
-      LOCAL CALCULATIONS (Deterministic):
-      ${calculated.headTiltDegrees !== undefined ? `- Head Tilt: ${calculated.headTiltDegrees.toFixed(1)}°` : ''}
-      ${calculated.forwardHeadCm !== undefined ? `- Forward Head: ${calculated.forwardHeadCm.toFixed(1)}cm (${calculated.headSeverity})` : ''}
-      ${calculated.shoulderSymmetryCm !== undefined ? `- Shoulder Diff: ${calculated.shoulderSymmetryCm.toFixed(1)}cm` : ''}
-      ${calculated.hipSymmetryCm !== undefined ? `- Hip Diff: ${calculated.hipSymmetryCm.toFixed(1)}cm` : ''}
-      ${calculated.pelvicTiltDegrees !== undefined ? `- Pelvic Angle: ${calculated.pelvicTiltDegrees.toFixed(1)}°` : ''}
-      ${calculated.headPitchDegrees !== undefined ? `- Head Pitch: ${calculated.headPitchDegrees.toFixed(1)}° (${calculated.headPitchStatus})` : ''}
-      ${calculated.hipShiftPercent !== undefined ? `- Hip Shift: ${calculated.hipShiftPercent.toFixed(1)}% (${calculated.hipShiftDirection})` : ''}
-      
-      Use these values as your primary source of truth for severity levels.
+      DETERMINISTIC METRICS (SOURCE OF TRUTH):
+      ${metricsJson}
     `;
     
     // Log the data being sent to Gemini
@@ -229,319 +238,61 @@ export async function analyzePostureImage(
 
     const viewSpecificInstructions = {
       'front': `
-        FRONT VIEW ANALYSIS - CRITICAL SKELETAL CHECKS:
-        - Use the provided MediaPipe coordinates as your skeletal "ground truth".
-        - Vertical midline: Draw through nose, sternum, and center of feet.
-        - Analyze HEAD TILT: Look at eye level and ear alignment. Only report if visually noticeable (≥3 degrees). Minor tilts < 3 degrees should be considered "Neutral".
-        - Analyze SHOULDER ASYMMETRY: Measure height difference between acromion processes. 
-        - Analyze HIP ASYMMETRY: Measure height difference between iliac crests. 
-        - Analyze PELVIC SHIFT: Check if the pelvis is shifted left or right of the vertical midline.
-        - CRITICAL: Do not default to "Neutral" if you see any asymmetry. Report exact degrees and cm.
-        - LANDMARK PERCENTAGES:
-          * center_x_percent: X position of midline as % of image width (0-100)
-          * shoulder_y_percent: Y position of shoulder center as % of image height (0-100)
-          * hip_y_percent: Y position of hip center as % of image height (0-100)
-          * head_y_percent: Y position of nose as % of image height (0-100)
+        FRONT VIEW METRIC USAGE:
+        - Use headTiltDegrees to set head_alignment.status (Tilted Left/Right or Neutral).
+        - Use shoulderSymmetryCm and shoulderSeverity for shoulder_alignment.status.
+        - Use hipSymmetryCm and hipSeverity for hip_alignment.status.
+        - Use hipShiftPercent and hipShiftDirection for hip_shift.status.
+        - Use leftLegAlignmentStatus and leftLegSeverity for left_leg_alignment.status/severity.
+        - Use rightLegAlignmentStatus and rightLegSeverity for right_leg_alignment.status/severity.
+        - Use leftKneeDeviationPercent and rightKneeDeviationPercent for knee_deviation_percent.
+        - Use kneeAlignmentStatus for knee_alignment.status.
+        - If a metric is missing, return Neutral/Centered status for that field.
       `,
       'back': `
-        BACK VIEW ANALYSIS:
-        
-        ⚠️ HEAD TILT - BE CONSERVATIVE ⚠️
-        - ONLY report head tilt if it is CLEARLY VISIBLE (one ear noticeably lower than the other)
-        - Most heads appear slightly tilted due to camera angle - this is NOT a real tilt
-        - If unsure, report "Neutral" - false positives are worse than false negatives
-        - RULE: If tilt is < 5 degrees visually, report "Neutral"
-        
-        HEAD TILT DIRECTION (BACK VIEW):
-        - When viewing someone's BACK, client-left = screen-left, client-right = screen-right
-        - "Tilted Right" means the client's RIGHT EAR is LOWER (right side of head drops)
-        - "Tilted Left" means the client's LEFT EAR is LOWER (left side of head drops)
-        - Look at which EAR is lower to determine direction
-        
-        OTHER CHECKS:
-        - Vertical midline: Along the spine to center of heels
-        - Shoulder asymmetry: Which shoulder is higher?
-        - Hip asymmetry: Which hip is higher?
-        - Spinal curvature: Any lateral deviation from the midline?
-        
-        LANDMARK PERCENTAGES:
-          * center_x_percent: X position of spine as % of image width (0-100)
-          * shoulder_y_percent: Y position of shoulder center as % of image height (0-100)
-          * hip_y_percent: Y position of hip center as % of image height (0-100)
-          * head_y_percent: Y position of head as % of image height (0-100)
+        BACK VIEW METRIC USAGE:
+        - Use headTiltDegrees to set head_alignment.status (Tilted Left/Right or Neutral).
+        - Use shoulderSymmetryCm and shoulderSeverity for shoulder_alignment.status.
+        - Use hipSymmetryCm and hipSeverity for hip_alignment.status.
+        - Use hipShiftPercent and hipShiftDirection for hip_shift.status.
+        - Use leftLegAlignmentStatus and leftLegSeverity for left_leg_alignment.status/severity.
+        - Use rightLegAlignmentStatus and rightLegSeverity for right_leg_alignment.status/severity.
+        - Use leftKneeDeviationPercent and rightKneeDeviationPercent for knee_deviation_percent.
+        - Use kneeAlignmentStatus for knee_alignment.status.
+        - If a metric is missing, return Neutral/Centered status for that field.
       `,
       'side-right': `
-        RIGHT SIDE VIEW ANALYSIS:
-        
-        CLIENT ORIENTATION:
-        - Client's RIGHT side faces camera (right shoulder visible)
-        - Face points RIGHT (nose points to right edge of image)
-        - RIGHT EAR is visible (behind the jaw, to the LEFT of the nose in image)
-        
-        ⚠️ CONSISTENCY REQUIREMENT ⚠️
-        - Your findings should be SIMILAR to the left side view (same person!)
-        - If left side showed "Moderate" FHP, right side should be similar
-        - Kyphosis, lordosis, pelvic tilt should match between views
-        - Don't report dramatically different findings between sides
-        
-        PLUMB LINE: Center of image (50% width)
-        - Compare EAR position (not eye!) to this line
+        SIDE VIEW METRIC USAGE:
+        - Use forwardHeadCm and headSeverity for forward_head.status.
+        - Use headPitchDegrees and headPitchStatus for head_updown.
+        - Use pelvicTiltDegrees and pelvicSeverity for pelvic_tilt.status.
+        - If a metric is missing, return Neutral/Normal status for that field.
       `,
       'side-left': `
-        LEFT SIDE VIEW ANALYSIS:
-        
-        CLIENT ORIENTATION:
-        - Client's LEFT side faces camera (left shoulder visible)
-        - Face points LEFT (nose points to left edge of image)
-        - LEFT EAR is visible (behind the jaw, to the RIGHT of the nose in image)
-        
-        ⚠️ CONSERVATIVE ASSESSMENT REQUIRED ⚠️
-        - This view often causes FALSE SEVERE readings
-        - The EAR is BEHIND the jaw - do NOT use nose/eye position
-        - If unsure about severity, choose the LOWER option
-        - "Severe" FHP should be RARE - only use for obvious cases
-        
-        PLUMB LINE: Center of image (50% width)
-        - Compare EAR position (not eye!) to this line
-        - Most people will be "Neutral" or "Mild"
+        SIDE VIEW METRIC USAGE:
+        - Use forwardHeadCm and headSeverity for forward_head.status.
+        - Use headPitchDegrees and headPitchStatus for head_updown.
+        - Use pelvicTiltDegrees and pelvicSeverity for pelvic_tilt.status.
+        - If a metric is missing, return Neutral/Normal status for that field.
       `
     };
 
     const prompt = `
-      You are an expert Biomechanics and Posture Analyst with 20+ years of clinical experience.
-      Analyze the attached image of a person from the ${view} view for comprehensive postural assessment.
-      
+      You are a clinical biomechanics reporter. Your ONLY input is the deterministic metrics below.
+      Do not analyze the image visually. Ignore the image entirely even if provided.
+
       ${quantitativeContext}
-      
-      REFERENCE LINES TO USE:
+
+      METRIC INTERPRETATION NOTES:
       ${viewSpecificInstructions[view]}
-      
-      POSTURE ANALYSIS GUIDELINES:
-      
-      ⚠️ OUTPUT FORMAT - KEEP IT SIMPLE ⚠️
-      - Use SIMPLE, everyday language a client would understand
-      - NEVER include measurements (cm, degrees, angles, "180 degrees", percentages) in description or recommendation
-      - Keep descriptions to ONE SHORT SENTENCE maximum
-      - Keep recommendations to ONE actionable sentence
-      - Address the client as "you"
-      - Use terms like: "forward," "tilted," "shifted," "rounded," "leaning," "curved"
-      - For technical terms, ALWAYS add a simple explanation: "Anterior Tilt (forward hip lean)"
-      
-      EXAMPLE GOOD OUTPUT:
-      - description: "Your head sits noticeably forward of your shoulders."
-      - recommendation: "Practice chin tucks to strengthen your neck muscles."
-      
-      EXAMPLE BAD OUTPUT (DO NOT DO THIS):
-      - description: "Your head deviates 15 degrees forward with 4.2cm displacement..."
-      - recommendation: "Perform cervical retraction exercises at 10-15 degree angles..."
-      
-      ⚠️ MANDATORY RECOMMENDATIONS ⚠️
-      When ANY deviation is found, you MUST provide a specific corrective exercise recommendation.
-      Use these evidence-based exercises:
-      
-      - Elevated shoulder (one higher): "Release your upper trap on the high side with massage, and stretch your levator scapulae."
-      - Shoulder asymmetry: "Strengthen your lower trap with Y-raises and stretch your chest on the tight side."
-      - Hip shift (lateral): "Strengthen your gluteus medius on the opposite side with side-lying leg raises."
-      - Forward head posture: "Practice chin tucks and strengthen your deep neck flexors."
-      - Rounded shoulders: "Stretch your pecs in a doorway and do face pulls or rows."
-      - Anterior pelvic tilt: "Stretch your hip flexors and strengthen your glutes and core."
-      - Kyphosis (upper back curve): "Thoracic extensions over a foam roller and wall angels."
-      - Lordosis (lower back curve): "Core strengthening (dead bugs, planks) and glute bridges."
-      - Knock knees/valgus: "Strengthen your hip abductors and practice clamshells."
-      - Bow legs/varus: "Stretch your IT band and strengthen your adductors."
-      
-      DO NOT leave recommendation empty or null if a deviation is found!
-      
-      ⚠️ COACHING INTELLIGENCE - CONNECT THE DOTS ⚠️
-      
-      1. HEAD PITCH CONTEXT (Side Views Only):
-         - Check the Head Pitch value from LOCAL CALCULATIONS above
-         - If Head Pitch indicates "Looking Down" (negative degrees < -10°), the Forward Head measurement is INFLATED
-         - When client is looking down, REDUCE Forward Head severity by one level:
-           * "Severe" → "Moderate" (add note: "Your downward gaze may have contributed to this reading")
-           * "Moderate" → "Mild"
-           * "Mild" → Keep as "Mild" but soften language
-         - In description, acknowledge: "Note: Your head was angled slightly downward during the scan."
-      
-      2. COMPENSATION PATTERN DETECTION (Front/Back Views):
-         - If BOTH Hip Shift AND Shoulder Asymmetry are detected in the same view:
-           * These are likely RELATED compensations, not separate issues
-           * Connect them: "Your elevated [left/right] shoulder and [opposite] hip shift suggest a compensation pattern—your body may be favoring one side for stability."
-           * Recommend unilateral (single-side) exercises to address the root cause
-         - If Hip Shift > 5% AND Shoulder Diff > 1.5cm, this is a significant compensation pattern
-      
-      3. DEVIATIONS ARRAY - QUALITY OVER QUANTITY:
-         - ONLY include findings that are actual deviations (NOT "Neutral" or "Normal")
-         - DO NOT list neutral/normal findings - they add noise
-         - If a metric is within normal range, skip it entirely
-         - Exception: If ALL metrics are normal, include ONE positive statement: "Your posture alignment is excellent"
-         - Maximum 3-4 items, prioritized by severity (worst first)
-         - Use coaching language that explains WHY it matters biomechanically
-      
-      4. OVERALL ASSESSMENT - COACHING TONE:
-         - Start with what's GOOD (acknowledge any neutral/normal findings briefly)
-         - Then address deviations with biomechanical context (explain the "why")
-         - End with an encouraging, actionable next step
-         - Example: "Your frontal alignment shows good symmetry—great foundation! From the side, we see some forward head posture and anterior pelvic tilt, which often go together. Focus on chin tucks and hip flexor stretches."
-      
-      CRITICAL LANDMARK ACCURACY (SIDE VIEWS): 
-      - EAR CANAL (TRAGUS) is your ONLY head landmark - it is BEHIND the jawline
-      - The ear is 6-10cm behind the eye. If your identified point is near the eye/nose/forehead, it is WRONG
-      - LEFT SIDE VIEW: Person faces LEFT, ear is to the RIGHT of the eye in the image
-      - RIGHT SIDE VIEW: Person faces RIGHT, ear is to the LEFT of the eye in the image
-      
-      VIEW-SPECIFIC ANALYSIS REQUIRED:
-      
-      ${view === 'front' || view === 'back' ? `
-      FRONT/BACK VIEW SPECIFIC CHECKS:
-      1. HEAD TILT ASYMMETRY:
-         - ONLY report head tilt if ONE EAR IS CLEARLY LOWER than the other
-         - When in doubt, report "Neutral" - most apparent tilts are camera angle artifacts
-         - Normal: < 7 degrees = "Neutral" status (DEFAULT TO THIS)
-         - Mild: 7-10 degrees = "Tilted" status (visually noticeable)
-         - Moderate: 10-15 degrees = "Tilted" status (clearly visible)
-         - Severe: > 15 degrees = "Tilted" status (obvious)
-         - CRITICAL: 90% of heads should be "Neutral". Only report tilt if OBVIOUSLY visible.
-      
-      2. SHOULDER ELEVATION ASYMMETRY:
-         - Measure vertical height difference between left and right shoulders (in cm)
-         - Report the height_difference_cm (absolute value of difference)
-         - Normal: < 1.0cm difference = "Neutral" status (not visually noticeable)
-         - Mild: 1.0-1.5cm difference = "Asymmetric" status (barely noticeable)
-         - Moderate: 1.5-2.5cm difference = "Asymmetric" status (clearly visible)
-         - Severe: > 2.5cm difference = "Asymmetric" status (very obvious)
-         - Identify which shoulder is elevated in description
-         - CRITICAL: Only report "Asymmetric" if the difference is ≥1.0cm and visually noticeable. Differences < 1.0cm should always be "Neutral" to avoid alarming clients unnecessarily.
-      
-      2. HIP ELEVATION ASYMMETRY:
-         - Measure vertical height difference between left and right hips (in cm)
-         - Normal: < 1.0cm difference (not visually noticeable)
-         - Mild: 1.0-1.5cm difference (barely noticeable)
-         - Moderate: 1.5-2.5cm difference (clearly visible)
-         - Severe: > 2.5cm difference (very obvious)
-         - Identify which hip is elevated
-         - CRITICAL: Only report asymmetry if ≥1.0cm and visually noticeable. Differences < 1.0cm should be considered normal.
-      
-      3. LATERAL PELVIC TILT:
-         - Measure tilt angle in degrees
-         - Normal: < 2 degrees
-         - Mild: 2-5 degrees
-         - Moderate: 5-8 degrees
-         - Severe: > 8 degrees
-      
-      4. HIP SHIFT:
-         - Measure horizontal displacement of hips from midline (in cm)
-         - Left shift: hips shifted to left
-         - Right shift: hips shifted to right
-         - Normal: < 1cm displacement
-      
-      5. SHOULDER ROUNDING (Front view only):
-         - Check if shoulders are forward/protracted
-         - Normal: shoulders aligned with body
-         - Rounded: shoulders forward of ideal alignment
-      
-      6. KNEE ALIGNMENT (Front/Back view):
-         - Check for valgus (knees pointing inward) or varus (knees pointing outward)
-         - Measure deviation angle in degrees from ideal alignment
-         - Normal: knees aligned = "Neutral" status
-         - Valgus: knees pointing inward = "Valgus" status
-         - Varus: knees pointing outward = "Varus" status
-         - Report deviation_degrees (angle of deviation)
-      
-      7. SPINAL CURVATURE (Back view only):
-         - Check for scoliosis indicators (lateral spinal curvature)
-         - Look for lateral deviation of the spine from the midline
-         - Measure curve angle in degrees (Cobb angle estimation)
-         - Normal: straight spine = "Normal" status
-         - Mild Scoliosis: 5-15 degrees = "Mild Scoliosis" status
-         - Moderate Scoliosis: 15-30 degrees = "Moderate Scoliosis" status
-         - Severe Scoliosis: > 30 degrees = "Severe Scoliosis" status
-         - Report curve_degrees (positive for right-side bulge, negative for left-side bulge)
-         - CRITICAL: If you see ANY lateral deviation, you MUST report it here, not just in overall_assessment.
-      
-      8. COMPENSATION PATTERN ANALYSIS:
-         - Cross-reference Hip Shift with Shoulder Asymmetry from the LOCAL CALCULATIONS
-         - If BOTH are present (Hip Shift > 2% AND Shoulder Diff > 1cm):
-           * These are likely RELATED - the body compensates for one imbalance with another
-           * Classic pattern: Elevated LEFT shoulder + RIGHT hip shift = favoring right side
-           * Classic pattern: Elevated RIGHT shoulder + LEFT hip shift = favoring left side
-         - In overall_assessment, CONNECT these findings:
-           * Example: "We see a compensation pattern where your left shoulder sits higher while your hips shift right. This often happens when your body favors one side for stability. Unilateral (single-side) exercises will help correct this imbalance."
-         - DO NOT report hip shift and shoulder asymmetry as separate, unrelated issues if both are present
-      
-      IMPORTANT: You MUST analyze ALL of the above checks (shoulders, hips, pelvic tilt, hip shift, knee alignment, compensation patterns, and spinal curvature for back view).
-      DO NOT analyze forward head posture, kyphosis, or lordosis from this view - these require side view.
-      ` : `
-      SIDE VIEW SPECIFIC CHECKS (using center of mass plumb line):
-      1. FORWARD HEAD POSTURE (FHP):
-         - CRITICAL: Locate the EAR CANAL (tragus). It is BEHIND the jawline, NOT at the eye.
-         - Compare ear position to the vertical plumb line at center of image.
-         
-         ⚠️ HEAD PITCH ADJUSTMENT - CHECK FIRST! ⚠️
-         - Look at the Head Pitch value from LOCAL CALCULATIONS above
-         - If Head Pitch shows "Looking Down" (< -10°):
-           * The client's downward gaze INFLATES the forward head measurement
-           * REDUCE severity by ONE level before reporting
-           * Add a note in description about the gaze affecting the reading
-         - Example: If measurement says 9cm (Severe) but pitch is -15° (Looking Down):
-           * Report as "Moderate" not "Severe"
-           * Description: "Your head sits forward of your shoulders. Note: Your downward gaze during the scan may have exaggerated this measurement."
-         
-         ⚠️ SEVERITY GUIDELINES (AFTER pitch adjustment) ⚠️
-         - "Neutral": Ear is within 2cm of plumb line (DEFAULT - use this if unsure)
-         - "Mild": Ear is 2-4cm forward of plumb line (slight forward position)
-         - "Moderate": Ear is 4-6cm forward of plumb line (noticeable forward head)
-         - "Severe": Ear is >6cm forward AND Head Pitch is "Level" (RARE - only if NOT looking down)
-         
-         ⚠️ CRITICAL: "Severe" should be RARE. Most people are Neutral or Mild.
-         If Head Pitch indicates "Looking Down", automatically reduce severity by one level.
-         When in doubt, choose the less severe option.
-      
-      2. THORACIC KYPHOSIS (Upper Back Curve):
-         - Identify the curve of the upper back.
-         - NO NUMBERS in output. Use "Normal" or "Increased" (Hyperkyphosis).
-      
-      3. LUMBAR LORDOSIS (Lower Back Curve):
-         - Identify the curve of the lower back.
-         - NO NUMBERS in output. Use "Normal", "Increased" (Hyperlordosis), or "Decreased" (Flat Back).
-      
-      4. PELVIC TILT (Hip Lean):
-         - Identify if the pelvis is rotated forward (Anterior) or backward (Posterior).
-         - NO NUMBERS. Use "Anterior Tilt (forward hip lean)" or "Posterior Tilt (backward hip lean)".
-      
-      5. SHOULDER POSITION:
-         - Identify if shoulders are rolled forward (Rounded) or neutral.
-         - NO NUMBERS. Use "Rounded" or "Neutral".
-      
-      4. ANTERIOR/POSTERIOR PELVIC TILT:
-         - Measure the angle between shoulder-hip-knee (or use provided pelvic angle if available)
-         - CRITICAL INTERPRETATION:
-           * If the angle is LESS than 180° (e.g., 171°), this indicates ANTERIOR TILT (pelvis rotated forward, tailbone out)
-           * If the angle is MORE than 180° (e.g., 189°), this indicates POSTERIOR TILT (pelvis rotated backward, tailbone tucked)
-           * If the angle is approximately 180° (±5°), this is NEUTRAL
-         - Calculate deviation: |angle - 180°|
-         - Anterior tilt: angle < 175° (pelvis rotated forward, increased lumbar lordosis)
-         - Posterior tilt: angle > 185° (pelvis rotated backward, flattened lumbar curve)
-         - Normal: 175° to 185° (within ±5° of 180°)
-         - Mild: 5-10° deviation from 180°
-         - Moderate: 10-15° deviation from 180°
-         - Severe: > 15° deviation from 180°
-         - IMPORTANT: If you see increased lumbar lordosis (curved lower back), this is ANTERIOR tilt, not posterior
-      
-      5. ROUNDED SHOULDERS:
-         - Measure forward position of shoulders relative to plumb line (in cm)
-         - Normal: shoulders aligned with plumb line
-         - Mild: 1-2cm forward
-         - Moderate: 2-4cm forward
-         - Severe: > 4cm forward
-      
-      6. KNEE POSITION:
-         - Check for hyperextension (knee behind plumb line) or flexion (knee in front)
-         - Normal: knee aligned with plumb line
-         - Hyperextension: knee behind plumb line
-         - Flexion: knee forward of plumb line
-      `}
-      
+
+      RULES:
+      - Use ONLY the metrics provided above. Do not infer or guess missing values.
+      - If a metric is missing, return a Neutral/Normal/Centered/Straight status for that field.
+      - Keep descriptions under 12 words. Keep recommendations to one sentence.
+      - Do not include measurements (cm, degrees, percentages) in descriptions or recommendations.
+      - Use the exact status values listed in the JSON schema below.
+
       Return ONLY a JSON object with this EXACT structure:
       ${view === 'front' || view === 'back' ? `
       {

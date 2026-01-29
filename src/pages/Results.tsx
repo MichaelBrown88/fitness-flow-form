@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getAssessmentById, type AssessmentRecord } from '@/services/assessments';
 import { generateAssessmentResults } from '@/lib/assessmentLogic';
 import type { PriorityBand } from '@/lib/negativeOutcomes';
+import { STORAGE_KEYS } from '@/constants/storageKeys';
 
 const priorityStyles: Record<PriorityBand, string> = {
   P1: 'border-red-200 bg-red-50 text-red-700',
@@ -160,8 +161,10 @@ const Results = () => {
           <p className="text-sm text-slate-500">{error ?? 'Result not found. Please generate a new assessment.'}</p>
           <Button 
             onClick={() => {
-              // Clear any partial assessment data to ensure full assessment
-              sessionStorage.removeItem('partialAssessment');
+              // CRITICAL: Clear all assessment modes to prevent data bleed
+              sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
+              sessionStorage.removeItem(STORAGE_KEYS.EDIT_ASSESSMENT);
+              sessionStorage.removeItem(STORAGE_KEYS.IS_DEMO);
               navigate('/assessment');
             }} 
             className="bg-slate-900 text-white hover:bg-slate-800"
@@ -184,8 +187,10 @@ const Results = () => {
           <Button 
             variant="outline" 
             onClick={() => {
-              // Clear any partial assessment data to ensure full assessment
-              sessionStorage.removeItem('partialAssessment');
+              // CRITICAL: Clear all assessment modes to prevent data bleed
+              sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
+              sessionStorage.removeItem(STORAGE_KEYS.EDIT_ASSESSMENT);
+              sessionStorage.removeItem(STORAGE_KEYS.IS_DEMO);
               navigate('/assessment');
             }}
           >

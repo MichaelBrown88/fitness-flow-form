@@ -25,6 +25,8 @@ const GapMetricRow: React.FC<{
   
   const spanStyle = isDesktop ? { width: '64px' } : { width: '64px' };
 
+  
+
   return (
     <div className="flex items-center justify-between gap-3">
       <span className="text-sm font-medium text-zinc-700 text-left whitespace-nowrap flex-shrink-0">{label}</span>
@@ -46,9 +48,11 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
   const functional = gapAnalysisData[1];
   const metabolic = gapAnalysisData[2];
 
-  const renderBodyCompCard = (isDesktop: boolean) => (
-    <Card className={isDesktop ? "p-4 sm:p-5 md:p-6 flex flex-col" : "p-5 sm:p-6 md:p-7 flex flex-col"}>
-      <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6 h-[44px]">
+
+  const renderBodyCompCard = (isDesktop: boolean) => {
+    return (
+      <Card className={isDesktop ? "p-4 sm:p-5 md:p-6 flex flex-col" : "p-5 sm:p-6 md:p-7 flex flex-col"}>
+        <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6 h-[44px]">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-gradient-light text-zinc-900 rounded-lg">
             <Scale className="w-5 h-5" />
@@ -93,8 +97,9 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
           <p className="text-[10px] sm:text-xs text-zinc-600 leading-relaxed">{truncateInsight(bodyComp?.insight || '')}</p>
         </div>
       </div>
-    </Card>
-  );
+      </Card>
+    );
+  };
 
   const renderFunctionalCard = (isDesktop: boolean) => {
     const coreGaps = functional?.functionalGaps?.core;
@@ -169,9 +174,10 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
     );
   };
 
-  const renderMetabolicCard = (isDesktop: boolean) => (
-    <Card className={isDesktop ? "p-4 sm:p-5 md:p-6 flex flex-col" : "p-5 sm:p-6 md:p-7 flex flex-col"}>
-      <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6 h-[44px]">
+  const renderMetabolicCard = (isDesktop: boolean) => {
+    return (
+      <Card className={isDesktop ? "p-4 sm:p-5 md:p-6 flex flex-col" : "p-5 sm:p-6 md:p-7 flex flex-col"}>
+        <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6 h-[44px]">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-gradient-light text-zinc-900 rounded-lg">
             <Heart className="w-5 h-5" />
@@ -216,8 +222,9 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
           <p className="text-[10px] sm:text-xs text-zinc-600 leading-relaxed">{truncateInsight(metabolic?.insight || '')}</p>
         </div>
       </div>
-    </Card>
-  );
+      </Card>
+    );
+  };
 
   return (
     <section className="w-full min-w-0 overflow-x-hidden">
@@ -240,9 +247,9 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
       <Tabs defaultValue="body-comp" className="w-full mb-6 md:mb-8 lg:hidden">
         <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0 mb-3 sm:mb-4 scrollbar-hide">
           <TabsList className="w-full sm:w-auto justify-start rounded-lg sm:rounded-xl glass-button h-auto p-1 sm:p-1.5 gap-1 inline-flex min-w-max sm:min-w-0">
-            <TabsTrigger value="body-comp" className="text-[9px] sm:text-[10px] font-semibold px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-md data-[state=active]:glass-button-active">Body Composition</TabsTrigger>
-            <TabsTrigger value="strength" className="text-[9px] sm:text-[10px] font-semibold px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-md data-[state=active]:glass-button-active">Functional Strength</TabsTrigger>
-            <TabsTrigger value="metabolic" className="text-[9px] sm:text-[10px] font-semibold px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-md data-[state=active]:glass-button-active">Metabolic Fitness</TabsTrigger>
+            <TabsTrigger value="body-comp" className="text-[9px] sm:text-[10px] font-semibold px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-md text-zinc-600 data-[state=active]:glass-button-active data-[state=active]:!text-white">Body Composition</TabsTrigger>
+            <TabsTrigger value="strength" className="text-[9px] sm:text-[10px] font-semibold px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-md text-zinc-600 data-[state=active]:glass-button-active data-[state=active]:!text-white">Functional Strength</TabsTrigger>
+            <TabsTrigger value="metabolic" className="text-[9px] sm:text-[10px] font-semibold px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-md text-zinc-600 data-[state=active]:glass-button-active data-[state=active]:!text-white">Metabolic Fitness</TabsTrigger>
           </TabsList>
         </div>
         

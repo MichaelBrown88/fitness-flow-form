@@ -204,6 +204,15 @@ export const updatePostureImage = async (
     }
     
     const sessionData = sessionDoc.data() as LiveSession;
+
+    const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+      !!value && typeof value === 'object' && !Array.isArray(value);
+
+    // Ensure postureImages is a map before nested updates
+    if (!isPlainObject(sessionData.postureImages)) {
+      await setDoc(sessionRef, { postureImages: {} }, { merge: true });
+      sessionData.postureImages = {};
+    }
     
     // Validate organizationId: use provided orgId+profile (desktop) or verify against session's orgId (mobile)
     if (organizationId && profile) {
@@ -232,11 +241,18 @@ export const updatePostureImage = async (
         async (progress) => {
           try {
             // When wireframe is ready, show it immediately in the UI
-            if (progress.stage === 'wireframe' && progress.wireframeImage) {
+            if (progress.stage === 'wireframe' && typeof progress.wireframeImage === 'string' && progress.wireframeImage.length > 0) {
               logger.debug(`Storing wireframe for ${view} (intermediate)`, 'LIVE_SESSIONS');
+              let wireframePreview = progress.wireframeImage;
+              try {
+                const compressed = await compressImageForDisplay(progress.wireframeImage, 800, 0.75);
+                wireframePreview = compressed.compressed;
+              } catch (compressError) {
+                logger.warn(`Wireframe compression failed for ${view}, using original`, 'LIVE_SESSIONS', compressError);
+              }
               await updateDocWithRetry(
                 sessionRef,
-                { [`postureImages.${view}`]: progress.wireframeImage },
+                { [`postureImages.${view}`]: wireframePreview },
                 3,
                 `wireframe update for ${view}`
               );
