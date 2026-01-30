@@ -12,13 +12,13 @@ import { phaseDefinitions, type PhaseField, type PhaseSection } from '@/lib/phas
 import { computeScores, buildRoadmap } from '@/lib/scoring';
 import { generateCoachPlan, generateBodyCompInterpretation } from '@/lib/recommendations';
 import { useAuth } from '@/hooks/useAuth';
-import { requestShareArtifacts, sendReportEmail } from '@/services/share';
 import { useToast } from '@/components/ui/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAssessmentNavigation } from '@/hooks/useAssessmentNavigation';
 import { useAssessmentSave } from '@/hooks/useAssessmentSave';
 import { useCameraHandler } from '@/hooks/useCameraHandler';
 import { useDemoAssessment } from '@/hooks/useDemoAssessment';
+import { useAssessmentShareHandlers } from '@/hooks/useAssessmentShareHandlers';
 import { logger } from '@/lib/utils/logger';
 import { AssessmentSidebar } from './AssessmentSidebar';
 import { AssessmentModals } from './AssessmentModals';
@@ -238,73 +238,19 @@ export const PhaseFormContent = ({
   }, [formData]);
 
 
-  const handleShare = useCallback(async (view: 'client' | 'coach') => {
-    try {
-      setShareLoading(true);
-      let shareUrl = window.location.origin;
-      if (user && savingId) {
-          const artifacts = await ensureShareArtifacts(view);
-        shareUrl = `${window.location.origin}/share/${user.uid}/${savingId}`;
-      }
-      if (navigator.share) {
-        await navigator.share({ title: 'Assessment Report', url: shareUrl });
-      } else {
-        await navigator.clipboard.writeText(shareUrl);
-        toast({ title: 'Link copied' });
-      }
-    } catch (error) {
-      toast({ title: 'Share failed', variant: 'destructive' });
-    } finally {
-      setShareLoading(false);
-    }
-  }, [ensureShareArtifacts, toast, user, savingId, setShareLoading]);
-
-  const handleEmailLink = useCallback(async (view: 'client' | 'coach') => {
-    const email = (formData.email || '').trim();
-    if (!email) {
-      toast({ title: 'Client email missing', variant: 'destructive' });
-      return;
-    }
-    if (!savingId) return;
-    try {
-      setShareLoading(true);
-      await sendReportEmail({ assessmentId: savingId, view, to: email, clientName: formData.fullName });
-      toast({ title: 'Report emailed', description: `Sent to ${email}` });
-    } catch (error) {
-      toast({ title: 'Email failed', variant: 'destructive' });
-    } finally {
-      setShareLoading(false);
-    }
-  }, [formData.email, formData.fullName, savingId, toast, setShareLoading]);
-
-  const handleWhatsAppShare = useCallback(async (view: 'client' | 'coach') => {
-    try {
-      setShareLoading(true);
-      const artifacts = await ensureShareArtifacts(view);
-      window.open(`https://wa.me/?text=${encodeURIComponent(artifacts.whatsappText)}`, '_blank');
-    } catch (error) {
-      toast({ title: 'WhatsApp share failed', variant: 'destructive' });
-    } finally {
-      setShareLoading(false);
-    }
-  }, [ensureShareArtifacts, toast, setShareLoading]);
-
-  const handleCopyLink = useCallback(async (view: 'client' | 'coach') => {
-    try {
-      setShareLoading(true);
-      // Use the share artifacts to get the proper /r/:token URL
-      const artifacts = await ensureShareArtifacts(view);
-      await navigator.clipboard.writeText(artifacts.shareUrl);
-      toast({ 
-        title: 'Link Copied!', 
-        description: 'Send this URL to your client. They can view it on any device.' 
-      });
-    } catch (error) {
-      toast({ title: 'Copy failed', variant: 'destructive' });
-    } finally {
-      setShareLoading(false);
-    }
-  }, [ensureShareArtifacts, toast, setShareLoading]);
+  const {
+    handleShare,
+    handleEmailLink,
+    handleWhatsAppShare,
+    handleCopyLink,
+  } = useAssessmentShareHandlers({
+    formData,
+    user,
+    savingId,
+    ensureShareArtifacts,
+    setShareLoading,
+    toast,
+  });
 
 
 
