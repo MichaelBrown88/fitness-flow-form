@@ -14,12 +14,12 @@ import { generateCoachPlan, generateBodyCompInterpretation } from '@/lib/recomme
 import { useAuth } from '@/hooks/useAuth';
 import { requestShareArtifacts, sendReportEmail } from '@/services/share';
 import { useToast } from '@/components/ui/use-toast';
-import { generateInteractiveHtml } from '@/lib/htmlExport';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAssessmentNavigation } from '@/hooks/useAssessmentNavigation';
 import { useAssessmentSave } from '@/hooks/useAssessmentSave';
 import { useCameraHandler } from '@/hooks/useCameraHandler';
 import { useDemoAssessment } from '@/hooks/useDemoAssessment';
+import { logger } from '@/lib/utils/logger';
 import { AssessmentSidebar } from './AssessmentSidebar';
 import { AssessmentModals } from './AssessmentModals';
 import { SingleFieldFlow } from './SingleFieldFlow';
@@ -123,7 +123,7 @@ export const PhaseFormContent = ({
           updateFormData(updates);
         }
       } catch (e) {
-        console.error('Failed to load current assessment:', e);
+        logger.error('Failed to load current assessment:', e);
       }
     };
     loadCurrentAssessment();
@@ -139,7 +139,7 @@ export const PhaseFormContent = ({
     try {
       return computeScores(formData);
     } catch (e) {
-      console.error('Error computing scores:', e);
+      logger.error('Error computing scores:', e);
       return { overall: 0, categories: [], synthesis: [] };
     }
   }, [formData]);
@@ -192,7 +192,7 @@ export const PhaseFormContent = ({
     try {
       return buildRoadmap(scores, formData);
     } catch (e) {
-      console.error('Error building roadmap:', e);
+      logger.error('Error building roadmap:', e);
       return [];
     }
   }, [scores, formData]);
@@ -213,7 +213,7 @@ export const PhaseFormContent = ({
         if (!cancelled) setPlan(result);
       })
       .catch(e => {
-        console.error('Error generating coach plan:', e);
+        logger.error('Error generating coach plan:', e);
         if (!cancelled) {
           setPlan({
             keyIssues: [],
@@ -232,7 +232,7 @@ export const PhaseFormContent = ({
     try {
       return generateBodyCompInterpretation(formData);
     } catch (e) {
-      console.error('Error generating body comp interpretation:', e);
+      logger.error('Error generating body comp interpretation:', e);
       return undefined;
     }
   }, [formData]);
@@ -458,7 +458,7 @@ export const PhaseFormContent = ({
       try { 
         window.scrollTo({ top: 0, behavior: 'smooth' }); 
       } catch (_e) { 
-        console.error('Scroll failed:', _e); 
+        logger.error('Scroll failed:', _e); 
       } 
     }, 100);
 

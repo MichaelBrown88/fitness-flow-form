@@ -259,7 +259,7 @@ export function useClientDetail(): UseClientDetailResult {
     // Get latest assessment to pre-fill
     if (assessments.length > 0) {
       try {
-        const latest = await getCoachAssessment(user.uid, assessments[0].id);
+        const latest = await getCoachAssessment(user.uid, assessments[0].id, undefined, profile?.organizationId, profile);
         if (latest?.formData) {
           sessionStorage.setItem(STORAGE_KEYS.PREFILL_CLIENT, JSON.stringify({
             clientName: latest.formData.fullName,
@@ -360,7 +360,7 @@ export function useClientDetail(): UseClientDetailResult {
         
         // Sync profile with latest assessment data
         if (data.length > 0) {
-          const latestAssessment = await getCoachAssessment(user.uid, data[0].id);
+          const latestAssessment = await getCoachAssessment(user.uid, data[0].id, undefined, profile?.organizationId, profile);
           const formData = latestAssessment?.formData;
           
           // Build update object with data from assessment
@@ -403,7 +403,7 @@ export function useClientDetail(): UseClientDetailResult {
         setCategoryBreakdown(currentBreakdown);
       } else if (assessments.length > 0) {
         // Fallback to old system
-        const latest = await getCoachAssessment(user.uid, assessments[0].id);
+        const latest = await getCoachAssessment(user.uid, assessments[0].id, undefined, profile?.organizationId, profile);
         if (latest?.formData) {
           setCurrentAssessment({ formData: latest.formData, overallScore: latest.overallScore });
           const scores = computeScores(latest.formData);

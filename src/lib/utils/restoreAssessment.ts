@@ -7,6 +7,8 @@ import { getCurrentAssessment, updateCurrentAssessment } from '@/services/assess
 import { saveCoachAssessment } from '@/services/coachAssessments';
 import type { FormData } from '@/contexts/FormContext';
 import { computeScores } from '@/lib/scoring';
+import { logger } from '@/lib/utils/logger';
+import { COLLECTIONS } from '@/constants/collections';
 
 export interface RestoreResult {
   success: boolean;
@@ -32,7 +34,7 @@ export async function restoreClientAssessment(
   reloadIntoForm: boolean = true
 ): Promise<RestoreResult> {
   try {
-    console.log(`[RESTORE] Attempting to restore assessment for: ${clientName}`);
+    logger.info(`[RESTORE] Attempting to restore assessment for: ${clientName}`);
     
     // Try to get coachUid and organizationId from auth if not provided
     let finalCoachUid = coachUid;
@@ -45,28 +47,28 @@ export async function restoreClientAssessment(
         const auth = getAuth();
         if (auth.currentUser) {
           finalCoachUid = finalCoachUid || auth.currentUser.uid;
-          console.log(`[RESTORE] Using authenticated user: ${finalCoachUid}`);
+          logger.info(`[RESTORE] Using authenticated user: ${finalCoachUid}`);
           
           // Try to get organizationId from user profile
           if (!finalOrgId) {
             try {
               const { doc, getDoc } = await import('firebase/firestore');
               const { getDb } = await import('@/services/firebase');
-              const profileDoc = await getDoc(doc(getDb(), 'userProfiles', auth.currentUser.uid));
+              const profileDoc = await getDoc(doc(getDb(), COLLECTIONS.USER_PROFILES, auth.currentUser.uid));
               if (profileDoc.exists()) {
                 const profileData = profileDoc.data();
                 finalOrgId = profileData.organizationId;
                 if (finalOrgId) {
-                  console.log(`[RESTORE] Using organization ID: ${finalOrgId}`);
+                  logger.info(`[RESTORE] Using organization ID: ${finalOrgId}`);
                 }
               }
             } catch (profileError) {
-              console.warn('[RESTORE] Could not get organization ID from profile:', profileError);
+              logger.warn('[RESTORE] Could not get organization ID from profile:', profileError);
             }
           }
         }
       } catch (e) {
-        console.warn('[RESTORE] Could not get auth user:', e);
+        logger.warn('[RESTORE] Could not get auth user:', e);
       }
     }
     
@@ -87,7 +89,7 @@ export async function restoreClientAssessment(
         const snapshots = await getSnapshots(finalCoachUid, clientName, 10, finalOrgId);
         if (snapshots.length > 0) {
           const latestSnapshot = snapshots[0];
-          console.log(`[RESTORE] Found snapshot from ${latestSnapshot.timestamp.toDate().toISOString()}`);
+          logger.info(`[RESTORE] Found snapshot from ${latestSnapshot.timestamp.toDate().toISOString()}`);
           
           // Re-save the snapshot as current assessment AND create dashboard entry
           try {
@@ -100,7 +102,7 @@ export async function restoreClientAssessment(
               'all',
               finalOrgId
             );
-            console.log('[RESTORE] ✓ Restored snapshot to current assessment');
+            logger.info('[RESTORE] ✓ Restored snapshot to current assessment');
             
             // Create a new assessment entry in the assessments collection so it shows up in dashboard
             try {
@@ -113,13 +115,13 @@ export async function restoreClientAssessment(
                 finalOrgId,
                 null // profile - not available in utility function, relying on explicit orgId
               );
-              console.log('[RESTORE] ✓ Created new assessment entry in dashboard');
-              console.log('[RESTORE] ✓ Refresh the dashboard page to see it!');
+              logger.info('[RESTORE] ✓ Created new assessment entry in dashboard');
+              logger.info('[RESTORE] ✓ Refresh the dashboard page to see it!');
             } catch (saveError) {
-              console.warn('[RESTORE] Could not create new assessment entry:', saveError);
+              logger.warn('[RESTORE] Could not create new assessment entry:', saveError);
             }
           } catch (updateError) {
-            console.warn('[RESTORE] Could not restore snapshot to current:', updateError);
+            logger.warn('[RESTORE] Could not restore snapshot to current:', updateError);
           }
           
           if (reloadIntoForm) {
@@ -128,7 +130,7 @@ export async function restoreClientAssessment(
               formData: latestSnapshot.formData,
               overallScore: latestSnapshot.overallScore
             }));
-            console.log('[RESTORE] ✓ Saved to sessionStorage. Navigate to assessment form to load it.');
+            logger.info('[RESTORE] ✓ Saved to sessionStorage. Navigate to assessment form to load it.');
           }
           
           return {
@@ -139,7 +141,7 @@ export async function restoreClientAssessment(
           };
         }
       } catch (snapshotError) {
-        console.warn('[RESTORE] Could not check snapshots:', snapshotError);
+        logger.warn('[RESTORE] Could not check snapshots:', snapshotError);
       }
       
       return {
@@ -148,9 +150,9 @@ export async function restoreClientAssessment(
       };
     }
     
-    console.log(`[RESTORE] ✓ Found assessment data for ${clientName}`);
-    console.log(`[RESTORE] Overall Score: ${current.overallScore}`);
-    console.log(`[RESTORE] Last Updated: ${current.lastUpdated?.toDate().toISOString() || 'Unknown'}`);
+    logger.info(`[RESTORE] ✓ Found assessment data for ${clientName}`);
+    logger.info(`[RESTORE] Overall Score: ${current.overallScore}`);
+    logger.info(`[RESTORE] Last Updated: ${current.lastUpdated?.toDate().toISOString() || 'Unknown'}`);
     
     // If reloadIntoForm is true, save to sessionStorage so it can be loaded into the form
     if (reloadIntoForm && typeof window !== 'undefined') {
@@ -164,10 +166,10 @@ export async function restoreClientAssessment(
         scores: scores
       }));
       
-      console.log('[RESTORE] ✓ Assessment data saved to sessionStorage');
-      console.log('[RESTORE] To load it:');
-      console.log('[RESTORE] 1. Navigate to the assessment form');
-      console.log('[RESTORE] 2. Or use: window.loadRestoredAssessment()');
+      logger.info('[RESTORE] ✓ Assessment data saved to sessionStorage');
+      logger.info('[RESTORE] To load it:');
+      logger.info('[RESTORE] 1. Navigate to the assessment form');
+      logger.info('[RESTORE] 2. Or use: window.loadRestoredAssessment()');
       
       // Also try to re-save it to ensure it's in the current assessment AND create a new assessment entry
       try {
@@ -181,7 +183,7 @@ export async function restoreClientAssessment(
           'all',
           finalOrgId
         );
-        console.log('[RESTORE] ✓ Re-saved to current assessment in Firebase');
+        logger.info('[RESTORE] ✓ Re-saved to current assessment in Firebase');
         
         // Also create a new assessment entry in the assessments collection so it shows up in the dashboard
         try {
@@ -194,16 +196,16 @@ export async function restoreClientAssessment(
             finalOrgId,
             null // profile - not available in utility function, relying on explicit orgId
           );
-          console.log('[RESTORE] ✓ Created new assessment entry in dashboard');
-          console.log('[RESTORE] ✓ Assessment ID:', assessmentId);
-          console.log('[RESTORE] ✓ The assessment should now appear in your dashboard!');
-          console.log('[RESTORE] Refresh the dashboard page to see it.');
+          logger.info('[RESTORE] ✓ Created new assessment entry in dashboard');
+          logger.info('[RESTORE] ✓ Assessment ID:', assessmentId);
+          logger.info('[RESTORE] ✓ The assessment should now appear in your dashboard!');
+          logger.info('[RESTORE] Refresh the dashboard page to see it.');
         } catch (saveError) {
-          console.warn('[RESTORE] Could not create new assessment entry:', saveError);
-          console.log('[RESTORE] But the data is saved to current assessment and sessionStorage');
+          logger.warn('[RESTORE] Could not create new assessment entry:', saveError);
+          logger.info('[RESTORE] But the data is saved to current assessment and sessionStorage');
         }
       } catch (saveError) {
-        console.warn('[RESTORE] Could not re-save to Firebase:', saveError);
+        logger.warn('[RESTORE] Could not re-save to Firebase:', saveError);
       }
     }
     
@@ -214,7 +216,7 @@ export async function restoreClientAssessment(
       message: 'Assessment restored successfully! Data saved to sessionStorage. Navigate to assessment form to load it.'
     };
   } catch (error) {
-    console.error('[RESTORE] Error restoring assessment:', error);
+    logger.error('[RESTORE] Error restoring assessment:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error occurred while restoring assessment'
@@ -230,19 +232,19 @@ export function loadRestoredAssessment(): boolean {
   
   const stored = sessionStorage.getItem('editAssessmentData');
   if (!stored) {
-    console.warn('[RESTORE] No restored assessment found in sessionStorage');
+    logger.warn('[RESTORE] No restored assessment found in sessionStorage');
     return false;
   }
   
   try {
     const data = JSON.parse(stored);
-    console.log('[RESTORE] Found restored assessment data');
-    console.log('[RESTORE] Client:', data.formData?.fullName || 'Unknown');
-    console.log('[RESTORE] Score:', data.overallScore || 'Unknown');
-    console.log('[RESTORE] Data is ready to load. Navigate to assessment form.');
+    logger.info('[RESTORE] Found restored assessment data');
+    logger.info('[RESTORE] Client:', data.formData?.fullName || 'Unknown');
+    logger.info('[RESTORE] Score:', data.overallScore || 'Unknown');
+    logger.info('[RESTORE] Data is ready to load. Navigate to assessment form.');
     return true;
   } catch (e) {
-    console.error('[RESTORE] Error parsing stored data:', e);
+    logger.error('[RESTORE] Error parsing stored data:', e);
     return false;
   }
 }
@@ -269,14 +271,14 @@ export async function recoverMissingPostureImages(
       try {
         const { getDoc, doc } = await import('firebase/firestore');
         const { getDb } = await import('@/services/firebase');
-        const profileRef = doc(getDb(), 'users', user.uid);
+        const profileRef = doc(getDb(), COLLECTIONS.USER_PROFILES, user.uid);
         const profileSnap = await getDoc(profileRef);
         if (profileSnap.exists()) {
           const profileData = profileSnap.data();
           finalOrgId = profileData.organizationId || `org-${user.uid}`;
         }
       } catch (e) {
-        console.warn('[RECOVER] Could not get organization ID:', e);
+        logger.warn('[RECOVER] Could not get organization ID:', e);
       }
     }
     
@@ -301,21 +303,21 @@ export async function recoverMissingPostureImages(
     }
     
     if (missing.length === 0) {
-      console.log('[RECOVER] ✓ All posture images are present in assessment document');
-      console.log('[RECOVER] Current postureImagesStorage:', current.formData.postureImagesStorage);
-      console.log('[RECOVER] Current postureImages:', current.formData.postureImages);
+      logger.info('[RECOVER] ✓ All posture images are present in assessment document');
+      logger.info('[RECOVER] Current postureImagesStorage:', current.formData.postureImagesStorage);
+      logger.info('[RECOVER] Current postureImages:', current.formData.postureImages);
       
       // Verify the side-right image URL is accessible
       const sideRightUrl = current.formData.postureImagesStorage?.['side-right'] || current.formData.postureImages?.['side-right'];
       if (sideRightUrl) {
-        console.log('[RECOVER] Side-right URL found:', sideRightUrl);
+        logger.info('[RECOVER] Side-right URL found:', sideRightUrl);
         try {
           const testResponse = await fetch(sideRightUrl, { method: 'HEAD' });
           if (testResponse.ok) {
-            console.log('[RECOVER] ✓ Side-right image URL is accessible');
+            logger.info('[RECOVER] ✓ Side-right image URL is accessible');
             return { recovered: [], missing: [] };
           } else {
-            console.warn(`[RECOVER] ⚠️ Side-right image URL returned HTTP ${testResponse.status} - searching for working URL...`);
+            logger.warn(`[RECOVER] ⚠️ Side-right image URL returned HTTP ${testResponse.status} - searching for working URL...`);
             // URL is saved but not accessible - search for a working one
             missing.push('side-right');
             // Remove the broken URL so we can search for a new one
@@ -323,8 +325,8 @@ export async function recoverMissingPostureImages(
             delete current.formData.postureImages?.['side-right'];
           }
         } catch (fetchError) {
-          console.error('[RECOVER] ✗ Side-right image URL is not accessible:', fetchError);
-          console.log('[RECOVER] Searching for a working URL...');
+          logger.error('[RECOVER] ✗ Side-right image URL is not accessible:', fetchError);
+          logger.info('[RECOVER] Searching for a working URL...');
           // URL is not accessible - search for a working one
           missing.push('side-right');
           // Remove the broken URL so we can search for a new one
@@ -332,7 +334,7 @@ export async function recoverMissingPostureImages(
           delete current.formData.postureImages?.['side-right'];
         }
       } else {
-        console.warn('[RECOVER] ⚠️ No side-right URL found in assessment document');
+        logger.warn('[RECOVER] ⚠️ No side-right URL found in assessment document');
         missing.push('side-right');
       }
       
@@ -342,8 +344,8 @@ export async function recoverMissingPostureImages(
       }
     }
     
-    console.log(`[RECOVER] Missing images: ${missing.join(', ')}`);
-    console.log('[RECOVER] Searching Firebase Storage directly...');
+    logger.info(`[RECOVER] Missing images: ${missing.join(', ')}`);
+    logger.info('[RECOVER] Searching Firebase Storage directly...');
     
     // Collect recovered images
     const recoveredImages: Record<string, string> = {};
@@ -363,7 +365,7 @@ export async function recoverMissingPostureImages(
         'current-client', // Sometimes used as a placeholder
       ];
       
-      console.log('[RECOVER] Trying client ID formats:', possibleClientIds);
+      logger.info('[RECOVER] Trying client ID formats:', possibleClientIds);
       
       for (const clientId of possibleClientIds) {
         if (missing.every(v => recoveredImages[v])) break; // Found all missing images
@@ -373,7 +375,7 @@ export async function recoverMissingPostureImages(
           const clientsRef = ref(storage, clientsPath);
           const clientsList = await listAll(clientsRef);
           
-          console.log(`[RECOVER] Checking client path: ${clientsPath}`);
+          logger.info(`[RECOVER] Checking client path: ${clientsPath}`);
           
           // Look for sessions folder
           const sessionsFolder = clientsList.prefixes.find(f => f.name === 'sessions');
@@ -381,7 +383,7 @@ export async function recoverMissingPostureImages(
             const sessionsRef = ref(storage, `${clientsPath}/sessions`);
             const sessionsList = await listAll(sessionsRef);
             
-            console.log(`[RECOVER] Found ${sessionsList.prefixes.length} session(s) in ${clientsPath}/sessions`);
+            logger.info(`[RECOVER] Found ${sessionsList.prefixes.length} session(s) in ${clientsPath}/sessions`);
             
             // Check each session for missing images
             for (const sessionFolder of sessionsList.prefixes) {
@@ -403,13 +405,13 @@ export async function recoverMissingPostureImages(
                   if (testResponse.ok) {
                     recoveredImages[view] = downloadUrl;
                     recovered.push(view);
-                    console.log(`[RECOVER] ✓ Found ${view} image in Storage: ${imagePath}`);
-                    console.log(`[RECOVER] Download URL: ${downloadUrl}`);
+                    logger.info(`[RECOVER] ✓ Found ${view} image in Storage: ${imagePath}`);
+                    logger.info(`[RECOVER] Download URL: ${downloadUrl}`);
                   } else {
-                    console.warn(`[RECOVER] Image exists but not accessible: ${imagePath} (HTTP ${testResponse.status})`);
+                    logger.warn(`[RECOVER] Image exists but not accessible: ${imagePath} (HTTP ${testResponse.status})`);
                   }
                 } catch (urlError) {
-                  console.warn(`[RECOVER] Could not get download URL for ${imagePath}:`, urlError);
+                  logger.warn(`[RECOVER] Could not get download URL for ${imagePath}:`, urlError);
                   // Try alternative path formats
                   const altPaths = [
                     `${clientsPath}/sessions/${sessionId}/${view}.jpg`,
@@ -425,7 +427,7 @@ export async function recoverMissingPostureImages(
                       if (testResponse.ok) {
                         recoveredImages[view] = altUrl;
                         recovered.push(view);
-                        console.log(`[RECOVER] ✓ Found ${view} image at alternative path: ${altPath}`);
+                        logger.info(`[RECOVER] ✓ Found ${view} image at alternative path: ${altPath}`);
                         break;
                       }
                     } catch (altError) {
@@ -446,13 +448,13 @@ export async function recoverMissingPostureImages(
           }
         } catch (listError) {
           // This client ID format doesn't exist, try next one
-          console.log(`[RECOVER] Client path "clients/${clientId}" not found, trying next...`);
+          logger.info(`[RECOVER] Client path "clients/${clientId}" not found, trying next...`);
         }
       }
       
       // Also try to get from Firestore sessions as a fallback
       if (missing.some(v => !recoveredImages[v])) {
-        console.log('[RECOVER] Also checking Firestore sessions...');
+        logger.info('[RECOVER] Also checking Firestore sessions...');
         try {
           const { getClientPostureImages, getClientSessions } = await import('@/services/liveSessions');
           const sessions = await getClientPostureImages(clientName, finalOrgId);
@@ -467,17 +469,17 @@ export async function recoverMissingPostureImages(
                 if (!recoveredImages[view] && sessionEntry.images[view]) {
                   recoveredImages[view] = sessionEntry.images[view];
                   recovered.push(view);
-                  console.log(`[RECOVER] ✓ Found ${view} image in Firestore session data`);
+                  logger.info(`[RECOVER] ✓ Found ${view} image in Firestore session data`);
                 }
               }
             }
           }
         } catch (firestoreError) {
-          console.warn('[RECOVER] Error checking Firestore sessions:', firestoreError);
+          logger.warn('[RECOVER] Error checking Firestore sessions:', firestoreError);
         }
       }
     } catch (error) {
-      console.error('[RECOVER] Error searching Storage:', error);
+      logger.error('[RECOVER] Error searching Storage:', error);
     }
     
     if (recovered.length > 0) {
@@ -492,8 +494,8 @@ export async function recoverMissingPostureImages(
         postureImagesStorage: updatedPostureImagesStorage
       };
       
-      console.log(`[RECOVER] Recovered images:`, recoveredImages);
-      console.log(`[RECOVER] Updated postureImagesStorage:`, updatedPostureImagesStorage);
+      logger.info(`[RECOVER] Recovered images:`, recoveredImages);
+      logger.info(`[RECOVER] Updated postureImagesStorage:`, updatedPostureImagesStorage);
       
       await updateCurrentAssessment(
         user.uid,
@@ -505,8 +507,8 @@ export async function recoverMissingPostureImages(
         finalOrgId
       );
       
-      console.log(`[RECOVER] ✓ Updated current assessment with ${recovered.length} recovered image(s)`);
-      console.log(`[RECOVER] Recovered: ${recovered.join(', ')}`);
+      logger.info(`[RECOVER] ✓ Updated current assessment with ${recovered.length} recovered image(s)`);
+      logger.info(`[RECOVER] Recovered: ${recovered.join(', ')}`);
       
       // Update ALL existing assessment documents for this client in the dashboard
       try {
@@ -514,7 +516,7 @@ export async function recoverMissingPostureImages(
         const { collection, query, where, getDocs, updateDoc, doc } = await import('firebase/firestore');
         
         // Find all assessment documents for this client
-        const assessmentsRef = collection(getDb(), 'coaches', user.uid, 'assessments');
+        const assessmentsRef = collection(getDb(), COLLECTIONS.COACHES, user.uid, COLLECTIONS.ASSESSMENTS);
         const q = query(
           assessmentsRef,
           where('clientName', '==', clientName)
@@ -524,7 +526,7 @@ export async function recoverMissingPostureImages(
         const updatePromises: Promise<void>[] = [];
         
         snapshot.forEach((docSnap) => {
-          const assessmentRef = doc(getDb(), 'coaches', user.uid, 'assessments', docSnap.id);
+          const assessmentRef = doc(getDb(), COLLECTIONS.COACHES, user.uid, COLLECTIONS.ASSESSMENTS, docSnap.id);
           const existingFormData = docSnap.data().formData || {};
           const existingImages = existingFormData.postureImagesStorage || existingFormData.postureImages || {};
           
@@ -546,8 +548,8 @@ export async function recoverMissingPostureImages(
         });
         
         await Promise.all(updatePromises);
-        console.log(`[RECOVER] ✓ Updated ${updatePromises.length} existing assessment document(s) in dashboard`);
-        console.log(`[RECOVER] Image URL that was saved:`, recoveredImages['side-right']);
+        logger.info(`[RECOVER] ✓ Updated ${updatePromises.length} existing assessment document(s) in dashboard`);
+        logger.info(`[RECOVER] Image URL that was saved:`, recoveredImages['side-right']);
         
         // Also create a new one to ensure it's in the list
         const { saveCoachAssessment } = await import('@/services/coachAssessments');
@@ -559,22 +561,22 @@ export async function recoverMissingPostureImages(
           finalOrgId,
           null // profile - not available in utility function, relying on explicit orgId
         );
-        console.log('[RECOVER] ✓ Created new assessment entry');
-        console.log('[RECOVER] ⚠️ IMPORTANT: Please do a HARD REFRESH (Cmd+Shift+R or Ctrl+Shift+R) to see the recovered image!');
-        console.log('[RECOVER] If it still doesn\'t appear, check the browser console for image loading errors.');
+        logger.info('[RECOVER] ✓ Created new assessment entry');
+        logger.info('[RECOVER] ⚠️ IMPORTANT: Please do a HARD REFRESH (Cmd+Shift+R or Ctrl+Shift+R) to see the recovered image!');
+        logger.info('[RECOVER] If it still doesn\'t appear, check the browser console for image loading errors.');
       } catch (saveError) {
-        console.warn('[RECOVER] Could not update dashboard entries:', saveError);
+        logger.warn('[RECOVER] Could not update dashboard entries:', saveError);
       }
     }
     
     const stillMissing = missing.filter(v => !recovered.includes(v));
     if (stillMissing.length > 0) {
-      console.warn(`[RECOVER] Still missing: ${stillMissing.join(', ')}`);
+      logger.warn(`[RECOVER] Still missing: ${stillMissing.join(', ')}`);
     }
     
     return { recovered, missing: stillMissing };
   } catch (error) {
-    console.error('[RECOVER] Error recovering images:', error);
+    logger.error('[RECOVER] Error recovering images:', error);
     throw error;
   }
 }
@@ -617,9 +619,9 @@ if (typeof window !== 'undefined') {
   window.restoreAssessmentAsJSON = restoreAssessmentAsJSON;
   window.loadRestoredAssessment = loadRestoredAssessment;
   window.recoverMissingPostureImages = recoverMissingPostureImages;
-  console.log('💾 Restore utility loaded!');
-  console.log('💾 Use: restoreClientAssessment(undefined, "Hisham MM Abdoh")');
-  console.log('💾 Or: restoreClientAssessment("your-coach-uid", "Hisham MM Abdoh")');
-  console.log('💾 Recover missing images: recoverMissingPostureImages("Hisham MM Abdoh")');
+  logger.info('💾 Restore utility loaded!');
+  logger.info('💾 Use: restoreClientAssessment(undefined, "Hisham MM Abdoh")');
+  logger.info('💾 Or: restoreClientAssessment("your-coach-uid", "Hisham MM Abdoh")');
+  logger.info('💾 Recover missing images: recoverMissingPostureImages("Hisham MM Abdoh")');
 }
 

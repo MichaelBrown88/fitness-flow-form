@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback, useEffect, Suspense, lazy } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { 
@@ -9,7 +9,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { 
   Share2, 
-  Download, 
   Loader2,
   Eye,
   Link as LinkIcon
@@ -52,7 +51,6 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
 }) => {
   const navigate = useNavigate();
   const [reportView, setReportView] = useState<'client' | 'coach'>('client');
-  const reportRef = useRef<HTMLDivElement | null>(null);
   const { user } = useAuth();
   
   // Check if we're in edit mode (just updated an assessment)
@@ -135,8 +133,6 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
       </div>
 
       <div 
-        ref={reportRef} 
-        data-pdf-target 
         className="rounded-3xl border border-slate-200 bg-white p-6 lg:p-10 shadow-2xl shadow-slate-200/50" 
         style={{ minWidth: '100%', maxWidth: '100%', overflow: 'visible' }}
       >

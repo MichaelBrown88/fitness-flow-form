@@ -171,7 +171,7 @@ function LegacyExerciseGuidance({ plan }: ExerciseGuidanceProps) {
                 <p className="text-sm text-slate-700 leading-relaxed">{group.description}</p>
               </div>
               <span
-                className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${
+                className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest ${
                   group.urgency === 'urgent'
                     ? 'bg-red-600 text-white'
                     : group.urgency === 'important'
@@ -208,7 +208,7 @@ function LegacyExerciseGuidance({ plan }: ExerciseGuidanceProps) {
                     {ex.sessionTypes.map((st, j) => (
                       <span
                         key={j}
-                        className="text-[10px] font-medium text-primary bg-brand-light px-2 py-0.5 rounded"
+                        className="text-xs font-medium text-primary bg-brand-light px-2 py-0.5 rounded"
                       >
                         {st}
                       </span>
@@ -246,7 +246,7 @@ function LegacyExerciseGuidance({ plan }: ExerciseGuidanceProps) {
                         <div className="flex items-start justify-between mb-1">
                           <span className="font-bold text-slate-800 leading-tight">{ex.name}</span>
                           <span
-                            className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase shrink-0 ml-2 ${
+                            className={`px-1.5 py-0.5 rounded text-xs font-black uppercase shrink-0 ml-2 ${
                               ex.priority === 'critical'
                                 ? 'bg-red-600 text-white shadow-sm'
                                 : ex.priority === 'goal-focused'
@@ -265,8 +265,8 @@ function LegacyExerciseGuidance({ plan }: ExerciseGuidanceProps) {
                               : 'MINOR'}
                           </span>
                         </div>
-                        {ex.setsReps && <p className="text-[9px] text-primary font-bold mb-0.5">{ex.setsReps}</p>}
-                        <p className="text-[9px] text-slate-500 leading-relaxed italic">{ex.reason}</p>
+                        {ex.setsReps && <p className="text-xs text-primary font-bold mb-0.5">{ex.setsReps}</p>}
+                        <p className="text-xs text-slate-500 leading-relaxed italic">{ex.reason}</p>
                       </div>
                     ))}
                   </div>

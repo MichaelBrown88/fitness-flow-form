@@ -15,6 +15,7 @@ import { updatePostureImage, updateHeartbeat } from '@/services/liveSessions';
 import { logCompanionMessage } from '@/services/liveSessions';
 import { CompanionUI } from '@/components/companion/CompanionUI';
 import { CompanionLoadingStates } from '@/components/companion/CompanionLoadingStates';
+import { logger } from '@/lib/utils/logger';
 
 const VIEWS = CONFIG.POSTURE_VIEWS;
 
@@ -64,7 +65,7 @@ const Companion = () => {
     try {
       shutterAudio.current = new Audio(CONFIG.COMPANION.AUDIO.SHUTTER_URL);
     } catch (e) {
-      console.warn('[COMPANION] Audio initialization failed:', e);
+      logger.warn('[COMPANION] Audio initialization failed:', e);
     }
   }, []);
 
@@ -78,7 +79,7 @@ const Companion = () => {
     
     const prewarmMediaPipe = async () => {
       try {
-        console.log('[MEDIAPIPE] Pre-warming: Loading WASM and model files...');
+        logger.debug('[MEDIAPIPE] Pre-warming: Loading WASM and model files...');
         const { Pose } = await import('@mediapipe/pose');
         
         pose = new Pose({
@@ -94,14 +95,14 @@ const Companion = () => {
         
         // Initialize loads the WASM and model files
         await pose.initialize();
-        console.log('[MEDIAPIPE] Pre-warming complete: Models loaded');
+        logger.debug('[MEDIAPIPE] Pre-warming complete: Models loaded');
         
         // Close the pre-warm instance - usePoseDetection will create its own
         // The browser will have cached the files
         pose.close();
         pose = null;
       } catch (e) {
-        console.warn('[MEDIAPIPE] Pre-warming failed (non-critical):', e);
+        logger.warn('[MEDIAPIPE] Pre-warming failed (non-critical):', e);
       }
     };
     
@@ -125,7 +126,7 @@ const Companion = () => {
     // Update heartbeat every 5 seconds
     const heartbeatInterval = setInterval(() => {
       updateHeartbeat(sessionId).catch((err) => {
-        console.warn('[HEARTBEAT] Failed to update:', err);
+        logger.warn('[HEARTBEAT] Failed to update:', err);
       });
     }, 5000);
     
@@ -152,7 +153,7 @@ const Companion = () => {
       lastAudioTimeRef.current = now;
       speak(text);
     } else {
-      console.log('[AUDIO] Throttled:', text);
+      logger.debug('[AUDIO] Throttled:', text);
     }
   }, [speak]);
 
@@ -197,8 +198,7 @@ const Companion = () => {
         setFlowState('waiting_pose');
         setTimeout(() => throttledSpeak('Good. Now get in position.', true), 500);
       } else {
-        // Phone not vertical yet - using console.log instead of Firestore log for frequent debug messages
-        console.log('[COMPANION] Flow: waiting_level (phone not vertical yet)');
+        logger.debug('[COMPANION] Flow: waiting_level (phone not vertical yet)');
       }
       return;
     }
@@ -206,8 +206,7 @@ const Companion = () => {
     // Step 2: Check if client is in frame (waiting_pose -> ready)
     if (flowState === 'waiting_pose') {
       const { isReady, message, details } = poseDetectionResult.poseValidation;
-      // Using console.log instead of Firestore log for frequent debug messages
-      console.log('[COMPANION] Flow: waiting_pose - isReady:', isReady, 'message:', message, 'webcamVideo:', !!webcamVideo, 'details:', details);
+      logger.debug('[COMPANION] Flow: waiting_pose - isReady:', isReady, 'message:', message, 'webcamVideo:', !!webcamVideo, 'details:', details);
       
       if (isReady) {
         logCompanionMessage(sessionId || '', `Flow: waiting_pose -> ready (client in position)`, 'info');
@@ -255,7 +254,7 @@ const Companion = () => {
         `Error capturing ${viewData.label}: ${err instanceof Error ? err.message : String(err)}`,
         'error'
       );
-      console.error('[CAPTURE] Error:', err);
+      logger.error('[CAPTURE] Error:', err);
     } finally {
       setIsUploading(false);
     }
@@ -263,7 +262,7 @@ const Companion = () => {
 
   // Cancel sequence handler
   const cancelSequence = useCallback(() => {
-    console.log('[SEQUENCE] User cancelled sequence');
+    logger.debug('[SEQUENCE] User cancelled sequence');
     isSequenceCancelledRef.current = true;
     
     // Clear any pending timers
@@ -302,7 +301,7 @@ const Companion = () => {
   const startCountdown = useCallback((viewIdx: number) => {
     // Check if cancelled
     if (isSequenceCancelledRef.current) {
-      console.log('[SEQUENCE] Cancelled - stopping countdown');
+      logger.debug('[SEQUENCE] Cancelled - stopping countdown');
       return;
     }
     

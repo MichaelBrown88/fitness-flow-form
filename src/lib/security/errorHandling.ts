@@ -4,7 +4,7 @@
  * This module provides secure error handling utilities that prevent
  * information leakage while maintaining useful debugging capabilities.
  * 
- * TODO: SECURITY REVIEW - Error messages should be reviewed to ensure
+ * SECURITY REVIEW - Error messages should be reviewed to ensure
  * they don't expose sensitive system information.
  */
 

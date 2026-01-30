@@ -84,14 +84,14 @@ function DeviationLabel({
         {/* Header with red indicator */}
         <div className={`flex items-center gap-1.5 ${isLeft ? '' : 'flex-row-reverse'}`}>
           <div className="h-2 w-2 rounded-full bg-red-500" />
-          <span className="text-[10px] font-black uppercase tracking-wider text-red-700">
+          <span className="text-xs font-black uppercase tracking-wider text-red-700">
             {label}
           </span>
         </div>
         
         {/* Recommendation/Corrective measure */}
         {shortText && (
-          <p className="text-[9px] text-red-600 leading-tight mt-1 line-clamp-2 font-medium">
+          <p className="text-xs text-red-600 leading-tight mt-1 line-clamp-2 font-medium">
             {shortText}
           </p>
         )}

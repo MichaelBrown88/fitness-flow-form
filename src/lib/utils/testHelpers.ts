@@ -7,6 +7,7 @@ import { STORAGE_KEYS } from '@/constants/storageKeys';
 import { getClientAssessments } from '@/services/coachAssessments';
 import { getCoachAssessment } from '@/services/coachAssessments';
 import { auth } from '@/services/firebase';
+import { logger } from '@/lib/utils/logger';
 
 /**
  * Quick test: Open Michael Brown's latest assessment in edit mode
@@ -15,27 +16,27 @@ export async function openMichaelBrownAssessment() {
   try {
     const user = auth.currentUser;
     if (!user) {
-      console.error('[TEST] User not logged in');
+      logger.error('[TEST] User not logged in');
       return;
     }
 
-    console.log('[TEST] Finding Michael Brown assessments...');
+    logger.info('[TEST] Finding Michael Brown assessments...');
     const assessments = await getClientAssessments(user.uid, 'Michael Brown');
     
     if (assessments.length === 0) {
-      console.error('[TEST] No assessments found for Michael Brown');
-      console.log('[TEST] Available clients:', await getAllClients());
+      logger.error('[TEST] No assessments found for Michael Brown');
+      logger.info('[TEST] Available clients:', await getAllClients());
       return;
     }
 
     // Get the latest assessment
     const latest = assessments[0];
-    console.log('[TEST] Found assessment:', latest.id, latest.clientName);
+    logger.info('[TEST] Found assessment:', latest.id, latest.clientName);
 
     // Get full assessment data
     const fullData = await getCoachAssessment(user.uid, latest.id, 'Michael Brown');
     if (!fullData) {
-      console.error('[TEST] Could not load assessment data');
+      logger.error('[TEST] Could not load assessment data');
       return;
     }
 
@@ -53,9 +54,9 @@ export async function openMichaelBrownAssessment() {
 
     // Navigate to assessment
     window.location.href = '/assessment';
-    console.log('[TEST] ✓ Navigated to assessment in edit mode');
+    logger.info('[TEST] ✓ Navigated to assessment in edit mode');
   } catch (error) {
-    console.error('[TEST] Error opening assessment:', error);
+    logger.error('[TEST] Error opening assessment:', error);
   }
 }
 
@@ -76,26 +77,26 @@ export async function listSnapshots(clientName: string) {
   try {
     const user = auth.currentUser;
     if (!user) {
-      console.error('[RECOVERY] User not logged in');
+      logger.error('[RECOVERY] User not logged in');
       return;
     }
     
     const { listClientSnapshots } = await import('@/services/assessmentHistory');
     const snapshots = await listClientSnapshots(user.uid, clientName);
     
-    console.log(`\n📸 Snapshots for "${clientName}":`);
+    logger.info(`\n📸 Snapshots for "${clientName}":`);
     if (snapshots.length === 0) {
-      console.log('   No snapshots found');
+      logger.info('   No snapshots found');
       return [];
     }
     
     snapshots.forEach((s, i) => {
-      console.log(`   ${i + 1}. [${s.id}] ${s.date} - Score: ${s.score} (${s.type})`);
+      logger.info(`   ${i + 1}. [${s.id}] ${s.date} - Score: ${s.score} (${s.type})`);
     });
     
     return snapshots;
   } catch (error) {
-    console.error('[RECOVERY] Error listing snapshots:', error);
+    logger.error('[RECOVERY] Error listing snapshots:', error);
   }
 }
 
@@ -108,11 +109,11 @@ export async function restoreClient(clientName: string, snapshotId?: string) {
   try {
     const user = auth.currentUser;
     if (!user) {
-      console.error('[RECOVERY] User not logged in');
+      logger.error('[RECOVERY] User not logged in');
       return;
     }
     
-    console.log(`\n🔄 Restoring "${clientName}"...`);
+    logger.info(`\n🔄 Restoring "${clientName}"...`);
     
     // First show available snapshots
     await listSnapshots(clientName);
@@ -121,18 +122,18 @@ export async function restoreClient(clientName: string, snapshotId?: string) {
     const result = await restoreFromSnapshot(user.uid, clientName, snapshotId);
     
     if (result.success) {
-      console.log(`\n✅ ${result.message}`);
-      console.log(`   Restored score: ${result.restoredScore}`);
-      console.log('\n📝 Next steps:');
-      console.log('   1. Refresh the page to see the restored data');
-      console.log('   2. Delete the incorrect "Fawaz" assessment from the dashboard');
+      logger.info(`\n✅ ${result.message}`);
+      logger.info(`   Restored score: ${result.restoredScore}`);
+      logger.info('\n📝 Next steps:');
+      logger.info('   1. Refresh the page to see the restored data');
+      logger.info('   2. Delete the incorrect "Fawaz" assessment from the dashboard');
     } else {
-      console.error(`\n❌ ${result.message}`);
+      logger.error(`\n❌ ${result.message}`);
     }
     
     return result;
   } catch (error) {
-    console.error('[RECOVERY] Error restoring client:', error);
+    logger.error('[RECOVERY] Error restoring client:', error);
   }
 }
 
@@ -150,9 +151,9 @@ if (typeof window !== 'undefined') {
   (window as any).restoreClient = restoreClient;
   (window as any).restoreMichaelJamesBrown = restoreMichaelJamesBrown;
   
-  console.log('🧪 Test helpers loaded!');
-  console.log('🧪 Recovery commands:');
-  console.log('   listSnapshots("Michael James Brown") - See available restore points');
-  console.log('   restoreMichaelJamesBrown() - Quick restore for Michael');
-  console.log('   restoreClient("Client Name", "snapshotId") - Restore any client');
+  logger.info('🧪 Test helpers loaded!');
+  logger.info('🧪 Recovery commands:');
+  logger.info('   listSnapshots("Michael James Brown") - See available restore points');
+  logger.info('   restoreMichaelJamesBrown() - Quick restore for Michael');
+  logger.info('   restoreClient("Client Name", "snapshotId") - Restore any client');
 }

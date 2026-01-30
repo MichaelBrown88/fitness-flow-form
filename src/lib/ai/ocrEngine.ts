@@ -5,6 +5,8 @@ import { CONFIG } from '@/config';
 import { logAIUsage } from '@/services/aiUsage';
 import { getFirebaseFunctions, auth, db } from '@/services/firebase';
 import { collection, query, where, getDocs, limit, addDoc, serverTimestamp } from 'firebase/firestore';
+import { logger } from '@/lib/utils/logger';
+import { COLLECTIONS } from '@/constants/collections';
 
 export interface OcrResult {
   fields: Partial<FormData>;
@@ -20,7 +22,7 @@ async function checkLearnedPatterns(rawText: string): Promise<Partial<FormData> 
   try {
     const signature = rawText.substring(0, 500).replace(/\d+/g, '#').replace(/\s+/g, ' ').trim();
     
-    const patternsRef = collection(db, 'learned_ocr_patterns');
+    const patternsRef = collection(db, COLLECTIONS.LEARNED_OCR_PATTERNS);
     const q = query(patternsRef, where('signature', '==', signature), limit(1));
     const snap = await getDocs(q);
     
@@ -99,16 +101,16 @@ async function cropInBodyImage(imageSrc: string): Promise<string> {
         
         // Return as JPEG with good quality
         const croppedImage = canvas.toDataURL('image/jpeg', 0.9);
-        console.log(`[OCR] Cropped image: ${img.width}x${img.height} -> ${cropWidth}x${cropHeight}`);
+        logger.debug(`[OCR] Cropped image: ${img.width}x${img.height} -> ${cropWidth}x${cropHeight}`);
         resolve(croppedImage);
       } catch (error) {
-        console.warn('[OCR] Crop failed, using original:', error);
+        logger.warn('[OCR] Crop failed, using original:', error);
         resolve(imageSrc);
       }
     };
     
     img.onerror = () => {
-      console.warn('[OCR] Image load failed for cropping, using original');
+      logger.warn('[OCR] Image load failed for cropping, using original');
       resolve(imageSrc);
     };
     
@@ -230,14 +232,14 @@ export async function processInBodyScan(imageSrc: string): Promise<OcrResult> {
   try {
     // Pre-crop image to focus on data table (removes logo/footer margins)
     // This reduces token usage and improves extraction accuracy
-    console.log('[OCR] Pre-cropping InBody image...');
+    logger.debug('[OCR] Pre-cropping InBody image...');
     const croppedImage = await cropInBodyImage(imageSrc);
     
     // Primary: Use Gemini AI directly (fast and reliable)
     return await runGeminiOcr(croppedImage);
     
   } catch (err: unknown) {
-    console.error('[OCR] Gemini failed:', err);
+    logger.error('[OCR] Gemini failed:', err);
     await logAIUsage(coachUid, 'ocr_inbody', 'error', 'gemini');
     
     // Return empty result with helpful message instead of throwing

@@ -45,7 +45,7 @@ export function CoachReportPostureAnalysis({ formData }: CoachReportPostureAnaly
                       className="w-full h-full object-cover"
                       title="Reference lines: Red vertical (midline/plumb), Red horizontal (shoulders/hips)"
                     />
-                    <div className="absolute bottom-2 left-2 right-2 bg-black/60 text-white text-[8px] px-2 py-1 rounded">
+                    <div className="absolute bottom-2 left-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
                       Reference lines: Vertical midline/plumb | Horizontal shoulder & hip lines
                     </div>
                   </div>
@@ -61,7 +61,7 @@ export function CoachReportPostureAnalysis({ formData }: CoachReportPostureAnaly
                           {analysis.head_alignment.status}
                         </span>
                       </div>
-                      <p className="text-[10px] text-slate-600 leading-tight">
+                      <p className="text-xs text-slate-600 leading-tight">
                         {analysis.head_alignment.description}
                       </p>
                     </div>
@@ -75,7 +75,7 @@ export function CoachReportPostureAnalysis({ formData }: CoachReportPostureAnaly
                           {analysis.forward_head.status}
                         </span>
                       </div>
-                      <p className="text-[10px] text-slate-600 leading-tight">
+                      <p className="text-xs text-slate-600 leading-tight">
                         {analysis.forward_head.description}
                       </p>
                     </div>
@@ -89,7 +89,7 @@ export function CoachReportPostureAnalysis({ formData }: CoachReportPostureAnaly
                           {analysis.shoulder_alignment.status}
                         </span>
                       </div>
-                      <p className="text-[10px] text-slate-600 leading-tight">
+                      <p className="text-xs text-slate-600 leading-tight">
                         {analysis.shoulder_alignment.description}
                       </p>
                     </div>
@@ -103,7 +103,7 @@ export function CoachReportPostureAnalysis({ formData }: CoachReportPostureAnaly
                           {analysis.kyphosis.status}
                         </span>
                       </div>
-                      <p className="text-[10px] text-slate-600 leading-tight">{analysis.kyphosis.description}</p>
+                      <p className="text-xs text-slate-600 leading-tight">{analysis.kyphosis.description}</p>
                     </div>
                   )}
 
@@ -115,7 +115,7 @@ export function CoachReportPostureAnalysis({ formData }: CoachReportPostureAnaly
                           {analysis.spinal_curvature.status}
                         </span>
                       </div>
-                      <p className="text-[10px] text-slate-600 leading-tight">{analysis.spinal_curvature.description}</p>
+                      <p className="text-xs text-slate-600 leading-tight">{analysis.spinal_curvature.description}</p>
                     </div>
                   )}
 
@@ -127,7 +127,7 @@ export function CoachReportPostureAnalysis({ formData }: CoachReportPostureAnaly
                           {analysis.lordosis.status}
                         </span>
                       </div>
-                      <p className="text-[10px] text-slate-600 leading-tight">{analysis.lordosis.description}</p>
+                      <p className="text-xs text-slate-600 leading-tight">{analysis.lordosis.description}</p>
                     </div>
                   )}
 
@@ -139,7 +139,7 @@ export function CoachReportPostureAnalysis({ formData }: CoachReportPostureAnaly
                           {analysis.hip_alignment.status}
                         </span>
                       </div>
-                      <p className="text-[10px] text-slate-600 leading-tight">{analysis.hip_alignment.description}</p>
+                      <p className="text-xs text-slate-600 leading-tight">{analysis.hip_alignment.description}</p>
                     </div>
                   )}
 
@@ -149,7 +149,7 @@ export function CoachReportPostureAnalysis({ formData }: CoachReportPostureAnaly
                         <span className="text-xs font-bold text-slate-700">Pelvic Tilt</span>
                         <span className="text-xs font-black text-slate-900">{analysis.pelvic_tilt.status}</span>
                       </div>
-                      <p className="text-[10px] text-slate-600 leading-tight">{analysis.pelvic_tilt.description}</p>
+                      <p className="text-xs text-slate-600 leading-tight">{analysis.pelvic_tilt.description}</p>
                     </div>
                   )}
 
@@ -159,7 +159,7 @@ export function CoachReportPostureAnalysis({ formData }: CoachReportPostureAnaly
                         <span className="text-xs font-bold text-slate-700">Knee Alignment</span>
                         <span className="text-xs font-black text-slate-900">{analysis.knee_alignment.status}</span>
                       </div>
-                      <p className="text-[10px] text-slate-600 leading-tight">{analysis.knee_alignment.description}</p>
+                      <p className="text-xs text-slate-600 leading-tight">{analysis.knee_alignment.description}</p>
                     </div>
                   )}
 
@@ -169,23 +169,23 @@ export function CoachReportPostureAnalysis({ formData }: CoachReportPostureAnaly
                         <span className="text-xs font-bold text-slate-700">Knee Position</span>
                         <span className="text-xs font-black text-slate-900">{analysis.knee_position.status}</span>
                       </div>
-                      <p className="text-[10px] text-slate-600 leading-tight">{analysis.knee_position.description}</p>
+                      <p className="text-xs text-slate-600 leading-tight">{analysis.knee_position.description}</p>
                     </div>
                   )}
 
                   {analysis.overall_assessment && (
                     <div className="pt-2 border-t border-slate-100">
-                      <p className="text-[10px] font-semibold text-slate-700 mb-1">Overall Assessment:</p>
-                      <p className="text-[10px] text-slate-600 leading-relaxed">{analysis.overall_assessment}</p>
+                      <p className="text-xs font-semibold text-slate-700 mb-1">Overall Assessment:</p>
+                      <p className="text-xs text-slate-600 leading-relaxed">{analysis.overall_assessment}</p>
                     </div>
                   )}
 
                   {analysis.deviations && analysis.deviations.length > 0 && (
                     <div className="pt-2 border-t border-slate-100">
-                      <p className="text-[9px] font-bold text-slate-500 uppercase mb-1">Identified Deviations:</p>
+                      <p className="text-xs font-bold text-slate-500 uppercase mb-1">Identified Deviations:</p>
                       <ul className="list-disc list-inside space-y-0.5">
                         {analysis.deviations.map((dev, idx) => (
-                          <li key={idx} className="text-[9px] text-slate-600">
+                          <li key={idx} className="text-xs text-slate-600">
                             {dev}
                           </li>
                         ))}

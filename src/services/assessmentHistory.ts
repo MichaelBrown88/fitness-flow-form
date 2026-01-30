@@ -18,6 +18,7 @@ import type { FormData } from "@/contexts/FormContext";
 import { sanitizeForFirestore } from "@/lib/utils/firebaseUtils";
 import { PostureAnalysisResult } from "@/lib/ai/postureAnalysis";
 import { logger } from "@/lib/utils/logger";
+import { COLLECTIONS } from "@/constants/collections";
 
 export type FormValue =
   | string
@@ -60,9 +61,9 @@ const getClientSlug = (clientName: string) => {
 const getCurrentAssessmentDoc = (coachUid: string, clientName: string) =>
   doc(
     getDb(),
-    "coaches",
+    COLLECTIONS.COACHES,
     coachUid,
-    "assessments",
+    COLLECTIONS.ASSESSMENTS,
     getClientSlug(clientName),
     "current",
     "data"
@@ -71,9 +72,9 @@ const getCurrentAssessmentDoc = (coachUid: string, clientName: string) =>
 const getHistoryCollection = (coachUid: string, clientName: string) =>
   collection(
     getDb(),
-    "coaches",
+    COLLECTIONS.COACHES,
     coachUid,
-    "assessments",
+    COLLECTIONS.ASSESSMENTS,
     getClientSlug(clientName),
     "history"
   );
@@ -81,9 +82,9 @@ const getHistoryCollection = (coachUid: string, clientName: string) =>
 const getSnapshotsCollection = (coachUid: string, clientName: string) =>
   collection(
     getDb(),
-    "coaches",
+    COLLECTIONS.COACHES,
     coachUid,
-    "assessments",
+    COLLECTIONS.ASSESSMENTS,
     getClientSlug(clientName),
     "snapshots"
   );

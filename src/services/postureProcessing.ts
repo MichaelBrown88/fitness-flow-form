@@ -191,12 +191,12 @@ export function compareSideViews(
   leftAnalysis: PostureAnalysisResult | null,
   rightAnalysis: PostureAnalysisResult | null
 ): void {
-  console.log('\n' + '═'.repeat(60));
-  console.log('📊 SIDE VIEW COMPARISON: LEFT vs RIGHT');
-  console.log('═'.repeat(60));
+  logger.debug('\n' + '═'.repeat(60));
+  logger.debug('📊 SIDE VIEW COMPARISON: LEFT vs RIGHT');
+  logger.debug('═'.repeat(60));
   
   if (!leftAnalysis || !rightAnalysis) {
-    console.log('⚠️ Missing analysis data for comparison');
+    logger.debug('⚠️ Missing analysis data for comparison');
     return;
   }
   
@@ -204,70 +204,70 @@ export function compareSideViews(
   const leftFHP = leftAnalysis.forward_head;
   const rightFHP = rightAnalysis.forward_head;
   
-  console.log('\n🔍 FORWARD HEAD POSTURE:');
-  console.log(`   Left Side:  ${leftFHP?.status} (${leftFHP?.deviation_cm?.toFixed(1) || '?'}cm)`);
-  console.log(`   Right Side: ${rightFHP?.status} (${rightFHP?.deviation_cm?.toFixed(1) || '?'}cm)`);
+  logger.debug('\n🔍 FORWARD HEAD POSTURE:');
+  logger.debug(`   Left Side:  ${leftFHP?.status} (${leftFHP?.deviation_cm?.toFixed(1) || '?'}cm)`);
+  logger.debug(`   Right Side: ${rightFHP?.status} (${rightFHP?.deviation_cm?.toFixed(1) || '?'}cm)`);
   
   if (leftFHP?.status !== rightFHP?.status) {
-    console.log(`   ⚠️ ASYMMETRY DETECTED!`);
-    console.log(`   Possible causes:`);
-    console.log(`   - Rotational component to posture (torso twist)`);
-    console.log(`   - Dominant side compensation`);
-    console.log(`   - Habitual head turn preference`);
-    console.log(`   - Scoliosis affecting head position`);
+    logger.debug(`   ⚠️ ASYMMETRY DETECTED!`);
+    logger.debug(`   Possible causes:`);
+    logger.debug(`   - Rotational component to posture (torso twist)`);
+    logger.debug(`   - Dominant side compensation`);
+    logger.debug(`   - Habitual head turn preference`);
+    logger.debug(`   - Scoliosis affecting head position`);
   }
   
   // Shoulder comparison
   const leftShoulder = leftAnalysis.shoulder_alignment;
   const rightShoulder = rightAnalysis.shoulder_alignment;
   
-  console.log('\n🔍 SHOULDER POSITION:');
-  console.log(`   Left Side:  ${leftShoulder?.status} (rounded: ${leftShoulder?.rounded_forward})`);
-  console.log(`   Right Side: ${rightShoulder?.status} (rounded: ${rightShoulder?.rounded_forward})`);
+  logger.debug('\n🔍 SHOULDER POSITION:');
+  logger.debug(`   Left Side:  ${leftShoulder?.status} (rounded: ${leftShoulder?.rounded_forward})`);
+  logger.debug(`   Right Side: ${rightShoulder?.status} (rounded: ${rightShoulder?.rounded_forward})`);
   
   if (leftShoulder?.rounded_forward !== rightShoulder?.rounded_forward) {
-    console.log(`   ⚠️ ASYMMETRY DETECTED!`);
-    console.log(`   Possible causes:`);
-    console.log(`   - Unilateral pec tightness`);
-    console.log(`   - Rotator cuff imbalance`);
-    console.log(`   - Thoracic rotation`);
+    logger.debug(`   ⚠️ ASYMMETRY DETECTED!`);
+    logger.debug(`   Possible causes:`);
+    logger.debug(`   - Unilateral pec tightness`);
+    logger.debug(`   - Rotator cuff imbalance`);
+    logger.debug(`   - Thoracic rotation`);
   }
   
   // Kyphosis comparison
   const leftKyphosis = leftAnalysis.kyphosis;
   const rightKyphosis = rightAnalysis.kyphosis;
   
-  console.log('\n🔍 KYPHOSIS (Upper Back):');
-  console.log(`   Left Side:  ${leftKyphosis?.status}`);
-  console.log(`   Right Side: ${rightKyphosis?.status}`);
+  logger.debug('\n🔍 KYPHOSIS (Upper Back):');
+  logger.debug(`   Left Side:  ${leftKyphosis?.status}`);
+  logger.debug(`   Right Side: ${rightKyphosis?.status}`);
   
   // Lordosis comparison
   const leftLordosis = leftAnalysis.lordosis;
   const rightLordosis = rightAnalysis.lordosis;
   
-  console.log('\n🔍 LORDOSIS (Lower Back):');
-  console.log(`   Left Side:  ${leftLordosis?.status}`);
-  console.log(`   Right Side: ${rightLordosis?.status}`);
+  logger.debug('\n🔍 LORDOSIS (Lower Back):');
+  logger.debug(`   Left Side:  ${leftLordosis?.status}`);
+  logger.debug(`   Right Side: ${rightLordosis?.status}`);
   
   // Pelvic Tilt comparison
   const leftPelvis = leftAnalysis.pelvic_tilt;
   const rightPelvis = rightAnalysis.pelvic_tilt;
   
-  console.log('\n🔍 PELVIC TILT:');
-  console.log(`   Left Side:  ${leftPelvis?.status}`);
-  console.log(`   Right Side: ${rightPelvis?.status}`);
+  logger.debug('\n🔍 PELVIC TILT:');
+  logger.debug(`   Left Side:  ${leftPelvis?.status}`);
+  logger.debug(`   Right Side: ${rightPelvis?.status}`);
   
   if (leftPelvis?.status !== rightPelvis?.status) {
-    console.log(`   ⚠️ ASYMMETRY DETECTED!`);
-    console.log(`   Possible causes:`);
-    console.log(`   - Pelvic rotation (one hip forward)`);
-    console.log(`   - Hip flexor length difference`);
-    console.log(`   - Leg length discrepancy`);
+    logger.debug(`   ⚠️ ASYMMETRY DETECTED!`);
+    logger.debug(`   Possible causes:`);
+    logger.debug(`   - Pelvic rotation (one hip forward)`);
+    logger.debug(`   - Hip flexor length difference`);
+    logger.debug(`   - Leg length discrepancy`);
   }
   
   // Summary
-  console.log('\n' + '─'.repeat(60));
-  console.log('📋 CORRECTIVE EXERCISE PRIORITIES:');
+  logger.debug('\n' + '─'.repeat(60));
+  logger.debug('📋 CORRECTIVE EXERCISE PRIORITIES:');
   
   // Determine which side has more issues
   const leftIssues = [
@@ -285,38 +285,38 @@ export function compareSideViews(
   ].filter(Boolean).length;
   
   if (leftIssues > rightIssues) {
-    console.log(`   ⚡ LEFT SIDE shows more deviations (${leftIssues} vs ${rightIssues})`);
-    console.log(`   Focus on: Left-side mobility and right-side strengthening`);
+    logger.debug(`   ⚡ LEFT SIDE shows more deviations (${leftIssues} vs ${rightIssues})`);
+    logger.debug(`   Focus on: Left-side mobility and right-side strengthening`);
   } else if (rightIssues > leftIssues) {
-    console.log(`   ⚡ RIGHT SIDE shows more deviations (${rightIssues} vs ${leftIssues})`);
-    console.log(`   Focus on: Right-side mobility and left-side strengthening`);
+    logger.debug(`   ⚡ RIGHT SIDE shows more deviations (${rightIssues} vs ${leftIssues})`);
+    logger.debug(`   Focus on: Right-side mobility and left-side strengthening`);
   } else {
-    console.log(`   ✓ Both sides show similar findings (${leftIssues} issues each)`);
+    logger.debug(`   ✓ Both sides show similar findings (${leftIssues} issues each)`);
   }
   
   // Specific recommendations
   if (leftFHP?.status !== 'Neutral' || rightFHP?.status !== 'Neutral') {
-    console.log(`\n   For Forward Head:`);
-    console.log(`   - Chin tucks (2x daily)`);
-    console.log(`   - Upper trap stretches`);
-    console.log(`   - Deep neck flexor strengthening`);
+    logger.debug(`\n   For Forward Head:`);
+    logger.debug(`   - Chin tucks (2x daily)`);
+    logger.debug(`   - Upper trap stretches`);
+    logger.debug(`   - Deep neck flexor strengthening`);
   }
   
   if (leftShoulder?.rounded_forward || rightShoulder?.rounded_forward) {
-    console.log(`\n   For Rounded Shoulders:`);
-    console.log(`   - Doorway pec stretch`);
-    console.log(`   - Face pulls`);
-    console.log(`   - Wall angels`);
+    logger.debug(`\n   For Rounded Shoulders:`);
+    logger.debug(`   - Doorway pec stretch`);
+    logger.debug(`   - Face pulls`);
+    logger.debug(`   - Wall angels`);
   }
   
   if (leftPelvis?.status?.includes('Anterior') || rightPelvis?.status?.includes('Anterior')) {
-    console.log(`\n   For Anterior Pelvic Tilt:`);
-    console.log(`   - Hip flexor stretch (especially psoas)`);
-    console.log(`   - Glute bridges`);
-    console.log(`   - Dead bugs for core stability`);
+    logger.debug(`\n   For Anterior Pelvic Tilt:`);
+    logger.debug(`   - Hip flexor stretch (especially psoas)`);
+    logger.debug(`   - Glute bridges`);
+    logger.debug(`   - Dead bugs for core stability`);
   }
   
-  console.log('\n' + '═'.repeat(60) + '\n');
+  logger.debug('\n' + '═'.repeat(60) + '\n');
 }
 
 // Make comparison function available globally for console use

@@ -11,6 +11,7 @@ import { updateOrgSettings, uploadOrgLogo, type OrgSettings, DEFAULT_EQUIPMENT_C
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Upload, Palette, ShieldCheck, Box, Settings as SettingsIcon } from 'lucide-react';
 import { getAllGradients, type GradientId } from '@/lib/design/gradients';
+import { logger } from '@/lib/utils/logger';
 
 const Settings = () => {
   const { user, profile, orgSettings, refreshSettings } = useAuth();
@@ -42,7 +43,7 @@ const Settings = () => {
       await refreshSettings();
       toast({ title: 'Settings saved to database' });
     } catch (err) {
-      console.error('Save error:', err);
+      logger.error('Save error:', err);
       toast({ 
         title: 'Database Permission Error', 
         description: 'Your changes were applied locally but could not be saved to the cloud. Please update your Firestore Rules.',

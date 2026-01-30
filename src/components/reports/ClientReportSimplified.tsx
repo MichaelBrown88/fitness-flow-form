@@ -152,7 +152,7 @@ export default function ClientReportSimplified({
           <div className={`flex h-32 w-32 items-center justify-center rounded-full border-8 bg-white shadow-lg ${circleColor(scores.overall)}`}>
             <div className="flex flex-col items-center">
               <span className="text-4xl font-black">{scores.overall}</span>
-              <span className="text-[10px] uppercase tracking-[0.2em] font-bold opacity-70">Overall</span>
+              <span className="text-xs uppercase tracking-[0.2em] font-bold opacity-70">Overall</span>
             </div>
           </div>
         </div>

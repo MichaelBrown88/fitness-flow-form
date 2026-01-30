@@ -2,12 +2,15 @@ import React from 'react';
 import { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
 import { PostureHolisticSummary } from './PostureHolisticSummary';
 import {
-  calculateFrontBackDeviationSummary,
-  calculateSideViewDeviationSummary,
-  getSeverity,
-  POSTURE_THRESHOLDS,
-  SeverityLevel,
-} from '@/lib/utils/postureAlignment';
+  calculateDeviationsFromLandmarks,
+  getAverageYPercent,
+  getRawLandmarkYPercent,
+  getSideViewPlumbSeverity,
+  getHeadPitchSeverity,
+  getAiStatusSeverity,
+  type RawLandmarks,
+  type Severity,
+} from '@/lib/utils/postureDeviation';
 import { 
   Dialog, 
   DialogContent, 
@@ -22,66 +25,8 @@ import {
   Maximize2
 } from 'lucide-react';
 
-type Severity = SeverityLevel;
+type PostureView = 'front' | 'back' | 'side-left' | 'side-right';
 
-/**
- * Calculate deviation severities from raw MediaPipe landmarks
- * Uses the SAME thresholds as the wireframe drawing
- */
-function calculateDeviationsFromLandmarks(
-  landmarks: Array<{ x: number; y: number; z?: number; visibility?: number }> | undefined,
-  view: 'front' | 'back' | 'side-left' | 'side-right'
-): {
-  shoulder: Severity;
-  hipLevel: Severity;
-  hipShift: Severity;
-  headTilt: Severity;
-  leftLeg: Severity;
-  rightLeg: Severity;
-  forwardHead: Severity;
-  pelvicTilt: Severity;
-  leftKneeDirection: 'straight' | 'valgus' | 'varus';
-  rightKneeDirection: 'straight' | 'valgus' | 'varus';
-} {
-  const defaults = {
-    shoulder: 'good' as Severity,
-    hipLevel: 'good' as Severity,
-    hipShift: 'good' as Severity,
-    headTilt: 'good' as Severity,
-    leftLeg: 'good' as Severity,
-    rightLeg: 'good' as Severity,
-    forwardHead: 'good' as Severity,
-    pelvicTilt: 'good' as Severity,
-    leftKneeDirection: 'straight' as const,
-    rightKneeDirection: 'straight' as const,
-  };
-  
-  const isSideView = view === 'side-left' || view === 'side-right';
-  
-  if (!landmarks || landmarks.length < 33) return defaults;
-  
-  if (!isSideView) {
-    const summary = calculateFrontBackDeviationSummary(landmarks, view);
-    return {
-      ...defaults,
-      shoulder: summary.shoulder,
-      hipLevel: summary.hipLevel,
-      hipShift: summary.hipShift,
-      headTilt: summary.headTilt,
-      leftLeg: summary.leftLeg,
-      rightLeg: summary.rightLeg,
-      leftKneeDirection: summary.leftKneeDirection,
-      rightKneeDirection: summary.rightKneeDirection,
-    };
-  }
-
-  const summary = calculateSideViewDeviationSummary(landmarks, view);
-  return {
-    ...defaults,
-    forwardHead: summary.forwardHead,
-    pelvicTilt: summary.pelvicTilt,
-  };
-}
 
 /**
  * Consolidated deviation labels - no repetition, brief text
@@ -95,62 +40,10 @@ interface DeviationItem {
   severity: Severity;
 }
 
-type RawLandmarks = Array<{ x: number; y: number; z?: number; visibility?: number }>;
-
-function getRawLandmarkYPercent(landmarks: RawLandmarks | undefined, idx: number): number | null {
-  const point = landmarks?.[idx];
-  if (!point || typeof point.y !== 'number') return null;
-  const percent = point.y * 100;
-  return Math.max(5, Math.min(95, percent));
-}
-
-function getAverageYPercent(landmarks: RawLandmarks | undefined, idxA: number, idxB: number): number | null {
-  const a = getRawLandmarkYPercent(landmarks, idxA);
-  const b = getRawLandmarkYPercent(landmarks, idxB);
-  if (a === null || b === null) return null;
-  return Math.max(5, Math.min(95, (a + b) / 2));
-}
-
-function getSideViewPlumbSeverity(
-  landmarks: RawLandmarks | undefined,
-  view: 'side-left' | 'side-right',
-  idx: number
-): Severity {
-  if (!landmarks || landmarks.length < 33) return 'good';
-  const ankleIdx = view === 'side-left' ? 27 : 28;
-  const landmark = landmarks[idx];
-  const ankle = landmarks[ankleIdx];
-  if (!landmark || !ankle) return 'good';
-  const deviation = Math.abs(landmark.x - ankle.x);
-  return getSeverity(deviation, POSTURE_THRESHOLDS.PLUMB_LINE);
-}
-
-function getHeadPitchSeverity(landmarks: RawLandmarks | undefined, view: 'side-left' | 'side-right'): Severity {
-  if (!landmarks || landmarks.length < 9) return 'good';
-  const eyeIdx = view === 'side-left' ? 2 : 5;
-  const earIdx = view === 'side-left' ? 7 : 8;
-  const eye = landmarks[eyeIdx];
-  const ear = landmarks[earIdx];
-  if (!eye || !ear) return 'good';
-  const earEyeDiff = Math.abs(ear.y - eye.y);
-  if (earEyeDiff < POSTURE_THRESHOLDS.HEAD_UPDOWN.NEUTRAL) return 'good';
-  if (earEyeDiff < POSTURE_THRESHOLDS.HEAD_UPDOWN.UP) return 'mild';
-  return 'moderate';
-}
-
-function getAiStatusSeverity(status?: string): Severity {
-  if (!status) return 'good';
-  const normalized = status.toLowerCase();
-  if (normalized.includes('severe')) return 'severe';
-  if (normalized.includes('moderate')) return 'moderate';
-  if (normalized.includes('mild')) return 'mild';
-  return 'good';
-}
-
 function getAnchorForItem(
   item: DeviationItem,
   landmarks: RawLandmarks | undefined,
-  view: 'front' | 'back' | 'side-left' | 'side-right'
+  view: PostureView
 ): number | null {
   if (!landmarks) return null;
   const isSideView = view === 'side-left' || view === 'side-right';
@@ -187,7 +80,7 @@ function getAnchorForItem(
 
 function getScreenSide(
   side: 'left' | 'right' | 'center',
-  view: 'front' | 'back' | 'side-left' | 'side-right'
+  view: PostureView
 ): 'left' | 'right' | 'center' {
   if (side === 'center') return 'center';
   if (view === 'front') return side === 'left' ? 'right' : 'left';
@@ -208,7 +101,7 @@ function getSeverityTone(severity: Severity) {
  */
 function getConsolidatedDeviations(
   analysis: PostureAnalysisResult, 
-  view: 'front' | 'back' | 'side-left' | 'side-right' = 'front'
+  view: PostureView = 'front'
 ): DeviationItem[] {
   const items: DeviationItem[] = [];
   const isSideView = view === 'side-left' || view === 'side-right';
@@ -278,13 +171,13 @@ function getConsolidatedDeviations(
 
     // Forward hips (plumb-line based)
     const hipSeverity = getSideViewPlumbSeverity(analysis.landmarks?.raw, view, view === 'side-left' ? 23 : 24);
-    if (hipSeverity !== 'good' || analysis.hip_alignment?.status === 'Forward') {
+    if (hipSeverity !== 'good') {
       items.push({
         key: 'forward_hips',
         label: 'Forward Hips',
         recommendation: analysis.hip_alignment?.recommendation || 'Stack ribs over hips; focus on core control',
         side: 'right',
-        severity: hipSeverity !== 'good' ? hipSeverity : 'mild'
+        severity: hipSeverity
       });
     }
     
@@ -392,7 +285,7 @@ function PositionedLabels({
 }: { 
   analysis: PostureAnalysisResult; 
   side: 'left' | 'right' | 'all';
-  view: 'front' | 'back' | 'side-left' | 'side-right';
+  view: PostureView;
 }) {
   // Get deviations filtered by what's detectable from this view
   const allDeviations = getConsolidatedDeviations(analysis, view);
@@ -420,7 +313,7 @@ function PositionedLabels({
           return (
             <div key={i} className="flex items-center gap-1.5">
               <div className={`h-1.5 w-1.5 rounded-full ${tone.dot}`} />
-              <span className={`text-[9px] font-bold uppercase tracking-wide ${tone.text}`}>
+              <span className={`text-xs font-bold uppercase tracking-wide ${tone.text}`}>
                 {item.label}
               </span>
             </div>
@@ -462,11 +355,11 @@ function PositionedLabels({
             <div className={`${screenSide === 'left' ? 'text-left' : 'text-right'} max-w-[180px]`}>
               <div className={`inline-flex items-center gap-1.5 mb-0.5 ${screenSide === 'right' ? 'flex-row-reverse' : ''}`}>
                 <div className={`h-1.5 w-1.5 rounded-full shrink-0 ${tone.dot}`} />
-                <span className={`text-[10px] font-bold uppercase tracking-wide ${tone.text}`}>
+                <span className={`text-xs font-bold uppercase tracking-wide ${tone.text}`}>
                   {item.label}
                 </span>
               </div>
-              <p className={`text-[9px] text-white/60 leading-snug whitespace-normal break-words line-clamp-2 ${screenSide === 'left' ? 'pl-3' : 'pr-3'}`}>
+              <p className={`text-xs text-white/60 leading-snug whitespace-normal break-words line-clamp-2 ${screenSide === 'left' ? 'pl-3' : 'pr-3'}`}>
                 {item.recommendation}
               </p>
             </div>
@@ -527,7 +420,7 @@ function getVerticalPosition(label: string): number {
  * Get brief findings for the preview card
  * Any deviation that shows a red line on the wireframe should be listed here
  */
-function getBriefFindings(analysis: PostureAnalysisResult, view: 'front' | 'back' | 'side-left' | 'side-right'): string[] {
+function getBriefFindings(analysis: PostureAnalysisResult, view: PostureView): string[] {
   const brief: string[] = [];
   const calc = calculateDeviationsFromLandmarks(analysis.landmarks?.raw, view);
   
@@ -540,9 +433,6 @@ function getBriefFindings(analysis: PostureAnalysisResult, view: 'front' | 'back
   }
   if (analysis.shoulder_alignment?.rounded_forward || analysis.shoulder_alignment?.status === 'Rounded') {
     brief.push('Rounded Shoulders');
-  }
-  if (analysis.hip_alignment?.status === 'Forward') {
-    brief.push('Forward Hips');
   }
   if (analysis.kyphosis && analysis.kyphosis.status !== 'Normal') {
     brief.push('Kyphosis');
@@ -587,11 +477,11 @@ export function PostureViewCard({
   analysis, 
   imageUrl 
 }: { 
-  view: string; 
+  view: PostureView; 
   analysis: PostureAnalysisResult; 
   imageUrl: string;
 }) {
-  const briefFindings = getBriefFindings(analysis, view as 'front' | 'back' | 'side-left' | 'side-right');
+  const briefFindings = getBriefFindings(analysis, view);
   const isNeutral = briefFindings[0] === 'Neutral Alignment';
 
   return (
@@ -602,7 +492,7 @@ export function PostureViewCard({
         >
           {/* View Label */}
           <div className="absolute top-2 left-2 z-10">
-            <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm text-[8px] font-black uppercase tracking-widest text-slate-600 border-none shadow-sm h-5">
+            <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm text-xs font-black uppercase tracking-widest text-slate-600 border-none shadow-sm h-5">
               {view.replace('-', ' ')}
             </Badge>
           </div>
@@ -630,11 +520,11 @@ export function PostureViewCard({
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent p-3 pt-10 text-center">
             <div className="flex flex-col gap-0.5">
               {briefFindings.slice(0, 1).map((finding, i) => (
-                <span key={i} className="text-[10px] font-black uppercase tracking-tight leading-none text-white drop-shadow-md">
+                <span key={i} className="text-xs font-black uppercase tracking-tight leading-none text-white drop-shadow-md">
                   {finding}
                 </span>
               ))}
-              <span className="text-[7px] sm:text-[8px] font-bold text-white/80 uppercase tracking-widest mt-1">
+              <span className="text-xs font-bold text-white/80 uppercase tracking-widest mt-1">
                 Click to expand analysis
               </span>
             </div>
@@ -694,15 +584,15 @@ export function PostureViewCard({
         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-black/80 px-3 py-1 rounded-full">
           <div className="flex items-center gap-1">
             <div className="h-2 w-2 rounded-full bg-green-500" />
-            <span className="text-[8px] uppercase text-white/50">Aligned</span>
+            <span className="text-xs uppercase text-white/50">Aligned</span>
                           </div>
           <div className="flex items-center gap-1">
             <div className="h-2 w-2 rounded-full bg-amber-500" />
-            <span className="text-[8px] uppercase text-white/50">Minor</span>
+            <span className="text-xs uppercase text-white/50">Minor</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="h-2 w-2 rounded-full bg-red-500" />
-            <span className="text-[8px] uppercase text-white/50">Deviation</span>
+            <span className="text-xs uppercase text-white/50">Deviation</span>
                 </div>
               </div>
 
@@ -723,7 +613,7 @@ export function PostureAnalysisViewer({
   postureResults, 
   postureImages 
 }: { 
-  postureResults: Record<string, PostureAnalysisResult>; 
+  postureResults: Partial<Record<PostureView, PostureAnalysisResult>>; 
   postureImages: Record<string, string> | undefined;
 }) {
   const views = ['front', 'back', 'side-left', 'side-right'] as const;
@@ -734,7 +624,7 @@ export function PostureAnalysisViewer({
   /**
    * Get image URL for a view, checking multiple possible key formats
    */
-  const getImageUrl = (view: string): string => {
+  const getImageUrl = (view: PostureView): string => {
     return postureImages?.[view] || 
            postureImages?.[`postureImagesStorage_${view}`] ||
            postureImages?.[`postureImagesFull_${view}`] ||

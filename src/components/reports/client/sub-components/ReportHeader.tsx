@@ -20,15 +20,15 @@ export const ReportHeader: React.FC<ReportHeaderProps> = ({
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-3 md:gap-4 lg:gap-6">
         <div className="space-y-1 sm:space-y-1.5 md:space-y-2">
           <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
-            <span className="inline-flex items-center rounded-full glass-label px-2 sm:px-2.5 md:px-3 py-0.5 sm:py-1 text-[9px] sm:text-[10px] md:text-xs font-semibold text-zinc-700">
+            <span className="inline-flex items-center rounded-full glass-label px-2 sm:px-2.5 md:px-3 py-0.5 sm:py-1 text-xs font-semibold text-zinc-700">
               Assessment Report
             </span>
-            <span className="text-[9px] sm:text-[10px] md:text-xs text-zinc-400 font-medium">{reportDate}</span>
+            <span className="text-xs text-zinc-400 font-medium">{reportDate}</span>
           </div>
           <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-black tracking-tight text-zinc-900 leading-tight">
             {clientName || 'Your Assessment Report'}
           </h1>
-          <p className="text-[10px] sm:text-xs md:text-sm lg:text-base text-zinc-500 font-medium leading-snug">
+          <p className="text-xs md:text-sm lg:text-base text-zinc-500 font-medium leading-snug">
             Your personalized journey to better health and performance.
           </p>
         </div>

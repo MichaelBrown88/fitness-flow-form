@@ -5,6 +5,7 @@ import { getDb } from '@/services/firebase';
 import { summarizeScores } from '@/lib/scoring';
 import { validateOrganizationId } from '@/lib/utils/validateOrganizationId';
 import type { UserProfile } from '@/types/auth';
+import { COLLECTIONS } from '@/constants/collections';
 
 export type CoachAssessmentSummary = {
   id: string;
@@ -39,7 +40,7 @@ type CoachAssessmentDoc = {
 };
 
 const coachAssessmentsCollection = (coachUid: string) =>
-  collection(getDb(), 'coaches', coachUid, 'assessments');
+  collection(getDb(), COLLECTIONS.COACHES, coachUid, COLLECTIONS.ASSESSMENTS);
 
 export async function saveCoachAssessment(
   coachUid: string,
@@ -63,7 +64,7 @@ export async function saveCoachAssessment(
   const scoresSummary = summarizeScores(formData);
   
   // Create assessment summary document and capture the actual Firestore document ID
-  const docRef = await addDoc(collection(getDb(), 'coaches', coachUid, 'assessments'), {
+  const docRef = await addDoc(collection(getDb(), COLLECTIONS.COACHES, coachUid, COLLECTIONS.ASSESSMENTS), {
     clientName: name,
     clientNameLower: name.toLowerCase(),
     createdAt: serverTimestamp(),
@@ -141,14 +142,18 @@ export async function listCoachAssessments(
 export async function getCoachAssessment(
   coachUid: string,
   assessmentId: string,
-  clientName?: string
+  clientName?: string,
+  organizationId?: string,
+  profile?: UserProfile | null
 ): Promise<{ formData: FormData; overallScore: number; goals: string[] } | null> {
   const db = getDb();
+  const resolvedOrgId = organizationId ?? profile?.organizationId;
+  const validOrgId = resolvedOrgId ? validateOrganizationId(resolvedOrgId, profile) : undefined;
   
   // 0. Handle "latest" keyword for the live merged report
   if (assessmentId === 'latest' && clientName) {
     const { getCurrentAssessment } = await import('./assessmentHistory');
-    const current = await getCurrentAssessment(coachUid, clientName);
+    const current = await getCurrentAssessment(coachUid, clientName, validOrgId);
     if (current) {
       return {
         formData: current.formData,
@@ -159,7 +164,7 @@ export async function getCoachAssessment(
   }
 
   // 1. Try the specific assessment document (summary or full)
-  const ref = doc(db, 'coaches', coachUid, 'assessments', assessmentId);
+  const ref = doc(db, COLLECTIONS.COACHES, coachUid, COLLECTIONS.ASSESSMENTS, assessmentId);
   const snap = await getDoc(ref);
   
   if (snap.exists()) {
@@ -168,7 +173,12 @@ export async function getCoachAssessment(
       overallScore?: number;
       goals?: string[];
       clientName?: string;
+      organizationId?: string | null;
     };
+
+    if (validOrgId && data.organizationId && data.organizationId !== validOrgId) {
+      throw new Error('Cannot access assessment: Organization mismatch. This assessment belongs to a different organization.');
+    }
     
     // If it has formData, we're good
     if (data.formData) {
@@ -186,7 +196,7 @@ export async function getCoachAssessment(
       
       // Try to find a snapshot that might match this summary's timestamp? 
       // Or just fall back to current if it's the latest
-      const current = await getCurrentAssessment(coachUid, resolvedName);
+      const current = await getCurrentAssessment(coachUid, resolvedName, validOrgId);
       if (current) {
         return {
           formData: current.formData,
@@ -200,7 +210,7 @@ export async function getCoachAssessment(
   // 2. Try the client's snapshots collection if assessmentId might be a snapshot ID
   if (clientName) {
     const { getSnapshots } = await import('./assessmentHistory');
-    const snapshots = await getSnapshots(coachUid, clientName);
+    const snapshots = await getSnapshots(coachUid, clientName, 50, validOrgId);
     const snapshot = snapshots.find(s => s.id === assessmentId);
     if (snapshot) {
       return {
@@ -220,7 +230,7 @@ export async function deleteCoachAssessment(
   organizationId?: string,
   profile?: UserProfile | null,
 ): Promise<void> {
-  const ref = doc(getDb(), 'coaches', coachUid, 'assessments', assessmentId);
+  const ref = doc(getDb(), COLLECTIONS.COACHES, coachUid, COLLECTIONS.ASSESSMENTS, assessmentId);
   
   // Fetch document first to verify ownership
   const assessmentDoc = await getDoc(ref);
@@ -344,7 +354,7 @@ export async function savePartialAssessment(
   const scoresSummary = summarizeScores(mergedFormData);
   
   // 3. Update summary for dashboard and capture the actual Firestore document ID
-  const docRef = await addDoc(collection(getDb(), 'coaches', coachUid, 'assessments'), {
+  const docRef = await addDoc(collection(getDb(), COLLECTIONS.COACHES, coachUid, COLLECTIONS.ASSESSMENTS), {
     clientName: finalName,
     clientNameLower: finalName.toLowerCase(),
     createdAt: serverTimestamp(),
@@ -391,7 +401,7 @@ export async function updateCoachAssessment(
   profile?: UserProfile | null,
 ): Promise<void> {
   const db = getDb();
-  const ref = doc(db, 'coaches', coachUid, 'assessments', assessmentId);
+  const ref = doc(db, COLLECTIONS.COACHES, coachUid, COLLECTIONS.ASSESSMENTS, assessmentId);
   
   // Get the existing document to preserve createdAt
   const existingDoc = await getDoc(ref);

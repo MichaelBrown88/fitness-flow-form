@@ -34,7 +34,7 @@ export function CoachReportLegacyStrategies({ plan }: CoachReportLegacyStrategie
           <div key={i} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
             <div className="flex justify-between items-start mb-4">
               <h4 className="font-bold text-slate-900">{s.title}</h4>
-              <span className="px-3 py-1 bg-sky-50 text-sky-700 rounded-full text-[10px] font-bold uppercase tracking-widest">
+              <span className="px-3 py-1 bg-sky-50 text-sky-700 rounded-full text-xs font-bold uppercase tracking-widest">
                 Strategy
               </span>
             </div>

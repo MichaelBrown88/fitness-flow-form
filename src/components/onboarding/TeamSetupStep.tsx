@@ -89,7 +89,6 @@ export function TeamSetupStep({ data, subscriptionPlan, onNext, onBack }: TeamSe
                 variant="outline"
                 className="border-amber-300 text-amber-700 hover:bg-amber-100"
                 onClick={() => {
-                  // TODO: Open upgrade modal or navigate to pricing
                 }}
               >
                 View upgrade options

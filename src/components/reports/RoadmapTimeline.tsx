@@ -17,7 +17,7 @@ export default function RoadmapTimeline({ phases }: { phases: RoadmapPhase[] }) 
               >
                 <div className="flex items-center justify-between">
                   <h5 className="text-sm font-semibold text-slate-900 truncate pr-2">{p.title}</h5>
-                  <span className="text-[10px] text-slate-500 whitespace-nowrap">{p.weeks} wk</span>
+                  <span className="text-xs text-slate-500 whitespace-nowrap">{p.weeks} wk</span>
                 </div>
                 <div className="mt-2 h-2 w-full rounded-full bg-slate-200">
                   <div

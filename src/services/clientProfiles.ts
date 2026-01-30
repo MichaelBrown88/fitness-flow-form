@@ -2,6 +2,7 @@ import { doc, getDoc, setDoc, updateDoc, serverTimestamp, onSnapshot, Timestamp 
 import { getDb } from '@/services/firebase';
 import { validateOrganizationId } from '@/lib/utils/validateOrganizationId';
 import type { UserProfile } from '@/types/auth';
+import { COLLECTIONS } from '@/constants/collections';
 
 export type ClientProfile = {
   clientName: string;
@@ -25,7 +26,7 @@ export type ClientProfile = {
 };
 
 const clientProfileDoc = (coachUid: string, clientName: string) =>
-  doc(getDb(), 'coaches', coachUid, 'clients', clientName.toLowerCase().replace(/\s+/g, '-'));
+  doc(getDb(), COLLECTIONS.COACHES, coachUid, COLLECTIONS.CLIENTS, clientName.toLowerCase().replace(/\s+/g, '-'));
 
 export async function getClientProfile(
   coachUid: string,

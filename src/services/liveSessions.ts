@@ -1,4 +1,4 @@
-import { db, storage } from '@/services/firebase';
+import { db } from '@/services/firebase';
 import { 
   doc, 
   setDoc, 
@@ -8,7 +8,6 @@ import {
   getDoc,
   DocumentReference
 } from 'firebase/firestore';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { compressImageForDisplay } from '@/lib/utils/imageCompression';
 import { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
 import { sanitizeForFirestore } from '@/lib/utils/firebaseUtils';
@@ -16,46 +15,7 @@ import { LandmarkResult } from '@/lib/ai/postureLandmarks';
 import { logger } from '@/lib/utils/logger';
 import { validateOrganizationId } from '@/lib/utils/validateOrganizationId';
 import type { UserProfile } from '@/types/auth';
-
-/**
- * Retry a Firestore update with exponential backoff
- * Handles transient network errors like QUIC_TOO_MANY_RTOS
- */
-async function updateDocWithRetry(
-  docRef: DocumentReference,
-  data: Record<string, unknown>,
-  maxRetries: number = 3,
-  context: string = 'update'
-): Promise<void> {
-  let lastError: Error | null = null;
-  
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      await updateDoc(docRef, data);
-      if (attempt > 1) {
-        logger.debug(`${context} succeeded on attempt ${attempt}`, 'FIRESTORE_RETRY');
-      }
-      return;
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-      
-      // Don't retry on permission errors or document not found
-      const errorMessage = lastError.message.toLowerCase();
-      if (errorMessage.includes('permission') || errorMessage.includes('not found')) {
-        throw lastError;
-      }
-      
-      if (attempt < maxRetries) {
-        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000); // 1s, 2s, 4s (max 5s)
-        logger.warn(`${context} failed (attempt ${attempt}/${maxRetries}), retrying in ${delay}ms`, 'FIRESTORE_RETRY', error);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-  }
-  
-  logger.error(`${context} failed after ${maxRetries} attempts`, 'FIRESTORE_RETRY', lastError);
-  throw lastError;
-}
+import { updateDocWithRetry, uploadInBodyScanFullSize, uploadPostureImageFullSize } from '@/services/backgroundUpload';
 
 export interface LiveSession {
   id: string;
@@ -304,32 +264,15 @@ export const updatePostureImage = async (
     // sessionData already fetched above
     const clientId = sessionData.clientId || 'unknown';
     const orgId = sessionData.organizationId || 'default';
-    
-    // SaaS-isolated storage path: organizations/{orgId}/clients/{clientId}/sessions/{sessionId}/...
-    const storagePath = `organizations/${orgId}/clients/${clientId}/sessions/${sessionId}/${view}_full.jpg`;
-    const storageRef = ref(storage, storagePath);
-    
-    const fullSizeBase64 = fullSizeImage.split(',')[1] || fullSizeImage;
-    
-    try {
-      const snapshot = await uploadString(storageRef, fullSizeBase64, 'base64', { contentType: 'image/jpeg' });
-      const downloadUrl = await getDownloadURL(snapshot.ref);
-      // Successfully uploaded full-size image to Storage
-      
-      await updateDocWithRetry(
-        sessionRef, 
-        {
-          [`postureImagesFull_${view}`]: downloadUrl,
-          [`postureImagesStorage_${view}`]: downloadUrl
-        },
-        3,
-        `storage URL update for ${view}`
-      );
-      
-      // Stored Storage URL in Firestore
-    } catch (storageError) {
-      logger.error(`Failed to upload ${view} to Storage`, 'LIVE_SESSIONS', storageError);
-    }
+
+    void uploadPostureImageFullSize({
+      sessionRef,
+      sessionId,
+      view: view as 'front' | 'back' | 'side-left' | 'side-right',
+      fullSizeImage,
+      clientId,
+      organizationId: orgId
+    });
 
     return true;
   } catch (err) {
@@ -389,28 +332,14 @@ export const updateInBodyImage = async (
     // sessionData already fetched above
     const clientId = sessionData.clientId || 'unknown';
     const orgId = sessionData.organizationId || 'default';
-    
-    // SaaS-isolated storage path: organizations/{orgId}/clients/{clientId}/sessions/{sessionId}/...
-    const storagePath = `organizations/${orgId}/clients/${clientId}/sessions/${sessionId}/inbody_scan.jpg`;
-    const storageRef = ref(storage, storagePath);
-    
-    const fullSizeBase64 = fullSizeImage.split(',')[1] || fullSizeImage;
-    
-    try {
-      const snapshot = await uploadString(storageRef, fullSizeBase64, 'base64', { contentType: 'image/jpeg' });
-      const downloadUrl = await getDownloadURL(snapshot.ref);
-      // Successfully uploaded InBody scan to Storage
-      
-      // Store full-size URL in Firestore for OCR analysis
-      await setDoc(sessionRef, {
-        inbodyImageFull: downloadUrl,
-        inbodyImageStorage: downloadUrl
-      }, { merge: true });
-      
-      // Stored InBody Storage URL in Firestore
-    } catch (storageError) {
-      logger.error('Failed to upload InBody scan to Storage', 'LIVE_SESSIONS', storageError);
-    }
+
+    void uploadInBodyScanFullSize({
+      sessionRef,
+      sessionId,
+      fullSizeImage,
+      clientId,
+      organizationId: orgId
+    });
 
     return true;
   } catch (err) {
@@ -534,7 +463,7 @@ export const logCompanionMessage = async (
     const sessionSnap = await getDoc(sessionRef);
     
     if (!sessionSnap.exists()) {
-      console.warn(`[COMPANION LOG] Session ${sessionId} not found, cannot log message`);
+      logger.warn(`[COMPANION LOG] Session ${sessionId} not found, cannot log message`);
       return;
     }
     
@@ -552,11 +481,10 @@ export const logCompanionMessage = async (
       companionLogs: updatedLogs
     });
     
-    // Also log to console for immediate visibility
-    const logMethod = level === 'error' ? console.error : level === 'warn' ? console.warn : console.log;
+    const logMethod = level === 'error' ? logger.error : level === 'warn' ? logger.warn : logger.info;
     logMethod(`[COMPANION ${sessionId}] ${message}`);
   } catch (err) {
-    console.error('[COMPANION LOG] Failed to log message:', err);
+    logger.error('[COMPANION LOG] Failed to log message:', err);
   }
 };
 

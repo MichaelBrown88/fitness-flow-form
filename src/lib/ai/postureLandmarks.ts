@@ -184,20 +184,20 @@ async function detectPostureLandmarksInternal(
         
         // Detailed landmark logging for debugging
         const landmarks = results.poseLandmarks;
-        console.log(`\n📍 [MEDIAPIPE RAW LANDMARKS - ${view.toUpperCase()}]`);
-        console.log(`   Nose (0):        x=${landmarks[0]?.x.toFixed(3)}, y=${landmarks[0]?.y.toFixed(3)}`);
-        console.log(`   Left Eye (2):    x=${landmarks[2]?.x.toFixed(3)}, y=${landmarks[2]?.y.toFixed(3)}`);
-        console.log(`   Right Eye (5):   x=${landmarks[5]?.x.toFixed(3)}, y=${landmarks[5]?.y.toFixed(3)}`);
-        console.log(`   Left Ear (7):    x=${landmarks[7]?.x.toFixed(3)}, y=${landmarks[7]?.y.toFixed(3)}`);
-        console.log(`   Right Ear (8):   x=${landmarks[8]?.x.toFixed(3)}, y=${landmarks[8]?.y.toFixed(3)}`);
-        console.log(`   Left Shoulder (11):  x=${landmarks[11]?.x.toFixed(3)}, y=${landmarks[11]?.y.toFixed(3)}`);
-        console.log(`   Right Shoulder (12): x=${landmarks[12]?.x.toFixed(3)}, y=${landmarks[12]?.y.toFixed(3)}`);
-        console.log(`   Left Hip (23):   x=${landmarks[23]?.x.toFixed(3)}, y=${landmarks[23]?.y.toFixed(3)}`);
-        console.log(`   Right Hip (24):  x=${landmarks[24]?.x.toFixed(3)}, y=${landmarks[24]?.y.toFixed(3)}`);
-        console.log(`   Left Knee (25):  x=${landmarks[25]?.x.toFixed(3)}, y=${landmarks[25]?.y.toFixed(3)}`);
-        console.log(`   Right Knee (26): x=${landmarks[26]?.x.toFixed(3)}, y=${landmarks[26]?.y.toFixed(3)}`);
-        console.log(`   Left Ankle (27): x=${landmarks[27]?.x.toFixed(3)}, y=${landmarks[27]?.y.toFixed(3)}`);
-        console.log(`   Right Ankle (28):x=${landmarks[28]?.x.toFixed(3)}, y=${landmarks[28]?.y.toFixed(3)}`);
+        logger.debug(`📍 [MEDIAPIPE RAW LANDMARKS - ${view.toUpperCase()}]`, ctx);
+        logger.debug(`   Nose (0):        x=${landmarks[0]?.x.toFixed(3)}, y=${landmarks[0]?.y.toFixed(3)}`, ctx);
+        logger.debug(`   Left Eye (2):    x=${landmarks[2]?.x.toFixed(3)}, y=${landmarks[2]?.y.toFixed(3)}`, ctx);
+        logger.debug(`   Right Eye (5):   x=${landmarks[5]?.x.toFixed(3)}, y=${landmarks[5]?.y.toFixed(3)}`, ctx);
+        logger.debug(`   Left Ear (7):    x=${landmarks[7]?.x.toFixed(3)}, y=${landmarks[7]?.y.toFixed(3)}`, ctx);
+        logger.debug(`   Right Ear (8):   x=${landmarks[8]?.x.toFixed(3)}, y=${landmarks[8]?.y.toFixed(3)}`, ctx);
+        logger.debug(`   Left Shoulder (11):  x=${landmarks[11]?.x.toFixed(3)}, y=${landmarks[11]?.y.toFixed(3)}`, ctx);
+        logger.debug(`   Right Shoulder (12): x=${landmarks[12]?.x.toFixed(3)}, y=${landmarks[12]?.y.toFixed(3)}`, ctx);
+        logger.debug(`   Left Hip (23):   x=${landmarks[23]?.x.toFixed(3)}, y=${landmarks[23]?.y.toFixed(3)}`, ctx);
+        logger.debug(`   Right Hip (24):  x=${landmarks[24]?.x.toFixed(3)}, y=${landmarks[24]?.y.toFixed(3)}`, ctx);
+        logger.debug(`   Left Knee (25):  x=${landmarks[25]?.x.toFixed(3)}, y=${landmarks[25]?.y.toFixed(3)}`, ctx);
+        logger.debug(`   Right Knee (26): x=${landmarks[26]?.x.toFixed(3)}, y=${landmarks[26]?.y.toFixed(3)}`, ctx);
+        logger.debug(`   Left Ankle (27): x=${landmarks[27]?.x.toFixed(3)}, y=${landmarks[27]?.y.toFixed(3)}`, ctx);
+        logger.debug(`   Right Ankle (28):x=${landmarks[28]?.x.toFixed(3)}, y=${landmarks[28]?.y.toFixed(3)}`, ctx);
         
         logger.debug(`[DETECT] Success for ${view}: headY=${result.head_y_percent?.toFixed(1)}%, shoulderY=${result.shoulder_y_percent?.toFixed(1)}%`, ctx);
         resolve(result);

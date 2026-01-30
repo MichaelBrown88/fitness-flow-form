@@ -12,6 +12,7 @@ import { getDb } from '@/services/firebase';
 import { getLegacyUserProfilesCollection } from '@/lib/database/collections';
 import { logger } from '@/lib/utils/logger';
 import type { UserProfile } from '@/types/auth';
+import { COLLECTIONS } from '@/constants/collections';
 
 /**
  * Add a coach to an organization by email
@@ -49,7 +50,7 @@ export async function addCoachToOrganization(
       }
       
       // Update to add to this org
-      await updateDoc(doc(getDb(), 'userProfiles', existingProfile.id), {
+      await updateDoc(doc(getDb(), COLLECTIONS.USER_PROFILES, existingProfile.id), {
         organizationId: orgId,
         role: 'coach',
         updatedAt: new Date(),
@@ -88,7 +89,7 @@ export async function removeCoachFromOrganization(
   coachUid: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const coachProfileRef = doc(getDb(), 'userProfiles', coachUid);
+    const coachProfileRef = doc(getDb(), COLLECTIONS.USER_PROFILES, coachUid);
     const coachProfileSnap = await getDoc(coachProfileRef);
     
     if (!coachProfileSnap.exists()) {

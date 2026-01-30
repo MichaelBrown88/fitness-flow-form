@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
+import { logger } from '@/lib/utils/logger';
 
 export interface FormData {
   /** Client Profile */
@@ -430,7 +431,7 @@ export const FormProvider = ({ children }: { children: ReactNode }) => {
         return { ...initialFormData, ...data };
       }
     } catch (e) {
-      console.warn('Failed to parse prefill/edit data:', e);
+      logger.warn('Failed to parse prefill/edit data:', e);
     }
     return initialFormData;
   };

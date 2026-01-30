@@ -23,15 +23,16 @@ import '@/lib/setup/admin/diagnosePublicReports';
 import '@/lib/setup/admin/checkCoachIdentity';
 import '@/lib/setup/seedPlatformAdmin';
 import '@/lib/setup/verifyDatabaseIntegrity';
+import { logger } from '@/lib/utils/logger';
 
 // Error boundary for better debugging on iPad/Safari
 if (typeof window !== 'undefined') {
   window.addEventListener('error', (event) => {
-    console.error('[GLOBAL ERROR]', event.error);
+    logger.error('[GLOBAL ERROR]', event.error);
   });
 
   window.addEventListener('unhandledrejection', (event) => {
-    console.error('[UNHANDLED PROMISE REJECTION]', event.reason);
+    logger.error('[UNHANDLED PROMISE REJECTION]', event.reason);
   });
 }
 

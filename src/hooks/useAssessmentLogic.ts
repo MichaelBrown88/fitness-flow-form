@@ -38,7 +38,7 @@ export function useAssessmentLogic(assessmentId: string | undefined) {
         const params = new URLSearchParams(window.location.search);
         const clientNameQuery = params.get('clientName');
         
-        const data = await getCoachAssessment(user.uid, assessmentId, clientNameQuery || undefined);
+        const data = await getCoachAssessment(user.uid, assessmentId, clientNameQuery || undefined, profile?.organizationId, profile);
         if (!data) {
           throw new Error("Assessment not found for this coach.");
         }

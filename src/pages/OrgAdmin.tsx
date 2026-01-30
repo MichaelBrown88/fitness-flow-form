@@ -456,7 +456,6 @@ const OrgAdmin = () => {
                 variant="outline" 
                 className="w-full border-gradient-dark text-gradient-dark hover:bg-gradient-light"
                 onClick={() => {
-                  // TODO: Link to upgrade/change plan flow
                   alert('Plan upgrade flow coming soon. Please contact support for plan changes.');
                 }}
               >

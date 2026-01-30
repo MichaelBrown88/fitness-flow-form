@@ -36,7 +36,7 @@ export function CoachReportHeader({ clientName, goals, scores }: CoachReportHead
           {goals.map((g) => (
             <span
               key={g}
-              className="px-3 py-1 bg-brand-light text-primary border border-primary/10 rounded-full text-[10px] font-black uppercase tracking-widest"
+              className="px-3 py-1 bg-brand-light text-primary border border-primary/10 rounded-full text-xs font-black uppercase tracking-widest"
             >
               {g.replace('-', ' ')}
             </span>

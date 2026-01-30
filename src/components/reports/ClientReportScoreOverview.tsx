@@ -36,7 +36,7 @@ export function ClientReportScoreOverview({
         <div className={`flex h-40 w-40 items-center justify-center rounded-full border-8 bg-white shadow-xl ${circleColor(scores.overall)} transition-transform hover:scale-105 duration-500`}>
           <div className="flex flex-col items-center">
             <span className="text-5xl font-black">{scores.overall}</span>
-            <span className="text-[10px] uppercase tracking-[0.2em] font-bold opacity-70">Overall</span>
+            <span className="text-xs uppercase tracking-[0.2em] font-bold opacity-70">Overall</span>
           </div>
         </div>
       </div>

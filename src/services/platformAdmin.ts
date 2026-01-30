@@ -15,13 +15,16 @@ import {
   deleteDoc,
   collection, 
   getDocs, 
+  getCountFromServer,
   query, 
   where,
   collectionGroup,
   Timestamp,
   orderBy,
   startAfter,
-  limit as firestoreLimit
+  limit as firestoreLimit,
+  QueryDocumentSnapshot,
+  DocumentData
 } from 'firebase/firestore';
 import { getDb } from '@/services/firebase';
 import { calculateMonthlyFee } from '@/lib/pricing';
@@ -33,6 +36,7 @@ import type {
   OrganizationDetails 
 } from '@/types/platform';
 import { logger } from '@/lib/utils/logger';
+import { COLLECTIONS } from '@/constants/collections';
 import { 
   PLATFORM, 
   ORGANIZATION, 
@@ -52,6 +56,14 @@ import {
   getSystemStatsDoc,
 } from '@/lib/database/collections';
 
+const PLATFORM_ADMIN_QUERY_LIMIT = 1;
+const COACH_PROFILE_LIMIT = 500;
+const ORG_LIST_LIMIT_MAX = 200;
+const ORG_FILTER_BUFFER_MULTIPLIER = 3;
+const AI_LOGS_LIMIT = 5000;
+const COACH_ASSESSMENTS_LIMIT = 500;
+const COACH_CLIENTS_LIMIT = 500;
+
 /**
  * Check if a user is a platform admin by email
  */
@@ -66,7 +78,8 @@ export async function isPlatformAdmin(email: string): Promise<boolean> {
     // Fallback to query (for backwards compatibility)
     const adminQuery = query(
       getPlatformAdminsCollection(),
-      where('email', '==', email.toLowerCase())
+      where('email', '==', email.toLowerCase()),
+      firestoreLimit(PLATFORM_ADMIN_QUERY_LIMIT)
     );
     const snapshot = await getDocs(adminQuery);
     return !snapshot.empty;
@@ -103,7 +116,8 @@ export async function getPlatformAdminByEmail(email: string): Promise<PlatformAd
     // Fallback to query
     const adminQuery = query(
       getPlatformAdminsCollection(),
-      where('email', '==', email.toLowerCase())
+      where('email', '==', email.toLowerCase()),
+      firestoreLimit(PLATFORM_ADMIN_QUERY_LIMIT)
     );
     const snapshot = await getDocs(adminQuery);
     
@@ -248,21 +262,25 @@ export async function getLiveMetrics(): Promise<PlatformMetrics> {
     try {
       // Query assessments from all coaches subcollections
       // We'll query coaches collection to find all coaches, then their assessments
-      const userProfilesSnapshot = await getDocs(getLegacyUserProfilesCollection());
+      const coachProfilesQuery = query(
+        getLegacyUserProfilesCollection(),
+        where('role', 'in', ['coach', 'org_admin']),
+        firestoreLimit(COACH_PROFILE_LIMIT)
+      );
+      const userProfilesSnapshot = await getDocs(coachProfilesQuery);
       const coachUids: string[] = [];
       
       userProfilesSnapshot.docs.forEach(userDoc => {
         const data = userDoc.data();
-        if (data.role === 'coach' || data.role === 'org_admin') {
-          coachUids.push(userDoc.id);
-        }
+        coachUids.push(userDoc.id);
       });
       
       // Query assessments from each coach's subcollection
       for (const coachUid of coachUids) {
         try {
-          const assessmentsRef = collection(db, 'coaches', coachUid, 'assessments');
-          const assessmentsSnapshot = await getDocs(assessmentsRef);
+          const assessmentsRef = collection(db, COLLECTIONS.COACHES, coachUid, COLLECTIONS.ASSESSMENTS);
+          const assessmentsQuery = query(assessmentsRef, firestoreLimit(COACH_ASSESSMENTS_LIMIT));
+          const assessmentsSnapshot = await getDocs(assessmentsQuery);
           
           assessmentsSnapshot.docs.forEach(assessmentDoc => {
             const assessmentData = assessmentDoc.data();
@@ -297,7 +315,7 @@ export async function getLiveMetrics(): Promise<PlatformMetrics> {
       mrrCents: stats.monthlyRecurringRevenueFils || 0, // Actually fils, not cents
       arrCents: (stats.monthlyRecurringRevenueFils || 0) * 12,
       aiCostsMtdCents: aiCostsMtdCents, // Calculate from actual logs
-      aiCostsLastMonthCents: 0, // TODO: Track monthly history
+      aiCostsLastMonthCents: 0,
       totalAssessments: stats.totalAssessments || 0,
       assessmentsThisMonth,
       updatedAt: stats.lastUpdated?.toDate?.() || now,
@@ -323,7 +341,8 @@ async function calculateAICostsMTD(): Promise<number> {
     const aiLogsQuery = query(
       aiLogsRef,
       where('timestamp', '>=', Timestamp.fromDate(startOfMonth)),
-      orderBy('timestamp', 'desc')
+      orderBy('timestamp', 'desc'),
+      firestoreLimit(AI_LOGS_LIMIT)
     );
     
     const aiLogsSnapshot = await getDocs(aiLogsQuery);
@@ -363,14 +382,17 @@ export async function getAssessmentChartData(): Promise<Array<{ date: string; as
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
     // Get all coaches
-    const userProfilesSnapshot = await getDocs(getLegacyUserProfilesCollection());
+    const coachProfilesQuery = query(
+      getLegacyUserProfilesCollection(),
+      where('role', 'in', ['coach', 'org_admin']),
+      firestoreLimit(COACH_PROFILE_LIMIT)
+    );
+    const userProfilesSnapshot = await getDocs(coachProfilesQuery);
     const coachUids: string[] = [];
     
     userProfilesSnapshot.docs.forEach(userDoc => {
       const data = userDoc.data();
-      if (data.role === 'coach' || data.role === 'org_admin') {
-        coachUids.push(userDoc.id);
-      }
+      coachUids.push(userDoc.id);
     });
     
     // Collect all assessments from last 30 days
@@ -387,8 +409,9 @@ export async function getAssessmentChartData(): Promise<Array<{ date: string; as
     // Query assessments from each coach
     for (const coachUid of coachUids) {
       try {
-        const assessmentsRef = collection(db, 'coaches', coachUid, 'assessments');
-        const assessmentsSnapshot = await getDocs(assessmentsRef);
+        const assessmentsRef = collection(db, COLLECTIONS.COACHES, coachUid, COLLECTIONS.ASSESSMENTS);
+        const assessmentsQuery = query(assessmentsRef, firestoreLimit(COACH_ASSESSMENTS_LIMIT));
+        const assessmentsSnapshot = await getDocs(assessmentsQuery);
         
         assessmentsSnapshot.docs.forEach(assessmentDoc => {
           const assessmentData = assessmentDoc.data();
@@ -438,7 +461,8 @@ export async function getAICostsByFeature(): Promise<Array<{
     const aiLogsQuery = query(
       aiLogsRef,
       where('timestamp', '>=', Timestamp.fromDate(startOfMonth)),
-      orderBy('timestamp', 'desc')
+      orderBy('timestamp', 'desc'),
+      firestoreLimit(AI_LOGS_LIMIT)
     );
     
     const aiLogsSnapshot = await getDocs(aiLogsQuery);
@@ -491,14 +515,17 @@ export async function getOrgAICostsByFeature(orgId: string): Promise<Array<{
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     
     // Get all coaches in this organization
-    const userProfilesSnapshot = await getDocs(getLegacyUserProfilesCollection());
+    const coachProfilesQuery = query(
+      getLegacyUserProfilesCollection(),
+      where('organizationId', '==', orgId),
+      where('role', 'in', ['coach', 'org_admin']),
+      firestoreLimit(COACH_PROFILE_LIMIT)
+    );
+    const userProfilesSnapshot = await getDocs(coachProfilesQuery);
     const coachUids: string[] = [];
     
     userProfilesSnapshot.docs.forEach(userDoc => {
-      const data = userDoc.data();
-      if (data.organizationId === orgId && (data.role === 'coach' || data.role === 'org_admin')) {
-        coachUids.push(userDoc.id);
-      }
+      coachUids.push(userDoc.id);
     });
     
     // Query AI usage logs from current month, filter by coachUid or organizationId
@@ -506,7 +533,8 @@ export async function getOrgAICostsByFeature(orgId: string): Promise<Array<{
     const aiLogsQuery = query(
       aiLogsRef,
       where('timestamp', '>=', Timestamp.fromDate(startOfMonth)),
-      orderBy('timestamp', 'desc')
+      orderBy('timestamp', 'desc'),
+      firestoreLimit(AI_LOGS_LIMIT)
     );
     
     const aiLogsSnapshot = await getDocs(aiLogsQuery);
@@ -597,20 +625,24 @@ export async function getOrgCoachesWithStats(orgId: string): Promise<Array<{
     }
 
     const db = getDb();
-    const userProfilesSnapshot = await getDocs(getLegacyUserProfilesCollection());
+    const coachProfilesQuery = query(
+      getLegacyUserProfilesCollection(),
+      where('organizationId', '==', orgId),
+      where('role', 'in', ['coach', 'org_admin']),
+      firestoreLimit(COACH_PROFILE_LIMIT)
+    );
+    const userProfilesSnapshot = await getDocs(coachProfilesQuery);
     const coaches: Array<{ uid: string; displayName: string; email?: string; role: string }> = [];
     
     // Get all coaches in this organization
     userProfilesSnapshot.docs.forEach(userDoc => {
       const data = userDoc.data();
-      if (data.organizationId === orgId && (data.role === 'coach' || data.role === 'org_admin')) {
-        coaches.push({
-          uid: userDoc.id,
-          displayName: data.displayName || data.email || 'Unknown',
-          email: data.email,
-          role: data.role,
-        });
-      }
+      coaches.push({
+        uid: userDoc.id,
+        displayName: data.displayName || data.email || 'Unknown',
+        email: data.email,
+        role: data.role,
+      });
     });
 
     // Get assessment and client counts for each coach
@@ -618,14 +650,14 @@ export async function getOrgCoachesWithStats(orgId: string): Promise<Array<{
       coaches.map(async (coach) => {
         try {
           // Count assessments for this coach
-          const assessmentsRef = collection(db, 'coaches', coach.uid, 'assessments');
-          const assessmentsSnapshot = await getDocs(assessmentsRef);
-          const assessmentCount = assessmentsSnapshot.size;
+          const assessmentsRef = collection(db, COLLECTIONS.COACHES, coach.uid, COLLECTIONS.ASSESSMENTS);
+          const assessmentsCountSnap = await getCountFromServer(assessmentsRef);
+          const assessmentCount = assessmentsCountSnap.data().count;
 
           // Count clients for this coach
-          const clientsRef = collection(db, 'coaches', coach.uid, 'clients');
-          const clientsSnapshot = await getDocs(clientsRef);
-          const clientCount = clientsSnapshot.size;
+          const clientsRef = collection(db, COLLECTIONS.COACHES, coach.uid, COLLECTIONS.CLIENTS);
+          const clientsCountSnap = await getCountFromServer(clientsRef);
+          const clientCount = clientsCountSnap.data().count;
 
           return {
             ...coach,
@@ -657,15 +689,17 @@ export async function getOrgCoachesWithStats(orgId: string): Promise<Array<{
  * This avoids expensive queries - all stats are maintained by Cloud Functions
  */
 export async function getOrganizations(
-  limitCount: number = 50
-): Promise<OrganizationSummary[]> {
+  limitCount: number = 50,
+  startAfterDoc?: QueryDocumentSnapshot<DocumentData>
+): Promise<{ organizations: OrganizationSummary[]; lastDoc?: QueryDocumentSnapshot<DocumentData> }> {
   try {
-    const db = getDb();
-    
     // Get platform admin UID to filter out any incorrectly created organizations
     let platformAdminUid: string | null = null;
     try {
-      const platformAdminsSnapshot = await getDocs(getPlatformAdminsCollection());
+      const platformAdminsSnapshot = await getDocs(query(
+        getPlatformAdminsCollection(),
+        firestoreLimit(PLATFORM_ADMIN_QUERY_LIMIT)
+      ));
       if (!platformAdminsSnapshot.empty) {
         // Get the first platform admin (typically only one)
         platformAdminUid = platformAdminsSnapshot.docs[0].id;
@@ -675,11 +709,20 @@ export async function getOrganizations(
     }
     
     // Get all organizations (stats are embedded in each org document)
-    const orgsSnapshot = await getDocs(getOrganizationsCollection());
+    const orgsQueryLimit = Math.min(limitCount * ORG_FILTER_BUFFER_MULTIPLIER, ORG_LIST_LIMIT_MAX);
+    const orgsQueryParts = [
+      getOrganizationsCollection(),
+      orderBy('createdAt', 'desc'),
+      firestoreLimit(orgsQueryLimit)
+    ];
+    const orgsQuery = startAfterDoc
+      ? query(...orgsQueryParts, startAfter(startAfterDoc))
+      : query(...orgsQueryParts);
+    const orgsSnapshot = await getDocs(orgsQuery);
     
     if (orgsSnapshot.empty) {
       logger.debug('No organizations found in database');
-      return [];
+      return { organizations: [] };
     }
     
     const organizations = orgsSnapshot.docs
@@ -753,10 +796,12 @@ export async function getOrganizations(
       })
     );
     
-    return organizationsWithCosts.slice(0, limitCount);
+    const limitedOrganizations = organizationsWithCosts.slice(0, limitCount);
+    const lastDoc = orgsSnapshot.docs[orgsSnapshot.docs.length - 1];
+    return { organizations: limitedOrganizations, lastDoc };
   } catch (error) {
     logger.error('Error fetching organizations:', error);
-    return [];
+    return { organizations: [] };
   }
 }
 
@@ -764,7 +809,6 @@ export async function getOrganizations(
  * Get AI cost breakdown by organization
  */
 export async function getAICostBreakdown(period: string): Promise<AICostBreakdown[]> {
-  // TODO: Implement monthly breakdown
   return [];
 }
 

@@ -2,6 +2,7 @@ import { getAI, VertexAIBackend, getGenerativeModel } from "firebase/ai";
 import { getApp } from "firebase/app";
 import { CONFIG } from '@/config';
 import { calculateFrontViewMetrics, calculateSideViewMetrics } from '@/lib/utils/postureMath';
+import { buildPosturePrompt } from '@/lib/ai/prompts/posturePrompts';
 import { logAIUsage } from '@/services/aiUsage';
 import { getFirebaseFunctions, getStorage, auth } from '@/services/firebase';
 import { logger } from '@/lib/utils/logger';
@@ -229,241 +230,9 @@ export async function analyzePostureImage(
       ${metricsJson}
     `;
     
-    // Log the data being sent to Gemini
-    console.log(`\n🤖 [GEMINI INPUT - ${view.toUpperCase()}]`);
-    console.log(`   ─────────────────────────────────────`);
-    console.log(`   QUANTITATIVE CONTEXT SENT TO AI:`);
-    console.log(quantitativeContext);
-    console.log(`   ─────────────────────────────────────`);
+    logger.debug(`GEMINI INPUT ${view.toUpperCase()}: ${quantitativeContext}`, ctx);
 
-    const viewSpecificInstructions = {
-      'front': `
-        FRONT VIEW METRIC USAGE:
-        - Use headTiltDegrees to set head_alignment.status (Tilted Left/Right or Neutral).
-        - Use shoulderSymmetryCm and shoulderSeverity for shoulder_alignment.status.
-        - Use hipSymmetryCm and hipSeverity for hip_alignment.status.
-        - Use hipShiftPercent and hipShiftDirection for hip_shift.status.
-        - Use leftLegAlignmentStatus and leftLegSeverity for left_leg_alignment.status/severity.
-        - Use rightLegAlignmentStatus and rightLegSeverity for right_leg_alignment.status/severity.
-        - Use leftKneeDeviationPercent and rightKneeDeviationPercent for knee_deviation_percent.
-        - Use kneeAlignmentStatus for knee_alignment.status.
-        - If a metric is missing, return Neutral/Centered status for that field.
-      `,
-      'back': `
-        BACK VIEW METRIC USAGE:
-        - Use headTiltDegrees to set head_alignment.status (Tilted Left/Right or Neutral).
-        - Use shoulderSymmetryCm and shoulderSeverity for shoulder_alignment.status.
-        - Use hipSymmetryCm and hipSeverity for hip_alignment.status.
-        - Use hipShiftPercent and hipShiftDirection for hip_shift.status.
-        - Use leftLegAlignmentStatus and leftLegSeverity for left_leg_alignment.status/severity.
-        - Use rightLegAlignmentStatus and rightLegSeverity for right_leg_alignment.status/severity.
-        - Use leftKneeDeviationPercent and rightKneeDeviationPercent for knee_deviation_percent.
-        - Use kneeAlignmentStatus for knee_alignment.status.
-        - If a metric is missing, return Neutral/Centered status for that field.
-      `,
-      'side-right': `
-        SIDE VIEW METRIC USAGE:
-        - Use forwardHeadCm and headSeverity for forward_head.status.
-        - Use headPitchDegrees and headPitchStatus for head_updown.
-        - Use pelvicTiltDegrees and pelvicSeverity for pelvic_tilt.status.
-        - If a metric is missing, return Neutral/Normal status for that field.
-      `,
-      'side-left': `
-        SIDE VIEW METRIC USAGE:
-        - Use forwardHeadCm and headSeverity for forward_head.status.
-        - Use headPitchDegrees and headPitchStatus for head_updown.
-        - Use pelvicTiltDegrees and pelvicSeverity for pelvic_tilt.status.
-        - If a metric is missing, return Neutral/Normal status for that field.
-      `
-    };
-
-    const prompt = `
-      You are a clinical biomechanics reporter. Your ONLY input is the deterministic metrics below.
-      Do not analyze the image visually. Ignore the image entirely even if provided.
-
-      ${quantitativeContext}
-
-      METRIC INTERPRETATION NOTES:
-      ${viewSpecificInstructions[view]}
-
-      RULES:
-      - Use ONLY the metrics provided above. Do not infer or guess missing values.
-      - If a metric is missing, return a Neutral/Normal/Centered/Straight status for that field.
-      - Keep descriptions under 12 words. Keep recommendations to one sentence.
-      - Do not include measurements (cm, degrees, percentages) in descriptions or recommendations.
-      - Use the exact status values listed in the JSON schema below.
-
-      Return ONLY a JSON object with this EXACT structure:
-      ${view === 'front' || view === 'back' ? `
-      {
-        "landmarks": {
-          "shoulder_y_percent": number,
-          "hip_y_percent": number,
-          "head_y_percent": number,
-          "center_x_percent": number
-        },
-        "head_alignment": {
-          "status": "Neutral | Tilted Left | Tilted Right",
-          "tilt_degrees": number,
-          "description": "ONE simple sentence. NO measurements. Example: 'Your head tilts slightly to the right.'",
-          "recommendation": "ONE actionable sentence if needed."
-        },
-        ${view === 'front' ? `
-        "lateral_head_position": {
-          "status": "Centered | Shifted Left | Shifted Right",
-          "shift_percent": number,
-          "description": "ONE simple sentence. Example: 'Your head is centered on your body.' or 'Your head shifts slightly to the left.'",
-          "recommendation": "ONE actionable sentence if deviation found."
-        },
-        ` : ''}
-        "forward_head": null,
-        "shoulder_alignment": {
-          "status": "Neutral | Elevated | Depressed | Asymmetric",
-          "left_elevation_cm": number,
-          "right_elevation_cm": number,
-          "height_difference_cm": number,
-          "rounded_forward": false,
-          "description": "ONE simple sentence. NO measurements. Example: 'Your right shoulder sits slightly higher than your left.'",
-          "recommendation": "ONE actionable sentence if needed."
-        },
-        "kyphosis": null,
-        "lordosis": null,
-        "pelvic_tilt": {
-          "status": "Neutral | Lateral Tilt",
-          "lateral_tilt_degrees": number,
-          "left_hip_elevation_cm": number,
-          "right_hip_elevation_cm": number,
-          "height_difference_cm": number,
-          "description": "ONE simple sentence. NO measurements. Example: 'Your hips are level and well-aligned.'",
-          "recommendation": "ONE actionable sentence if needed."
-        },
-        "hip_alignment": {
-          "status": "Neutral | Elevated | Depressed | Asymmetric",
-          "left_elevation_cm": number,
-          "right_elevation_cm": number,
-          "height_difference_cm": number,
-          "description": "ONE simple sentence. NO measurements.",
-          "recommendation": "ONE actionable sentence if needed."
-        },
-        "hip_shift": {
-          "status": "Centered | Shifted Left | Shifted Right",
-          "severity": "Good | Mild | Moderate | Severe",
-          "shift_percent": number,
-          "description": "ONE simple sentence. Example: 'Your hips are centered.' or 'Your pelvis shifts noticeably to the right.'",
-          "recommendation": "ONE actionable sentence if deviation found."
-        },
-        "left_leg_alignment": {
-          "status": "Straight | Valgus | Varus",
-          "severity": "Good | Mild | Moderate | Severe",
-          "knee_deviation_percent": number,
-          "description": "ONE simple sentence. Example: 'Your left leg aligns well from hip to ankle.' or 'Your left knee angles inward (knock-knee).'",
-          "recommendation": "ONE actionable sentence if deviation found."
-        },
-        "right_leg_alignment": {
-          "status": "Straight | Valgus | Varus",
-          "severity": "Good | Mild | Moderate | Severe",
-          "knee_deviation_percent": number,
-          "description": "ONE simple sentence. Example: 'Your right leg aligns well from hip to ankle.' or 'Your right knee angles outward (bow-legged).'",
-          "recommendation": "ONE actionable sentence if deviation found."
-        },
-        "knee_alignment": {
-          "status": "Neutral | Valgus | Varus",
-          "deviation_degrees": number,
-          "description": "ONE simple sentence. NO measurements. Example: 'Your knees align well with your hips.'",
-          "recommendation": "ONE actionable sentence if needed."
-        },
-        ${view === 'back' ? `
-        "spinal_curvature": {
-          "status": "Normal | Mild Scoliosis | Moderate Scoliosis | Severe Scoliosis",
-          "curve_degrees": number,
-          "curve_direction": "Left | Right | S-Curve",
-          "description": "ONE simple sentence. NO measurements. Example: 'Your spine appears straight.' or 'Your spine shows a slight lateral curve to the right.'",
-          "recommendation": "ONE actionable sentence if scoliosis found."
-        },
-        ` : ''}
-        "deviations": [
-          "ONLY actual deviations - DO NOT list 'Neutral' or 'Normal' findings",
-          "Max 3-4 items, sorted by severity (worst first)",
-          "Use coaching language explaining WHY it matters",
-          "If hip shift + shoulder asymmetry both present, combine as 'Compensation pattern: elevated [side] shoulder with [opposite] hip shift'",
-          "If ALL metrics are normal, use: 'Your posture alignment is excellent'",
-          "GOOD examples: 'Forward head posture (can lead to neck tension)', 'Compensation pattern with elevated left shoulder and right hip shift'",
-          "BAD examples: 'Head: Neutral', 'Shoulders: Normal' (don't list these!)"
-        ],
-        "risk_flags": ["Brief risk factors - max 2-3 items, only if significant issues found"],
-        "overall_assessment": "2-3 sentences MAX. Start with what's GOOD, then address deviations with biomechanical context, end with encouraging action step. Address as 'you'. NO measurements or jargon."
-      }
-      ` : `
-      {
-        "landmarks": {
-          "shoulder_y_percent": number,
-          "hip_y_percent": number,
-          "midfoot_x_percent": number
-        },
-        "forward_head": {
-          "status": "Neutral | Mild | Moderate | Severe",
-          "deviation_degrees": number,
-          "deviation_cm": number,
-          "description": "ONE simple sentence about head position. NO measurements. Example: 'Your head sits forward of your shoulders.' or 'Your head aligns well with your body.'",
-          "recommendation": "ONE actionable sentence. Example: 'Practice chin tucks daily.'"
-        },
-        "head_updown": {
-          "status": "Neutral | Looking Up | Looking Down",
-          "severity": "Mild | Moderate | Severe",
-          "description": "ONE simple sentence. Example: 'Your head position is neutral.' or 'Your head tilts backward, as if looking up.'",
-          "recommendation": "ONE actionable sentence if deviation found."
-        },
-        "shoulder_alignment": {
-          "status": "Neutral | Rounded",
-          "forward_position_cm": number,
-          "rounded_forward": boolean,
-          "description": "ONE simple sentence. NO measurements. Example: 'Your shoulders are noticeably rounded forward.' or 'Your shoulders align well.'",
-          "recommendation": "ONE actionable sentence. Example: 'Stretch your chest and strengthen your upper back.'"
-        },
-        "kyphosis": {
-          "status": "Normal | Mild | Moderate | Severe",
-          "curve_degrees": number,
-          "description": "ONE simple sentence. NO measurements. Example: 'Your upper back has an increased curve.'",
-          "recommendation": "ONE actionable sentence."
-        },
-        "lordosis": {
-          "status": "Normal | Mild | Moderate | Severe",
-          "curve_degrees": number,
-          "description": "ONE simple sentence. NO measurements. Example: 'Your lower back curve appears normal.'",
-          "recommendation": "ONE actionable sentence if needed."
-        },
-        "pelvic_tilt": {
-          "status": "Neutral | Anterior Tilt | Posterior Tilt",
-          "anterior_tilt_degrees": number,
-          "description": "ONE simple sentence. NO measurements. Example: 'Your pelvis tilts forward (anterior tilt).' or 'Your pelvis is in a neutral position.'",
-          "recommendation": "ONE actionable sentence. Example: 'Strengthen your core and stretch your hip flexors.'"
-        },
-        "hip_alignment": {
-          "status": "Neutral | Forward | Behind",
-          "forward_of_plumb": boolean,
-          "description": "ONE simple sentence. Example: 'Your hips align well with the plumb line.' or 'Your hips sit forward of ideal alignment.'",
-          "recommendation": "ONE actionable sentence if deviation found."
-        },
-        "knee_position": {
-          "status": "Neutral | Hyperextended | Flexed",
-          "deviation_degrees": number,
-          "description": "ONE simple sentence. NO measurements. Example: 'Your knees are in a neutral position.' or 'Your knees show slight hyperextension.'",
-          "recommendation": "ONE actionable sentence if needed."
-        },
-        "deviations": [
-          "ONLY actual deviations - DO NOT list 'Neutral' or 'Normal' findings",
-          "Max 3-4 items, sorted by severity (worst first)",
-          "Use coaching language explaining WHY it matters",
-          "If head pitch was 'Looking Down', note this affected forward head reading",
-          "If ALL metrics are normal, use: 'Your posture alignment is excellent'",
-          "GOOD examples: 'Forward head posture (can lead to neck tension)', 'Anterior pelvic tilt (may inhibit glute activation)'",
-          "BAD examples: 'Kyphosis: Normal', 'Knees: Neutral' (don't list these!)"
-        ],
-        "risk_flags": ["Brief risk factors - max 2-3 items, only if significant issues found"],
-        "overall_assessment": "2-3 sentences MAX. Start with what's GOOD, then address deviations with biomechanical context, end with encouraging action step. Address as 'you'. NO measurements or jargon."
-      }
-      `}
-    `;
+    const prompt = buildPosturePrompt(view, metricsJson);
 
     // Handle different image formats:
     // 1. Storage URL (https://...) - fetch and convert to base64
@@ -558,7 +327,7 @@ export async function analyzePostureImage(
         // Retry only for rate limiting or transient errors
         if (isRateLimited && attempt < MAX_RETRIES) {
           const delayMs = INITIAL_DELAY_MS * Math.pow(2, attempt - 1); // Exponential backoff
-          console.log(`⏳ Rate limited for ${view} (attempt ${attempt}/${MAX_RETRIES}). Retrying in ${delayMs/1000}s...`);
+          logger.warn(`Rate limited for ${view} (attempt ${attempt}/${MAX_RETRIES}). Retrying in ${delayMs / 1000}s...`, ctx);
           logger.warn(`Rate limited, retrying in ${delayMs}ms (attempt ${attempt}/${MAX_RETRIES})`, ctx);
           await new Promise(resolve => setTimeout(resolve, delayMs));
           continue;
@@ -610,29 +379,26 @@ export async function analyzePostureImage(
         logger.debug(`Successfully extracted and parsed JSON for ${view}`, ctx);
       }
 
-      // Log Gemini's response for debugging
-      console.log(`\n🤖 [GEMINI RESPONSE - ${view.toUpperCase()}]`);
-      console.log(`   ─────────────────────────────────────`);
+      logger.debug(`GEMINI RESPONSE ${view.toUpperCase()}`, ctx);
       if (view === 'front' || view === 'back') {
-        console.log(`   Head Alignment: ${data.head_alignment?.status} (${data.head_alignment?.tilt_degrees}°)`);
-        console.log(`   Shoulder: ${data.shoulder_alignment?.status} (diff: ${data.shoulder_alignment?.height_difference_cm}cm)`);
-        console.log(`   Hip: ${data.hip_alignment?.status} (diff: ${data.hip_alignment?.height_difference_cm}cm)`);
-        console.log(`   Hip Shift: ${data.hip_shift?.status} (${data.hip_shift?.shift_percent}%)`);
-        console.log(`   Left Leg: ${data.left_leg_alignment?.status} (${data.left_leg_alignment?.severity})`);
-        console.log(`   Right Leg: ${data.right_leg_alignment?.status} (${data.right_leg_alignment?.severity})`);
+        logger.debug(`Head Alignment: ${data.head_alignment?.status} (${data.head_alignment?.tilt_degrees}°)`, ctx);
+        logger.debug(`Shoulder: ${data.shoulder_alignment?.status} (diff: ${data.shoulder_alignment?.height_difference_cm}cm)`, ctx);
+        logger.debug(`Hip: ${data.hip_alignment?.status} (diff: ${data.hip_alignment?.height_difference_cm}cm)`, ctx);
+        logger.debug(`Hip Shift: ${data.hip_shift?.status} (${data.hip_shift?.shift_percent}%)`, ctx);
+        logger.debug(`Left Leg: ${data.left_leg_alignment?.status} (${data.left_leg_alignment?.severity})`, ctx);
+        logger.debug(`Right Leg: ${data.right_leg_alignment?.status} (${data.right_leg_alignment?.severity})`, ctx);
         if (view === 'back') {
-          console.log(`   Spine: ${data.spinal_curvature?.status} (${data.spinal_curvature?.curve_degrees}°)`);
+          logger.debug(`Spine: ${data.spinal_curvature?.status} (${data.spinal_curvature?.curve_degrees}°)`, ctx);
         }
       } else {
-        console.log(`   Forward Head: ${data.forward_head?.status} (${data.forward_head?.deviation_cm}cm)`);
-        console.log(`   Head Up/Down: ${data.head_updown?.status} (${data.head_updown?.severity})`);
-        console.log(`   Shoulders: ${data.shoulder_alignment?.status} (rounded: ${data.shoulder_alignment?.rounded_forward})`);
-        console.log(`   Kyphosis: ${data.kyphosis?.status} (${data.kyphosis?.curve_degrees}°)`);
-        console.log(`   Lordosis: ${data.lordosis?.status} (${data.lordosis?.curve_degrees}°)`);
-        console.log(`   Pelvic Tilt: ${data.pelvic_tilt?.status} (${data.pelvic_tilt?.anterior_tilt_degrees}°)`);
+        logger.debug(`Forward Head: ${data.forward_head?.status} (${data.forward_head?.deviation_cm}cm)`, ctx);
+        logger.debug(`Head Up/Down: ${data.head_updown?.status} (${data.head_updown?.severity})`, ctx);
+        logger.debug(`Shoulders: ${data.shoulder_alignment?.status} (rounded: ${data.shoulder_alignment?.rounded_forward})`, ctx);
+        logger.debug(`Kyphosis: ${data.kyphosis?.status} (${data.kyphosis?.curve_degrees}°)`, ctx);
+        logger.debug(`Lordosis: ${data.lordosis?.status} (${data.lordosis?.curve_degrees}°)`, ctx);
+        logger.debug(`Pelvic Tilt: ${data.pelvic_tilt?.status} (${data.pelvic_tilt?.anterior_tilt_degrees}°)`, ctx);
       }
-      console.log(`   Deviations: ${data.deviations?.join(', ')}`);
-      console.log(`   ─────────────────────────────────────\n`);
+      logger.debug(`Deviations: ${data.deviations?.join(', ')}`, ctx);
       
       await logAIUsage(coachUid, 'posture_analysis', 'ai_success', 'gemini');
       logger.debug(`Analysis complete for ${view}`, ctx);

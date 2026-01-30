@@ -22,7 +22,7 @@ export const StartingPointSection: React.FC<StartingPointSectionProps> = ({
         <div className="p-1 sm:p-1.5 md:p-2 bg-gradient-light text-zinc-900 rounded-lg">
           <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
         </div>
-        <h3 className="text-[10px] sm:text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">Your Starting Point</h3>
+        <h3 className="text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">Your Starting Point</h3>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
@@ -60,7 +60,7 @@ export const StartingPointSection: React.FC<StartingPointSectionProps> = ({
             
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-zinc-900 tracking-tighter leading-none">{scores.overall}</span>
-              <span className="text-[8px] sm:text-[9px] md:text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em] mt-1 sm:mt-1.5 md:mt-2">Overall Score</span>
+              <span className="text-xs font-bold text-zinc-400 uppercase tracking-[0.2em] mt-1 sm:mt-1.5 md:mt-2">Overall Score</span>
             </div>
           </div>
 
@@ -71,7 +71,7 @@ export const StartingPointSection: React.FC<StartingPointSectionProps> = ({
           </div>
 
           {/* Description */}
-          <p className="text-[10px] sm:text-xs md:text-sm text-zinc-500 font-medium leading-relaxed max-w-[240px] sm:max-w-[260px] mx-auto">
+          <p className="text-xs md:text-sm text-zinc-500 font-medium leading-relaxed max-w-[240px] sm:max-w-[260px] mx-auto">
             {archetype.description}
           </p>
         </Card>
@@ -81,7 +81,7 @@ export const StartingPointSection: React.FC<StartingPointSectionProps> = ({
           <div className="flex justify-between items-start mb-3 sm:mb-4">
             <div>
               <h4 className="text-sm font-bold text-zinc-900">Performance Profile</h4>
-              <p className="text-[10px] sm:text-xs text-zinc-500 mt-0.5 sm:mt-1">
+              <p className="text-xs text-zinc-500 mt-0.5 sm:mt-1">
                 Visualizing your current baseline across health pillars.
               </p>
             </div>

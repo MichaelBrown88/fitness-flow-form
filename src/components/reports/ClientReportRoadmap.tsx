@@ -94,7 +94,7 @@ export function ClientReportRoadmap({
             <div key={cat.id}>
               <div className="mb-1 flex items-center justify-between gap-2">
                 <span className="text-xs sm:text-sm font-medium text-slate-800 flex-1 min-w-0">{niceLabel(cat.id)}</span>
-                <span className="text-[10px] sm:text-xs text-slate-500 shrink-0">~{weeks} weeks</span>
+                <span className="text-xs text-slate-500 shrink-0">~{weeks} weeks</span>
               </div>
               <div className="h-2.5 sm:h-3 w-full rounded bg-slate-100">
                 <div className={`h-2.5 sm:h-3 rounded ${color}`} style={{ width: `${Math.min(100, (weeks / 26) * 100)}%` }} />

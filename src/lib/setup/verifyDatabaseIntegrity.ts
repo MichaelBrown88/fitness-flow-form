@@ -23,12 +23,13 @@ import {
 import { getDb } from '@/services/firebase';
 import { collection } from 'firebase/firestore';
 import { calculateMonthlyFee } from '@/lib/pricing';
+import { logger as appLogger } from '@/lib/utils/logger';
 
 const logger = {
-  info: (...args: unknown[]) => console.log('✅', ...args),
-  warn: (...args: unknown[]) => console.warn('⚠️', ...args),
-  error: (...args: unknown[]) => console.error('❌', ...args),
-  section: (title: string) => console.log(`\n📋 ${title}\n${'='.repeat(60)}`),
+  info: (...args: unknown[]) => appLogger.info('✅', ...args),
+  warn: (...args: unknown[]) => appLogger.warn('⚠️', ...args),
+  error: (...args: unknown[]) => appLogger.error('❌', ...args),
+  section: (title: string) => appLogger.info(`\n📋 ${title}\n${'='.repeat(60)}`),
 };
 
 interface VerificationResult {

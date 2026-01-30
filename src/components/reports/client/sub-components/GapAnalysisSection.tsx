@@ -19,21 +19,46 @@ const GapMetricRow: React.FC<{
   target: string | number;
   isDesktop?: boolean;
 }> = ({ label, current, target, isDesktop }) => {
-  const containerStyle = isDesktop 
-    ? { } 
-    : { width: '140px', flexShrink: 0, justifyContent: 'space-between', paddingRight: '2px' };
-  
-  const spanStyle = isDesktop ? { width: '64px' } : { width: '64px' };
-
-  
+  if (!isDesktop) {
+    return (
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm font-medium text-zinc-700 text-left whitespace-nowrap flex-shrink-0">{label}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-zinc-600 text-right tabular-nums">{current}</span>
+          <ArrowRight className={`w-3 h-3 ${typeof current === 'number' || current !== '--' ? 'text-gradient-dark' : 'text-zinc-300'} flex-shrink-0`} />
+          <span className="text-sm font-bold text-gradient-dark text-right tabular-nums">{target}</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex items-center justify-between gap-3">
-      <span className="text-sm font-medium text-zinc-700 text-left whitespace-nowrap flex-shrink-0">{label}</span>
-      <div className="flex items-center gap-2" style={isDesktop ? {} : containerStyle}>
-        <span className="text-sm text-zinc-600 text-right w-16" style={isDesktop ? {} : spanStyle}>{current}</span>
-        <ArrowRight className={`w-3 h-3 ${typeof current === 'number' || current !== '--' ? 'text-gradient-dark' : 'text-zinc-300'} flex-shrink-0`} />
-        <span className="text-sm font-bold text-gradient-dark text-right w-16" style={isDesktop ? {} : spanStyle}>{target}</span>
+    <div className="grid items-center gap-3 grid-cols-[minmax(0,1fr)_auto_16px_auto]">
+      <span className="min-w-0 text-sm font-medium text-zinc-700 text-left truncate">{label}</span>
+      <span className="text-sm text-zinc-600 text-right tabular-nums">{current}</span>
+      <ArrowRight className={`w-3 h-3 ${typeof current === 'number' || current !== '--' ? 'text-gradient-dark' : 'text-zinc-300'} justify-self-center`} />
+      <span className="text-sm font-bold text-gradient-dark text-right tabular-nums">{target}</span>
+    </div>
+  );
+};
+
+const MetricCard: React.FC<{
+  label: string;
+  current: string | number;
+  target: string | number;
+}> = ({ label, current, target }) => {
+  return (
+    <div className="rounded-xl border border-zinc-100 bg-white p-4 shadow-sm">
+      <div className="text-xs font-semibold text-zinc-700">{label}</div>
+      <div className="mt-3 flex items-end justify-between gap-4">
+        <div>
+          <div className="text-2xl font-bold text-zinc-900">{current}</div>
+          <div className="text-xs text-zinc-400">Current</div>
+        </div>
+        <div className="text-right">
+          <div className="text-sm font-semibold text-gradient-dark">{target}</div>
+          <div className="text-xs text-zinc-400">Target</div>
+        </div>
       </div>
     </div>
   );
@@ -65,36 +90,56 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
       </div>
       
       <div className={`flex flex-col justify-between flex-1 ${isDesktop ? 'min-h-[140px]' : 'min-h-[120px] sm:min-h-[140px]'} mb-6`}>
-        <div className={`flex items-center justify-end gap-2 mb-3 ${isDesktop ? '' : 'pr-0.5'}`} style={isDesktop ? {} : { width: '140px', marginLeft: 'auto', justifyContent: 'space-between', paddingRight: '2px' }}>
-          <span className="text-[9px] text-zinc-400 uppercase tracking-wider text-center w-16">Current</span>
-          <div className="w-3"></div>
-          <span className="text-[9px] text-zinc-400 uppercase tracking-wider text-center w-16">Target</span>
-        </div>
-        
-        <GapMetricRow 
-          label="Body Weight (kg)" 
-          current={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.weight.current.toFixed(1) : '--'} 
-          target={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.weight.target.toFixed(1) : '--'}
-          isDesktop={isDesktop}
-        />
-        <GapMetricRow 
-          label="Muscle Mass (kg)" 
-          current={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.muscle.current.toFixed(1) : '--'} 
-          target={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.muscle.target.toFixed(1) : '--'}
-          isDesktop={isDesktop}
-        />
-        <GapMetricRow 
-          label="Body Fat (%)" 
-          current={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.fat.current.toFixed(1) : '--'} 
-          target={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.fat.target.toFixed(1) : '--'}
-          isDesktop={isDesktop}
-        />
+        {isDesktop ? (
+          <>
+            <div className="grid items-center gap-3 grid-cols-[minmax(0,1fr)_auto_16px_auto] mb-3">
+              <span className="text-xs text-zinc-400 uppercase tracking-wider text-right col-start-2">Current</span>
+              <span className="text-xs text-zinc-400 uppercase tracking-wider text-right col-start-4">Target</span>
+            </div>
+            <GapMetricRow 
+              label="Body Weight (kg)" 
+              current={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.weight.current.toFixed(1) : '--'} 
+              target={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.weight.target.toFixed(1) : '--'}
+              isDesktop
+            />
+            <GapMetricRow 
+              label="Muscle Mass (kg)" 
+              current={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.muscle.current.toFixed(1) : '--'} 
+              target={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.muscle.target.toFixed(1) : '--'}
+              isDesktop
+            />
+            <GapMetricRow 
+              label="Body Fat (%)" 
+              current={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.fat.current.toFixed(1) : '--'} 
+              target={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.fat.target.toFixed(1) : '--'}
+              isDesktop
+            />
+          </>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <MetricCard
+              label="Body Weight (kg)"
+              current={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.weight.current.toFixed(1) : '--'}
+              target={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.weight.target.toFixed(1) : '--'}
+            />
+            <MetricCard
+              label="Muscle Mass (kg)"
+              current={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.muscle.current.toFixed(1) : '--'}
+              target={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.muscle.target.toFixed(1) : '--'}
+            />
+            <MetricCard
+              label="Body Fat (%)"
+              current={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.fat.current.toFixed(1) : '--'}
+              target={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.fat.target.toFixed(1) : '--'}
+            />
+          </div>
+        )}
       </div>
       
       <div className="pt-3 sm:pt-4 border-t border-zinc-100">
         <div className="flex items-start gap-1.5 sm:gap-2">
           <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 mt-0.5 flex-shrink-0" />
-          <p className="text-[10px] sm:text-xs text-zinc-600 leading-relaxed">{truncateInsight(bodyComp?.insight || '')}</p>
+          <p className="text-xs text-zinc-600 leading-relaxed">{truncateInsight(bodyComp?.insight || '')}</p>
         </div>
       </div>
       </Card>
@@ -138,36 +183,56 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
         </div>
         
         <div className={`flex flex-col justify-between flex-1 ${isDesktop ? 'min-h-[140px]' : 'min-h-[120px] sm:min-h-[140px]'} mb-6`}>
-          <div className={`flex items-center justify-end gap-2 mb-3 ${isDesktop ? '' : 'pr-0.5'}`} style={isDesktop ? {} : { width: '140px', marginLeft: 'auto', justifyContent: 'space-between', paddingRight: '2px' }}>
-            <span className="text-[9px] text-zinc-400 uppercase tracking-wider text-center w-16">Current</span>
-            <div className="w-3"></div>
-            <span className="text-[9px] text-zinc-400 uppercase tracking-wider text-center w-16">Target</span>
-          </div>
-          
-          <GapMetricRow 
-            label="Muscular Endurance (reps)" 
-            current={functional?.functionalGaps ? functional.functionalGaps.endurance.current : '--'} 
-            target={functional?.functionalGaps ? functional.functionalGaps.endurance.target : '--'}
-            isDesktop={isDesktop}
-          />
-          <GapMetricRow 
-            label={isDesktop ? "Core Stability (time)" : "Core Stability (secs)"} 
-            current={currentCore} 
-            target={targetCore}
-            isDesktop={isDesktop}
-          />
-          <GapMetricRow 
-            label={strengthLabel} 
-            current={currentStrength} 
-            target={targetStrength}
-            isDesktop={isDesktop}
-          />
+          {isDesktop ? (
+            <>
+              <div className="grid items-center gap-3 grid-cols-[minmax(0,1fr)_auto_16px_auto] mb-3">
+                <span className="text-xs text-zinc-400 uppercase tracking-wider text-right col-start-2">Current</span>
+                <span className="text-xs text-zinc-400 uppercase tracking-wider text-right col-start-4">Target</span>
+              </div>
+              <GapMetricRow 
+                label="Muscular Endurance (reps)" 
+                current={functional?.functionalGaps ? functional.functionalGaps.endurance.current : '--'} 
+                target={functional?.functionalGaps ? functional.functionalGaps.endurance.target : '--'}
+                isDesktop
+              />
+              <GapMetricRow 
+                label="Core Stability (time)" 
+                current={currentCore} 
+                target={targetCore}
+                isDesktop
+              />
+              <GapMetricRow 
+                label={strengthLabel} 
+                current={currentStrength} 
+                target={targetStrength}
+                isDesktop
+              />
+            </>
+          ) : (
+            <div className="flex flex-col gap-3">
+              <MetricCard
+                label="Muscular Endurance (reps)"
+                current={functional?.functionalGaps ? functional.functionalGaps.endurance.current : '--'}
+                target={functional?.functionalGaps ? functional.functionalGaps.endurance.target : '--'}
+              />
+              <MetricCard
+                label="Core Stability (time)"
+                current={currentCore}
+                target={targetCore}
+              />
+              <MetricCard
+                label={strengthLabel}
+                current={currentStrength}
+                target={targetStrength}
+              />
+            </div>
+          )}
         </div>
         
         <div className="pt-3 sm:pt-4 border-t border-zinc-100">
           <div className="flex items-start gap-1.5 sm:gap-2">
             <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 mt-0.5 flex-shrink-0" />
-            <p className="text-[10px] sm:text-xs text-zinc-600 leading-relaxed">{truncateInsight(functional?.insight || '')}</p>
+            <p className="text-xs text-zinc-600 leading-relaxed">{truncateInsight(functional?.insight || '')}</p>
           </div>
         </div>
       </Card>
@@ -190,36 +255,56 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
       </div>
       
       <div className={`flex flex-col justify-between flex-1 ${isDesktop ? 'min-h-[140px]' : 'min-h-[120px] sm:min-h-[140px]'} mb-6`}>
-        <div className={`flex items-center justify-end gap-2 mb-3 ${isDesktop ? '' : 'pr-0.5'}`} style={isDesktop ? {} : { width: '140px', marginLeft: 'auto', justifyContent: 'space-between', paddingRight: '2px' }}>
-          <span className="text-[9px] text-zinc-400 uppercase tracking-wider text-center w-16">Current</span>
-          <div className="w-3"></div>
-          <span className="text-[9px] text-zinc-400 uppercase tracking-wider text-center w-16">Target</span>
-        </div>
-        
-        <GapMetricRow 
-          label="Resting HR (bpm)" 
-          current={metabolic?.cardioGaps && metabolic.cardioGaps.rhr.current > 0 ? Math.round(metabolic.cardioGaps.rhr.current) : '--'} 
-          target={metabolic?.cardioGaps && metabolic.cardioGaps.rhr.target > 0 ? Math.round(metabolic.cardioGaps.rhr.target) : '--'}
-          isDesktop={isDesktop}
-        />
-        <GapMetricRow 
-          label="Recovery HR (bpm)" 
-          current={metabolic?.cardioGaps && metabolic.cardioGaps.recovery.current > 0 ? Math.round(metabolic.cardioGaps.recovery.current) : '--'} 
-          target={metabolic?.cardioGaps && metabolic.cardioGaps.recovery.target > 0 ? Math.round(metabolic.cardioGaps.recovery.target) : '--'}
-          isDesktop={isDesktop}
-        />
-        <GapMetricRow 
-          label="VO2 Max (ml/kg/min)" 
-          current={metabolic?.cardioGaps && metabolic.cardioGaps.vo2.current > 0 ? metabolic.cardioGaps.vo2.current.toFixed(1) : '--'} 
-          target={metabolic?.cardioGaps && metabolic.cardioGaps.vo2.target > 0 ? metabolic.cardioGaps.vo2.target.toFixed(1) : '--'}
-          isDesktop={isDesktop}
-        />
+        {isDesktop ? (
+          <>
+            <div className="grid items-center gap-3 grid-cols-[minmax(0,1fr)_auto_16px_auto] mb-3">
+              <span className="text-xs text-zinc-400 uppercase tracking-wider text-right col-start-2">Current</span>
+              <span className="text-xs text-zinc-400 uppercase tracking-wider text-right col-start-4">Target</span>
+            </div>
+            <GapMetricRow 
+              label="Resting HR (bpm)" 
+              current={metabolic?.cardioGaps && metabolic.cardioGaps.rhr.current > 0 ? Math.round(metabolic.cardioGaps.rhr.current) : '--'} 
+              target={metabolic?.cardioGaps && metabolic.cardioGaps.rhr.target > 0 ? Math.round(metabolic.cardioGaps.rhr.target) : '--'}
+              isDesktop
+            />
+            <GapMetricRow 
+              label="Recovery HR (bpm)" 
+              current={metabolic?.cardioGaps && metabolic.cardioGaps.recovery.current > 0 ? Math.round(metabolic.cardioGaps.recovery.current) : '--'} 
+              target={metabolic?.cardioGaps && metabolic.cardioGaps.recovery.target > 0 ? Math.round(metabolic.cardioGaps.recovery.target) : '--'}
+              isDesktop
+            />
+            <GapMetricRow 
+              label="VO2 Max (ml/kg/min)" 
+              current={metabolic?.cardioGaps && metabolic.cardioGaps.vo2.current > 0 ? metabolic.cardioGaps.vo2.current.toFixed(1) : '--'} 
+              target={metabolic?.cardioGaps && metabolic.cardioGaps.vo2.target > 0 ? metabolic.cardioGaps.vo2.target.toFixed(1) : '--'}
+              isDesktop
+            />
+          </>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <MetricCard
+              label="Resting HR (bpm)"
+              current={metabolic?.cardioGaps && metabolic.cardioGaps.rhr.current > 0 ? Math.round(metabolic.cardioGaps.rhr.current) : '--'}
+              target={metabolic?.cardioGaps && metabolic.cardioGaps.rhr.target > 0 ? Math.round(metabolic.cardioGaps.rhr.target) : '--'}
+            />
+            <MetricCard
+              label="Recovery HR (bpm)"
+              current={metabolic?.cardioGaps && metabolic.cardioGaps.recovery.current > 0 ? Math.round(metabolic.cardioGaps.recovery.current) : '--'}
+              target={metabolic?.cardioGaps && metabolic.cardioGaps.recovery.target > 0 ? Math.round(metabolic.cardioGaps.recovery.target) : '--'}
+            />
+            <MetricCard
+              label="VO2 Max (ml/kg/min)"
+              current={metabolic?.cardioGaps && metabolic.cardioGaps.vo2.current > 0 ? metabolic.cardioGaps.vo2.current.toFixed(1) : '--'}
+              target={metabolic?.cardioGaps && metabolic.cardioGaps.vo2.target > 0 ? metabolic.cardioGaps.vo2.target.toFixed(1) : '--'}
+            />
+          </div>
+        )}
       </div>
       
       <div className="pt-3 sm:pt-4 border-t border-zinc-100">
         <div className="flex items-start gap-1.5 sm:gap-2">
           <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 mt-0.5 flex-shrink-0" />
-          <p className="text-[10px] sm:text-xs text-zinc-600 leading-relaxed">{truncateInsight(metabolic?.insight || '')}</p>
+          <p className="text-xs text-zinc-600 leading-relaxed">{truncateInsight(metabolic?.insight || '')}</p>
         </div>
       </div>
       </Card>
@@ -232,9 +317,9 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
         <div className="p-1 sm:p-1.5 md:p-2 bg-gradient-light text-zinc-900 rounded-lg">
           <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
         </div>
-        <h3 className="text-[10px] sm:text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">Gap Analysis</h3>
+        <h3 className="text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">Gap Analysis</h3>
       </div>
-      <p className="text-[10px] sm:text-xs md:text-sm text-zinc-500 mb-3 sm:mb-4 md:mb-5 lg:mb-6">Current metrics vs. optimal performance targets.</p>
+      <p className="text-xs md:text-sm text-zinc-500 mb-3 sm:mb-4 md:mb-5 lg:mb-6">Current metrics vs. optimal performance targets.</p>
       
       {/* Desktop Layout */}
       <div className="hidden lg:grid grid-cols-3 gap-4 sm:gap-5 md:gap-6 mb-6 md:mb-8">
@@ -247,9 +332,9 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
       <Tabs defaultValue="body-comp" className="w-full mb-6 md:mb-8 lg:hidden">
         <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0 mb-3 sm:mb-4 scrollbar-hide">
           <TabsList className="w-full sm:w-auto justify-start rounded-lg sm:rounded-xl glass-button h-auto p-1 sm:p-1.5 gap-1 inline-flex min-w-max sm:min-w-0">
-            <TabsTrigger value="body-comp" className="text-[9px] sm:text-[10px] font-semibold px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-md text-zinc-600 data-[state=active]:glass-button-active data-[state=active]:!text-white">Body Composition</TabsTrigger>
-            <TabsTrigger value="strength" className="text-[9px] sm:text-[10px] font-semibold px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-md text-zinc-600 data-[state=active]:glass-button-active data-[state=active]:!text-white">Functional Strength</TabsTrigger>
-            <TabsTrigger value="metabolic" className="text-[9px] sm:text-[10px] font-semibold px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-md text-zinc-600 data-[state=active]:glass-button-active data-[state=active]:!text-white">Metabolic Fitness</TabsTrigger>
+            <TabsTrigger value="body-comp" className="text-xs font-semibold px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-md text-zinc-600 data-[state=active]:glass-button-active data-[state=active]:!text-white">Body Composition</TabsTrigger>
+            <TabsTrigger value="strength" className="text-xs font-semibold px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-md text-zinc-600 data-[state=active]:glass-button-active data-[state=active]:!text-white">Functional Strength</TabsTrigger>
+            <TabsTrigger value="metabolic" className="text-xs font-semibold px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-md text-zinc-600 data-[state=active]:glass-button-active data-[state=active]:!text-white">Metabolic Fitness</TabsTrigger>
           </TabsList>
         </div>
         

@@ -9,4 +9,5 @@ export const COLLECTIONS = {
   SYSTEM_STATS: 'system_stats',
   AI_USAGE_LOGS: 'ai_usage_logs',
   LIVE_SESSIONS: 'live_sessions',
+  LEARNED_OCR_PATTERNS: 'learned_ocr_patterns',
 } as const;

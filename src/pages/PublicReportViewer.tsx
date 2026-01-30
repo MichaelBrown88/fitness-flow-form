@@ -7,6 +7,7 @@ import type { FormData } from '@/contexts/FormContext';
 import { computeScores, buildRoadmap, type ScoreSummary, type RoadmapPhase } from '@/lib/scoring';
 import { generateBodyCompInterpretation, generateCoachPlan } from '@/lib/recommendations';
 import { Loader2 } from 'lucide-react';
+import { logger } from '@/lib/utils/logger';
 
 const ClientReport = lazy(() => import('@/components/reports/ClientReport'));
 
@@ -68,7 +69,7 @@ const PublicReportViewer = () => {
               document.title = `${data.clientName}'s Fitness Report | ${settings.name}`;
             }
           } catch (orgErr) {
-            console.warn('[PublicReport] Failed to fetch organization branding:', orgErr);
+            logger.warn('[PublicReport] Failed to fetch organization branding:', orgErr);
           }
         }
         
@@ -88,7 +89,7 @@ const PublicReportViewer = () => {
             setPlan(result);
           })
           .catch(async (e) => {
-            console.error('Error generating coach plan:', e);
+            logger.error('Error generating coach plan:', e);
             // Continue without plan - report is still viewable
           });
       } catch (e) {

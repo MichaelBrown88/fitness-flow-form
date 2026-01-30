@@ -17,6 +17,7 @@ import { collection, query, orderBy, limit, onSnapshot, where, Timestamp, startA
 import { getDb } from '@/services/firebase';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import { UI_TOASTS } from '@/constants/ui';
+import { COLLECTIONS } from '@/constants/collections';
 
 export type Analytics = {
   totalClients: number;
@@ -121,7 +122,7 @@ export function useDashboardData() {
           continue;
         }
 
-        const full = await getCoachAssessment(coachUid, assessment.id);
+        const full = await getCoachAssessment(coachUid, assessment.id, undefined, profile?.organizationId, profile);
         if (full?.formData) {
           const scores = computeScores(full.formData);
           scores.categories.forEach(cat => {
@@ -187,7 +188,7 @@ export function useDashboardData() {
   useEffect(() => {
     if (loading || !profile || !user) return;
 
-    const assessmentsRef = collection(getDb(), 'coaches', user.uid, 'assessments');
+    const assessmentsRef = collection(getDb(), COLLECTIONS.COACHES, user.uid, COLLECTIONS.ASSESSMENTS);
     let q;
     let useOrgFilter = false;
     
@@ -437,7 +438,7 @@ export function useDashboardData() {
     try {
       const history = await getClientAssessments(user.uid, clientName, profile?.organizationId);
       if (history.length > 0) {
-        const latest = await getCoachAssessment(user.uid, history[0].id);
+        const latest = await getCoachAssessment(user.uid, history[0].id, undefined, profile?.organizationId, profile);
         if (latest?.formData) {
           sessionStorage.setItem(STORAGE_KEYS.PREFILL_CLIENT, JSON.stringify({
             clientName: latest.formData.fullName,
@@ -457,7 +458,7 @@ export function useDashboardData() {
     if (hasMore && lastDoc && user) {
       setLoadingMore(true);
       try {
-        const assessmentsRef = collection(getDb(), 'coaches', user.uid, 'assessments');
+        const assessmentsRef = collection(getDb(), COLLECTIONS.COACHES, user.uid, COLLECTIONS.ASSESSMENTS);
         let nextQuery;
         if (profile?.organizationId) {
           nextQuery = query(

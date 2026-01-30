@@ -50,7 +50,7 @@ export const BlueprintSection: React.FC<BlueprintSectionProps> = ({ blueprintPil
           <div className="glass-subtle rounded-xl p-5">
             <div className="flex items-center gap-2 mb-4 pb-3 border-b border-zinc-200">
               <Play className="w-3 h-3 text-zinc-400 fill-current" />
-              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Sample Protocol</span>
+              <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Sample Protocol</span>
             </div>
             <div className="space-y-3">
               {pillar.protocol.map((row: { name: string; setsReps: string }, rIdx: number) => (
@@ -73,9 +73,9 @@ export const BlueprintSection: React.FC<BlueprintSectionProps> = ({ blueprintPil
           <div className="p-1 sm:p-1.5 md:p-2 bg-gradient-light text-zinc-900 rounded-lg">
             <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
           </div>
-          <h3 className="text-[10px] sm:text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">The Blueprint</h3>
+          <h3 className="text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">The Blueprint</h3>
         </div>
-        <p className="text-[10px] sm:text-xs md:text-sm text-zinc-500 ml-0 sm:ml-8 md:ml-12">
+        <p className="text-xs md:text-sm text-zinc-500 ml-0 sm:ml-8 md:ml-12">
           3 Strategic Pillars designed to bridge the gap from where you are to where you want to be.
         </p>
       </div>
@@ -93,7 +93,7 @@ export const BlueprintSection: React.FC<BlueprintSectionProps> = ({ blueprintPil
               <TabsTrigger
                 key={idx}
                 value={`pillar-${idx}`}
-                className="text-[9px] sm:text-[10px] font-semibold px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-md data-[state=active]:glass-button-active data-[state=active]:text-white"
+                className="text-xs font-semibold px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-md data-[state=active]:glass-button-active data-[state=active]:text-white"
               >
                 {pillar.title}
               </TabsTrigger>

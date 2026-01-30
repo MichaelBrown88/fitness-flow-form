@@ -26,6 +26,7 @@ const CoachReport = lazy(() => import('@/components/reports/CoachReport'));
 
 import { ROUTES } from '@/constants/routes';
 import { UI_TOASTS } from '@/constants/ui';
+import { logger } from '@/lib/utils/logger';
 
 const AssessmentReport = () => {
   const { id } = useParams();
@@ -78,7 +79,7 @@ const AssessmentReport = () => {
       await sendReportEmail({ assessmentId: id, view: 'client', to: email, clientName: formData.fullName });
       toast({ title: UI_TOASTS.SUCCESS.REPORT_EMAILED, description: `Sent to ${email}` });
     } catch (e) {
-      console.error('Email share failed', e);
+      logger.error('Email share failed', e);
       toast({ title: UI_TOASTS.ERROR.EMAIL_NOT_SENT, description: UI_TOASTS.ERROR.EMAIL_NOT_SENT_DESC, variant: 'destructive' });
     } finally {
       setShareLoading(false);
@@ -95,7 +96,7 @@ const AssessmentReport = () => {
       await navigator.clipboard.writeText(artifacts.shareUrl);
       toast({ title: UI_TOASTS.SUCCESS.LINK_COPIED, description: UI_TOASTS.SUCCESS.LINK_COPIED_DESC });
     } catch (e) {
-      console.error('Copy link failed', e);
+      logger.error('Copy link failed', e);
       toast({ title: UI_TOASTS.ERROR.COPY_FAILED, variant: 'destructive' });
     } finally {
       setShareLoading(false);
@@ -118,13 +119,15 @@ const AssessmentReport = () => {
           });
           toast({ title: UI_TOASTS.SUCCESS.SHARED_SUCCESSFULLY, description: UI_TOASTS.SUCCESS.SHARED_DESC });
         } catch (shareError) {
-          if ((shareError as Error).name !== 'AbortError') console.error('Share failed:', shareError);
+          if ((shareError as Error).name !== 'AbortError') {
+            logger.error('Share failed:', shareError);
+          }
         }
       } else {
         handleCopyLink();
       }
     } catch (e) {
-      console.error('System share failed', e);
+      logger.error('System share failed', e);
       toast({ title: UI_TOASTS.ERROR.UNABLE_TO_SHARE, description: UI_TOASTS.ERROR.UNABLE_TO_SHARE_DESC, variant: 'destructive' });
     } finally {
       setShareLoading(false);
@@ -141,7 +144,7 @@ const AssessmentReport = () => {
       const url = `https://wa.me/?text=${encodeURIComponent(artifacts.whatsappText)}`;
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch (e) {
-      console.error('WhatsApp share failed', e);
+      logger.error('WhatsApp share failed', e);
       toast({ title: UI_TOASTS.ERROR.UNABLE_TO_SHARE_WHATSAPP, description: UI_TOASTS.ERROR.UNABLE_TO_SHARE_WHATSAPP_DESC, variant: 'destructive' });
     } finally {
       setShareLoading(false);

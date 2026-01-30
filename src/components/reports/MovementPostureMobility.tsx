@@ -409,7 +409,7 @@ export function MovementPostureMobility({ formData, scores, standalone = false }
         <div className="p-2 bg-gradient-light text-zinc-900 rounded-lg">
           <Activity className="w-5 h-5" />
         </div>
-        <h3 className="text-[10px] sm:text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">
+        <h3 className="text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">
           Posture, Movement & Mobility
         </h3>
       </div>
@@ -422,7 +422,7 @@ export function MovementPostureMobility({ formData, scores, standalone = false }
                   {/* Only show interactive buttons if not in standalone/public mode */}
                   {!standalone && (
                     <div className="flex items-center gap-2">
-                      <Badge className="glass-button-active text-white text-[10px] sm:text-xs">
+                      <Badge className="glass-button-active text-white text-xs">
                         {Object.keys(formData.postureAiResults || {}).length} Views
                       </Badge>
                       <Button
@@ -430,7 +430,7 @@ export function MovementPostureMobility({ formData, scores, standalone = false }
                         size="sm"
                         onClick={handleReanalyze}
                         disabled={isReanalyzing}
-                        className="text-[10px] sm:text-xs h-7 sm:h-8"
+                        className="text-xs h-7 sm:h-8"
                       >
                         <RefreshCw className={`w-3 h-3 mr-1 sm:mr-1.5 ${isReanalyzing ? 'animate-spin' : ''}`} />
                         {isReanalyzing ? 'Re-analyzing...' : 'Re-analyze'}
@@ -439,7 +439,7 @@ export function MovementPostureMobility({ formData, scores, standalone = false }
                   )}
                   {/* Show view count badge in standalone mode */}
                   {standalone && (
-                    <Badge className="glass-button-active text-white text-[10px] sm:text-xs">
+                    <Badge className="glass-button-active text-white text-xs">
                       {Object.keys(formData.postureAiResults || {}).length} Views
                     </Badge>
                   )}

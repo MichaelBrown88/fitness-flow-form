@@ -9,6 +9,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
+import type { QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { getFirebaseAuth } from '@/services/firebase';
 import { 
   getPlatformAdmin, 
@@ -64,6 +65,7 @@ export interface UsePlatformDashboardResult {
   metrics: PlatformMetrics | null;
   organizations: OrganizationSummary[];
   sortedOrganizations: OrganizationSummary[];
+  hasMoreOrganizations: boolean;
   assessmentChartData: ChartDataPoint[];
   aiCostsByFeature: FeatureCost[];
   orgAiCostsByFeature: Record<string, FeatureCost[]>;
@@ -85,6 +87,7 @@ export interface UsePlatformDashboardResult {
   handleSignOut: () => Promise<void>;
   handleSort: (field: SortField) => void;
   navigateToOrg: (orgId: string) => void;
+  loadMoreOrganizations: () => Promise<void>;
   
   // Utility functions
   formatCurrency: (fils: number) => string;
@@ -109,6 +112,8 @@ export function usePlatformDashboard(): UsePlatformDashboardResult {
   // Data state
   const [metrics, setMetrics] = useState<PlatformMetrics | null>(null);
   const [organizations, setOrganizations] = useState<OrganizationSummary[]>([]);
+  const [organizationsCursor, setOrganizationsCursor] = useState<QueryDocumentSnapshot<DocumentData> | undefined>(undefined);
+  const [hasMoreOrganizations, setHasMoreOrganizations] = useState(false);
   const [assessmentChartData, setAssessmentChartData] = useState<ChartDataPoint[]>([]);
   const [aiCostsByFeature, setAiCostsByFeature] = useState<FeatureCost[]>([]);
   const [orgAiCostsByFeature, setOrgAiCostsByFeature] = useState<Record<string, FeatureCost[]>>({});
@@ -123,14 +128,17 @@ export function usePlatformDashboard(): UsePlatformDashboardResult {
   // Load dashboard data
   const loadDashboardData = useCallback(async () => {
     try {
-      const [metricsData, orgsData, chartData, featureCosts] = await Promise.all([
+      const [metricsData, orgsResponse, chartData, featureCosts] = await Promise.all([
         getLiveMetrics(),
         getOrganizations(50),
         getAssessmentChartData(),
         getAICostsByFeature()
       ]);
+      const orgsData = orgsResponse.organizations;
       setMetrics(metricsData);
       setOrganizations(orgsData);
+      setOrganizationsCursor(orgsResponse.lastDoc);
+      setHasMoreOrganizations(orgsData.length === 50 && !!orgsResponse.lastDoc);
       setAssessmentChartData(chartData);
       setAiCostsByFeature(featureCosts);
       
@@ -158,6 +166,22 @@ export function usePlatformDashboard(): UsePlatformDashboardResult {
       logger.error('Failed to load dashboard data:', error);
     }
   }, []);
+
+  const loadMoreOrganizations = useCallback(async () => {
+    if (!organizationsCursor) return;
+    try {
+      const orgsResponse = await getOrganizations(50, organizationsCursor);
+      if (orgsResponse.organizations.length === 0) {
+        setHasMoreOrganizations(false);
+        return;
+      }
+      setOrganizations(prev => [...prev, ...orgsResponse.organizations]);
+      setOrganizationsCursor(orgsResponse.lastDoc);
+      setHasMoreOrganizations(orgsResponse.organizations.length === 50 && !!orgsResponse.lastDoc);
+    } catch (error) {
+      logger.error('Failed to load more organizations:', error);
+    }
+  }, [organizationsCursor]);
 
   // Auth and initial load
   useEffect(() => {
@@ -332,6 +356,7 @@ export function usePlatformDashboard(): UsePlatformDashboardResult {
     metrics,
     organizations,
     sortedOrganizations,
+    hasMoreOrganizations,
     assessmentChartData,
     aiCostsByFeature,
     orgAiCostsByFeature,
@@ -353,6 +378,7 @@ export function usePlatformDashboard(): UsePlatformDashboardResult {
     handleSignOut,
     handleSort,
     navigateToOrg,
+    loadMoreOrganizations,
     
     // Utility functions
     formatCurrency,

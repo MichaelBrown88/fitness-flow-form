@@ -5,6 +5,8 @@
  * so you can reuse test@test.com without conflicts when testing onboarding flow.
  */
 
+import { logger } from '@/lib/utils/logger';
+
 const TEST_EMAIL_PATTERNS = [
   /^test@test\.com$/i,
   /^test\+.*@test\.com$/i,
@@ -58,21 +60,21 @@ export function makeTestEmailUnique(email: string): string {
  */
 export async function deleteTestAccounts(): Promise<void> {
   if (!import.meta.env.DEV) {
-    console.warn('deleteTestAccounts is only available in development mode');
+    logger.warn('deleteTestAccounts is only available in development mode');
     return;
   }
 
-  console.log('🧹 Test account cleanup helper');
-  console.log('⚠️ Note: For security reasons, Firestore data can only be deleted through:');
-  console.log('   1. Firebase Console (manual deletion)');
-  console.log('   2. Cloud Functions with admin privileges');
-  console.log('   3. Authenticated user deleting their own data');
-  console.log('');
-  console.log('💡 Tip: Use unique test emails (test+timestamp@test.com) to avoid conflicts');
-  console.log('💡 To manually clean up:');
-  console.log('   - Go to Firebase Console > Firestore Database');
-  console.log('   - Delete organizations and userProfiles documents for test accounts');
-  console.log('   - Go to Firebase Console > Authentication to delete Auth users');
+  logger.info('🧹 Test account cleanup helper');
+  logger.info('⚠️ Note: For security reasons, Firestore data can only be deleted through:');
+  logger.info('   1. Firebase Console (manual deletion)');
+  logger.info('   2. Cloud Functions with admin privileges');
+  logger.info('   3. Authenticated user deleting their own data');
+  logger.info('');
+  logger.info('💡 Tip: Use unique test emails (test+timestamp@test.com) to avoid conflicts');
+  logger.info('💡 To manually clean up:');
+  logger.info('   - Go to Firebase Console > Firestore Database');
+  logger.info('   - Delete organizations and userProfiles documents for test accounts');
+  logger.info('   - Go to Firebase Console > Authentication to delete Auth users');
   
   // Don't attempt to delete - this would require admin privileges
   // The function now just provides helpful instructions
@@ -82,7 +84,7 @@ export async function deleteTestAccounts(): Promise<void> {
 if (import.meta.env.DEV && typeof window !== 'undefined') {
   (window as unknown as { deleteTestAccounts: () => Promise<void> }).deleteTestAccounts = deleteTestAccounts;
   
-  console.log('%c🧪 Test Account Helper Loaded!', 'color: #10b981; font-weight: bold;');
-  console.log('%cUse: window.deleteTestAccounts() to clean up Firestore test data', 'color: #6b7280;');
-  console.log('%cNote: Firebase Auth users must be deleted from Firebase Console', 'color: #f59e0b;');
+  logger.info('🧪 Test Account Helper Loaded!');
+  logger.info('Use: window.deleteTestAccounts() to clean up Firestore test data');
+  logger.info('Note: Firebase Auth users must be deleted from Firebase Console');
 }

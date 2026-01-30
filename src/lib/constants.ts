@@ -101,8 +101,6 @@ export const LIMITS = {
 // PDF Settings
 export const PDF_SETTINGS = {
   FILENAME_PREFIX: 'Fitness-Assessment-',
-  FILENAME_SUFFIX_CLIENT: '-Client-Report.pdf',
-  FILENAME_SUFFIX_COACH: '-Coach-Report.pdf',
   FONT_LOAD_DELAY_MS: 300,
   SCALE: 3,
   MARGIN_MM: 10,

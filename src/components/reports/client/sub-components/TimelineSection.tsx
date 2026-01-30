@@ -25,7 +25,7 @@ export const TimelineSection: React.FC<TimelineSectionProps> = ({
             <div className="p-1 sm:p-1.5 md:p-2 bg-gradient-light text-zinc-900 rounded-lg">
               <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
             </div>
-            <h3 className="text-[10px] sm:text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">Your Timeline</h3>
+            <h3 className="text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">Your Timeline</h3>
           </div>
           
           <Card className="p-4 sm:p-5 md:p-6 rounded-2xl overflow-hidden">
@@ -44,7 +44,7 @@ export const TimelineSection: React.FC<TimelineSectionProps> = ({
                   onChange={(e) => setSessionsPerWeek(parseInt(e.target.value))}
                   className="w-full h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer hover:bg-zinc-300 transition-colors slider-apple max-w-full"
                 />
-                <div className="flex justify-between text-[9px] sm:text-[10px] text-zinc-400 font-bold uppercase mt-1.5 sm:mt-2 px-1 max-w-full">
+                <div className="flex justify-between text-xs text-zinc-400 font-bold uppercase mt-1.5 sm:mt-2 px-1 max-w-full">
                   <span>3</span>
                   <span>4</span>
                   <span>5</span>
@@ -63,7 +63,7 @@ export const TimelineSection: React.FC<TimelineSectionProps> = ({
                   <div key={i} className="group w-full min-w-0">
                     <div className="flex justify-between items-center gap-2 text-xs font-bold mb-2 w-full min-w-0">
                       <span className="text-zinc-800 truncate flex-1 min-w-0">{niceLabel(cat.id)}</span>
-                      <span className="text-zinc-400 font-medium shrink-0 text-left text-[10px] sm:text-xs">~{weeks} weeks</span>
+                      <span className="text-zinc-400 font-medium shrink-0 text-left text-xs">~{weeks} weeks</span>
                     </div>
                     <div className="h-2.5 w-full bg-zinc-100 rounded-full overflow-hidden relative max-w-full">
                       <div 
@@ -77,7 +77,7 @@ export const TimelineSection: React.FC<TimelineSectionProps> = ({
             </div>
 
             <div className="mt-4 sm:mt-5 md:mt-6 pt-3 sm:pt-4 border-t border-zinc-100 w-full">
-              <p className="text-[10px] sm:text-xs text-zinc-500 leading-relaxed text-center break-words">
+              <p className="text-xs text-zinc-500 leading-relaxed text-center break-words">
                 <span className="text-zinc-900 font-bold">Total estimated timeline: ~{Math.round(maxWeeks * (sessionsPerWeek === 3 ? 1 : sessionsPerWeek === 4 ? 0.85 : 0.70))} weeks.</span><br className="hidden sm:block"/>
                 <span className="block sm:inline">Increasing frequency can reduce this timeline by up to 30%.</span>
               </p>
@@ -100,7 +100,7 @@ export const TimelineSection: React.FC<TimelineSectionProps> = ({
               We handle the programming, the tracking, and the analysis. Your job is simple but demanding: execute the plan.
             </p>
             <div className="inline-block px-4 sm:px-5 py-2 sm:py-3 bg-white/5 rounded-xl border border-white/5 backdrop-blur-sm">
-              <p className="text-[10px] sm:text-xs font-bold text-white/80 uppercase tracking-wider break-words">
+              <p className="text-xs font-bold text-white/80 uppercase tracking-wider break-words">
                 "As long as you do your part, we'll do ours."
               </p>
             </div>
@@ -119,7 +119,7 @@ export const TimelineSection: React.FC<TimelineSectionProps> = ({
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-xs sm:text-sm font-bold text-white mb-1 sm:mb-1.5">{item.title}</div>
-                  <div className="text-[10px] sm:text-xs text-zinc-400 leading-relaxed group-hover:text-zinc-300 break-words">{item.desc}</div>
+                  <div className="text-xs text-zinc-400 leading-relaxed group-hover:text-zinc-300 break-words">{item.desc}</div>
                 </div>
               </div>
             ))}

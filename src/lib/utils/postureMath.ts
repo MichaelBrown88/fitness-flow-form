@@ -1,6 +1,7 @@
 import { LandmarkResult } from '@/lib/ai/postureLandmarks';
 import type { MediaPipeLandmark } from '@/lib/types/mediapipe';
 import { calculateFrontBackDeviationSummary } from '@/lib/utils/postureAlignment';
+import { logger } from '@/lib/utils/logger';
 
 /**
  * UTILITY: POSTURE MATHEMATICS
@@ -176,11 +177,11 @@ export function calculateFrontViewMetrics(landmarks: MediaPipeLandmark[], view: 
   const rightKneeIsValgus = legSummary.rightKneeIsValgus;
   
   // Log calculated metrics for front/back view
-  console.log(`\n📊 [CALCULATED METRICS - ${view.toUpperCase()} VIEW]`);
-  console.log(`   Head Tilt: ${headTilt.toFixed(1)}°`);
-  console.log(`   Shoulder Diff: ${shoulderDiffCm.toFixed(2)}cm (${metrics.shoulderSeverity})`);
-  console.log(`   Hip Diff: ${hipDiffCm.toFixed(2)}cm (${metrics.hipSeverity})`);
-  console.log(`   Hip Shift: ${hipShiftPercent.toFixed(1)}% ${hipShiftDirection} (${view === 'back' ? 'mirrored for back view' : 'subject perspective'})`);
+  logger.debug(`📊 [CALCULATED METRICS - ${view.toUpperCase()} VIEW]`);
+  logger.debug(`   Head Tilt: ${headTilt.toFixed(1)}°`);
+  logger.debug(`   Shoulder Diff: ${shoulderDiffCm.toFixed(2)}cm (${metrics.shoulderSeverity})`);
+  logger.debug(`   Hip Diff: ${hipDiffCm.toFixed(2)}cm (${metrics.hipSeverity})`);
+  logger.debug(`   Hip Shift: ${hipShiftPercent.toFixed(1)}% ${hipShiftDirection} (${view === 'back' ? 'mirrored for back view' : 'subject perspective'})`);
   
   return {
     ...metrics,
@@ -291,13 +292,13 @@ export function calculateSideViewMetrics(
   };
   
   // Log calculated metrics for side view
-  console.log(`\n📊 [CALCULATED METRICS - ${view.toUpperCase()}]`);
-  console.log(`   Forward Head: ${headOffsetCm.toFixed(2)}cm (${headSeverity})`);
-  console.log(`   Head Pitch: ${headPitchDegrees.toFixed(1)}° (${headPitchStatus})`);
-  console.log(`   Pelvic Angle: ${pelvicAngle.toFixed(1)}°`);
-  console.log(`   Plumb Line X: ${(plumbLineX * 100).toFixed(1)}%`);
-  console.log(`   Ear X: ${((ear?.x ?? 0) * 100).toFixed(1)}%`);
-  console.log(`   Ear-Plumb Diff: ${((ear?.x ?? 0.5) - plumbLineX).toFixed(3)} (${view === 'side-left' ? 'negative=forward' : 'positive=forward'})`);
+  logger.debug(`📊 [CALCULATED METRICS - ${view.toUpperCase()}]`);
+  logger.debug(`   Forward Head: ${headOffsetCm.toFixed(2)}cm (${headSeverity})`);
+  logger.debug(`   Head Pitch: ${headPitchDegrees.toFixed(1)}° (${headPitchStatus})`);
+  logger.debug(`   Pelvic Angle: ${pelvicAngle.toFixed(1)}°`);
+  logger.debug(`   Plumb Line X: ${(plumbLineX * 100).toFixed(1)}%`);
+  logger.debug(`   Ear X: ${((ear?.x ?? 0) * 100).toFixed(1)}%`);
+  logger.debug(`   Ear-Plumb Diff: ${((ear?.x ?? 0.5) - plumbLineX).toFixed(3)} (${view === 'side-left' ? 'negative=forward' : 'positive=forward'})`);
   
   return metrics;
 }
