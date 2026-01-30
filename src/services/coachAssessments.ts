@@ -7,6 +7,10 @@ import { validateOrganizationId } from '@/lib/utils/validateOrganizationId';
 import type { UserProfile } from '@/types/auth';
 import { COLLECTIONS } from '@/constants/collections';
 
+const MAX_ASSESSMENTS_LIMIT = 200;
+const MAX_CLIENT_ASSESSMENTS_LIMIT = 200;
+const MAX_CLIENT_LIST_LIMIT = 500;
+
 export type CoachAssessmentSummary = {
   id: string;
   clientName: string;
@@ -116,11 +120,12 @@ export async function listCoachAssessments(
   organizationId?: string,
 ): Promise<CoachAssessmentSummary[]> {
   const resolvedOrgId = await resolveOrganizationId(coachUid, organizationId);
+  const resolvedLimit = Math.min(max, MAX_ASSESSMENTS_LIMIT);
   const q = query(
     coachAssessmentsCollection(coachUid),
     where('organizationId', '==', resolvedOrgId),
     orderBy('createdAt', 'desc'),
-    limit(max),
+    limit(resolvedLimit),
   );
   // If we have an organizationId, we filter by it.
   // In a full SaaS model, we might query a top-level 'assessments' collection
@@ -264,12 +269,13 @@ export async function getClientAssessments(
   maxResults = 50,
 ): Promise<CoachAssessmentSummary[]> {
   const resolvedOrgId = await resolveOrganizationId(coachUid, organizationId);
+  const resolvedLimit = Math.min(maxResults, MAX_CLIENT_ASSESSMENTS_LIMIT);
   const q = query(
     coachAssessmentsCollection(coachUid),
     where('clientNameLower', '==', clientName.toLowerCase()),
     where('organizationId', '==', resolvedOrgId),
     orderBy('createdAt', 'desc'),
-    limit(maxResults),
+    limit(resolvedLimit),
   );
   const snap = await getDocs(q);
   const items: CoachAssessmentSummary[] = [];
@@ -289,11 +295,12 @@ export async function getClientAssessments(
 
 export async function getAllClients(coachUid: string, organizationId?: string, maxAssessments = 500): Promise<string[]> {
   const resolvedOrgId = await resolveOrganizationId(coachUid, organizationId);
+  const resolvedLimit = Math.min(maxAssessments, MAX_CLIENT_LIST_LIMIT);
   const q = query(
     coachAssessmentsCollection(coachUid), 
     where('organizationId', '==', resolvedOrgId),
     orderBy('createdAt', 'desc'),
-    limit(maxAssessments)
+    limit(resolvedLimit)
   );
   const snap = await getDocs(q);
   const clients = new Set<string>();

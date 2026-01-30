@@ -20,6 +20,9 @@ import { PostureAnalysisResult } from "@/lib/ai/postureAnalysis";
 import { logger } from "@/lib/utils/logger";
 import { COLLECTIONS } from "@/constants/collections";
 
+const MAX_HISTORY_LIMIT = 100;
+const MAX_SNAPSHOT_LIMIT = 100;
+
 export type FormValue =
   | string
   | number
@@ -385,6 +388,7 @@ export async function getChangeHistory(
   limitCount: number = 100,
   organizationId?: string
 ): Promise<AssessmentChange[]> {
+  const resolvedLimit = Math.min(limitCount, MAX_HISTORY_LIMIT);
   const historyRef = getHistoryCollection(coachUid, clientName);
   let q;
   if (organizationId) {
@@ -392,10 +396,10 @@ export async function getChangeHistory(
       historyRef,
       where("organizationId", "==", organizationId),
       orderBy("timestamp", "desc"),
-      limit(limitCount)
+      limit(resolvedLimit)
     );
   } else {
-    q = query(historyRef, orderBy("timestamp", "desc"), limit(limitCount));
+    q = query(historyRef, orderBy("timestamp", "desc"), limit(resolvedLimit));
   }
   let snap;
   try {
@@ -411,7 +415,7 @@ export async function getChangeHistory(
       const fallbackQuery = query(
         historyRef,
         where("organizationId", "==", organizationId),
-        limit(limitCount)
+        limit(resolvedLimit)
       );
       snap = await getDocs(fallbackQuery);
     } else {
@@ -447,6 +451,7 @@ export async function getSnapshots(
   limitCount: number = 50,
   organizationId?: string
 ): Promise<AssessmentSnapshot[]> {
+  const resolvedLimit = Math.min(limitCount, MAX_SNAPSHOT_LIMIT);
   const snapshotsRef = getSnapshotsCollection(coachUid, clientName);
 
   let q;
@@ -455,10 +460,10 @@ export async function getSnapshots(
       snapshotsRef,
       where("organizationId", "==", organizationId),
       orderBy("timestamp", "desc"),
-      limit(limitCount)
+      limit(resolvedLimit)
     );
   } else {
-    q = query(snapshotsRef, orderBy("timestamp", "desc"), limit(limitCount));
+    q = query(snapshotsRef, orderBy("timestamp", "desc"), limit(resolvedLimit));
   }
 
   let snap;
@@ -475,7 +480,7 @@ export async function getSnapshots(
       const fallbackQuery = query(
         snapshotsRef,
         where("organizationId", "==", organizationId),
-        limit(limitCount)
+        limit(resolvedLimit)
       );
       snap = await getDocs(fallbackQuery);
     } else {
