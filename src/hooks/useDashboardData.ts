@@ -254,7 +254,7 @@ export function useDashboardData() {
               
               for (const clientName of clients.slice(0, 10)) {
                 try {
-                  const history = await getChangeHistory(user.uid, clientName, 5);
+                  const history = await getChangeHistory(user.uid, clientName, 5, profile?.organizationId);
                   history.forEach(change => {
                     changes.push({
                       clientName,

@@ -94,7 +94,7 @@ export const PhaseFormContent = ({
 
       try {
         const { getCurrentAssessment } = await import('@/services/assessmentHistory');
-        const current = await getCurrentAssessment(user.uid, activeClientName);
+        const current = await getCurrentAssessment(user.uid, activeClientName, profile?.organizationId);
         if (current?.formData) {
           
           let fieldsToSkip: string[] = [];
@@ -127,7 +127,7 @@ export const PhaseFormContent = ({
       }
     };
     loadCurrentAssessment();
-  }, [user, activeClientName, isPartialAssessment, partialCategory, updateFormData]);
+  }, [user, activeClientName, isPartialAssessment, partialCategory, profile?.organizationId, updateFormData]);
   
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [recentlyCompletedSections, setRecentlyCompletedSections] = useState<Set<string>>(new Set());

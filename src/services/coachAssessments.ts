@@ -42,6 +42,17 @@ type CoachAssessmentDoc = {
 const coachAssessmentsCollection = (coachUid: string) =>
   collection(getDb(), COLLECTIONS.COACHES, coachUid, COLLECTIONS.ASSESSMENTS);
 
+async function resolveOrganizationId(
+  coachUid: string,
+  organizationId?: string
+): Promise<string> {
+  if (organizationId) return organizationId;
+  const profileSnap = await getDoc(doc(getDb(), COLLECTIONS.USER_PROFILES, coachUid));
+  const profileData = profileSnap.data() as UserProfile | undefined;
+  if (profileData?.organizationId) return profileData.organizationId;
+  throw new Error('Organization ID is required for assessment access.');
+}
+
 export async function saveCoachAssessment(
   coachUid: string,
   coachEmail: string | null | undefined,
@@ -104,24 +115,16 @@ export async function listCoachAssessments(
   max = 100,
   organizationId?: string,
 ): Promise<CoachAssessmentSummary[]> {
-  let q;
-  if (organizationId) {
-    // If we have an organizationId, we filter by it.
-    // In a full SaaS model, we might query a top-level 'assessments' collection
-    // but for now we're keeping the coach-centric structure.
-    q = query(
-      coachAssessmentsCollection(coachUid),
-      where('organizationId', '==', organizationId),
-      orderBy('createdAt', 'desc'),
-      limit(max),
-    );
-  } else {
-    q = query(
-      coachAssessmentsCollection(coachUid),
-      orderBy('createdAt', 'desc'),
-      limit(max),
-    );
-  }
+  const resolvedOrgId = await resolveOrganizationId(coachUid, organizationId);
+  const q = query(
+    coachAssessmentsCollection(coachUid),
+    where('organizationId', '==', resolvedOrgId),
+    orderBy('createdAt', 'desc'),
+    limit(max),
+  );
+  // If we have an organizationId, we filter by it.
+  // In a full SaaS model, we might query a top-level 'assessments' collection
+  // but for now we're keeping the coach-centric structure.
 
   const snap = await getDocs(q);
   const items: CoachAssessmentSummary[] = [];
@@ -260,23 +263,14 @@ export async function getClientAssessments(
   organizationId?: string,
   maxResults = 50,
 ): Promise<CoachAssessmentSummary[]> {
-  let q;
-  if (organizationId) {
-    q = query(
-      coachAssessmentsCollection(coachUid),
-      where('clientNameLower', '==', clientName.toLowerCase()),
-      where('organizationId', '==', organizationId),
-      orderBy('createdAt', 'desc'),
-      limit(maxResults),
-    );
-  } else {
-    q = query(
-      coachAssessmentsCollection(coachUid),
-      where('clientNameLower', '==', clientName.toLowerCase()),
-      orderBy('createdAt', 'desc'),
-      limit(maxResults),
-    );
-  }
+  const resolvedOrgId = await resolveOrganizationId(coachUid, organizationId);
+  const q = query(
+    coachAssessmentsCollection(coachUid),
+    where('clientNameLower', '==', clientName.toLowerCase()),
+    where('organizationId', '==', resolvedOrgId),
+    orderBy('createdAt', 'desc'),
+    limit(maxResults),
+  );
   const snap = await getDocs(q);
   const items: CoachAssessmentSummary[] = [];
   snap.forEach((docSnap) => {
@@ -294,21 +288,13 @@ export async function getClientAssessments(
 }
 
 export async function getAllClients(coachUid: string, organizationId?: string, maxAssessments = 500): Promise<string[]> {
-  let q;
-  if (organizationId) {
-    q = query(
-      coachAssessmentsCollection(coachUid), 
-      where('organizationId', '==', organizationId),
-      orderBy('createdAt', 'desc'),
-      limit(maxAssessments)
-    );
-  } else {
-    q = query(
-      coachAssessmentsCollection(coachUid), 
-      orderBy('createdAt', 'desc'),
-      limit(maxAssessments)
-    );
-  }
+  const resolvedOrgId = await resolveOrganizationId(coachUid, organizationId);
+  const q = query(
+    coachAssessmentsCollection(coachUid), 
+    where('organizationId', '==', resolvedOrgId),
+    orderBy('createdAt', 'desc'),
+    limit(maxAssessments)
+  );
   const snap = await getDocs(q);
   const clients = new Set<string>();
   snap.forEach((docSnap) => {

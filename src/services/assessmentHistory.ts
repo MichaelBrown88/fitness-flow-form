@@ -382,11 +382,42 @@ export async function createSnapshot(
 export async function getChangeHistory(
   coachUid: string,
   clientName: string,
-  limitCount: number = 100
+  limitCount: number = 100,
+  organizationId?: string
 ): Promise<AssessmentChange[]> {
   const historyRef = getHistoryCollection(coachUid, clientName);
-  const q = query(historyRef, orderBy("timestamp", "desc"), limit(limitCount));
-  const snap = await getDocs(q);
+  let q;
+  if (organizationId) {
+    q = query(
+      historyRef,
+      where("organizationId", "==", organizationId),
+      orderBy("timestamp", "desc"),
+      limit(limitCount)
+    );
+  } else {
+    q = query(historyRef, orderBy("timestamp", "desc"), limit(limitCount));
+  }
+  let snap;
+  try {
+    snap = await getDocs(q);
+  } catch (error) {
+    if (
+      organizationId &&
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "failed-precondition"
+    ) {
+      const fallbackQuery = query(
+        historyRef,
+        where("organizationId", "==", organizationId),
+        limit(limitCount)
+      );
+      snap = await getDocs(fallbackQuery);
+    } else {
+      throw error;
+    }
+  }
 
   const changes: AssessmentChange[] = [];
   snap.forEach((docSnap) => {
@@ -401,6 +432,9 @@ export async function getChangeHistory(
     });
   });
 
+  if (organizationId) {
+    return changes.sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis());
+  }
   return changes;
 }
 
@@ -427,7 +461,27 @@ export async function getSnapshots(
     q = query(snapshotsRef, orderBy("timestamp", "desc"), limit(limitCount));
   }
 
-  const snap = await getDocs(q);
+  let snap;
+  try {
+    snap = await getDocs(q);
+  } catch (error) {
+    if (
+      organizationId &&
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "failed-precondition"
+    ) {
+      const fallbackQuery = query(
+        snapshotsRef,
+        where("organizationId", "==", organizationId),
+        limit(limitCount)
+      );
+      snap = await getDocs(fallbackQuery);
+    } else {
+      throw error;
+    }
+  }
 
   const snapshots: AssessmentSnapshot[] = [];
   snap.forEach((docSnap) => {
@@ -443,6 +497,9 @@ export async function getSnapshots(
     });
   });
 
+  if (organizationId) {
+    return snapshots.sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis());
+  }
   return snapshots;
 }
 

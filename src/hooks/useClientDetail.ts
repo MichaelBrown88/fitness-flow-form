@@ -313,20 +313,7 @@ export function useClientDetail(): UseClientDetailResult {
         const data = await getSnapshots(user.uid, clientName, 100, userProfile?.organizationId);
         setSnapshots(data);
       } catch (err) {
-        // If index error, try without organizationId filter
-        if (err && typeof err === 'object' && 'code' in err && err.code === 'failed-precondition') {
-          try {
-            const data = await getSnapshots(user.uid, clientName, 100);
-            const filtered = userProfile?.organizationId 
-              ? data.filter(s => (s as { organizationId?: string }).organizationId === userProfile.organizationId)
-              : data;
-            setSnapshots(filtered);
-          } catch (fallbackErr) {
-            logger.error('Failed to load snapshots (fallback)', 'CLIENT_DETAIL', fallbackErr);
-          }
-        } else {
-          logger.error('Failed to load snapshots', 'CLIENT_DETAIL', err);
-        }
+        logger.error('Failed to load snapshots', 'CLIENT_DETAIL', err);
       } finally {
         setLoadingSnapshots(false);
       }
