@@ -459,14 +459,14 @@ function PositionedLabels({
             className="absolute w-full"
             style={{ top: `${position}%`, transform: 'translateY(-50%)' }}
           >
-            <div className={`${screenSide === 'left' ? 'text-left' : 'text-right'}`}>
+            <div className={`${screenSide === 'left' ? 'text-left' : 'text-right'} max-w-[180px]`}>
               <div className={`inline-flex items-center gap-1.5 mb-0.5 ${screenSide === 'right' ? 'flex-row-reverse' : ''}`}>
                 <div className={`h-1.5 w-1.5 rounded-full shrink-0 ${tone.dot}`} />
                 <span className={`text-[10px] font-bold uppercase tracking-wide ${tone.text}`}>
                   {item.label}
                 </span>
               </div>
-              <p className={`text-[9px] text-white/60 leading-snug whitespace-normal break-words ${screenSide === 'left' ? 'pl-3' : 'pr-3'}`}>
+              <p className={`text-[9px] text-white/60 leading-snug whitespace-normal break-words line-clamp-2 ${screenSide === 'left' ? 'pl-3' : 'pr-3'}`}>
                 {item.recommendation}
               </p>
             </div>
