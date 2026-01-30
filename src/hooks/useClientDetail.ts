@@ -342,8 +342,14 @@ export function useClientDetail(): UseClientDetailResult {
     (async () => {
       try {
         setLoading(true);
-        const data = await getClientAssessments(user.uid, clientName, userProfile?.organizationId);
+        const [data, current] = await Promise.all([
+          getClientAssessments(user.uid, clientName, userProfile?.organizationId),
+          getCurrentAssessment(user.uid, clientName, userProfile?.organizationId),
+        ]);
         setAssessments(data);
+        if (current) {
+          setCurrentAssessment(current);
+        }
         
         // Sync profile with latest assessment data
         if (data.length > 0) {
@@ -378,13 +384,16 @@ export function useClientDetail(): UseClientDetailResult {
     if (!user || !clientName) return;
     
     (async () => {
-      const current = await getCurrentAssessment(user.uid, clientName, userProfile?.organizationId);
       const currentBreakdown: Record<string, number> = {};
       
-      if (current) {
-        setCurrentAssessment(current);
-        const scores = computeScores(current.formData);
+      if (currentAssessment) {
+        const scores = computeScores(currentAssessment.formData);
         scores.categories.forEach(cat => {
+          currentBreakdown[cat.id] = cat.score;
+        });
+        setCategoryBreakdown(currentBreakdown);
+      } else if (assessments.length > 0 && assessments[0].scoresSummary) {
+        assessments[0].scoresSummary.categories.forEach(cat => {
           currentBreakdown[cat.id] = cat.score;
         });
         setCategoryBreakdown(currentBreakdown);
@@ -419,7 +428,7 @@ export function useClientDetail(): UseClientDetailResult {
         }
       }
     })();
-  }, [user, clientName, assessments, snapshots, userProfile?.organizationId]);
+  }, [user, clientName, assessments, snapshots, currentAssessment, userProfile?.organizationId]);
 
   // Load historical assessment when date is selected
   useEffect(() => {
