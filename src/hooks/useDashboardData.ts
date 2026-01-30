@@ -108,36 +108,33 @@ export function useDashboardData() {
     const sampleSize = Math.min(20, assessments.length);
     const samples = assessments.slice(0, sampleSize);
     
-    for (const assessment of samples) {
+    const summaries = await Promise.all(samples.map(async (assessment) => {
       try {
         if (assessment.scoresSummary) {
-          assessment.scoresSummary.categories.forEach(cat => {
-            if (categoryScores[cat.id]) {
-              categoryScores[cat.id].push(cat.score);
-            }
-            cat.weaknesses.forEach(weakness => {
-              issueCounts[weakness] = (issueCounts[weakness] || 0) + 1;
-            });
-          });
-          continue;
+          return assessment.scoresSummary;
         }
-
         const full = await getCoachAssessment(coachUid, assessment.id, undefined, profile?.organizationId, profile);
         if (full?.formData) {
-          const scores = computeScores(full.formData);
-          scores.categories.forEach(cat => {
-            if (categoryScores[cat.id]) {
-              categoryScores[cat.id].push(cat.score);
-            }
-            cat.weaknesses.forEach(weakness => {
-              issueCounts[weakness] = (issueCounts[weakness] || 0) + 1;
-            });
-          });
+          return computeScores(full.formData);
         }
+        return null;
       } catch (err) {
         logger.warn(`Failed to load assessment ${assessment.id} for analytics:`, err);
+        return null;
       }
-    }
+    }));
+
+    summaries.forEach((summary) => {
+      if (!summary) return;
+      summary.categories.forEach(cat => {
+        if (categoryScores[cat.id]) {
+          categoryScores[cat.id].push(cat.score);
+        }
+        cat.weaknesses.forEach(weakness => {
+          issueCounts[weakness] = (issueCounts[weakness] || 0) + 1;
+        });
+      });
+    });
 
     const mostCommonIssues = Object.entries(issueCounts)
       .map(([issue, count]) => ({ issue, count }))
