@@ -52,17 +52,18 @@ export const ASSESSMENT_LABELS = {
     assignedCoach: 'Assigned Coach',
     trainingHistory: 'Training History',
     recentActivity: 'Recent Activity',
-    primaryTrainingStyle: 'Primary Training Style',
+    primaryTrainingStyles: 'Training Styles',
+    primaryTrainingStyleOther: 'Other Training Style',
     parqQuestionnaire: 'PAR-Q Questionnaire',
   },
   P1: {
     activityLevel: 'Activity Level',
     stepsPerDay: 'Average steps per day',
     sedentaryHours: 'Sedentary hours',
-    workHoursPerDay: 'Work hours',
-    sleepQuality: 'Sleep quality',
-    sleepDuration: 'Sleep Duration',
-    sleepConsistency: 'Sleep schedule consistency',
+    sleepArchetype: 'Sleep habits',
+    sleepQuality: 'Sleep quality', // Legacy
+    sleepDuration: 'Sleep Duration', // Legacy
+    sleepConsistency: 'Sleep schedule consistency', // Legacy
     stressLevel: 'Stress levels',
     nutritionHabits: 'Nutrition habits',
     hydrationHabits: 'Hydration habits',
@@ -133,7 +134,8 @@ export const ASSESSMENT_LABELS = {
     lungePainLevel: 'Pain Level (1-10)',
     mobilityHip: 'Hip mobility',
     mobilityShoulder: 'Shoulder mobility',
-    mobilityAnkle: 'Ankle mobility',
+    mobilityAnkleLeft: 'Ankle mobility (Left)',
+    mobilityAnkleRight: 'Ankle mobility (Right)',
   },
   P5: {
     squatsOneMinuteReps: 'Squats in one minute',
@@ -166,17 +168,18 @@ export const ASSESSMENT_TOOLTIPS = {
     assignedCoach: 'Select the primary coach responsible for this client. Coaches are specific to your organization.',
     trainingHistory: 'Experience level determines the speed of physiological adaptations (e.g., "Newbie Gains" vs. Diminishing Returns).',
     recentActivity: 'Current readiness determines joint/tendon durability and immediate volume tolerance.',
-    primaryTrainingStyle: 'Provides context for functional tests (e.g., powerlifters may have high strength but lower endurance).',
+    primaryTrainingStyles: 'Select all training styles you engage in. Provides context for functional tests.',
+    primaryTrainingStyleOther: 'Describe your other training style(s).',
     parqQuestionnaire: 'Instructions:\n1. Answer each question carefully.\n2. Any "YES" answer requires medical clearance before physical testing.',
   },
   P1: {
     activityLevel: 'Instructions:\n1. Consider daily movement outside of the gym (job, chores).\n2. Sedentary = Desk job, minimal walking.\n3. Active = Standing job or 10k+ steps daily.',
     stepsPerDay: 'Typical daily steps over the last 1–2 weeks (watch/phone estimate is fine).',
     sedentaryHours: 'Approximate hours spent sitting or inactive on a typical day.',
-    workHoursPerDay: 'Typical hours worked per day. Helps tailor training volume and recovery.',
-    sleepQuality: 'Coach framing: overall restfulness and continuity (uninterrupted sleep, fewer awakenings, feel rested). Not deep sleep %, just perceived quality.',
-    sleepDuration: 'Average total hours of sleep per night over the last 1–2 weeks.',
-    sleepConsistency: 'How consistent are bedtime and wake times across the week.',
+    sleepArchetype: 'Select the option that best describes your overall sleep pattern.',
+    sleepQuality: 'Coach framing: overall restfulness and continuity (uninterrupted sleep, fewer awakenings, feel rested). Not deep sleep %, just perceived quality.', // Legacy
+    sleepDuration: 'Average total hours of sleep per night over the last 1–2 weeks.', // Legacy
+    sleepConsistency: 'How consistent are bedtime and wake times across the week.', // Legacy
     stressLevel: 'Perceived day-to-day stress (work, life load). Helps modulate training intensity.',
     nutritionHabits: 'Overall food quality and consistency (protein, whole foods, balanced meals).',
     hydrationHabits: 'Typical daily water/fluid intake and consistency.',
@@ -247,7 +250,8 @@ export const ASSESSMENT_TOOLTIPS = {
     lungePainLevel: 'Rate the intensity of the pain reported.',
     mobilityHip: 'Instructions:\n1. Perform active hip flexion and internal/external rotation tests.\n2. Record range of motion quality.',
     mobilityShoulder: 'Instructions:\n1. Perform reaching tests (Apley scratch test or similar).\n2. Record quality of overhead and behind-back reach.',
-    mobilityAnkle: 'Instructions:\n1. Knee-to-wall test or similar dorsiflexion check.\n2. Note if movement is restricted by tightness or joint block.',
+    mobilityAnkleLeft: 'Instructions:\n1. Knee-to-wall test on the left ankle.\n2. Note if movement is restricted by tightness or joint block.',
+    mobilityAnkleRight: 'Instructions:\n1. Knee-to-wall test on the right ankle.\n2. Note if movement is restricted by tightness or joint block.',
   },
   P5: {
     squatsOneMinuteReps: 'Instructions:\n1. Set timer for 60 seconds.\n2. Count only reps with full range of motion (thighs parallel to floor).\n3. Stop immediately when time expires.',
@@ -263,7 +267,7 @@ export const ASSESSMENT_TOOLTIPS = {
     clientGoals: 'Instructions:\n1. Select all goals that apply to the client.\n2. Specific levels will be requested for each selection to calibrate the roadmap.',
     goalLevelWeightLoss: 'Select your target weight loss. This can be a percentage of your total body weight or a specific amount in kilograms.',
     goalLevelMuscle: 'Select your target muscle gain in kilograms. The recommended option provides a realistic and sustainable rate of muscle growth.',
-    goalLevelStrength: 'Select your target strength milestone. These benchmarks help calibrate your strength programming.',
+    goalLevelStrength: 'Select your target strength improvement. Recommended options are based on your training experience and current fitness level.',
     goalLevelFitness: 'Select your target fitness level. Targets are based on VO2 max percentiles and include specific RHR and recovery HR goals.',
     goalLevelBodyRecomp: 'Select your target body composition look. Body recomposition uses a slight calorie deficit to lose fat while building muscle simultaneously. Target body fat percentages are automatically adjusted based on your gender.',
   },
@@ -279,7 +283,6 @@ export const ASSESSMENT_PLACEHOLDERS = {
   P1: {
     stepsPerDay: 'e.g., 6500',
     sedentaryHours: 'e.g., 8',
-    workHoursPerDay: 'e.g., 9',
     caffeineCupsPerDay: 'e.g., 2',
   },
   P2: {
@@ -341,16 +344,14 @@ export const ASSESSMENT_OPTIONS = {
     { value: 'stopped-3-months', label: 'Stopped < 3 months ago' },
     { value: 'stopped-6-months', label: 'Stopped > 6 months ago' },
   ],
-  primaryTrainingStyle: [
+  primaryTrainingStyles: [
     { value: 'bodybuilding', label: 'Bodybuilding / Hypertrophy' },
     { value: 'powerlifting', label: 'Powerlifting / Strength' },
     { value: 'crossfit', label: 'CrossFit / Functional Fitness' },
-    { value: 'calisthenics', label: 'Calisthenics / Bodyweight' },
     { value: 'running', label: 'Running / Endurance' },
     { value: 'yoga-pilates', label: 'Yoga / Pilates' },
     { value: 'hiit', label: 'HIIT / Bootcamps' },
-    { value: 'sports-performance', label: 'Sports Performance' },
-    { value: 'general-wellness', label: 'General Wellness' },
+    { value: 'other', label: 'Other' },
   ],
   clientGoals: [
     { value: 'build-muscle', label: 'Build muscle' },
@@ -374,33 +375,14 @@ export const ASSESSMENT_OPTIONS = {
     { value: '6', label: '6 kg (recommended)' },
     { value: '8', label: '8 kg' },
   ],
-  goalLevelStrength: {
-    male: [
-      { value: '2x-bw-deadlift', label: '2.0x BW Deadlift' },
-      { value: '1.75x-bw-squat', label: '1.75x BW Squat' },
-      { value: '1.5x-bw-bench', label: '1.5x BW Bench Press' },
-      { value: 'powerlifting-total', label: 'Maximize Total' },
-    ],
-    female: [
-      { value: '1.5x-bw-deadlift', label: '1.75x/1.5x BW Deadlift' },
-      { value: '1.5x-bw-squat', label: '1.5x BW Squat' },
-      { value: '1x-bw-bench', label: '1.0x BW Bench' },
-      { value: 'chinup-mastery', label: '3 Strict Pull-ups' },
-    ],
-    intermediate: [
-      { value: '0.75x-bw-bench', label: '0.75x BW Bench' },
-      { value: '1x-bw-squat', label: '1.0x BW Squat' },
-      { value: '1.25x-bw-deadlift', label: '1.25x BW Deadlift' },
-      { value: 'pullup-mastery', label: '10 Pull-ups' },
-      { value: 'pushup-mastery', label: '10 Pushups' },
-    ],
-    beginner: [
-      { value: 'technique-mastery', label: 'Master Technique' },
-      { value: 'linear-progression', label: 'Linear Progression' },
-      { value: 'bodyweight-basics', label: 'Bodyweight Basics' },
-      { value: 'core-foundation', label: 'Core Foundation' },
-    ],
-  },
+  goalLevelStrength: [
+    { value: 'foundation', label: 'Build a foundation – Focus on technique and consistency' },
+    { value: 'modest-10-15', label: 'Improve strength by 10-15% – Modest, sustainable gains' },
+    { value: 'solid-20-25', label: 'Improve strength by 20-25% – Solid progress' },
+    { value: 'ambitious-30-40', label: 'Improve strength by 30-40% – Ambitious gains' },
+    { value: 'aggressive-50', label: 'Improve strength by 50%+ – Aggressive progression' },
+    { value: 'maximize', label: 'Maximize strength potential – Elite-level focus' },
+  ],
   goalLevelFitness: [
     { value: 'health', label: 'Health Focus (50th percentile)' },
     { value: 'active', label: 'Active (75th percentile) (recommended)' },
@@ -421,6 +403,13 @@ export const ASSESSMENT_OPTIONS = {
     { value: 'very-active', label: 'Very Active' },
     { value: 'extremely-active', label: 'Extremely Active' },
   ],
+  sleepArchetype: [
+    { value: 'excellent', label: 'My sleep is consistent – I get 7-9 hours with minimal disruptions' },
+    { value: 'good', label: 'I get enough sleep but my schedule or quality varies' },
+    { value: 'fair', label: 'I often don\'t get enough sleep or wake frequently' },
+    { value: 'poor', label: 'Sleep is a major challenge – irregular schedule and poor quality' },
+  ],
+  // Legacy sleep options kept for backward compatibility
   sleepQuality: [
     { value: 'poor', label: 'Poor' },
     { value: 'fair', label: 'Fair' },
@@ -439,23 +428,22 @@ export const ASSESSMENT_OPTIONS = {
     { value: 'very-consistent', label: 'Very consistent' },
   ],
   stressLevel: [
-    { value: 'very-low', label: 'Very low' },
-    { value: 'low', label: 'Low' },
-    { value: 'moderate', label: 'Moderate' },
-    { value: 'high', label: 'High' },
-    { value: 'very-high', label: 'Very high' },
+    { value: 'very-low', label: 'I manage stress well and feel balanced most days' },
+    { value: 'low', label: 'I experience some stress but cope reasonably' },
+    { value: 'moderate', label: 'Stress affects me regularly and impacts my energy' },
+    { value: 'high', label: 'I\'m frequently stressed and it significantly affects my life' },
   ],
   nutritionHabits: [
-    { value: 'poor', label: 'Poor' },
-    { value: 'fair', label: 'Fair' },
-    { value: 'good', label: 'Good' },
-    { value: 'excellent', label: 'Excellent' },
+    { value: 'excellent', label: 'I eat mostly whole foods with balanced meals and consistent timing' },
+    { value: 'good', label: 'I try to eat healthy but struggle with consistency' },
+    { value: 'fair', label: 'My diet varies a lot – sometimes good, sometimes not' },
+    { value: 'poor', label: 'I\'m not in control of my eating – mostly takeout/processed' },
   ],
   hydrationHabits: [
-    { value: 'poor', label: 'Poor' },
-    { value: 'fair', label: 'Fair' },
-    { value: 'good', label: 'Good' },
-    { value: 'excellent', label: 'Excellent' },
+    { value: 'excellent', label: 'I drink plenty of water throughout the day consistently' },
+    { value: 'good', label: 'I try to stay hydrated but often forget' },
+    { value: 'fair', label: 'My water intake varies – sometimes good, sometimes poor' },
+    { value: 'poor', label: 'I rarely drink enough water' },
   ],
   // P3 Options
   cardioTestSelected: [

@@ -154,10 +154,13 @@ export const PhaseFormContent = ({
   });
   const {
     savingId,
+    isEditMode,
+    setIsEditMode,
     shareLoading,
     setShareLoading,
     handleSaveToDashboard,
     ensureShareArtifacts,
+    highlightCategory,
   } = saveHook;
 
   const cameraHook = useCameraHandler({
@@ -455,10 +458,39 @@ export const PhaseFormContent = ({
     const expandedSectionId = Object.keys(expandedSections).find(id => expandedSections[id]);
     const activeSection = allSections.find(s => s.id === expandedSectionId) || allSections[0];
     if (!activeSection) return null;
+    // Handle going to previous section/phase
+    const handleGoToPreviousSection = () => {
+      const currentIndex = allSections.findIndex(s => s.id === activeSection.id);
+      if (currentIndex > 0) {
+        // Go to last field of previous section in same phase
+        const prevSection = allSections[currentIndex - 1];
+        setExpandedSections({ [prevSection.id]: true });
+        // Set to last field of previous section
+        const prevSectionFields = (prevSection.fields || []).length;
+        setActiveFieldIdx(Math.max(0, prevSectionFields - 1));
+      } else if (activePhaseIdx > 0) {
+        // Go to last field of last section in previous phase
+        const prevPhaseIdx = visiblePhases.findIndex((_, i) => i === activePhaseIdx) - 1;
+        if (prevPhaseIdx >= 0) {
+          const prevPhase = visiblePhases[prevPhaseIdx];
+          const prevPhaseSections = prevPhase.sections || [];
+          if (prevPhaseSections.length > 0) {
+            const lastSection = prevPhaseSections[prevPhaseSections.length - 1];
+            setActivePhaseIdx(prevPhaseIdx);
+            setExpandedSections({ [lastSection.id]: true });
+            const lastSectionFields = (lastSection.fields || []).length;
+            setActiveFieldIdx(Math.max(0, lastSectionFields - 1));
+          } else {
+            setActivePhaseIdx(prevPhaseIdx);
+          }
+        }
+      }
+    };
+
     return (
-      <SingleFieldFlow 
+      <SingleFieldFlow
         key={activeSection.id}
-        section={activeSection} 
+        section={activeSection}
         activeFieldIdx={activeFieldIdx}
         setActiveFieldIdx={setActiveFieldIdx}
         onShowCamera={(mode) => {
@@ -467,6 +499,7 @@ export const PhaseFormContent = ({
         }}
         onShowPostureCompanion={() => setShowPostureCompanion(true)}
         onShowInBodyCompanion={() => setShowInBodyCompanion(true)}
+        onGoToPreviousSection={handleGoToPreviousSection}
         onComplete={() => {
           const currentIndex = allSections.findIndex(s => s.id === activeSection.id);
           if (currentIndex < allSections.length - 1) {
@@ -554,11 +587,13 @@ export const PhaseFormContent = ({
               }>
                 <AssessmentResults
                   formData={formData}
-                      scores={scores} 
-                      roadmap={roadmap} 
-                      plan={plan} 
+                  scores={scores}
+                  roadmap={roadmap}
+                  plan={plan}
                   bodyCompInterp={bodyCompInterp}
                   savingId={savingId}
+                  isEditMode={isEditMode}
+                  onClearEditMode={() => setIsEditMode(false)}
                   onStartNew={handleStartNewAssessment}
                   onShare={(view) => {
                     handleShare(view);
@@ -573,7 +608,8 @@ export const PhaseFormContent = ({
                     handleWhatsAppShare(view);
                   }}
                   shareLoading={shareLoading}
-                    />
+                  highlightCategory={highlightCategory}
+                />
               </React.Suspense>
             )}
           </section>

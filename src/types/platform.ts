@@ -66,6 +66,20 @@ export interface DataAccessPermission {
   reason?: string; // Reason for access (e.g., "Support ticket #12345")
 }
 
+// Support access toggle for organizations (GDPR/HIPAA compliance)
+export interface SupportAccessSettings {
+  /** Whether platform support can access org data (default: false for privacy) */
+  supportAccessGranted: boolean;
+  /** When support access was granted */
+  supportAccessGrantedAt?: Date;
+  /** UID of the org admin who granted access */
+  supportAccessGrantedBy?: string;
+  /** When support access automatically expires (typically 7 days after granting) */
+  supportAccessExpiresAt?: Date;
+  /** Optional reason for granting access */
+  supportAccessReason?: string;
+}
+
 // Organization summary for platform admin view
 export interface OrganizationSummary {
   id: string;
@@ -93,7 +107,7 @@ export interface OrganizationDetails extends OrganizationSummary {
   phone?: string; // Organization phone number
   address?: string; // Physical address
   website?: string; // Organization website
-  
+
   // Additional details
   logoUrl?: string; // Organization logo
   gradientId?: string; // Branding gradient
@@ -107,6 +121,9 @@ export interface OrganizationDetails extends OrganizationSummary {
     migratedFromLegacy?: boolean;
     isInternal?: boolean; // True for owner's company (e.g., One Fitness)
   };
+
+  // Support access settings for GDPR/HIPAA compliance
+  supportAccess?: SupportAccessSettings;
 }
 
 // AI cost breakdown per organization

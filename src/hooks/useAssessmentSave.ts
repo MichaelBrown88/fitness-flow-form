@@ -36,11 +36,13 @@ export function useAssessmentSave({
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [shareLoading, setShareLoading] = useState(false);
   const [shareCache, setShareCache] = useState<Record<'client' | 'coach', ShareArtifacts | null>>({
     client: null,
     coach: null,
   });
+  const [highlightCategory, setHighlightCategory] = useState<string | undefined>(undefined);
   const shareCacheRef = useRef<Record<'client' | 'coach', ShareArtifacts | null>>({
     client: null,
     coach: null,
@@ -75,11 +77,11 @@ export function useAssessmentSave({
             );
             assessmentId = parsed.assessmentId;
             sessionStorage.removeItem(STORAGE_KEYS.EDIT_ASSESSMENT);
-            // Store the assessment ID for potential navigation
-            sessionStorage.setItem(STORAGE_KEYS.LAST_UPDATED_ID, assessmentId);
-            toast({ 
-              title: UI_TOASTS.SUCCESS.ASSESSMENT_UPDATED, 
-              description: `Assessment for ${clientName} has been updated without changing the original date.` 
+            // Set edit mode flag (used by AssessmentResults for navigation)
+            setIsEditMode(true);
+            toast({
+              title: UI_TOASTS.SUCCESS.ASSESSMENT_UPDATED,
+              description: `Assessment for ${clientName} has been updated without changing the original date.`
             });
             setSavingId(assessmentId);
             setSaving(false);
@@ -118,7 +120,7 @@ export function useAssessmentSave({
             await createOrUpdateClientProfile(user.uid, storedName || clientName, updateData, profile?.organizationId, profile);
           }
           
-          sessionStorage.setItem(STORAGE_KEYS.HIGHLIGHT_CATEGORY, category);
+          setHighlightCategory(category);
           sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
         } else {
           assessmentId = await saveCoachAssessment(user.uid, user.email, formData, scores.overall, profile?.organizationId, profile);
@@ -210,10 +212,13 @@ export function useAssessmentSave({
   return {
     saving,
     savingId,
+    isEditMode,
+    setIsEditMode,
     shareLoading,
     setShareLoading,
     shareCache,
     handleSaveToDashboard,
     ensureShareArtifacts,
+    highlightCategory,
   };
 }

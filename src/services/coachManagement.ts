@@ -183,8 +183,8 @@ export async function getOrgCoaches(orgId: string): Promise<Array<{
     
     snapshot.docs.forEach(doc => {
       const data = doc.data();
-      // Only get coaches, not admins (admins are not coaches unless they explicitly add themselves)
-      if (data.role === 'coach') {
+      // Include both coaches and org_admins (admins can also perform assessments)
+      if (data.role === 'coach' || data.role === 'org_admin') {
         coaches.push({
           uid: doc.id,
           displayName: data.displayName || data.email || 'Unknown',

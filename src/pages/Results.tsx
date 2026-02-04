@@ -159,14 +159,15 @@ const Results = () => {
         <div className="mx-auto max-w-xl space-y-4 rounded-lg border border-slate-200 bg-white p-6 text-slate-700">
           <h1 className="text-lg font-semibold">Assessment unavailable</h1>
           <p className="text-sm text-slate-500">{error ?? 'Result not found. Please generate a new assessment.'}</p>
-          <Button 
+          <Button
             onClick={() => {
               // CRITICAL: Clear all assessment modes to prevent data bleed
               sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
               sessionStorage.removeItem(STORAGE_KEYS.EDIT_ASSESSMENT);
+              sessionStorage.removeItem(STORAGE_KEYS.PREFILL_CLIENT);
               sessionStorage.removeItem(STORAGE_KEYS.IS_DEMO);
               navigate('/assessment');
-            }} 
+            }}
             className="bg-slate-900 text-white hover:bg-slate-800"
           >
             Start New Assessment
@@ -184,12 +185,13 @@ const Results = () => {
       subtitle={`${input.assignedCoach || 'Coach'} · Assessment Summary`}
       actions={
         <div className="flex gap-2">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => {
               // CRITICAL: Clear all assessment modes to prevent data bleed
               sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
               sessionStorage.removeItem(STORAGE_KEYS.EDIT_ASSESSMENT);
+              sessionStorage.removeItem(STORAGE_KEYS.PREFILL_CLIENT);
               sessionStorage.removeItem(STORAGE_KEYS.IS_DEMO);
               navigate('/assessment');
             }}

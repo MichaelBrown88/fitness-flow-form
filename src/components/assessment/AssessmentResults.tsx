@@ -27,12 +27,15 @@ interface AssessmentResultsProps {
   plan: import('@/lib/recommendations').CoachPlan;
   bodyCompInterp: import('@/lib/recommendations').BodyCompInterpretation | null;
   savingId: string | null;
+  isEditMode?: boolean;
+  onClearEditMode?: () => void;
   onStartNew: () => void;
   onShare: (view: 'client' | 'coach') => void;
   onCopyLink: (view: 'client' | 'coach') => void;
   onEmailLink: (view: 'client' | 'coach') => void;
   onWhatsAppShare: (view: 'client' | 'coach') => void;
   shareLoading: boolean;
+  highlightCategory?: string;
 }
 
 const AssessmentResults: React.FC<AssessmentResultsProps> = ({
@@ -42,31 +45,24 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
   plan,
   bodyCompInterp,
   savingId,
+  isEditMode,
+  onClearEditMode,
   onStartNew,
   onShare,
   onCopyLink,
   onEmailLink,
   onWhatsAppShare,
-  shareLoading
+  shareLoading,
+  highlightCategory
 }) => {
   const navigate = useNavigate();
   const [reportView, setReportView] = useState<'client' | 'coach'>('client');
   const { user } = useAuth();
-  
-  // Check if we're in edit mode (just updated an assessment)
-  // If lastUpdatedAssessmentId exists in sessionStorage and matches savingId, we're in edit mode
-  const lastUpdatedAssessmentId = typeof window !== 'undefined' && savingId
-    ? (() => {
-        const stored = sessionStorage.getItem('lastUpdatedAssessmentId');
-        // If stored ID matches savingId, we're in edit mode
-        return stored === savingId ? stored : null;
-      })()
-    : null;
-  
+
   const handleViewReport = () => {
-    if (!user || !lastUpdatedAssessmentId) return;
-    sessionStorage.removeItem('lastUpdatedAssessmentId');
-    navigate(`/coach/assessments/${lastUpdatedAssessmentId}`);
+    if (!user || !savingId || !isEditMode) return;
+    onClearEditMode?.();
+    navigate(`/coach/assessments/${savingId}`);
   };
 
   return (
@@ -115,7 +111,7 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
           </DropdownMenu>
 
 
-          {lastUpdatedAssessmentId && (
+          {isEditMode && savingId && (
             <Button 
               variant="outline" 
               size="lg" 
@@ -151,12 +147,12 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
               standalone={false}
             />
           ) : (
-            <CoachReport 
-              plan={plan} 
-              scores={scores} 
-              bodyComp={bodyCompInterp} 
-              formData={formData} 
-              highlightCategory={sessionStorage.getItem('highlightCategory') || undefined}
+            <CoachReport
+              plan={plan}
+              scores={scores}
+              bodyComp={bodyCompInterp}
+              formData={formData}
+              highlightCategory={highlightCategory}
             />
           )}
         </Suspense>

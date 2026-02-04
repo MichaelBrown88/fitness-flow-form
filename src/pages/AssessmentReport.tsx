@@ -171,6 +171,7 @@ const AssessmentReport = () => {
             // CRITICAL: Clear all assessment modes to prevent data bleed
             sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
             sessionStorage.removeItem(STORAGE_KEYS.EDIT_ASSESSMENT);
+            sessionStorage.removeItem(STORAGE_KEYS.PREFILL_CLIENT);
             sessionStorage.removeItem(STORAGE_KEYS.IS_DEMO);
             navigate(ROUTES.ASSESSMENT);
           }}>New assessment</Button>
@@ -256,6 +257,8 @@ const AssessmentReport = () => {
             // Clear any partial assessment data to ensure full assessment
             sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
             sessionStorage.removeItem(STORAGE_KEYS.EDIT_ASSESSMENT);
+            sessionStorage.removeItem(STORAGE_KEYS.PREFILL_CLIENT);
+            sessionStorage.removeItem(STORAGE_KEYS.IS_DEMO);
             navigate('/assessment');
           }}>
             New assessment

@@ -98,11 +98,3 @@ export const LIMITS = {
   MAX_CLIENTS_QUERY: 100,
 } as const;
 
-// PDF Settings
-export const PDF_SETTINGS = {
-  FILENAME_PREFIX: 'Fitness-Assessment-',
-  FONT_LOAD_DELAY_MS: 300,
-  SCALE: 3,
-  MARGIN_MM: 10,
-} as const;
-

@@ -1,7 +1,7 @@
 import * as admin from 'firebase-admin';
 import type { CallableRequest } from 'firebase-functions/v2/https';
 import { APP_HOST, SENDGRID_API_KEY, SENDGRID_FROM } from './config';
-import { ensureReportArtifacts, getSignedPdfUrl } from './artifacts';
+import { ensureReportArtifacts } from './artifacts';
 import type { PublicReportDoc } from './types';
 
 let sendgridMail: typeof import('@sendgrid/mail') | null = null;
@@ -49,13 +49,13 @@ async function getPublicReportToken(coachUid: string, assessmentId: string): Pro
     .where('assessmentId', '==', assessmentId)
     .where('visibility', '==', 'public')
     .limit(1);
-  
+
   const snapshot = await query.get();
   if (!snapshot.empty) {
     // Found token-based report
     return snapshot.docs[0].id; // Document ID is the token
   }
-  
+
   // Fallback to legacy ID-based lookup
   const legacyRef = getDb().doc(`publicReports/${coachUid}__${assessmentId}`);
   const legacySnap = await legacyRef.get();
@@ -64,14 +64,14 @@ async function getPublicReportToken(coachUid: string, assessmentId: string): Pro
     // The client will generate one on next share
     return null;
   }
-  
+
   return null;
 }
 
 async function ensurePublicReport(coachUid: string, assessmentId: string) {
   // Try token-based first
   const token = await getPublicReportToken(coachUid, assessmentId);
-  
+
   if (token) {
     const ref = getDb().doc(`publicReports/${token}`);
     const snap = await ref.get();
@@ -79,7 +79,7 @@ async function ensurePublicReport(coachUid: string, assessmentId: string) {
       return snap.data() as PublicReportDoc | undefined;
     }
   }
-  
+
   // Fallback to legacy ID-based
   const legacyRef = getDb().doc(`publicReports/${coachUid}__${assessmentId}`);
   const snap = await legacyRef.get();
@@ -100,31 +100,26 @@ export async function requestShareLinks(request: CallableRequest<SharePayload>) 
     const coachUid = assertAuthenticated(request);
     const data = request.data;
     const assessmentId = data.assessmentId;
-    const view: ShareView = data.view === 'coach' ? 'coach' : 'client';
 
     if (!assessmentId) {
       throw new Error('invalid-argument');
     }
 
     const report = await ensurePublicReport(coachUid, assessmentId);
-    if (!report || !report.artifacts) {
+    if (!report) {
       throw new Error('failed-precondition');
     }
 
-    const pdfPath = view === 'coach' ? report.artifacts.coachPdfPath : report.artifacts.clientPdfPath;
-    const pdfUrl = await getSignedPdfUrl(pdfPath);
-    
     // Try to get token-based URL, fallback to legacy
     const token = await getPublicReportToken(coachUid, assessmentId);
-    const shareUrl = token 
-      ? `${APP_HOST}/r/${token}` 
+    const shareUrl = token
+      ? `${APP_HOST}/r/${token}`
       : (report.shareUrl || `${APP_HOST}/share/${coachUid}/${assessmentId}`);
-    
+
     const whatsappText = `Here is your One Fitness assessment report:\n${shareUrl}`;
 
     return {
       shareUrl,
-      pdfUrl,
       whatsappText,
     };
   } catch (err) {
@@ -150,17 +145,17 @@ export async function sendReportEmail(request: CallableRequest<EmailPayload>) {
   }
 
   const view: ShareView = data.view === 'coach' ? 'coach' : 'client';
-  
+
   // Get share URL by calling the internal logic
   const report = await ensurePublicReport(coachUid, data.assessmentId);
-  if (!report || !report.artifacts) {
+  if (!report) {
     throw new Error('failed-precondition');
   }
-  
+
   // Try to get token-based URL, fallback to legacy
   const token = await getPublicReportToken(coachUid, data.assessmentId);
-  const shareUrl = token 
-    ? `${APP_HOST}/r/${token}` 
+  const shareUrl = token
+    ? `${APP_HOST}/r/${token}`
     : (report.shareUrl || `${APP_HOST}/share/${coachUid}/${data.assessmentId}`);
   const subject =
     view === 'coach'
@@ -178,10 +173,3 @@ export async function sendReportEmail(request: CallableRequest<EmailPayload>) {
 
   return { ok: true, coachUid };
 }
-
-
-
-
-
-
-

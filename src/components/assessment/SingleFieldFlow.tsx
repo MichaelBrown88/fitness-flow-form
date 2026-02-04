@@ -26,6 +26,7 @@ interface SingleFieldFlowProps {
   onShowCamera?: (mode: 'ocr' | 'posture') => void;
   onShowPostureCompanion?: () => void;
   onShowInBodyCompanion?: () => void;
+  onGoToPreviousSection?: () => void;
 }
 
 export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
@@ -35,7 +36,8 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
   onComplete,
   onShowCamera,
   onShowPostureCompanion,
-  onShowInBodyCompanion
+  onShowInBodyCompanion,
+  onGoToPreviousSection
 }) => {
   const { formData, updateFormData } = useFormContext();
   const { orgSettings } = useAuth();
@@ -118,6 +120,9 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
   const handleBack = () => {
     if (activeFieldIdx > 0) {
       setActiveFieldIdx(prev => prev - 1);
+    } else if (onGoToPreviousSection) {
+      // On first field, go to previous section
+      onGoToPreviousSection();
     }
   };
 
@@ -183,11 +188,12 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
                       {field.side} Side
                     </span>
                   )}
-                  <FieldControl 
+                  <FieldControl
                     field={field}
                     onShowCamera={onShowCamera}
                     onShowPostureCompanion={onShowPostureCompanion}
                     onShowInBodyCompanion={onShowInBodyCompanion}
+                    onExitParQ={handleBack}
                   />
                 </div>
               ))}
@@ -272,23 +278,24 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
                     {field.side} Side
                   </span>
                 )}
-                <FieldControl 
+                <FieldControl
                   field={field}
                   onShowCamera={onShowCamera}
                   onShowPostureCompanion={onShowPostureCompanion}
                   onShowInBodyCompanion={onShowInBodyCompanion}
+                  onExitParQ={handleBack}
                 />
               </div>
             ))}
           </div>
         )}
-        
+
         {( !isParqField || formData.parqQuestionnaire === 'completed' ) && (
         <div className="flex items-center justify-between mt-12 pt-8 border-t border-slate-50">
           <Button
             variant="ghost"
             onClick={handleBack}
-              disabled={activeFieldIdx === 0}
+              disabled={activeFieldIdx === 0 && !onGoToPreviousSection}
             className="h-12 px-6 rounded-xl font-bold text-slate-400 hover:text-slate-900"
           >
             <ChevronLeft className="mr-2 h-5 w-5" />

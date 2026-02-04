@@ -3,6 +3,10 @@ import { useFormContext } from '@/contexts/FormContext';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
 
+interface ParQQuestionnaireProps {
+  onExitParQ?: () => void;
+}
+
 interface ParQQuestion {
   id: string;
   question: string;
@@ -68,7 +72,7 @@ const parqQuestions: ParQQuestion[] = [
   },
 ];
 
-const ParQQuestionnaire: React.FC = () => {
+const ParQQuestionnaire: React.FC<ParQQuestionnaireProps> = ({ onExitParQ }) => {
   const { formData, updateFormData } = useFormContext();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [showMedicalClearanceWarning, setShowMedicalClearanceWarning] = useState(false);
@@ -130,6 +134,9 @@ const ParQQuestionnaire: React.FC = () => {
   const goToPrevious = () => {
     if (validQuestionIndex > 0) {
       setCurrentQuestionIndex(prev => prev - 1);
+    } else if (onExitParQ) {
+      // On first question, allow exiting PAR-Q to go back
+      onExitParQ();
     }
   };
 
@@ -263,7 +270,7 @@ const ParQQuestionnaire: React.FC = () => {
         <Button
           variant="ghost"
           onClick={goToPrevious}
-          disabled={currentQuestionIndex === 0}
+          disabled={currentQuestionIndex === 0 && !onExitParQ}
           className="h-12 px-6 rounded-xl font-bold text-slate-500 hover:bg-white hover:text-slate-900 transition-all"
         >
           <ChevronLeft className="mr-2 h-5 w-5" />

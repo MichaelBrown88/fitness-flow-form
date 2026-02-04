@@ -170,8 +170,105 @@ export interface PostureAnalysisResult {
   };
 }
 
+/**
+ * Result from auto-detecting posture view orientation
+ */
+export interface PostureViewClassification {
+  view: 'front' | 'back' | 'side-left' | 'side-right';
+  confidence: number; // 0-1 confidence score
+}
+
+/**
+ * Auto-detect posture image view orientation using Gemini AI
+ * Uses JSON mode with structured schema for reliable parsing
+ */
+export async function classifyPostureView(
+  imageBase64: string
+): Promise<PostureViewClassification> {
+  const coachUid = auth.currentUser?.uid || 'anonymous';
+
+  try {
+    await logAIUsage(coachUid, 'posture_classify', 'view_detection', 'gemini');
+
+    const firebaseApp = getApp();
+    const ai = getAI(firebaseApp, {
+      backend: new VertexAIBackend()
+    });
+
+    const model = getGenerativeModel(ai, {
+      model: CONFIG.AI.GEMINI.MODEL_NAME,
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "object",
+          properties: {
+            view: {
+              type: "string",
+              enum: ["front", "back", "side-left", "side-right"]
+            },
+            confidence: {
+              type: "number"
+            }
+          },
+          required: ["view", "confidence"]
+        }
+      }
+    });
+
+    const prompt = `Analyze this posture photo and determine the camera angle/view orientation.
+
+Classify as one of:
+- "front": Person is facing the camera (can see face, chest)
+- "back": Person is facing away from camera (can see back of head, back)
+- "side-left": Person's LEFT side is toward camera (their left arm/leg visible in foreground)
+- "side-right": Person's RIGHT side is toward camera (their right arm/leg visible in foreground)
+
+Key indicators:
+- Front: Face visible, shoulders squared toward camera
+- Back: Back of head visible, spine/shoulder blades visible
+- Side-left: Left ear visible, left shoulder forward, left hip visible
+- Side-right: Right ear visible, right shoulder forward, right hip visible
+
+Return a JSON object with "view" (the classification) and "confidence" (0-1 score).`;
+
+    // Clean base64 if it has data URL prefix
+    const cleanBase64 = imageBase64.includes('base64,')
+      ? imageBase64.split('base64,')[1]
+      : imageBase64;
+
+    const imagePart = {
+      inlineData: {
+        mimeType: "image/jpeg",
+        data: cleanBase64
+      }
+    };
+
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [imagePart, { text: prompt }] }]
+    });
+
+    const responseText = result.response.text();
+    const parsed = JSON.parse(responseText) as PostureViewClassification;
+
+    // Validate the response
+    const validViews = ['front', 'back', 'side-left', 'side-right'];
+    if (!validViews.includes(parsed.view)) {
+      throw new Error(`Invalid view classification: ${parsed.view}`);
+    }
+
+    return {
+      view: parsed.view,
+      confidence: Math.max(0, Math.min(1, parsed.confidence || 0.5))
+    };
+  } catch (error) {
+    logger.error('[classifyPostureView] Classification failed:', error);
+    // Default to front view with low confidence on error
+    return { view: 'front', confidence: 0.3 };
+  }
+}
+
 export async function analyzePostureImage(
-  imageUrl: string, 
+  imageUrl: string,
   view: 'front' | 'side-right' | 'side-left' | 'back',
   landmarks?: PostureAnalysisResult['landmarks']
 ): Promise<PostureAnalysisResult> {

@@ -26,13 +26,15 @@ interface FieldControlProps {
   onShowCamera?: (mode: 'ocr' | 'posture') => void;
   onShowPostureCompanion?: () => void;
   onShowInBodyCompanion?: () => void;
+  onExitParQ?: () => void;
 }
 
 export function FieldControl({
   field,
   onShowCamera,
   onShowPostureCompanion,
-  onShowInBodyCompanion
+  onShowInBodyCompanion,
+  onExitParQ
 }: FieldControlProps) {
   const isMobile = useIsMobile();
   const {
@@ -180,7 +182,7 @@ export function FieldControl({
           />
         );
       case 'parq':
-        return <ParQQuestionnaire />;
+        return <ParQQuestionnaire onExitParQ={onExitParQ} />;
       case 'time':
       case 'date':
       case 'email':

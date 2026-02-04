@@ -1,0 +1,210 @@
+/**
+ * Platform Admin Service - Core Admin CRUD
+ *
+ * Handles platform admin user management:
+ * - Admin lookup and verification
+ * - Admin creation and migration
+ * - Login tracking
+ */
+
+import {
+  getDoc,
+  setDoc,
+  getDocs,
+  query,
+  where,
+  limit as firestoreLimit,
+} from 'firebase/firestore';
+import type { PlatformAdmin } from '@/types/platform';
+import { logger } from '@/lib/utils/logger';
+import {
+  getPlatformAdminsCollection,
+  getPlatformAdminDoc,
+  getPlatformAdminLookupDoc,
+} from '@/lib/database/collections';
+
+const PLATFORM_ADMIN_QUERY_LIMIT = 1;
+
+/**
+ * Check if a user is a platform admin by email
+ */
+export async function isPlatformAdmin(email: string): Promise<boolean> {
+  try {
+    // First check lookup collection (fast)
+    const lookupRef = getPlatformAdminLookupDoc(email);
+    const lookupSnap = await getDoc(lookupRef);
+
+    if (lookupSnap.exists()) return true;
+
+    // Fallback to query (for backwards compatibility)
+    const adminQuery = query(
+      getPlatformAdminsCollection(),
+      where('email', '==', email.toLowerCase()),
+      firestoreLimit(PLATFORM_ADMIN_QUERY_LIMIT)
+    );
+    const snapshot = await getDocs(adminQuery);
+    return !snapshot.empty;
+  } catch (error) {
+    // If it's a permission error, we want the caller to know so it can decide to proceed anyway
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'permission-denied') {
+      logger.warn('Permission denied checking admin status - likely unauthenticated');
+      throw error;
+    }
+    logger.error('Error checking platform admin status:', error);
+    return false;
+  }
+}
+
+/**
+ * Get platform admin by email
+ */
+export async function getPlatformAdminByEmail(email: string): Promise<PlatformAdmin | null> {
+  try {
+    // First check lookup collection to get UID
+    const lookupRef = getPlatformAdminLookupDoc(email);
+    const lookupSnap = await getDoc(lookupRef);
+
+    if (lookupSnap.exists()) {
+      const lookupData = lookupSnap.data();
+      const adminRef = getPlatformAdminDoc(lookupData.uid);
+      const adminSnap = await getDoc(adminRef);
+
+      if (adminSnap.exists()) {
+        return { uid: adminSnap.id, ...adminSnap.data() } as PlatformAdmin;
+      }
+    }
+
+    // Fallback to query
+    const adminQuery = query(
+      getPlatformAdminsCollection(),
+      where('email', '==', email.toLowerCase()),
+      firestoreLimit(PLATFORM_ADMIN_QUERY_LIMIT)
+    );
+    const snapshot = await getDocs(adminQuery);
+
+    if (snapshot.empty) return null;
+
+    const adminDoc = snapshot.docs[0];
+    return { uid: adminDoc.id, ...adminDoc.data() } as PlatformAdmin;
+  } catch (error) {
+    logger.error('Error fetching platform admin:', error);
+    return null;
+  }
+}
+
+/**
+ * Get platform admin by UID
+ */
+export async function getPlatformAdmin(uid: string): Promise<PlatformAdmin | null> {
+  try {
+    const docRef = getPlatformAdminDoc(uid);
+    const snapshot = await getDoc(docRef);
+
+    if (!snapshot.exists()) return null;
+
+    return { uid: snapshot.id, ...snapshot.data() } as PlatformAdmin;
+  } catch (error) {
+    logger.error('Error fetching platform admin:', error);
+    return null;
+  }
+}
+
+/**
+ * Create platform admin record (called after Firebase Auth account is created)
+ */
+export async function createPlatformAdmin(
+  uid: string,
+  email: string,
+  displayName: string
+): Promise<void> {
+  const normalizedEmail = email.toLowerCase();
+
+  // First, check if there's a pending admin record we need to migrate
+  const existingAdmin = await getPlatformAdminByEmail(normalizedEmail);
+
+  if (existingAdmin && existingAdmin.uid.startsWith('pending_')) {
+    // Migrate the pending record to the real UID
+    const oldAdminData = existingAdmin;
+
+    // Create new record with real UID
+    const admin: Omit<PlatformAdmin, 'uid'> = {
+      email: normalizedEmail,
+      displayName: oldAdminData.displayName || displayName,
+      permissions: oldAdminData.permissions,
+      isPasswordSet: true,
+      createdAt: oldAdminData.createdAt,
+      lastLoginAt: new Date(),
+    };
+
+    await setDoc(getPlatformAdminDoc(uid), admin);
+
+    // Update lookup to point to new UID
+    await setDoc(getPlatformAdminLookupDoc(normalizedEmail), {
+      uid: uid,
+      email: normalizedEmail,
+      updatedAt: new Date(),
+    }, { merge: true });
+
+    logger.info('Platform admin migrated from pending to real UID:', email);
+    return;
+  }
+
+  // Create new admin record
+  const admin: Omit<PlatformAdmin, 'uid'> = {
+    email: normalizedEmail,
+    displayName,
+    permissions: ['view_metrics', 'view_organizations', 'view_ai_costs', 'manage_organizations', 'manage_admins'],
+    isPasswordSet: false,
+    createdAt: new Date(),
+  };
+
+  await setDoc(getPlatformAdminDoc(uid), admin);
+
+  // Create lookup entry
+  await setDoc(getPlatformAdminLookupDoc(normalizedEmail), {
+    uid: uid,
+    email: normalizedEmail,
+    createdAt: new Date(),
+  });
+
+  logger.info('Platform admin created:', email);
+}
+
+/**
+ * Mark password as set for platform admin
+ */
+export async function markPasswordSet(uid: string): Promise<void> {
+  await setDoc(
+    getPlatformAdminDoc(uid),
+    { isPasswordSet: true, updatedAt: new Date() },
+    { merge: true }
+  );
+}
+
+/**
+ * Update last login timestamp for platform admin
+ */
+export async function updateLastLogin(uid: string): Promise<void> {
+  await setDoc(
+    getPlatformAdminDoc(uid),
+    { lastLoginAt: new Date() },
+    { merge: true }
+  );
+}
+
+/**
+ * Seed initial platform admin (one-time setup)
+ * This creates the platform admin record if it doesn't exist
+ */
+export async function seedPlatformAdmin(email: string, displayName: string): Promise<void> {
+  const existing = await getPlatformAdminByEmail(email);
+  if (existing) {
+    logger.info('Platform admin already exists:', email);
+    return;
+  }
+
+  // Create a placeholder record - UID will be updated when they first log in
+  const placeholderUid = `pending_${Date.now()}`;
+  await createPlatformAdmin(placeholderUid, email, displayName);
+  logger.info('Platform admin seeded:', email);
+}

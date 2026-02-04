@@ -3,11 +3,11 @@
  * Clean interface with color-coded guide box
  */
 
-import React from 'react';
+import React, { useRef } from 'react';
 import Webcam from 'react-webcam';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Camera, Loader2, RefreshCcw, Scan, X } from 'lucide-react';
+import { Camera, Loader2, RefreshCcw, Scan, X, ImagePlus } from 'lucide-react';
 import { CONFIG } from '@/config';
 
 const VIEWS = CONFIG.POSTURE_VIEWS;
@@ -42,6 +42,7 @@ interface CompanionUIProps {
   onCapture: () => void;
   onStartSequence: () => void;
   onCancelSequence?: () => void; // Cancel button handler
+  onFileUpload?: (file: File) => void; // Camera roll upload handler
   ocrReviewData: Record<string, string> | null;
   setOcrReviewData: React.Dispatch<React.SetStateAction<Record<string, string> | null>>;
   onApplyOcr: () => Promise<void>;
@@ -67,6 +68,7 @@ export function CompanionUI({
   onCapture,
   onStartSequence,
   onCancelSequence,
+  onFileUpload,
   ocrReviewData,
   setOcrReviewData,
   onApplyOcr,
@@ -74,6 +76,18 @@ export function CompanionUI({
   flowState = 'permissions',
   guideBoxState,
 }: CompanionUIProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && onFileUpload) {
+      onFileUpload(file);
+    }
+    // Reset input so the same file can be selected again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
   const fieldLabels: Record<string, string> = {
     inbodyScore: 'InBody Score',
     inbodyWeightKg: 'Weight (kg)',
@@ -240,10 +254,21 @@ export function CompanionUI({
         </div>
       )}
 
+      {/* Hidden file input for camera roll upload */}
+      {mode === 'posture' && onFileUpload && (
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,.heic,.heif"
+          onChange={handleFileChange}
+          className="hidden"
+        />
+      )}
+
       {/* Footer Controls - Only 2 buttons: Permission and Start Sequence */}
       {/* Hide all buttons during sequence - only guide box colors and audio cues guide the client */}
       {!isSequenceActive && (
-        <div className="absolute bottom-6 left-0 right-0 flex items-center justify-center z-40 px-6">
+        <div className="absolute bottom-6 left-0 right-0 flex flex-col items-center gap-3 z-40 px-6">
           {mode === 'inbody' ? (
             <button
               onClick={onCapture}
@@ -252,26 +277,60 @@ export function CompanionUI({
               <Camera className="h-6 w-6 text-white" />
             </button>
           ) : !hasPermission ? (
-            // Button 1: Permission
-            <Button 
-              onClick={requestPermission} 
-              className="bg-primary h-14 px-8 rounded-xl text-sm font-black uppercase shadow-lg"
-            >
-              Enable Camera & Motion
-            </Button>
+            // Permission buttons + upload option
+            <div className="flex flex-col items-center gap-3 w-full max-w-xs">
+              <Button
+                onClick={requestPermission}
+                className="bg-primary h-14 px-8 rounded-xl text-sm font-black uppercase shadow-lg w-full"
+              >
+                Enable Camera & Motion
+              </Button>
+              {onFileUpload && (
+                <Button
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="h-12 px-6 rounded-xl text-xs font-bold uppercase bg-white/10 border-white/30 text-white hover:bg-white/20 w-full flex items-center justify-center gap-2"
+                >
+                  <ImagePlus className="h-4 w-4" />
+                  Upload from Photos
+                </Button>
+              )}
+            </div>
           ) : flowState === 'ready' ? (
-            // Button 2: Start Sequence (only when ready, before sequence starts)
+            // Ready state: Start Sequence button + upload option
+            <div className="flex flex-col items-center gap-3 w-full max-w-xs">
+              <Button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (flowState === 'ready' && !isSequenceActive) {
+                    onStartSequence();
+                  }
+                }}
+                className="bg-emerald-500 hover:bg-emerald-600 h-16 px-10 rounded-xl text-base font-black uppercase shadow-lg text-white w-full"
+              >
+                Start Capture
+              </Button>
+              {onFileUpload && (
+                <Button
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="h-10 px-4 rounded-xl text-xs font-bold uppercase bg-white/10 border-white/30 text-white hover:bg-white/20 flex items-center justify-center gap-2"
+                >
+                  <ImagePlus className="h-3 w-3" />
+                  Upload from Photos
+                </Button>
+              )}
+            </div>
+          ) : onFileUpload ? (
+            // Other states: just show upload option
             <Button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (flowState === 'ready' && !isSequenceActive) {
-                  onStartSequence();
-                }
-              }}
-              className="bg-emerald-500 hover:bg-emerald-600 h-16 px-10 rounded-xl text-base font-black uppercase shadow-lg text-white"
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              className="h-12 px-6 rounded-xl text-xs font-bold uppercase bg-white/10 border-white/30 text-white hover:bg-white/20 flex items-center justify-center gap-2"
             >
-              Start Capture
+              <ImagePlus className="h-4 w-4" />
+              Upload from Photos
             </Button>
           ) : null}
         </div>

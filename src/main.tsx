@@ -5,25 +5,21 @@ import "./index.css";
 import '@/lib/utils/restoreAssessment';
 // Load test helpers
 import '@/lib/utils/testHelpers';
-// Load cleanup utilities (available in browser console)
-// Admin/debugging utilities (available in browser console via window.*)
-import '@/lib/setup/admin/cleanupOrganizations';
-import '@/lib/setup/admin/fixRealDataAndStats';
+import { logger } from '@/lib/utils/logger';
+
+// Temporary admin tools loader - remove after database fix
 import '@/lib/setup/admin/diagnoseData';
 import '@/lib/setup/admin/fixUserProfiles';
-import '@/lib/setup/admin/finalCleanup';
-import '@/lib/setup/admin/removeOrphanedOrg';
-import '@/lib/setup/admin/fixPlatformAdmin';
-import '@/lib/setup/admin/fixPlatformAdminProfile';
-import '@/lib/setup/admin/updateOneFitnessCoaches';
-import '@/lib/setup/admin/addOrganizationNames';
 import '@/lib/setup/admin/backfillAIUsageOrganizationId';
-import '@/lib/setup/admin/recalculateAICosts';
-import '@/lib/setup/admin/diagnosePublicReports';
-import '@/lib/setup/admin/checkCoachIdentity';
-import '@/lib/setup/seedPlatformAdmin';
-import '@/lib/setup/verifyDatabaseIntegrity';
-import { logger } from '@/lib/utils/logger';
+import '@/lib/setup/admin/fixRealDataAndStats';
+// New SaaS migration tools
+import '@/lib/setup/admin/auditDatabase';
+import '@/lib/setup/admin/createMissingClients';
+import '@/lib/setup/admin/cleanupUnusedFields';
+import '@/lib/setup/admin/deleteTestData';
+import '@/lib/setup/admin/migrateToSaas';
+import '@/lib/setup/admin/backfillAssessmentOrgId';
+import '@/lib/setup/admin/deleteUserProfile';
 
 // Error boundary for better debugging on iPad/Safari
 if (typeof window !== 'undefined') {

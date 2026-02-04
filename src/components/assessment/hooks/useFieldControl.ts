@@ -118,33 +118,77 @@ export function useFieldControl({ field }: UseFieldControlProps) {
       const isBeginner = history === 'beginner';
       const isAdvanced = history === 'advanced';
       return [
-        { 
-          value: 'healthy', 
+        {
+          value: 'healthy',
           label: `Healthy / Soft (${getBodyFatRange('healthy', gender)[0]}-${getBodyFatRange('healthy', gender)[1]}%)`,
           subtitle: isBeginner ? 'Great entry point for your level.' : undefined
         },
-        { 
-          value: 'fit', 
-          label: `Fit (${getBodyFatRange('fit', gender)[0]}-${getBodyFatRange('fit', gender)[1]}%)` 
+        {
+          value: 'fit',
+          label: `Fit (${getBodyFatRange('fit', gender)[0]}-${getBodyFatRange('fit', gender)[1]}%)`
         },
-        { 
-          value: 'athletic', 
+        {
+          value: 'athletic',
           label: `Athletic (${getBodyFatRange('athletic', gender)[0]}-${getBodyFatRange('athletic', gender)[1]}%)`,
           isRecommended: isBeginner,
           tag: isBeginner ? 'Recommended' : undefined,
           subtitle: isBeginner ? 'The "Holy Grail": Build muscle and lose fat simultaneously.' : undefined
         },
-        { 
-          value: 'shredded', 
+        {
+          value: 'shredded',
           label: `Shredded (<${getBodyFatRange('shredded', gender)[1]}%)`,
           subtitle: isAdvanced ? 'Not Recommended: Switch to distinct phases instead.' : undefined
         },
       ];
     }
-    
-    // ... other dynamic option logic from original component ...
-    // (Muscle Gain, Weight Loss, Strength levels)
-    // For brevity in this thought, I'll include the full logic in the final file.
+
+    // Dynamic strength goal recommendations based on training level and body composition
+    if (field.id === 'goalLevelStrength') {
+      const isBeginner = history === 'beginner';
+      const isIntermediate = history === 'intermediate';
+      const isAdvanced = history === 'advanced';
+      // Check if obese (>30% BF for males, >40% for females)
+      const isObese = bf > (gender === 'male' ? 30 : 40);
+
+      return [
+        {
+          value: 'foundation',
+          label: 'Build a foundation – Focus on technique and consistency',
+          isRecommended: isObese,
+          tag: isObese ? 'Recommended' : undefined,
+        },
+        {
+          value: 'modest-10-15',
+          label: 'Improve strength by 10-15% – Modest, sustainable gains',
+          isRecommended: isBeginner || isObese,
+          tag: (isBeginner && !isObese) ? 'Recommended' : undefined,
+        },
+        {
+          value: 'solid-20-25',
+          label: 'Improve strength by 20-25% – Solid progress',
+          isRecommended: isBeginner || isIntermediate || isObese,
+          tag: isIntermediate && !isObese ? 'Recommended' : undefined,
+        },
+        {
+          value: 'ambitious-30-40',
+          label: 'Improve strength by 30-40% – Ambitious gains',
+          isRecommended: isIntermediate || (isAdvanced && !isObese),
+          tag: (isIntermediate || (isAdvanced && !isObese)) ? 'Recommended' : undefined,
+        },
+        {
+          value: 'aggressive-50',
+          label: 'Improve strength by 50%+ – Aggressive progression',
+          isRecommended: isAdvanced && !isObese,
+          tag: undefined, // Don't auto-recommend this
+          subtitle: isObese ? 'Not recommended at current body composition' : undefined,
+        },
+        {
+          value: 'maximize',
+          label: 'Maximize strength potential – Elite-level focus',
+          subtitle: !isAdvanced ? 'Typically for advanced lifters with 2+ years experience' : undefined,
+        },
+      ];
+    }
 
     return field.options;
   }, [field.id, field.options, formData.gender, formData.trainingHistory, formData.inbodyWeightKg, formData.inbodyBodyFatPct, orgSettings?.equipmentConfig?.cardioEquipment?.enabled]);

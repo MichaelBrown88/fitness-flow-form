@@ -50,7 +50,7 @@ const pricingPlans = [
     features: [
       { text: 'Unlimited assessments', included: true },
       { text: 'Clinical Logic Engine analysis', included: true },
-      { text: 'Branded PDF reports', included: true },
+      { text: 'Branded live reports', included: true },
       { text: 'Client portal access', included: true },
       { text: 'Team members', included: false },
       { text: 'Custom domain', included: false },

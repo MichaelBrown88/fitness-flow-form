@@ -103,30 +103,36 @@ service cloud.firestore {
     }
     
     // 3. COACHES & LEGACY DATA
+    // Platform admin gets full read access for auditing/migration
+    // Write still requires proper ownership checks
     match /coaches/{coachId} {
-      allow read, write: if request.auth.uid == coachId ||
-                         (isAuthenticated() && 
-                          get(/databases/$(database)/documents/userProfiles/$(coachId)).data.organizationId == getUserProfile().organizationId &&
-                          getUserProfile().role == 'org_admin') ||
-                         (isPlatformAdmin() && 
-                          get(/databases/$(database)/documents/userProfiles/$(coachId)).data.organizationId != null && 
-                          hasDataAccessPermission(get(/databases/$(database)/documents/userProfiles/$(coachId)).data.organizationId));
-      
+      allow read: if request.auth.uid == coachId ||
+                  isPlatformAdmin() ||
+                  (isAuthenticated() &&
+                   get(/databases/$(database)/documents/userProfiles/$(coachId)).data.organizationId == getUserProfile().organizationId);
+      allow write: if request.auth.uid == coachId ||
+                   isPlatformAdmin() ||
+                   (isAuthenticated() &&
+                    get(/databases/$(database)/documents/userProfiles/$(coachId)).data.organizationId == getUserProfile().organizationId &&
+                    getUserProfile().role == 'org_admin');
+
       match /{document=**} {
-        allow read, write: if request.auth.uid == coachId ||
-                           (isAuthenticated() && 
-                            get(/databases/$(database)/documents/userProfiles/$(coachId)).data.organizationId == getUserProfile().organizationId &&
-                            getUserProfile().role == 'org_admin') ||
-                           (isPlatformAdmin() && 
-                            get(/databases/$(database)/documents/userProfiles/$(coachId)).data.organizationId != null && 
-                            hasDataAccessPermission(get(/databases/$(database)/documents/userProfiles/$(coachId)).data.organizationId));
+        allow read: if request.auth.uid == coachId ||
+                    isPlatformAdmin() ||
+                    (isAuthenticated() &&
+                     get(/databases/$(database)/documents/userProfiles/$(coachId)).data.organizationId == getUserProfile().organizationId);
+        allow write: if request.auth.uid == coachId ||
+                     isPlatformAdmin() ||
+                     (isAuthenticated() &&
+                      get(/databases/$(database)/documents/userProfiles/$(coachId)).data.organizationId == getUserProfile().organizationId &&
+                      getUserProfile().role == 'org_admin');
       }
     }
     
     // 4. SYSTEM STATS (Platform Admin Only)
     match /system_stats/{document} {
       allow read: if isPlatformAdmin();
-      allow write: if false; // Only Cloud Functions (server-side)
+      allow write: if isPlatformAdmin(); // Allow platform admin for maintenance
     }
     
     // 5. AI USAGE LOGS
@@ -138,10 +144,10 @@ service cloud.firestore {
       allow write: if false; // Only Cloud Functions update costs
     }
     
-    // 6. PLATFORM ADMINS (Read-only after setup)
+    // 6. PLATFORM ADMINS
     match /platform_admins/{adminId} {
       allow read: if isAuthenticated(); // Anyone authenticated can check
-      allow write: if false; // Only server-side (Cloud Functions)
+      allow write: if isPlatformAdmin(); // Platform admin can update (e.g., last login)
     }
     
     match /platform_admin_lookup/{lookupId} {

@@ -26,11 +26,11 @@ export interface FormData {
   goalLevelStrength: string;
   goalLevelFitness: string;
   activityLevel: string;
-  sleepDuration: string;
-  sleepQuality: string;
-  sleepConsistency: string;
+  sleepArchetype: string;
+  sleepDuration: string; // Legacy field
+  sleepQuality: string; // Legacy field
+  sleepConsistency: string; // Legacy field
   stressLevel: string;
-  workHoursPerDay: string;
   nutritionHabits: string;
   hydrationHabits: string;
   stepsPerDay: string;
@@ -40,7 +40,9 @@ export interface FormData {
   lastCaffeineIntake: string;
   trainingHistory: string;
   recentActivity: string;
-  primaryTrainingStyle: string;
+  primaryTrainingStyle: string; // Legacy field - kept for backward compatibility
+  primaryTrainingStyles: string[];
+  primaryTrainingStyleOther: string;
 
   /** Phase 1 — Foundational Health & Body Comp */
   parqQuestionnaire: string;
@@ -153,7 +155,9 @@ export interface FormData {
   shoulderMobilityReach: string;
   mobilityHip: string;
   mobilityShoulder: string;
-  mobilityAnkle: string;
+  mobilityAnkle: string; // Legacy field - kept for backward compatibility
+  mobilityAnkleLeft: string;
+  mobilityAnkleRight: string;
   movementNotes: string;
   pushupTest: string;
   squatTest: string;
@@ -243,11 +247,11 @@ const initialFormData: FormData = {
   goalLevelStrength: '',
   goalLevelFitness: '',
   activityLevel: '',
-  sleepDuration: '',
-  sleepQuality: '',
-  sleepConsistency: '',
+  sleepArchetype: '',
+  sleepDuration: '', // Legacy
+  sleepQuality: '', // Legacy
+  sleepConsistency: '', // Legacy
   stressLevel: '',
-  workHoursPerDay: '',
   nutritionHabits: '',
   hydrationHabits: '',
   stepsPerDay: '',
@@ -257,7 +261,9 @@ const initialFormData: FormData = {
   lastCaffeineIntake: '',
   trainingHistory: '',
   recentActivity: '',
-  primaryTrainingStyle: '',
+  primaryTrainingStyle: '', // Legacy field
+  primaryTrainingStyles: [],
+  primaryTrainingStyleOther: '',
   parqQuestionnaire: '',
   restingHeartRate: '',
   restingBPSystolic: '',
@@ -357,7 +363,9 @@ const initialFormData: FormData = {
   shoulderMobilityReach: '',
   mobilityHip: '',
   mobilityShoulder: '',
-  mobilityAnkle: '',
+  mobilityAnkle: '', // Legacy field
+  mobilityAnkleLeft: '',
+  mobilityAnkleRight: '',
   movementNotes: '',
   pushupTest: '',
   squatTest: '',

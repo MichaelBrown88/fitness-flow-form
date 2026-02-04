@@ -10,9 +10,10 @@ export type AssessmentDoc = {
   formData?: Record<string, unknown>;
 };
 
+// Legacy type for backwards compatibility with existing data
 export type ReportArtifacts = {
-  clientPdfPath: string;
-  coachPdfPath: string;
+  clientPdfPath?: string;
+  coachPdfPath?: string;
   updatedAt?: Timestamp;
 };
 
@@ -28,4 +29,3 @@ export type PublicReportDoc = {
   overallScore: number;
   updatedAt?: Timestamp;
 };
-

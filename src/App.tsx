@@ -7,6 +7,7 @@ import React, { Suspense, lazy } from 'react';
 import { AuthProvider } from "./contexts/AuthContext";
 import { useAuth } from "@/hooks/useAuth";
 import { ThemeManager } from "./components/layout/ThemeManager";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 // Lazy load heavy page components
 const Landing = lazy(() => import("./pages/Landing"));
@@ -78,6 +79,7 @@ const App = () => (
                   v7_relativeSplatPath: true,
                 }}
               >
+              <ErrorBoundary>
               <Suspense fallback={
                 <div className="flex min-h-screen items-center justify-center bg-slate-50">
                   <div className="flex flex-col items-center gap-4">
@@ -176,6 +178,7 @@ const App = () => (
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>
+              </ErrorBoundary>
               </BrowserRouter>
             </ThemeManager>
           </AuthProvider>

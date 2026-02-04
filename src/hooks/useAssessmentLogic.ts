@@ -4,21 +4,36 @@ import { getCoachAssessment } from '@/services/coachAssessments';
 import { publishPublicReport } from '@/services/publicReports';
 import type { FormData } from '@/contexts/FormContext';
 import { computeScores, buildRoadmap, type ScoreSummary, type RoadmapPhase } from '@/lib/scoring';
-import { generateCoachPlan } from '@/lib/recommendations';
+import { generateCoachPlan, type CoachPlan } from '@/lib/recommendations';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import { logger } from '@/lib/utils/logger';
 
-export function useAssessmentLogic(assessmentId: string | undefined) {
+/**
+ * Return type for useAssessmentLogic hook
+ * Explicitly typed to prevent 'any' type bleed
+ */
+export interface AssessmentLogicState {
+  formData: FormData | null;
+  scores: ScoreSummary | null;
+  roadmap: RoadmapPhase[];
+  plan: CoachPlan | null;
+  previousScores: ScoreSummary | null;
+  loading: boolean;
+  error: string | null;
+  planError: boolean;
+}
+
+export function useAssessmentLogic(assessmentId: string | undefined): AssessmentLogicState {
   const { user, profile } = useAuth();
   
-  const [state, setState] = useState({
-    formData: null as FormData | null,
-    scores: null as ScoreSummary | null,
-    roadmap: [] as RoadmapPhase[],
-    plan: null as import('@/lib/recommendations').CoachPlan | null,
-    previousScores: null as ScoreSummary | null,
+  const [state, setState] = useState<AssessmentLogicState>({
+    formData: null,
+    scores: null,
+    roadmap: [],
+    plan: null,
+    previousScores: null,
     loading: true,
-    error: null as string | null,
+    error: null,
     planError: false
   });
 
