@@ -387,7 +387,7 @@ async function buildMigrationPlan(orgId: string, orgName: string): Promise<Migra
         createdAt: assessment.data.createdAt || serverTimestamp(),
         scores: {
           overall: (assessment.data.overallScore as number) || 0,
-          categories: scoresSummary?.categories,
+          categories: scoresSummary?.categories || [],
         },
         goals: (assessment.data.goals as string[]) || [],
         formData: formData || {} as FormData,

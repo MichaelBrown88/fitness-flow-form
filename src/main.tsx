@@ -20,6 +20,7 @@ import '@/lib/setup/admin/deleteTestData';
 import '@/lib/setup/admin/migrateToSaas';
 import '@/lib/setup/admin/backfillAssessmentOrgId';
 import '@/lib/setup/admin/deleteUserProfile';
+import '@/lib/setup/admin/fixOrgCreatedAt';
 
 // Error boundary for better debugging on iPad/Safari
 if (typeof window !== 'undefined') {

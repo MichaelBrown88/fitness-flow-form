@@ -283,7 +283,7 @@ export async function handleAIUsageChange(
   // Backward compatibility: convert legacy costEstimate (USD) to fils
   if (costFils === 0 && data?.costEstimate) {
     // Convert USD to KWD, then to fils: USD * 0.305 KWD/USD * 1000 fils/KWD
-    costFils = Math.round(data.costEstimate * 0.305 * 1000);
+    costFils = Math.ceil(data.costEstimate * 0.305 * 1000);
   }
   
   const tokensUsed = data?.tokensUsed || 0;

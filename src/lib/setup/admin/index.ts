@@ -40,6 +40,7 @@ export { migrateToSaas, verifyMigration, rollbackMigration } from './migrateToSa
 export { diagnoseData } from './diagnoseData';
 export { fixRealDataAndStats } from './fixRealDataAndStats';
 export { backfillAIUsageOrganizationId } from './backfillAIUsageOrganizationId';
+export { fixOrgCreatedAt } from './fixOrgCreatedAt';
 
 // Re-export for convenience
 export { verifyDatabaseIntegrity } from '../verifyDatabaseIntegrity';

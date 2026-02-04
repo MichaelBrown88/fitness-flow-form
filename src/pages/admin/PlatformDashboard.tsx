@@ -293,8 +293,8 @@ const PlatformDashboard = () => {
                   Organization
                   {sortField === 'name' && (sortDirection === 'asc' ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />)}
                 </button>
-                <div className="col-span-2">Plan</div>
-                <div className="col-span-1">Monthly Fee</div>
+                <div className="col-span-1">Plan</div>
+                <div className="col-span-1">Fee</div>
                 <div className="col-span-1">Coaches</div>
                 <div className="col-span-1">Clients</div>
                 <button 
@@ -340,8 +340,17 @@ const PlatformDashboard = () => {
                         </div>
 
                         {/* Plan */}
-                        <div className="col-span-2">
-                          <span className="text-xs text-slate-400">{org.plan || 'free'}</span>
+                        <div className="col-span-1">
+                          <span className="text-xs text-slate-400 capitalize">{org.plan || 'free'}</span>
+                        </div>
+
+                        {/* Monthly Fee */}
+                        <div className="col-span-1">
+                          {org.isComped ? (
+                            <span className="text-violet-400 text-xs">Comped</span>
+                          ) : (
+                            <span className="text-sm text-white">{formatCurrency(org.monthlyFeeKwd * 1000)}</span>
+                          )}
                         </div>
 
                         {/* Coaches */}

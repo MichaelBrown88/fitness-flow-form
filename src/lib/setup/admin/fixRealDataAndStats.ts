@@ -135,7 +135,7 @@ async function getOrgRealStats(orgId: string): Promise<OrgRealStats> {
         let costFils = logData.costFils || 0;
         if (costFils === 0 && logData.costEstimate) {
           // Convert USD to KWD, then to fils: USD * 0.305 KWD/USD * 1000 fils/KWD
-          costFils = Math.round(logData.costEstimate * 0.305 * 1000);
+          costFils = Math.ceil(logData.costEstimate * 0.305 * 1000);
         }
         aiCostsMtdFils += costFils;
       }
@@ -303,7 +303,7 @@ export async function fixRealDataAndStats(): Promise<{
       let costFils = logData.costFils || 0;
       if (costFils === 0 && logData.costEstimate) {
         // Convert USD to KWD, then to fils: USD * 0.305 KWD/USD * 1000 fils/KWD
-        costFils = Math.round(logData.costEstimate * 0.305 * 1000);
+        costFils = Math.ceil(logData.costEstimate * 0.305 * 1000);
       }
       totalAiCostsFils += costFils;
       totalAiTokensUsed += logData.tokensUsed || 0;

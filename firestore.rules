@@ -59,27 +59,32 @@ service cloud.firestore {
       // Subcollections: Coaches, Clients, Assessments - GDPR/HIPAA protected
       match /coaches/{coachId} {
         // Platform admin needs explicit permission OR org is platform owner (One Fitness)
-        allow read: if (isPlatformAdmin() && hasDataAccessPermission(orgId)) || 
+        allow read: if (isPlatformAdmin() && hasDataAccessPermission(orgId)) ||
                     isOrgMember(orgId);
-        allow write: if isOrgMember(orgId); // Only org members can write
-        
+        // Platform admin can write for migration/maintenance if org has granted data access
+        allow write: if isOrgMember(orgId) ||
+                     (isPlatformAdmin() && hasDataAccessPermission(orgId));
+
         match /{allChildren=**} {
-          allow read: if (isPlatformAdmin() && hasDataAccessPermission(orgId)) || 
+          allow read: if (isPlatformAdmin() && hasDataAccessPermission(orgId)) ||
                       isOrgMember(orgId);
-          allow write: if isOrgMember(orgId);
+          allow write: if isOrgMember(orgId) ||
+                       (isPlatformAdmin() && hasDataAccessPermission(orgId));
         }
       }
-      
+
       match /clients/{clientId} {
-        allow read: if (isPlatformAdmin() && hasDataAccessPermission(orgId)) || 
+        allow read: if (isPlatformAdmin() && hasDataAccessPermission(orgId)) ||
                     isOrgMember(orgId);
-        allow write: if isOrgMember(orgId);
+        allow write: if isOrgMember(orgId) ||
+                     (isPlatformAdmin() && hasDataAccessPermission(orgId));
       }
-      
+
       match /assessments/{assessmentId} {
-        allow read: if (isPlatformAdmin() && hasDataAccessPermission(orgId)) || 
+        allow read: if (isPlatformAdmin() && hasDataAccessPermission(orgId)) ||
                     isOrgMember(orgId);
-        allow write: if isOrgMember(orgId);
+        allow write: if isOrgMember(orgId) ||
+                     (isPlatformAdmin() && hasDataAccessPermission(orgId));
       }
       
       // Settings and other non-sensitive subcollections
