@@ -2,6 +2,7 @@ import { createContext, useContext } from 'react';
 import type { User } from 'firebase/auth';
 import type { UserProfile } from '@/types/auth';
 import type { OrgSettings } from '@/services/organizations';
+import type { ImpersonationSession } from '@/services/platform/impersonation';
 
 export interface AuthContextValue {
   user: User | null;
@@ -12,6 +13,14 @@ export interface AuthContextValue {
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshSettings: () => Promise<void>;
+  /** Impersonation state (platform admins only) */
+  impersonation: ImpersonationSession | null;
+  /** Start impersonating an organization */
+  startImpersonation: (targetOrgId: string, targetOrgName: string, reason?: string) => Promise<void>;
+  /** End current impersonation session */
+  endImpersonation: () => Promise<void>;
+  /** Get the effective organization ID (impersonated or real) */
+  effectiveOrgId: string | null;
 }
 
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined);

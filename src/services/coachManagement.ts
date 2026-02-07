@@ -9,7 +9,7 @@
 
 import { doc, setDoc, updateDoc, deleteDoc, getDoc, getDocs, query, where, collection } from 'firebase/firestore';
 import { getDb } from '@/services/firebase';
-import { getLegacyUserProfilesCollection } from '@/lib/database/collections';
+import { getLegacyUserProfilesCollection, getOrgCoachesCollection } from '@/lib/database/collections';
 import { logger } from '@/lib/utils/logger';
 import type { UserProfile } from '@/types/auth';
 import { COLLECTIONS } from '@/constants/collections';
@@ -164,7 +164,7 @@ export async function createCoachInvitationLink(
 
 /**
  * Get all coaches in an organization with their stats
- * Note: Only returns users with role 'coach', not 'org_admin'
+ * Reads from organizations/{orgId}/coaches/{uid} for pre-aggregated stats
  */
 export async function getOrgCoaches(orgId: string): Promise<Array<{
   uid: string;
@@ -175,57 +175,65 @@ export async function getOrgCoaches(orgId: string): Promise<Array<{
   assessmentCount: number;
 }>> {
   try {
+    // First, get coaches from the organization's coaches collection (with stats)
+    const orgCoachesRef = getOrgCoachesCollection(orgId);
+    const orgCoachesSnapshot = await getDocs(orgCoachesRef);
+
+    const coachesFromOrg: Array<{
+      uid: string;
+      displayName: string;
+      email?: string;
+      role: string;
+      clientCount: number;
+      assessmentCount: number;
+    }> = [];
+
+    orgCoachesSnapshot.docs.forEach(docSnap => {
+      const data = docSnap.data();
+      coachesFromOrg.push({
+        uid: docSnap.id,
+        displayName: data.displayName || data.email || 'Unknown',
+        email: data.email,
+        role: data.role || 'coach',
+        clientCount: data.stats?.clientCount || 0,
+        assessmentCount: data.stats?.assessmentCount || 0,
+      });
+    });
+
+    // If we have coaches from the org collection, use those
+    if (coachesFromOrg.length > 0) {
+      return coachesFromOrg.sort((a, b) => b.assessmentCount - a.assessmentCount);
+    }
+
+    // Fallback: query userProfiles for coaches in this org
     const userProfilesRef = getLegacyUserProfilesCollection();
     const orgQuery = query(userProfilesRef, where('organizationId', '==', orgId));
     const snapshot = await getDocs(orgQuery);
-    
-    const coaches: Array<{ uid: string; displayName: string; email?: string; role: string }> = [];
-    
-    snapshot.docs.forEach(doc => {
-      const data = doc.data();
-      // Include both coaches and org_admins (admins can also perform assessments)
+
+    const coaches: Array<{
+      uid: string;
+      displayName: string;
+      email?: string;
+      role: string;
+      clientCount: number;
+      assessmentCount: number;
+    }> = [];
+
+    snapshot.docs.forEach(docSnap => {
+      const data = docSnap.data();
       if (data.role === 'coach' || data.role === 'org_admin') {
         coaches.push({
-          uid: doc.id,
+          uid: docSnap.id,
           displayName: data.displayName || data.email || 'Unknown',
           email: data.email,
           role: data.role,
+          clientCount: 0,
+          assessmentCount: 0,
         });
       }
     });
-    
-    // Get stats for each coach
-    const db = getDb();
-    const coachesWithStats = await Promise.all(
-      coaches.map(async (coach) => {
-        try {
-          // Count assessments
-          const assessmentsRef = collection(db, 'coaches', coach.uid, 'assessments');
-          const assessmentsSnapshot = await getDocs(assessmentsRef);
-          const assessmentCount = assessmentsSnapshot.size;
-          
-          // Count clients
-          const clientsRef = collection(db, 'coaches', coach.uid, 'clients');
-          const clientsSnapshot = await getDocs(clientsRef);
-          const clientCount = clientsSnapshot.size;
-          
-          return {
-            ...coach,
-            assessmentCount,
-            clientCount,
-          };
-        } catch (error) {
-          logger.warn(`Error fetching stats for coach ${coach.uid}:`, error);
-          return {
-            ...coach,
-            assessmentCount: 0,
-            clientCount: 0,
-          };
-        }
-      })
-    );
-    
-    return coachesWithStats.sort((a, b) => b.assessmentCount - a.assessmentCount);
+
+    return coaches.sort((a, b) => b.assessmentCount - a.assessmentCount);
   } catch (error) {
     logger.error('Error fetching organization coaches:', error);
     throw error;

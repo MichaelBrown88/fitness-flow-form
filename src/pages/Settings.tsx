@@ -6,10 +6,11 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { updateOrgSettings, uploadOrgLogo, type OrgSettings, DEFAULT_EQUIPMENT_CONFIG } from '@/services/organizations';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Upload, Palette, ShieldCheck, Box, Settings as SettingsIcon } from 'lucide-react';
+import { Loader2, Upload, Palette, ShieldCheck, Box, Settings as SettingsIcon, User, Building2 } from 'lucide-react';
 import { getAllGradients, type GradientId } from '@/lib/design/gradients';
 import { logger } from '@/lib/utils/logger';
 
@@ -85,46 +86,93 @@ const Settings = () => {
   return (
     <AppShell
       title="Settings"
-      subtitle="Manage your organization branding and assessment modules."
+      subtitle="Manage your profile and organization settings."
     >
-      <div className="max-w-4xl space-y-8 pb-20">
-        {/* User Info & Role */}
-        <div className="flex items-center justify-between px-6 py-4 rounded-2xl bg-slate-900 text-white shadow-xl">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-1 opacity-80">Current Account</p>
-            <h2 className="text-lg font-bold leading-none">{profile?.displayName || user?.email}</h2>
-          </div>
-          <div className="text-right flex flex-col items-end gap-2">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary opacity-80">Access Level</p>
-            <div className="flex items-center gap-3">
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary text-white shadow-sm shadow-primary/20">
-                {isAdmin ? '🛡️ Organization Admin' : '👤 Coach'}
-              </span>
-            </div>
-          </div>
-        </div>
+      <div className="max-w-4xl pb-20">
+        {/* Tab Navigation */}
+        <Tabs defaultValue="profile" className="w-full">
+          <TabsList className="w-full mb-6 p-1 h-auto bg-slate-100 rounded-xl grid grid-cols-2 gap-1">
+            <TabsTrigger 
+              value="profile" 
+              className="flex items-center gap-2 py-2.5 px-4 rounded-lg text-sm font-semibold data-[state=active]:bg-white data-[state=active]:shadow-sm"
+            >
+              <User className="h-4 w-4" />
+              Profile
+            </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger 
+                value="organization" 
+                className="flex items-center gap-2 py-2.5 px-4 rounded-lg text-sm font-semibold data-[state=active]:bg-white data-[state=active]:shadow-sm"
+              >
+                <Building2 className="h-4 w-4" />
+                Organization
+              </TabsTrigger>
+            )}
+          </TabsList>
 
-        {/* Coach Personal Profile (visible to all) */}
-        {!isAdmin && (
-          <section className="space-y-4">
-            <div className="flex items-center gap-2 text-slate-900 mb-2">
-              <ShieldCheck className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-bold">Coach Profile</h2>
+          {/* Profile Tab */}
+          <TabsContent value="profile" className="space-y-8 mt-0">
+            {/* User Info & Role */}
+            <div className="flex items-center justify-between px-6 py-4 rounded-2xl bg-slate-900 text-white shadow-xl">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-1 opacity-80">Current Account</p>
+                <h2 className="text-lg font-bold leading-none">{profile?.displayName || user?.email}</h2>
+              </div>
+              <div className="text-right flex flex-col items-end gap-2">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary opacity-80">Access Level</p>
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary text-white shadow-sm shadow-primary/20">
+                    {isAdmin ? 'Organization Admin' : 'Coach'}
+                  </span>
+                </div>
+              </div>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <p className="text-sm text-slate-600">
-                You are a coach. Contact your organization admin to update your profile or change organization settings.
-              </p>
-              <p className="text-xs text-slate-500 mt-2">
-                Only organization administrators can manage branding, equipment, and assessment modules.
-              </p>
-            </div>
-          </section>
-        )}
 
-        {/* Organization Settings (Admin Only) */}
-        {isAdmin && (
-          <>
+            {/* Profile Information */}
+            <section className="space-y-4">
+              <div className="flex items-center gap-2 text-slate-900 mb-2">
+                <ShieldCheck className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-bold">{isAdmin ? 'Admin Profile' : 'Coach Profile'}</h2>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-black uppercase tracking-widest text-slate-400">Email</Label>
+                    <Input 
+                      value={user?.email || ''} 
+                      disabled
+                      className="rounded-xl border-slate-200 h-11 bg-slate-50"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-black uppercase tracking-widest text-slate-400">Display Name</Label>
+                    <Input 
+                      value={profile?.displayName || ''} 
+                      disabled
+                      className="rounded-xl border-slate-200 h-11 bg-slate-50"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-black uppercase tracking-widest text-slate-400">Organization</Label>
+                  <Input 
+                    value={orgSettings?.name || 'Not assigned'} 
+                    disabled
+                    className="rounded-xl border-slate-200 h-11 bg-slate-50"
+                  />
+                </div>
+                {!isAdmin && (
+                  <p className="text-xs text-slate-500 mt-2">
+                    Contact your organization admin to update your profile or change organization settings.
+                  </p>
+                )}
+              </div>
+            </section>
+          </TabsContent>
+
+          {/* Organization Tab (Admin Only) */}
+          {isAdmin && (
+            <TabsContent value="organization" className="space-y-8 mt-0">
             <section className="space-y-4">
               <div className="flex items-center gap-2 text-slate-900 mb-2">
                 <Palette className="h-5 w-5 text-primary" />
@@ -451,8 +499,9 @@ const Settings = () => {
                 </div>
               </div>
             </section>
-          </>
-        )}
+            </TabsContent>
+          )}
+        </Tabs>
       </div>
     </AppShell>
   );

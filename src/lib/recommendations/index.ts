@@ -13,3 +13,13 @@ export { EXERCISES } from './exercisePresets';
 // Main generators
 export { generateCoachPlan } from './coachPlanGenerator';
 export { generateBodyCompInterpretation } from './bodyCompInterpretation';
+
+// Cadence recommendation engine
+export { 
+  generateCadenceRecommendations,
+  getEffectiveInterval,
+  getEffectiveReason,
+  getEffectivePriority,
+  type CadenceRecommendationResult,
+  type CadenceWarning,
+} from './cadenceEngine';

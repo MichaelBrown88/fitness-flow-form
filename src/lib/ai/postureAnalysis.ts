@@ -6,6 +6,15 @@ import { buildPosturePrompt } from '@/lib/ai/prompts/posturePrompts';
 import { logAIUsage } from '@/services/aiUsage';
 import { getFirebaseFunctions, getStorage, auth } from '@/services/firebase';
 import { logger } from '@/lib/utils/logger';
+import { isFeatureEnabled } from '@/services/platform/platformConfig';
+
+/** Error thrown when a feature is disabled via kill switch */
+export class FeatureDisabledError extends Error {
+  constructor(featureName: string) {
+    super(`${featureName} is temporarily disabled for maintenance. Please try again later.`);
+    this.name = 'FeatureDisabledError';
+  }
+}
 
 export interface PostureAnalysisResult {
   // Body Landmarks (for overlay alignment)
@@ -187,6 +196,13 @@ export async function classifyPostureView(
 ): Promise<PostureViewClassification> {
   const coachUid = auth.currentUser?.uid || 'anonymous';
 
+  // Check if posture analysis feature is enabled (kill switch check)
+  const postureEnabled = await isFeatureEnabled('posture_enabled');
+  if (!postureEnabled) {
+    logger.warn('Posture classification feature is disabled via kill switch', 'POSTURE_AI');
+    throw new FeatureDisabledError('AI Posture Analysis');
+  }
+
   try {
     await logAIUsage(coachUid, 'posture_classify', 'view_detection', 'gemini');
 
@@ -273,6 +289,13 @@ export async function analyzePostureImage(
   landmarks?: PostureAnalysisResult['landmarks']
 ): Promise<PostureAnalysisResult> {
   const coachUid = auth.currentUser?.uid || 'anonymous';
+  
+  // Check if posture analysis feature is enabled (kill switch check)
+  const postureEnabled = await isFeatureEnabled('posture_enabled');
+  if (!postureEnabled) {
+    logger.warn('Posture analysis feature is disabled via kill switch', 'POSTURE_AI');
+    throw new FeatureDisabledError('AI Posture Analysis');
+  }
   
   try {
     // 1. CALCULATE DETERMINISTIC METRICS FIRST (Free)

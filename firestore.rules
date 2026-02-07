@@ -21,6 +21,12 @@ service cloud.firestore {
              exists(/databases/$(database)/documents/platform_admins/$(request.auth.uid));
     }
     
+    // Check if a platform admin is NOT currently impersonating an org
+    // When impersonating, writes to org data are blocked server-side
+    function isNotImpersonating() {
+      return !exists(/databases/$(database)/documents/platform/active_impersonations/sessions/$(request.auth.uid));
+    }
+    
     function isOrgMember(orgId) {
       let profile = getUserProfile();
       return isAuthenticated() && profile.organizationId == orgId;
@@ -57,19 +63,21 @@ service cloud.firestore {
       allow write: if isPlatformAdmin() || isOrgAdmin(orgId);
       
       // Subcollections: Coaches, Clients, Assessments - GDPR/HIPAA protected
+      // Platform admin writes require: data access permission AND not currently impersonating
       match /coaches/{coachId} {
         // Platform admin needs explicit permission OR org is platform owner (One Fitness)
         allow read: if (isPlatformAdmin() && hasDataAccessPermission(orgId)) ||
                     isOrgMember(orgId);
         // Platform admin can write for migration/maintenance if org has granted data access
+        // BUT NOT while impersonating (read-only mode enforced server-side)
         allow write: if isOrgMember(orgId) ||
-                     (isPlatformAdmin() && hasDataAccessPermission(orgId));
+                     (isPlatformAdmin() && hasDataAccessPermission(orgId) && isNotImpersonating());
 
         match /{allChildren=**} {
           allow read: if (isPlatformAdmin() && hasDataAccessPermission(orgId)) ||
                       isOrgMember(orgId);
           allow write: if isOrgMember(orgId) ||
-                       (isPlatformAdmin() && hasDataAccessPermission(orgId));
+                       (isPlatformAdmin() && hasDataAccessPermission(orgId) && isNotImpersonating());
         }
       }
 
@@ -77,16 +85,32 @@ service cloud.firestore {
         allow read: if (isPlatformAdmin() && hasDataAccessPermission(orgId)) ||
                     isOrgMember(orgId);
         allow write: if isOrgMember(orgId) ||
-                     (isPlatformAdmin() && hasDataAccessPermission(orgId));
+                     (isPlatformAdmin() && hasDataAccessPermission(orgId) && isNotImpersonating());
       }
 
       match /assessments/{assessmentId} {
         allow read: if (isPlatformAdmin() && hasDataAccessPermission(orgId)) ||
                     isOrgMember(orgId);
         allow write: if isOrgMember(orgId) ||
-                     (isPlatformAdmin() && hasDataAccessPermission(orgId));
+                     (isPlatformAdmin() && hasDataAccessPermission(orgId) && isNotImpersonating());
       }
-      
+
+      // Assessment History (deep structure for tracking changes over time)
+      match /assessmentHistory/{clientSlug} {
+        allow read: if (isPlatformAdmin() && hasDataAccessPermission(orgId)) ||
+                    isOrgMember(orgId);
+        allow write: if isOrgMember(orgId) ||
+                     (isPlatformAdmin() && hasDataAccessPermission(orgId) && isNotImpersonating());
+
+        // Allow access to nested subcollections: current/data, history/*, snapshots/*
+        match /{subcollection}/{document=**} {
+          allow read: if (isPlatformAdmin() && hasDataAccessPermission(orgId)) ||
+                      isOrgMember(orgId);
+          allow write: if isOrgMember(orgId) ||
+                       (isPlatformAdmin() && hasDataAccessPermission(orgId) && isNotImpersonating());
+        }
+      }
+
       // Settings and other non-sensitive subcollections
       match /settings/{document=**} {
         allow read: if isPlatformAdmin() || isOrgMember(orgId);
@@ -158,6 +182,30 @@ service cloud.firestore {
     match /platform_admin_lookup/{lookupId} {
       allow read: if isAuthenticated();
       allow write: if false; // Only server-side
+    }
+    
+    // 7. PLATFORM CONFIG (Feature Flags & Maintenance)
+    match /platform/{document} {
+      // All authenticated users can read feature flags (needed to check if features are enabled)
+      allow read: if isAuthenticated();
+      // Only platform admins can modify feature flags and maintenance settings
+      allow write: if isPlatformAdmin();
+      
+      // Active impersonation markers (used by security rules to block writes during impersonation)
+      match /active_impersonations/sessions/{adminUid} {
+        // Security rules need to read these to enforce write blocking
+        allow read: if isAuthenticated();
+        // Only the admin themselves can create/delete their own impersonation marker
+        allow write: if isPlatformAdmin() && request.auth.uid == adminUid;
+      }
+    }
+    
+    // 8. PLATFORM AUDIT LOGS (Impersonation, Security Events)
+    match /platform_audit_logs/{document=**} {
+      // Only platform admins can read audit logs
+      allow read: if isPlatformAdmin();
+      // Only platform admins can write audit logs
+      allow write: if isPlatformAdmin();
     }
     
     // =========================================================

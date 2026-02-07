@@ -19,8 +19,11 @@ import {
   getAICostsByFeature,
   getOrgAICostsByFeature,
   getOrgCoachesWithStats,
+  subscribeToPlatformConfig,
+  updateFeatureFlag,
 } from '@/services/platformAdmin';
-import type { PlatformAdmin, PlatformMetrics, OrganizationSummary } from '@/types/platform';
+import type { PlatformAdmin, PlatformMetrics, OrganizationSummary, PlatformConfig, PlatformFeatureFlags } from '@/types/platform';
+import { DEFAULT_PLATFORM_CONFIG } from '@/types/platform';
 import { logger } from '@/lib/utils/logger';
 
 // Types
@@ -72,6 +75,10 @@ export interface UsePlatformDashboardResult {
   orgCoachesWithStats: Record<string, CoachStats[]>;
   unitEconomics: UnitEconomics | null;
   
+  // Platform Config (Feature Flags)
+  platformConfig: PlatformConfig;
+  updatingFeature: keyof PlatformFeatureFlags | null;
+  
   // UI State
   expandedOrgId: string | null;
   selectedOrg: OrganizationSummary | null;
@@ -88,6 +95,7 @@ export interface UsePlatformDashboardResult {
   handleSort: (field: SortField) => void;
   navigateToOrg: (orgId: string) => void;
   loadMoreOrganizations: () => Promise<void>;
+  handleToggleFeature: (featureKey: keyof PlatformFeatureFlags, enabled: boolean) => Promise<void>;
   
   // Utility functions
   formatCurrency: (fils: number) => string;
@@ -124,6 +132,10 @@ export function usePlatformDashboard(): UsePlatformDashboardResult {
   const [selectedOrg, setSelectedOrg] = useState<OrganizationSummary | null>(null);
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  
+  // Platform config (feature flags)
+  const [platformConfig, setPlatformConfig] = useState<PlatformConfig>(DEFAULT_PLATFORM_CONFIG);
+  const [updatingFeature, setUpdatingFeature] = useState<keyof PlatformFeatureFlags | null>(null);
 
   // Load dashboard data
   const loadDashboardData = useCallback(async () => {
@@ -207,6 +219,15 @@ export function usePlatformDashboard(): UsePlatformDashboardResult {
 
     return () => unsubscribe();
   }, [navigate, loadDashboardData]);
+
+  // Subscribe to platform config changes (real-time)
+  useEffect(() => {
+    const unsubscribe = subscribeToPlatformConfig((config) => {
+      setPlatformConfig(config);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   // Calculate unit economics
   const unitEconomics = useMemo<UnitEconomics | null>(() => {
@@ -292,6 +313,24 @@ export function usePlatformDashboard(): UsePlatformDashboardResult {
     navigate(`/admin/organizations/${orgId}`);
   }, [navigate]);
 
+  // Handle toggling feature flags
+  const handleToggleFeature = useCallback(async (
+    featureKey: keyof PlatformFeatureFlags,
+    enabled: boolean
+  ) => {
+    if (!admin) return;
+    
+    setUpdatingFeature(featureKey);
+    try {
+      await updateFeatureFlag(featureKey, enabled, admin.uid);
+      // Config will update via real-time subscription
+    } catch (error) {
+      logger.error(`Failed to toggle feature ${featureKey}:`, error);
+    } finally {
+      setUpdatingFeature(null);
+    }
+  }, [admin]);
+
   // Utility functions
   const formatCurrency = useCallback((fils: number) => {
     const kwd = fils / 1000;
@@ -363,6 +402,10 @@ export function usePlatformDashboard(): UsePlatformDashboardResult {
     orgCoachesWithStats,
     unitEconomics,
     
+    // Platform Config (Feature Flags)
+    platformConfig,
+    updatingFeature,
+    
     // UI State
     expandedOrgId,
     selectedOrg,
@@ -379,6 +422,7 @@ export function usePlatformDashboard(): UsePlatformDashboardResult {
     handleSort,
     navigateToOrg,
     loadMoreOrganizations,
+    handleToggleFeature,
     
     // Utility functions
     formatCurrency,

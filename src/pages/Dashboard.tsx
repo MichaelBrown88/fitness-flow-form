@@ -13,6 +13,7 @@ import { DashboardViewTabs } from '@/components/dashboard/sub-components/Dashboa
 import { AssessmentsTable } from '@/components/dashboard/sub-components/AssessmentsTable';
 import { ClientsGrid } from '@/components/dashboard/sub-components/ClientsGrid';
 import { DashboardDialogs } from '@/components/dashboard/sub-components/DashboardDialogs';
+import { PriorityView } from '@/components/dashboard/sub-components/PriorityView';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -39,6 +40,7 @@ const Dashboard = () => {
     recentChanges,
     filtered,
     filteredClients,
+    reassessmentQueue,
     handleDelete,
     handleViewHistory,
     handleNewAssessmentForClient,
@@ -78,6 +80,7 @@ const Dashboard = () => {
               setView={setView}
               search={search}
               setSearch={setSearch}
+              priorityCount={reassessmentQueue?.summary?.highPriority || 0}
             />
 
           {/* Assessments View */}
@@ -103,6 +106,15 @@ const Dashboard = () => {
                 visibleCount={visibleClientsCount}
                 setVisibleCount={setVisibleClientsCount}
                 onNewAssessment={handleNewAssessmentForClient}
+                reassessmentQueue={reassessmentQueue?.queue}
+              />
+            )}
+
+          {/* Priority View */}
+          {view === 'priority' && reassessmentQueue && (
+              <PriorityView 
+                reassessmentQueue={reassessmentQueue}
+                onNewAssessmentForClient={handleNewAssessmentForClient}
               />
             )}
           </div>

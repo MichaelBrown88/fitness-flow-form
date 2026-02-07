@@ -11,19 +11,20 @@ import { useDashboardAnalytics } from './useDashboardAnalytics';
 import { useAssessmentList } from './useAssessmentList';
 import { useClientList } from './useClientList';
 import { useDashboardActions } from './useDashboardActions';
+import { useReassessmentQueue } from '@/hooks/useReassessmentQueue';
 
 export function useDashboardData() {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, effectiveOrgId } = useAuth();
   const navigate = useNavigate();
 
   const [search, setSearch] = useState('');
-  const [view, setView] = useState<'assessments' | 'clients'>('assessments');
+  const [view, setView] = useState<'assessments' | 'clients' | 'priority'>('assessments');
   const [visibleClientsCount, setVisibleClientsCount] = useState(12);
 
-  // Analytics computation
-  const { computeAnalytics } = useDashboardAnalytics(profile);
+  // Analytics computation (uses effectiveOrgId for impersonation support)
+  const { computeAnalytics } = useDashboardAnalytics(profile, effectiveOrgId);
 
-  // Assessment list and pagination
+  // Assessment list and pagination (uses effectiveOrgId for impersonation support)
   const {
     items,
     loadingData,
@@ -37,13 +38,17 @@ export function useDashboardData() {
     user,
     profile,
     loading,
-    computeAnalytics
+    computeAnalytics,
+    effectiveOrgId,
   });
 
   // Client grouping
   const { clientGroups, filteredClients } = useClientList(items, search);
+  
+  // Reassessment queue (priority view)
+  const reassessmentQueue = useReassessmentQueue(clientGroups);
 
-  // Action handlers
+  // Action handlers (uses effectiveOrgId for read paths, profile.organizationId for writes)
   const {
     deleteDialog,
     setDeleteDialog,
@@ -54,7 +59,7 @@ export function useDashboardData() {
     handleDelete,
     handleViewHistory,
     handleNewAssessmentForClient,
-  } = useDashboardActions(user, profile);
+  } = useDashboardActions(user, profile, effectiveOrgId);
 
   // Filtered assessments
   const filtered = useMemo(() => {
@@ -97,6 +102,8 @@ export function useDashboardData() {
     recentChanges,
     filtered,
     filteredClients,
+    clientGroups,
+    reassessmentQueue,
     handleDelete,
     handleViewHistory,
     handleNewAssessmentForClient,

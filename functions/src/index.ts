@@ -1,5 +1,6 @@
 import * as admin from 'firebase-admin';
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
+import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onCall } from 'firebase-functions/v2/https';
 import { requestShareLinks, sendReportEmail } from './share';
 import {
@@ -73,6 +74,65 @@ export const aggregateAIUsageChanges = onDocumentWritten(
   async (event) => {
     if (event.data) {
       await handleAIUsageChange(event.data);
+    }
+  },
+);
+
+/**
+ * Audit Log TTL Cleanup
+ * 
+ * Runs daily at 3:00 AM UTC. Deletes impersonation audit logs older than 90 days
+ * to keep Firestore costs down and prevent unbounded collection growth.
+ */
+export const cleanupAuditLogs = onSchedule(
+  {
+    schedule: 'every day 03:00',
+    timeZone: 'UTC',
+  },
+  async () => {
+    const db = admin.firestore();
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+    const staleLogsQuery = db
+      .collection('platform_audit_logs')
+      .doc('impersonation')
+      .collection('logs')
+      .where('timestamp', '<', admin.firestore.Timestamp.fromDate(ninetyDaysAgo))
+      .limit(500); // Process in batches to avoid timeout
+
+    const snapshot = await staleLogsQuery.get();
+    
+    if (snapshot.empty) {
+      console.log('[AuditCleanup] No stale audit logs to delete');
+      return;
+    }
+
+    // Batch delete for efficiency
+    const batch = db.batch();
+    snapshot.docs.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+    await batch.commit();
+
+    console.log(`[AuditCleanup] Deleted ${snapshot.size} audit logs older than 90 days`);
+
+    // Also clean up expired impersonation markers
+    const expiredMarkersQuery = db
+      .collection('platform')
+      .doc('active_impersonations')
+      .collection('sessions')
+      .where('expiresAt', '<', new Date().toISOString())
+      .limit(100);
+
+    const markerSnapshot = await expiredMarkersQuery.get();
+    if (!markerSnapshot.empty) {
+      const markerBatch = db.batch();
+      markerSnapshot.docs.forEach((doc) => {
+        markerBatch.delete(doc.ref);
+      });
+      await markerBatch.commit();
+      console.log(`[AuditCleanup] Cleaned up ${markerSnapshot.size} expired impersonation markers`);
     }
   },
 );

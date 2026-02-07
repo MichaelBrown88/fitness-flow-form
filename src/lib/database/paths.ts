@@ -39,6 +39,19 @@ export const PLATFORM = {
     /** Email lookup key (normalized) */
     lookupKey: (email: string) => email.toLowerCase().replace(/[.@]/g, '_'),
   },
+  
+  /** Audit logs for compliance tracking */
+  auditLogs: {
+    /** Collection of all audit log entries */
+    collection: () => 'platform_audit_logs' as const,
+    /** Specific audit log document */
+    doc: (logId: string) => `platform_audit_logs/${logId}` as const,
+    /** Impersonation audit logs subcollection */
+    impersonation: {
+      collection: () => 'platform_audit_logs/impersonation/logs' as const,
+      doc: (logId: string) => `platform_audit_logs/impersonation/logs/${logId}` as const,
+    },
+  },
 } as const;
 
 /**
@@ -86,6 +99,17 @@ export const ORGANIZATION = {
   
   /** Organization settings */
   settings: (orgId: string) => `organizations/${orgId}/settings/config` as const,
+
+  /** Assessment history within an organization (deep structure for tracking changes) */
+  assessmentHistory: {
+    collection: (orgId: string) => `organizations/${orgId}/assessmentHistory` as const,
+    current: (orgId: string, clientSlug: string) =>
+      `organizations/${orgId}/assessmentHistory/${clientSlug}/current/data` as const,
+    history: (orgId: string, clientSlug: string) =>
+      `organizations/${orgId}/assessmentHistory/${clientSlug}/history` as const,
+    snapshots: (orgId: string, clientSlug: string) =>
+      `organizations/${orgId}/assessmentHistory/${clientSlug}/snapshots` as const,
+  },
 } as const;
 
 /**

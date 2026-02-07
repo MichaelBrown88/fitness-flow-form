@@ -5,6 +5,7 @@
  */
 
 import type { CoachAssessmentSummary } from '@/services/coachAssessments';
+import type { PillarCadence } from '@/types/client';
 
 export type Analytics = {
   totalClients: number;
@@ -23,6 +24,11 @@ export type ClientGroup = {
   latestScore: number;
   latestDate: Date | null;
   scoreChange?: number;
+  /** Smart retest schedule (if available) */
+  retestSchedule?: {
+    recommended: PillarCadence;
+    custom?: Partial<PillarCadence>;
+  };
 };
 
 export type RecentChange = {

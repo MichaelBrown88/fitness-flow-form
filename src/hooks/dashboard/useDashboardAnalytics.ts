@@ -10,7 +10,13 @@ import { getCoachAssessment, type CoachAssessmentSummary } from '@/services/coac
 import { computeScores } from '@/lib/scoring';
 import type { Analytics } from './types';
 
-export function useDashboardAnalytics(profile?: { organizationId?: string } | null) {
+export function useDashboardAnalytics(
+  profile?: { organizationId?: string } | null,
+  /** Effective org ID for reads (supports impersonation) */
+  effectiveOrgId?: string | null,
+) {
+  // Reads use effectiveOrgId (impersonation), fallback to profile
+  const readOrgId = effectiveOrgId || profile?.organizationId;
   const computeAnalytics = useCallback(async (
     assessments: CoachAssessmentSummary[],
     coachUid: string
@@ -62,7 +68,7 @@ export function useDashboardAnalytics(profile?: { organizationId?: string } | nu
         if (assessment.scoresSummary) {
           return assessment.scoresSummary;
         }
-        const full = await getCoachAssessment(coachUid, assessment.id, undefined, profile?.organizationId, profile);
+        const full = await getCoachAssessment(coachUid, assessment.id, undefined, readOrgId, profile);
         if (full?.formData) {
           return computeScores(full.formData);
         }
@@ -118,7 +124,7 @@ export function useDashboardAnalytics(profile?: { organizationId?: string } | nu
       assessmentsThisMonth,
       clientsThisMonth,
     };
-  }, [profile?.organizationId]);
+  }, [readOrgId]);
 
   return { computeAnalytics };
 }

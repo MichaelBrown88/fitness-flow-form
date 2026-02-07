@@ -20,8 +20,12 @@ import type { User } from 'firebase/auth';
 
 export function useDashboardActions(
   user: User | null,
-  profile?: { organizationId?: string } | null
+  profile?: { organizationId?: string } | null,
+  /** Effective org ID for reads (supports impersonation) */
+  effectiveOrgId?: string | null,
 ) {
+  // Reads use effectiveOrgId (impersonation), writes use profile.organizationId (real org)
+  const readOrgId = effectiveOrgId || profile?.organizationId;
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -53,7 +57,7 @@ export function useDashboardActions(
     setClientHistoryDialog(clientName);
     setLoadingHistory(true);
     try {
-      const history = await getClientAssessments(user.uid, clientName, profile?.organizationId);
+      const history = await getClientAssessments(user.uid, clientName, readOrgId);
       setClientHistory(history);
     } catch (err) {
       toast({
@@ -78,9 +82,9 @@ export function useDashboardActions(
     sessionStorage.removeItem(STORAGE_KEYS.PREFILL_CLIENT);
     sessionStorage.removeItem(STORAGE_KEYS.EDIT_ASSESSMENT);
     try {
-      const history = await getClientAssessments(user.uid, clientName, profile?.organizationId);
+      const history = await getClientAssessments(user.uid, clientName, readOrgId);
       if (history.length > 0) {
-        const latest = await getCoachAssessment(user.uid, history[0].id, undefined, profile?.organizationId, profile);
+        const latest = await getCoachAssessment(user.uid, history[0].id, undefined, readOrgId, profile);
         if (latest?.formData) {
           sessionStorage.setItem(STORAGE_KEYS.PREFILL_CLIENT, JSON.stringify({
             clientName: latest.formData.fullName,

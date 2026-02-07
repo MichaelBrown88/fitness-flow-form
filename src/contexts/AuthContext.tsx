@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useRef, type ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef, useCallback, type ReactNode } from 'react';
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -13,16 +13,32 @@ import { getOrgSettings, type OrgSettings } from '@/services/organizations';
 import type { UserRole, UserProfile } from '@/types/auth';
 import { AuthContext } from '@/hooks/useAuth';
 import { logger } from '@/lib/utils/logger';
+import { 
+  startImpersonation as startImpersonationService, 
+  endImpersonation as endImpersonationService,
+  getImpersonationSession,
+  type ImpersonationSession 
+} from '@/services/platform/impersonation';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [orgSettings, setOrgSettings] = useState<OrgSettings | null>(null);
   const [loading, setLoading] = useState(true);
+  const [impersonation, setImpersonation] = useState<ImpersonationSession | null>(null);
   
   // Track if sign out was manual (to avoid clearing storage on manual sign out)
   const manualSignOutRef = useRef(false);
   const previousUserIdRef = useRef<string | null>(null);
+  
+  // Restore impersonation session on mount
+  useEffect(() => {
+    const existingSession = getImpersonationSession();
+    if (existingSession) {
+      setImpersonation(existingSession);
+      logger.info('[Auth] Restored impersonation session', { org: existingSession.targetOrgName });
+    }
+  }, []);
 
   const refreshSettings = async (): Promise<void> => {
     if (profile?.organizationId) {
@@ -242,13 +258,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const auth = getFirebaseAuth();
     // Mark as manual sign out so we don't clear storage unnecessarily
     manualSignOutRef.current = true;
+    // End any active impersonation session
+    if (impersonation) {
+      await endImpersonationService();
+      setImpersonation(null);
+    }
     await firebaseSignOut(auth);
     // Clear storage on manual sign out too (optional - can remove if you want to keep cache)
     clearLocalAuthStorage();
   };
 
+  // Impersonation handlers (platform admins only)
+  const handleStartImpersonation = useCallback(async (
+    targetOrgId: string, 
+    targetOrgName: string, 
+    reason?: string
+  ) => {
+    if (!user || !profile) {
+      throw new Error('Must be logged in to impersonate');
+    }
+    
+    const session = await startImpersonationService(
+      user.uid,
+      user.email || 'unknown',
+      targetOrgId,
+      targetOrgName,
+      reason
+    );
+    
+    setImpersonation(session);
+    logger.info('[Auth] Impersonation started', { org: targetOrgName });
+  }, [user, profile]);
+
+  const handleEndImpersonation = useCallback(async () => {
+    await endImpersonationService();
+    setImpersonation(null);
+    logger.info('[Auth] Impersonation ended');
+  }, []);
+
+  // Effective organization ID - uses impersonated org when in impersonation mode
+  const effectiveOrgId = impersonation?.targetOrgId || profile?.organizationId || null;
+
   return (
-    <AuthContext.Provider value={{ user, profile, orgSettings, loading, signIn, signUp, signOut, refreshSettings }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      profile, 
+      orgSettings, 
+      loading, 
+      signIn, 
+      signUp, 
+      signOut, 
+      refreshSettings,
+      impersonation,
+      startImpersonation: handleStartImpersonation,
+      endImpersonation: handleEndImpersonation,
+      effectiveOrgId,
+    }}>
       {children}
     </AuthContext.Provider>
   );

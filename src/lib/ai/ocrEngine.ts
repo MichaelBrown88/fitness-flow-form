@@ -7,6 +7,8 @@ import { getFirebaseFunctions, auth, db } from '@/services/firebase';
 import { collection, query, where, getDocs, limit, addDoc, serverTimestamp } from 'firebase/firestore';
 import { logger } from '@/lib/utils/logger';
 import { COLLECTIONS } from '@/constants/collections';
+import { isFeatureEnabled } from '@/services/platform/platformConfig';
+import { FeatureDisabledError } from './postureAnalysis';
 
 export interface OcrResult {
   fields: Partial<FormData>;
@@ -228,6 +230,13 @@ async function runGeminiOcr(imageSrc: string): Promise<OcrResult> {
  */
 export async function processInBodyScan(imageSrc: string): Promise<OcrResult> {
   const coachUid = auth.currentUser?.uid || 'anonymous';
+  
+  // Check if OCR feature is enabled (kill switch check)
+  const ocrEnabled = await isFeatureEnabled('ocr_enabled');
+  if (!ocrEnabled) {
+    logger.warn('[OCR] InBody OCR feature is disabled via kill switch');
+    throw new FeatureDisabledError('InBody OCR Scanning');
+  }
   
   try {
     // Pre-crop image to focus on data table (removes logo/footer margins)

@@ -32,13 +32,16 @@ import type {
   OrganizationDetails,
 } from '@/types/platform';
 import { logger } from '@/lib/utils/logger';
-import { COLLECTIONS } from '@/constants/collections';
+import { ORGANIZATION } from '@/lib/database/paths';
 import {
   getPlatformAdminsCollection,
   getOrganizationsCollection,
   getOrganizationDoc,
   getLegacyUserProfilesCollection,
   getSystemStatsDoc,
+  getOrgCoachesCollection,
+  getOrgAssessmentsCollection,
+  getOrgClientsCollection,
 } from '@/lib/database/collections';
 import { calculateAICostsMTD, getOrgAICostsByFeature } from './aiUsageTracking';
 
@@ -55,8 +58,6 @@ const COACH_ASSESSMENTS_LIMIT = 500;
  */
 export async function getLiveMetrics(): Promise<PlatformMetrics> {
   try {
-    const db = getDb();
-
     // Read from aggregated system_stats document (single document read - extremely fast!)
     const systemStatsRef = getSystemStatsDoc();
     const systemStatsSnap = await getDoc(systemStatsRef);
@@ -69,28 +70,18 @@ export async function getLiveMetrics(): Promise<PlatformMetrics> {
     const stats = systemStatsSnap.data();
     const now = new Date();
 
-    // Calculate assessments this month by querying actual assessment data
+    // Calculate assessments this month by querying organization assessments
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     let assessmentsThisMonth = 0;
     try {
-      // Query assessments from all coaches subcollections
-      // We'll query coaches collection to find all coaches, then their assessments
-      const coachProfilesQuery = query(
-        getLegacyUserProfilesCollection(),
-        where('role', 'in', ['coach', 'org_admin']),
-        firestoreLimit(COACH_PROFILE_LIMIT)
-      );
-      const userProfilesSnapshot = await getDocs(coachProfilesQuery);
-      const coachUids: string[] = [];
+      // Get all organizations
+      const orgsSnapshot = await getDocs(getOrganizationsCollection());
 
-      userProfilesSnapshot.docs.forEach(userDoc => {
-        coachUids.push(userDoc.id);
-      });
-
-      // Query assessments from each coach's subcollection
-      for (const coachUid of coachUids) {
+      // Query assessments from each organization's collection
+      for (const orgDoc of orgsSnapshot.docs) {
         try {
-          const assessmentsRef = collection(db, COLLECTIONS.COACHES, coachUid, COLLECTIONS.ASSESSMENTS);
+          const orgId = orgDoc.id;
+          const assessmentsRef = getOrgAssessmentsCollection(orgId);
           const assessmentsQuery = query(assessmentsRef, firestoreLimit(COACH_ASSESSMENTS_LIMIT));
           const assessmentsSnapshot = await getDocs(assessmentsQuery);
 
@@ -102,13 +93,12 @@ export async function getLiveMetrics(): Promise<PlatformMetrics> {
             }
           });
         } catch (e) {
-          // Skip coaches without assessments subcollection
-          logger.debug(`No assessments for coach ${coachUid}`);
+          // Skip orgs without assessments
+          logger.debug(`No assessments for org ${orgDoc.id}`);
         }
       }
     } catch (error) {
       logger.warn('Error calculating assessments this month, using fallback:', error);
-      // Fallback: use total assessments / 30 as rough estimate
       assessmentsThisMonth = Math.floor((stats.totalAssessments || 0) / 30);
     }
 
@@ -124,9 +114,9 @@ export async function getLiveMetrics(): Promise<PlatformMetrics> {
       totalUsers: (stats.totalCoaches || 0) + (stats.totalClients || 0),
       totalCoaches: stats.totalCoaches || 0,
       totalClients: stats.totalClients || 0,
-      mrrCents: stats.monthlyRecurringRevenueFils || 0, // Actually fils, not cents
+      mrrCents: stats.monthlyRecurringRevenueFils || 0,
       arrCents: (stats.monthlyRecurringRevenueFils || 0) * 12,
-      aiCostsMtdCents: aiCostsMtdCents, // Calculate from actual logs
+      aiCostsMtdCents: aiCostsMtdCents,
       aiCostsLastMonthCents: 0,
       totalAssessments: stats.totalAssessments || 0,
       assessmentsThisMonth,
@@ -140,26 +130,13 @@ export async function getLiveMetrics(): Promise<PlatformMetrics> {
 
 /**
  * Get assessment chart data for last 30 days
+ * Queries from organization assessments collections
  */
 export async function getAssessmentChartData(): Promise<Array<{ date: string; assessments: number }>> {
   try {
-    const db = getDb();
     const now = new Date();
     const thirtyDaysAgo = new Date(now);
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    // Get all coaches
-    const coachProfilesQuery = query(
-      getLegacyUserProfilesCollection(),
-      where('role', 'in', ['coach', 'org_admin']),
-      firestoreLimit(COACH_PROFILE_LIMIT)
-    );
-    const userProfilesSnapshot = await getDocs(coachProfilesQuery);
-    const coachUids: string[] = [];
-
-    userProfilesSnapshot.docs.forEach(userDoc => {
-      coachUids.push(userDoc.id);
-    });
 
     // Collect all assessments from last 30 days
     const assessmentsByDate = new Map<string, number>();
@@ -172,10 +149,14 @@ export async function getAssessmentChartData(): Promise<Array<{ date: string; as
       assessmentsByDate.set(dateKey, 0);
     }
 
-    // Query assessments from each coach
-    for (const coachUid of coachUids) {
+    // Get all organizations
+    const orgsSnapshot = await getDocs(getOrganizationsCollection());
+
+    // Query assessments from each organization
+    for (const orgDoc of orgsSnapshot.docs) {
       try {
-        const assessmentsRef = collection(db, COLLECTIONS.COACHES, coachUid, COLLECTIONS.ASSESSMENTS);
+        const orgId = orgDoc.id;
+        const assessmentsRef = getOrgAssessmentsCollection(orgId);
         const assessmentsQuery = query(assessmentsRef, firestoreLimit(COACH_ASSESSMENTS_LIMIT));
         const assessmentsSnapshot = await getDocs(assessmentsQuery);
 
@@ -190,7 +171,7 @@ export async function getAssessmentChartData(): Promise<Array<{ date: string; as
           }
         });
       } catch (e) {
-        // Skip coaches without assessments subcollection
+        // Skip orgs without assessments
       }
     }
 
@@ -235,6 +216,7 @@ async function hasDataAccessPermission(orgId: string): Promise<boolean> {
 /**
  * Get coaches with their assessment counts for an organization
  * GDPR/HIPAA: Only works if platform admin has explicit permission OR org is platform owner
+ * Reads from organizations/{orgId}/coaches/{uid} for pre-aggregated stats
  */
 export async function getOrgCoachesWithStats(orgId: string): Promise<Array<{
   uid: string;
@@ -252,56 +234,53 @@ export async function getOrgCoachesWithStats(orgId: string): Promise<Array<{
       throw new Error('Data access permission required. Please request access from the organization.');
     }
 
-    const db = getDb();
-    const coachProfilesQuery = query(
-      getLegacyUserProfilesCollection(),
-      where('organizationId', '==', orgId),
-      where('role', 'in', ['coach', 'org_admin']),
-      firestoreLimit(COACH_PROFILE_LIMIT)
-    );
-    const userProfilesSnapshot = await getDocs(coachProfilesQuery);
-    const coaches: Array<{ uid: string; displayName: string; email?: string; role: string }> = [];
+    // Read from organization's coaches collection (with pre-aggregated stats)
+    const orgCoachesRef = getOrgCoachesCollection(orgId);
+    const orgCoachesSnapshot = await getDocs(orgCoachesRef);
 
-    // Get all coaches in this organization
-    userProfilesSnapshot.docs.forEach(userDoc => {
-      const data = userDoc.data();
-      coaches.push({
-        uid: userDoc.id,
+    const coachesWithStats: Array<{
+      uid: string;
+      displayName: string;
+      email?: string;
+      role: string;
+      assessmentCount: number;
+      clientCount: number;
+    }> = [];
+
+    orgCoachesSnapshot.docs.forEach(docSnap => {
+      const data = docSnap.data();
+      coachesWithStats.push({
+        uid: docSnap.id,
         displayName: data.displayName || data.email || 'Unknown',
         email: data.email,
-        role: data.role,
+        role: data.role || 'coach',
+        assessmentCount: data.stats?.assessmentCount || 0,
+        clientCount: data.stats?.clientCount || 0,
       });
     });
 
-    // Get assessment and client counts for each coach
-    const coachesWithStats = await Promise.all(
-      coaches.map(async (coach) => {
-        try {
-          // Count assessments for this coach
-          const assessmentsRef = collection(db, COLLECTIONS.COACHES, coach.uid, COLLECTIONS.ASSESSMENTS);
-          const assessmentsCountSnap = await getCountFromServer(assessmentsRef);
-          const assessmentCount = assessmentsCountSnap.data().count;
+    // If no coaches in org collection, fallback to userProfiles
+    if (coachesWithStats.length === 0) {
+      const coachProfilesQuery = query(
+        getLegacyUserProfilesCollection(),
+        where('organizationId', '==', orgId),
+        where('role', 'in', ['coach', 'org_admin']),
+        firestoreLimit(COACH_PROFILE_LIMIT)
+      );
+      const userProfilesSnapshot = await getDocs(coachProfilesQuery);
 
-          // Count clients for this coach
-          const clientsRef = collection(db, COLLECTIONS.COACHES, coach.uid, COLLECTIONS.CLIENTS);
-          const clientsCountSnap = await getCountFromServer(clientsRef);
-          const clientCount = clientsCountSnap.data().count;
-
-          return {
-            ...coach,
-            assessmentCount,
-            clientCount,
-          };
-        } catch (error) {
-          logger.warn(`Error fetching stats for coach ${coach.uid}:`, error);
-          return {
-            ...coach,
-            assessmentCount: 0,
-            clientCount: 0,
-          };
-        }
-      })
-    );
+      userProfilesSnapshot.docs.forEach(userDoc => {
+        const data = userDoc.data();
+        coachesWithStats.push({
+          uid: userDoc.id,
+          displayName: data.displayName || data.email || 'Unknown',
+          email: data.email,
+          role: data.role,
+          assessmentCount: 0,
+          clientCount: 0,
+        });
+      });
+    }
 
     // Sort by assessment count (descending)
     return coachesWithStats.sort((a, b) => b.assessmentCount - a.assessmentCount);

@@ -185,3 +185,45 @@ export interface OrganizationStats {
   lastAssessmentDate?: Date; // Last active date
   lastUpdated: Date;
 }
+
+// Platform configuration - feature flags and maintenance settings
+export interface PlatformFeatureFlags {
+  /** AI posture analysis feature */
+  posture_enabled: boolean;
+  /** InBody OCR scanning feature */
+  ocr_enabled: boolean;
+  /** AI report generation feature */
+  report_generation_enabled: boolean;
+}
+
+export interface PlatformMaintenanceSettings {
+  /** Global maintenance banner message (shown to all users) */
+  message?: string;
+  /** Which features are currently affected */
+  affected_features?: (keyof PlatformFeatureFlags)[];
+  /** Whether the entire platform is in maintenance mode */
+  is_maintenance_mode?: boolean;
+}
+
+export interface PlatformConfig {
+  /** Feature kill switches - disable AI features globally */
+  features: PlatformFeatureFlags;
+  /** Maintenance mode settings */
+  maintenance: PlatformMaintenanceSettings;
+  /** Last updated timestamp */
+  updatedAt: Date;
+  /** UID of the platform admin who made the change */
+  updatedBy: string;
+}
+
+/** Default platform config - all features enabled, no maintenance */
+export const DEFAULT_PLATFORM_CONFIG: PlatformConfig = {
+  features: {
+    posture_enabled: true,
+    ocr_enabled: true,
+    report_generation_enabled: true,
+  },
+  maintenance: {},
+  updatedAt: new Date(),
+  updatedBy: 'system',
+};

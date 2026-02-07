@@ -33,3 +33,25 @@ export {
   getOrgAICostsByFeature,
   getAICostBreakdown,
 } from './aiUsageTracking';
+
+// Platform Configuration (Feature Flags & Maintenance)
+export {
+  getPlatformConfig,
+  subscribeToPlatformConfig,
+  updateFeatureFlag,
+  updateFeatureFlags,
+  setMaintenanceMode,
+  isFeatureEnabled,
+} from './platformConfig';
+
+// Impersonation (Platform Admin Support Tool)
+export {
+  startImpersonation,
+  endImpersonation,
+  getImpersonationSession,
+  isImpersonating,
+  getImpersonatedOrgId,
+  logImpersonationAction,
+  type ImpersonationSession,
+  type ImpersonationAuditLog,
+} from './impersonation';

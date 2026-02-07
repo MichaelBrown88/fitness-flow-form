@@ -1,12 +1,18 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { 
   TrendingUp, 
   TrendingDown, 
   History, 
   UserPlus, 
-  ChevronDown 
+  ChevronDown,
+  AlertCircle,
+  Scale,
+  Camera,
+  Activity,
+  Dumbbell,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -17,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import type { ClientGroup } from '@/hooks/useDashboardData';
+import type { ReassessmentItem, ReassessmentType } from '@/hooks/useReassessmentQueue';
 
 interface ClientsGridProps {
   loadingData: boolean;
@@ -25,7 +32,32 @@ interface ClientsGridProps {
   visibleCount: number;
   setVisibleCount: (count: number | ((prev: number) => number)) => void;
   onNewAssessment: (clientName: string, category?: string) => void;
+  reassessmentQueue?: ReassessmentItem[];
 }
+
+/** Get icon for reassessment type */
+const getDueIcon = (type: ReassessmentType) => {
+  switch (type) {
+    case 'inbody': return <Scale className="w-3 h-3" />;
+    case 'posture': return <Camera className="w-3 h-3" />;
+    case 'fitness': return <Activity className="w-3 h-3" />;
+    case 'strength': return <Dumbbell className="w-3 h-3" />;
+    default: return <AlertCircle className="w-3 h-3" />;
+  }
+};
+
+/** Get short label for reassessment type */
+const getDueLabel = (type: ReassessmentType) => {
+  switch (type) {
+    case 'inbody': return 'InBody';
+    case 'posture': return 'Posture';
+    case 'fitness': return 'Cardio';
+    case 'strength': return 'Strength';
+    case 'full': return 'Full';
+    case 'check-in': return 'Check-in';
+    default: return type;
+  }
+};
 
 export const ClientsGrid: React.FC<ClientsGridProps> = ({
   loadingData,
@@ -34,8 +66,18 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
   visibleCount,
   setVisibleCount,
   onNewAssessment,
+  reassessmentQueue = [],
 }) => {
   const navigate = useNavigate();
+
+  // Create a map of client names to their reassessment data
+  const reassessmentMap = useMemo(() => {
+    const map = new Map<string, ReassessmentItem>();
+    reassessmentQueue.forEach(item => {
+      map.set(item.clientName.toLowerCase(), item);
+    });
+    return map;
+  }, [reassessmentQueue]);
 
   return (
     <section className="space-y-4">
@@ -52,12 +94,22 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
             {search ? 'No clients match that name.' : 'No clients found.'}
           </div>
         ) : (
-          filteredClients.slice(0, visibleCount).map((group) => (
+          filteredClients.slice(0, visibleCount).map((group) => {
+            const reassessmentData = reassessmentMap.get(group.name.toLowerCase());
+            const hasPriorityNeeds = reassessmentData && reassessmentData.priority !== 'low';
+            
+            return (
             <div
               key={group.name}
-              className="group rounded-xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm hover:shadow-xl hover:border-slate-300 transition-all duration-300"
+              className={`group rounded-xl border bg-white p-4 sm:p-5 shadow-sm hover:shadow-xl transition-all duration-300 ${
+                reassessmentData?.priority === 'high' 
+                  ? 'border-red-200 hover:border-red-300' 
+                  : reassessmentData?.priority === 'medium'
+                  ? 'border-amber-200 hover:border-amber-300'
+                  : 'border-slate-200 hover:border-slate-300'
+              }`}
             >
-              <div className="flex items-start justify-between mb-4 sm:mb-5">
+              <div className="flex items-start justify-between mb-3 sm:mb-4">
                 <div className="min-w-0 flex-1">
                   <h3 className="text-base sm:text-lg font-black text-slate-900 truncate uppercase tracking-tight">
                     {group.name}
@@ -79,6 +131,31 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
                   </div>
                 )}
               </div>
+              
+              {/* Due For Badges */}
+              {hasPriorityNeeds && reassessmentData.reassessmentNeeds.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {reassessmentData.reassessmentNeeds.slice(0, 3).map((need) => (
+                    <Badge 
+                      key={need}
+                      variant="outline" 
+                      className={`text-[9px] font-semibold gap-1 ${
+                        reassessmentData.priority === 'high'
+                          ? 'bg-red-50 text-red-700 border-red-200'
+                          : 'bg-amber-50 text-amber-700 border-amber-200'
+                      }`}
+                    >
+                      {getDueIcon(need)}
+                      Due: {getDueLabel(need)}
+                    </Badge>
+                  ))}
+                  {reassessmentData.reassessmentNeeds.length > 3 && (
+                    <Badge variant="outline" className="text-[9px] bg-slate-50 text-slate-500">
+                      +{reassessmentData.reassessmentNeeds.length - 3}
+                    </Badge>
+                  )}
+                </div>
+              )}
               
               <div className="space-y-2 mb-5 sm:mb-6">
                 <div className="flex items-center justify-between text-xs sm:text-sm p-2 bg-slate-50 rounded-lg group-hover:bg-white transition-colors border border-transparent group-hover:border-slate-100">
@@ -143,7 +220,8 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
                 </DropdownMenu>
               </div>
             </div>
-          ))
+            );
+          })
         )}
       </div>
 

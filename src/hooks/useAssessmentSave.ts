@@ -13,6 +13,8 @@ import type { ScoreSummary } from '@/lib/scoring';
 import { logger } from '@/lib/utils/logger';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import { UI_TOASTS } from '@/constants/ui';
+import { generateCadenceRecommendations } from '@/lib/recommendations/cadenceEngine';
+import { updateRetestSchedule, type StoredRetestSchedule } from '@/services/clientProfiles';
 
 import type { UserProfile } from '@/types/auth';
 
@@ -47,9 +49,12 @@ export function useAssessmentSave({
     client: null,
     coach: null,
   });
+  // Guard against double-save race condition (React batching edge case)
+  const saveInitiatedRef = useRef(false);
 
   const handleSaveToDashboard = useCallback(async () => {
-    if (!user || saving || savingId) return;
+    if (!user || saving || savingId || saveInitiatedRef.current) return;
+    saveInitiatedRef.current = true;
     
     const clientName = (formData.fullName || 'Unnamed client').trim();
     
@@ -123,7 +128,25 @@ export function useAssessmentSave({
           setHighlightCategory(category);
           sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
         } else {
+          // Full assessment - save and generate cadence recommendations
           assessmentId = await saveCoachAssessment(user.uid, user.email, formData, scores.overall, profile?.organizationId, profile);
+          
+          // Generate and save retest cadence recommendations
+          if (profile?.organizationId) {
+            try {
+              const { schedule } = generateCadenceRecommendations(formData, scores);
+              const retestSchedule: StoredRetestSchedule = {
+                recommended: schedule,
+                generatedAt: Timestamp.now(),
+                sourceAssessmentId: assessmentId,
+              };
+              await updateRetestSchedule(clientName, profile.organizationId, retestSchedule);
+              logger.info('[Assessment] Cadence recommendations saved for client', { clientName });
+            } catch (cadenceErr) {
+              // Non-fatal: log but don't fail the assessment save
+              logger.warn('[Assessment] Failed to save cadence recommendations:', cadenceErr);
+            }
+          }
         }
       } catch (parseErr) {
         // If parse error occurs, still try to save but with profile for validation
@@ -167,6 +190,10 @@ export function useAssessmentSave({
       }
     } finally {
       setSaving(false);
+      // Only reset the ref on failure - successful saves keep it true (savingId guards future calls)
+      if (!savingId) {
+        saveInitiatedRef.current = false;
+      }
     }
   }, [user, saving, savingId, formData, scores.overall, profile, toast]);
 

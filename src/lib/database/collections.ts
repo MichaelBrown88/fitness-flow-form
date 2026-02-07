@@ -28,6 +28,11 @@ export function getPlatformAdminLookupDoc(email: string): DocumentReference {
   return doc(getDb(), PLATFORM.admins.lookupCollection(), PLATFORM.admins.lookupKey(email));
 }
 
+/** Get platform config document reference (feature flags, maintenance settings) */
+export function getPlatformConfigDoc(): DocumentReference {
+  return doc(getDb(), PLATFORM.config());
+}
+
 // ============================================================================
 // ORGANIZATION COLLECTIONS
 // ============================================================================
@@ -86,6 +91,26 @@ export function getOrgUsageCollection(orgId: string): CollectionReference {
 /** Get current month's usage document */
 export function getOrgCurrentUsageDoc(orgId: string): DocumentReference {
   return doc(getDb(), ORGANIZATION.usage.month(orgId, ORGANIZATION.usage.currentMonth()));
+}
+
+/** Get assessment history collection within an organization */
+export function getOrgAssessmentHistoryCollection(orgId: string): CollectionReference {
+  return collection(getDb(), ORGANIZATION.assessmentHistory.collection(orgId));
+}
+
+/** Get current assessment document for a client (deep history structure) */
+export function getOrgCurrentAssessmentDoc(orgId: string, clientSlug: string): DocumentReference {
+  return doc(getDb(), ORGANIZATION.assessmentHistory.current(orgId, clientSlug));
+}
+
+/** Get history collection for a client's assessments */
+export function getOrgAssessmentHistoryChangesCollection(orgId: string, clientSlug: string): CollectionReference {
+  return collection(getDb(), ORGANIZATION.assessmentHistory.history(orgId, clientSlug));
+}
+
+/** Get snapshots collection for a client's assessments */
+export function getOrgAssessmentSnapshotsCollection(orgId: string, clientSlug: string): CollectionReference {
+  return collection(getDb(), ORGANIZATION.assessmentHistory.snapshots(orgId, clientSlug));
 }
 
 // ============================================================================
@@ -186,4 +211,18 @@ export function getPlatformMetricsDoc(): DocumentReference {
 /** Get system stats global metrics document */
 export function getSystemStatsDoc(): DocumentReference {
   return doc(getDb(), SYSTEM_STATS.globalMetrics());
+}
+
+// ============================================================================
+// AUDIT LOGS (Compliance & Security)
+// ============================================================================
+
+/** Get platform audit logs collection */
+export function getPlatformAuditLogsCollection(): CollectionReference {
+  return collection(getDb(), PLATFORM.auditLogs.collection());
+}
+
+/** Get impersonation audit logs collection */
+export function getImpersonationAuditLogsCollection(): CollectionReference {
+  return collection(getDb(), PLATFORM.auditLogs.impersonation.collection());
 }

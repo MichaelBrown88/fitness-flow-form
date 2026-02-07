@@ -24,7 +24,7 @@ import {
 } from 'firebase/firestore';
 import { getDb } from '@/services/firebase';
 import { UI_TOASTS } from '@/constants/ui';
-import { COLLECTIONS } from '@/constants/collections';
+import { ORGANIZATION } from '@/lib/database/paths';
 import type { User } from 'firebase/auth';
 import type { Analytics, RecentChange } from './types';
 
@@ -33,14 +33,19 @@ type UseAssessmentListParams = {
   profile?: { organizationId?: string } | null;
   loading: boolean;
   computeAnalytics: (assessments: CoachAssessmentSummary[], coachUid: string) => Promise<Analytics>;
+  /** Effective org ID (supports impersonation - falls back to profile.organizationId) */
+  effectiveOrgId?: string | null;
 };
 
 export function useAssessmentList({
   user,
   profile,
   loading,
-  computeAnalytics
+  computeAnalytics,
+  effectiveOrgId,
 }: UseAssessmentListParams) {
+  // Use effectiveOrgId for reads (impersonation support), fallback to profile
+  const readOrgId = effectiveOrgId || profile?.organizationId;
   const { toast } = useToast();
 
   const [items, setItems] = useState<CoachAssessmentSummary[]>([]);
@@ -55,29 +60,18 @@ export function useAssessmentList({
   const isInitialLoadRef = useRef(true);
 
   useEffect(() => {
-    if (loading || !profile || !user) return;
+    if (loading || !user || !readOrgId) return;
 
-    const assessmentsRef = collection(getDb(), COLLECTIONS.COACHES, user.uid, COLLECTIONS.ASSESSMENTS);
-    let q;
-    let useOrgFilter = false;
+    // Use organization-centric path for assessments (effectiveOrgId for impersonation)
+    const assessmentsRef = collection(getDb(), ORGANIZATION.assessments.collection(readOrgId));
 
-    if (profile?.organizationId) {
-      try {
-        q = query(
-          assessmentsRef,
-          where('organizationId', '==', profile.organizationId),
-          orderBy('createdAt', 'desc'),
-          limit(20)
-        );
-        useOrgFilter = true;
-      } catch (indexError) {
-        logger.warn('Firestore index not ready, using fallback query:', indexError);
-        q = query(assessmentsRef, orderBy('createdAt', 'desc'), limit(20));
-        useOrgFilter = false;
-      }
-    } else {
-      q = query(assessmentsRef, orderBy('createdAt', 'desc'), limit(20));
-    }
+    // Filter by coachUid to show only current coach's assessments
+    const q = query(
+      assessmentsRef,
+      where('coachUid', '==', user.uid),
+      orderBy('createdAt', 'desc'),
+      limit(20)
+    );
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       try {
@@ -89,19 +83,17 @@ export function useAssessmentList({
 
         snapshot.forEach((docSnap) => {
           const docData = docSnap.data();
-          if (!useOrgFilter && profile?.organizationId) {
-            if (docData.organizationId !== profile.organizationId) {
-              return;
-            }
-          }
-
+          // Handle both legacy (overallScore) and migrated (scores.overall) formats
+          const score = typeof docData.overallScore === 'number'
+            ? docData.overallScore
+            : (docData.scores?.overall ?? 0);
           data.push({
             id: docSnap.id,
             clientName: docData.clientName || 'Unnamed client',
             createdAt: docData.createdAt || null,
-            overallScore: typeof docData.overallScore === 'number' ? docData.overallScore : 0,
+            overallScore: score,
             goals: Array.isArray(docData.goals) ? docData.goals : [],
-            scoresSummary: docData.scoresSummary,
+            scoresSummary: docData.scoresSummary ?? docData.scores,
           });
           lastDocument = docSnap;
         });
@@ -111,15 +103,15 @@ export function useAssessmentList({
         setHasMore(snapshot.size === 20);
 
         // Load recent changes
-        if (user) {
+        if (user && readOrgId) {
           (async () => {
             try {
-              const clients = await getAllClients(user.uid, profile?.organizationId);
+              const clients = await getAllClients(user.uid, readOrgId);
               const changes: RecentChange[] = [];
 
               for (const clientName of clients.slice(0, 10)) {
                 try {
-                  const history = await getChangeHistory(user.uid, clientName, 5, profile?.organizationId);
+                  const history = await getChangeHistory(user.uid, clientName, 5, readOrgId);
                   history.forEach(change => {
                     changes.push({
                       clientName,
@@ -154,7 +146,8 @@ export function useAssessmentList({
           unsubscribeRef.current();
           unsubscribeRef.current = null;
         }
-        const fallbackQuery = query(assessmentsRef, orderBy('createdAt', 'desc'), limit(20));
+        // Fallback: query without coachUid filter, filter in memory
+        const fallbackQuery = query(assessmentsRef, orderBy('createdAt', 'desc'), limit(50));
         const fallbackUnsubscribe = onSnapshot(fallbackQuery, async (snapshot) => {
           try {
             if (isInitialLoadRef.current) {
@@ -165,26 +158,31 @@ export function useAssessmentList({
 
             snapshot.forEach((docSnap) => {
               const docData = docSnap.data();
-              if (profile?.organizationId && docData.organizationId !== profile.organizationId) {
+              // Filter by coachUid in memory
+              if (docData.coachUid !== user.uid) {
                 return;
               }
 
+              // Handle both legacy (overallScore) and migrated (scores.overall) formats
+              const score = typeof docData.overallScore === 'number'
+                ? docData.overallScore
+                : (docData.scores?.overall ?? 0);
               data.push({
                 id: docSnap.id,
                 clientName: docData.clientName || 'Unnamed client',
                 createdAt: docData.createdAt || null,
-                overallScore: typeof docData.overallScore === 'number' ? docData.overallScore : 0,
+                overallScore: score,
                 goals: Array.isArray(docData.goals) ? docData.goals : [],
-                scoresSummary: docData.scoresSummary,
+                scoresSummary: docData.scoresSummary ?? docData.scores,
               });
               lastDocument = docSnap;
             });
 
-            setItems(data);
+            setItems(data.slice(0, 20));
             setLastDoc(lastDocument);
-            setHasMore(snapshot.size === 20);
+            setHasMore(data.length > 20);
 
-            const analyticsData = await computeAnalytics(data, user.uid);
+            const analyticsData = await computeAnalytics(data.slice(0, 20), user.uid);
             setAnalytics(analyticsData);
           } finally {
             isInitialLoadRef.current = false;
@@ -206,30 +204,21 @@ export function useAssessmentList({
         unsubscribeRef.current = null;
       }
     };
-  }, [user, profile, loading, computeAnalytics]);
+  }, [user, readOrgId, loading, computeAnalytics]);
 
   const loadMoreAssessments = async () => {
-    if (hasMore && lastDoc && user) {
+    if (hasMore && lastDoc && user && readOrgId) {
       setLoadingMore(true);
       try {
-        const assessmentsRef = collection(getDb(), COLLECTIONS.COACHES, user.uid, COLLECTIONS.ASSESSMENTS);
-        let nextQuery;
-        if (profile?.organizationId) {
-          nextQuery = query(
-            assessmentsRef,
-            where('organizationId', '==', profile.organizationId),
-            orderBy('createdAt', 'desc'),
-            startAfter(lastDoc),
-            limit(20)
-          );
-        } else {
-          nextQuery = query(
-            assessmentsRef,
-            orderBy('createdAt', 'desc'),
-            startAfter(lastDoc),
-            limit(20)
-          );
-        }
+        // Use organization-centric path (effectiveOrgId for impersonation)
+        const assessmentsRef = collection(getDb(), ORGANIZATION.assessments.collection(readOrgId));
+        const nextQuery = query(
+          assessmentsRef,
+          where('coachUid', '==', user.uid),
+          orderBy('createdAt', 'desc'),
+          startAfter(lastDoc),
+          limit(20)
+        );
 
         const nextSnapshot = await getDocs(nextQuery);
         const newData: CoachAssessmentSummary[] = [];
@@ -237,13 +226,18 @@ export function useAssessmentList({
 
         nextSnapshot.forEach((docSnap) => {
           const docData = docSnap.data() as Record<string, unknown>;
+          // Handle both legacy (overallScore) and migrated (scores.overall) formats
+          const scores = docData.scores as { overall?: number } | undefined;
+          const score = typeof docData.overallScore === 'number'
+            ? docData.overallScore
+            : (scores?.overall ?? 0);
           newData.push({
             id: docSnap.id,
             clientName: (typeof docData.clientName === 'string' ? docData.clientName : 'Unnamed client'),
             createdAt: (docData.createdAt instanceof Timestamp ? docData.createdAt : null),
-            overallScore: (typeof docData.overallScore === 'number' ? docData.overallScore : 0),
+            overallScore: score,
             goals: (Array.isArray(docData.goals) ? docData.goals : []) as string[],
-            scoresSummary: docData.scoresSummary as CoachAssessmentSummary['scoresSummary'],
+            scoresSummary: (docData.scoresSummary ?? docData.scores) as CoachAssessmentSummary['scoresSummary'],
           });
           newLastDoc = docSnap;
         });

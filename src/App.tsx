@@ -8,6 +8,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { useAuth } from "@/hooks/useAuth";
 import { ThemeManager } from "./components/layout/ThemeManager";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { ImpersonationBanner } from "./components/ImpersonationBanner";
 
 // Lazy load heavy page components
 const Landing = lazy(() => import("./pages/Landing"));
@@ -80,6 +81,7 @@ const App = () => (
                 }}
               >
               <ErrorBoundary>
+              <ImpersonationBanner />
               <Suspense fallback={
                 <div className="flex min-h-screen items-center justify-center bg-slate-50">
                   <div className="flex flex-col items-center gap-4">

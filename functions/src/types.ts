@@ -8,6 +8,7 @@ export type AssessmentDoc = {
   goals?: string[];
   overallScore?: number;
   formData?: Record<string, unknown>;
+  organizationId?: string;
 };
 
 // Legacy type for backwards compatibility with existing data
@@ -28,4 +29,5 @@ export type PublicReportDoc = {
   goals: string[];
   overallScore: number;
   updatedAt?: Timestamp;
+  organizationId?: string;
 };

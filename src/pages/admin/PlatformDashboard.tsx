@@ -21,11 +21,75 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Eye,
-  Settings
+  Settings,
+  Power,
+  Camera,
+  ScanLine,
+  FileBarChart,
+  AlertTriangle,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { FEATURE_NAMES, FEATURE_DESCRIPTIONS } from '@/constants/platform';
+import type { PlatformFeatureFlags } from '@/types/platform';
+
+/** Feature toggle card for kill switches */
+interface FeatureToggleCardProps {
+  featureKey: keyof PlatformFeatureFlags;
+  icon: React.ReactNode;
+  enabled: boolean;
+  updating: boolean;
+  onToggle: (key: keyof PlatformFeatureFlags, enabled: boolean) => void;
+}
+
+const FeatureToggleCard: React.FC<FeatureToggleCardProps> = ({
+  featureKey,
+  icon,
+  enabled,
+  updating,
+  onToggle,
+}) => {
+  // Map feature keys to constant keys
+  const constantKey = featureKey.toUpperCase() as keyof typeof FEATURE_NAMES;
+  const name = FEATURE_NAMES[constantKey] || featureKey;
+  const description = FEATURE_DESCRIPTIONS[constantKey] || '';
+
+  return (
+    <div className={`p-4 rounded-xl border transition-colors ${
+      enabled 
+        ? 'bg-emerald-500/10 border-emerald-500/30' 
+        : 'bg-red-500/10 border-red-500/30'
+    }`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+            enabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
+          }`}>
+            {icon}
+          </div>
+          <div>
+            <p className="text-sm font-medium text-white">{name}</p>
+            <p className={`text-xs ${enabled ? 'text-emerald-400' : 'text-red-400'}`}>
+              {enabled ? 'Enabled' : 'Disabled'}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {updating && <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />}
+          <Switch
+            checked={enabled}
+            onCheckedChange={(checked) => onToggle(featureKey, checked)}
+            disabled={updating}
+          />
+        </div>
+      </div>
+      <p className="text-xs text-slate-500 mt-3">{description}</p>
+    </div>
+  );
+};
 
 const PlatformDashboard = () => {
   const {
@@ -39,6 +103,8 @@ const PlatformDashboard = () => {
     orgAiCostsByFeature,
     orgCoachesWithStats,
     unitEconomics,
+    platformConfig,
+    updatingFeature,
     selectedOrg,
     sortField,
     sortDirection,
@@ -47,6 +113,7 @@ const PlatformDashboard = () => {
     handleSignOut,
     handleSort,
     navigateToOrg,
+    handleToggleFeature,
     formatCurrency,
     formatNumber,
     formatFeatureName,
@@ -163,6 +230,67 @@ const PlatformDashboard = () => {
             </p>
             <p className="text-xs text-slate-500 mt-1">Total assessments</p>
           </div>
+        </div>
+
+        {/* System Controls - Feature Kill Switches */}
+        <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-600/20 flex items-center justify-center">
+                <Power className="w-5 h-5 text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-white font-semibold">System Controls</h3>
+                <p className="text-xs text-slate-500">Feature kill switches for AI services</p>
+              </div>
+            </div>
+            {platformConfig.maintenance.is_maintenance_mode && (
+              <span className="px-3 py-1.5 bg-amber-500/20 text-amber-400 text-xs font-medium rounded-full border border-amber-500/30 flex items-center gap-1.5">
+                <AlertTriangle className="w-3 h-3" />
+                Maintenance Mode
+              </span>
+            )}
+          </div>
+
+          {/* Maintenance Banner */}
+          {platformConfig.maintenance.message && (
+            <div className="mb-6 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+              <p className="text-sm text-amber-400">{platformConfig.maintenance.message}</p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Posture Analysis Toggle */}
+            <FeatureToggleCard
+              featureKey="posture_enabled"
+              icon={<Camera className="w-5 h-5" />}
+              enabled={platformConfig.features.posture_enabled}
+              updating={updatingFeature === 'posture_enabled'}
+              onToggle={handleToggleFeature}
+            />
+            
+            {/* OCR Scanning Toggle */}
+            <FeatureToggleCard
+              featureKey="ocr_enabled"
+              icon={<ScanLine className="w-5 h-5" />}
+              enabled={platformConfig.features.ocr_enabled}
+              updating={updatingFeature === 'ocr_enabled'}
+              onToggle={handleToggleFeature}
+            />
+            
+            {/* Report Generation Toggle */}
+            <FeatureToggleCard
+              featureKey="report_generation_enabled"
+              icon={<FileBarChart className="w-5 h-5" />}
+              enabled={platformConfig.features.report_generation_enabled}
+              updating={updatingFeature === 'report_generation_enabled'}
+              onToggle={handleToggleFeature}
+            />
+          </div>
+
+          <p className="text-xs text-slate-600 mt-4">
+            Last updated: {platformConfig.updatedAt.toLocaleString()} by {platformConfig.updatedBy}
+          </p>
         </div>
 
         {/* Charts Section */}

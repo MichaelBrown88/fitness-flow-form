@@ -12,6 +12,7 @@
  *   await window.cleanupUnusedFields({ dryRun: true })
  *   await window.deleteTestData({ dryRun: true })
  *   await window.migrateToSaas({ dryRun: true })
+ *   await window.migrateAssessmentHistory({ dryRun: true })
  */
 
 // Database Audit Tool
@@ -35,6 +36,9 @@ export { deleteTestData, listAllAccounts } from './deleteTestData';
 
 // SaaS Migration Tool
 export { migrateToSaas, verifyMigration, rollbackMigration } from './migrateToSaas';
+
+// Assessment History Migration Tool
+export { migrateAssessmentHistory, verifyAssessmentHistoryMigration } from './migrateAssessmentHistory';
 
 // Existing Admin Tools
 export { diagnoseData } from './diagnoseData';

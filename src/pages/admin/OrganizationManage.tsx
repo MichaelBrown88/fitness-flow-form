@@ -10,8 +10,10 @@
  * Logic extracted to useOrgManagement hook for clean separation.
  */
 
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useOrgManagement } from '@/hooks/useOrgManagement';
+import { useAuth } from '@/hooks/useAuth';
 import type { OrganizationDetails } from '@/types/platform';
 import { 
   Building2, 
@@ -33,7 +35,9 @@ import {
   Lock,
   Unlock,
   AlertTriangle,
+  Eye,
 } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -66,6 +70,12 @@ const NotFoundState = ({ onBack }: { onBack: () => void }) => (
 const OrganizationManage = () => {
   const navigate = useNavigate();
   const { orgId } = useParams<{ orgId: string }>();
+  const { startImpersonation, impersonation } = useAuth();
+  
+  // Impersonation dialog state
+  const [showImpersonateDialog, setShowImpersonateDialog] = useState(false);
+  const [impersonateReason, setImpersonateReason] = useState('');
+  const [impersonating, setImpersonating] = useState(false);
   
   const {
     org,
@@ -98,6 +108,24 @@ const OrganizationManage = () => {
     handleUpdateDemoAutoFill,
   } = useOrgManagement(orgId);
 
+  // Handle impersonation start
+  const handleStartImpersonation = async () => {
+    if (!org || !orgId) return;
+    
+    setImpersonating(true);
+    try {
+      await startImpersonation(orgId, org.name || 'Unknown Org', impersonateReason || undefined);
+      setShowImpersonateDialog(false);
+      setImpersonateReason('');
+      // Navigate to the org's dashboard view
+      navigate('/dashboard');
+    } catch (error) {
+      alert(`Failed to start impersonation: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setImpersonating(false);
+    }
+  };
+
   if (loading) return <LoadingState />;
   if (!org) return <NotFoundState onBack={() => navigate('/admin')} />;
 
@@ -107,7 +135,9 @@ const OrganizationManage = () => {
       <Header 
         org={org} 
         onBack={() => navigate('/admin')} 
-        onSignOut={handleSignOut} 
+        onSignOut={handleSignOut}
+        onImpersonate={() => setShowImpersonateDialog(true)}
+        isImpersonating={!!impersonation}
       />
 
       <main className="max-w-7xl mx-auto px-4 py-8">
@@ -154,6 +184,8 @@ const OrganizationManage = () => {
               onCancel={handleCancel}
               onReactivate={handleReactivate}
               onDelete={() => setShowDeleteDialog(true)}
+              onImpersonate={() => setShowImpersonateDialog(true)}
+              isImpersonating={!!impersonation}
             />
           </div>
         </div>
@@ -188,6 +220,16 @@ const OrganizationManage = () => {
         onOpenChange={setShowPauseDialog}
         onPause={handlePause}
       />
+
+      <ImpersonateDialog
+        open={showImpersonateDialog}
+        onOpenChange={setShowImpersonateDialog}
+        orgName={org.name || 'Organization'}
+        reason={impersonateReason}
+        setReason={setImpersonateReason}
+        onImpersonate={handleStartImpersonation}
+        loading={impersonating}
+      />
     </div>
   );
 };
@@ -197,9 +239,11 @@ interface HeaderProps {
   org: OrganizationDetails;
   onBack: () => void;
   onSignOut: () => void;
+  onImpersonate: () => void;
+  isImpersonating: boolean;
 }
 
-const Header = ({ org, onBack, onSignOut }: HeaderProps) => (
+const Header = ({ org, onBack, onSignOut, onImpersonate, isImpersonating }: HeaderProps) => (
   <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur-xl sticky top-0 z-50">
     <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
       <div className="flex items-center gap-3">
@@ -221,14 +265,26 @@ const Header = ({ org, onBack, onSignOut }: HeaderProps) => (
         </div>
       </div>
       
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={onSignOut}
-        className="text-slate-400 hover:text-white"
-      >
-        <LogOut className="w-4 h-4" />
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onImpersonate}
+          disabled={isImpersonating}
+          className="border-amber-600/50 text-amber-400 hover:bg-amber-600/20 hover:text-amber-300"
+        >
+          <Eye className="w-4 h-4 mr-2" />
+          View as Org
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onSignOut}
+          className="text-slate-400 hover:text-white"
+        >
+          <LogOut className="w-4 h-4" />
+        </Button>
+      </div>
     </div>
   </header>
 );
@@ -682,12 +738,26 @@ interface ActionsCardProps {
   onCancel: () => void;
   onReactivate: () => void;
   onDelete: () => void;
+  onImpersonate: () => void;
+  isImpersonating: boolean;
 }
 
-const ActionsCard = ({ org, onPause, onCancel, onReactivate, onDelete }: ActionsCardProps) => (
+const ActionsCard = ({ org, onPause, onCancel, onReactivate, onDelete, onImpersonate, isImpersonating }: ActionsCardProps) => (
   <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
     <h2 className="text-white font-semibold mb-4">Actions</h2>
     <div className="space-y-2">
+      {/* Impersonation - Primary action for support */}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onImpersonate}
+        disabled={isImpersonating}
+        className="w-full border-amber-600/50 text-amber-400 hover:bg-amber-600/20"
+      >
+        <Eye className="w-4 h-4 mr-2" />
+        {isImpersonating ? 'Currently Viewing' : 'View as Organization'}
+      </Button>
+      
       {org.status === 'active' && !org.isComped && (
         <Button
           variant="outline"
@@ -902,6 +972,77 @@ const PauseDialog = ({ open, onOpenChange, onPause }: PauseDialogProps) => (
         <Button onClick={onPause} className="bg-indigo-600 hover:bg-indigo-700">
           <Pause className="w-4 h-4 mr-2" />
           Pause Subscription
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+);
+
+// Impersonation Dialog
+interface ImpersonateDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  orgName: string;
+  reason: string;
+  setReason: (reason: string) => void;
+  onImpersonate: () => void;
+  loading: boolean;
+}
+
+const ImpersonateDialog = ({ open, onOpenChange, orgName, reason, setReason, onImpersonate, loading }: ImpersonateDialogProps) => (
+  <Dialog open={open} onOpenChange={onOpenChange}>
+    <DialogContent className="bg-slate-900 border-slate-800 text-white">
+      <DialogHeader>
+        <DialogTitle className="text-white flex items-center gap-2">
+          <Eye className="w-5 h-5 text-amber-400" />
+          View as Organization
+        </DialogTitle>
+        <DialogDescription className="text-slate-400">
+          You will view the app as if you were a member of <strong className="text-white">{orgName}</strong>. 
+          This is a <span className="text-amber-400 font-medium">read-only</span> session and all actions will be logged for audit purposes.
+        </DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4">
+        <div className="p-3 bg-amber-900/20 border border-amber-500/30 rounded-lg">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
+            <div className="text-xs text-amber-200">
+              <p className="font-medium mb-1">Security Notice</p>
+              <ul className="list-disc list-inside space-y-0.5 text-amber-300/80">
+                <li>Session expires after 4 hours</li>
+                <li>All navigation is logged</li>
+                <li>Write operations are disabled</li>
+                <li>Session can be ended anytime</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div>
+          <Label className="text-xs text-slate-400 mb-2 block">Reason for Access (Optional but recommended):</Label>
+          <Textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="e.g., Support ticket #12345, investigating reported bug, training demo..."
+            className="bg-slate-800 border-slate-700 text-white min-h-[80px]"
+          />
+          <p className="text-xs text-slate-500 mt-1">This will be recorded in the audit log.</p>
+        </div>
+      </div>
+      <DialogFooter>
+        <Button
+          variant="outline"
+          onClick={() => { onOpenChange(false); setReason(''); }}
+          className="border-slate-700 text-slate-300 hover:bg-slate-700"
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={onImpersonate}
+          disabled={loading}
+          className="bg-amber-600 hover:bg-amber-700 text-white"
+        >
+          <Eye className="w-4 h-4 mr-2" />
+          {loading ? 'Starting...' : 'Start Viewing'}
         </Button>
       </DialogFooter>
     </DialogContent>

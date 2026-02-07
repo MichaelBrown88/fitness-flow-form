@@ -1,11 +1,13 @@
 import React from 'react';
 import { Input } from '@/components/ui/input';
+import { AlertCircle } from 'lucide-react';
 
 interface DashboardViewTabsProps {
-  view: 'assessments' | 'clients';
-  setView: (view: 'assessments' | 'clients') => void;
+  view: 'assessments' | 'clients' | 'priority';
+  setView: (view: 'assessments' | 'clients' | 'priority') => void;
   search: string;
   setSearch: (search: string) => void;
+  priorityCount?: number;
 }
 
 export const DashboardViewTabs: React.FC<DashboardViewTabsProps> = ({
@@ -13,44 +15,67 @@ export const DashboardViewTabs: React.FC<DashboardViewTabsProps> = ({
   setView,
   search,
   setSearch,
+  priorityCount = 0,
 }) => {
   return (
     <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-4 sm:mb-6">
-      <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl w-full sm:w-auto">
+      <div className="flex items-center gap-1 sm:gap-2 bg-slate-100 p-1 rounded-xl w-full sm:w-auto overflow-x-auto">
         <button
           onClick={() => setView('assessments')}
-          className={`flex-1 sm:flex-none px-4 sm:px-6 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all duration-200 ${
+          className={`flex-1 sm:flex-none px-3 sm:px-5 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all duration-200 whitespace-nowrap ${
             view === 'assessments'
               ? 'bg-white text-slate-900 shadow-sm scale-[1.02]'
               : 'text-slate-500 hover:text-slate-700'
           }`}
         >
-          All Assessments
+          Assessments
         </button>
         <button
           onClick={() => setView('clients')}
-          className={`flex-1 sm:flex-none px-4 sm:px-6 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all duration-200 ${
+          className={`flex-1 sm:flex-none px-3 sm:px-5 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all duration-200 whitespace-nowrap ${
             view === 'clients'
               ? 'bg-white text-slate-900 shadow-sm scale-[1.02]'
               : 'text-slate-500 hover:text-slate-700'
           }`}
         >
-          By Client
+          Clients
+        </button>
+        <button
+          onClick={() => setView('priority')}
+          className={`flex-1 sm:flex-none px-3 sm:px-5 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5 whitespace-nowrap ${
+            view === 'priority'
+              ? 'bg-white text-slate-900 shadow-sm scale-[1.02]'
+              : 'text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          <AlertCircle className="w-3.5 h-3.5" />
+          Priority
+          {priorityCount > 0 && (
+            <span className={`ml-1 px-1.5 py-0.5 text-[10px] font-bold rounded-full ${
+              view === 'priority' 
+                ? 'bg-amber-100 text-amber-700' 
+                : 'bg-amber-500 text-white'
+            }`}>
+              {priorityCount}
+            </span>
+          )}
         </button>
       </div>
-      <div className="relative w-full sm:w-64">
-        <Input
-          placeholder={view === 'assessments' ? "Search assessments…" : "Search clients…"}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="h-10 sm:h-11 w-full pl-4 pr-10 text-sm rounded-xl border-slate-200 focus:border-slate-900 transition-colors bg-white/50 backdrop-blur-sm shadow-sm"
-        />
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-          <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
+      {view !== 'priority' && (
+        <div className="relative w-full sm:w-64">
+          <Input
+            placeholder={view === 'assessments' ? "Search assessments…" : "Search clients…"}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-10 sm:h-11 w-full pl-4 pr-10 text-sm rounded-xl border-slate-200 focus:border-slate-900 transition-colors bg-white/50 backdrop-blur-sm shadow-sm"
+          />
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

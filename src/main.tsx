@@ -18,6 +18,8 @@ import '@/lib/setup/admin/createMissingClients';
 import '@/lib/setup/admin/cleanupUnusedFields';
 import '@/lib/setup/admin/deleteTestData';
 import '@/lib/setup/admin/migrateToSaas';
+import '@/lib/setup/admin/migrateAssessmentHistory';
+import '@/lib/setup/admin/backfillMigratedAssessments';
 import '@/lib/setup/admin/backfillAssessmentOrgId';
 import '@/lib/setup/admin/deleteUserProfile';
 import '@/lib/setup/admin/fixOrgCreatedAt';

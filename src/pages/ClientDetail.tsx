@@ -7,8 +7,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar as UICalendar } from '@/components/ui/calendar';
 import { useClientDetail } from '@/hooks/useClientDetail';
 import { AssessmentComparison } from '@/components/AssessmentComparison';
+import { RetestScheduleCard } from '@/components/RetestScheduleCard';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { useAuth } from '@/hooks/useAuth';
 import {
   ArrowLeft,
   UserPlus,
@@ -43,6 +45,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 
 const ClientDetail = () => {
+  const { profile: authProfile } = useAuth();
   const {
     // URL and Auth
     clientName,
@@ -300,6 +303,15 @@ const ClientDetail = () => {
             ))}
           </div>
         </div>
+
+        {/* Re-Test Schedule Card */}
+        {authProfile?.organizationId && (
+          <RetestScheduleCard
+            profile={profile}
+            clientName={clientName}
+            organizationId={authProfile.organizationId}
+          />
+        )}
 
         {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-4">

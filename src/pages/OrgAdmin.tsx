@@ -30,6 +30,9 @@ import {
   UserPlus,
   X,
   Mail,
+  AlertTriangle,
+  Clock,
+  UserX,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,10 +42,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/utils/logger';
 import AppShell from '@/components/layout/AppShell';
+import { useOrgRetention } from '@/hooks/useOrgRetention';
+import { Badge } from '@/components/ui/badge';
 
 const OrgAdmin = () => {
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
+  const { user, profile, effectiveOrgId } = useAuth();
   const { toast } = useToast();
   const [orgDetails, setOrgDetails] = useState<OrganizationDetails | null>(null);
   const [coaches, setCoaches] = useState<Array<{ uid: string; displayName: string; email?: string; role: string; assessmentCount: number; clientCount: number }>>([]);
@@ -52,35 +57,50 @@ const OrgAdmin = () => {
   const [addingCoach, setAddingCoach] = useState(false);
   const [removingCoach, setRemovingCoach] = useState<string | null>(null);
 
+  // Use effectiveOrgId for reads (supports impersonation), profile.organizationId for writes
+  const readOrgId = effectiveOrgId || profile?.organizationId;
+
+  // Retention analytics (uses read org for impersonation support)
+  const { 
+    summary: retentionSummary, 
+    atRiskClients, 
+    criticalClients,
+    coachMetrics,
+    loading: retentionLoading 
+  } = useOrgRetention(readOrgId, coaches);
+  
+  // Create a map of coach metrics for easy lookup
+  const coachMetricsMap = new Map(coachMetrics.map(m => [m.uid, m]));
+
   useEffect(() => {
     const auth = getFirebaseAuth();
     const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
-      if (!authUser || !profile?.organizationId) {
+      if (!authUser || !readOrgId) {
         navigate('/dashboard', { replace: true });
         return;
       }
 
-      // Verify user is an org admin
-      if (profile.role !== 'org_admin') {
-        logger.warn('User is not an organization admin:', profile.role);
+      // Verify user is an org admin or platform admin (impersonation)
+      if (profile?.role !== 'org_admin' && !effectiveOrgId) {
+        logger.warn('User is not an organization admin:', profile?.role);
         navigate('/dashboard', { replace: true });
         return;
       }
 
-      // Load organization details
+      // Load organization details (uses readOrgId for impersonation)
       try {
-        const orgData = await getOrganizationDetails(profile.organizationId);
+        const orgData = await getOrganizationDetails(readOrgId);
         setOrgDetails(orgData);
 
         // Load coaches with stats - use coachManagement service for org admins
         // (getOrgCoachesWithStats requires platform admin permissions)
-        const coachesData = await getOrgCoaches(profile.organizationId);
+        const coachesData = await getOrgCoaches(readOrgId);
         setCoaches(coachesData);
       } catch (error) {
         logger.error('Failed to load organization details:', error);
         // Fallback: try platform admin method if available
         try {
-          const coachesData = await getOrgCoachesWithStats(profile.organizationId);
+          const coachesData = await getOrgCoachesWithStats(readOrgId);
           setCoaches(coachesData);
         } catch (fallbackError) {
           logger.warn('Failed to load coaches with stats, using empty array:', fallbackError);
@@ -157,12 +177,12 @@ const OrgAdmin = () => {
         setNewCoachEmail('');
         setShowAddCoachDialog(false);
         
-        // Reload coaches list
-        const updatedCoaches = await getOrgCoaches(profile.organizationId);
+        // Reload coaches list (use readOrgId for consistency)
+        const updatedCoaches = await getOrgCoaches(readOrgId!);
         setCoaches(updatedCoaches);
         
         // Reload org details to update coach count
-        const updatedOrg = await getOrganizationDetails(profile.organizationId);
+        const updatedOrg = await getOrganizationDetails(readOrgId!);
         setOrgDetails(updatedOrg);
       } else {
         toast({ 
@@ -198,12 +218,12 @@ const OrgAdmin = () => {
           description: `${coachName} has been removed from your organization.` 
         });
         
-        // Reload coaches list
-        const updatedCoaches = await getOrgCoaches(profile.organizationId);
+        // Reload coaches list (use readOrgId for consistency)
+        const updatedCoaches = await getOrgCoaches(readOrgId!);
         setCoaches(updatedCoaches);
         
         // Reload org details to update coach count
-        const updatedOrg = await getOrganizationDetails(profile.organizationId);
+        const updatedOrg = await getOrganizationDetails(readOrgId!);
         setOrgDetails(updatedOrg);
       } else {
         toast({ 
@@ -381,55 +401,216 @@ const OrgAdmin = () => {
               </div>
             ) : (
               <div className="space-y-2 sm:space-y-3">
-                {coaches.map((coach) => (
-                  <div 
-                    key={coach.uid}
-                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 p-3 sm:p-4 bg-slate-50 rounded-lg border border-slate-200 hover:border-border-medium transition-colors"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-xs sm:text-sm font-medium text-foreground truncate">{coach.displayName}</p>
-                        {coach.role === 'org_admin' && (
-                          <span className="px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-bold bg-gradient-light text-gradient-dark border border-border-medium shrink-0">
-                            Admin
-                          </span>
+                {coaches.map((coach) => {
+                  const metrics = coachMetricsMap.get(coach.uid);
+                  const atRiskCount = metrics?.atRiskClients || 0;
+                  const avgDays = metrics?.averageDaysSinceAssessment || 0;
+                  
+                  return (
+                    <div 
+                      key={coach.uid}
+                      className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 p-3 sm:p-4 rounded-lg border transition-colors ${
+                        atRiskCount > 0 
+                          ? 'bg-amber-50/50 border-amber-200 hover:border-amber-300' 
+                          : 'bg-slate-50 border-slate-200 hover:border-border-medium'
+                      }`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-xs sm:text-sm font-medium text-foreground truncate">{coach.displayName}</p>
+                          {coach.role === 'org_admin' && (
+                            <span className="px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-bold bg-gradient-light text-gradient-dark border border-border-medium shrink-0">
+                              Admin
+                            </span>
+                          )}
+                          {atRiskCount > 0 && (
+                            <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-300 text-[9px] sm:text-[10px]">
+                              <AlertTriangle className="w-2.5 h-2.5 mr-1" />
+                              {atRiskCount} at risk
+                            </Badge>
+                          )}
+                        </div>
+                        {coach.email && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <Mail className="w-3 h-3 text-foreground-tertiary shrink-0" />
+                            <p className="text-[10px] sm:text-xs text-foreground-secondary truncate">{coach.email}</p>
+                          </div>
                         )}
                       </div>
-                      {coach.email && (
-                        <div className="flex items-center gap-1 mt-1">
-                          <Mail className="w-3 h-3 text-foreground-tertiary shrink-0" />
-                          <p className="text-[10px] sm:text-xs text-foreground-secondary truncate">{coach.email}</p>
+                      <div className="flex items-center gap-3 sm:gap-5 text-xs sm:text-sm w-full sm:w-auto justify-between sm:justify-end">
+                        <div className="text-left sm:text-right">
+                          <p className="text-foreground-secondary text-[10px] sm:text-xs">Clients</p>
+                          <p className="text-foreground font-medium text-xs sm:text-sm">{coach.clientCount}</p>
                         </div>
-                      )}
+                        <div className="text-left sm:text-right">
+                          <p className="text-foreground-secondary text-[10px] sm:text-xs">Assessments</p>
+                          <p className="text-foreground font-medium text-xs sm:text-sm">{coach.assessmentCount}</p>
+                        </div>
+                        <div className="text-left sm:text-right hidden sm:block">
+                          <p className="text-foreground-secondary text-[10px] sm:text-xs">Avg Days</p>
+                          <p className={`font-medium text-xs sm:text-sm ${
+                            avgDays > 60 ? 'text-red-600' : 
+                            avgDays > 30 ? 'text-amber-600' : 
+                            'text-emerald-600'
+                          }`}>
+                            {avgDays > 0 ? `${avgDays}d` : '—'}
+                          </p>
+                        </div>
+                        {coach.role !== 'org_admin' && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleRemoveCoach(coach.uid, coach.displayName)}
+                            disabled={removingCoach === coach.uid}
+                            className="text-foreground-tertiary hover:text-red-600 hover:bg-red-50 h-7 w-7 sm:h-8 sm:w-8 p-0 shrink-0"
+                          >
+                            {removingCoach === coach.uid ? (
+                              <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 border-2 border-foreground-tertiary border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            )}
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-4 sm:gap-6 text-xs sm:text-sm w-full sm:w-auto justify-between sm:justify-end">
-                      <div className="text-left sm:text-right">
-                        <p className="text-foreground-secondary text-[10px] sm:text-xs">Clients</p>
-                        <p className="text-foreground font-medium text-xs sm:text-sm">{coach.clientCount}</p>
-                      </div>
-                      <div className="text-left sm:text-right">
-                        <p className="text-foreground-secondary text-[10px] sm:text-xs">Assessments</p>
-                        <p className="text-foreground font-medium text-xs sm:text-sm">{coach.assessmentCount}</p>
-                      </div>
-                      {coach.role !== 'org_admin' && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleRemoveCoach(coach.uid, coach.displayName)}
-                          disabled={removingCoach === coach.uid}
-                          className="text-foreground-tertiary hover:text-red-600 hover:bg-red-50 h-7 w-7 sm:h-8 sm:w-8 p-0 shrink-0"
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Client Retention Analytics */}
+        <Card>
+          <CardHeader className="p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" />
+                  Client Retention
+                </CardTitle>
+                <CardDescription className="text-xs sm:text-sm">
+                  Identify clients at risk of churn
+                </CardDescription>
+              </div>
+              {retentionSummary.atRiskClients > 0 && (
+                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                  <AlertTriangle className="w-3 h-3 mr-1" />
+                  {retentionSummary.atRiskClients} at risk
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 sm:p-6">
+            {retentionLoading ? (
+              <div className="text-center py-6 text-foreground-secondary text-sm">
+                Loading retention data...
+              </div>
+            ) : retentionSummary.totalClients === 0 ? (
+              <div className="text-center py-6 text-foreground-secondary text-sm">
+                No client data yet. Retention analytics will appear once you have clients.
+              </div>
+            ) : (
+              <>
+                {/* Summary Stats */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                  <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 text-center">
+                    <p className="text-lg sm:text-xl font-bold text-foreground">{retentionSummary.totalClients}</p>
+                    <p className="text-[10px] sm:text-xs text-foreground-secondary">Total Clients</p>
+                  </div>
+                  <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-200 text-center">
+                    <p className="text-lg sm:text-xl font-bold text-emerald-700">
+                      {retentionSummary.totalClients - retentionSummary.clientsNeedingAttention}
+                    </p>
+                    <p className="text-[10px] sm:text-xs text-emerald-600">Healthy (&lt;30d)</p>
+                  </div>
+                  <div className="bg-amber-50 rounded-lg p-3 border border-amber-200 text-center">
+                    <p className="text-lg sm:text-xl font-bold text-amber-700">{retentionSummary.clientsNeedingAttention}</p>
+                    <p className="text-[10px] sm:text-xs text-amber-600">Need Attention (30-60d)</p>
+                  </div>
+                  <div className="bg-red-50 rounded-lg p-3 border border-red-200 text-center">
+                    <p className="text-lg sm:text-xl font-bold text-red-700">{retentionSummary.clientsAtRiskOfChurn}</p>
+                    <p className="text-[10px] sm:text-xs text-red-600">At Risk (&gt;60d)</p>
+                  </div>
+                </div>
+
+                {/* Critical Clients List */}
+                {criticalClients.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-red-600 flex items-center gap-1.5">
+                      <UserX className="w-3.5 h-3.5" />
+                      Critical - No Assessment in 90+ Days
+                    </h4>
+                    <div className="space-y-2">
+                      {criticalClients.slice(0, 5).map((client) => (
+                        <div 
+                          key={client.id}
+                          className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-200"
                         >
-                          {removingCoach === coach.uid ? (
-                            <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 border-2 border-foreground-tertiary border-t-transparent rounded-full animate-spin" />
-                          ) : (
-                            <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                          )}
-                        </Button>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{client.name}</p>
+                            {client.assignedCoachName && (
+                              <p className="text-[10px] text-foreground-secondary">Coach: {client.assignedCoachName}</p>
+                            )}
+                          </div>
+                          <div className="text-right shrink-0 ml-4">
+                            <Badge variant="destructive" className="text-[10px]">
+                              {client.daysSinceAssessment >= 999 ? 'Never' : `${client.daysSinceAssessment}d ago`}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                      {criticalClients.length > 5 && (
+                        <p className="text-xs text-foreground-secondary text-center pt-2">
+                          +{criticalClients.length - 5} more critical clients
+                        </p>
                       )}
                     </div>
                   </div>
-                ))}
-              </div>
+                )}
+
+                {/* At-Risk Clients List */}
+                {atRiskClients.length > 0 && (
+                  <div className={`space-y-2 ${criticalClients.length > 0 ? 'mt-6' : ''}`}>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-amber-600 flex items-center gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      At Risk - No Assessment in 60-90 Days
+                    </h4>
+                    <div className="space-y-2">
+                      {atRiskClients.slice(0, 5).map((client) => (
+                        <div 
+                          key={client.id}
+                          className="flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-200"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{client.name}</p>
+                            {client.assignedCoachName && (
+                              <p className="text-[10px] text-foreground-secondary">Coach: {client.assignedCoachName}</p>
+                            )}
+                          </div>
+                          <div className="text-right shrink-0 ml-4">
+                            <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-300 text-[10px]">
+                              {client.daysSinceAssessment}d ago
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                      {atRiskClients.length > 5 && (
+                        <p className="text-xs text-foreground-secondary text-center pt-2">
+                          +{atRiskClients.length - 5} more at-risk clients
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* All healthy message */}
+                {criticalClients.length === 0 && atRiskClients.length === 0 && retentionSummary.totalClients > 0 && (
+                  <div className="text-center py-4 text-emerald-600 text-sm">
+                    All clients have been assessed within the last 60 days. Great job!
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>

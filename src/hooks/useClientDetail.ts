@@ -101,8 +101,11 @@ export interface UseClientDetailResult {
 export function useClientDetail(): UseClientDetailResult {
   const { clientName: encodedClientName } = useParams<{ clientName: string }>();
   const navigate = useNavigate();
-  const { user, profile: userProfile } = useAuth();
+  const { user, profile: userProfile, effectiveOrgId } = useAuth();
   const { toast } = useToast();
+  
+  // Use effectiveOrgId for reads (impersonation support)
+  const readOrgId = effectiveOrgId || userProfile?.organizationId;
   
   const clientName = encodedClientName ? decodeURIComponent(encodedClientName) : '';
   
@@ -259,7 +262,7 @@ export function useClientDetail(): UseClientDetailResult {
     // Get latest assessment to pre-fill
     if (assessments.length > 0) {
       try {
-        const latest = await getCoachAssessment(user.uid, assessments[0].id, undefined, profile?.organizationId, profile);
+        const latest = await getCoachAssessment(user.uid, assessments[0].id, undefined, readOrgId, userProfile);
         if (latest?.formData) {
           sessionStorage.setItem(STORAGE_KEYS.PREFILL_CLIENT, JSON.stringify({
             clientName: latest.formData.fullName,
@@ -347,26 +350,37 @@ export function useClientDetail(): UseClientDetailResult {
           getCurrentAssessment(user.uid, clientName, userProfile?.organizationId),
         ]);
         setAssessments(data);
+
+        // Set current assessment from history, or fall back to latest assessment
         if (current) {
           setCurrentAssessment(current);
+        } else if (data.length > 0) {
+          // Fallback: load formData from the latest assessment if no history exists
+          const latestAssessment = await getCoachAssessment(user.uid, data[0].id, clientName, userProfile?.organizationId, userProfile);
+          if (latestAssessment) {
+            setCurrentAssessment({
+              formData: latestAssessment.formData,
+              overallScore: latestAssessment.overallScore,
+            });
+          }
         }
-        
+
         // Sync profile with latest assessment data
         if (data.length > 0) {
-          const latestAssessment = await getCoachAssessment(user.uid, data[0].id, undefined, profile?.organizationId, profile);
+          const latestAssessment = await getCoachAssessment(user.uid, data[0].id, clientName, userProfile?.organizationId, userProfile);
           const formData = latestAssessment?.formData;
-          
+
           // Build update object with data from assessment
           const profileUpdate: Partial<ClientProfile> = {
             lastAssessmentDate: data[0].createdAt,
           };
-          
+
           // Sync contact info from assessment if available
           if (formData?.email) profileUpdate.email = formData.email;
           if (formData?.phone) profileUpdate.phone = formData.phone;
           if (formData?.dateOfBirth) profileUpdate.dateOfBirth = formData.dateOfBirth;
           if (formData?.gender) profileUpdate.gender = formData.gender;
-          
+
           await createOrUpdateClientProfile(user.uid, clientName, profileUpdate, userProfile?.organizationId, userProfile);
         }
       } finally {
@@ -398,8 +412,8 @@ export function useClientDetail(): UseClientDetailResult {
         });
         setCategoryBreakdown(currentBreakdown);
       } else if (assessments.length > 0) {
-        // Fallback to old system
-        const latest = await getCoachAssessment(user.uid, assessments[0].id, undefined, profile?.organizationId, profile);
+        // Fallback to old system (uses readOrgId for impersonation support)
+        const latest = await getCoachAssessment(user.uid, assessments[0].id, undefined, readOrgId, userProfile);
         if (latest?.formData) {
           setCurrentAssessment({ formData: latest.formData, overallScore: latest.overallScore });
           const scores = computeScores(latest.formData);

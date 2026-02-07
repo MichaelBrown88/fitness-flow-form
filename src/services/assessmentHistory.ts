@@ -18,7 +18,7 @@ import type { FormData } from "@/contexts/FormContext";
 import { sanitizeForFirestore } from "@/lib/utils/firebaseUtils";
 import { PostureAnalysisResult } from "@/lib/ai/postureAnalysis";
 import { logger } from "@/lib/utils/logger";
-import { COLLECTIONS } from "@/constants/collections";
+import { ORGANIZATION } from "@/lib/database/paths";
 
 const MAX_HISTORY_LIMIT = 100;
 const MAX_SNAPSHOT_LIMIT = 100;
@@ -61,39 +61,32 @@ const getClientSlug = (clientName: string) => {
   return safeName.toLowerCase().replace(/\s+/g, "-");
 };
 
-const getCurrentAssessmentDoc = (coachUid: string, clientName: string) =>
-  doc(
-    getDb(),
-    COLLECTIONS.COACHES,
-    coachUid,
-    COLLECTIONS.ASSESSMENTS,
-    getClientSlug(clientName),
-    "current",
-    "data"
-  );
+/**
+ * Get the current assessment document reference
+ * Uses organization path when orgId is provided
+ */
+const getCurrentAssessmentDoc = (orgId: string, clientName: string) =>
+  doc(getDb(), ORGANIZATION.assessmentHistory.current(orgId, getClientSlug(clientName)));
 
-const getHistoryCollection = (coachUid: string, clientName: string) =>
-  collection(
-    getDb(),
-    COLLECTIONS.COACHES,
-    coachUid,
-    COLLECTIONS.ASSESSMENTS,
-    getClientSlug(clientName),
-    "history"
-  );
+/**
+ * Get the history collection reference
+ * Uses organization path when orgId is provided
+ */
+const getHistoryCollection = (orgId: string, clientName: string) =>
+  collection(getDb(), ORGANIZATION.assessmentHistory.history(orgId, getClientSlug(clientName)));
 
-const getSnapshotsCollection = (coachUid: string, clientName: string) =>
-  collection(
-    getDb(),
-    COLLECTIONS.COACHES,
-    coachUid,
-    COLLECTIONS.ASSESSMENTS,
-    getClientSlug(clientName),
-    "snapshots"
-  );
+/**
+ * Get the snapshots collection reference
+ * Uses organization path when orgId is provided
+ */
+const getSnapshotsCollection = (orgId: string, clientName: string) =>
+  collection(getDb(), ORGANIZATION.assessmentHistory.snapshots(orgId, getClientSlug(clientName)));
 
 /**
  * Get the current assessment for a client
+ * @param coachUid - The coach's user ID (kept for backwards compatibility, used as updatedBy)
+ * @param clientName - The client's name
+ * @param organizationId - Required: The organization ID for path construction
  */
 export async function getCurrentAssessment(
   coachUid: string,
@@ -105,7 +98,12 @@ export async function getCurrentAssessment(
   lastUpdated: Timestamp | null;
   organizationId?: string;
 } | null> {
-  const ref = getCurrentAssessmentDoc(coachUid, clientName);
+  if (!organizationId) {
+    logger.warn('getCurrentAssessment called without organizationId', 'assessmentHistory');
+    return null;
+  }
+
+  const ref = getCurrentAssessmentDoc(organizationId, clientName);
   const snap = await getDoc(ref);
   if (!snap.exists()) return null;
   const data = snap.data() as {
@@ -115,12 +113,8 @@ export async function getCurrentAssessment(
     organizationId?: string;
   };
 
-  // Security check: if organizationId is provided, verify it matches
-  if (
-    organizationId &&
-    data.organizationId &&
-    data.organizationId !== organizationId
-  ) {
+  // Security check: verify organizationId matches
+  if (data.organizationId && data.organizationId !== organizationId) {
     logger.warn(
       `Organization ID mismatch for client ${clientName}`,
       'assessmentHistory:security'
@@ -253,6 +247,13 @@ function calculateChanges(
 
 /**
  * Update current assessment and log changes
+ * @param coachUid - The coach's user ID (used for tracking who made changes)
+ * @param clientName - The client's name
+ * @param formData - The form data to save
+ * @param overallScore - The calculated overall score
+ * @param changeType - The type of change being made
+ * @param category - The category of the change (optional)
+ * @param organizationId - Required: The organization ID for path construction
  */
 export async function updateCurrentAssessment(
   coachUid: string,
@@ -263,6 +264,10 @@ export async function updateCurrentAssessment(
   category?: AssessmentChange["category"],
   organizationId?: string
 ): Promise<void> {
+  if (!organizationId) {
+    throw new Error('organizationId is required for updateCurrentAssessment');
+  }
+
   // Get current assessment
   const current = await getCurrentAssessment(
     coachUid,
@@ -270,9 +275,6 @@ export async function updateCurrentAssessment(
     organizationId
   );
   const oldData = current?.formData ?? ({} as FormData);
-
-  // Use organizationId from current doc if not provided
-  const finalOrgId = organizationId || current?.organizationId || null;
 
   // Calculate changes - filter out 'all' category for calculateChanges
   const changes = calculateChanges(
@@ -286,9 +288,8 @@ export async function updateCurrentAssessment(
     return;
   }
 
-  // Update current assessment
-  const currentRef = getCurrentAssessmentDoc(coachUid, clientName);
-  // Saving current assessment
+  // Update current assessment using organization path
+  const currentRef = getCurrentAssessmentDoc(organizationId, clientName);
   try {
     await setDoc(
       currentRef,
@@ -297,21 +298,18 @@ export async function updateCurrentAssessment(
         overallScore: overallScore ?? 0,
         lastUpdated: serverTimestamp(),
         clientName: clientName || "Unnamed client",
-        organizationId: finalOrgId,
+        organizationId: organizationId,
+        coachUid: coachUid, // Track which coach made the update
       },
       { merge: false }
-    ); // Overwrite completely
-    // Current assessment saved
+    );
   } catch (err) {
-    // Use logger for consistency with project rules
-    const { logger } = await import('@/lib/utils/logger');
     logger.error(`[SYNC] ✗ Failed to save current assessment:`, err);
     throw err;
   }
 
-  // Log change to history
-  const historyRef = getHistoryCollection(coachUid, clientName);
-  // Logging change to history
+  // Log change to history using organization path
+  const historyRef = getHistoryCollection(organizationId, clientName);
   try {
     await addDoc(historyRef, {
       timestamp: serverTimestamp(),
@@ -319,22 +317,18 @@ export async function updateCurrentAssessment(
       category: category || "all",
       changes: sanitizeForFirestore(changes),
       updatedBy: coachUid || "unknown",
-      organizationId: finalOrgId,
+      organizationId: organizationId,
     });
-    // History log created
   } catch (err) {
-    // Use logger for consistency with project rules
-    const { logger } = await import('@/lib/utils/logger');
     logger.warn(`[SYNC] ✗ Failed to log history (non-critical):`, err);
-    // Don't throw for history log failure, but log it
   }
 
   // Check if we should create a snapshot (monthly, full assessment, or partial update)
   const now = new Date();
   const shouldCreateSnapshot =
     changeType === "full" ||
-    changeType.startsWith("partial-") || // Create snapshots for partial updates too
-    (now.getDate() === 1 && !current?.lastUpdated); // First of month
+    changeType.startsWith("partial-") ||
+    (now.getDate() === 1 && !current?.lastUpdated);
 
   if (shouldCreateSnapshot) {
     const snapshotType =
@@ -350,13 +344,20 @@ export async function updateCurrentAssessment(
       overallScore,
       snapshotType,
       undefined,
-      finalOrgId || undefined
+      organizationId
     );
   }
 }
 
 /**
  * Create a snapshot of the current assessment state
+ * @param coachUid - The coach's user ID (tracked for audit purposes)
+ * @param clientName - The client's name
+ * @param formData - The form data to snapshot
+ * @param overallScore - The calculated overall score
+ * @param snapshotType - The type of snapshot
+ * @param notes - Optional notes for the snapshot
+ * @param organizationId - Required: The organization ID for path construction
  */
 export async function createSnapshot(
   coachUid: string,
@@ -367,20 +368,29 @@ export async function createSnapshot(
   notes?: string,
   organizationId?: string
 ): Promise<string> {
-  const snapshotsRef = getSnapshotsCollection(coachUid, clientName);
+  if (!organizationId) {
+    throw new Error('organizationId is required for createSnapshot');
+  }
+
+  const snapshotsRef = getSnapshotsCollection(organizationId, clientName);
   const docRef = await addDoc(snapshotsRef, {
     timestamp: serverTimestamp(),
     type: snapshotType,
     formData: sanitizeForFirestore(formData),
     overallScore: overallScore ?? 0,
     notes: notes ?? null,
-    organizationId: organizationId || null,
+    organizationId: organizationId,
+    createdBy: coachUid,
   });
   return docRef.id;
 }
 
 /**
  * Get change history for a client
+ * @param coachUid - The coach's user ID (kept for backwards compatibility)
+ * @param clientName - The client's name
+ * @param limitCount - Maximum number of history entries to return
+ * @param organizationId - Required: The organization ID for path construction
  */
 export async function getChangeHistory(
   coachUid: string,
@@ -388,35 +398,32 @@ export async function getChangeHistory(
   limitCount: number = 100,
   organizationId?: string
 ): Promise<AssessmentChange[]> {
-  const resolvedLimit = Math.min(limitCount, MAX_HISTORY_LIMIT);
-  const historyRef = getHistoryCollection(coachUid, clientName);
-  let q;
-  if (organizationId) {
-    q = query(
-      historyRef,
-      where("organizationId", "==", organizationId),
-      orderBy("timestamp", "desc"),
-      limit(resolvedLimit)
-    );
-  } else {
-    q = query(historyRef, orderBy("timestamp", "desc"), limit(resolvedLimit));
+  if (!organizationId) {
+    logger.warn('getChangeHistory called without organizationId', 'assessmentHistory');
+    return [];
   }
+
+  const resolvedLimit = Math.min(limitCount, MAX_HISTORY_LIMIT);
+  const historyRef = getHistoryCollection(organizationId, clientName);
+
+  const q = query(
+    historyRef,
+    orderBy("timestamp", "desc"),
+    limit(resolvedLimit)
+  );
+
   let snap;
   try {
     snap = await getDocs(q);
   } catch (error) {
     if (
-      organizationId &&
       error &&
       typeof error === "object" &&
       "code" in error &&
       error.code === "failed-precondition"
     ) {
-      const fallbackQuery = query(
-        historyRef,
-        where("organizationId", "==", organizationId),
-        limit(resolvedLimit)
-      );
+      // Fallback without orderBy if index doesn't exist
+      const fallbackQuery = query(historyRef, limit(resolvedLimit));
       snap = await getDocs(fallbackQuery);
     } else {
       throw error;
@@ -436,14 +443,16 @@ export async function getChangeHistory(
     });
   });
 
-  if (organizationId) {
-    return changes.sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis());
-  }
-  return changes;
+  // Sort by timestamp descending
+  return changes.sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis());
 }
 
 /**
  * Get snapshots for a client
+ * @param coachUid - The coach's user ID (kept for backwards compatibility)
+ * @param clientName - The client's name
+ * @param limitCount - Maximum number of snapshots to return
+ * @param organizationId - Required: The organization ID for path construction
  */
 export async function getSnapshots(
   coachUid: string,
@@ -451,37 +460,32 @@ export async function getSnapshots(
   limitCount: number = 50,
   organizationId?: string
 ): Promise<AssessmentSnapshot[]> {
-  const resolvedLimit = Math.min(limitCount, MAX_SNAPSHOT_LIMIT);
-  const snapshotsRef = getSnapshotsCollection(coachUid, clientName);
-
-  let q;
-  if (organizationId) {
-    q = query(
-      snapshotsRef,
-      where("organizationId", "==", organizationId),
-      orderBy("timestamp", "desc"),
-      limit(resolvedLimit)
-    );
-  } else {
-    q = query(snapshotsRef, orderBy("timestamp", "desc"), limit(resolvedLimit));
+  if (!organizationId) {
+    logger.warn('getSnapshots called without organizationId', 'assessmentHistory');
+    return [];
   }
+
+  const resolvedLimit = Math.min(limitCount, MAX_SNAPSHOT_LIMIT);
+  const snapshotsRef = getSnapshotsCollection(organizationId, clientName);
+
+  const q = query(
+    snapshotsRef,
+    orderBy("timestamp", "desc"),
+    limit(resolvedLimit)
+  );
 
   let snap;
   try {
     snap = await getDocs(q);
   } catch (error) {
     if (
-      organizationId &&
       error &&
       typeof error === "object" &&
       "code" in error &&
       error.code === "failed-precondition"
     ) {
-      const fallbackQuery = query(
-        snapshotsRef,
-        where("organizationId", "==", organizationId),
-        limit(resolvedLimit)
-      );
+      // Fallback without orderBy if index doesn't exist
+      const fallbackQuery = query(snapshotsRef, limit(resolvedLimit));
       snap = await getDocs(fallbackQuery);
     } else {
       throw error;
@@ -502,14 +506,16 @@ export async function getSnapshots(
     });
   });
 
-  if (organizationId) {
-    return snapshots.sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis());
-  }
-  return snapshots;
+  // Sort by timestamp descending
+  return snapshots.sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis());
 }
 
 /**
  * Reconstruct assessment state at a specific date
+ * @param coachUid - The coach's user ID (kept for backwards compatibility)
+ * @param clientName - The client's name
+ * @param targetDate - The date to reconstruct the assessment for
+ * @param organizationId - Required: The organization ID for path construction
  */
 export async function reconstructAssessmentAtDate(
   coachUid: string,
@@ -517,6 +523,11 @@ export async function reconstructAssessmentAtDate(
   targetDate: Date,
   organizationId?: string
 ): Promise<{ formData: FormData; overallScore: number } | null> {
+  if (!organizationId) {
+    logger.warn('reconstructAssessmentAtDate called without organizationId', 'assessmentHistory');
+    return null;
+  }
+
   const targetTimestamp = Timestamp.fromDate(targetDate);
 
   // Find nearest snapshot before target date
@@ -536,34 +547,18 @@ export async function reconstructAssessmentAtDate(
   let reconstructedScore = nearestSnapshot?.overallScore ?? 0;
 
   // Get all changes between snapshot and target date
-  const historyRef = getHistoryCollection(coachUid, clientName);
-  let q;
-  if (organizationId) {
-    q = query(
-      historyRef,
-      where("organizationId", "==", organizationId),
-      where(
-        "timestamp",
-        ">",
-        nearestSnapshot?.timestamp ?? Timestamp.fromDate(new Date(0))
-      ),
-      where("timestamp", "<=", targetTimestamp),
-      orderBy("timestamp", "asc"),
-      limit(100)
-    );
-  } else {
-    q = query(
-      historyRef,
-      where(
-        "timestamp",
-        ">",
-        nearestSnapshot?.timestamp ?? Timestamp.fromDate(new Date(0))
-      ),
-      where("timestamp", "<=", targetTimestamp),
-      orderBy("timestamp", "asc"),
-      limit(100)
-    );
-  }
+  const historyRef = getHistoryCollection(organizationId, clientName);
+  const q = query(
+    historyRef,
+    where(
+      "timestamp",
+      ">",
+      nearestSnapshot?.timestamp ?? Timestamp.fromDate(new Date(0))
+    ),
+    where("timestamp", "<=", targetTimestamp),
+    orderBy("timestamp", "asc"),
+    limit(100)
+  );
 
   const changesSnap = await getDocs(q);
   const changes: AssessmentChange[] = [];
@@ -607,6 +602,11 @@ export async function reconstructAssessmentAtDate(
 /**
  * Update posture analysis results in the current assessment
  * Useful for re-analyzing with corrected logic
+ * @param coachUid - The coach's user ID (kept for backwards compatibility)
+ * @param clientName - The client's name
+ * @param view - The posture view being updated
+ * @param analysis - The posture analysis result
+ * @param organizationId - Required: The organization ID for path construction
  */
 export async function updatePostureAnalysis(
   coachUid: string,
@@ -615,7 +615,11 @@ export async function updatePostureAnalysis(
   analysis: PostureAnalysisResult,
   organizationId?: string
 ): Promise<void> {
-  const currentRef = getCurrentAssessmentDoc(coachUid, clientName);
+  if (!organizationId) {
+    throw new Error('organizationId is required for updatePostureAnalysis');
+  }
+
+  const currentRef = getCurrentAssessmentDoc(organizationId, clientName);
   const currentSnap = await getDoc(currentRef);
 
   if (!currentSnap.exists()) {
@@ -628,11 +632,7 @@ export async function updatePostureAnalysis(
   };
 
   // Security check
-  if (
-    organizationId &&
-    currentData.organizationId &&
-    currentData.organizationId !== organizationId
-  ) {
+  if (currentData.organizationId && currentData.organizationId !== organizationId) {
     throw new Error("Organization ID mismatch");
   }
 
@@ -679,6 +679,10 @@ export function compareAssessments(
 /**
  * Restore a client's current assessment from a specific snapshot
  * Useful for recovering from accidental overwrites
+ * @param coachUid - The coach's user ID (tracked for audit purposes)
+ * @param clientName - The client's name
+ * @param snapshotId - Optional specific snapshot ID to restore
+ * @param organizationId - Required: The organization ID for path construction
  */
 export async function restoreFromSnapshot(
   coachUid: string,
@@ -686,17 +690,21 @@ export async function restoreFromSnapshot(
   snapshotId?: string,
   organizationId?: string
 ): Promise<{ success: boolean; message: string; restoredScore?: number }> {
+  if (!organizationId) {
+    return { success: false, message: 'organizationId is required for restoreFromSnapshot' };
+  }
+
   try {
     // Get all snapshots for this client
     const snapshots = await getSnapshots(coachUid, clientName, 50, organizationId);
-    
+
     if (snapshots.length === 0) {
       return { success: false, message: `No snapshots found for client "${clientName}"` };
     }
-    
+
     // Find the snapshot to restore (either by ID or use the second most recent)
     let snapshotToRestore: AssessmentSnapshot | undefined;
-    
+
     if (snapshotId) {
       snapshotToRestore = snapshots.find(s => s.id === snapshotId);
       if (!snapshotToRestore) {
@@ -711,14 +719,14 @@ export async function restoreFromSnapshot(
         snapshotToRestore = snapshots[1]; // Second most recent
       }
     }
-    
+
     // Log what we're doing
     const snapshotDate = snapshotToRestore.timestamp?.toDate?.()?.toLocaleString?.() || 'unknown date';
     logger.info(`[RESTORE] Restoring "${clientName}" from snapshot ${snapshotToRestore.id} (${snapshotDate})`, 'assessmentHistory');
-    
-    // Get the current assessment ref
-    const currentRef = getCurrentAssessmentDoc(coachUid, clientName);
-    
+
+    // Get the current assessment ref using organization path
+    const currentRef = getCurrentAssessmentDoc(organizationId, clientName);
+
     // Restore the snapshot to current
     await setDoc(
       currentRef,
@@ -727,11 +735,13 @@ export async function restoreFromSnapshot(
         overallScore: snapshotToRestore.overallScore ?? 0,
         lastUpdated: serverTimestamp(),
         clientName: clientName,
-        organizationId: organizationId || null,
+        organizationId: organizationId,
+        restoredBy: coachUid,
+        restoredFromSnapshot: snapshotToRestore.id,
       },
       { merge: false }
     );
-    
+
     return {
       success: true,
       message: `Successfully restored "${clientName}" from snapshot dated ${snapshotDate}`,
@@ -745,12 +755,21 @@ export async function restoreFromSnapshot(
 
 /**
  * List available snapshots for a client (for debugging/recovery)
+ * @param coachUid - The coach's user ID (kept for backwards compatibility)
+ * @param clientName - The client's name
+ * @param organizationId - Required: The organization ID for path construction
  */
 export async function listClientSnapshots(
   coachUid: string,
-  clientName: string
+  clientName: string,
+  organizationId?: string
 ): Promise<{ id: string; date: string; score: number; type: string }[]> {
-  const snapshots = await getSnapshots(coachUid, clientName, 20);
+  if (!organizationId) {
+    logger.warn('listClientSnapshots called without organizationId', 'assessmentHistory');
+    return [];
+  }
+
+  const snapshots = await getSnapshots(coachUid, clientName, 20, organizationId);
   return snapshots.map(s => ({
     id: s.id || 'unknown',
     date: s.timestamp?.toDate?.()?.toLocaleString?.() || 'unknown',

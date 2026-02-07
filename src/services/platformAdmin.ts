@@ -40,3 +40,13 @@ export {
   getOrgAICostsByFeature,
   getAICostBreakdown,
 } from './platform/aiUsageTracking';
+
+// Platform Configuration (Feature Flags & Maintenance)
+export {
+  getPlatformConfig,
+  subscribeToPlatformConfig,
+  updateFeatureFlag,
+  updateFeatureFlags,
+  setMaintenanceMode,
+  isFeatureEnabled,
+} from './platform/platformConfig';
