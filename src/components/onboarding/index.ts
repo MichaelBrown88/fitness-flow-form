@@ -9,4 +9,4 @@ export { BrandingStep } from './BrandingStep';
 export { EquipmentStep } from './EquipmentStep';
 export { TeamSetupStep } from './TeamSetupStep';
 export { OnboardingSuccess } from './OnboardingSuccess';
-export { OptionCard, GlassInput, GlassPanel } from './SharedOnboardingComponents';
+export { OptionCard, OnboardingInput, GlassInput } from './SharedOnboardingComponents';
