@@ -139,17 +139,12 @@ function getInterval(
     ?? FALLBACK_INTERVALS.full;
 }
 
+import { getPillarLabel } from '@/constants/pillars';
+
 /** Friendly label for a pillar */
 export function pillarLabel(type: ReassessmentType): string {
-  switch (type) {
-    case 'inbody': return 'InBody';
-    case 'posture': return 'Posture';
-    case 'fitness': return 'Cardio';
-    case 'strength': return 'Strength';
-    case 'lifestyle': return 'Lifestyle';
-    case 'full': return 'Full Assessment';
-    default: return type;
-  }
+  if (type === 'full') return 'Full Assessment';
+  return getPillarLabel(type);
 }
 
 // ── Core logic ───────────────────────────────────────────────────────

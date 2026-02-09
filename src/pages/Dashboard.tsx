@@ -43,7 +43,7 @@ const Dashboard = () => {
       <div className="flex min-h-screen items-center justify-center text-sm text-slate-400 font-bold uppercase tracking-widest">
         <div className="flex flex-col items-center gap-4">
           <div className="w-8 h-8 border-4 border-slate-900 border-t-transparent rounded-full animate-spin" />
-          <span>Syncing Coach Session…</span>
+          <span>Loading your dashboard…</span>
         </div>
       </div>
     );

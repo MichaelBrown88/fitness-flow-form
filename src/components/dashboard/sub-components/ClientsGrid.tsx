@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import type { ClientGroup } from '@/hooks/useDashboardData';
 import type { ReassessmentItem, ReassessmentType } from '@/hooks/useReassessmentQueue';
+import { getPillarLabel } from '@/constants/pillars';
 
 interface ClientsGridProps {
   loadingData: boolean;
@@ -48,15 +49,8 @@ const getDueIcon = (type: ReassessmentType) => {
 
 /** Get short label for reassessment type */
 const getDueLabel = (type: ReassessmentType) => {
-  switch (type) {
-    case 'inbody': return 'InBody';
-    case 'posture': return 'Posture';
-    case 'fitness': return 'Cardio';
-    case 'strength': return 'Strength';
-    case 'full': return 'Full';
-    case 'lifestyle': return 'Lifestyle';
-    default: return type;
-  }
+  if (type === 'full') return 'Full';
+  return getPillarLabel(type);
 };
 
 export const ClientsGrid: React.FC<ClientsGridProps> = ({
@@ -197,19 +191,19 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-slate-100" />
                     <DropdownMenuItem onClick={() => onNewAssessment(group.name, 'inbody')} className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-slate-50 text-slate-600">
-                      InBody Only
+                      {getPillarLabel('inbody')} Only
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onNewAssessment(group.name, 'posture')} className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-slate-50 text-slate-600">
-                      Posture Only
+                      {getPillarLabel('posture')} Only
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onNewAssessment(group.name, 'fitness')} className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-slate-50 text-slate-600">
-                      Fitness Only
+                      {getPillarLabel('fitness')} Only
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onNewAssessment(group.name, 'strength')} className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-slate-50 text-slate-600">
-                      Strength Only
+                      {getPillarLabel('strength')} Only
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onNewAssessment(group.name, 'lifestyle')} className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-slate-50 text-slate-600">
-                      Lifestyle Only
+                      {getPillarLabel('lifestyle')} Only
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/components/ui/use-toast';
 import { getClientAssessments, type CoachAssessmentSummary } from '@/services/coachAssessments';
@@ -100,6 +100,7 @@ export interface UseClientDetailResult {
 
 export function useClientDetail(): UseClientDetailResult {
   const { clientName: encodedClientName } = useParams<{ clientName: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user, profile: userProfile, effectiveOrgId } = useAuth();
   const { toast } = useToast();
@@ -130,7 +131,7 @@ export function useClientDetail(): UseClientDetailResult {
   const [loadingHistorical, setLoadingHistorical] = useState(false);
   const [showComparison, setShowComparison] = useState(false);
   const [comparisonTarget, setComparisonTarget] = useState<ComparisonTarget | null>(null);
-  const [isComparisonMode, setIsComparisonMode] = useState(true);
+  const [isComparisonMode, setIsComparisonMode] = useState(false);
 
   // Calculate stats from assessments
   const stats = useMemo<ClientStats>(() => {
@@ -521,6 +522,31 @@ export function useClientDetail(): UseClientDetailResult {
       }
     })();
   }, [user, clientName, selectedDate, userProfile?.organizationId]);
+
+  // Handle ?compare=true URL param: auto-open comparison dialog
+  useEffect(() => {
+    if (searchParams.get('compare') !== 'true') return;
+    if (!currentAssessment || snapshots.length < 2) return;
+
+    // Use oldest snapshot as "old" vs current as "new"
+    const sortedSnapshots = [...snapshots].sort((a, b) =>
+      a.timestamp.toDate().getTime() - b.timestamp.toDate().getTime()
+    );
+    const oldest = sortedSnapshots[0];
+
+    setIsComparisonMode(true);
+    setComparisonTarget({
+      old: oldest.formData,
+      new: currentAssessment.formData,
+      oldDate: oldest.timestamp.toDate(),
+      newDate: new Date(),
+    });
+    setShowComparison(true);
+
+    // Clear the param so it doesn't re-trigger
+    searchParams.delete('compare');
+    setSearchParams(searchParams, { replace: true });
+  }, [searchParams, currentAssessment, snapshots]);
 
   // Handle client transfer (Phase E)
   const handleTransferClient = useCallback(async (toCoachUid: string) => {

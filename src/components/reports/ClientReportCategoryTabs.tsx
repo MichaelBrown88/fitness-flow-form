@@ -9,6 +9,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import CategoryRadarChart from './CategoryRadarChart';
 import { PostureAnalysisViewer } from './PostureAnalysisViewer';
 import { circleColor, niceLabel, CATEGORY_EXPLANATIONS } from './ClientReportConstants';
+import { scoreGrade } from '@/lib/scoring/scoreColor';
 import type { ScoreSummary } from '@/lib/scoring';
 import type { FormData } from '@/contexts/FormContext';
 
@@ -52,7 +53,8 @@ export function ClientReportCategoryTabs({
         </TabsList>
         {orderedCats.map((cat) => {
           const scorePercent = Math.min(100, (cat.score / 100) * 100);
-          const bgColor = cat.score >= 75 ? 'bg-green-500' : cat.score >= 45 ? 'bg-amber-500' : 'bg-red-500';
+          const grade = scoreGrade(cat.score);
+          const bgColor = grade === 'green' ? 'bg-green-500' : grade === 'amber' ? 'bg-amber-500' : 'bg-red-500';
           const jargon = CATEGORY_EXPLANATIONS[cat.id] || '';
 
           return (

@@ -262,6 +262,13 @@ export async function getCoachAssessment(
         goals: Array.isArray(current.formData.clientGoals) ? current.formData.clientGoals : [],
       };
     }
+    // Fallback: if no current assessment doc exists, use the most recent assessment
+    const latestAssessments = await getClientAssessments(coachUid, clientName, validOrgId, 1);
+    if (latestAssessments.length > 0) {
+      // Recurse with the real assessment ID instead of "latest"
+      return getCoachAssessment(coachUid, latestAssessments[0].id, clientName, validOrgId, profile);
+    }
+    return null;
   }
 
   // 1. Try the specific assessment document from organization path

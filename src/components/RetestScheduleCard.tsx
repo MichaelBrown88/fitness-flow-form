@@ -41,6 +41,8 @@ interface RetestScheduleCardProps {
   onScheduleUpdated?: () => void;
 }
 
+import { getPillarLabel } from '@/constants/pillars';
+
 /** Pillar display configuration */
 const PILLAR_CONFIG: Record<PartialAssessmentCategory, {
   label: string;
@@ -48,22 +50,22 @@ const PILLAR_CONFIG: Record<PartialAssessmentCategory, {
   description: string;
 }> = {
   inbody: {
-    label: 'InBody',
+    label: getPillarLabel('inbody'),
     icon: Scan,
     description: 'Body composition scan',
   },
   posture: {
-    label: 'Movement',
+    label: getPillarLabel('posture'),
     icon: UserCheck,
     description: 'Posture & movement quality',
   },
   fitness: {
-    label: 'Fitness',
+    label: getPillarLabel('fitness'),
     icon: Heart,
     description: 'Cardiovascular assessment',
   },
   strength: {
-    label: 'Strength',
+    label: getPillarLabel('strength'),
     icon: Dumbbell,
     description: 'Functional strength tests',
   },

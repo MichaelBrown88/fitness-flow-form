@@ -7,6 +7,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as UICalendar } from '@/components/ui/calendar';
 import { useClientDetail } from '@/hooks/useClientDetail';
+import { scoreGrade } from '@/lib/scoring/scoreColor';
+import { PILLAR_DISPLAY } from '@/constants/pillars';
 import { AssessmentComparison } from '@/components/AssessmentComparison';
 import { RetestScheduleCard } from '@/components/RetestScheduleCard';
 import { Switch } from '@/components/ui/switch';
@@ -97,7 +99,7 @@ const ClientDetail = () => {
   if (!user) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-slate-600">
-        Checking coach session…
+        Loading…
       </div>
     );
   }
@@ -175,7 +177,7 @@ const ClientDetail = () => {
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="gap-2 h-11 border-slate-200 text-slate-600 hover:bg-slate-50">
                     <CalendarIcon className="h-4 w-4" />
-                    {selectedDate ? selectedDate.toLocaleDateString() : 'Historical Snapshots...'}
+                    {selectedDate ? selectedDate.toLocaleDateString() : 'View Past Results'}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-80 p-0 overflow-hidden rounded-2xl" align="end">
@@ -227,12 +229,12 @@ const ClientDetail = () => {
                 </PopoverContent>
               </Popover>
 
-              {currentAssessment && (
+              {currentAssessment && assessments.length > 0 && (
                 <Button 
                   className="h-11 px-6 rounded-xl bg-primary text-white font-bold hover:brightness-110 shadow-md shadow-primary/10 transition-all gap-2"
                   asChild
                 >
-                  <Link to={`/coach/assessments/latest?clientName=${encodeURIComponent(clientName)}`}>
+                  <Link to={`/coach/assessments/${assessments[0].id}?clientName=${encodeURIComponent(clientName)}`}>
                     <FileText className="h-4 w-4" />
                     Open Full Report
                   </Link>
@@ -298,11 +300,11 @@ const ClientDetail = () => {
           </div>
           <div className="grid gap-4 grid-cols-2 md:grid-cols-5">
             {[
-              { id: 'lifestyle', label: 'Lifestyle', icon: Activity, color: 'text-primary', bg: 'bg-brand-light' },
-              { id: 'inbody', label: 'InBody', icon: Scan, color: 'text-primary', bg: 'bg-brand-light' },
-              { id: 'posture', label: 'Movement', icon: UserCheck, color: 'text-primary', bg: 'bg-brand-light' },
-              { id: 'strength', label: 'Strength', icon: Dumbbell, color: 'text-primary', bg: 'bg-brand-light' },
-              { id: 'fitness', label: 'Fitness', icon: Heart, color: 'text-primary', bg: 'bg-brand-light' },
+              { id: 'lifestyle', label: PILLAR_DISPLAY.lifestyle.short, icon: Activity, color: 'text-primary', bg: 'bg-brand-light' },
+              { id: 'inbody', label: PILLAR_DISPLAY.bodyComp.short, icon: Scan, color: 'text-primary', bg: 'bg-brand-light' },
+              { id: 'posture', label: PILLAR_DISPLAY.movementQuality.short, icon: UserCheck, color: 'text-primary', bg: 'bg-brand-light' },
+              { id: 'strength', label: PILLAR_DISPLAY.strength.short, icon: Dumbbell, color: 'text-primary', bg: 'bg-brand-light' },
+              { id: 'fitness', label: PILLAR_DISPLAY.cardio.short, icon: Heart, color: 'text-primary', bg: 'bg-brand-light' },
             ].map((action) => (
               <Button
                 key={action.id}
@@ -372,10 +374,10 @@ const ClientDetail = () => {
           <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
             <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
               <Clock className="h-5 w-5 text-primary" />
-              Complete Data Logs
+              Assessment History
             </h3>
             <Badge variant="outline" className="border-slate-200 text-slate-500 font-bold bg-white uppercase tracking-widest text-[9px]">
-              {assessments.length} Records Found
+              {assessments.length} assessments
             </Badge>
           </div>
           <div className="divide-y divide-slate-100">
@@ -388,8 +390,8 @@ const ClientDetail = () => {
                 <div key={assessment.id} className="p-5 hover:bg-slate-50/80 transition-all flex items-center justify-between group">
                   <div className="flex items-center gap-6">
                     <div className={`h-12 w-12 rounded-xl flex items-center justify-center font-black text-sm border-2 ${
-                      assessment.overallScore >= 75 ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 
-                      assessment.overallScore >= 50 ? 'bg-amber-50 border-amber-100 text-amber-600' : 
+                      scoreGrade(assessment.overallScore) === 'green' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 
+                      scoreGrade(assessment.overallScore) === 'amber' ? 'bg-amber-50 border-amber-100 text-amber-600' : 
                       'bg-rose-50 border-rose-100 text-rose-600'
                     }`}>
                       {assessment.overallScore}
