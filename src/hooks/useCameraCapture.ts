@@ -194,7 +194,7 @@ export function useCameraCapture({
         isCapturingRef.current = false;
       }
     },
-    [sessionId, mode, views, onAudioFeedback, onSequenceComplete, onNextView, toast, shutterAudio]
+    [sessionId, mode, views, onAudioFeedback, onSequenceComplete, toast, shutterAudio]
   );
 
   const handleApplyOcr = useCallback(async () => {

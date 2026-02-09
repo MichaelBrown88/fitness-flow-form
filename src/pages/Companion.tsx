@@ -231,7 +231,7 @@ const Companion = () => {
       if (shutterAudio.current) {
         void shutterAudio.current.play().catch(() => {});
       }
-    } catch (e) {}
+    } catch { /* audio play may fail silently */ }
 
     // Take screenshot
     const imageSrc = webcam.getScreenshot();

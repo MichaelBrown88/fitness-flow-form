@@ -289,7 +289,7 @@ export function useClientDetail(): UseClientDetailResult {
         variant: "destructive",
       });
     }
-  }, [user, clientName, editData, userProfile?.organizationId, userProfile, profile?.dateOfBirth, profile?.gender, toast]);
+  }, [user, clientName, editData, userProfile, profile?.dateOfBirth, profile?.gender, toast]);
 
   // Start new assessment
   const handleNewAssessment = useCallback(async (
@@ -569,7 +569,7 @@ export function useClientDetail(): UseClientDetailResult {
       logger.error('Failed to transfer client', 'CLIENT_DETAIL', err);
       toast({ title: 'Error', description: 'Failed to transfer client.', variant: 'destructive' });
     }
-  }, [user, clientName, userProfile?.organizationId, userProfile, toast]);
+  }, [user, clientName, userProfile, toast]);
 
   return {
     // URL and Auth

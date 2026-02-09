@@ -146,10 +146,10 @@ export async function restoreMichaelJamesBrown() {
 
 // Make it available globally
 if (typeof window !== 'undefined') {
-  (window as any).openMichaelBrownAssessment = openMichaelBrownAssessment;
-  (window as any).listSnapshots = listSnapshots;
-  (window as any).restoreClient = restoreClient;
-  (window as any).restoreMichaelJamesBrown = restoreMichaelJamesBrown;
+  (window as unknown as Record<string, unknown>).openMichaelBrownAssessment = openMichaelBrownAssessment;
+  (window as unknown as Record<string, unknown>).listSnapshots = listSnapshots;
+  (window as unknown as Record<string, unknown>).restoreClient = restoreClient;
+  (window as unknown as Record<string, unknown>).restoreMichaelJamesBrown = restoreMichaelJamesBrown;
   
   logger.info('🧪 Test helpers loaded!');
   logger.info('🧪 Recovery commands:');

@@ -475,7 +475,6 @@ export const FormProvider = ({ children }: { children: ReactNode }) => {
     currentStep,
     setCurrentStep,
     totalSteps
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [formData, currentStep, totalSteps]);
 
   return (
