@@ -1,7 +1,13 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AppShell from '@/components/layout/AppShell';
+import { Button } from '@/components/ui/button';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { AnalyticsDashboard } from '@/components/dashboard/AnalyticsDashboard';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
+import { AlertCircle, X, Plus } from 'lucide-react';
+import { ROUTES } from '@/constants/routes';
+import { STORAGE_KEYS } from '@/constants/storageKeys';
 
 // Hook
 import { useDashboardData } from '@/hooks/useDashboardData';
@@ -38,6 +44,18 @@ const Dashboard = () => {
     handleNewAssessmentForClient,
   } = useDashboardData();
 
+  const navigate = useNavigate();
+  const [alertDismissed, setAlertDismissed] = useState(false);
+  const overdueCount = reassessmentQueue?.summary?.overdue || 0;
+
+  const handleGlobalNewAssessment = () => {
+    sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
+    sessionStorage.removeItem(STORAGE_KEYS.IS_DEMO);
+    sessionStorage.removeItem('prefillClientData');
+    sessionStorage.removeItem('editAssessment');
+    navigate(ROUTES.ASSESSMENT);
+  };
+
   if (loading || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-slate-400 font-bold uppercase tracking-widest">
@@ -53,7 +71,18 @@ const Dashboard = () => {
 
   return (
     <ErrorBoundary>
-      <AppShell title="Dashboard">
+      <AppShell
+        title="Dashboard"
+        actions={
+          <Button
+            onClick={handleGlobalNewAssessment}
+            className="h-9 px-4 rounded-xl bg-slate-900 text-white font-bold hover:bg-slate-800 gap-2 text-xs"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">New Assessment</span>
+          </Button>
+        }
+      >
         <div className="max-w-[1400px] mx-auto space-y-6 sm:space-y-8 md:space-y-10 lg:space-y-12 pb-12">
           
           <DashboardHeader coachFirstName={coachFirstName} />
@@ -66,6 +95,22 @@ const Dashboard = () => {
           </>
         )}
 
+          {/* Overdue Alert */}
+          {view === 'clients' && overdueCount > 0 && !alertDismissed && (
+            <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+              <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+              <p className="text-sm text-amber-800 flex-1">
+                <span className="font-bold">{overdueCount} client{overdueCount > 1 ? 's' : ''}</span> {overdueCount > 1 ? 'have' : 'has'} overdue reassessments.{' '}
+                <button onClick={() => setView('priority')} className="underline font-semibold hover:text-amber-900">
+                  View priority list
+                </button>
+              </p>
+              <button onClick={() => setAlertDismissed(true)} className="text-amber-400 hover:text-amber-600 shrink-0">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+
           {/* Main Content Actions */}
           <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 md:p-8 shadow-sm">
             <DashboardViewTabs 
@@ -73,7 +118,7 @@ const Dashboard = () => {
               setView={setView}
               search={search}
               setSearch={setSearch}
-              priorityCount={reassessmentQueue?.summary?.overdue || 0}
+              priorityCount={overdueCount}
             />
 
           {/* Clients View (Unified Table) */}
@@ -92,6 +137,7 @@ const Dashboard = () => {
                 reassessmentQueue={reassessmentQueue}
                 onNewAssessmentForClient={handleNewAssessmentForClient}
                 onScheduleChanged={refreshSchedules}
+                search={search}
               />
             )}
           </div>

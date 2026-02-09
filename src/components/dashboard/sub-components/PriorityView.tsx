@@ -143,12 +143,15 @@ interface PriorityViewProps {
   onNewAssessmentForClient: (clientName: string, category?: string) => void;
   /** Called after a schedule edit is saved to Firestore, triggering a data refetch */
   onScheduleChanged?: () => void;
+  /** Optional search filter applied from the dashboard search bar */
+  search?: string;
 }
 
 export const PriorityView: React.FC<PriorityViewProps> = ({
   reassessmentQueue,
   onNewAssessmentForClient,
   onScheduleChanged,
+  search = '',
 }) => {
   const navigate = useNavigate();
   const { profile } = useAuth();
@@ -189,11 +192,18 @@ export const PriorityView: React.FC<PriorityViewProps> = ({
     };
   }, [hookQueue, hookSummary, dateOverrides]);
 
+  // Apply search filter
+  const filteredQueue = useMemo(() => {
+    if (!search.trim()) return queue;
+    const term = search.toLowerCase();
+    return queue.filter(q => q.clientName.toLowerCase().includes(term));
+  }, [queue, search]);
+
   const sections = useMemo(() => ({
-    overdue: queue.filter(q => q.status === 'overdue'),
-    dueSoon: queue.filter(q => q.status === 'due-soon'),
-    upToDate: queue.filter(q => q.status === 'up-to-date'),
-  }), [queue]);
+    overdue: filteredQueue.filter(q => q.status === 'overdue'),
+    dueSoon: filteredQueue.filter(q => q.status === 'due-soon'),
+    upToDate: filteredQueue.filter(q => q.status === 'up-to-date'),
+  }), [filteredQueue]);
 
   const handleDueDateSave = useCallback(async (
     clientName: string, pillar: PartialAssessmentCategory, newDate: Date,
