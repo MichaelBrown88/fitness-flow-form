@@ -130,8 +130,8 @@ export function CompanionUI({
             <Loader2 className="h-10 w-10 text-white animate-spin" />
           </div>
         </div>
-        <h1 className="text-2xl font-black uppercase tracking-tight mb-2">Scanning...</h1>
-        <p className="text-white/60 text-sm">Extracting data from your InBody report</p>
+        <h1 className="text-2xl font-black uppercase tracking-tight mb-2">Reading your report...</h1>
+        <p className="text-white/60 text-sm">Finding the numbers in your report</p>
       </div>
     );
   }
@@ -142,7 +142,7 @@ export function CompanionUI({
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
             <Scan className="h-5 w-5 text-primary" />
-            <h1 className="text-xl font-black uppercase tracking-tight">Review Data</h1>
+            <h1 className="text-xl font-black uppercase tracking-tight">Check the Numbers</h1>
           </div>
           <button
             onClick={() => setOcrReviewData(null)}
@@ -218,7 +218,7 @@ export function CompanionUI({
         {/* View label */}
         <div className="px-4 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
           <span className="text-xs font-black text-white uppercase tracking-widest">
-            {mode === 'inbody' ? 'INBODY SCAN' : VIEWS[viewIdx]?.label || 'Ready'}
+            {mode === 'inbody' ? 'BODY COMP REPORT' : VIEWS[viewIdx]?.label || 'Ready'}
           </span>
         </div>
         

@@ -15,14 +15,14 @@ export const FEATURE_FLAGS = {
 /** Human-readable feature names for UI display */
 export const FEATURE_NAMES: Record<keyof typeof FEATURE_FLAGS, string> = {
   POSTURE_ENABLED: 'AI Posture Analysis',
-  OCR_ENABLED: 'InBody OCR Scanning',
+  OCR_ENABLED: 'Report Photo Import',
   REPORT_GENERATION_ENABLED: 'AI Report Generation',
 };
 
 /** Feature descriptions for tooltips/help text */
 export const FEATURE_DESCRIPTIONS: Record<keyof typeof FEATURE_FLAGS, string> = {
   POSTURE_ENABLED: 'Enables AI-powered posture analysis using Gemini Vision. Disable if experiencing provider outages.',
-  OCR_ENABLED: 'Enables automatic reading of InBody scan results. Disable if OCR accuracy issues arise.',
+  OCR_ENABLED: 'Reads values from body comp report photos automatically. Turn off if results aren\'t accurate.',
   REPORT_GENERATION_ENABLED: 'Enables AI-generated insights in client reports. Disable if generation is failing.',
 };
 

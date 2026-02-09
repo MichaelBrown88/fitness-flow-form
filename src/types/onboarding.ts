@@ -93,7 +93,7 @@ export interface OrganizationProfile {
 
 // Body composition methods - simplified to match actual app
 export const BODY_COMPOSITION_METHODS = [
-  { value: 'inbody', label: 'InBody Scanner', description: 'Bioelectrical impedance body composition analyzer' },
+  { value: 'inbody', label: 'InBody / Bio-Impedance', description: 'Bioelectrical impedance body composition analyzer' },
   { value: 'dexa', label: 'DEXA Scan', description: 'Dual-energy X-ray absorptiometry' },
   { value: 'bodpod', label: 'BodPod', description: 'Air displacement plethysmography' },
   { value: 'skinfold', label: 'Skinfold Calipers', description: 'Manual body fat measurement' },

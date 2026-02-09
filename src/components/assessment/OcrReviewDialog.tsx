@@ -28,12 +28,12 @@ export const OcrReviewDialog = ({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Scan className="h-5 w-5 text-primary" />
-              Review Extracted Data
+              Check the Numbers
             </DialogTitle>
           </DialogHeader>
           <div className="py-4 space-y-4">
             <p className="text-sm text-slate-500">
-              We've found the following values in your scan. Please verify them before applying to the form.
+              Here's what we found. Double-check the numbers look right.
             </p>
             <div className="grid grid-cols-2 gap-4 max-h-[400px] overflow-y-auto p-2">
               {ocrReviewData && [

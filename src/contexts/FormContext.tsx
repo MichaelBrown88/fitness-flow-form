@@ -106,9 +106,10 @@ export interface FormData {
   bmrKcal: string;
   inbodyScore: string;
   // Body composition method selection
-  bodyCompMethod: string; // 'measurements' | 'analyzer' - user's choice for body composition assessment
-  // Optional analyzer fields toggle (for client reports when equipment disabled)
+  bodyCompMethod: string; // 'analyzer' (default) | 'measurements' (legacy)
+  // Optional toggles for body comp field visibility
   showAnalyzerFields: string; // 'yes' | 'no' - toggles visibility of analyzer fields when equipment is disabled
+  showBodyMeasurements: string; // 'yes' | 'no' - additive tape measurement fields
 
   /** Phase 2 — Posture & Movement Quality */
   postureInputMode: 'manual' | 'ai';
@@ -414,8 +415,9 @@ const initialFormData: FormData = {
   dynamometerForce: '',
   coachReport: '',
   clientReport: '',
-  bodyCompMethod: '',
-  showAnalyzerFields: 'no',
+  bodyCompMethod: 'analyzer',
+  showAnalyzerFields: 'yes',
+  showBodyMeasurements: 'no',
 };
 
 export const FormProvider = ({ children }: { children: ReactNode }) => {

@@ -92,9 +92,9 @@ export const AssessmentModals = ({
               </div>
             </div>
             <div className="space-y-4">
-              <h4 className="text-xl font-black uppercase tracking-widest text-white">Gemini AI</h4>
+              <h4 className="text-xl font-black uppercase tracking-widest text-white">Reading Report</h4>
               <p className="text-white/50 text-sm font-medium leading-relaxed">
-                Extracting 15+ data points from your scan...
+                Reading your report...
               </p>
             </div>
           </div>

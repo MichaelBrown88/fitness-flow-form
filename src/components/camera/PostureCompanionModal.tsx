@@ -103,8 +103,8 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
               <div className="bg-white p-4 rounded-3xl shadow-sm mb-4">
                 <Smartphone className="h-10 w-10 text-primary" />
               </div>
-              <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Remote Camera</h3>
-              <p className="text-slate-500 text-xs mt-2">Scan to connect your iPhone.</p>
+              <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Use Your Phone</h3>
+              <p className="text-slate-500 text-xs mt-2">Connect your phone to take photos</p>
             </div>
 
             <div className="p-4 bg-white rounded-3xl shadow-xl border-4 border-white mb-6 flex items-center justify-center min-h-[212px]">

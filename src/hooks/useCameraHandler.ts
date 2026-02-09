@@ -47,7 +47,7 @@ export function useCameraHandler({
       
       toast({ 
         title: "Image Captured", 
-        description: "Gemini AI is analyzing your InBody scan...",
+        description: "Reading the numbers from your report...",
       });
 
       try {

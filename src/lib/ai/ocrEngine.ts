@@ -235,7 +235,7 @@ export async function processInBodyScan(imageSrc: string): Promise<OcrResult> {
   const ocrEnabled = await isFeatureEnabled('ocr_enabled');
   if (!ocrEnabled) {
     logger.warn('[OCR] InBody OCR feature is disabled via kill switch');
-    throw new FeatureDisabledError('InBody OCR Scanning');
+    throw new FeatureDisabledError('Report Photo Import');
   }
   
   try {

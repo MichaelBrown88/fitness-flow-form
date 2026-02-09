@@ -12,7 +12,7 @@ export function ScannerShowcase() {
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-5xl font-bold mb-4 text-slate-900">Intelligent Capture</h2>
-          <p className="text-slate-500 text-lg">We use Vision AI to turn photos and paper into data points instantly.</p>
+          <p className="text-slate-500 text-lg">Turn photos into data points instantly. No manual typing needed.</p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-8">
@@ -63,10 +63,10 @@ export function ScannerShowcase() {
                 <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
                    <ScanLine size={20} />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900">InBody OCR Scanner</h3>
+                <h3 className="text-xl font-bold text-slate-900">Report Photo Import</h3>
               </div>
               <p className="text-slate-500 mb-8">
-                Don't manually type data. Snap a photo of any InBody result sheet. Our Vision AI extracts weight, skeletal muscle mass, and body fat percentage automatically.
+                Skip the manual typing. Snap a photo of any body comp report and we'll read the numbers for you -- weight, muscle mass, body fat, and more.
               </p>
             </div>
 
