@@ -219,6 +219,7 @@ export interface FormData {
 interface FormContextType {
   formData: FormData;
   updateFormData: (data: Partial<FormData>) => void;
+  resetForm: () => void;
   currentStep: number;
   setCurrentStep: (step: number) => void;
   totalSteps: number;
@@ -452,12 +453,27 @@ export const FormProvider = ({ children }: { children: ReactNode }) => {
     setFormData((prev) => ({ ...prev, ...data }));
   };
 
+  const resetForm = () => {
+    setFormData(initialFormData);
+    setCurrentStep(1);
+    // Clear any session storage artifacts from partial/edit modes
+    try {
+      sessionStorage.removeItem('partialAssessment');
+      sessionStorage.removeItem('prefillClientData');
+      sessionStorage.removeItem('editAssessment');
+    } catch {
+      // noop
+    }
+  };
+
   const contextValue = React.useMemo(() => ({
     formData,
     updateFormData,
+    resetForm,
     currentStep,
     setCurrentStep,
     totalSteps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [formData, currentStep, totalSteps]);
 
   return (

@@ -46,7 +46,7 @@ export const PhaseFormContent = ({
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
 }) => {
-  const { formData, updateFormData } = useFormContext();
+  const { formData, updateFormData, resetForm } = useFormContext();
   const { user, profile, orgSettings } = useAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -259,17 +259,6 @@ export const PhaseFormContent = ({
 
 
 
-  const isIntakeCompleted = useCallback(() => {
-    const p0Sections = phaseDefinitions[0]?.sections ?? [];
-    const p0Fields = p0Sections.flatMap(section => section.fields ?? []);
-    if (p0Fields.length === 0) return false;
-    return p0Fields.every(field => {
-      const value = formData[field.id];
-      if (Array.isArray(value)) return value.length > 0;
-      return value !== undefined && value !== null && value !== '';
-    });
-  }, [formData]);
-
   const maxUnlockedPhaseIdx = useMemo(() => {
     return totalPhases - 1;
   }, [totalPhases]);
@@ -282,29 +271,18 @@ export const PhaseFormContent = ({
     });
   }, [formData]);
 
-  const allAssessmentsCompleted = useMemo(() => {
-    const requiredFields = ['parqQuestionnaire', 'postureHeadOverall', 'pushupsOneMinuteReps', 'plankDurationSeconds', 'cardioTestSelected', 'clientGoals'];
-    const basicsCompleted = requiredFields.every((field) => {
-      const val = formData[field as keyof FormData] as unknown;
+  // Global field completion counter for the active phase
+  const { completedFields, totalFields } = useMemo(() => {
+    const sections = activePhase.sections ?? [];
+    const allFields = sections.flatMap(s => s.fields ?? []);
+    const total = allFields.length;
+    const completed = allFields.filter(f => {
+      const val = formData[f.id as keyof FormData];
       if (Array.isArray(val)) return val.length > 0;
       return val !== '' && val !== undefined && val !== null;
-    });
-
-    if (!basicsCompleted) return false;
-
-    const goals = Array.isArray(formData.clientGoals) ? formData.clientGoals : [];
-    if (goals.includes('weight-loss') && !formData.goalLevelWeightLoss) return false;
-    if (goals.includes('build-muscle') && !formData.goalLevelMuscle) return false;
-    if (goals.includes('build-strength') && !formData.goalLevelStrength) return false;
-    if (goals.includes('improve-fitness') && !formData.goalLevelFitness) return false;
-
-    return true;
-  }, [formData]);
-
-  const canAutoAdvance = useMemo(() => 
-    (!isReviewMode && !allAssessmentsCompleted) && !isPartialAssessment, 
-    [isReviewMode, allAssessmentsCompleted, isPartialAssessment]
-  );
+    }).length;
+    return { completedFields: completed, totalFields: total };
+  }, [activePhase, formData]);
 
   const getAllSections = useCallback(() => {
     const sections: SectionType[] = [];
@@ -321,6 +299,7 @@ export const PhaseFormContent = ({
     setExpandedSections(newExpandedSections);
   }, [activePhaseIdx, getAllSections]);
 
+  // Skip empty phases (e.g. filtered-out equipment phases)
   useEffect(() => {
     if ((activePhase.sections?.length ?? 0) === 0 && activePhaseIdx < totalPhases - 1) {
       const timeout = setTimeout(() => {
@@ -332,70 +311,6 @@ export const PhaseFormContent = ({
       return () => clearTimeout(timeout);
     }
   }, [activePhase, activePhaseIdx, totalPhases, visiblePhases, setActivePhaseIdx]);
-
-  useEffect(() => {
-    if (!canAutoAdvance) return;
-    const p0FirstSectionId = visiblePhases[0]?.sections?.[0]?.id ?? 'phase0';
-    if (activePhaseIdx === 0 && isIntakeCompleted() && !recentlyCompletedSections.has(p0FirstSectionId)) {
-      setRecentlyCompletedSections(prev => new Set(prev).add(p0FirstSectionId));
-      if (visiblePhases.length > 1) {
-        setTimeout(() => setActivePhaseIdx(1), 1500);
-      }
-      return;
-    }
-    const allSections = getAllSections();
-    const expandedSectionId = Object.keys(expandedSections).find(id => expandedSections[id]);
-    if (!expandedSectionId) return;
-    const currentSection = allSections.find(section => section.id === expandedSectionId);
-    if (!currentSection) return;
-    
-    // CRITICAL FIX: Disable auto-advance for sections that use SingleFieldFlow
-    const sectionsUsingSingleFieldFlow = [
-      'lifestyle-overview',
-      'body-comp',
-      'fitness-assessment',
-      'strength-endurance',
-      'mobility',
-    ];
-    
-    if (sectionsUsingSingleFieldFlow.includes(currentSection.id)) {
-      return;
-    }
-    
-    const currentSectionCompleted = isSectionCompleted(currentSection);
-    const wasRecentlyCompleted = recentlyCompletedSections.has(expandedSectionId);
-    if (currentSectionCompleted && !wasRecentlyCompleted) {
-      if (currentSection.id === 'goals') return;
-      setRecentlyCompletedSections(prev => new Set(prev).add(expandedSectionId));
-      const currentIndex = allSections.findIndex(section => section.id === expandedSectionId);
-      setTimeout(() => {
-        if (currentIndex < allSections.length - 1) {
-          const nextSection = allSections[currentIndex + 1];
-          setExpandedSections({ [expandedSectionId]: false, [nextSection.id]: true });
-        } else if (activePhaseIdx < totalPhases - 1) {
-          const nextVisibleIdx = visiblePhases.findIndex((p, i) => i > activePhaseIdx);
-          if (nextVisibleIdx !== -1) {
-            setActivePhaseIdx(nextVisibleIdx);
-          }
-        }
-      }, 1500);
-    }
-    if (currentSection.id === 'parq' && formData.parqQuestionnaire === 'completed' && !wasRecentlyCompleted) {
-      setRecentlyCompletedSections(prev => new Set(prev).add('parq'));
-        const currentIndex = allSections.findIndex(section => section.id === expandedSectionId);
-      setTimeout(() => {
-        if (currentIndex < allSections.length - 1) {
-          const nextSection = allSections[currentIndex + 1];
-          setExpandedSections({ [expandedSectionId]: false, [nextSection.id]: true });
-        } else if (activePhaseIdx < totalPhases - 1) {
-          const nextVisibleIdx = visiblePhases.findIndex((p, i) => i > activePhaseIdx);
-          if (nextVisibleIdx !== -1) {
-            setActivePhaseIdx(nextVisibleIdx);
-          }
-        }
-      }, 1500);
-    }
-  }, [formData, expandedSections, activePhaseIdx, totalPhases, getAllSections, isIntakeCompleted, recentlyCompletedSections, isSectionCompleted, canAutoAdvance, visiblePhases, setActivePhaseIdx]);
 
   useEffect(() => { setActiveFieldIdx(0); }, [activePhaseIdx, expandedSections]);
 
@@ -420,8 +335,15 @@ export const PhaseFormContent = ({
   };
 
   const handleStartNewAssessment = () => {
+    resetForm();
     setIsReviewMode(false);
-    window.location.reload();
+    setIsPartialAssessment(false);
+    setPartialCategory(null);
+    setActivePhaseIdx(0);
+    setActiveFieldIdx(0);
+    setExpandedSections({});
+    setRecentlyCompletedSections(new Set());
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const { runDemoSequential } = useDemoAssessment(
@@ -559,23 +481,27 @@ export const PhaseFormContent = ({
             </div>
             <h2 className="text-3xl font-bold tracking-tight text-slate-900">{activePhase.title}</h2>
             <p className="text-slate-500 text-lg leading-relaxed max-w-2xl">{activePhase.summary}</p>
+            {totalFields > 0 && activePhase.id !== 'P7' && (
+              <div className="flex items-center gap-3 pt-2">
+                <Progress value={(completedFields / totalFields) * 100} className="h-1.5 flex-1 max-w-xs" />
+                <span className="text-xs font-medium text-slate-400">
+                  {completedFields} / {totalFields} fields
+                </span>
+              </div>
+            )}
           </section>
 
           <section className="space-y-6">
             {renderAllSections()}
             
-            {activePhaseIdx >= 1 && activePhaseIdx < totalPhases - 1 && allAssessmentsCompleted && (
+            {activePhaseIdx >= 1 && activePhaseIdx < totalPhases - 1 && (
               <div className="flex items-center justify-center border-t border-slate-200 pt-8">
-                <Button onClick={handleViewResults} className="h-14 px-10 rounded-2xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 shadow-xl transition-all hover:scale-[1.05]">
-                  {isPartialAssessment ? '📊 Update Live Report' : '📊 Generate Full Report'}
-                </Button>
-              </div>
-            )}
-
-            {isPartialAssessment && activePhaseIdx >= 1 && activePhaseIdx < totalPhases - 1 && !allAssessmentsCompleted && anyAssessmentCompleted && (
-              <div className="flex items-center justify-center border-t border-slate-200 pt-8">
-                <Button variant="outline" onClick={handleViewResults} className="h-14 px-10 rounded-2xl border-primary/20 text-primary font-bold hover:bg-brand-light transition-all">
-                  📊 Update Live Report
+                <Button
+                  onClick={handleViewResults}
+                  disabled={!anyAssessmentCompleted}
+                  className="h-14 px-10 rounded-2xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 shadow-xl transition-all hover:scale-[1.02] disabled:opacity-40 disabled:hover:scale-100 disabled:shadow-none"
+                >
+                  {isPartialAssessment ? 'Update Live Report' : anyAssessmentCompleted ? 'Generate Report' : 'Complete a section to generate report'}
                 </Button>
               </div>
             )}
