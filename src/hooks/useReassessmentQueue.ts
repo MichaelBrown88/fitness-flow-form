@@ -1,277 +1,283 @@
 /**
  * useReassessmentQueue Hook
  * 
- * Creates a prioritized queue of clients who need reassessment.
- * Considers:
- * - Time since last assessment for each pillar (InBody, Posture, Fitness, Strength)
- * - Pillar gaps (scores below threshold)
- * - Per-client cadence schedules (when available)
- * - Overall engagement patterns
+ * Dynamic task list for the coach's Priority tab.
+ * Every client appears, sorted by scheduling urgency.
+ *
+ * Traffic-light system (purely schedule-driven):
+ *  - Overdue (red):   pillar past its due date
+ *  - Due Soon (amber): pillar due within 7 days
+ *  - Up to Date (green): all pillars on schedule
+ *
+ * Score gaps are informational only — they never affect the traffic light.
+ * The cadence engine's score-adjusted intervals are ignored here;
+ * only base clinical intervals and coach manual overrides are used.
+ *
+ * Pillars: InBody, Posture, Fitness, Strength, Lifestyle
  */
 
 import { useMemo } from 'react';
 import type { ClientGroup } from '@/hooks/dashboard/types';
 import type { CoachAssessmentSummary } from '@/services/coachAssessments';
-import type { PillarCadence, PartialAssessmentCategory } from '@/types/client';
-import { 
-  getEffectiveInterval, 
-  getEffectiveReason, 
-  getEffectivePriority 
-} from '@/lib/recommendations/cadenceEngine';
+import type { PartialAssessmentCategory } from '@/types/client';
+import { BASE_CADENCE_INTERVALS } from '@/types/client';
 
-/** Types of reassessment needs */
-export type ReassessmentType = 
-  | 'inbody' 
-  | 'posture' 
-  | 'fitness' 
-  | 'strength' 
-  | 'full' 
-  | 'check-in';
+// ── Types ────────────────────────────────────────────────────────────
 
-/** Client in the reassessment queue */
+export type ReassessmentType =
+  | 'inbody'
+  | 'posture'
+  | 'fitness'
+  | 'strength'
+  | 'lifestyle'
+  | 'full';
+
+/** Traffic-light schedule status */
+export type ScheduleStatus = 'overdue' | 'due-soon' | 'up-to-date';
+
+/** Per-pillar schedule info shown on the card */
+export interface PillarSchedule {
+  pillar: ReassessmentType;
+  dueDate: Date;
+  status: ScheduleStatus;
+  /** Positive = days overdue, negative = days until due */
+  daysFromDue: number;
+}
+
+/** A single client row in the task list */
 export interface ReassessmentItem {
+  /** Stable unique id (from Firestore summary doc) */
+  id: string;
   clientName: string;
   latestAssessment: CoachAssessmentSummary | null;
   latestDate: Date | null;
   daysSinceAssessment: number;
   overallScore: number;
-  reassessmentNeeds: ReassessmentType[];
-  /** Reasons for each reassessment need (from cadence engine) */
-  reassessmentReasons: Record<ReassessmentType, string>;
-  priority: 'high' | 'medium' | 'low';
-  priorityReason: string;
-  pillarGaps: {
-    pillar: string;
-    score: number;
-    threshold: number;
-    daysSinceScan: number | null;
-  }[];
-  /** Whether this client has a custom cadence schedule */
+  /** Per-pillar schedule breakdown */
+  pillarSchedules: PillarSchedule[];
+  /** Overall client status = worst pillar status */
+  status: ScheduleStatus;
+  statusReason: string;
+  /** The pillar the coach should act on first */
+  mostUrgentPillar: ReassessmentType | null;
+  /** Informational: pillar scores below threshold */
+  pillarGaps: { pillar: string; score: number }[];
   hasCustomCadence: boolean;
 }
 
-/** Queue summary */
 export interface ReassessmentQueueSummary {
   totalClients: number;
-  clientsNeedingReassessment: number;
-  highPriority: number;
-  mediumPriority: number;
-  lowPriority: number;
-  byType: Record<ReassessmentType, number>;
+  overdue: number;
+  dueSoon: number;
+  upToDate: number;
 }
 
 export interface UseReassessmentQueueResult {
+  /** All clients, sorted by urgency (overdue first → due soon → up to date) */
   queue: ReassessmentItem[];
   summary: ReassessmentQueueSummary;
-  highPriorityClients: ReassessmentItem[];
-  dueForInBody: ReassessmentItem[];
-  dueForPosture: ReassessmentItem[];
-  dueForCheckIn: ReassessmentItem[];
 }
 
-/** 
- * Fallback thresholds for clients without personalized cadence schedules
- * These are used when no retestSchedule exists on the client profile
- */
-const FALLBACK_THRESHOLDS = {
-  // Days since last scan to trigger reassessment (ACSM/NASM aligned)
-  inbody: 30,    // Monthly InBody recommended
-  posture: 45,   // 4-6 week corrective block (FMS standards)
-  fitness: 45,   // 6-week adaptation block
-  strength: 60,  // True hypertrophy measurement
-  full: 90,      // Quarterly full assessment
-  checkIn: 14,   // 2-week check-in for high-gap clients
-  
-  // Score thresholds indicating gaps
-  gapThreshold: 60,       // Score below this needs attention
-  criticalGap: 40,        // Score below this is critical
-  improvementTarget: 20,  // Gap > 20% from target
+// ── Pillar types that map to actionable partial assessments ──────────
+
+const ACTIONABLE_PILLARS: readonly ReassessmentType[] = [
+  'inbody', 'posture', 'fitness', 'strength', 'lifestyle',
+];
+
+// ── Fallback intervals (days) – only used if BASE_CADENCE_INTERVALS missing ──
+
+const FALLBACK_INTERVALS: Record<string, number> = {
+  inbody: 30,
+  posture: 45,
+  fitness: 45,
+  strength: 60,
+  lifestyle: 45,
+  full: 90,
 };
 
-/**
- * Calculate days since a date
- */
+/** Score below this shown as a gap (informational) */
+const GAP_THRESHOLD = 60;
+
+/** "Due soon" = within this many days */
+const DUE_SOON_WINDOW = 7;
+
+// ── Helpers ──────────────────────────────────────────────────────────
+
 function daysSince(date: Date | null | undefined): number {
   if (!date) return 999;
-  const now = new Date();
-  return Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+  return Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-/**
- * Extract pillar scores from an assessment
- */
-function extractPillarScores(assessment: CoachAssessmentSummary | null): {
-  bodyComp: number;
-  cardio: number;
-  movement: number;
-  strength: number;
-  lifestyle: number;
-} {
-  if (!assessment?.scores?.categories) {
+function extractPillarScores(assessment: CoachAssessmentSummary | null) {
+  const categories = assessment?.scoresSummary?.categories;
+  if (!categories) {
     return { bodyComp: 0, cardio: 0, movement: 0, strength: 0, lifestyle: 0 };
   }
-  
-  const categories = assessment.scores.categories;
   return {
-    bodyComp: categories.find((c: { id: string }) => c.id === 'bodyComp')?.score || 0,
-    cardio: categories.find((c: { id: string }) => c.id === 'cardio')?.score || 0,
-    movement: categories.find((c: { id: string }) => c.id === 'movementQuality')?.score || 0,
-    strength: categories.find((c: { id: string }) => c.id === 'strength')?.score || 0,
-    lifestyle: categories.find((c: { id: string }) => c.id === 'lifestyle')?.score || 0,
+    bodyComp: categories.find((c) => c.id === 'bodyComp')?.score || 0,
+    cardio: categories.find((c) => c.id === 'cardio')?.score || 0,
+    movement: categories.find((c) => c.id === 'movementQuality')?.score || 0,
+    strength: categories.find((c) => c.id === 'strength')?.score || 0,
+    lifestyle: categories.find((c) => c.id === 'lifestyle')?.score || 0,
   };
 }
 
 /**
- * Get the effective interval for a pillar, using client schedule or fallback
+ * Get the effective interval for a pillar.
+ * Coach manual override > base clinical interval.
+ * We skip cadence-engine recommendations (score/goal adjusted)
+ * because those create false urgency on the task list.
  */
-function getClientInterval(
-  pillar: PartialAssessmentCategory,
-  retestSchedule?: ClientGroup['retestSchedule']
+function getInterval(
+  pillar: string,
+  retestSchedule?: ClientGroup['retestSchedule'],
 ): number {
-  if (!retestSchedule) {
-    return FALLBACK_THRESHOLDS[pillar];
-  }
-  return getEffectiveInterval(retestSchedule.recommended, retestSchedule.custom, pillar);
+  const customInterval = retestSchedule?.custom?.[pillar as PartialAssessmentCategory]?.intervalDays;
+  if (customInterval && customInterval > 0) return customInterval;
+  return BASE_CADENCE_INTERVALS[pillar as keyof typeof BASE_CADENCE_INTERVALS]
+    ?? FALLBACK_INTERVALS[pillar]
+    ?? FALLBACK_INTERVALS.full;
 }
 
-/**
- * Get the reason for a pillar's cadence
- */
-function getClientReason(
-  pillar: PartialAssessmentCategory,
-  retestSchedule?: ClientGroup['retestSchedule']
-): string {
-  if (!retestSchedule) {
-    return 'Scheduled retest';
+/** Friendly label for a pillar */
+export function pillarLabel(type: ReassessmentType): string {
+  switch (type) {
+    case 'inbody': return 'InBody';
+    case 'posture': return 'Posture';
+    case 'fitness': return 'Cardio';
+    case 'strength': return 'Strength';
+    case 'lifestyle': return 'Lifestyle';
+    case 'full': return 'Full Assessment';
+    default: return type;
   }
-  return getEffectiveReason(retestSchedule.recommended, retestSchedule.custom, pillar);
 }
 
+// ── Core logic ───────────────────────────────────────────────────────
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
 /**
- * Determine reassessment needs based on scores, time, and client-specific cadence
+ * Compute the schedule for every pillar and the full assessment.
+ * Returns per-pillar status (overdue / due-soon / up-to-date) and dates.
+ *
+ * Priority order for determining the due date:
+ *   1. One-time absolute due date override (set by coach on Priority tab)
+ *      — only used if the override is AFTER the last assessment date
+ *        (automatically ignored once the assessment is completed)
+ *   2. Cadence-based: lastAssessmentDate + intervalDays
  */
-function determineReassessmentNeeds(
-  pillarScores: ReturnType<typeof extractPillarScores>,
+function computePillarSchedules(
+  latestDate: Date | null,
+  retestSchedule?: ClientGroup['retestSchedule'],
+  dueDateOverrides?: Record<string, Date>,
+): PillarSchedule[] {
+  const baseDate = latestDate || new Date(0); // epoch if never assessed
+  const now = Date.now();
+  const schedules: PillarSchedule[] = [];
+
+  const allPillars: ReassessmentType[] = [...ACTIONABLE_PILLARS, 'full'];
+
+  for (const pillar of allPillars) {
+    // Check for a one-time date override (only valid if it's after the last assessment)
+    const override = dueDateOverrides?.[pillar];
+    const useOverride = override && override.getTime() > baseDate.getTime();
+
+    const dueDate = useOverride
+      ? override
+      : new Date(baseDate.getTime() + getInterval(pillar, retestSchedule) * MS_PER_DAY);
+
+    const daysFromDue = Math.floor((now - dueDate.getTime()) / MS_PER_DAY);
+
+    let status: ScheduleStatus;
+    if (daysFromDue > 0) {
+      status = 'overdue';
+    } else if (Math.abs(daysFromDue) <= DUE_SOON_WINDOW) {
+      status = 'due-soon';
+    } else {
+      status = 'up-to-date';
+    }
+
+    schedules.push({ pillar, dueDate, status, daysFromDue });
+  }
+
+  return schedules;
+}
+
+/** Status severity for sorting: overdue > due-soon > up-to-date */
+const STATUS_ORDER: Record<ScheduleStatus, number> = {
+  'overdue': 0,
+  'due-soon': 1,
+  'up-to-date': 2,
+};
+
+/**
+ * Derive the overall client status from their pillar schedules.
+ * The worst pillar wins (most overdue determines client status).
+ */
+function deriveClientStatus(
+  schedules: PillarSchedule[],
   daysSinceLastAssessment: number,
-  retestSchedule?: ClientGroup['retestSchedule']
-): { needs: ReassessmentType[]; reasons: Record<ReassessmentType, string> } {
-  const needs: ReassessmentType[] = [];
-  const reasons: Record<ReassessmentType, string> = {} as Record<ReassessmentType, string>;
-  
-  // Check if full reassessment is due
-  if (daysSinceLastAssessment >= FALLBACK_THRESHOLDS.full) {
-    needs.push('full');
-    reasons['full'] = 'Quarterly full reassessment due';
-    return { needs, reasons };
+): { status: ScheduleStatus; reason: string; mostUrgentPillar: ReassessmentType | null } {
+  // Never assessed
+  if (daysSinceLastAssessment >= 999) {
+    return { status: 'overdue', reason: 'No assessment on record', mostUrgentPillar: 'full' };
   }
-  
-  // Check individual pillars with client-specific intervals
-  const inbodyInterval = getClientInterval('inbody', retestSchedule);
-  if (pillarScores.bodyComp < FALLBACK_THRESHOLDS.gapThreshold || 
-      daysSinceLastAssessment >= inbodyInterval) {
-    needs.push('inbody');
-    reasons['inbody'] = getClientReason('inbody', retestSchedule);
-  }
-  
-  const postureInterval = getClientInterval('posture', retestSchedule);
-  if (pillarScores.movement < FALLBACK_THRESHOLDS.gapThreshold ||
-      daysSinceLastAssessment >= postureInterval) {
-    needs.push('posture');
-    reasons['posture'] = getClientReason('posture', retestSchedule);
-  }
-  
-  const fitnessInterval = getClientInterval('fitness', retestSchedule);
-  if (pillarScores.cardio < FALLBACK_THRESHOLDS.gapThreshold ||
-      daysSinceLastAssessment >= fitnessInterval) {
-    needs.push('fitness');
-    reasons['fitness'] = getClientReason('fitness', retestSchedule);
-  }
-  
-  const strengthInterval = getClientInterval('strength', retestSchedule);
-  if (pillarScores.strength < FALLBACK_THRESHOLDS.gapThreshold ||
-      daysSinceLastAssessment >= strengthInterval) {
-    needs.push('strength');
-    reasons['strength'] = getClientReason('strength', retestSchedule);
-  }
-  
-  // High-gap clients need more frequent check-ins
-  const hasHighGap = Object.values(pillarScores).some(
-    score => score > 0 && score < FALLBACK_THRESHOLDS.criticalGap
-  );
-  if (hasHighGap && daysSinceLastAssessment >= FALLBACK_THRESHOLDS.checkIn) {
-    needs.push('check-in');
-    reasons['check-in'] = 'Critical score requires check-in';
-  }
-  
-  return { needs, reasons };
-}
 
-/**
- * Determine priority based on gaps, time, and client-specific cadence
- */
-function determinePriority(
-  pillarScores: ReturnType<typeof extractPillarScores>,
-  daysSinceLastAssessment: number,
-  needs: ReassessmentType[],
-  retestSchedule?: ClientGroup['retestSchedule']
-): { priority: 'high' | 'medium' | 'low'; reason: string } {
-  // Critical gaps or full reassessment needed = high priority
-  const hasCriticalGap = Object.values(pillarScores).some(
-    score => score > 0 && score < FALLBACK_THRESHOLDS.criticalGap
-  );
-  
-  if (hasCriticalGap) {
-    return { priority: 'high', reason: 'Critical gap in pillar score (<40%)' };
-  }
-  
-  if (needs.includes('full')) {
-    return { priority: 'high', reason: 'Full reassessment overdue (90+ days)' };
-  }
-  
-  if (daysSinceLastAssessment >= 60) {
-    return { priority: 'high', reason: 'No assessment in 60+ days' };
-  }
-  
-  // Check if any pillar has high priority in the cadence schedule
-  if (retestSchedule) {
-    const pillars: PartialAssessmentCategory[] = ['inbody', 'posture', 'fitness', 'strength'];
-    for (const pillar of pillars) {
-      const priority = getEffectivePriority(retestSchedule.recommended, retestSchedule.custom, pillar);
-      if (priority === 'high' && needs.includes(pillar)) {
-        const reason = getEffectiveReason(retestSchedule.recommended, retestSchedule.custom, pillar);
-        return { priority: 'high', reason };
-      }
+  // Find the most overdue ACTIONABLE pillar (not 'full')
+  let worstPillar: PillarSchedule | null = null;
+  for (const s of schedules) {
+    if (!ACTIONABLE_PILLARS.includes(s.pillar)) continue;
+    if (!worstPillar || s.daysFromDue > worstPillar.daysFromDue) {
+      worstPillar = s;
     }
   }
-  
-  // Multiple needs = medium priority
-  if (needs.length >= 2) {
-    return { priority: 'medium', reason: `${needs.length} pillars need attention` };
+
+  // Also check full assessment
+  const fullSchedule = schedules.find(s => s.pillar === 'full');
+
+  // Full assessment overdue takes top priority
+  if (fullSchedule && fullSchedule.status === 'overdue') {
+    return {
+      status: 'overdue',
+      reason: `Full assessment overdue by ${fullSchedule.daysFromDue}d`,
+      mostUrgentPillar: worstPillar && worstPillar.daysFromDue > 0
+        ? worstPillar.pillar
+        : 'full',
+    };
   }
-  
-  // Single need or gap = medium priority
-  const hasGap = Object.values(pillarScores).some(
-    score => score > 0 && score < FALLBACK_THRESHOLDS.gapThreshold
-  );
-  if (hasGap) {
-    return { priority: 'medium', reason: 'Pillar gap detected (<60%)' };
+
+  if (worstPillar && worstPillar.status === 'overdue') {
+    const label = pillarLabel(worstPillar.pillar);
+    return {
+      status: 'overdue',
+      reason: `${label} overdue by ${worstPillar.daysFromDue}d`,
+      mostUrgentPillar: worstPillar.pillar,
+    };
   }
-  
-  if (daysSinceLastAssessment >= 30) {
-    return { priority: 'medium', reason: 'Due for scheduled check' };
+
+  if (worstPillar && worstPillar.status === 'due-soon') {
+    const daysLeft = Math.abs(worstPillar.daysFromDue);
+    const label = pillarLabel(worstPillar.pillar);
+    return {
+      status: 'due-soon',
+      reason: `${label} due in ${daysLeft}d`,
+      mostUrgentPillar: worstPillar.pillar,
+    };
   }
-  
-  // Default = low priority
-  return { priority: 'low', reason: 'Routine follow-up' };
+
+  return {
+    status: 'up-to-date',
+    reason: 'All assessments on schedule',
+    mostUrgentPillar: null,
+  };
 }
 
-/**
- * Hook to create a prioritized reassessment queue
- */
+// ── Hook ─────────────────────────────────────────────────────────────
+
 export function useReassessmentQueue(
-  clientGroups: ClientGroup[]
+  clientGroups: ClientGroup[],
 ): UseReassessmentQueueResult {
-  
+
   const queue = useMemo<ReassessmentItem[]>(() => {
     return clientGroups
       .map(group => {
@@ -279,123 +285,54 @@ export function useReassessmentQueue(
         const latestDate = group.latestDate;
         const days = daysSince(latestDate);
         const pillarScores = extractPillarScores(latestAssessment);
-        const { needs, reasons } = determineReassessmentNeeds(pillarScores, days, group.retestSchedule);
-        const { priority, reason } = determinePriority(pillarScores, days, needs, group.retestSchedule);
-        
-        // Build pillar gaps array
-        const pillarGaps: ReassessmentItem['pillarGaps'] = [];
-        
-        if (pillarScores.bodyComp > 0 && pillarScores.bodyComp < FALLBACK_THRESHOLDS.gapThreshold) {
-          pillarGaps.push({
-            pillar: 'Body Composition',
-            score: pillarScores.bodyComp,
-            threshold: FALLBACK_THRESHOLDS.gapThreshold,
-            daysSinceScan: days,
-          });
+        const pillarSchedules = computePillarSchedules(latestDate, group.retestSchedule, group.dueDateOverrides);
+        const { status, reason, mostUrgentPillar } = deriveClientStatus(pillarSchedules, days);
+
+        // Informational gaps (score < 60%)
+        const pillarGaps: { pillar: string; score: number }[] = [];
+        const gapEntries: [string, number][] = [
+          ['Body Composition', pillarScores.bodyComp],
+          ['Cardio/Metabolic', pillarScores.cardio],
+          ['Movement Quality', pillarScores.movement],
+          ['Functional Strength', pillarScores.strength],
+          ['Lifestyle', pillarScores.lifestyle],
+        ];
+        for (const [label, score] of gapEntries) {
+          if (score > 0 && score < GAP_THRESHOLD) {
+            pillarGaps.push({ pillar: label, score });
+          }
         }
-        
-        if (pillarScores.cardio > 0 && pillarScores.cardio < FALLBACK_THRESHOLDS.gapThreshold) {
-          pillarGaps.push({
-            pillar: 'Cardio/Metabolic',
-            score: pillarScores.cardio,
-            threshold: FALLBACK_THRESHOLDS.gapThreshold,
-            daysSinceScan: days,
-          });
-        }
-        
-        if (pillarScores.movement > 0 && pillarScores.movement < FALLBACK_THRESHOLDS.gapThreshold) {
-          pillarGaps.push({
-            pillar: 'Movement Quality',
-            score: pillarScores.movement,
-            threshold: FALLBACK_THRESHOLDS.gapThreshold,
-            daysSinceScan: days,
-          });
-        }
-        
-        if (pillarScores.strength > 0 && pillarScores.strength < FALLBACK_THRESHOLDS.gapThreshold) {
-          pillarGaps.push({
-            pillar: 'Functional Strength',
-            score: pillarScores.strength,
-            threshold: FALLBACK_THRESHOLDS.gapThreshold,
-            daysSinceScan: days,
-          });
-        }
-        
+
         return {
+          id: group.id,
           clientName: group.name,
           latestAssessment,
           latestDate,
           daysSinceAssessment: days,
           overallScore: group.latestScore,
-          reassessmentNeeds: needs,
-          reassessmentReasons: reasons,
-          priority,
-          priorityReason: reason,
+          pillarSchedules,
+          status,
+          statusReason: reason,
+          mostUrgentPillar,
           pillarGaps,
           hasCustomCadence: !!group.retestSchedule?.custom,
         };
       })
-      // Filter to only those with needs
-      .filter(item => item.reassessmentNeeds.length > 0)
-      // Sort by priority (high first), then by days since assessment
+      // Sort: overdue first (most overdue at top) → due soon → up to date
       .sort((a, b) => {
-        const priorityOrder = { high: 0, medium: 1, low: 2 };
-        const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
-        if (priorityDiff !== 0) return priorityDiff;
+        const statusDiff = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
+        if (statusDiff !== 0) return statusDiff;
+        // Within same status, sort by most overdue first
         return b.daysSinceAssessment - a.daysSinceAssessment;
       });
   }, [clientGroups]);
 
-  // Calculate summary
-  const summary = useMemo<ReassessmentQueueSummary>(() => {
-    const byType: Record<ReassessmentType, number> = {
-      inbody: 0,
-      posture: 0,
-      fitness: 0,
-      strength: 0,
-      full: 0,
-      'check-in': 0,
-    };
-    
-    queue.forEach(item => {
-      item.reassessmentNeeds.forEach(need => {
-        byType[need]++;
-      });
-    });
+  const summary = useMemo<ReassessmentQueueSummary>(() => ({
+    totalClients: clientGroups.length,
+    overdue: queue.filter(q => q.status === 'overdue').length,
+    dueSoon: queue.filter(q => q.status === 'due-soon').length,
+    upToDate: queue.filter(q => q.status === 'up-to-date').length,
+  }), [queue, clientGroups.length]);
 
-    return {
-      totalClients: clientGroups.length,
-      clientsNeedingReassessment: queue.length,
-      highPriority: queue.filter(q => q.priority === 'high').length,
-      mediumPriority: queue.filter(q => q.priority === 'medium').length,
-      lowPriority: queue.filter(q => q.priority === 'low').length,
-      byType,
-    };
-  }, [queue, clientGroups.length]);
-
-  // Filtered lists for quick access
-  const highPriorityClients = useMemo(() => 
-    queue.filter(q => q.priority === 'high'),
-  [queue]);
-
-  const dueForInBody = useMemo(() => 
-    queue.filter(q => q.reassessmentNeeds.includes('inbody')),
-  [queue]);
-
-  const dueForPosture = useMemo(() => 
-    queue.filter(q => q.reassessmentNeeds.includes('posture')),
-  [queue]);
-
-  const dueForCheckIn = useMemo(() => 
-    queue.filter(q => q.reassessmentNeeds.includes('check-in')),
-  [queue]);
-
-  return {
-    queue,
-    summary,
-    highPriorityClients,
-    dueForInBody,
-    dueForPosture,
-    dueForCheckIn,
-  };
+  return { queue, summary };
 }

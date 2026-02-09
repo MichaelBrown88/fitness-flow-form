@@ -28,3 +28,21 @@ export const FEATURE_DESCRIPTIONS: Record<keyof typeof FEATURE_FLAGS, string> = 
 
 /** Feature flag type for type safety */
 export type FeatureFlagKey = typeof FEATURE_FLAGS[keyof typeof FEATURE_FLAGS];
+
+/**
+ * Stripe Configuration Constants
+ * 
+ * All Stripe keys are sourced from environment variables.
+ * If VITE_STRIPE_PUBLISHABLE_KEY is not set, payment is skipped
+ * and onboarding falls back to free trial mode.
+ */
+export const STRIPE_CONFIG = {
+  /** Client-side publishable key — safe to expose in frontend */
+  publishableKey: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '',
+  /** Whether Stripe is configured and payment should be collected */
+  isEnabled: !!import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY,
+  /** Success redirect path after checkout completion */
+  successPath: '/onboarding?step=success',
+  /** Cancel redirect path if user backs out of checkout */
+  cancelPath: '/onboarding?step=payment',
+} as const;

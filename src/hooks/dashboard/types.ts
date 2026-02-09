@@ -19,16 +19,22 @@ export type Analytics = {
 };
 
 export type ClientGroup = {
+  /** Unique stable identifier (Firestore summary doc id) */
+  id: string;
   name: string;
   assessments: CoachAssessmentSummary[];
   latestScore: number;
   latestDate: Date | null;
   scoreChange?: number;
-  /** Smart retest schedule (if available) */
+  /** Total assessments for this client (from denormalized assessmentCount) */
+  assessmentCount?: number;
+  /** Recurring cadence intervals (if available) */
   retestSchedule?: {
     recommended: PillarCadence;
     custom?: Partial<PillarCadence>;
   };
+  /** One-time absolute due date overrides (pillar → Date) */
+  dueDateOverrides?: Record<string, Date>;
 };
 
 export type RecentChange = {

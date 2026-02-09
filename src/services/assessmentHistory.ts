@@ -56,8 +56,9 @@ export type AssessmentSnapshot = {
   notes?: string;
 };
 
+/** Delegate to the single source of truth for slug generation */
 const getClientSlug = (clientName: string) => {
-  const safeName = (clientName || "unnamed-client").trim() || "unnamed-client";
+  const safeName = (clientName || "unnamed-client").trim().replace(/\s+/g, " ") || "unnamed-client";
   return safeName.toLowerCase().replace(/\s+/g, "-");
 };
 

@@ -14,9 +14,9 @@ import { logger } from '@/lib/utils/logger';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import { UI_TOASTS } from '@/constants/ui';
 import { generateCadenceRecommendations } from '@/lib/recommendations/cadenceEngine';
-import { updateRetestSchedule, type StoredRetestSchedule } from '@/services/clientProfiles';
-
+import { updateRetestSchedule } from '@/services/clientProfiles';
 import type { UserProfile } from '@/types/auth';
+import type { OrgSettings } from '@/services/organizations';
 
 interface UseAssessmentSaveProps {
   user: { uid: string; email: string | null | undefined } | null;
@@ -25,6 +25,7 @@ interface UseAssessmentSaveProps {
   scores: ScoreSummary;
   isResultsPhase: boolean;
   isDemoAssessment: boolean;
+  orgSettings?: OrgSettings | null;
 }
 
 export function useAssessmentSave({
@@ -34,6 +35,7 @@ export function useAssessmentSave({
   scores,
   isResultsPhase,
   isDemoAssessment,
+  orgSettings,
 }: UseAssessmentSaveProps) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
@@ -56,7 +58,28 @@ export function useAssessmentSave({
     if (!user || saving || savingId || saveInitiatedRef.current) return;
     saveInitiatedRef.current = true;
     
-    const clientName = (formData.fullName || 'Unnamed client').trim();
+    let clientName = (formData.fullName || 'Unnamed client').trim();
+
+    // Phase C4: Name-change guard -- prevent slug drift during assessment save
+    // If the form name differs from the stored client name (from partial/edit context),
+    // use the stored name to avoid accidentally creating a new client identity.
+    const partialCtx = sessionStorage.getItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
+    if (partialCtx) {
+      try {
+        const { clientName: storedName } = JSON.parse(partialCtx);
+        if (storedName) {
+          const { generateClientSlug } = await import('@/services/clientProfiles');
+          const formSlug = generateClientSlug(clientName);
+          const storedSlug = generateClientSlug(storedName);
+          if (formSlug !== storedSlug) {
+            logger.warn(`[Assessment] Name slug drift detected: form="${formSlug}" vs stored="${storedSlug}". Using stored name.`);
+            clientName = storedName;
+          }
+        }
+      } catch {
+        // Non-fatal: if parsing fails, continue with form name
+      }
+    }
     
     try {
       setSaving(true);
@@ -128,23 +151,26 @@ export function useAssessmentSave({
           setHighlightCategory(category);
           sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
         } else {
-          // Full assessment - save and generate cadence recommendations
+          // Full assessment - save and silently generate cadence recommendations
           assessmentId = await saveCoachAssessment(user.uid, user.email, formData, scores.overall, profile?.organizationId, profile);
-          
-          // Generate and save retest cadence recommendations
+
+          // Silent Save: auto-generate and save retest schedule without dialog
           if (profile?.organizationId) {
             try {
-              const { schedule } = generateCadenceRecommendations(formData, scores);
-              const retestSchedule: StoredRetestSchedule = {
+              const { schedule } = generateCadenceRecommendations({
+                formData,
+                scores,
+                orgDefaults: orgSettings?.defaultCadence,
+              });
+              await updateRetestSchedule(clientName, profile.organizationId, {
                 recommended: schedule,
                 generatedAt: Timestamp.now(),
                 sourceAssessmentId: assessmentId,
-              };
-              await updateRetestSchedule(clientName, profile.organizationId, retestSchedule);
-              logger.info('[Assessment] Cadence recommendations saved for client', { clientName });
+              });
+              logger.info('[Assessment] Retest schedule silently saved', { clientName });
             } catch (cadenceErr) {
               // Non-fatal: log but don't fail the assessment save
-              logger.warn('[Assessment] Failed to save cadence recommendations:', cadenceErr);
+              logger.warn('[Assessment] Failed to auto-save retest schedule:', cadenceErr);
             }
           }
         }
@@ -195,7 +221,7 @@ export function useAssessmentSave({
         saveInitiatedRef.current = false;
       }
     }
-  }, [user, saving, savingId, formData, scores.overall, profile, toast]);
+  }, [user, saving, savingId, formData, scores, profile, orgSettings, toast]);
 
   // Auto-save when results phase is reached
   useEffect(() => {
@@ -223,8 +249,8 @@ export function useAssessmentSave({
       throw new Error('Profile not available for sharing');
     }
 
-    const artifacts = await requestShareArtifacts({ 
-      assessmentId: savingId, 
+    const artifacts = await requestShareArtifacts({
+      assessmentId: savingId,
       view,
       coachUid: user.uid,
       formData,

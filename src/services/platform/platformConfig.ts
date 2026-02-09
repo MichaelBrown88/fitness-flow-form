@@ -87,7 +87,7 @@ export function subscribeToPlatformConfig(
       callback(config);
     },
     (error) => {
-      logger.error('Error subscribing to platform config:', error);
+      logger.error('Error subscribing to platform config:', 'PLATFORM_CONFIG', error);
       // Provide defaults on error
       callback(DEFAULT_PLATFORM_CONFIG);
     }
@@ -149,9 +149,9 @@ export async function updateFeatureFlags(
       updatedBy: adminUid,
     });
 
-    logger.info(`Feature flags updated by ${adminUid}:`, features);
+    logger.info(`Feature flags updated by ${adminUid}`, 'PLATFORM_CONFIG', features);
   } catch (error) {
-    logger.error('Error updating feature flags:', error);
+    logger.error('Error updating feature flags', 'PLATFORM_CONFIG', error);
     throw error;
   }
 }

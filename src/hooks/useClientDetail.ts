@@ -218,11 +218,63 @@ export function useClientDetail(): UseClientDetailResult {
     handleDateSelection(targetDate);
   }, [snapshots, handleDateSelection]);
 
-  // Save profile changes
+  // Save profile changes (with rename + DOB recalculation support)
   const handleSaveProfile = useCallback(async () => {
     if (!user || !clientName) return;
     try {
+      // Check if name changed (Phase C rename)
+      const newName = editData.clientName?.trim();
+      if (newName && newName !== clientName) {
+        const { renameClient } = await import('@/services/clientProfiles');
+        const renameResult = await renameClient(clientName, newName, userProfile?.organizationId ?? '', userProfile);
+        if (!renameResult.success) {
+          toast({ title: 'Rename failed', description: renameResult.message, variant: 'destructive' });
+          return;
+        }
+        toast({ title: 'Client renamed', description: renameResult.message });
+        // Navigate to new URL after rename
+        const navigate = window.location;
+        navigate.href = `/client/${encodeURIComponent(newName)}`;
+        return;
+      }
+
+      // Save profile fields
       await createOrUpdateClientProfile(user.uid, clientName, editData, userProfile?.organizationId, userProfile);
+
+      // Check if DOB changed (Phase D retroactive recalculation)
+      if (editData.dateOfBirth && profile?.dateOfBirth && editData.dateOfBirth !== profile.dateOfBirth && userProfile?.organizationId) {
+        try {
+          const { recalculateClientScores } = await import('@/services/clientRecalculation');
+          const recalcResult = await recalculateClientScores(
+            clientName,
+            userProfile.organizationId,
+            { dateOfBirth: editData.dateOfBirth },
+          );
+          if (recalcResult.success) {
+            toast({
+              title: 'Scores recalculated',
+              description: `Updated ${recalcResult.summariesUpdated} reports with corrected DOB.`,
+            });
+          }
+        } catch (recalcErr) {
+          logger.warn('DOB recalculation failed (non-fatal)', 'CLIENT_DETAIL', recalcErr);
+        }
+      }
+
+      // Check if gender changed (also affects scoring)
+      if (editData.gender && profile?.gender && editData.gender !== profile.gender && userProfile?.organizationId) {
+        try {
+          const { recalculateClientScores } = await import('@/services/clientRecalculation');
+          await recalculateClientScores(
+            clientName,
+            userProfile.organizationId,
+            { gender: editData.gender },
+          );
+        } catch (recalcErr) {
+          logger.warn('Gender recalculation failed (non-fatal)', 'CLIENT_DETAIL', recalcErr);
+        }
+      }
+
       setIsEditing(false);
       toast({
         title: UI_TOASTS.SUCCESS.PROFILE_UPDATED,
@@ -236,7 +288,7 @@ export function useClientDetail(): UseClientDetailResult {
         variant: "destructive",
       });
     }
-  }, [user, clientName, editData, userProfile?.organizationId, toast]);
+  }, [user, clientName, editData, userProfile?.organizationId, userProfile, profile?.dateOfBirth, profile?.gender, toast]);
 
   // Start new assessment
   const handleNewAssessment = useCallback(async (
@@ -308,7 +360,7 @@ export function useClientDetail(): UseClientDetailResult {
 
   // Load snapshots
   useEffect(() => {
-    if (!user || !clientName) return;
+    if (!user || !clientName || !userProfile?.organizationId) return;
 
     (async () => {
       try {
@@ -325,7 +377,7 @@ export function useClientDetail(): UseClientDetailResult {
 
   // Subscribe to profile and load assessments
   useEffect(() => {
-    if (!user || !clientName) return;
+    if (!user || !clientName || !userProfile?.organizationId) return;
 
     const unsubscribeProfile = subscribeToClientProfile(user.uid, clientName, (p) => {
       setProfile(p);
@@ -470,6 +522,29 @@ export function useClientDetail(): UseClientDetailResult {
     })();
   }, [user, clientName, selectedDate, userProfile?.organizationId]);
 
+  // Handle client transfer (Phase E)
+  const handleTransferClient = useCallback(async (toCoachUid: string) => {
+    if (!user || !clientName || !userProfile?.organizationId) return;
+    try {
+      const { transferClient } = await import('@/services/clientProfiles');
+      const result = await transferClient(
+        clientName,
+        userProfile.organizationId,
+        user.uid,
+        toCoachUid,
+        userProfile,
+      );
+      if (result.success) {
+        toast({ title: 'Client transferred', description: result.message });
+      } else {
+        toast({ title: 'Transfer failed', description: result.message, variant: 'destructive' });
+      }
+    } catch (err) {
+      logger.error('Failed to transfer client', 'CLIENT_DETAIL', err);
+      toast({ title: 'Error', description: 'Failed to transfer client.', variant: 'destructive' });
+    }
+  }, [user, clientName, userProfile?.organizationId, userProfile, toast]);
+
   return {
     // URL and Auth
     clientName,
@@ -513,6 +588,7 @@ export function useClientDetail(): UseClientDetailResult {
     handleSaveProfile,
     handleNewAssessment,
     handleDeleteAssessment,
+    handleTransferClient,
     navigateBack,
   };
 }

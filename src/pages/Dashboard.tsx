@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom';
 import AppShell from '@/components/layout/AppShell';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { AnalyticsDashboard } from '@/components/dashboard/AnalyticsDashboard';
@@ -10,13 +9,11 @@ import { useDashboardData } from '@/hooks/useDashboardData';
 // Sub-components
 import { DashboardHeader } from '@/components/dashboard/sub-components/DashboardHeader';
 import { DashboardViewTabs } from '@/components/dashboard/sub-components/DashboardViewTabs';
-import { AssessmentsTable } from '@/components/dashboard/sub-components/AssessmentsTable';
-import { ClientsGrid } from '@/components/dashboard/sub-components/ClientsGrid';
+import { UnifiedClientTable } from '@/components/dashboard/sub-components/UnifiedClientTable';
 import { DashboardDialogs } from '@/components/dashboard/sub-components/DashboardDialogs';
 import { PriorityView } from '@/components/dashboard/sub-components/PriorityView';
 
 const Dashboard = () => {
-  const navigate = useNavigate();
   const {
     user,
     loading,
@@ -32,19 +29,13 @@ const Dashboard = () => {
     clientHistory,
     loadingHistory,
     analytics,
-    visibleAssessmentsCount,
-    visibleClientsCount,
-    setVisibleClientsCount,
-    hasMore,
-    loadingMore,
     recentChanges,
-    filtered,
     filteredClients,
+    clientGroups,
     reassessmentQueue,
+    refreshSchedules,
     handleDelete,
-    handleViewHistory,
     handleNewAssessmentForClient,
-    loadMoreAssessments,
   } = useDashboardData();
 
   if (loading || !user) {
@@ -67,11 +58,13 @@ const Dashboard = () => {
           
           <DashboardHeader coachFirstName={coachFirstName} />
 
-        {/* Analytics Section */}
-        <AnalyticsDashboard analytics={analytics} />
-
-        {/* Recent Activity Section */}
-        <RecentActivity recentChanges={recentChanges} />
+        {/* Analytics & Recent Activity — only on Clients tab */}
+        {view === 'clients' && (
+          <>
+            <AnalyticsDashboard analytics={analytics} />
+            <RecentActivity recentChanges={recentChanges} />
+          </>
+        )}
 
           {/* Main Content Actions */}
           <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 md:p-8 shadow-sm">
@@ -80,41 +73,25 @@ const Dashboard = () => {
               setView={setView}
               search={search}
               setSearch={setSearch}
-              priorityCount={reassessmentQueue?.summary?.highPriority || 0}
+              priorityCount={reassessmentQueue?.summary?.overdue || 0}
             />
 
-          {/* Assessments View */}
-          {view === 'assessments' && (
-              <AssessmentsTable 
+          {/* Clients View (Unified Table) */}
+          {view === 'clients' && (
+              <UnifiedClientTable 
                 loadingData={loadingData}
-                filtered={filtered}
+                clients={filteredClients}
                 search={search}
-                visibleCount={visibleAssessmentsCount}
-                hasMore={hasMore}
-                loadingMore={loadingMore}
-                onLoadMore={loadMoreAssessments}
-                onDelete={(id, name) => setDeleteDialog({ id, name })}
+                onNewAssessment={handleNewAssessmentForClient}
               />
           )}
-
-          {/* Clients View */}
-          {view === 'clients' && (
-              <ClientsGrid 
-                loadingData={loadingData}
-                filteredClients={filteredClients}
-                search={search}
-                visibleCount={visibleClientsCount}
-                setVisibleCount={setVisibleClientsCount}
-                onNewAssessment={handleNewAssessmentForClient}
-                reassessmentQueue={reassessmentQueue?.queue}
-              />
-            )}
 
           {/* Priority View */}
           {view === 'priority' && reassessmentQueue && (
               <PriorityView 
                 reassessmentQueue={reassessmentQueue}
                 onNewAssessmentForClient={handleNewAssessmentForClient}
+                onScheduleChanged={refreshSchedules}
               />
             )}
           </div>

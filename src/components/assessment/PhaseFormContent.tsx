@@ -25,6 +25,7 @@ import { AssessmentModals } from './AssessmentModals';
 import { SingleFieldFlow } from './SingleFieldFlow';
 
 
+
 // Lazy load results component
 const AssessmentResults = React.lazy(() => import('./AssessmentResults'));
 
@@ -151,6 +152,7 @@ export const PhaseFormContent = ({
     scores,
     isResultsPhase,
     isDemoAssessment,
+    orgSettings,
   });
   const {
     savingId,
@@ -620,7 +622,7 @@ export const PhaseFormContent = ({
       </main>
 
       {/* Assessment Modals */}
-      <AssessmentModals 
+      <AssessmentModals
         showCamera={showCamera}
         setShowCamera={setShowCamera}
         handleCapture={handleCapture}

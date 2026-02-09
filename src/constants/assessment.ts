@@ -632,3 +632,7 @@ export const SECTION_TITLES = {
     goals: 'Goals',
   },
 } as const;
+
+// Dashboard thresholds
+/** Number of days without an assessment before a client is considered inactive */
+export const CLIENT_INACTIVE_DAYS = 90;

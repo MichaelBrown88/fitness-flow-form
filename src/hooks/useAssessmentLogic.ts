@@ -40,7 +40,10 @@ export function useAssessmentLogic(assessmentId: string | undefined): Assessment
   const publishedKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!user || !assessmentId) return;
+    // Wait for profile to load so we have the organizationId for Firestore lookups.
+    // Without it, every org-scoped query returns null and the user sees a
+    // brief "Assessment not found" flash before the profile arrives.
+    if (!user || !assessmentId || !profile?.organizationId) return;
     
     let isMounted = true;
     

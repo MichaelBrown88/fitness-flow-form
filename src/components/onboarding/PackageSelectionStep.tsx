@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { CheckCircle } from 'lucide-react';
-import { calculateMonthlyFee, PRICING_PLANS } from '@/lib/pricing';
+import { CheckCircle, CreditCard } from 'lucide-react';
+import { calculateMonthlyFee } from '@/lib/pricing';
 import type { SubscriptionPlan } from '@/lib/pricing';
 import type { BrandingConfig, BusinessType } from '@/types/onboarding';
 import { BUSINESS_TYPES } from '@/types/onboarding';
+import { useCheckout } from '@/hooks/useCheckout';
+import { useAuth } from '@/hooks/useAuth';
 
 interface PackageSelectionStepProps {
   data?: Partial<BrandingConfig>;
@@ -19,6 +21,8 @@ export function PackageSelectionStep({
   onBack,
 }: PackageSelectionStepProps) {
   const [seats, setSeats] = useState(data?.clientSeats || 15);
+  const { startCheckout, loading: checkoutLoading, error: checkoutError, isStripeEnabled } = useCheckout();
+  const { profile } = useAuth();
 
   // Determine plan based on business type
   const getPlanForBusinessType = (): SubscriptionPlan => {
@@ -27,12 +31,21 @@ export function PackageSelectionStep({
   };
 
   const plan = getPlanForBusinessType();
-  const planConfig = PRICING_PLANS[plan];
   const monthlyFee = calculateMonthlyFee(plan, seats);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onNext(seats);
+  const handleContinue = async () => {
+    if (isStripeEnabled && profile?.organizationId) {
+      // Stripe is configured — start checkout flow
+      const checkoutPlan = plan === 'free' || plan === 'none' ? 'starter' : plan;
+      const redirected = await startCheckout(profile.organizationId, checkoutPlan, seats);
+      if (!redirected) {
+        // Stripe not configured or error — fall back to trial
+        onNext(seats);
+      }
+    } else {
+      // No Stripe configured — proceed as trial
+      onNext(seats);
+    }
   };
 
   return (
@@ -98,12 +111,19 @@ export function PackageSelectionStep({
         </div>
       </div>
 
+      {checkoutError && (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+          {checkoutError}
+        </div>
+      )}
+
       {/* Navigation */}
       <div className="flex gap-3 pt-4">
         <button
           type="button"
           onClick={onBack}
-          className="flex-1 h-12 rounded-2xl bg-white border border-slate-200 font-bold text-lg flex items-center justify-center gap-2 hover:bg-slate-50 transition-all shadow-sm text-slate-600"
+          disabled={checkoutLoading}
+          className="flex-1 h-12 rounded-2xl bg-white border border-slate-200 font-bold text-lg flex items-center justify-center gap-2 hover:bg-slate-50 transition-all shadow-sm text-slate-600 disabled:opacity-50"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -112,13 +132,28 @@ export function PackageSelectionStep({
         </button>
         <button
           type="button"
-          onClick={() => onNext(seats)}
-          className="flex-1 h-12 rounded-2xl bg-slate-900 text-white font-bold text-lg flex items-center justify-center gap-2 hover:bg-slate-800 transition-all shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-95"
+          onClick={handleContinue}
+          disabled={checkoutLoading}
+          className="flex-1 h-12 rounded-2xl bg-slate-900 text-white font-bold text-lg flex items-center justify-center gap-2 hover:bg-slate-800 transition-all shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:hover:scale-100"
         >
-          Continue
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
+          {checkoutLoading ? (
+            <>
+              <div className="h-5 w-5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+              Processing…
+            </>
+          ) : isStripeEnabled ? (
+            <>
+              <CreditCard size={20} />
+              Subscribe
+            </>
+          ) : (
+            <>
+              Continue
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </>
+          )}
         </button>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { collection, addDoc, serverTimestamp, getDocs, query, orderBy, limit, doc, getDoc, deleteDoc, where, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, getDocs, query, orderBy, limit, doc, getDoc, deleteDoc, where, updateDoc, increment } from 'firebase/firestore';
 import type { Timestamp } from 'firebase/firestore';
 import type { FormData } from '@/contexts/FormContext';
 import { getDb } from '@/services/firebase';
@@ -7,6 +7,7 @@ import { validateOrganizationId } from '@/lib/utils/validateOrganizationId';
 import type { UserProfile } from '@/types/auth';
 import { COLLECTIONS } from '@/constants/collections';
 import { ORGANIZATION } from '@/lib/database/paths';
+import { logger } from '@/lib/utils/logger';
 
 const MAX_ASSESSMENTS_LIMIT = 200;
 const MAX_CLIENT_ASSESSMENTS_LIMIT = 200;
@@ -29,6 +30,12 @@ export type CoachAssessmentSummary = {
   createdAt: Timestamp | null;
   overallScore: number;
   goals: string[];
+  /** Previous assessment score (for trend calculation) */
+  previousScore?: number;
+  /** Pre-computed trend (overallScore - previousScore) */
+  trend?: number;
+  /** Total assessments for this client (incremented on each upsert) */
+  assessmentCount?: number;
   scoresSummary?: {
     overall: number;
     categories: {
@@ -45,6 +52,8 @@ type CoachAssessmentDoc = {
   createdAt: Timestamp;
   coachUid: string;
   coachEmail?: string | null;
+  /** UID of the coach who physically performed the assessment (set when different from coachUid) */
+  performedByUid?: string;
   overallScore: number;
   goals: string[];
   formData: FormData;
@@ -73,6 +82,23 @@ async function resolveOrganizationId(
   throw new Error('Organization ID is required for assessment access.');
 }
 
+/**
+ * Resolve the effective coach UID for assessment attribution.
+ * If assignedCoach is set and differs from the logged-in user, the assessment
+ * is attributed to the assigned coach (guest assessment / favor scenario).
+ */
+function resolveEffectiveCoach(
+  loggedInCoachUid: string,
+  formData: FormData,
+  _organizationId: string,
+): string {
+  const assignedCoach = formData.assignedCoach?.trim();
+  if (assignedCoach && assignedCoach !== loggedInCoachUid) {
+    return assignedCoach;
+  }
+  return loggedInCoachUid;
+}
+
 export async function saveCoachAssessment(
   coachUid: string,
   coachEmail: string | null | undefined,
@@ -86,41 +112,94 @@ export async function saveCoachAssessment(
   // Validate organizationId before proceeding
   const validOrgId = validateOrganizationId(organizationId, profile);
 
-  // 1. Use new assessment history system (the deep structure)
-  const { updateCurrentAssessment } = await import('./assessmentHistory');
-  await updateCurrentAssessment(coachUid, name, formData, overallScore, 'full', 'all', validOrgId);
+  // Resolve effective coach: use assignedCoach for guest assessment attribution (Phase F)
+  const effectiveCoachUid = resolveEffectiveCoach(coachUid, formData, validOrgId);
+  const isGuestAssessment = effectiveCoachUid !== coachUid;
 
-  // 2. Create assessment summary in the organization's assessments collection
-  // Pre-calculate scores summary for dashboard performance
+  // 1. ALWAYS update history first (keeps the "Current" view accurate and logs the change)
+  const { updateCurrentAssessment } = await import('./assessmentHistory');
+  await updateCurrentAssessment(effectiveCoachUid, name, formData, overallScore, 'full', 'all', validOrgId);
+
+  // 2. Pre-calculate scores summary for dashboard performance
   const scoresSummary = summarizeScores(formData);
 
-  // Create assessment summary document using organization path
+  // 3. Upsert: check if a summary already exists for this client (one row per client)
+  const existingQ = query(
+    orgAssessmentsCollection(validOrgId),
+    where('clientNameLower', '==', name.toLowerCase()),
+    where('coachUid', '==', effectiveCoachUid),
+    orderBy('createdAt', 'desc'),
+    limit(1),
+  );
+  const existingSnapshot = await getDocs(existingQ);
+
+  if (!existingSnapshot.empty) {
+    const existingDoc = existingSnapshot.docs[0];
+    const existingData = existingDoc.data();
+    // Capture previousScore BEFORE overwrite for trend calculation
+    const previousScore = existingData.overallScore ?? 0;
+    const trend = overallScore - previousScore;
+
+    logger.info('[Assessment] Upsert: updating existing client summary');
+    await updateDoc(existingDoc.ref, {
+      clientName: name,
+      clientNameLower: name.toLowerCase(),
+      overallScore,
+      previousScore,
+      trend,
+      assessmentCount: increment(1),
+      createdAt: serverTimestamp(),
+      goals: Array.isArray(formData.clientGoals) ? formData.clientGoals : [],
+      formData,
+      scoresSummary,
+      ...(isGuestAssessment ? { performedByUid: coachUid } : {}),
+    });
+
+    // Update public report
+    try {
+      const { publishPublicReport } = await import('./publicReports');
+      await publishPublicReport({
+        coachUid: effectiveCoachUid,
+        assessmentId: existingDoc.id,
+        formData,
+        organizationId: validOrgId,
+        profile,
+      });
+    } catch (err) {
+      logger.warn('Failed to update public report after upsert save:', err);
+    }
+
+    return existingDoc.id;
+  }
+
+  // 4. First assessment for this client -- create new summary
   const docRef = await addDoc(orgAssessmentsCollection(validOrgId), {
     clientName: name,
     clientNameLower: name.toLowerCase(),
     createdAt: serverTimestamp(),
-    coachUid,
+    coachUid: effectiveCoachUid,
     coachEmail: coachEmail || null,
     organizationId: validOrgId,
     overallScore,
+    assessmentCount: 1,
     goals: Array.isArray(formData.clientGoals) ? formData.clientGoals : [],
-    formData: formData,
+    formData,
     scoresSummary,
     isSummary: true,
+    ...(isGuestAssessment ? { performedByUid: coachUid } : {}),
   });
 
   // Update public report if one exists (keeps shared links live)
   try {
     const { publishPublicReport } = await import('./publicReports');
     await publishPublicReport({
-      coachUid,
+      coachUid: effectiveCoachUid,
       assessmentId: docRef.id,
       formData,
       organizationId: validOrgId,
       profile,
     });
   } catch (err) {
-    const { logger } = await import('@/lib/utils/logger');
     logger.warn('Failed to update public report after assessment save:', err);
   }
 
@@ -146,7 +225,7 @@ export async function listCoachAssessments(
   const snap = await getDocs(q);
   const items: CoachAssessmentSummary[] = [];
   snap.forEach((docSnap) => {
-    const data = docSnap.data() as Partial<CoachAssessmentDoc> & { scores?: { overall?: number } };
+    const data = docSnap.data() as Partial<CoachAssessmentDoc> & { scores?: { overall?: number }; previousScore?: number; trend?: number; assessmentCount?: number };
     items.push({
       id: docSnap.id,
       clientName: data.clientName || 'Unnamed client',
@@ -154,6 +233,9 @@ export async function listCoachAssessments(
       overallScore: extractOverallScore(data),
       goals: Array.isArray(data.goals) ? data.goals : [],
       scoresSummary: data.scoresSummary,
+      previousScore: data.previousScore,
+      trend: data.trend,
+      assessmentCount: data.assessmentCount,
     });
   });
   return items;
@@ -341,9 +423,13 @@ export async function savePartialAssessment(
   // Validate organizationId before proceeding
   const validOrgId = validateOrganizationId(organizationId, profile);
 
+  // Resolve effective coach for guest assessment attribution (Phase F)
+  const effectiveCoachUid = resolveEffectiveCoach(coachUid, formData, validOrgId);
+  const isGuestAssessment = effectiveCoachUid !== coachUid;
+
   // 1. Get current assessment to merge with
   const { getCurrentAssessment, updateCurrentAssessment } = await import('./assessmentHistory');
-  const current = await getCurrentAssessment(coachUid, finalName, validOrgId);
+  const current = await getCurrentAssessment(effectiveCoachUid, finalName, validOrgId);
 
   // Merge: new partial data overrides existing data
   const mergedFormData = current?.formData
@@ -353,39 +439,88 @@ export async function savePartialAssessment(
   // Determine change type
   const changeType = `partial-${category}` as const;
 
-  // 2. Update current assessment and log change (deep structure)
-  await updateCurrentAssessment(coachUid, finalName, mergedFormData, overallScore, changeType, category, validOrgId);
+  // 2. ALWAYS update history first (keeps audit trail complete even on dedup)
+  await updateCurrentAssessment(effectiveCoachUid, finalName, mergedFormData, overallScore, changeType, category, validOrgId);
 
   // Pre-calculate scores summary for dashboard performance
   const scoresSummary = summarizeScores(mergedFormData);
 
-  // 3. Create summary in organization's assessments collection
+  // 3. Upsert: check if a summary already exists for this client (one row per client)
+  const existingQ = query(
+    orgAssessmentsCollection(validOrgId),
+    where('clientNameLower', '==', finalName.toLowerCase()),
+    where('coachUid', '==', effectiveCoachUid),
+    orderBy('createdAt', 'desc'),
+    limit(1),
+  );
+  const existingSnapshot = await getDocs(existingQ);
+
+  if (!existingSnapshot.empty) {
+    const existingDoc = existingSnapshot.docs[0];
+    const existingData = existingDoc.data();
+    const previousScore = existingData.overallScore ?? 0;
+    const trend = overallScore - previousScore;
+
+    logger.info('[Assessment] Upsert (partial): updating existing client summary');
+    await updateDoc(existingDoc.ref, {
+      clientName: finalName,
+      clientNameLower: finalName.toLowerCase(),
+      overallScore,
+      previousScore,
+      trend,
+      assessmentCount: increment(1),
+      createdAt: serverTimestamp(),
+      goals: Array.isArray(mergedFormData.clientGoals) ? mergedFormData.clientGoals : [],
+      formData: mergedFormData,
+      scoresSummary,
+      category,
+      isPartial: true,
+      ...(isGuestAssessment ? { performedByUid: coachUid } : {}),
+    });
+
+    try {
+      const { publishPublicReport } = await import('./publicReports');
+      await publishPublicReport({
+        coachUid: effectiveCoachUid,
+        assessmentId: existingDoc.id,
+        formData: mergedFormData,
+        organizationId: validOrgId,
+      });
+    } catch (err) {
+      logger.warn('Failed to update public report after partial upsert save:', err);
+    }
+
+    return existingDoc.id;
+  }
+
+  // 4. First assessment for this client -- create new summary
   const docRef = await addDoc(orgAssessmentsCollection(validOrgId), {
     clientName: finalName,
     clientNameLower: finalName.toLowerCase(),
     createdAt: serverTimestamp(),
-    coachUid,
+    coachUid: effectiveCoachUid,
     coachEmail: coachEmail || null,
     organizationId: validOrgId,
     overallScore,
+    assessmentCount: 1,
     goals: Array.isArray(mergedFormData.clientGoals) ? mergedFormData.clientGoals : [],
     formData: mergedFormData,
     scoresSummary,
     category,
     isPartial: true,
+    ...(isGuestAssessment ? { performedByUid: coachUid } : {}),
   });
 
   // Update public report if one exists
   try {
     const { publishPublicReport } = await import('./publicReports');
     await publishPublicReport({
-      coachUid,
+      coachUid: effectiveCoachUid,
       assessmentId: docRef.id,
       formData: mergedFormData,
       organizationId: validOrgId,
     });
   } catch (err) {
-    const { logger } = await import('@/lib/utils/logger');
     logger.warn('Failed to update public report after partial assessment save:', err);
   }
 

@@ -204,7 +204,7 @@ export async function classifyPostureView(
   }
 
   try {
-    await logAIUsage(coachUid, 'posture_classify', 'view_detection', 'gemini');
+    await logAIUsage(coachUid, 'posture_analysis', 'ai_success', 'gemini');
 
     const firebaseApp = getApp();
     const ai = getAI(firebaseApp, {

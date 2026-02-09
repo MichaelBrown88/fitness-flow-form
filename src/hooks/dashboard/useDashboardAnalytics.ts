@@ -35,12 +35,18 @@ export function useDashboardAnalytics(
     }
 
     const uniqueClients = new Set(assessments.map(a => a.clientName));
+    // With upsert (one row per client), assessments.length = unique clients.
+    // Sum assessmentCount field to get the true total assessments performed.
+    const totalAssessmentsCount = assessments.reduce(
+      (sum, a) => sum + (a.assessmentCount || 1), 0
+    );
     const avgScore = Math.round(
       assessments.reduce((sum, a) => sum + (a.overallScore || 0), 0) / assessments.length
     );
 
     const now = new Date();
     const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    // Clients assessed this month = clients whose latest assessment (createdAt) is this month
     const assessmentsThisMonth = assessments.filter(a =>
       a.createdAt && a.createdAt.toDate() >= thisMonth
     ).length;
@@ -116,7 +122,7 @@ export function useDashboardAnalytics(
 
     return {
       totalClients: uniqueClients.size,
-      totalAssessments: assessments.length,
+      totalAssessments: totalAssessmentsCount,
       averageScore: avgScore,
       mostCommonIssues,
       highestCategory: highestCategory ? { name: highestCategory.name, avgScore: highestCategory.avgScore } : null,

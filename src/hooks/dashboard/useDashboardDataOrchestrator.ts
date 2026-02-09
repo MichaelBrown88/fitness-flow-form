@@ -18,7 +18,7 @@ export function useDashboardData() {
   const navigate = useNavigate();
 
   const [search, setSearch] = useState('');
-  const [view, setView] = useState<'assessments' | 'clients' | 'priority'>('assessments');
+  const [view, setView] = useState<'clients' | 'priority'>('clients');
   const [visibleClientsCount, setVisibleClientsCount] = useState(12);
 
   // Analytics computation (uses effectiveOrgId for impersonation support)
@@ -42,8 +42,8 @@ export function useDashboardData() {
     effectiveOrgId,
   });
 
-  // Client grouping
-  const { clientGroups, filteredClients } = useClientList(items, search);
+  // Client grouping (enriched with retestSchedule from client profiles)
+  const { clientGroups, filteredClients, refreshSchedules } = useClientList(items, search, effectiveOrgId);
   
   // Reassessment queue (priority view)
   const reassessmentQueue = useReassessmentQueue(clientGroups);
@@ -104,6 +104,7 @@ export function useDashboardData() {
     filteredClients,
     clientGroups,
     reassessmentQueue,
+    refreshSchedules,
     handleDelete,
     handleViewHistory,
     handleNewAssessmentForClient,

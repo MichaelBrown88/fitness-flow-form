@@ -10,7 +10,7 @@
 export type CadencePriority = 'high' | 'medium' | 'low';
 
 /** Partial assessment categories (matches existing partial assessment system) */
-export type PartialAssessmentCategory = 'inbody' | 'posture' | 'fitness' | 'strength';
+export type PartialAssessmentCategory = 'inbody' | 'posture' | 'fitness' | 'strength' | 'lifestyle';
 
 /**
  * Configuration for a single pillar's retest cadence
@@ -25,8 +25,7 @@ export interface CadenceConfig {
 }
 
 /**
- * Cadence configuration for all 4 physical assessment pillars
- * Note: Lifestyle check-ins are Phase 2 (mobile app feature)
+ * Cadence configuration for all 5 assessment pillars
  */
 export interface PillarCadence {
   /** Body composition (InBody scan or measurements) - Base: 30 days */
@@ -37,6 +36,8 @@ export interface PillarCadence {
   fitness: CadenceConfig;
   /** Strength (pushups, squats, plank, grip) - Base: 60 days */
   strength: CadenceConfig;
+  /** Lifestyle factors (nutrition, sleep, stress, recovery) - Base: 45 days */
+  lifestyle: CadenceConfig;
 }
 
 /**
@@ -62,6 +63,7 @@ export const BASE_CADENCE_INTERVALS: Record<PartialAssessmentCategory | 'fullAss
   posture: 45,     // 4-6 week corrective exercise block (FMS standards)
   fitness: 45,     // 6-week adaptation block
   strength: 60,    // True hypertrophy measurement (technique vs tissue)
+  lifestyle: 45,   // Lifestyle factor reassessment
   fullAssessment: 90, // Quarterly comprehensive review
 } as const;
 

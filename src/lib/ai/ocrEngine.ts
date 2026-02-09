@@ -248,7 +248,7 @@ export async function processInBodyScan(imageSrc: string): Promise<OcrResult> {
     return await runGeminiOcr(croppedImage);
     
   } catch (err: unknown) {
-    logger.error('[OCR] Gemini failed:', err);
+    logger.error('[OCR] Gemini failed:', 'OCR', err);
     await logAIUsage(coachUid, 'ocr_inbody', 'error', 'gemini');
     
     // Return empty result with helpful message instead of throwing

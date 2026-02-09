@@ -1,8 +1,9 @@
 import * as admin from 'firebase-admin';
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
-import { onCall } from 'firebase-functions/v2/https';
+import { onCall, onRequest } from 'firebase-functions/v2/https';
 import { requestShareLinks, sendReportEmail } from './share';
+import { handleCreateCheckoutSession, handleStripeWebhook } from './stripe';
 import {
   handleOrganizationChange,
   handleUserProfileChange,
@@ -19,6 +20,16 @@ export const requestReportShare = onCall({
 export const emailReport = onCall({
   enforceAppCheck: false,
 }, sendReportEmail);
+
+// Stripe payment functions
+export const createCheckoutSession = onCall({
+  enforceAppCheck: false,
+}, handleCreateCheckoutSession);
+
+export const stripeWebhook = onRequest(
+  { cors: false },
+  handleStripeWebhook,
+);
 
 // Aggregation functions (write-time counters)
 export const aggregateOrganizationChanges = onDocumentWritten(

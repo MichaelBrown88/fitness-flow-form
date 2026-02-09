@@ -39,6 +39,21 @@ export interface EquipmentConfig {
  * Granular assessment toggles - each assessment can be enabled/disabled independently
  * Section IDs map to phaseConfig section.id values
  */
+/**
+ * Default retest cadence intervals at org level
+ * When enabled, these override clinical baselines for new clients
+ */
+export interface DefaultCadenceConfig {
+  enabled: boolean; // Use org defaults vs clinical baselines
+  intervals: {
+    inbody: number;     // days (default: 30)
+    posture: number;    // days (default: 45)
+    fitness: number;    // days (default: 45)
+    strength: number;   // days (default: 60)
+    lifestyle: number;  // days (default: 45)
+  };
+}
+
 export interface OrgSettings {
   name: string;
   logoUrl?: string;
@@ -60,6 +75,8 @@ export interface OrgSettings {
   onboardingCompletedAt?: Timestamp; // Firestore Timestamp
   // Platform admin controlled features
   demoAutoFillEnabled?: boolean; // Demo persona auto-fill (for affiliates/sales demos) - OFF by default
+  // Default retest cadence for new clients
+  defaultCadence?: DefaultCadenceConfig;
 }
 
 /**
@@ -109,6 +126,10 @@ const DEFAULT_SETTINGS: OrgSettings = {
   },
   equipmentConfig: DEFAULT_EQUIPMENT_CONFIG,
   demoAutoFillEnabled: false, // OFF by default - platform admin controlled for affiliates/sales demos
+  defaultCadence: {
+    enabled: false, // Off by default - use clinical baselines
+    intervals: { inbody: 30, posture: 45, fitness: 45, strength: 60 },
+  },
 };
 
 /**
@@ -200,6 +221,7 @@ export async function getOrgSettings(orgId: string): Promise<OrgSettings> {
     },
     equipmentConfig: cleanEquipmentConfig,
     demoAutoFillEnabled: data.demoAutoFillEnabled ?? DEFAULT_SETTINGS.demoAutoFillEnabled,
+    defaultCadence: data.defaultCadence ?? DEFAULT_SETTINGS.defaultCadence,
   };
 }
 

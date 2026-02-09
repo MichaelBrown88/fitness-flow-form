@@ -2,7 +2,14 @@
 
 Reusable prompts for generating targeted repomix commands to review specific domains of the app. Paste any prompt into a Cursor conversation and ask the agent to generate the repomix command based on the current codebase state.
 
+**Command Format** (critical for repomix to work):
+
+- `--include` and `--ignore` each take a **single comma-separated string** — not separate arguments.
+- Example: `--include "src/services/firebase.ts,src/hooks/useAuth.ts,functions/src/**"`
+- Do **not** pass each file as its own argument (repomix will treat them as directory targets and error).
+
 **Global Exclusions** (included in each prompt):
+
 - `.xml` files (previous repomix outputs)
 - `src/lib/setup/admin/**` (one-off migration scripts)
 - `src/lib/test/**` (hardcoded test images)
@@ -57,3 +64,4 @@ Reusable prompts for generating targeted repomix commands to review specific dom
 ## 8. Scoring and Exercise Science
 
 > Generate a repomix command covering the scoring and exercise science logic: all files under lib/scoring, all files under lib/recommendations, all files under lib/exercises, all files under lib/prioritization, the exercise database, the exercise selection logic, the exercise prioritization, the phase config, all phase files under lib/phases, the clinical data, the client archetypes, the negative outcomes, the recommendation generator, the strategy/blueprint engine, and the client types. Include types and constants used by these files. Exclude: all `.xml` files, `src/lib/setup/admin/**`, `src/lib/test/**`, `src/components/ui/**`, `public/mediapipe/**`, `docs/**`, `functions/lib/**`, root-level scripts, and any `.md` files at the project root.
+

@@ -75,8 +75,11 @@ export const ORGANIZATION = {
   clients: {
     collection: (orgId: string) => `organizations/${orgId}/clients` as const,
     doc: (orgId: string, clientId: string) => `organizations/${orgId}/clients/${clientId}` as const,
-    /** Generate client ID from name (lowercase, hyphenated) */
-    generateId: (clientName: string) => clientName.toLowerCase().replace(/\s+/g, '-'),
+    /** Generate client ID from name. Delegates to generateClientSlug from clientProfiles service. */
+    generateId: (clientName: string) => {
+      const safeName = (clientName || '').trim().replace(/\s+/g, ' ') || 'unnamed-client';
+      return safeName.toLowerCase().replace(/\s+/g, '-');
+    },
   },
   
   /** Assessments within an organization */

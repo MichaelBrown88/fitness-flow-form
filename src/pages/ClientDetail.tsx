@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import AppShell from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { TransferClientDialog } from '@/components/client/TransferClientDialog';
+import { ArrowRightLeft } from 'lucide-react';
 
 const ClientDetail = () => {
   const { profile: authProfile } = useAuth();
@@ -85,8 +88,11 @@ const ClientDetail = () => {
     handleSaveProfile,
     handleNewAssessment,
     handleDeleteAssessment,
+    handleTransferClient,
     navigateBack,
   } = useClientDetail();
+
+  const [transferOpen, setTransferOpen] = useState(false);
 
   if (!user) {
     return (
@@ -134,6 +140,15 @@ const ClientDetail = () => {
               {isEditing ? <X className="h-4 w-4 mr-2" /> : <Edit2 className="h-4 w-4 mr-2" />}
               {isEditing ? 'Cancel' : 'Edit Profile'}
             </Button>
+            {(authProfile?.role === 'org_admin' || profile?.assignedCoachUid === user?.uid) && (
+              <Button
+                variant="outline"
+                onClick={() => setTransferOpen(true)}
+              >
+                <ArrowRightLeft className="h-4 w-4 mr-2" />
+                Transfer
+              </Button>
+            )}
             <Button onClick={() => handleNewAssessment()} className="bg-slate-900 text-white hover:bg-slate-800">
               <UserPlus className="h-4 w-4 mr-2" />
               New Assessment
@@ -433,6 +448,18 @@ const ClientDetail = () => {
           <div className="space-y-4 py-4">
             <div className="grid gap-2">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                <UserCheck className="h-3.5 w-3.5" /> Client Name
+              </label>
+              <Input
+                value={editData.clientName ?? clientName ?? ''}
+                onChange={(e) => setEditData({ ...editData, clientName: e.target.value })}
+                placeholder="Full name"
+                className="h-11 rounded-xl"
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
                 <Mail className="h-3.5 w-3.5" /> Email Address
               </label>
               <Input
@@ -544,6 +571,17 @@ const ClientDetail = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Transfer Client Dialog (Phase E) */}
+      {clientName && user && authProfile?.organizationId && (
+        <TransferClientDialog
+          open={transferOpen}
+          onOpenChange={setTransferOpen}
+          clientName={clientName}
+          currentCoachUid={profile?.assignedCoachUid ?? user.uid}
+          organizationId={authProfile.organizationId}
+          onConfirm={handleTransferClient}
+        />
+      )}
     </AppShell>
   );
 };

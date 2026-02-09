@@ -1,6 +1,8 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { sendPasswordResetEmail } from 'firebase/auth';
 import { useAuth } from '@/hooks/useAuth';
+import { getFirebaseAuth } from '@/services/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,6 +16,7 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   const from = (location.state as { from?: string } | null)?.from || '/dashboard';
 
@@ -33,10 +36,10 @@ const Login = () => {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    setResetSent(false);
     setSubmitting(true);
     try {
       await signIn(email.trim(), password);
-      // After signin, the useEffect above will handle redirect based on onboarding status
       logger.info('Login successful');
     } catch (err: unknown) {
       const message =
@@ -45,6 +48,25 @@ const Login = () => {
           : 'Unable to sign in. Please check your details and try again.';
       setError(message);
       logger.error('Login failed:', err instanceof Error ? err.message : String(err));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      setError('Please enter your email address first.');
+      return;
+    }
+    setError(null);
+    setSubmitting(true);
+    try {
+      const auth = getFirebaseAuth();
+      await sendPasswordResetEmail(auth, email.trim());
+      setResetSent(true);
+    } catch (err: unknown) {
+      setError('Unable to send reset email. Please try again.');
+      logger.error('Password reset failed:', err instanceof Error ? err.message : String(err));
     } finally {
       setSubmitting(false);
     }
@@ -110,9 +132,24 @@ const Login = () => {
                 required
               />
             </div>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                className="text-xs text-indigo-600 hover:text-indigo-800 transition-colors"
+                disabled={submitting}
+              >
+                Forgot password?
+              </button>
+            </div>
             {error && (
               <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">
                 {error}
+              </div>
+            )}
+            {resetSent && (
+              <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                Password reset email sent. Check your inbox and follow the link to reset your password.
               </div>
             )}
               <Button

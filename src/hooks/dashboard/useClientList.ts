@@ -1,36 +1,78 @@
 /**
  * Client List Hook
  *
- * Client grouping and filtering logic for dashboard.
+ * With the upsert model, each assessment summary IS a unique client.
+ * This hook maps them to ClientGroup format and enriches each group
+ * with retestSchedule data fetched from client profiles.
  */
 
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import type { CoachAssessmentSummary } from '@/services/coachAssessments';
+import type { ClientScheduleData } from '@/services/clientProfiles';
 import type { ClientGroup } from './types';
+import { logger } from '@/lib/utils/logger';
 
-export function useClientList(items: CoachAssessmentSummary[], search: string) {
+type ScheduleMap = Map<string, ClientScheduleData>;
+
+export function useClientList(
+  items: CoachAssessmentSummary[],
+  search: string,
+  organizationId?: string,
+) {
+  // Fetch client schedules; bump version to trigger refetch after edits
+  const [scheduleMap, setScheduleMap] = useState<ScheduleMap>(new Map());
+  const [scheduleVersion, setScheduleVersion] = useState(0);
+
+  useEffect(() => {
+    if (!organizationId) return;
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const { listClientSchedules } = await import('@/services/clientProfiles');
+        const map = await listClientSchedules(organizationId);
+        if (!cancelled) setScheduleMap(map);
+      } catch (err) {
+        logger.warn('[useClientList] Failed to load client schedules:', err);
+      }
+    };
+
+    load();
+    return () => { cancelled = true; };
+  }, [organizationId, scheduleVersion]);
+
   const clientGroups = useMemo(() => {
-    const groups = new Map<string, CoachAssessmentSummary[]>();
-    items.forEach(item => {
-      const existing = groups.get(item.clientName) || [];
-      groups.set(item.clientName, [...existing, item]);
-    });
+    // Deduplicate by clientName (keep the latest summary per client)
+    const byName = new Map<string, CoachAssessmentSummary>();
+    for (const item of items) {
+      const key = item.clientName.toLowerCase();
+      const existing = byName.get(key);
+      if (!existing) {
+        byName.set(key, item);
+      } else {
+        const existingTime = existing.createdAt?.toDate()?.getTime() || 0;
+        const itemTime = item.createdAt?.toDate()?.getTime() || 0;
+        if (itemTime > existingTime) {
+          byName.set(key, item);
+        }
+      }
+    }
 
-    const result: ClientGroup[] = Array.from(groups.entries()).map(([name, assessments]) => {
-      const sorted = assessments.sort((a, b) => {
-        const dateA = a.createdAt?.toDate().getTime() || 0;
-        const dateB = b.createdAt?.toDate().getTime() || 0;
-        return dateB - dateA;
-      });
-      const latest = sorted[0];
-      const previous = sorted[1];
+    const result: ClientGroup[] = Array.from(byName.values()).map((item) => {
+      const schedule = scheduleMap.get(item.clientName.toLowerCase());
 
       return {
-        name,
-        assessments: sorted,
-        latestScore: latest.overallScore || 0,
-        latestDate: latest.createdAt?.toDate() || null,
-        scoreChange: previous ? (latest.overallScore || 0) - (previous.overallScore || 0) : undefined,
+        id: item.id,
+        name: item.clientName,
+        assessments: [item],
+        latestScore: item.overallScore || 0,
+        latestDate: item.createdAt?.toDate() || null,
+        scoreChange: item.trend,
+        assessmentCount: item.assessmentCount || 1,
+        retestSchedule: schedule?.recommended || schedule?.custom
+          ? { recommended: schedule!.recommended!, custom: schedule?.custom }
+          : undefined,
+        dueDateOverrides: schedule?.dueDateOverrides,
       };
     });
 
@@ -39,7 +81,7 @@ export function useClientList(items: CoachAssessmentSummary[], search: string) {
       const dateB = b.latestDate?.getTime() || 0;
       return dateB - dateA;
     });
-  }, [items]);
+  }, [items, scheduleMap]);
 
   const filteredClients = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -47,5 +89,8 @@ export function useClientList(items: CoachAssessmentSummary[], search: string) {
     return clientGroups.filter((group) => group.name.toLowerCase().includes(term));
   }, [clientGroups, search]);
 
-  return { clientGroups, filteredClients };
+  /** Call after saving a custom cadence to refetch schedules from Firestore */
+  const refreshSchedules = () => setScheduleVersion(v => v + 1);
+
+  return { clientGroups, filteredClients, refreshSchedules };
 }

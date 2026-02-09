@@ -161,10 +161,10 @@ export function usePlatformDashboard(): UsePlatformDashboardResult {
       for (const org of orgsData) {
         try {
           const [costs, coaches] = await Promise.all([
-            getOrgAICostsByFeature(org.id).catch(() => []),
+            getOrgAICostsByFeature(org.id).catch((): FeatureCost[] => []),
             (org.dataAccessPermission?.platformAdminAccess === true || org.isComped === true
-              ? getOrgCoachesWithStats(org.id).catch(() => [])
-              : Promise.resolve([]))
+              ? getOrgCoachesWithStats(org.id).catch((): CoachStats[] => [])
+              : Promise.resolve([] as CoachStats[]))
           ]);
           orgCosts[org.id] = costs;
           coachesStats[org.id] = coaches;

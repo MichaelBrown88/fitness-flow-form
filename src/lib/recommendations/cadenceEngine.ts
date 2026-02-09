@@ -13,15 +13,25 @@
 
 import type { FormData } from '@/contexts/FormContext';
 import type { ScoreSummary, ScoreCategory } from '@/lib/scoring/types';
-import type { 
-  PillarCadence, 
-  CadenceConfig, 
-  PartialAssessmentCategory 
+import type {
+  PillarCadence,
+  CadenceConfig,
+  PartialAssessmentCategory
 } from '@/types/client';
-import { 
-  BASE_CADENCE_INTERVALS, 
-  CADENCE_SCORE_THRESHOLDS 
+import {
+  BASE_CADENCE_INTERVALS,
+  CADENCE_SCORE_THRESHOLDS
 } from '@/types/client';
+import type { DefaultCadenceConfig } from '@/services/organizations';
+
+/**
+ * Input options for cadence generation
+ */
+export interface CadenceGenerationOptions {
+  formData: FormData;
+  scores: ScoreSummary;
+  orgDefaults?: DefaultCadenceConfig;
+}
 
 /**
  * Output of the cadence recommendation engine
@@ -45,33 +55,50 @@ const SCORE_TO_PILLAR_MAP: Record<string, PartialAssessmentCategory> = {
   'movementQuality': 'posture',
   'cardio': 'fitness',
   'strength': 'strength',
+  'lifestyle': 'lifestyle',
 };
 
 /**
  * Generate recommended retest cadence based on assessment data
+ * Supports both legacy signature (formData, scores) and new options object
  */
 export function generateCadenceRecommendations(
-  formData: FormData,
-  scores: ScoreSummary
+  formDataOrOptions: FormData | CadenceGenerationOptions,
+  scores?: ScoreSummary
 ): CadenceRecommendationResult {
+  // Support both old and new signatures for backwards compatibility
+  const options: CadenceGenerationOptions = 'formData' in formDataOrOptions
+    ? formDataOrOptions
+    : { formData: formDataOrOptions, scores: scores! };
+
+  const { formData, scores: scoreData, orgDefaults } = options;
   const warnings: CadenceWarning[] = [];
-  
-  // 1. Establish Clinical Baselines (ACSM/NASM aligned)
+
+  // 1. Establish base intervals: org defaults if enabled, otherwise clinical baselines
+  const baseIntervals = orgDefaults?.enabled
+    ? orgDefaults.intervals
+    : BASE_CADENCE_INTERVALS;
+
+  const baseReason = orgDefaults?.enabled
+    ? 'Organization default schedule'
+    : undefined;
+
   const schedule: PillarCadence = {
-    inbody: createBaseCadence('inbody', 'Standard monthly tracking'),
-    posture: createBaseCadence('posture', 'Standard corrective block (4-6 weeks)'),
-    fitness: createBaseCadence('fitness', 'Standard adaptation block'),
-    strength: createBaseCadence('strength', 'Standard hypertrophy block'),
+    inbody: createBaseCadence('inbody', baseReason ?? 'Standard monthly tracking', baseIntervals),
+    posture: createBaseCadence('posture', baseReason ?? 'Standard corrective block (4-6 weeks)', baseIntervals),
+    fitness: createBaseCadence('fitness', baseReason ?? 'Standard adaptation block', baseIntervals),
+    strength: createBaseCadence('strength', baseReason ?? 'Standard hypertrophy block', baseIntervals),
+    lifestyle: createBaseCadence('lifestyle', baseReason ?? 'Lifestyle factor reassessment', baseIntervals),
   };
 
   // 2. Apply Score-Based Modifiers
-  applyScoreModifiers(schedule, scores);
+  applyScoreModifiers(schedule, scoreData);
 
   // 3. Apply Goal-Based Adjustments
   applyGoalModifiers(schedule, formData, warnings);
 
   // 4. Apply Finding-Based Overrides (Critical Path - highest priority)
-  applyFindingOverrides(schedule, formData, scores, warnings);
+  applyFindingOverrides(schedule, formData, scoreData, warnings);
 
   return { schedule, warnings };
 }
@@ -81,10 +108,11 @@ export function generateCadenceRecommendations(
  */
 function createBaseCadence(
   pillar: PartialAssessmentCategory,
-  reason: string
+  reason: string,
+  intervals: Record<PartialAssessmentCategory, number> = BASE_CADENCE_INTERVALS
 ): CadenceConfig {
   return {
-    intervalDays: BASE_CADENCE_INTERVALS[pillar],
+    intervalDays: intervals[pillar],
     priority: 'medium',
     reason,
   };

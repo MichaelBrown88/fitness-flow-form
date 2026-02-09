@@ -216,6 +216,35 @@ export interface PlatformConfig {
   updatedBy: string;
 }
 
+/**
+ * Stripe Checkout Session — request/response types
+ * for the createCheckoutSession Cloud Function
+ */
+export interface CreateCheckoutRequest {
+  organizationId: string;
+  plan: 'starter' | 'professional' | 'enterprise';
+  seats: number;
+}
+
+export interface CreateCheckoutResponse {
+  /** Stripe Checkout Session URL to redirect the user to */
+  sessionUrl: string;
+  /** Stripe Session ID for client-side confirmation */
+  sessionId: string;
+}
+
+/**
+ * Stripe subscription state stored on organization document.
+ * Updated by the stripeWebhook Cloud Function.
+ */
+export interface StripeSubscriptionData {
+  stripeCustomerId: string;
+  stripeSubscriptionId: string;
+  stripePriceId: string;
+  status: 'active' | 'past_due' | 'canceled' | 'trialing';
+  currentPeriodEnd: Date;
+}
+
 /** Default platform config - all features enabled, no maintenance */
 export const DEFAULT_PLATFORM_CONFIG: PlatformConfig = {
   features: {

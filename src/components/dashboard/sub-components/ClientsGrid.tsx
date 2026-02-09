@@ -54,7 +54,7 @@ const getDueLabel = (type: ReassessmentType) => {
     case 'fitness': return 'Cardio';
     case 'strength': return 'Strength';
     case 'full': return 'Full';
-    case 'check-in': return 'Check-in';
+    case 'lifestyle': return 'Lifestyle';
     default: return type;
   }
 };
@@ -96,15 +96,15 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
         ) : (
           filteredClients.slice(0, visibleCount).map((group) => {
             const reassessmentData = reassessmentMap.get(group.name.toLowerCase());
-            const hasPriorityNeeds = reassessmentData && reassessmentData.priority !== 'low';
+            const hasPriorityNeeds = reassessmentData && reassessmentData.status !== 'up-to-date';
             
             return (
             <div
-              key={group.name}
+              key={group.id}
               className={`group rounded-xl border bg-white p-4 sm:p-5 shadow-sm hover:shadow-xl transition-all duration-300 ${
-                reassessmentData?.priority === 'high' 
+                reassessmentData?.status === 'overdue' 
                   ? 'border-red-200 hover:border-red-300' 
-                  : reassessmentData?.priority === 'medium'
+                  : reassessmentData?.status === 'due-soon'
                   ? 'border-amber-200 hover:border-amber-300'
                   : 'border-slate-200 hover:border-slate-300'
               }`}
@@ -133,27 +133,22 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
               </div>
               
               {/* Due For Badges */}
-              {hasPriorityNeeds && reassessmentData.reassessmentNeeds.length > 0 && (
+              {hasPriorityNeeds && reassessmentData.pillarSchedules.filter(s => s.status !== 'up-to-date').length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mb-3">
-                  {reassessmentData.reassessmentNeeds.slice(0, 3).map((need) => (
+                  {reassessmentData.pillarSchedules.filter(s => s.status !== 'up-to-date').slice(0, 3).map((s) => (
                     <Badge 
-                      key={need}
+                      key={s.pillar}
                       variant="outline" 
                       className={`text-[9px] font-semibold gap-1 ${
-                        reassessmentData.priority === 'high'
+                        s.status === 'overdue'
                           ? 'bg-red-50 text-red-700 border-red-200'
                           : 'bg-amber-50 text-amber-700 border-amber-200'
                       }`}
                     >
-                      {getDueIcon(need)}
-                      Due: {getDueLabel(need)}
+                      {getDueIcon(s.pillar)}
+                      Due: {getDueLabel(s.pillar)}
                     </Badge>
                   ))}
-                  {reassessmentData.reassessmentNeeds.length > 3 && (
-                    <Badge variant="outline" className="text-[9px] bg-slate-50 text-slate-500">
-                      +{reassessmentData.reassessmentNeeds.length - 3}
-                    </Badge>
-                  )}
                 </div>
               )}
               

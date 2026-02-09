@@ -10,9 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { updateOrgSettings, uploadOrgLogo, type OrgSettings, DEFAULT_EQUIPMENT_CONFIG } from '@/services/organizations';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Upload, Palette, ShieldCheck, Box, Settings as SettingsIcon, User, Building2 } from 'lucide-react';
+import { Loader2, Upload, Palette, ShieldCheck, Box, Settings as SettingsIcon, User, Building2, Calendar } from 'lucide-react';
 import { getAllGradients, type GradientId } from '@/lib/design/gradients';
 import { logger } from '@/lib/utils/logger';
+import { DefaultCadenceSettings } from '@/components/settings/DefaultCadenceSettings';
 
 const Settings = () => {
   const { user, profile, orgSettings, refreshSettings } = useAuth();
@@ -463,7 +464,7 @@ const Settings = () => {
                     <div className="flex-1">
                       <Label className="text-sm font-bold text-slate-800">Cardio Equipment</Label>
                       <p className="text-xs text-slate-500 mt-1">
-                        {orgSettings?.equipmentConfig?.cardioEquipment?.enabled 
+                        {orgSettings?.equipmentConfig?.cardioEquipment?.enabled
                           ? 'Enabled: Assessments will use treadmill/bike/rower protocols'
                           : 'Disabled: Assessments will use step test (equipment-free)'}
                       </p>
@@ -482,12 +483,12 @@ const Settings = () => {
                             }
                           });
                           await refreshSettings();
-                          toast({ 
-                            title: enabled 
-                              ? 'Cardio equipment enabled' 
+                          toast({
+                            title: enabled
+                              ? 'Cardio equipment enabled'
                               : 'Cardio equipment disabled - using step test',
-                            description: enabled 
-                              ? 'Future assessments will use treadmill/bike/rower' 
+                            description: enabled
+                              ? 'Future assessments will use treadmill/bike/rower'
                               : 'Future assessments will use step test'
                           });
                         } catch (err) {
@@ -498,6 +499,19 @@ const Settings = () => {
                   </div>
                 </div>
               </div>
+            </section>
+
+            {/* Default Retest Schedule */}
+            <section className="space-y-4">
+              <div className="flex items-center gap-2 text-slate-900 mb-2">
+                <Calendar className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-bold">Default Retest Schedule</h2>
+              </div>
+              <DefaultCadenceSettings
+                orgSettings={orgSettings}
+                organizationId={profile.organizationId}
+                onSave={refreshSettings}
+              />
             </section>
             </TabsContent>
           )}

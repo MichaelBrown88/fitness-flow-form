@@ -40,6 +40,9 @@ export { migrateToSaas, verifyMigration, rollbackMigration } from './migrateToSa
 // Assessment History Migration Tool
 export { migrateAssessmentHistory, verifyAssessmentHistoryMigration } from './migrateAssessmentHistory';
 
+// Client Merge & Dedup Tool
+export { mergeClients } from './mergeClients';
+
 // Existing Admin Tools
 export { diagnoseData } from './diagnoseData';
 export { fixRealDataAndStats } from './fixRealDataAndStats';
