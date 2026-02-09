@@ -265,7 +265,6 @@ const AssessmentReport = () => {
           </Button>
           <div className="flex -space-x-px">
             <Button
-              variant="outline"
               className="rounded-r-none focus:z-10"
               onClick={handleCopyLink}
               disabled={shareLoading}
@@ -275,12 +274,11 @@ const AssessmentReport = () => {
               ) : (
                 <LinkIcon className="mr-2 h-4 w-4" />
               )}
-              Share Live Link
+              Copy Link
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
-                  variant="outline"
                   className="rounded-l-none px-2 focus:z-10"
                   disabled={shareLoading}
                 >

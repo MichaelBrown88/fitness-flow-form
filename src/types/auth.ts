@@ -6,4 +6,6 @@ export interface UserProfile {
   role: UserRole;
   displayName: string;
   onboardingCompleted?: boolean;
+  /** Set to true after the coach completes their very first assessment save */
+  firstAssessmentCompleted?: boolean;
 }

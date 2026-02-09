@@ -195,6 +195,20 @@ export function useAssessmentSave({
         title: category ? UI_TOASTS.SUCCESS.PARTIAL_ASSESSMENT_SAVED : UI_TOASTS.SUCCESS.ASSESSMENT_SAVED, 
         description: category ? `${category.charAt(0).toUpperCase() + category.slice(1)} data updated and merged.` : `Progress for ${clientName} has been saved.` 
       });
+
+      // Set firstAssessmentCompleted flag (one-time, non-blocking)
+      if (!profile?.firstAssessmentCompleted) {
+        try {
+          const { doc, updateDoc } = await import('firebase/firestore');
+          const { getDb } = await import('@/services/firebase');
+          await updateDoc(doc(getDb(), 'userProfiles', user.uid), {
+            firstAssessmentCompleted: true,
+          });
+          logger.info('[Assessment] firstAssessmentCompleted flag set');
+        } catch (flagErr) {
+          logger.warn('[Assessment] Failed to set firstAssessmentCompleted flag (non-fatal):', flagErr);
+        }
+      }
     } catch (e) {
       // Use logger for consistency with project rules
       logger.error('[SYNC] Save failed:', e instanceof Error ? e.message : String(e));
