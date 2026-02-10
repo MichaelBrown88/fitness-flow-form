@@ -57,7 +57,7 @@ export function useAssessmentNavigation({ formData, orgSettings }: UseAssessment
   const visiblePhases = useMemo(() => {
     const assessmentToSectionMap: Record<string, string[]> = {
       parq: ['parq'],
-      inbody: ['body-comp'],
+      bodycomp: ['body-comp'],
       fitness: ['fitness-assessment'],
       posture: ['posture'],
       overheadSquat: ['overhead-squat'],
@@ -103,7 +103,7 @@ export function useAssessmentNavigation({ formData, orgSettings }: UseAssessment
     }
 
     const categoryConfig: Record<string, { phaseIds: PhaseId[]; sectionIds?: string[] }> = {
-      'inbody': { 
+      'bodycomp': { 
         phaseIds: ['P0', 'P2', 'P7'], 
         sectionIds: ['basic-client-info', 'parq', 'body-comp'] 
       },

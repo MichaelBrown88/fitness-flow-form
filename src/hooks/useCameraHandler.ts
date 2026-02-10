@@ -5,7 +5,7 @@
 
 import { useState, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
-import { processInBodyScan } from '@/lib/ai/ocrEngine';
+import { processBodyCompScan } from '@/lib/ai/ocrEngine';
 import { compressImageForDisplay } from '@/lib/utils/imageCompression';
 import type { FormData } from '@/contexts/FormContext';
 import type { PostureCompanionData } from '@/lib/types/companion';
@@ -35,7 +35,7 @@ export function useCameraHandler({
   // Camera state
   const [showCamera, setShowCamera] = useState<false | 'ocr' | 'posture'>(false);
   const [showPostureCompanion, setShowPostureCompanion] = useState(false);
-  const [showInBodyCompanion, setShowInBodyCompanion] = useState(false);
+  const [showBodyCompCompanion, setShowBodyCompCompanion] = useState(false);
   const [ocrReviewData, setOcrReviewData] = useState<Partial<FormData> | null>(null);
   const [isProcessingOcr, setIsProcessingOcr] = useState(false);
   const [postureStep, setPostureStep] = useState<number>(0);
@@ -51,7 +51,7 @@ export function useCameraHandler({
       });
 
       try {
-        const result = await processInBodyScan(imageSrc);
+        const result = await processBodyCompScan(imageSrc);
         if (result.fields && Object.keys(result.fields).length > 0) {
           setOcrReviewData(result.fields);
         } else {
@@ -118,7 +118,7 @@ export function useCameraHandler({
       // Set flag to show analyzer fields after OCR data is applied
       updateFormData({ ...ocrReviewData, showAnalyzerFields: 'yes' });
       setOcrReviewData(null);
-      toast({ title: "InBody data applied", description: "All fields have been populated." });
+      toast({ title: "Body composition data applied", description: "All fields have been populated." });
       
       if (activePhaseId === 'P2') {
         setTimeout(() => {
@@ -140,10 +140,10 @@ export function useCameraHandler({
     toast({ title: "Posture data applied", description: "Analysis has been populated." });
   }, [updateFormData, toast]);
 
-  const handleInBodyCompanionComplete = useCallback((data: Partial<FormData>) => {
+  const handleBodyCompCompanionComplete = useCallback((data: Partial<FormData>) => {
     // Store data for review - applyOcrData will set the flag when applied
     setOcrReviewData(data);
-    toast({ title: "InBody data received", description: "Review and apply the extracted data." });
+    toast({ title: "Body composition data received", description: "Review and apply the extracted data." });
   }, [toast]);
 
   return {
@@ -152,8 +152,8 @@ export function useCameraHandler({
     setShowCamera,
     showPostureCompanion,
     setShowPostureCompanion,
-    showInBodyCompanion,
-    setShowInBodyCompanion,
+    showBodyCompCompanion,
+    setShowBodyCompCompanion,
     ocrReviewData,
     setOcrReviewData,
     isProcessingOcr,
@@ -163,7 +163,7 @@ export function useCameraHandler({
     handleCapture,
     applyOcrData,
     handlePostureCompanionComplete,
-    handleInBodyCompanionComplete,
+    handleBodyCompCompanionComplete,
   };
 }
 

@@ -25,7 +25,7 @@ interface FieldControlProps {
   field: PhaseField;
   onShowCamera?: (mode: 'ocr' | 'posture') => void;
   onShowPostureCompanion?: () => void;
-  onShowInBodyCompanion?: () => void;
+  onShowBodyCompCompanion?: () => void;
   onExitParQ?: () => void;
   onParQComplete?: () => void;
 }
@@ -34,7 +34,7 @@ export function FieldControl({
   field,
   onShowCamera,
   onShowPostureCompanion,
-  onShowInBodyCompanion,
+  onShowBodyCompCompanion,
   onExitParQ,
   onParQComplete,
 }: FieldControlProps) {

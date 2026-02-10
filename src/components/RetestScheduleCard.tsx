@@ -33,7 +33,7 @@ import {
 import type { ClientProfile, StoredRetestSchedule } from '@/services/clientProfiles';
 import { updateCustomCadence, resetCustomCadence } from '@/services/clientProfiles';
 import type { PillarCadence, CadenceConfig, PartialAssessmentCategory } from '@/types/client';
-import { BASE_CADENCE_INTERVALS, INBODY_HYDRATION_WARNING_THRESHOLD } from '@/types/client';
+import { BASE_CADENCE_INTERVALS, BODY_COMP_HYDRATION_WARNING_THRESHOLD } from '@/types/client';
 
 interface RetestScheduleCardProps {
   profile: ClientProfile | null;
@@ -51,8 +51,8 @@ const PILLAR_CONFIG: Record<PartialAssessmentCategory, {
   icon: typeof Scan;
   description: string;
 }> = {
-  inbody: {
-    label: getPillarLabel('inbody'),
+  bodycomp: {
+    label: getPillarLabel('bodycomp'),
     icon: Scan,
     description: 'Body composition scan',
   },
@@ -78,7 +78,7 @@ const PILLAR_CONFIG: Record<PartialAssessmentCategory, {
   },
 };
 
-const PILLARS: PartialAssessmentCategory[] = ['inbody', 'posture', 'fitness', 'strength', 'lifestyle'];
+const PILLARS: PartialAssessmentCategory[] = ['bodycomp', 'posture', 'fitness', 'strength', 'lifestyle'];
 
 /**
  * Get effective cadence for a pillar (custom > recommended > fallback)
@@ -261,11 +261,11 @@ export function RetestScheduleCard({
           <div className="px-6 pb-6 space-y-4">
             {/* Hydration Warning - checks effective interval (custom > recommended > fallback) */}
             {schedule && 
-             getEffectiveCadence('inbody', schedule).intervalDays < INBODY_HYDRATION_WARNING_THRESHOLD && (
+             getEffectiveCadence('bodycomp', schedule).intervalDays < BODY_COMP_HYDRATION_WARNING_THRESHOLD && (
               <div className={`p-3 rounded-xl flex items-start gap-3 ${SCORE_COLORS.amber.pill}`}>
                 <AlertTriangle className={`h-4 w-4 mt-0.5 flex-shrink-0 ${SCORE_COLORS.amber.icon}`} />
                 <div className={`text-xs ${SCORE_COLORS.amber.text}`}>
-                  <span className="font-bold">Hydration Notice:</span> Frequent InBody scanning 
+                  <span className="font-bold">Hydration Notice:</span> Frequent body composition scanning 
                   may reflect hydration changes rather than true body composition shifts. 
                   Look for 4-week trends rather than individual scan results.
                 </div>

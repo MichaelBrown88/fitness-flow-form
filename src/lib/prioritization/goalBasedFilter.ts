@@ -43,7 +43,7 @@ export function generateGoalExercises(ctx: PrioritizationContext): {
       const isMuscle = goal === 'build-muscle';
       goalLabels.push(isMuscle ? 'Muscle building' : 'Strength building');
 
-      // Personalized based on InBody SMM
+      // Personalized based on body comp SMM
       const smm = safeParse(form.skeletalMuscleMassKg);
       const weight = safeParse(form.inbodyWeightKg);
       const smmPct = weight > 0 ? (smm / weight) * 100 : 0;

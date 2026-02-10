@@ -26,7 +26,7 @@ interface PoseValidation {
 }
 
 interface CompanionUIProps {
-  mode: 'posture' | 'inbody';
+  mode: 'posture' | 'bodycomp';
   viewIdx: number;
   facingMode: 'user' | 'environment';
   setFacingMode: (mode: 'user' | 'environment') => void;
@@ -89,7 +89,7 @@ export function CompanionUI({
     }
   };
   const fieldLabels: Record<string, string> = {
-    inbodyScore: 'InBody Score',
+    inbodyScore: 'Body Comp Score',
     inbodyWeightKg: 'Weight (kg)',
     skeletalMuscleMassKg: 'SMM (kg)',
     bodyFatMassKg: 'BFM (kg)',
@@ -218,7 +218,7 @@ export function CompanionUI({
         {/* View label */}
         <div className="px-4 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
           <span className="text-xs font-black text-white uppercase tracking-widest">
-            {mode === 'inbody' ? 'BODY COMP REPORT' : VIEWS[viewIdx]?.label || 'Ready'}
+            {mode === 'bodycomp' ? 'BODY COMP REPORT' : VIEWS[viewIdx]?.label || 'Ready'}
           </span>
         </div>
         
@@ -227,7 +227,7 @@ export function CompanionUI({
       </div>
 
       {/* Guide Box - Almost full height for maximum client visibility */}
-      {mode !== 'inbody' && (
+      {mode !== 'bodycomp' && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 pt-12">
           {/* Guide box - wide and tall, almost full screen height */}
           <div
@@ -238,7 +238,7 @@ export function CompanionUI({
       )}
 
       {/* Countdown Overlay */}
-      {countdown !== null && mode !== 'inbody' && (
+      {countdown !== null && mode !== 'bodycomp' && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/30 z-30 pointer-events-none">
           <span className="text-[200px] font-black text-white drop-shadow-2xl">{countdown}</span>
         </div>
@@ -269,7 +269,7 @@ export function CompanionUI({
       {/* Hide all buttons during sequence - only guide box colors and audio cues guide the client */}
       {!isSequenceActive && (
         <div className="absolute bottom-6 left-0 right-0 flex flex-col items-center gap-3 z-40 px-6">
-          {mode === 'inbody' ? (
+          {mode === 'bodycomp' ? (
             <button
               onClick={onCapture}
               className="h-16 w-16 rounded-full border-4 border-white bg-white/20 flex items-center justify-center"

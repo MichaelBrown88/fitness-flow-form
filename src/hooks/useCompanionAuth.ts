@@ -17,7 +17,7 @@ interface UseCompanionAuthResult {
 export function useCompanionAuth(
   sessionId: string | undefined,
   token: string | null,
-  mode: 'posture' | 'inbody'
+  mode: 'posture' | 'bodycomp'
 ): UseCompanionAuthResult {
   const [isValidating, setIsValidating] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);

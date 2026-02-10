@@ -51,7 +51,7 @@ export interface CadenceWarning {
  * Mapping from score category IDs to partial assessment categories
  */
 const SCORE_TO_PILLAR_MAP: Record<string, PartialAssessmentCategory> = {
-  'bodyComp': 'inbody',
+  'bodyComp': 'bodycomp',
   'movementQuality': 'posture',
   'cardio': 'fitness',
   'strength': 'strength',
@@ -84,7 +84,7 @@ export function generateCadenceRecommendations(
     : undefined;
 
   const schedule: PillarCadence = {
-    inbody: createBaseCadence('inbody', baseReason ?? 'Standard monthly tracking', baseIntervals),
+    bodycomp: createBaseCadence('bodycomp', baseReason ?? 'Standard monthly tracking', baseIntervals),
     posture: createBaseCadence('posture', baseReason ?? 'Standard corrective block (4-6 weeks)', baseIntervals),
     fitness: createBaseCadence('fitness', baseReason ?? 'Standard adaptation block', baseIntervals),
     strength: createBaseCadence('strength', baseReason ?? 'Standard hypertrophy block', baseIntervals),
@@ -172,25 +172,25 @@ function applyGoalModifiers(
 ): void {
   const goals = formData.clientGoals || [];
 
-  // Weight loss: Aggressive InBody tracking
+  // Weight loss: Aggressive body comp tracking
   if (goals.includes('weight-loss')) {
-    schedule.inbody = {
+    schedule.bodycomp = {
       intervalDays: 14,
       priority: 'high',
       reason: 'Weight loss goal - track body composition changes closely',
     };
     warnings.push({
-      pillar: 'inbody',
+      pillar: 'bodycomp',
       type: 'hydration',
       message: 'Frequent scanning may reflect hydration changes. Look for 4-week trends.',
     });
   }
 
-  // Build muscle: More frequent strength + InBody
+  // Build muscle: More frequent strength + body comp
   if (goals.includes('build-muscle')) {
-    if (schedule.inbody.intervalDays > 21) {
-      schedule.inbody = {
-        ...schedule.inbody,
+    if (schedule.bodycomp.intervalDays > 21) {
+      schedule.bodycomp = {
+        ...schedule.bodycomp,
         intervalDays: 21,
         reason: 'Muscle building goal - monitor lean mass changes',
       };
@@ -230,9 +230,9 @@ function applyGoalModifiers(
 
   // Body recomposition: Balanced approach
   if (goals.includes('body-recomposition')) {
-    if (schedule.inbody.intervalDays > 21) {
-      schedule.inbody = {
-        ...schedule.inbody,
+    if (schedule.bodycomp.intervalDays > 21) {
+      schedule.bodycomp = {
+        ...schedule.bodycomp,
         intervalDays: 21,
         reason: 'Body recomposition goal - monitor fat loss and muscle gain',
       };
@@ -260,13 +260,13 @@ function applyFindingOverrides(
   // Visceral Fat > 10 (Metabolic Emergency)
   const visceralFat = parseFloat(formData.visceralFatLevel || '0');
   if (visceralFat > 10) {
-    schedule.inbody = {
+    schedule.bodycomp = {
       intervalDays: 14,
       priority: 'high',
       reason: `Elevated visceral fat (${visceralFat}) - metabolic risk monitoring`,
     };
     warnings.push({
-      pillar: 'inbody',
+      pillar: 'bodycomp',
       type: 'critical_finding',
       message: `Visceral fat level ${visceralFat} indicates metabolic risk. Close monitoring recommended.`,
     });
@@ -286,7 +286,7 @@ function applyFindingOverrides(
     });
   }
 
-  // Limb Imbalance > 6% (affects both InBody and Strength)
+  // Limb Imbalance > 6% (affects both body comp and strength)
   const limbImbalance = calculateLimbImbalance(formData);
   if (limbImbalance.hasImbalance) {
     // Don't reduce below existing if already short

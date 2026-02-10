@@ -423,7 +423,7 @@ export async function savePartialAssessment(
   formData: FormData,
   overallScore: number,
   clientName: string,
-  category: 'inbody' | 'posture' | 'fitness' | 'strength' | 'lifestyle',
+  category: 'bodycomp' | 'posture' | 'fitness' | 'strength' | 'lifestyle',
   organizationId?: string,
   profile?: UserProfile | null,
 ): Promise<string> {

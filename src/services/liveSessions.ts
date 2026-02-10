@@ -15,7 +15,7 @@ import { LandmarkResult } from '@/lib/ai/postureLandmarks';
 import { logger } from '@/lib/utils/logger';
 import { validateOrganizationId } from '@/lib/utils/validateOrganizationId';
 import type { UserProfile } from '@/types/auth';
-import { updateDocWithRetry, uploadInBodyScanFullSize, uploadPostureImageFullSize } from '@/services/backgroundUpload';
+import { updateDocWithRetry, uploadBodyCompScanFullSize, uploadPostureImageFullSize } from '@/services/backgroundUpload';
 
 export interface LiveSession {
   id: string;
@@ -25,7 +25,7 @@ export interface LiveSession {
   status: 'active' | 'completed';
   companionJoined: boolean;
   postureImages: Record<string, string>;
-  inbodyImage?: string; // For InBody scan
+  inbodyImage?: string; // For body comp scan
   analysis: Record<string, PostureAnalysisResult>;
   createdAt: Timestamp;
   lastHeartbeat?: Timestamp; // Updated every 5s by mobile companion for connection monitoring
@@ -281,7 +281,7 @@ export const updatePostureImage = async (
   }
 };
 
-export const updateInBodyImage = async (
+export const updateBodyCompImage = async (
   sessionId: string, 
   imageData: string,
   organizationId?: string,
@@ -301,7 +301,7 @@ export const updateInBodyImage = async (
     if (organizationId && profile) {
       const validOrgId = validateOrganizationId(organizationId, profile);
       if (sessionData.organizationId && sessionData.organizationId !== validOrgId) {
-        throw new Error('Cannot update InBody image: Organization mismatch. This session belongs to a different organization.');
+        throw new Error('Cannot update body comp image: Organization mismatch. This session belongs to a different organization.');
       }
     } else if (sessionData.organizationId) {
       // Mobile companion: session must have orgId (created by desktop with validation)
@@ -316,9 +316,9 @@ export const updateInBodyImage = async (
       const compressed = await compressImageForDisplay(imageData, 1200, 0.85);
       compressedImage = compressed.compressed;
       fullSizeImage = compressed.fullSize;
-      // Compressed InBody scan for display
+      // Compressed body comp scan for display
     } catch (compressError) {
-      logger.warn('Compression failed for InBody, using original', 'LIVE_SESSIONS', compressError);
+      logger.warn('Compression failed for body comp scan, using original', 'LIVE_SESSIONS', compressError);
       fullSizeImage = imageData;
     }
 
@@ -333,7 +333,7 @@ export const updateInBodyImage = async (
     const clientId = sessionData.clientId || 'unknown';
     const orgId = sessionData.organizationId || 'default';
 
-    void uploadInBodyScanFullSize({
+    void uploadBodyCompScanFullSize({
       sessionRef,
       sessionId,
       fullSizeImage,
@@ -343,7 +343,7 @@ export const updateInBodyImage = async (
 
     return true;
   } catch (err) {
-    logger.error('InBody image error', 'LIVE_SESSIONS', err);
+    logger.error('Body comp image error', 'LIVE_SESSIONS', err);
     throw err;
   }
 };

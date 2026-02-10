@@ -22,7 +22,7 @@ export function CoachReportBodyComp({ bodyComp, segmentalGuidance }: CoachReport
             <div className="bg-score-green p-2 rounded-lg">
               <Activity className="h-5 w-5 text-white" />
             </div>
-            <h3 className="text-xl font-bold text-slate-900">InBody Segmental Guidance</h3>
+            <h3 className="text-xl font-bold text-slate-900">Segmental Analysis Guidance</h3>
           </div>
           <div className="grid gap-4">
             <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">

@@ -37,12 +37,12 @@ export type AssessmentChange = {
   timestamp: Timestamp;
   type:
     | "full"
-    | "partial-inbody"
+    | "partial-bodycomp"
     | "partial-posture"
     | "partial-fitness"
     | "partial-strength"
     | "partial-lifestyle";
-  category: "inbody" | "posture" | "fitness" | "strength" | "lifestyle" | "all";
+  category: "bodycomp" | "posture" | "fitness" | "strength" | "lifestyle" | "all";
   changes: Record<string, { old: FormValue; new: FormValue }>;
   updatedBy: string;
 };
@@ -137,13 +137,13 @@ export async function getCurrentAssessment(
 function calculateChanges(
   oldData: FormData,
   newData: FormData,
-  category?: "inbody" | "posture" | "fitness" | "strength" | "lifestyle" | "all"
+  category?: "bodycomp" | "posture" | "fitness" | "strength" | "lifestyle" | "all"
 ): Record<string, { old: FormValue; new: FormValue }> {
   const changes: Record<string, { old: FormValue; new: FormValue }> = {};
 
   // Define field categories
   const categoryFields: Record<string, string[]> = {
-    inbody: [
+    bodycomp: [
       "inbodyWeightKg",
       "inbodyBodyFatPct",
       "bodyFatMassKg",

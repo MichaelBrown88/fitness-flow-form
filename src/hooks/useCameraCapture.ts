@@ -7,15 +7,15 @@ import { useState, useRef, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { doc, setDoc, Timestamp } from 'firebase/firestore';
 import { getStorage, db } from '@/services/firebase';
-import { updatePostureImage, updateInBodyImage } from '@/services/liveSessions';
-import { processInBodyScan } from '@/lib/ai/ocrEngine';
+import { updatePostureImage, updateBodyCompImage } from '@/services/liveSessions';
+import { processBodyCompScan } from '@/lib/ai/ocrEngine';
 import { LandmarkResult } from '@/lib/ai/postureLandmarks';
 import type Webcam from 'react-webcam';
 import { logger } from '@/lib/utils/logger';
 
 interface UseCameraCaptureOptions {
   sessionId: string | undefined;
-  mode: 'posture' | 'inbody';
+  mode: 'posture' | 'bodycomp';
   views: ReadonlyArray<{ readonly id: string; readonly label: string }>;
   onAudioFeedback?: (text: string) => void;
   onSequenceComplete?: () => void;
@@ -114,19 +114,19 @@ export function useCameraCapture({
       if (sessionId) {
         setIsUploading((prev) => prev + 1);
 
-        if (mode === 'inbody') {
-          onAudioFeedback?.('Analyzing InBody report...');
+        if (mode === 'bodycomp') {
+          onAudioFeedback?.('Analyzing body composition report...');
 
-          updateInBodyImage(sessionId, imageSrc)
+          updateBodyCompImage(sessionId, imageSrc)
             .then(() => {
               setIsProcessingOcr(true);
-              toast({ title: 'Scanning...', description: 'AI is analyzing the InBody report' });
+              toast({ title: 'Scanning...', description: 'AI is analyzing the body composition report' });
 
               const timeoutPromise = new Promise<never>((_, reject) =>
                 setTimeout(() => reject(new Error('Scan taking too long. Try again or enter manually.')), 15000)
               );
 
-              return Promise.race([processInBodyScan(imageSrc), timeoutPromise]);
+              return Promise.race([processBodyCompScan(imageSrc), timeoutPromise]);
             })
             .then(async (result) => {
               if (result.fields && Object.keys(result.fields).length > 0) {

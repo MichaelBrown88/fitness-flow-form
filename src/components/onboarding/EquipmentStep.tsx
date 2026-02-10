@@ -69,7 +69,7 @@ export function EquipmentStep({ data, onNext, onBack }: EquipmentStepProps) {
       scanner,
       treadmill,
       dynamometer,
-      bodyCompositionMethod: scanner ? 'inbody' : 'measurements',
+      bodyCompositionMethod: scanner ? 'bioimpedance' : 'measurements',
       gripStrengthEnabled: dynamometer,
       gripStrengthMethod: dynamometer ? 'dynamometer' : 'none',
     };
@@ -89,7 +89,7 @@ export function EquipmentStep({ data, onNext, onBack }: EquipmentStepProps) {
           onToggle={() => setScanner(!scanner)}
           icon={Scale}
           title="BIA Scanner"
-          description="InBody, Evolt, Tanita or other connected scales."
+          description="BIA analyser (e.g. InBody, Evolt, Tanita) or other connected scales."
           activeLabel="Digital integration active"
           inactiveLabel="Tape & skinfold UI enabled"
         />

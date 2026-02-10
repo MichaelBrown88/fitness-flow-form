@@ -11,13 +11,13 @@ import { logger } from '@/lib/utils/logger';
  * When disabled, assessments automatically show ALL equipment-free alternative methods.
  * 
  * Equipment Structure (ALL equipment types use ONLY enabled: boolean):
- * - bodyComposition.enabled: true = analyzer (InBody, DEXA, etc.), false = body measurements + skinfold test (clients can still bring reports)
+ * - bodyComposition.enabled: true = analyser (e.g. InBody, DEXA, etc.), false = body measurements + skinfold test (clients can still bring reports)
  * - gripStrength.enabled: true = dynamometer, false = deadhang + pinch test options
  * - cardioEquipment.enabled: true = treadmill/bike/rower, false = step test
  * - heartRateSensor.enabled: true = HR sensor integration, false = manual pulse check
  */
 export interface EquipmentConfig {
-  // Body Composition Analyser (BIA Scanner, InBody, DEXA, etc.)
+  // Body Composition Analyser (BIA Scanner, DEXA, etc.)
   bodyComposition: {
     enabled: boolean; // true = use analyzer, false = body measurements + skinfold + allow client reports
   };
@@ -46,7 +46,7 @@ export interface EquipmentConfig {
 export interface DefaultCadenceConfig {
   enabled: boolean; // Use org defaults vs clinical baselines
   intervals: {
-    inbody: number;     // days (default: 30)
+    bodycomp: number;   // days (default: 30)
     posture: number;    // days (default: 45)
     fitness: number;    // days (default: 45)
     strength: number;   // days (default: 60)
@@ -63,7 +63,7 @@ export interface OrgSettings {
   gradientId?: string; // Gradient ID from gradient system (e.g., 'purple-indigo', 'blue-cyan')
   modules: {
     parq: boolean; // P0 - PAR-Q health screening
-    inbody: boolean; // P2 - Body composition scan (section: 'body-comp')
+    bodycomp: boolean; // P2 - Body composition scan (section: 'body-comp')
     fitness: boolean; // P3 - Metabolic fitness assessment (section: 'fitness-assessment')
     posture: boolean; // P4 - Posture analysis (section: 'posture')
     overheadSquat: boolean; // P4 - Overhead squat assessment (section: 'overhead-squat')
@@ -116,7 +116,7 @@ const DEFAULT_SETTINGS: OrgSettings = {
   gradientId: 'purple-indigo', // Default gradient
   modules: {
     parq: true,
-    inbody: true,
+    bodycomp: true,
     fitness: true,
     posture: true,
     overheadSquat: true,
@@ -130,7 +130,7 @@ const DEFAULT_SETTINGS: OrgSettings = {
   demoAutoFillEnabled: false, // OFF by default - platform admin controlled for affiliates/sales demos
   defaultCadence: {
     enabled: false, // Off by default - use clinical baselines
-    intervals: { inbody: 30, posture: 45, fitness: 45, strength: 60, lifestyle: 45 },
+    intervals: { bodycomp: 30, posture: 45, fitness: 45, strength: 60, lifestyle: 45 },
   },
 };
 
@@ -173,7 +173,7 @@ export async function getOrgSettings(orgId: string): Promise<OrgSettings> {
   // Determine bodyComposition.enabled from old structure
   // If bodyComposition has method but no enabled, infer enabled from method
   // method = "measurements" or "none" → enabled = false
-  // method = "inbody", "dexa", etc. → enabled = true
+  // method = "bioimpedance", "dexa", etc. → enabled = true
   const oldBodyComp = (oldEquipmentConfig.bodyComposition as OldEquipmentItem | undefined) || {};
   const bodyCompEnabled = oldBodyComp.enabled !== undefined 
     ? oldBodyComp.enabled 
@@ -217,10 +217,15 @@ export async function getOrgSettings(orgId: string): Promise<OrgSettings> {
     brandColor: data.brandColor ?? DEFAULT_SETTINGS.brandColor,
     gradientId: data.gradientId ?? DEFAULT_SETTINGS.gradientId,
     logoUrl: data.logoUrl,
-    modules: {
-      ...DEFAULT_SETTINGS.modules,
-      ...(data.modules || {})
-    },
+    modules: (() => {
+      const raw = { ...DEFAULT_SETTINGS.modules, ...(data.modules || {}) } as Record<string, boolean>;
+      // Migrate legacy 'inbody' key → 'bodycomp' for existing Firestore docs
+      if ('inbody' in raw && !('bodycomp' in (data.modules || {}))) {
+        raw.bodycomp = raw.inbody as boolean;
+      }
+      delete raw.inbody;
+      return raw as typeof DEFAULT_SETTINGS.modules;
+    })(),
     equipmentConfig: cleanEquipmentConfig,
     demoAutoFillEnabled: data.demoAutoFillEnabled ?? DEFAULT_SETTINGS.demoAutoFillEnabled,
     defaultCadence: data.defaultCadence ?? DEFAULT_SETTINGS.defaultCadence,

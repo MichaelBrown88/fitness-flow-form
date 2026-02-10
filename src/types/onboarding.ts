@@ -36,7 +36,7 @@ export interface EquipmentConfig {
   treadmill: boolean; // Cardio Equipment
   dynamometer: boolean; // Grip strength
   // Mapped to OrgSettings.equipmentConfig format when saving
-  bodyCompositionMethod?: 'inbody' | 'dexa' | 'bodpod' | 'skinfold' | 'bioimpedance' | 'measurements' | 'none';
+  bodyCompositionMethod?: 'bioimpedance' | 'dexa' | 'bodpod' | 'skinfold' | 'measurements' | 'none';
   skinfoldMethod?: 'jackson-pollock-7' | 'jackson-pollock-3' | 'durnin-womersley-4';
   gripStrengthEnabled?: boolean;
   gripStrengthMethod?: 'dynamometer' | 'none';
@@ -95,11 +95,10 @@ export interface OrganizationProfile {
 
 // Body composition methods - simplified to match actual app
 export const BODY_COMPOSITION_METHODS = [
-  { value: 'inbody', label: 'InBody / Bio-Impedance', description: 'Bioelectrical impedance body composition analyzer' },
+  { value: 'bioimpedance', label: 'Bio-Impedance Analyser', description: 'Bioelectrical impedance body composition analyzer (InBody, Evolt, Tanita, smart scales)' },
   { value: 'dexa', label: 'DEXA Scan', description: 'Dual-energy X-ray absorptiometry' },
   { value: 'bodpod', label: 'BodPod', description: 'Air displacement plethysmography' },
   { value: 'skinfold', label: 'Skinfold Calipers', description: 'Manual body fat measurement' },
-  { value: 'bioimpedance', label: 'Basic Bioimpedance Scale', description: 'Consumer-grade smart scale' },
   { value: 'measurements', label: 'Tape Measurements Only', description: 'Circumference measurements only' },
   { value: 'none', label: 'Skip Body Composition', description: 'I don\'t offer body composition testing' },
 ] as const;

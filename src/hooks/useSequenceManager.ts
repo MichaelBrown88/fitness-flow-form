@@ -12,7 +12,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { logger } from '@/lib/utils/logger';
 
 interface UseSequenceManagerOptions {
-  mode: 'posture' | 'inbody';
+  mode: 'posture' | 'bodycomp';
   views: ReadonlyArray<{ readonly id: string; readonly label: string }>;
   onAudioFeedback?: (text: string, force?: boolean) => void;
   onCapture: (viewIdx: number) => Promise<void>;
@@ -134,8 +134,8 @@ export function useSequenceManager({
 
       await logMessage(`startSequence called for view ${idx}`, 'info');
 
-      if (mode === 'inbody') {
-        await logMessage('InBody mode - capturing immediately', 'info');
+      if (mode === 'bodycomp') {
+        await logMessage('Body comp mode - capturing immediately', 'info');
         onCaptureRef.current(idx);
         return;
       }

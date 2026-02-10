@@ -13,7 +13,7 @@
  * The cadence engine's score-adjusted intervals are ignored here;
  * only base clinical intervals and coach manual overrides are used.
  *
- * Pillars: InBody, Posture, Fitness, Strength, Lifestyle
+ * Pillars: Body Comp, Posture, Fitness, Strength, Lifestyle
  */
 
 import { useMemo } from 'react';
@@ -25,7 +25,7 @@ import { BASE_CADENCE_INTERVALS } from '@/types/client';
 // ── Types ────────────────────────────────────────────────────────────
 
 export type ReassessmentType =
-  | 'inbody'
+  | 'bodycomp'
   | 'posture'
   | 'fitness'
   | 'strength'
@@ -83,13 +83,13 @@ export interface UseReassessmentQueueResult {
 // ── Pillar types that map to actionable partial assessments ──────────
 
 const ACTIONABLE_PILLARS: readonly ReassessmentType[] = [
-  'inbody', 'posture', 'fitness', 'strength', 'lifestyle',
+  'bodycomp', 'posture', 'fitness', 'strength', 'lifestyle',
 ];
 
 // ── Fallback intervals (days) – only used if BASE_CADENCE_INTERVALS missing ──
 
 const FALLBACK_INTERVALS: Record<string, number> = {
-  inbody: 30,
+  bodycomp: 30,
   posture: 45,
   fitness: 45,
   strength: 60,

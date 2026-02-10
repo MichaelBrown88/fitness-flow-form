@@ -106,7 +106,7 @@ export const PhaseFormContent = ({
           let fieldsToSkip: string[] = [];
           if (isPartialAssessment && partialCategory) {
             const categoryConfig: Record<string, string[]> = {
-              'inbody': ['inbody', 'segmental', 'bmr', 'visceral', 'waistHip'],
+              'bodycomp': ['inbody', 'segmental', 'bmr', 'visceral', 'waistHip'],
               'posture': ['posture', 'ohs', 'hinge', 'lunge', 'mobility'],
               'fitness': ['cardio', 'ymca', 'treadmill'],
               'strength': ['pushup', 'squat', 'plank', 'grip', 'chairStand', 'dynamometer'],
@@ -221,8 +221,8 @@ export const PhaseFormContent = ({
     setShowCamera,
     showPostureCompanion,
     setShowPostureCompanion,
-    showInBodyCompanion,
-    setShowInBodyCompanion,
+    showBodyCompCompanion,
+    setShowBodyCompCompanion,
     ocrReviewData,
     setOcrReviewData,
     isProcessingOcr,
@@ -231,7 +231,7 @@ export const PhaseFormContent = ({
     handleCapture,
     applyOcrData,
     handlePostureCompanionComplete,
-    handleInBodyCompanionComplete,
+    handleBodyCompCompanionComplete,
   } = cameraHook;
 
 
@@ -451,7 +451,7 @@ export const PhaseFormContent = ({
           if (mode === 'posture') setPostureStep(0);
         }}
         onShowPostureCompanion={() => setShowPostureCompanion(true)}
-        onShowInBodyCompanion={() => setShowInBodyCompanion(true)}
+        onShowBodyCompCompanion={() => setShowBodyCompCompanion(true)}
         onGoToPreviousSection={handleGoToPreviousSection}
         onComplete={() => {
           const currentIndex = allSections.findIndex(s => s.id === activeSection.id);
@@ -606,9 +606,9 @@ export const PhaseFormContent = ({
         showPostureCompanion={showPostureCompanion}
         setShowPostureCompanion={setShowPostureCompanion}
         handlePostureCompanionComplete={handlePostureCompanionComplete}
-        showInBodyCompanion={showInBodyCompanion}
-        setShowInBodyCompanion={setShowInBodyCompanion}
-        handleInBodyCompanionComplete={handleInBodyCompanionComplete}
+        showBodyCompCompanion={showBodyCompCompanion}
+        setShowBodyCompCompanion={setShowBodyCompCompanion}
+        handleBodyCompCompanionComplete={handleBodyCompCompanionComplete}
         postureStep={postureStep}
         setPostureStep={setPostureStep}
         isProcessingOcr={isProcessingOcr}

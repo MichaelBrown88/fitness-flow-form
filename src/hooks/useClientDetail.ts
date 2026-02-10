@@ -93,7 +93,7 @@ export interface UseClientDetailResult {
   handleDateSelection: (date: Date) => Promise<void>;
   handleQuickJump: (months: number | 'first' | 'last') => void;
   handleSaveProfile: () => Promise<void>;
-  handleNewAssessment: (category?: 'inbody' | 'posture' | 'fitness' | 'strength' | 'lifestyle') => Promise<void>;
+  handleNewAssessment: (category?: 'bodycomp' | 'posture' | 'fitness' | 'strength' | 'lifestyle') => Promise<void>;
   handleDeleteAssessment: (id: string) => Promise<void>;
   handleTransferClient: (toCoachUid: string) => Promise<void>;
   navigateBack: () => void;
@@ -294,7 +294,7 @@ export function useClientDetail(): UseClientDetailResult {
 
   // Start new assessment
   const handleNewAssessment = useCallback(async (
-    category?: 'inbody' | 'posture' | 'fitness' | 'strength' | 'lifestyle'
+    category?: 'bodycomp' | 'posture' | 'fitness' | 'strength' | 'lifestyle'
   ) => {
     if (!user) return;
     

@@ -56,7 +56,7 @@ export function ScannerShowcase() {
             </div>
           </GlassCard>
 
-          {/* InBody Scanner */}
+          {/* Body Comp Scanner */}
           <GlassCard className="p-0 overflow-hidden bg-white border-white/60 group">
              <div className="p-8">
               <div className="flex items-center gap-3 mb-4">

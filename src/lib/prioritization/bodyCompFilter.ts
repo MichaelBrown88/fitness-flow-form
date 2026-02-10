@@ -1,7 +1,7 @@
 /**
  * Body Composition Filter
  *
- * InBody-specific personalization including asymmetry detection,
+ * Body-composition-specific personalization including asymmetry detection,
  * trunk/limb distribution, and clinical postural corrections.
  */
 

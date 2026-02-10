@@ -76,7 +76,7 @@ export const ASSESSMENT_RULES: AssessmentRule[] = [
     id: 'visceral-fat-high',
     phase: 'P1',
     priority: 'P1',
-    testName: 'InBody Analysis',
+    testName: 'Body Composition Analysis',
     negativeOutcome: 'Visceral Fat Level above 10 (high metabolic risk).',
     coachAction:
       'Lifestyle Factors: Prescribe sustained calorie deficit (~500 kcal/day) and low-impact Zone 2 cardio (>150 min/week).',
@@ -91,7 +91,7 @@ export const ASSESSMENT_RULES: AssessmentRule[] = [
     id: 'segmental-imbalance',
     phase: 'P1',
     priority: 'P2',
-    testName: 'InBody Analysis',
+    testName: 'Body Composition Analysis',
     negativeOutcome: 'Segmental muscle imbalance greater than 5% (C-shape profile).',
     coachAction:
       'Training: Emphasise full-body strength / hypertrophy with higher volume. Nutrition: Increase protein intake (1.6–2.2 g/kg).',

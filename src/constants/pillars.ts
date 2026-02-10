@@ -21,16 +21,17 @@ export type ScoringPillarId = keyof typeof PILLAR_DISPLAY;
  * Use this when translating between the two ID systems.
  */
 export const PILLAR_ID_MAP: Record<string, ScoringPillarId> = {
-  inbody:   'bodyComp',
-  posture:  'movementQuality',
-  fitness:  'cardio',
-  strength: 'strength',
-  lifestyle:'lifestyle',
+  bodycomp:  'bodyComp',
+  inbody:    'bodyComp',   // Legacy alias for Firestore backward compatibility
+  posture:   'movementQuality',
+  fitness:   'cardio',
+  strength:  'strength',
+  lifestyle: 'lifestyle',
 } as const;
 
 /** Reverse map: scoring ID → partial assessment ID */
 export const SCORING_TO_PARTIAL_MAP: Record<ScoringPillarId, string> = {
-  bodyComp:        'inbody',
+  bodyComp:        'bodycomp',
   movementQuality: 'posture',
   cardio:          'fitness',
   strength:        'strength',

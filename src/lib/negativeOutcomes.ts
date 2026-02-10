@@ -69,7 +69,7 @@ export const NEGATIVE_OUTCOME_RULES: NegativeOutcomeRule[] = [
   {
     id: 'visceral-fat-high',
     phase: 'P1',
-    testName: 'InBody Analysis',
+    testName: 'Body Composition Analysis',
     negativeFinding: 'Visceral fat rating above recommended threshold (>10).',
     priority: 'P1',
     coachAction:
@@ -85,7 +85,7 @@ export const NEGATIVE_OUTCOME_RULES: NegativeOutcomeRule[] = [
   {
     id: 'segmental-imbalance',
     phase: 'P1',
-    testName: 'InBody Analysis',
+    testName: 'Body Composition Analysis',
     negativeFinding: 'Segmental lean imbalance greater than 5%.',
     priority: 'P2',
     coachAction:

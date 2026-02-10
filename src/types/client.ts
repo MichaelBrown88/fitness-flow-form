@@ -10,7 +10,13 @@
 export type CadencePriority = 'high' | 'medium' | 'low';
 
 /** Partial assessment categories (matches existing partial assessment system) */
-export type PartialAssessmentCategory = 'inbody' | 'posture' | 'fitness' | 'strength' | 'lifestyle';
+export type PartialAssessmentCategory = 'bodycomp' | 'posture' | 'fitness' | 'strength' | 'lifestyle';
+
+/** @deprecated Use 'bodycomp' instead. Kept for Firestore backward compatibility. */
+export type LegacyPartialCategory = 'inbody';
+
+/** Accepts both current and legacy pillar identifiers for reading stored data */
+export type PartialAssessmentCategoryCompat = PartialAssessmentCategory | LegacyPartialCategory;
 
 /**
  * Configuration for a single pillar's retest cadence
@@ -28,8 +34,8 @@ export interface CadenceConfig {
  * Cadence configuration for all 5 assessment pillars
  */
 export interface PillarCadence {
-  /** Body composition (InBody scan or measurements) - Base: 30 days */
-  inbody: CadenceConfig;
+  /** Body composition (scan or measurements) - Base: 30 days */
+  bodycomp: CadenceConfig;
   /** Movement quality (posture, OHS, hinge, lunge, mobility) - Base: 45 days */
   posture: CadenceConfig;
   /** Cardio (YMCA step test, treadmill) - Base: 45 days */
@@ -59,7 +65,7 @@ export interface RetestSchedule {
  * Used as defaults when no assessment data exists
  */
 export const BASE_CADENCE_INTERVALS: Record<PartialAssessmentCategory | 'fullAssessment', number> = {
-  inbody: 30,      // Monthly body composition tracking
+  bodycomp: 30,    // Monthly body composition tracking
   posture: 45,     // 4-6 week corrective exercise block (FMS standards)
   fitness: 45,     // 6-week adaptation block
   strength: 60,    // True hypertrophy measurement (technique vs tissue)
@@ -80,7 +86,13 @@ export const CADENCE_SCORE_THRESHOLDS = {
 } as const;
 
 /**
- * Clinical warning threshold for frequent InBody scans
+ * Clinical warning threshold for frequent body composition scans
  * BIA is sensitive to hydration, so frequent scans pick up water weight noise
  */
-export const INBODY_HYDRATION_WARNING_THRESHOLD = 21; // days
+export const BODY_COMP_HYDRATION_WARNING_THRESHOLD = 21; // days
+
+/** Maps legacy 'inbody' pillar ID to current 'bodycomp' for Firestore backward compatibility */
+export function normalizePillarId(id: string): PartialAssessmentCategory | string {
+  if (id === 'inbody') return 'bodycomp';
+  return id;
+}

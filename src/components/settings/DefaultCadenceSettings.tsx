@@ -28,8 +28,8 @@ const PILLAR_CONFIG: Record<PartialAssessmentCategory, {
   description: string;
   defaultDays: number;
 }> = {
-  inbody: {
-    label: 'InBody',
+  bodycomp: {
+    label: 'Body Comp',
     icon: Scan,
     description: 'Body composition scan',
     defaultDays: 30,
@@ -60,7 +60,7 @@ const PILLAR_CONFIG: Record<PartialAssessmentCategory, {
   },
 };
 
-const PILLARS: PartialAssessmentCategory[] = ['inbody', 'posture', 'fitness', 'strength', 'lifestyle'];
+const PILLARS: PartialAssessmentCategory[] = ['bodycomp', 'posture', 'fitness', 'strength', 'lifestyle'];
 
 export function DefaultCadenceSettings({
   orgSettings,
@@ -71,7 +71,7 @@ export function DefaultCadenceSettings({
   const [isSaving, setIsSaving] = useState(false);
   const [enabled, setEnabled] = useState(false);
   const [intervals, setIntervals] = useState({
-    inbody: 30,
+    bodycomp: 30,
     posture: 45,
     fitness: 45,
     strength: 60,

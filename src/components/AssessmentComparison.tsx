@@ -162,7 +162,7 @@ export const AssessmentComparison: React.FC<AssessmentComparisonProps> = ({
           {compareValue(
             oldData.inbodyScore,
             newData.inbodyScore,
-            'InBody Score',
+            'Body Comp Score',
             (v) => {
               const num = parseFloat(String(v ?? ''));
               return !isNaN(num) ? num.toFixed(0) : 'N/A';

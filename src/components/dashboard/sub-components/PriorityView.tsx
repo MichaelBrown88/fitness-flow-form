@@ -46,7 +46,7 @@ import type { PartialAssessmentCategory } from '@/types/client';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const DUE_SOON_WINDOW = 7;
-const ACTIONABLE = ['inbody', 'posture', 'fitness', 'strength', 'lifestyle'];
+const ACTIONABLE = ['bodycomp', 'posture', 'fitness', 'strength', 'lifestyle'];
 const STATUS_ORDER: Record<ScheduleStatus, number> = {
   'overdue': 0, 'due-soon': 1, 'up-to-date': 2,
 };
@@ -86,7 +86,7 @@ const PILLAR_STATUS_STYLES: Record<ScheduleStatus, string> = {
 
 const getTypeIcon = (type: ReassessmentType) => {
   switch (type) {
-    case 'inbody': return <Scale className="w-3 h-3" />;
+    case 'bodycomp': return <Scale className="w-3 h-3" />;
     case 'posture': return <Camera className="w-3 h-3" />;
     case 'fitness': return <Activity className="w-3 h-3" />;
     case 'strength': return <Dumbbell className="w-3 h-3" />;
@@ -398,7 +398,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ item, onAssess, organizationId, onD
 // pillar options sorted by urgency so the coach can choose freely.
 
 const PILLAR_ICON: Record<string, React.ReactNode> = {
-  inbody: <Scale className="h-3.5 w-3.5" />,
+  bodycomp: <Scale className="h-3.5 w-3.5" />,
   posture: <Camera className="h-3.5 w-3.5" />,
   fitness: <Activity className="h-3.5 w-3.5" />,
   strength: <Dumbbell className="h-3.5 w-3.5" />,

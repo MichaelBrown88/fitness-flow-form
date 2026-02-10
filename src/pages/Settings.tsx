@@ -355,7 +355,7 @@ const Settings = () => {
                   {Object.entries(orgSettings?.modules || {}).map(([moduleId, enabled]) => {
                     const assessmentLabels: Record<string, { label: string; description: string }> = {
                       parq: { label: 'PAR-Q', description: 'Health screening questionnaire required before physical testing.' },
-                      inbody: { label: 'Body Composition', description: 'Body composition, muscle mass, and fat analysis using your configured equipment.' },
+                      bodycomp: { label: 'Body Composition', description: 'Body composition, muscle mass, and fat analysis using your configured equipment.' },
                       fitness: { label: 'Metabolic Fitness', description: 'Resting heart rate and VO2 Max estimates via cardio tests.' },
                       posture: { label: 'Posture Analysis', description: 'AI posture analysis and alignment checks.' },
                       overheadSquat: { label: 'Overhead Squat', description: 'Movement quality assessment for overhead squat pattern.' },
@@ -403,7 +403,7 @@ const Settings = () => {
                       <Label className="text-sm font-bold text-slate-800">Body Composition Analyser</Label>
                       <p className="text-xs text-slate-500 mt-1">
                         {orgSettings?.equipmentConfig?.bodyComposition?.enabled 
-                          ? 'Enabled: Assessments will use analyzer (InBody, DEXA, etc.)'
+                          ? 'Enabled: Assessments will use body composition analyser (e.g. InBody, DEXA)'
                           : 'Disabled: Assessments will use body measurements + skinfold test (clients can still bring their own reports)'}
                       </p>
                     </div>

@@ -349,7 +349,7 @@ const ClientDetail = () => {
           <div className="grid gap-4 grid-cols-2 md:grid-cols-5">
             {[
               { id: 'lifestyle', label: PILLAR_DISPLAY.lifestyle.short, icon: Activity, color: 'text-primary', bg: 'bg-brand-light' },
-              { id: 'inbody', label: PILLAR_DISPLAY.bodyComp.short, icon: Scan, color: 'text-primary', bg: 'bg-brand-light' },
+              { id: 'bodycomp', label: PILLAR_DISPLAY.bodyComp.short, icon: Scan, color: 'text-primary', bg: 'bg-brand-light' },
               { id: 'posture', label: PILLAR_DISPLAY.movementQuality.short, icon: UserCheck, color: 'text-primary', bg: 'bg-brand-light' },
               { id: 'strength', label: PILLAR_DISPLAY.strength.short, icon: Dumbbell, color: 'text-primary', bg: 'bg-brand-light' },
               { id: 'fitness', label: PILLAR_DISPLAY.cardio.short, icon: Heart, color: 'text-primary', bg: 'bg-brand-light' },
@@ -357,7 +357,7 @@ const ClientDetail = () => {
               <Button
                 key={action.id}
                 variant="outline"
-                onClick={() => handleNewAssessment(action.id as 'lifestyle' | 'inbody' | 'posture' | 'strength' | 'fitness')}
+                onClick={() => handleNewAssessment(action.id as 'lifestyle' | 'bodycomp' | 'posture' | 'strength' | 'fitness')}
                 className="flex flex-col items-center gap-3 h-auto py-6 rounded-2xl border-slate-100 hover:border-primary/20 hover:bg-brand-light transition-all group shadow-sm"
               >
                 <div className={`h-12 w-12 rounded-xl ${action.bg} flex items-center justify-center group-hover:scale-110 transition-transform`}>

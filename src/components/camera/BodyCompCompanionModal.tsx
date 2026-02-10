@@ -24,18 +24,18 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
-import type { InBodyCompanionData } from '@/lib/types/companion';
+import type { BodyCompCompanionData } from '@/lib/types/companion';
 import { CONFIG } from '@/config';
 import { logger } from '@/lib/utils/logger';
 
-interface InBodyCompanionModalProps {
+interface BodyCompCompanionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onComplete: (data: InBodyCompanionData) => void;
+  onComplete: (data: BodyCompCompanionData) => void;
   onStartDirectScan?: () => void;
 }
 
-export const InBodyCompanionModal: React.FC<InBodyCompanionModalProps> = ({
+export const BodyCompCompanionModal: React.FC<BodyCompCompanionModalProps> = ({
   isOpen,
   onClose,
   onComplete,
@@ -104,7 +104,7 @@ export const InBodyCompanionModal: React.FC<InBodyCompanionModalProps> = ({
     prewarmFirebaseAI();
   }, [isOpen]);
 
-  // 2. Listen for InBody Image - with optimistic UI
+  // 2. Listen for body comp image - with optimistic UI
   useEffect(() => {
     if (!session?.id) return;
 
@@ -116,14 +116,14 @@ export const InBodyCompanionModal: React.FC<InBodyCompanionModalProps> = ({
         setIsOnline(true);
       }
 
-      // Optimistic UI: Show "Processing..." as soon as inbodyImage is detected
+      // Optimistic UI: Show "Processing..." as soon as body comp image is detected
       // Don't wait for ocrDataReady - this gives immediate feedback
-      const hasInbodyImage = !!(updatedSession.inbodyImage || 
+      const hasBodyCompImage = !!(updatedSession.inbodyImage || 
                                updatedSession.inbodyImageStorage || 
                                updatedSession.inbodyImageFull);
       
-      if (hasInbodyImage && !isProcessing && processedRef.current !== 'processing') {
-        logger.debug('[INBODY] Image detected - showing processing state');
+      if (hasBodyCompImage && !isProcessing && processedRef.current !== 'processing') {
+        logger.debug('[BODYCOMP] Image detected - showing processing state');
         setIsProcessing(true);
         processedRef.current = 'processing';
         toast({
@@ -157,7 +157,7 @@ export const InBodyCompanionModal: React.FC<InBodyCompanionModalProps> = ({
   }, [session?.id, isProcessing, onComplete, onClose, toast]);
 
   const companionUrl = session 
-    ? `${window.location.origin}/companion/${session.id}?token=${session.companionToken}&mode=inbody`
+    ? `${window.location.origin}/companion/${session.id}?token=${session.companionToken}&mode=bodycomp`
     : '';
 
   return (

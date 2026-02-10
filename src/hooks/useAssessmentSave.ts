@@ -131,7 +131,7 @@ export function useAssessmentSave({
             formData, 
             scores.overall, 
             storedName || clientName,
-            category as 'inbody' | 'posture' | 'fitness' | 'strength' | 'lifestyle',
+            category as 'bodycomp' | 'posture' | 'fitness' | 'strength' | 'lifestyle',
             profile?.organizationId,
             profile
           );
@@ -140,7 +140,7 @@ export function useAssessmentSave({
           const updateData: Record<string, Timestamp> = {};
           const now = Timestamp.now();
           
-          if (category === 'inbody') updateData.lastInBodyDate = now;
+          if (category === 'bodycomp') updateData.lastBodyCompDate = now;
           else if (category === 'posture') updateData.lastPostureDate = now;
           else if (category === 'fitness') updateData.lastFitnessDate = now;
           else if (category === 'strength') updateData.lastStrengthDate = now;

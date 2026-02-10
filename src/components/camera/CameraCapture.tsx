@@ -151,7 +151,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
               
               <div className="absolute inset-0 flex items-center justify-center">
                 <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.3em] rotate-90 whitespace-nowrap">
-                  Align InBody Report Here
+                  Align Body Comp Report Here
                 </p>
               </div>
             </div>

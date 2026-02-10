@@ -28,7 +28,7 @@ export function HeroSection() {
             </h1>
             
             <p className="text-lg text-slate-600 max-w-xl mb-10 leading-relaxed font-medium animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-              Stop juggling spreadsheets, photos, and notes. Unify InBody scans, AI posture analysis, and lifestyle tracking into one gamified client experience that sells retention for you.
+              Stop juggling spreadsheets, photos, and notes. Unify body composition scans, AI posture analysis, and lifestyle tracking into one gamified client experience that sells retention for you.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 mb-16 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
@@ -149,7 +149,7 @@ export function HeroSection() {
                       <ScanLine size={20} />
                    </div>
                    <div>
-                      <p className="text-xs font-semibold text-slate-500">InBody Scan</p>
+                      <p className="text-xs font-semibold text-slate-500">Body Comp Scan</p>
                       <p className="text-sm font-bold text-slate-900">Imported</p>
                    </div>
                    <Check className="text-emerald-500 ml-2" size={16} strokeWidth={3} />

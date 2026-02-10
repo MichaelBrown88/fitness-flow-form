@@ -24,7 +24,7 @@ interface SingleFieldFlowProps {
   onComplete: () => void;
   onShowCamera?: (mode: 'ocr' | 'posture') => void;
   onShowPostureCompanion?: () => void;
-  onShowInBodyCompanion?: () => void;
+  onShowBodyCompCompanion?: () => void;
   onGoToPreviousSection?: () => void;
 }
 
@@ -35,7 +35,7 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
   onComplete,
   onShowCamera,
   onShowPostureCompanion,
-  onShowInBodyCompanion,
+  onShowBodyCompCompanion,
   onGoToPreviousSection
 }) => {
   const { formData, updateFormData } = useFormContext();
@@ -134,7 +134,7 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
         field={currentStep[0]}
         onShowCamera={onShowCamera}
         onShowPostureCompanion={onShowPostureCompanion}
-        onShowInBodyCompanion={onShowInBodyCompanion}
+        onShowBodyCompCompanion={onShowBodyCompCompanion}
         onExitParQ={handleBack}
         onParQComplete={onComplete}
       />
@@ -151,8 +151,8 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
 
   // Auto-photo helper for body comp: launches camera or phone companion
   const handleSnapPhoto = () => {
-    if (!isMobile && onShowInBodyCompanion) {
-      onShowInBodyCompanion();
+    if (!isMobile && onShowBodyCompCompanion) {
+      onShowBodyCompCompanion();
     } else {
       onShowCamera?.('ocr');
     }
@@ -218,7 +218,7 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
                 field={field}
                 onShowCamera={onShowCamera}
                 onShowPostureCompanion={onShowPostureCompanion}
-                onShowInBodyCompanion={onShowInBodyCompanion}
+                onShowBodyCompCompanion={onShowBodyCompCompanion}
                 onExitParQ={handleBack}
               />
             </div>

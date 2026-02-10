@@ -171,19 +171,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 brandColor: orgData.brandColor || '#03dee2',
                 gradientId: orgData.gradientId || 'purple-indigo',
                 logoUrl: orgData.logoUrl,
-                modules: {
-                  parq: true,
-                  inbody: true,
-                  fitness: true,
-                  posture: true,
-                  overheadSquat: true,
-                  hinge: true,
-                  lunge: true,
-                  mobility: true,
-                  strength: true,
-                  lifestyle: true,
-                  ...(orgData.modules || {})
-                },
+                modules: (() => {
+                  const raw = {
+                    parq: true,
+                    bodycomp: true,
+                    fitness: true,
+                    posture: true,
+                    overheadSquat: true,
+                    hinge: true,
+                    lunge: true,
+                    mobility: true,
+                    strength: true,
+                    lifestyle: true,
+                    ...(orgData.modules || {})
+                  } as Record<string, boolean>;
+                  // Migrate legacy 'inbody' key → 'bodycomp'
+                  if ('inbody' in raw && !('bodycomp' in (orgData.modules || {}))) {
+                    raw.bodycomp = raw.inbody as boolean;
+                  }
+                  delete raw.inbody;
+                  return raw;
+                })() as OrgSettings['modules'],
                 equipmentConfig: orgData.equipmentConfig,
                 onboardingCompletedAt: orgData.onboardingCompletedAt
               } as OrgSettings);
