@@ -20,9 +20,10 @@ interface MovementPostureMobilityProps {
   formData?: FormData;
   scores: ScoreSummary;
   standalone?: boolean;
+  hideHeader?: boolean;
 }
 
-export function MovementPostureMobility({ formData, scores, standalone = false }: MovementPostureMobilityProps) {
+export function MovementPostureMobility({ formData, scores, standalone = false, hideHeader }: MovementPostureMobilityProps) {
   const { toast } = useToast();
   const { profile } = useAuth();
   const [isReanalyzing, setIsReanalyzing] = useState(false);
@@ -405,14 +406,16 @@ export function MovementPostureMobility({ formData, scores, standalone = false }
   
   return (
     <section className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-gradient-light text-zinc-900 rounded-lg">
-          <Activity className="w-5 h-5" />
+      {!hideHeader && (
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-light text-zinc-900 rounded-lg">
+            <Activity className="w-5 h-5" />
+          </div>
+          <h3 className="text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">
+            Posture, Movement & Mobility
+          </h3>
         </div>
-        <h3 className="text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">
-          Posture, Movement & Mobility
-        </h3>
-      </div>
+      )}
       
       {/* Posture Analysis - Full Width */}
             {hasPostureImages && hasPostureAnalysis && (

@@ -13,7 +13,10 @@ import React, { useState, useCallback, lazy, Suspense, useEffect } from 'react';
 import type { FormData } from '@/contexts/FormContext';
 import type { ScoreSummary } from '@/lib/scoring';
 import type { CoachPlan } from '@/lib/recommendations';
-import { Loader2, ChevronDown } from 'lucide-react';
+import {
+  Loader2, ChevronDown,
+  Activity, BarChart3, TrendingUp, Heart, Target, Trophy, Clock,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Collapsible,
@@ -54,20 +57,27 @@ const SECTION_IDS = [
 
 type SectionId = (typeof SECTION_IDS)[number];
 
-const SECTION_META: Record<SectionId, { title: string; summary: string }> = {
-  'starting-point':  { title: 'Your Starting Point',         summary: 'Overall score, archetype, and radar chart' },
-  'gap-analysis':    { title: 'Gap Analysis',                summary: 'Current vs. target in each pillar' },
-  'strengths-focus': { title: 'Strengths & Focus Areas',     summary: 'What you\'re doing well and where to improve' },
-  'lifestyle':       { title: 'Lifestyle Factors',           summary: 'Sleep, nutrition, stress, and activity habits' },
-  'movement':        { title: 'Posture, Movement & Mobility', summary: 'Movement quality, posture, and flexibility analysis' },
-  'destination':     { title: 'Your Destination',            summary: 'Goals and what achieving them looks like' },
-  'blueprint':       { title: 'The Blueprint',               summary: 'Personalised action plan for each pillar' },
-  'timeline':        { title: 'Your Timeline',               summary: 'Projected milestones and review schedule' },
+const SECTION_META: Record<SectionId, {
+  title: string;
+  summary: string;
+  icon: React.ReactNode;
+}> = {
+  'starting-point':  { title: 'Your Starting Point',           summary: 'Overall score, archetype, and radar chart',            icon: <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
+  'gap-analysis':    { title: 'Gap Analysis',                  summary: 'Current vs. target in each pillar',                    icon: <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
+  'strengths-focus': { title: 'Strengths & Focus Areas',       summary: 'What you\'re doing well and where to improve',         icon: <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
+  'lifestyle':       { title: 'Lifestyle Factors',             summary: 'Sleep, nutrition, stress, and activity habits',        icon: <Heart className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
+  'movement':        { title: 'Posture, Movement & Mobility',  summary: 'Movement quality, posture, and flexibility analysis',  icon: <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
+  'destination':     { title: 'Your Destination',              summary: 'Goals and what achieving them looks like',             icon: <Target className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
+  'blueprint':       { title: 'The Blueprint',                 summary: 'Personalised action plan for each pillar',             icon: <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
+  'timeline':        { title: 'Your Timeline',                 summary: 'Projected milestones and review schedule',             icon: <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
 };
 
 const DEFAULT_OPEN: SectionId[] = ['starting-point'];
 
 // ── Collapsible section wrapper ───────────────────────────────────────
+// Renders the section's icon + title as the trigger (matching existing
+// header style). When collapsed, also shows a summary line.
+// When expanded, the child section renders with hideHeader={true}.
 
 interface CollapsibleSectionProps {
   id: SectionId;
@@ -84,16 +94,21 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
     <Collapsible open={open} onOpenChange={() => onToggle(id)}>
       <CollapsibleTrigger asChild>
         <button
-          className="w-full flex items-center justify-between px-4 py-3 rounded-xl hover:bg-zinc-100/60 transition-colors group text-left"
+          className="w-full flex items-center justify-between py-2 hover:opacity-80 transition-opacity group text-left"
           aria-expanded={open}
         >
-          <div className="min-w-0">
-            <span className="text-xs md:text-sm font-bold text-zinc-900 uppercase tracking-widest">
-              {meta.title}
-            </span>
-            {!open && (
-              <p className="text-xs text-zinc-400 mt-0.5 truncate">{meta.summary}</p>
-            )}
+          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 min-w-0">
+            <div className="p-1 sm:p-1.5 md:p-2 bg-gradient-light text-zinc-900 rounded-lg shrink-0">
+              {meta.icon}
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">
+                {meta.title}
+              </h3>
+              {!open && (
+                <p className="text-xs text-zinc-400 mt-0.5 truncate">{meta.summary}</p>
+              )}
+            </div>
           </div>
           <ChevronDown
             className={`h-4 w-4 text-zinc-400 shrink-0 ml-3 transition-transform duration-200 ${
@@ -187,8 +202,8 @@ export default function ClientReport({
     : 'w-full text-zinc-900 overflow-x-hidden';
 
   const contentClass = standalone
-    ? 'max-w-[1400px] mx-auto space-y-4 sm:space-y-6 md:space-y-8 lg:space-y-10 xl:space-y-12 2xl:space-y-16 w-full min-w-0'
-    : 'space-y-4 sm:space-y-6 md:space-y-8 lg:space-y-10 xl:space-y-12 2xl:space-y-16 w-full min-w-0';
+    ? 'max-w-[1400px] mx-auto space-y-2 sm:space-y-3 md:space-y-4 lg:space-y-5 xl:space-y-6 w-full min-w-0'
+    : 'space-y-2 sm:space-y-3 md:space-y-4 lg:space-y-5 xl:space-y-6 w-full min-w-0';
 
   const isOpen = (id: SectionId) => openSections.has(id);
 
@@ -247,6 +262,7 @@ export default function ClientReport({
                 archetype={archetype}
                 overallRadarData={overallRadarData}
                 previousRadarData={previousRadarData}
+                hideHeader
               />
             </CollapsibleSection>
 
@@ -255,6 +271,7 @@ export default function ClientReport({
                 gapAnalysisData={gapAnalysisData}
                 goals={goals}
                 formData={formData}
+                hideHeader
               />
             </CollapsibleSection>
 
@@ -270,15 +287,15 @@ export default function ClientReport({
             </CollapsibleSection>
 
             <CollapsibleSection id="movement" open={isOpen('movement')} onToggle={toggleSection}>
-              <MovementPostureMobility formData={formData} scores={scores} standalone={standalone} />
+              <MovementPostureMobility formData={formData} scores={scores} standalone={standalone} hideHeader />
             </CollapsibleSection>
 
             <CollapsibleSection id="destination" open={isOpen('destination')} onToggle={toggleSection}>
-              <DestinationSection goals={goals} formData={formData} />
+              <DestinationSection goals={goals} formData={formData} hideHeader />
             </CollapsibleSection>
 
             <CollapsibleSection id="blueprint" open={isOpen('blueprint')} onToggle={toggleSection}>
-              <BlueprintSection blueprintPillars={blueprintPillars} />
+              <BlueprintSection blueprintPillars={blueprintPillars} hideHeader />
             </CollapsibleSection>
 
             <CollapsibleSection id="timeline" open={isOpen('timeline')} onToggle={toggleSection}>
@@ -286,6 +303,7 @@ export default function ClientReport({
                 orderedCats={orderedCats}
                 weeksByCategory={weeksByCategory}
                 maxWeeks={maxWeeks}
+                hideHeader
               />
             </CollapsibleSection>
           </>

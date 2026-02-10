@@ -18,9 +18,10 @@ interface BlueprintPillar {
 
 interface BlueprintSectionProps {
   blueprintPillars: BlueprintPillar[];
+  hideHeader?: boolean;
 }
 
-export const BlueprintSection: React.FC<BlueprintSectionProps> = ({ blueprintPillars }) => {
+export const BlueprintSection: React.FC<BlueprintSectionProps> = ({ blueprintPillars, hideHeader }) => {
   if (blueprintPillars.length === 0) return null;
 
   const renderPillarCard = (pillar: BlueprintPillar, idx: number, isDesktop: boolean) => {
@@ -69,12 +70,14 @@ export const BlueprintSection: React.FC<BlueprintSectionProps> = ({ blueprintPil
   return (
     <section className="w-full min-w-0 overflow-x-hidden">
       <div className="mb-3 sm:mb-4 md:mb-5 lg:mb-6">
-        <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 mb-2 sm:mb-3">
-          <div className="p-1 sm:p-1.5 md:p-2 bg-gradient-light text-zinc-900 rounded-lg">
-            <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
+        {!hideHeader && (
+          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 mb-2 sm:mb-3">
+            <div className="p-1 sm:p-1.5 md:p-2 bg-gradient-light text-zinc-900 rounded-lg">
+              <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
+            </div>
+            <h3 className="text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">The Blueprint</h3>
           </div>
-          <h3 className="text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">The Blueprint</h3>
-        </div>
+        )}
         <p className="text-xs md:text-sm text-zinc-500 ml-0 sm:ml-8 md:ml-12">
           3 Strategic Pillars designed to bridge the gap from where you are to where you want to be.
         </p>

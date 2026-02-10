@@ -8,22 +8,26 @@ import { getBodyFatRange, getTargetBodyFatFromLevel, calculateBodyRecomposition 
 interface DestinationSectionProps {
   goals?: string[];
   formData?: FormData;
+  hideHeader?: boolean;
 }
 
 export const DestinationSection: React.FC<DestinationSectionProps> = ({
   goals,
   formData,
+  hideHeader,
 }) => {
   if (!goals || goals.length === 0) return null;
 
   return (
     <section className="w-full min-w-0 overflow-x-hidden">
-      <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 mb-2 sm:mb-3 md:mb-4 lg:mb-5 xl:mb-6">
-        <div className="p-1 sm:p-1.5 md:p-2 bg-gradient-light text-zinc-900 rounded-lg">
-          <Target className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
+      {!hideHeader && (
+        <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 mb-2 sm:mb-3 md:mb-4 lg:mb-5 xl:mb-6">
+          <div className="p-1 sm:p-1.5 md:p-2 bg-gradient-light text-zinc-900 rounded-lg">
+            <Target className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
+          </div>
+          <h3 className="text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">Your Destination</h3>
         </div>
-        <h3 className="text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">Your Destination</h3>
-      </div>
+      )}
       
       <Tabs defaultValue={goals[0]} className="w-full">
         <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0 mb-3 sm:mb-4 scrollbar-hide">
