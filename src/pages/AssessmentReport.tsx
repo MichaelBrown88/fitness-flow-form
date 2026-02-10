@@ -34,6 +34,7 @@ const AssessmentReport = () => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   
   // Use new Logic Hook
   const { 
@@ -214,7 +215,6 @@ const AssessmentReport = () => {
   // Calculate generic body comp for display logic
   const bodyComp = generateBodyCompInterpretation(formData, scores);
   const highlightCategory = sessionStorage.getItem(STORAGE_KEYS.HIGHLIGHT_CATEGORY) || undefined;
-  const isMobile = useIsMobile();
 
   const navigateToDashboard = () => {
     if (formData?.fullName) {
