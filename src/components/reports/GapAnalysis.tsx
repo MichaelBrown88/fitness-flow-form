@@ -31,9 +31,9 @@ interface PillarGap {
 }
 
 export function GapAnalysis({ scores, formData }: GapAnalysisProps) {
-  const bodyComp = scores.categories.find(c => c.id === 'bodyComp') || { score: 0, weaknesses: [], strengths: [] };
-  const strength = scores.categories.find(c => c.id === 'strength') || { score: 0, weaknesses: [], strengths: [] };
-  const cardio = scores.categories.find(c => c.id === 'cardio') || { score: 0, weaknesses: [], strengths: [] };
+  const bodyComp = scores.categories.find(c => c.id === 'bodyComp') || { score: 0, weaknesses: [] as string[], strengths: [] as string[] };
+  const strength = scores.categories.find(c => c.id === 'strength') || { score: 0, weaknesses: [] as string[], strengths: [] as string[] };
+  const cardio = scores.categories.find(c => c.id === 'cardio') || { score: 0, weaknesses: [] as string[], strengths: [] as string[] };
   
   const gender = (formData?.gender || '').toLowerCase();
   const bf = parseFloat(formData?.inbodyBodyFatPct || '0');

@@ -317,14 +317,14 @@ export async function getOrganizations(
 
     // Get all organizations (stats are embedded in each org document)
     const orgsQueryLimit = Math.min(limitCount * ORG_FILTER_BUFFER_MULTIPLIER, ORG_LIST_LIMIT_MAX);
-    const orgsQueryParts = [
-      getOrganizationsCollection(),
+    const orgsCollection = getOrganizationsCollection();
+    const orgsConstraints = [
       orderBy('createdAt', 'desc'),
-      firestoreLimit(orgsQueryLimit)
+      firestoreLimit(orgsQueryLimit),
     ];
     const orgsQuery = startAfterDoc
-      ? query(...orgsQueryParts, startAfter(startAfterDoc))
-      : query(...orgsQueryParts);
+      ? query(orgsCollection, ...orgsConstraints, startAfter(startAfterDoc))
+      : query(orgsCollection, ...orgsConstraints);
     const orgsSnapshot = await getDocs(orgsQuery);
 
     if (orgsSnapshot.empty) {
@@ -656,7 +656,7 @@ export async function grantDataAccess(
 export async function revokeDataAccess(orgId: string): Promise<void> {
   try {
     const orgRef = getOrganizationDoc(orgId);
-    const updateData = {
+    const updateData: Record<string, unknown> = {
       'dataAccessPermission.platformAdminAccess': false,
       'dataAccessPermission.grantedAt': null,
       'dataAccessPermission.grantedBy': null,

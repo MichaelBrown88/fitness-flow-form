@@ -1,5 +1,11 @@
 import React from 'react';
 import { ChevronRight } from 'lucide-react';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 
 interface FAQItem {
   question: string;

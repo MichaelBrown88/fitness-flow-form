@@ -68,7 +68,7 @@ export function MovementPostureMobility({ formData, scores, standalone = false }
     }
   };
   
-  const movement = scores.categories.find(c => c.id === 'movementQuality') || { score: 0, strengths: [], weaknesses: [] };
+  const movement = scores.categories.find(c => c.id === 'movementQuality') || { score: 0, strengths: [] as string[], weaknesses: [] as string[] };
   
   // Get posture images from various possible locations
   // Priority: postureImages (compressed with overlays) > postureImagesStorage (full size with overlays) > postureImagesFull_* (full size)

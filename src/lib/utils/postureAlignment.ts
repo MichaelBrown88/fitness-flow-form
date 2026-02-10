@@ -146,6 +146,8 @@ export function calculateFrontBackDeviationSummary(
     rightKneeDirection: 'straight',
     leftKneeDeviation: 0,
     rightKneeDeviation: 0,
+    leftKneeIsValgus: false,
+    rightKneeIsValgus: false,
   };
 
   if (!landmarks || landmarks.length < 33) return defaults;

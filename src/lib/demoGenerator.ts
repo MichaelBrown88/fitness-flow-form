@@ -365,7 +365,6 @@ export async function generateDemoData(): Promise<Partial<FormData>> {
     activityLevel,
     stepsPerDay: String(stepsPerDay),
     sedentaryHours: String(sedentaryHours),
-    workHoursPerDay: String(workHoursPerDay),
     sleepQuality,
     sleepDuration,
     sleepConsistency,

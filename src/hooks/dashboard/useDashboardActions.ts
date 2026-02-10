@@ -17,10 +17,11 @@ import {
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import { UI_TOASTS } from '@/constants/ui';
 import type { User } from 'firebase/auth';
+import type { UserProfile } from '@/types/auth';
 
 export function useDashboardActions(
   user: User | null,
-  profile?: { organizationId?: string } | null,
+  profile?: UserProfile | null,
   /** Effective org ID for reads (supports impersonation) */
   effectiveOrgId?: string | null,
 ) {

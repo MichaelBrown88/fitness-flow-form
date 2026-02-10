@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Scan, UserCheck, Heart, Dumbbell } from 'lucide-react';
+import { Loader2, Scan, UserCheck, Heart, Dumbbell, Activity } from 'lucide-react';
 import { updateOrgSettings, type OrgSettings, type DefaultCadenceConfig } from '@/services/organizations';
 import type { PartialAssessmentCategory } from '@/types/client';
 
@@ -52,9 +52,15 @@ const PILLAR_CONFIG: Record<PartialAssessmentCategory, {
     description: 'Functional strength tests',
     defaultDays: 60,
   },
+  lifestyle: {
+    label: 'Lifestyle',
+    icon: Activity,
+    description: 'Nutrition, sleep & stress',
+    defaultDays: 45,
+  },
 };
 
-const PILLARS: PartialAssessmentCategory[] = ['inbody', 'posture', 'fitness', 'strength'];
+const PILLARS: PartialAssessmentCategory[] = ['inbody', 'posture', 'fitness', 'strength', 'lifestyle'];
 
 export function DefaultCadenceSettings({
   orgSettings,
@@ -69,6 +75,7 @@ export function DefaultCadenceSettings({
     posture: 45,
     fitness: 45,
     strength: 60,
+    lifestyle: 45,
   });
 
   // Sync local state with org settings

@@ -30,7 +30,7 @@ export const PHASE_SUMMARIES = {
 } as const;
 
 // Gate Hints
-export const PHASE_GATE_HINTS = {
+export const PHASE_GATE_HINTS: Record<string, string | undefined> = {
   P0: 'Complete before starting assessment.',
   P1: 'Complete lifestyle before health screening.',
   P2: 'Complete before movement assessment.',
@@ -39,7 +39,7 @@ export const PHASE_GATE_HINTS = {
   P5: 'Complete movement before strength testing.',
   P6: undefined,
   P7: 'Assessment complete.',
-} as const;
+};
 
 // Field Labels by Phase
 export const ASSESSMENT_LABELS = {

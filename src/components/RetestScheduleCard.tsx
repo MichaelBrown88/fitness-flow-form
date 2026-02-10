@@ -15,6 +15,7 @@ import {
   UserCheck, 
   Heart, 
   Dumbbell,
+  Activity,
   Settings2,
   ChevronDown,
   ChevronUp,
@@ -69,9 +70,14 @@ const PILLAR_CONFIG: Record<PartialAssessmentCategory, {
     icon: Dumbbell,
     description: 'Functional strength tests',
   },
+  lifestyle: {
+    label: getPillarLabel('lifestyle'),
+    icon: Activity,
+    description: 'Nutrition, sleep & stress',
+  },
 };
 
-const PILLARS: PartialAssessmentCategory[] = ['inbody', 'posture', 'fitness', 'strength'];
+const PILLARS: PartialAssessmentCategory[] = ['inbody', 'posture', 'fitness', 'strength', 'lifestyle'];
 
 /**
  * Get effective cadence for a pillar (custom > recommended > fallback)
@@ -403,7 +409,9 @@ export function RetestScheduleCard({
                   Generated: {schedule.generatedAt?.toDate?.()?.toLocaleDateString() || 'Unknown'}
                 </span>
                 <span className="uppercase tracking-wider font-bold">
-                  {cadence => cadence?.priority === 'high' ? 'High Priority' : 'Standard Schedule'}
+                  {Object.values(schedule.recommended).some(
+                    (c: CadenceConfig) => c.priority === 'high'
+                  ) ? 'High Priority' : 'Standard Schedule'}
                 </span>
               </div>
             )}

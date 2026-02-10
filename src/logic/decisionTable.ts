@@ -19,7 +19,7 @@ function inferFocusFromGoals(clientGoals: string[]): string[] {
 }
 
 export function computeAssessmentResult(formData: FormData): ComputedAssessment {
-  const sessions = parseInt(formData.sessionsPerWeek || '0', 10);
+  const sessions = parseInt((formData as unknown as Record<string, string>).sessionsPerWeek || '0', 10);
 
   let projectedImprovementPercent = 0;
   switch (sessions) {

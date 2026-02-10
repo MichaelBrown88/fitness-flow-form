@@ -8,7 +8,6 @@ type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 interface LogEntry {
   level: LogLevel;
   message: string;
-  context?: string;
   data?: unknown;
   timestamp: number;
 }
@@ -17,12 +16,11 @@ class Logger {
   private logs: LogEntry[] = [];
   private maxLogs = 100;
 
-  private log(level: LogLevel, message: string, context?: string, data?: unknown): void {
+  private log(level: LogLevel, message: string, ...args: unknown[]): void {
     const entry: LogEntry = {
       level,
       message,
-      context,
-      data,
+      data: args.length ? args : undefined,
       timestamp: Date.now(),
     };
 
@@ -33,36 +31,35 @@ class Logger {
 
     // In development, still use console for immediate feedback
     if (import.meta.env.DEV) {
-      const prefix = context ? `[${context}]` : '';
       switch (level) {
         case 'debug':
         case 'info':
           // Only log in development
           break;
         case 'warn':
-          console.warn(`${prefix} ${message}`, data || '');
+          console.warn(message, ...args);
           break;
         case 'error':
-          console.error(`${prefix} ${message}`, data || '');
+          console.error(message, ...args);
           break;
       }
     }
   }
 
-  debug(message: string, context?: string, data?: unknown): void {
-    this.log('debug', message, context, data);
+  debug(message: string, ...args: unknown[]): void {
+    this.log('debug', message, ...args);
   }
 
-  info(message: string, context?: string, data?: unknown): void {
-    this.log('info', message, context, data);
+  info(message: string, ...args: unknown[]): void {
+    this.log('info', message, ...args);
   }
 
-  warn(message: string, context?: string, data?: unknown): void {
-    this.log('warn', message, context, data);
+  warn(message: string, ...args: unknown[]): void {
+    this.log('warn', message, ...args);
   }
 
-  error(message: string, context?: string, data?: unknown): void {
-    this.log('error', message, context, data);
+  error(message: string, ...args: unknown[]): void {
+    this.log('error', message, ...args);
   }
 
   getLogs(level?: LogLevel): LogEntry[] {

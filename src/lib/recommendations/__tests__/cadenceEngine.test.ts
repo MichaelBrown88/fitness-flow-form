@@ -208,6 +208,7 @@ describe('getEffectiveInterval', () => {
     posture: { intervalDays: 45, priority: 'medium', reason: 'test' },
     fitness: { intervalDays: 30, priority: 'medium', reason: 'test' },
     strength: { intervalDays: 60, priority: 'low', reason: 'test' },
+    lifestyle: { intervalDays: 45, priority: 'medium', reason: 'test' },
   };
 
   it('returns recommended interval when no custom override', () => {
@@ -239,6 +240,7 @@ describe('getEffectiveReason', () => {
       posture: { intervalDays: 45, priority: 'medium', reason: 'auto' },
       fitness: { intervalDays: 45, priority: 'medium', reason: 'auto' },
       strength: { intervalDays: 60, priority: 'low', reason: 'auto' },
+      lifestyle: { intervalDays: 45, priority: 'medium', reason: 'auto' },
     };
     const custom: Partial<PillarCadence> = {
       inbody: { intervalDays: 30, priority: 'medium', reason: 'coach said so' },
@@ -258,6 +260,7 @@ describe('getEffectivePriority', () => {
       posture: { intervalDays: 45, priority: 'medium', reason: 'test' },
       fitness: { intervalDays: 45, priority: 'medium', reason: 'test' },
       strength: { intervalDays: 60, priority: 'low', reason: 'test' },
+      lifestyle: { intervalDays: 45, priority: 'medium', reason: 'test' },
     };
     const custom: Partial<PillarCadence> = {
       inbody: { intervalDays: 30, priority: 'low', reason: 'downgraded' },

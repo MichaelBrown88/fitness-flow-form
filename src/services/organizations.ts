@@ -128,7 +128,7 @@ const DEFAULT_SETTINGS: OrgSettings = {
   demoAutoFillEnabled: false, // OFF by default - platform admin controlled for affiliates/sales demos
   defaultCadence: {
     enabled: false, // Off by default - use clinical baselines
-    intervals: { inbody: 30, posture: 45, fitness: 45, strength: 60 },
+    intervals: { inbody: 30, posture: 45, fitness: 45, strength: 60, lifestyle: 45 },
   },
 };
 

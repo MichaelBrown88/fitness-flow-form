@@ -43,7 +43,7 @@ export default function ClientReport({
   goals?: string[];
   formData?: FormData;
   plan?: CoachPlan;
-  bodyComp?: { timeframeWeeks: number };
+  bodyComp?: { timeframeWeeks: string };
   previousScores?: ScoreSummary | null;
   standalone?: boolean;
 }) {

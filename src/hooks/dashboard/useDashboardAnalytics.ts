@@ -9,9 +9,10 @@ import { logger } from '@/lib/utils/logger';
 import { getCoachAssessment, type CoachAssessmentSummary } from '@/services/coachAssessments';
 import { computeScores } from '@/lib/scoring';
 import type { Analytics } from './types';
+import type { UserProfile } from '@/types/auth';
 
 export function useDashboardAnalytics(
-  profile?: { organizationId?: string } | null,
+  profile?: UserProfile | null,
   /** Effective org ID for reads (supports impersonation) */
   effectiveOrgId?: string | null,
 ) {

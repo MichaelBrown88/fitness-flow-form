@@ -17,12 +17,12 @@ export interface PhaseField {
   description?: string;
   placeholder?: string;
   tooltip?: string;
-  options?: {
-    value: string;
-    label: string;
-    subtitle?: string;
-    isRecommended?: boolean;
-    tag?: string;
+  options?: readonly {
+    readonly value: string;
+    readonly label: string;
+    readonly subtitle?: string;
+    readonly isRecommended?: boolean;
+    readonly tag?: string;
   }[];
   required?: boolean;
   readOnly?: boolean;

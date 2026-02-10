@@ -95,6 +95,7 @@ export interface UseClientDetailResult {
   handleSaveProfile: () => Promise<void>;
   handleNewAssessment: (category?: 'inbody' | 'posture' | 'fitness' | 'strength' | 'lifestyle') => Promise<void>;
   handleDeleteAssessment: (id: string) => Promise<void>;
+  handleTransferClient: (toCoachUid: string) => Promise<void>;
   navigateBack: () => void;
 }
 

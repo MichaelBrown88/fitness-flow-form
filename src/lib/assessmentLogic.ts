@@ -181,7 +181,8 @@ export function generateAssessmentResults(form: FormData): AssessmentResult {
 
   const coachSummary = summariseCoachGuide(coachGuide);
   const clientSummary = summariseClient(strengthHighlights, clientRoadmap);
-  const timelineNote = buildTimelineNote(sortedFindings, form.parqPositive);
+  const formRecord = form as unknown as Record<string, string>;
+  const timelineNote = buildTimelineNote(sortedFindings, formRecord.parqPositive ?? '');
 
   return {
     coachGuide,
@@ -192,9 +193,9 @@ export function generateAssessmentResults(form: FormData): AssessmentResult {
     timelineNote,
     rulesVersion,
     metadata: {
-      sessionsPerWeek: form.sessionsPerWeek,
+      sessionsPerWeek: formRecord.sessionsPerWeek ?? '',
       clientGoals: form.clientGoals ?? [],
-      parqStatus: form.parqPositive,
+      parqStatus: formRecord.parqPositive ?? '',
     },
   };
 }

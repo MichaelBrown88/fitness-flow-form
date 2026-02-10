@@ -7,7 +7,7 @@ import {
   TrendingDown, 
   AlertTriangle 
 } from 'lucide-react';
-import type { Analytics } from '@/pages/Dashboard';
+import type { Analytics } from '@/hooks/dashboard/types';
 
 interface AnalyticsDashboardProps {
   analytics: Analytics | null;
