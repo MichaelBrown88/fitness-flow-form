@@ -115,7 +115,8 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
 
   return (
     <section className="space-y-4">
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm -mx-4 sm:mx-0">
+      {/* ── Desktop / Tablet table (sm and up) ── */}
+      <div className="hidden sm:block overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-slate-200 text-xs sm:text-sm">
           <thead className="bg-slate-50/50">
             <tr>
@@ -128,7 +129,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                 </th>
               )}
               <th
-                className={`${thClass} hidden sm:table-cell`}
+                className={thClass}
                 onClick={() => toggleSort('lastAssessed')}
               >
                 Last Assessed{sortIcon('lastAssessed')}
@@ -170,14 +171,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                   onClick={() => navigate(`/client/${encodeURIComponent(client.name)}`)}
                 >
                   <td className="px-3 sm:px-4 md:px-6 py-4 text-xs sm:text-sm text-slate-900 font-semibold uppercase tracking-tight">
-                    <div className="flex flex-col">
-                      <span>{client.name}</span>
-                      <span className="text-[10px] sm:hidden text-slate-400 font-medium mt-1">
-                        {client.latestDate
-                          ? client.latestDate.toLocaleDateString()
-                          : '—'}
-                      </span>
-                    </div>
+                    {client.name}
                   </td>
                   {showCoachColumn && (
                     <td className="px-3 sm:px-4 md:px-6 py-4 text-xs text-slate-500 font-medium hidden md:table-cell">
@@ -186,7 +180,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                         : '—'}
                     </td>
                   )}
-                  <td className="px-3 sm:px-4 md:px-6 py-4 text-xs sm:text-sm text-slate-500 font-medium hidden sm:table-cell">
+                  <td className="px-3 sm:px-4 md:px-6 py-4 text-xs sm:text-sm text-slate-500 font-medium">
                     {client.latestDate
                       ? client.latestDate.toLocaleDateString()
                       : '—'}
@@ -211,6 +205,78 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* ── Mobile card layout (below sm) ── */}
+      <div className="sm:hidden space-y-3">
+        {loadingData ? (
+          <div className="rounded-xl border border-slate-200 bg-white p-6">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-6 h-6 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
+              <span className="text-sm text-slate-400 font-medium">Loading clients...</span>
+            </div>
+          </div>
+        ) : clients.length === 0 ? (
+          <div className="rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-400 font-medium">
+            {search
+              ? 'No clients match that name.'
+              : 'No clients found. Run an assessment to see them here.'}
+          </div>
+        ) : (
+          sorted.slice(0, visibleCount).map((client) => (
+            <div
+              key={client.id}
+              role="button"
+              tabIndex={0}
+              className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm active:bg-slate-50 transition-colors cursor-pointer"
+              style={{ minHeight: 44 }}
+              onClick={() => navigate(`/client/${encodeURIComponent(client.name)}`)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  navigate(`/client/${encodeURIComponent(client.name)}`);
+                }
+              }}
+            >
+              {/* Row 1: Name + Actions */}
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-900 uppercase tracking-tight truncate">
+                    {client.name}
+                  </p>
+                  {showCoachColumn && (
+                    <p className="text-[11px] text-slate-400 font-medium mt-0.5 truncate">
+                      {client.coachUid && coachMap?.get(client.coachUid)
+                        ? coachMap.get(client.coachUid)
+                        : 'No coach assigned'}
+                    </p>
+                  )}
+                </div>
+                <div
+                  className="shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                >
+                  <ClientActionsDropdown
+                    clientName={client.name}
+                    latestAssessmentId={client.assessments[0]?.id}
+                  />
+                </div>
+              </div>
+
+              {/* Row 2: Score, Trend, Date */}
+              <div className="flex items-center gap-3 mt-3">
+                <ScoreBadge score={client.latestScore} />
+                <TrendIndicator trend={client.scoreChange} />
+                <span className="ml-auto text-[11px] text-slate-400 font-medium">
+                  {client.latestDate
+                    ? client.latestDate.toLocaleDateString()
+                    : 'Not assessed'}
+                </span>
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       {!loadingData && clients.length > visibleCount && (

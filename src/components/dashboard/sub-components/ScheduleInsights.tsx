@@ -63,7 +63,7 @@ export const ScheduleInsights: React.FC<ScheduleInsightsProps> = ({ queue, summa
   return (
     <div className="space-y-3">
       {/* Traffic-light status counts — neutral cards, colored text */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
         <div className="rounded-xl p-3 bg-white border border-slate-200">
           <p className={`text-2xl font-bold ${SCORE_COLORS.red.text}`}>{summary.overdue}</p>
           <p className={`text-xs font-medium ${SCORE_COLORS.red.text}`}>{UI_SCHEDULE.OVERDUE}</p>
@@ -72,14 +72,14 @@ export const ScheduleInsights: React.FC<ScheduleInsightsProps> = ({ queue, summa
           <p className={`text-2xl font-bold ${SCORE_COLORS.amber.text}`}>{summary.dueSoon}</p>
           <p className={`text-xs font-medium ${SCORE_COLORS.amber.text}`}>{UI_SCHEDULE.COMING_UP}</p>
         </div>
-        <div className="rounded-xl p-3 bg-white border border-slate-200">
+        <div className="rounded-xl p-3 bg-white border border-slate-200 col-span-2 sm:col-span-1">
           <p className={`text-2xl font-bold ${SCORE_COLORS.green.text}`}>{summary.upToDate}</p>
           <p className={`text-xs font-medium ${SCORE_COLORS.green.text}`}>{UI_SCHEDULE.ON_TRACK}</p>
         </div>
       </div>
 
       {/* Timeline stats */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
         <StatCard
           icon={<CalendarCheck className="w-3.5 h-3.5 text-slate-400" />}
           label={UI_SCHEDULE.DUE_TODAY}
@@ -114,9 +114,9 @@ const StatCard: React.FC<{
   <div className="bg-white rounded-xl p-3 border border-slate-200">
     <div className="flex items-center gap-1.5 mb-1">
       {icon}
-      <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">{label}</p>
+      <p className="text-[11px] sm:text-[10px] text-slate-500 font-medium uppercase tracking-wide">{label}</p>
     </div>
     <p className="text-xl font-bold text-slate-900">{value}</p>
-    <p className="text-[10px] text-slate-400">{sub}</p>
+    <p className="text-[11px] sm:text-[10px] text-slate-400">{sub}</p>
   </div>
 );

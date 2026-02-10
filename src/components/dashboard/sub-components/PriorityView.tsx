@@ -357,11 +357,11 @@ const TaskCard: React.FC<TaskCardProps> = ({ item, onAssess, organizationId, onD
               {item.clientName}
             </button>
             {showCoachName && item.coachUid && coachMap?.get(item.coachUid) && (
-              <span className="text-[10px] font-medium text-slate-400 truncate">
+              <span className="text-[11px] sm:text-[10px] font-medium text-slate-400 truncate">
                 {coachMap.get(item.coachUid)}
               </span>
             )}
-            <Badge variant="outline" className={`text-[10px] ${style.badge}`}>{style.badgeLabel}</Badge>
+            <Badge variant="outline" className={`text-[11px] sm:text-[10px] ${style.badge}`}>{style.badgeLabel}</Badge>
           </div>
           <p className="text-xs text-slate-500 mb-3">{item.statusReason}</p>
 
@@ -384,7 +384,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ item, onAssess, organizationId, onD
             <p className={`font-bold text-sm ${SCORE_COLORS[STATUS_GRADE[item.status]].text}`}>
               {item.daysSinceAssessment >= 999 ? 'Never' : `${item.daysSinceAssessment}d`}
             </p>
-            <p className="text-[10px] text-slate-400">since last</p>
+            <p className="text-[11px] sm:text-[10px] text-slate-400">since last</p>
           </div>
           <ReassessDropdown item={item} onAssess={onAssess} />
         </div>
@@ -434,7 +434,7 @@ const ReassessDropdown: React.FC<ReassessDropdownProps> = ({ item, onAssess }) =
         <Button
           size="sm"
           variant={isOverdue ? 'default' : 'outline'}
-          className={`text-xs h-7 gap-1 ${isOverdue ? 'bg-score-red hover:bg-score-red-fg' : ''}`}
+          className={`text-xs h-9 sm:h-7 gap-1 ${isOverdue ? 'bg-score-red hover:bg-score-red-fg' : ''}`}
         >
           {primaryLabel}
           <ChevronDown className="w-3 h-3" />
@@ -449,7 +449,7 @@ const ReassessDropdown: React.FC<ReassessDropdownProps> = ({ item, onAssess }) =
           {PILLAR_ICON[primary || 'full']}
           <span>{primaryLabel}</span>
           {primary && (
-            <span className={`ml-auto text-[10px] font-bold ${SCORE_COLORS[STATUS_GRADE[
+            <span className={`ml-auto text-[11px] sm:text-[10px] font-bold ${SCORE_COLORS[STATUS_GRADE[
               sortedPillars.find(ps => ps.pillar === primary)?.status || 'up-to-date'
             ]].text}`}>
               {sortedPillars.find(ps => ps.pillar === primary)?.status === 'overdue'
@@ -481,7 +481,7 @@ const ReassessDropdown: React.FC<ReassessDropdownProps> = ({ item, onAssess }) =
               >
                 {PILLAR_ICON[ps.pillar] || <FileText className="h-3.5 w-3.5" />}
                 <span>{pillarLabel(ps.pillar)}</span>
-                <span className={`ml-auto text-[10px] font-bold ${SCORE_COLORS[STATUS_GRADE[ps.status]].text}`}>
+                <span className={`ml-auto text-[11px] sm:text-[10px] font-bold ${SCORE_COLORS[STATUS_GRADE[ps.status]].text}`}>
                   {statusLabel}
                 </span>
               </DropdownMenuItem>

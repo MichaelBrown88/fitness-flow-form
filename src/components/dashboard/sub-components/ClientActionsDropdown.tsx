@@ -43,7 +43,7 @@ export const ClientActionsDropdown: React.FC<ClientActionsDropdownProps> = ({
         <Button
           variant="ghost"
           size="sm"
-          className="h-8 w-8 p-0 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100"
+          className="h-9 w-9 sm:h-8 sm:w-8 p-0 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100"
         >
           <MoreHorizontal className="h-4 w-4" />
         </Button>
