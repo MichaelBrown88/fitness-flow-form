@@ -7,22 +7,18 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { useDashboardAnalytics } from './useDashboardAnalytics';
 import { useAssessmentList } from './useAssessmentList';
 import { useClientList } from './useClientList';
 import { useDashboardActions } from './useDashboardActions';
 import { useReassessmentQueue } from '@/hooks/useReassessmentQueue';
+import type { DashboardView } from './types';
 
 export function useDashboardData() {
   const { user, profile, loading, effectiveOrgId } = useAuth();
   const navigate = useNavigate();
 
   const [search, setSearch] = useState('');
-  const [view, setView] = useState<'clients' | 'priority'>('clients');
-  const [visibleClientsCount, setVisibleClientsCount] = useState(12);
-
-  // Analytics computation (uses effectiveOrgId for impersonation support)
-  const { computeAnalytics } = useDashboardAnalytics(profile, effectiveOrgId);
+  const [view, setView] = useState<DashboardView>('clients');
 
   // Assessment list and pagination (uses effectiveOrgId for impersonation support)
   const {
@@ -32,13 +28,11 @@ export function useDashboardData() {
     visibleAssessmentsCount,
     hasMore,
     loadingMore,
-    recentChanges,
     loadMoreAssessments,
   } = useAssessmentList({
     user,
     profile,
     loading,
-    computeAnalytics,
     effectiveOrgId,
   });
 
@@ -95,11 +89,8 @@ export function useDashboardData() {
     loadingHistory,
     analytics,
     visibleAssessmentsCount,
-    visibleClientsCount,
-    setVisibleClientsCount,
     hasMore,
     loadingMore,
-    recentChanges,
     filtered,
     filteredClients,
     clientGroups,

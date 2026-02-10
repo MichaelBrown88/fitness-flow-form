@@ -193,3 +193,29 @@ export const UI_STATUS = {
   COMPLETE: 'Complete',
   FAILED: 'Failed',
 } as const;
+
+// Dashboard Tab Labels
+export const UI_TABS = {
+  CLIENTS: 'Clients',
+  SCHEDULE: 'Schedule',
+} as const;
+
+// Schedule Tab Labels
+export const UI_SCHEDULE = {
+  OVERDUE: 'Overdue',
+  COMING_UP: 'Coming Up',
+  ON_TRACK: 'On Track',
+  DUE_TODAY: 'Due Today',
+  THIS_WEEK: 'This Week',
+  REASSESS: 'Reassess',
+  FULL_ASSESSMENT: 'Full Assessment',
+} as const;
+
+// Draft Recovery
+export const UI_DRAFT = {
+  TITLE: 'Resume where you left off?',
+  RESUME: 'Resume',
+  START_FRESH: 'Start Fresh',
+  DRAFT_SAVED: 'Draft saved',
+  SAVING: 'Saving...',
+} as const;

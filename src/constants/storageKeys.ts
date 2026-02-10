@@ -17,4 +17,7 @@ export const STORAGE_KEYS = {
 
   // Onboarding mid-flow persistence
   ONBOARDING_SESSION: 'onboardingSession',
+
+  // Assessment draft auto-save
+  DRAFT_ASSESSMENT: 'draftAssessment',
 } as const;

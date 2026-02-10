@@ -1,13 +1,15 @@
 import React from 'react';
 import { Input } from '@/components/ui/input';
-import { AlertCircle } from 'lucide-react';
+import { Calendar, Users } from 'lucide-react';
+import { UI_TABS } from '@/constants/ui';
+import type { DashboardView } from '@/hooks/dashboard/types';
 
 interface DashboardViewTabsProps {
-  view: 'clients' | 'priority';
-  setView: (view: 'clients' | 'priority') => void;
+  view: DashboardView;
+  setView: (view: DashboardView) => void;
   search: string;
   setSearch: (search: string) => void;
-  priorityCount?: number;
+  scheduleCount?: number;
 }
 
 export const DashboardViewTabs: React.FC<DashboardViewTabsProps> = ({
@@ -15,38 +17,32 @@ export const DashboardViewTabs: React.FC<DashboardViewTabsProps> = ({
   setView,
   search,
   setSearch,
-  priorityCount = 0,
+  scheduleCount = 0,
 }) => {
+  const tabClass = (tab: DashboardView) =>
+    `flex-1 sm:flex-none px-3 sm:px-5 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5 whitespace-nowrap ${
+      view === tab
+        ? 'bg-white text-slate-900 shadow-sm scale-[1.02]'
+        : 'text-slate-500 hover:text-slate-700'
+    }`;
+
   return (
     <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-4 sm:mb-6">
       <div className="flex items-center gap-1 sm:gap-2 bg-slate-100 p-1 rounded-xl w-full sm:w-auto overflow-x-auto">
-        <button
-          onClick={() => setView('clients')}
-          className={`flex-1 sm:flex-none px-3 sm:px-5 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all duration-200 whitespace-nowrap ${
-            view === 'clients'
-              ? 'bg-white text-slate-900 shadow-sm scale-[1.02]'
-              : 'text-slate-500 hover:text-slate-700'
-          }`}
-        >
-          Clients
+        <button onClick={() => setView('clients')} className={tabClass('clients')}>
+          <Users className="w-3.5 h-3.5" />
+          {UI_TABS.CLIENTS}
         </button>
-        <button
-          onClick={() => setView('priority')}
-          className={`flex-1 sm:flex-none px-3 sm:px-5 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5 whitespace-nowrap ${
-            view === 'priority'
-              ? 'bg-white text-slate-900 shadow-sm scale-[1.02]'
-              : 'text-slate-500 hover:text-slate-700'
-          }`}
-        >
-          <AlertCircle className="w-3.5 h-3.5" />
-          Priority
-          {priorityCount > 0 && (
+        <button onClick={() => setView('schedule')} className={tabClass('schedule')}>
+          <Calendar className="w-3.5 h-3.5" />
+          {UI_TABS.SCHEDULE}
+          {scheduleCount > 0 && (
             <span className={`ml-1 px-1.5 py-0.5 text-[10px] font-bold rounded-full ${
-              view === 'priority' 
+              view === 'schedule' 
                 ? 'bg-amber-100 text-amber-700' 
                 : 'bg-amber-500 text-white'
             }`}>
-              {priorityCount}
+              {scheduleCount}
             </span>
           )}
         </button>

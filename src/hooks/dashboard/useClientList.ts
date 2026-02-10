@@ -68,7 +68,6 @@ export function useClientList(
         latestScore: item.overallScore || 0,
         latestDate: item.createdAt?.toDate() || null,
         scoreChange: item.trend,
-        assessmentCount: item.assessmentCount || 1,
         retestSchedule: schedule?.recommended || schedule?.custom
           ? { recommended: schedule!.recommended!, custom: schedule?.custom }
           : undefined,

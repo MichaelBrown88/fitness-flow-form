@@ -1,11 +1,8 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppShell from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
-import { AnalyticsDashboard } from '@/components/dashboard/AnalyticsDashboard';
-import { RecentActivity } from '@/components/dashboard/RecentActivity';
-import { AlertCircle, X, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { ROUTES } from '@/constants/routes';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 
@@ -35,9 +32,7 @@ const Dashboard = () => {
     clientHistory,
     loadingHistory,
     analytics,
-    recentChanges,
     filteredClients,
-    clientGroups,
     reassessmentQueue,
     refreshSchedules,
     handleDelete,
@@ -45,7 +40,6 @@ const Dashboard = () => {
   } = useDashboardData();
 
   const navigate = useNavigate();
-  const [alertDismissed, setAlertDismissed] = useState(false);
   const overdueCount = reassessmentQueue?.summary?.overdue || 0;
 
   const handleGlobalNewAssessment = () => {
@@ -85,54 +79,34 @@ const Dashboard = () => {
       >
         <div className="max-w-[1400px] mx-auto space-y-6 sm:space-y-8 md:space-y-10 lg:space-y-12 pb-12">
           
-          <DashboardHeader coachFirstName={coachFirstName} />
+          <DashboardHeader
+            coachFirstName={coachFirstName}
+            totalClients={analytics?.totalClients ?? 0}
+            totalAssessments={analytics?.totalAssessments ?? 0}
+          />
 
-        {/* Analytics & Recent Activity — only on Clients tab */}
-        {view === 'clients' && (
-          <>
-            <AnalyticsDashboard analytics={analytics} />
-            <RecentActivity recentChanges={recentChanges} />
-          </>
-        )}
-
-          {/* Overdue Alert */}
-          {view === 'clients' && overdueCount > 0 && !alertDismissed && (
-            <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-              <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
-              <p className="text-sm text-amber-800 flex-1">
-                <span className="font-bold">{overdueCount} client{overdueCount > 1 ? 's' : ''}</span> {overdueCount > 1 ? 'have' : 'has'} overdue reassessments.{' '}
-                <button onClick={() => setView('priority')} className="underline font-semibold hover:text-amber-900">
-                  View priority list
-                </button>
-              </p>
-              <button onClick={() => setAlertDismissed(true)} className="text-amber-400 hover:text-amber-600 shrink-0">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          )}
-
-          {/* Main Content Actions */}
+          {/* Main Content */}
           <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 md:p-8 shadow-sm">
             <DashboardViewTabs 
               view={view}
               setView={setView}
               search={search}
               setSearch={setSearch}
-              priorityCount={overdueCount}
+              scheduleCount={overdueCount}
             />
 
-          {/* Clients View (Unified Table) */}
-          {view === 'clients' && (
+            {/* Clients View */}
+            {view === 'clients' && (
               <UnifiedClientTable 
                 loadingData={loadingData}
                 clients={filteredClients}
                 search={search}
                 onNewAssessment={handleNewAssessmentForClient}
               />
-          )}
+            )}
 
-          {/* Priority View */}
-          {view === 'priority' && reassessmentQueue && (
+            {/* Schedule View */}
+            {view === 'schedule' && reassessmentQueue && (
               <PriorityView 
                 reassessmentQueue={reassessmentQueue}
                 onNewAssessmentForClient={handleNewAssessmentForClient}
@@ -153,7 +127,7 @@ const Dashboard = () => {
           loadingHistory={loadingHistory}
           onNewAssessment={handleNewAssessmentForClient}
         />
-    </AppShell>
+      </AppShell>
     </ErrorBoundary>
   );
 };
