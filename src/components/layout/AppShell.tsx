@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Sparkles, ChevronDown, Menu, Building2 } from 'lucide-react';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -144,6 +145,7 @@ export default function AppShell({
             
             <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
               {actions ? <div className="flex gap-1 sm:gap-2">{actions}</div> : null}
+              {user && <NotificationBell />}
               {!loading && (
                 user ? (
                   <DropdownMenu>

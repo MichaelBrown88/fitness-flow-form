@@ -10,6 +10,7 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useClientPortal } from '@/hooks/useClientPortal';
 import { Button } from '@/components/ui/button';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { 
   LogOut, Activity, Scale, Heart, Dumbbell, 
   Brain, Leaf, Calendar, TrendingUp, User
@@ -101,15 +102,18 @@ export default function ClientPortal() {
               <p className="text-[10px] text-slate-400">Client Portal</p>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={signOut}
-            className="text-slate-500 h-9"
-          >
-            <LogOut className="w-4 h-4 mr-1" />
-            <span className="hidden sm:inline">Sign out</span>
-          </Button>
+          <div className="flex items-center gap-1">
+            <NotificationBell />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={signOut}
+              className="text-slate-500 h-9"
+            >
+              <LogOut className="w-4 h-4 mr-1" />
+              <span className="hidden sm:inline">Sign out</span>
+            </Button>
+          </div>
         </div>
       </header>
 
