@@ -25,6 +25,7 @@ import {
 import type { ClientGroup } from '@/hooks/useDashboardData';
 import type { ReassessmentItem, ReassessmentType } from '@/hooks/useReassessmentQueue';
 import { getPillarLabel } from '@/constants/pillars';
+import { SCORE_COLORS } from '@/lib/scoring/scoreColor';
 
 interface ClientsGridProps {
   loadingData: boolean;
@@ -114,7 +115,7 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
                 </div>
                 {group.scoreChange !== undefined && (
                   <div className={`flex items-center gap-1 text-[10px] sm:text-xs font-black shadow-sm px-2 py-0.5 rounded-full ${
-                    group.scoreChange >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
+                    group.scoreChange >= 0 ? `bg-score-green-light text-score-green-fg` : `bg-score-red-light text-score-red-fg`
                   }`}>
                     {group.scoreChange >= 0 ? (
                       <TrendingUp className="h-3 w-3" />
@@ -135,8 +136,8 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
                       variant="outline" 
                       className={`text-[9px] font-semibold gap-1 ${
                         s.status === 'overdue'
-                          ? 'bg-red-50 text-red-700 border-red-200'
-                          : 'bg-amber-50 text-amber-700 border-amber-200'
+                          ? SCORE_COLORS.red.pill
+                          : SCORE_COLORS.amber.pill
                       }`}
                     >
                       {getDueIcon(s.pillar)}

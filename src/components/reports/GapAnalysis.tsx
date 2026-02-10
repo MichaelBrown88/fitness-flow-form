@@ -8,6 +8,7 @@ import type { ScoreSummary } from '@/lib/scoring';
 import type { FormData } from '@/contexts/FormContext';
 import { calculateAge } from '@/lib/scoring';
 import { NORMATIVE_SCORING_DB } from '@/lib/clinical-data';
+import { SCORE_COLORS } from '@/lib/scoring/scoreColor';
 
 interface GapAnalysisProps {
   scores: ScoreSummary;
@@ -347,11 +348,11 @@ export function GapAnalysis({ scores, formData }: GapAnalysisProps) {
   const getColorClasses = (color: string) => {
     switch (color) {
       case 'red':
-        return 'text-red-600 font-bold';
+        return `${SCORE_COLORS.red.text} font-bold`;
       case 'green':
-        return 'text-green-600 font-bold';
+        return `${SCORE_COLORS.green.text} font-bold`;
       case 'yellow':
-        return 'text-yellow-600 font-bold';
+        return `${SCORE_COLORS.amber.text} font-bold`;
       case 'black':
         return 'text-slate-900 font-bold';
       default:

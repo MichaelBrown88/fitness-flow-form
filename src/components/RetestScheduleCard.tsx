@@ -43,6 +43,7 @@ interface RetestScheduleCardProps {
 }
 
 import { getPillarLabel } from '@/constants/pillars';
+import { SCORE_COLORS } from '@/lib/scoring/scoreColor';
 
 /** Pillar display configuration */
 const PILLAR_CONFIG: Record<PartialAssessmentCategory, {
@@ -261,9 +262,9 @@ export function RetestScheduleCard({
             {/* Hydration Warning - checks effective interval (custom > recommended > fallback) */}
             {schedule && 
              getEffectiveCadence('inbody', schedule).intervalDays < INBODY_HYDRATION_WARNING_THRESHOLD && (
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
-                <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                <div className="text-xs text-amber-800">
+              <div className={`p-3 rounded-xl flex items-start gap-3 ${SCORE_COLORS.amber.pill}`}>
+                <AlertTriangle className={`h-4 w-4 mt-0.5 flex-shrink-0 ${SCORE_COLORS.amber.icon}`} />
+                <div className={`text-xs ${SCORE_COLORS.amber.text}`}>
                   <span className="font-bold">Hydration Notice:</span> Frequent InBody scanning 
                   may reflect hydration changes rather than true body composition shifts. 
                   Look for 4-week trends rather than individual scan results.
@@ -288,17 +289,17 @@ export function RetestScheduleCard({
                       isEditing 
                         ? 'border-primary bg-primary/5' 
                         : nextDue.isOverdue 
-                          ? 'border-rose-200 bg-rose-50/50' 
+                          ? 'border-score-red-muted bg-score-red-light/50' 
                           : 'border-slate-100 bg-slate-50/50'
                     }`}
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${
-                          nextDue.isOverdue ? 'bg-rose-100' : 'bg-primary/10'
+                          nextDue.isOverdue ? 'bg-score-red-muted' : 'bg-primary/10'
                         }`}>
                           <Icon className={`h-4 w-4 ${
-                            nextDue.isOverdue ? 'text-rose-600' : 'text-primary'
+                            nextDue.isOverdue ? 'text-score-red-fg' : 'text-primary'
                           }`} />
                         </div>
                         <div>
@@ -382,9 +383,9 @@ export function RetestScheduleCard({
                         {/* Next Due Status */}
                         <div className={`mt-3 pt-3 border-t text-xs ${
                           nextDue.isOverdue 
-                            ? 'border-rose-200 text-rose-600' 
+                            ? 'border-score-red-muted text-score-red-fg' 
                             : nextDue.daysRemaining <= 7 
-                              ? 'border-amber-200 text-amber-600' 
+                              ? 'border-score-amber-muted text-score-amber-fg' 
                               : 'border-slate-100 text-slate-500'
                         }`}>
                           {nextDue.isOverdue ? (
