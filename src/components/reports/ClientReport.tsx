@@ -23,6 +23,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 import { LifestyleFactorsBar } from './LifestyleFactorsBar';
 import { MovementPostureMobility } from './MovementPostureMobility';
@@ -57,19 +58,32 @@ const SECTION_IDS = [
 
 type SectionId = (typeof SECTION_IDS)[number];
 
+// Icon component type for reuse at different sizes
+const SECTION_ICON_MAP: Record<SectionId, React.ElementType> = {
+  'starting-point': Activity,
+  'gap-analysis': BarChart3,
+  'strengths-focus': TrendingUp,
+  'lifestyle': Heart,
+  'movement': Activity,
+  'destination': Target,
+  'blueprint': Trophy,
+  'timeline': Clock,
+};
+
 const SECTION_META: Record<SectionId, {
   title: string;
+  shortTitle: string;
   summary: string;
   icon: React.ReactNode;
 }> = {
-  'starting-point':  { title: 'Your Starting Point',           summary: 'Overall score, archetype, and radar chart',            icon: <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
-  'gap-analysis':    { title: 'Gap Analysis',                  summary: 'Current vs. target in each pillar',                    icon: <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
-  'strengths-focus': { title: 'Strengths & Focus Areas',       summary: 'What you\'re doing well and where to improve',         icon: <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
-  'lifestyle':       { title: 'Lifestyle Factors',             summary: 'Sleep, nutrition, stress, and activity habits',        icon: <Heart className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
-  'movement':        { title: 'Posture, Movement & Mobility',  summary: 'Movement quality, posture, and flexibility analysis',  icon: <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
-  'destination':     { title: 'Your Destination',              summary: 'Goals and what achieving them looks like',             icon: <Target className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
-  'blueprint':       { title: 'The Blueprint',                 summary: 'Personalised action plan for each pillar',             icon: <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
-  'timeline':        { title: 'Your Timeline',                 summary: 'Projected milestones and review schedule',             icon: <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
+  'starting-point':  { title: 'Your Starting Point',           shortTitle: 'Start',      summary: 'Overall score, archetype, and radar chart',            icon: <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
+  'gap-analysis':    { title: 'Gap Analysis',                  shortTitle: 'Gaps',       summary: 'Current vs. target in each pillar',                    icon: <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
+  'strengths-focus': { title: 'Strengths & Focus Areas',       shortTitle: 'Strengths',  summary: 'What you\'re doing well and where to improve',         icon: <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
+  'lifestyle':       { title: 'Lifestyle Factors',             shortTitle: 'Lifestyle',  summary: 'Sleep, nutrition, stress, and activity habits',        icon: <Heart className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
+  'movement':        { title: 'Posture, Movement & Mobility',  shortTitle: 'Movement',   summary: 'Movement quality, posture, and flexibility analysis',  icon: <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
+  'destination':     { title: 'Your Destination',              shortTitle: 'Goals',      summary: 'Goals and what achieving them looks like',             icon: <Target className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
+  'blueprint':       { title: 'The Blueprint',                 shortTitle: 'Plan',       summary: 'Personalised action plan for each pillar',             icon: <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
+  'timeline':        { title: 'Your Timeline',                 shortTitle: 'Timeline',   summary: 'Projected milestones and review schedule',             icon: <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
 };
 
 const DEFAULT_OPEN: SectionId[] = ['starting-point'];
@@ -122,6 +136,46 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   );
 };
 
+// ── Mobile bottom tab bar ────────────────────────────────────────────
+
+interface MobileReportNavProps {
+  activeSection: SectionId;
+  onSelect: (id: SectionId) => void;
+}
+
+const MobileReportNav: React.FC<MobileReportNavProps> = ({ activeSection, onSelect }) => (
+  <nav className="fixed bottom-0 inset-x-0 z-50 bg-white border-t border-slate-200 shadow-[0_-2px_10px_rgba(0,0,0,0.06)] safe-area-pb md:hidden">
+    <div className="flex items-stretch justify-around px-1">
+      {SECTION_IDS.map(id => {
+        const Icon = SECTION_ICON_MAP[id];
+        const meta = SECTION_META[id];
+        const isActive = activeSection === id;
+        return (
+          <button
+            key={id}
+            onClick={() => onSelect(id)}
+            className={`flex-1 flex flex-col items-center gap-0.5 py-2 transition-colors ${
+              isActive
+                ? 'text-primary'
+                : 'text-slate-400 active:text-slate-600'
+            }`}
+          >
+            <Icon className={`h-4 w-4 ${isActive ? 'text-primary' : ''}`} />
+            <span className={`text-[8px] font-bold uppercase tracking-wider leading-tight ${
+              isActive ? 'text-primary' : 'text-slate-400'
+            }`}>
+              {meta.shortTitle}
+            </span>
+            {isActive && (
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-primary rounded-full" />
+            )}
+          </button>
+        );
+      })}
+    </div>
+  </nav>
+);
+
 // ── Main report component ─────────────────────────────────────────────
 
 export default function ClientReport({
@@ -158,6 +212,8 @@ export default function ClientReport({
     weeksByCategory,
   } = useClientReportData({ scores, goals, formData, previousScores });
 
+  const isMobile = useIsMobile();
+
   // ── View toggle (client vs coach) ───────────────────────────────────
   const [activeView, setActiveView] = useState<'client' | 'coach'>(standalone ? 'client' : 'client');
 
@@ -167,7 +223,7 @@ export default function ClientReport({
     }
   }, [standalone, activeView]);
 
-  // ── Section open/close state ────────────────────────────────────────
+  // ── Desktop: section open/close state ───────────────────────────────
   const [openSections, setOpenSections] = useState<Set<SectionId>>(
     () => new Set(DEFAULT_OPEN),
   );
@@ -186,6 +242,9 @@ export default function ClientReport({
   const toggleAll = useCallback(() => {
     setOpenSections(allOpen ? new Set(DEFAULT_OPEN) : new Set(SECTION_IDS));
   }, [allOpen]);
+
+  // ── Mobile: single active section ──────────────────────────────────
+  const [mobileSection, setMobileSection] = useState<SectionId>('starting-point');
 
   // ── Guard ───────────────────────────────────────────────────────────
   if (!scores || !scores.categories || scores.categories.length === 0 || !hasAnyData) {
@@ -206,6 +265,57 @@ export default function ClientReport({
     : 'space-y-2 sm:space-y-3 md:space-y-4 lg:space-y-5 xl:space-y-6 w-full min-w-0';
 
   const isOpen = (id: SectionId) => openSections.has(id);
+
+  // Render a section's content by ID (shared by mobile + desktop)
+  const renderSection = (id: SectionId) => {
+    switch (id) {
+      case 'starting-point':
+        return (
+          <StartingPointSection
+            scores={safeScores}
+            archetype={archetype}
+            overallRadarData={overallRadarData}
+            previousRadarData={previousRadarData}
+            hideHeader
+          />
+        );
+      case 'gap-analysis':
+        return (
+          <GapAnalysisSection
+            gapAnalysisData={gapAnalysisData}
+            goals={goals}
+            formData={formData}
+            hideHeader
+          />
+        );
+      case 'strengths-focus':
+        return (
+          <StrengthsFocusSection
+            strengths={strengths}
+            areasForImprovement={areasForImprovement}
+          />
+        );
+      case 'lifestyle':
+        return <LifestyleFactorsBar formData={formData} />;
+      case 'movement':
+        return <MovementPostureMobility formData={formData} scores={scores} standalone={standalone} hideHeader />;
+      case 'destination':
+        return <DestinationSection goals={goals} formData={formData} hideHeader />;
+      case 'blueprint':
+        return <BlueprintSection blueprintPillars={blueprintPillars} hideHeader />;
+      case 'timeline':
+        return (
+          <TimelineSection
+            orderedCats={orderedCats}
+            weeksByCategory={weeksByCategory}
+            maxWeeks={maxWeeks}
+            hideHeader
+          />
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className={containerClass}>
@@ -242,7 +352,28 @@ export default function ClientReport({
               </div>
             )}
           </Suspense>
+        ) : isMobile ? (
+          /* ── Mobile: one section at a time + bottom tab bar ── */
+          <>
+            {/* Section title bar */}
+            <div className="flex items-center gap-2 py-2">
+              <div className="p-1.5 bg-gradient-light text-zinc-900 rounded-lg shrink-0">
+                {SECTION_META[mobileSection].icon}
+              </div>
+              <h3 className="text-xs font-bold text-zinc-900 uppercase tracking-widest">
+                {SECTION_META[mobileSection].title}
+              </h3>
+            </div>
+
+            {/* Active section content */}
+            <div className="pb-20">
+              {renderSection(mobileSection)}
+            </div>
+
+            <MobileReportNav activeSection={mobileSection} onSelect={setMobileSection} />
+          </>
         ) : (
+          /* ── Desktop: collapsible accordion ── */
           <>
             {/* Expand / Collapse toggle */}
             <div className="flex justify-end">
@@ -256,56 +387,11 @@ export default function ClientReport({
               </Button>
             </div>
 
-            <CollapsibleSection id="starting-point" open={isOpen('starting-point')} onToggle={toggleSection}>
-              <StartingPointSection
-                scores={safeScores}
-                archetype={archetype}
-                overallRadarData={overallRadarData}
-                previousRadarData={previousRadarData}
-                hideHeader
-              />
-            </CollapsibleSection>
-
-            <CollapsibleSection id="gap-analysis" open={isOpen('gap-analysis')} onToggle={toggleSection}>
-              <GapAnalysisSection
-                gapAnalysisData={gapAnalysisData}
-                goals={goals}
-                formData={formData}
-                hideHeader
-              />
-            </CollapsibleSection>
-
-            <CollapsibleSection id="strengths-focus" open={isOpen('strengths-focus')} onToggle={toggleSection}>
-              <StrengthsFocusSection
-                strengths={strengths}
-                areasForImprovement={areasForImprovement}
-              />
-            </CollapsibleSection>
-
-            <CollapsibleSection id="lifestyle" open={isOpen('lifestyle')} onToggle={toggleSection}>
-              <LifestyleFactorsBar formData={formData} />
-            </CollapsibleSection>
-
-            <CollapsibleSection id="movement" open={isOpen('movement')} onToggle={toggleSection}>
-              <MovementPostureMobility formData={formData} scores={scores} standalone={standalone} hideHeader />
-            </CollapsibleSection>
-
-            <CollapsibleSection id="destination" open={isOpen('destination')} onToggle={toggleSection}>
-              <DestinationSection goals={goals} formData={formData} hideHeader />
-            </CollapsibleSection>
-
-            <CollapsibleSection id="blueprint" open={isOpen('blueprint')} onToggle={toggleSection}>
-              <BlueprintSection blueprintPillars={blueprintPillars} hideHeader />
-            </CollapsibleSection>
-
-            <CollapsibleSection id="timeline" open={isOpen('timeline')} onToggle={toggleSection}>
-              <TimelineSection
-                orderedCats={orderedCats}
-                weeksByCategory={weeksByCategory}
-                maxWeeks={maxWeeks}
-                hideHeader
-              />
-            </CollapsibleSection>
+            {SECTION_IDS.map(id => (
+              <CollapsibleSection key={id} id={id} open={isOpen(id)} onToggle={toggleSection}>
+                {renderSection(id)}
+              </CollapsibleSection>
+            ))}
           </>
         )}
       </div>

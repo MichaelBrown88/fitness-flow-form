@@ -8,9 +8,11 @@ import { generateAssessmentResults } from '@/lib/assessmentLogic';
 import type { PriorityBand } from '@/lib/negativeOutcomes';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 
+import { SCORE_COLORS } from '@/lib/scoring/scoreColor';
+
 const priorityStyles: Record<PriorityBand, string> = {
-  P1: 'border-red-200 bg-red-50 text-red-700',
-  P2: 'border-amber-200 bg-amber-50 text-amber-700',
+  P1: SCORE_COLORS.red.pill,
+  P2: SCORE_COLORS.amber.pill,
   P3: 'border-sky-200 bg-sky-50 text-sky-700',
 };
 
@@ -184,21 +186,22 @@ const Results = () => {
       title={input.fullName || 'Client Results'}
       subtitle={`${input.assignedCoach || 'Coach'} · Assessment Summary`}
       actions={
-        <div className="flex gap-2">
+        <div className="flex gap-1.5 sm:gap-2">
           <Button
             variant="outline"
+            size="sm"
             onClick={() => {
-              // CRITICAL: Clear all assessment modes to prevent data bleed
               sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
               sessionStorage.removeItem(STORAGE_KEYS.EDIT_ASSESSMENT);
               sessionStorage.removeItem(STORAGE_KEYS.PREFILL_CLIENT);
               sessionStorage.removeItem(STORAGE_KEYS.IS_DEMO);
               navigate('/assessment');
             }}
+            className="h-8 sm:h-9 text-xs sm:text-sm px-3 sm:px-4"
           >
             New Assessment
           </Button>
-          <Button onClick={handlePrint} className="bg-slate-900 text-white hover:bg-slate-800">
+          <Button size="sm" onClick={handlePrint} className="h-8 sm:h-9 text-xs sm:text-sm px-3 sm:px-4 bg-slate-900 text-white hover:bg-slate-800">
             Print
           </Button>
         </div>

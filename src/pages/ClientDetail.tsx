@@ -34,7 +34,16 @@ import {
   GitCompare,
   History,
   ChevronDown,
+  MoreVertical,
+  ArrowRightLeft as ArrowRightLeftIcon,
 } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 // Collapsible section wrapper
 const CollapsibleSection = ({ title, icon, badge, children, defaultOpen = true }: {
@@ -70,7 +79,6 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { TransferClientDialog } from '@/components/client/TransferClientDialog';
-import { ArrowRightLeft } from 'lucide-react';
 
 const ClientDetail = () => {
   const { profile: authProfile } = useAuth();
@@ -118,6 +126,7 @@ const ClientDetail = () => {
   } = useClientDetail();
 
   const [transferOpen, setTransferOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   if (!user) {
     return (
@@ -143,43 +152,65 @@ const ClientDetail = () => {
       title={`${clientName}'s Dashboard`}
       subtitle="Comprehensive view of client progress, history, and profile."
       actions={
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={navigateBack}
-            className="h-8 w-8 p-0"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          {profile?.status && (
-            <Badge variant={profile.status === 'active' ? 'default' : 'secondary'}>
-              {profile.status}
-            </Badge>
-          )}
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setIsEditing(!isEditing)}
-            >
-              {isEditing ? <X className="h-4 w-4 mr-2" /> : <Edit2 className="h-4 w-4 mr-2" />}
-              {isEditing ? 'Cancel' : 'Edit Profile'}
+        isMobile ? (
+          /* ── Mobile: back + New + kebab ── */
+          <div className="flex items-center gap-1.5">
+            <Button variant="ghost" size="sm" onClick={navigateBack} className="h-8 w-8 p-0">
+              <ArrowLeft className="h-4 w-4" />
             </Button>
-            {(authProfile?.role === 'org_admin' || profile?.assignedCoachUid === user?.uid) && (
-              <Button
-                variant="outline"
-                onClick={() => setTransferOpen(true)}
-              >
-                <ArrowRightLeft className="h-4 w-4 mr-2" />
-                Transfer
-              </Button>
-            )}
-            <Button onClick={() => handleNewAssessment()} className="bg-slate-900 text-white hover:bg-slate-800">
-              <UserPlus className="h-4 w-4 mr-2" />
-              New Assessment
+            <Button size="sm" onClick={() => handleNewAssessment()} className="h-8 px-3 gap-1.5 text-xs font-bold bg-slate-900 text-white hover:bg-slate-800">
+              <UserPlus className="h-3.5 w-3.5" />
+              New
             </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52 rounded-xl">
+                <DropdownMenuItem onClick={() => setIsEditing(!isEditing)} className="py-3 text-sm font-medium">
+                  {isEditing ? <X className="mr-2 h-4 w-4" /> : <Edit2 className="mr-2 h-4 w-4" />}
+                  {isEditing ? 'Cancel Edit' : 'Edit Profile'}
+                </DropdownMenuItem>
+                {(authProfile?.role === 'org_admin' || profile?.assignedCoachUid === user?.uid) && (
+                  <DropdownMenuItem onClick={() => setTransferOpen(true)} className="py-3 text-sm font-medium">
+                    <ArrowRightLeftIcon className="mr-2 h-4 w-4" />
+                    Transfer Client
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-        </div>
+        ) : (
+          /* ── Desktop: full button row ── */
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" onClick={navigateBack} className="h-8 w-8 p-0">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            {profile?.status && (
+              <Badge variant={profile.status === 'active' ? 'default' : 'secondary'}>
+                {profile.status}
+              </Badge>
+            )}
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setIsEditing(!isEditing)}>
+                {isEditing ? <X className="h-4 w-4 mr-2" /> : <Edit2 className="h-4 w-4 mr-2" />}
+                {isEditing ? 'Cancel' : 'Edit Profile'}
+              </Button>
+              {(authProfile?.role === 'org_admin' || profile?.assignedCoachUid === user?.uid) && (
+                <Button variant="outline" onClick={() => setTransferOpen(true)}>
+                  <ArrowRightLeftIcon className="h-4 w-4 mr-2" />
+                  Transfer
+                </Button>
+              )}
+              <Button onClick={() => handleNewAssessment()} className="bg-slate-900 text-white hover:bg-slate-800">
+                <UserPlus className="h-4 w-4 mr-2" />
+                New Assessment
+              </Button>
+            </div>
+          </div>
+        )
       }
     >
       <div className="space-y-8">
@@ -291,7 +322,7 @@ const ClientDetail = () => {
                     {categoryBreakdown[cat.id] || 0}
                   </div>
                   {categoryChanges[cat.id] !== undefined && categoryChanges[cat.id] !== 0 && (
-                    <div className={`text-[10px] font-bold flex items-center justify-center gap-0.5 mb-2 ${categoryChanges[cat.id] > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    <div className={`text-[10px] font-bold flex items-center justify-center gap-0.5 mb-2 ${categoryChanges[cat.id] > 0 ? 'text-score-green-fg' : 'text-score-red-fg'}`}>
                       {categoryChanges[cat.id] > 0 ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
                       {categoryChanges[cat.id] > 0 ? '+' : ''}{categoryChanges[cat.id]}
                     </div>
@@ -363,7 +394,7 @@ const ClientDetail = () => {
               <div className="flex items-end justify-between">
                 <div className="text-3xl font-black text-slate-900">{stats.latestScore}</div>
                 {stats.trend !== 'neutral' && (
-                  <div className={`flex items-center gap-1 mb-1 ${stats.trend === 'up' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                  <div className={`flex items-center gap-1 mb-1 ${stats.trend === 'up' ? 'text-score-green' : 'text-score-red'}`}>
                     {stats.trend === 'up' ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
                   </div>
                 )}
@@ -376,7 +407,7 @@ const ClientDetail = () => {
             <div className="rounded-xl bg-slate-50 p-5">
               <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">Score Change</div>
               <div className={`text-3xl font-black ${
-                stats.scoreChange > 0 ? 'text-emerald-600' : stats.scoreChange < 0 ? 'text-rose-600' : 'text-slate-900'
+                stats.scoreChange > 0 ? 'text-score-green-fg' : stats.scoreChange < 0 ? 'text-score-red-fg' : 'text-slate-900'
               }`}>
                 {stats.scoreChange > 0 ? '+' : ''}{stats.scoreChange}
               </div>

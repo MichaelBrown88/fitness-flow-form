@@ -7,7 +7,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { generateBodyCompInterpretation } from '@/lib/recommendations';
 import { requestShareArtifacts, sendReportEmail, type ShareArtifacts } from '@/services/share';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Share2, ChevronDown, Link as LinkIcon, Mail, MessageCircle } from 'lucide-react';
+import { Loader2, Share2, ChevronDown, Link as LinkIcon, Mail, MessageCircle, MoreVertical, ArrowLeft, Edit2, Plus } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import {
   DropdownMenu,
@@ -213,6 +214,36 @@ const AssessmentReport = () => {
   // Calculate generic body comp for display logic
   const bodyComp = generateBodyCompInterpretation(formData, scores);
   const highlightCategory = sessionStorage.getItem(STORAGE_KEYS.HIGHLIGHT_CATEGORY) || undefined;
+  const isMobile = useIsMobile();
+
+  const navigateToDashboard = () => {
+    if (formData?.fullName) {
+      navigate(`/client/${encodeURIComponent(formData.fullName)}`);
+    } else {
+      navigate('/dashboard');
+    }
+  };
+
+  const navigateToEdit = () => {
+    if (!id || !formData) return;
+    sessionStorage.setItem(STORAGE_KEYS.EDIT_ASSESSMENT, JSON.stringify({
+      assessmentId: id,
+      formData: formData,
+      clientName: formData.fullName,
+    }));
+    sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
+    sessionStorage.removeItem(STORAGE_KEYS.PREFILL_CLIENT);
+    sessionStorage.removeItem(STORAGE_KEYS.IS_DEMO);
+    navigate('/assessment');
+  };
+
+  const navigateToNew = () => {
+    sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
+    sessionStorage.removeItem(STORAGE_KEYS.EDIT_ASSESSMENT);
+    sessionStorage.removeItem(STORAGE_KEYS.PREFILL_CLIENT);
+    sessionStorage.removeItem(STORAGE_KEYS.IS_DEMO);
+    navigate('/assessment');
+  };
 
   return (
     <ErrorBoundary>
@@ -220,89 +251,93 @@ const AssessmentReport = () => {
         title=""
         variant="full-width"
         actions={
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            onClick={() => {
-              // Navigate to client dashboard if we have client name, otherwise main dashboard
-              if (formData?.fullName) {
-                navigate(`/client/${encodeURIComponent(formData.fullName)}`);
-              } else {
-                navigate('/dashboard');
-              }
-            }}
-          >
-            Dashboard
-          </Button>
-          <Button 
-            variant="outline"
-            onClick={() => {
-              if (!id || !formData) return;
-              // Store assessment data for editing
-              sessionStorage.setItem(STORAGE_KEYS.EDIT_ASSESSMENT, JSON.stringify({
-                assessmentId: id,
-                formData: formData,
-                clientName: formData.fullName,
-              }));
-              // Clear other assessment modes
-              sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
-              sessionStorage.removeItem(STORAGE_KEYS.PREFILL_CLIENT);
-              sessionStorage.removeItem(STORAGE_KEYS.IS_DEMO);
-              navigate('/assessment');
-            }}
-          >
-            Edit Assessment
-          </Button>
-          <Button onClick={() => {
-            // Clear any partial assessment data to ensure full assessment
-            sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
-            sessionStorage.removeItem(STORAGE_KEYS.EDIT_ASSESSMENT);
-            sessionStorage.removeItem(STORAGE_KEYS.PREFILL_CLIENT);
-            sessionStorage.removeItem(STORAGE_KEYS.IS_DEMO);
-            navigate('/assessment');
-          }}>
-            New assessment
-          </Button>
-          <div className="flex -space-x-px">
-            <Button
-              className="rounded-r-none focus:z-10"
-              onClick={handleCopyLink}
-              disabled={shareLoading}
-            >
-              {shareLoading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <LinkIcon className="mr-2 h-4 w-4" />
-              )}
-              Copy Link
+        isMobile ? (
+          /* ── Mobile: back + share + kebab ── */
+          <div className="flex items-center gap-1.5">
+            <Button variant="ghost" size="sm" onClick={navigateToDashboard} className="h-8 w-8 p-0">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <Button size="sm" onClick={handleCopyLink} disabled={shareLoading} className="h-8 px-3 gap-1.5 text-xs font-bold">
+              {shareLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LinkIcon className="h-3.5 w-3.5" />}
+              Share
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
-                  className="rounded-l-none px-2 focus:z-10"
-                  disabled={shareLoading}
-                >
-                  <ChevronDown className="h-4 w-4" />
-                  <span className="sr-only">More share options</span>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 rounded-xl">
+                <DropdownMenuItem onClick={navigateToEdit} className="py-3 text-sm font-medium">
+                  <Edit2 className="mr-2 h-4 w-4" />
+                  Edit Assessment
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={navigateToNew} className="py-3 text-sm font-medium">
+                  <Plus className="mr-2 h-4 w-4" />
+                  New Assessment
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleSystemShare} className="py-3 text-sm font-medium">
                   <Share2 className="mr-2 h-4 w-4" />
                   System Share
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleEmailLink} className="py-3 text-sm font-medium">
                   <Mail className="mr-2 h-4 w-4" />
-                  Email Report Link
+                  Email Report
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleWhatsAppShare} className="py-3 text-sm font-medium">
                   <MessageCircle className="mr-2 h-4 w-4" />
-                  WhatsApp Message
+                  WhatsApp
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-        </div>
+        ) : (
+          /* ── Desktop: full button row ── */
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={navigateToDashboard}>Dashboard</Button>
+            <Button variant="outline" onClick={navigateToEdit}>Edit Assessment</Button>
+            <Button onClick={navigateToNew}>New assessment</Button>
+            <div className="flex -space-x-px">
+              <Button
+                className="rounded-r-none focus:z-10"
+                onClick={handleCopyLink}
+                disabled={shareLoading}
+              >
+                {shareLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <LinkIcon className="mr-2 h-4 w-4" />
+                )}
+                Copy Link
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    className="rounded-l-none px-2 focus:z-10"
+                    disabled={shareLoading}
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                    <span className="sr-only">More share options</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 rounded-xl">
+                  <DropdownMenuItem onClick={handleSystemShare} className="py-3 text-sm font-medium">
+                    <Share2 className="mr-2 h-4 w-4" />
+                    System Share
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleEmailLink} className="py-3 text-sm font-medium">
+                    <Mail className="mr-2 h-4 w-4" />
+                    Email Report Link
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleWhatsAppShare} className="py-3 text-sm font-medium">
+                    <MessageCircle className="mr-2 h-4 w-4" />
+                    WhatsApp Message
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        )
       }
     >
       <Suspense fallback={
