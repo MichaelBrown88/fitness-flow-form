@@ -1,21 +1,32 @@
-import { useLocation } from "react-router-dom";
-import { useEffect } from "react";
+import { Link } from 'react-router-dom';
+import { ROUTES } from '@/constants/routes';
+import { ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const NotFound = () => {
-  const location = useLocation();
-
-  useEffect(() => {
-    console.error("404 Error: User attempted to access non-existent route:", location.pathname);
-  }, [location.pathname]);
-
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">404</h1>
-        <p className="mb-4 text-xl text-gray-600">Oops! Page not found</p>
-        <a href="/" className="text-blue-500 underline hover:text-blue-700">
-          Return to Home
-        </a>
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-6">
+      <div className="text-center max-w-md">
+        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 mb-3">
+          Page not found
+        </p>
+        <h1 className="text-6xl font-black text-slate-900 mb-4">404</h1>
+        <p className="text-base text-slate-500 mb-10 leading-relaxed">
+          The page you're looking for doesn't exist or has been moved.
+        </p>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+          <Button asChild className="h-11 px-6 rounded-xl font-bold">
+            <Link to={ROUTES.DASHBOARD}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Dashboard
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="h-11 px-6 rounded-xl font-bold">
+            <Link to={ROUTES.ASSESSMENT}>
+              Start New Assessment
+            </Link>
+          </Button>
+        </div>
       </div>
     </div>
   );

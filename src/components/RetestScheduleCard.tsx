@@ -402,17 +402,10 @@ export function RetestScheduleCard({
               })}
             </div>
 
-            {/* Schedule Source Info */}
+            {/* Schedule generation date */}
             {schedule && (
-              <div className="pt-3 border-t border-slate-100 text-[10px] text-slate-400 flex items-center justify-between">
-                <span>
-                  Generated: {schedule.generatedAt?.toDate?.()?.toLocaleDateString() || 'Unknown'}
-                </span>
-                <span className="uppercase tracking-wider font-bold">
-                  {schedule.recommended && Object.values(schedule.recommended).some(
-                    (c: CadenceConfig) => c.priority === 'high'
-                  ) ? 'High Priority' : 'Standard Schedule'}
-                </span>
+              <div className="pt-3 border-t border-slate-100 text-[10px] text-slate-400">
+                Generated: {schedule.generatedAt?.toDate?.()?.toLocaleDateString() || 'Unknown'}
               </div>
             )}
 

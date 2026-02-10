@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AppShell from '@/components/layout/AppShell';
 import { useSettings } from '@/hooks/useSettings';
 import { Switch } from '@/components/ui/switch';
@@ -10,12 +11,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { updateOrgSettings, uploadOrgLogo, type OrgSettings, DEFAULT_EQUIPMENT_CONFIG } from '@/services/organizations';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Upload, Palette, ShieldCheck, Box, Settings as SettingsIcon, User, Building2, Calendar } from 'lucide-react';
+import { Loader2, Upload, Palette, ShieldCheck, Box, Settings as SettingsIcon, User, Building2, Calendar, ArrowLeft } from 'lucide-react';
 import { getAllGradients, type GradientId } from '@/lib/design/gradients';
 import { logger } from '@/lib/utils/logger';
 import { DefaultCadenceSettings } from '@/components/settings/DefaultCadenceSettings';
+import { ROUTES } from '@/constants/routes';
 
 const Settings = () => {
+  const navigate = useNavigate();
   const { user, profile, orgSettings, refreshSettings } = useAuth();
   const { toast } = useToast();
   const [localOrgName, setLocalOrgName] = useState(orgSettings?.name || '');
@@ -88,6 +91,16 @@ const Settings = () => {
     <AppShell
       title="Settings"
       subtitle="Manage your profile and organization settings."
+      actions={
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate(ROUTES.DASHBOARD)}
+          className="h-8 w-8 p-0"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+      }
     >
       <div className="max-w-4xl pb-20">
         {/* Tab Navigation */}
