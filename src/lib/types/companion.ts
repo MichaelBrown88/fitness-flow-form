@@ -19,9 +19,9 @@ export interface PostureCompanionData {
 }
 
 /**
- * Data structure returned by InBodyCompanionModal.onComplete
+ * Data structure returned by BodyCompCompanionModal.onComplete
  */
-export interface InBodyCompanionData extends Partial<FormData> {
+export interface BodyCompCompanionData extends Partial<FormData> {
   inbodyImage?: string;
 }
 

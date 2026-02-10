@@ -190,7 +190,7 @@ export interface OrganizationStats {
 export interface PlatformFeatureFlags {
   /** AI posture analysis feature */
   posture_enabled: boolean;
-  /** InBody OCR scanning feature */
+  /** Body composition OCR scanning feature */
   ocr_enabled: boolean;
   /** AI report generation feature */
   report_generation_enabled: boolean;

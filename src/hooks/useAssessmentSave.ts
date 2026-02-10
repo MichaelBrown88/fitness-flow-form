@@ -13,6 +13,7 @@ import type { ScoreSummary } from '@/lib/scoring';
 import { logger } from '@/lib/utils/logger';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import { UI_TOASTS } from '@/constants/ui';
+import { clearDraft } from '@/hooks/useAssessmentDraft';
 import { generateCadenceRecommendations } from '@/lib/recommendations/cadenceEngine';
 import { updateRetestSchedule } from '@/services/clientProfiles';
 import type { UserProfile } from '@/types/auth';
@@ -105,6 +106,7 @@ export function useAssessmentSave({
             );
             assessmentId = parsed.assessmentId;
             sessionStorage.removeItem(STORAGE_KEYS.EDIT_ASSESSMENT);
+            clearDraft();
             // Set edit mode flag (used by AssessmentResults for navigation)
             setIsEditMode(true);
             toast({
@@ -129,7 +131,7 @@ export function useAssessmentSave({
             formData, 
             scores.overall, 
             storedName || clientName,
-            category as 'inbody' | 'posture' | 'fitness' | 'strength' | 'lifestyle',
+            category as 'bodycomp' | 'posture' | 'fitness' | 'strength' | 'lifestyle',
             profile?.organizationId,
             profile
           );
@@ -138,7 +140,7 @@ export function useAssessmentSave({
           const updateData: Record<string, Timestamp> = {};
           const now = Timestamp.now();
           
-          if (category === 'inbody') updateData.lastInBodyDate = now;
+          if (category === 'bodycomp') updateData.lastBodyCompDate = now;
           else if (category === 'posture') updateData.lastPostureDate = now;
           else if (category === 'fitness') updateData.lastFitnessDate = now;
           else if (category === 'strength') updateData.lastStrengthDate = now;
@@ -191,10 +193,25 @@ export function useAssessmentSave({
       }
       
       setSavingId(assessmentId);
+      clearDraft();
       toast({ 
         title: category ? UI_TOASTS.SUCCESS.PARTIAL_ASSESSMENT_SAVED : UI_TOASTS.SUCCESS.ASSESSMENT_SAVED, 
         description: category ? `${category.charAt(0).toUpperCase() + category.slice(1)} data updated and merged.` : `Progress for ${clientName} has been saved.` 
       });
+
+      // Set firstAssessmentCompleted flag (one-time, non-blocking)
+      if (!profile?.firstAssessmentCompleted) {
+        try {
+          const { doc, updateDoc } = await import('firebase/firestore');
+          const { getDb } = await import('@/services/firebase');
+          await updateDoc(doc(getDb(), 'userProfiles', user.uid), {
+            firstAssessmentCompleted: true,
+          });
+          logger.info('[Assessment] firstAssessmentCompleted flag set');
+        } catch (flagErr) {
+          logger.warn('[Assessment] Failed to set firstAssessmentCompleted flag (non-fatal):', flagErr);
+        }
+      }
     } catch (e) {
       // Use logger for consistency with project rules
       logger.error('[SYNC] Save failed:', e instanceof Error ? e.message : String(e));

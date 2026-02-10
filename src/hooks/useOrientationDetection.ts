@@ -18,7 +18,7 @@ interface UseOrientationDetectionResult {
 
 export function useOrientationDetection(
   isAuthorized: boolean,
-  mode: 'posture' | 'inbody'
+  mode: 'posture' | 'bodycomp'
 ): UseOrientationDetectionResult {
   const [isVertical, setIsVertical] = useState(false);
   const [hasPermission, setHasPermission] = useState<boolean>(() => {
@@ -96,7 +96,7 @@ export function useOrientationDetection(
   };
 
   useEffect(() => {
-    if (!isAuthorized || !hasPermission || mode === 'inbody') return;
+    if (!isAuthorized || !hasPermission || mode === 'bodycomp') return;
     window.addEventListener('deviceorientation', handleOrientation);
     return () => {
       window.removeEventListener('deviceorientation', handleOrientation);

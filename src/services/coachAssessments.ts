@@ -36,6 +36,8 @@ export type CoachAssessmentSummary = {
   trend?: number;
   /** Total assessments for this client (incremented on each upsert) */
   assessmentCount?: number;
+  /** UID of the coach who owns this client (used in team/admin views) */
+  coachUid?: string | null;
   scoresSummary?: {
     overall: number;
     categories: {
@@ -262,6 +264,13 @@ export async function getCoachAssessment(
         goals: Array.isArray(current.formData.clientGoals) ? current.formData.clientGoals : [],
       };
     }
+    // Fallback: if no current assessment doc exists, use the most recent assessment
+    const latestAssessments = await getClientAssessments(coachUid, clientName, validOrgId, 1);
+    if (latestAssessments.length > 0) {
+      // Recurse with the real assessment ID instead of "latest"
+      return getCoachAssessment(coachUid, latestAssessments[0].id, clientName, validOrgId, profile);
+    }
+    return null;
   }
 
   // 1. Try the specific assessment document from organization path
@@ -414,7 +423,7 @@ export async function savePartialAssessment(
   formData: FormData,
   overallScore: number,
   clientName: string,
-  category: 'inbody' | 'posture' | 'fitness' | 'strength' | 'lifestyle',
+  category: 'bodycomp' | 'posture' | 'fitness' | 'strength' | 'lifestyle',
   organizationId?: string,
   profile?: UserProfile | null,
 ): Promise<string> {

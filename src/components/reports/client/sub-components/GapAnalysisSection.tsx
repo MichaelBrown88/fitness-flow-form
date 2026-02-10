@@ -11,6 +11,7 @@ interface GapAnalysisSectionProps {
   gapAnalysisData: GapAnalysisData[];
   goals?: string[];
   formData?: FormData;
+  hideHeader?: boolean;
 }
 
 const GapMetricRow: React.FC<{
@@ -68,6 +69,7 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
   gapAnalysisData,
   goals,
   formData,
+  hideHeader,
 }) => {
   const bodyComp = gapAnalysisData[0];
   const functional = gapAnalysisData[1];
@@ -138,7 +140,7 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
       
       <div className="pt-3 sm:pt-4 border-t border-zinc-100">
         <div className="flex items-start gap-1.5 sm:gap-2">
-          <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+          <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-score-amber mt-0.5 flex-shrink-0" />
           <p className="text-xs text-zinc-600 leading-relaxed">{truncateInsight(bodyComp?.insight || '')}</p>
         </div>
       </div>
@@ -231,7 +233,7 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
         
         <div className="pt-3 sm:pt-4 border-t border-zinc-100">
           <div className="flex items-start gap-1.5 sm:gap-2">
-            <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+            <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-score-amber mt-0.5 flex-shrink-0" />
             <p className="text-xs text-zinc-600 leading-relaxed">{truncateInsight(functional?.insight || '')}</p>
           </div>
         </div>
@@ -303,7 +305,7 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
       
       <div className="pt-3 sm:pt-4 border-t border-zinc-100">
         <div className="flex items-start gap-1.5 sm:gap-2">
-          <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+          <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-score-amber mt-0.5 flex-shrink-0" />
           <p className="text-xs text-zinc-600 leading-relaxed">{truncateInsight(metabolic?.insight || '')}</p>
         </div>
       </div>
@@ -313,12 +315,14 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
 
   return (
     <section className="w-full min-w-0 overflow-x-hidden">
-      <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 mb-2 sm:mb-3 md:mb-4 lg:mb-5 xl:mb-6">
-        <div className="p-1 sm:p-1.5 md:p-2 bg-gradient-light text-zinc-900 rounded-lg">
-          <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
+      {!hideHeader && (
+        <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 mb-2 sm:mb-3 md:mb-4 lg:mb-5 xl:mb-6">
+          <div className="p-1 sm:p-1.5 md:p-2 bg-gradient-light text-zinc-900 rounded-lg">
+            <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
+          </div>
+          <h3 className="text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">Gap Analysis</h3>
         </div>
-        <h3 className="text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">Gap Analysis</h3>
-      </div>
+      )}
       <p className="text-xs md:text-sm text-zinc-500 mb-3 sm:mb-4 md:mb-5 lg:mb-6">Current metrics vs. optimal performance targets.</p>
       
       {/* Desktop Layout */}

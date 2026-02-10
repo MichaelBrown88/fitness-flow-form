@@ -33,12 +33,12 @@ export function PostureHolisticSummary({ results }: PostureHolisticSummaryProps)
       <div className="flex items-start gap-3">
         {/* Status Icon */}
         <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-          hasPatterns ? 'bg-amber-200' : 'bg-green-200'
+          hasPatterns ? 'bg-score-amber-muted' : 'bg-score-green-muted'
         }`}>
           {hasPatterns ? (
-            <AlertCircle className="h-4 w-4 text-amber-700" />
+            <AlertCircle className="h-4 w-4 text-score-amber-fg" />
           ) : (
-            <CheckCircle2 className="h-4 w-4 text-green-700" />
+            <CheckCircle2 className="h-4 w-4 text-score-green-fg" />
           )}
         </div>
         

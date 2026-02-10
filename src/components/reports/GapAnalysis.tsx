@@ -8,6 +8,7 @@ import type { ScoreSummary } from '@/lib/scoring';
 import type { FormData } from '@/contexts/FormContext';
 import { calculateAge } from '@/lib/scoring';
 import { NORMATIVE_SCORING_DB } from '@/lib/clinical-data';
+import { SCORE_COLORS } from '@/lib/scoring/scoreColor';
 
 interface GapAnalysisProps {
   scores: ScoreSummary;
@@ -31,9 +32,9 @@ interface PillarGap {
 }
 
 export function GapAnalysis({ scores, formData }: GapAnalysisProps) {
-  const bodyComp = scores.categories.find(c => c.id === 'bodyComp') || { score: 0, weaknesses: [], strengths: [] };
-  const strength = scores.categories.find(c => c.id === 'strength') || { score: 0, weaknesses: [], strengths: [] };
-  const cardio = scores.categories.find(c => c.id === 'cardio') || { score: 0, weaknesses: [], strengths: [] };
+  const bodyComp = scores.categories.find(c => c.id === 'bodyComp') || { score: 0, weaknesses: [] as string[], strengths: [] as string[] };
+  const strength = scores.categories.find(c => c.id === 'strength') || { score: 0, weaknesses: [] as string[], strengths: [] as string[] };
+  const cardio = scores.categories.find(c => c.id === 'cardio') || { score: 0, weaknesses: [] as string[], strengths: [] as string[] };
   
   const gender = (formData?.gender || '').toLowerCase();
   const bf = parseFloat(formData?.inbodyBodyFatPct || '0');
@@ -347,11 +348,11 @@ export function GapAnalysis({ scores, formData }: GapAnalysisProps) {
   const getColorClasses = (color: string) => {
     switch (color) {
       case 'red':
-        return 'text-red-600 font-bold';
+        return `${SCORE_COLORS.red.text} font-bold`;
       case 'green':
-        return 'text-green-600 font-bold';
+        return `${SCORE_COLORS.green.text} font-bold`;
       case 'yellow':
-        return 'text-yellow-600 font-bold';
+        return `${SCORE_COLORS.amber.text} font-bold`;
       case 'black':
         return 'text-slate-900 font-bold';
       default:

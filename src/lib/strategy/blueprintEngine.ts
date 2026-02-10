@@ -108,11 +108,11 @@ export function generateBlueprint(
   const roadmap = buildRoadmap(scores, formData);
 
   // Extract category scores
-  const movement = scores.categories.find(c => c.id === 'movementQuality') || { score: 0, weaknesses: [] };
-  const bodyComp = scores.categories.find(c => c.id === 'bodyComp') || { score: 0, weaknesses: [] };
-  const strength = scores.categories.find(c => c.id === 'strength') || { score: 0, weaknesses: [] };
-  const cardio = scores.categories.find(c => c.id === 'cardio') || { score: 0, weaknesses: [] };
-  const lifestyle = scores.categories.find(c => c.id === 'lifestyle') || { score: 0, weaknesses: [] };
+  const movement = scores.categories.find(c => c.id === 'movementQuality') || { score: 0, weaknesses: [] as string[] };
+  const bodyComp = scores.categories.find(c => c.id === 'bodyComp') || { score: 0, weaknesses: [] as string[] };
+  const strength = scores.categories.find(c => c.id === 'strength') || { score: 0, weaknesses: [] as string[] };
+  const cardio = scores.categories.find(c => c.id === 'cardio') || { score: 0, weaknesses: [] as string[] };
+  const lifestyle = scores.categories.find(c => c.id === 'lifestyle') || { score: 0, weaknesses: [] as string[] };
 
   // Get synthesis data for priority determination
   const synthesis = scores.synthesis || [];

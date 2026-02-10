@@ -14,4 +14,10 @@ export const STORAGE_KEYS = {
   
   // Posture/Camera (if used in storage)
   POSTURE_TEMP_IMAGE: 'postureTempImage',
+
+  // Onboarding mid-flow persistence
+  ONBOARDING_SESSION: 'onboardingSession',
+
+  // Assessment draft auto-save
+  DRAFT_ASSESSMENT: 'draftAssessment',
 } as const;

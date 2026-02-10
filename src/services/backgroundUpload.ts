@@ -80,7 +80,7 @@ export const uploadPostureImageFullSize = async ({
   }
 };
 
-export const uploadInBodyScanFullSize = async ({
+export const uploadBodyCompScanFullSize = async ({
   sessionRef,
   sessionId,
   fullSizeImage,
@@ -106,6 +106,6 @@ export const uploadInBodyScanFullSize = async ({
       inbodyImageStorage: downloadUrl
     });
   } catch (storageError) {
-    logger.error('Failed to upload InBody scan to Storage', 'LIVE_SESSIONS', storageError);
+    logger.error('Failed to upload body comp scan to Storage', 'LIVE_SESSIONS', storageError);
   }
 };

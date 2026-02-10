@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useFormContext } from '@/contexts/FormContext';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
 
 interface ParQQuestionnaireProps {
   onExitParQ?: () => void;
+  onComplete?: () => void;
 }
 
 interface ParQQuestion {
@@ -72,25 +74,30 @@ const parqQuestions: ParQQuestion[] = [
   },
 ];
 
-const ParQQuestionnaire: React.FC<ParQQuestionnaireProps> = ({ onExitParQ }) => {
+const ParQQuestionnaire: React.FC<ParQQuestionnaireProps> = ({ onExitParQ, onComplete }) => {
   const { formData, updateFormData } = useFormContext();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [showMedicalClearanceWarning, setShowMedicalClearanceWarning] = useState(false);
 
   // Filter questions based on conditional logic
-  const visibleQuestions = parqQuestions.filter(question => {
-    if (!question.conditional) return true;
-    const { showWhen } = question.conditional;
-    return formData[showWhen.field as keyof typeof formData] === showWhen.value;
-  });
+  const visibleQuestions = useMemo(() =>
+    parqQuestions.filter(question => {
+      if (!question.conditional) return true;
+      const { showWhen } = question.conditional;
+      return formData[showWhen.field as keyof typeof formData] === showWhen.value;
+    }),
+    [formData],
+  );
 
   // Ensure currentQuestionIndex is valid when visibleQuestions changes
   const validQuestionIndex = Math.min(currentQuestionIndex, visibleQuestions.length - 1);
   const currentQuestion = visibleQuestions[validQuestionIndex];
   const isLastQuestion = validQuestionIndex === visibleQuestions.length - 1;
+  const currentAnswer = currentQuestion
+    ? formData[currentQuestion.id as keyof typeof formData]
+    : '';
   const hasAnswer = currentQuestion?.isNotes
-    ? (formData[currentQuestion.id as keyof typeof formData] as string)?.trim() !== ''
-    : formData[currentQuestion?.id as keyof typeof formData] !== '';
+    ? (currentAnswer as string)?.trim() !== ''
+    : currentAnswer !== '';
 
   // Check if any PAR-Q questions have been answered "yes"
   const hasMedicalConcerns = visibleQuestions.some(question =>
@@ -102,21 +109,17 @@ const ParQQuestionnaire: React.FC<ParQQuestionnaireProps> = ({ onExitParQ }) => 
     .every(question => formData[question.id as keyof typeof formData] !== '');
 
   useEffect(() => {
-    // Update the parqQuestionnaire field when all questions are complete
     if (allQuestionsAnswered) {
       updateFormData({ parqQuestionnaire: 'completed' });
     }
   }, [allQuestionsAnswered, updateFormData]);
 
+  // Keep index in bounds when visibleQuestions length changes
   useEffect(() => {
-    // Auto-advance to next question when answered (but not for notes)
-    if (hasAnswer && !isLastQuestion && !currentQuestion?.isNotes) {
-      const timer = setTimeout(() => {
-        setCurrentQuestionIndex(prev => prev + 1);
-      }, 500); // Small delay for visual feedback
-      return () => clearTimeout(timer);
+    if (currentQuestionIndex > validQuestionIndex) {
+      setCurrentQuestionIndex(validQuestionIndex);
     }
-  }, [hasAnswer, isLastQuestion, currentQuestion?.isNotes]);
+  }, [currentQuestionIndex, validQuestionIndex]);
 
   const handleAnswer = (answer: string) => {
     if (currentQuestion) {
@@ -124,62 +127,38 @@ const ParQQuestionnaire: React.FC<ParQQuestionnaireProps> = ({ onExitParQ }) => 
     }
   };
 
-  // Update currentQuestionIndex when visibleQuestions changes
-  useEffect(() => {
-    if (currentQuestionIndex > validQuestionIndex) {
-      setCurrentQuestionIndex(validQuestionIndex);
-    }
-  }, [currentQuestionIndex, validQuestionIndex]);
-
   const goToPrevious = () => {
     if (validQuestionIndex > 0) {
       setCurrentQuestionIndex(prev => prev - 1);
     } else if (onExitParQ) {
-      // On first question, allow exiting PAR-Q to go back
       onExitParQ();
     }
   };
 
   const goToNext = () => {
-    if (currentQuestion?.isNotes) {
-      // Complete the PAR-Q when clicking "PAR-Q Complete" on notes
+    if (isLastQuestion) {
+      // Last question → mark complete and advance to next section
       updateFormData({ parqQuestionnaire: 'completed' });
-    } else if (validQuestionIndex < visibleQuestions.length - 1) {
+      onComplete?.();
+    } else {
       setCurrentQuestionIndex(prev => prev + 1);
     }
   };
 
   if (!currentQuestion) return null;
 
-  const currentAnswer = formData[currentQuestion.id as keyof typeof formData];
-
-  // Show completion message when PAR-Q is completed
-  if (formData.parqQuestionnaire === 'completed') {
-    return (
-      <div className="text-center py-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <div className="inline-flex items-center justify-center w-20 h-20 bg-emerald-50 rounded-3xl mb-6 shadow-sm">
-          <Check className="h-10 w-10 text-emerald-600" />
-        </div>
-        <h3 className="text-2xl font-bold text-slate-900 mb-3">Screening Complete</h3>
-        <p className="text-slate-500 font-medium max-w-sm mx-auto">Health screening requirements have been met. Proceeding to the next section.</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="w-full space-y-8">
+    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
       {/* Medical Clearance Warning */}
       {hasMedicalConcerns && (
-        <div className="p-6 bg-rose-50 border border-rose-100 rounded-2xl animate-in fade-in zoom-in-95 duration-300">
-          <div className="flex items-start gap-4">
-            <div className="flex-shrink-0 w-10 h-10 bg-white rounded-xl flex items-center justify-center text-rose-500 shadow-sm border border-rose-100">
-              ⚠️
-            </div>
+        <div className="p-5 bg-rose-50 border border-rose-100 rounded-2xl animate-in fade-in zoom-in-95 duration-300">
+          <div className="flex items-start gap-3">
+            <span className="text-lg leading-none mt-0.5">⚠️</span>
             <div>
-              <h3 className="text-base font-bold text-rose-900 mb-1">
+              <p className="text-sm font-semibold text-rose-900">
                 Medical Clearance Required
-              </h3>
-              <p className="text-sm text-rose-700 leading-relaxed font-medium">
+              </p>
+              <p className="text-xs text-rose-700 leading-relaxed mt-0.5">
                 One or more responses indicate a potential health risk. Please consult a healthcare professional before starting any physical activity.
               </p>
             </div>
@@ -187,27 +166,18 @@ const ParQQuestionnaire: React.FC<ParQQuestionnaireProps> = ({ onExitParQ }) => 
         </div>
       )}
 
-      {/* Progress indicator */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-bold uppercase tracking-widest text-slate-400">
-            Screening Progress
-          </span>
-          <span className="text-xs font-bold text-primary">
-            Question {currentQuestionIndex + 1} of {visibleQuestions.length}
-          </span>
+      {/* Progress — identical to SingleFieldFlow */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400">
+          <span>Health Screening Progress</span>
+          <span>{validQuestionIndex + 1} of {visibleQuestions.length}</span>
         </div>
-        <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-          <div
-            className="bg-primary h-full rounded-full transition-all duration-500 ease-out"
-            style={{ width: `${((currentQuestionIndex + 1) / visibleQuestions.length) * 100}%` }}
-          />
-        </div>
+        <Progress value={((validQuestionIndex + 1) / visibleQuestions.length) * 100} className="h-1" />
       </div>
 
-      {/* Question Card */}
-      <div className="bg-white rounded-3xl p-8 lg:p-10 shadow-xl shadow-slate-200/50 border border-slate-100 min-h-[320px] flex flex-col justify-center">
-        <h3 className="text-2xl lg:text-3xl font-bold text-slate-900 mb-6 leading-tight">
+      {/* Question card — identical to SingleFieldFlow card */}
+      <div className="bg-white rounded-3xl p-8 lg:p-10 shadow-xl shadow-primary/10 border border-primary/5 min-h-[400px] flex flex-col justify-center">
+        <h3 className="text-xl font-bold tracking-tight text-slate-900 mb-6 leading-tight">
           {currentQuestion.question}
         </h3>
 
@@ -219,82 +189,74 @@ const ParQQuestionnaire: React.FC<ParQQuestionnaireProps> = ({ onExitParQ }) => 
 
         {/* Answer options */}
         {currentQuestion.isNotes ? (
-          <div className="space-y-3">
-            <textarea
-              placeholder="Document any additional health conditions, medications, or concerns mentioned..."
-              value={(currentAnswer as string) || ''}
-              onChange={(e) => handleAnswer(e.target.value)}
-              rows={4}
-              className="w-full p-5 border border-slate-200 rounded-2xl resize-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all font-medium text-slate-700"
-            />
-          </div>
+          <textarea
+            placeholder="Document any additional health conditions, medications, or concerns mentioned..."
+            value={(currentAnswer as string) || ''}
+            onChange={(e) => handleAnswer(e.target.value)}
+            rows={4}
+            className="w-full p-5 border border-slate-200 rounded-2xl resize-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all font-medium text-slate-700"
+          />
         ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <button
-            onClick={() => handleAnswer('no')}
-            className={`flex h-20 items-center justify-between px-8 rounded-2xl border-2 transition-all group ${
-              currentAnswer === 'no'
-                ? 'border-primary bg-brand-light text-primary shadow-md ring-1 ring-primary'
-                : 'border-slate-100 bg-slate-50/50 hover:border-slate-200 hover:bg-white text-slate-500'
-            }`}
-          >
-            <span className="text-xl font-bold">No</span>
-            <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${
-              currentAnswer === 'no' ? 'bg-primary border-primary text-white' : 'border-slate-200'
-            }`}>
-              {currentAnswer === 'no' && <Check className="h-5 w-5 stroke-[3]" />}
-            </div>
-          </button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <button
+              onClick={() => handleAnswer('no')}
+              className={`flex h-20 items-center justify-between px-8 rounded-2xl border-2 transition-all ${
+                currentAnswer === 'no'
+                  ? 'border-primary bg-brand-light text-primary shadow-md ring-1 ring-primary'
+                  : 'border-slate-100 bg-slate-50/50 hover:border-slate-200 hover:bg-white text-slate-500'
+              }`}
+            >
+              <span className="text-base font-bold">No</span>
+              <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${
+                currentAnswer === 'no' ? 'bg-primary border-primary text-white' : 'border-slate-200'
+              }`}>
+                {currentAnswer === 'no' && <Check className="h-5 w-5 stroke-[3]" />}
+              </div>
+            </button>
 
-          <button
-            onClick={() => handleAnswer('yes')}
-            className={`flex h-20 items-center justify-between px-8 rounded-2xl border-2 transition-all group ${
-              currentAnswer === 'yes'
-                ? 'border-rose-500 bg-rose-50 text-rose-700 shadow-md ring-1 ring-rose-500'
-                : 'border-slate-100 bg-slate-50/50 hover:border-slate-200 hover:bg-white text-slate-500'
-            }`}
-          >
-            <span className="text-xl font-bold">Yes</span>
-            <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${
-              currentAnswer === 'yes' ? 'bg-rose-500 border-rose-500 text-white' : 'border-slate-200'
-            }`}>
-              {currentAnswer === 'yes' && <Check className="h-5 w-5 stroke-[3]" />}
-            </div>
-          </button>
-        </div>
+            <button
+              onClick={() => handleAnswer('yes')}
+              className={`flex h-20 items-center justify-between px-8 rounded-2xl border-2 transition-all ${
+                currentAnswer === 'yes'
+                  ? 'border-rose-500 bg-rose-50 text-rose-700 shadow-md ring-1 ring-rose-500'
+                  : 'border-slate-100 bg-slate-50/50 hover:border-slate-200 hover:bg-white text-slate-500'
+              }`}
+            >
+              <span className="text-base font-bold">Yes</span>
+              <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${
+                currentAnswer === 'yes' ? 'bg-rose-500 border-rose-500 text-white' : 'border-slate-200'
+              }`}>
+                {currentAnswer === 'yes' && <Check className="h-5 w-5 stroke-[3]" />}
+              </div>
+            </button>
+          </div>
         )}
-      </div>
 
-      {/* Navigation */}
-      <div className="flex items-center justify-between pt-4">
-        <Button
-          variant="ghost"
-          onClick={goToPrevious}
-          disabled={currentQuestionIndex === 0 && !onExitParQ}
-          className="h-12 px-6 rounded-xl font-bold text-slate-500 hover:bg-white hover:text-slate-900 transition-all"
-        >
-          <ChevronLeft className="mr-2 h-5 w-5" />
-          Back
-        </Button>
+        {/* Navigation — inside card, identical to SingleFieldFlow */}
+        <div className="flex items-center justify-between mt-12 pt-8 border-t border-slate-50">
+          <Button
+            variant="ghost"
+            onClick={goToPrevious}
+            disabled={validQuestionIndex === 0 && !onExitParQ}
+            className="h-12 px-6 rounded-xl font-bold text-slate-400 hover:text-slate-900"
+          >
+            <ChevronLeft className="mr-2 h-5 w-5" />
+            Back
+          </Button>
 
-        <div className="hidden sm:block">
-          {hasAnswer && !isLastQuestion && (
-            <span className="text-xs font-bold text-primary/60 animate-pulse uppercase tracking-widest">
-              Auto-advancing...
-            </span>
-          )}
+          <Button
+            onClick={goToNext}
+            disabled={!hasAnswer}
+            className={`h-12 px-8 rounded-xl font-bold transition-all ${
+              hasAnswer
+                ? 'bg-slate-900 text-white hover:bg-slate-800'
+                : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+            }`}
+          >
+            {isLastQuestion ? 'Section Complete' : 'Next Step'}
+            <ChevronRight className="ml-2 h-5 w-5" />
+          </Button>
         </div>
-
-        <Button
-          onClick={goToNext}
-          disabled={!hasAnswer || (isLastQuestion && !allQuestionsAnswered)}
-          className={`h-12 px-8 rounded-xl font-bold shadow-lg transition-all ${
-            hasAnswer ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-slate-100 text-slate-400 grayscale'
-          }`}
-        >
-          {currentQuestion?.isNotes ? 'Complete Screening' : 'Next Question'}
-          <ChevronRight className="ml-2 h-5 w-5" />
-        </Button>
       </div>
     </div>
   );

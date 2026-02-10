@@ -74,7 +74,7 @@ export const UI_TOASTS = {
     SYNC_ERROR: 'Sync Error',
     SYNC_ERROR_DESC: 'Unable to sync with dashboard. Please check your connection and try again.',
     CONNECTION_LOST: 'Connection Lost',
-    CONNECTION_LOST_DESC: 'Mobile companion disconnected. Scan QR code to reconnect.',
+    CONNECTION_LOST_DESC: 'Phone disconnected. Scan the QR code to reconnect.',
     SESSION_NOT_READY: 'Session not ready',
     SESSION_NOT_READY_DESC: 'Please wait for the session to initialize before uploading images.',
     UPLOAD_IN_PROGRESS: 'Upload in progress',
@@ -102,8 +102,8 @@ export const UI_TOASTS = {
     NO_PHASES_AVAILABLE: 'No Phases Available',
   },
   INFO: {
-    SCANNING_DOCUMENT: 'Scanning document...',
-    ANALYZING_DOCUMENT: 'Gemini AI is analyzing your InBody scan...',
+    SCANNING_DOCUMENT: 'Reading your report...',
+    ANALYZING_DOCUMENT: 'Reading the numbers from your report...',
     PROCESSING: 'Processing...',
     LOADING: 'Loading...',
     SAVING: 'Saving...',
@@ -192,4 +192,31 @@ export const UI_STATUS = {
   PROCESSING: 'Processing...',
   COMPLETE: 'Complete',
   FAILED: 'Failed',
+} as const;
+
+// Dashboard Tab Labels
+export const UI_TABS = {
+  CLIENTS: 'Clients',
+  SCHEDULE: 'Schedule',
+  TEAM: 'Team',
+} as const;
+
+// Schedule Tab Labels
+export const UI_SCHEDULE = {
+  OVERDUE: 'Overdue',
+  COMING_UP: 'Coming Up',
+  ON_TRACK: 'On Track',
+  DUE_TODAY: 'Due Today',
+  THIS_WEEK: 'This Week',
+  REASSESS: 'Reassess',
+  FULL_ASSESSMENT: 'Full Assessment',
+} as const;
+
+// Draft Recovery
+export const UI_DRAFT = {
+  TITLE: 'Resume where you left off?',
+  RESUME: 'Resume',
+  START_FRESH: 'Start Fresh',
+  DRAFT_SAVED: 'Draft saved',
+  SAVING: 'Saving...',
 } as const;

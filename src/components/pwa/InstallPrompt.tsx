@@ -1,0 +1,159 @@
+/**
+ * PWA Install Prompt
+ * 
+ * Detects if the app can be installed and shows a subtle install banner.
+ * Handles both:
+ * - Chrome/Android: Uses beforeinstallprompt event
+ * - iOS Safari: Shows manual instructions
+ */
+
+import { useState, useEffect, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
+import { Download, X, Share } from 'lucide-react';
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
+const DISMISSED_KEY = 'pwa-install-dismissed';
+const DISMISS_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+function isStandalone(): boolean {
+  return window.matchMedia('(display-mode: standalone)').matches
+    || ('standalone' in window.navigator && (navigator as unknown as { standalone: boolean }).standalone);
+}
+
+function isIOS(): boolean {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !('MSStream' in window);
+}
+
+function wasDismissedRecently(): boolean {
+  const dismissed = localStorage.getItem(DISMISSED_KEY);
+  if (!dismissed) return false;
+  return Date.now() - parseInt(dismissed, 10) < DISMISS_DURATION_MS;
+}
+
+export function InstallPrompt() {
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [showIOSPrompt, setShowIOSPrompt] = useState(false);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (isStandalone() || wasDismissedRecently()) return;
+
+    // Chrome/Android install prompt
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      setVisible(true);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+
+    // iOS Safari - show after a brief delay if not installed
+    if (isIOS() && !isStandalone()) {
+      const timer = setTimeout(() => setShowIOSPrompt(true), 3000);
+      return () => {
+        clearTimeout(timer);
+        window.removeEventListener('beforeinstallprompt', handler);
+      };
+    }
+
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstall = useCallback(async () => {
+    if (!deferredPrompt) return;
+    await deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setVisible(false);
+    }
+    setDeferredPrompt(null);
+  }, [deferredPrompt]);
+
+  const handleDismiss = useCallback(() => {
+    setVisible(false);
+    setShowIOSPrompt(false);
+    localStorage.setItem(DISMISSED_KEY, Date.now().toString());
+  }, []);
+
+  // Chrome/Android prompt
+  if (visible && deferredPrompt) {
+    return (
+      <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-[360px] z-[99] animate-in slide-in-from-bottom-4 fade-in duration-300">
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl p-4 flex items-start gap-3 border border-slate-200 dark:border-slate-700/50">
+          <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-violet-100 dark:bg-violet-500/20 flex items-center justify-center">
+            <Download className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-slate-900 dark:text-white">Install FitnessFlow</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Add to your home screen for the best experience.
+            </p>
+            <div className="flex gap-2 mt-3">
+              <Button
+                size="sm"
+                onClick={handleInstall}
+                className="h-7 px-3 text-xs bg-violet-600 hover:bg-violet-500 text-white rounded-lg"
+              >
+                Install
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleDismiss}
+                className="h-7 px-3 text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white rounded-lg"
+              >
+                Not now
+              </Button>
+            </div>
+          </div>
+          <button
+            onClick={handleDismiss}
+            className="flex-shrink-0 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors"
+            aria-label="Dismiss"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // iOS Safari prompt
+  if (showIOSPrompt) {
+    return (
+      <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-[360px] z-[99] animate-in slide-in-from-bottom-4 fade-in duration-300">
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl p-4 flex items-start gap-3 border border-slate-200 dark:border-slate-700/50">
+          <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center">
+            <Share className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-slate-900 dark:text-white">Install FitnessFlow</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+              Tap <Share className="w-3 h-3 inline -mt-0.5" /> then <strong>&quot;Add to Home Screen&quot;</strong> for the full app experience.
+            </p>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleDismiss}
+              className="h-7 px-3 text-xs text-slate-500 mt-2 rounded-lg"
+            >
+              Got it
+            </Button>
+          </div>
+          <button
+            onClick={handleDismiss}
+            className="flex-shrink-0 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors"
+            aria-label="Dismiss"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}

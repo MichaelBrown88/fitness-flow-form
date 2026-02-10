@@ -1,6 +1,10 @@
 import type { FormData } from '@/contexts/FormContext';
 import type { PhaseId } from '@/lib/phaseConfig';
 
+/** Safely access a FormData field that may exist at runtime but not in the type definition */
+const field = (form: FormData, key: string): string | undefined =>
+  (form as unknown as Record<string, string>)[key];
+
 export type PriorityBand = 'P1' | 'P2' | 'P3';
 
 export interface NegativeOutcomeRule {
@@ -59,13 +63,13 @@ export const NEGATIVE_OUTCOME_RULES: NegativeOutcomeRule[] = [
     coachAction:
       'Halt high-intensity testing. Advise: “Consult physician for medical clearance before starting Phase 4/5.”',
     clientFocus: 'Adjustment: Focus on mobility and low-intensity cardio for 6 weeks.',
-    trigger: (form) => form.parqPositive === 'yes',
+    trigger: (form) => field(form, 'parqPositive') === 'yes',
     strengthCopy: 'Cleared PAR-Q+ screening for progressive testing.',
   },
   {
     id: 'visceral-fat-high',
     phase: 'P1',
-    testName: 'InBody Analysis',
+    testName: 'Body Composition Analysis',
     negativeFinding: 'Visceral fat rating above recommended threshold (>10).',
     priority: 'P1',
     coachAction:
@@ -81,7 +85,7 @@ export const NEGATIVE_OUTCOME_RULES: NegativeOutcomeRule[] = [
   {
     id: 'segmental-imbalance',
     phase: 'P1',
-    testName: 'InBody Analysis',
+    testName: 'Body Composition Analysis',
     negativeFinding: 'Segmental lean imbalance greater than 5%.',
     priority: 'P2',
     coachAction:
@@ -89,7 +93,7 @@ export const NEGATIVE_OUTCOME_RULES: NegativeOutcomeRule[] = [
     clientFocus:
       'Adjustment: Focus on building a muscular foundation through resistance training and optimized protein intake.',
     trigger: (form) => {
-      const imbalance = asNumber(form.segmentalLeanImbalancePct);
+      const imbalance = asNumber(field(form, 'segmentalLeanImbalancePct'));
       return imbalance !== null && imbalance > 5;
     },
     strengthCopy: 'Balanced segmental lean mass across left/right regions.',
@@ -191,7 +195,7 @@ export const NEGATIVE_OUTCOME_RULES: NegativeOutcomeRule[] = [
     clientFocus:
       'Adjustment: Practice single-leg balance (e.g., while brushing teeth) to improve stability and reduce fall risk.',
     trigger: (form) => {
-      const sl = asNumber(form.singleLegStanceSeconds);
+      const sl = asNumber(field(form, 'singleLegStanceSeconds'));
       return sl === null ? false : sl < 10;
     },
     strengthCopy: 'Stable single-leg stance exceeding 10 seconds.',

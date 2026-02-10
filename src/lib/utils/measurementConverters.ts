@@ -138,7 +138,7 @@ export function convertGripStrength(
  * Body Composition Conversion
  */
 
-export type BodyCompositionMethod = 'inbody' | 'dexa' | 'bodpod' | 'skinfold' | 'bioimpedance' | 'measurements';
+export type BodyCompositionMethod = 'bioimpedance' | 'dexa' | 'bodpod' | 'skinfold' | 'measurements';
 export type SkinfoldMethod = 'jackson-pollock-7' | 'jackson-pollock-3' | 'durnin-womersley-4';
 
 /**
@@ -275,7 +275,6 @@ export function convertBodyComposition(
   skinfoldMethod?: SkinfoldMethod
 ): number {
   switch (method) {
-    case 'inbody':
     case 'dexa':
     case 'bodpod':
     case 'bioimpedance':

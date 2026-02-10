@@ -9,6 +9,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import CategoryRadarChart from './CategoryRadarChart';
 import { PostureAnalysisViewer } from './PostureAnalysisViewer';
 import { circleColor, niceLabel, CATEGORY_EXPLANATIONS } from './ClientReportConstants';
+import { scoreGrade, SCORE_COLORS } from '@/lib/scoring/scoreColor';
 import type { ScoreSummary } from '@/lib/scoring';
 import type { FormData } from '@/contexts/FormContext';
 
@@ -52,7 +53,8 @@ export function ClientReportCategoryTabs({
         </TabsList>
         {orderedCats.map((cat) => {
           const scorePercent = Math.min(100, (cat.score / 100) * 100);
-          const bgColor = cat.score >= 75 ? 'bg-green-500' : cat.score >= 45 ? 'bg-amber-500' : 'bg-red-500';
+          const grade = scoreGrade(cat.score);
+          const bgColor = `bg-score-${grade}`;
           const jargon = CATEGORY_EXPLANATIONS[cat.id] || '';
 
           return (
@@ -113,9 +115,9 @@ export function ClientReportCategoryTabs({
                 {(cat.strengths.length > 0 || cat.weaknesses.length > 0) && (
                   <div className="grid gap-4 md:grid-cols-2">
                     {cat.strengths.length > 0 && (
-                      <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
-                        <h4 className="text-base font-semibold text-emerald-800 mb-2">What's working well</h4>
-                        <ul className="list-disc pl-5 text-sm text-emerald-900 space-y-1">
+                      <div className={`rounded-lg p-4 shadow-sm ${SCORE_COLORS.green.pill}`}>
+                        <h4 className={`text-base font-semibold mb-2 ${SCORE_COLORS.green.text}`}>What's working well</h4>
+                        <ul className={`list-disc pl-5 text-sm space-y-1 ${SCORE_COLORS.green.text}`}>
                           {cat.strengths.map((s, i) => (
                             <li key={i}>{s}</li>
                           ))}
@@ -123,9 +125,9 @@ export function ClientReportCategoryTabs({
                       </div>
                     )}
                     {cat.weaknesses.length > 0 && cat.score > 0 && (
-                      <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 shadow-sm">
-                        <h4 className="text-base font-semibold text-rose-800 mb-2">Areas for improvement</h4>
-                        <ul className="list-disc pl-5 text-sm text-rose-900 space-y-1">
+                      <div className={`rounded-lg p-4 shadow-sm ${SCORE_COLORS.red.pill}`}>
+                        <h4 className={`text-base font-semibold mb-2 ${SCORE_COLORS.red.text}`}>Areas for improvement</h4>
+                        <ul className={`list-disc pl-5 text-sm space-y-1 ${SCORE_COLORS.red.text}`}>
                           {cat.weaknesses.map((w, i) => (
                             <li key={i}>{w}</li>
                           ))}

@@ -232,7 +232,7 @@ export async function executeCleanup(): Promise<CleanupResult> {
 
 // Expose to window for browser console access
 if (typeof window !== 'undefined') {
-  (window as any).previewCleanup = previewCleanup;
-  (window as any).cleanupOrganizations = executeCleanup;
+  (window as unknown as Record<string, unknown>).previewCleanup = previewCleanup;
+  (window as unknown as Record<string, unknown>).cleanupOrganizations = executeCleanup;
 }
 

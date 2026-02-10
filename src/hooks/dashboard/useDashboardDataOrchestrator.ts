@@ -2,27 +2,36 @@
  * Dashboard Data Orchestrator
  *
  * Main hook that combines all dashboard functionality.
+ * Scope-aware: non-coaching admins see ALL org assessments,
+ * coaching admins and coaches see only their own.
  */
 
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { useDashboardAnalytics } from './useDashboardAnalytics';
 import { useAssessmentList } from './useAssessmentList';
 import { useClientList } from './useClientList';
 import { useDashboardActions } from './useDashboardActions';
 import { useReassessmentQueue } from '@/hooks/useReassessmentQueue';
+import { getOrgCoaches } from '@/services/coachManagement';
+import { logger } from '@/lib/utils/logger';
+import type { DashboardView } from './types';
 
 export function useDashboardData() {
-  const { user, profile, loading, effectiveOrgId } = useAuth();
+  const { user, profile, loading, effectiveOrgId, orgSettings } = useAuth();
   const navigate = useNavigate();
 
   const [search, setSearch] = useState('');
-  const [view, setView] = useState<'clients' | 'priority'>('clients');
-  const [visibleClientsCount, setVisibleClientsCount] = useState(12);
+  const [view, setView] = useState<DashboardView>('clients');
 
-  // Analytics computation (uses effectiveOrgId for impersonation support)
-  const { computeAnalytics } = useDashboardAnalytics(profile, effectiveOrgId);
+  // Derive scope: non-coaching admins see all org data; everyone else sees own
+  const isAdmin = profile?.role === 'org_admin';
+  const isActiveCoach = profile?.isActiveCoach ?? true; // default true for legacy profiles
+  const isSoloCoach = orgSettings?.type === 'solo_coach';
+  const showTeamTab = isAdmin && !isSoloCoach;
+
+  // coachUidFilter: null = all org assessments; undefined = use current user (default)
+  const coachUidFilter: string | null | undefined = (isAdmin && !isActiveCoach) ? null : undefined;
 
   // Assessment list and pagination (uses effectiveOrgId for impersonation support)
   const {
@@ -32,14 +41,13 @@ export function useDashboardData() {
     visibleAssessmentsCount,
     hasMore,
     loadingMore,
-    recentChanges,
     loadMoreAssessments,
   } = useAssessmentList({
     user,
     profile,
     loading,
-    computeAnalytics,
     effectiveOrgId,
+    coachUidFilter,
   });
 
   // Client grouping (enriched with retestSchedule from client profiles)
@@ -68,6 +76,24 @@ export function useDashboardData() {
     return items.filter((item) => item.clientName.toLowerCase().includes(term));
   }, [items, search]);
 
+  // Coach name map for admin views (uid -> displayName)
+  const [coachMap, setCoachMap] = useState<Map<string, string>>(new Map());
+  const showCoachColumn = isAdmin && !isActiveCoach;
+
+  useEffect(() => {
+    if (!showTeamTab || !effectiveOrgId) return;
+    let cancelled = false;
+    getOrgCoaches(effectiveOrgId)
+      .then(coaches => {
+        if (cancelled) return;
+        const map = new Map<string, string>();
+        for (const c of coaches) map.set(c.uid, c.displayName);
+        setCoachMap(map);
+      })
+      .catch(err => logger.warn('[Dashboard] Failed to load coach names:', err));
+    return () => { cancelled = true; };
+  }, [showTeamTab, effectiveOrgId]);
+
   // Onboarding redirect
   useEffect(() => {
     if (!loading && user && profile && profile.onboardingCompleted === false) {
@@ -80,6 +106,7 @@ export function useDashboardData() {
   return {
     user,
     profile,
+    orgSettings,
     loading,
     loadingData,
     items,
@@ -95,11 +122,8 @@ export function useDashboardData() {
     loadingHistory,
     analytics,
     visibleAssessmentsCount,
-    visibleClientsCount,
-    setVisibleClientsCount,
     hasMore,
     loadingMore,
-    recentChanges,
     filtered,
     filteredClients,
     clientGroups,
@@ -109,5 +133,12 @@ export function useDashboardData() {
     handleViewHistory,
     handleNewAssessmentForClient,
     loadMoreAssessments,
+    // Scope flags for UI
+    isAdmin,
+    isActiveCoach,
+    showTeamTab,
+    showCoachColumn,
+    isSoloCoach,
+    coachMap,
   };
 }

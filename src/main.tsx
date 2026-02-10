@@ -3,6 +3,9 @@ import App from "./App.tsx";
 import "./index.css";
 import { logger } from '@/lib/utils/logger';
 
+// Side-effect: register admin tools on window for console access
+import '@/lib/setup/admin/migrateOneFitness';
+
 // Global error handlers — catch uncaught errors and rejected promises
 // so they route through the centralized logger rather than silently failing
 if (typeof window !== 'undefined') {

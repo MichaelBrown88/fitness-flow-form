@@ -43,6 +43,9 @@ export { migrateAssessmentHistory, verifyAssessmentHistoryMigration } from './mi
 // Client Merge & Dedup Tool
 export { mergeClients } from './mergeClients';
 
+// One Fitness Migration (one-time)
+export { migrateOneFitness } from './migrateOneFitness';
+
 // Existing Admin Tools
 export { diagnoseData } from './diagnoseData';
 export { fixRealDataAndStats } from './fixRealDataAndStats';

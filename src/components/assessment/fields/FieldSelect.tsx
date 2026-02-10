@@ -5,7 +5,7 @@ import type { FieldValue } from '../hooks/useFieldControl';
 
 interface FieldSelectProps {
   id: string;
-  options?: Array<{ value: string; label: string; subtitle?: string; tag?: string }>;
+  options?: ReadonlyArray<{ readonly value: string; readonly label: string; readonly subtitle?: string; readonly isRecommended?: boolean; readonly tag?: string }>;
   value: FieldValue;
   handleChange: (val: FieldValue) => void;
 }

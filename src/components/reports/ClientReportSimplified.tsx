@@ -122,7 +122,7 @@ export default function ClientReportSimplified({
   
   if (!scores || !scores.categories || scores.categories.length === 0 || !hasAnyData) {
     return (
-      <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+      <div className="rounded-md border border-score-amber-muted bg-score-amber-light p-4 text-sm text-score-amber-fg">
         <p className="font-semibold mb-2">No assessment data available</p>
         <p>Please complete at least one section of the assessment to generate a report.</p>
       </div>
@@ -175,11 +175,11 @@ export default function ClientReportSimplified({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Strengths */}
           {strengths.length > 0 && (
-            <div className="bg-green-50 rounded-lg border border-green-200 p-6">
-              <h3 className="text-lg font-bold text-green-900 mb-4">Your Strengths</h3>
+            <div className="bg-score-green-light rounded-lg border border-score-green-muted p-6">
+                <h3 className="text-lg font-bold text-score-green-bold mb-4">Your Strengths</h3>
               <ul className="space-y-2">
                 {strengths.map((s, idx) => (
-                  <li key={idx} className="text-sm text-green-800">
+                  <li key={idx} className="text-sm text-score-green-fg">
                     <span className="font-semibold">{s.category}:</span> {s.strength}
                   </li>
                 ))}
@@ -189,11 +189,11 @@ export default function ClientReportSimplified({
           
           {/* Areas for Improvement */}
           {areasForImprovement.length > 0 && (
-            <div className="bg-amber-50 rounded-lg border border-amber-200 p-6">
-              <h3 className="text-lg font-bold text-amber-900 mb-4">Areas for Improvement</h3>
+            <div className="bg-score-amber-light rounded-lg border border-score-amber-muted p-6">
+                <h3 className="text-lg font-bold text-score-amber-bold mb-4">Areas for Improvement</h3>
               <ul className="space-y-2">
                 {areasForImprovement.map((a, idx) => (
-                  <li key={idx} className="text-sm text-amber-800">
+                  <li key={idx} className="text-sm text-score-amber-fg">
                     <span className="font-semibold">{a.category}:</span> {a.weakness}
                   </li>
                 ))}

@@ -7,8 +7,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { logger } from '@/lib/utils/logger';
-import { getAllClients, type CoachAssessmentSummary } from '@/services/coachAssessments';
-import { getChangeHistory } from '@/services/assessmentHistory';
+import type { CoachAssessmentSummary } from '@/services/coachAssessments';
 import {
   collection,
   query,
@@ -26,36 +25,41 @@ import { getDb } from '@/services/firebase';
 import { UI_TOASTS } from '@/constants/ui';
 import { ORGANIZATION } from '@/lib/database/paths';
 import type { User } from 'firebase/auth';
-import type { Analytics, RecentChange } from './types';
+import type { Analytics } from './types';
 
 type UseAssessmentListParams = {
   user: User | null;
   profile?: { organizationId?: string } | null;
   loading: boolean;
-  computeAnalytics: (assessments: CoachAssessmentSummary[], coachUid: string) => Promise<Analytics>;
   /** Effective org ID (supports impersonation - falls back to profile.organizationId) */
   effectiveOrgId?: string | null;
+  /**
+   * Filter assessments to a specific coach UID.
+   * - string = filter to that coach (default: current user's UID)
+   * - null = fetch ALL assessments in the org (admin team view)
+   */
+  coachUidFilter?: string | null;
 };
 
 export function useAssessmentList({
   user,
   profile,
   loading,
-  computeAnalytics,
   effectiveOrgId,
+  coachUidFilter,
 }: UseAssessmentListParams) {
   // Use effectiveOrgId for reads (impersonation support), fallback to profile
   const readOrgId = effectiveOrgId || profile?.organizationId;
+  // Resolve coach filter: undefined means "use current user"; null means "all coaches"
+  const resolvedCoachFilter = coachUidFilter === undefined ? user?.uid ?? null : coachUidFilter;
   const { toast } = useToast();
 
   const [items, setItems] = useState<CoachAssessmentSummary[]>([]);
   const [loadingData, setLoadingData] = useState(true);
-  const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [visibleAssessmentsCount, setVisibleAssessmentsCount] = useState(20);
   const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [recentChanges, setRecentChanges] = useState<RecentChange[]>([]);
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const isInitialLoadRef = useRef(true);
 
@@ -65,13 +69,19 @@ export function useAssessmentList({
     // Use organization-centric path for assessments (effectiveOrgId for impersonation)
     const assessmentsRef = collection(getDb(), ORGANIZATION.assessments.collection(readOrgId));
 
-    // Filter by coachUid to show only current coach's assessments
-    const q = query(
-      assessmentsRef,
-      where('coachUid', '==', user.uid),
-      orderBy('createdAt', 'desc'),
-      limit(20)
-    );
+    // When resolvedCoachFilter is null, fetch ALL org assessments (admin view)
+    const q = resolvedCoachFilter
+      ? query(
+          assessmentsRef,
+          where('coachUid', '==', resolvedCoachFilter),
+          orderBy('createdAt', 'desc'),
+          limit(20)
+        )
+      : query(
+          assessmentsRef,
+          orderBy('createdAt', 'desc'),
+          limit(20)
+        );
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       try {
@@ -94,6 +104,7 @@ export function useAssessmentList({
             overallScore: score,
             goals: Array.isArray(docData.goals) ? docData.goals : [],
             scoresSummary: docData.scoresSummary ?? docData.scores,
+            coachUid: docData.coachUid || null,
           });
           lastDocument = docSnap;
         });
@@ -101,40 +112,6 @@ export function useAssessmentList({
         setItems(data);
         setLastDoc(lastDocument);
         setHasMore(snapshot.size === 20);
-
-        // Load recent changes
-        if (user && readOrgId) {
-          (async () => {
-            try {
-              const clients = await getAllClients(user.uid, readOrgId);
-              const changes: RecentChange[] = [];
-
-              for (const clientName of clients.slice(0, 10)) {
-                try {
-                  const history = await getChangeHistory(user.uid, clientName, 5, readOrgId);
-                  history.forEach(change => {
-                    changes.push({
-                      clientName,
-                      category: change.category,
-                      date: change.timestamp.toDate(),
-                      type: change.type,
-                    });
-                  });
-                } catch (err) {
-                  logger.warn('Failed to load history for client:', clientName, err);
-                }
-              }
-
-              changes.sort((a, b) => b.date.getTime() - a.date.getTime());
-              setRecentChanges(changes.slice(0, 10));
-            } catch (err) {
-              logger.warn('Failed to load recent changes:', err);
-            }
-          })();
-        }
-
-        const analyticsData = await computeAnalytics(data, user.uid);
-        setAnalytics(analyticsData);
       } finally {
         isInitialLoadRef.current = false;
         setLoadingData(false);
@@ -158,8 +135,8 @@ export function useAssessmentList({
 
             snapshot.forEach((docSnap) => {
               const docData = docSnap.data();
-              // Filter by coachUid in memory
-              if (docData.coachUid !== user.uid) {
+              // Filter by coachUid in memory (skip when resolvedCoachFilter is null = admin view)
+              if (resolvedCoachFilter && docData.coachUid !== resolvedCoachFilter) {
                 return;
               }
 
@@ -174,6 +151,7 @@ export function useAssessmentList({
                 overallScore: score,
                 goals: Array.isArray(docData.goals) ? docData.goals : [],
                 scoresSummary: docData.scoresSummary ?? docData.scores,
+                coachUid: docData.coachUid || null,
               });
               lastDocument = docSnap;
             });
@@ -181,9 +159,6 @@ export function useAssessmentList({
             setItems(data.slice(0, 20));
             setLastDoc(lastDocument);
             setHasMore(data.length > 20);
-
-            const analyticsData = await computeAnalytics(data.slice(0, 20), user.uid);
-            setAnalytics(analyticsData);
           } finally {
             isInitialLoadRef.current = false;
             setLoadingData(false);
@@ -204,7 +179,7 @@ export function useAssessmentList({
         unsubscribeRef.current = null;
       }
     };
-  }, [user, readOrgId, loading, computeAnalytics]);
+  }, [user, readOrgId, loading, resolvedCoachFilter]);
 
   const loadMoreAssessments = async () => {
     if (hasMore && lastDoc && user && readOrgId) {
@@ -212,13 +187,20 @@ export function useAssessmentList({
       try {
         // Use organization-centric path (effectiveOrgId for impersonation)
         const assessmentsRef = collection(getDb(), ORGANIZATION.assessments.collection(readOrgId));
-        const nextQuery = query(
-          assessmentsRef,
-          where('coachUid', '==', user.uid),
-          orderBy('createdAt', 'desc'),
-          startAfter(lastDoc),
-          limit(20)
-        );
+        const nextQuery = resolvedCoachFilter
+          ? query(
+              assessmentsRef,
+              where('coachUid', '==', resolvedCoachFilter),
+              orderBy('createdAt', 'desc'),
+              startAfter(lastDoc),
+              limit(20)
+            )
+          : query(
+              assessmentsRef,
+              orderBy('createdAt', 'desc'),
+              startAfter(lastDoc),
+              limit(20)
+            );
 
         const nextSnapshot = await getDocs(nextQuery);
         const newData: CoachAssessmentSummary[] = [];
@@ -261,8 +243,13 @@ export function useAssessmentList({
     }
   };
 
-  const filtered = useMemo(() => {
-    return items;
+  /** Lightweight analytics derived from already-loaded items — no extra Firestore reads */
+  const analytics: Analytics = useMemo(() => {
+    const uniqueClients = new Set(items.map(a => a.clientName));
+    const totalAssessments = items.reduce(
+      (sum, a) => sum + ((a as Record<string, unknown>).assessmentCount as number || 1), 0
+    );
+    return { totalClients: uniqueClients.size, totalAssessments };
   }, [items]);
 
   return {
@@ -272,8 +259,6 @@ export function useAssessmentList({
     visibleAssessmentsCount,
     hasMore,
     loadingMore,
-    recentChanges,
-    filtered,
     loadMoreAssessments,
   };
 }

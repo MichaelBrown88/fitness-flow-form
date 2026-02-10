@@ -38,7 +38,7 @@ interface UsePoseDetectionResult {
 }
 
 interface UsePoseDetectionOptions {
-  mode: 'posture' | 'inbody';
+  mode: 'posture' | 'bodycomp';
   isAuthorized: boolean;
   viewIdx: number;
   isWaitingForPosition: boolean;

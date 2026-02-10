@@ -1,21 +1,16 @@
 /**
  * Onboarding Page
- * 
- * Multi-step onboarding flow for new users and organizations.
- * Uses useOnboarding hook for all logic and state management.
+ *
+ * Simplified 4-step flow:
+ *   0 Account  ->  1 Business  ->  2 Equipment  ->  3 Plan  ->  Success
  */
 
 import { useOnboarding } from '@/hooks/useOnboarding';
 import {
   OnboardingLayout,
-  WelcomeStep,
   IdentityStep,
   BusinessInfoStep,
-  LocationStep,
-  MarketingStep,
-  BrandingStep,
   EquipmentStep,
-  TeamSetupStep,
   PackageSelectionStep,
   OnboardingSuccess,
 } from '@/components/onboarding';
@@ -28,33 +23,26 @@ export default function Onboarding() {
     saving,
     savingMessage,
     loading,
+    identityError,
     onboardingData,
-    handleWelcomeNext,
     handleIdentityNext,
     handleBusinessNext,
-    handleLocationNext,
-    handleMarketingNext,
-    handleBrandingNext,
     handleEquipmentNext,
-    handleTeamSetupNext,
     handleCapacityNext,
     handleBack,
-    handleBypassOnboarding,
-    getCurrentStep,
-    getSubscriptionPlan,
   } = useOnboarding();
 
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F5F5F7]">
-        <div className="animate-pulse text-slate-500">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="animate-pulse text-slate-400 text-sm">Loading...</div>
       </div>
     );
   }
 
   // Success state
-  if (isComplete || step === 8) {
+  if (isComplete || step >= 4) {
     return (
       <OnboardingLayout currentStep={-1} onBack={undefined}>
         <OnboardingSuccess businessName={onboardingData.businessProfile?.name || 'Your Business'} />
@@ -67,8 +55,8 @@ export default function Onboarding() {
     return (
       <OnboardingLayout currentStep={-1} onBack={undefined}>
         <div className="flex flex-col items-center justify-center py-16">
-          <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4" />
-          <p className="text-slate-500">{savingMessage}</p>
+          <div className="w-10 h-10 border-3 border-slate-200 border-t-slate-900 rounded-full animate-spin mb-4" />
+          <p className="text-sm text-slate-500">{savingMessage}</p>
         </div>
       </OnboardingLayout>
     );
@@ -78,16 +66,14 @@ export default function Onboarding() {
   const renderStep = () => {
     switch (step) {
       case 0:
-        return <WelcomeStep onNext={handleWelcomeNext} />;
-      case 1:
         return (
           <IdentityStep
             data={onboardingData.identity}
             onNext={handleIdentityNext}
-            error={savingMessage && savingMessage.includes('email') ? savingMessage : null}
+            error={identityError}
           />
         );
-      case 2:
+      case 1:
         return (
           <BusinessInfoStep
             data={onboardingData.businessProfile}
@@ -95,32 +81,7 @@ export default function Onboarding() {
             onBack={handleBack}
           />
         );
-      case 3:
-        return (
-          <LocationStep
-            data={onboardingData.businessProfile}
-            onNext={handleLocationNext}
-            onBack={handleBack}
-          />
-        );
-      case 4:
-        return (
-          <MarketingStep
-            data={onboardingData.marketing}
-            onNext={handleMarketingNext}
-            onBack={handleBack}
-          />
-        );
-      case 5:
-        return (
-          <BrandingStep
-            data={onboardingData.branding}
-            companyName={onboardingData.businessProfile?.name}
-            onNext={handleBrandingNext}
-            onBack={handleBack}
-          />
-        );
-      case 6:
+      case 2:
         return (
           <EquipmentStep
             data={onboardingData.equipment}
@@ -128,16 +89,7 @@ export default function Onboarding() {
             onBack={handleBack}
           />
         );
-      case 7:
-        return (
-          <TeamSetupStep
-            data={onboardingData.teamSetup}
-            subscriptionPlan={getSubscriptionPlan()}
-            onNext={handleTeamSetupNext}
-            onBack={handleBack}
-          />
-        );
-      case 8:
+      case 3:
         return (
           <PackageSelectionStep
             data={onboardingData.branding}
@@ -154,9 +106,8 @@ export default function Onboarding() {
   return (
     <ErrorBoundary>
       <OnboardingLayout
-        currentStep={getCurrentStep()}
+        currentStep={step}
         onBack={step > 0 ? handleBack : undefined}
-        onBypass={handleBypassOnboarding}
       >
         {renderStep()}
       </OnboardingLayout>

@@ -40,7 +40,7 @@ export const phaseP2: PhaseDefinition = {
         { id: 'calfLeftCm' as keyof FormData, type: 'number' as FieldType, label: ASSESSMENT_LABELS.P2.calfLeftCm, side: 'left', pairId: 'calf-circumference', placeholder: ASSESSMENT_PLACEHOLDERS.P2.calfLeftCm, tooltip: ASSESSMENT_TOOLTIPS.P2.calfLeftCm },
         { id: 'calfRightCm' as keyof FormData, type: 'number' as FieldType, label: ASSESSMENT_LABELS.P2.calfRightCm, side: 'right', pairId: 'calf-circumference', placeholder: ASSESSMENT_PLACEHOLDERS.P2.calfRightCm, tooltip: ASSESSMENT_TOOLTIPS.P2.calfRightCm },
 
-        // Body Composition - Analyzer Fields (InBody/DEXA)
+        // Body Composition - Analyzer Fields (body composition analyser)
         {
           id: 'inbodyScore' as keyof FormData,
           type: 'number' as FieldType,

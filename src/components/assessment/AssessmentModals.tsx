@@ -1,7 +1,7 @@
 import React from 'react';
 import { CameraCapture } from '@/components/camera/CameraCapture';
 import { PostureCompanionModal } from '@/components/camera/PostureCompanionModal';
-import { InBodyCompanionModal } from '@/components/camera/InBodyCompanionModal';
+import { BodyCompCompanionModal } from '@/components/camera/BodyCompCompanionModal';
 import { OcrReviewDialog } from './OcrReviewDialog';
 import { Loader2 } from 'lucide-react';
 import type { FormData } from '@/contexts/FormContext';
@@ -16,9 +16,9 @@ interface AssessmentModalsProps {
   setShowPostureCompanion: (show: boolean) => void;
   handlePostureCompanionComplete: (data: PostureCompanionData) => void;
   
-  showInBodyCompanion: boolean;
-  setShowInBodyCompanion: (show: boolean) => void;
-  handleInBodyCompanionComplete: (data: Partial<FormData>) => void;
+  showBodyCompCompanion: boolean;
+  setShowBodyCompCompanion: (show: boolean) => void;
+  handleBodyCompCompanionComplete: (data: Partial<FormData>) => void;
   
   postureStep: number;
   setPostureStep: React.Dispatch<React.SetStateAction<number>>;
@@ -37,9 +37,9 @@ export const AssessmentModals = ({
   showPostureCompanion,
   setShowPostureCompanion,
   handlePostureCompanionComplete,
-  showInBodyCompanion,
-  setShowInBodyCompanion,
-  handleInBodyCompanionComplete,
+  showBodyCompCompanion,
+  setShowBodyCompCompanion,
+  handleBodyCompCompanionComplete,
   postureStep,
   setPostureStep,
   isProcessingOcr,
@@ -70,14 +70,14 @@ export const AssessmentModals = ({
         onComplete={handlePostureCompanionComplete}
       />
 
-      {/* InBody Companion Modal */}
-      <InBodyCompanionModal 
-        isOpen={showInBodyCompanion}
-        onClose={() => setShowInBodyCompanion(false)}
+      {/* Body Comp Companion Modal */}
+      <BodyCompCompanionModal 
+        isOpen={showBodyCompCompanion}
+        onClose={() => setShowBodyCompCompanion(false)}
         onStartDirectScan={() => {
           setShowCamera('ocr');
         }}
-        onComplete={handleInBodyCompanionComplete}
+        onComplete={handleBodyCompCompanionComplete}
       />
 
       {/* OCR Processing Overlay */}
@@ -92,9 +92,9 @@ export const AssessmentModals = ({
               </div>
             </div>
             <div className="space-y-4">
-              <h4 className="text-xl font-black uppercase tracking-widest text-white">Gemini AI</h4>
+              <h4 className="text-xl font-black uppercase tracking-widest text-white">Reading Report</h4>
               <p className="text-white/50 text-sm font-medium leading-relaxed">
-                Extracting 15+ data points from your scan...
+                Reading your report...
               </p>
             </div>
           </div>

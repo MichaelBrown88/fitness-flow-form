@@ -32,8 +32,8 @@ function isHeadPitchDeviation(analysis: PostureAnalysisResult): boolean {
  * Check if hip alignment is a deviation (side views - forward/behind plumb)
  */
 function isHipPositionDeviation(analysis: PostureAnalysisResult): boolean {
-  // For side views, check if hip is forward or behind
-  const hipStatus = analysis.hip_alignment?.status;
+  // For side views, AI may return 'Forward' / 'Behind' outside the strict union
+  const hipStatus = analysis.hip_alignment?.status as string | undefined;
   return hipStatus === 'Forward' || hipStatus === 'Behind';
 }
 

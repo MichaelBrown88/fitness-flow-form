@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Sparkles, ChevronDown, Menu, Building2 } from 'lucide-react';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -95,7 +96,7 @@ export default function AppShell({
                 variant="ghost"
                 size="icon"
                 onClick={onMenuToggle}
-                className="lg:hidden h-8 w-8 sm:h-9 sm:w-9 text-slate-500"
+                className="lg:hidden h-10 w-10 sm:h-9 sm:w-9 text-slate-500"
               >
                 <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
@@ -144,6 +145,7 @@ export default function AppShell({
             
             <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
               {actions ? <div className="flex gap-1 sm:gap-2">{actions}</div> : null}
+              {user && <NotificationBell />}
               {!loading && (
                 user ? (
                   <DropdownMenu>
@@ -153,7 +155,7 @@ export default function AppShell({
                         className="flex items-center gap-1 sm:gap-2 rounded-full border border-slate-200 bg-white p-0.5 sm:p-1 hover:border-slate-300 transition-colors"
                       >
                         <span 
-                          className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full text-[10px] sm:text-xs font-bold text-white shadow-sm gradient-bg"
+                          className="flex h-9 w-9 sm:h-8 sm:w-8 items-center justify-center rounded-full text-[11px] sm:text-xs font-bold text-white shadow-sm gradient-bg"
                         >
                           {initials}
                         </span>

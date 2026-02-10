@@ -20,9 +20,10 @@ interface MovementPostureMobilityProps {
   formData?: FormData;
   scores: ScoreSummary;
   standalone?: boolean;
+  hideHeader?: boolean;
 }
 
-export function MovementPostureMobility({ formData, scores, standalone = false }: MovementPostureMobilityProps) {
+export function MovementPostureMobility({ formData, scores, standalone = false, hideHeader }: MovementPostureMobilityProps) {
   const { toast } = useToast();
   const { profile } = useAuth();
   const [isReanalyzing, setIsReanalyzing] = useState(false);
@@ -68,7 +69,7 @@ export function MovementPostureMobility({ formData, scores, standalone = false }
     }
   };
   
-  const movement = scores.categories.find(c => c.id === 'movementQuality') || { score: 0, strengths: [], weaknesses: [] };
+  const movement = scores.categories.find(c => c.id === 'movementQuality') || { score: 0, strengths: [] as string[], weaknesses: [] as string[] };
   
   // Get posture images from various possible locations
   // Priority: postureImages (compressed with overlays) > postureImagesStorage (full size with overlays) > postureImagesFull_* (full size)
@@ -405,14 +406,16 @@ export function MovementPostureMobility({ formData, scores, standalone = false }
   
   return (
     <section className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-gradient-light text-zinc-900 rounded-lg">
-          <Activity className="w-5 h-5" />
+      {!hideHeader && (
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-light text-zinc-900 rounded-lg">
+            <Activity className="w-5 h-5" />
+          </div>
+          <h3 className="text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">
+            Posture, Movement & Mobility
+          </h3>
         </div>
-        <h3 className="text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">
-          Posture, Movement & Mobility
-        </h3>
-      </div>
+      )}
       
       {/* Posture Analysis - Full Width */}
             {hasPostureImages && hasPostureAnalysis && (
@@ -482,11 +485,11 @@ export function MovementPostureMobility({ formData, scores, standalone = false }
             
             {movementWeaknesses.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-2">Focus Areas</p>
+                <p className="text-xs font-semibold text-score-amber-fg uppercase tracking-wide mb-2">Focus Areas</p>
                 <ul className="space-y-2">
                   {movementWeaknesses.map((weakness, idx) => (
                     <li key={idx} className="text-sm text-zinc-600 flex items-start gap-2">
-                      <AlertCircle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                      <AlertCircle className="w-4 h-4 text-score-amber mt-0.5 shrink-0" />
                       <span>{weakness}</span>
                     </li>
                   ))}
@@ -531,11 +534,11 @@ export function MovementPostureMobility({ formData, scores, standalone = false }
             
             {finalMobilityFocusAreas.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-2">Focus Areas</p>
+                <p className="text-xs font-semibold text-score-amber-fg uppercase tracking-wide mb-2">Focus Areas</p>
                 <ul className="space-y-2">
                   {finalMobilityFocusAreas.map((finding, idx) => (
                     <li key={idx} className="text-sm text-zinc-600 flex items-start gap-2">
-                      <AlertCircle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                      <AlertCircle className="w-4 h-4 text-score-amber mt-0.5 shrink-0" />
                       <span className="leading-relaxed">{finding}</span>
                     </li>
                   ))}

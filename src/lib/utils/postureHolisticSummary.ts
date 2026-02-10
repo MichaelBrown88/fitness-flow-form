@@ -256,16 +256,16 @@ export function generateHolisticSummary(
  * Get severity color class based on number of patterns found
  */
 export function getSeverityColor(patternCount: number): string {
-  if (patternCount === 0) return 'text-green-600';
-  if (patternCount === 1) return 'text-amber-600';
-  return 'text-red-600';
+  if (patternCount === 0) return 'text-score-green-fg';
+  if (patternCount === 1) return 'text-score-amber-fg';
+  return 'text-score-red-fg';
 }
 
 /**
  * Get severity background class
  */
 export function getSeverityBgClass(patternCount: number): string {
-  if (patternCount === 0) return 'bg-green-50 border-green-200';
-  if (patternCount === 1) return 'bg-amber-50 border-amber-200';
-  return 'bg-red-50 border-red-200';
+  if (patternCount === 0) return 'bg-score-green-light border-score-green-muted';
+  if (patternCount === 1) return 'bg-score-amber-light border-score-amber-muted';
+  return 'bg-score-red-light border-score-red-muted';
 }

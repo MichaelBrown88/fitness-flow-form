@@ -75,37 +75,14 @@ export function shouldShowField(
                           manualMeasurementFields.includes(fieldId);
 
   if (isBodyCompField) {
-    // Get user's selected method
-    const selectedMethod = formData?.bodyCompMethod;
-    
-    // If no method selected yet, hide all fields except height/weight (selection buttons will be shown)
-    if (!selectedMethod) {
-      // Height and weight are always shown (needed for BMI)
-      return fieldId === 'heightCm' || fieldId === 'inbodyWeightKg';
+    // Analyzer fields: always shown by default (analyzer is the default method)
+    if (analyzerFields.includes(fieldId)) {
+      return true;
     }
     
-    // Show fields based on selected method (either/or, not both)
-    if (selectedMethod === 'measurements') {
-      // Only show body measurement fields (height/weight always shown)
-      return manualMeasurementFields.includes(fieldId) || fieldId === 'heightCm' || fieldId === 'inbodyWeightKg';
-    } else if (selectedMethod === 'analyzer') {
-      // Only show analyzer fields (height/weight always shown)
-      if (analyzerFields.includes(fieldId)) {
-        if (equipmentConfig.bodyComposition.enabled === true) {
-          // Equipment enabled: show analyzer fields
-          return true;
-        } else {
-          // Equipment disabled: show analyzer fields if client brought report (button was used or data exists)
-          const hasAnalyzerFlag = formData?.showAnalyzerFields === 'yes';
-          const hasAnalyzerData = formData?.inbodyScore || formData?.inbodyBodyFatPct || formData?.skeletalMuscleMassKg;
-          if (hasAnalyzerFlag || hasAnalyzerData) {
-            return true;
-          }
-          return false; // Hide analyzer fields until scan button is used
-        }
-      }
-      // Hide measurement fields when analyzer method is selected (but keep height/weight)
-      return fieldId === 'heightCm' || fieldId === 'inbodyWeightKg';
+    // Manual measurement fields: only shown when coach opts in via "Add Body Measurements"
+    if (manualMeasurementFields.includes(fieldId)) {
+      return formData?.showBodyMeasurements === 'yes';
     }
   }
 

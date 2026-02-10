@@ -1,10 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useFormContext, type FormData } from '@/contexts/FormContext';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Scan, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
+import { Camera, ChevronLeft, ChevronRight, Ruler } from 'lucide-react';
 import { type PhaseField, type PhaseSection } from '@/lib/phaseConfig';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { shouldShowField } from '@/lib/utils/equipmentFieldFilter';
@@ -25,7 +24,7 @@ interface SingleFieldFlowProps {
   onComplete: () => void;
   onShowCamera?: (mode: 'ocr' | 'posture') => void;
   onShowPostureCompanion?: () => void;
-  onShowInBodyCompanion?: () => void;
+  onShowBodyCompCompanion?: () => void;
   onGoToPreviousSection?: () => void;
 }
 
@@ -36,13 +35,12 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
   onComplete,
   onShowCamera,
   onShowPostureCompanion,
-  onShowInBodyCompanion,
+  onShowBodyCompCompanion,
   onGoToPreviousSection
 }) => {
   const { formData, updateFormData } = useFormContext();
   const { orgSettings } = useAuth();
   const isMobile = useIsMobile();
-  const [showInBodyOptions, setShowInBodyOptions] = useState(false);
 
   // Filter visible fields and group paired ones
   const steps = useMemo(() => {
@@ -128,8 +126,37 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
 
   if (!currentStep) return null;
 
+  // ── PAR-Q bypass: the component manages its own multi-step flow ─
+  const isParQField = currentStep.length === 1 && currentStep[0].type === 'parq';
+  if (isParQField) {
+    return (
+      <FieldControl
+        field={currentStep[0]}
+        onShowCamera={onShowCamera}
+        onShowPostureCompanion={onShowPostureCompanion}
+        onShowBodyCompCompanion={onShowBodyCompCompanion}
+        onExitParQ={handleBack}
+        onParQComplete={onComplete}
+      />
+    );
+  }
+
   const movementPattern = currentStep[0].pattern;
-  const isParqField = currentStep.some(f => f.type === 'parq') || section.id === 'parq';
+  const isBodyCompSection = section.id === 'body-comp';
+
+  // Check if all fields in this step share the same side (for group-level badge)
+  const sharedSide = currentStep.length > 1 && currentStep.every(f => f.side && f.side === currentStep[0].side)
+    ? currentStep[0].side
+    : null;
+
+  // Auto-photo helper for body comp: launches camera or phone companion
+  const handleSnapPhoto = () => {
+    if (!isMobile && onShowBodyCompCompanion) {
+      onShowBodyCompCompanion();
+    } else {
+      onShowCamera?.('ocr');
+    }
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
@@ -137,165 +164,91 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
       <div className="space-y-2">
         <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400">
           <span>{section.title} Progress</span>
-          {(!isParqField || formData.parqQuestionnaire === 'completed') && <span>{activeFieldIdx + 1} of {steps.length}</span>}
+          <span>{activeFieldIdx + 1} of {steps.length}</span>
         </div>
-        {(!isParqField || formData.parqQuestionnaire === 'completed') && <Progress value={((activeFieldIdx + 1) / steps.length) * 100} className="h-1" />}
+        <Progress value={((activeFieldIdx + 1) / steps.length) * 100} className="h-1" />
       </div>
 
       <div className="bg-white rounded-3xl p-8 lg:p-10 shadow-xl shadow-primary/10 border border-primary/5 min-h-[400px] flex flex-col justify-center relative">
 
         {movementPattern && (
-          <div className="mb-6 flex items-center justify-between">
+          <div className="mb-6 flex items-center gap-2">
             <span className="px-3 py-1 bg-brand-light text-primary rounded-full text-[10px] font-black uppercase tracking-[0.2em] border border-primary/10">
               {movementPattern}
             </span>
-          </div>
-        )}
-
-        {/* Body Composition Method Selection - Show at start of body-comp section */}
-        {section.id === 'body-comp' && !formData.bodyCompMethod && (
-          <div className="mb-8 space-y-4">
-            <h3 className="text-xl font-bold text-slate-900 mb-4">Choose Assessment Method</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Button
-                onClick={() => updateFormData({ bodyCompMethod: 'measurements' })}
-                className="h-24 rounded-2xl border-2 border-primary/20 hover:bg-brand-light hover:border-primary/40 transition-all flex flex-col items-center justify-center gap-2"
-              >
-                <div className="text-2xl">📏</div>
-                <div className="font-bold text-sm">Body Measurements</div>
-                <div className="text-xs text-slate-600 font-medium">Tape measure method</div>
-              </Button>
-              <Button
-                onClick={() => updateFormData({ bodyCompMethod: 'analyzer' })}
-                className="h-24 rounded-2xl border-2 border-primary/20 hover:bg-brand-light hover:border-primary/40 transition-all flex flex-col items-center justify-center gap-2"
-              >
-                <div className="text-2xl">📊</div>
-                <div className="font-bold text-sm">Body Composition Analysis</div>
-                <div className="text-xs text-slate-600 font-medium">Analyzer report method</div>
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Show fields only if method is selected */}
-        {section.id === 'body-comp' && formData.bodyCompMethod && (
-          <>
-            <div className={`grid gap-8 ${currentStep.length > 1 ? 'md:grid-cols-2' : 'grid-cols-1'}`}>
-              {currentStep.map(field => (
-                <div key={field.id} className="space-y-4">
-                  {field.side && (
-                    <span className={`text-[10px] font-black uppercase tracking-widest ${field.side === 'left' ? 'text-emerald-500' : 'text-primary'}`}>
-                      {field.side} Side
-                    </span>
-                  )}
-                  <FieldControl
-                    field={field}
-                    onShowCamera={onShowCamera}
-                    onShowPostureCompanion={onShowPostureCompanion}
-                    onShowInBodyCompanion={onShowInBodyCompanion}
-                    onExitParQ={handleBack}
-                  />
-                </div>
-              ))}
-            </div>
-
-            {/* Body Comp Analysis Report Button - Only show for analyzer method */}
-            {formData.bodyCompMethod === 'analyzer' && onShowCamera && (
-              <div className="mt-8 pt-6 border-t border-slate-100">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setShowInBodyOptions(true)}
-                  className="w-full h-14 rounded-xl border-primary/20 text-primary hover:bg-brand-light font-bold gap-2"
-                >
-                  <FileText className="h-5 w-5" />
-                  Body Comp Analysis Report
-                </Button>
-                
-                {/* Options Dialog */}
-                <Dialog open={showInBodyOptions} onOpenChange={setShowInBodyOptions}>
-                  <DialogContent className="max-w-md rounded-3xl">
-                    <DialogHeader>
-                      <DialogTitle className="text-xl font-black">Body Comp Analysis Report</DialogTitle>
-                      <DialogDescription>
-                        Choose how you want to enter the analyzer data
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-3 py-4">
-                      <Button
-                        onClick={() => {
-                          // Set flag to show analyzer fields for manual entry
-                          updateFormData({ showAnalyzerFields: 'yes' });
-                          setShowInBodyOptions(false);
-                        }}
-                        className="w-full h-16 rounded-2xl bg-primary text-white font-bold gap-3 justify-start px-6"
-                      >
-                        <FileText className="h-5 w-5" />
-                        <div className="text-left">
-                          <div className="font-black text-sm">Manual Entry</div>
-                          <div className="text-xs opacity-90">Enter values from the report manually</div>
-                        </div>
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          setShowInBodyOptions(false);
-                          // On desktop/iPad: show companion modal for iPhone handoff
-                          // On mobile: use direct camera
-                          if (!isMobile && onShowInBodyCompanion) {
-                            onShowInBodyCompanion();
-                          } else {
-                            onShowCamera?.('ocr');
-                          }
-                        }}
-                        variant="outline"
-                        className="w-full h-16 rounded-2xl border-2 border-primary/20 hover:bg-brand-light gap-3 justify-start px-6"
-                      >
-                        <Scan className="h-5 w-5 text-primary" />
-                        <div className="text-left">
-                          <div className="font-black text-sm text-slate-900">Scan Report</div>
-                          <div className="text-xs text-slate-600">Use OCR to automatically extract data</div>
-                        </div>
-                      </Button>
-                    </div>
-                    <DialogFooter>
-                      <Button variant="ghost" onClick={() => setShowInBodyOptions(false)}>
-                        Cancel
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </div>
+            {sharedSide && (
+              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border ${
+                sharedSide === 'left'
+                  ? 'bg-score-green-light text-score-green-fg border-score-green-muted'
+                  : 'bg-primary/10 text-primary border-primary/10'
+              }`}>
+                {sharedSide} Side
+              </span>
             )}
-          </>
-        )}
-
-        {/* For non-body-comp sections, show fields normally */}
-        {section.id !== 'body-comp' && (
-          <div className={`grid gap-8 ${currentStep.length > 1 ? 'md:grid-cols-2' : 'grid-cols-1'}`}>
-            {currentStep.map(field => (
-              <div key={field.id} className="space-y-4">
-                {field.side && (
-                  <span className={`text-[10px] font-black uppercase tracking-widest ${field.side === 'left' ? 'text-emerald-500' : 'text-primary'}`}>
-                    {field.side} Side
-                  </span>
-                )}
-                <FieldControl
-                  field={field}
-                  onShowCamera={onShowCamera}
-                  onShowPostureCompanion={onShowPostureCompanion}
-                  onShowInBodyCompanion={onShowInBodyCompanion}
-                  onExitParQ={handleBack}
-                />
-              </div>
-            ))}
           </div>
         )}
 
-        {( !isParqField || formData.parqQuestionnaire === 'completed' ) && (
+        {/* Body comp: inline "Snap a Photo" button above fields */}
+        {isBodyCompSection && onShowCamera && (
+          <div className="mb-6 flex flex-wrap items-center gap-2">
+            <Button
+              onClick={handleSnapPhoto}
+              className="h-10 px-5 rounded-xl bg-primary text-white font-bold gap-2 text-sm hover:brightness-110"
+            >
+              <Camera className="h-4 w-4" />
+              Snap a Photo
+            </Button>
+            <span className="text-xs text-slate-400">Take a photo of the report and we'll fill in the numbers</span>
+          </div>
+        )}
+
+        {/* Fields — 2-col for pairs of 2, stacked for 3+ (observation checklists) */}
+        <div className={`grid gap-6 ${
+          currentStep.length === 2 ? 'md:grid-cols-2' : 'grid-cols-1'
+        }`}>
+          {currentStep.map(field => (
+            <div key={field.id} className="space-y-3">
+              {/* Show per-field side badge only when NOT using a group-level side indicator */}
+              {field.side && !sharedSide && (
+                <span className={`text-[10px] font-black uppercase tracking-widest ${field.side === 'left' ? 'text-score-green-fg' : 'text-primary'}`}>
+                  {field.side} Side
+                </span>
+              )}
+              <FieldControl
+                field={field}
+                onShowCamera={onShowCamera}
+                onShowPostureCompanion={onShowPostureCompanion}
+                onShowBodyCompCompanion={onShowBodyCompCompanion}
+                onExitParQ={handleBack}
+              />
+            </div>
+          ))}
+        </div>
+
+        {/* Body comp: optional "Add Body Measurements" toggle at bottom */}
+        {isBodyCompSection && isLastField && (
+          <div className="mt-6 pt-4 border-t border-slate-100">
+            {formData.showBodyMeasurements !== 'yes' ? (
+              <Button
+                variant="ghost"
+                onClick={() => updateFormData({ showBodyMeasurements: 'yes' })}
+                className="h-9 px-4 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-600 gap-2"
+              >
+                <Ruler className="h-3.5 w-3.5" />
+                Add Body Measurements (optional)
+              </Button>
+            ) : (
+              <p className="text-[10px] text-slate-400 font-medium">Body measurements are included below.</p>
+            )}
+          </div>
+        )}
+
+        {/* Navigation */}
         <div className="flex items-center justify-between mt-12 pt-8 border-t border-slate-50">
           <Button
             variant="ghost"
             onClick={handleBack}
-              disabled={activeFieldIdx === 0 && !onGoToPreviousSection}
+            disabled={activeFieldIdx === 0 && !onGoToPreviousSection}
             className="h-12 px-6 rounded-xl font-bold text-slate-400 hover:text-slate-900"
           >
             <ChevronLeft className="mr-2 h-5 w-5" />
@@ -304,9 +257,9 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
 
           <Button
             onClick={handleNext}
-              disabled={!hasValue && currentStep.some(f => f.required)}
+            disabled={!hasValue && currentStep.some(f => f.required)}
             className={`h-12 px-8 rounded-xl font-bold transition-all ${
-                hasValue || !currentStep.some(f => f.required)
+              hasValue || !currentStep.some(f => f.required)
                 ? 'bg-slate-900 text-white hover:bg-slate-800'
                 : 'bg-slate-100 text-slate-400 cursor-not-allowed'
             }`}
@@ -315,7 +268,6 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
             <ChevronRight className="ml-2 h-5 w-5" />
           </Button>
         </div>
-        )}
       </div>
     </div>
   );

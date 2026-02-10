@@ -18,77 +18,46 @@ export interface IdentityData {
   firstName: string;
   lastName: string;
   email: string;
-  phone: string;
   password: string;
-  confirmPassword: string;
   acceptedTerms: boolean;
 }
 
-// Business profile data (Step 2)
+// Business profile data (Step 2) - name, type, and coaching role
 export interface BusinessProfileData {
   name: string;
   type: BusinessType;
-  businessAge?: 'new' | 'growing' | 'established';
-  address: string;
-  city?: string;
-  state?: string;
-  zip?: string;
-  website?: string;
-  instagram?: string;
+  /** Does the admin also coach clients directly? Auto-true for solo_coach. */
+  isActiveCoach?: boolean;
 }
 
-// Marketing data (Step 4)
-export interface MarketingData {
-  referralSource?: string;
-  primaryGoal?: string;
-}
-
-// Branding config (Step 5)
-export interface BrandingConfig {
-  gradientId: string; // References gradient system - maps to brand color
-  clientSeats: number; // Number of client seats needed (from Step 7)
-  logoFile?: File; // Logo file for upload (optional - added later)
-}
-
-// Equipment config (Step 6) - Simplified to match new UI
+// Equipment config (Step 3) - what physical equipment the gym has
 export interface EquipmentConfig {
   scanner: boolean; // BIA Scanner
   treadmill: boolean; // Cardio Equipment
   dynamometer: boolean; // Grip strength
   // Mapped to OrgSettings.equipmentConfig format when saving
-  bodyCompositionMethod?: 'inbody' | 'dexa' | 'bodpod' | 'skinfold' | 'bioimpedance' | 'measurements' | 'none';
+  bodyCompositionMethod?: 'bioimpedance' | 'dexa' | 'bodpod' | 'skinfold' | 'measurements' | 'none';
   skinfoldMethod?: 'jackson-pollock-7' | 'jackson-pollock-3' | 'durnin-womersley-4';
   gripStrengthEnabled?: boolean;
   gripStrengthMethod?: 'dynamometer' | 'none';
 }
 
-// Team setup data (Step 4)
-export interface TeamSetupData {
-  coachEmails: string[];
-  skipped: boolean;
+// Branding config - deferred to Settings, not part of onboarding flow
+export interface BrandingConfig {
+  gradientId: string; // References gradient system - maps to brand color
+  clientSeats: number; // Number of client seats needed (from plan step)
+  logoFile?: File; // Logo file for upload (optional - added later in Settings)
 }
 
-// Full onboarding data (new 8-step flow)
+// Full onboarding data (simplified 4-step flow)
 export interface OnboardingData {
   identity: IdentityData;
   businessProfile: BusinessProfileData;
-  marketing: MarketingData;
-  branding: BrandingConfig;
   equipment: EquipmentConfig;
-  teamSetup?: TeamSetupData; // Optional, not in the new flow
+  branding: BrandingConfig; // Only clientSeats used during onboarding; gradientId gets a default
 }
 
-// Onboarding status tracking
-export interface OnboardingStatus {
-  currentStep: number;
-  businessInfoCompleted: boolean;
-  brandingCompleted: boolean;
-  equipmentCompleted: boolean;
-  teamSetupCompleted: boolean; // or skipped
-  completedAt?: Date;
-}
-
-// Onboarding session (for persistence)
+// Onboarding session (for mid-flow persistence)
 export interface OnboardingSession {
   userId: string;
   organizationId: string;
@@ -113,23 +82,23 @@ export interface OrganizationProfile {
   id: string;
   name: string;
   type: BusinessType;
-  address: string;
-  phone: string;
-  website?: string;
-  logoUrl?: string;
-  gradientId: string;
   subscription: Subscription;
   onboardingCompletedAt?: Date;
   createdAt: Date;
+  // Location, branding, logo etc. are optional — configured in Settings
+  address?: string;
+  phone?: string;
+  website?: string;
+  logoUrl?: string;
+  gradientId?: string;
 }
 
 // Body composition methods - simplified to match actual app
 export const BODY_COMPOSITION_METHODS = [
-  { value: 'inbody', label: 'InBody Scanner', description: 'Bioelectrical impedance body composition analyzer' },
+  { value: 'bioimpedance', label: 'Bio-Impedance Analyser', description: 'Bioelectrical impedance body composition analyzer (InBody, Evolt, Tanita, smart scales)' },
   { value: 'dexa', label: 'DEXA Scan', description: 'Dual-energy X-ray absorptiometry' },
   { value: 'bodpod', label: 'BodPod', description: 'Air displacement plethysmography' },
   { value: 'skinfold', label: 'Skinfold Calipers', description: 'Manual body fat measurement' },
-  { value: 'bioimpedance', label: 'Basic Bioimpedance Scale', description: 'Consumer-grade smart scale' },
   { value: 'measurements', label: 'Tape Measurements Only', description: 'Circumference measurements only' },
   { value: 'none', label: 'Skip Body Composition', description: 'I don\'t offer body composition testing' },
 ] as const;
@@ -179,13 +148,10 @@ export const BUSINESS_TYPES = [
   },
 ] as const;
 
-// Onboarding steps configuration (matches the new 8-step flow)
+// Onboarding steps configuration (simplified 4-step flow + success)
 export const ONBOARDING_STEPS = [
-  { id: 'identity', label: 'Identity', description: 'Your basic information' },
+  { id: 'account', label: 'Account', description: 'Create your account' },
   { id: 'business', label: 'Business', description: 'Tell us about your facility' },
-  { id: 'location', label: 'Location', description: 'Where are you located' },
-  { id: 'marketing', label: 'Marketing', description: 'How did you find us' },
-  { id: 'branding', label: 'Branding', description: 'Customize your look' },
-  { id: 'equipment', label: 'Equipment', description: 'Configure protocols' },
-  { id: 'capacity', label: 'Capacity', description: 'Select your plan' },
+  { id: 'equipment', label: 'Equipment', description: 'Configure your protocols' },
+  { id: 'plan', label: 'Plan', description: 'Choose your plan' },
 ] as const;

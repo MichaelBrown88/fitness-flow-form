@@ -13,7 +13,7 @@
  * The cadence engine's score-adjusted intervals are ignored here;
  * only base clinical intervals and coach manual overrides are used.
  *
- * Pillars: InBody, Posture, Fitness, Strength, Lifestyle
+ * Pillars: Body Comp, Posture, Fitness, Strength, Lifestyle
  */
 
 import { useMemo } from 'react';
@@ -25,7 +25,7 @@ import { BASE_CADENCE_INTERVALS } from '@/types/client';
 // ── Types ────────────────────────────────────────────────────────────
 
 export type ReassessmentType =
-  | 'inbody'
+  | 'bodycomp'
   | 'posture'
   | 'fitness'
   | 'strength'
@@ -63,6 +63,8 @@ export interface ReassessmentItem {
   /** Informational: pillar scores below threshold */
   pillarGaps: { pillar: string; score: number }[];
   hasCustomCadence: boolean;
+  /** UID of the coach who owns this client (for team views) */
+  coachUid?: string | null;
 }
 
 export interface ReassessmentQueueSummary {
@@ -81,13 +83,13 @@ export interface UseReassessmentQueueResult {
 // ── Pillar types that map to actionable partial assessments ──────────
 
 const ACTIONABLE_PILLARS: readonly ReassessmentType[] = [
-  'inbody', 'posture', 'fitness', 'strength', 'lifestyle',
+  'bodycomp', 'posture', 'fitness', 'strength', 'lifestyle',
 ];
 
 // ── Fallback intervals (days) – only used if BASE_CADENCE_INTERVALS missing ──
 
 const FALLBACK_INTERVALS: Record<string, number> = {
-  inbody: 30,
+  bodycomp: 30,
   posture: 45,
   fitness: 45,
   strength: 60,
@@ -139,17 +141,12 @@ function getInterval(
     ?? FALLBACK_INTERVALS.full;
 }
 
+import { getPillarLabel } from '@/constants/pillars';
+
 /** Friendly label for a pillar */
 export function pillarLabel(type: ReassessmentType): string {
-  switch (type) {
-    case 'inbody': return 'InBody';
-    case 'posture': return 'Posture';
-    case 'fitness': return 'Cardio';
-    case 'strength': return 'Strength';
-    case 'lifestyle': return 'Lifestyle';
-    case 'full': return 'Full Assessment';
-    default: return type;
-  }
+  if (type === 'full') return 'Full Assessment';
+  return getPillarLabel(type);
 }
 
 // ── Core logic ───────────────────────────────────────────────────────
@@ -316,6 +313,7 @@ export function useReassessmentQueue(
           mostUrgentPillar,
           pillarGaps,
           hasCustomCadence: !!group.retestSchedule?.custom,
+          coachUid: group.coachUid,
         };
       })
       // Sort: overdue first (most overdue at top) → due soon → up to date

@@ -62,20 +62,14 @@ export const PROGRAM_PHASES = [
   },
 ] as const;
 
+import { scoreGrade, SCORE_COLORS } from '@/lib/scoring/scoreColor';
+import { getPillarLabel } from '@/constants/pillars';
+
 export function circleColor(score: number): string {
-  if (score >= 75) return 'border-green-500 text-green-700';
-  if (score >= 45) return 'border-amber-500 text-amber-700';
-  return 'border-red-500 text-red-700';
+  return SCORE_COLORS[scoreGrade(score)].circle;
 }
 
 export function niceLabel(id: string): string {
-  switch (id) {
-    case 'bodyComp': return 'Body Composition';
-    case 'strength': return 'Functional Strength';
-    case 'cardio': return 'Metabolic Fitness';
-    case 'movementQuality': return 'Movement Quality';
-    case 'lifestyle': return 'Lifestyle Factors';
-    default: return id;
-  }
+  return getPillarLabel(id, 'full');
 }
 

@@ -280,12 +280,12 @@ export function ClientReportGoals({
       )}
 
       {discoveredGoals.length > 0 && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-5 shadow-sm">
-          <h3 className="text-lg font-semibold text-amber-800 mb-3">Goals we discovered from your assessment</h3>
-          <p className="text-sm text-amber-900 mb-3">
+        <div className="rounded-lg border border-score-amber-muted bg-score-amber-light p-5 shadow-sm">
+          <h3 className="text-lg font-semibold text-score-amber-fg mb-3">Goals we discovered from your assessment</h3>
+          <p className="text-sm text-score-amber-bold mb-3">
             Based on your assessment results, we also need to address these areas to put your body in the right state to reach your goals safely:
           </p>
-          <ul className="list-disc pl-5 text-sm text-amber-900 space-y-2">
+          <ul className="list-disc pl-5 text-sm text-score-amber-bold space-y-2">
             {discoveredGoals.map((dg, i) => (
               <li key={i}>{dg}</li>
             ))}

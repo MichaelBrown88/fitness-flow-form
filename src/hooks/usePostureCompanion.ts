@@ -158,7 +158,7 @@ export function usePostureCompanion({
       // Display companion logs for debugging
       if (updatedSession.companionLogs && Array.isArray(updatedSession.companionLogs)) {
         const newLogs = updatedSession.companionLogs.slice(-5);
-        newLogs.forEach((log: { timestamp: any; message: string; level: 'info' | 'warn' | 'error' }) => {
+        newLogs.forEach((log: { timestamp: unknown; message: string; level: 'info' | 'warn' | 'error' }) => {
           const logMethod = log.level === 'error' ? logger.error : log.level === 'warn' ? logger.warn : logger.info;
           logMethod(`[MOBILE ${session.id}] ${log.message}`);
         });

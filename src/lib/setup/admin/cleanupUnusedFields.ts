@@ -174,7 +174,7 @@ async function analyzeFieldUsage(
       const fieldsToRemove: string[] = [];
 
       for (const field of fieldsToCheck) {
-        const value = (formData as Record<string, unknown>)[field];
+        const value = (formData as unknown as Record<string, unknown>)[field];
         const stat = stats.get(field)!;
 
         if (value !== undefined) {

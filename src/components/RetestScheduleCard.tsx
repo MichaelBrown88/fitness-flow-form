@@ -15,6 +15,7 @@ import {
   UserCheck, 
   Heart, 
   Dumbbell,
+  Activity,
   Settings2,
   ChevronDown,
   ChevronUp,
@@ -32,7 +33,7 @@ import {
 import type { ClientProfile, StoredRetestSchedule } from '@/services/clientProfiles';
 import { updateCustomCadence, resetCustomCadence } from '@/services/clientProfiles';
 import type { PillarCadence, CadenceConfig, PartialAssessmentCategory } from '@/types/client';
-import { BASE_CADENCE_INTERVALS, INBODY_HYDRATION_WARNING_THRESHOLD } from '@/types/client';
+import { BASE_CADENCE_INTERVALS, BODY_COMP_HYDRATION_WARNING_THRESHOLD } from '@/types/client';
 
 interface RetestScheduleCardProps {
   profile: ClientProfile | null;
@@ -41,35 +42,43 @@ interface RetestScheduleCardProps {
   onScheduleUpdated?: () => void;
 }
 
+import { getPillarLabel } from '@/constants/pillars';
+import { SCORE_COLORS } from '@/lib/scoring/scoreColor';
+
 /** Pillar display configuration */
 const PILLAR_CONFIG: Record<PartialAssessmentCategory, {
   label: string;
   icon: typeof Scan;
   description: string;
 }> = {
-  inbody: {
-    label: 'InBody',
+  bodycomp: {
+    label: getPillarLabel('bodycomp'),
     icon: Scan,
     description: 'Body composition scan',
   },
   posture: {
-    label: 'Movement',
+    label: getPillarLabel('posture'),
     icon: UserCheck,
     description: 'Posture & movement quality',
   },
   fitness: {
-    label: 'Fitness',
+    label: getPillarLabel('fitness'),
     icon: Heart,
     description: 'Cardiovascular assessment',
   },
   strength: {
-    label: 'Strength',
+    label: getPillarLabel('strength'),
     icon: Dumbbell,
     description: 'Functional strength tests',
   },
+  lifestyle: {
+    label: getPillarLabel('lifestyle'),
+    icon: Activity,
+    description: 'Nutrition, sleep & stress',
+  },
 };
 
-const PILLARS: PartialAssessmentCategory[] = ['inbody', 'posture', 'fitness', 'strength'];
+const PILLARS: PartialAssessmentCategory[] = ['bodycomp', 'posture', 'fitness', 'strength', 'lifestyle'];
 
 /**
  * Get effective cadence for a pillar (custom > recommended > fallback)
@@ -252,11 +261,11 @@ export function RetestScheduleCard({
           <div className="px-6 pb-6 space-y-4">
             {/* Hydration Warning - checks effective interval (custom > recommended > fallback) */}
             {schedule && 
-             getEffectiveCadence('inbody', schedule).intervalDays < INBODY_HYDRATION_WARNING_THRESHOLD && (
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
-                <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                <div className="text-xs text-amber-800">
-                  <span className="font-bold">Hydration Notice:</span> Frequent InBody scanning 
+             getEffectiveCadence('bodycomp', schedule).intervalDays < BODY_COMP_HYDRATION_WARNING_THRESHOLD && (
+              <div className={`p-3 rounded-xl flex items-start gap-3 ${SCORE_COLORS.amber.pill}`}>
+                <AlertTriangle className={`h-4 w-4 mt-0.5 flex-shrink-0 ${SCORE_COLORS.amber.icon}`} />
+                <div className={`text-xs ${SCORE_COLORS.amber.text}`}>
+                  <span className="font-bold">Hydration Notice:</span> Frequent body composition scanning 
                   may reflect hydration changes rather than true body composition shifts. 
                   Look for 4-week trends rather than individual scan results.
                 </div>
@@ -280,17 +289,17 @@ export function RetestScheduleCard({
                       isEditing 
                         ? 'border-primary bg-primary/5' 
                         : nextDue.isOverdue 
-                          ? 'border-rose-200 bg-rose-50/50' 
+                          ? 'border-score-red-muted bg-score-red-light/50' 
                           : 'border-slate-100 bg-slate-50/50'
                     }`}
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${
-                          nextDue.isOverdue ? 'bg-rose-100' : 'bg-primary/10'
+                          nextDue.isOverdue ? 'bg-score-red-muted' : 'bg-primary/10'
                         }`}>
                           <Icon className={`h-4 w-4 ${
-                            nextDue.isOverdue ? 'text-rose-600' : 'text-primary'
+                            nextDue.isOverdue ? 'text-score-red-fg' : 'text-primary'
                           }`} />
                         </div>
                         <div>
@@ -374,9 +383,9 @@ export function RetestScheduleCard({
                         {/* Next Due Status */}
                         <div className={`mt-3 pt-3 border-t text-xs ${
                           nextDue.isOverdue 
-                            ? 'border-rose-200 text-rose-600' 
+                            ? 'border-score-red-muted text-score-red-fg' 
                             : nextDue.daysRemaining <= 7 
-                              ? 'border-amber-200 text-amber-600' 
+                              ? 'border-score-amber-muted text-score-amber-fg' 
                               : 'border-slate-100 text-slate-500'
                         }`}>
                           {nextDue.isOverdue ? (
@@ -394,15 +403,10 @@ export function RetestScheduleCard({
               })}
             </div>
 
-            {/* Schedule Source Info */}
+            {/* Schedule generation date */}
             {schedule && (
-              <div className="pt-3 border-t border-slate-100 text-[10px] text-slate-400 flex items-center justify-between">
-                <span>
-                  Generated: {schedule.generatedAt?.toDate?.()?.toLocaleDateString() || 'Unknown'}
-                </span>
-                <span className="uppercase tracking-wider font-bold">
-                  {cadence => cadence?.priority === 'high' ? 'High Priority' : 'Standard Schedule'}
-                </span>
+              <div className="pt-3 border-t border-slate-100 text-[10px] text-slate-400">
+                Generated: {schedule.generatedAt?.toDate?.()?.toLocaleDateString() || 'Unknown'}
               </div>
             )}
 

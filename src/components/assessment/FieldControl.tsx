@@ -25,16 +25,18 @@ interface FieldControlProps {
   field: PhaseField;
   onShowCamera?: (mode: 'ocr' | 'posture') => void;
   onShowPostureCompanion?: () => void;
-  onShowInBodyCompanion?: () => void;
+  onShowBodyCompCompanion?: () => void;
   onExitParQ?: () => void;
+  onParQComplete?: () => void;
 }
 
 export function FieldControl({
   field,
   onShowCamera,
   onShowPostureCompanion,
-  onShowInBodyCompanion,
-  onExitParQ
+  onShowBodyCompCompanion,
+  onExitParQ,
+  onParQComplete,
 }: FieldControlProps) {
   const isMobile = useIsMobile();
   const {
@@ -182,7 +184,7 @@ export function FieldControl({
           />
         );
       case 'parq':
-        return <ParQQuestionnaire onExitParQ={onExitParQ} />;
+        return <ParQQuestionnaire onExitParQ={onExitParQ} onComplete={onParQComplete} />;
       case 'time':
       case 'date':
       case 'email':
@@ -201,6 +203,11 @@ export function FieldControl({
         );
     }
   };
+
+  // PAR-Q renders its own full sub-flow — skip the wrapper label
+  if (field.type === 'parq') {
+    return <>{renderInput()}</>;
+  }
 
   return (
     <div className="space-y-1">

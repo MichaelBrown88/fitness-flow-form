@@ -8,12 +8,14 @@ interface TimelineSectionProps {
   orderedCats: ScoreCategory[];
   weeksByCategory: Record<string, number>;
   maxWeeks: number;
+  hideHeader?: boolean;
 }
 
 export const TimelineSection: React.FC<TimelineSectionProps> = ({
   orderedCats,
   weeksByCategory,
   maxWeeks,
+  hideHeader,
 }) => {
   const [sessionsPerWeek, setSessionsPerWeek] = useState(3);
 
@@ -21,12 +23,14 @@ export const TimelineSection: React.FC<TimelineSectionProps> = ({
     <section className="w-full min-w-0 overflow-x-hidden">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 md:gap-6 lg:gap-8 mb-6 md:mb-8">
         <div className="lg:col-span-12 flex flex-col">
-          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 mb-2 sm:mb-3 md:mb-4 lg:mb-5 xl:mb-6">
-            <div className="p-1 sm:p-1.5 md:p-2 bg-gradient-light text-zinc-900 rounded-lg">
-              <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
+          {!hideHeader && (
+            <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 mb-2 sm:mb-3 md:mb-4 lg:mb-5 xl:mb-6">
+              <div className="p-1 sm:p-1.5 md:p-2 bg-gradient-light text-zinc-900 rounded-lg">
+                <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
+              </div>
+              <h3 className="text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">Your Timeline</h3>
             </div>
-            <h3 className="text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">Your Timeline</h3>
-          </div>
+          )}
           
           <Card className="p-4 sm:p-5 md:p-6 rounded-2xl overflow-hidden">
             <div className="glass-subtle rounded-xl p-3 sm:p-4 mb-4 sm:mb-5 md:mb-6">

@@ -22,40 +22,40 @@ export function CoachReportInternalNotes({ plan }: CoachReportInternalNotesProps
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
-        <div className="bg-emerald-50 rounded-2xl border border-emerald-100 p-6">
-          <h4 className="text-emerald-800 font-bold mb-4 flex items-center gap-2">
+        <div className="bg-score-green-light rounded-2xl border border-score-green-muted p-6">
+          <h4 className="text-score-green-fg font-bold mb-4 flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5" />
             What they're doing well
           </h4>
           <ul className="space-y-3">
             {plan.internalNotes.doingWell.map((note, i) => (
-              <li key={i} className="text-emerald-900 text-sm flex gap-2">
+              <li key={i} className="text-score-green-bold text-sm flex gap-2">
                 <span className="font-bold">•</span>
                 {note}
               </li>
             ))}
             {plan.internalNotes.doingWell.length === 0 && (
-              <li className="text-emerald-600 text-sm italic">Standard baseline.</li>
+              <li className="text-score-green-fg text-sm italic">Standard baseline.</li>
             )}
           </ul>
         </div>
 
-        <div className="bg-rose-50 rounded-2xl border border-rose-100 p-6">
-          <h4 className="text-rose-800 font-bold mb-4 flex items-center gap-2">
+        <div className="bg-score-red-light rounded-2xl border border-score-red-muted p-6">
+          <h4 className="text-score-red-fg font-bold mb-4 flex items-center gap-2">
             <AlertCircle className="h-5 w-5" />
             Areas to address
           </h4>
           <ul className="space-y-3">
             {plan.keyIssues.map((issue, i) => (
-              <li key={`issue-${i}`} className="text-rose-900 text-sm font-bold flex gap-2">
-                <span className="text-rose-500">!</span>
+              <li key={`issue-${i}`} className="text-score-red-bold text-sm font-bold flex gap-2">
+                <span className="text-score-red">!</span>
                 {issue}
               </li>
             ))}
             {plan.internalNotes.needsAttention.map((note, i) => (
               <li
                 key={`note-${i}`}
-                className="text-rose-900 text-sm flex gap-2 border-t border-rose-100/50 pt-2 first:border-t-0 first:pt-0"
+                className="text-score-red-bold text-sm flex gap-2 border-t border-score-red-muted/50 pt-2 first:border-t-0 first:pt-0"
               >
                 <span className="font-bold">•</span>
                 {note}

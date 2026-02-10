@@ -103,7 +103,7 @@ export function scoreBodyComp(form: FormData, age: number, gender: string): Scor
     ...(bmi ? [{ id: 'bmi', label: 'BMI', value: bmi, score: 100 }] as ScoreDetail[] : []),
     ...(tbw ? [{ id: 'tbw', label: 'Total Body Water', value: tbw, unit: 'L', score: 100 }] as ScoreDetail[] : []),
     ...(bmr ? [{ id: 'bmr', label: 'BMR', value: bmr, unit: 'kcal', score: 100 }] as ScoreDetail[] : []),
-    ...(inbodyScore ? [{ id: 'inbodyScore', label: 'InBody Score', value: inbodyScore, score: clamp(inbodyScore) }] as ScoreDetail[] : []),
+    ...(inbodyScore ? [{ id: 'inbodyScore', label: 'Body Comp Score', value: inbodyScore, score: clamp(inbodyScore) }] as ScoreDetail[] : []),
   ];
 
   const score = Math.round((

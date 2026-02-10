@@ -87,7 +87,6 @@ const PublicClientReport = () => {
         }>
           <ClientReport
             scores={scores}
-            roadmap={roadmap}
             goals={Array.isArray(formData.clientGoals) ? formData.clientGoals : []}
             bodyComp={bodyComp ? { timeframeWeeks: bodyComp.timeframeWeeks } : undefined}
             formData={formData}

@@ -24,18 +24,18 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
-import type { InBodyCompanionData } from '@/lib/types/companion';
+import type { BodyCompCompanionData } from '@/lib/types/companion';
 import { CONFIG } from '@/config';
 import { logger } from '@/lib/utils/logger';
 
-interface InBodyCompanionModalProps {
+interface BodyCompCompanionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onComplete: (data: InBodyCompanionData) => void;
+  onComplete: (data: BodyCompCompanionData) => void;
   onStartDirectScan?: () => void;
 }
 
-export const InBodyCompanionModal: React.FC<InBodyCompanionModalProps> = ({
+export const BodyCompCompanionModal: React.FC<BodyCompCompanionModalProps> = ({
   isOpen,
   onClose,
   onComplete,
@@ -104,7 +104,7 @@ export const InBodyCompanionModal: React.FC<InBodyCompanionModalProps> = ({
     prewarmFirebaseAI();
   }, [isOpen]);
 
-  // 2. Listen for InBody Image - with optimistic UI
+  // 2. Listen for body comp image - with optimistic UI
   useEffect(() => {
     if (!session?.id) return;
 
@@ -116,19 +116,19 @@ export const InBodyCompanionModal: React.FC<InBodyCompanionModalProps> = ({
         setIsOnline(true);
       }
 
-      // Optimistic UI: Show "Processing..." as soon as inbodyImage is detected
+      // Optimistic UI: Show "Processing..." as soon as body comp image is detected
       // Don't wait for ocrDataReady - this gives immediate feedback
-      const hasInbodyImage = !!(updatedSession.inbodyImage || 
+      const hasBodyCompImage = !!(updatedSession.inbodyImage || 
                                updatedSession.inbodyImageStorage || 
                                updatedSession.inbodyImageFull);
       
-      if (hasInbodyImage && !isProcessing && processedRef.current !== 'processing') {
-        logger.debug('[INBODY] Image detected - showing processing state');
+      if (hasBodyCompImage && !isProcessing && processedRef.current !== 'processing') {
+        logger.debug('[BODYCOMP] Image detected - showing processing state');
         setIsProcessing(true);
         processedRef.current = 'processing';
         toast({
-          title: "Scanning document...",
-          description: "Extracting data from your InBody report"
+          title: "Reading your report...",
+          description: "Finding the numbers in your report"
         });
       }
 
@@ -157,15 +157,15 @@ export const InBodyCompanionModal: React.FC<InBodyCompanionModalProps> = ({
   }, [session?.id, isProcessing, onComplete, onClose, toast]);
 
   const companionUrl = session 
-    ? `${window.location.origin}/companion/${session.id}?token=${session.companionToken}&mode=inbody`
+    ? `${window.location.origin}/companion/${session.id}?token=${session.companionToken}&mode=bodycomp`
     : '';
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden rounded-3xl p-0 border-none bg-white text-left">
         <VisuallyHidden>
-          <DialogTitle>InBody Scan Remote Camera</DialogTitle>
-          <DialogDescription>Use your iPhone to scan the InBody report for automated assessment data entry.</DialogDescription>
+          <DialogTitle>Phone Camera</DialogTitle>
+          <DialogDescription>Use your phone to photograph the body comp report.</DialogDescription>
         </VisuallyHidden>
         <div className="flex flex-col lg:flex-row h-full">
           
@@ -175,8 +175,8 @@ export const InBodyCompanionModal: React.FC<InBodyCompanionModalProps> = ({
               <div className="bg-white p-4 rounded-3xl shadow-sm mb-4">
                 <Smartphone className="h-10 w-10 text-primary" />
               </div>
-              <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Remote Camera</h3>
-              <p className="text-slate-500 text-xs mt-2">Scan to connect your iPhone.</p>
+              <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Use Your Phone</h3>
+              <p className="text-slate-500 text-xs mt-2">Connect your phone to take a photo</p>
             </div>
 
             <div className="p-4 bg-white rounded-3xl shadow-xl border-4 border-white mb-6 flex items-center justify-center min-h-[212px]">
@@ -206,7 +206,7 @@ export const InBodyCompanionModal: React.FC<InBodyCompanionModalProps> = ({
               {isProcessing && (
                 <div className="flex items-center gap-2 text-primary bg-brand-light px-4 py-3 rounded-xl">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-xs font-bold">Processing InBody scan...</span>
+                  <span className="text-xs font-bold">Reading your report...</span>
                 </div>
               )}
 
@@ -227,7 +227,7 @@ export const InBodyCompanionModal: React.FC<InBodyCompanionModalProps> = ({
                 <ol className="space-y-3 text-sm text-slate-600">
                   <li className="flex gap-3">
                     <span className="font-black text-primary">1.</span>
-                    <span>Open your iPhone camera app</span>
+                    <span>Open the camera app on your phone</span>
                   </li>
                   <li className="flex gap-3">
                     <span className="font-black text-primary">2.</span>
@@ -235,11 +235,11 @@ export const InBodyCompanionModal: React.FC<InBodyCompanionModalProps> = ({
                   </li>
                   <li className="flex gap-3">
                     <span className="font-black text-primary">3.</span>
-                    <span>Position the InBody report in the frame</span>
+                    <span>Point your camera at the body comp report</span>
                   </li>
                   <li className="flex gap-3">
                     <span className="font-black text-primary">4.</span>
-                    <span>The scan will be captured automatically</span>
+                    <span>The photo will be taken automatically</span>
                   </li>
                 </ol>
               </div>

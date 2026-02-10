@@ -84,32 +84,31 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
         </div>
         
         <div className="flex flex-wrap gap-2">
-          {/* Primary: Copy Live Link Button */}
-          <Button 
-            onClick={() => onCopyLink(reportView)}
-            size="lg" 
-            className="bg-indigo-600 text-white gap-2 shadow-lg hover:bg-indigo-700 rounded-xl px-4 h-12" 
-            disabled={shareLoading}
-          >
-            {shareLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LinkIcon className="h-4 w-4" />}
-            Copy Live Link
-          </Button>
-
-          {/* Secondary: Share Options */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="lg" className="rounded-xl px-4 h-12" disabled={shareLoading}>
-                {shareLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Share2 className="mr-2 h-4 w-4" />}
-                Share
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 rounded-xl">
-              <DropdownMenuItem onClick={() => onShare(reportView)} className="py-3 text-sm font-medium">System Share</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onEmailLink(reportView)} className="py-3 text-sm font-medium">Email Link</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onWhatsAppShare(reportView)} className="py-3 text-sm font-medium">WhatsApp Message</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
+          {/* Primary: Copy Link */}
+          <div className="flex -space-x-px">
+            <Button 
+              onClick={() => onCopyLink(reportView)}
+              size="lg" 
+              className="bg-indigo-600 text-white gap-2 shadow-lg hover:bg-indigo-700 rounded-xl rounded-r-none px-4 h-12 focus:z-10" 
+              disabled={shareLoading}
+            >
+              {shareLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LinkIcon className="h-4 w-4" />}
+              Copy Link
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="lg" className="bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl rounded-l-none px-2 h-12 focus:z-10" disabled={shareLoading}>
+                  <Share2 className="h-4 w-4" />
+                  <span className="sr-only">More share options</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 rounded-xl">
+                <DropdownMenuItem onClick={() => onShare(reportView)} className="py-3 text-sm font-medium">System Share</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onEmailLink(reportView)} className="py-3 text-sm font-medium">Email Link</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onWhatsAppShare(reportView)} className="py-3 text-sm font-medium">WhatsApp Message</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
 
           {isEditMode && savingId && (
             <Button 
@@ -123,7 +122,7 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
             </Button>
           )}
           <Button variant="ghost" size="lg" onClick={onStartNew} className="rounded-xl h-12 text-sm font-bold">
-            🔄 New Client
+            New Client
           </Button>
         </div>
       </div>

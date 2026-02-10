@@ -65,7 +65,7 @@ export function LifestyleLabels({ formData }: LifestyleLabelsProps) {
       {labels.map((label, idx) => (
         <span
           key={idx}
-          className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200"
+          className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-score-amber-muted text-score-amber-fg border border-score-amber-muted"
         >
           {label}
         </span>

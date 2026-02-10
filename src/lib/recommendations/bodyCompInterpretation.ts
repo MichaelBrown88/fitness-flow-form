@@ -103,7 +103,7 @@ export function generateBodyCompInterpretation(form: FormData, scores?: ScoreSum
       : undefined;
 
   // Nutrition suggestions (high-level)
-  // Use InBody BMR if it looks reasonable; otherwise estimate via Mifflin-St Jeor
+  // Use analyser BMR if it looks reasonable; otherwise estimate via Mifflin-St Jeor
   if (bmr < 800 || bmr > 3500) {
     bmr = 0;
   }

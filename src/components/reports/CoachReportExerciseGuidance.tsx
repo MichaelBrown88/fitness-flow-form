@@ -134,8 +134,8 @@ function LegacyExerciseGuidance({ plan }: ExerciseGuidanceProps) {
   if (!plan.prioritizedExercises?.groups) return null;
 
   const urgencyColors = {
-    urgent: 'border-red-300 bg-red-50',
-    important: 'border-amber-300 bg-amber-50',
+    urgent: 'border-score-red-muted bg-score-red-light',
+    important: 'border-score-amber-muted bg-score-amber-light',
     moderate: 'border-blue-300 bg-blue-50',
     low: 'border-slate-300 bg-slate-50',
   };
@@ -173,9 +173,9 @@ function LegacyExerciseGuidance({ plan }: ExerciseGuidanceProps) {
               <span
                 className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest ${
                   group.urgency === 'urgent'
-                    ? 'bg-red-600 text-white'
+                    ? 'bg-score-red text-white'
                     : group.urgency === 'important'
-                    ? 'bg-amber-600 text-white'
+                    ? 'bg-score-amber text-white'
                     : group.urgency === 'moderate'
                     ? 'bg-blue-600 text-white'
                     : 'bg-slate-600 text-white'
@@ -248,9 +248,9 @@ function LegacyExerciseGuidance({ plan }: ExerciseGuidanceProps) {
                           <span
                             className={`px-1.5 py-0.5 rounded text-xs font-black uppercase shrink-0 ml-2 ${
                               ex.priority === 'critical'
-                                ? 'bg-red-600 text-white shadow-sm'
+                                ? 'bg-score-red text-white shadow-sm'
                                 : ex.priority === 'goal-focused'
-                                ? 'bg-amber-500 text-white'
+                                ? 'bg-score-amber text-white'
                                 : ex.priority === 'important'
                                 ? 'bg-blue-500 text-white'
                                 : 'bg-slate-100 text-slate-600'

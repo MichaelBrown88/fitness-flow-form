@@ -8,6 +8,7 @@ interface StartingPointSectionProps {
   archetype: { name: string; description: string };
   overallRadarData: RadarData[];
   previousRadarData?: RadarData[];
+  hideHeader?: boolean;
 }
 
 export const StartingPointSection: React.FC<StartingPointSectionProps> = ({
@@ -15,15 +16,18 @@ export const StartingPointSection: React.FC<StartingPointSectionProps> = ({
   archetype,
   overallRadarData,
   previousRadarData,
+  hideHeader,
 }) => {
   return (
     <section className="w-full min-w-0 overflow-x-hidden">
-      <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 mb-2 sm:mb-3 md:mb-4 lg:mb-5 xl:mb-6">
-        <div className="p-1 sm:p-1.5 md:p-2 bg-gradient-light text-zinc-900 rounded-lg">
-          <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
+      {!hideHeader && (
+        <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 mb-2 sm:mb-3 md:mb-4 lg:mb-5 xl:mb-6">
+          <div className="p-1 sm:p-1.5 md:p-2 bg-gradient-light text-zinc-900 rounded-lg">
+            <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
+          </div>
+          <h3 className="text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">Your Starting Point</h3>
         </div>
-        <h3 className="text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">Your Starting Point</h3>
-      </div>
+      )}
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
         {/* Score Card */}

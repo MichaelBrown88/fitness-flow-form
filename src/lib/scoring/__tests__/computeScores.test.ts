@@ -82,7 +82,7 @@ describe('computeScores', () => {
     // Minimal data — most fields empty
     const form = createMockFormData({
       dateOfBirth: '',
-      weightKg: '',
+      inbodyWeightKg: '',
       heightCm: '',
     });
 

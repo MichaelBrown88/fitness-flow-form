@@ -72,10 +72,10 @@ export function getDynamicTooltip(
   // ========================================
   // BODY COMPOSITION INSTRUCTIONS
   // ========================================
-  if (fieldId === 'inbodyBodyFatPct' || fieldId === 'skeletalMuscleMassKg' || fieldId.startsWith('inbody') || fieldId.startsWith('segmental')) {
+  if (fieldId === 'inbodyBodyFatPct' || fieldId === 'skeletalMuscleMassKg' || fieldId.startsWith('inbody') || fieldId.startsWith('bodyComp') || fieldId.startsWith('segmental')) {
     const hasBodyCompEquipment = equipmentConfig.bodyComposition?.enabled === true;
     if (hasBodyCompEquipment) {
-      tooltip += '\n\n📊 Equipment: Use your body composition analyzer (InBody/DEXA/etc.). Ensure the client follows pre-test guidelines (fasted, hydrated, no exercise).';
+      tooltip += '\n\n📊 Equipment: Use your body composition analyser (DEXA, BIA, etc.). Ensure the client follows pre-test guidelines (fasted, hydrated, no exercise).';
     } else {
       tooltip += '\n\n📊 Note: This data is from a client-provided analyzer report. Enter the values from their report.';
     }

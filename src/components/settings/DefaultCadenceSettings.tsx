@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Scan, UserCheck, Heart, Dumbbell } from 'lucide-react';
+import { Loader2, Scan, UserCheck, Heart, Dumbbell, Activity } from 'lucide-react';
 import { updateOrgSettings, type OrgSettings, type DefaultCadenceConfig } from '@/services/organizations';
 import type { PartialAssessmentCategory } from '@/types/client';
 
@@ -28,8 +28,8 @@ const PILLAR_CONFIG: Record<PartialAssessmentCategory, {
   description: string;
   defaultDays: number;
 }> = {
-  inbody: {
-    label: 'InBody',
+  bodycomp: {
+    label: 'Body Comp',
     icon: Scan,
     description: 'Body composition scan',
     defaultDays: 30,
@@ -52,9 +52,15 @@ const PILLAR_CONFIG: Record<PartialAssessmentCategory, {
     description: 'Functional strength tests',
     defaultDays: 60,
   },
+  lifestyle: {
+    label: 'Lifestyle',
+    icon: Activity,
+    description: 'Nutrition, sleep & stress',
+    defaultDays: 45,
+  },
 };
 
-const PILLARS: PartialAssessmentCategory[] = ['inbody', 'posture', 'fitness', 'strength'];
+const PILLARS: PartialAssessmentCategory[] = ['bodycomp', 'posture', 'fitness', 'strength', 'lifestyle'];
 
 export function DefaultCadenceSettings({
   orgSettings,
@@ -65,10 +71,11 @@ export function DefaultCadenceSettings({
   const [isSaving, setIsSaving] = useState(false);
   const [enabled, setEnabled] = useState(false);
   const [intervals, setIntervals] = useState({
-    inbody: 30,
+    bodycomp: 30,
     posture: 45,
     fitness: 45,
     strength: 60,
+    lifestyle: 45,
   });
 
   // Sync local state with org settings
@@ -190,7 +197,7 @@ export function DefaultCadenceSettings({
               <div
                 key={pillar}
                 className={`p-4 rounded-xl border ${
-                  isValid ? 'border-slate-100 bg-slate-50/50' : 'border-red-200 bg-red-50/50'
+                  isValid ? 'border-slate-100 bg-slate-50/50' : 'border-score-red-muted bg-score-red-light/50'
                 }`}
               >
                 <div className="flex items-center gap-2 mb-3">
@@ -209,7 +216,7 @@ export function DefaultCadenceSettings({
                     onChange={(e) => handleIntervalChange(pillar, e.target.value)}
                     min={7}
                     max={180}
-                    className={`h-10 w-24 text-center ${!isValid ? 'border-red-300' : ''}`}
+                    className={`h-10 w-24 text-center ${!isValid ? 'border-score-red' : ''}`}
                     disabled={!enabled}
                   />
                   <span className="text-xs text-slate-500">days</span>

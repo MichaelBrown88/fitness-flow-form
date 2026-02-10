@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AppShell from '@/components/layout/AppShell';
 import { useSettings } from '@/hooks/useSettings';
 import { Switch } from '@/components/ui/switch';
@@ -10,12 +11,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { updateOrgSettings, uploadOrgLogo, type OrgSettings, DEFAULT_EQUIPMENT_CONFIG } from '@/services/organizations';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Upload, Palette, ShieldCheck, Box, Settings as SettingsIcon, User, Building2, Calendar } from 'lucide-react';
+import { Loader2, Upload, Palette, ShieldCheck, Box, Settings as SettingsIcon, User, Building2, Calendar, ArrowLeft } from 'lucide-react';
 import { getAllGradients, type GradientId } from '@/lib/design/gradients';
+import { doc, setDoc } from 'firebase/firestore';
+import { getDb } from '@/services/firebase';
 import { logger } from '@/lib/utils/logger';
 import { DefaultCadenceSettings } from '@/components/settings/DefaultCadenceSettings';
+import { ROUTES } from '@/constants/routes';
 
 const Settings = () => {
+  const navigate = useNavigate();
   const { user, profile, orgSettings, refreshSettings } = useAuth();
   const { toast } = useToast();
   const [localOrgName, setLocalOrgName] = useState(orgSettings?.name || '');
@@ -88,6 +93,16 @@ const Settings = () => {
     <AppShell
       title="Settings"
       subtitle="Manage your profile and organization settings."
+      actions={
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate(ROUTES.DASHBOARD)}
+          className="h-8 w-8 p-0"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+      }
     >
       <div className="max-w-4xl pb-20">
         {/* Tab Navigation */}
@@ -169,6 +184,52 @@ const Settings = () => {
                 )}
               </div>
             </section>
+
+            {/* Active Coach Toggle (Admin Only, non-solo) */}
+            {isAdmin && orgSettings?.type !== 'solo_coach' && (
+              <section className="space-y-4">
+                <div className="flex items-center gap-2 text-slate-900 mb-2">
+                  <User className="h-5 w-5 text-primary" />
+                  <h2 className="text-lg font-bold">Coaching Role</h2>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <Label className="text-sm font-bold text-slate-800">I also coach clients myself</Label>
+                      <p className="text-xs text-slate-500 leading-relaxed max-w-md">
+                        {profile?.isActiveCoach
+                          ? 'You see your own client list alongside team management tools.'
+                          : 'You manage your coaching team without a personal client list.'}
+                      </p>
+                    </div>
+                    <Switch
+                      checked={profile?.isActiveCoach ?? true}
+                      onCheckedChange={async (checked) => {
+                        if (!user) return;
+                        try {
+                          await setDoc(doc(getDb(), 'userProfiles', user.uid), {
+                            isActiveCoach: checked,
+                            updatedAt: new Date(),
+                          }, { merge: true });
+                          await refreshSettings();
+                          toast({
+                            title: checked
+                              ? 'Coaching mode enabled'
+                              : 'Coaching mode disabled',
+                            description: checked
+                              ? 'Your personal client list is now visible.'
+                              : 'You will only see team management tools.',
+                          });
+                        } catch (err) {
+                          logger.error('Failed to update coaching role:', err);
+                          toast({ title: 'Failed to update', variant: 'destructive' });
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              </section>
+            )}
           </TabsContent>
 
           {/* Organization Tab (Admin Only) */}
@@ -294,7 +355,7 @@ const Settings = () => {
                   {Object.entries(orgSettings?.modules || {}).map(([moduleId, enabled]) => {
                     const assessmentLabels: Record<string, { label: string; description: string }> = {
                       parq: { label: 'PAR-Q', description: 'Health screening questionnaire required before physical testing.' },
-                      inbody: { label: 'Body Composition', description: 'Body composition, muscle mass, and fat analysis using your configured equipment.' },
+                      bodycomp: { label: 'Body Composition', description: 'Body composition, muscle mass, and fat analysis using your configured equipment.' },
                       fitness: { label: 'Metabolic Fitness', description: 'Resting heart rate and VO2 Max estimates via cardio tests.' },
                       posture: { label: 'Posture Analysis', description: 'AI posture analysis and alignment checks.' },
                       overheadSquat: { label: 'Overhead Squat', description: 'Movement quality assessment for overhead squat pattern.' },
@@ -342,7 +403,7 @@ const Settings = () => {
                       <Label className="text-sm font-bold text-slate-800">Body Composition Analyser</Label>
                       <p className="text-xs text-slate-500 mt-1">
                         {orgSettings?.equipmentConfig?.bodyComposition?.enabled 
-                          ? 'Enabled: Assessments will use analyzer (InBody, DEXA, etc.)'
+                          ? 'Enabled: Assessments will use body composition analyser (e.g. InBody, DEXA)'
                           : 'Disabled: Assessments will use body measurements + skinfold test (clients can still bring their own reports)'}
                       </p>
                     </div>

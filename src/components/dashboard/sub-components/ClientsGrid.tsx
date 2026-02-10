@@ -24,6 +24,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import type { ClientGroup } from '@/hooks/useDashboardData';
 import type { ReassessmentItem, ReassessmentType } from '@/hooks/useReassessmentQueue';
+import { getPillarLabel } from '@/constants/pillars';
+import { SCORE_COLORS } from '@/lib/scoring/scoreColor';
 
 interface ClientsGridProps {
   loadingData: boolean;
@@ -38,7 +40,7 @@ interface ClientsGridProps {
 /** Get icon for reassessment type */
 const getDueIcon = (type: ReassessmentType) => {
   switch (type) {
-    case 'inbody': return <Scale className="w-3 h-3" />;
+    case 'bodycomp': return <Scale className="w-3 h-3" />;
     case 'posture': return <Camera className="w-3 h-3" />;
     case 'fitness': return <Activity className="w-3 h-3" />;
     case 'strength': return <Dumbbell className="w-3 h-3" />;
@@ -48,15 +50,8 @@ const getDueIcon = (type: ReassessmentType) => {
 
 /** Get short label for reassessment type */
 const getDueLabel = (type: ReassessmentType) => {
-  switch (type) {
-    case 'inbody': return 'InBody';
-    case 'posture': return 'Posture';
-    case 'fitness': return 'Cardio';
-    case 'strength': return 'Strength';
-    case 'full': return 'Full';
-    case 'lifestyle': return 'Lifestyle';
-    default: return type;
-  }
+  if (type === 'full') return 'Full';
+  return getPillarLabel(type);
 };
 
 export const ClientsGrid: React.FC<ClientsGridProps> = ({
@@ -120,7 +115,7 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
                 </div>
                 {group.scoreChange !== undefined && (
                   <div className={`flex items-center gap-1 text-[10px] sm:text-xs font-black shadow-sm px-2 py-0.5 rounded-full ${
-                    group.scoreChange >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
+                    group.scoreChange >= 0 ? `bg-score-green-light text-score-green-fg` : `bg-score-red-light text-score-red-fg`
                   }`}>
                     {group.scoreChange >= 0 ? (
                       <TrendingUp className="h-3 w-3" />
@@ -141,8 +136,8 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
                       variant="outline" 
                       className={`text-[9px] font-semibold gap-1 ${
                         s.status === 'overdue'
-                          ? 'bg-red-50 text-red-700 border-red-200'
-                          : 'bg-amber-50 text-amber-700 border-amber-200'
+                          ? SCORE_COLORS.red.pill
+                          : SCORE_COLORS.amber.pill
                       }`}
                     >
                       {getDueIcon(s.pillar)}
@@ -196,20 +191,20 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
                       Full Assessment
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-slate-100" />
-                    <DropdownMenuItem onClick={() => onNewAssessment(group.name, 'inbody')} className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-slate-50 text-slate-600">
-                      InBody Only
+                    <DropdownMenuItem onClick={() => onNewAssessment(group.name, 'bodycomp')} className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-slate-50 text-slate-600">
+                      {getPillarLabel('bodycomp')} Only
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onNewAssessment(group.name, 'posture')} className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-slate-50 text-slate-600">
-                      Posture Only
+                      {getPillarLabel('posture')} Only
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onNewAssessment(group.name, 'fitness')} className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-slate-50 text-slate-600">
-                      Fitness Only
+                      {getPillarLabel('fitness')} Only
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onNewAssessment(group.name, 'strength')} className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-slate-50 text-slate-600">
-                      Strength Only
+                      {getPillarLabel('strength')} Only
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onNewAssessment(group.name, 'lifestyle')} className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-slate-50 text-slate-600">
-                      Lifestyle Only
+                      {getPillarLabel('lifestyle')} Only
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

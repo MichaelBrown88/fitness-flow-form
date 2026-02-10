@@ -260,8 +260,6 @@ export async function cropAndCenterImage(
         const targetHipY = height * (CONFIG.POSTURE_OVERLAY.TARGET_LANDMARKS.HIP_Y_PCT / 100);
 
         let sourceLandmarkX: number;
-        let sourceShoulderY: number;
-        let sourceHipY: number;
 
         if (view === 'side-right' || view === 'side-left') {
           sourceLandmarkX = landmarks.midfoot_x_percent !== undefined
@@ -273,11 +271,11 @@ export async function cropAndCenterImage(
             : img.width / 2;
         }
 
-        sourceShoulderY = landmarks.shoulder_y_percent !== undefined
+        const sourceShoulderY = landmarks.shoulder_y_percent !== undefined
           ? (landmarks.shoulder_y_percent / 100) * img.height
           : img.height * 0.25;
 
-        sourceHipY = landmarks.hip_y_percent !== undefined
+        const sourceHipY = landmarks.hip_y_percent !== undefined
           ? (landmarks.hip_y_percent / 100) * img.height
           : img.height * 0.5;
 

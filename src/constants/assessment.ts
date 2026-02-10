@@ -21,7 +21,7 @@ export const PHASE_TITLES = {
 export const PHASE_SUMMARIES = {
   P0: 'Collect basic client information and health screening.',
   P1: 'Daily habits that impact training and recovery.',
-  P2: 'InBody scan and body composition analysis.',
+  P2: 'Body composition scan and analysis.',
   P3: 'Resting heart rate and cardio fitness assessment.',
   P4: 'Posture, movement patterns, and mobility screens.',
   P5: 'Basic strength and endurance metrics.',
@@ -30,7 +30,7 @@ export const PHASE_SUMMARIES = {
 } as const;
 
 // Gate Hints
-export const PHASE_GATE_HINTS = {
+export const PHASE_GATE_HINTS: Record<string, string | undefined> = {
   P0: 'Complete before starting assessment.',
   P1: 'Complete lifestyle before health screening.',
   P2: 'Complete before movement assessment.',
@@ -39,7 +39,7 @@ export const PHASE_GATE_HINTS = {
   P5: 'Complete movement before strength testing.',
   P6: undefined,
   P7: 'Assessment complete.',
-} as const;
+};
 
 // Field Labels by Phase
 export const ASSESSMENT_LABELS = {
@@ -84,7 +84,7 @@ export const ASSESSMENT_LABELS = {
     thighRightCm: 'Right Thigh (cm)',
     calfLeftCm: 'Left Calf (cm)',
     calfRightCm: 'Right Calf (cm)',
-    inbodyScore: 'InBody Score',
+    inbodyScore: 'Body Comp Score',
     skeletalMuscleMassKg: 'Skeletal Muscle Mass (kg)',
     bodyFatMassKg: 'Body Fat Mass (kg)',
     inbodyBodyFatPct: 'Body Fat (%)',
@@ -200,7 +200,7 @@ export const ASSESSMENT_TOOLTIPS = {
     thighRightCm: 'Optional: Measure around the midpoint of the thigh. Used for muscle mass estimation when analyzer data is not available.',
     calfLeftCm: 'Optional: Measure around the widest part of the calf. Used for progress tracking.',
     calfRightCm: 'Optional: Measure around the widest part of the calf. Used for progress tracking.',
-    inbodyScore: 'A combined health score that increases as you gain muscle and lose body fat.',
+    inbodyScore: 'A combined health score from your body composition analyser that increases as you gain muscle and lose body fat.',
     skeletalMuscleMassKg: 'The weight of the muscles you can strengthen and grow. More muscle boosts metabolism and functional strength.',
     bodyFatMassKg: 'The total weight of fat in your body. We use this to track actual fat loss versus just weight changes.',
     inbodyBodyFatPct: 'The percentage of your body weight that is fat. This is a primary indicator of long-term health risk.',

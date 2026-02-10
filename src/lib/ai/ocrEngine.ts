@@ -65,11 +65,11 @@ export const REQUIRED_SCAN_FIELDS: (keyof FormData)[] = [
 ];
 
 /**
- * Pre-crop InBody image to focus on data table area
+ * Pre-crop body composition report image to focus on data table area
  * Removes logo (top 10%) and footer (bottom 15%), plus side margins (5%)
  * This reduces token usage and improves Gemini extraction accuracy
  */
-async function cropInBodyImage(imageSrc: string): Promise<string> {
+async function cropBodyCompImage(imageSrc: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -86,7 +86,7 @@ async function cropInBodyImage(imageSrc: string): Promise<string> {
         }
         
         // Crop coordinates: y: 10% to 85%, x: 5% to 95%
-        // This removes typical InBody report headers/footers while keeping data table
+        // This removes typical body composition report headers/footers while keeping data table
         const cropX = Math.floor(img.width * 0.05);
         const cropY = Math.floor(img.height * 0.10);
         const cropWidth = Math.floor(img.width * 0.90);
@@ -149,12 +149,12 @@ async function runGeminiOcr(imageSrc: string): Promise<OcrResult> {
   });
 
   const prompt = `
-    You are an expert medical data extractor specialized in InBody Composition Analysis reports.
+    You are an expert medical data extractor specialized in body composition analysis reports.
     Analyze the provided image and extract all relevant data points into a JSON object.
     
     FIELD GUIDANCE:
     - heightCm: Height in CM
-    - inbodyScore: Total InBody Score (0-100)
+    - inbodyScore: Total Body Comp Score (0-100)
     - inbodyWeightKg: Weight in KG
     - skeletalMuscleMassKg: SMM in KG
     - bodyFatMassKg: BFM in KG
@@ -194,8 +194,8 @@ async function runGeminiOcr(imageSrc: string): Promise<OcrResult> {
   const data = JSON.parse(aiText.substring(startIdx, endIdx + 1));
   const cleanFields: Partial<FormData> = {};
   
-  // List of valid FormData fields for InBody
-  const validInBodyFields = [
+  // List of valid FormData fields for body composition
+  const validBodyCompFields = [
     'heightCm', 'inbodyScore', 'inbodyWeightKg', 'skeletalMuscleMassKg',
     'bodyFatMassKg', 'inbodyBodyFatPct', 'inbodyBmi', 'totalBodyWaterL',
     'waistHipRatio', 'visceralFatLevel', 'bmrKcal', 'segmentalTrunkKg',
@@ -203,8 +203,8 @@ async function runGeminiOcr(imageSrc: string): Promise<OcrResult> {
   ];
   
   for (const [key, value] of Object.entries(data)) {
-    // Only assign if value is not null and key is a valid InBody field
-    if (value !== null && validInBodyFields.includes(key)) {
+    // Only assign if value is not null and key is a valid body composition field
+    if (value !== null && validBodyCompFields.includes(key)) {
       (cleanFields as Record<string, string>)[key] = String(value);
     }
   }
@@ -228,21 +228,21 @@ async function runGeminiOcr(imageSrc: string): Promise<OcrResult> {
  * 
  * Optimization: Pre-crop image to focus on data table, reducing token usage
  */
-export async function processInBodyScan(imageSrc: string): Promise<OcrResult> {
+export async function processBodyCompScan(imageSrc: string): Promise<OcrResult> {
   const coachUid = auth.currentUser?.uid || 'anonymous';
   
   // Check if OCR feature is enabled (kill switch check)
   const ocrEnabled = await isFeatureEnabled('ocr_enabled');
   if (!ocrEnabled) {
-    logger.warn('[OCR] InBody OCR feature is disabled via kill switch');
-    throw new FeatureDisabledError('InBody OCR Scanning');
+    logger.warn('[OCR] Body composition OCR feature is disabled via kill switch');
+    throw new FeatureDisabledError('Report Photo Import');
   }
   
   try {
     // Pre-crop image to focus on data table (removes logo/footer margins)
     // This reduces token usage and improves extraction accuracy
-    logger.debug('[OCR] Pre-cropping InBody image...');
-    const croppedImage = await cropInBodyImage(imageSrc);
+    logger.debug('[OCR] Pre-cropping body composition image...');
+    const croppedImage = await cropBodyCompImage(imageSrc);
     
     // Primary: Use Gemini AI directly (fast and reliable)
     return await runGeminiOcr(croppedImage);

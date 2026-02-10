@@ -87,7 +87,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
       <div className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between p-6 bg-gradient-to-b from-black/90 to-transparent">
         <div className="flex flex-col">
           <h3 className="text-sm font-black uppercase tracking-[0.2em] text-white/90">
-            {mode === 'ocr' ? 'InBody Scanner' : 'Posture Analysis'}
+            {mode === 'ocr' ? 'Report Scanner' : 'Posture Analysis'}
           </h3>
           {overlayText && (
             <p className="text-[10px] font-bold uppercase tracking-widest text-primary/60 mt-1">{overlayText}</p>
@@ -151,7 +151,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
               
               <div className="absolute inset-0 flex items-center justify-center">
                 <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.3em] rotate-90 whitespace-nowrap">
-                  Align InBody Report Here
+                  Align Body Comp Report Here
                 </p>
               </div>
             </div>

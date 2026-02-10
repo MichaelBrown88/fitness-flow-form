@@ -25,8 +25,10 @@ const Companion = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
-  const mode = (searchParams.get('mode') || 'posture') as 'posture' | 'inbody';
-  const [facingMode] = useState<'user' | 'environment'>(mode === 'inbody' ? 'environment' : 'user');
+  const rawMode = searchParams.get('mode') || 'posture';
+  // Normalize legacy 'inbody' query param to 'bodycomp' for backward compatibility
+  const mode = (rawMode === 'inbody' ? 'bodycomp' : rawMode) as 'posture' | 'bodycomp';
+  const [facingMode] = useState<'user' | 'environment'>(mode === 'bodycomp' ? 'environment' : 'user');
 
   const webcamRef = useRef<Webcam>(null);
   const shutterAudio = useRef<HTMLAudioElement | null>(null);
@@ -231,7 +233,7 @@ const Companion = () => {
       if (shutterAudio.current) {
         void shutterAudio.current.play().catch(() => {});
       }
-    } catch (e) {}
+    } catch { /* audio play may fail silently */ }
 
     // Take screenshot
     const imageSrc = webcam.getScreenshot();

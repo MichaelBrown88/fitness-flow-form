@@ -57,7 +57,7 @@ export function useAssessmentNavigation({ formData, orgSettings }: UseAssessment
   const visiblePhases = useMemo(() => {
     const assessmentToSectionMap: Record<string, string[]> = {
       parq: ['parq'],
-      inbody: ['body-comp'],
+      bodycomp: ['body-comp'],
       fitness: ['fitness-assessment'],
       posture: ['posture'],
       overheadSquat: ['overhead-squat'],
@@ -103,7 +103,7 @@ export function useAssessmentNavigation({ formData, orgSettings }: UseAssessment
     }
 
     const categoryConfig: Record<string, { phaseIds: PhaseId[]; sectionIds?: string[] }> = {
-      'inbody': { 
+      'bodycomp': { 
         phaseIds: ['P0', 'P2', 'P7'], 
         sectionIds: ['basic-client-info', 'parq', 'body-comp'] 
       },
@@ -196,14 +196,14 @@ export function useAssessmentNavigation({ formData, orgSettings }: UseAssessment
 
     if (requiredFields.length > 0) {
       return requiredFields.every(field => {
-        const value = formData[field.id];
+        const value = formData[field.id as keyof FormData];
         if (Array.isArray(value)) return value.length > 0;
         return value !== undefined && value !== null && value !== '';
       });
     }
 
     return visibleFields.every(field => {
-      const value = formData[field.id];
+      const value = formData[field.id as keyof FormData];
       if (Array.isArray(value)) return value.length > 0;
       return value !== undefined && value !== null && value !== '';
     });
@@ -220,10 +220,10 @@ export function useAssessmentNavigation({ formData, orgSettings }: UseAssessment
   const totalPhases = visiblePhases.length;
   const activePhase = useMemo(() => {
     return visiblePhases[activePhaseIdx] || {
-      id: 'empty',
+      id: 'empty' as const,
       title: 'No Phases Available',
       summary: 'Phase definitions are currently being loaded or configured.',
-      sections: []
+      sections: [] as PhaseSection[]
     };
   }, [activePhaseIdx, visiblePhases]);
 

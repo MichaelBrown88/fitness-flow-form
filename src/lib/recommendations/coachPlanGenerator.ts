@@ -138,7 +138,7 @@ export async function generateCoachPlan(form: FormData, scores: ScoreSummary): P
 
   if (armDiff > 0.1 || legDiff > 0.1) {
     const limb = armDiff > 0.1 ? 'arms' : 'legs';
-    clientScript.findings.push(`The InBody scan identified a noticeable muscle imbalance between your ${limb} (${(Math.max(armDiff, legDiff) * 100).toFixed(0)}% difference).`);
+    clientScript.findings.push(`The body composition scan identified a noticeable muscle imbalance between your ${limb} (${(Math.max(armDiff, legDiff) * 100).toFixed(0)}% difference).`);
   }
 
   if (smm > 0 && smm < (gender === 'male' ? 30 : 22)) {

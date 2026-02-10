@@ -10,7 +10,7 @@ export interface AIUsageLog {
   timestamp: Timestamp;
   type: AIUsageType;
   status: AIUsageStatus;
-  provider: 'local' | 'gemini' | 'tesseract' | 'mediapipe';
+  provider: 'local' | 'gemini' | 'mediapipe';
   organizationId?: string;
   coachUid: string;
   costEstimate?: number; // Estimated cost in USD (legacy)

@@ -37,7 +37,7 @@ export default function CoachReport({
 
   if (!scores || !scores.categories || scores.categories.length === 0) {
     return (
-      <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+      <div className="rounded-md border border-score-amber-muted bg-score-amber-light p-4 text-sm text-score-amber-fg">
         Results are not available yet. Please complete the assessment steps and try again.
       </div>
     );

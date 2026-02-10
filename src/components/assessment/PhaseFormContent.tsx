@@ -1,12 +1,13 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useFormContext, type FormData } from '@/contexts/FormContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Progress } from '@/components/ui/progress';
 import {
   Check,
   Loader2,
   X,
+  ArrowLeft,
 } from 'lucide-react';
 import { phaseDefinitions, type PhaseField, type PhaseSection } from '@/lib/phaseConfig';
 import { computeScores, buildRoadmap } from '@/lib/scoring';
@@ -19,7 +20,10 @@ import { useAssessmentSave } from '@/hooks/useAssessmentSave';
 import { useCameraHandler } from '@/hooks/useCameraHandler';
 import { useDemoAssessment } from '@/hooks/useDemoAssessment';
 import { useAssessmentShareHandlers } from '@/hooks/useAssessmentShareHandlers';
+import { useAssessmentDraft, getDraft, clearDraft } from '@/hooks/useAssessmentDraft';
 import { logger } from '@/lib/utils/logger';
+import { UI_DRAFT } from '@/constants/ui';
+import { ROUTES } from '@/constants/routes';
 import { AssessmentSidebar } from './AssessmentSidebar';
 import { AssessmentModals } from './AssessmentModals';
 import { SingleFieldFlow } from './SingleFieldFlow';
@@ -46,10 +50,11 @@ export const PhaseFormContent = ({
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
 }) => {
-  const { formData, updateFormData } = useFormContext();
+  const { formData, updateFormData, resetForm } = useFormContext();
   const { user, profile, orgSettings } = useAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
 
   // Determine client name from storage or form
   const clientNameFromStorage = useMemo(() => {
@@ -101,7 +106,7 @@ export const PhaseFormContent = ({
           let fieldsToSkip: string[] = [];
           if (isPartialAssessment && partialCategory) {
             const categoryConfig: Record<string, string[]> = {
-              'inbody': ['inbody', 'segmental', 'bmr', 'visceral', 'waistHip'],
+              'bodycomp': ['inbody', 'segmental', 'bmr', 'visceral', 'waistHip'],
               'posture': ['posture', 'ohs', 'hinge', 'lunge', 'mobility'],
               'fitness': ['cardio', 'ymca', 'treadmill'],
               'strength': ['pushup', 'squat', 'plank', 'grip', 'chairStand', 'dynamometer'],
@@ -130,6 +135,43 @@ export const PhaseFormContent = ({
     loadCurrentAssessment();
   }, [user, activeClientName, isPartialAssessment, partialCategory, profile?.organizationId, updateFormData]);
   
+  // ── Draft auto-save + recovery ──────────────────────────────────
+  const [draftBanner, setDraftBanner] = useState<{ clientName: string; timestamp: number } | null>(null);
+
+  // On mount: check for an existing draft (only if NOT in edit/prefill mode)
+  useEffect(() => {
+    const hasEdit = !!sessionStorage.getItem('editAssessmentData');
+    const hasPrefill = !!sessionStorage.getItem('prefillClientData');
+    if (hasEdit || hasPrefill) return;
+
+    const draft = getDraft();
+    if (draft && draft.clientName) {
+      setDraftBanner({ clientName: draft.clientName, timestamp: draft.timestamp });
+    }
+  }, []);
+
+  // Activate the debounced auto-save (writes formData → sessionStorage)
+  useAssessmentDraft(formData, isResultsPhase);
+
+  const handleResumeDraft = useCallback(() => {
+    const draft = getDraft();
+    if (draft?.formData) {
+      updateFormData(draft.formData as Partial<FormData>);
+    }
+    setDraftBanner(null);
+  }, [updateFormData]);
+
+  const handleDiscardDraft = useCallback(() => {
+    clearDraft();
+    setDraftBanner(null);
+  }, []);
+
+  const handleSaveAndExit = useCallback(() => {
+    // Draft is already auto-saved by the hook, just navigate away
+    toast({ title: UI_DRAFT.DRAFT_SAVED, description: 'You can resume this assessment any time.' });
+    navigate(ROUTES.DASHBOARD);
+  }, [navigate, toast]);
+
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [recentlyCompletedSections, setRecentlyCompletedSections] = useState<Set<string>>(new Set());
   const [activeFieldIdx, setActiveFieldIdx] = useState(0);
@@ -179,8 +221,8 @@ export const PhaseFormContent = ({
     setShowCamera,
     showPostureCompanion,
     setShowPostureCompanion,
-    showInBodyCompanion,
-    setShowInBodyCompanion,
+    showBodyCompCompanion,
+    setShowBodyCompCompanion,
     ocrReviewData,
     setOcrReviewData,
     isProcessingOcr,
@@ -189,7 +231,7 @@ export const PhaseFormContent = ({
     handleCapture,
     applyOcrData,
     handlePostureCompanionComplete,
-    handleInBodyCompanionComplete,
+    handleBodyCompCompanionComplete,
   } = cameraHook;
 
 
@@ -259,17 +301,6 @@ export const PhaseFormContent = ({
 
 
 
-  const isIntakeCompleted = useCallback(() => {
-    const p0Sections = phaseDefinitions[0]?.sections ?? [];
-    const p0Fields = p0Sections.flatMap(section => section.fields ?? []);
-    if (p0Fields.length === 0) return false;
-    return p0Fields.every(field => {
-      const value = formData[field.id];
-      if (Array.isArray(value)) return value.length > 0;
-      return value !== undefined && value !== null && value !== '';
-    });
-  }, [formData]);
-
   const maxUnlockedPhaseIdx = useMemo(() => {
     return totalPhases - 1;
   }, [totalPhases]);
@@ -281,30 +312,6 @@ export const PhaseFormContent = ({
       return val !== '' && val !== undefined && val !== null;
     });
   }, [formData]);
-
-  const allAssessmentsCompleted = useMemo(() => {
-    const requiredFields = ['parqQuestionnaire', 'postureHeadOverall', 'pushupsOneMinuteReps', 'plankDurationSeconds', 'cardioTestSelected', 'clientGoals'];
-    const basicsCompleted = requiredFields.every((field) => {
-      const val = formData[field as keyof FormData] as unknown;
-      if (Array.isArray(val)) return val.length > 0;
-      return val !== '' && val !== undefined && val !== null;
-    });
-
-    if (!basicsCompleted) return false;
-
-    const goals = Array.isArray(formData.clientGoals) ? formData.clientGoals : [];
-    if (goals.includes('weight-loss') && !formData.goalLevelWeightLoss) return false;
-    if (goals.includes('build-muscle') && !formData.goalLevelMuscle) return false;
-    if (goals.includes('build-strength') && !formData.goalLevelStrength) return false;
-    if (goals.includes('improve-fitness') && !formData.goalLevelFitness) return false;
-
-    return true;
-  }, [formData]);
-
-  const canAutoAdvance = useMemo(() => 
-    (!isReviewMode && !allAssessmentsCompleted) && !isPartialAssessment, 
-    [isReviewMode, allAssessmentsCompleted, isPartialAssessment]
-  );
 
   const getAllSections = useCallback(() => {
     const sections: SectionType[] = [];
@@ -321,6 +328,7 @@ export const PhaseFormContent = ({
     setExpandedSections(newExpandedSections);
   }, [activePhaseIdx, getAllSections]);
 
+  // Skip empty phases (e.g. filtered-out equipment phases)
   useEffect(() => {
     if ((activePhase.sections?.length ?? 0) === 0 && activePhaseIdx < totalPhases - 1) {
       const timeout = setTimeout(() => {
@@ -332,70 +340,6 @@ export const PhaseFormContent = ({
       return () => clearTimeout(timeout);
     }
   }, [activePhase, activePhaseIdx, totalPhases, visiblePhases, setActivePhaseIdx]);
-
-  useEffect(() => {
-    if (!canAutoAdvance) return;
-    const p0FirstSectionId = visiblePhases[0]?.sections?.[0]?.id ?? 'phase0';
-    if (activePhaseIdx === 0 && isIntakeCompleted() && !recentlyCompletedSections.has(p0FirstSectionId)) {
-      setRecentlyCompletedSections(prev => new Set(prev).add(p0FirstSectionId));
-      if (visiblePhases.length > 1) {
-        setTimeout(() => setActivePhaseIdx(1), 1500);
-      }
-      return;
-    }
-    const allSections = getAllSections();
-    const expandedSectionId = Object.keys(expandedSections).find(id => expandedSections[id]);
-    if (!expandedSectionId) return;
-    const currentSection = allSections.find(section => section.id === expandedSectionId);
-    if (!currentSection) return;
-    
-    // CRITICAL FIX: Disable auto-advance for sections that use SingleFieldFlow
-    const sectionsUsingSingleFieldFlow = [
-      'lifestyle-overview',
-      'body-comp',
-      'fitness-assessment',
-      'strength-endurance',
-      'mobility',
-    ];
-    
-    if (sectionsUsingSingleFieldFlow.includes(currentSection.id)) {
-      return;
-    }
-    
-    const currentSectionCompleted = isSectionCompleted(currentSection);
-    const wasRecentlyCompleted = recentlyCompletedSections.has(expandedSectionId);
-    if (currentSectionCompleted && !wasRecentlyCompleted) {
-      if (currentSection.id === 'goals') return;
-      setRecentlyCompletedSections(prev => new Set(prev).add(expandedSectionId));
-      const currentIndex = allSections.findIndex(section => section.id === expandedSectionId);
-      setTimeout(() => {
-        if (currentIndex < allSections.length - 1) {
-          const nextSection = allSections[currentIndex + 1];
-          setExpandedSections({ [expandedSectionId]: false, [nextSection.id]: true });
-        } else if (activePhaseIdx < totalPhases - 1) {
-          const nextVisibleIdx = visiblePhases.findIndex((p, i) => i > activePhaseIdx);
-          if (nextVisibleIdx !== -1) {
-            setActivePhaseIdx(nextVisibleIdx);
-          }
-        }
-      }, 1500);
-    }
-    if (currentSection.id === 'parq' && formData.parqQuestionnaire === 'completed' && !wasRecentlyCompleted) {
-      setRecentlyCompletedSections(prev => new Set(prev).add('parq'));
-        const currentIndex = allSections.findIndex(section => section.id === expandedSectionId);
-      setTimeout(() => {
-        if (currentIndex < allSections.length - 1) {
-          const nextSection = allSections[currentIndex + 1];
-          setExpandedSections({ [expandedSectionId]: false, [nextSection.id]: true });
-        } else if (activePhaseIdx < totalPhases - 1) {
-          const nextVisibleIdx = visiblePhases.findIndex((p, i) => i > activePhaseIdx);
-          if (nextVisibleIdx !== -1) {
-            setActivePhaseIdx(nextVisibleIdx);
-          }
-        }
-      }, 1500);
-    }
-  }, [formData, expandedSections, activePhaseIdx, totalPhases, getAllSections, isIntakeCompleted, recentlyCompletedSections, isSectionCompleted, canAutoAdvance, visiblePhases, setActivePhaseIdx]);
 
   useEffect(() => { setActiveFieldIdx(0); }, [activePhaseIdx, expandedSections]);
 
@@ -420,8 +364,15 @@ export const PhaseFormContent = ({
   };
 
   const handleStartNewAssessment = () => {
+    resetForm();
     setIsReviewMode(false);
-    window.location.reload();
+    setIsPartialAssessment(false);
+    setPartialCategory(null);
+    setActivePhaseIdx(0);
+    setActiveFieldIdx(0);
+    setExpandedSections({});
+    setRecentlyCompletedSections(new Set());
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const { runDemoSequential } = useDemoAssessment(
@@ -500,7 +451,7 @@ export const PhaseFormContent = ({
           if (mode === 'posture') setPostureStep(0);
         }}
         onShowPostureCompanion={() => setShowPostureCompanion(true)}
-        onShowInBodyCompanion={() => setShowInBodyCompanion(true)}
+        onShowBodyCompCompanion={() => setShowBodyCompCompanion(true)}
         onGoToPreviousSection={handleGoToPreviousSection}
         onComplete={() => {
           const currentIndex = allSections.findIndex(s => s.id === activeSection.id);
@@ -549,13 +500,43 @@ export const PhaseFormContent = ({
         />
       )}
 
-      <main className={`flex-1 bg-slate-50/50 p-6 lg:p-10 overflow-y-auto ${isPartialAssessment ? 'w-full' : ''}`}>
+      <main className={`flex-1 bg-slate-50/50 p-6 lg:p-10 pb-24 lg:pb-10 overflow-y-auto ${isPartialAssessment ? 'w-full' : ''}`}>
         <div className={`mx-auto ${activePhase?.id === 'P7' ? 'max-w-none' : 'max-w-3xl'} space-y-8`}>
+
+          {/* Draft recovery banner */}
+          {draftBanner && (
+            <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm animate-fade-in-up">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-slate-900">{UI_DRAFT.TITLE}</p>
+                <p className="text-xs text-slate-500 mt-0.5 truncate">
+                  {draftBanner.clientName} &middot; {new Date(draftBanner.timestamp).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button variant="outline" size="sm" onClick={handleDiscardDraft} className="text-xs font-bold">
+                  {UI_DRAFT.START_FRESH}
+                </Button>
+                <Button size="sm" onClick={handleResumeDraft} className="text-xs font-bold">
+                  {UI_DRAFT.RESUME}
+                </Button>
+              </div>
+            </div>
+          )}
+
           <section className="space-y-2">
-            <div className="flex items-center gap-2 text-primary mb-1">
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em]">{activePhase.id}</span>
-              <div className="h-px w-8 bg-brand-light"></div>
-              {isPartialAssessment && <span className="text-[10px] font-black uppercase tracking-widest bg-brand-light px-2 py-0.5 rounded text-primary">Quick Update: {partialCategory}</span>}
+            <div className="flex items-center justify-between">
+              {isPartialAssessment ? (
+                <span className="text-[10px] font-black uppercase tracking-widest bg-brand-light px-2 py-0.5 rounded text-primary">Quick Update: {partialCategory}</span>
+              ) : <span />}
+              {activePhase.id !== 'P7' && (
+                <button
+                  onClick={handleSaveAndExit}
+                  className="flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  Save &amp; Exit
+                </button>
+              )}
             </div>
             <h2 className="text-3xl font-bold tracking-tight text-slate-900">{activePhase.title}</h2>
             <p className="text-slate-500 text-lg leading-relaxed max-w-2xl">{activePhase.summary}</p>
@@ -564,18 +545,14 @@ export const PhaseFormContent = ({
           <section className="space-y-6">
             {renderAllSections()}
             
-            {activePhaseIdx >= 1 && activePhaseIdx < totalPhases - 1 && allAssessmentsCompleted && (
+            {activePhaseIdx >= 1 && activePhaseIdx < totalPhases - 1 && (
               <div className="flex items-center justify-center border-t border-slate-200 pt-8">
-                <Button onClick={handleViewResults} className="h-14 px-10 rounded-2xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 shadow-xl transition-all hover:scale-[1.05]">
-                  {isPartialAssessment ? '📊 Update Live Report' : '📊 Generate Full Report'}
-                </Button>
-              </div>
-            )}
-
-            {isPartialAssessment && activePhaseIdx >= 1 && activePhaseIdx < totalPhases - 1 && !allAssessmentsCompleted && anyAssessmentCompleted && (
-              <div className="flex items-center justify-center border-t border-slate-200 pt-8">
-                <Button variant="outline" onClick={handleViewResults} className="h-14 px-10 rounded-2xl border-primary/20 text-primary font-bold hover:bg-brand-light transition-all">
-                  📊 Update Live Report
+                <Button
+                  onClick={handleViewResults}
+                  disabled={!anyAssessmentCompleted}
+                  className="h-14 px-10 rounded-2xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 shadow-xl transition-all hover:scale-[1.02] disabled:opacity-40 disabled:hover:scale-100 disabled:shadow-none"
+                >
+                  {isPartialAssessment ? 'Update Live Report' : anyAssessmentCompleted ? 'Generate Report' : 'Complete a section to generate report'}
                 </Button>
               </div>
             )}
@@ -629,9 +606,9 @@ export const PhaseFormContent = ({
         showPostureCompanion={showPostureCompanion}
         setShowPostureCompanion={setShowPostureCompanion}
         handlePostureCompanionComplete={handlePostureCompanionComplete}
-        showInBodyCompanion={showInBodyCompanion}
-        setShowInBodyCompanion={setShowInBodyCompanion}
-        handleInBodyCompanionComplete={handleInBodyCompanionComplete}
+        showBodyCompCompanion={showBodyCompCompanion}
+        setShowBodyCompCompanion={setShowBodyCompCompanion}
+        handleBodyCompCompanionComplete={handleBodyCompCompanionComplete}
         postureStep={postureStep}
         setPostureStep={setPostureStep}
         isProcessingOcr={isProcessingOcr}

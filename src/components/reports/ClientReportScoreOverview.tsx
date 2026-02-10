@@ -77,8 +77,8 @@ export function ClientReportScoreOverview({
             <div 
               key={idx} 
               className={`rounded-2xl border p-5 shadow-sm ${
-                item.severity === 'high' ? 'border-rose-200 bg-rose-50' : 
-                item.severity === 'medium' ? 'border-amber-200 bg-amber-50' : 
+                item.severity === 'high' ? 'border-score-red-muted bg-score-red-light' : 
+                item.severity === 'medium' ? 'border-score-amber-muted bg-score-amber-light' : 
                 'border-blue-200 bg-blue-50'
               }`}
             >
@@ -87,16 +87,16 @@ export function ClientReportScoreOverview({
                   {item.severity === 'high' ? '🚨' : item.severity === 'medium' ? '⚠️' : 'ℹ️'}
                 </span>
                 <h4 className={`font-bold ${
-                  item.severity === 'high' ? 'text-rose-900' : 
-                  item.severity === 'medium' ? 'text-amber-900' : 
+                  item.severity === 'high' ? 'text-score-red-bold' : 
+                  item.severity === 'medium' ? 'text-score-amber-bold' : 
                   'text-blue-900'
                 }`}>
                   {item.title}
                 </h4>
               </div>
               <p className={`text-sm leading-relaxed ${
-                item.severity === 'high' ? 'text-rose-800' : 
-                item.severity === 'medium' ? 'text-amber-800' : 
+                item.severity === 'high' ? 'text-score-red-fg' : 
+                item.severity === 'medium' ? 'text-score-amber-fg' : 
                 'text-blue-800'
               }`}>
                 {item.description}

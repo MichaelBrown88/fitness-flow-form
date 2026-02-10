@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import AppShell from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
@@ -7,16 +7,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as UICalendar } from '@/components/ui/calendar';
 import { useClientDetail } from '@/hooks/useClientDetail';
+import { scoreGrade, SCORE_COLORS } from '@/lib/scoring/scoreColor';
+import { PILLAR_DISPLAY } from '@/constants/pillars';
 import { AssessmentComparison } from '@/components/AssessmentComparison';
 import { RetestScheduleCard } from '@/components/RetestScheduleCard';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import {
   ArrowLeft,
   UserPlus,
   Edit2,
-  Save,
   X,
   TrendingUp,
   TrendingDown,
@@ -34,7 +33,42 @@ import {
   Clock,
   GitCompare,
   History,
+  ChevronDown,
+  MoreVertical,
+  ArrowRightLeft as ArrowRightLeftIcon,
 } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+
+// Collapsible section wrapper
+const CollapsibleSection = ({ title, icon, badge, children, defaultOpen = true }: {
+  title: string; icon: ReactNode; badge?: ReactNode; children: ReactNode; defaultOpen?: boolean;
+}) => {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between p-6 hover:bg-slate-50/50 transition-colors"
+      >
+        <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+          {icon}
+          {title}
+        </h3>
+        <div className="flex items-center gap-2">
+          {badge}
+          <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </div>
+      </button>
+      {open && <div className="px-6 pb-6">{children}</div>}
+    </div>
+  );
+};
 import {
   Dialog,
   DialogContent,
@@ -45,7 +79,6 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { TransferClientDialog } from '@/components/client/TransferClientDialog';
-import { ArrowRightLeft } from 'lucide-react';
 
 const ClientDetail = () => {
   const { profile: authProfile } = useAuth();
@@ -93,11 +126,12 @@ const ClientDetail = () => {
   } = useClientDetail();
 
   const [transferOpen, setTransferOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   if (!user) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-slate-600">
-        Checking coach session…
+        Loading…
       </div>
     );
   }
@@ -118,81 +152,100 @@ const ClientDetail = () => {
       title={`${clientName}'s Dashboard`}
       subtitle="Comprehensive view of client progress, history, and profile."
       actions={
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={navigateBack}
-            className="h-8 w-8 p-0"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          {profile?.status && (
-            <Badge variant={profile.status === 'active' ? 'default' : 'secondary'}>
-              {profile.status}
-            </Badge>
-          )}
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setIsEditing(!isEditing)}
-            >
-              {isEditing ? <X className="h-4 w-4 mr-2" /> : <Edit2 className="h-4 w-4 mr-2" />}
-              {isEditing ? 'Cancel' : 'Edit Profile'}
+        isMobile ? (
+          /* ── Mobile: back + New + kebab ── */
+          <div className="flex items-center gap-1.5">
+            <Button variant="ghost" size="sm" onClick={navigateBack} className="h-8 w-8 p-0">
+              <ArrowLeft className="h-4 w-4" />
             </Button>
-            {(authProfile?.role === 'org_admin' || profile?.assignedCoachUid === user?.uid) && (
-              <Button
-                variant="outline"
-                onClick={() => setTransferOpen(true)}
-              >
-                <ArrowRightLeft className="h-4 w-4 mr-2" />
-                Transfer
-              </Button>
-            )}
-            <Button onClick={() => handleNewAssessment()} className="bg-slate-900 text-white hover:bg-slate-800">
-              <UserPlus className="h-4 w-4 mr-2" />
-              New Assessment
+            <Button size="sm" onClick={() => handleNewAssessment()} className="h-8 px-3 gap-1.5 text-xs font-bold bg-slate-900 text-white hover:bg-slate-800">
+              <UserPlus className="h-3.5 w-3.5" />
+              New
             </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52 rounded-xl">
+                <DropdownMenuItem onClick={() => setIsEditing(!isEditing)} className="py-3 text-sm font-medium">
+                  {isEditing ? <X className="mr-2 h-4 w-4" /> : <Edit2 className="mr-2 h-4 w-4" />}
+                  {isEditing ? 'Cancel Edit' : 'Edit Profile'}
+                </DropdownMenuItem>
+                {(authProfile?.role === 'org_admin' || profile?.assignedCoachUid === user?.uid) && (
+                  <DropdownMenuItem onClick={() => setTransferOpen(true)} className="py-3 text-sm font-medium">
+                    <ArrowRightLeftIcon className="mr-2 h-4 w-4" />
+                    Transfer Client
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-        </div>
+        ) : (
+          /* ── Desktop: full button row ── */
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" onClick={navigateBack} className="h-8 w-8 p-0">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            {profile?.status && (
+              <Badge variant={profile.status === 'active' ? 'default' : 'secondary'}>
+                {profile.status}
+              </Badge>
+            )}
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setIsEditing(!isEditing)}>
+                {isEditing ? <X className="h-4 w-4 mr-2" /> : <Edit2 className="h-4 w-4 mr-2" />}
+                {isEditing ? 'Cancel' : 'Edit Profile'}
+              </Button>
+              {(authProfile?.role === 'org_admin' || profile?.assignedCoachUid === user?.uid) && (
+                <Button variant="outline" onClick={() => setTransferOpen(true)}>
+                  <ArrowRightLeftIcon className="h-4 w-4 mr-2" />
+                  Transfer
+                </Button>
+              )}
+              <Button onClick={() => handleNewAssessment()} className="bg-slate-900 text-white hover:bg-slate-800">
+                <UserPlus className="h-4 w-4 mr-2" />
+                New Assessment
+              </Button>
+            </div>
+          </div>
+        )
       }
     >
       <div className="space-y-8">
         
         {/* Current Live Report Section */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+        <CollapsibleSection
+          title="Current Live Report"
+          icon={<Activity className="h-5 w-5 text-primary" />}
+        >
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-            <div>
-              <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                <Activity className="h-6 w-6 text-primary" />
-                Current Live Report
-              </h3>
-              <p className="text-sm text-slate-500 mt-1">Real-time aggregate of the most recent assessment data across all pillars.</p>
-            </div>
+            <p className="text-sm text-slate-500">Real-time aggregate of the most recent assessment data across all pillars.</p>
             
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Button
+                variant={isComparisonMode ? 'default' : 'outline'}
+                onClick={() => setIsComparisonMode(!isComparisonMode)}
+                className={`gap-2 h-11 text-sm font-bold ${isComparisonMode ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+              >
+                <GitCompare className="h-4 w-4" />
+                Compare
+              </Button>
+
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="gap-2 h-11 border-slate-200 text-slate-600 hover:bg-slate-50">
                     <CalendarIcon className="h-4 w-4" />
-                    {selectedDate ? selectedDate.toLocaleDateString() : 'Historical Snapshots...'}
+                    {selectedDate ? selectedDate.toLocaleDateString() : 'View Past Results'}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-80 p-0 overflow-hidden rounded-2xl" align="end">
-                  <div className="p-4 border-b border-slate-100 bg-slate-50/50">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="compare-mode" className="text-xs font-bold uppercase tracking-wider text-slate-500 cursor-pointer">Comparison Mode</Label>
-                      <Switch 
-                        id="compare-mode" 
-                        checked={isComparisonMode} 
-                        onCheckedChange={setIsComparisonMode}
-                      />
+                  {isComparisonMode && (
+                    <div className="px-4 py-2 bg-indigo-50 border-b border-indigo-100">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">Comparison mode: select a date to compare vs. current</p>
                     </div>
-                    <p className="text-[10px] text-slate-400 mt-1">
-                      {isComparisonMode ? 'Compare selection vs. Current Live Report' : 'Open selected report snapshot'}
-                    </p>
-                  </div>
-                  
+                  )}
                   <div className="p-2">
                     <div className="grid grid-cols-2 gap-1 mb-2">
                       <Button variant="ghost" size="sm" className="h-8 text-[10px] font-bold uppercase tracking-tight justify-start" onClick={() => handleQuickJump('last')}>
@@ -227,12 +280,12 @@ const ClientDetail = () => {
                 </PopoverContent>
               </Popover>
 
-              {currentAssessment && (
+              {currentAssessment && assessments.length > 0 && (
                 <Button 
                   className="h-11 px-6 rounded-xl bg-primary text-white font-bold hover:brightness-110 shadow-md shadow-primary/10 transition-all gap-2"
                   asChild
                 >
-                  <Link to={`/coach/assessments/latest?clientName=${encodeURIComponent(clientName)}`}>
+                  <Link to={`/coach/assessments/${assessments[0].id}?clientName=${encodeURIComponent(clientName)}`}>
                     <FileText className="h-4 w-4" />
                     Open Full Report
                   </Link>
@@ -269,7 +322,7 @@ const ClientDetail = () => {
                     {categoryBreakdown[cat.id] || 0}
                   </div>
                   {categoryChanges[cat.id] !== undefined && categoryChanges[cat.id] !== 0 && (
-                    <div className={`text-[10px] font-bold flex items-center justify-center gap-0.5 mb-2 ${categoryChanges[cat.id] > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    <div className={`text-[10px] font-bold flex items-center justify-center gap-0.5 mb-2 ${categoryChanges[cat.id] > 0 ? 'text-score-green-fg' : 'text-score-red-fg'}`}>
                       {categoryChanges[cat.id] > 0 ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
                       {categoryChanges[cat.id] > 0 ? '+' : ''}{categoryChanges[cat.id]}
                     </div>
@@ -285,29 +338,26 @@ const ClientDetail = () => {
               ))}
             </div>
           )}
-        </div>
+        </CollapsibleSection>
 
         {/* Quick Assessment Options */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <TargetIcon className="h-5 w-5 text-primary" />
-              Quick Assessments
-            </h3>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Pillar Updates</span>
-          </div>
+        <CollapsibleSection
+          title="Quick Assessments"
+          icon={<TargetIcon className="h-5 w-5 text-primary" />}
+          badge={<span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Pillar Updates</span>}
+        >
           <div className="grid gap-4 grid-cols-2 md:grid-cols-5">
             {[
-              { id: 'lifestyle', label: 'Lifestyle', icon: Activity, color: 'text-primary', bg: 'bg-brand-light' },
-              { id: 'inbody', label: 'InBody', icon: Scan, color: 'text-primary', bg: 'bg-brand-light' },
-              { id: 'posture', label: 'Movement', icon: UserCheck, color: 'text-primary', bg: 'bg-brand-light' },
-              { id: 'strength', label: 'Strength', icon: Dumbbell, color: 'text-primary', bg: 'bg-brand-light' },
-              { id: 'fitness', label: 'Fitness', icon: Heart, color: 'text-primary', bg: 'bg-brand-light' },
+              { id: 'lifestyle', label: PILLAR_DISPLAY.lifestyle.short, icon: Activity, color: 'text-primary', bg: 'bg-brand-light' },
+              { id: 'bodycomp', label: PILLAR_DISPLAY.bodyComp.short, icon: Scan, color: 'text-primary', bg: 'bg-brand-light' },
+              { id: 'posture', label: PILLAR_DISPLAY.movementQuality.short, icon: UserCheck, color: 'text-primary', bg: 'bg-brand-light' },
+              { id: 'strength', label: PILLAR_DISPLAY.strength.short, icon: Dumbbell, color: 'text-primary', bg: 'bg-brand-light' },
+              { id: 'fitness', label: PILLAR_DISPLAY.cardio.short, icon: Heart, color: 'text-primary', bg: 'bg-brand-light' },
             ].map((action) => (
               <Button
                 key={action.id}
                 variant="outline"
-                onClick={() => handleNewAssessment(action.id as 'lifestyle' | 'inbody' | 'posture' | 'strength' | 'fitness')}
+                onClick={() => handleNewAssessment(action.id as 'lifestyle' | 'bodycomp' | 'posture' | 'strength' | 'fitness')}
                 className="flex flex-col items-center gap-3 h-auto py-6 rounded-2xl border-slate-100 hover:border-primary/20 hover:bg-brand-light transition-all group shadow-sm"
               >
                 <div className={`h-12 w-12 rounded-xl ${action.bg} flex items-center justify-center group-hover:scale-110 transition-transform`}>
@@ -317,7 +367,7 @@ const ClientDetail = () => {
               </Button>
             ))}
           </div>
-        </div>
+        </CollapsibleSection>
 
         {/* Re-Test Schedule Card */}
         {authProfile?.organizationId && (
@@ -329,56 +379,49 @@ const ClientDetail = () => {
         )}
 
         {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-4">
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col justify-between">
-            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4">
-              Total Assessments
+        <CollapsibleSection
+          title="Overview Stats"
+          icon={<TrendingUp className="h-5 w-5 text-primary" />}
+          defaultOpen={false}
+        >
+          <div className="grid gap-4 md:grid-cols-4">
+            <div className="rounded-xl bg-slate-50 p-5">
+              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">Total Assessments</div>
+              <div className="text-3xl font-black text-slate-900">{stats.totalAssessments}</div>
             </div>
-            <div className="text-4xl font-black text-slate-900">{stats.totalAssessments}</div>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col justify-between">
-            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4">
-              Latest Score
+            <div className="rounded-xl bg-slate-50 p-5">
+              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">Latest Score</div>
+              <div className="flex items-end justify-between">
+                <div className="text-3xl font-black text-slate-900">{stats.latestScore}</div>
+                {stats.trend !== 'neutral' && (
+                  <div className={`flex items-center gap-1 mb-1 ${stats.trend === 'up' ? 'text-score-green' : 'text-score-red'}`}>
+                    {stats.trend === 'up' ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="flex items-end justify-between">
-              <div className="text-4xl font-black text-slate-900">{stats.latestScore}</div>
-              {stats.trend !== 'neutral' && (
-                <div className={`flex items-center gap-1 mb-1 ${stats.trend === 'up' ? 'text-emerald-500' : 'text-rose-500'}`}>
-                  {stats.trend === 'up' ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
-                </div>
-              )}
+            <div className="rounded-xl bg-slate-50 p-5">
+              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">Average Score</div>
+              <div className="text-3xl font-black text-slate-900">{stats.averageScore}</div>
             </div>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col justify-between">
-            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4">
-              Average Score
-            </div>
-            <div className="text-4xl font-black text-slate-900">{stats.averageScore}</div>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col justify-between">
-            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4">
-              Score Change
-            </div>
-            <div className={`text-4xl font-black ${
-              stats.scoreChange > 0 ? 'text-emerald-600' : stats.scoreChange < 0 ? 'text-rose-600' : 'text-slate-900'
-            }`}>
-              {stats.scoreChange > 0 ? '+' : ''}{stats.scoreChange}
+            <div className="rounded-xl bg-slate-50 p-5">
+              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">Score Change</div>
+              <div className={`text-3xl font-black ${
+                stats.scoreChange > 0 ? 'text-score-green-fg' : stats.scoreChange < 0 ? 'text-score-red-fg' : 'text-slate-900'
+              }`}>
+                {stats.scoreChange > 0 ? '+' : ''}{stats.scoreChange}
+              </div>
             </div>
           </div>
-        </div>
+        </CollapsibleSection>
 
         {/* Assessment History Section */}
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
-            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <Clock className="h-5 w-5 text-primary" />
-              Complete Data Logs
-            </h3>
-            <Badge variant="outline" className="border-slate-200 text-slate-500 font-bold bg-white uppercase tracking-widest text-[9px]">
-              {assessments.length} Records Found
-            </Badge>
-          </div>
-          <div className="divide-y divide-slate-100">
+        <CollapsibleSection
+          title="Assessment History"
+          icon={<Clock className="h-5 w-5 text-primary" />}
+          badge={<Badge variant="outline" className="border-slate-200 text-slate-500 font-bold bg-white uppercase tracking-widest text-[9px]">{assessments.length} assessments</Badge>}
+        >
+          <div className="divide-y divide-slate-100 -mx-6 px-6">
             {assessments.length === 0 ? (
               <div className="p-12 text-center text-sm text-slate-500 font-medium italic">
                 No historical records found for this client.
@@ -388,9 +431,7 @@ const ClientDetail = () => {
                 <div key={assessment.id} className="p-5 hover:bg-slate-50/80 transition-all flex items-center justify-between group">
                   <div className="flex items-center gap-6">
                     <div className={`h-12 w-12 rounded-xl flex items-center justify-center font-black text-sm border-2 ${
-                      assessment.overallScore >= 75 ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 
-                      assessment.overallScore >= 50 ? 'bg-amber-50 border-amber-100 text-amber-600' : 
-                      'bg-rose-50 border-rose-100 text-rose-600'
+                      SCORE_COLORS[scoreGrade(assessment.overallScore)].pill
                     }`}>
                       {assessment.overallScore}
                     </div>
@@ -432,7 +473,7 @@ const ClientDetail = () => {
               ))
             )}
           </div>
-        </div>
+        </CollapsibleSection>
       </div>
 
       {/* Client Profile Dialog */}

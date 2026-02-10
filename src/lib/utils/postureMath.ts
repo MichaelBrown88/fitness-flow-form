@@ -147,8 +147,8 @@ export function calculateFrontViewMetrics(landmarks: MediaPipeLandmark[], view: 
     headTiltDegrees: headTilt,
     shoulderSymmetryCm: shoulderDiffCm,
     hipSymmetryCm: hipDiffCm,
-    shoulderSeverity: shoulderDiffCm > 1.0 ? 'Asymmetric' : 'Neutral',
-    hipSeverity: hipDiffCm > 1.0 ? 'Asymmetric' : 'Neutral',
+    shoulderSeverity: (shoulderDiffCm > 1.0 ? 'Asymmetric' : 'Neutral') as 'Neutral' | 'Asymmetric',
+    hipSeverity: (hipDiffCm > 1.0 ? 'Asymmetric' : 'Neutral') as 'Neutral' | 'Asymmetric',
     hipShiftPercent,
     hipShiftDirection,
   };
@@ -281,7 +281,7 @@ export function calculateSideViewMetrics(
   // This is a complex calculation in 2D, but we can look at the hip position relative to shoulder/knee
   const pelvicAngle = calculateAngle(shoulder, hip, knee);
 
-  const headSeverity = headOffsetCm < 2 ? 'Neutral' : headOffsetCm < 4 ? 'Mild' : headOffsetCm < 6 ? 'Moderate' : 'Severe';
+  const headSeverity: CalculatedPostureMetrics['headSeverity'] = headOffsetCm < 2 ? 'Neutral' : headOffsetCm < 4 ? 'Mild' : headOffsetCm < 6 ? 'Moderate' : 'Severe';
   
   const metrics = {
     forwardHeadCm: headOffsetCm,

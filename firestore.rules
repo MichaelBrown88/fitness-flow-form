@@ -208,6 +208,30 @@ service cloud.firestore {
       allow write: if isPlatformAdmin();
     }
     
+    // 9. NOTIFICATIONS
+    // Users can only read/update their own notifications
+    match /notifications/{recipientUid}/items/{notificationId} {
+      allow read: if isAuthenticated() && request.auth.uid == recipientUid;
+      allow update: if isAuthenticated() && request.auth.uid == recipientUid;
+      allow create: if isPlatformAdmin() || 
+                    (isAuthenticated() && request.auth.uid == recipientUid);
+      allow delete: if isAuthenticated() && request.auth.uid == recipientUid;
+    }
+    
+    // 10. CLIENT SUBMISSIONS
+    // Clients can read/create their own submissions
+    // Coaches in the same org can read submissions for review
+    match /clientSubmissions/{clientUid}/items/{submissionId} {
+      allow read: if isAuthenticated() && (
+        request.auth.uid == clientUid ||
+        (resource.data.organizationId == getUserProfile().organizationId)
+      );
+      allow create: if isAuthenticated() && request.auth.uid == clientUid;
+      allow update: if isAuthenticated() && 
+                    resource.data.organizationId == getUserProfile().organizationId &&
+                    getUserProfile().role in ['org_admin', 'coach'];
+    }
+    
     // =========================================================
     // 🔓 PUBLIC ROUTES
     // =========================================================

@@ -126,7 +126,7 @@ export function HowItWorksSection() {
                  <div className="grid grid-cols-2 gap-2">
                     <div className="p-3 rounded-xl border border-slate-100 bg-slate-50 flex flex-col items-center gap-2 cursor-pointer hover:border-emerald-200 hover:bg-emerald-50 transition-colors">
                        <ScanLine size={16} className="text-slate-400" />
-                       <span className="text-[9px] font-bold text-slate-600 uppercase">Scan InBody</span>
+                       <span className="text-[9px] font-bold text-slate-600 uppercase">Body Comp Scan</span>
                     </div>
                     <div className="p-3 rounded-xl border border-emerald-500 bg-emerald-50 flex flex-col items-center gap-2 cursor-pointer relative overflow-hidden">
                        <Activity size={16} className="text-emerald-600" />

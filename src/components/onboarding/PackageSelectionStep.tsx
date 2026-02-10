@@ -1,3 +1,11 @@
+/**
+ * Package Selection Step (Step 4)
+ *
+ * Capacity slider + Stripe checkout.
+ * Fixed: tier label/plan variable mismatch.
+ * Cleaned up: back button as text link, full-width primary CTA.
+ */
+
 import { useState } from 'react';
 import { CheckCircle, CreditCard } from 'lucide-react';
 import { calculateMonthlyFee } from '@/lib/pricing';
@@ -24,7 +32,6 @@ export function PackageSelectionStep({
   const { startCheckout, loading: checkoutLoading, error: checkoutError, isStripeEnabled } = useCheckout();
   const { profile } = useAuth();
 
-  // Determine plan based on business type
   const getPlanForBusinessType = (): SubscriptionPlan => {
     const config = BUSINESS_TYPES.find(b => b.value === businessType);
     return config?.recommendedPlan || 'starter';
@@ -33,49 +40,50 @@ export function PackageSelectionStep({
   const plan = getPlanForBusinessType();
   const monthlyFee = calculateMonthlyFee(plan, seats);
 
+  // Derive tier label from seat count (matches plan variable)
+  const tierLabel =
+    seats <= 15 ? 'Starter' :
+    seats <= 50 ? 'Professional' :
+    'Enterprise';
+
   const handleContinue = async () => {
     if (isStripeEnabled && profile?.organizationId) {
-      // Stripe is configured — start checkout flow
       const checkoutPlan = plan === 'free' || plan === 'none' ? 'starter' : plan;
       const redirected = await startCheckout(profile.organizationId, checkoutPlan, seats);
       if (!redirected) {
-        // Stripe not configured or error — fall back to trial
         onNext(seats);
       }
     } else {
-      // No Stripe configured — proceed as trial
       onNext(seats);
     }
   };
 
   return (
-    <div className="space-y-12 animate-fade-in-up max-w-3xl mx-auto">
-      <div className="text-center">
-        <h3 className="text-3xl font-bold text-slate-900 mb-4">Select Capacity</h3>
-        <p className="text-slate-500">How many active clients will you be managing?</p>
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-slate-900 mb-1">Choose your plan</h2>
+        <p className="text-sm text-slate-500">How many active clients will you be managing?</p>
       </div>
 
-      <div className="bg-white p-8 rounded-[2rem] shadow-xl border border-slate-100">
-        <div className="flex justify-between items-end mb-12">
+      <div className="bg-white p-6 rounded-xl border border-slate-200">
+        <div className="flex justify-between items-end mb-8">
           <div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-6xl font-black text-slate-900 tracking-tighter">{seats}</span>
-              <span className="text-xl text-slate-400 font-bold">Seats</span>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-4xl font-black text-slate-900">{seats}</span>
+              <span className="text-sm text-slate-400 font-bold">Seats</span>
             </div>
-            <p className="text-indigo-600 font-bold mt-2">
-              {seats <= 15 ? 'Solo Coach Tier' : seats <= 50 ? 'Growth Studio Tier' : 'Enterprise Tier'}
-            </p>
+            <p className="text-xs font-bold text-slate-500 mt-1">{tierLabel} Tier</p>
           </div>
           <div className="text-right">
-            <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Estimated Price</span>
-            <div className="flex items-center justify-end gap-1">
-              <span className="text-4xl font-bold text-slate-900">KWD {monthlyFee.toFixed(3)}</span>
-              <span className="text-lg text-slate-400 font-medium">/mo</span>
+            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Estimated</span>
+            <div className="flex items-baseline gap-0.5">
+              <span className="text-2xl font-bold text-slate-900">KWD {monthlyFee.toFixed(3)}</span>
+              <span className="text-xs text-slate-400">/mo</span>
             </div>
           </div>
         </div>
 
-        <div className="relative mb-12 px-2">
+        <div className="mb-6">
           <input
             type="range"
             min="5"
@@ -83,77 +91,66 @@ export function PackageSelectionStep({
             step="5"
             value={seats}
             onChange={(e) => setSeats(parseInt(e.target.value))}
-            className="w-full h-4 bg-slate-100 rounded-full appearance-none cursor-pointer accent-indigo-600 hover:accent-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-100"
+            className="w-full h-2 bg-slate-100 rounded-full appearance-none cursor-pointer accent-slate-900"
             style={{
-              backgroundImage: `linear-gradient(to right, #4F46E5 0%, #4F46E5 ${((seats - 5) / 95) * 100}%, #F1F5F9 ${((seats - 5) / 95) * 100}%, #F1F5F9 100%)`
+              backgroundImage: `linear-gradient(to right, #0f172a 0%, #0f172a ${((seats - 5) / 95) * 100}%, #f1f5f9 ${((seats - 5) / 95) * 100}%, #f1f5f9 100%)`
             }}
           />
-          <div className="flex justify-between text-xs font-bold text-slate-400 mt-4 uppercase tracking-wide px-1">
-            <span>5 Clients</span>
-            <span>50 Clients</span>
+          <div className="flex justify-between text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-wide">
+            <span>5</span>
+            <span>50</span>
             <span>100+</span>
           </div>
         </div>
 
-        <div className="grid gap-3">
-          <div className="flex items-center gap-3 text-sm font-medium text-slate-600">
-            <CheckCircle size={18} className="text-emerald-500" />
-            <span>Unlimited Assessments per client</span>
-          </div>
-          <div className="flex items-center gap-3 text-sm font-medium text-slate-600">
-            <CheckCircle size={18} className="text-emerald-500" />
-            <span>White-labeled Reports</span>
-          </div>
-          <div className="flex items-center gap-3 text-sm font-medium text-slate-600">
-            <CheckCircle size={18} className="text-emerald-500" />
-            <span>Access to Clinical Logic Engine</span>
-          </div>
+        <div className="space-y-2">
+          {[
+            'Unlimited assessments per client',
+            'White-labeled reports',
+            'Clinical Logic Engine',
+          ].map((feature) => (
+            <div key={feature} className="flex items-center gap-2 text-xs text-slate-600">
+              <CheckCircle size={14} className="text-emerald-500 shrink-0" />
+              <span>{feature}</span>
+            </div>
+          ))}
         </div>
       </div>
 
       {checkoutError && (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {checkoutError}
         </div>
       )}
 
-      {/* Navigation */}
-      <div className="flex gap-3 pt-4">
-        <button
-          type="button"
-          onClick={onBack}
-          disabled={checkoutLoading}
-          className="flex-1 h-12 rounded-2xl bg-white border border-slate-200 font-bold text-lg flex items-center justify-center gap-2 hover:bg-slate-50 transition-all shadow-sm text-slate-600 disabled:opacity-50"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          Back
-        </button>
+      <div className="space-y-3 pt-2">
         <button
           type="button"
           onClick={handleContinue}
           disabled={checkoutLoading}
-          className="flex-1 h-12 rounded-2xl bg-slate-900 text-white font-bold text-lg flex items-center justify-center gap-2 hover:bg-slate-800 transition-all shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:hover:scale-100"
+          className="w-full h-12 rounded-xl bg-slate-900 text-white font-bold text-sm hover:bg-slate-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {checkoutLoading ? (
             <>
-              <div className="h-5 w-5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-              Processing…
+              <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+              Processing...
             </>
           ) : isStripeEnabled ? (
             <>
-              <CreditCard size={20} />
+              <CreditCard size={16} />
               Subscribe
             </>
           ) : (
-            <>
-              Continue
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </>
+            'Start Free Trial'
           )}
+        </button>
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={checkoutLoading}
+          className="w-full text-center text-xs font-medium text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50"
+        >
+          Go back
         </button>
       </div>
     </div>

@@ -12,7 +12,7 @@ interface CompanionLoadingStatesProps {
   isAuthorized: boolean;
   errorMsg: string | null;
   onRetry: () => void;
-  mode: 'posture' | 'inbody';
+  mode: 'posture' | 'bodycomp';
   viewIdx: number;
   totalViews: number;
 }
@@ -47,8 +47,8 @@ export function CompanionLoadingStates({
     );
   }
 
-  // InBody completion
-  if (mode === 'inbody' && viewIdx === 999) {
+  // Body comp completion
+  if (mode === 'bodycomp' && viewIdx === 999) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8 text-white text-center">
         <div className="h-20 w-20 rounded-full bg-emerald-500/20 flex items-center justify-center mb-6">
@@ -56,7 +56,7 @@ export function CompanionLoadingStates({
         </div>
         <h1 className="text-3xl font-black uppercase tracking-tight mb-2">Data Added</h1>
         <p className="text-white/60 text-sm uppercase tracking-widest mb-4">
-          InBody data has been added to the app.
+          Body composition data has been added to the app.
         </p>
         <p className="text-white/40 text-xs">You can close this window.</p>
       </div>

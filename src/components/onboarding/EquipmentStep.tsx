@@ -1,3 +1,10 @@
+/**
+ * Equipment Step (Step 3)
+ *
+ * Toggles for: BIA Scanner, Cardio Equipment, Dynamometer.
+ * Fixed: duplicate Mobile Scanning Note removed.
+ */
+
 import { Scale, Timer, Dumbbell, Check, Smartphone } from 'lucide-react';
 import type { EquipmentConfig } from '@/types/onboarding';
 import { useState } from 'react';
@@ -8,151 +15,131 @@ interface EquipmentStepProps {
   onBack: () => void;
 }
 
+interface EquipmentCardProps {
+  active: boolean;
+  onToggle: () => void;
+  icon: React.ElementType;
+  title: string;
+  description: string;
+  activeLabel: string;
+  inactiveLabel: string;
+}
+
+function EquipmentCard({ active, onToggle, icon: Icon, title, description, activeLabel, inactiveLabel }: EquipmentCardProps) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`w-full text-left p-5 rounded-xl border-2 transition-colors ${
+        active
+          ? 'bg-white border-slate-900 shadow-sm'
+          : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+      }`}
+    >
+      <div className="flex items-start justify-between mb-3">
+        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+          active ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-400'
+        }`}>
+          <Icon size={20} />
+        </div>
+        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
+          active ? 'bg-slate-900 border-slate-900 text-white' : 'border-slate-300'
+        }`}>
+          {active && <Check size={14} />}
+        </div>
+      </div>
+      <h4 className="text-sm font-bold text-slate-900 mb-0.5">{title}</h4>
+      <p className="text-xs text-slate-500 mb-3">{description}</p>
+      <div className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
+        active ? 'bg-slate-100 text-slate-700' : 'bg-emerald-50 text-emerald-700'
+      }`}>
+        {active ? activeLabel : inactiveLabel}
+      </div>
+    </button>
+  );
+}
+
 export function EquipmentStep({ data, onNext, onBack }: EquipmentStepProps) {
   const [scanner, setScanner] = useState(data?.scanner ?? false);
   const [treadmill, setTreadmill] = useState(data?.treadmill ?? false);
   const [dynamometer, setDynamometer] = useState(data?.dynamometer ?? false);
 
   const handleSubmit = () => {
-    // Map the simple toggles to our EquipmentConfig format
     const equipmentConfig: EquipmentConfig = {
       scanner,
       treadmill,
       dynamometer,
-      // Map scanner to bodyCompositionMethod
-      bodyCompositionMethod: scanner ? 'inbody' : 'measurements',
-      // Map dynamometer to gripStrengthEnabled
+      bodyCompositionMethod: scanner ? 'bioimpedance' : 'measurements',
       gripStrengthEnabled: dynamometer,
       gripStrengthMethod: dynamometer ? 'dynamometer' : 'none',
     };
-    
     onNext(equipmentConfig);
   };
 
   return (
-    <div className="space-y-8 animate-fade-in-up max-w-5xl mx-auto">
-      <div className="text-center mb-10">
-        <h3 className="text-3xl font-bold text-slate-900 mb-2">Configure Protocols</h3>
-        <p className="text-slate-500">Toggle what you have. We'll auto-enable alternative test logic for what you don't.</p>
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-slate-900 mb-1">Configure your protocols</h2>
+        <p className="text-sm text-slate-500">Toggle what you have. We auto-enable alternatives for what you don't.</p>
       </div>
 
-      {/* Equipment Cards Grid */}
-      <div className="grid md:grid-cols-3 gap-6">
-        {/* Scanner Card */}
-        <div
-          onClick={() => setScanner(!scanner)}
-          className={`relative p-6 rounded-[2rem] border-2 cursor-pointer transition-all duration-300 overflow-hidden ${
-            scanner ? 'bg-white border-indigo-600 shadow-2xl shadow-indigo-100/50' : 'bg-slate-50 border-slate-200 hover:bg-white hover:border-slate-300'
-          }`}
-        >
-          <div className="flex justify-between items-start mb-6">
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${scanner ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-400'}`}>
-              <Scale size={28} />
-            </div>
-            <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors ${scanner ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300'}`}>
-              {scanner && <Check size={16} />}
-            </div>
-          </div>
-          <h4 className="text-xl font-bold text-slate-900 mb-1">BIA Scanner</h4>
-          <p className="text-sm text-slate-500 mb-6 min-h-[40px]">InBody, Evolt, Tanita or other connected scales.</p>
-
-          <div className={`p-4 rounded-xl text-xs font-bold transition-colors ${scanner ? 'bg-indigo-50 text-indigo-700' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'}`}>
-            {scanner ? '✓ Digital Integration Active' : '✨ Enabling Tape & Skinfold UI'}
-          </div>
-        </div>
-
-        {/* Treadmill Card */}
-        <div
-          onClick={() => setTreadmill(!treadmill)}
-          className={`relative p-6 rounded-[2rem] border-2 cursor-pointer transition-all duration-300 overflow-hidden ${
-            treadmill ? 'bg-white border-indigo-600 shadow-2xl shadow-indigo-100/50' : 'bg-slate-50 border-slate-200 hover:bg-white hover:border-slate-300'
-          }`}
-        >
-          <div className="flex justify-between items-start mb-6">
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${treadmill ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-400'}`}>
-              <Timer size={28} />
-            </div>
-            <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors ${treadmill ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300'}`}>
-              {treadmill && <Check size={16} />}
-            </div>
-          </div>
-          <h4 className="text-xl font-bold text-slate-900 mb-1">Cardio Equip.</h4>
-          <p className="text-sm text-slate-500 mb-6 min-h-[40px]">Treadmill, Bike or Rower with watt/speed readout.</p>
-
-          <div className={`p-4 rounded-xl text-xs font-bold transition-colors ${treadmill ? 'bg-indigo-50 text-indigo-700' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'}`}>
-            {treadmill ? '✓ Protocol Library Active' : '✨ Enabling Step-Test UI'}
-          </div>
-        </div>
-
-        {/* Dynamometer Card */}
-        <div
-          onClick={() => setDynamometer(!dynamometer)}
-          className={`relative p-6 rounded-[2rem] border-2 cursor-pointer transition-all duration-300 overflow-hidden ${
-            dynamometer ? 'bg-white border-indigo-600 shadow-2xl shadow-indigo-100/50' : 'bg-slate-50 border-slate-200 hover:bg-white hover:border-slate-300'
-          }`}
-        >
-          <div className="flex justify-between items-start mb-6">
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${dynamometer ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-400'}`}>
-              <Dumbbell size={28} />
-            </div>
-            <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors ${dynamometer ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300'}`}>
-              {dynamometer && <Check size={16} />}
-            </div>
-          </div>
-          <h4 className="text-xl font-bold text-slate-900 mb-1">Dynamometer</h4>
-          <p className="text-sm text-slate-500 mb-6 min-h-[40px]">Hand-grip strength testing device.</p>
-
-          <div className={`p-4 rounded-xl text-xs font-bold transition-colors ${dynamometer ? 'bg-indigo-50 text-indigo-700' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'}`}>
-            {dynamometer ? '✓ Input Fields Active' : '✨ Enabling Dead-Hang UI'}
-          </div>
-        </div>
+      <div className="space-y-3">
+        <EquipmentCard
+          active={scanner}
+          onToggle={() => setScanner(!scanner)}
+          icon={Scale}
+          title="BIA Scanner"
+          description="BIA analyser (e.g. InBody, Evolt, Tanita) or other connected scales."
+          activeLabel="Digital integration active"
+          inactiveLabel="Tape & skinfold UI enabled"
+        />
+        <EquipmentCard
+          active={treadmill}
+          onToggle={() => setTreadmill(!treadmill)}
+          icon={Timer}
+          title="Cardio Equipment"
+          description="Treadmill, Bike or Rower with watt/speed readout."
+          activeLabel="Protocol library active"
+          inactiveLabel="Step-test UI enabled"
+        />
+        <EquipmentCard
+          active={dynamometer}
+          onToggle={() => setDynamometer(!dynamometer)}
+          icon={Dumbbell}
+          title="Dynamometer"
+          description="Hand-grip strength testing device."
+          activeLabel="Input fields active"
+          inactiveLabel="Dead-hang UI enabled"
+        />
       </div>
 
-      {/* Mobile Scanning Note */}
-      <div className="bg-white/50 border border-indigo-100 p-6 rounded-2xl flex items-center gap-4 max-w-2xl mx-auto shadow-sm">
-        <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
-          <Smartphone size={24} />
+      {/* Mobile Scanning Note (single instance) */}
+      <div className="flex items-start gap-3 p-4 rounded-xl border border-slate-200 bg-slate-50">
+        <div className="w-8 h-8 rounded-lg bg-slate-200 flex items-center justify-center text-slate-500 shrink-0">
+          <Smartphone size={16} />
         </div>
         <div>
-          <h4 className="text-sm font-bold text-indigo-900">Mobile Scanning Engine</h4>
-          <p className="text-sm text-slate-600">AI Posture Analysis, ROM testing, and Sit-and-Reach computer vision are <b>automatically enabled</b> for all devices.</p>
-        </div>
-      </div>
-
-      {/* Mobile Scanning Note */}
-      <div className="bg-white/50 border border-indigo-100 p-6 rounded-2xl flex items-center gap-4 max-w-2xl mx-auto shadow-sm">
-        <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
-          <Smartphone size={24} />
-        </div>
-        <div>
-          <h4 className="text-sm font-bold text-indigo-900">Mobile Scanning Engine</h4>
-          <p className="text-sm text-slate-600">
-            Since you're on iOS/iPadOS, AI Posture Analysis, ROM testing, and Sit-and-Reach computer vision are <b>automatically enabled</b> for your build.
+          <p className="text-xs font-bold text-slate-700">Mobile Scanning Engine</p>
+          <p className="text-xs text-slate-500 mt-0.5">
+            AI Posture Analysis, ROM testing, and Sit-and-Reach computer vision are automatically enabled for all devices.
           </p>
         </div>
       </div>
 
-      {/* Navigation */}
-      <div className="flex gap-3 pt-4">
+      <div className="flex gap-3 pt-2">
         <button
           type="button"
           onClick={onBack}
-          className="flex-1 h-12 rounded-2xl bg-white border border-slate-200 font-bold text-lg flex items-center justify-center gap-2 hover:bg-slate-50 transition-all shadow-sm text-slate-600"
+          className="h-12 px-6 rounded-xl border border-slate-200 font-bold text-sm text-slate-600 hover:bg-slate-50 transition-colors"
         >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
           Back
         </button>
         <button
           type="button"
           onClick={handleSubmit}
-          className="flex-1 h-12 rounded-2xl bg-slate-900 text-white font-bold text-lg flex items-center justify-center gap-2 hover:bg-slate-800 transition-all shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-95"
+          className="flex-1 h-12 rounded-xl bg-slate-900 text-white font-bold text-sm hover:bg-slate-800 transition-colors"
         >
           Continue
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
         </button>
       </div>
     </div>
