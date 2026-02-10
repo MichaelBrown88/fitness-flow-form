@@ -144,6 +144,11 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
   const movementPattern = currentStep[0].pattern;
   const isBodyCompSection = section.id === 'body-comp';
 
+  // Check if all fields in this step share the same side (for group-level badge)
+  const sharedSide = currentStep.length > 1 && currentStep.every(f => f.side && f.side === currentStep[0].side)
+    ? currentStep[0].side
+    : null;
+
   // Auto-photo helper for body comp: launches camera or phone companion
   const handleSnapPhoto = () => {
     if (!isMobile && onShowInBodyCompanion) {
@@ -167,10 +172,19 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
       <div className="bg-white rounded-3xl p-8 lg:p-10 shadow-xl shadow-primary/10 border border-primary/5 min-h-[400px] flex flex-col justify-center relative">
 
         {movementPattern && (
-          <div className="mb-6 flex items-center justify-between">
+          <div className="mb-6 flex items-center gap-2">
             <span className="px-3 py-1 bg-brand-light text-primary rounded-full text-[10px] font-black uppercase tracking-[0.2em] border border-primary/10">
               {movementPattern}
             </span>
+            {sharedSide && (
+              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border ${
+                sharedSide === 'left'
+                  ? 'bg-score-green-light text-score-green-fg border-score-green-muted'
+                  : 'bg-primary/10 text-primary border-primary/10'
+              }`}>
+                {sharedSide} Side
+              </span>
+            )}
           </div>
         )}
 
@@ -188,12 +202,15 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
           </div>
         )}
 
-        {/* Fields */}
-        <div className={`grid gap-8 ${currentStep.length > 1 ? 'md:grid-cols-2' : 'grid-cols-1'}`}>
+        {/* Fields — 2-col for pairs of 2, stacked for 3+ (observation checklists) */}
+        <div className={`grid gap-6 ${
+          currentStep.length === 2 ? 'md:grid-cols-2' : 'grid-cols-1'
+        }`}>
           {currentStep.map(field => (
-            <div key={field.id} className="space-y-4">
-              {field.side && (
-                <span className={`text-[10px] font-black uppercase tracking-widest ${field.side === 'left' ? 'text-emerald-500' : 'text-primary'}`}>
+            <div key={field.id} className="space-y-3">
+              {/* Show per-field side badge only when NOT using a group-level side indicator */}
+              {field.side && !sharedSide && (
+                <span className={`text-[10px] font-black uppercase tracking-widest ${field.side === 'left' ? 'text-score-green-fg' : 'text-primary'}`}>
                   {field.side} Side
                 </span>
               )}
