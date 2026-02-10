@@ -10,7 +10,7 @@ export const ClientInfoBar: React.FC<ClientInfoBarProps> = ({ formData }) => {
   if (!formData) return null;
 
   return (
-    <div className="glass-subtle rounded-lg sm:rounded-xl px-2 sm:px-3 md:px-4 lg:px-5 py-1.5 sm:py-2 md:py-2.5 lg:py-3 mb-2 sm:mb-3 md:mb-4 lg:mb-5">
+    <div className="glass-subtle rounded-lg sm:rounded-xl px-2 sm:px-3 md:px-4 lg:px-5 py-1 sm:py-2 md:py-2.5 lg:py-3 mb-1 sm:mb-3 md:mb-4 lg:mb-5">
       <div className="flex flex-nowrap items-center gap-x-1.5 sm:gap-x-2 md:gap-x-3 lg:gap-x-4 overflow-x-auto scrollbar-hide text-xs">
         {formData.gender && (
           <div className="flex items-center gap-1 shrink-0">

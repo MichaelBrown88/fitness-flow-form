@@ -81,8 +81,8 @@ export const StartingPointSection: React.FC<StartingPointSectionProps> = ({
         </Card>
 
         {/* Radar Chart */}
-        <Card className="col-span-1 lg:col-span-2 p-3 sm:p-4 md:p-5 lg:p-8 relative min-h-[280px] sm:min-h-[320px] md:min-h-[360px] lg:min-h-[420px]">
-          <div className="flex justify-between items-start mb-3 sm:mb-4">
+        <Card className="col-span-1 lg:col-span-2 p-3 sm:p-4 md:p-5 lg:p-8 relative min-h-[280px] sm:min-h-[320px] md:min-h-[360px] lg:min-h-[420px] overflow-hidden">
+          <div className="flex justify-between items-start mb-1 sm:mb-4">
             <div>
               <h4 className="text-sm font-bold text-zinc-900">Performance Profile</h4>
               <p className="text-xs text-zinc-500 mt-0.5 sm:mt-1">
@@ -90,7 +90,7 @@ export const StartingPointSection: React.FC<StartingPointSectionProps> = ({
               </p>
             </div>
           </div>
-          <div className="h-[240px] sm:h-[260px] md:h-[280px] lg:h-[320px] w-full mt-1 sm:mt-2 md:mt-4">
+          <div className="h-[240px] sm:h-[260px] md:h-[280px] lg:h-[320px] w-full mt-0 sm:mt-2 md:mt-4">
             <OverallRadarChart data={overallRadarData} previousData={previousRadarData} />
           </div>
         </Card>

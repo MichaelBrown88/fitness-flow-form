@@ -7,7 +7,7 @@
  * Completely separate from coach/admin UI per .cursorrules Air-Gap principle.
  */
 
-import { useState, lazy, Suspense } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useClientPortal } from '@/hooks/useClientPortal';
 import { Button } from '@/components/ui/button';
@@ -58,6 +58,15 @@ export default function ClientPortal() {
   const { profile, signOut, orgSettings } = useAuth();
   const { data, loading, error } = useClientPortal();
   const [activeCapture, setActiveCapture] = useState<'bodycomp' | 'posture' | null>(null);
+
+  // Swap PWA manifest so clients get a distinct icon when installing
+  useEffect(() => {
+    const link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+    if (!link) return;
+    const original = link.href;
+    link.href = '/manifest-client.webmanifest';
+    return () => { link.href = original; };
+  }, []);
 
   if (loading) {
     return (

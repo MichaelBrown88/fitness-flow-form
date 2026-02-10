@@ -136,39 +136,53 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   );
 };
 
+// ── Mobile tab config (4 story-driven tabs) ──────────────────────────
+
+const MOBILE_TAB_IDS = ['overview', 'analysis', 'movement', 'plan'] as const;
+type MobileTabId = (typeof MOBILE_TAB_IDS)[number];
+
+const MOBILE_TAB_META: Record<MobileTabId, {
+  label: string;
+  icon: React.ElementType;
+}> = {
+  overview:  { label: 'Overview',  icon: Activity },
+  analysis:  { label: 'Analysis',  icon: BarChart3 },
+  movement:  { label: 'Movement',  icon: Activity },
+  plan:      { label: 'Your Plan', icon: Trophy },
+};
+
 // ── Mobile bottom tab bar ────────────────────────────────────────────
 
 interface MobileReportNavProps {
-  activeSection: SectionId;
-  onSelect: (id: SectionId) => void;
+  activeTab: MobileTabId;
+  onSelect: (id: MobileTabId) => void;
 }
 
-const MobileReportNav: React.FC<MobileReportNavProps> = ({ activeSection, onSelect }) => (
+const MobileReportNav: React.FC<MobileReportNavProps> = ({ activeTab, onSelect }) => (
   <nav className="fixed bottom-0 inset-x-0 z-50 bg-white border-t border-slate-200 shadow-[0_-2px_10px_rgba(0,0,0,0.06)] safe-area-pb md:hidden">
-    <div className="flex items-stretch justify-around px-1">
-      {SECTION_IDS.map(id => {
-        const Icon = SECTION_ICON_MAP[id];
-        const meta = SECTION_META[id];
-        const isActive = activeSection === id;
+    <div className="flex items-stretch justify-around px-2">
+      {MOBILE_TAB_IDS.map(id => {
+        const { icon: Icon, label } = MOBILE_TAB_META[id];
+        const isActive = activeTab === id;
         return (
           <button
             key={id}
             onClick={() => onSelect(id)}
-            className={`flex-1 flex flex-col items-center gap-0.5 py-2 transition-colors ${
+            className={`relative flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors touch-manipulation ${
               isActive
                 ? 'text-primary'
                 : 'text-slate-400 active:text-slate-600'
             }`}
           >
-            <Icon className={`h-4 w-4 ${isActive ? 'text-primary' : ''}`} />
-            <span className={`text-[8px] font-bold uppercase tracking-wider leading-tight ${
+            {isActive && (
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary rounded-full" />
+            )}
+            <Icon className={`h-5 w-5 ${isActive ? 'text-primary' : ''}`} />
+            <span className={`text-[9px] font-bold uppercase tracking-wide leading-tight ${
               isActive ? 'text-primary' : 'text-slate-400'
             }`}>
-              {meta.shortTitle}
+              {label}
             </span>
-            {isActive && (
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-primary rounded-full" />
-            )}
           </button>
         );
       })}
@@ -243,8 +257,8 @@ export default function ClientReport({
     setOpenSections(allOpen ? new Set(DEFAULT_OPEN) : new Set(SECTION_IDS));
   }, [allOpen]);
 
-  // ── Mobile: single active section ──────────────────────────────────
-  const [mobileSection, setMobileSection] = useState<SectionId>('starting-point');
+  // ── Mobile: single active tab (4 grouped tabs) ─────────────────────
+  const [mobileTab, setMobileTab] = useState<MobileTabId>('overview');
 
   // ── Guard ───────────────────────────────────────────────────────────
   if (!scores || !scores.categories || scores.categories.length === 0 || !hasAnyData) {
@@ -353,24 +367,60 @@ export default function ClientReport({
             )}
           </Suspense>
         ) : isMobile ? (
-          /* ── Mobile: one section at a time + bottom tab bar ── */
+          /* ── Mobile: grouped tabs + bottom nav ── */
           <>
-            {/* Section title bar */}
-            <div className="flex items-center gap-2 py-2">
-              <div className="p-1.5 bg-gradient-light text-zinc-900 rounded-lg shrink-0">
-                {SECTION_META[mobileSection].icon}
-              </div>
-              <h3 className="text-xs font-bold text-zinc-900 uppercase tracking-widest">
-                {SECTION_META[mobileSection].title}
-              </h3>
+            {/* Tab title bar */}
+            <div className="flex items-center gap-2 py-1.5">
+              {(() => {
+                const { icon: TabIcon, label } = MOBILE_TAB_META[mobileTab];
+                return (
+                  <>
+                    <div className="p-1.5 bg-gradient-light text-zinc-900 rounded-lg shrink-0">
+                      <TabIcon className="w-3.5 h-3.5" />
+                    </div>
+                    <h3 className="text-xs font-bold text-zinc-900 uppercase tracking-widest">
+                      {label}
+                    </h3>
+                  </>
+                );
+              })()}
             </div>
 
-            {/* Active section content */}
-            <div className="pb-20">
-              {renderSection(mobileSection)}
+            {/* Active tab content -- each tab renders grouped sections */}
+            <div className="pb-16 space-y-4">
+              {mobileTab === 'overview' && (
+                <>
+                  {renderSection('starting-point')}
+                  <LifestyleFactorsBar formData={formData} />
+                </>
+              )}
+              {mobileTab === 'analysis' && (
+                <>
+                  {renderSection('gap-analysis')}
+                  <StrengthsFocusSection
+                    strengths={strengths}
+                    areasForImprovement={areasForImprovement}
+                  />
+                </>
+              )}
+              {mobileTab === 'movement' && (
+                <MovementPostureMobility formData={formData} scores={scores} standalone={standalone} hideHeader />
+              )}
+              {mobileTab === 'plan' && (
+                <>
+                  <DestinationSection goals={goals} formData={formData} hideHeader />
+                  <BlueprintSection blueprintPillars={blueprintPillars} hideHeader />
+                  <TimelineSection
+                    orderedCats={orderedCats}
+                    weeksByCategory={weeksByCategory}
+                    maxWeeks={maxWeeks}
+                    hideHeader
+                  />
+                </>
+              )}
             </div>
 
-            <MobileReportNav activeSection={mobileSection} onSelect={setMobileSection} />
+            <MobileReportNav activeTab={mobileTab} onSelect={setMobileTab} />
           </>
         ) : (
           /* ── Desktop: collapsible accordion ── */
