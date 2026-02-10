@@ -42,7 +42,7 @@ export const SCORE_COLORS: Record<
   }
 > = {
   green: {
-    badge: 'bg-score-green-bold text-white',
+    badge: 'bg-score-green text-white',
     pill: 'bg-score-green-light text-score-green-fg border border-score-green-muted',
     circle: 'border-score-green text-score-green-fg',
     text: 'text-score-green-fg',
@@ -50,7 +50,7 @@ export const SCORE_COLORS: Record<
     dot: 'bg-score-green',
   },
   amber: {
-    badge: 'bg-score-amber-bold text-white',
+    badge: 'bg-score-amber text-white',
     pill: 'bg-score-amber-light text-score-amber-fg border border-score-amber-muted',
     circle: 'border-score-amber text-score-amber-fg',
     text: 'text-score-amber-fg',
@@ -58,7 +58,7 @@ export const SCORE_COLORS: Record<
     dot: 'bg-score-amber',
   },
   red: {
-    badge: 'bg-score-red-bold text-white',
+    badge: 'bg-score-red text-white',
     pill: 'bg-score-red-light text-score-red-fg border border-score-red-muted',
     circle: 'border-score-red text-score-red-fg',
     text: 'text-score-red-fg',
