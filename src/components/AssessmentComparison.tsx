@@ -61,7 +61,7 @@ export const AssessmentComparison: React.FC<AssessmentComparisonProps> = ({
           <ArrowRight className="h-4 w-4 text-slate-400" />
           <span className="text-sm font-semibold text-slate-900">{newScore}</span>
           {diff !== 0 && (
-            <div className={`flex items-center gap-1 ${improved ? 'text-emerald-600' : 'text-red-600'}`}>
+            <div className={`flex items-center gap-1 ${improved ? 'text-score-green-fg' : 'text-score-red-fg'}`}>
               {improved ? (
                 <TrendingUp className="h-4 w-4" />
               ) : (
@@ -98,7 +98,7 @@ export const AssessmentComparison: React.FC<AssessmentComparisonProps> = ({
             <span className="text-lg font-semibold text-slate-900">{newScores.overall}</span>
             {newScores.overall !== oldScores.overall && (
               <span className={`text-sm font-semibold ${
-                newScores.overall > oldScores.overall ? 'text-emerald-600' : 'text-red-600'
+                newScores.overall > oldScores.overall ? 'text-score-green-fg' : 'text-score-red-fg'
               }`}>
                 ({newScores.overall > oldScores.overall ? '+' : ''}{newScores.overall - oldScores.overall})
               </span>

@@ -39,8 +39,8 @@ export const DashboardViewTabs: React.FC<DashboardViewTabsProps> = ({
           {scheduleCount > 0 && (
             <span className={`ml-1 px-1.5 py-0.5 text-[10px] font-bold rounded-full ${
               view === 'schedule' 
-                ? 'bg-amber-100 text-amber-700' 
-                : 'bg-amber-500 text-white'
+                ? 'bg-score-amber-muted text-score-amber-fg' 
+                : 'bg-score-amber text-white'
             }`}>
               {scheduleCount}
             </span>

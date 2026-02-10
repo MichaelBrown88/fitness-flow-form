@@ -43,7 +43,7 @@ export function CoachReportSessionScript({ clientScript }: CoachReportSessionScr
               <ul className="space-y-2">
                 {clientScript.whyItMatters.map((item, i) => (
                   <li key={i} className="flex gap-3 text-slate-700 text-sm">
-                    <span className="text-amber-500 font-bold">•</span>
+                    <span className="text-score-amber font-bold">•</span>
                     {item}
                   </li>
                 ))}
@@ -55,7 +55,7 @@ export function CoachReportSessionScript({ clientScript }: CoachReportSessionScr
               <ul className="space-y-2">
                 {clientScript.actionPlan.map((item, i) => (
                   <li key={i} className="flex gap-3 text-slate-700 text-sm font-medium">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                    <CheckCircle2 className="h-4 w-4 text-score-green shrink-0 mt-0.5" />
                     {item}
                   </li>
                 ))}

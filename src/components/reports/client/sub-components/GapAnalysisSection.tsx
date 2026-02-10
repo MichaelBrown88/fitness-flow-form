@@ -140,7 +140,7 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
       
       <div className="pt-3 sm:pt-4 border-t border-zinc-100">
         <div className="flex items-start gap-1.5 sm:gap-2">
-          <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+          <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-score-amber mt-0.5 flex-shrink-0" />
           <p className="text-xs text-zinc-600 leading-relaxed">{truncateInsight(bodyComp?.insight || '')}</p>
         </div>
       </div>
@@ -233,7 +233,7 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
         
         <div className="pt-3 sm:pt-4 border-t border-zinc-100">
           <div className="flex items-start gap-1.5 sm:gap-2">
-            <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+            <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-score-amber mt-0.5 flex-shrink-0" />
             <p className="text-xs text-zinc-600 leading-relaxed">{truncateInsight(functional?.insight || '')}</p>
           </div>
         </div>
@@ -305,7 +305,7 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
       
       <div className="pt-3 sm:pt-4 border-t border-zinc-100">
         <div className="flex items-start gap-1.5 sm:gap-2">
-          <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+          <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-score-amber mt-0.5 flex-shrink-0" />
           <p className="text-xs text-zinc-600 leading-relaxed">{truncateInsight(metabolic?.insight || '')}</p>
         </div>
       </div>

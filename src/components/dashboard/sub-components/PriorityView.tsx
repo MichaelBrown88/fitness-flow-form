@@ -51,28 +51,28 @@ const STATUS_STYLES: Record<ScheduleStatus, {
 }> = {
   'overdue': {
     card: 'bg-white border-slate-200 hover:border-slate-300',
-    badge: SCORE_COLORS[STATUS_GRADE['overdue']].pill,
+    badge: `bg-white border border-slate-200 ${SCORE_COLORS.red.text}`,
     badgeLabel: UI_SCHEDULE.OVERDUE,
-    icon: <AlertCircle className={`w-3.5 h-3.5 ${SCORE_COLORS[STATUS_GRADE['overdue']].icon}`} />,
+    icon: <AlertCircle className={`w-3.5 h-3.5 ${SCORE_COLORS.red.icon}`} />,
   },
   'due-soon': {
     card: 'bg-white border-slate-200 hover:border-slate-300',
-    badge: SCORE_COLORS[STATUS_GRADE['due-soon']].pill,
+    badge: `bg-white border border-slate-200 ${SCORE_COLORS.amber.text}`,
     badgeLabel: UI_SCHEDULE.COMING_UP,
-    icon: <Clock className={`w-3.5 h-3.5 ${SCORE_COLORS[STATUS_GRADE['due-soon']].icon}`} />,
+    icon: <Clock className={`w-3.5 h-3.5 ${SCORE_COLORS.amber.icon}`} />,
   },
   'up-to-date': {
     card: 'bg-white border-slate-200 hover:border-slate-300',
-    badge: SCORE_COLORS[STATUS_GRADE['up-to-date']].pill,
+    badge: `bg-white border border-slate-200 ${SCORE_COLORS.green.text}`,
     badgeLabel: UI_SCHEDULE.ON_TRACK,
-    icon: <CheckCircle className={`w-3.5 h-3.5 ${SCORE_COLORS[STATUS_GRADE['up-to-date']].icon}`} />,
+    icon: <CheckCircle className={`w-3.5 h-3.5 ${SCORE_COLORS.green.icon}`} />,
   },
 };
 
 const PILLAR_STATUS_STYLES: Record<ScheduleStatus, string> = {
-  'overdue': `${SCORE_COLORS.red.pill} hover:opacity-80`,
-  'due-soon': `${SCORE_COLORS.amber.pill} hover:opacity-80`,
-  'up-to-date': `${SCORE_COLORS.green.pill} hover:opacity-80`,
+  'overdue': 'bg-white border border-slate-200 hover:border-slate-300 text-score-red-fg',
+  'due-soon': 'bg-white border border-slate-200 hover:border-slate-300 text-score-amber-fg',
+  'up-to-date': 'bg-white border border-slate-200 hover:border-slate-300 text-score-green-fg',
 };
 
 // ── Pillar icon helper ───────────────────────────────────────────────
@@ -319,7 +319,9 @@ interface TaskCardProps {
 
 const TaskCard: React.FC<TaskCardProps> = ({ item, onAssess, organizationId, onDueDateSave, navigate }) => {
   const style = STATUS_STYLES[item.status];
-  const actionablePillars = item.pillarSchedules.filter(s => s.pillar !== 'full');
+  const actionablePillars = item.pillarSchedules
+    .filter(s => s.pillar !== 'full')
+    .sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status]);
 
   return (
     <div className={`rounded-xl border transition-colors p-4 ${style.card}`}>

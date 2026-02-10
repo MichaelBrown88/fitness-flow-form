@@ -57,9 +57,9 @@ export function CoachReportHeader({ clientName, goals, scores }: CoachReportHead
                   key={idx}
                   className={`p-3 rounded-xl border flex gap-3 ${
                     item.severity === 'high'
-                      ? 'border-rose-100 bg-rose-50/50'
+                      ? 'border-score-red-muted bg-score-red-light/50'
                       : item.severity === 'medium'
-                      ? 'border-amber-100 bg-amber-50/50'
+                      ? 'border-score-amber-muted bg-score-amber-light/50'
                       : 'border-blue-100 bg-blue-50/50'
                   }`}
                 >

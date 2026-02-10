@@ -19,7 +19,7 @@ export function CoachReportBodyComp({ bodyComp, segmentalGuidance }: CoachReport
       {segmentalGuidance && segmentalGuidance.length > 0 && (
         <section className="space-y-6">
           <div className="flex items-center gap-3">
-            <div className="bg-emerald-600 p-2 rounded-lg">
+            <div className="bg-score-green p-2 rounded-lg">
               <Activity className="h-5 w-5 text-white" />
             </div>
             <h3 className="text-xl font-bold text-slate-900">InBody Segmental Guidance</h3>
@@ -29,7 +29,7 @@ export function CoachReportBodyComp({ bodyComp, segmentalGuidance }: CoachReport
               <ul className="space-y-3">
                 {segmentalGuidance.map((item, i) => (
                   <li key={i} className="text-sm text-slate-700 flex gap-3">
-                    <span className="text-emerald-500 font-bold">•</span>
+                    <span className="text-score-green font-bold">•</span>
                     {item}
                   </li>
                 ))}

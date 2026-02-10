@@ -76,22 +76,22 @@ function DeviationLabel({
       {/* Label Card */}
       <div 
         className={`
-          bg-red-50/95 backdrop-blur-sm rounded-lg shadow-lg border border-red-200
+          bg-score-red-light/95 backdrop-blur-sm rounded-lg shadow-lg border border-score-red-muted
           p-2 transition-all hover:scale-105 hover:shadow-xl cursor-default
           ${isLeft ? 'text-left' : 'text-right'}
         `}
       >
         {/* Header with red indicator */}
         <div className={`flex items-center gap-1.5 ${isLeft ? '' : 'flex-row-reverse'}`}>
-          <div className="h-2 w-2 rounded-full bg-red-500" />
-          <span className="text-xs font-black uppercase tracking-wider text-red-700">
+          <div className="h-2 w-2 rounded-full bg-score-red" />
+          <span className="text-xs font-black uppercase tracking-wider text-score-red-fg">
             {label}
           </span>
         </div>
         
         {/* Recommendation/Corrective measure */}
         {shortText && (
-          <p className="text-xs text-red-600 leading-tight mt-1 line-clamp-2 font-medium">
+          <p className="text-xs text-score-red-fg leading-tight mt-1 line-clamp-2 font-medium">
             {shortText}
           </p>
         )}

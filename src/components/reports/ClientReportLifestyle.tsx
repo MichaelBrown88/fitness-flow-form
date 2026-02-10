@@ -169,22 +169,22 @@ export function ClientReportLifestyle({ formData }: ClientReportLifestyleProps) 
         {lifestyleFactors.map((factor, i) => {
           const bgColor =
             factor.status === 'good'
-              ? 'border-emerald-200 bg-emerald-50'
+              ? 'border-score-green-muted bg-score-green-light'
               : factor.status === 'poor'
-              ? 'border-red-200 bg-red-50'
-              : 'border-amber-200 bg-amber-50';
+              ? 'border-score-red-muted bg-score-red-light'
+              : 'border-score-amber-muted bg-score-amber-light';
           const textColor =
             factor.status === 'good'
-              ? 'text-emerald-900'
+              ? 'text-score-green-bold'
               : factor.status === 'poor'
-              ? 'text-red-900'
-              : 'text-amber-900';
+              ? 'text-score-red-bold'
+              : 'text-score-amber-bold';
           const statusColor =
             factor.status === 'good'
-              ? 'bg-emerald-100 text-emerald-700'
+              ? 'bg-score-green-muted text-score-green-fg'
               : factor.status === 'poor'
-              ? 'bg-red-100 text-red-700'
-              : 'bg-amber-100 text-amber-700';
+              ? 'bg-score-red-muted text-score-red-fg'
+              : 'bg-score-amber-muted text-score-amber-fg';
           const statusLabel =
             factor.status === 'good' ? 'Doing well' : factor.status === 'poor' ? 'Needs attention' : 'Needs work';
 

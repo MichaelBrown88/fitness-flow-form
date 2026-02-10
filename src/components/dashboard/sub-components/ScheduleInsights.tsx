@@ -62,17 +62,17 @@ export const ScheduleInsights: React.FC<ScheduleInsightsProps> = ({ queue, summa
 
   return (
     <div className="space-y-3">
-      {/* Traffic-light status counts */}
+      {/* Traffic-light status counts — neutral cards, colored text */}
       <div className="grid grid-cols-3 gap-3">
-        <div className={`rounded-xl p-3 ${SCORE_COLORS.red.pill}`}>
+        <div className="rounded-xl p-3 bg-white border border-slate-200">
           <p className={`text-2xl font-bold ${SCORE_COLORS.red.text}`}>{summary.overdue}</p>
           <p className={`text-xs font-medium ${SCORE_COLORS.red.text}`}>{UI_SCHEDULE.OVERDUE}</p>
         </div>
-        <div className={`rounded-xl p-3 ${SCORE_COLORS.amber.pill}`}>
+        <div className="rounded-xl p-3 bg-white border border-slate-200">
           <p className={`text-2xl font-bold ${SCORE_COLORS.amber.text}`}>{summary.dueSoon}</p>
           <p className={`text-xs font-medium ${SCORE_COLORS.amber.text}`}>{UI_SCHEDULE.COMING_UP}</p>
         </div>
-        <div className={`rounded-xl p-3 ${SCORE_COLORS.green.pill}`}>
+        <div className="rounded-xl p-3 bg-white border border-slate-200">
           <p className={`text-2xl font-bold ${SCORE_COLORS.green.text}`}>{summary.upToDate}</p>
           <p className={`text-xs font-medium ${SCORE_COLORS.green.text}`}>{UI_SCHEDULE.ON_TRACK}</p>
         </div>

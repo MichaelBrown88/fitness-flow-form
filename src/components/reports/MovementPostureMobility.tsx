@@ -485,11 +485,11 @@ export function MovementPostureMobility({ formData, scores, standalone = false, 
             
             {movementWeaknesses.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-2">Focus Areas</p>
+                <p className="text-xs font-semibold text-score-amber-fg uppercase tracking-wide mb-2">Focus Areas</p>
                 <ul className="space-y-2">
                   {movementWeaknesses.map((weakness, idx) => (
                     <li key={idx} className="text-sm text-zinc-600 flex items-start gap-2">
-                      <AlertCircle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                      <AlertCircle className="w-4 h-4 text-score-amber mt-0.5 shrink-0" />
                       <span>{weakness}</span>
                     </li>
                   ))}
@@ -534,11 +534,11 @@ export function MovementPostureMobility({ formData, scores, standalone = false, 
             
             {finalMobilityFocusAreas.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-2">Focus Areas</p>
+                <p className="text-xs font-semibold text-score-amber-fg uppercase tracking-wide mb-2">Focus Areas</p>
                 <ul className="space-y-2">
                   {finalMobilityFocusAreas.map((finding, idx) => (
                     <li key={idx} className="text-sm text-zinc-600 flex items-start gap-2">
-                      <AlertCircle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                      <AlertCircle className="w-4 h-4 text-score-amber mt-0.5 shrink-0" />
                       <span className="leading-relaxed">{finding}</span>
                     </li>
                   ))}

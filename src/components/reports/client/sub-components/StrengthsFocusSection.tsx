@@ -30,13 +30,13 @@ export const StrengthsFocusSection: React.FC<StrengthsFocusSectionProps> = ({
       
       <Card className="p-4 sm:p-5 md:p-6 lg:p-7">
         <h4 className="text-sm font-bold text-zinc-900 mb-2 sm:mb-3 md:mb-4 flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" />
+          <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-score-amber" />
           Primary Focus Areas
         </h4>
         <ul className="space-y-2 sm:space-y-3">
           {areasForImprovement.map((item, i) => (
             <li key={i} className="text-xs sm:text-sm text-zinc-600 flex items-start gap-2 sm:gap-3">
-              <div className="w-1.5 h-1.5 rounded-full bg-amber-300 mt-2 shrink-0" />
+              <div className="w-1.5 h-1.5 rounded-full bg-score-amber mt-2 shrink-0" />
               {item.weakness}
             </li>
           ))}

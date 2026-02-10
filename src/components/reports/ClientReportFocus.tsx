@@ -75,7 +75,7 @@ export function ClientReportFocus({ clientScript }: ClientReportFocusProps) {
           <div className="grid gap-4">
             {clientScript.actionPlan.map((action: string, i: number) => (
               <div key={i} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex gap-4 items-center">
-                <div className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+                <div className="h-2 w-2 rounded-full bg-score-green shrink-0" />
                 <p className="text-slate-700 font-bold">{action}</p>
               </div>
             ))}

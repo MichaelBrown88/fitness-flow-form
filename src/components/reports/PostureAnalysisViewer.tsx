@@ -89,9 +89,9 @@ function getScreenSide(
 
 function getSeverityTone(severity: Severity) {
   if (severity === 'mild') {
-    return { dot: 'bg-amber-500', text: 'text-amber-300' };
+    return { dot: 'bg-score-amber', text: 'text-score-amber' };
   }
-  return { dot: 'bg-red-500', text: 'text-red-400' };
+  return { dot: 'bg-score-red', text: 'text-score-red' };
 }
 
 /**
@@ -502,7 +502,7 @@ export function PostureViewCard({
             {isNeutral ? (
               <CheckCircle2 className="h-4 w-4 text-gradient-dark fill-white" />
             ) : (
-              <AlertCircle className="h-4 w-4 text-amber-500 fill-white" />
+              <AlertCircle className="h-4 w-4 text-score-amber fill-white" />
             )}
           </div>
 
@@ -583,15 +583,15 @@ export function PostureViewCard({
         {/* Legend - minimal */}
         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-black/80 px-3 py-1 rounded-full">
           <div className="flex items-center gap-1">
-            <div className="h-2 w-2 rounded-full bg-green-500" />
+            <div className="h-2 w-2 rounded-full bg-score-green" />
             <span className="text-xs uppercase text-white/50">Aligned</span>
                           </div>
           <div className="flex items-center gap-1">
-            <div className="h-2 w-2 rounded-full bg-amber-500" />
+            <div className="h-2 w-2 rounded-full bg-score-amber" />
             <span className="text-xs uppercase text-white/50">Minor</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="h-2 w-2 rounded-full bg-red-500" />
+            <div className="h-2 w-2 rounded-full bg-score-red" />
             <span className="text-xs uppercase text-white/50">Deviation</span>
                 </div>
               </div>

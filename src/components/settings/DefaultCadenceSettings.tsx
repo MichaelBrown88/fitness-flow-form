@@ -197,7 +197,7 @@ export function DefaultCadenceSettings({
               <div
                 key={pillar}
                 className={`p-4 rounded-xl border ${
-                  isValid ? 'border-slate-100 bg-slate-50/50' : 'border-red-200 bg-red-50/50'
+                  isValid ? 'border-slate-100 bg-slate-50/50' : 'border-score-red-muted bg-score-red-light/50'
                 }`}
               >
                 <div className="flex items-center gap-2 mb-3">
@@ -216,7 +216,7 @@ export function DefaultCadenceSettings({
                     onChange={(e) => handleIntervalChange(pillar, e.target.value)}
                     min={7}
                     max={180}
-                    className={`h-10 w-24 text-center ${!isValid ? 'border-red-300' : ''}`}
+                    className={`h-10 w-24 text-center ${!isValid ? 'border-score-red' : ''}`}
                     disabled={!enabled}
                   />
                   <span className="text-xs text-slate-500">days</span>

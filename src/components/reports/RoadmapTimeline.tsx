@@ -47,8 +47,8 @@ export default function RoadmapTimeline({ phases }: { phases: RoadmapPhase[] }) 
       </div>
       
       {/* Disclaimer */}
-      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 mt-6">
-        <p className="text-xs text-amber-900 leading-relaxed">
+      <div className="rounded-lg border border-score-amber-muted bg-score-amber-light p-4 mt-6">
+        <p className="text-xs text-score-amber-bold leading-relaxed">
           <strong className="font-semibold">Important:</strong> These timeframes are estimates based on typical response rates and assume consistent adherence to the program. 
           Individual results vary significantly based on genetics, adherence, lifestyle factors, and other variables. 
           These projections do not account for missed sessions, travel, illness, or other interruptions. 
