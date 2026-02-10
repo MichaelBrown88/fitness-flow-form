@@ -50,7 +50,13 @@ export function subscribeToNotifications(
       onUpdate(notifications);
     },
     (error) => {
-      logger.error('[Notifications] Subscription error:', error);
+      // Gracefully handle missing permissions (collection may not exist yet)
+      if (error.message?.includes('Missing or insufficient permissions')) {
+        logger.debug('[Notifications] Collection not yet accessible — notifications will appear once created');
+        onUpdate([]); // Return empty array instead of erroring
+      } else {
+        logger.error('[Notifications] Subscription error:', error);
+      }
       onError?.(error);
     }
   );
