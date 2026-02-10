@@ -24,6 +24,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { logger } from '@/lib/utils/logger';
 import { ScheduleInsights } from './ScheduleInsights';
 import { UI_SCHEDULE } from '@/constants/ui';
+import { SCORE_COLORS, STATUS_GRADE } from '@/lib/scoring/scoreColor';
 import type {
   UseReassessmentQueueResult,
   ReassessmentItem,
@@ -43,35 +44,35 @@ const STATUS_ORDER: Record<ScheduleStatus, number> = {
   'overdue': 0, 'due-soon': 1, 'up-to-date': 2,
 };
 
-// ── Traffic-light styles ─────────────────────────────────────────────
+// ── Traffic-light styles (derived from SCORE_COLORS) ─────────────────
 
 const STATUS_STYLES: Record<ScheduleStatus, {
   card: string; badge: string; badgeLabel: string; icon: React.ReactNode;
 }> = {
   'overdue': {
     card: 'bg-white border-slate-200 hover:border-slate-300',
-    badge: 'bg-red-100 text-red-700 border-red-200',
+    badge: SCORE_COLORS[STATUS_GRADE['overdue']].pill,
     badgeLabel: UI_SCHEDULE.OVERDUE,
-    icon: <AlertCircle className="w-3.5 h-3.5 text-red-500" />,
+    icon: <AlertCircle className={`w-3.5 h-3.5 ${SCORE_COLORS[STATUS_GRADE['overdue']].icon}`} />,
   },
   'due-soon': {
     card: 'bg-white border-slate-200 hover:border-slate-300',
-    badge: 'bg-amber-100 text-amber-700 border-amber-200',
+    badge: SCORE_COLORS[STATUS_GRADE['due-soon']].pill,
     badgeLabel: UI_SCHEDULE.COMING_UP,
-    icon: <Clock className="w-3.5 h-3.5 text-amber-500" />,
+    icon: <Clock className={`w-3.5 h-3.5 ${SCORE_COLORS[STATUS_GRADE['due-soon']].icon}`} />,
   },
   'up-to-date': {
     card: 'bg-white border-slate-200 hover:border-slate-300',
-    badge: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+    badge: SCORE_COLORS[STATUS_GRADE['up-to-date']].pill,
     badgeLabel: UI_SCHEDULE.ON_TRACK,
-    icon: <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />,
+    icon: <CheckCircle className={`w-3.5 h-3.5 ${SCORE_COLORS[STATUS_GRADE['up-to-date']].icon}`} />,
   },
 };
 
 const PILLAR_STATUS_STYLES: Record<ScheduleStatus, string> = {
-  'overdue': 'bg-red-100 text-red-700 border border-red-200 hover:bg-red-200/60',
-  'due-soon': 'bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200/60',
-  'up-to-date': 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100',
+  'overdue': `${SCORE_COLORS.red.pill} hover:opacity-80`,
+  'due-soon': `${SCORE_COLORS.amber.pill} hover:opacity-80`,
+  'up-to-date': `${SCORE_COLORS.green.pill} hover:opacity-80`,
 };
 
 // ── Pillar icon helper ───────────────────────────────────────────────
@@ -230,8 +231,8 @@ export const PriorityView: React.FC<PriorityViewProps> = ({
   if (queue.length === 0) {
     return (
       <div className="py-12 text-center">
-        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-100 flex items-center justify-center">
-          <CheckCircle className="w-8 h-8 text-emerald-600" />
+        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-score-green-light flex items-center justify-center">
+          <CheckCircle className={`w-8 h-8 ${SCORE_COLORS.green.icon}`} />
         </div>
         <h3 className="text-lg font-semibold text-slate-900 mb-2">No Clients Yet</h3>
         <p className="text-sm text-slate-500 max-w-sm mx-auto">
@@ -351,10 +352,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ item, onAssess, organizationId, onD
 
         <div className="flex flex-col items-end gap-2 shrink-0">
           <div className="text-right">
-            <p className={`font-bold text-sm ${
-              item.status === 'overdue' ? 'text-red-600' :
-              item.status === 'due-soon' ? 'text-amber-600' : 'text-emerald-600'
-            }`}>
+            <p className={`font-bold text-sm ${SCORE_COLORS[STATUS_GRADE[item.status]].text}`}>
               {item.daysSinceAssessment >= 999 ? 'Never' : `${item.daysSinceAssessment}d`}
             </p>
             <p className="text-[10px] text-slate-400">since last</p>
@@ -362,7 +360,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ item, onAssess, organizationId, onD
           {item.status !== 'up-to-date' && item.mostUrgentPillar && (
             <Button
               size="sm" variant={item.status === 'overdue' ? 'default' : 'outline'}
-              className={`text-xs h-7 ${item.status === 'overdue' ? 'bg-red-600 hover:bg-red-700' : ''}`}
+              className={`text-xs h-7 ${item.status === 'overdue' ? 'bg-score-red hover:bg-score-red-fg' : ''}`}
               onClick={() => {
                 const p = item.mostUrgentPillar;
                 onAssess(item.clientName, p && p !== 'full' ? p : undefined);

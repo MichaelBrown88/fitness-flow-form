@@ -62,14 +62,11 @@ export const PROGRAM_PHASES = [
   },
 ] as const;
 
-import { scoreGrade } from '@/lib/scoring/scoreColor';
+import { scoreGrade, SCORE_COLORS } from '@/lib/scoring/scoreColor';
 import { getPillarLabel } from '@/constants/pillars';
 
 export function circleColor(score: number): string {
-  const grade = scoreGrade(score);
-  if (grade === 'green') return 'border-green-500 text-green-700';
-  if (grade === 'amber') return 'border-amber-500 text-amber-700';
-  return 'border-red-500 text-red-700';
+  return SCORE_COLORS[scoreGrade(score)].circle;
 }
 
 export function niceLabel(id: string): string {

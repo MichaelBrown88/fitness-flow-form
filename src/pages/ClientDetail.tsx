@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as UICalendar } from '@/components/ui/calendar';
 import { useClientDetail } from '@/hooks/useClientDetail';
-import { scoreGrade } from '@/lib/scoring/scoreColor';
+import { scoreGrade, SCORE_COLORS } from '@/lib/scoring/scoreColor';
 import { PILLAR_DISPLAY } from '@/constants/pillars';
 import { AssessmentComparison } from '@/components/AssessmentComparison';
 import { RetestScheduleCard } from '@/components/RetestScheduleCard';
@@ -400,9 +400,7 @@ const ClientDetail = () => {
                 <div key={assessment.id} className="p-5 hover:bg-slate-50/80 transition-all flex items-center justify-between group">
                   <div className="flex items-center gap-6">
                     <div className={`h-12 w-12 rounded-xl flex items-center justify-center font-black text-sm border-2 ${
-                      scoreGrade(assessment.overallScore) === 'green' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 
-                      scoreGrade(assessment.overallScore) === 'amber' ? 'bg-amber-50 border-amber-100 text-amber-600' : 
-                      'bg-rose-50 border-rose-100 text-rose-600'
+                      SCORE_COLORS[scoreGrade(assessment.overallScore)].pill
                     }`}>
                       {assessment.overallScore}
                     </div>

@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { ClientActionsDropdown } from './ClientActionsDropdown';
 import type { ClientGroup } from '@/hooks/dashboard/types';
-import { scoreGrade } from '@/lib/scoring/scoreColor';
+import { scoreGrade, SCORE_COLORS } from '@/lib/scoring/scoreColor';
 
 type SortKey = 'name' | 'lastAssessed' | 'score';
 type SortDir = 'asc' | 'desc';
@@ -26,16 +26,9 @@ interface UnifiedClientTableProps {
 /** Score badge with contextual color */
 const ScoreBadge: React.FC<{ score: number }> = ({ score }) => {
   const grade = scoreGrade(score);
-  const bg =
-    grade === 'green'
-      ? 'bg-emerald-900 text-emerald-50'
-      : grade === 'amber'
-        ? 'bg-amber-800 text-amber-50'
-        : 'bg-red-900 text-red-50';
-
   return (
     <span
-      className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-black shadow-sm ${bg}`}
+      className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-black shadow-sm ${SCORE_COLORS[grade].badge}`}
     >
       {score || '—'}
     </span>

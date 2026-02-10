@@ -54,6 +54,25 @@ All colors MUST be HSL.
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
+    /* Traffic Light / Score Colors — single source of truth */
+    --score-green: 160 84% 39%;          /* emerald-600 #059669 */
+    --score-green-fg: 162 93% 24%;       /* emerald-700 */
+    --score-green-light: 152 81% 96%;    /* emerald-50 */
+    --score-green-muted: 149 80% 90%;    /* emerald-100 */
+    --score-green-bold: 164 86% 16%;     /* emerald-900 */
+
+    --score-amber: 38 92% 50%;           /* amber-500 #f59e0b */
+    --score-amber-fg: 32 95% 44%;        /* amber-600 */
+    --score-amber-light: 48 100% 96%;    /* amber-50 */
+    --score-amber-muted: 48 96% 89%;     /* amber-100 */
+    --score-amber-bold: 23 83% 31%;      /* amber-800 */
+
+    --score-red: 0 84% 60%;              /* red-500 #ef4444 */
+    --score-red-fg: 0 72% 51%;           /* red-600 */
+    --score-red-light: 0 86% 97%;        /* red-50 */
+    --score-red-muted: 0 93% 94%;        /* red-100 */
+    --score-red-bold: 0 63% 31%;         /* red-900 */
+
     --border: 0 0% 82%;                 /* #d2d2d7 */
     --border-medium: 0 0% 78%;         /* #c7c7cc */
     --border-dark: 0 0% 65%;           /* #a1a1a6 */

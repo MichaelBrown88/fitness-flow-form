@@ -72,6 +72,29 @@ export default {
           elevated: "hsl(var(--card-elevated))",
           subtle: "hsl(var(--card-subtle))",
         },
+        score: {
+          green: {
+            DEFAULT: "hsl(var(--score-green))",
+            fg: "hsl(var(--score-green-fg))",
+            light: "hsl(var(--score-green-light))",
+            muted: "hsl(var(--score-green-muted))",
+            bold: "hsl(var(--score-green-bold))",
+          },
+          amber: {
+            DEFAULT: "hsl(var(--score-amber))",
+            fg: "hsl(var(--score-amber-fg))",
+            light: "hsl(var(--score-amber-light))",
+            muted: "hsl(var(--score-amber-muted))",
+            bold: "hsl(var(--score-amber-bold))",
+          },
+          red: {
+            DEFAULT: "hsl(var(--score-red))",
+            fg: "hsl(var(--score-red-fg))",
+            light: "hsl(var(--score-red-light))",
+            muted: "hsl(var(--score-red-muted))",
+            bold: "hsl(var(--score-red-bold))",
+          },
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",

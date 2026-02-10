@@ -13,6 +13,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { UI_SCHEDULE } from '@/constants/ui';
+import { SCORE_COLORS } from '@/lib/scoring/scoreColor';
 import type {
   ReassessmentItem,
   ReassessmentQueueSummary,
@@ -63,17 +64,17 @@ export const ScheduleInsights: React.FC<ScheduleInsightsProps> = ({ queue, summa
     <div className="space-y-3">
       {/* Traffic-light status counts */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-red-50 rounded-xl p-3 border border-red-100">
-          <p className="text-2xl font-bold text-red-700">{summary.overdue}</p>
-          <p className="text-xs text-red-600 font-medium">{UI_SCHEDULE.OVERDUE}</p>
+        <div className={`rounded-xl p-3 ${SCORE_COLORS.red.pill}`}>
+          <p className={`text-2xl font-bold ${SCORE_COLORS.red.text}`}>{summary.overdue}</p>
+          <p className={`text-xs font-medium ${SCORE_COLORS.red.text}`}>{UI_SCHEDULE.OVERDUE}</p>
         </div>
-        <div className="bg-amber-50 rounded-xl p-3 border border-amber-100">
-          <p className="text-2xl font-bold text-amber-700">{summary.dueSoon}</p>
-          <p className="text-xs text-amber-600 font-medium">{UI_SCHEDULE.COMING_UP}</p>
+        <div className={`rounded-xl p-3 ${SCORE_COLORS.amber.pill}`}>
+          <p className={`text-2xl font-bold ${SCORE_COLORS.amber.text}`}>{summary.dueSoon}</p>
+          <p className={`text-xs font-medium ${SCORE_COLORS.amber.text}`}>{UI_SCHEDULE.COMING_UP}</p>
         </div>
-        <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-100">
-          <p className="text-2xl font-bold text-emerald-700">{summary.upToDate}</p>
-          <p className="text-xs text-emerald-600 font-medium">{UI_SCHEDULE.ON_TRACK}</p>
+        <div className={`rounded-xl p-3 ${SCORE_COLORS.green.pill}`}>
+          <p className={`text-2xl font-bold ${SCORE_COLORS.green.text}`}>{summary.upToDate}</p>
+          <p className={`text-xs font-medium ${SCORE_COLORS.green.text}`}>{UI_SCHEDULE.ON_TRACK}</p>
         </div>
       </div>
 
