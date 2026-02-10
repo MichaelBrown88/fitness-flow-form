@@ -8,6 +8,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { ThemeManager } from "./components/layout/ThemeManager";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ImpersonationBanner } from "./components/ImpersonationBanner";
+import { ReloadPrompt } from "./components/pwa/ReloadPrompt";
+const InstallPrompt = lazy(() => import("./components/pwa/InstallPrompt").then(m => ({ default: m.InstallPrompt })));
 
 // Lazy load heavy page components
 const Landing = lazy(() => import("./pages/Landing"));
@@ -70,6 +72,8 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
+      <ReloadPrompt />
+      <Suspense fallback={null}><InstallPrompt /></Suspense>
           <AuthProvider>
             <ThemeManager>
               <BrowserRouter
