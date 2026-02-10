@@ -5,12 +5,16 @@ import {
   createUserWithEmailAndPassword,
   updateProfile,
   signOut as firebaseSignOut,
+  sendSignInLinkToEmail,
+  isSignInWithEmailLink,
+  signInWithEmailLink,
   type User,
 } from 'firebase/auth';
 import { doc, getDoc, onSnapshot, setDoc, collection, query, limit, getDocs, updateDoc } from 'firebase/firestore';
 import { getFirebaseAuth, getDb } from '@/services/firebase';
 import { getOrgSettings, type OrgSettings } from '@/services/organizations';
-import type { UserRole, UserProfile } from '@/types/auth';
+import type { UserProfile } from '@/types/auth';
+import { isStaffRole } from '@/types/auth';
 import { AuthContext } from '@/hooks/useAuth';
 import { logger } from '@/lib/utils/logger';
 import { 
@@ -145,14 +149,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           }
         } else {
-          // Provision missing profile
-          currentProfile = {
-            uid: firebaseUser.uid,
-            organizationId: `org-${firebaseUser.uid}`,
-            role: 'org_admin',
-            displayName: firebaseUser.displayName || 'Coach',
-            onboardingCompleted: false
-          };
+          // Check if this is a magic link sign-in (client) — do NOT auto-provision as org_admin
+          const isMagicLink = isSignInWithEmailLink(getFirebaseAuth(), window.location.href)
+            || window.location.pathname.startsWith('/portal');
+          
+          if (isMagicLink) {
+            // Client profile should be pre-created by coach invite Cloud Function
+            // If missing, create a minimal client profile (will be linked during onboarding)
+            logger.warn('[AUTH] Client magic link user has no profile — creating minimal client profile');
+            currentProfile = {
+              uid: firebaseUser.uid,
+              organizationId: '', // Will be set by invite flow
+              role: 'client',
+              displayName: firebaseUser.displayName || firebaseUser.email || 'Client',
+            };
+          } else {
+            // Staff sign-up: provision as org_admin (existing behavior)
+            currentProfile = {
+              uid: firebaseUser.uid,
+              organizationId: `org-${firebaseUser.uid}`,
+              role: 'org_admin',
+              displayName: firebaseUser.displayName || 'Coach',
+              onboardingCompleted: false
+            };
+          }
           setDoc(profileRef, currentProfile, { merge: true })
             .catch(e => logger.warn('[AUTH] Profile sync skipped:', e));
         }
@@ -262,6 +282,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // State will be updated by onAuthStateChanged listener
   };
 
+  /** Send a magic link email for client portal access */
+  const sendClientMagicLink = async (email: string) => {
+    const auth = getFirebaseAuth();
+    const actionCodeSettings = {
+      url: `${window.location.origin}/portal/login?email=${encodeURIComponent(email)}`,
+      handleCodeInApp: true,
+    };
+    await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+    // Store email locally so we can complete sign-in when the link is clicked
+    window.localStorage.setItem('emailForSignIn', email);
+  };
+
+  // Handle magic link sign-in on mount (if returning from email link)
+  useEffect(() => {
+    const auth = getFirebaseAuth();
+    if (isSignInWithEmailLink(auth, window.location.href)) {
+      let email = window.localStorage.getItem('emailForSignIn');
+      if (!email) {
+        // Prompt the user for their email if not stored (different device)
+        email = window.prompt('Please confirm your email address:');
+      }
+      if (email) {
+        signInWithEmailLink(auth, email, window.location.href)
+          .then(() => {
+            window.localStorage.removeItem('emailForSignIn');
+            logger.info('[Auth] Magic link sign-in completed');
+          })
+          .catch((err) => {
+            logger.error('[Auth] Magic link sign-in failed:', err);
+          });
+      }
+    }
+  }, []);
+
   const signOut = async () => {
     const auth = getFirebaseAuth();
     // Mark as manual sign out so we don't clear storage unnecessarily
@@ -315,7 +369,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading, 
       signIn, 
       signUp, 
-      signOut, 
+      signOut,
+      sendClientMagicLink,
       refreshSettings,
       impersonation,
       startImpersonation: handleStartImpersonation,

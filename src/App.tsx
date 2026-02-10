@@ -9,6 +9,7 @@ import { ThemeManager } from "./components/layout/ThemeManager";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ImpersonationBanner } from "./components/ImpersonationBanner";
 import { ReloadPrompt } from "./components/pwa/ReloadPrompt";
+import { RequireClientAuth } from "./components/auth/RequireClientAuth";
 const InstallPrompt = lazy(() => import("./components/pwa/InstallPrompt").then(m => ({ default: m.InstallPrompt })));
 
 // Lazy load heavy page components
@@ -28,6 +29,10 @@ const Settings = lazy(() => import("./pages/Settings"));
 const Companion = lazy(() => import("./pages/Companion"));
 const ClientDetail = lazy(() => import("./pages/ClientDetail"));
 const OrgAdmin = lazy(() => import("./pages/OrgAdmin"));
+
+// Client portal pages (air-gapped from coach/admin)
+const ClientPortal = lazy(() => import("./pages/portal/ClientPortal"));
+const ClientLogin = lazy(() => import("./pages/portal/ClientLogin"));
 
 // Platform admin pages (separate from org admin)
 const PlatformLogin = lazy(() => import("./pages/admin/PlatformLogin"));
@@ -172,6 +177,17 @@ const App = () => (
                     {/* Companion mode (Mobile view) - No RequireAuth because it uses a token */}
                     <Route path="/companion/:sessionId" element={<Companion />} />
                     
+                    {/* Client Portal routes (air-gapped from coach/admin) */}
+                    <Route path="/portal/login" element={<ClientLogin />} />
+                    <Route
+                      path="/portal"
+                      element={
+                        <RequireClientAuth>
+                          <ClientPortal />
+                        </RequireClientAuth>
+                      }
+                    />
+
                     {/* Platform admin routes (separate from org admin) */}
                     <Route path="/admin/login" element={<PlatformLogin />} />
                     <Route path="/admin/setup" element={<PlatformSetup />} />
