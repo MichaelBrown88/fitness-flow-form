@@ -409,7 +409,7 @@ export function RetestScheduleCard({
                   Generated: {schedule.generatedAt?.toDate?.()?.toLocaleDateString() || 'Unknown'}
                 </span>
                 <span className="uppercase tracking-wider font-bold">
-                  {Object.values(schedule.recommended).some(
+                  {schedule.recommended && Object.values(schedule.recommended).some(
                     (c: CadenceConfig) => c.priority === 'high'
                   ) ? 'High Priority' : 'Standard Schedule'}
                 </span>

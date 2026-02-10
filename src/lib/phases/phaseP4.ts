@@ -102,12 +102,15 @@ export const phaseP4: PhaseDefinition = {
       id: 'lunge-assessment',
       title: SECTION_TITLES.P4['lunge-assessment'],
       fields: [
-        { id: 'lungeLeftBalance' as keyof FormData, type: 'select' as FieldType, label: ASSESSMENT_LABELS.P4.lungeLeftBalance, pattern: 'Lunge', side: 'left', pairId: 'lunge-balance', tooltip: ASSESSMENT_TOOLTIPS.P4.lungeLeftBalance, options: ASSESSMENT_OPTIONS.lungeBalance },
-        { id: 'lungeRightBalance' as keyof FormData, type: 'select' as FieldType, label: ASSESSMENT_LABELS.P4.lungeRightBalance, pattern: 'Lunge', side: 'right', pairId: 'lunge-balance', tooltip: ASSESSMENT_TOOLTIPS.P4.lungeRightBalance, options: ASSESSMENT_OPTIONS.lungeBalance },
-        { id: 'lungeLeftKneeAlignment' as keyof FormData, type: 'select' as FieldType, label: ASSESSMENT_LABELS.P4.lungeLeftKneeAlignment, pattern: 'Lunge', side: 'left', pairId: 'lunge-knee', tooltip: ASSESSMENT_TOOLTIPS.P4.lungeLeftKneeAlignment, options: ASSESSMENT_OPTIONS.lungeKneeAlignment },
-        { id: 'lungeRightKneeAlignment' as keyof FormData, type: 'select' as FieldType, label: ASSESSMENT_LABELS.P4.lungeRightKneeAlignment, pattern: 'Lunge', side: 'right', pairId: 'lunge-knee', tooltip: ASSESSMENT_TOOLTIPS.P4.lungeRightKneeAlignment, options: ASSESSMENT_OPTIONS.lungeKneeAlignment },
-        { id: 'lungeLeftTorso' as keyof FormData, type: 'select' as FieldType, label: ASSESSMENT_LABELS.P4.lungeLeftTorso, pattern: 'Lunge', side: 'left', pairId: 'lunge-hips', tooltip: ASSESSMENT_TOOLTIPS.P4.lungeLeftTorso, options: ASSESSMENT_OPTIONS.lungeHipShift },
-        { id: 'lungeRightTorso' as keyof FormData, type: 'select' as FieldType, label: ASSESSMENT_LABELS.P4.lungeRightTorso, pattern: 'Lunge', side: 'right', pairId: 'lunge-hips', tooltip: ASSESSMENT_TOOLTIPS.P4.lungeRightTorso, options: ASSESSMENT_OPTIONS.lungeHipShift },
+        // Left side — all checks grouped together
+        { id: 'lungeLeftBalance' as keyof FormData, type: 'select' as FieldType, label: ASSESSMENT_LABELS.P4.lungeLeftBalance, pattern: 'Lunge', side: 'left', tooltip: ASSESSMENT_TOOLTIPS.P4.lungeLeftBalance, options: ASSESSMENT_OPTIONS.lungeBalance },
+        { id: 'lungeLeftKneeAlignment' as keyof FormData, type: 'select' as FieldType, label: ASSESSMENT_LABELS.P4.lungeLeftKneeAlignment, pattern: 'Lunge', side: 'left', tooltip: ASSESSMENT_TOOLTIPS.P4.lungeLeftKneeAlignment, options: ASSESSMENT_OPTIONS.lungeKneeAlignment },
+        { id: 'lungeLeftTorso' as keyof FormData, type: 'select' as FieldType, label: ASSESSMENT_LABELS.P4.lungeLeftTorso, pattern: 'Lunge', side: 'left', tooltip: ASSESSMENT_TOOLTIPS.P4.lungeLeftTorso, options: ASSESSMENT_OPTIONS.lungeHipShift },
+        // Right side — all checks grouped together
+        { id: 'lungeRightBalance' as keyof FormData, type: 'select' as FieldType, label: ASSESSMENT_LABELS.P4.lungeRightBalance, pattern: 'Lunge', side: 'right', tooltip: ASSESSMENT_TOOLTIPS.P4.lungeRightBalance, options: ASSESSMENT_OPTIONS.lungeBalance },
+        { id: 'lungeRightKneeAlignment' as keyof FormData, type: 'select' as FieldType, label: ASSESSMENT_LABELS.P4.lungeRightKneeAlignment, pattern: 'Lunge', side: 'right', tooltip: ASSESSMENT_TOOLTIPS.P4.lungeRightKneeAlignment, options: ASSESSMENT_OPTIONS.lungeKneeAlignment },
+        { id: 'lungeRightTorso' as keyof FormData, type: 'select' as FieldType, label: ASSESSMENT_LABELS.P4.lungeRightTorso, pattern: 'Lunge', side: 'right', tooltip: ASSESSMENT_TOOLTIPS.P4.lungeRightTorso, options: ASSESSMENT_OPTIONS.lungeHipShift },
+        // Pain — shared
         { id: 'lungeHasPain' as keyof FormData, type: 'select' as FieldType, label: ASSESSMENT_LABELS.P4.lungeHasPain, tooltip: ASSESSMENT_TOOLTIPS.P4.lungeHasPain, options: ASSESSMENT_OPTIONS.lungeHasPain },
         { id: 'lungePainLevel' as keyof FormData, type: 'select' as FieldType, label: ASSESSMENT_LABELS.P4.lungePainLevel, tooltip: ASSESSMENT_TOOLTIPS.P4.lungePainLevel, conditional: { showWhen: { field: 'lungeHasPain', value: 'yes' } }, options: ASSESSMENT_OPTIONS.lungePainLevel },
       ]

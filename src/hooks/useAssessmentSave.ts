@@ -13,6 +13,7 @@ import type { ScoreSummary } from '@/lib/scoring';
 import { logger } from '@/lib/utils/logger';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import { UI_TOASTS } from '@/constants/ui';
+import { clearDraft } from '@/hooks/useAssessmentDraft';
 import { generateCadenceRecommendations } from '@/lib/recommendations/cadenceEngine';
 import { updateRetestSchedule } from '@/services/clientProfiles';
 import type { UserProfile } from '@/types/auth';
@@ -105,6 +106,7 @@ export function useAssessmentSave({
             );
             assessmentId = parsed.assessmentId;
             sessionStorage.removeItem(STORAGE_KEYS.EDIT_ASSESSMENT);
+            clearDraft();
             // Set edit mode flag (used by AssessmentResults for navigation)
             setIsEditMode(true);
             toast({
@@ -191,6 +193,7 @@ export function useAssessmentSave({
       }
       
       setSavingId(assessmentId);
+      clearDraft();
       toast({ 
         title: category ? UI_TOASTS.SUCCESS.PARTIAL_ASSESSMENT_SAVED : UI_TOASTS.SUCCESS.ASSESSMENT_SAVED, 
         description: category ? `${category.charAt(0).toUpperCase() + category.slice(1)} data updated and merged.` : `Progress for ${clientName} has been saved.` 

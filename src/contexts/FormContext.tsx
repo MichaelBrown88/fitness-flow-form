@@ -458,11 +458,12 @@ export const FormProvider = ({ children }: { children: ReactNode }) => {
   const resetForm = () => {
     setFormData(initialFormData);
     setCurrentStep(1);
-    // Clear any session storage artifacts from partial/edit modes
+    // Clear any session storage artifacts from partial/edit/draft modes
     try {
-      sessionStorage.removeItem('partialAssessment');
-      sessionStorage.removeItem('prefillClientData');
-      sessionStorage.removeItem('editAssessment');
+      sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
+      sessionStorage.removeItem(STORAGE_KEYS.PREFILL_CLIENT);
+      sessionStorage.removeItem(STORAGE_KEYS.EDIT_ASSESSMENT);
+      sessionStorage.removeItem(STORAGE_KEYS.DRAFT_ASSESSMENT);
     } catch {
       // noop
     }

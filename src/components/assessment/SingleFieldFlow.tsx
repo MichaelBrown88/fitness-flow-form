@@ -126,6 +126,21 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
 
   if (!currentStep) return null;
 
+  // ── PAR-Q bypass: the component manages its own multi-step flow ─
+  const isParQField = currentStep.length === 1 && currentStep[0].type === 'parq';
+  if (isParQField) {
+    return (
+      <FieldControl
+        field={currentStep[0]}
+        onShowCamera={onShowCamera}
+        onShowPostureCompanion={onShowPostureCompanion}
+        onShowInBodyCompanion={onShowInBodyCompanion}
+        onExitParQ={handleBack}
+        onParQComplete={onComplete}
+      />
+    );
+  }
+
   const movementPattern = currentStep[0].pattern;
   const isBodyCompSection = section.id === 'body-comp';
 

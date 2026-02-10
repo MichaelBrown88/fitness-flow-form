@@ -5,6 +5,7 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { Plus } from 'lucide-react';
 import { ROUTES } from '@/constants/routes';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
+import { clearDraft } from '@/hooks/useAssessmentDraft';
 
 // Hook
 import { useDashboardData } from '@/hooks/useDashboardData';
@@ -45,8 +46,9 @@ const Dashboard = () => {
   const handleGlobalNewAssessment = () => {
     sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
     sessionStorage.removeItem(STORAGE_KEYS.IS_DEMO);
-    sessionStorage.removeItem('prefillClientData');
-    sessionStorage.removeItem('editAssessment');
+    sessionStorage.removeItem(STORAGE_KEYS.PREFILL_CLIENT);
+    sessionStorage.removeItem(STORAGE_KEYS.EDIT_ASSESSMENT);
+    clearDraft();
     navigate(ROUTES.ASSESSMENT);
   };
 

@@ -1,12 +1,13 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useFormContext, type FormData } from '@/contexts/FormContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Progress } from '@/components/ui/progress';
 import {
   Check,
   Loader2,
   X,
+  ArrowLeft,
 } from 'lucide-react';
 import { phaseDefinitions, type PhaseField, type PhaseSection } from '@/lib/phaseConfig';
 import { computeScores, buildRoadmap } from '@/lib/scoring';
@@ -19,7 +20,10 @@ import { useAssessmentSave } from '@/hooks/useAssessmentSave';
 import { useCameraHandler } from '@/hooks/useCameraHandler';
 import { useDemoAssessment } from '@/hooks/useDemoAssessment';
 import { useAssessmentShareHandlers } from '@/hooks/useAssessmentShareHandlers';
+import { useAssessmentDraft, getDraft, clearDraft } from '@/hooks/useAssessmentDraft';
 import { logger } from '@/lib/utils/logger';
+import { UI_DRAFT } from '@/constants/ui';
+import { ROUTES } from '@/constants/routes';
 import { AssessmentSidebar } from './AssessmentSidebar';
 import { AssessmentModals } from './AssessmentModals';
 import { SingleFieldFlow } from './SingleFieldFlow';
@@ -50,6 +54,7 @@ export const PhaseFormContent = ({
   const { user, profile, orgSettings } = useAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
 
   // Determine client name from storage or form
   const clientNameFromStorage = useMemo(() => {
@@ -130,6 +135,43 @@ export const PhaseFormContent = ({
     loadCurrentAssessment();
   }, [user, activeClientName, isPartialAssessment, partialCategory, profile?.organizationId, updateFormData]);
   
+  // ── Draft auto-save + recovery ──────────────────────────────────
+  const [draftBanner, setDraftBanner] = useState<{ clientName: string; timestamp: number } | null>(null);
+
+  // On mount: check for an existing draft (only if NOT in edit/prefill mode)
+  useEffect(() => {
+    const hasEdit = !!sessionStorage.getItem('editAssessmentData');
+    const hasPrefill = !!sessionStorage.getItem('prefillClientData');
+    if (hasEdit || hasPrefill) return;
+
+    const draft = getDraft();
+    if (draft && draft.clientName) {
+      setDraftBanner({ clientName: draft.clientName, timestamp: draft.timestamp });
+    }
+  }, []);
+
+  // Activate the debounced auto-save (writes formData → sessionStorage)
+  useAssessmentDraft(formData, isResultsPhase);
+
+  const handleResumeDraft = useCallback(() => {
+    const draft = getDraft();
+    if (draft?.formData) {
+      updateFormData(draft.formData as Partial<FormData>);
+    }
+    setDraftBanner(null);
+  }, [updateFormData]);
+
+  const handleDiscardDraft = useCallback(() => {
+    clearDraft();
+    setDraftBanner(null);
+  }, []);
+
+  const handleSaveAndExit = useCallback(() => {
+    // Draft is already auto-saved by the hook, just navigate away
+    toast({ title: UI_DRAFT.DRAFT_SAVED, description: 'You can resume this assessment any time.' });
+    navigate(ROUTES.DASHBOARD);
+  }, [navigate, toast]);
+
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [recentlyCompletedSections, setRecentlyCompletedSections] = useState<Set<string>>(new Set());
   const [activeFieldIdx, setActiveFieldIdx] = useState(0);
@@ -270,19 +312,6 @@ export const PhaseFormContent = ({
       return val !== '' && val !== undefined && val !== null;
     });
   }, [formData]);
-
-  // Global field completion counter for the active phase
-  const { completedFields, totalFields } = useMemo(() => {
-    const sections = activePhase.sections ?? [];
-    const allFields = sections.flatMap(s => s.fields ?? []);
-    const total = allFields.length;
-    const completed = allFields.filter(f => {
-      const val = formData[f.id as keyof FormData];
-      if (Array.isArray(val)) return val.length > 0;
-      return val !== '' && val !== undefined && val !== null;
-    }).length;
-    return { completedFields: completed, totalFields: total };
-  }, [activePhase, formData]);
 
   const getAllSections = useCallback(() => {
     const sections: SectionType[] = [];
@@ -471,24 +500,46 @@ export const PhaseFormContent = ({
         />
       )}
 
-      <main className={`flex-1 bg-slate-50/50 p-6 lg:p-10 overflow-y-auto ${isPartialAssessment ? 'w-full' : ''}`}>
+      <main className={`flex-1 bg-slate-50/50 p-6 lg:p-10 pb-24 lg:pb-10 overflow-y-auto ${isPartialAssessment ? 'w-full' : ''}`}>
         <div className={`mx-auto ${activePhase?.id === 'P7' ? 'max-w-none' : 'max-w-3xl'} space-y-8`}>
+
+          {/* Draft recovery banner */}
+          {draftBanner && (
+            <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm animate-fade-in-up">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-slate-900">{UI_DRAFT.TITLE}</p>
+                <p className="text-xs text-slate-500 mt-0.5 truncate">
+                  {draftBanner.clientName} &middot; {new Date(draftBanner.timestamp).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button variant="outline" size="sm" onClick={handleDiscardDraft} className="text-xs font-bold">
+                  {UI_DRAFT.START_FRESH}
+                </Button>
+                <Button size="sm" onClick={handleResumeDraft} className="text-xs font-bold">
+                  {UI_DRAFT.RESUME}
+                </Button>
+              </div>
+            </div>
+          )}
+
           <section className="space-y-2">
-            <div className="flex items-center gap-2 text-primary mb-1">
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em]">{activePhase.id}</span>
-              <div className="h-px w-8 bg-brand-light"></div>
-              {isPartialAssessment && <span className="text-[10px] font-black uppercase tracking-widest bg-brand-light px-2 py-0.5 rounded text-primary">Quick Update: {partialCategory}</span>}
+            <div className="flex items-center justify-between">
+              {isPartialAssessment ? (
+                <span className="text-[10px] font-black uppercase tracking-widest bg-brand-light px-2 py-0.5 rounded text-primary">Quick Update: {partialCategory}</span>
+              ) : <span />}
+              {activePhase.id !== 'P7' && (
+                <button
+                  onClick={handleSaveAndExit}
+                  className="flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  Save &amp; Exit
+                </button>
+              )}
             </div>
             <h2 className="text-3xl font-bold tracking-tight text-slate-900">{activePhase.title}</h2>
             <p className="text-slate-500 text-lg leading-relaxed max-w-2xl">{activePhase.summary}</p>
-            {totalFields > 0 && activePhase.id !== 'P7' && (
-              <div className="flex items-center gap-3 pt-2">
-                <Progress value={(completedFields / totalFields) * 100} className="h-1.5 flex-1 max-w-xs" />
-                <span className="text-xs font-medium text-slate-400">
-                  {completedFields} / {totalFields} fields
-                </span>
-              </div>
-            )}
           </section>
 
           <section className="space-y-6">

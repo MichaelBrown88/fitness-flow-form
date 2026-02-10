@@ -16,6 +16,7 @@ import {
 } from '@/services/coachAssessments';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import { UI_TOASTS } from '@/constants/ui';
+import { clearDraft } from '@/hooks/useAssessmentDraft';
 import type { User } from 'firebase/auth';
 import type { UserProfile } from '@/types/auth';
 
@@ -78,10 +79,11 @@ export function useDashboardActions(
     } else {
       sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
     }
-    // CRITICAL: Clear all previous assessment modes to prevent data bleed
+    // CRITICAL: Clear all previous assessment modes + draft to prevent data bleed
     sessionStorage.removeItem(STORAGE_KEYS.IS_DEMO);
     sessionStorage.removeItem(STORAGE_KEYS.PREFILL_CLIENT);
     sessionStorage.removeItem(STORAGE_KEYS.EDIT_ASSESSMENT);
+    clearDraft();
     try {
       const history = await getClientAssessments(user.uid, clientName, readOrgId);
       if (history.length > 0) {
