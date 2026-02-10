@@ -1,6 +1,6 @@
 import React from 'react';
 import { Input } from '@/components/ui/input';
-import { Calendar, Users } from 'lucide-react';
+import { Calendar, Users, BarChart3 } from 'lucide-react';
 import { UI_TABS } from '@/constants/ui';
 import type { DashboardView } from '@/hooks/dashboard/types';
 
@@ -10,6 +10,7 @@ interface DashboardViewTabsProps {
   search: string;
   setSearch: (search: string) => void;
   scheduleCount?: number;
+  showTeamTab?: boolean;
 }
 
 export const DashboardViewTabs: React.FC<DashboardViewTabsProps> = ({
@@ -18,6 +19,7 @@ export const DashboardViewTabs: React.FC<DashboardViewTabsProps> = ({
   search,
   setSearch,
   scheduleCount = 0,
+  showTeamTab = false,
 }) => {
   const tabClass = (tab: DashboardView) =>
     `flex-1 sm:flex-none px-3 sm:px-5 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5 whitespace-nowrap ${
@@ -46,10 +48,16 @@ export const DashboardViewTabs: React.FC<DashboardViewTabsProps> = ({
             </span>
           )}
         </button>
+        {showTeamTab && (
+          <button onClick={() => setView('team')} className={tabClass('team')}>
+            <BarChart3 className="w-3.5 h-3.5" />
+            {UI_TABS.TEAM}
+          </button>
+        )}
       </div>
       <div className="relative w-full sm:w-64">
         <Input
-          placeholder="Search clients…"
+          placeholder={view === 'team' ? 'Search coaches…' : 'Search clients…'}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="h-10 sm:h-11 w-full pl-4 pr-10 text-sm rounded-xl border-slate-200 focus:border-slate-900 transition-colors bg-white/50 backdrop-blur-sm shadow-sm"

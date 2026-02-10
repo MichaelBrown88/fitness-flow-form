@@ -20,7 +20,10 @@ interface UnifiedClientTableProps {
   loadingData: boolean;
   clients: ClientGroup[];
   search: string;
-  onNewAssessment: (clientName: string, category?: string) => void;
+  /** Show a "Coach" column (for non-coaching admins viewing all org clients) */
+  showCoachColumn?: boolean;
+  /** Map of coachUid -> display name (required when showCoachColumn is true) */
+  coachMap?: Map<string, string>;
 }
 
 /** Score badge with contextual color */
@@ -64,7 +67,8 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
   loadingData,
   clients,
   search,
-  onNewAssessment,
+  showCoachColumn = false,
+  coachMap,
 }) => {
   const navigate = useNavigate();
   const [sortKey, setSortKey] = useState<SortKey>('lastAssessed');
@@ -118,6 +122,11 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
               <th className={thClass} onClick={() => toggleSort('name')}>
                 Client{sortIcon('name')}
               </th>
+              {showCoachColumn && (
+                <th className={`${thClass} hidden md:table-cell`}>
+                  Coach
+                </th>
+              )}
               <th
                 className={`${thClass} hidden sm:table-cell`}
                 onClick={() => toggleSort('lastAssessed')}
@@ -138,7 +147,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
           <tbody className="divide-y divide-slate-100">
             {loadingData ? (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-sm text-slate-400 font-medium">
+                <td colSpan={showCoachColumn ? 6 : 5} className="px-6 py-12 text-center text-sm text-slate-400 font-medium">
                   <div className="flex flex-col items-center gap-3">
                     <div className="w-6 h-6 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
                     <span>Loading clients...</span>
@@ -147,7 +156,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
               </tr>
             ) : clients.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-sm text-slate-400 font-medium">
+                <td colSpan={showCoachColumn ? 6 : 5} className="px-6 py-12 text-center text-sm text-slate-400 font-medium">
                   {search
                     ? 'No clients match that name.'
                     : 'No clients found. Run an assessment to see them here.'}
@@ -170,6 +179,13 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                       </span>
                     </div>
                   </td>
+                  {showCoachColumn && (
+                    <td className="px-3 sm:px-4 md:px-6 py-4 text-xs text-slate-500 font-medium hidden md:table-cell">
+                      {client.coachUid && coachMap?.get(client.coachUid)
+                        ? coachMap.get(client.coachUid)
+                        : '—'}
+                    </td>
+                  )}
                   <td className="px-3 sm:px-4 md:px-6 py-4 text-xs sm:text-sm text-slate-500 font-medium hidden sm:table-cell">
                     {client.latestDate
                       ? client.latestDate.toLocaleDateString()
@@ -188,7 +204,6 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                     <ClientActionsDropdown
                       clientName={client.name}
                       latestAssessmentId={client.assessments[0]?.id}
-                      onNewAssessment={onNewAssessment}
                     />
                   </td>
                 </tr>

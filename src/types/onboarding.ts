@@ -22,10 +22,12 @@ export interface IdentityData {
   acceptedTerms: boolean;
 }
 
-// Business profile data (Step 2) - name and type only, location deferred to Settings
+// Business profile data (Step 2) - name, type, and coaching role
 export interface BusinessProfileData {
   name: string;
   type: BusinessType;
+  /** Does the admin also coach clients directly? Auto-true for solo_coach. */
+  isActiveCoach?: boolean;
 }
 
 // Equipment config (Step 3) - what physical equipment the gym has

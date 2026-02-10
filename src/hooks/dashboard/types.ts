@@ -8,7 +8,7 @@ import type { CoachAssessmentSummary } from '@/services/coachAssessments';
 import type { PillarCadence } from '@/types/client';
 
 /** Dashboard view tabs */
-export type DashboardView = 'clients' | 'schedule';
+export type DashboardView = 'clients' | 'schedule' | 'team';
 
 /** Simplified analytics — only business-relevant counts */
 export type Analytics = {
@@ -24,6 +24,8 @@ export type ClientGroup = {
   latestScore: number;
   latestDate: Date | null;
   scoreChange?: number;
+  /** UID of the coach who owns this client (from latest assessment) */
+  coachUid?: string | null;
   /** Recurring cadence intervals (if available) */
   retestSchedule?: {
     recommended: PillarCadence;

@@ -63,6 +63,8 @@ export interface ReassessmentItem {
   /** Informational: pillar scores below threshold */
   pillarGaps: { pillar: string; score: number }[];
   hasCustomCadence: boolean;
+  /** UID of the coach who owns this client (for team views) */
+  coachUid?: string | null;
 }
 
 export interface ReassessmentQueueSummary {
@@ -311,6 +313,7 @@ export function useReassessmentQueue(
           mostUrgentPillar,
           pillarGaps,
           hasCustomCadence: !!group.retestSchedule?.custom,
+          coachUid: group.coachUid,
         };
       })
       // Sort: overdue first (most overdue at top) → due soon → up to date

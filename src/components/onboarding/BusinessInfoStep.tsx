@@ -1,8 +1,8 @@
 /**
  * Business Info Step (Step 2)
  *
- * Collects: business name, facility type.
- * Removed: business age (not needed for onboarding).
+ * Collects: business name, facility type, and (for gym/gym_chain) whether the
+ * admin also coaches clients directly.
  */
 
 import { User, Store, Building2 } from 'lucide-react';
@@ -31,11 +31,18 @@ const TYPE_LABELS: Record<BusinessType, string> = {
 export function BusinessInfoStep({ data, onNext, onBack }: BusinessInfoStepProps) {
   const [businessName, setBusinessName] = useState(data?.name || '');
   const [businessType, setBusinessType] = useState<BusinessType>(data?.type || 'solo_coach');
+  const [isActiveCoach, setIsActiveCoach] = useState(data?.isActiveCoach ?? true);
+
+  const showCoachToggle = businessType !== 'solo_coach';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (businessName.trim()) {
-      onNext({ name: businessName.trim(), type: businessType });
+      onNext({
+        name: businessName.trim(),
+        type: businessType,
+        isActiveCoach: businessType === 'solo_coach' ? true : isActiveCoach,
+      });
     }
   };
 
@@ -74,6 +81,28 @@ export function BusinessInfoStep({ data, onNext, onBack }: BusinessInfoStepProps
             ))}
           </div>
         </div>
+
+        {showCoachToggle && (
+          <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+            <button
+              type="button"
+              onClick={() => setIsActiveCoach(!isActiveCoach)}
+              className="w-full flex items-center justify-between gap-3"
+            >
+              <div className="text-left">
+                <p className="text-sm font-bold text-slate-800">I also coach clients myself</p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {isActiveCoach
+                    ? 'You will see your own client list alongside team management.'
+                    : 'You will manage your coaching team without a personal client list.'}
+                </p>
+              </div>
+              <div className={`relative w-10 h-6 rounded-full shrink-0 transition-colors ${isActiveCoach ? 'bg-primary' : 'bg-slate-300'}`}>
+                <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${isActiveCoach ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
+              </div>
+            </button>
+          </div>
+        )}
 
         <div className="flex gap-3 pt-2">
           <button

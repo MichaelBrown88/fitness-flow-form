@@ -13,6 +13,8 @@ import { updateOrgSettings, uploadOrgLogo, type OrgSettings, DEFAULT_EQUIPMENT_C
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Upload, Palette, ShieldCheck, Box, Settings as SettingsIcon, User, Building2, Calendar, ArrowLeft } from 'lucide-react';
 import { getAllGradients, type GradientId } from '@/lib/design/gradients';
+import { doc, setDoc } from 'firebase/firestore';
+import { getDb } from '@/services/firebase';
 import { logger } from '@/lib/utils/logger';
 import { DefaultCadenceSettings } from '@/components/settings/DefaultCadenceSettings';
 import { ROUTES } from '@/constants/routes';
@@ -182,6 +184,52 @@ const Settings = () => {
                 )}
               </div>
             </section>
+
+            {/* Active Coach Toggle (Admin Only, non-solo) */}
+            {isAdmin && orgSettings?.type !== 'solo_coach' && (
+              <section className="space-y-4">
+                <div className="flex items-center gap-2 text-slate-900 mb-2">
+                  <User className="h-5 w-5 text-primary" />
+                  <h2 className="text-lg font-bold">Coaching Role</h2>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <Label className="text-sm font-bold text-slate-800">I also coach clients myself</Label>
+                      <p className="text-xs text-slate-500 leading-relaxed max-w-md">
+                        {profile?.isActiveCoach
+                          ? 'You see your own client list alongside team management tools.'
+                          : 'You manage your coaching team without a personal client list.'}
+                      </p>
+                    </div>
+                    <Switch
+                      checked={profile?.isActiveCoach ?? true}
+                      onCheckedChange={async (checked) => {
+                        if (!user) return;
+                        try {
+                          await setDoc(doc(getDb(), 'userProfiles', user.uid), {
+                            isActiveCoach: checked,
+                            updatedAt: new Date(),
+                          }, { merge: true });
+                          await refreshSettings();
+                          toast({
+                            title: checked
+                              ? 'Coaching mode enabled'
+                              : 'Coaching mode disabled',
+                            description: checked
+                              ? 'Your personal client list is now visible.'
+                              : 'You will only see team management tools.',
+                          });
+                        } catch (err) {
+                          logger.error('Failed to update coaching role:', err);
+                          toast({ title: 'Failed to update', variant: 'destructive' });
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              </section>
+            )}
           </TabsContent>
 
           {/* Organization Tab (Admin Only) */}

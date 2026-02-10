@@ -17,9 +17,16 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import {
-  FileText, Activity, Dumbbell, Camera, Scale, Heart,
-  ChevronRight, CheckCircle, Clock, AlertCircle, Loader2, Check,
+  FileText, Activity, Dumbbell, Camera, Scale, Heart, ClipboardList,
+  ChevronRight, ChevronDown, CheckCircle, Clock, AlertCircle, Loader2, Check,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/hooks/useAuth';
 import { logger } from '@/lib/utils/logger';
 import { ScheduleInsights } from './ScheduleInsights';
@@ -153,6 +160,10 @@ interface PriorityViewProps {
   onNewAssessmentForClient: (clientName: string, category?: string) => void;
   onScheduleChanged?: () => void;
   search?: string;
+  /** Show coach name on each task card (for non-coaching admins) */
+  showCoachName?: boolean;
+  /** Map of coachUid -> display name */
+  coachMap?: Map<string, string>;
 }
 
 export const PriorityView: React.FC<PriorityViewProps> = ({
@@ -160,6 +171,8 @@ export const PriorityView: React.FC<PriorityViewProps> = ({
   onNewAssessmentForClient,
   onScheduleChanged,
   search = '',
+  showCoachName = false,
+  coachMap,
 }) => {
   const navigate = useNavigate();
   const { profile } = useAuth();
@@ -250,18 +263,21 @@ export const PriorityView: React.FC<PriorityViewProps> = ({
         <TaskSection status="overdue" label={UI_SCHEDULE.OVERDUE} count={sections.overdue.length}
           items={sections.overdue} onAssess={onNewAssessmentForClient}
           organizationId={organizationId} onDueDateSave={handleDueDateSave} navigate={navigate}
+          showCoachName={showCoachName} coachMap={coachMap}
         />
       )}
       {sections.dueSoon.length > 0 && (
         <TaskSection status="due-soon" label={UI_SCHEDULE.COMING_UP} count={sections.dueSoon.length}
           items={sections.dueSoon} onAssess={onNewAssessmentForClient}
           organizationId={organizationId} onDueDateSave={handleDueDateSave} navigate={navigate}
+          showCoachName={showCoachName} coachMap={coachMap}
         />
       )}
       {sections.upToDate.length > 0 && (
         <TaskSection status="up-to-date" label={UI_SCHEDULE.ON_TRACK} count={sections.upToDate.length}
           items={sections.upToDate} onAssess={onNewAssessmentForClient}
           organizationId={organizationId} onDueDateSave={handleDueDateSave} navigate={navigate}
+          showCoachName={showCoachName} coachMap={coachMap}
           collapsed
         />
       )}
@@ -279,10 +295,13 @@ interface TaskSectionProps {
   onDueDateSave: (clientName: string, pillar: PartialAssessmentCategory, newDate: Date) => Promise<void>;
   navigate: ReturnType<typeof useNavigate>;
   collapsed?: boolean;
+  showCoachName?: boolean;
+  coachMap?: Map<string, string>;
 }
 
 const TaskSection: React.FC<TaskSectionProps> = ({
   status, label, count, items, onAssess, organizationId, onDueDateSave, navigate, collapsed = false,
+  showCoachName = false, coachMap,
 }) => {
   const style = STATUS_STYLES[status];
   const [isExpanded, setIsExpanded] = React.useState(!collapsed);
@@ -299,6 +318,7 @@ const TaskSection: React.FC<TaskSectionProps> = ({
           {items.map((item) => (
             <TaskCard key={item.id} item={item} onAssess={onAssess}
               organizationId={organizationId} onDueDateSave={onDueDateSave} navigate={navigate}
+              showCoachName={showCoachName} coachMap={coachMap}
             />
           ))}
         </div>
@@ -315,9 +335,11 @@ interface TaskCardProps {
   organizationId: string;
   onDueDateSave: (clientName: string, pillar: PartialAssessmentCategory, newDate: Date) => Promise<void>;
   navigate: ReturnType<typeof useNavigate>;
+  showCoachName?: boolean;
+  coachMap?: Map<string, string>;
 }
 
-const TaskCard: React.FC<TaskCardProps> = ({ item, onAssess, organizationId, onDueDateSave, navigate }) => {
+const TaskCard: React.FC<TaskCardProps> = ({ item, onAssess, organizationId, onDueDateSave, navigate, showCoachName, coachMap }) => {
   const style = STATUS_STYLES[item.status];
   const actionablePillars = item.pillarSchedules
     .filter(s => s.pillar !== 'full')
@@ -334,6 +356,11 @@ const TaskCard: React.FC<TaskCardProps> = ({ item, onAssess, organizationId, onD
             >
               {item.clientName}
             </button>
+            {showCoachName && item.coachUid && coachMap?.get(item.coachUid) && (
+              <span className="text-[10px] font-medium text-slate-400 truncate">
+                {coachMap.get(item.coachUid)}
+              </span>
+            )}
             <Badge variant="outline" className={`text-[10px] ${style.badge}`}>{style.badgeLabel}</Badge>
           </div>
           <p className="text-xs text-slate-500 mb-3">{item.statusReason}</p>
@@ -359,24 +386,123 @@ const TaskCard: React.FC<TaskCardProps> = ({ item, onAssess, organizationId, onD
             </p>
             <p className="text-[10px] text-slate-400">since last</p>
           </div>
-          {item.status !== 'up-to-date' && item.mostUrgentPillar && (
-            <Button
-              size="sm" variant={item.status === 'overdue' ? 'default' : 'outline'}
-              className={`text-xs h-7 ${item.status === 'overdue' ? 'bg-score-red hover:bg-score-red-fg' : ''}`}
-              onClick={() => {
-                const p = item.mostUrgentPillar;
-                onAssess(item.clientName, p && p !== 'full' ? p : undefined);
-              }}
-            >
-              {item.mostUrgentPillar !== 'full'
-                ? UI_SCHEDULE.REASSESS
-                : UI_SCHEDULE.FULL_ASSESSMENT}
-              <ChevronRight className="w-3 h-3 ml-1" />
-            </Button>
-          )}
+          <ReassessDropdown item={item} onAssess={onAssess} />
         </div>
       </div>
     </div>
+  );
+};
+
+// ── Reassess Dropdown ────────────────────────────────────────────────
+// Shows the most urgent pillar as the primary label, then lists all
+// pillar options sorted by urgency so the coach can choose freely.
+
+const PILLAR_ICON: Record<string, React.ReactNode> = {
+  inbody: <Scale className="h-3.5 w-3.5" />,
+  posture: <Camera className="h-3.5 w-3.5" />,
+  fitness: <Activity className="h-3.5 w-3.5" />,
+  strength: <Dumbbell className="h-3.5 w-3.5" />,
+  lifestyle: <Heart className="h-3.5 w-3.5" />,
+  full: <ClipboardList className="h-3.5 w-3.5" />,
+};
+
+interface ReassessDropdownProps {
+  item: ReassessmentItem;
+  onAssess: (clientName: string, category?: string) => void;
+}
+
+const ReassessDropdown: React.FC<ReassessDropdownProps> = ({ item, onAssess }) => {
+  // Build ordered list: overdue pillars first, then due-soon, then on-track
+  const sortedPillars = item.pillarSchedules
+    .filter(ps => ps.pillar !== 'full')
+    .sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status]);
+
+  // Primary action = most urgent pillar (or full assessment if none)
+  const primary = item.mostUrgentPillar && item.mostUrgentPillar !== 'full'
+    ? item.mostUrgentPillar
+    : null;
+
+  const primaryLabel = primary
+    ? `Assess ${pillarLabel(primary)}`
+    : UI_SCHEDULE.FULL_ASSESSMENT;
+
+  const isOverdue = item.status === 'overdue';
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          size="sm"
+          variant={isOverdue ? 'default' : 'outline'}
+          className={`text-xs h-7 gap-1 ${isOverdue ? 'bg-score-red hover:bg-score-red-fg' : ''}`}
+        >
+          {primaryLabel}
+          <ChevronDown className="w-3 h-3" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52 rounded-xl shadow-xl border-slate-200 p-1">
+        {/* Primary action repeated at top for clarity */}
+        <DropdownMenuItem
+          onClick={() => onAssess(item.clientName, primary || undefined)}
+          className="rounded-lg text-xs font-bold px-2 py-2.5 cursor-pointer focus:bg-slate-50 gap-2"
+        >
+          {PILLAR_ICON[primary || 'full']}
+          <span>{primaryLabel}</span>
+          {primary && (
+            <span className={`ml-auto text-[10px] font-bold ${SCORE_COLORS[STATUS_GRADE[
+              sortedPillars.find(ps => ps.pillar === primary)?.status || 'up-to-date'
+            ]].text}`}>
+              {sortedPillars.find(ps => ps.pillar === primary)?.status === 'overdue'
+                ? `${sortedPillars.find(ps => ps.pillar === primary)?.daysFromDue}d overdue`
+                : sortedPillars.find(ps => ps.pillar === primary)?.status === 'due-soon'
+                ? `in ${Math.abs(sortedPillars.find(ps => ps.pillar === primary)?.daysFromDue || 0)}d`
+                : 'on track'}
+            </span>
+          )}
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator className="bg-slate-100" />
+
+        {/* All other pillars, sorted by urgency */}
+        {sortedPillars
+          .filter(ps => ps.pillar !== primary)
+          .map(ps => {
+            const statusLabel = ps.status === 'overdue'
+              ? `${ps.daysFromDue}d overdue`
+              : ps.status === 'due-soon'
+              ? `in ${Math.abs(ps.daysFromDue)}d`
+              : 'on track';
+
+            return (
+              <DropdownMenuItem
+                key={ps.pillar}
+                onClick={() => onAssess(item.clientName, ps.pillar)}
+                className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-slate-50 text-slate-600 gap-2"
+              >
+                {PILLAR_ICON[ps.pillar] || <FileText className="h-3.5 w-3.5" />}
+                <span>{pillarLabel(ps.pillar)}</span>
+                <span className={`ml-auto text-[10px] font-bold ${SCORE_COLORS[STATUS_GRADE[ps.status]].text}`}>
+                  {statusLabel}
+                </span>
+              </DropdownMenuItem>
+            );
+          })}
+
+        {/* Full assessment option — only when primary is a specific pillar */}
+        {primary && (
+          <>
+            <DropdownMenuSeparator className="bg-slate-100" />
+            <DropdownMenuItem
+              onClick={() => onAssess(item.clientName)}
+              className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-slate-50 text-slate-600 gap-2"
+            >
+              <ClipboardList className="h-3.5 w-3.5 text-slate-400" />
+              Full Assessment
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };
 

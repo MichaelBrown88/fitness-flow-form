@@ -16,6 +16,7 @@ import { DashboardViewTabs } from '@/components/dashboard/sub-components/Dashboa
 import { UnifiedClientTable } from '@/components/dashboard/sub-components/UnifiedClientTable';
 import { DashboardDialogs } from '@/components/dashboard/sub-components/DashboardDialogs';
 import { PriorityView } from '@/components/dashboard/sub-components/PriorityView';
+import { TeamView } from '@/components/dashboard/sub-components/TeamView';
 
 const Dashboard = () => {
   const {
@@ -38,6 +39,9 @@ const Dashboard = () => {
     refreshSchedules,
     handleDelete,
     handleNewAssessmentForClient,
+    showTeamTab,
+    showCoachColumn,
+    coachMap,
   } = useDashboardData();
 
   const navigate = useNavigate();
@@ -95,6 +99,7 @@ const Dashboard = () => {
               search={search}
               setSearch={setSearch}
               scheduleCount={overdueCount}
+              showTeamTab={showTeamTab}
             />
 
             {/* Clients View */}
@@ -103,7 +108,8 @@ const Dashboard = () => {
                 loadingData={loadingData}
                 clients={filteredClients}
                 search={search}
-                onNewAssessment={handleNewAssessmentForClient}
+                showCoachColumn={showCoachColumn}
+                coachMap={coachMap}
               />
             )}
 
@@ -114,7 +120,14 @@ const Dashboard = () => {
                 onNewAssessmentForClient={handleNewAssessmentForClient}
                 onScheduleChanged={refreshSchedules}
                 search={search}
+                showCoachName={showCoachColumn}
+                coachMap={coachMap}
               />
+            )}
+
+            {/* Team View (Admin Only) */}
+            {view === 'team' && showTeamTab && (
+              <TeamView search={search} />
             )}
           </div>
         </div>

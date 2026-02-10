@@ -36,6 +36,8 @@ export type CoachAssessmentSummary = {
   trend?: number;
   /** Total assessments for this client (incremented on each upsert) */
   assessmentCount?: number;
+  /** UID of the coach who owns this client (used in team/admin views) */
+  coachUid?: string | null;
   scoresSummary?: {
     overall: number;
     categories: {

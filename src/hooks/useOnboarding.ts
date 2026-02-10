@@ -311,9 +311,15 @@ export function useOnboarding(): UseOnboardingResult {
         updatedAt: new Date(),
       }, { merge: true });
 
+      // Derive isActiveCoach: solo coaches are always active; gym/gym_chain uses explicit choice
+      const isActiveCoach = finalData.businessProfile?.type === 'solo_coach'
+        ? true
+        : (finalData.businessProfile?.isActiveCoach ?? true);
+
       // Update user profile (merge: true for same reason)
       await setDoc(doc(db, 'userProfiles', user.uid), {
         onboardingCompleted: true,
+        isActiveCoach,
         displayName: finalData.identity
           ? `${finalData.identity.firstName} ${finalData.identity.lastName}`
           : profile.displayName,

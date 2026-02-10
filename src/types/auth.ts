@@ -8,4 +8,6 @@ export interface UserProfile {
   onboardingCompleted?: boolean;
   /** Set to true after the coach completes their very first assessment save */
   firstAssessmentCompleted?: boolean;
+  /** org_admin only: does this admin also coach clients directly? */
+  isActiveCoach?: boolean;
 }

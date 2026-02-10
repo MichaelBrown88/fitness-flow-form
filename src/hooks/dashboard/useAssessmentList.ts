@@ -33,6 +33,12 @@ type UseAssessmentListParams = {
   loading: boolean;
   /** Effective org ID (supports impersonation - falls back to profile.organizationId) */
   effectiveOrgId?: string | null;
+  /**
+   * Filter assessments to a specific coach UID.
+   * - string = filter to that coach (default: current user's UID)
+   * - null = fetch ALL assessments in the org (admin team view)
+   */
+  coachUidFilter?: string | null;
 };
 
 export function useAssessmentList({
@@ -40,9 +46,12 @@ export function useAssessmentList({
   profile,
   loading,
   effectiveOrgId,
+  coachUidFilter,
 }: UseAssessmentListParams) {
   // Use effectiveOrgId for reads (impersonation support), fallback to profile
   const readOrgId = effectiveOrgId || profile?.organizationId;
+  // Resolve coach filter: undefined means "use current user"; null means "all coaches"
+  const resolvedCoachFilter = coachUidFilter === undefined ? user?.uid ?? null : coachUidFilter;
   const { toast } = useToast();
 
   const [items, setItems] = useState<CoachAssessmentSummary[]>([]);
@@ -60,13 +69,19 @@ export function useAssessmentList({
     // Use organization-centric path for assessments (effectiveOrgId for impersonation)
     const assessmentsRef = collection(getDb(), ORGANIZATION.assessments.collection(readOrgId));
 
-    // Filter by coachUid to show only current coach's assessments
-    const q = query(
-      assessmentsRef,
-      where('coachUid', '==', user.uid),
-      orderBy('createdAt', 'desc'),
-      limit(20)
-    );
+    // When resolvedCoachFilter is null, fetch ALL org assessments (admin view)
+    const q = resolvedCoachFilter
+      ? query(
+          assessmentsRef,
+          where('coachUid', '==', resolvedCoachFilter),
+          orderBy('createdAt', 'desc'),
+          limit(20)
+        )
+      : query(
+          assessmentsRef,
+          orderBy('createdAt', 'desc'),
+          limit(20)
+        );
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       try {
@@ -89,6 +104,7 @@ export function useAssessmentList({
             overallScore: score,
             goals: Array.isArray(docData.goals) ? docData.goals : [],
             scoresSummary: docData.scoresSummary ?? docData.scores,
+            coachUid: docData.coachUid || null,
           });
           lastDocument = docSnap;
         });
@@ -119,8 +135,8 @@ export function useAssessmentList({
 
             snapshot.forEach((docSnap) => {
               const docData = docSnap.data();
-              // Filter by coachUid in memory
-              if (docData.coachUid !== user.uid) {
+              // Filter by coachUid in memory (skip when resolvedCoachFilter is null = admin view)
+              if (resolvedCoachFilter && docData.coachUid !== resolvedCoachFilter) {
                 return;
               }
 
@@ -135,6 +151,7 @@ export function useAssessmentList({
                 overallScore: score,
                 goals: Array.isArray(docData.goals) ? docData.goals : [],
                 scoresSummary: docData.scoresSummary ?? docData.scores,
+                coachUid: docData.coachUid || null,
               });
               lastDocument = docSnap;
             });
@@ -162,7 +179,7 @@ export function useAssessmentList({
         unsubscribeRef.current = null;
       }
     };
-  }, [user, readOrgId, loading]);
+  }, [user, readOrgId, loading, resolvedCoachFilter]);
 
   const loadMoreAssessments = async () => {
     if (hasMore && lastDoc && user && readOrgId) {
@@ -170,13 +187,20 @@ export function useAssessmentList({
       try {
         // Use organization-centric path (effectiveOrgId for impersonation)
         const assessmentsRef = collection(getDb(), ORGANIZATION.assessments.collection(readOrgId));
-        const nextQuery = query(
-          assessmentsRef,
-          where('coachUid', '==', user.uid),
-          orderBy('createdAt', 'desc'),
-          startAfter(lastDoc),
-          limit(20)
-        );
+        const nextQuery = resolvedCoachFilter
+          ? query(
+              assessmentsRef,
+              where('coachUid', '==', resolvedCoachFilter),
+              orderBy('createdAt', 'desc'),
+              startAfter(lastDoc),
+              limit(20)
+            )
+          : query(
+              assessmentsRef,
+              orderBy('createdAt', 'desc'),
+              startAfter(lastDoc),
+              limit(20)
+            );
 
         const nextSnapshot = await getDocs(nextQuery);
         const newData: CoachAssessmentSummary[] = [];

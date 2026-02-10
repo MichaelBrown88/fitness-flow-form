@@ -198,6 +198,7 @@ export const UI_STATUS = {
 export const UI_TABS = {
   CLIENTS: 'Clients',
   SCHEDULE: 'Schedule',
+  TEAM: 'Team',
 } as const;
 
 // Schedule Tab Labels

@@ -56,6 +56,8 @@ export interface DefaultCadenceConfig {
 
 export interface OrgSettings {
   name: string;
+  /** Facility type set during onboarding (solo_coach, gym, gym_chain) */
+  type?: string;
   logoUrl?: string;
   brandColor?: string; // hex (deprecated - use gradientId instead)
   gradientId?: string; // Gradient ID from gradient system (e.g., 'purple-indigo', 'blue-cyan')
