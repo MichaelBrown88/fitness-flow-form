@@ -1,28 +1,29 @@
 /**
- * Priority View — Dynamic Task List
+ * Schedule View — Dynamic Task List
  *
  * Shows ALL clients sorted by assessment urgency.
  * Traffic-light system tied purely to schedule:
  *   Red    = Overdue (past due date)
- *   Amber  = Due Soon (within 7 days)
- *   Green  = Up to Date (no action needed)
+ *   Amber  = Coming Up (within 7 days)
+ *   Green  = On Track (no action needed)
  *
- * When a coach changes a due date via the inline editor the entire
+ * When a coach changes a due date via a pillar pill the entire
  * card, section grouping, and sort order update optimistically.
  */
 
-import React, { useMemo, useCallback, useState } from 'react';
+import React, { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
 import {
   FileText, Activity, Dumbbell, Camera, Scale, Heart,
-  ChevronRight, CheckCircle, Clock, AlertCircle, Settings2,
+  ChevronRight, CheckCircle, Clock, AlertCircle, Loader2, Check,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { logger } from '@/lib/utils/logger';
-import { InlineDueDateEditor } from './InlineDueDateEditor';
 import { ScheduleInsights } from './ScheduleInsights';
+import { UI_SCHEDULE } from '@/constants/ui';
 import type {
   UseReassessmentQueueResult,
   ReassessmentItem,
@@ -48,29 +49,29 @@ const STATUS_STYLES: Record<ScheduleStatus, {
   card: string; badge: string; badgeLabel: string; icon: React.ReactNode;
 }> = {
   'overdue': {
-    card: 'bg-red-50/50 border-red-200 hover:border-red-300',
+    card: 'bg-white border-slate-200 hover:border-slate-300',
     badge: 'bg-red-100 text-red-700 border-red-200',
-    badgeLabel: 'Overdue',
+    badgeLabel: UI_SCHEDULE.OVERDUE,
     icon: <AlertCircle className="w-3.5 h-3.5 text-red-500" />,
   },
   'due-soon': {
-    card: 'bg-amber-50/50 border-amber-200 hover:border-amber-300',
+    card: 'bg-white border-slate-200 hover:border-slate-300',
     badge: 'bg-amber-100 text-amber-700 border-amber-200',
-    badgeLabel: 'Due Soon',
+    badgeLabel: UI_SCHEDULE.COMING_UP,
     icon: <Clock className="w-3.5 h-3.5 text-amber-500" />,
   },
   'up-to-date': {
-    card: 'bg-emerald-50/30 border-emerald-200 hover:border-emerald-300',
+    card: 'bg-white border-slate-200 hover:border-slate-300',
     badge: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-    badgeLabel: 'Up to Date',
+    badgeLabel: UI_SCHEDULE.ON_TRACK,
     icon: <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />,
   },
 };
 
 const PILLAR_STATUS_STYLES: Record<ScheduleStatus, string> = {
-  'overdue': 'bg-red-100 text-red-700 border border-red-200',
-  'due-soon': 'bg-amber-100 text-amber-700 border border-amber-200',
-  'up-to-date': 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+  'overdue': 'bg-red-100 text-red-700 border border-red-200 hover:bg-red-200/60',
+  'due-soon': 'bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200/60',
+  'up-to-date': 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100',
 };
 
 // ── Pillar icon helper ───────────────────────────────────────────────
@@ -86,6 +87,14 @@ const getTypeIcon = (type: ReassessmentType) => {
     default: return <FileText className="w-3 h-3" />;
   }
 };
+
+// ── Date helper ──────────────────────────────────────────────────────
+
+function startOfToday(): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
 
 // ── Optimistic recompute helpers ─────────────────────────────────────
 
@@ -114,14 +123,14 @@ function recomputeClientStatus(
   if (fullSchedule && fullSchedule.status === 'overdue') {
     return {
       status: 'overdue',
-      statusReason: `Full assessment overdue by ${fullSchedule.daysFromDue}d`,
+      statusReason: `Full assessment overdue by ${fullSchedule.daysFromDue} days`,
       mostUrgentPillar: worstPillar && worstPillar.daysFromDue > 0 ? worstPillar.pillar : 'full',
     };
   }
   if (worstPillar && worstPillar.status === 'overdue') {
     return {
       status: 'overdue',
-      statusReason: `${pillarLabel(worstPillar.pillar)} overdue by ${worstPillar.daysFromDue}d`,
+      statusReason: `${pillarLabel(worstPillar.pillar)} overdue by ${worstPillar.daysFromDue} days`,
       mostUrgentPillar: worstPillar.pillar,
     };
   }
@@ -129,7 +138,7 @@ function recomputeClientStatus(
     const daysLeft = Math.abs(worstPillar.daysFromDue);
     return {
       status: 'due-soon',
-      statusReason: `${pillarLabel(worstPillar.pillar)} due in ${daysLeft}d`,
+      statusReason: `${pillarLabel(worstPillar.pillar)} in ${daysLeft} days`,
       mostUrgentPillar: worstPillar.pillar,
     };
   }
@@ -141,9 +150,7 @@ function recomputeClientStatus(
 interface PriorityViewProps {
   reassessmentQueue: UseReassessmentQueueResult;
   onNewAssessmentForClient: (clientName: string, category?: string) => void;
-  /** Called after a schedule edit is saved to Firestore, triggering a data refetch */
   onScheduleChanged?: () => void;
-  /** Optional search filter applied from the dashboard search bar */
   search?: string;
 }
 
@@ -158,10 +165,8 @@ export const PriorityView: React.FC<PriorityViewProps> = ({
   const organizationId = profile?.organizationId || '';
   const { queue: hookQueue, summary: hookSummary } = reassessmentQueue;
 
-  // Optimistic date overrides: key = "clientName::pillar"
   const [dateOverrides, setDateOverrides] = useState<Record<string, Date>>({});
 
-  // Apply overrides → recompute statuses → re-sort
   const { queue, summary } = useMemo(() => {
     const hasOverrides = Object.keys(dateOverrides).length > 0;
     if (!hasOverrides) return { queue: hookQueue, summary: hookSummary };
@@ -192,7 +197,6 @@ export const PriorityView: React.FC<PriorityViewProps> = ({
     };
   }, [hookQueue, hookSummary, dateOverrides]);
 
-  // Apply search filter
   const filteredQueue = useMemo(() => {
     if (!search.trim()) return queue;
     const term = search.toLowerCase();
@@ -212,20 +216,16 @@ export const PriorityView: React.FC<PriorityViewProps> = ({
     const key = `${clientName}::${pillar}`;
     setDateOverrides(prev => ({ ...prev, [key]: newDate }));
     try {
-      // Save the absolute date — does NOT change the recurring cadence interval.
-      // After the assessment is completed, the override is automatically ignored
-      // because it falls behind the new lastAssessmentDate.
       const { setDueDateOverride } = await import('@/services/clientProfiles');
       await setDueDateOverride(clientName, organizationId, pillar, newDate);
-      logger.info('[PriorityView] Due date override saved', { clientName, pillar, date: newDate.toISOString() });
-      // Trigger a background refetch so the data survives a page refresh
+      logger.info('[ScheduleView] Due date override saved', { clientName, pillar, date: newDate.toISOString() });
       onScheduleChanged?.();
     } catch (err) {
       setDateOverrides(prev => { const next = { ...prev }; delete next[key]; return next; });
-      logger.warn('[PriorityView] Failed to save due date:', err);
+      logger.warn('[ScheduleView] Failed to save due date:', err);
       throw err;
     }
-  }, [organizationId]);
+  }, [organizationId, onScheduleChanged]);
 
   if (queue.length === 0) {
     return (
@@ -246,19 +246,19 @@ export const PriorityView: React.FC<PriorityViewProps> = ({
       <ScheduleInsights queue={queue} summary={summary} />
 
       {sections.overdue.length > 0 && (
-        <TaskSection status="overdue" label="Overdue" count={sections.overdue.length}
+        <TaskSection status="overdue" label={UI_SCHEDULE.OVERDUE} count={sections.overdue.length}
           items={sections.overdue} onAssess={onNewAssessmentForClient}
           organizationId={organizationId} onDueDateSave={handleDueDateSave} navigate={navigate}
         />
       )}
       {sections.dueSoon.length > 0 && (
-        <TaskSection status="due-soon" label="Due Soon" count={sections.dueSoon.length}
+        <TaskSection status="due-soon" label={UI_SCHEDULE.COMING_UP} count={sections.dueSoon.length}
           items={sections.dueSoon} onAssess={onNewAssessmentForClient}
           organizationId={organizationId} onDueDateSave={handleDueDateSave} navigate={navigate}
         />
       )}
       {sections.upToDate.length > 0 && (
-        <TaskSection status="up-to-date" label="Up to Date" count={sections.upToDate.length}
+        <TaskSection status="up-to-date" label={UI_SCHEDULE.ON_TRACK} count={sections.upToDate.length}
           items={sections.upToDate} onAssess={onNewAssessmentForClient}
           organizationId={organizationId} onDueDateSave={handleDueDateSave} navigate={navigate}
           collapsed
@@ -321,7 +321,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ item, onAssess, organizationId, onD
   const actionablePillars = item.pillarSchedules.filter(s => s.pillar !== 'full');
 
   return (
-    <div className={`rounded-xl border transition-colors p-3 ${style.card}`}>
+    <div className={`rounded-xl border transition-colors p-4 ${style.card}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1.5">
@@ -332,30 +332,23 @@ const TaskCard: React.FC<TaskCardProps> = ({ item, onAssess, organizationId, onD
               {item.clientName}
             </button>
             <Badge variant="outline" className={`text-[10px] ${style.badge}`}>{style.badgeLabel}</Badge>
-            {item.hasCustomCadence && (
-              <span className="inline-flex items-center gap-0.5 text-[9px] text-indigo-600">
-                <Settings2 className="w-2.5 h-2.5" /> Custom
-              </span>
-            )}
           </div>
-          <p className="text-xs text-slate-500 mb-2">{item.statusReason}</p>
-          <div className="flex flex-wrap gap-1.5">
-            {actionablePillars.map((ps) => (
-              <PillarPill key={ps.pillar} schedule={ps} clientName={item.clientName}
-                organizationId={organizationId} onDueDateSave={onDueDateSave}
-              />
-            ))}
-          </div>
-          {item.pillarGaps.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5">
-              {item.pillarGaps.map((gap) => (
-                <span key={gap.pillar} className="text-[10px] text-slate-400">
-                  {gap.pillar}: <span className="font-medium">{gap.score}%</span>
-                </span>
+          <p className="text-xs text-slate-500 mb-3">{item.statusReason}</p>
+
+          {/* Pillar pills — horizontally scrollable with fade */}
+          <div className="relative">
+            <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-hide"
+              style={{ maskImage: 'linear-gradient(to right, black 90%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to right, black 90%, transparent 100%)' }}
+            >
+              {actionablePillars.map((ps) => (
+                <PillarPill key={ps.pillar} schedule={ps} clientName={item.clientName}
+                  organizationId={organizationId} onDueDateSave={onDueDateSave}
+                />
               ))}
             </div>
-          )}
+          </div>
         </div>
+
         <div className="flex flex-col items-end gap-2 shrink-0">
           <div className="text-right">
             <p className={`font-bold text-sm ${
@@ -376,8 +369,8 @@ const TaskCard: React.FC<TaskCardProps> = ({ item, onAssess, organizationId, onD
               }}
             >
               {item.mostUrgentPillar !== 'full'
-                ? `Start ${pillarLabel(item.mostUrgentPillar)}`
-                : 'Full Assessment'}
+                ? UI_SCHEDULE.REASSESS
+                : UI_SCHEDULE.FULL_ASSESSMENT}
               <ChevronRight className="w-3 h-3 ml-1" />
             </Button>
           )}
@@ -387,7 +380,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ item, onAssess, organizationId, onD
   );
 };
 
-// ── Pillar Pill Component ────────────────────────────────────────────
+// ── Pillar Pill Component (with integrated date picker) ──────────────
 
 interface PillarPillProps {
   schedule: PillarSchedule;
@@ -400,28 +393,99 @@ const PillarPill: React.FC<PillarPillProps> = ({ schedule, clientName, organizat
   const { pillar, dueDate, status, daysFromDue } = schedule;
   const pillStyle = PILLAR_STATUS_STYLES[status];
 
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [localDate, setLocalDate] = useState<Date>(dueDate);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // Sync from prop when upstream data changes
+  useEffect(() => {
+    setLocalDate(dueDate);
+  }, [dueDate.getTime()]);
+
+  // Click-outside handler
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside, true);
+    return () => document.removeEventListener('mousedown', handleClickOutside, true);
+  }, [open]);
+
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, [open]);
+
+  // Reset when parent data changes (card may move sections)
+  useEffect(() => {
+    setOpen(false);
+  }, [clientName, pillar]);
+
+  const handleSelect = useCallback(async (date: Date | undefined) => {
+    setOpen(false);
+    if (!date || !organizationId) return;
+    setLocalDate(date);
+    setSaving(true);
+    setSaved(false);
+    try {
+      await onDueDateSave(clientName, pillar as PartialAssessmentCategory, date);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      logger.warn('[PillarPill] Failed to save due date:', err);
+      setLocalDate(dueDate);
+    } finally {
+      setSaving(false);
+    }
+  }, [clientName, organizationId, pillar, onDueDateSave, dueDate]);
+
   let dateLabel: string;
   if (status === 'overdue') dateLabel = `${daysFromDue}d overdue`;
   else if (status === 'due-soon') {
     const daysLeft = Math.abs(daysFromDue);
     dateLabel = daysLeft === 0 ? 'today' : `in ${daysLeft}d`;
   } else {
-    dateLabel = dueDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    dateLabel = localDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   }
 
   return (
-    <div className="flex items-center gap-0.5">
-      <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full ${pillStyle}`}
-        title={`${pillarLabel(pillar)} — ${dateLabel}`}
+    <div ref={wrapperRef} className="relative shrink-0">
+      <button
+        onClick={() => organizationId && setOpen(prev => !prev)}
+        disabled={saving}
+        className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium rounded-full cursor-pointer transition-colors ${pillStyle}`}
+        title={`${pillarLabel(pillar)} — ${dateLabel}. Click to reschedule.`}
       >
-        {getTypeIcon(pillar)}
+        {saving ? (
+          <Loader2 className="w-3 h-3 animate-spin" />
+        ) : saved ? (
+          <Check className="w-3 h-3" />
+        ) : (
+          getTypeIcon(pillar as ReassessmentType)
+        )}
         <span>{pillarLabel(pillar)}</span>
-        <span className={`ml-0.5 ${status === 'overdue' ? 'font-bold' : 'opacity-70'}`}>{dateLabel}</span>
-      </span>
-      {organizationId && (
-        <InlineDueDateEditor clientName={clientName} organizationId={organizationId}
-          pillar={pillar as PartialAssessmentCategory} currentDate={dueDate} onSave={onDueDateSave}
-        />
+        <span className={`${status === 'overdue' ? 'font-bold' : 'opacity-70'}`}>{dateLabel}</span>
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-50 rounded-md border border-slate-200 bg-white shadow-lg">
+          <Calendar
+            mode="single"
+            selected={localDate}
+            onSelect={handleSelect}
+            disabled={{ before: startOfToday() }}
+          />
+        </div>
       )}
     </div>
   );
