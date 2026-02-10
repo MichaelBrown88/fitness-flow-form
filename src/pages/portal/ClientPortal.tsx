@@ -7,14 +7,20 @@
  * Completely separate from coach/admin UI per .cursorrules Air-Gap principle.
  */
 
+import { useState, lazy, Suspense } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useClientPortal } from '@/hooks/useClientPortal';
 import { Button } from '@/components/ui/button';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { 
   LogOut, Activity, Scale, Heart, Dumbbell, 
-  Brain, Leaf, Calendar, TrendingUp, User
+  Brain, Leaf, Calendar, TrendingUp, User,
+  Camera, FileText
 } from 'lucide-react';
+
+// Lazy load capture components (heavy: webcam + OCR)
+const ClientBodyCompScan = lazy(() => import('@/components/portal/ClientBodyCompScan').then(m => ({ default: m.ClientBodyCompScan })));
+const ClientPostureCapture = lazy(() => import('@/components/portal/ClientPostureCapture').then(m => ({ default: m.ClientPostureCapture })));
 import { getPillarLabel } from '@/constants/pillars';
 
 function ScoreCard({ 
@@ -51,6 +57,7 @@ function ScoreCard({
 export default function ClientPortal() {
   const { profile, signOut, orgSettings } = useAuth();
   const { data, loading, error } = useClientPortal();
+  const [activeCapture, setActiveCapture] = useState<'bodycomp' | 'posture' | null>(null);
 
   if (loading) {
     return (
@@ -178,8 +185,59 @@ export default function ClientPortal() {
           </div>
         </div>
 
+        {/* Self-Service Capture */}
+        {activeCapture ? (
+          <Suspense fallback={
+            <div className="bg-white rounded-2xl border p-8 text-center">
+              <div className="h-8 w-8 rounded-full border-4 border-slate-200 border-t-violet-500 animate-spin mx-auto" />
+            </div>
+          }>
+            {activeCapture === 'bodycomp' && (
+              <ClientBodyCompScan
+                onComplete={() => setActiveCapture(null)}
+                onCancel={() => setActiveCapture(null)}
+              />
+            )}
+            {activeCapture === 'posture' && (
+              <ClientPostureCapture
+                onComplete={() => setActiveCapture(null)}
+                onCancel={() => setActiveCapture(null)}
+              />
+            )}
+          </Suspense>
+        ) : (
+          <div>
+            <h2 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+              <Camera className="w-4 h-4" />
+              Submit to Your Coach
+            </h2>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setActiveCapture('bodycomp')}
+                className="bg-white rounded-xl border border-slate-200/60 p-4 shadow-sm text-left hover:border-violet-300 hover:shadow-md transition-all active:scale-[0.98] min-h-[80px]"
+              >
+                <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center mb-2">
+                  <FileText className="w-4 h-4 text-blue-600" />
+                </div>
+                <p className="text-xs font-semibold text-slate-700">Body Comp Scan</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Photo your report</p>
+              </button>
+              <button
+                onClick={() => setActiveCapture('posture')}
+                className="bg-white rounded-xl border border-slate-200/60 p-4 shadow-sm text-left hover:border-violet-300 hover:shadow-md transition-all active:scale-[0.98] min-h-[80px]"
+              >
+                <div className="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center mb-2">
+                  <Camera className="w-4 h-4 text-purple-600" />
+                </div>
+                <p className="text-xs font-semibold text-slate-700">Posture Photos</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">4-view capture</p>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Empty state */}
-        {(!data || data.assessmentCount === 0) && (
+        {(!data || data.assessmentCount === 0) && !activeCapture && (
           <div className="bg-white rounded-2xl border border-slate-200/60 p-8 text-center shadow-sm">
             <div className="w-14 h-14 rounded-full bg-violet-50 flex items-center justify-center mx-auto mb-4">
               <Activity className="w-6 h-6 text-violet-500" />
