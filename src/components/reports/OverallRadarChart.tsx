@@ -11,7 +11,17 @@ export interface RadarData {
 interface OverallRadarChartProps {
   data: RadarData[];
   previousData?: RadarData[]; // Optional previous scores for comparison
+  compact?: boolean; // Mobile: smaller radius, abbreviated labels
 }
+
+/** Shorten long pillar names for mobile */
+const COMPACT_LABELS: Record<string, string> = {
+  'Body Composition': 'Body Comp',
+  'Functional Strength': 'Strength',
+  'Metabolic Fitness': 'Cardio',
+  'Movement Quality': 'Movement',
+  'Lifestyle Factors': 'Lifestyle',
+};
 
 interface TooltipPayload {
   payload: RadarData;
@@ -68,7 +78,7 @@ const renderCustomAxisTick = ({
   );
 };
 
-export default function OverallRadarChart({ data, previousData }: OverallRadarChartProps) {
+export default function OverallRadarChart({ data, previousData, compact = false }: OverallRadarChartProps) {
   // Use average score to control fill opacity
   const avgValue = data.reduce((sum, d) => sum + d.value, 0) / data.length;
   const normalized = Math.max(0, Math.min(1, avgValue / 100));
@@ -90,22 +100,22 @@ export default function OverallRadarChart({ data, previousData }: OverallRadarCh
   return (
     <div className="w-full h-full">
       <ResponsiveContainer width="100%" height="100%">
-        <RadarChart cx="50%" cy="50%" outerRadius="75%" data={data}>
+        <RadarChart cx="50%" cy="50%" outerRadius={compact ? '62%' : '75%'} data={data}>
           <PolarGrid stroke="#e4e4e7" strokeDasharray="3 3" />
           <PolarAngleAxis
             dataKey="name"
             tick={({ payload, x, y, textAnchor }: { payload: { value: string }; x: number; y: number; textAnchor: "start" | "middle" | "end" | "inherit" }) => {
-              // Handle longer labels with better spacing
-              const label = payload.value;
-              const isLongLabel = label.length > 12;
+              const raw = payload.value;
+              const label = compact ? (COMPACT_LABELS[raw] ?? raw) : raw;
+              const fontSize = compact ? 9 : (label.length > 12 ? 10 : 12);
               return (
                 <text
                   x={x}
                   y={y}
-                  dy={isLongLabel ? 8 : 4}
+                  dy={compact ? 3 : (label.length > 12 ? 8 : 4)}
                   textAnchor={textAnchor}
                   fill="#71717a"
-                  fontSize={isLongLabel ? 10 : 12}
+                  fontSize={fontSize}
                   fontWeight={700}
                 >
                   {label}

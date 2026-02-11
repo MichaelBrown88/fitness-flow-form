@@ -4,7 +4,7 @@
  * Single narrative format - ~40% height of original design.
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
 import { 
   generateHolisticSummary,
@@ -27,6 +27,7 @@ export function PostureHolisticSummary({ results }: PostureHolisticSummaryProps)
   const summary: HolisticSummary = generateHolisticSummary(results);
   const hasPatterns = summary.patterns.length > 0;
   const bgClass = getSeverityBgClass(summary.patterns.length);
+  const [expanded, setExpanded] = useState(false);
   
   return (
     <div className={`rounded-xl border p-3 sm:p-4 ${bgClass}`}>
@@ -44,9 +45,19 @@ export function PostureHolisticSummary({ results }: PostureHolisticSummaryProps)
         
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-slate-800 leading-snug">
+          <p className={`text-xs sm:text-sm text-slate-800 leading-snug ${
+            !expanded ? 'line-clamp-4 sm:line-clamp-none' : ''
+          }`}>
             {summary.narrative}
           </p>
+          {summary.narrative.length > 180 && (
+            <button
+              onClick={() => setExpanded(v => !v)}
+              className="text-xs font-medium text-slate-500 hover:text-slate-700 mt-1 sm:hidden"
+            >
+              {expanded ? 'Show less' : 'Read more'}
+            </button>
+          )}
         </div>
       </div>
     </div>

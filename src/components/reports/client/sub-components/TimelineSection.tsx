@@ -41,17 +41,19 @@ export const TimelineSection: React.FC<TimelineSectionProps> = ({
             
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 md:gap-4 mb-4 sm:mb-5 md:mb-6 w-full min-w-0">
               <span className="text-xs sm:text-sm font-medium text-zinc-500 shrink-0 w-full sm:w-auto">Sessions per week:</span>
-              <div className="flex-grow w-full sm:w-auto min-w-0 max-w-full">
-                <input 
-                  type="range" min={3} max={5} step={1}
-                  value={sessionsPerWeek}
-                  onChange={(e) => setSessionsPerWeek(parseInt(e.target.value))}
-                  className="w-full h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer hover:bg-zinc-300 transition-colors slider-apple max-w-full"
-                />
-                <div className="flex justify-between text-xs text-zinc-400 font-bold uppercase mt-1.5 sm:mt-2 px-1 max-w-full">
-                  <span>3</span>
-                  <span>4</span>
-                  <span>5</span>
+              <div className="flex-grow w-full sm:w-auto min-w-0 max-w-full overflow-hidden">
+                <div className="px-2">
+                  <input 
+                    type="range" min={3} max={5} step={1}
+                    value={sessionsPerWeek}
+                    onChange={(e) => setSessionsPerWeek(parseInt(e.target.value))}
+                    className="w-full h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer hover:bg-zinc-300 transition-colors slider-apple max-w-full"
+                  />
+                  <div className="flex justify-between text-xs text-zinc-400 font-bold uppercase mt-1.5 sm:mt-2 max-w-full">
+                    <span>3</span>
+                    <span>4</span>
+                    <span>5</span>
+                  </div>
                 </div>
               </div>
               <span className="font-bold text-zinc-900 bg-gradient-light px-2.5 sm:px-3 py-1 rounded-lg shrink-0 text-center text-xs sm:text-sm w-full sm:w-auto sm:min-w-[90px]">
@@ -91,39 +93,39 @@ export const TimelineSection: React.FC<TimelineSectionProps> = ({
       </div>
 
       {/* Non-Negotiables */}
-      <Card className="bg-zinc-900 text-white p-5 sm:p-6 md:p-8 lg:p-10 rounded-2xl ring-1 ring-zinc-800 overflow-hidden">
-        <div className="flex flex-col md:flex-row md:items-start gap-6 sm:gap-8 md:gap-10 lg:gap-12 w-full min-w-0">
+      <Card className="bg-zinc-900 text-white p-3 sm:p-6 md:p-8 lg:p-10 rounded-2xl ring-1 ring-zinc-800 overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-start gap-4 sm:gap-8 md:gap-10 lg:gap-12 w-full min-w-0">
           <div className="md:w-1/3 min-w-0">
-            <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-5">
-              <div className="p-2 sm:p-2.5 gradient-bg rounded-lg">
-                <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+            <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-5">
+              <div className="p-1.5 sm:p-2.5 gradient-bg rounded-lg">
+                <CheckCircle2 className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
               </div>
-              <h4 className="text-xl sm:text-2xl font-black text-white tracking-tight">Non-Negotiables</h4>
+              <h4 className="text-base sm:text-2xl font-black text-white tracking-tight">Non-Negotiables</h4>
             </div>
-            <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed mb-4 sm:mb-6 md:mb-8">
+            <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed mb-3 sm:mb-6 md:mb-8">
               We handle the programming, the tracking, and the analysis. Your job is simple but demanding: execute the plan.
             </p>
-            <div className="inline-block px-4 sm:px-5 py-2 sm:py-3 bg-white/5 rounded-xl border border-white/5 backdrop-blur-sm">
+            <div className="hidden sm:inline-block px-4 sm:px-5 py-2 sm:py-3 bg-white/5 rounded-xl border border-white/5 backdrop-blur-sm">
               <p className="text-xs font-bold text-white/80 uppercase tracking-wider break-words">
                 "As long as you do your part, we'll do ours."
               </p>
             </div>
           </div>
 
-          <div className="md:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:gap-5 w-full min-w-0">
+          <div className="md:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 md:gap-5 w-full min-w-0">
             {[
               { icon: Repeat, title: 'Consistency is King', desc: 'Show up. 90% attendance is the baseline. Missing sessions compounds negatively over time.' },
               { icon: Zap, title: 'Maximum Effort', desc: "We track the weights, you bring the intensity. Leave nothing in the tank when you're on the floor." },
               { icon: Lock, title: 'Trust the Process', desc: "Adherence to the macro cycle is mandatory. Don't freelance. We optimize the plan, you execute it." },
               { icon: MessageSquare, title: 'Open Communication', desc: "If something feels off, tell us immediately. We can't adjust what we don't know about." }
             ].map((item, i) => (
-              <div key={i} className="flex gap-3 sm:gap-4 p-4 sm:p-5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 transition-all duration-300 group min-w-0">
+              <div key={i} className="flex gap-2.5 sm:gap-4 p-3 sm:p-5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 transition-all duration-300 group min-w-0">
                 <div className="p-1.5 sm:p-2 bg-zinc-800 rounded-lg h-fit group-hover:bg-gradient-from/20 group-hover:text-gradient-from transition-colors shrink-0">
                   <item.icon className="w-4 h-4 sm:w-5 sm:h-5 text-zinc-400 group-hover:text-gradient-from" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-xs sm:text-sm font-bold text-white mb-1 sm:mb-1.5">{item.title}</div>
-                  <div className="text-xs text-zinc-400 leading-relaxed group-hover:text-zinc-300 break-words">{item.desc}</div>
+                  <div className="text-xs sm:text-sm font-bold text-white mb-0.5 sm:mb-1.5">{item.title}</div>
+                  <div className="text-xs text-zinc-400 leading-relaxed group-hover:text-zinc-300 break-words line-clamp-2 sm:line-clamp-none">{item.desc}</div>
                 </div>
               </div>
             ))}

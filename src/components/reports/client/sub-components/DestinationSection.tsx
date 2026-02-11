@@ -5,6 +5,15 @@ import { Target, CheckCircle2, Scale, Activity, Heart, Lock, Dumbbell } from 'lu
 import type { FormData } from '@/contexts/FormContext';
 import { getBodyFatRange, getTargetBodyFatFromLevel, calculateBodyRecomposition } from '@/lib/utils/bodyRecomposition';
 
+/** Shorter labels for goal tabs on small screens */
+const GOAL_SHORT_LABELS: Record<string, string> = {
+  'weight-loss': 'Weight Loss',
+  'build-muscle': 'Muscle',
+  'body-recomposition': 'Recomp',
+  'build-strength': 'Strength',
+  'improve-fitness': 'Fitness',
+};
+
 interface DestinationSectionProps {
   goals?: string[];
   formData?: FormData;
@@ -30,18 +39,21 @@ export const DestinationSection: React.FC<DestinationSectionProps> = ({
       )}
       
       <Tabs defaultValue={goals[0]} className="w-full">
-        <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0 mb-3 sm:mb-4 scrollbar-hide">
-          <TabsList className="w-full sm:w-auto justify-start rounded-lg sm:rounded-xl glass-button h-auto p-1 sm:p-1.5 gap-1 inline-flex min-w-max sm:min-w-0">
-            {goals.map((g, idx) => (
-              <TabsTrigger
-                key={idx}
-                value={g}
-                className="text-xs font-semibold px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-md transition-apple whitespace-nowrap data-[state=active]:glass-button-active data-[state=active]:text-white"
-              >
-                {g.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+        <div className="relative mb-3 sm:mb-4">
+          <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0 scrollbar-hide">
+            <TabsList className="w-full sm:w-auto justify-start rounded-lg sm:rounded-xl glass-button h-auto p-1 sm:p-1.5 gap-1 inline-flex min-w-max sm:min-w-0">
+              {goals.map((g, idx) => (
+                <TabsTrigger
+                  key={idx}
+                  value={g}
+                  className="text-xs font-semibold px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-md transition-apple whitespace-nowrap data-[state=active]:glass-button-active data-[state=active]:text-white"
+                >
+                  {GOAL_SHORT_LABELS[g] ?? g.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
+          <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-white/80 to-transparent pointer-events-none sm:hidden" />
         </div>
         
         <Card className="rounded-xl">

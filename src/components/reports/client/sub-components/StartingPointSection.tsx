@@ -2,6 +2,7 @@ import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Activity, Trophy } from 'lucide-react';
 import OverallRadarChart, { type RadarData } from '../../OverallRadarChart';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface StartingPointSectionProps {
   scores: { overall: number };
@@ -18,6 +19,9 @@ export const StartingPointSection: React.FC<StartingPointSectionProps> = ({
   previousRadarData,
   hideHeader,
 }) => {
+  const isMobile = useIsMobile();
+  const gaugeStroke = isMobile ? 6 : 8;
+
   return (
     <section className="w-full min-w-0 overflow-x-hidden">
       {!hideHeader && (
@@ -34,12 +38,12 @@ export const StartingPointSection: React.FC<StartingPointSectionProps> = ({
         <Card className="col-span-1 flex flex-col items-center justify-center p-3 sm:p-4 md:p-6 lg:p-8 text-center relative overflow-hidden min-h-[280px] sm:min-h-[320px] md:min-h-[360px] lg:min-h-[420px]">
           {/* Circular Progress Gauge */}
           <div className="relative w-36 h-36 sm:w-40 sm:h-40 md:w-48 md:h-48 lg:w-56 lg:h-56 xl:w-64 xl:h-64 flex items-center justify-center mb-3 sm:mb-4 md:mb-6 lg:mb-8 mt-1 sm:mt-2 md:mt-3 lg:mt-4">
-            <svg className="w-full h-full" viewBox="0 0 100 100">
+            <svg className="w-full h-full" viewBox="-4 -4 108 108">
               <circle 
                 cx="50" cy="50" r="42" 
                 fill="transparent" 
                 stroke="#f4f4f5" 
-                strokeWidth="8" 
+                strokeWidth={gaugeStroke} 
                 strokeLinecap="round"
                 strokeDasharray="190 264" 
                 transform="rotate(140 50 50)" 
@@ -48,7 +52,7 @@ export const StartingPointSection: React.FC<StartingPointSectionProps> = ({
                 cx="50" cy="50" r="42" 
                 fill="transparent" 
                 stroke="url(#gradient-score)" 
-                strokeWidth="8" 
+                strokeWidth={gaugeStroke} 
                 strokeLinecap="round"
                 strokeDasharray={`${(scores.overall / 100) * 190} 264`}
                 transform="rotate(140 50 50)"
@@ -91,7 +95,7 @@ export const StartingPointSection: React.FC<StartingPointSectionProps> = ({
             </div>
           </div>
           <div className="h-[240px] sm:h-[260px] md:h-[280px] lg:h-[320px] w-full mt-0 sm:mt-2 md:mt-4">
-            <OverallRadarChart data={overallRadarData} previousData={previousRadarData} />
+            <OverallRadarChart data={overallRadarData} previousData={previousRadarData} compact={isMobile} />
           </div>
         </Card>
       </div>

@@ -334,12 +334,15 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
 
       {/* Mobile/Tablet Layout */}
       <Tabs defaultValue="body-comp" className="w-full mb-6 md:mb-8 lg:hidden">
-        <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0 mb-3 sm:mb-4 scrollbar-hide">
-          <TabsList className="w-full sm:w-auto justify-start rounded-lg sm:rounded-xl glass-button h-auto p-1 sm:p-1.5 gap-1 inline-flex min-w-max sm:min-w-0">
-            <TabsTrigger value="body-comp" className="text-xs font-semibold px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-md text-zinc-600 data-[state=active]:glass-button-active data-[state=active]:!text-white">Body Composition</TabsTrigger>
-            <TabsTrigger value="strength" className="text-xs font-semibold px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-md text-zinc-600 data-[state=active]:glass-button-active data-[state=active]:!text-white">Functional Strength</TabsTrigger>
-            <TabsTrigger value="metabolic" className="text-xs font-semibold px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-md text-zinc-600 data-[state=active]:glass-button-active data-[state=active]:!text-white">Metabolic Fitness</TabsTrigger>
-          </TabsList>
+        <div className="relative mb-3 sm:mb-4">
+          <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0 scrollbar-hide">
+            <TabsList className="w-full sm:w-auto justify-start rounded-lg sm:rounded-xl glass-button h-auto p-1 sm:p-1.5 gap-1 inline-flex min-w-max sm:min-w-0">
+              <TabsTrigger value="body-comp" className="text-xs font-semibold px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-md text-zinc-600 data-[state=active]:glass-button-active data-[state=active]:!text-white">Body Comp</TabsTrigger>
+              <TabsTrigger value="strength" className="text-xs font-semibold px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-md text-zinc-600 data-[state=active]:glass-button-active data-[state=active]:!text-white">Strength</TabsTrigger>
+              <TabsTrigger value="metabolic" className="text-xs font-semibold px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-md text-zinc-600 data-[state=active]:glass-button-active data-[state=active]:!text-white">Cardio</TabsTrigger>
+            </TabsList>
+          </div>
+          <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-white/80 to-transparent pointer-events-none sm:hidden" />
         </div>
         
         <TabsContent value="body-comp" className="m-0">{renderBodyCompCard(false)}</TabsContent>
