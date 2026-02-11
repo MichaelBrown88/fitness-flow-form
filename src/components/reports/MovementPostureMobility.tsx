@@ -454,10 +454,101 @@ export function MovementPostureMobility({ formData, scores, standalone = false, 
               </Card>
             )}
       
-      {/* Movement & Mobility - 2 Column Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 md:gap-6">
-        {/* Movement Quality Card */}
-        <Card className="p-4 sm:p-5 md:p-6 border-none shadow-lg shadow-zinc-200/40 bg-white ring-1 ring-zinc-100">
+      {/* Movement & Mobility -- merged card on mobile, 2 columns on desktop */}
+
+      {/* Mobile: single merged card */}
+      <Card className="md:hidden p-4 border-none bg-white ring-1 ring-zinc-100">
+        {/* Movement Quality */}
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-sm font-bold text-zinc-900 flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-gradient-dark" />
+            Movement Quality
+          </h4>
+          <Badge className="glass-button-active text-white text-[10px]">
+            {movementWeaknesses.length === 0 ? 'Good' : 'Needs Work'}
+          </Badge>
+        </div>
+        <div className="space-y-3">
+          {movementStrengths.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-gradient-dark uppercase tracking-wide mb-1.5">Strengths</p>
+              <ul className="space-y-1.5">
+                {movementStrengths.map((s, i) => (
+                  <li key={i} className="text-xs sm:text-sm text-zinc-600 flex items-start gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-gradient-dark mt-0.5 shrink-0" />
+                    <span>{s}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {movementWeaknesses.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-score-amber-fg uppercase tracking-wide mb-1.5">Focus Areas</p>
+              <ul className="space-y-1.5">
+                {movementWeaknesses.map((w, i) => (
+                  <li key={i} className="text-xs sm:text-sm text-zinc-600 flex items-start gap-2">
+                    <AlertCircle className="w-3.5 h-3.5 text-score-amber mt-0.5 shrink-0" />
+                    <span>{w}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {movementStrengths.length === 0 && movementWeaknesses.length === 0 && (
+            <p className="text-xs text-zinc-500 italic">Complete movement assessments to see feedback.</p>
+          )}
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-zinc-100 my-4" />
+
+        {/* Mobility */}
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-sm font-bold text-zinc-900 flex items-center gap-2">
+            <Activity className="w-4 h-4 text-gradient-dark" />
+            Mobility
+          </h4>
+          <Badge className="glass-button-active text-white text-[10px]">
+            {finalMobilityFocusAreas.length === 0 ? 'Good' : 'Needs Work'}
+          </Badge>
+        </div>
+        <div className="space-y-3">
+          {finalMobilityStrengths.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-gradient-dark uppercase tracking-wide mb-1.5">Strengths</p>
+              <ul className="space-y-1.5">
+                {finalMobilityStrengths.map((s, i) => (
+                  <li key={i} className="text-xs sm:text-sm text-zinc-600 flex items-start gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-gradient-dark mt-0.5 shrink-0" />
+                    <span>{s}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {finalMobilityFocusAreas.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-score-amber-fg uppercase tracking-wide mb-1.5">Focus Areas</p>
+              <ul className="space-y-1.5">
+                {finalMobilityFocusAreas.map((f, i) => (
+                  <li key={i} className="text-xs sm:text-sm text-zinc-600 flex items-start gap-2">
+                    <AlertCircle className="w-3.5 h-3.5 text-score-amber mt-0.5 shrink-0" />
+                    <span className="leading-relaxed">{f}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {finalMobilityStrengths.length === 0 && finalMobilityFocusAreas.length === 0 && (
+            <p className="text-xs text-zinc-500 italic">Complete mobility assessments to see feedback.</p>
+          )}
+        </div>
+      </Card>
+
+      {/* Desktop: two separate cards */}
+      <div className="hidden md:grid md:grid-cols-2 gap-5 md:gap-6">
+        <Card className="p-5 md:p-6 border-none bg-white ring-1 ring-zinc-100">
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-sm font-bold text-zinc-900 flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-gradient-dark" />
@@ -467,36 +558,33 @@ export function MovementPostureMobility({ formData, scores, standalone = false, 
               {movementWeaknesses.length === 0 ? 'Good' : 'Needs Work'}
             </Badge>
           </div>
-          
           <div className="space-y-4">
             {movementStrengths.length > 0 && (
               <div>
                 <p className="text-xs font-semibold text-gradient-dark uppercase tracking-wide mb-2">Strengths</p>
                 <ul className="space-y-2">
-                  {movementStrengths.map((strength, idx) => (
-                    <li key={idx} className="text-sm text-zinc-600 flex items-start gap-2">
+                  {movementStrengths.map((s, i) => (
+                    <li key={i} className="text-sm text-zinc-600 flex items-start gap-2">
                       <CheckCircle2 className="w-4 h-4 text-gradient-dark mt-0.5 shrink-0" />
-                      <span>{strength}</span>
+                      <span>{s}</span>
                     </li>
                   ))}
                 </ul>
               </div>
             )}
-            
             {movementWeaknesses.length > 0 && (
               <div>
                 <p className="text-xs font-semibold text-score-amber-fg uppercase tracking-wide mb-2">Focus Areas</p>
                 <ul className="space-y-2">
-                  {movementWeaknesses.map((weakness, idx) => (
-                    <li key={idx} className="text-sm text-zinc-600 flex items-start gap-2">
+                  {movementWeaknesses.map((w, i) => (
+                    <li key={i} className="text-sm text-zinc-600 flex items-start gap-2">
                       <AlertCircle className="w-4 h-4 text-score-amber mt-0.5 shrink-0" />
-                      <span>{weakness}</span>
+                      <span>{w}</span>
                     </li>
                   ))}
                 </ul>
               </div>
             )}
-            
             {movementStrengths.length === 0 && movementWeaknesses.length === 0 && (
               <div className="text-sm text-zinc-500 italic">
                 Complete movement pattern assessments (Overhead Squat, Hinge, Lunge) to see detailed feedback.
@@ -504,9 +592,8 @@ export function MovementPostureMobility({ formData, scores, standalone = false, 
             )}
           </div>
         </Card>
-        
-        {/* Mobility Card */}
-        <Card className="p-6 border-none shadow-lg shadow-zinc-200/40 bg-white ring-1 ring-zinc-100">
+
+        <Card className="p-5 md:p-6 border-none bg-white ring-1 ring-zinc-100">
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-sm font-bold text-zinc-900 flex items-center gap-2">
               <Activity className="w-4 h-4 text-gradient-dark" />
@@ -516,36 +603,33 @@ export function MovementPostureMobility({ formData, scores, standalone = false, 
               {finalMobilityFocusAreas.length === 0 ? 'Good' : 'Needs Work'}
             </Badge>
           </div>
-          
           <div className="space-y-4">
             {finalMobilityStrengths.length > 0 && (
               <div>
                 <p className="text-xs font-semibold text-gradient-dark uppercase tracking-wide mb-2">Strengths</p>
                 <ul className="space-y-2">
-                  {finalMobilityStrengths.map((strength, idx) => (
-                    <li key={idx} className="text-sm text-zinc-600 flex items-start gap-2">
+                  {finalMobilityStrengths.map((s, i) => (
+                    <li key={i} className="text-sm text-zinc-600 flex items-start gap-2">
                       <CheckCircle2 className="w-4 h-4 text-gradient-dark mt-0.5 shrink-0" />
-                      <span>{strength}</span>
+                      <span>{s}</span>
                     </li>
                   ))}
                 </ul>
               </div>
             )}
-            
             {finalMobilityFocusAreas.length > 0 && (
               <div>
                 <p className="text-xs font-semibold text-score-amber-fg uppercase tracking-wide mb-2">Focus Areas</p>
                 <ul className="space-y-2">
-                  {finalMobilityFocusAreas.map((finding, idx) => (
-                    <li key={idx} className="text-sm text-zinc-600 flex items-start gap-2">
+                  {finalMobilityFocusAreas.map((f, i) => (
+                    <li key={i} className="text-sm text-zinc-600 flex items-start gap-2">
                       <AlertCircle className="w-4 h-4 text-score-amber mt-0.5 shrink-0" />
-                      <span className="leading-relaxed">{finding}</span>
+                      <span className="leading-relaxed">{f}</span>
                     </li>
                   ))}
                 </ul>
               </div>
             )}
-            
             {finalMobilityStrengths.length === 0 && finalMobilityFocusAreas.length === 0 && (
               <div className="text-sm text-zinc-500 italic">
                 Complete mobility assessments (Hip, Shoulder, Ankle) to see detailed feedback.

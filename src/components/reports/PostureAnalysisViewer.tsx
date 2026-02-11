@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
 import { PostureHolisticSummary } from './PostureHolisticSummary';
+import { PostureExpandedDialog } from './PostureExpandedDialog';
 import {
   calculateDeviationsFromLandmarks,
   getAverageYPercent,
@@ -11,14 +12,8 @@ import {
   type RawLandmarks,
   type Severity,
 } from '@/lib/utils/postureDeviation';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
-} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Carousel, CarouselContent, CarouselItem, CarouselDots } from '@/components/ui/carousel';
 import { 
   CheckCircle2, 
   AlertCircle, 
@@ -470,144 +465,81 @@ function getBriefFindings(analysis: PostureAnalysisResult, view: PostureView): s
 }
 
 /**
- * Individual posture view card with expandable dialog
+ * Individual posture view card (no dialog -- dialog is lifted to parent)
  */
 export function PostureViewCard({ 
   view, 
   analysis, 
-  imageUrl 
+  imageUrl,
+  onClick,
 }: { 
   view: PostureView; 
   analysis: PostureAnalysisResult; 
   imageUrl: string;
+  onClick?: () => void;
 }) {
   const briefFindings = getBriefFindings(analysis, view);
   const isNeutral = briefFindings[0] === 'Neutral Alignment';
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <div 
-          className="group relative cursor-pointer overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all hover:shadow-md active:scale-[0.98]"
-        >
-          {/* View Label */}
-          <div className="absolute top-2 left-2 z-10">
-            <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm text-xs font-black uppercase tracking-widest text-slate-600 border-none shadow-sm h-5">
-              {view.replace('-', ' ')}
-            </Badge>
-          </div>
+    <div 
+      className="group relative cursor-pointer overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all hover:shadow-md active:scale-[0.98]"
+      onClick={onClick}
+    >
+      {/* View Label */}
+      <div className="absolute top-2 left-2 z-10">
+        <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm text-xs font-black uppercase tracking-widest text-slate-600 border-none shadow-sm h-5">
+          {view.replace('-', ' ')}
+        </Badge>
+      </div>
 
-          {/* Status Icon */}
-          <div className="absolute top-2 right-2 z-10">
-            {isNeutral ? (
-              <CheckCircle2 className="h-4 w-4 text-gradient-dark fill-white" />
-            ) : (
-              <AlertCircle className="h-4 w-4 text-score-amber fill-white" />
-            )}
-          </div>
+      {/* Status Icon */}
+      <div className="absolute top-2 right-2 z-10">
+        {isNeutral ? (
+          <CheckCircle2 className="h-4 w-4 text-gradient-dark fill-white" />
+        ) : (
+          <AlertCircle className="h-4 w-4 text-score-amber fill-white" />
+        )}
+      </div>
 
-          {/* Image */}
-          <div className="aspect-[4/5] w-full overflow-hidden bg-slate-50">
-            <img 
-              src={imageUrl} 
-              alt={view}
-              className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
-              style={{ objectPosition: 'center 10%' }}
-            />
-          </div>
+      {/* Image */}
+      <div className="aspect-[4/5] w-full overflow-hidden bg-slate-50">
+        <img 
+          src={imageUrl} 
+          alt={view}
+          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+          style={{ objectPosition: 'center 10%' }}
+        />
+      </div>
 
-          {/* Feedback Overlay */}
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent p-3 pt-10 text-center">
-            <div className="flex flex-col gap-0.5">
-              {briefFindings.slice(0, 1).map((finding, i) => (
-                <span key={i} className="text-xs font-black uppercase tracking-tight leading-none text-white drop-shadow-md">
-                  {finding}
-                </span>
-              ))}
-              <span className="text-xs font-bold text-white/80 uppercase tracking-widest mt-1">
-                Click to expand analysis
-              </span>
-            </div>
-          </div>
-
-          {/* Hover Action Overlay */}
-          <div className="absolute inset-0 flex items-center justify-center bg-primary/10 opacity-0 transition-opacity group-hover:opacity-100">
-            <div className="rounded-full bg-white/90 p-2 shadow-lg scale-75 group-hover:scale-100 transition-transform">
-              <Maximize2 className="h-4 w-4 text-primary" />
-            </div>
-          </div>
-        </div>
-      </DialogTrigger>
-
-      {/* Expanded Dialog - Pure black, image raw */}
-      <DialogContent className="!bg-black !border-0 !p-0 !shadow-none max-w-[98vw] max-h-[98vh] w-auto h-auto overflow-hidden">
-        <DialogHeader className="sr-only">
-          <DialogTitle>Posture Analysis - {view.replace('-', ' ')} View</DialogTitle>
-        </DialogHeader>
-        
-        {/* Close Button */}
-        <button 
-          className="absolute top-4 right-4 z-50 h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
-          onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))}
-        >
-          <span className="text-white text-xl leading-none">×</span>
-        </button>
-        
-        {/* View Badge */}
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40">
-          <span className="text-white/50 text-[11px] uppercase font-semibold tracking-widest">
-            {view.replace('-', ' ')}
+      {/* Feedback Overlay -- subtler on mobile */}
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 pt-10 text-center">
+        <div className="flex flex-col gap-0.5">
+          {briefFindings.slice(0, 1).map((finding, i) => (
+            <span key={i} className="text-[10px] sm:text-xs font-bold sm:font-black uppercase tracking-tight leading-none text-white drop-shadow-md">
+              {finding}
+            </span>
+          ))}
+          <span className="text-[9px] sm:text-xs font-medium sm:font-bold text-white/50 sm:text-white/80 uppercase tracking-widest mt-1">
+            Tap to expand
           </span>
         </div>
-        
-        {/* Layout: Labels | Image | Labels - black on all sides */}
-        <div className="flex items-center justify-center bg-black py-12">
-          {/* Left Labels */}
-          <div className="hidden md:flex flex-col justify-center w-40 shrink-0 p-3 self-stretch">
-            <PositionedLabels analysis={analysis} side="left" view={view} />
-          </div>
-          
-          {/* THE IMAGE - raw, with vertical padding for black above/below */}
-              <img 
-                src={imageUrl} 
-                alt={view} 
-            className="max-h-[75vh] max-w-[70vw] md:max-w-[55vw] block"
-          />
-          
-          {/* Right Labels */}
-          <div className="hidden md:flex flex-col justify-center w-40 shrink-0 p-3 self-stretch">
-            <PositionedLabels analysis={analysis} side="right" view={view} />
-          </div>
-                </div>
-                
-        {/* Legend - minimal */}
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-black/80 px-3 py-1 rounded-full">
-          <div className="flex items-center gap-1">
-            <div className="h-2 w-2 rounded-full bg-score-green" />
-            <span className="text-xs uppercase text-white/50">Aligned</span>
-                          </div>
-          <div className="flex items-center gap-1">
-            <div className="h-2 w-2 rounded-full bg-score-amber" />
-            <span className="text-xs uppercase text-white/50">Minor</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="h-2 w-2 rounded-full bg-score-red" />
-            <span className="text-xs uppercase text-white/50">Deviation</span>
-                </div>
-              </div>
+      </div>
 
-        {/* Mobile Labels */}
-        <div className="md:hidden absolute top-10 left-2 right-2">
-          <PositionedLabels analysis={analysis} side="all" view={view} />
+      {/* Hover Action Overlay */}
+      <div className="absolute inset-0 flex items-center justify-center bg-primary/10 opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="rounded-full bg-white/90 p-2 shadow-lg scale-75 group-hover:scale-100 transition-transform">
+          <Maximize2 className="h-4 w-4 text-primary" />
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }
 
 /**
  * Main posture analysis viewer component
- * Displays 4 posture view cards in a grid with a holistic summary below
+ * Displays 4 posture view cards in a grid (desktop) or swipeable carousel (mobile)
+ * with a holistic summary below
  */
 export function PostureAnalysisViewer({ 
   postureResults, 
@@ -618,12 +550,10 @@ export function PostureAnalysisViewer({
 }) {
   const views = ['front', 'back', 'side-left', 'side-right'] as const;
   const availableViews = views.filter(v => postureResults[v]);
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   
   if (availableViews.length === 0) return null;
 
-  /**
-   * Get image URL for a view, checking multiple possible key formats
-   */
   const getImageUrl = (view: PostureView): string => {
     return postureImages?.[view] || 
            postureImages?.[`postureImagesStorage_${view}`] ||
@@ -632,21 +562,52 @@ export function PostureAnalysisViewer({
            '';
   };
 
+  const handleCardClick = (index: number) => setExpandedIndex(index);
+
   return (
     <div className="space-y-3">
-      {/* 4 Image Cards Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
-      {availableViews.map((view) => (
-        <PostureViewCard 
-          key={view}
-          view={view}
-          analysis={postureResults[view]}
+      {/* Desktop: 4 Image Cards Grid */}
+      <div className="hidden md:grid md:grid-cols-4 gap-3 md:gap-4">
+        {availableViews.map((view, idx) => (
+          <PostureViewCard 
+            key={view}
+            view={view}
+            analysis={postureResults[view]}
             imageUrl={getImageUrl(view)}
-        />
-      ))}
+            onClick={() => handleCardClick(idx)}
+          />
+        ))}
       </div>
 
-      {/* Holistic Summary - Condensed Full Width Below Images */}
+      {/* Mobile: Swipeable carousel */}
+      <div className="md:hidden">
+        <Carousel opts={{ align: 'start', containScroll: 'trimSnaps' }} className="w-full">
+          <CarouselContent className="-ml-3">
+            {availableViews.map((view, idx) => (
+              <CarouselItem key={view} className="basis-[75%] pl-3">
+                <PostureViewCard
+                  view={view}
+                  analysis={postureResults[view]}
+                  imageUrl={getImageUrl(view)}
+                  onClick={() => handleCardClick(idx)}
+                />
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+          <CarouselDots count={availableViews.length} />
+        </Carousel>
+      </div>
+
+      {/* Swipeable expanded dialog */}
+      <PostureExpandedDialog
+        views={[...availableViews]}
+        postureResults={postureResults}
+        getImageUrl={getImageUrl}
+        expandedIndex={expandedIndex}
+        onClose={() => setExpandedIndex(null)}
+      />
+
+      {/* Holistic Summary */}
       {availableViews.length >= 2 && (
         <PostureHolisticSummary results={postureResults} />
       )}

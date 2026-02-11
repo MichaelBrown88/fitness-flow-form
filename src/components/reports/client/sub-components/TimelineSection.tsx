@@ -112,20 +112,20 @@ export const TimelineSection: React.FC<TimelineSectionProps> = ({
             </div>
           </div>
 
-          <div className="md:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 md:gap-5 w-full min-w-0">
+          <div className="md:w-2/3 grid grid-cols-2 sm:grid-cols-2 gap-2 sm:gap-4 md:gap-5 w-full min-w-0">
             {[
               { icon: Repeat, title: 'Consistency is King', desc: 'Show up. 90% attendance is the baseline. Missing sessions compounds negatively over time.' },
               { icon: Zap, title: 'Maximum Effort', desc: "We track the weights, you bring the intensity. Leave nothing in the tank when you're on the floor." },
               { icon: Lock, title: 'Trust the Process', desc: "Adherence to the macro cycle is mandatory. Don't freelance. We optimize the plan, you execute it." },
               { icon: MessageSquare, title: 'Open Communication', desc: "If something feels off, tell us immediately. We can't adjust what we don't know about." }
             ].map((item, i) => (
-              <div key={i} className="flex gap-2.5 sm:gap-4 p-3 sm:p-5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 transition-all duration-300 group min-w-0">
+              <div key={i} className="flex flex-col sm:flex-row items-center sm:items-start gap-1.5 sm:gap-4 p-2.5 sm:p-5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 transition-all duration-300 group min-w-0 text-center sm:text-left">
                 <div className="p-1.5 sm:p-2 bg-zinc-800 rounded-lg h-fit group-hover:bg-gradient-from/20 group-hover:text-gradient-from transition-colors shrink-0">
                   <item.icon className="w-4 h-4 sm:w-5 sm:h-5 text-zinc-400 group-hover:text-gradient-from" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-xs sm:text-sm font-bold text-white mb-0.5 sm:mb-1.5">{item.title}</div>
-                  <div className="text-xs text-zinc-400 leading-relaxed group-hover:text-zinc-300 break-words line-clamp-2 sm:line-clamp-none">{item.desc}</div>
+                  <div className="text-[11px] sm:text-sm font-bold text-white mb-0 sm:mb-1.5">{item.title}</div>
+                  <div className="hidden sm:block text-xs text-zinc-400 leading-relaxed group-hover:text-zinc-300 break-words">{item.desc}</div>
                 </div>
               </div>
             ))}

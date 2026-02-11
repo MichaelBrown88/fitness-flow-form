@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Carousel, CarouselContent, CarouselItem, CarouselDots } from '@/components/ui/carousel';
 import { BarChart3, Scale, Dumbbell, Heart, ArrowRight, Lightbulb } from 'lucide-react';
 import { truncateInsight } from '../clientReportUtils';
 import type { GapAnalysisData } from '../../useGapAnalysisData';
@@ -43,27 +43,6 @@ const GapMetricRow: React.FC<{
   );
 };
 
-const MetricCard: React.FC<{
-  label: string;
-  current: string | number;
-  target: string | number;
-}> = ({ label, current, target }) => {
-  return (
-    <div className="rounded-xl border border-zinc-100 bg-white p-4 shadow-sm">
-      <div className="text-xs font-semibold text-zinc-700">{label}</div>
-      <div className="mt-3 flex items-end justify-between gap-4">
-        <div>
-          <div className="text-2xl font-bold text-zinc-900">{current}</div>
-          <div className="text-xs text-zinc-400">Current</div>
-        </div>
-        <div className="text-right">
-          <div className="text-sm font-semibold text-gradient-dark">{target}</div>
-          <div className="text-xs text-zinc-400">Target</div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
   gapAnalysisData,
@@ -118,18 +97,18 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
             />
           </>
         ) : (
-          <div className="flex flex-col gap-3">
-            <MetricCard
+          <div className="flex flex-col gap-2.5">
+            <GapMetricRow
               label="Body Weight (kg)"
               current={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.weight.current.toFixed(1) : '--'}
               target={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.weight.target.toFixed(1) : '--'}
             />
-            <MetricCard
+            <GapMetricRow
               label="Muscle Mass (kg)"
               current={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.muscle.current.toFixed(1) : '--'}
               target={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.muscle.target.toFixed(1) : '--'}
             />
-            <MetricCard
+            <GapMetricRow
               label="Body Fat (%)"
               current={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.fat.current.toFixed(1) : '--'}
               target={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.fat.target.toFixed(1) : '--'}
@@ -211,18 +190,18 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
               />
             </>
           ) : (
-            <div className="flex flex-col gap-3">
-              <MetricCard
-                label="Muscular Endurance (reps)"
+            <div className="flex flex-col gap-2.5">
+              <GapMetricRow
+                label="Endurance (reps)"
                 current={functional?.functionalGaps ? functional.functionalGaps.endurance.current : '--'}
                 target={functional?.functionalGaps ? functional.functionalGaps.endurance.target : '--'}
               />
-              <MetricCard
-                label="Core Stability (time)"
+              <GapMetricRow
+                label="Core Stability"
                 current={currentCore}
                 target={targetCore}
               />
-              <MetricCard
+              <GapMetricRow
                 label={strengthLabel}
                 current={currentStrength}
                 target={targetStrength}
@@ -283,18 +262,18 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
             />
           </>
         ) : (
-          <div className="flex flex-col gap-3">
-            <MetricCard
+          <div className="flex flex-col gap-2.5">
+            <GapMetricRow
               label="Resting HR (bpm)"
               current={metabolic?.cardioGaps && metabolic.cardioGaps.rhr.current > 0 ? Math.round(metabolic.cardioGaps.rhr.current) : '--'}
               target={metabolic?.cardioGaps && metabolic.cardioGaps.rhr.target > 0 ? Math.round(metabolic.cardioGaps.rhr.target) : '--'}
             />
-            <MetricCard
+            <GapMetricRow
               label="Recovery HR (bpm)"
               current={metabolic?.cardioGaps && metabolic.cardioGaps.recovery.current > 0 ? Math.round(metabolic.cardioGaps.recovery.current) : '--'}
               target={metabolic?.cardioGaps && metabolic.cardioGaps.recovery.target > 0 ? Math.round(metabolic.cardioGaps.recovery.target) : '--'}
             />
-            <MetricCard
+            <GapMetricRow
               label="VO2 Max (ml/kg/min)"
               current={metabolic?.cardioGaps && metabolic.cardioGaps.vo2.current > 0 ? metabolic.cardioGaps.vo2.current.toFixed(1) : '--'}
               target={metabolic?.cardioGaps && metabolic.cardioGaps.vo2.target > 0 ? metabolic.cardioGaps.vo2.target.toFixed(1) : '--'}
@@ -332,23 +311,17 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
         {renderMetabolicCard(true)}
       </div>
 
-      {/* Mobile/Tablet Layout */}
-      <Tabs defaultValue="body-comp" className="w-full mb-6 md:mb-8 lg:hidden">
-        <div className="relative mb-3 sm:mb-4">
-          <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0 scrollbar-hide">
-            <TabsList className="w-full sm:w-auto justify-start rounded-lg sm:rounded-xl glass-button h-auto p-1 sm:p-1.5 gap-1 inline-flex min-w-max sm:min-w-0">
-              <TabsTrigger value="body-comp" className="text-xs font-semibold px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-md text-zinc-600 data-[state=active]:glass-button-active data-[state=active]:!text-white">Body Comp</TabsTrigger>
-              <TabsTrigger value="strength" className="text-xs font-semibold px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-md text-zinc-600 data-[state=active]:glass-button-active data-[state=active]:!text-white">Strength</TabsTrigger>
-              <TabsTrigger value="metabolic" className="text-xs font-semibold px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-md text-zinc-600 data-[state=active]:glass-button-active data-[state=active]:!text-white">Cardio</TabsTrigger>
-            </TabsList>
-          </div>
-          <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-white/80 to-transparent pointer-events-none sm:hidden" />
-        </div>
-        
-        <TabsContent value="body-comp" className="m-0">{renderBodyCompCard(false)}</TabsContent>
-        <TabsContent value="strength" className="m-0">{renderFunctionalCard(false)}</TabsContent>
-        <TabsContent value="metabolic" className="m-0">{renderMetabolicCard(false)}</TabsContent>
-      </Tabs>
+      {/* Mobile/Tablet Layout -- swipeable carousel */}
+      <div className="lg:hidden mb-6 md:mb-8">
+        <Carousel opts={{ align: 'start', containScroll: 'trimSnaps' }} className="w-full">
+          <CarouselContent className="-ml-3">
+            <CarouselItem className="basis-[85%] pl-3">{renderBodyCompCard(false)}</CarouselItem>
+            <CarouselItem className="basis-[85%] pl-3">{renderFunctionalCard(false)}</CarouselItem>
+            <CarouselItem className="basis-[85%] pl-3">{renderMetabolicCard(false)}</CarouselItem>
+          </CarouselContent>
+          <CarouselDots count={3} />
+        </Carousel>
+      </div>
     </section>
   );
 };

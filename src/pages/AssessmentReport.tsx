@@ -252,14 +252,10 @@ const AssessmentReport = () => {
         variant="full-width"
         actions={
         isMobile ? (
-          /* ── Mobile: back + share + kebab ── */
+          /* ── Mobile: back + kebab (share folded in) ── */
           <div className="flex items-center gap-1.5">
             <Button variant="ghost" size="sm" onClick={navigateToDashboard} className="h-8 w-8 p-0">
               <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <Button size="sm" onClick={handleCopyLink} disabled={shareLoading} className="h-8 px-3 gap-1.5 text-xs font-bold">
-              {shareLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LinkIcon className="h-3.5 w-3.5" />}
-              Share
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -268,13 +264,9 @@ const AssessmentReport = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 rounded-xl">
-                <DropdownMenuItem onClick={navigateToEdit} className="py-3 text-sm font-medium">
-                  <Edit2 className="mr-2 h-4 w-4" />
-                  Edit Assessment
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={navigateToNew} className="py-3 text-sm font-medium">
-                  <Plus className="mr-2 h-4 w-4" />
-                  New Assessment
+                <DropdownMenuItem onClick={handleCopyLink} className="py-3 text-sm font-medium">
+                  <LinkIcon className="mr-2 h-4 w-4" />
+                  Copy Link
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleSystemShare} className="py-3 text-sm font-medium">
                   <Share2 className="mr-2 h-4 w-4" />
@@ -287,6 +279,14 @@ const AssessmentReport = () => {
                 <DropdownMenuItem onClick={handleWhatsAppShare} className="py-3 text-sm font-medium">
                   <MessageCircle className="mr-2 h-4 w-4" />
                   WhatsApp
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={navigateToEdit} className="py-3 text-sm font-medium">
+                  <Edit2 className="mr-2 h-4 w-4" />
+                  Edit Assessment
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={navigateToNew} className="py-3 text-sm font-medium">
+                  <Plus className="mr-2 h-4 w-4" />
+                  New Assessment
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

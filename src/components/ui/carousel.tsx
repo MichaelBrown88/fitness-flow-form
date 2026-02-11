@@ -221,4 +221,31 @@ const CarouselNext = React.forwardRef<HTMLButtonElement, React.ComponentProps<ty
 );
 CarouselNext.displayName = "CarouselNext";
 
-export { type CarouselApi, Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext };
+const CarouselDots: React.FC<{ count: number; className?: string }> = ({ count, className }) => {
+  const { api } = useCarousel();
+  const [active, setActive] = React.useState(0);
+  React.useEffect(() => {
+    if (!api) return;
+    const onSelect = () => setActive(api.selectedScrollSnap());
+    api.on('select', onSelect);
+    onSelect();
+    return () => { api.off('select', onSelect); };
+  }, [api]);
+  return (
+    <div className={cn("flex justify-center gap-1.5 mt-2", className)}>
+      {Array.from({ length: count }).map((_, i) => (
+        <button
+          key={i}
+          onClick={() => api?.scrollTo(i)}
+          className={cn(
+            "h-1.5 rounded-full transition-all",
+            i === active ? "w-4 bg-zinc-900" : "w-1.5 bg-zinc-300",
+          )}
+        />
+      ))}
+    </div>
+  );
+};
+CarouselDots.displayName = "CarouselDots";
+
+export { type CarouselApi, Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext, CarouselDots };

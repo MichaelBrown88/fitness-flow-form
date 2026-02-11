@@ -5,7 +5,6 @@
 
 import React from 'react';
 import type { FormData } from '@/contexts/FormContext';
-import { Card } from '@/components/ui/card';
 import { Moon, Activity, Coffee, Clock, TrendingUp } from 'lucide-react';
 
 interface LifestyleFactorsBarProps {
@@ -83,9 +82,9 @@ export function LifestyleFactorsBar({ formData }: LifestyleFactorsBarProps) {
   }
   
   return (
-    <Card className="border-none shadow-sm bg-white p-4 md:p-6 ring-1 ring-zinc-100">
+    <div className="sm:border-none sm:shadow-sm sm:bg-white sm:p-4 md:p-6 sm:ring-1 sm:ring-zinc-100 sm:rounded-xl">
       <div className="flex flex-wrap items-center gap-2 sm:gap-3 md:gap-4">
-        <span className="text-xs md:text-sm font-semibold text-zinc-500 uppercase tracking-wide shrink-0 w-full sm:w-auto mb-1 sm:mb-0">
+        <span className="hidden sm:inline text-xs md:text-sm font-semibold text-zinc-500 uppercase tracking-wide shrink-0 w-full sm:w-auto mb-1 sm:mb-0">
           Lifestyle Focus:
         </span>
         {factors.map((factor, idx) => {
@@ -93,17 +92,17 @@ export function LifestyleFactorsBar({ formData }: LifestyleFactorsBarProps) {
           return (
             <div
               key={idx}
-              className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg glass-button-active text-white border border-transparent transition-apple hover:scale-105"
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-zinc-200 text-zinc-600 bg-white sm:glass-button-active sm:text-white sm:border-transparent transition-apple hover:scale-105"
             >
-              <IconComponent className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
-              <span className="text-xs md:text-sm font-medium text-white whitespace-nowrap">
+              <IconComponent className="hidden sm:block w-3.5 h-3.5 text-white" />
+              <span className="text-xs md:text-sm font-medium whitespace-nowrap">
                 {factor.label}
               </span>
             </div>
           );
         })}
       </div>
-    </Card>
+    </div>
   );
 }
 

@@ -35,9 +35,9 @@ export const StartingPointSection: React.FC<StartingPointSectionProps> = ({
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
         {/* Score Card */}
-        <Card className="col-span-1 flex flex-col items-center justify-center p-3 sm:p-4 md:p-6 lg:p-8 text-center relative overflow-hidden min-h-[280px] sm:min-h-[320px] md:min-h-[360px] lg:min-h-[420px]">
+        <Card className="col-span-1 flex flex-col items-center justify-center p-3 sm:p-4 md:p-6 lg:p-8 text-center relative overflow-hidden min-h-0 sm:min-h-[320px] md:min-h-[360px] lg:min-h-[420px]">
           {/* Circular Progress Gauge */}
-          <div className="relative w-36 h-36 sm:w-40 sm:h-40 md:w-48 md:h-48 lg:w-56 lg:h-56 xl:w-64 xl:h-64 flex items-center justify-center mb-3 sm:mb-4 md:mb-6 lg:mb-8 mt-1 sm:mt-2 md:mt-3 lg:mt-4">
+          <div className="relative w-28 h-28 sm:w-40 sm:h-40 md:w-48 md:h-48 lg:w-56 lg:h-56 xl:w-64 xl:h-64 flex items-center justify-center mb-3 sm:mb-4 md:mb-6 lg:mb-8 mt-1 sm:mt-2 md:mt-3 lg:mt-4">
             <svg className="w-full h-full" viewBox="-4 -4 108 108">
               <circle 
                 cx="50" cy="50" r="42" 
@@ -67,7 +67,7 @@ export const StartingPointSection: React.FC<StartingPointSectionProps> = ({
             </svg>
             
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-zinc-900 tracking-tighter leading-none">{scores.overall}</span>
+              <span className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-zinc-900 tracking-tighter leading-none">{scores.overall}</span>
               <span className="text-xs font-bold text-zinc-400 uppercase tracking-[0.2em] mt-1 sm:mt-1.5 md:mt-2">Overall Score</span>
             </div>
           </div>
@@ -78,8 +78,8 @@ export const StartingPointSection: React.FC<StartingPointSectionProps> = ({
             <span className="text-center">{archetype.name}</span>
           </div>
 
-          {/* Description */}
-          <p className="text-xs md:text-sm text-zinc-500 font-medium leading-relaxed max-w-[240px] sm:max-w-[260px] mx-auto">
+          {/* Description -- hidden on mobile, archetype badge is enough */}
+          <p className="hidden sm:block text-xs md:text-sm text-zinc-500 font-medium leading-relaxed max-w-[240px] sm:max-w-[260px] mx-auto">
             {archetype.description}
           </p>
         </Card>

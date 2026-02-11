@@ -112,7 +112,7 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
           aria-expanded={open}
         >
           <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 min-w-0">
-            <div className="p-1 sm:p-1.5 md:p-2 bg-gradient-light text-zinc-900 rounded-lg shrink-0">
+            <div className="sm:p-1.5 md:p-2 sm:bg-gradient-light text-zinc-500 sm:text-zinc-900 sm:rounded-lg shrink-0">
               {meta.icon}
             </div>
             <div className="min-w-0">
@@ -375,9 +375,7 @@ export default function ClientReport({
                 const { icon: TabIcon, label } = MOBILE_TAB_META[mobileTab];
                 return (
                   <>
-                    <div className="p-1.5 bg-gradient-light text-zinc-900 rounded-lg shrink-0">
-                      <TabIcon className="w-3.5 h-3.5" />
-                    </div>
+                    <TabIcon className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
                     <h3 className="text-xs font-bold text-zinc-900 uppercase tracking-widest">
                       {label}
                     </h3>

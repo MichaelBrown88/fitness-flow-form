@@ -1,9 +1,8 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Carousel, CarouselContent, CarouselItem, CarouselDots } from '@/components/ui/carousel';
 import { Trophy, Lock, Play } from 'lucide-react';
-import type { StrategicPillar } from '@/lib/strategy/blueprintEngine';
 
 interface BlueprintPillar {
   title: string;
@@ -88,31 +87,19 @@ export const BlueprintSection: React.FC<BlueprintSectionProps> = ({ blueprintPil
         {blueprintPillars.map((pillar, idx) => renderPillarCard(pillar, idx, true))}
       </div>
 
-      {/* Mobile/Tablet Layout */}
-      <Tabs defaultValue="pillar-0" className="w-full lg:hidden">
-        <div className="relative mb-3 sm:mb-4">
-          <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0 scrollbar-hide">
-            <TabsList className="w-full sm:w-auto justify-start rounded-lg sm:rounded-xl glass-button h-auto p-1 sm:p-1.5 gap-1 inline-flex min-w-max sm:min-w-0">
-              {blueprintPillars.map((pillar, idx) => (
-                <TabsTrigger
-                  key={idx}
-                  value={`pillar-${idx}`}
-                  className="text-xs font-semibold px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-md data-[state=active]:glass-button-active data-[state=active]:text-white max-w-[120px] truncate sm:max-w-none"
-                >
-                  {pillar.title}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </div>
-          <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-white/80 to-transparent pointer-events-none sm:hidden" />
-        </div>
-        
-        {blueprintPillars.map((pillar, idx) => (
-          <TabsContent key={idx} value={`pillar-${idx}`} className="m-0">
-            {renderPillarCard(pillar, idx, false)}
-          </TabsContent>
-        ))}
-      </Tabs>
+      {/* Mobile/Tablet Layout -- swipeable carousel */}
+      <div className="lg:hidden">
+        <Carousel opts={{ align: 'start', containScroll: 'trimSnaps' }} className="w-full">
+          <CarouselContent className="-ml-3">
+            {blueprintPillars.map((pillar, idx) => (
+              <CarouselItem key={idx} className="basis-[85%] pl-3">
+                {renderPillarCard(pillar, idx, false)}
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+          <CarouselDots count={blueprintPillars.length} />
+        </Carousel>
+      </div>
     </section>
   );
 };

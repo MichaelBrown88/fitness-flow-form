@@ -18,12 +18,12 @@ export const ReportHeader: React.FC<ReportHeaderProps> = ({
   return (
     <div className="space-y-1 sm:space-y-3 md:space-y-4 lg:space-y-5 xl:space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1.5 sm:gap-3 md:gap-4 lg:gap-6">
-        <div className="space-y-0.5 sm:space-y-1.5 md:space-y-2">
-          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
-            <span className="inline-flex items-center rounded-full glass-label px-2 sm:px-2.5 md:px-3 py-0.5 sm:py-1 text-xs font-semibold text-zinc-700">
+        <div className="space-y-0.5 sm:space-y-1.5 md:space-y-2 w-full sm:w-auto">
+          <div className="flex items-center justify-between w-full sm:w-auto sm:justify-start sm:gap-2 md:gap-3">
+            <span className="hidden sm:inline-flex items-center rounded-full glass-label px-2.5 md:px-3 py-1 text-xs font-semibold text-zinc-700">
               Assessment Report
             </span>
-            <span className="text-xs text-zinc-400 font-medium">{reportDate}</span>
+            <span className="text-[10px] sm:text-xs text-zinc-400 font-medium">{reportDate}</span>
           </div>
           <h1 className="text-base sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-black tracking-tight text-zinc-900 leading-tight">
             {clientName || 'Your Assessment Report'}
