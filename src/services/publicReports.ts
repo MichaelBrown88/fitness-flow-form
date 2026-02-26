@@ -1,25 +1,35 @@
-import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, limit, getDocs } from 'firebase/firestore';
-import type { Timestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, limit, getDocs, orderBy, startAfter } from 'firebase/firestore';
+import type { Timestamp, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import type { FormData } from '@/contexts/FormContext';
-import { getDb } from '@/services/firebase';
+import { getDb, getFirebaseAuth } from '@/services/firebase';
 import { sanitizeForFirestore } from '@/lib/utils/firebaseUtils';
 import { COLLECTIONS } from '@/constants/collections';
 import { logger } from '@/lib/utils/logger';
 import { validateOrganizationId } from '@/lib/utils/validateOrganizationId';
 import type { UserProfile } from '@/types/auth';
+import { computeScores } from '@/lib/scoring';
+
+export interface SnapshotSummary {
+  id: string;
+  score: number;
+  date: Timestamp;
+  type: string;
+}
 
 export type PublicReportDoc = {
-  shareToken: string; // UUID token used as document ID
+  shareToken: string;
   coachUid: string;
   assessmentId: string;
-  organizationId?: string; // SaaS readiness
+  organizationId?: string;
   clientName: string;
   clientNameLower: string;
   visibility: 'public' | 'private';
   createdAt: Timestamp;
   updatedAt: Timestamp;
-  expiresAt?: Timestamp | null; // Optional expiry
+  expiresAt?: Timestamp | null;
   formData: FormData;
+  previousFormData?: FormData;
+  snapshotSummaries?: SnapshotSummary[];
 };
 
 /**
@@ -113,6 +123,15 @@ export async function publishPublicReport(params: {
 
   const safeFormData = sanitizeFormDataForPublic(formData);
 
+  // Capture previous formData for score change animations on the client viewer
+  let previousFormData: FormData | undefined;
+  if (snapshot.exists()) {
+    const existingData = snapshot.data();
+    if (existingData?.formData) {
+      previousFormData = existingData.formData as FormData;
+    }
+  }
+
   const payload = {
     coachUid,
     assessmentId,
@@ -123,6 +142,7 @@ export async function publishPublicReport(params: {
     formData: sanitizeForFirestore(safeFormData) as FormData,
     updatedAt: serverTimestamp(),
     expiresAt: null, // No expiry by default
+    ...(previousFormData ? { previousFormData: sanitizeForFirestore(previousFormData) as FormData } : {}),
     ...(isNew && !snapshot.exists() ? { createdAt: serverTimestamp() } : {}),
   } as Omit<PublicReportDoc, 'shareToken' | 'createdAt' | 'updatedAt'> & {
     createdAt?: ReturnType<typeof serverTimestamp>;
@@ -130,12 +150,65 @@ export async function publishPublicReport(params: {
   };
 
   await setDoc(ref, payload, { merge: true });
+
+  // Write snapshot to subcollection for version history (requires active auth)
+  const currentUser = getFirebaseAuth().currentUser;
+  if (currentUser) {
+    try {
+      const overallScore = computeScores(safeFormData).overall;
+      const snapshotId = `${assessmentId}_${Date.now()}`;
+      const snapshotRef = doc(getDb(), COLLECTIONS.PUBLIC_REPORTS, shareToken, COLLECTIONS.PUBLIC_REPORT_SNAPSHOTS, snapshotId);
+      await setDoc(snapshotRef, sanitizeForFirestore({
+        formData: safeFormData,
+        overallScore,
+        timestamp: serverTimestamp(),
+        type: 'full-assessment',
+      }));
+
+      // Update snapshotSummaries on the main doc (capped at 50)
+      const existingSummaries: SnapshotSummary[] = snapshot.exists()
+        ? (snapshot.data()?.snapshotSummaries ?? [])
+        : [];
+      const newSummary: SnapshotSummary = {
+        id: snapshotId,
+        score: overallScore,
+        date: serverTimestamp() as unknown as Timestamp,
+        type: 'full-assessment',
+      };
+      const updatedSummaries = [newSummary, ...existingSummaries].slice(0, 50);
+      await setDoc(ref, { snapshotSummaries: updatedSummaries }, { merge: true });
+    } catch (snapErr) {
+      logger.warn('[publishPublicReport] Failed to write snapshot subcollection', snapErr);
+    }
+  }
+
   return shareToken;
 }
 
 /**
+ * Fetch paginated snapshots from the public report snapshots subcollection
+ */
+export async function getPublicSnapshot(
+  token: string,
+  snapshotId: string,
+): Promise<{ formData: FormData; overallScore: number } | null> {
+  try {
+    const ref = doc(getDb(), COLLECTIONS.PUBLIC_REPORTS, token, COLLECTIONS.PUBLIC_REPORT_SNAPSHOTS, snapshotId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return null;
+    const data = snap.data();
+    return {
+      formData: data.formData as FormData,
+      overallScore: typeof data.overallScore === 'number' ? data.overallScore : 0,
+    };
+  } catch (err) {
+    logger.error('[getPublicSnapshot] Error:', err);
+    return null;
+  }
+}
+
+/**
  * Get a public report by its secure token
- * This is the secure way to access public reports
  */
 export async function getPublicReportByToken(token: string): Promise<PublicReportDoc | null> {
   const ref = doc(getDb(), COLLECTIONS.PUBLIC_REPORTS, token);
@@ -169,37 +242,6 @@ export async function getPublicReportByToken(token: string): Promise<PublicRepor
     throw err;
   }
 }
-
-/**
- * Legacy function for backward compatibility
- * @deprecated Use getPublicReportByToken instead
- */
-export async function getPublicReport(params: {
-  coachUid: string;
-  assessmentId: string;
-}): Promise<PublicReportDoc | null> {
-  const { coachUid, assessmentId } = params;
-  const q = query(
-    collection(getDb(), COLLECTIONS.PUBLIC_REPORTS),
-    where('coachUid', '==', coachUid),
-    where('assessmentId', '==', assessmentId),
-    where('visibility', '==', 'public'),
-    limit(1)
-  );
-  
-  const snapshot = await getDocs(q);
-  
-  if (snapshot.empty) return null;
-  
-  const docSnap = snapshot.docs[0];
-  const data = docSnap.data() as Omit<PublicReportDoc, 'shareToken'>;
-  
-  return {
-    shareToken: docSnap.id,
-    ...data,
-  } as PublicReportDoc;
-}
-
 
 
 

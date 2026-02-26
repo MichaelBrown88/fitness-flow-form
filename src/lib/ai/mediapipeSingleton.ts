@@ -31,6 +31,7 @@ type PoseResults = {
 let poseInstance: PoseInstance | null = null;
 let isInitializing = false;
 let initPromise: Promise<PoseInstance> | null = null;
+let initFailed = false;
 
 // Request queue to serialize detections (MediaPipe can't handle concurrent sends)
 type QueuedRequest = {
@@ -47,6 +48,11 @@ export async function getPoseInstance(): Promise<PoseInstance> {
   // Already initialized - return immediately
   if (poseInstance) {
     return poseInstance;
+  }
+
+  // Previous init failed — don't retry endlessly (WASM files missing, etc.)
+  if (initFailed) {
+    throw new Error('MediaPipe initialization previously failed. Reload the page to retry.');
   }
   
   // Initialization in progress - wait for it
@@ -108,6 +114,7 @@ export async function getPoseInstance(): Promise<PoseInstance> {
     } catch (error) {
       logger.error('[SINGLETON] Failed to initialize MediaPipe', 'MEDIAPIPE', error);
       poseInstance = null;
+      initFailed = true;
       throw error;
     } finally {
       isInitializing = false;
@@ -200,7 +207,8 @@ export function destroyPoseInstance(): void {
     poseInstance = null;
   }
   
-  // Clear any pending requests
+  // Clear any pending requests and reset failure state
   requestQueue.length = 0;
   isProcessingQueue = false;
+  initFailed = false;
 }

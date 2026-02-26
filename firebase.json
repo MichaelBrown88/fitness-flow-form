@@ -19,6 +19,10 @@
     ],
     "rewrites": [
       {
+        "source": "/r/**",
+        "destination": "/client.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
@@ -34,7 +38,25 @@
         ]
       },
       {
+        "source": "mediapipe/**/*.@(wasm|tflite|data|binarypb)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
         "source": "index.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "client.html",
         "headers": [
           {
             "key": "Cache-Control",

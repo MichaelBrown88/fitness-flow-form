@@ -10,7 +10,7 @@ import {
   type RawLandmarks,
   type Severity,
 } from '@/lib/utils/postureDeviation';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import useEmblaCarousel from 'embla-carousel-react';
 import { cn } from '@/lib/utils';
 
@@ -41,7 +41,7 @@ function MobileLabels({ analysis, view }: { analysis: PostureAnalysisResult; vie
         return (
           <div key={i} className="flex items-center gap-1">
             <div className={`h-1.5 w-1.5 rounded-full ${tone.dot}`} />
-            <span className={`text-[10px] font-medium uppercase tracking-wide ${tone.text}`}>{item.label}</span>
+            <span className={`text-[10px] font-medium uppercase tracking-[0.15em] ${tone.text}`}>{item.label}</span>
           </div>
         );
       })}
@@ -100,14 +100,15 @@ export function PostureExpandedDialog({ views, postureResults, getImageUrl, expa
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="!bg-black !border-0 !p-0 !shadow-none max-w-[98vw] max-h-[98vh] w-auto h-auto overflow-hidden">
+      <DialogContent className="!bg-black !border-0 !p-0 !shadow-none !fixed !inset-0 !w-full !h-full !max-w-none !max-h-none !rounded-none !translate-x-0 !translate-y-0 overflow-hidden">
         <DialogHeader className="sr-only">
           <DialogTitle>Posture Analysis</DialogTitle>
+          <DialogDescription>Expanded posture view with swipeable images</DialogDescription>
         </DialogHeader>
 
         {/* View badge */}
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40">
-          <span className="text-white/30 text-[10px] sm:text-[11px] uppercase font-semibold tracking-widest">
+          <span className="text-white/30 text-[10px] uppercase font-medium tracking-[0.15em]">
             {views[activeSlide]?.replace('-', ' ')}
           </span>
         </div>
@@ -132,11 +133,10 @@ export function PostureExpandedDialog({ views, postureResults, getImageUrl, expa
                     <img
                       src={getImageUrl(view)}
                       alt={view}
-                      className="max-h-[70vh] sm:max-h-[75vh] max-w-[85vw] md:max-w-[55vw] block"
+                      className="max-h-[80vh] sm:max-h-[85vh] max-w-[90vw] md:max-w-[55vw] block"
                     />
                   </div>
-                  {/* Mobile labels */}
-                  <div className="md:hidden px-4 pb-2">
+                  <div className="px-4 pb-2">
                     <MobileLabels analysis={analysis} view={view} />
                   </div>
                 </div>

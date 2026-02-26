@@ -5,6 +5,7 @@
  */
 
 import { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
+import { calculateDeviationsFromLandmarks } from '@/lib/utils/postureDeviation';
 
 export interface HolisticSummary {
   headline: string;          // Main takeaway (1 sentence)
@@ -59,10 +60,19 @@ export function generateHolisticSummary(
     return { isRotation, rotatedToward };
   })();
   
+  // Landmark-based deviations (same source of truth as the card previews)
+  const sideLeftCalc = sideLeft ? calculateDeviationsFromLandmarks(sideLeft.landmarks?.raw, 'side-left') : null;
+  const sideRightCalc = sideRight ? calculateDeviationsFromLandmarks(sideRight.landmarks?.raw, 'side-right') : null;
+  const frontCalc = front ? calculateDeviationsFromLandmarks(front.landmarks?.raw, 'front') : null;
+  const backCalc = back ? calculateDeviationsFromLandmarks(back.landmarks?.raw, 'back') : null;
+
   // --- PATTERN 1: Upper Crossed Syndrome ---
   // Forward head + rounded shoulders + kyphosis often occur together
+  // Check BOTH AI fields AND landmark calculations for consistency with card previews
   const hasForwardHead = sideLeft?.forward_head?.status !== 'Neutral' || 
-                         sideRight?.forward_head?.status !== 'Neutral';
+                         sideRight?.forward_head?.status !== 'Neutral' ||
+                         sideLeftCalc?.forwardHead !== 'good' ||
+                         sideRightCalc?.forwardHead !== 'good';
   const hasRoundedShoulders = sideLeft?.shoulder_alignment?.rounded_forward || 
                               sideRight?.shoulder_alignment?.rounded_forward;
   const hasKyphosis = sideLeft?.kyphosis?.status !== 'Normal' || 
@@ -80,12 +90,21 @@ export function generateHolisticSummary(
       }),
       recommendation: 'Focus on chin tucks, chest stretches, and upper back strengthening (rows, face pulls).'
     });
+  } else if (hasForwardHead) {
+    patterns.push({
+      title: 'Forward Head Position',
+      description: 'Your head sits forward relative to your shoulders in the side view. This can create tension in your neck and upper traps over time.',
+      relatedDeviations: ['forward_head'],
+      recommendation: 'Practice chin tucks and neck retraction exercises to strengthen deep neck flexors.'
+    });
   }
   
   // --- PATTERN 2: Lower Crossed Syndrome ---
   // Anterior pelvic tilt + lordosis + tight hip flexors
   const hasAnteriorTilt = sideLeft?.pelvic_tilt?.status === 'Anterior Tilt' || 
-                          sideRight?.pelvic_tilt?.status === 'Anterior Tilt';
+                          sideRight?.pelvic_tilt?.status === 'Anterior Tilt' ||
+                          sideLeftCalc?.pelvicTilt !== 'good' ||
+                          sideRightCalc?.pelvicTilt !== 'good';
   const hasLordosis = sideLeft?.lordosis?.status !== 'Normal' || 
                       sideRight?.lordosis?.status !== 'Normal';
   
@@ -110,9 +129,13 @@ export function generateHolisticSummary(
   const backShoulder = back?.shoulder_alignment;
   
   const hipShiftDirection = frontHipShift?.status !== 'Centered' ? frontHipShift?.status : 
-                            backHipShift?.status !== 'Centered' ? backHipShift?.status : null;
+                            backHipShift?.status !== 'Centered' ? backHipShift?.status : 
+                            frontCalc?.hipShift !== 'good' ? 'Shifted' :
+                            backCalc?.hipShift !== 'good' ? 'Shifted' : null;
   const hasShoulderAsymmetry = frontShoulder?.status === 'Asymmetric' || 
-                               backShoulder?.status === 'Asymmetric';
+                               backShoulder?.status === 'Asymmetric' ||
+                               frontCalc?.shoulder !== 'good' ||
+                               backCalc?.shoulder !== 'good';
   
   if (hipShiftDirection && hasShoulderAsymmetry) {
     // Classic compensation: hips shift one way, opposite shoulder elevates

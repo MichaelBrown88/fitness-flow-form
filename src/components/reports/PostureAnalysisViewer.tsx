@@ -17,6 +17,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselDots } from '@/compone
 import { 
   CheckCircle2, 
   AlertCircle, 
+  ImageOff,
   Maximize2
 } from 'lucide-react';
 
@@ -308,7 +309,7 @@ function PositionedLabels({
           return (
             <div key={i} className="flex items-center gap-1.5">
               <div className={`h-1.5 w-1.5 rounded-full ${tone.dot}`} />
-              <span className={`text-xs font-bold uppercase tracking-wide ${tone.text}`}>
+              <span className={`text-[10px] font-black uppercase tracking-[0.15em] ${tone.text}`}>
                 {item.label}
               </span>
             </div>
@@ -350,7 +351,7 @@ function PositionedLabels({
             <div className={`${screenSide === 'left' ? 'text-left' : 'text-right'} max-w-[180px]`}>
               <div className={`inline-flex items-center gap-1.5 mb-0.5 ${screenSide === 'right' ? 'flex-row-reverse' : ''}`}>
                 <div className={`h-1.5 w-1.5 rounded-full shrink-0 ${tone.dot}`} />
-                <span className={`text-xs font-bold uppercase tracking-wide ${tone.text}`}>
+                <span className={`text-[10px] font-black uppercase tracking-[0.15em] ${tone.text}`}>
                   {item.label}
                 </span>
               </div>
@@ -472,12 +473,15 @@ export function PostureViewCard({
   analysis, 
   imageUrl,
   onClick,
+  delta,
 }: { 
   view: PostureView; 
   analysis: PostureAnalysisResult; 
   imageUrl: string;
   onClick?: () => void;
+  delta?: 'improved' | 'new' | 'resolved' | null;
 }) {
+  const [imgError, setImgError] = useState(false);
   const briefFindings = getBriefFindings(analysis, view);
   const isNeutral = briefFindings[0] === 'Neutral Alignment';
 
@@ -488,7 +492,7 @@ export function PostureViewCard({
     >
       {/* View Label */}
       <div className="absolute top-2 left-2 z-10">
-        <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm text-xs font-black uppercase tracking-widest text-slate-600 border-none shadow-sm h-5">
+        <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm text-[10px] font-black uppercase tracking-[0.15em] text-slate-600 border-none h-5">
           {view.replace('-', ' ')}
         </Badge>
       </div>
@@ -502,25 +506,46 @@ export function PostureViewCard({
         )}
       </div>
 
+      {/* Delta Badge */}
+      {delta && (
+        <div className="absolute top-8 right-2 z-10">
+          <Badge variant="secondary" className={`text-[9px] font-bold uppercase tracking-wider border-none h-4 ${
+            delta === 'improved' ? 'bg-score-green-light text-score-green-fg' :
+            delta === 'resolved' ? 'bg-score-green-light text-score-green-fg' :
+            'bg-blue-50 text-blue-600'
+          }`}>
+            {delta === 'improved' ? 'Improved' : delta === 'resolved' ? 'Resolved' : 'New'}
+          </Badge>
+        </div>
+      )}
+
       {/* Image */}
       <div className="aspect-[4/5] w-full overflow-hidden bg-slate-50">
-        <img 
-          src={imageUrl} 
-          alt={view}
-          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
-          style={{ objectPosition: 'center 10%' }}
-        />
+        {imgError || !imageUrl ? (
+          <div className="h-full w-full flex flex-col items-center justify-center text-slate-300 gap-2">
+            <ImageOff className="h-8 w-8" />
+            <span className="text-[10px] uppercase tracking-wider font-medium">Image unavailable</span>
+          </div>
+        ) : (
+          <img 
+            src={imageUrl} 
+            alt={view}
+            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+            style={{ objectPosition: 'center 10%' }}
+            onError={() => setImgError(true)}
+          />
+        )}
       </div>
 
       {/* Feedback Overlay -- subtler on mobile */}
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 pt-10 text-center">
         <div className="flex flex-col gap-0.5">
           {briefFindings.slice(0, 1).map((finding, i) => (
-            <span key={i} className="text-[10px] sm:text-xs font-bold sm:font-black uppercase tracking-tight leading-none text-white drop-shadow-md">
+            <span key={i} className="text-[10px] font-black uppercase tracking-[0.15em] leading-none text-white drop-shadow-md">
               {finding}
             </span>
           ))}
-          <span className="text-[9px] sm:text-xs font-medium sm:font-bold text-white/50 sm:text-white/80 uppercase tracking-widest mt-1">
+          <span className="text-[10px] font-black text-white/50 sm:text-white/80 uppercase tracking-[0.15em] mt-1">
             Tap to expand
           </span>
         </div>
@@ -543,16 +568,15 @@ export function PostureViewCard({
  */
 export function PostureAnalysisViewer({ 
   postureResults, 
-  postureImages 
+  postureImages,
+  previousPostureResults,
 }: { 
   postureResults: Partial<Record<PostureView, PostureAnalysisResult>>; 
   postureImages: Record<string, string> | undefined;
+  previousPostureResults?: Partial<Record<PostureView, PostureAnalysisResult>>;
 }) {
   const views = ['front', 'back', 'side-left', 'side-right'] as const;
-  const availableViews = views.filter(v => postureResults[v]);
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
-  
-  if (availableViews.length === 0) return null;
 
   const getImageUrl = (view: PostureView): string => {
     return postureImages?.[view] || 
@@ -560,6 +584,24 @@ export function PostureAnalysisViewer({
            postureImages?.[`postureImagesFull_${view}`] ||
            postureImages?.[`postureImages_${view}`] ||
            '';
+  };
+
+  // Only show views that have both AI results AND a valid image URL
+  const availableViews = views.filter(v => postureResults[v] && getImageUrl(v));
+  
+  if (availableViews.length === 0) return null;
+
+  const getViewDelta = (view: PostureView): 'improved' | 'new' | 'resolved' | null => {
+    if (!previousPostureResults) return null;
+    const current = postureResults[view];
+    const previous = previousPostureResults[view];
+    if (current && !previous) return 'new';
+    if (!current && previous) return 'resolved';
+    if (!current || !previous) return null;
+    const currentDeviations = getConsolidatedDeviations(current, view);
+    const previousDeviations = getConsolidatedDeviations(previous, view);
+    if (currentDeviations.length < previousDeviations.length) return 'improved';
+    return null;
   };
 
   const handleCardClick = (index: number) => setExpandedIndex(index);
@@ -575,6 +617,7 @@ export function PostureAnalysisViewer({
             analysis={postureResults[view]}
             imageUrl={getImageUrl(view)}
             onClick={() => handleCardClick(idx)}
+            delta={getViewDelta(view)}
           />
         ))}
       </div>
@@ -590,6 +633,7 @@ export function PostureAnalysisViewer({
                   analysis={postureResults[view]}
                   imageUrl={getImageUrl(view)}
                   onClick={() => handleCardClick(idx)}
+                  delta={getViewDelta(view)}
                 />
               </CarouselItem>
             ))}
