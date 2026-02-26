@@ -73,12 +73,13 @@ function drawFrontBackDeviations(
   // 2. Shoulder Asymmetry
   if (analysis.shoulder_alignment && analysis.shoulder_alignment.status !== 'Neutral') {
     const diffCm = analysis.shoulder_alignment.height_difference_cm || 0;
-    const desc = analysis.shoulder_alignment.description.toLowerCase();
+    const leftCm = analysis.shoulder_alignment.left_elevation_cm ?? 0;
+    const rightCm = analysis.shoulder_alignment.right_elevation_cm ?? 0;
 
     let higherSide = 0;
-    if (desc.includes('right shoulder is slightly elevated') || desc.includes('right shoulder sits higher')) {
+    if (rightCm > leftCm) {
       higherSide = isBackView ? -1 : 1;
-    } else if (desc.includes('left shoulder is slightly elevated') || desc.includes('left shoulder sits higher')) {
+    } else if (leftCm > rightCm) {
       higherSide = isBackView ? 1 : -1;
     }
 
@@ -100,14 +101,17 @@ function drawFrontBackDeviations(
     const hipDiff = hipData?.height_difference_cm || 0;
     const diffCm = Math.max(pelvicDiff, hipDiff);
 
-    const pelvicDesc = pelvicData?.description.toLowerCase() || '';
-    const hipDesc = hipData?.description.toLowerCase() || '';
-    const combinedDesc = `${pelvicDesc} ${hipDesc}`;
+    const pelvicLeftCm = pelvicData?.left_hip_elevation_cm ?? 0;
+    const pelvicRightCm = pelvicData?.right_hip_elevation_cm ?? 0;
+    const hipLeftCm = hipData?.left_elevation_cm ?? 0;
+    const hipRightCm = hipData?.right_elevation_cm ?? 0;
+    const leftTotal = pelvicLeftCm + hipLeftCm;
+    const rightTotal = pelvicRightCm + hipRightCm;
 
     let higherSide = 0;
-    if (combinedDesc.includes('right side is elevated') || combinedDesc.includes('right hip sits higher') || combinedDesc.includes('right shoulder is slightly elevated')) {
+    if (rightTotal > leftTotal) {
       higherSide = isBackView ? -1 : 1;
-    } else if (combinedDesc.includes('left side is elevated') || combinedDesc.includes('left hip sits higher') || combinedDesc.includes('left shoulder is slightly elevated')) {
+    } else if (leftTotal > rightTotal) {
       higherSide = isBackView ? 1 : -1;
     }
 
@@ -123,12 +127,12 @@ function drawFrontBackDeviations(
   // 4. Spinal Curvature (Scoliosis) - back view only
   if (isBackView && analysis.spinal_curvature && analysis.spinal_curvature.status !== 'Normal') {
     const curveDeg = analysis.spinal_curvature.curve_degrees || 0;
-    const desc = analysis.spinal_curvature.description.toLowerCase();
+    const curveDir = analysis.spinal_curvature.curve_direction;
 
     let bulgeSide = curveDeg > 0 ? 1 : -1;
-    if (desc.includes('right-side bulge') || desc.includes('curve to the right')) {
+    if (curveDir === 'Right') {
       bulgeSide = -1;
-    } else if (desc.includes('left-side bulge') || desc.includes('curve to the left')) {
+    } else if (curveDir === 'Left') {
       bulgeSide = 1;
     }
 

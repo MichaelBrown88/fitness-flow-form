@@ -42,8 +42,7 @@ export async function reanalyzeClientPosture(
         hasImagesFromAssessment = true;
         console.log('[REANALYZE] Found posture images in assessment document');
         
-        // Re-analyze images from assessment document
-        const { analyzePostureImage } = await import('@/lib/ai/postureAnalysis');
+        const { processPostureImage } = await import('@/services/postureProcessing');
         
         for (const view of views) {
           const imageUrl = postureImages[view];
@@ -51,13 +50,10 @@ export async function reanalyzeClientPosture(
             try {
               console.log(`[REANALYZE] Re-analyzing ${view} view from assessment document...`);
               
-              // Convert Firebase Storage URL to data URL to avoid CORS issues
               let imageDataUrl: string;
               
               if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-                // Try to use Firebase Storage SDK first (handles CORS properly)
                 try {
-                  // Extract the path from the Storage URL
                   const urlMatch = imageUrl.match(/\/o\/(.+?)\?/);
                   if (urlMatch) {
                     const storagePath = decodeURIComponent(urlMatch[1]);
@@ -71,7 +67,6 @@ export async function reanalyzeClientPosture(
                       reader.readAsDataURL(blob);
                     });
                   } else {
-                    // Fallback: try direct fetch (may fail due to CORS)
                     const response = await fetch(imageUrl);
                     if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     const blob = await response.blob();
@@ -83,18 +78,15 @@ export async function reanalyzeClientPosture(
                     });
                   }
                 } catch (fetchError) {
-                  // If SDK fails, try using the URL directly with analyzePostureImage
-                  // It has its own fetch logic that might work
                   console.warn(`[REANALYZE] SDK fetch failed, trying direct URL:`, fetchError);
                   imageDataUrl = imageUrl;
                 }
               } else {
-                // Already a data URL
                 imageDataUrl = imageUrl;
               }
               
-              // Analyze the image (this will use the updated AI logic)
-              const analysis = await analyzePostureImage(imageDataUrl, view);
+              const processed = await processPostureImage(imageDataUrl, view);
+              const analysis = processed.analysis;
               
               // Update the assessment document with new analysis
               await updatePostureAnalysis(
@@ -162,9 +154,9 @@ export async function reanalyzeClientPosture(
 }
 
 /**
- * Make it available globally for console access
+ * Make it available globally for console access (dev only)
  */
-if (typeof window !== 'undefined') {
+if (import.meta.env.DEV && typeof window !== 'undefined') {
   (window as Window & typeof globalThis & { reanalyzeClientPosture?: typeof reanalyzeClientPosture }).reanalyzeClientPosture = reanalyzeClientPosture;
   console.log('💡 Re-analysis utility loaded! Use: reanalyzeClientPosture("Client Name")');
 }

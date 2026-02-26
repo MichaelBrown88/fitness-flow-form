@@ -8,18 +8,16 @@
  * 
  * Flow:
  * 1. Detect landmarks with MediaPipe (or use provided)
- * 2. Align image with green reference lines
+ * 2. Draw wireframe overlay
  * 3. Calculate deviations using trigonometry (postureMath.ts)
- * 4. Use AI ONLY to convert numbers → user-friendly text (based on normative data)
- * 5. Draw red deviation lines
+ * 4. Generate descriptions via deterministic templates (postureTemplates.ts)
  * 
- * ONE SYSTEM - ONE FLOW - REDUCED BLOAT
+ * Zero AI cost -- all analysis is local.
  */
 
 import { LandmarkResult, detectPostureLandmarks } from '@/lib/ai/postureLandmarks';
 import { drawLandmarkWireframe } from '@/lib/utils/postureOverlay';
-import { calculateFrontViewMetrics, calculateSideViewMetrics } from '@/lib/utils/postureMath';
-import { analyzePostureImage } from '@/lib/ai/postureAnalysis';
+import { buildPostureResult } from '@/lib/ai/postureTemplates';
 import { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
 import { logger } from '@/lib/utils/logger';
 
@@ -104,75 +102,23 @@ export async function processPostureImage(
     }
     
     // STEP 3: Use wireframe on original image directly (no cropping/resizing)
-    // This preserves the original image dimensions - no borders added
     const wireframeImage = wireframeOnOriginal;
-    const croppedImage = imageData; // Original for AI analysis
     
     // Emit wireframe stage immediately
     onProgress?.({ stage: 'wireframe', view, wireframeImage });
-    logger.debug(`Using original dimensions for ${view} (no crop)`, ctx);
     
-    // STEP 4: Calculate metrics (synchronous, fast)
-    let calculatedMetrics: Partial<import('@/lib/utils/postureMath').CalculatedPostureMetrics> = {};
-    if (landmarks.raw) {
-      try {
-        calculatedMetrics = view === 'front' || view === 'back'
-          ? calculateFrontViewMetrics(landmarks.raw, view)
-          : calculateSideViewMetrics(landmarks.raw, view);
-        logger.debug(`Metrics calculated for ${view}`, ctx);
-      } catch (metricsError) {
-        logger.warn(`Metrics calculation failed for ${view}`, ctx, metricsError);
-      }
-    }
-
     // Emit analyzing stage
     onProgress?.({ stage: 'analyzing', view });
     
-    // STEP 5: Use AI to generate user-friendly descriptions
-    let analysis: PostureAnalysisResult;
-    try {
-      logger.debug(`Generating AI analysis for ${view}...`, ctx);
-      // Use the cropped image for AI analysis (cleaner, no wireframe overlay)
-      analysis = await analyzePostureImage(croppedImage, view, {
-        ...landmarks,
-        raw: landmarks.raw,
-      });
-      
-      // Merge MediaPipe landmarks back into analysis result
-      if (landmarks.raw) {
-        analysis.landmarks = {
-          ...analysis.landmarks,
-          ...landmarks,
-          raw: landmarks.raw,
-        };
-      }
-      
-      // Override AI severity with MediaPipe-calculated severity (more accurate)
-      if (view === 'side-left' || view === 'side-right') {
-        if (calculatedMetrics.headSeverity && analysis.forward_head) {
-          const mediaPipeSeverity = calculatedMetrics.headSeverity;
-          const aiSeverity = analysis.forward_head.status;
-          
-          if (mediaPipeSeverity !== aiSeverity) {
-            logger.debug(`Overriding AI FHP severity (${aiSeverity}) with MediaPipe (${mediaPipeSeverity}) for ${view}`, ctx);
-            analysis.forward_head.status = mediaPipeSeverity;
-          }
-        }
-      }
-      
-      logger.debug(`AI analysis complete for ${view}`, ctx);
-    } catch (analysisError) {
-      logger.error(`AI analysis failed for ${view}`, ctx, analysisError);
-      throw new Error(`Failed to generate analysis: ${analysisError instanceof Error ? analysisError.message : 'Unknown error'}`);
-    }
+    // STEP 4: Build analysis from deterministic templates (no AI, no network)
+    const analysis: PostureAnalysisResult = buildPostureResult(landmarks, view);
+    logger.debug(`Template analysis complete for ${view}`, ctx);
 
     logger.debug(`Complete processing for ${view}`, ctx);
     
-    // Return wireframe as the primary visualization
-    // The wireframe already contains color-coded alignment indicators
     return {
-      alignedImage: croppedImage, // Clean cropped image (no lines) for AI
-      imageWithDeviations: wireframeImage, // Cropped wireframe IS the deviation visualization
+      alignedImage: imageData,
+      imageWithDeviations: wireframeImage,
       wireframeImage,
       analysis,
       landmarks,
