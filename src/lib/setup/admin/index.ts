@@ -52,5 +52,8 @@ export { fixRealDataAndStats } from './fixRealDataAndStats';
 export { backfillAIUsageOrganizationId } from './backfillAIUsageOrganizationId';
 export { fixOrgCreatedAt } from './fixOrgCreatedAt';
 
+// Client Data Repair & Dedup Tools
+export { repairClientData, diagnoseClientDashboard, deduplicateAssessments } from './repairClientData';
+
 // Re-export for convenience
 export { verifyDatabaseIntegrity } from '../verifyDatabaseIntegrity';

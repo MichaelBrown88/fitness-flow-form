@@ -28,6 +28,8 @@ export type CoachAssessmentSummary = {
   id: string;
   clientName: string;
   createdAt: Timestamp | null;
+  /** Last partial/full assessment update timestamp (for dashboard "last activity") */
+  updatedAt?: Timestamp | null;
   overallScore: number;
   goals: string[];
   /** Previous assessment score (for trend calculation) */
@@ -101,6 +103,8 @@ function resolveEffectiveCoach(
   return loggedInCoachUid;
 }
 
+export type SaveResult = { assessmentId: string; shareToken: string | null };
+
 export async function saveCoachAssessment(
   coachUid: string,
   coachEmail: string | null | undefined,
@@ -108,7 +112,7 @@ export async function saveCoachAssessment(
   overallScore: number,
   organizationId?: string,
   profile?: UserProfile | null,
-): Promise<string> {
+): Promise<SaveResult> {
   const name = (formData.fullName || 'Unnamed client').trim();
 
   // Validate organizationId before proceeding
@@ -125,11 +129,10 @@ export async function saveCoachAssessment(
   // 2. Pre-calculate scores summary for dashboard performance
   const scoresSummary = summarizeScores(formData);
 
-  // 3. Upsert: check if a summary already exists for this client (one row per client)
+  // 3. Upsert: check if a summary already exists for this client (one row per client per org)
   const existingQ = query(
     orgAssessmentsCollection(validOrgId),
     where('clientNameLower', '==', name.toLowerCase()),
-    where('coachUid', '==', effectiveCoachUid),
     orderBy('createdAt', 'desc'),
     limit(1),
   );
@@ -138,7 +141,6 @@ export async function saveCoachAssessment(
   if (!existingSnapshot.empty) {
     const existingDoc = existingSnapshot.docs[0];
     const existingData = existingDoc.data();
-    // Capture previousScore BEFORE overwrite for trend calculation
     const previousScore = existingData.overallScore ?? 0;
     const trend = overallScore - previousScore;
 
@@ -146,21 +148,23 @@ export async function saveCoachAssessment(
     await updateDoc(existingDoc.ref, {
       clientName: name,
       clientNameLower: name.toLowerCase(),
+      coachUid,
       overallScore,
       previousScore,
       trend,
       assessmentCount: increment(1),
-      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
       goals: Array.isArray(formData.clientGoals) ? formData.clientGoals : [],
       formData,
       scoresSummary,
-      ...(isGuestAssessment ? { performedByUid: coachUid } : {}),
+      ...(isGuestAssessment ? { assignedCoachUid: effectiveCoachUid, performedByUid: coachUid } : {}),
     });
 
-    // Update public report
+    // Update public report and capture shareToken
+    let shareToken: string | null = null;
     try {
       const { publishPublicReport } = await import('./publicReports');
-      await publishPublicReport({
+      shareToken = await publishPublicReport({
         coachUid: effectiveCoachUid,
         assessmentId: existingDoc.id,
         formData,
@@ -171,7 +175,7 @@ export async function saveCoachAssessment(
       logger.warn('Failed to update public report after upsert save:', err);
     }
 
-    return existingDoc.id;
+    return { assessmentId: existingDoc.id, shareToken };
   }
 
   // 4. First assessment for this client -- create new summary
@@ -179,7 +183,7 @@ export async function saveCoachAssessment(
     clientName: name,
     clientNameLower: name.toLowerCase(),
     createdAt: serverTimestamp(),
-    coachUid: effectiveCoachUid,
+    coachUid,
     coachEmail: coachEmail || null,
     organizationId: validOrgId,
     overallScore,
@@ -188,13 +192,14 @@ export async function saveCoachAssessment(
     formData,
     scoresSummary,
     isSummary: true,
-    ...(isGuestAssessment ? { performedByUid: coachUid } : {}),
+    ...(isGuestAssessment ? { assignedCoachUid: effectiveCoachUid, performedByUid: coachUid } : {}),
   });
 
   // Update public report if one exists (keeps shared links live)
+  let newShareToken: string | null = null;
   try {
     const { publishPublicReport } = await import('./publicReports');
-    await publishPublicReport({
+    newShareToken = await publishPublicReport({
       coachUid: effectiveCoachUid,
       assessmentId: docRef.id,
       formData,
@@ -205,7 +210,7 @@ export async function saveCoachAssessment(
     logger.warn('Failed to update public report after assessment save:', err);
   }
 
-  return docRef.id;
+  return { assessmentId: docRef.id, shareToken: newShareToken };
 }
 
 export async function listCoachAssessments(
@@ -227,11 +232,12 @@ export async function listCoachAssessments(
   const snap = await getDocs(q);
   const items: CoachAssessmentSummary[] = [];
   snap.forEach((docSnap) => {
-    const data = docSnap.data() as Partial<CoachAssessmentDoc> & { scores?: { overall?: number }; previousScore?: number; trend?: number; assessmentCount?: number };
+    const data = docSnap.data() as Partial<CoachAssessmentDoc> & { scores?: { overall?: number }; previousScore?: number; trend?: number; assessmentCount?: number; updatedAt?: Timestamp };
     items.push({
       id: docSnap.id,
       clientName: data.clientName || 'Unnamed client',
       createdAt: (data.createdAt as Timestamp | undefined) ?? null,
+      updatedAt: data.updatedAt ?? null,
       overallScore: extractOverallScore(data),
       goals: Array.isArray(data.goals) ? data.goals : [],
       scoresSummary: data.scoresSummary,
@@ -383,14 +389,18 @@ export async function getClientAssessments(
   const snap = await getDocs(q);
   const items: CoachAssessmentSummary[] = [];
   snap.forEach((docSnap) => {
-    const data = docSnap.data() as Partial<CoachAssessmentDoc> & { scores?: { overall?: number } };
+    const data = docSnap.data() as Partial<CoachAssessmentDoc> & { scores?: { overall?: number }; previousScore?: number; trend?: number; assessmentCount?: number; updatedAt?: Timestamp };
     items.push({
       id: docSnap.id,
       clientName: data.clientName || 'Unnamed client',
       createdAt: (data.createdAt as Timestamp | undefined) ?? null,
+      updatedAt: data.updatedAt ?? null,
       overallScore: extractOverallScore(data),
       goals: Array.isArray(data.goals) ? data.goals : [],
       scoresSummary: data.scoresSummary,
+      previousScore: data.previousScore,
+      trend: data.trend,
+      assessmentCount: data.assessmentCount,
     });
   });
   return items;
@@ -426,7 +436,7 @@ export async function savePartialAssessment(
   category: 'bodycomp' | 'posture' | 'fitness' | 'strength' | 'lifestyle',
   organizationId?: string,
   profile?: UserProfile | null,
-): Promise<string> {
+): Promise<SaveResult> {
   const finalName = (clientName || formData.fullName || 'Unnamed client').trim();
 
   // Validate organizationId before proceeding
@@ -454,11 +464,10 @@ export async function savePartialAssessment(
   // Pre-calculate scores summary for dashboard performance
   const scoresSummary = summarizeScores(mergedFormData);
 
-  // 3. Upsert: check if a summary already exists for this client (one row per client)
+  // 3. Upsert: check if a summary already exists for this client (one row per client per org)
   const existingQ = query(
     orgAssessmentsCollection(validOrgId),
     where('clientNameLower', '==', finalName.toLowerCase()),
-    where('coachUid', '==', effectiveCoachUid),
     orderBy('createdAt', 'desc'),
     limit(1),
   );
@@ -474,22 +483,24 @@ export async function savePartialAssessment(
     await updateDoc(existingDoc.ref, {
       clientName: finalName,
       clientNameLower: finalName.toLowerCase(),
+      coachUid,
       overallScore,
       previousScore,
       trend,
       assessmentCount: increment(1),
-      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
       goals: Array.isArray(mergedFormData.clientGoals) ? mergedFormData.clientGoals : [],
       formData: mergedFormData,
       scoresSummary,
       category,
       isPartial: true,
-      ...(isGuestAssessment ? { performedByUid: coachUid } : {}),
+      ...(isGuestAssessment ? { assignedCoachUid: effectiveCoachUid, performedByUid: coachUid } : {}),
     });
 
+    let partialShareToken: string | null = null;
     try {
       const { publishPublicReport } = await import('./publicReports');
-      await publishPublicReport({
+      partialShareToken = await publishPublicReport({
         coachUid: effectiveCoachUid,
         assessmentId: existingDoc.id,
         formData: mergedFormData,
@@ -499,7 +510,7 @@ export async function savePartialAssessment(
       logger.warn('Failed to update public report after partial upsert save:', err);
     }
 
-    return existingDoc.id;
+    return { assessmentId: existingDoc.id, shareToken: partialShareToken };
   }
 
   // 4. First assessment for this client -- create new summary
@@ -507,7 +518,7 @@ export async function savePartialAssessment(
     clientName: finalName,
     clientNameLower: finalName.toLowerCase(),
     createdAt: serverTimestamp(),
-    coachUid: effectiveCoachUid,
+    coachUid,
     coachEmail: coachEmail || null,
     organizationId: validOrgId,
     overallScore,
@@ -517,13 +528,14 @@ export async function savePartialAssessment(
     scoresSummary,
     category,
     isPartial: true,
-    ...(isGuestAssessment ? { performedByUid: coachUid } : {}),
+    ...(isGuestAssessment ? { assignedCoachUid: effectiveCoachUid, performedByUid: coachUid } : {}),
   });
 
   // Update public report if one exists
+  let newPartialToken: string | null = null;
   try {
     const { publishPublicReport } = await import('./publicReports');
-    await publishPublicReport({
+    newPartialToken = await publishPublicReport({
       coachUid: effectiveCoachUid,
       assessmentId: docRef.id,
       formData: mergedFormData,
@@ -533,7 +545,7 @@ export async function savePartialAssessment(
     logger.warn('Failed to update public report after partial assessment save:', err);
   }
 
-  return docRef.id;
+  return { assessmentId: docRef.id, shareToken: newPartialToken };
 }
 
 /**
