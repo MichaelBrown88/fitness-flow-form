@@ -189,6 +189,18 @@ export default function AppShell({
             
             <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
               {actions ? <div className="flex gap-1 sm:gap-2">{actions}</div> : null}
+
+              {user && profile?.role === 'org_admin' && (
+                <Button variant="ghost" size="icon" asChild className="h-8 w-8 sm:h-9 sm:w-9 text-slate-400 hover:text-slate-600 hidden sm:flex" title="Organization">
+                  <Link to="/org/dashboard"><Building2 className="h-4 w-4" /></Link>
+                </Button>
+              )}
+              {user && (
+                <Button variant="ghost" size="icon" asChild className="h-8 w-8 sm:h-9 sm:w-9 text-slate-400 hover:text-slate-600 hidden sm:flex" title="Settings">
+                  <Link to={ROUTES.SETTINGS}><Settings className="h-4 w-4" /></Link>
+                </Button>
+              )}
+
               {user && <NotificationBell />}
               {!loading && (
                 user ? (

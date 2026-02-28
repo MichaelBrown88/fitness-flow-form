@@ -1,9 +1,10 @@
 import { useState, useCallback, lazy, Suspense } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAssessmentLogic } from '@/hooks/useAssessmentLogic';
 import { useVersionSelector } from '@/hooks/useVersionSelector';
 import AssessmentVersionSelector from '@/components/reports/AssessmentVersionSelector';
 import AppShell from '@/components/layout/AppShell';
+import { Breadcrumb } from '@/components/ui/Breadcrumb';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { generateBodyCompInterpretation } from '@/lib/recommendations';
@@ -294,8 +295,15 @@ const AssessmentReport = () => {
           </div>
         }
     >
-      {/* Header row: client name left, view toggle right */}
+      {/* Breadcrumb + Header row */}
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-10 pt-3 pb-1">
+        <Breadcrumb items={[
+          { label: 'Dashboard', href: ROUTES.DASHBOARD },
+          ...(formData.fullName
+            ? [{ label: formData.fullName, href: `/client/${encodeURIComponent(formData.fullName)}` }]
+            : []),
+          { label: 'Report' },
+        ]} />
         <div className="flex items-center justify-between">
           <h1 className="text-base sm:text-lg font-bold text-slate-900 truncate">
             {formData.fullName || 'Assessment'}

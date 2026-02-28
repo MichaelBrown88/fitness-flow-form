@@ -369,38 +369,36 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                   }
                 }}
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-900 truncate">
-                      {client.name}
-                      {isPaused && <span className="text-[10px] text-slate-400 font-bold ml-2">Paused</span>}
-                      {isArchived && <span className="text-[10px] text-slate-400 font-bold ml-2">Archived</span>}
-                    </p>
-                    {showCoachColumn && (
-                      <p className="text-xs text-slate-400 font-medium mt-0.5 truncate">
-                        {client.coachUid && coachMap?.get(client.coachUid)
-                          ? coachMap.get(client.coachUid) : 'No coach assigned'}
-                      </p>
-                    )}
-                  </div>
+                {/* Line 1: name + status + actions */}
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-slate-900 truncate flex-1 min-w-0">
+                    {client.name}
+                    {isPaused && <span className="text-[10px] text-slate-400 font-bold ml-2">Paused</span>}
+                    {isArchived && <span className="text-[10px] text-slate-400 font-bold ml-2">Archived</span>}
+                  </p>
                   <div className="shrink-0" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                     <ClientActionsDropdown clientName={client.name} latestAssessmentId={client.assessments[0]?.id} />
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 mt-2">
+                {/* Line 2: score, trend, coach, date, next due — all visible */}
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
                   <ScoreBadge score={client.latestScore} />
                   <TrendIndicator trend={client.scoreChange} />
-                  <span className="ml-auto text-xs text-slate-400 font-medium">
+                  {showCoachColumn && client.coachUid && coachMap?.get(client.coachUid) && (
+                    <span className="text-[10px] font-medium text-slate-400 truncate max-w-[80px]">
+                      {coachMap.get(client.coachUid)}
+                    </span>
+                  )}
+                  {nextDue && (
+                    <span className={`text-[10px] font-semibold ${nextDue.color}`}>
+                      {nextDue.label}
+                    </span>
+                  )}
+                  <span className="ml-auto text-[10px] text-slate-400 font-medium shrink-0">
                     {client.latestDate ? client.latestDate.toLocaleDateString() : 'Not assessed'}
                   </span>
                 </div>
-
-                {nextDue && (
-                  <p className={`text-xs font-semibold mt-2 ${nextDue.color}`}>
-                    {nextDue.label}
-                  </p>
-                )}
               </div>
             );
           })

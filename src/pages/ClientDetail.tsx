@@ -1,6 +1,8 @@
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import AppShell from '@/components/layout/AppShell';
+import { Breadcrumb } from '@/components/ui/Breadcrumb';
+import { ROUTES } from '@/constants/routes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -230,6 +232,11 @@ const ClientDetail = () => {
         </div>
       }
     >
+      <Breadcrumb items={[
+        { label: 'Dashboard', href: ROUTES.DASHBOARD },
+        { label: clientName },
+      ]} />
+
       {/* Custom header row: client name + Report button */}
       <div className="flex items-center justify-between gap-3 mb-6">
         <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-slate-900 truncate">

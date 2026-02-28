@@ -7,16 +7,15 @@ import { ROUTES } from '@/constants/routes';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import { clearDraft } from '@/hooks/useAssessmentDraft';
 
-// Hook
 import { useDashboardData } from '@/hooks/useDashboardData';
 
-// Sub-components
 import { DashboardHeader } from '@/components/dashboard/sub-components/DashboardHeader';
 import { DashboardViewTabs } from '@/components/dashboard/sub-components/DashboardViewTabs';
 import { UnifiedClientTable } from '@/components/dashboard/sub-components/UnifiedClientTable';
 import { DashboardDialogs } from '@/components/dashboard/sub-components/DashboardDialogs';
 import { PriorityView } from '@/components/dashboard/sub-components/PriorityView';
 import { TeamView } from '@/components/dashboard/sub-components/TeamView';
+import { GettingStartedChecklist } from '@/components/dashboard/GettingStartedChecklist';
 
 const Dashboard = () => {
   const {
@@ -91,6 +90,12 @@ const Dashboard = () => {
             coachFirstName={coachFirstName}
             totalClients={analytics?.totalClients ?? 0}
             totalAssessments={analytics?.totalAssessments ?? 0}
+          />
+
+          <GettingStartedChecklist
+            hasClients={(analytics?.totalClients ?? 0) > 0}
+            hasAssessments={(analytics?.totalAssessments ?? 0) > 0}
+            hasSharedReport={false}
           />
 
           {/* Main Content */}
