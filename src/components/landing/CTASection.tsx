@@ -1,50 +1,54 @@
 import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useScrollReveal } from '@/hooks/useScrollReveal';
 
 export function CTASection() {
   const { user } = useAuth();
+  const headingRef = useScrollReveal({ staggerDelay: 150, staggerIndex: 0 });
+  const subtitleRef = useScrollReveal({ staggerDelay: 150, staggerIndex: 1 });
+  const ctaRef = useScrollReveal({ staggerDelay: 150, staggerIndex: 2 });
 
   return (
-    <section className="py-24 bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-700 relative overflow-hidden">
-      {/* Background decoration */}
+    <section className="py-24 sm:py-32 bg-slate-900 relative overflow-hidden">
+      {/* Subtle gradient glow */}
       <div className="absolute inset-0 -z-0">
-        <div className="absolute top-0 left-0 w-96 h-96 bg-white/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-400/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-600/20 rounded-full blur-[120px]" />
       </div>
 
-      <div className="container mx-auto px-4 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-6">
-            Ready to Transform Your Assessment Process?
+          <h2 ref={headingRef} className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-6 leading-tight">
+            Assess Smarter. Retain Longer.
           </h2>
-          <p className="text-lg text-indigo-100 mb-10 max-w-2xl mx-auto">
-            Join hundreds of fitness professionals who are saving time and delivering better results 
-            with evidence-based assessments powered by our Clinical Logic Engine.
+          <p ref={subtitleRef} className="text-lg text-slate-400 mb-10 max-w-2xl mx-auto">
+            Start your free trial today. No credit card, no setup, no risk.
           </p>
           
-          {user ? (
-            <Button asChild size="lg" className="bg-white text-indigo-600 hover:bg-indigo-50 px-8 h-14 text-lg rounded-2xl shadow-xl">
-              <Link to="/dashboard">
+          <div ref={ctaRef}>
+            {user ? (
+              <Link 
+                to="/dashboard"
+                className="inline-flex items-center justify-center gap-2 bg-white text-slate-900 px-8 py-4 rounded-xl text-base font-bold shadow-lg shadow-white/10 hover:bg-slate-100 transition-colors"
+              >
                 Go to Dashboard
-                <ArrowRight className="ml-2 h-5 w-5" />
+                <ArrowRight className="h-5 w-5" />
               </Link>
-            </Button>
-          ) : (
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Button asChild size="lg" className="bg-white text-indigo-600 hover:bg-indigo-50 px-8 h-14 text-lg rounded-2xl shadow-xl">
-                <Link to="/onboarding">
-                  Start Your Free Trial
-                  <ArrowRight className="ml-2 h-5 w-5" />
+            ) : (
+              <div className="flex flex-col items-center gap-4">
+                <Link 
+                  to="/onboarding"
+                  className="inline-flex items-center justify-center gap-2 bg-white text-slate-900 px-8 py-4 rounded-xl text-base font-bold shadow-lg shadow-white/10 hover:bg-slate-100 transition-colors"
+                >
+                  Start Free Trial
+                  <ArrowRight className="h-5 w-5" />
                 </Link>
-              </Button>
-              <p className="text-indigo-200 text-sm">No credit card required</p>
-            </div>
-          )}
+                <p className="text-slate-500 text-sm">No credit card required</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </section>
   );
 }
-

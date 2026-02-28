@@ -124,12 +124,12 @@ export const AssessmentSidebar = ({
                     {/* Numbered circle */}
                     <span className={`relative z-10 flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all duration-300 ${
                       isCompleted
-                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        ? 'bg-primary text-primary-foreground'
                         : isActive
-                          ? 'bg-primary text-primary-foreground shadow-md ring-4 ring-primary/20'
+                          ? 'bg-primary text-primary-foreground ring-4 ring-primary/20'
                           : isDisabled
-                            ? 'bg-slate-100 text-slate-300 border border-slate-200'
-                            : 'bg-white text-slate-400 border border-slate-200'
+                            ? 'bg-slate-100 text-slate-300'
+                            : 'bg-slate-100 text-slate-400'
                     }`}>
                       {idx + 1}
                     </span>
@@ -242,20 +242,20 @@ const MobilePhaseStrip: React.FC<MobilePhaseStripProps> = ({
                   className="flex flex-col items-center gap-1 shrink-0"
                 >
                   {/* Circle */}
-                  <span className={`flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold transition-all duration-300 ${
+                  <span className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all duration-300 ${
                     isCompleted
                       ? 'bg-primary text-primary-foreground'
                       : isActive
                         ? 'bg-primary text-primary-foreground ring-4 ring-primary/20'
                         : isDisabled
                           ? 'bg-slate-100 text-slate-300'
-                          : 'bg-white text-slate-400 border border-slate-200'
+                          : 'bg-slate-100 text-slate-400'
                   }`}>
                     {idx + 1}
                   </span>
                   {/* Title — only for active */}
                   {isActive && (
-                    <span className="text-[9px] font-bold text-slate-900 whitespace-nowrap max-w-[72px] truncate">
+                    <span className="text-[10px] font-bold text-slate-900 whitespace-nowrap max-w-[72px] truncate">
                       {phase.title}
                     </span>
                   )}

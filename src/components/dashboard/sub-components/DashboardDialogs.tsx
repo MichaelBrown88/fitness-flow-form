@@ -40,7 +40,7 @@ export const DashboardDialogs: React.FC<DashboardDialogsProps> = ({
       <Dialog open={!!deleteDialog} onOpenChange={(open) => !open && setDeleteDialog(null)}>
         <DialogContent className="rounded-2xl max-w-[90vw] sm:max-w-[425px]">
           <DialogHeader className="text-left">
-            <DialogTitle className="text-xl font-black tracking-tight">Delete Assessment</DialogTitle>
+            <DialogTitle className="text-xl font-bold tracking-tight">Delete Assessment</DialogTitle>
             <DialogDescription className="text-sm font-medium text-slate-500 pt-2">
               Are you sure you want to delete the assessment for <span className="text-slate-900 font-bold">{deleteDialog?.name}</span>? This action is permanent and cannot be undone.
             </DialogDescription>
@@ -60,7 +60,7 @@ export const DashboardDialogs: React.FC<DashboardDialogsProps> = ({
       <Dialog open={!!clientHistoryDialog} onOpenChange={(open) => !open && setClientHistoryDialog(null)}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col p-4 sm:p-6 rounded-2xl">
           <DialogHeader className="text-left shrink-0">
-            <DialogTitle className="text-xl sm:text-2xl font-black tracking-tight">History: {clientHistoryDialog}</DialogTitle>
+            <DialogTitle className="text-xl sm:text-2xl font-bold tracking-tight">History: {clientHistoryDialog}</DialogTitle>
             <DialogDescription className="text-sm font-medium text-slate-500 pt-1">
               Complete chronological record for this client.
             </DialogDescription>
@@ -84,23 +84,23 @@ export const DashboardDialogs: React.FC<DashboardDialogsProps> = ({
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-1">
-                      <div className="text-sm font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded-lg group-hover:bg-slate-900 group-hover:text-white transition-colors">
+                      <div className="text-sm font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-lg group-hover:bg-slate-900 group-hover:text-white transition-colors">
                         {assessment.overallScore}
                       </div>
                       {assessment.createdAt && (
-                        <div className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">
+                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">
                           {assessment.createdAt.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </div>
                       )}
                     </div>
                     {assessment.goals && assessment.goals.length > 0 && (
-                      <div className="text-[11px] sm:text-xs text-slate-500 font-medium truncate italic pr-4">
+                      <div className="text-xs sm:text-xs text-slate-500 font-medium truncate italic pr-4">
                         {assessment.goals.map(formatGoal).join(', ')}
                       </div>
                     )}
                   </div>
                   <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                    <Button variant="outline" size="sm" asChild className="h-8 sm:h-9 px-3 rounded-lg text-xs font-bold border-slate-200">
+                    <Button variant="outline" size="sm" asChild className="h-9 sm:h-8 px-3 rounded-lg text-xs font-bold border-slate-200">
                       <Link to={`/coach/assessments/${assessment.id}`}>
                         Open
                       </Link>
@@ -112,7 +112,7 @@ export const DashboardDialogs: React.FC<DashboardDialogsProps> = ({
                         setDeleteDialog({ id: assessment.id, name: clientHistoryDialog || '' });
                         setClientHistoryDialog(null);
                       }}
-                      className="text-red-400 hover:text-red-600 hover:bg-red-50 h-8 w-8 sm:h-9 sm:w-9 rounded-lg p-0"
+                      className="text-red-400 hover:text-red-600 hover:bg-red-50 h-9 w-9 sm:h-8 sm:w-8 rounded-lg p-0"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

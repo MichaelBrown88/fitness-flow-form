@@ -102,7 +102,7 @@ export function TransferClientDialog({
             <p className="text-sm text-slate-500">No other coaches available.</p>
           ) : (
             <div className="grid gap-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500">
                 Transfer to
               </label>
               <Select value={selectedCoach} onValueChange={setSelectedCoach}>

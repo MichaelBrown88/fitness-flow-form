@@ -16,7 +16,7 @@ export default function Privacy() {
     <div className="min-h-screen bg-white">
       <Navbar />
       
-      <main className="container mx-auto px-4 py-16 max-w-4xl">
+      <main className="max-w-4xl mx-auto px-4 py-16">
         <Button
           variant="ghost"
           asChild
@@ -40,12 +40,12 @@ export default function Privacy() {
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-foreground mb-4">1. Introduction</h2>
             <p className="text-foreground-secondary leading-relaxed mb-4">
-              FitnessFlow ("we," "our," or "us") is committed to protecting your privacy and the privacy 
+              One Assess ("we," "our," or "us") is committed to protecting your privacy and the privacy 
               of your clients. This Privacy Policy explains how we collect, use, disclose, and safeguard 
               your information when you use our Service.
             </p>
             <p className="text-foreground-secondary leading-relaxed">
-              This policy applies to all users of FitnessFlow, including coaches, gym owners, healthcare 
+              This policy applies to all users of One Assess, including coaches, gym owners, healthcare 
               providers, and their clients. By using our Service, you agree to the collection and use of 
               information in accordance with this policy.
             </p>
@@ -183,7 +183,7 @@ export default function Privacy() {
               <li><strong>Right to Object:</strong> Object to processing of your data for certain purposes</li>
             </ul>
             <p className="text-foreground-secondary leading-relaxed">
-              To exercise these rights, please contact us at support@fitnessflow.com. We will respond to 
+              To exercise these rights, please contact us at support@one-assess.com. We will respond to 
               your request within 30 days.
             </p>
           </section>
@@ -256,7 +256,7 @@ export default function Privacy() {
             </p>
             <p className="text-foreground-secondary leading-relaxed">
               If you are a parent or guardian and believe your child's information has been collected through our 
-              Service without proper consent, please contact us immediately at privacy@fitnessflow.com. We do not 
+              Service without proper consent, please contact us immediately at privacy@one-assess.com. We do not 
               knowingly collect personal information from minors without proper authorization and will take appropriate 
               action to address any unauthorized collection.
             </p>
@@ -299,8 +299,8 @@ export default function Privacy() {
               please contact us at:
             </p>
             <p className="text-foreground-secondary leading-relaxed">
-              <strong>FitnessFlow</strong><br />
-              Email: privacy@fitnessflow.com<br />
+              <strong>One Assess</strong><br />
+              Email: privacy@one-assess.com<br />
               {/* Add your actual contact information */}
             </p>
             <p className="text-foreground-secondary leading-relaxed mt-4">

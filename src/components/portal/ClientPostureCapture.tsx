@@ -79,6 +79,20 @@ export function ClientPostureCapture({ onComplete, onCancel }: ClientPostureCapt
         },
         capturedCount
       );
+
+      // Notify assigned coach (non-blocking)
+      if (profile.assignedCoachUid) {
+        import('@/services/notificationWriter').then(({ writeNotification }) =>
+          writeNotification({
+            recipientUid: profile.assignedCoachUid!,
+            type: 'client_submission',
+            title: `${profile.displayName || 'A client'} submitted posture images`,
+            priority: 'medium',
+            actionUrl: `/client/${encodeURIComponent(profile.displayName || '')}`,
+          })
+        ).catch(() => { /* non-fatal */ });
+      }
+
       toast({
         title: 'Posture images submitted',
         description: 'Your coach will review the photos.',

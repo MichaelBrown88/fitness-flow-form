@@ -7,15 +7,14 @@
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { getClientAssessments, type CoachAssessmentSummary } from '@/services/coachAssessments';
-import { getClientProfile, createOrUpdateClientProfile, subscribeToClientProfile, type ClientProfile } from '@/services/clientProfiles';
+import { getClientProfile, createOrUpdateClientProfile, subscribeToClientProfile, generateClientSlug, type ClientProfile } from '@/services/clientProfiles';
 import { getCoachAssessment } from '@/services/coachAssessments';
 import { 
   getCurrentAssessment, 
-  reconstructAssessmentAtDate, 
   getSnapshots,
   type AssessmentSnapshot
 } from '@/services/assessmentHistory';
@@ -35,13 +34,6 @@ export interface ClientStats {
   categoryScores: Record<string, number[]>;
 }
 
-export interface ComparisonTarget {
-  old: FormData;
-  new: FormData;
-  oldDate: Date;
-  newDate: Date;
-}
-
 export interface DeleteDialogState {
   id: string;
   date: string;
@@ -53,55 +45,41 @@ export interface CurrentAssessmentData {
 }
 
 export interface UseClientDetailResult {
-  // URL and Auth
   clientName: string;
   user: ReturnType<typeof useAuth>['user'];
   
-  // Loading states
   loading: boolean;
   loadingSnapshots: boolean;
-  loadingHistorical: boolean;
   
-  // Data
   assessments: CoachAssessmentSummary[];
   profile: ClientProfile | null;
   snapshots: AssessmentSnapshot[];
   currentAssessment: CurrentAssessmentData | null;
-  historicalAssessment: CurrentAssessmentData | null;
   categoryBreakdown: Record<string, number>;
   categoryChanges: Record<string, number>;
   stats: ClientStats;
   
-  // UI State
   isEditing: boolean;
   editData: Partial<ClientProfile>;
   deleteDialog: DeleteDialogState | null;
-  selectedDate: Date | undefined;
-  showComparison: boolean;
-  comparisonTarget: ComparisonTarget | null;
-  isComparisonMode: boolean;
   
-  // Setters
   setIsEditing: React.Dispatch<React.SetStateAction<boolean>>;
   setEditData: React.Dispatch<React.SetStateAction<Partial<ClientProfile>>>;
   setDeleteDialog: React.Dispatch<React.SetStateAction<DeleteDialogState | null>>;
-  setSelectedDate: React.Dispatch<React.SetStateAction<Date | undefined>>;
-  setShowComparison: React.Dispatch<React.SetStateAction<boolean>>;
-  setIsComparisonMode: React.Dispatch<React.SetStateAction<boolean>>;
   
-  // Handlers
-  handleDateSelection: (date: Date) => Promise<void>;
-  handleQuickJump: (months: number | 'first' | 'last') => void;
   handleSaveProfile: () => Promise<void>;
   handleNewAssessment: (category?: 'bodycomp' | 'posture' | 'fitness' | 'strength' | 'lifestyle') => Promise<void>;
   handleDeleteAssessment: (id: string) => Promise<void>;
   handleTransferClient: (toCoachUid: string) => Promise<void>;
+  handlePauseClient: (reason?: string) => Promise<void>;
+  handleUnpauseClient: (mode: 'resume' | 'reset') => Promise<void>;
+  handleArchiveClient: (reason?: string) => Promise<void>;
+  handleReactivateClient: (mode: 'resume' | 'reset') => Promise<void>;
   navigateBack: () => void;
 }
 
 export function useClientDetail(): UseClientDetailResult {
   const { clientName: encodedClientName } = useParams<{ clientName: string }>();
-  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user, profile: userProfile, effectiveOrgId } = useAuth();
   const { toast } = useToast();
@@ -121,18 +99,9 @@ export function useClientDetail(): UseClientDetailResult {
   const [categoryBreakdown, setCategoryBreakdown] = useState<Record<string, number>>({});
   const [categoryChanges, setCategoryChanges] = useState<Record<string, number>>({});
   
-  // UI state
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<Partial<ClientProfile>>({});
   const [deleteDialog, setDeleteDialog] = useState<DeleteDialogState | null>(null);
-  
-  // Historical/comparison state
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
-  const [historicalAssessment, setHistoricalAssessment] = useState<CurrentAssessmentData | null>(null);
-  const [loadingHistorical, setLoadingHistorical] = useState(false);
-  const [showComparison, setShowComparison] = useState(false);
-  const [comparisonTarget, setComparisonTarget] = useState<ComparisonTarget | null>(null);
-  const [isComparisonMode, setIsComparisonMode] = useState(false);
 
   // Calculate stats from assessments
   const stats = useMemo<ClientStats>(() => {
@@ -164,61 +133,6 @@ export function useClientDetail(): UseClientDetailResult {
       categoryScores: {},
     };
   }, [assessments]);
-
-  // Handle date selection for historical view/comparison
-  const handleDateSelection = useCallback(async (date: Date) => {
-    if (!user || !clientName || !snapshots.length) return;
-    
-    setSelectedDate(date);
-    
-    // Find nearest snapshot that is <= selected date
-    const sortedSnapshots = [...snapshots].sort((a, b) => 
-      b.timestamp.toDate().getTime() - a.timestamp.toDate().getTime()
-    );
-    const nearest = sortedSnapshots.find(s => 
-      s.timestamp.toDate().getTime() <= date.getTime()
-    ) || sortedSnapshots[sortedSnapshots.length - 1];
-    
-    if (nearest) {
-      if (isComparisonMode) {
-        if (currentAssessment) {
-          setComparisonTarget({
-            old: nearest.formData,
-            new: currentAssessment.formData,
-            oldDate: nearest.timestamp.toDate(),
-            newDate: new Date()
-          });
-          setShowComparison(true);
-        } else {
-          toast({ title: UI_TOASTS.ERROR.CURRENT_DATA_NOT_LOADED, variant: "destructive" });
-        }
-      } else {
-        navigate(`/coach/assessments/${nearest.id}?clientName=${encodeURIComponent(clientName)}`);
-      }
-    }
-  }, [user, clientName, snapshots, isComparisonMode, currentAssessment, toast, navigate]);
-
-  // Quick jump to specific time periods
-  const handleQuickJump = useCallback((months: number | 'first' | 'last') => {
-    if (!snapshots.length) return;
-    
-    let targetDate = new Date();
-    if (months === 'first') {
-      const sorted = [...snapshots].sort((a, b) => 
-        a.timestamp.toDate().getTime() - b.timestamp.toDate().getTime()
-      );
-      targetDate = sorted[0].timestamp.toDate();
-    } else if (months === 'last') {
-      const sorted = [...snapshots].sort((a, b) => 
-        b.timestamp.toDate().getTime() - a.timestamp.toDate().getTime()
-      );
-      targetDate = sorted[0].timestamp.toDate();
-    } else {
-      targetDate.setMonth(targetDate.getMonth() - months);
-    }
-    
-    handleDateSelection(targetDate);
-  }, [snapshots, handleDateSelection]);
 
   // Save profile changes (with rename + DOB recalculation support)
   const handleSaveProfile = useCallback(async () => {
@@ -392,6 +306,7 @@ export function useClientDetail(): UseClientDetailResult {
           notes: p.notes || '',
           tags: p.tags || [],
           status: p.status || 'active',
+          trainingStartDate: p.trainingStartDate || '',
         });
       }
     }, userProfile?.organizationId);
@@ -498,57 +413,6 @@ export function useClientDetail(): UseClientDetailResult {
     })();
   }, [user, clientName, assessments, snapshots, currentAssessment, userProfile?.organizationId]);
 
-  // Load historical assessment when date is selected
-  useEffect(() => {
-    if (!user || !clientName || !selectedDate) {
-      setHistoricalAssessment(null);
-      return;
-    }
-    
-    setLoadingHistorical(true);
-    (async () => {
-      try {
-        const historical = await reconstructAssessmentAtDate(
-          user.uid, 
-          clientName, 
-          selectedDate, 
-          userProfile?.organizationId
-        );
-        setHistoricalAssessment(historical);
-      } catch (err) {
-        logger.error('Failed to load historical assessment', 'CLIENT_DETAIL', err);
-        setHistoricalAssessment(null);
-      } finally {
-        setLoadingHistorical(false);
-      }
-    })();
-  }, [user, clientName, selectedDate, userProfile?.organizationId]);
-
-  // Handle ?compare=true URL param: auto-open comparison dialog
-  useEffect(() => {
-    if (searchParams.get('compare') !== 'true') return;
-    if (!currentAssessment || snapshots.length < 2) return;
-
-    // Use oldest snapshot as "old" vs current as "new"
-    const sortedSnapshots = [...snapshots].sort((a, b) =>
-      a.timestamp.toDate().getTime() - b.timestamp.toDate().getTime()
-    );
-    const oldest = sortedSnapshots[0];
-
-    setIsComparisonMode(true);
-    setComparisonTarget({
-      old: oldest.formData,
-      new: currentAssessment.formData,
-      oldDate: oldest.timestamp.toDate(),
-      newDate: new Date(),
-    });
-    setShowComparison(true);
-
-    // Clear the param so it doesn't re-trigger
-    searchParams.delete('compare');
-    setSearchParams(searchParams, { replace: true });
-  }, [searchParams, currentAssessment, snapshots]);
-
   // Handle client transfer (Phase E)
   const handleTransferClient = useCallback(async (toCoachUid: string) => {
     if (!user || !clientName || !userProfile?.organizationId) return;
@@ -572,50 +436,121 @@ export function useClientDetail(): UseClientDetailResult {
     }
   }, [user, clientName, userProfile, toast]);
 
+  // Pause client account (coach-initiated)
+  const handlePauseClient = useCallback(async (reason?: string) => {
+    if (!userProfile?.organizationId || !clientName) return;
+    const { pauseClient } = await import('@/services/clientProfiles');
+    await pauseClient({
+      organizationId: userProfile.organizationId,
+      clientSlug: generateClientSlug(clientName),
+      pausedBy: user?.uid || 'unknown',
+      reason,
+      profile: userProfile,
+    });
+    toast({ title: `${clientName} paused`, description: 'All reassessment countdowns are frozen.' });
+    // Notify the client if they have a Firebase UID
+    if (profile?.firebaseUid) {
+      try {
+        const { writeNotification } = await import('@/services/notificationWriter');
+        await writeNotification({
+          recipientUid: profile.firebaseUid,
+          type: 'account_paused',
+          title: 'Your account has been paused',
+          body: reason ? `Reason: ${reason}` : 'Your coach has paused your assessment schedule.',
+          priority: 'medium',
+        });
+      } catch { /* non-fatal */ }
+    }
+  }, [userProfile, clientName, user, toast, profile?.firebaseUid]);
+
+  // Unpause client account
+  const handleUnpauseClient = useCallback(async (mode: 'resume' | 'reset') => {
+    if (!userProfile?.organizationId || !clientName) return;
+    const { unpauseClient } = await import('@/services/clientProfiles');
+    await unpauseClient({
+      organizationId: userProfile.organizationId,
+      clientSlug: generateClientSlug(clientName),
+      mode,
+      profile: userProfile,
+    });
+    toast({
+      title: `${clientName} unpaused`,
+      description: mode === 'resume' ? 'Countdowns resumed where they left off.' : 'Countdowns reset to today.',
+    });
+    // Notify the client
+    if (profile?.firebaseUid) {
+      try {
+        const { writeNotification } = await import('@/services/notificationWriter');
+        await writeNotification({
+          recipientUid: profile.firebaseUid,
+          type: 'account_unpaused',
+          title: 'Your account is active again',
+          body: mode === 'resume' ? 'Your assessment schedule has resumed.' : 'Your assessment schedule has been reset.',
+          priority: 'medium',
+        });
+      } catch { /* non-fatal */ }
+    }
+  }, [userProfile, clientName, toast]);
+
+  const handleArchiveClient = useCallback(async (reason?: string) => {
+    if (!userProfile?.organizationId || !clientName) return;
+    const { archiveClient } = await import('@/services/clientProfiles');
+    await archiveClient({
+      organizationId: userProfile.organizationId,
+      clientSlug: generateClientSlug(clientName),
+      archivedBy: user?.uid || 'unknown',
+      reason,
+      profile: userProfile,
+    });
+    toast({ title: `${clientName} archived`, description: 'Removed from dashboard. Data preserved.' });
+  }, [userProfile, clientName, user, toast]);
+
+  const handleReactivateClient = useCallback(async (mode: 'resume' | 'reset') => {
+    if (!userProfile?.organizationId || !clientName) return;
+    const { reactivateClient } = await import('@/services/clientProfiles');
+    await reactivateClient({
+      organizationId: userProfile.organizationId,
+      clientSlug: generateClientSlug(clientName),
+      mode,
+      profile: userProfile,
+    });
+    toast({
+      title: `${clientName} reactivated`,
+      description: mode === 'resume' ? 'Schedule resumed.' : 'Schedule reset to today.',
+    });
+  }, [userProfile, clientName, toast]);
+
   return {
-    // URL and Auth
     clientName,
     user,
     
-    // Loading states
     loading,
     loadingSnapshots,
-    loadingHistorical,
     
-    // Data
     assessments,
     profile,
     snapshots,
     currentAssessment,
-    historicalAssessment,
     categoryBreakdown,
     categoryChanges,
     stats,
     
-    // UI State
     isEditing,
     editData,
     deleteDialog,
-    selectedDate,
-    showComparison,
-    comparisonTarget,
-    isComparisonMode,
     
-    // Setters
     setIsEditing,
     setEditData,
     setDeleteDialog,
-    setSelectedDate,
-    setShowComparison,
-    setIsComparisonMode,
     
-    // Handlers
-    handleDateSelection,
-    handleQuickJump,
     handleSaveProfile,
     handleNewAssessment,
     handleDeleteAssessment,
     handleTransferClient,
+    handlePauseClient,
+    handleUnpauseClient,
+    handleArchiveClient,
+    handleReactivateClient,
     navigateBack,
   };
 }

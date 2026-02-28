@@ -42,6 +42,7 @@ const Dashboard = () => {
     showTeamTab,
     showCoachColumn,
     coachMap,
+    orgSettings,
   } = useDashboardData();
 
   const navigate = useNavigate();
@@ -58,7 +59,7 @@ const Dashboard = () => {
 
   if (loading || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-slate-400 font-bold uppercase tracking-widest">
+      <div className="flex min-h-screen items-center justify-center text-sm text-slate-400 font-medium">
         <div className="flex flex-col items-center gap-4">
           <div className="w-8 h-8 border-4 border-slate-900 border-t-transparent rounded-full animate-spin" />
           <span>Loading your dashboard…</span>
@@ -73,6 +74,7 @@ const Dashboard = () => {
     <ErrorBoundary>
       <AppShell
         title="Dashboard"
+        hideTitle
         actions={
           <Button
             onClick={handleGlobalNewAssessment}
@@ -83,7 +85,7 @@ const Dashboard = () => {
           </Button>
         }
       >
-        <div className="max-w-[1400px] mx-auto space-y-6 sm:space-y-8 md:space-y-10 lg:space-y-12 pb-12">
+        <div className="max-w-[1400px] mx-auto space-y-6 sm:space-y-8 md:space-y-10 lg:space-y-12 pb-12 overflow-x-hidden">
           
           <DashboardHeader
             coachFirstName={coachFirstName}
@@ -92,7 +94,7 @@ const Dashboard = () => {
           />
 
           {/* Main Content */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 md:p-8 shadow-sm">
+          <div className="bg-white rounded-2xl p-3 sm:p-4 md:p-6 lg:p-8 overflow-hidden">
             <DashboardViewTabs 
               view={view}
               setView={setView}
@@ -104,12 +106,14 @@ const Dashboard = () => {
 
             {/* Clients View */}
             {view === 'clients' && (
-              <UnifiedClientTable 
+              <UnifiedClientTable
                 loadingData={loadingData}
                 clients={filteredClients}
                 search={search}
                 showCoachColumn={showCoachColumn}
                 coachMap={coachMap}
+                orgDefaultIntervals={orgSettings?.defaultCadence?.intervals}
+                orgDefaultActivePillars={orgSettings?.defaultCadence?.activePillars}
               />
             )}
 

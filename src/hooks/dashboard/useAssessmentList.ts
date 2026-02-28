@@ -5,7 +5,7 @@
  */
 
 import { useEffect, useState, useRef, useMemo } from 'react';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/utils/logger';
 import type { CoachAssessmentSummary } from '@/services/coachAssessments';
 import {
@@ -93,7 +93,6 @@ export function useAssessmentList({
 
         snapshot.forEach((docSnap) => {
           const docData = docSnap.data();
-          // Handle both legacy (overallScore) and migrated (scores.overall) formats
           const score = typeof docData.overallScore === 'number'
             ? docData.overallScore
             : (docData.scores?.overall ?? 0);
@@ -101,10 +100,14 @@ export function useAssessmentList({
             id: docSnap.id,
             clientName: docData.clientName || 'Unnamed client',
             createdAt: docData.createdAt || null,
+            updatedAt: docData.updatedAt || null,
             overallScore: score,
             goals: Array.isArray(docData.goals) ? docData.goals : [],
             scoresSummary: docData.scoresSummary ?? docData.scores,
             coachUid: docData.coachUid || null,
+            previousScore: docData.previousScore,
+            trend: docData.trend,
+            assessmentCount: docData.assessmentCount,
           });
           lastDocument = docSnap;
         });
@@ -123,7 +126,6 @@ export function useAssessmentList({
           unsubscribeRef.current();
           unsubscribeRef.current = null;
         }
-        // Fallback: query without coachUid filter, filter in memory
         const fallbackQuery = query(assessmentsRef, orderBy('createdAt', 'desc'), limit(50));
         const fallbackUnsubscribe = onSnapshot(fallbackQuery, async (snapshot) => {
           try {
@@ -135,12 +137,10 @@ export function useAssessmentList({
 
             snapshot.forEach((docSnap) => {
               const docData = docSnap.data();
-              // Filter by coachUid in memory (skip when resolvedCoachFilter is null = admin view)
               if (resolvedCoachFilter && docData.coachUid !== resolvedCoachFilter) {
                 return;
               }
 
-              // Handle both legacy (overallScore) and migrated (scores.overall) formats
               const score = typeof docData.overallScore === 'number'
                 ? docData.overallScore
                 : (docData.scores?.overall ?? 0);
@@ -148,10 +148,14 @@ export function useAssessmentList({
                 id: docSnap.id,
                 clientName: docData.clientName || 'Unnamed client',
                 createdAt: docData.createdAt || null,
+                updatedAt: docData.updatedAt || null,
                 overallScore: score,
                 goals: Array.isArray(docData.goals) ? docData.goals : [],
                 scoresSummary: docData.scoresSummary ?? docData.scores,
                 coachUid: docData.coachUid || null,
+                previousScore: docData.previousScore,
+                trend: docData.trend,
+                assessmentCount: docData.assessmentCount,
               });
               lastDocument = docSnap;
             });
@@ -208,7 +212,6 @@ export function useAssessmentList({
 
         nextSnapshot.forEach((docSnap) => {
           const docData = docSnap.data() as Record<string, unknown>;
-          // Handle both legacy (overallScore) and migrated (scores.overall) formats
           const scores = docData.scores as { overall?: number } | undefined;
           const score = typeof docData.overallScore === 'number'
             ? docData.overallScore
@@ -217,9 +220,14 @@ export function useAssessmentList({
             id: docSnap.id,
             clientName: (typeof docData.clientName === 'string' ? docData.clientName : 'Unnamed client'),
             createdAt: (docData.createdAt instanceof Timestamp ? docData.createdAt : null),
+            updatedAt: (docData.updatedAt instanceof Timestamp ? docData.updatedAt : null),
             overallScore: score,
             goals: (Array.isArray(docData.goals) ? docData.goals : []) as string[],
             scoresSummary: (docData.scoresSummary ?? docData.scores) as CoachAssessmentSummary['scoresSummary'],
+            coachUid: (typeof docData.coachUid === 'string' ? docData.coachUid : null),
+            previousScore: docData.previousScore as number | undefined,
+            trend: docData.trend as number | undefined,
+            assessmentCount: docData.assessmentCount as number | undefined,
           });
           newLastDoc = docSnap;
         });

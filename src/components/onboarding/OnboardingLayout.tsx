@@ -37,7 +37,7 @@ export function OnboardingLayout({ currentStep, children, onBack, leftContent }:
       {/* Left Panel (desktop only) */}
       <div className="hidden lg:flex lg:w-[40%] bg-slate-50 border-r border-slate-200 flex-col justify-between p-10">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight mb-2">
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight mb-2">
             Set up your account
           </h1>
           {isStepPhase && (
@@ -88,7 +88,7 @@ export function OnboardingLayout({ currentStep, children, onBack, leftContent }:
             {onBack ? (
               <button
                 onClick={onBack}
-                className="w-9 h-9 rounded-full border border-slate-200 flex items-center justify-center hover:bg-slate-50 text-slate-500 transition-colors"
+                className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 text-slate-500 transition-colors"
               >
                 <ArrowLeft size={16} />
               </button>
@@ -98,7 +98,7 @@ export function OnboardingLayout({ currentStep, children, onBack, leftContent }:
 
             {/* Mobile: step label */}
             {isStepPhase && (
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400 lg:hidden">
+              <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 lg:hidden">
                 Step {currentStep + 1} / {ONBOARDING_STEPS.length}
               </span>
             )}

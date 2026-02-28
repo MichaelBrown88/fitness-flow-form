@@ -1,18 +1,26 @@
 import React from 'react';
+import SectionHeader from '@/components/landing/SectionHeader';
+import { useScrollReveal } from '@/hooks/useScrollReveal';
 
 interface TestimonialsSectionProps {
   children: React.ReactNode;
 }
 
 export function TestimonialsSection({ children }: TestimonialsSectionProps) {
+  const headerRef = useScrollReveal({ staggerDelay: 150, staggerIndex: 0 });
+  const gridRef = useScrollReveal({ staggerDelay: 150, staggerIndex: 1 });
+
   return (
     <section className="py-24 px-6 bg-slate-50">
       <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-5xl font-bold mb-6 text-slate-900">Coaches <span className="text-red-500">❤️</span> Us</h2>
+        <div ref={headerRef}>
+          <SectionHeader
+            title="Trusted by Coaches Everywhere"
+            subtitle="Real results from fitness professionals who switched to One Assess."
+          />
         </div>
         
-        <div className="grid md:grid-cols-3 gap-8">
+        <div ref={gridRef} className="grid md:grid-cols-3 gap-8">
           {children}
         </div>
       </div>

@@ -79,9 +79,9 @@ const Login = () => {
         <div className="max-w-md">
           <div className="flex items-center gap-2 mb-8">
             <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-              <span className="text-white font-bold">FF</span>
+              <span className="text-white font-bold">OA</span>
             </div>
-            <span className="text-white text-xl font-semibold">FitnessFlow</span>
+            <span className="text-white text-xl font-semibold">One Assess</span>
           </div>
           
           <h1 className="text-4xl font-bold text-white mb-4">
@@ -99,9 +99,9 @@ const Login = () => {
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2 mb-8 justify-center">
             <div className="w-10 h-10 rounded-xl gradient-bg flex items-center justify-center">
-              <span className="text-white font-bold">FF</span>
+              <span className="text-white font-bold">OA</span>
             </div>
-            <span className="text-xl font-semibold">FitnessFlow</span>
+            <span className="text-xl font-semibold">One Assess</span>
           </div>
 
           <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -110,7 +110,7 @@ const Login = () => {
               Sign in to your account to access your dashboard.
             </p>
             <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
@@ -121,7 +121,7 @@ const Login = () => {
                 required
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
@@ -154,7 +154,7 @@ const Login = () => {
             )}
               <Button
                 type="submit"
-                className="w-full h-12"
+                className="w-full h-12 bg-slate-900 text-white hover:bg-slate-800"
                 disabled={submitting || loading}
               >
                 {submitting ? 'Signing in…' : 'Sign in'}

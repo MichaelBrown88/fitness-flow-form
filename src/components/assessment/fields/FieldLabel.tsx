@@ -37,7 +37,7 @@ export const FieldLabel: React.FC<FieldLabelProps> = ({ field, orgSettings, form
               </TooltipTrigger>
               <TooltipContent 
                 side="right" 
-                className="z-[100] max-w-[300px] p-5 bg-slate-900 text-white rounded-2xl border-none shadow-2xl animate-in fade-in zoom-in duration-200"
+                className="z-[100] max-w-[300px] p-5 bg-slate-900 text-white rounded-2xl border-none shadow-xl animate-in fade-in zoom-in duration-200"
               >
                 <div className="space-y-3 text-left">
                   {tooltipLines.map((line, i) => {
@@ -49,7 +49,7 @@ export const FieldLabel: React.FC<FieldLabelProps> = ({ field, orgSettings, form
                       return (
                         <div key={i} className="flex items-center gap-2 mb-1">
                           <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                          <span className="text-[10px] font-black uppercase tracking-widest text-primary/60">{line.replace(':', '')}</span>
+                          <span className="text-[10px] font-black uppercase tracking-[0.15em] text-primary/60">{line.replace(':', '')}</span>
                         </div>
                       );
                     }
@@ -57,8 +57,8 @@ export const FieldLabel: React.FC<FieldLabelProps> = ({ field, orgSettings, form
                     if (isStep) {
                       const [num, ...rest] = line.split('.');
                       return (
-                        <div key={i} className="flex gap-3 text-[11px] leading-relaxed">
-                          <span className="font-black text-primary min-w-[12px]">{num}.</span>
+                        <div key={i} className="flex gap-3 text-xs leading-relaxed">
+                          <span className="font-bold text-primary min-w-[12px]">{num}.</span>
                           <span className="text-slate-200 font-medium">{rest.join('.').trim()}</span>
                         </div>
                       );
@@ -66,7 +66,7 @@ export const FieldLabel: React.FC<FieldLabelProps> = ({ field, orgSettings, form
 
                     if (isBullet) {
                       return (
-                        <div key={i} className="flex gap-3 text-[11px] leading-relaxed pl-1">
+                        <div key={i} className="flex gap-3 text-xs leading-relaxed pl-1">
                           <span className="text-primary">•</span>
                           <span className="text-slate-200 font-medium">{line.replace('•', '').trim()}</span>
                         </div>
@@ -74,7 +74,7 @@ export const FieldLabel: React.FC<FieldLabelProps> = ({ field, orgSettings, form
                     }
 
                     return (
-                      <p key={i} className="text-[11px] leading-relaxed font-medium text-slate-300">
+                      <p key={i} className="text-xs leading-relaxed font-medium text-slate-300">
                         {line}
                       </p>
                     );

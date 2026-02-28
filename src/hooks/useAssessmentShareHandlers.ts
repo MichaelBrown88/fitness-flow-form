@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import type { FormData } from '@/contexts/FormContext';
 import { sendReportEmail, type ShareArtifacts } from '@/services/share';
+import { copyTextToClipboard } from '@/lib/utils/clipboard';
 
 type ShareView = 'client' | 'coach';
 
@@ -32,7 +33,7 @@ export function useAssessmentShareHandlers({
       if (navigator.share) {
         await navigator.share({ title: 'Assessment Report', url: shareUrl });
       } else {
-        await navigator.clipboard.writeText(shareUrl);
+        await copyTextToClipboard(shareUrl);
         toast({ title: 'Link copied' });
       }
     } catch (error) {
@@ -75,9 +76,9 @@ export function useAssessmentShareHandlers({
   const handleCopyLink = useCallback(async (view: ShareView) => {
     try {
       setShareLoading(true);
-      // Use the share artifacts to get the proper /r/:token URL
-      const artifacts = await ensureShareArtifacts(view);
-      await navigator.clipboard.writeText(artifacts.shareUrl);
+      // Pass a Promise to copyTextToClipboard so Safari preserves the user gesture
+      const urlPromise = ensureShareArtifacts(view).then(a => a.shareUrl);
+      await copyTextToClipboard(urlPromise);
       toast({ 
         title: 'Link Copied!', 
         description: 'Send this URL to your client. They can view it on any device.' 

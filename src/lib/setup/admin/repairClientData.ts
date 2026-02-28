@@ -268,16 +268,7 @@ export async function deduplicateAssessments(
 
   for (const [clientKey, docs] of byClient) {
     if (docs.length <= 1) {
-      const single = docs[0];
-      if (single.data.coachUid !== user.uid) {
-        console.log(`  🔧 ${single.data.clientName}: Fixing coachUid ${single.data.coachUid} → ${user.uid}`);
-        if (!dryRun) {
-          await updateDoc(doc(getDb(), ORGANIZATION.assessments.collection(orgId), single.docId), {
-            coachUid: user.uid,
-          });
-        }
-        fixed++;
-      }
+      console.log(`  ✅ ${docs[0].data.clientName || clientKey}: 1 doc, no dedup needed`);
       continue;
     }
 
@@ -295,7 +286,9 @@ export async function deduplicateAssessments(
 
     console.log(`  ✅ ${clientName}: Keeping ${keep.docId} (score: ${keep.data.overallScore})`);
 
-    if (keep.data.coachUid !== user.uid) {
+    // Only fix coachUid on the kept doc if one of the stale docs had the user's UID
+    const stalHadUserUid = stale.some(s => s.data.coachUid === user.uid);
+    if (keep.data.coachUid !== user.uid && stalHadUserUid) {
       console.log(`     🔧 Fixing coachUid ${keep.data.coachUid} → ${user.uid}`);
       if (!dryRun) {
         await updateDoc(doc(getDb(), ORGANIZATION.assessments.collection(orgId), keep.docId), {
@@ -317,9 +310,41 @@ export async function deduplicateAssessments(
   console.log(`\n📊 ${dryRun ? 'Would delete' : 'Deleted'}: ${deleted} stale docs, ${dryRun ? 'would fix' : 'fixed'}: ${fixed} coachUids`);
 }
 
+/**
+ * Fix specific assessment summary fields by doc ID.
+ * Run: await window.fixAssessmentDoc('docId', { trend: 2 })
+ */
+export async function fixAssessmentDoc(
+  docId: string,
+  updates: Record<string, unknown>,
+  options: { dryRun?: boolean } = { dryRun: true },
+): Promise<void> {
+  const orgId = await resolveOrgId();
+  const ref = doc(getDb(), ORGANIZATION.assessments.collection(orgId), docId);
+  const snap = await getDoc(ref);
+
+  if (!snap.exists()) {
+    console.log(`❌ Doc ${docId} not found`);
+    return;
+  }
+
+  const data = snap.data();
+  console.log(`📄 ${data.clientName} (${docId})`);
+  console.log(`   Current:`, Object.fromEntries(Object.keys(updates).map(k => [k, data[k]])));
+  console.log(`   Update:`, updates);
+
+  if (!options.dryRun) {
+    await updateDoc(ref, updates);
+    console.log(`   ✅ Applied`);
+  } else {
+    console.log(`   🔍 Dry run — no changes`);
+  }
+}
+
 if (typeof window !== 'undefined') {
   const w = window as unknown as Record<string, unknown>;
   w.repairClientData = repairClientData;
   w.diagnoseClientDashboard = diagnoseClientDashboard;
   w.deduplicateAssessments = deduplicateAssessments;
+  w.fixAssessmentDoc = fixAssessmentDoc;
 }

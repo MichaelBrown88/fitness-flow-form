@@ -7,6 +7,7 @@ import { computeScores, buildRoadmap, type ScoreSummary, type RoadmapPhase } fro
 import { generateCoachPlan, type CoachPlan } from '@/lib/recommendations';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import { logger } from '@/lib/utils/logger';
+import type { SnapshotInput } from '@/hooks/useVersionSelector';
 
 /**
  * Return type for useAssessmentLogic hook
@@ -18,9 +19,11 @@ export interface AssessmentLogicState {
   roadmap: RoadmapPhase[];
   plan: CoachPlan | null;
   previousScores: ScoreSummary | null;
+  previousFormData: FormData | null;
   loading: boolean;
   error: string | null;
   planError: boolean;
+  allSnapshots: SnapshotInput[];
 }
 
 export function useAssessmentLogic(assessmentId: string | undefined): AssessmentLogicState {
@@ -32,9 +35,11 @@ export function useAssessmentLogic(assessmentId: string | undefined): Assessment
     roadmap: [],
     plan: null,
     previousScores: null,
+    previousFormData: null,
     loading: true,
     error: null,
-    planError: false
+    planError: false,
+    allSnapshots: []
   });
 
   const publishedKeyRef = useRef<string | null>(null);
@@ -122,19 +127,39 @@ export function useAssessmentLogic(assessmentId: string | undefined): Assessment
             }));
         }
 
-        // 4. Fetch Previous Scores (Async, non-blocking)
+        // 4. Fetch All Snapshots (for version selector + previous scores)
         try {
              const clientNameForLookup = clientNameQuery || fd.fullName;
              if (clientNameForLookup) {
                 const { getSnapshots } = await import('@/services/assessmentHistory');
-                const snapshots = await getSnapshots(user.uid, clientNameForLookup, 2, profile?.organizationId);
-                if (snapshots.length > 1 && snapshots[1]?.formData) {
-                    const prevScores = computeScores(snapshots[1].formData);
-                    if (isMounted) setState(prev => ({ ...prev, previousScores: prevScores }));
+                const snapshots = await getSnapshots(user.uid, clientNameForLookup, 50, profile?.organizationId);
+                
+                let mapped: SnapshotInput[] = snapshots.map(s => ({
+                  id: s.id ?? '',
+                  score: s.overallScore,
+                  date: s.timestamp.toDate(),
+                  type: s.type,
+                  formData: s.formData,
+                }));
+
+                if (mapped.length === 0) {
+                  mapped = [{
+                    id: assessmentId,
+                    score: scores.overall,
+                    date: new Date(),
+                    type: 'full-assessment',
+                    formData: fd,
+                  }];
+                }
+                
+                if (isMounted) {
+                  const prevFormData = snapshots.length > 1 && snapshots[1]?.formData ? snapshots[1].formData : null;
+                  const prevScores = prevFormData ? computeScores(prevFormData) : null;
+                  setState(prev => ({ ...prev, previousScores: prevScores, previousFormData: prevFormData, allSnapshots: mapped }));
                 }
              }
         } catch (e) {
-            logger.warn('Failed to fetch previous scores', e);
+            logger.warn('Failed to fetch snapshots', e);
         }
 
         // 5. Generate Plan (Async)

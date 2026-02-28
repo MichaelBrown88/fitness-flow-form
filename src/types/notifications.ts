@@ -17,6 +17,12 @@ export type NotificationType =
   | 'lifestyle_reminder'     // Client: complete your lifestyle check-in
   | 'new_client'             // Coach: a new client was added
   | 'client_submission'      // Coach: a client submitted body comp / posture
+  | 'pause_request'          // Coach: a client requested a pause
+  | 'pause_approved'         // Client: your pause request was approved
+  | 'pause_denied'           // Client: your pause request was denied
+  | 'account_paused'         // Client: your account has been paused by coach
+  | 'account_unpaused'       // Client: your account has been unpaused
+  | 'schedule_review'        // Coach: review a new client's follow-up schedule
   | 'system';                // System: general announcements
 
 /** Priority affects visual treatment */

@@ -61,12 +61,12 @@ export function IdentityStep({ data, onNext, error: externalError }: IdentitySte
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-1">Create your account</h2>
+        <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-1">Create your account</h2>
         <p className="text-sm text-slate-500">Get started in under 2 minutes.</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-bold text-slate-600 mb-1.5">First Name</label>
             <OnboardingInput

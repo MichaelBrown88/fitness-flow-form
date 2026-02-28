@@ -4,6 +4,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselDots } from '@/compone
 import { Target, CheckCircle2, Scale, Activity, Heart, Lock, Dumbbell } from 'lucide-react';
 import type { FormData } from '@/contexts/FormContext';
 import { getBodyFatRange, getTargetBodyFatFromLevel, calculateBodyRecomposition } from '@/lib/utils/bodyRecomposition';
+import { CardInfoDrawer } from '../../CardInfoDrawer';
 
 /** Shorter labels for goal tabs on small screens */
 const GOAL_SHORT_LABELS: Record<string, string> = {
@@ -34,12 +35,12 @@ export const DestinationSection: React.FC<DestinationSectionProps> = ({
           <div className="p-1 sm:p-1.5 md:p-2 bg-gradient-light text-zinc-900 rounded-lg">
             <Target className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
           </div>
-          <h3 className="text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">Your Destination</h3>
+          <h3 className="text-xs md:text-sm lg:text-base font-semibold text-zinc-900">Your Destination</h3>
         </div>
       )}
       
       <Carousel opts={{ align: 'start', containScroll: 'trimSnaps' }} className="w-full">
-        <CarouselContent className="-ml-3">
+        <CarouselContent className="-ml-3 items-stretch">
           {goals.map((goal, idx) => {
             const goalLevel = goal === 'weight-loss' 
               ? (formData?.goalLevelWeightLoss || '15')
@@ -149,7 +150,11 @@ export const DestinationSection: React.FC<DestinationSectionProps> = ({
 
             return (
               <CarouselItem key={idx} className="basis-[88%] pl-3">
-                <Card className="rounded-xl">
+                <Card className="rounded-xl h-full relative">
+                  <CardInfoDrawer title={GOAL_SHORT_LABELS[goal] || 'Goal'}>
+                    <p>This protocol is designed specifically for your <strong>{GOAL_SHORT_LABELS[goal] || goal}</strong> goal. It outlines the approach, key strategies, and the specific areas your training will address.</p>
+                    <p>The &ldquo;What This Entails&rdquo; section breaks down the daily commitments required to reach your target.</p>
+                  </CardInfoDrawer>
                   <div className="p-4 sm:p-5 md:p-6 lg:p-8 xl:p-10">
                     <div className="flex flex-col md:flex-row gap-4 sm:gap-6 md:gap-8 lg:gap-10">
                       <div className="flex-1 min-w-0">
@@ -165,7 +170,7 @@ export const DestinationSection: React.FC<DestinationSectionProps> = ({
                           {explanation}
                         </p>
                         <div className="bg-gradient-light/50 rounded-xl p-3 sm:p-4 md:p-5 lg:p-6 border border-gradient-medium/50">
-                          <p className="text-xs font-bold text-gradient-dark uppercase tracking-wide mb-3 sm:mb-4">What This Entails:</p>
+                          <p className="text-[10px] font-black text-gradient-dark uppercase tracking-[0.15em] mb-3 sm:mb-4">What This Entails:</p>
                           <ul className="space-y-2 sm:space-y-3 md:space-y-4">
                             {whatItEntails.map((item, j) => (
                               <li key={j} className="flex items-start gap-2 sm:gap-3">
@@ -180,7 +185,7 @@ export const DestinationSection: React.FC<DestinationSectionProps> = ({
                       </div>
                       {addressingItems.length > 0 && (
                         <div className="flex-1 border-t md:border-t-0 md:border-l border-zinc-100 pt-6 sm:pt-8 md:pt-0 md:pl-4 lg:pl-6 xl:pl-10 min-w-0">
-                          <p className="text-xs font-bold text-zinc-900 uppercase tracking-wide mb-3 sm:mb-4 md:mb-6">What We'll Address</p>
+                          <p className="text-[10px] font-black text-zinc-900 uppercase tracking-[0.15em] mb-3 sm:mb-4 md:mb-6">What We'll Address</p>
                           <ul className="space-y-3 sm:space-y-4 md:space-y-6">
                             {addressingItems.map((item, i) => (
                               <li key={i} className="flex items-start gap-2 sm:gap-3 md:gap-4 group">

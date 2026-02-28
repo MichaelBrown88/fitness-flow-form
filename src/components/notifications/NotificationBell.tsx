@@ -3,12 +3,16 @@
  * 
  * Displays an icon with unread count badge.
  * Opens a dropdown with recent notifications.
- * Used in AppShell header for both coaches and clients.
+ * 
+ * Supports two modes:
+ *   - Coach (default): uses useNotifications (UID-scoped)
+ *   - Client (shareToken): uses useTokenNotifications (token-scoped)
  */
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useTokenNotifications } from '@/hooks/useTokenNotifications';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,12 +31,13 @@ import {
 } from 'lucide-react';
 import type { NotificationType, AppNotification } from '@/types/notifications';
 
-const ICON_MAP: Record<NotificationType, React.ElementType> = {
+const ICON_MAP: Partial<Record<NotificationType, React.ElementType>> = {
   assessment_complete: CheckCircle2,
   reassessment_due: Calendar,
   lifestyle_reminder: ClipboardList,
   new_client: UserPlus,
   client_submission: FileText,
+  schedule_review: Calendar,
   system: Info,
 };
 
@@ -93,9 +98,20 @@ function NotificationItem({
   );
 }
 
-export function NotificationBell() {
-  const { notifications, unreadCount, markAsRead, markAllAsRead } =
-    useNotifications();
+interface NotificationBellProps {
+  /** When provided, uses token-scoped notifications (client mode) */
+  shareToken?: string;
+}
+
+export function NotificationBell({ shareToken }: NotificationBellProps) {
+  // Use token-scoped hook for clients, UID-scoped for coaches
+  const tokenHook = useTokenNotifications(shareToken || null);
+  const uidHook = useNotifications();
+  
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = shareToken
+    ? tokenHook
+    : uidHook;
+
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
@@ -118,7 +134,7 @@ export function NotificationBell() {
         >
           <Bell className="w-4 h-4 text-slate-600" />
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-violet-600 px-1 text-[9px] font-bold text-white">
+            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-violet-600 px-1 text-[10px] font-bold text-white">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}

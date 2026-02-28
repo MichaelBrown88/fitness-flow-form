@@ -92,6 +92,20 @@ export function ClientBodyCompScan({ onComplete, onCancel }: ClientBodyCompScanP
         extractedData,
         confidence
       );
+
+      // Notify assigned coach (non-blocking)
+      if (profile.assignedCoachUid) {
+        import('@/services/notificationWriter').then(({ writeNotification }) =>
+          writeNotification({
+            recipientUid: profile.assignedCoachUid!,
+            type: 'client_submission',
+            title: `${profile.displayName || 'A client'} submitted a body composition scan`,
+            priority: 'medium',
+            actionUrl: `/client/${encodeURIComponent(profile.displayName || '')}`,
+          })
+        ).catch(() => { /* non-fatal */ });
+      }
+
       toast({
         title: 'Scan submitted',
         description: 'Your coach will review the results.',

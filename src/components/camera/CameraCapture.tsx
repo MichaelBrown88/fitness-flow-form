@@ -2,7 +2,7 @@ import React, { useRef, useState, useCallback, useEffect } from 'react';
 import Webcam from 'react-webcam';
 import { Button } from '../ui/button';
 import { X, AlertCircle, Smartphone, Camera, RefreshCcw } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 /**
  * MANUAL SNAP VERSION
@@ -86,11 +86,11 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
       {/* Header */}
       <div className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between p-6 bg-gradient-to-b from-black/90 to-transparent">
         <div className="flex flex-col">
-          <h3 className="text-sm font-black uppercase tracking-[0.2em] text-white/90">
+          <h3 className="text-sm font-semibold text-white/90">
             {mode === 'ocr' ? 'Report Scanner' : 'Posture Analysis'}
           </h3>
           {overlayText && (
-            <p className="text-[10px] font-bold uppercase tracking-widest text-primary/60 mt-1">{overlayText}</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-primary/60 mt-1">{overlayText}</p>
           )}
         </div>
         <div className="flex items-center gap-2">
@@ -150,7 +150,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
               <div className="absolute -bottom-1 -right-1 w-12 h-12 border-b-4 border-r-4 border-white rounded-br-2xl" />
               
               <div className="absolute inset-0 flex items-center justify-center">
-                <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.3em] rotate-90 whitespace-nowrap">
+                <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.15em] rotate-90 whitespace-nowrap">
                   Align Body Comp Report Here
                 </p>
               </div>
@@ -163,7 +163,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
           <div className="absolute inset-0 z-20 pointer-events-none flex flex-col items-center">
             {/* Head Box */}
             <div className="w-full h-[15%] border-b border-white/20 bg-white/5 flex items-center justify-center">
-              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Head Area</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.15em] text-white/30">Head Area</span>
             </div>
             
             {/* Center Line */}
@@ -175,7 +175,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
 
             {/* Feet Box */}
             <div className="w-full h-[15%] border-t border-white/20 bg-white/5 flex items-center justify-center">
-              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Feet Area</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.15em] text-white/30">Feet Area</span>
             </div>
 
             {/* Tilt Warning */}
@@ -183,7 +183,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
               <div className="absolute inset-0 z-40 flex items-center justify-center p-12 bg-black/40 backdrop-blur-[2px]">
                 <div className="bg-red-600/90 text-white px-6 py-4 rounded-2xl flex flex-col items-center gap-2 animate-in zoom-in-95">
                   <Smartphone className={`h-8 w-8 ${tilt > 90 ? 'rotate-180' : ''}`} />
-                  <p className="font-black uppercase tracking-widest text-xs text-center">
+                  <p className="font-black uppercase tracking-[0.15em] text-[10px] text-center">
                     {tilt > 90 ? 'Tilt Forward' : 'Tilt Back'}
                   </p>
                 </div>
@@ -216,7 +216,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
               isVertical ? 'text-white' : 'text-slate-900'
             }`} />
           </button>
-          <p className="mt-6 text-white/60 text-[10px] font-black uppercase tracking-[0.4em]">
+          <p className="mt-6 text-white/60 text-[10px] font-black uppercase tracking-[0.15em]">
             {isVertical ? 'Tap to Capture' : 'Level Phone to Capture'}
           </p>
         </div>

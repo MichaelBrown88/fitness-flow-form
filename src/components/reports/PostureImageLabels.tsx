@@ -84,7 +84,7 @@ function DeviationLabel({
         {/* Header with red indicator */}
         <div className={`flex items-center gap-1.5 ${isLeft ? '' : 'flex-row-reverse'}`}>
           <div className="h-2 w-2 rounded-full bg-score-red" />
-          <span className="text-xs font-black uppercase tracking-wider text-score-red-fg">
+          <span className="text-[10px] font-black uppercase tracking-[0.15em] text-score-red-fg">
             {label}
           </span>
         </div>

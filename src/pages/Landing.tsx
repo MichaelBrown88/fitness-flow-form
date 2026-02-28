@@ -18,11 +18,12 @@ import {
   CTASection,
   Footer,
 } from '@/components/landing';
+import { useAuth } from '@/hooks/useAuth';
 
 // Testimonial data
 const testimonials = [
   {
-    quote: 'FitnessFlow has completely transformed how I run assessments. What used to take me 2 hours now takes 15 minutes, and my clients love the professional reports.',
+    quote: 'One Assess has completely transformed how I run assessments. What used to take me 2 hours now takes 15 minutes, and my clients love the professional reports.',
     author: 'Sarah Chen',
     role: 'Performance Coach',
     company: 'Elite Fitness Studio',
@@ -118,6 +119,8 @@ const faqItems = [
 ];
 
 export default function Landing() {
+  const { user } = useAuth();
+
   // Scroll to top on mount
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -148,7 +151,6 @@ export default function Landing() {
         </TestimonialsSection>
 
         <ROIComparison />
-
         <BuiltByExperts />
 
         <PricingSection>
@@ -167,22 +169,31 @@ export default function Landing() {
         </PricingSection>
 
         <FAQSection items={faqItems} />
-
         <CTASection />
       </main>
 
       <Footer />
       
-      {/* Sticky Bottom CTA for Mobile */}
-      <div className="fixed bottom-6 left-6 right-6 z-40 md:hidden">
-        <Link 
-          to="/onboarding"
-          className="w-full bg-slate-900 text-white py-4 rounded-full font-bold shadow-xl flex items-center justify-center gap-2"
-        >
-          Start Free Trial <ArrowRight size={18} />
-        </Link>
+      {/* Sticky Bottom CTA for Mobile — frosted glass bar, Apple-style */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden">
+        <div className="bg-white/80 backdrop-blur-xl border-t border-slate-200/60 px-4 py-3 safe-area-pb">
+          {user ? (
+            <Link 
+              to="/dashboard"
+              className="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 text-sm"
+            >
+              Go to Dashboard <ArrowRight size={16} />
+            </Link>
+          ) : (
+            <Link 
+              to="/onboarding"
+              className="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 text-sm"
+            >
+              Start Free Trial <ArrowRight size={16} />
+            </Link>
+          )}
+        </div>
       </div>
     </div>
   );
 }
-

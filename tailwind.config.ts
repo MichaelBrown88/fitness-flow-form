@@ -159,6 +159,16 @@ export default {
           "0%": { transform: "translateY(-100%)" },
           "100%": { transform: "translateY(400%)" },
         },
+        "score-pulse": {
+          "0%": { transform: "scale(1)" },
+          "50%": { transform: "scale(1.06)" },
+          "100%": { transform: "scale(1)" },
+        },
+        "glow-fade": {
+          "0%": { opacity: "0.8" },
+          "50%": { opacity: "0.4" },
+          "100%": { opacity: "0" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -167,6 +177,8 @@ export default {
         "fade-in-up": "fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards",
         "float": "float 6s ease-in-out infinite",
         "scan": "scan 3s linear infinite",
+        "score-pulse": "score-pulse 1.5s ease-in-out 0.5s 1",
+        "glow-fade": "glow-fade 2s ease-out 0.3s forwards",
       },
     },
   },

@@ -1,5 +1,5 @@
 /**
- * Centralized Configuration for Fitness Flow Assessment Engine
+ * Centralized Configuration for One Assess Assessment Engine
  * 
  * This file contains all hardcoded strings, API settings, and UI constants.
  * Sensitive values (API keys) are pulled from environment variables.

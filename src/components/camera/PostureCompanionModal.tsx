@@ -103,7 +103,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
               <div className="bg-white p-4 rounded-3xl shadow-sm mb-4">
                 <Smartphone className="h-10 w-10 text-primary" />
               </div>
-              <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Use Your Phone</h3>
+              <h3 className="text-xl font-bold text-slate-900">Use Your Phone</h3>
               <p className="text-slate-500 text-xs mt-2">Connect your phone to take photos</p>
             </div>
 
@@ -188,22 +188,22 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
           {/* RIGHT: INSTRUCTIONS & LIVE SYNC GRID */}
           <div className="flex-1 p-8 overflow-y-auto bg-white max-h-[90vh]">
             <div className="mb-6">
-              <h4 className="text-lg font-black text-slate-900 mb-2">How to Use</h4>
+              <h4 className="text-lg font-bold text-slate-900 mb-2">How to Use</h4>
               <ol className="space-y-3 text-sm text-slate-600 mb-4">
                 <li className="flex gap-3">
-                  <span className="font-black text-primary">1.</span>
+                  <span className="font-bold text-primary">1.</span>
                   <span>Open your iPhone camera app</span>
                 </li>
                 <li className="flex gap-3">
-                  <span className="font-black text-primary">2.</span>
+                  <span className="font-bold text-primary">2.</span>
                   <span>Scan the QR code on the left</span>
                 </li>
                 <li className="flex gap-3">
-                  <span className="font-black text-primary">3.</span>
+                  <span className="font-bold text-primary">3.</span>
                   <span>Follow the on-screen instructions to capture all 4 views</span>
                 </li>
                 <li className="flex gap-3">
-                  <span className="font-black text-primary">4.</span>
+                  <span className="font-bold text-primary">4.</span>
                   <span>Photos will appear here as they're captured</span>
                 </li>
               </ol>
@@ -219,7 +219,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                 return (
                   <div key={view} className="flex flex-col gap-2">
                     <div className="flex items-center justify-between px-1">
-                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{view}</span>
+                      <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">{view}</span>
                       {status === 'complete' && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
                       {status === 'error' && <AlertCircle className="h-3 w-3 text-red-500" />}
                     </div>
@@ -247,7 +247,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                       {isProcessing && !isWireframeButAnalyzing(view) && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 animate-in fade-in duration-300 bg-black/60">
                           <Loader2 className="h-8 w-8 text-white animate-spin" />
-                          <span className="text-xs font-bold uppercase tracking-wide text-white">
+                          <span className="text-[10px] font-black uppercase tracking-[0.15em] text-white">
                             {statusLabel}
                           </span>
                         </div>
@@ -267,7 +267,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                     {/* POSTURE SUMMARY - Simple per-view text (max 150 chars) */}
                     {session?.analysis[view]?.overall_assessment && (
                       <div className="mt-2 bg-slate-50 p-2 rounded-lg border border-slate-100 animate-in fade-in slide-in-from-bottom-2">
-                        <p className="text-[9px] text-slate-600 leading-snug whitespace-normal break-words">
+                        <p className="text-[10px] text-slate-600 leading-snug whitespace-normal break-words">
                           {session.analysis[view].overall_assessment}
                         </p>
                       </div>
@@ -281,7 +281,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
               <div className="absolute bottom-0 left-0 right-0 p-8 bg-white/80 backdrop-blur-md border-t border-slate-100 z-50 animate-in slide-in-from-bottom-4 duration-500">
                 <Button 
                   onClick={handleApply}
-                  className="w-full h-14 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-black uppercase tracking-widest text-xs gap-3 shadow-2xl shadow-emerald-500/20"
+                  className="w-full h-14 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-bold text-xs gap-3 shadow-lg shadow-emerald-500/20"
                 >
                   Apply Analysis
                   <ArrowRight className="h-4 w-4" />
@@ -313,7 +313,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                 className="max-w-full max-h-[85vh] object-contain"
               />
               <div className="absolute bottom-4 left-4 right-4 text-center">
-                <p className="text-white text-sm font-bold uppercase">{previewImage.view.replace('-', ' ')} View</p>
+                <p className="text-white text-sm font-bold">{previewImage.view.replace('-', ' ')} View</p>
                 <p className="text-white/60 text-xs mt-1">Green = aligned | Orange = mild | Red = significant deviation | Cyan dashed = reference lines</p>
               </div>
             </div>

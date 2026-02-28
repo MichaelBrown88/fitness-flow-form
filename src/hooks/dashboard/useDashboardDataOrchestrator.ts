@@ -12,7 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAssessmentList } from './useAssessmentList';
 import { useClientList } from './useClientList';
 import { useDashboardActions } from './useDashboardActions';
-import { useReassessmentQueue } from '@/hooks/useReassessmentQueue';
+import { useReassessmentQueue, type OrgCadenceDefaults } from '@/hooks/useReassessmentQueue';
 import { getOrgCoaches } from '@/services/coachManagement';
 import { logger } from '@/lib/utils/logger';
 import type { DashboardView } from './types';
@@ -53,8 +53,13 @@ export function useDashboardData() {
   // Client grouping (enriched with retestSchedule from client profiles)
   const { clientGroups, filteredClients, refreshSchedules } = useClientList(items, search, effectiveOrgId);
   
-  // Reassessment queue (priority view)
-  const reassessmentQueue = useReassessmentQueue(clientGroups);
+  const orgCadenceDefaults = useMemo<OrgCadenceDefaults | undefined>(() => {
+    const dc = orgSettings?.defaultCadence;
+    if (!dc) return undefined;
+    return { intervals: dc.intervals, activePillars: dc.activePillars };
+  }, [orgSettings?.defaultCadence]);
+
+  const reassessmentQueue = useReassessmentQueue(clientGroups, orgCadenceDefaults);
 
   // Action handlers (uses effectiveOrgId for read paths, profile.organizationId for writes)
   const {

@@ -42,7 +42,7 @@ interface FeaturesSectionProps {
 export function FeaturesSection({ children }: FeaturesSectionProps) {
   return (
     <section id="features" className="py-24 bg-gradient-to-b from-white to-slate-50/50">
-      <div className="container mx-auto px-4">
+      <div className="max-w-7xl mx-auto px-4">
         <div className="text-center mb-16">
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
             Everything You Need to

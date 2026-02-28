@@ -16,7 +16,7 @@ import {
 import { loadImagesFromFiles } from '@/lib/test/postureTestImages';
 import { generatePlaceholderWithGreenLines } from '@/lib/utils/postureOverlay';
 import { prewarmMediaPipe } from '@/lib/ai/mediapipeSingleton';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import type { PostureCompanionData } from '@/lib/types/companion';
 import { logger } from '@/lib/utils/logger';

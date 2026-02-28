@@ -6,6 +6,9 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import GlassCard from '@/components/ui/GlassCard';
+import SectionHeader from '@/components/landing/SectionHeader';
+import { useScrollReveal } from '@/hooks/useScrollReveal';
 
 interface FAQItem {
   question: string;
@@ -45,18 +48,18 @@ interface FAQSectionProps {
 
 export function FAQSection({ items }: FAQSectionProps) {
   const [openIndex, setOpenIndex] = React.useState<number | null>(null);
-  const GlassCard: React.FC<{ children?: React.ReactNode; className?: string }> = ({ children, className = "" }) => (
-    <div className={`backdrop-blur-2xl bg-white/60 border border-white/50 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:bg-white/80 transition-all duration-500 ${className}`}>
-      {children}
-    </div>
-  );
+  const headerRef = useScrollReveal({ staggerDelay: 150, staggerIndex: 0 });
+  const listRef = useScrollReveal({ staggerDelay: 150, staggerIndex: 1 });
 
   return (
-    <section id="faq" className="py-32 px-6 max-w-3xl mx-auto">
-      <div className="text-center mb-16">
-        <h2 className="text-3xl font-bold text-slate-900">Frequently Asked Questions</h2>
+    <section id="faq" className="py-24 sm:py-32 px-6 max-w-3xl mx-auto">
+      <div ref={headerRef}>
+        <SectionHeader
+          title="Frequently Asked Questions"
+          subtitle="Everything you need to know about getting started."
+        />
       </div>
-      <div className="space-y-4">
+      <div ref={listRef} className="space-y-4">
         {items.map((faq, i) => (
           <GlassCard key={i} className="overflow-hidden bg-white/60">
             <button 

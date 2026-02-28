@@ -110,7 +110,7 @@ export async function handleCreateCheckoutSession(
   }
 
   // Determine base URL from request origin or fallback
-  const baseUrl = process.env.APP_URL || 'https://fitnessflow.app';
+  const baseUrl = process.env.APP_URL || 'https://one-assess.com';
 
   // Create Checkout Session
   const session = await stripe.checkout.sessions.create({

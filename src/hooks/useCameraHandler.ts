@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { processBodyCompScan } from '@/lib/ai/ocrEngine';
 import { compressImageForDisplay } from '@/lib/utils/imageCompression';
 import type { FormData } from '@/contexts/FormContext';

@@ -72,9 +72,9 @@ export default function SignUp() {
         <div className="max-w-md">
           <div className="flex items-center gap-2 mb-8">
             <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-              <span className="text-white font-bold">FF</span>
+              <span className="text-white font-bold">OA</span>
             </div>
-            <span className="text-white text-xl font-semibold">FitnessFlow</span>
+            <span className="text-white text-xl font-semibold">One Assess</span>
           </div>
           
           <h1 className="text-4xl font-bold text-white mb-4">
@@ -103,9 +103,9 @@ export default function SignUp() {
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2 mb-8 justify-center">
             <div className="w-10 h-10 rounded-xl gradient-bg flex items-center justify-center">
-              <span className="text-white font-bold">FF</span>
+              <span className="text-white font-bold">OA</span>
             </div>
-            <span className="text-xl font-semibold">FitnessFlow</span>
+            <span className="text-xl font-semibold">One Assess</span>
           </div>
 
           <div className="text-center lg:text-left mb-8">
@@ -117,7 +117,7 @@ export default function SignUp() {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="fullName">Full Name</Label>
               <Input
@@ -201,7 +201,7 @@ export default function SignUp() {
 
             <Button
               type="submit"
-              className="w-full h-12 gradient-bg text-white rounded-xl text-base font-semibold"
+              className="w-full h-12 bg-slate-900 text-white hover:bg-slate-800"
               disabled={submitting || loading}
             >
               {submitting ? (

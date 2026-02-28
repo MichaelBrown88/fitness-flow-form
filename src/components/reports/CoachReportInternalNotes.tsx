@@ -1,70 +1,102 @@
 /**
- * CoachReport Internal Notes Component
- * Displays what client is doing well and areas to address
+ * CoachReport Key Findings & Priorities
+ * Merged Internal Notes + Session Script action items and outlook
  */
 
 import React from 'react';
-import { CheckCircle2, AlertCircle, ClipboardList } from 'lucide-react';
+import { Target, AlertCircle, CheckCircle, ArrowRight } from 'lucide-react';
 import type { CoachPlan } from '@/lib/recommendations';
 
 interface CoachReportInternalNotesProps {
   plan: CoachPlan;
 }
 
+function ItemCard({
+  icon: Icon,
+  title,
+  items,
+  borderClass,
+  itemBorderClass,
+}: {
+  icon: React.ElementType;
+  title: string;
+  items: string[];
+  borderClass: string;
+  itemBorderClass?: string;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <div className={`rounded-xl border border-slate-200 bg-white p-4 shadow-sm ${borderClass}`}>
+      <h4 className="mb-3 flex items-center gap-2 text-sm font-bold text-slate-700">
+        <Icon className="h-4 w-4 shrink-0" />
+        {title}
+      </h4>
+      <ul className="space-y-2">
+        {items.map((item, i) => (
+          <li
+            key={i}
+            className={`flex gap-2 text-sm text-slate-600 ${itemBorderClass ? `pl-3 ${itemBorderClass}` : ''}`}
+          >
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function CoachReportInternalNotes({ plan }: CoachReportInternalNotesProps) {
+  const priorityItems = [...plan.keyIssues, ...plan.internalNotes.needsAttention];
+  const hasContent =
+    priorityItems.length > 0 ||
+    plan.internalNotes.doingWell.length > 0 ||
+    plan.clientScript.actionPlan.length > 0 ||
+    plan.clientScript.threeMonthOutlook.length > 0;
+
+  if (!hasContent) return null;
+
   return (
     <section className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="bg-slate-800 p-2 rounded-lg">
-          <ClipboardList className="h-5 w-5 text-white" />
+        <div className="bg-primary p-2 rounded-lg">
+          <Target className="h-5 w-5 text-white" />
         </div>
-        <h3 className="text-xl font-bold text-slate-900">Internal Coaching Notes</h3>
+        <h3 className="text-xl font-bold text-slate-900">Key Findings & Priorities</h3>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        <div className="bg-score-green-light rounded-2xl border border-score-green-muted p-6">
-          <h4 className="text-score-green-fg font-bold mb-4 flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5" />
-            What they're doing well
-          </h4>
-          <ul className="space-y-3">
-            {plan.internalNotes.doingWell.map((note, i) => (
-              <li key={i} className="text-score-green-bold text-sm flex gap-2">
-                <span className="font-bold">•</span>
-                {note}
-              </li>
-            ))}
-            {plan.internalNotes.doingWell.length === 0 && (
-              <li className="text-score-green-fg text-sm italic">Standard baseline.</li>
-            )}
-          </ul>
-        </div>
-
-        <div className="bg-score-red-light rounded-2xl border border-score-red-muted p-6">
-          <h4 className="text-score-red-fg font-bold mb-4 flex items-center gap-2">
-            <AlertCircle className="h-5 w-5" />
-            Areas to address
-          </h4>
-          <ul className="space-y-3">
-            {plan.keyIssues.map((issue, i) => (
-              <li key={`issue-${i}`} className="text-score-red-bold text-sm font-bold flex gap-2">
-                <span className="text-score-red">!</span>
-                {issue}
-              </li>
-            ))}
-            {plan.internalNotes.needsAttention.map((note, i) => (
-              <li
-                key={`note-${i}`}
-                className="text-score-red-bold text-sm flex gap-2 border-t border-score-red-muted/50 pt-2 first:border-t-0 first:pt-0"
-              >
-                <span className="font-bold">•</span>
-                {note}
-              </li>
-            ))}
-          </ul>
-        </div>
+      <div className="space-y-4">
+        <ItemCard
+          icon={AlertCircle}
+          title="Priority Issues"
+          items={priorityItems}
+          borderClass="border-l-4 border-l-amber-500"
+          itemBorderClass="border-l-2 border-l-amber-400/70"
+        />
+        <ItemCard
+          icon={CheckCircle}
+          title="Client Strengths"
+          items={plan.internalNotes.doingWell}
+          borderClass="border-l-4 border-l-green-500"
+          itemBorderClass="border-l-2 border-l-green-400/70"
+        />
+        <ItemCard
+          icon={ArrowRight}
+          title="Action Items"
+          items={plan.clientScript.actionPlan}
+          borderClass="border-l-4 border-l-slate-400"
+        />
+        {plan.clientScript.threeMonthOutlook.length > 0 && (
+          <div className="rounded-xl border border-slate-200 border-l-4 border-l-sky-500 bg-white p-4 shadow-sm">
+            <h4 className="mb-3 flex items-center gap-2 text-sm font-bold text-slate-700">
+              <Target className="h-4 w-4 shrink-0" />
+              Outlook
+            </h4>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              {plan.clientScript.threeMonthOutlook.join(' ')}
+            </p>
+          </div>
+        )}
       </div>
     </section>
   );
 }
-

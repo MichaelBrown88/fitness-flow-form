@@ -151,7 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           // Check if this is a magic link sign-in (client) — do NOT auto-provision as org_admin
           const isMagicLink = isSignInWithEmailLink(getFirebaseAuth(), window.location.href)
-            || window.location.pathname.startsWith('/portal');
+            || window.location.pathname.startsWith('/r/');
           
           if (isMagicLink) {
             // Client profile should be pre-created by coach invite Cloud Function
@@ -282,15 +282,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // State will be updated by onAuthStateChanged listener
   };
 
-  /** Send a magic link email for client portal access */
-  const sendClientMagicLink = async (email: string) => {
+  /** Send a magic link email for client access.
+   *  If returnUrl is provided, the link will redirect there after auth.
+   *  Defaults to the current page URL. */
+  const sendClientMagicLink = async (email: string, returnUrl?: string) => {
     const auth = getFirebaseAuth();
+    const fallback = `${window.location.origin}${window.location.pathname}`;
     const actionCodeSettings = {
-      url: `${window.location.origin}/portal/login?email=${encodeURIComponent(email)}`,
+      url: returnUrl || fallback,
       handleCodeInApp: true,
     };
     await sendSignInLinkToEmail(auth, email, actionCodeSettings);
-    // Store email locally so we can complete sign-in when the link is clicked
     window.localStorage.setItem('emailForSignIn', email);
   };
 
@@ -305,9 +307,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       if (email) {
         signInWithEmailLink(auth, email, window.location.href)
-          .then(() => {
+          .then(async (credential) => {
             window.localStorage.removeItem('emailForSignIn');
             logger.info('[Auth] Magic link sign-in completed');
+
+            // Link firebaseUid to the client's org profile doc (one-time, non-blocking)
+            try {
+              const clientUid = credential.user.uid;
+              const clientEmail = credential.user.email || email;
+              const db = getDb();
+
+              // Find the client profile doc by email across all orgs
+              const { collectionGroup, where: fbWhere, getDocs: fbGetDocs, query: fbQuery, updateDoc: fbUpdate } = await import('firebase/firestore');
+              const clientQ = fbQuery(
+                collectionGroup(db, 'clients'),
+                fbWhere('email', '==', clientEmail),
+              );
+              const clientSnap = await fbGetDocs(clientQ);
+              for (const clientDoc of clientSnap.docs) {
+                if (!clientDoc.data().firebaseUid) {
+                  await fbUpdate(clientDoc.ref, { firebaseUid: clientUid });
+                  logger.info('[Auth] Linked firebaseUid to client profile', { docPath: clientDoc.ref.path });
+                }
+              }
+            } catch (linkErr) {
+              logger.warn('[Auth] Failed to link firebaseUid to client profile (non-fatal):', linkErr);
+            }
           })
           .catch((err) => {
             logger.error('[Auth] Magic link sign-in failed:', err);

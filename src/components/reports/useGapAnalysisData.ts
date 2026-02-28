@@ -13,6 +13,11 @@ import { calculateFunctionalGaps } from '@/lib/utils/functionalStrength';
 import { calculateCardioAnalysis, mapFitnessGoalLevel } from '@/lib/utils/cardioAnalysis';
 import { convertGripStrength } from '@/lib/utils/measurementConverters';
 
+/** Per-sub-metric delta from previous assessment (positive = improvement) */
+export interface GapDeltas {
+  [key: string]: number;
+}
+
 export interface GapAnalysisData {
   title: string;
   icon: string;
@@ -24,6 +29,8 @@ export interface GapAnalysisData {
   targetValue: string; // Numeric value for small print (e.g., "43 bpm")
   insight: string;
   status: 'red' | 'yellow' | 'green' | 'gray';
+  /** Per-sub-metric deltas from previous assessment */
+  deltas?: GapDeltas;
   bodyCompGaps?: {
     weight: { current: number; target: number; gap: number };
     muscle: { current: number; target: number; gap: number };
@@ -48,8 +55,18 @@ export interface GapAnalysisData {
   };
 }
 
-export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData): GapAnalysisData[] {
+export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData, previousFormData?: FormData): GapAnalysisData[] {
   return useMemo(() => {
+    // Helper: compute delta between two numeric form fields (positive = better)
+    const numDelta = (field: keyof FormData, invert = false): number | undefined => {
+      if (!previousFormData || !formData) return undefined;
+      const cur = parseFloat(String(formData[field] || '0'));
+      const prev = parseFloat(String(previousFormData[field] || '0'));
+      if (prev === 0 && cur === 0) return undefined;
+      if (prev === 0) return undefined; // No previous data
+      const raw = cur - prev;
+      return raw === 0 ? undefined : (invert ? -raw : raw);
+    };
     const gender = (formData?.gender || '').toLowerCase();
     const bf = parseFloat(formData?.inbodyBodyFatPct || '0');
     const visceral = parseFloat(formData?.visceralFatLevel || '0');
@@ -322,6 +339,15 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData): G
         }
       }
       
+      // Compute body comp deltas (weight loss = good so invert, muscle gain = good, fat loss = good so invert)
+      const bodyCompDeltas: GapDeltas = {};
+      const weightDelta = numDelta('inbodyWeightKg');
+      if (weightDelta !== undefined) bodyCompDeltas.weight = weightDelta;
+      const muscleDelta = numDelta('skeletalMuscleMassKg');
+      if (muscleDelta !== undefined) bodyCompDeltas.muscle = muscleDelta;
+      const fatDelta = numDelta('inbodyBodyFatPct', true); // invert: lower fat = positive
+      if (fatDelta !== undefined) bodyCompDeltas.fat = fatDelta;
+
       return {
         title: 'BODY COMPOSITION',
         icon: '⚖️',
@@ -333,7 +359,8 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData): G
         targetValue: targetValue,
         insight,
         status,
-        bodyCompGaps
+        bodyCompGaps,
+        deltas: Object.keys(bodyCompDeltas).length > 0 ? bodyCompDeltas : undefined,
       };
     })();
     
@@ -456,6 +483,15 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData): G
         }
       }
       
+      // Compute strength deltas (higher reps/time/kg = better)
+      const strengthDeltas: GapDeltas = {};
+      const pushupDelta = numDelta('pushupsOneMinuteReps') ?? numDelta('pushupMaxReps');
+      if (pushupDelta !== undefined) strengthDeltas.endurance = pushupDelta;
+      const plankDelta = numDelta('plankDurationSeconds');
+      if (plankDelta !== undefined) strengthDeltas.core = plankDelta;
+      const gripDelta = numDelta('gripLeftKg') ?? numDelta('gripRightKg') ?? numDelta('gripDeadhangSeconds');
+      if (gripDelta !== undefined) strengthDeltas.strength = gripDelta;
+
       return {
         title: 'FUNCTIONAL STRENGTH',
         icon: '💪',
@@ -468,7 +504,8 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData): G
         insight,
         status,
         // Store the functional gaps data for UI rendering
-        functionalGaps
+        functionalGaps,
+        deltas: Object.keys(strengthDeltas).length > 0 ? strengthDeltas : undefined,
       };
     })();
     
@@ -591,6 +628,15 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData): G
         insight = `${insight} ${cardioGaps.safetyNotice}`;
       }
       
+      // Compute cardio deltas (lower RHR = better so invert, higher VO2 = better, lower recovery = better so invert)
+      const cardioDeltas: GapDeltas = {};
+      const rhrDelta = numDelta('cardioRestingHr', true); // lower is better
+      if (rhrDelta !== undefined) cardioDeltas.rhr = rhrDelta;
+      const vo2Delta = numDelta('cardioVo2MaxEstimate'); // higher is better
+      if (vo2Delta !== undefined) cardioDeltas.vo2 = vo2Delta;
+      const recoveryDelta = numDelta('cardioPost1MinHr', true); // lower recovery HR is better
+      if (recoveryDelta !== undefined) cardioDeltas.recovery = recoveryDelta;
+
       return {
         title: 'METABOLIC HEALTH',
         icon: '❤️',
@@ -603,11 +649,12 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData): G
         insight,
         status,
         // Store the cardio gaps data for UI rendering
-        cardioGaps
+        cardioGaps,
+        deltas: Object.keys(cardioDeltas).length > 0 ? cardioDeltas : undefined,
       };
     })();
     
     return [bodyCompGap, strengthGap, cardioGap];
-  }, [scores, formData]);
+  }, [scores, formData, previousFormData]);
 }
 

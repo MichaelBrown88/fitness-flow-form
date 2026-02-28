@@ -23,7 +23,7 @@ export interface ClientRetentionData {
   lastPostureDate: Date | null;
   daysSinceAssessment: number;
   churnRisk: 'low' | 'medium' | 'high' | 'critical';
-  status: 'active' | 'inactive' | 'on-hold';
+  status: 'active' | 'inactive' | 'paused';
 }
 
 /** Summary of retention metrics */

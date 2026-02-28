@@ -362,13 +362,13 @@ export function GapAnalysis({ scores, formData }: GapAnalysisProps) {
   
   return (
     <div className="space-y-3">
-      <h2 className="text-lg font-semibold text-slate-700 uppercase tracking-wide">Where You Are → Where You're Going</h2>
+      <h2 className="text-lg font-semibold text-slate-700">Where You Are → Where You're Going</h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {pillars.map((pillar, idx) => (
           <div key={idx} className="bg-white rounded-lg border border-slate-200 p-4 space-y-3">
             <div className="flex items-center gap-2">
               <span className="text-xl">{pillar.icon}</span>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500">
                 {pillar.title}
               </h3>
             </div>

@@ -46,7 +46,7 @@ export const FieldMultiSelect: React.FC<FieldMultiSelectProps> = ({
             aria-label={opt.label}
           >
             {opt.tag && (
-              <div className={`absolute top-0 right-0 px-3 py-1 rounded-bl-xl text-[9px] font-black uppercase tracking-widest ${
+              <div className={`absolute top-0 right-0 px-3 py-1 rounded-bl-xl text-[10px] font-black uppercase tracking-[0.15em] ${
                 isActive ? 'bg-white/20 text-white' : 'bg-slate-900 text-white'
               }`}>
                 {opt.tag}

@@ -56,7 +56,7 @@ export const OcrReviewDialog = ({
                 const value = ocrReviewData[key as keyof typeof ocrReviewData] ?? '';
                 return (
                   <div key={key} className={`bg-slate-50 p-4 rounded-2xl border transition-all flex flex-col justify-between ${!value ? 'border-amber-200 bg-amber-50/30' : 'border-slate-100'}`}>
-                    <span className="text-[9px] font-black uppercase tracking-widest text-primary/70 mb-2">
+                    <span className="text-[10px] font-black uppercase tracking-[0.15em] text-primary/70 mb-2">
                       {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
                     </span>
                     <div className="flex items-baseline gap-1">
@@ -70,7 +70,7 @@ export const OcrReviewDialog = ({
                             [key]: e.target.value
                           }) : null);
                         }}
-                        className="h-8 text-xl font-black text-slate-900 border-none bg-transparent p-0 focus-visible:ring-0 shadow-none w-full placeholder:text-slate-300"
+                        className="h-8 text-xl font-bold text-slate-900 border-none bg-transparent p-0 focus-visible:ring-0 shadow-none w-full placeholder:text-slate-300"
                       />
                       <span className="text-[10px] font-bold text-slate-400">
                         {key.toLowerCase().includes('kg') ? 'kg' : key.toLowerCase().includes('pct') ? '%' : key.toLowerCase().includes('water') ? 'L' : ''}

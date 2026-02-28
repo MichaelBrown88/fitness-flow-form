@@ -25,13 +25,13 @@ export function Navbar() {
 
   return (
     <nav 
-      className={`fixed top-0 w-full z-50 transition-all duration-500 ${
+      className={`fixed top-0 w-full z-50 transition-all duration-200 ${
         isScrolled ? 'py-4' : 'py-6'
       }`}
     >
       <div className="max-w-7xl mx-auto px-6">
         <div 
-          className={`relative backdrop-blur-xl rounded-full px-6 py-3 flex items-center justify-between transition-all duration-500 ${
+          className={`relative backdrop-blur-xl rounded-full px-6 py-3 flex items-center justify-between transition-all duration-200 ${
             isScrolled 
               ? 'bg-white/80 border border-white/40 shadow-lg shadow-black/5' 
               : 'bg-white/50 border border-white/20'
@@ -40,9 +40,9 @@ export function Navbar() {
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
-              FF
+              OA
             </div>
-            <span className="text-lg font-bold tracking-tight text-slate-900">FitnessFlow</span>
+            <span className="text-lg font-bold tracking-tight text-slate-900">One Assess</span>
           </Link>
 
           {/* Desktop Navigation */}

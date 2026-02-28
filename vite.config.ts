@@ -15,20 +15,32 @@ export default defineConfig(({ mode }) => ({
     }
   },
   plugins: [
+    // Serve client.html (client PWA manifest/icons) for /r/* routes in dev
+    {
+      name: 'client-html-fallback',
+      configureServer(server: { middlewares: { use: (fn: (req: { url?: string }, res: unknown, next: () => void) => void) => void } }) {
+        server.middlewares.use((req: { url?: string }, _res: unknown, next: () => void) => {
+          if (req.url && /^\/r\//.test(req.url)) {
+            req.url = '/client.html';
+          }
+          next();
+        });
+      },
+    },
     react(),
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'robots.txt', 'og-image.png'],
       manifest: {
-        name: 'FitnessFlow',
-        short_name: 'FitnessFlow',
-        description: 'AI-powered fitness assessment platform',
+        name: 'OA Coach',
+        short_name: 'OA Coach',
+        description: 'AI-powered fitness assessment platform for coaches',
         theme_color: '#0f172a',
         background_color: '#f8fafc',
         display: 'standalone',
         orientation: 'any',
-        start_url: '/',
+        start_url: '/dashboard',
         scope: '/',
         categories: ['health', 'fitness', 'lifestyle'],
         icons: [
@@ -38,14 +50,42 @@ export default defineConfig(({ mode }) => ({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // Immediately activate new service workers to prevent stale chunk references
+        // (old SW serving old index.html that references non-existent JS filenames)
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
+        // Only precache critical shell assets (CSS, HTML, fonts) -- NOT JS chunks.
+        // JS is cached lazily via runtimeCaching to avoid a 4+ MB precache storm on mobile.
+        globPatterns: ['**/*.{css,html,woff2}'],
+        globIgnores: ['**/heic2any-*', '**/generateCategoricalChart-*', '**/pose-*'],
+        maximumFileSizeToCacheInBytes: 300_000, // 300 KB safety cap
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api/, /^\/companion\//],
+        navigateFallbackDenylist: [/^\/api/, /^\/companion\//, /^\/r\//],
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/firestore\.googleapis\.com/,
+            // Never intercept ANY googleapis.com request -- Firestore streaming,
+            // Auth tokens, and Storage uploads must bypass the service worker entirely.
+            // The Cache.put() NetworkError on mobile is caused by Workbox attempting
+            // to cache opaque streaming responses from Firestore WebChannel.
+            urlPattern: /^https:\/\/.*\.googleapis\.com\//,
+            handler: 'NetworkOnly',
+          },
+          {
+            // Same for Firebase Auth (securetoken)
+            urlPattern: /^https:\/\/securetoken\.google\.com\//,
+            handler: 'NetworkOnly',
+          },
+          {
+            // JS chunks: cache lazily, but use NetworkFirst (not StaleWhileRevalidate)
+            // so stale chunks get replaced immediately on new deployments
+            urlPattern: /\.js$/,
             handler: 'NetworkFirst',
-            options: { cacheName: 'firestore-api', expiration: { maxEntries: 50, maxAgeSeconds: 300 } },
+            options: {
+              cacheName: 'js-chunks',
+              networkTimeoutSeconds: 5,
+              expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 3 },
+            },
           },
           {
             urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/,
@@ -80,6 +120,10 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+        client: path.resolve(__dirname, 'client.html'),
+      },
       output: {
         manualChunks: {
           'vendor-react': ['react', 'react-dom', 'react-router-dom'],

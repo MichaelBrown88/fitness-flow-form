@@ -104,7 +104,7 @@ export function FieldControl({
               <Smartphone className="h-10 w-10 text-primary" />
             </div>
             <div className="space-y-2">
-              <h4 className="text-xl font-black uppercase tracking-tight text-slate-900">AI Posture Analysis</h4>
+              <h4 className="text-xl font-bold text-slate-900">AI Posture Analysis</h4>
               <p className="text-primary/70 text-sm font-medium max-w-xs mx-auto">
                 {formData.postureAiResults 
                   ? "Scan complete! You can re-scan if needed or continue to the next step."
@@ -116,7 +116,7 @@ export function FieldControl({
               {isMobile ? (
                 <Button 
                   onClick={() => onShowCamera?.('posture')}
-                  className="flex-1 h-14 rounded-2xl bg-primary text-white font-black uppercase tracking-widest text-xs gap-3 shadow-xl shadow-primary/20"
+                  className="flex-1 h-14 rounded-2xl bg-primary text-white font-bold text-xs gap-3 shadow-lg shadow-primary/20"
                 >
                   <CameraIcon className="h-5 w-5" />
                   Start Posture Scan
@@ -124,7 +124,7 @@ export function FieldControl({
               ) : (
                 <Button 
                   onClick={onShowPostureCompanion}
-                  className="flex-1 h-14 rounded-2xl bg-primary text-white font-black uppercase tracking-widest text-xs gap-3 shadow-xl shadow-primary/20"
+                  className="flex-1 h-14 rounded-2xl bg-primary text-white font-bold text-xs gap-3 shadow-lg shadow-primary/20"
                 >
                   <Smartphone className="h-5 w-5" />
                   Open Remote Mode
@@ -135,7 +135,7 @@ export function FieldControl({
             {formData.postureAiResults && (
               <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 rounded-full border border-emerald-500/20">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-700">AI Results Active</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.15em] text-emerald-700">AI Results Active</span>
               </div>
             )}
           </div>

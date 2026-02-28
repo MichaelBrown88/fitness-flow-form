@@ -526,7 +526,7 @@ const PlatformDashboard = () => {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                className="h-7 w-7 p-0 text-slate-400 hover:text-white"
+                                className="h-9 w-9 sm:h-8 sm:w-8 p-0 text-slate-400 hover:text-white"
                                 onClick={() => setSelectedOrg(org)}
                               >
                                 <Eye className="w-4 h-4" />

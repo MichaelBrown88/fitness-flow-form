@@ -31,10 +31,10 @@ const StatCard: React.FC<{
   icon: React.ReactNode;
   detail?: string;
 }> = ({ label, value, icon, detail }) => (
-  <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-1">
+  <div className="rounded-xl bg-slate-50 p-4 space-y-1">
     <div className="flex items-center gap-2 text-slate-400">
       {icon}
-      <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
+      <span className="text-[10px] font-black uppercase tracking-[0.15em]">{label}</span>
     </div>
     <p className="text-2xl font-bold text-slate-900">{value}</p>
     {detail && <p className="text-xs text-slate-500">{detail}</p>}
@@ -46,14 +46,14 @@ const StatCard: React.FC<{
 const TrendBadge: React.FC<{ value: number }> = ({ value }) => {
   if (value > 0) {
     return (
-      <span className="inline-flex items-center gap-0.5 text-[10px] font-black text-score-green-fg bg-score-green-light px-1.5 py-0.5 rounded-full">
+      <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-score-green-fg bg-score-green-light px-1.5 py-0.5 rounded-full">
         <TrendingUp className="h-3 w-3" />+{value}
       </span>
     );
   }
   if (value < 0) {
     return (
-      <span className="inline-flex items-center gap-0.5 text-[10px] font-black text-score-red-fg bg-score-red-light px-1.5 py-0.5 rounded-full">
+      <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-score-red-fg bg-score-red-light px-1.5 py-0.5 rounded-full">
         <TrendingDown className="h-3 w-3" />{value}
       </span>
     );
@@ -76,7 +76,7 @@ const SortHeader: React.FC<{
   className?: string;
 }> = ({ label, sortKey, currentKey, currentDir, onSort, className }) => (
   <th
-    className={`px-3 py-3 text-left text-[10px] font-black uppercase tracking-widest text-slate-400 cursor-pointer hover:text-slate-600 transition-colors ${className || ''}`}
+    className={`px-3 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 cursor-pointer hover:text-slate-600 transition-colors ${className || ''}`}
     onClick={() => onSort(sortKey)}
   >
     <span className="inline-flex items-center gap-1">
@@ -137,7 +137,7 @@ export const TeamView: React.FC<TeamViewProps> = ({ search }) => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20 text-sm text-slate-400 font-bold">
+      <div className="flex items-center justify-center py-20 text-sm text-slate-400 font-medium">
         <Loader2 className="w-5 h-5 animate-spin mr-2" />
         Loading team data…
       </div>
@@ -148,7 +148,7 @@ export const TeamView: React.FC<TeamViewProps> = ({ search }) => {
     return (
       <div className="text-center py-20 space-y-3">
         <Users className="w-10 h-10 text-slate-300 mx-auto" />
-        <p className="text-sm font-bold text-slate-500">No coaches in your organization yet</p>
+        <p className="text-sm font-semibold text-slate-500">No coaches in your organization yet</p>
         <p className="text-xs text-slate-400">Invite coaches from the Settings page to see team performance here.</p>
       </div>
     );
@@ -240,11 +240,11 @@ const CoachRow: React.FC<{
     <tr className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
       <td className="px-4 py-4">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-black shrink-0">
+          <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0">
             {coach.displayName.charAt(0).toUpperCase()}
           </div>
           <div>
-            <p className="text-sm font-bold text-slate-900 leading-tight">
+            <p className="text-sm font-semibold text-slate-900 leading-tight">
               {coach.displayName}
               {coach.role === 'org_admin' && (
                 <Crown className="w-3 h-3 text-primary inline ml-1.5 -mt-0.5" />
@@ -257,15 +257,15 @@ const CoachRow: React.FC<{
         </div>
       </td>
       <td className="px-3 py-4">
-        <span className="text-sm font-bold text-slate-700">{coach.clientCount}</span>
+        <span className="text-sm font-semibold text-slate-700">{coach.clientCount}</span>
       </td>
       <td className="px-3 py-4">
-        <span className={`text-sm font-bold ${coach.assessments30d === 0 ? 'text-slate-300' : 'text-slate-700'}`}>
+        <span className={`text-sm font-semibold ${coach.assessments30d === 0 ? 'text-slate-300' : 'text-slate-700'}`}>
           {coach.assessments30d}
         </span>
       </td>
       <td className="px-3 py-4">
-        <span className={`text-sm font-bold ${coach.avgScore === 0 ? 'text-slate-300' : 'text-slate-700'}`}>
+        <span className={`text-sm font-semibold ${coach.avgScore === 0 ? 'text-slate-300' : 'text-slate-700'}`}>
           {coach.avgScore || '—'}
         </span>
       </td>
@@ -273,7 +273,7 @@ const CoachRow: React.FC<{
         <TrendBadge value={coach.avgTrend} />
       </td>
       <td className="px-3 py-4">
-        <span className={`text-xs font-bold ${isInactive ? 'text-score-amber-fg' : 'text-slate-500'}`}>
+        <span className={`text-xs font-semibold ${isInactive ? 'text-score-amber-fg' : 'text-slate-500'}`}>
           {lastActiveLabel}
           {isInactive && lastActiveLabel !== 'Never' && (
             <AlertCircle className="w-3 h-3 inline ml-1 -mt-0.5 text-score-amber" />

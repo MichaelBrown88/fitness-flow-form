@@ -208,13 +208,11 @@ service cloud.firestore {
       allow write: if isPlatformAdmin();
     }
     
-    // 9. NOTIFICATIONS
-    // Users can only read/update their own notifications
+    // 9. COACH NOTIFICATIONS (legacy UID-keyed — kept for coach-to-coach notifications)
     match /notifications/{recipientUid}/items/{notificationId} {
       allow read: if isAuthenticated() && request.auth.uid == recipientUid;
       allow update: if isAuthenticated() && request.auth.uid == recipientUid;
-      allow create: if isPlatformAdmin() || 
-                    (isAuthenticated() && request.auth.uid == recipientUid);
+      allow create: if isAuthenticated();
       allow delete: if isAuthenticated() && request.auth.uid == recipientUid;
     }
     
@@ -239,8 +237,28 @@ service cloud.firestore {
     match /publicReports/{reportId} {
       allow read: if true;
       allow write: if isAuthenticated();
+      
+      // Token-scoped achievements: public read, authenticated write
+      match /achievements/{achievementId} {
+        allow read: if true;
+        allow write: if isAuthenticated();
+      }
+      
+      // Token-scoped notifications: public read/update (mark-as-read), authenticated write
+      match /notifications/{notificationId} {
+        allow read: if true;
+        allow create: if isAuthenticated();
+        allow update: if true;
+        allow delete: if isAuthenticated();
+      }
+      
+      // Token-scoped snapshots: public read, authenticated write
+      match /snapshots/{snapshotId} {
+        allow read: if true;
+        allow write: if isAuthenticated();
+      }
     }
-    
+
     match /live_sessions/{sessionId} {
       // Allow anyone to read sessions (for token validation in companion app)
       // This enables mobile handoff features where clients scan QR codes without authentication

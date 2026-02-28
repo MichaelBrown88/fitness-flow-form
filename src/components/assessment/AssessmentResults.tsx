@@ -68,7 +68,7 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1.5 shadow-sm">
+        <div className="inline-flex rounded-xl bg-slate-100 p-1.5">
           <button 
             onClick={() => setReportView('client')} 
             className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${reportView === 'client' ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
@@ -127,35 +127,30 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
         </div>
       </div>
 
-      <div 
-        className="rounded-3xl border border-slate-200 bg-white p-6 lg:p-10 shadow-2xl shadow-slate-200/50" 
-        style={{ minWidth: '100%', maxWidth: '100%', overflow: 'visible' }}
-      >
-        <Suspense fallback={
-          <div className="flex flex-col items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-            <p className="text-sm font-black uppercase tracking-widest text-slate-400">Loading Report...</p>
-          </div>
-        }>
-          {reportView === 'client' ? (
-            <ClientReport 
-              scores={scores} 
-              goals={Array.isArray(formData.clientGoals) ? formData.clientGoals : []} 
-              formData={formData} 
-              plan={plan} 
-              standalone={false}
-            />
-          ) : (
-            <CoachReport
-              plan={plan}
-              scores={scores}
-              bodyComp={bodyCompInterp}
-              formData={formData}
-              highlightCategory={highlightCategory}
-            />
-          )}
-        </Suspense>
-      </div>
+      <Suspense fallback={
+        <div className="flex flex-col items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+          <p className="text-sm font-medium text-slate-400">Loading Report...</p>
+        </div>
+      }>
+        {reportView === 'client' ? (
+          <ClientReport 
+            scores={scores} 
+            goals={Array.isArray(formData.clientGoals) ? formData.clientGoals : []} 
+            formData={formData} 
+            plan={plan} 
+            standalone={false}
+          />
+        ) : (
+          <CoachReport
+            plan={plan}
+            scores={scores}
+            bodyComp={bodyCompInterp}
+            formData={formData}
+            highlightCategory={highlightCategory}
+          />
+        )}
+      </Suspense>
     </div>
   );
 };

@@ -2,30 +2,62 @@ import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Carousel, CarouselContent, CarouselItem, CarouselDots } from '@/components/ui/carousel';
-import { BarChart3, Scale, Dumbbell, Heart, ArrowRight, Lightbulb } from 'lucide-react';
+import { BarChart3, Scale, Dumbbell, Heart, ArrowRight, Lightbulb, TrendingUp, TrendingDown } from 'lucide-react';
 import { truncateInsight } from '../clientReportUtils';
 import type { GapAnalysisData } from '../../useGapAnalysisData';
 import type { FormData } from '@/contexts/FormContext';
+import { CardInfoDrawer } from '../../CardInfoDrawer';
+import { AnimatedValue } from './AnimatedValue';
 
 interface GapAnalysisSectionProps {
   gapAnalysisData: GapAnalysisData[];
+  previousGapAnalysisData?: GapAnalysisData[];
   goals?: string[];
   formData?: FormData;
   hideHeader?: boolean;
 }
+
+const DeltaIndicator: React.FC<{ delta?: number }> = ({ delta }) => {
+  if (delta === undefined || delta === 0) return null;
+  const isPositive = delta > 0;
+  return (
+    <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold ${isPositive ? 'text-emerald-600' : 'text-red-500'}`}>
+      {isPositive ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
+    </span>
+  );
+};
 
 const GapMetricRow: React.FC<{
   label: string;
   current: string | number;
   target: string | number;
   isDesktop?: boolean;
-}> = ({ label, current, target, isDesktop }) => {
+  delta?: number;
+  /** Previous numeric value for scroll-triggered animation */
+  fromValue?: number;
+  /** Decimal places for animated value */
+  decimals?: number;
+}> = ({ label, current, target, isDesktop, delta, fromValue, decimals = 1 }) => {
+  // Determine if current value can be animated (is a parseable number with a different previous value)
+  const numericCurrent = typeof current === 'number' ? current : parseFloat(String(current));
+  const canAnimate = fromValue !== undefined && !isNaN(numericCurrent) && fromValue !== numericCurrent;
+
+  const renderCurrent = () => {
+    if (canAnimate) {
+      return <AnimatedValue value={numericCurrent} from={fromValue} decimals={decimals} delta={delta} />;
+    }
+    return <>{current}</>;
+  };
+
   if (!isDesktop) {
     return (
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm font-medium text-zinc-700 text-left whitespace-nowrap flex-shrink-0">{label}</span>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-zinc-600 text-right tabular-nums">{current}</span>
+          <span className="text-sm text-zinc-600 text-right tabular-nums inline-flex items-center gap-0.5">
+            {renderCurrent()}
+            <DeltaIndicator delta={delta} />
+          </span>
           <ArrowRight className={`w-3 h-3 ${typeof current === 'number' || current !== '--' ? 'text-gradient-dark' : 'text-zinc-300'} flex-shrink-0`} />
           <span className="text-sm font-bold text-gradient-dark text-right tabular-nums">{target}</span>
         </div>
@@ -36,7 +68,10 @@ const GapMetricRow: React.FC<{
   return (
     <div className="grid items-center gap-3 grid-cols-[minmax(0,1fr)_auto_16px_auto]">
       <span className="min-w-0 text-sm font-medium text-zinc-700 text-left truncate">{label}</span>
-      <span className="text-sm text-zinc-600 text-right tabular-nums">{current}</span>
+      <span className="text-sm text-zinc-600 text-right tabular-nums inline-flex items-center gap-0.5">
+        {renderCurrent()}
+        <DeltaIndicator delta={delta} />
+      </span>
       <ArrowRight className={`w-3 h-3 ${typeof current === 'number' || current !== '--' ? 'text-gradient-dark' : 'text-zinc-300'} justify-self-center`} />
       <span className="text-sm font-bold text-gradient-dark text-right tabular-nums">{target}</span>
     </div>
@@ -46,6 +81,7 @@ const GapMetricRow: React.FC<{
 
 export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
   gapAnalysisData,
+  previousGapAnalysisData,
   goals,
   formData,
   hideHeader,
@@ -53,11 +89,18 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
   const bodyComp = gapAnalysisData[0];
   const functional = gapAnalysisData[1];
   const metabolic = gapAnalysisData[2];
+  const prevBodyComp = previousGapAnalysisData?.[0];
+  const prevFunctional = previousGapAnalysisData?.[1];
+  const prevMetabolic = previousGapAnalysisData?.[2];
 
 
   const renderBodyCompCard = (isDesktop: boolean) => {
     return (
-      <Card className={isDesktop ? "p-4 sm:p-5 md:p-6 flex flex-col" : "p-5 sm:p-6 md:p-7 flex flex-col"}>
+      <Card className={isDesktop ? "p-4 sm:p-5 md:p-6 flex flex-col relative" : "p-5 sm:p-6 md:p-7 flex flex-col h-full relative"}>
+        <CardInfoDrawer title="Body Composition">
+          <p>Body composition measures the ratio of muscle, fat, and bone in your body. These targets are personalised based on your goals and current measurements.</p>
+          <p>The &ldquo;Current &rarr; Target&rdquo; values show where you are now versus where you need to be for optimal health and performance.</p>
+        </CardInfoDrawer>
         <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6 h-[44px]">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-gradient-light text-zinc-900 rounded-lg">
@@ -65,7 +108,7 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
           </div>
           <h4 className="text-sm font-bold text-zinc-900">Body Composition</h4>
         </div>
-        <Badge className="glass-button-active text-white border-transparent whitespace-nowrap">
+        <Badge className="glass-button-active text-white border-transparent whitespace-nowrap mr-5">
           {bodyComp?.status === 'red' ? 'Priority Focus' : 'Optimize'}
         </Badge>
       </div>
@@ -74,26 +117,32 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
         {isDesktop ? (
           <>
             <div className="grid items-center gap-3 grid-cols-[minmax(0,1fr)_auto_16px_auto] mb-3">
-              <span className="text-xs text-zinc-400 uppercase tracking-wider text-right col-start-2">Current</span>
-              <span className="text-xs text-zinc-400 uppercase tracking-wider text-right col-start-4">Target</span>
+              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.15em] text-right col-start-2">Current</span>
+              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.15em] text-right col-start-4">Target</span>
             </div>
             <GapMetricRow 
               label="Body Weight (kg)" 
               current={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.weight.current.toFixed(1) : '--'} 
               target={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.weight.target.toFixed(1) : '--'}
               isDesktop
+              delta={bodyComp?.deltas?.weight}
+              fromValue={prevBodyComp?.bodyCompGaps?.weight.current}
             />
             <GapMetricRow 
               label="Muscle Mass (kg)" 
               current={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.muscle.current.toFixed(1) : '--'} 
               target={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.muscle.target.toFixed(1) : '--'}
               isDesktop
+              delta={bodyComp?.deltas?.muscle}
+              fromValue={prevBodyComp?.bodyCompGaps?.muscle.current}
             />
             <GapMetricRow 
               label="Body Fat (%)" 
               current={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.fat.current.toFixed(1) : '--'} 
               target={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.fat.target.toFixed(1) : '--'}
               isDesktop
+              delta={bodyComp?.deltas?.fat}
+              fromValue={prevBodyComp?.bodyCompGaps?.fat.current}
             />
           </>
         ) : (
@@ -102,22 +151,28 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
               label="Body Weight (kg)"
               current={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.weight.current.toFixed(1) : '--'}
               target={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.weight.target.toFixed(1) : '--'}
+              delta={bodyComp?.deltas?.weight}
+              fromValue={prevBodyComp?.bodyCompGaps?.weight.current}
             />
             <GapMetricRow
               label="Muscle Mass (kg)"
               current={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.muscle.current.toFixed(1) : '--'}
               target={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.muscle.target.toFixed(1) : '--'}
+              delta={bodyComp?.deltas?.muscle}
+              fromValue={prevBodyComp?.bodyCompGaps?.muscle.current}
             />
             <GapMetricRow
               label="Body Fat (%)"
               current={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.fat.current.toFixed(1) : '--'}
               target={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.fat.target.toFixed(1) : '--'}
+              delta={bodyComp?.deltas?.fat}
+              fromValue={prevBodyComp?.bodyCompGaps?.fat.current}
             />
           </div>
         )}
       </div>
       
-      <div className="pt-3 sm:pt-4 border-t border-zinc-100">
+      <div className="pt-3 sm:pt-4 border-t border-zinc-100 mt-auto">
         <div className="flex items-start gap-1.5 sm:gap-2">
           <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-score-amber mt-0.5 flex-shrink-0" />
           <p className="text-xs text-zinc-600 leading-relaxed">{truncateInsight(bodyComp?.insight || '')}</p>
@@ -150,7 +205,11 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
     }
 
     return (
-      <Card className={isDesktop ? "p-4 sm:p-5 md:p-6 flex flex-col" : "p-5 sm:p-6 md:p-7 flex flex-col"}>
+      <Card className={isDesktop ? "p-4 sm:p-5 md:p-6 flex flex-col relative" : "p-5 sm:p-6 md:p-7 flex flex-col h-full relative"}>
+        <CardInfoDrawer title="Functional Strength">
+          <p>Functional strength measures your body&rsquo;s ability to produce force, maintain endurance, and stabilise through your core in real-world movement patterns.</p>
+          <p>These metrics reflect your muscular endurance, core stability, and overall strength capacity based on your assessment results.</p>
+        </CardInfoDrawer>
         <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6 h-[44px]">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-gradient-light text-zinc-900 rounded-lg">
@@ -158,7 +217,7 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
             </div>
             <h4 className="text-sm font-bold text-zinc-900">Functional Strength</h4>
           </div>
-          <Badge className="glass-button-active text-white border-transparent whitespace-nowrap">
+          <Badge className="glass-button-active text-white border-transparent whitespace-nowrap mr-5">
             {functional?.status === 'red' ? 'Priority Focus' : 'Optimize'}
           </Badge>
         </div>
@@ -167,26 +226,31 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
           {isDesktop ? (
             <>
               <div className="grid items-center gap-3 grid-cols-[minmax(0,1fr)_auto_16px_auto] mb-3">
-                <span className="text-xs text-zinc-400 uppercase tracking-wider text-right col-start-2">Current</span>
-                <span className="text-xs text-zinc-400 uppercase tracking-wider text-right col-start-4">Target</span>
+                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.15em] text-right col-start-2">Current</span>
+                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.15em] text-right col-start-4">Target</span>
               </div>
               <GapMetricRow 
                 label="Muscular Endurance (reps)" 
                 current={functional?.functionalGaps ? functional.functionalGaps.endurance.current : '--'} 
                 target={functional?.functionalGaps ? functional.functionalGaps.endurance.target : '--'}
                 isDesktop
+                delta={functional?.deltas?.endurance}
+                fromValue={prevFunctional?.functionalGaps?.endurance.current}
+                decimals={0}
               />
               <GapMetricRow 
                 label="Core Stability (time)" 
                 current={currentCore} 
                 target={targetCore}
                 isDesktop
+                delta={functional?.deltas?.core}
               />
               <GapMetricRow 
                 label={strengthLabel} 
                 current={currentStrength} 
                 target={targetStrength}
                 isDesktop
+                delta={functional?.deltas?.strength}
               />
             </>
           ) : (
@@ -195,22 +259,27 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
                 label="Endurance (reps)"
                 current={functional?.functionalGaps ? functional.functionalGaps.endurance.current : '--'}
                 target={functional?.functionalGaps ? functional.functionalGaps.endurance.target : '--'}
+                delta={functional?.deltas?.endurance}
+                fromValue={prevFunctional?.functionalGaps?.endurance.current}
+                decimals={0}
               />
               <GapMetricRow
                 label="Core Stability"
                 current={currentCore}
                 target={targetCore}
+                delta={functional?.deltas?.core}
               />
               <GapMetricRow
                 label={strengthLabel}
                 current={currentStrength}
                 target={targetStrength}
+                delta={functional?.deltas?.strength}
               />
             </div>
           )}
         </div>
         
-        <div className="pt-3 sm:pt-4 border-t border-zinc-100">
+        <div className="pt-3 sm:pt-4 border-t border-zinc-100 mt-auto">
           <div className="flex items-start gap-1.5 sm:gap-2">
             <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-score-amber mt-0.5 flex-shrink-0" />
             <p className="text-xs text-zinc-600 leading-relaxed">{truncateInsight(functional?.insight || '')}</p>
@@ -222,7 +291,11 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
 
   const renderMetabolicCard = (isDesktop: boolean) => {
     return (
-      <Card className={isDesktop ? "p-4 sm:p-5 md:p-6 flex flex-col" : "p-5 sm:p-6 md:p-7 flex flex-col"}>
+      <Card className={isDesktop ? "p-4 sm:p-5 md:p-6 flex flex-col relative" : "p-5 sm:p-6 md:p-7 flex flex-col h-full relative"}>
+        <CardInfoDrawer title="Metabolic Fitness">
+          <p>Metabolic fitness reflects your cardiovascular health — how efficiently your heart and lungs deliver oxygen to working muscles.</p>
+          <p>Resting heart rate, recovery heart rate, and VO2 max are the key markers that indicate your aerobic capacity and recovery ability.</p>
+        </CardInfoDrawer>
         <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6 h-[44px]">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-gradient-light text-zinc-900 rounded-lg">
@@ -230,7 +303,7 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
           </div>
           <h4 className="text-sm font-bold text-zinc-900">Metabolic Fitness</h4>
         </div>
-        <Badge className="glass-button-active text-white border-transparent whitespace-nowrap">
+        <Badge className="glass-button-active text-white border-transparent whitespace-nowrap mr-5">
           {metabolic?.status === 'red' ? 'Priority Focus' : (metabolic?.status === 'yellow' || (goals || []).includes('improve-fitness')) ? 'Optimize' : 'Maintain'}
         </Badge>
       </div>
@@ -239,26 +312,34 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
         {isDesktop ? (
           <>
             <div className="grid items-center gap-3 grid-cols-[minmax(0,1fr)_auto_16px_auto] mb-3">
-              <span className="text-xs text-zinc-400 uppercase tracking-wider text-right col-start-2">Current</span>
-              <span className="text-xs text-zinc-400 uppercase tracking-wider text-right col-start-4">Target</span>
+              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.15em] text-right col-start-2">Current</span>
+              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.15em] text-right col-start-4">Target</span>
             </div>
             <GapMetricRow 
               label="Resting HR (bpm)" 
               current={metabolic?.cardioGaps && metabolic.cardioGaps.rhr.current > 0 ? Math.round(metabolic.cardioGaps.rhr.current) : '--'} 
               target={metabolic?.cardioGaps && metabolic.cardioGaps.rhr.target > 0 ? Math.round(metabolic.cardioGaps.rhr.target) : '--'}
               isDesktop
+              delta={metabolic?.deltas?.rhr}
+              fromValue={prevMetabolic?.cardioGaps?.rhr.current ? Math.round(prevMetabolic.cardioGaps.rhr.current) : undefined}
+              decimals={0}
             />
             <GapMetricRow 
               label="Recovery HR (bpm)" 
               current={metabolic?.cardioGaps && metabolic.cardioGaps.recovery.current > 0 ? Math.round(metabolic.cardioGaps.recovery.current) : '--'} 
               target={metabolic?.cardioGaps && metabolic.cardioGaps.recovery.target > 0 ? Math.round(metabolic.cardioGaps.recovery.target) : '--'}
               isDesktop
+              delta={metabolic?.deltas?.recovery}
+              fromValue={prevMetabolic?.cardioGaps?.recovery.current ? Math.round(prevMetabolic.cardioGaps.recovery.current) : undefined}
+              decimals={0}
             />
             <GapMetricRow 
               label="VO2 Max (ml/kg/min)" 
               current={metabolic?.cardioGaps && metabolic.cardioGaps.vo2.current > 0 ? metabolic.cardioGaps.vo2.current.toFixed(1) : '--'} 
               target={metabolic?.cardioGaps && metabolic.cardioGaps.vo2.target > 0 ? metabolic.cardioGaps.vo2.target.toFixed(1) : '--'}
               isDesktop
+              delta={metabolic?.deltas?.vo2}
+              fromValue={prevMetabolic?.cardioGaps?.vo2.current && prevMetabolic.cardioGaps.vo2.current > 0 ? prevMetabolic.cardioGaps.vo2.current : undefined}
             />
           </>
         ) : (
@@ -267,22 +348,30 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
               label="Resting HR (bpm)"
               current={metabolic?.cardioGaps && metabolic.cardioGaps.rhr.current > 0 ? Math.round(metabolic.cardioGaps.rhr.current) : '--'}
               target={metabolic?.cardioGaps && metabolic.cardioGaps.rhr.target > 0 ? Math.round(metabolic.cardioGaps.rhr.target) : '--'}
+              delta={metabolic?.deltas?.rhr}
+              fromValue={prevMetabolic?.cardioGaps?.rhr.current ? Math.round(prevMetabolic.cardioGaps.rhr.current) : undefined}
+              decimals={0}
             />
             <GapMetricRow
               label="Recovery HR (bpm)"
               current={metabolic?.cardioGaps && metabolic.cardioGaps.recovery.current > 0 ? Math.round(metabolic.cardioGaps.recovery.current) : '--'}
               target={metabolic?.cardioGaps && metabolic.cardioGaps.recovery.target > 0 ? Math.round(metabolic.cardioGaps.recovery.target) : '--'}
+              delta={metabolic?.deltas?.recovery}
+              fromValue={prevMetabolic?.cardioGaps?.recovery.current ? Math.round(prevMetabolic.cardioGaps.recovery.current) : undefined}
+              decimals={0}
             />
             <GapMetricRow
               label="VO2 Max (ml/kg/min)"
               current={metabolic?.cardioGaps && metabolic.cardioGaps.vo2.current > 0 ? metabolic.cardioGaps.vo2.current.toFixed(1) : '--'}
               target={metabolic?.cardioGaps && metabolic.cardioGaps.vo2.target > 0 ? metabolic.cardioGaps.vo2.target.toFixed(1) : '--'}
+              delta={metabolic?.deltas?.vo2}
+              fromValue={prevMetabolic?.cardioGaps?.vo2.current && prevMetabolic.cardioGaps.vo2.current > 0 ? prevMetabolic.cardioGaps.vo2.current : undefined}
             />
           </div>
         )}
       </div>
       
-      <div className="pt-3 sm:pt-4 border-t border-zinc-100">
+      <div className="pt-3 sm:pt-4 border-t border-zinc-100 mt-auto">
         <div className="flex items-start gap-1.5 sm:gap-2">
           <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-score-amber mt-0.5 flex-shrink-0" />
           <p className="text-xs text-zinc-600 leading-relaxed">{truncateInsight(metabolic?.insight || '')}</p>
@@ -299,7 +388,7 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
           <div className="p-1 sm:p-1.5 md:p-2 bg-gradient-light text-zinc-900 rounded-lg">
             <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
           </div>
-          <h3 className="text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">Gap Analysis</h3>
+          <h3 className="text-xs md:text-sm lg:text-base font-semibold text-zinc-900">Gap Analysis</h3>
         </div>
       )}
       <p className="text-xs md:text-sm text-zinc-500 mb-3 sm:mb-4 md:mb-5 lg:mb-6">Current metrics vs. optimal performance targets.</p>
@@ -314,7 +403,7 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
       {/* Mobile/Tablet Layout -- swipeable carousel */}
       <div className="lg:hidden mb-6 md:mb-8">
         <Carousel opts={{ align: 'start', containScroll: 'trimSnaps' }} className="w-full">
-          <CarouselContent className="-ml-3">
+          <CarouselContent className="-ml-3 items-stretch">
             <CarouselItem className="basis-[85%] pl-3">{renderBodyCompCard(false)}</CarouselItem>
             <CarouselItem className="basis-[85%] pl-3">{renderFunctionalCard(false)}</CarouselItem>
             <CarouselItem className="basis-[85%] pl-3">{renderMetabolicCard(false)}</CarouselItem>

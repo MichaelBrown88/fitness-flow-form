@@ -9,15 +9,14 @@
  * expanded by default. An Expand/Collapse All toggle is in the header.
  */
 
-import React, { useState, useCallback, lazy, Suspense, useEffect } from 'react';
+import React, { useState, useMemo, lazy, Suspense, useEffect } from 'react';
 import type { FormData } from '@/contexts/FormContext';
-import type { ScoreSummary } from '@/lib/scoring';
+import { computeScores, buildRoadmap, type ScoreSummary } from '@/lib/scoring';
 import type { CoachPlan } from '@/lib/recommendations';
 import {
   Loader2, ChevronDown,
   Activity, BarChart3, TrendingUp, Heart, Target, Trophy, Clock,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import {
   Collapsible,
   CollapsibleContent,
@@ -40,8 +39,10 @@ import { DestinationSection } from './client/sub-components/DestinationSection';
 import { BlueprintSection } from './client/sub-components/BlueprintSection';
 import { TimelineSection } from './client/sub-components/TimelineSection';
 
-// Hook
+// Hooks
 import { useClientReportData } from './client/useClientReportData';
+import { useGoalCountdown } from '@/hooks/useGoalCountdown';
+import { useScrollRevealSections } from '@/hooks/useScrollRevealSections';
 
 // ── Section config ────────────────────────────────────────────────────
 
@@ -97,42 +98,45 @@ interface CollapsibleSectionProps {
   id: SectionId;
   open: boolean;
   onToggle: (id: SectionId) => void;
+  sectionRef?: (el: HTMLElement | null) => void;
   children: React.ReactNode;
 }
 
 const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
-  id, open, onToggle, children,
+  id, open, onToggle, sectionRef, children,
 }) => {
   const meta = SECTION_META[id];
   return (
-    <Collapsible open={open} onOpenChange={() => onToggle(id)}>
-      <CollapsibleTrigger asChild>
-        <button
-          className="w-full flex items-center justify-between py-2 hover:opacity-80 transition-opacity group text-left"
-          aria-expanded={open}
-        >
-          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 min-w-0">
-            <div className="sm:p-1.5 md:p-2 sm:bg-gradient-light text-zinc-500 sm:text-zinc-900 sm:rounded-lg shrink-0">
-              {meta.icon}
+    <div ref={sectionRef} data-section-id={id}>
+      <Collapsible open={open} onOpenChange={() => onToggle(id)}>
+        <CollapsibleTrigger asChild>
+          <button
+            className="w-full flex items-center justify-between py-2 hover:opacity-80 transition-opacity group text-left"
+            aria-expanded={open}
+          >
+            <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 min-w-0">
+              <div className="sm:p-1.5 md:p-2 sm:bg-gradient-light text-zinc-500 sm:text-zinc-900 sm:rounded-lg shrink-0">
+                {meta.icon}
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-xs md:text-sm lg:text-base font-semibold text-zinc-900">
+                  {meta.title}
+                </h3>
+                {!open && (
+                  <p className="text-xs text-zinc-400 mt-0.5 truncate">{meta.summary}</p>
+                )}
+              </div>
             </div>
-            <div className="min-w-0">
-              <h3 className="text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">
-                {meta.title}
-              </h3>
-              {!open && (
-                <p className="text-xs text-zinc-400 mt-0.5 truncate">{meta.summary}</p>
-              )}
-            </div>
-          </div>
-          <ChevronDown
-            className={`h-4 w-4 text-zinc-400 shrink-0 ml-3 transition-transform duration-200 ${
-              open ? 'rotate-180' : ''
-            }`}
-          />
-        </button>
-      </CollapsibleTrigger>
-      <CollapsibleContent>{children}</CollapsibleContent>
-    </Collapsible>
+            <ChevronDown
+              className={`h-4 w-4 text-zinc-400 shrink-0 ml-3 transition-transform duration-200 ${
+                open ? 'rotate-180' : ''
+              }`}
+            />
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>{children}</CollapsibleContent>
+      </Collapsible>
+    </div>
   );
 };
 
@@ -147,7 +151,7 @@ const MOBILE_TAB_META: Record<MobileTabId, {
 }> = {
   overview:  { label: 'Overview',  icon: Activity },
   analysis:  { label: 'Analysis',  icon: BarChart3 },
-  movement:  { label: 'Movement',  icon: Activity },
+  movement:  { label: 'Movement',  icon: Heart },
   plan:      { label: 'Your Plan', icon: Trophy },
 };
 
@@ -159,8 +163,8 @@ interface MobileReportNavProps {
 }
 
 const MobileReportNav: React.FC<MobileReportNavProps> = ({ activeTab, onSelect }) => (
-  <nav className="fixed bottom-0 inset-x-0 z-50 bg-white border-t border-slate-200 shadow-[0_-2px_10px_rgba(0,0,0,0.06)] safe-area-pb md:hidden">
-    <div className="flex items-stretch justify-around px-2">
+  <nav className="fixed bottom-0 inset-x-0 z-50 bg-white border-t border-slate-200 shadow-[0_-2px_10px_rgba(0,0,0,0.06)] pb-2 safe-area-pb md:hidden">
+    <div className="flex items-stretch justify-around px-3">
       {MOBILE_TAB_IDS.map(id => {
         const { icon: Icon, label } = MOBILE_TAB_META[id];
         const isActive = activeTab === id;
@@ -168,7 +172,7 @@ const MobileReportNav: React.FC<MobileReportNavProps> = ({ activeTab, onSelect }
           <button
             key={id}
             onClick={() => onSelect(id)}
-            className={`relative flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors touch-manipulation ${
+            className={`relative flex-1 flex flex-col items-center gap-1 py-3 transition-colors touch-manipulation ${
               isActive
                 ? 'text-primary'
                 : 'text-slate-400 active:text-slate-600'
@@ -177,8 +181,8 @@ const MobileReportNav: React.FC<MobileReportNavProps> = ({ activeTab, onSelect }
             {isActive && (
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary rounded-full" />
             )}
-            <Icon className={`h-5 w-5 ${isActive ? 'text-primary' : ''}`} />
-            <span className={`text-[9px] font-bold uppercase tracking-wide leading-tight ${
+            <Icon className={`h-[22px] w-[22px] ${isActive ? 'text-primary' : ''}`} />
+            <span className={`text-[10px] font-bold uppercase tracking-[0.15em] leading-tight ${
               isActive ? 'text-primary' : 'text-slate-400'
             }`}>
               {label}
@@ -199,6 +203,7 @@ export default function ClientReport({
   plan,
   bodyComp,
   previousScores,
+  previousFormData,
   standalone = true,
 }: {
   scores: ScoreSummary;
@@ -207,6 +212,7 @@ export default function ClientReport({
   plan?: CoachPlan;
   bodyComp?: { timeframeWeeks: string };
   previousScores?: ScoreSummary | null;
+  previousFormData?: FormData;
   standalone?: boolean;
 }) {
   const {
@@ -215,16 +221,27 @@ export default function ClientReport({
     archetype,
     strengths,
     areasForImprovement,
-    maxWeeks,
     clientName,
     hasAnyData,
     overallRadarData,
     previousRadarData,
     gapAnalysisData,
+    previousGapAnalysisData,
     reportDate,
     blueprintPillars,
     weeksByCategory,
-  } = useClientReportData({ scores, goals, formData, previousScores });
+  } = useClientReportData({ scores, goals, formData, previousScores, previousFormData });
+
+  const countdownData = useGoalCountdown(orderedCats, weeksByCategory, previousScores);
+
+  const previousBlueprintPhase = useMemo(() => {
+    if (!previousFormData) return undefined;
+    try {
+      const prevScores = computeScores(previousFormData);
+      const prevRoadmap = buildRoadmap(prevScores, previousFormData);
+      return prevRoadmap[0]?.title;
+    } catch { return undefined; }
+  }, [previousFormData]);
 
   const isMobile = useIsMobile();
 
@@ -237,25 +254,8 @@ export default function ClientReport({
     }
   }, [standalone, activeView]);
 
-  // ── Desktop: section open/close state ───────────────────────────────
-  const [openSections, setOpenSections] = useState<Set<SectionId>>(
-    () => new Set(DEFAULT_OPEN),
-  );
-
-  const toggleSection = useCallback((id: SectionId) => {
-    setOpenSections(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
-
-  const allOpen = openSections.size === SECTION_IDS.length;
-
-  const toggleAll = useCallback(() => {
-    setOpenSections(allOpen ? new Set(DEFAULT_OPEN) : new Set(SECTION_IDS));
-  }, [allOpen]);
+  // ── Desktop: scroll-to-reveal sections ──────────────────────────────
+  const { isOpen: isSectionOpen, toggle: toggleSection, setRef: setSectionRef } = useScrollRevealSections(SECTION_IDS, DEFAULT_OPEN);
 
   // ── Mobile: single active tab (4 grouped tabs) ─────────────────────
   const [mobileTab, setMobileTab] = useState<MobileTabId>('overview');
@@ -278,8 +278,6 @@ export default function ClientReport({
     ? 'max-w-[1400px] mx-auto space-y-2 sm:space-y-3 md:space-y-4 lg:space-y-5 xl:space-y-6 w-full min-w-0'
     : 'space-y-2 sm:space-y-3 md:space-y-4 lg:space-y-5 xl:space-y-6 w-full min-w-0';
 
-  const isOpen = (id: SectionId) => openSections.has(id);
-
   // Render a section's content by ID (shared by mobile + desktop)
   const renderSection = (id: SectionId) => {
     switch (id) {
@@ -287,6 +285,7 @@ export default function ClientReport({
         return (
           <StartingPointSection
             scores={safeScores}
+            previousOverallScore={previousScores?.overall ?? null}
             archetype={archetype}
             overallRadarData={overallRadarData}
             previousRadarData={previousRadarData}
@@ -297,6 +296,7 @@ export default function ClientReport({
         return (
           <GapAnalysisSection
             gapAnalysisData={gapAnalysisData}
+            previousGapAnalysisData={previousGapAnalysisData}
             goals={goals}
             formData={formData}
             hideHeader
@@ -310,19 +310,17 @@ export default function ClientReport({
           />
         );
       case 'lifestyle':
-        return <LifestyleFactorsBar formData={formData} />;
+        return <LifestyleFactorsBar formData={formData} previousFormData={previousFormData} />;
       case 'movement':
-        return <MovementPostureMobility formData={formData} scores={scores} standalone={standalone} hideHeader />;
+        return <MovementPostureMobility formData={formData} scores={scores} standalone={standalone} hideHeader previousFormData={previousFormData} />;
       case 'destination':
         return <DestinationSection goals={goals} formData={formData} hideHeader />;
       case 'blueprint':
-        return <BlueprintSection blueprintPillars={blueprintPillars} hideHeader />;
+        return <BlueprintSection blueprintPillars={blueprintPillars} hideHeader previousPhase={previousBlueprintPhase} />;
       case 'timeline':
         return (
           <TimelineSection
-            orderedCats={orderedCats}
-            weeksByCategory={weeksByCategory}
-            maxWeeks={maxWeeks}
+            countdownData={countdownData}
             hideHeader
           />
         );
@@ -335,21 +333,24 @@ export default function ClientReport({
     <div className={containerClass}>
       <div className={`${contentClass} overflow-x-hidden`}>
 
-        <ReportHeader
-          clientName={clientName}
-          reportDate={reportDate}
-          standalone={standalone}
-          activeView={activeView}
-          setActiveView={setActiveView}
-        />
-
-        <ClientInfoBar formData={formData} />
+        {standalone && (
+          <>
+            <ReportHeader
+              clientName={clientName}
+              reportDate={reportDate}
+              standalone={standalone}
+              activeView={activeView}
+              setActiveView={setActiveView}
+            />
+            <ClientInfoBar formData={formData} />
+          </>
+        )}
 
         {activeView === 'coach' ? (
           <Suspense fallback={
             <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-zinc-200">
               <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-              <p className="text-sm font-black uppercase tracking-widest text-zinc-400">Loading Coach Plan...</p>
+              <p className="text-sm font-medium text-zinc-400">Loading Coach Plan...</p>
             </div>
           }>
             {plan ? (
@@ -376,7 +377,7 @@ export default function ClientReport({
                 return (
                   <>
                     <TabIcon className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
-                    <h3 className="text-xs font-bold text-zinc-900 uppercase tracking-widest">
+                    <h3 className="text-xs font-semibold text-zinc-900">
                       {label}
                     </h3>
                   </>
@@ -389,7 +390,7 @@ export default function ClientReport({
               {mobileTab === 'overview' && (
                 <>
                   {renderSection('starting-point')}
-                  <LifestyleFactorsBar formData={formData} />
+                  <LifestyleFactorsBar formData={formData} previousFormData={previousFormData} />
                 </>
               )}
               {mobileTab === 'analysis' && (
@@ -402,16 +403,14 @@ export default function ClientReport({
                 </>
               )}
               {mobileTab === 'movement' && (
-                <MovementPostureMobility formData={formData} scores={scores} standalone={standalone} hideHeader />
+                <MovementPostureMobility formData={formData} scores={scores} standalone={standalone} hideHeader previousFormData={previousFormData} />
               )}
               {mobileTab === 'plan' && (
                 <>
                   <DestinationSection goals={goals} formData={formData} hideHeader />
-                  <BlueprintSection blueprintPillars={blueprintPillars} hideHeader />
+                  <BlueprintSection blueprintPillars={blueprintPillars} hideHeader previousPhase={previousBlueprintPhase} />
                   <TimelineSection
-                    orderedCats={orderedCats}
-                    weeksByCategory={weeksByCategory}
-                    maxWeeks={maxWeeks}
+                    countdownData={countdownData}
                     hideHeader
                   />
                 </>
@@ -423,20 +422,14 @@ export default function ClientReport({
         ) : (
           /* ── Desktop: collapsible accordion ── */
           <>
-            {/* Expand / Collapse toggle */}
-            <div className="flex justify-end">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={toggleAll}
-                className="text-xs font-semibold text-zinc-400 hover:text-zinc-600"
-              >
-                {allOpen ? 'Collapse All' : 'Expand All'}
-              </Button>
-            </div>
-
             {SECTION_IDS.map(id => (
-              <CollapsibleSection key={id} id={id} open={isOpen(id)} onToggle={toggleSection}>
+              <CollapsibleSection
+                key={id}
+                id={id}
+                open={isSectionOpen(id)}
+                onToggle={toggleSection}
+                sectionRef={setSectionRef(id)}
+              >
                 {renderSection(id)}
               </CollapsibleSection>
             ))}

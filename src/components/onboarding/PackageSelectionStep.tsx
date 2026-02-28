@@ -69,13 +69,13 @@ export function PackageSelectionStep({
         <div className="flex justify-between items-end mb-8">
           <div>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-4xl font-black text-slate-900">{seats}</span>
+              <span className="text-4xl font-bold text-slate-900">{seats}</span>
               <span className="text-sm text-slate-400 font-bold">Seats</span>
             </div>
             <p className="text-xs font-bold text-slate-500 mt-1">{tierLabel} Tier</p>
           </div>
           <div className="text-right">
-            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Estimated</span>
+            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] mb-0.5">Estimated</span>
             <div className="flex items-baseline gap-0.5">
               <span className="text-2xl font-bold text-slate-900">KWD {monthlyFee.toFixed(3)}</span>
               <span className="text-xs text-slate-400">/mo</span>
@@ -96,7 +96,7 @@ export function PackageSelectionStep({
               backgroundImage: `linear-gradient(to right, #0f172a 0%, #0f172a ${((seats - 5) / 95) * 100}%, #f1f5f9 ${((seats - 5) / 95) * 100}%, #f1f5f9 100%)`
             }}
           />
-          <div className="flex justify-between text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-wide">
+          <div className="flex justify-between text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-[0.15em]">
             <span>5</span>
             <span>50</span>
             <span>100+</span>

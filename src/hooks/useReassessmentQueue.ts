@@ -80,6 +80,112 @@ export interface UseReassessmentQueueResult {
   summary: ReassessmentQueueSummary;
 }
 
+/** Time-horizon grouping for the agenda view */
+export type TimeHorizon = 'overdue' | 'this-week' | 'next-week' | '2-3-weeks' | '4-plus-weeks';
+
+/** A single flat row in the schedule agenda (one client + one pillar) */
+export interface AgendaItem {
+  id: string;
+  clientName: string;
+  pillar: ReassessmentType;
+  dueDate: Date;
+  daysFromDue: number;
+  horizon: TimeHorizon;
+  dueLabel: string;
+  coachUid?: string | null;
+}
+
+export interface AgendaGroup {
+  horizon: TimeHorizon;
+  label: string;
+  items: AgendaItem[];
+}
+
+const HORIZON_ORDER: Record<TimeHorizon, number> = {
+  'overdue': 0,
+  'this-week': 1,
+  'next-week': 2,
+  '2-3-weeks': 3,
+  '4-plus-weeks': 4,
+};
+
+const HORIZON_LABELS: Record<TimeHorizon, string> = {
+  'overdue': 'Overdue',
+  'this-week': 'This Week',
+  'next-week': 'Next Week',
+  '2-3-weeks': 'In 2-3 Weeks',
+  '4-plus-weeks': '4+ Weeks',
+};
+
+function classifyHorizon(daysFromDue: number): TimeHorizon {
+  if (daysFromDue > 0) return 'overdue';
+  const daysUntil = Math.abs(daysFromDue);
+  if (daysUntil <= 7) return 'this-week';
+  if (daysUntil <= 14) return 'next-week';
+  if (daysUntil <= 21) return '2-3-weeks';
+  return '4-plus-weeks';
+}
+
+function formatAgendaDueLabel(daysFromDue: number, dueDate: Date): string {
+  if (daysFromDue > 0) {
+    const weeks = Math.ceil(daysFromDue / 7);
+    return weeks === 1 ? 'Overdue 1 wk' : `Overdue ${weeks} wk`;
+  }
+  const daysUntil = Math.abs(daysFromDue);
+  if (daysUntil <= 1) return 'Today';
+  if (daysUntil <= 7) return 'Do next session';
+  if (daysUntil <= 14) return dueDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  const weeks = Math.ceil(daysUntil / 7);
+  return `In ${weeks} wk`;
+}
+
+/**
+ * Derive a flat agenda from the queue.
+ * Each actionable pillar becomes its own row.
+ */
+export function deriveAgenda(queue: ReassessmentItem[]): AgendaGroup[] {
+  const items: AgendaItem[] = [];
+
+  for (const client of queue) {
+    for (const ps of client.pillarSchedules) {
+      if (ps.pillar === 'full') continue;
+      items.push({
+        id: `${client.clientName}::${ps.pillar}`,
+        clientName: client.clientName,
+        pillar: ps.pillar,
+        dueDate: ps.dueDate,
+        daysFromDue: ps.daysFromDue,
+        horizon: classifyHorizon(ps.daysFromDue),
+        dueLabel: formatAgendaDueLabel(ps.daysFromDue, ps.dueDate),
+        coachUid: client.coachUid,
+      });
+    }
+  }
+
+  items.sort((a, b) => {
+    const h = HORIZON_ORDER[a.horizon] - HORIZON_ORDER[b.horizon];
+    if (h !== 0) return h;
+    return b.daysFromDue - a.daysFromDue;
+  });
+
+  const grouped = new Map<TimeHorizon, AgendaItem[]>();
+  for (const item of items) {
+    const existing = grouped.get(item.horizon) ?? [];
+    existing.push(item);
+    grouped.set(item.horizon, existing);
+  }
+
+  const result: AgendaGroup[] = [];
+  for (const horizon of ['overdue', 'this-week', 'next-week', '2-3-weeks', '4-plus-weeks'] as TimeHorizon[]) {
+    const groupItems = grouped.get(horizon);
+    if (groupItems && groupItems.length > 0) {
+      result.push({ horizon, label: HORIZON_LABELS[horizon], items: groupItems });
+    }
+  }
+
+  return result;
+}
+
 // ── Pillar types that map to actionable partial assessments ──────────
 
 const ACTIONABLE_PILLARS: readonly ReassessmentType[] = [
@@ -125,17 +231,28 @@ function extractPillarScores(assessment: CoachAssessmentSummary | null) {
 }
 
 /**
+ * Org-level default cadence intervals (optional).
+ * Injected by the dashboard so the interval chain is:
+ * client custom > org defaults > clinical baselines.
+ */
+export interface OrgCadenceDefaults {
+  intervals?: Record<string, number>;
+  activePillars?: PartialAssessmentCategory[];
+}
+
+/**
  * Get the effective interval for a pillar.
- * Coach manual override > base clinical interval.
- * We skip cadence-engine recommendations (score/goal adjusted)
- * because those create false urgency on the task list.
+ * Chain: client custom override > org default > clinical baseline.
  */
 function getInterval(
   pillar: string,
   retestSchedule?: ClientGroup['retestSchedule'],
+  orgDefaults?: OrgCadenceDefaults,
 ): number {
   const customInterval = retestSchedule?.custom?.[pillar as PartialAssessmentCategory]?.intervalDays;
   if (customInterval && customInterval > 0) return customInterval;
+  const orgInterval = orgDefaults?.intervals?.[pillar];
+  if (orgInterval && orgInterval > 0) return orgInterval;
   return BASE_CADENCE_INTERVALS[pillar as keyof typeof BASE_CADENCE_INTERVALS]
     ?? FALLBACK_INTERVALS[pillar]
     ?? FALLBACK_INTERVALS.full;
@@ -167,21 +284,34 @@ function computePillarSchedules(
   latestDate: Date | null,
   retestSchedule?: ClientGroup['retestSchedule'],
   dueDateOverrides?: Record<string, Date>,
+  pillarDates?: Record<string, Date>,
+  orgDefaults?: OrgCadenceDefaults,
+  activePillars?: PartialAssessmentCategory[],
+  trainingStartDate?: Date,
 ): PillarSchedule[] {
-  const baseDate = latestDate || new Date(0); // epoch if never assessed
+  // If the client has a training start date that's after their assessment,
+  // use it as the scheduling anchor so they don't appear overdue before starting.
+  const effectiveGlobalDate = latestDate
+    ? (trainingStartDate && trainingStartDate > latestDate ? trainingStartDate : latestDate)
+    : new Date(0);
   const now = Date.now();
   const schedules: PillarSchedule[] = [];
 
   const allPillars: ReassessmentType[] = [...ACTIONABLE_PILLARS, 'full'];
 
   for (const pillar of allPillars) {
-    // Check for a one-time date override (only valid if it's after the last assessment)
+    if (pillar !== 'full' && activePillars && !activePillars.includes(pillar as PartialAssessmentCategory)) {
+      continue;
+    }
+
+    const baseDate = (pillar !== 'full' && pillarDates?.[pillar]) || effectiveGlobalDate;
+
     const override = dueDateOverrides?.[pillar];
     const useOverride = override && override.getTime() > baseDate.getTime();
 
     const dueDate = useOverride
       ? override
-      : new Date(baseDate.getTime() + getInterval(pillar, retestSchedule) * MS_PER_DAY);
+      : new Date(baseDate.getTime() + getInterval(pillar, retestSchedule, orgDefaults) * MS_PER_DAY);
 
     const daysFromDue = Math.floor((now - dueDate.getTime()) / MS_PER_DAY);
 
@@ -273,16 +403,21 @@ function deriveClientStatus(
 
 export function useReassessmentQueue(
   clientGroups: ClientGroup[],
+  orgDefaults?: OrgCadenceDefaults,
 ): UseReassessmentQueueResult {
 
   const queue = useMemo<ReassessmentItem[]>(() => {
+    const effectiveOrgActivePillars = orgDefaults?.activePillars;
+
     return clientGroups
+      .filter(group => group.clientStatus !== 'paused' && group.clientStatus !== 'archived')
       .map(group => {
         const latestAssessment = group.assessments[0] || null;
-        const latestDate = group.latestDate;
+        const latestDate = group.lastAssessmentDate ?? group.latestDate;
         const days = daysSince(latestDate);
         const pillarScores = extractPillarScores(latestAssessment);
-        const pillarSchedules = computePillarSchedules(latestDate, group.retestSchedule, group.dueDateOverrides);
+        const clientActivePillars = group.activePillars ?? effectiveOrgActivePillars;
+        const pillarSchedules = computePillarSchedules(latestDate, group.retestSchedule, group.dueDateOverrides, group.pillarDates, orgDefaults, clientActivePillars, group.trainingStartDate);
         const { status, reason, mostUrgentPillar } = deriveClientStatus(pillarSchedules, days);
 
         // Informational gaps (score < 60%)
@@ -323,7 +458,7 @@ export function useReassessmentQueue(
         // Within same status, sort by most overdue first
         return b.daysSinceAssessment - a.daysSinceAssessment;
       });
-  }, [clientGroups]);
+  }, [clientGroups, orgDefaults]);
 
   const summary = useMemo<ReassessmentQueueSummary>(() => ({
     totalClients: clientGroups.length,

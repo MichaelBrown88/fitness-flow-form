@@ -4,12 +4,8 @@ import AppShell from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar as UICalendar } from '@/components/ui/calendar';
 import { useClientDetail } from '@/hooks/useClientDetail';
-import { scoreGrade, SCORE_COLORS } from '@/lib/scoring/scoreColor';
 import { PILLAR_DISPLAY } from '@/constants/pillars';
-import { AssessmentComparison } from '@/components/AssessmentComparison';
 import { RetestScheduleCard } from '@/components/RetestScheduleCard';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -19,7 +15,6 @@ import {
   X,
   TrendingUp,
   TrendingDown,
-  Calendar as CalendarIcon,
   Target as TargetIcon,
   FileText,
   Mail,
@@ -30,14 +25,19 @@ import {
   Heart,
   Scan,
   UserCheck,
-  Clock,
-  GitCompare,
-  History,
   ChevronDown,
   MoreVertical,
   ArrowRightLeft as ArrowRightLeftIcon,
+  PauseCircle,
+  PlayCircle,
+  Archive,
+  RotateCcw,
+  Trophy,
+  CalendarClock,
 } from 'lucide-react';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useTokenAchievements } from '@/hooks/useTokenAchievements';
+import { ACHIEVEMENT_DEFINITIONS } from '@/constants/achievements';
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,21 +51,21 @@ const CollapsibleSection = ({ title, icon, badge, children, defaultOpen = true }
 }) => {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+    <div className="rounded-2xl bg-white overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between p-6 hover:bg-slate-50/50 transition-colors"
+        className="w-full flex items-center justify-between gap-2 p-4 sm:p-6 hover:bg-slate-50/50 transition-colors"
       >
-        <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-          {icon}
-          {title}
+        <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2 min-w-0 truncate">
+          <span className="shrink-0">{icon}</span>
+          <span className="truncate">{title}</span>
         </h3>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {badge}
           <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
         </div>
       </button>
-      {open && <div className="px-6 pb-6">{children}</div>}
+      {open && <div className="px-4 sm:px-6 pb-4 sm:pb-6">{children}</div>}
     </div>
   );
 };
@@ -77,56 +77,91 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
+
 import { TransferClientDialog } from '@/components/client/TransferClientDialog';
+import { PauseClientDialog } from '@/components/client/PauseClientDialog';
+import { ArchiveClientDialog } from '@/components/client/ArchiveClientDialog';
+
+/** Inline achievements summary for the coach's client detail page */
+function ClientAchievementsSummary({ shareToken }: { shareToken: string }) {
+  const { achievements, unlockedCount, isLoading } = useTokenAchievements(shareToken);
+  
+  if (isLoading) {
+    return <p className="text-sm text-slate-400 py-4 text-center">Loading achievements...</p>;
+  }
+  
+  if (achievements.length === 0) {
+    return (
+      <div className="py-6 text-center">
+        <Trophy className="h-8 w-8 text-slate-200 mx-auto mb-2" />
+        <p className="text-sm text-slate-400">No achievements yet</p>
+        <p className="text-xs text-slate-300 mt-1">Achievements will appear after assessments are evaluated</p>
+      </div>
+    );
+  }
+
+  const unlocked = achievements.filter(a => a.unlockedAt !== null);
+  const totalDefs = ACHIEVEMENT_DEFINITIONS.length;
+  
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 text-xs text-slate-500">
+        <span className="font-semibold text-slate-700">{unlockedCount}</span> of {totalDefs} unlocked
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {unlocked.map(a => (
+          <div key={a.id} className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200/60 px-3 py-2">
+            <span className="text-base">{a.icon}</span>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-amber-900 truncate">{a.title}</p>
+              <p className="text-[10px] text-amber-600 truncate">{a.description}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      {achievements.filter(a => !a.unlockedAt).length > 0 && (
+        <p className="text-[10px] text-slate-400 pt-1">
+          {achievements.filter(a => !a.unlockedAt).length} more achievements in progress
+        </p>
+      )}
+    </div>
+  );
+}
 
 const ClientDetail = () => {
-  const { profile: authProfile } = useAuth();
+  const { profile: authProfile, orgSettings } = useAuth();
   const {
-    // URL and Auth
     clientName,
     user,
-    
-    // Loading states
     loading,
-    
-    // Data
     assessments,
     profile,
-    snapshots,
     currentAssessment,
     categoryBreakdown,
     categoryChanges,
     stats,
-    
-    // UI State
     isEditing,
     editData,
     deleteDialog,
-    selectedDate,
-    showComparison,
-    comparisonTarget,
-    isComparisonMode,
-    
-    // Setters
     setIsEditing,
     setEditData,
     setDeleteDialog,
-    setShowComparison,
-    setIsComparisonMode,
-    
-    // Handlers
-    handleDateSelection,
-    handleQuickJump,
     handleSaveProfile,
     handleNewAssessment,
     handleDeleteAssessment,
     handleTransferClient,
+    handlePauseClient,
+    handleUnpauseClient,
+    handleArchiveClient,
+    handleReactivateClient,
     navigateBack,
   } = useClientDetail();
 
   const [transferOpen, setTransferOpen] = useState(false);
-  const isMobile = useIsMobile();
+  const [pauseDialogOpen, setPauseDialogOpen] = useState(false);
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const isPaused = profile?.status === 'paused';
+  const isArchived = profile?.status === 'archived';
 
   if (!user) {
     return (
@@ -139,8 +174,7 @@ const ClientDetail = () => {
   if (loading) {
     return (
       <AppShell 
-        title={`${clientName}'s Dashboard`}
-        subtitle="Comprehensive view of client progress, history, and profile."
+        title={clientName}
       >
         <div className="py-10 text-sm text-slate-600">Loading client data…</div>
       </AppShell>
@@ -149,153 +183,117 @@ const ClientDetail = () => {
 
   return (
     <AppShell
-      title={`${clientName}'s Dashboard`}
-      subtitle="Comprehensive view of client progress, history, and profile."
+      title={clientName}
+      hideTitle
       actions={
-        isMobile ? (
-          /* ── Mobile: back + New + kebab ── */
-          <div className="flex items-center gap-1.5">
-            <Button variant="ghost" size="sm" onClick={navigateBack} className="h-8 w-8 p-0">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <Button size="sm" onClick={() => handleNewAssessment()} className="h-8 px-3 gap-1.5 text-xs font-bold bg-slate-900 text-white hover:bg-slate-800">
-              <UserPlus className="h-3.5 w-3.5" />
-              New
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52 rounded-xl">
-                <DropdownMenuItem onClick={() => setIsEditing(!isEditing)} className="py-3 text-sm font-medium">
-                  {isEditing ? <X className="mr-2 h-4 w-4" /> : <Edit2 className="mr-2 h-4 w-4" />}
-                  {isEditing ? 'Cancel Edit' : 'Edit Profile'}
-                </DropdownMenuItem>
-                {(authProfile?.role === 'org_admin' || profile?.assignedCoachUid === user?.uid) && (
-                  <DropdownMenuItem onClick={() => setTransferOpen(true)} className="py-3 text-sm font-medium">
-                    <ArrowRightLeftIcon className="mr-2 h-4 w-4" />
-                    Transfer Client
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        ) : (
-          /* ── Desktop: full button row ── */
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={navigateBack} className="h-8 w-8 p-0">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            {profile?.status && (
-              <Badge variant={profile.status === 'active' ? 'default' : 'secondary'}>
-                {profile.status}
-              </Badge>
-            )}
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setIsEditing(!isEditing)}>
-                {isEditing ? <X className="h-4 w-4 mr-2" /> : <Edit2 className="h-4 w-4 mr-2" />}
-                {isEditing ? 'Cancel' : 'Edit Profile'}
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" onClick={navigateBack} className="h-9 w-9 p-0">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-9 w-9 p-0">
+                <MoreVertical className="h-4 w-4" />
               </Button>
-              {(authProfile?.role === 'org_admin' || profile?.assignedCoachUid === user?.uid) && (
-                <Button variant="outline" onClick={() => setTransferOpen(true)}>
-                  <ArrowRightLeftIcon className="h-4 w-4 mr-2" />
-                  Transfer
-                </Button>
-              )}
-              <Button onClick={() => handleNewAssessment()} className="bg-slate-900 text-white hover:bg-slate-800">
-                <UserPlus className="h-4 w-4 mr-2" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52 rounded-xl">
+              <DropdownMenuItem onClick={() => handleNewAssessment()} className="py-3 text-sm font-medium">
+                <UserPlus className="mr-2 h-4 w-4" />
                 New Assessment
-              </Button>
-            </div>
-          </div>
-        )
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setIsEditing(!isEditing)} className="py-3 text-sm font-medium">
+                {isEditing ? <X className="mr-2 h-4 w-4" /> : <Edit2 className="mr-2 h-4 w-4" />}
+                {isEditing ? 'Cancel Edit' : 'Edit Profile'}
+              </DropdownMenuItem>
+              {(authProfile?.role === 'org_admin' || profile?.assignedCoachUid === user?.uid) && (
+                <DropdownMenuItem onClick={() => setTransferOpen(true)} className="py-3 text-sm font-medium">
+                  <ArrowRightLeftIcon className="mr-2 h-4 w-4" />
+                  Transfer Client
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem onClick={() => setPauseDialogOpen(true)} className="py-3 text-sm font-medium">
+                {isPaused ? (
+                  <><PlayCircle className="mr-2 h-4 w-4 text-emerald-500" /> Unpause Account</>
+                ) : (
+                  <><PauseCircle className="mr-2 h-4 w-4 text-amber-500" /> Pause Account</>
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setArchiveDialogOpen(true)} className="py-3 text-sm font-medium">
+                {isArchived ? (
+                  <><RotateCcw className="mr-2 h-4 w-4 text-emerald-500" /> Reactivate Client</>
+                ) : (
+                  <><Archive className="mr-2 h-4 w-4 text-amber-500" /> Archive Client</>
+                )}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       }
     >
+      {/* Custom header row: client name + Report button */}
+      <div className="flex items-center justify-between gap-3 mb-6">
+        <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-slate-900 truncate">
+          {clientName}
+        </h1>
+        {currentAssessment && assessments.length > 0 && (
+          <Button
+            size="sm"
+            className="h-8 px-3 rounded-lg bg-slate-900 text-white font-bold hover:bg-slate-800 gap-1.5 text-xs shrink-0"
+            asChild
+          >
+            <Link to={`/coach/assessments/${assessments[0].id}?clientName=${encodeURIComponent(clientName)}`}>
+              <FileText className="h-3.5 w-3.5" />
+              Report
+            </Link>
+          </Button>
+        )}
+      </div>
+
       <div className="space-y-8">
-        
-        {/* Current Live Report Section */}
+
+        {/* 1. Overview Stats */}
         <CollapsibleSection
-          title="Current Live Report"
-          icon={<Activity className="h-5 w-5 text-primary" />}
+          title="Overview"
+          icon={<TrendingUp className="h-5 w-5 text-primary" />}
         >
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-            <p className="text-sm text-slate-500">Real-time aggregate of the most recent assessment data across all pillars.</p>
-            
-            <div className="flex items-center gap-2">
-              <Button
-                variant={isComparisonMode ? 'default' : 'outline'}
-                onClick={() => setIsComparisonMode(!isComparisonMode)}
-                className={`gap-2 h-11 text-sm font-bold ${isComparisonMode ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-              >
-                <GitCompare className="h-4 w-4" />
-                Compare
-              </Button>
-
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="gap-2 h-11 border-slate-200 text-slate-600 hover:bg-slate-50">
-                    <CalendarIcon className="h-4 w-4" />
-                    {selectedDate ? selectedDate.toLocaleDateString() : 'View Past Results'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 p-0 overflow-hidden rounded-2xl" align="end">
-                  {isComparisonMode && (
-                    <div className="px-4 py-2 bg-indigo-50 border-b border-indigo-100">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">Comparison mode: select a date to compare vs. current</p>
-                    </div>
-                  )}
-                  <div className="p-2">
-                    <div className="grid grid-cols-2 gap-1 mb-2">
-                      <Button variant="ghost" size="sm" className="h-8 text-[10px] font-bold uppercase tracking-tight justify-start" onClick={() => handleQuickJump('last')}>
-                        <Clock className="h-3 w-3 mr-1.5 text-slate-400" /> Last Assessment
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-8 text-[10px] font-bold uppercase tracking-tight justify-start" onClick={() => handleQuickJump('first')}>
-                        <History className="h-3 w-3 mr-1.5 text-slate-400" /> First Assessment
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-8 text-[10px] font-bold uppercase tracking-tight justify-start" onClick={() => handleQuickJump(1)}>
-                        1 Month Ago
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-8 text-[10px] font-bold uppercase tracking-tight justify-start" onClick={() => handleQuickJump(3)}>
-                        3 Months Ago
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-8 text-[10px] font-bold uppercase tracking-tight justify-start" onClick={() => handleQuickJump(6)}>
-                        6 Months Ago
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-8 text-[10px] font-bold uppercase tracking-tight justify-start" onClick={() => handleQuickJump(12)}>
-                        1 Year Ago
-                      </Button>
-                    </div>
-                    <div className="border-t border-slate-100 pt-2">
-                      <UICalendar
-                        mode="single"
-                        selected={selectedDate}
-                        onSelect={(date) => date && handleDateSelection(date)}
-                        disabled={(date) => date > new Date() || date < new Date('2024-01-01')}
-                        initialFocus
-                      />
-                    </div>
+          <div className="grid gap-2 sm:gap-3 grid-cols-2 md:grid-cols-4">
+            <div className="rounded-xl bg-slate-50 p-4">
+              <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 mb-2">Total</div>
+              <div className="text-2xl font-bold text-slate-900">{stats.totalAssessments}</div>
+            </div>
+            <div className="rounded-xl bg-slate-50 p-4">
+              <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 mb-2">Latest</div>
+              <div className="flex items-end justify-between">
+                <div className="text-2xl font-bold text-slate-900">{stats.latestScore}</div>
+                {stats.trend !== 'neutral' && (
+                  <div className={`flex items-center mb-0.5 ${stats.trend === 'up' ? 'text-score-green' : 'text-score-red'}`}>
+                    {stats.trend === 'up' ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
                   </div>
-                </PopoverContent>
-              </Popover>
-
-              {currentAssessment && assessments.length > 0 && (
-                <Button 
-                  className="h-11 px-6 rounded-xl bg-primary text-white font-bold hover:brightness-110 shadow-md shadow-primary/10 transition-all gap-2"
-                  asChild
-                >
-                  <Link to={`/coach/assessments/${assessments[0].id}?clientName=${encodeURIComponent(clientName)}`}>
-                    <FileText className="h-4 w-4" />
-                    Open Full Report
-                  </Link>
-                </Button>
-              )}
+                )}
+              </div>
+            </div>
+            <div className="rounded-xl bg-slate-50 p-4">
+              <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 mb-2">Average</div>
+              <div className="text-2xl font-bold text-slate-900">{stats.averageScore}</div>
+            </div>
+            <div className="rounded-xl bg-slate-50 p-4">
+              <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 mb-2">Change</div>
+              <div className={`text-2xl font-bold ${
+                stats.scoreChange > 0 ? 'text-score-green-fg' : stats.scoreChange < 0 ? 'text-score-red-fg' : 'text-slate-900'
+              }`}>
+                {stats.scoreChange > 0 ? '+' : ''}{stats.scoreChange}
+              </div>
             </div>
           </div>
+        </CollapsibleSection>
 
+        {/* 2. Current Live Scores (pillar breakdown + overall) */}
+        <CollapsibleSection
+          title="Pillar Scores"
+          icon={<Activity className="h-5 w-5 text-primary" />}
+        >
           {!currentAssessment ? (
-            <div className="py-12 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+            <div className="py-12 text-center bg-slate-50 rounded-xl">
               <p className="text-sm text-slate-500 mb-6">No assessment data found for this client.</p>
               <Button onClick={() => handleNewAssessment()} className="bg-slate-900 text-white rounded-xl h-12 px-8">
                 <UserPlus className="h-4 w-4 mr-2" />
@@ -303,22 +301,24 @@ const ClientDetail = () => {
               </Button>
             </div>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-5">
+            <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
               {[
                 { id: 'lifestyle', label: 'Lifestyle Factors', color: 'text-primary', bg: 'bg-primary', icon: Activity },
                 { id: 'bodyComp', label: 'Body Composition', color: 'text-primary', bg: 'bg-primary', icon: Scan },
                 { id: 'movementQuality', label: 'Movement Quality', color: 'text-primary', bg: 'bg-primary', icon: UserCheck },
                 { id: 'strength', label: 'Functional Strength', color: 'text-primary', bg: 'bg-primary', icon: Dumbbell },
                 { id: 'cardio', label: 'Metabolic Fitness', color: 'text-primary', bg: 'bg-primary', icon: Heart },
-              ].map((cat) => (
-                <div key={cat.id} className="text-center p-5 rounded-2xl bg-slate-50/50 border border-slate-100/50 transition-all hover:bg-white hover:shadow-md">
+              ].map((cat, idx, arr) => (
+                <div key={cat.id} className={`text-center p-4 sm:p-5 rounded-xl bg-slate-50 transition-all hover:bg-slate-100 ${
+                  idx === arr.length - 1 && arr.length % 2 !== 0 ? 'col-span-2 sm:col-span-1' : ''
+                }`}>
                   <div className="flex justify-center mb-3">
                     <cat.icon className={`h-6 w-6 ${cat.color} opacity-80`} />
                   </div>
                   <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 mb-2">
                     {cat.label}
                   </div>
-                  <div className="text-3xl font-black text-slate-900 mb-1">
+                  <div className="text-3xl font-bold text-slate-900 mb-1">
                     {categoryBreakdown[cat.id] || 0}
                   </div>
                   {categoryChanges[cat.id] !== undefined && categoryChanges[cat.id] !== 0 && (
@@ -329,7 +329,7 @@ const ClientDetail = () => {
                   )}
                   {(!categoryChanges[cat.id] || categoryChanges[cat.id] === 0) && <div className="h-4 mb-2" />}
                   <div className="h-2 w-full bg-slate-200/60 rounded-full overflow-hidden">
-                    <div 
+                    <div
                       className={`h-full ${cat.bg} transition-all duration-1000`}
                       style={{ width: `${categoryBreakdown[cat.id] || 0}%` }}
                     />
@@ -340,13 +340,12 @@ const ClientDetail = () => {
           )}
         </CollapsibleSection>
 
-        {/* Quick Assessment Options */}
+        {/* 3. Quick Assessments */}
         <CollapsibleSection
           title="Quick Assessments"
           icon={<TargetIcon className="h-5 w-5 text-primary" />}
-          badge={<span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Pillar Updates</span>}
         >
-          <div className="grid gap-4 grid-cols-2 md:grid-cols-5">
+          <div className="grid gap-2 sm:gap-3 grid-cols-3 sm:grid-cols-5">
             {[
               { id: 'lifestyle', label: PILLAR_DISPLAY.lifestyle.short, icon: Activity, color: 'text-primary', bg: 'bg-brand-light' },
               { id: 'bodycomp', label: PILLAR_DISPLAY.bodyComp.short, icon: Scan, color: 'text-primary', bg: 'bg-brand-light' },
@@ -358,137 +357,42 @@ const ClientDetail = () => {
                 key={action.id}
                 variant="outline"
                 onClick={() => handleNewAssessment(action.id as 'lifestyle' | 'bodycomp' | 'posture' | 'strength' | 'fitness')}
-                className="flex flex-col items-center gap-3 h-auto py-6 rounded-2xl border-slate-100 hover:border-primary/20 hover:bg-brand-light transition-all group shadow-sm"
+                className="flex flex-col items-center gap-2 h-auto py-3 sm:py-4 rounded-xl border-slate-100 hover:border-primary/20 hover:bg-brand-light transition-all group"
               >
-                <div className={`h-12 w-12 rounded-xl ${action.bg} flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                  <action.icon className={`h-6 w-6 ${action.color}`} />
+                <div className={`h-9 w-9 sm:h-10 sm:w-10 rounded-lg ${action.bg} flex items-center justify-center group-hover:scale-105 transition-transform`}>
+                  <action.icon className={`h-4 w-4 sm:h-5 sm:w-5 ${action.color}`} />
                 </div>
-                <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">{action.label}</span>
+                <span className="text-[10px] font-bold text-slate-600 uppercase tracking-[0.15em] leading-tight text-center">{action.label}</span>
               </Button>
             ))}
           </div>
         </CollapsibleSection>
 
-        {/* Re-Test Schedule Card */}
-        {authProfile?.organizationId && (
-          <RetestScheduleCard
-            profile={profile}
-            clientName={clientName}
-            organizationId={authProfile.organizationId}
-          />
+        {/* 4. Client Achievements */}
+        {profile?.shareToken && (
+          <CollapsibleSection
+            title="Client Achievements"
+            icon={<Trophy className="h-4 w-4 text-amber-500" />}
+            defaultOpen={false}
+          >
+            <ClientAchievementsSummary shareToken={profile.shareToken} />
+          </CollapsibleSection>
         )}
-
-        {/* Stats Cards */}
-        <CollapsibleSection
-          title="Overview Stats"
-          icon={<TrendingUp className="h-5 w-5 text-primary" />}
-          defaultOpen={false}
-        >
-          <div className="grid gap-4 md:grid-cols-4">
-            <div className="rounded-xl bg-slate-50 p-5">
-              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">Total Assessments</div>
-              <div className="text-3xl font-black text-slate-900">{stats.totalAssessments}</div>
-            </div>
-            <div className="rounded-xl bg-slate-50 p-5">
-              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">Latest Score</div>
-              <div className="flex items-end justify-between">
-                <div className="text-3xl font-black text-slate-900">{stats.latestScore}</div>
-                {stats.trend !== 'neutral' && (
-                  <div className={`flex items-center gap-1 mb-1 ${stats.trend === 'up' ? 'text-score-green' : 'text-score-red'}`}>
-                    {stats.trend === 'up' ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="rounded-xl bg-slate-50 p-5">
-              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">Average Score</div>
-              <div className="text-3xl font-black text-slate-900">{stats.averageScore}</div>
-            </div>
-            <div className="rounded-xl bg-slate-50 p-5">
-              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">Score Change</div>
-              <div className={`text-3xl font-black ${
-                stats.scoreChange > 0 ? 'text-score-green-fg' : stats.scoreChange < 0 ? 'text-score-red-fg' : 'text-slate-900'
-              }`}>
-                {stats.scoreChange > 0 ? '+' : ''}{stats.scoreChange}
-              </div>
-            </div>
-          </div>
-        </CollapsibleSection>
-
-        {/* Assessment History Section */}
-        <CollapsibleSection
-          title="Assessment History"
-          icon={<Clock className="h-5 w-5 text-primary" />}
-          badge={<Badge variant="outline" className="border-slate-200 text-slate-500 font-bold bg-white uppercase tracking-widest text-[9px]">{assessments.length} assessments</Badge>}
-        >
-          <div className="divide-y divide-slate-100 -mx-6 px-6">
-            {assessments.length === 0 ? (
-              <div className="p-12 text-center text-sm text-slate-500 font-medium italic">
-                No historical records found for this client.
-              </div>
-            ) : (
-              assessments.map((assessment) => (
-                <div key={assessment.id} className="p-5 hover:bg-slate-50/80 transition-all flex items-center justify-between group">
-                  <div className="flex items-center gap-6">
-                    <div className={`h-12 w-12 rounded-xl flex items-center justify-center font-black text-sm border-2 ${
-                      SCORE_COLORS[scoreGrade(assessment.overallScore)].pill
-                    }`}>
-                      {assessment.overallScore}
-                    </div>
-                    <div>
-                      <div className="text-sm font-bold text-slate-900 mb-1">Assessment Snapshot</div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-[10px] text-slate-400 font-bold flex items-center gap-1.5 uppercase tracking-wider">
-                          <CalendarIcon className="h-3 w-3" />
-                          {assessment.createdAt?.toDate().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                        </div>
-                        {assessment.goals && assessment.goals.length > 0 && (
-                          <div className="flex items-center gap-1.5">
-                            <TargetIcon className="h-3 w-3 text-slate-300" />
-                            <div className="text-[9px] text-slate-500 font-bold uppercase tracking-widest bg-slate-100 px-2 py-0.5 rounded">
-                              {assessment.goals[0].replace('-', ' ')}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Button variant="outline" size="sm" asChild className="h-9 rounded-xl font-bold text-xs border-slate-200 hover:bg-slate-900 hover:text-white transition-all px-4 shadow-sm">
-                      <Link to={`/coach/assessments/${assessment.id}?clientName=${encodeURIComponent(clientName)}`}>View Report</Link>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setDeleteDialog({
-                        id: assessment.id,
-                        date: assessment.createdAt?.toDate().toLocaleDateString() || 'unknown date',
-                      })}
-                      className="h-9 w-9 p-0 rounded-xl text-slate-300 hover:text-rose-600 hover:bg-rose-50 opacity-0 group-hover:opacity-100 transition-all"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </CollapsibleSection>
       </div>
 
-      {/* Client Profile Dialog */}
+      {/* Client Profile & Settings Dialog */}
       <Dialog open={isEditing} onOpenChange={setIsEditing}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[540px] max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Client Profile: {clientName}</DialogTitle>
             <DialogDescription>
-              Update contact information and internal notes for this client.
+              Contact info, scheduling, and coaching notes.
             </DialogDescription>
           </DialogHeader>
-          
-          <div className="space-y-4 py-4">
+
+          <div className="space-y-4 py-4 overflow-y-auto flex-1 -mx-6 px-6">
             <div className="grid gap-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+              <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 flex items-center gap-2">
                 <UserCheck className="h-3.5 w-3.5" /> Client Name
               </label>
               <Input
@@ -500,7 +404,7 @@ const ClientDetail = () => {
             </div>
 
             <div className="grid gap-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+              <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 flex items-center gap-2">
                 <Mail className="h-3.5 w-3.5" /> Email Address
               </label>
               <Input
@@ -510,9 +414,9 @@ const ClientDetail = () => {
                 className="h-11 rounded-xl"
               />
             </div>
-            
+
             <div className="grid gap-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+              <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 flex items-center gap-2">
                 <Phone className="h-3.5 w-3.5" /> Phone Number
               </label>
               <Input
@@ -522,31 +426,57 @@ const ClientDetail = () => {
                 className="h-11 rounded-xl"
               />
             </div>
-            
-            <div className="grid gap-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
-                <Cake className="h-3.5 w-3.5" /> Date of Birth
-              </label>
-              <Input
-                type="date"
-                value={editData.dateOfBirth || ''}
-                onChange={(e) => setEditData({ ...editData, dateOfBirth: e.target.value })}
-                className="h-11 rounded-xl"
-              />
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-2">
+                <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 flex items-center gap-2">
+                  <Cake className="h-3.5 w-3.5" /> Date of Birth
+                </label>
+                <Input
+                  type="date"
+                  value={editData.dateOfBirth || ''}
+                  onChange={(e) => setEditData({ ...editData, dateOfBirth: e.target.value })}
+                  className="h-11 rounded-xl"
+                />
+              </div>
+              <div className="grid gap-2">
+                <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 flex items-center gap-2">
+                  <CalendarClock className="h-3.5 w-3.5" /> Training Start
+                </label>
+                <Input
+                  type="date"
+                  value={editData.trainingStartDate || ''}
+                  onChange={(e) => setEditData({ ...editData, trainingStartDate: e.target.value })}
+                  className="h-11 rounded-xl"
+                />
+              </div>
             </div>
-            
+
             <div className="grid gap-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Internal Coaching Notes</label>
+              <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500">Internal Coaching Notes</label>
               <Textarea
                 value={editData.notes || ''}
                 onChange={(e) => setEditData({ ...editData, notes: e.target.value })}
                 placeholder="Add medical history, training preferences, or other important details..."
-                rows={5}
+                rows={3}
                 className="rounded-xl resize-none"
               />
             </div>
+
+            {/* Assessment Schedule Settings */}
+            {authProfile?.organizationId && (
+              <div className="pt-2 border-t border-slate-100">
+                <RetestScheduleCard
+                  profile={profile}
+                  clientName={clientName}
+                  organizationId={authProfile.organizationId}
+                  orgDefaultIntervals={orgSettings?.defaultCadence?.intervals}
+                  orgDefaultActivePillars={orgSettings?.defaultCadence?.activePillars}
+                />
+              </div>
+            )}
           </div>
-          
+
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setIsEditing(false)} className="rounded-xl h-11 px-6 font-bold">
               Discard
@@ -581,37 +511,6 @@ const ClientDetail = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Comparison Dialog */}
-      <Dialog open={showComparison} onOpenChange={setShowComparison}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <GitCompare className="h-5 w-5 text-primary" />
-              Assessment Comparison
-            </DialogTitle>
-            <DialogDescription>
-              {comparisonTarget && (
-                <>Comparing {comparisonTarget.oldDate.toLocaleDateString()} vs {comparisonTarget.newDate.toLocaleDateString()}</>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          
-          {comparisonTarget && (
-            <AssessmentComparison
-              oldData={comparisonTarget.old}
-              newData={comparisonTarget.new}
-              oldDate={comparisonTarget.oldDate}
-              newDate={comparisonTarget.newDate}
-            />
-          )}
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowComparison(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
       {/* Transfer Client Dialog (Phase E) */}
       {clientName && user && authProfile?.organizationId && (
         <TransferClientDialog
@@ -623,6 +522,23 @@ const ClientDetail = () => {
           onConfirm={handleTransferClient}
         />
       )}
+
+      <PauseClientDialog
+        open={pauseDialogOpen}
+        onOpenChange={setPauseDialogOpen}
+        clientName={clientName}
+        isPaused={isPaused}
+        onPause={handlePauseClient}
+        onUnpause={handleUnpauseClient}
+      />
+      <ArchiveClientDialog
+        open={archiveDialogOpen}
+        onOpenChange={setArchiveDialogOpen}
+        clientName={clientName}
+        isArchived={isArchived}
+        onArchive={handleArchiveClient}
+        onReactivate={handleReactivateClient}
+      />
     </AppShell>
   );
 };

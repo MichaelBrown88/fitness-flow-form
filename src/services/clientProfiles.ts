@@ -29,9 +29,31 @@ export type ClientProfile = {
   gender?: string;
   notes?: string;
   tags?: string[];
-  status?: 'active' | 'inactive' | 'on-hold';
+  status?: 'active' | 'inactive' | 'paused' | 'archived';
   organizationId?: string;
+  /** Which assessment pillars are actively tracked for scheduling */
+  activePillars?: import('@/types/client').PartialAssessmentCategory[];
+  /** When the account was paused (set on pause) */
+  pausedAt?: Timestamp;
+  /** Who initiated the pause: coach UID or 'client-request' */
+  pausedBy?: string;
+  /** Optional reason for the pause */
+  pauseReason?: string;
+  /** Whether a client-requested pause has been approved by the coach */
+  pauseApproved?: boolean;
+  /** When the account was archived */
+  archivedAt?: Timestamp;
+  /** Who archived the account: coach UID */
+  archivedBy?: string;
+  /** Optional reason for archiving */
+  archiveReason?: string;
+  /** When the client actually started training — YYYY-MM-DD string (scheduling clock starts here) */
+  trainingStartDate?: string;
   assignedCoachUid?: string;
+  /** Firebase Auth UID of the client (set on first magic-link login) */
+  firebaseUid?: string;
+  /** Public report share token (UUID) for token-scoped achievements/notifications */
+  shareToken?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
   lastAssessmentDate?: Timestamp;
@@ -116,6 +138,16 @@ export interface ClientScheduleData {
   custom?: Partial<PillarCadence>;
   /** Absolute one-time due date overrides (pillar → Date) */
   dueDateOverrides?: Record<string, Date>;
+  /** Per-pillar last-completed dates for overdue calculation */
+  pillarDates?: Record<string, Date>;
+  /** Fallback: last assessment of any type (used when pillar dates are missing) */
+  lastAssessmentDate?: Date;
+  /** Client account status */
+  clientStatus?: 'active' | 'inactive' | 'paused' | 'archived';
+  /** Which pillars are actively tracked for scheduling */
+  activePillars?: import('@/types/client').PartialAssessmentCategory[];
+  /** Training start date — scheduling clock starts here instead of assessment date */
+  trainingStartDate?: Date;
 }
 
 /**
@@ -134,9 +166,13 @@ export async function listClientSchedules(
 
   for (const docSnap of snap.docs) {
     const data = docSnap.data() as ClientProfile;
-    if (!data.clientName) continue;
 
-    const entry: ClientScheduleData = {};
+    const entry: ClientScheduleData = {
+      clientStatus: data.status || 'active',
+      activePillars: data.activePillars,
+      trainingStartDate: data.trainingStartDate ? new Date(data.trainingStartDate) : undefined,
+      lastAssessmentDate: data.lastAssessmentDate?.toDate(),
+    };
 
     if (data.retestSchedule) {
       entry.recommended = data.retestSchedule.recommended;
@@ -155,10 +191,30 @@ export async function listClientSchedules(
       }
     }
 
-    // Only add if there's meaningful schedule data
-    if (entry.recommended || entry.custom || entry.dueDateOverrides) {
+    const pillarDateFields: Record<string, keyof ClientProfile> = {
+      bodycomp: 'lastInBodyDate',
+      posture: 'lastPostureDate',
+      fitness: 'lastFitnessDate',
+      strength: 'lastStrengthDate',
+      lifestyle: 'lastLifestyleDate',
+    };
+    const pillarDates: Record<string, Date> = {};
+    for (const [pillar, field] of Object.entries(pillarDateFields)) {
+      const ts = data[field];
+      if (ts && typeof (ts as Timestamp).toDate === 'function') {
+        pillarDates[pillar] = (ts as Timestamp).toDate();
+      }
+    }
+    if (Object.keys(pillarDates).length > 0) {
+      entry.pillarDates = pillarDates;
+    }
+
+    // Store under both the name-based key and slug-based key (doc ID)
+    // so lookups work even if clientName is missing from the profile
+    if (data.clientName) {
       result.set(data.clientName.toLowerCase(), entry);
     }
+    result.set(docSnap.id, entry);
   }
 
   return result;
@@ -338,6 +394,21 @@ export async function updateCustomCadence(
 
   await updateDoc(ref, {
     'retestSchedule.custom': updatedCustom,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/**
+ * Update which pillars are actively tracked for a specific client.
+ */
+export async function updateClientActivePillars(
+  clientName: string,
+  organizationId: string,
+  activePillars: import('@/types/client').PartialAssessmentCategory[],
+): Promise<void> {
+  const ref = clientProfileDoc(organizationId, clientName);
+  await updateDoc(ref, {
+    activePillars,
     updatedAt: serverTimestamp(),
   });
 }
@@ -601,4 +672,245 @@ export async function transferClient(
 
   logger.info(`[Transfer] Client "${normalized}" transferred from ${fromCoachUid} to ${toCoachUid} (${updatedCount} summaries updated)`);
   return { success: true, message: `Client transferred successfully. ${updatedCount} assessments reassigned.` };
+}
+
+// ============================================================================
+// CLIENT PAUSE / UNPAUSE
+// ============================================================================
+
+/**
+ * Pause a client's account, freezing all reassessment countdowns.
+ * Can be initiated by a coach directly or set as a client request.
+ */
+export async function pauseClient(params: {
+  organizationId: string;
+  clientSlug: string;
+  pausedBy: string; // coach UID or 'client-request'
+  reason?: string;
+  profile?: UserProfile | null;
+}): Promise<void> {
+  const { organizationId, clientSlug, pausedBy, reason, profile } = params;
+  const validOrgId = validateOrganizationId(organizationId, profile);
+  const db = getDb();
+  const clientRef = doc(db, ORGANIZATION.clients.doc(validOrgId, clientSlug));
+
+  await updateDoc(clientRef, {
+    status: 'paused',
+    pausedAt: serverTimestamp(),
+    pausedBy,
+    pauseReason: reason || null,
+    pauseApproved: pausedBy !== 'client-request', // Auto-approved if coach initiates
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/**
+ * Unpause a client's account.
+ * The coach can choose to resume remaining time or reset countdowns.
+ */
+export async function unpauseClient(params: {
+  organizationId: string;
+  clientSlug: string;
+  mode: 'resume' | 'reset';
+  profile?: UserProfile | null;
+}): Promise<void> {
+  const { organizationId, clientSlug, mode, profile } = params;
+  const validOrgId = validateOrganizationId(organizationId, profile);
+  const db = getDb();
+  const clientRef = doc(db, ORGANIZATION.clients.doc(validOrgId, clientSlug));
+
+  const snap = await getDoc(clientRef);
+  if (!snap.exists()) throw new Error('Client not found');
+
+  const data = snap.data() as ClientProfile;
+  const pausedAt = data.pausedAt?.toDate();
+  const now = new Date();
+
+  // Build the update payload
+  const updates: Record<string, unknown> = {
+    status: 'active',
+    pausedAt: null,
+    pausedBy: null,
+    pauseReason: null,
+    pauseApproved: null,
+    updatedAt: serverTimestamp(),
+  };
+
+  if (mode === 'resume' && pausedAt) {
+    // Shift all pillar dates forward by the paused duration
+    const pausedMs = now.getTime() - pausedAt.getTime();
+    const dateFields = [
+      'lastAssessmentDate',
+      'lastInBodyDate',
+      'lastPostureDate',
+      'lastFitnessDate',
+      'lastStrengthDate',
+      'lastLifestyleDate',
+    ] as const;
+
+    for (const field of dateFields) {
+      const ts = data[field];
+      if (ts) {
+        const shifted = new Date(ts.toDate().getTime() + pausedMs);
+        updates[field] = Timestamp.fromDate(shifted);
+      }
+    }
+
+    // Also shift due date overrides
+    if (data.dueDateOverrides) {
+      const shiftedOverrides: Record<string, Timestamp> = {};
+      for (const [key, ts] of Object.entries(data.dueDateOverrides)) {
+        shiftedOverrides[key] = Timestamp.fromDate(new Date(ts.toDate().getTime() + pausedMs));
+      }
+      updates.dueDateOverrides = shiftedOverrides;
+    }
+  } else if (mode === 'reset') {
+    // Reset all pillar dates to now (fresh countdown cycle)
+    const nowTs = Timestamp.fromDate(now);
+    updates.lastAssessmentDate = nowTs;
+    updates.lastInBodyDate = nowTs;
+    updates.lastPostureDate = nowTs;
+    updates.lastFitnessDate = nowTs;
+    updates.lastStrengthDate = nowTs;
+    updates.lastLifestyleDate = nowTs;
+    updates.dueDateOverrides = null;
+  }
+
+  await updateDoc(clientRef, updates);
+}
+
+/**
+ * Approve or deny a client-requested pause.
+ */
+export async function handlePauseRequest(params: {
+  organizationId: string;
+  clientSlug: string;
+  approved: boolean;
+  profile?: UserProfile | null;
+}): Promise<void> {
+  const { organizationId, clientSlug, approved, profile } = params;
+  const validOrgId = validateOrganizationId(organizationId, profile);
+  const db = getDb();
+  const clientRef = doc(db, ORGANIZATION.clients.doc(validOrgId, clientSlug));
+
+  if (approved) {
+    await updateDoc(clientRef, {
+      pauseApproved: true,
+      updatedAt: serverTimestamp(),
+    });
+  } else {
+    // Denied: revert to active
+    await updateDoc(clientRef, {
+      status: 'active',
+      pausedAt: null,
+      pausedBy: null,
+      pauseReason: null,
+      pauseApproved: null,
+      updatedAt: serverTimestamp(),
+    });
+  }
+}
+
+// ============================================================================
+// CLIENT ARCHIVE / REACTIVATE
+// ============================================================================
+
+/**
+ * Archive a client who has left. Removes them from active dashboards
+ * but preserves all data for potential reactivation.
+ */
+export async function archiveClient(params: {
+  organizationId: string;
+  clientSlug: string;
+  archivedBy: string;
+  reason?: string;
+  profile?: UserProfile | null;
+}): Promise<void> {
+  const { organizationId, clientSlug, archivedBy, reason, profile } = params;
+  const validOrgId = validateOrganizationId(organizationId, profile);
+  const db = getDb();
+  const clientRef = doc(db, ORGANIZATION.clients.doc(validOrgId, clientSlug));
+
+  await updateDoc(clientRef, {
+    status: 'archived',
+    archivedAt: serverTimestamp(),
+    archivedBy,
+    archiveReason: reason || null,
+    pausedAt: null,
+    pausedBy: null,
+    pauseReason: null,
+    pauseApproved: null,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/**
+ * Reactivate an archived client. Same options as unpause:
+ * - resume: shift all pillar dates forward by the archived duration
+ * - reset: start fresh from today
+ */
+export async function reactivateClient(params: {
+  organizationId: string;
+  clientSlug: string;
+  mode: 'resume' | 'reset';
+  profile?: UserProfile | null;
+}): Promise<void> {
+  const { organizationId, clientSlug, mode, profile } = params;
+  const validOrgId = validateOrganizationId(organizationId, profile);
+  const db = getDb();
+  const clientRef = doc(db, ORGANIZATION.clients.doc(validOrgId, clientSlug));
+
+  const snap = await getDoc(clientRef);
+  if (!snap.exists()) throw new Error('Client not found');
+
+  const data = snap.data() as ClientProfile;
+  const archivedAt = data.archivedAt?.toDate();
+  const now = new Date();
+
+  const updates: Record<string, unknown> = {
+    status: 'active',
+    archivedAt: null,
+    archivedBy: null,
+    archiveReason: null,
+    updatedAt: serverTimestamp(),
+  };
+
+  if (mode === 'resume' && archivedAt) {
+    const archivedMs = now.getTime() - archivedAt.getTime();
+    const dateFields = [
+      'lastAssessmentDate',
+      'lastInBodyDate',
+      'lastPostureDate',
+      'lastFitnessDate',
+      'lastStrengthDate',
+      'lastLifestyleDate',
+    ] as const;
+
+    for (const field of dateFields) {
+      const ts = data[field];
+      if (ts) {
+        const shifted = new Date(ts.toDate().getTime() + archivedMs);
+        updates[field] = Timestamp.fromDate(shifted);
+      }
+    }
+
+    if (data.dueDateOverrides) {
+      const shiftedOverrides: Record<string, Timestamp> = {};
+      for (const [key, ts] of Object.entries(data.dueDateOverrides)) {
+        shiftedOverrides[key] = Timestamp.fromDate(new Date(ts.toDate().getTime() + archivedMs));
+      }
+      updates.dueDateOverrides = shiftedOverrides;
+    }
+  } else if (mode === 'reset') {
+    const nowTs = Timestamp.fromDate(now);
+    updates.lastAssessmentDate = nowTs;
+    updates.lastInBodyDate = nowTs;
+    updates.lastPostureDate = nowTs;
+    updates.lastFitnessDate = nowTs;
+    updates.lastStrengthDate = nowTs;
+    updates.lastLifestyleDate = nowTs;
+    updates.dueDateOverrides = null;
+  }
+
+  await updateDoc(clientRef, updates);
 }

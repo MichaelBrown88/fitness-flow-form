@@ -1,23 +1,26 @@
 import { Smartphone, ScanLine, Check } from 'lucide-react';
-
-const GlassCard: React.FC<{ children?: React.ReactNode; className?: string }> = ({ children, className = "" }) => (
-  <div className={`backdrop-blur-2xl bg-white/60 border border-white/50 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:bg-white/80 transition-all duration-500 ${className}`}>
-    {children}
-  </div>
-);
+import GlassCard from '@/components/ui/GlassCard';
+import SectionHeader from '@/components/landing/SectionHeader';
+import { useScrollReveal } from '@/hooks/useScrollReveal';
 
 export function ScannerShowcase() {
+  const headerRef = useScrollReveal({ staggerDelay: 150, staggerIndex: 0 });
+  const card1Ref = useScrollReveal({ staggerDelay: 150, staggerIndex: 1 });
+  const card2Ref = useScrollReveal({ staggerDelay: 150, staggerIndex: 2 });
+
   return (
     <section className="py-24 px-6 bg-white/50 border-y border-white/50">
       <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-5xl font-bold mb-4 text-slate-900">Intelligent Capture</h2>
-          <p className="text-slate-500 text-lg">Turn photos into data points instantly. No manual typing needed.</p>
+        <div ref={headerRef}>
+          <SectionHeader
+            title="Intelligent Capture"
+            subtitle="Turn photos into data points instantly. No manual typing needed."
+          />
         </div>
 
         <div className="grid md:grid-cols-2 gap-8">
           {/* Posture Scanner */}
-          <GlassCard className="p-0 overflow-hidden bg-gradient-to-b from-slate-900 to-slate-800 border-slate-700 text-white group">
+          <GlassCard ref={card1Ref} className="p-0 overflow-hidden bg-gradient-to-b from-slate-900 to-slate-800 border-slate-700 text-white group">
             <div className="p-8">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
@@ -48,7 +51,7 @@ export function ScannerShowcase() {
                   </div>
                   {/* UI Overlay */}
                   <div className="absolute top-4 left-0 right-0 flex justify-center">
-                    <div className="px-3 py-1 bg-black/60 backdrop-blur-md rounded-full text-[8px] font-bold text-white uppercase tracking-widest border border-white/10">
+                    <div className="px-3 py-1 bg-black/60 backdrop-blur-md rounded-full text-[10px] font-bold text-white uppercase tracking-[0.15em] border border-white/10">
                       Right Side View
                     </div>
                   </div>
@@ -57,7 +60,7 @@ export function ScannerShowcase() {
           </GlassCard>
 
           {/* Body Comp Scanner */}
-          <GlassCard className="p-0 overflow-hidden bg-white border-white/60 group">
+          <GlassCard ref={card2Ref} className="p-0 overflow-hidden bg-white border-white/60 group">
              <div className="p-8">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
@@ -72,7 +75,7 @@ export function ScannerShowcase() {
 
             <div className="relative h-64 bg-slate-50 border-t border-slate-100 flex items-center justify-center overflow-hidden">
                 {/* Document Mockup */}
-                <div className="w-48 h-60 bg-white shadow-xl border border-slate-200 rounded-lg p-4 relative transform rotate-[-5deg] group-hover:rotate-0 transition-transform duration-500">
+                <div className="w-48 h-60 bg-white shadow-xl border border-slate-200 rounded-lg p-4 relative transform rotate-[-5deg] group-hover:rotate-0 transition-transform duration-300">
                    <div className="h-2 w-20 bg-slate-300 rounded mb-4"></div>
                    <div className="space-y-2">
                       <div className="h-1.5 w-full bg-slate-100 rounded"></div>
@@ -92,7 +95,7 @@ export function ScannerShowcase() {
                 </div>
 
                 {/* Extracted Data Bubble */}
-                <div className="absolute bottom-6 right-8 bg-white p-3 rounded-xl shadow-lg border border-slate-100 flex items-center gap-3 animate-bounce">
+                <div className="absolute bottom-6 right-8 bg-white p-3 rounded-xl shadow-lg border border-slate-100 flex items-center gap-3 animate-fade-in-up">
                    <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600">
                       <Check size={16} strokeWidth={3} />
                    </div>

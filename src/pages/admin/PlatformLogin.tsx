@@ -227,7 +227,7 @@ const PlatformLogin = () => {
             <Shield className="w-8 h-8 text-indigo-400" />
           </div>
           <h1 className="text-xl font-semibold text-white">Platform Administration</h1>
-          <p className="text-sm text-slate-400 mt-1">FitnessFlow Internal Access</p>
+          <p className="text-sm text-slate-400 mt-1">One Assess Internal Access</p>
         </div>
 
         {/* Card */}
@@ -246,7 +246,7 @@ const PlatformLogin = () => {
                     autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="admin@fitnessflow.app"
+                    placeholder="admin@one-assess.com"
                     className="pl-10 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
                     required
                   />
@@ -417,7 +417,7 @@ const PlatformLogin = () => {
             className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors"
           >
             <ArrowLeft className="w-3 h-3" />
-            Back to FitnessFlow
+            Back to One Assess
           </Link>
         </div>
       </div>

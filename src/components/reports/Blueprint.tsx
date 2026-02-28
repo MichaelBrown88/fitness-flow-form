@@ -66,7 +66,7 @@ export function Blueprint({ scores, formData, plan }: BlueprintProps) {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold text-slate-700 uppercase tracking-wide">The Blueprint</h2>
+        <h2 className="text-lg font-semibold text-slate-700">The Blueprint</h2>
         <p className="text-xs text-slate-600 mt-1">3 Strategic Pillars to bridge the gap.</p>
       </div>
       
@@ -87,7 +87,7 @@ export function Blueprint({ scores, formData, plan }: BlueprintProps) {
               
               <div className="p-4 space-y-4">
                 <div>
-                  <p className={`text-xs font-bold uppercase tracking-wider ${colors.playIcon} mb-2`}>
+                  <p className={`text-[10px] font-black uppercase tracking-[0.15em] ${colors.playIcon} mb-2`}>
                     {pillar.focus}
                   </p>
                   <p className="text-sm text-slate-700 leading-relaxed">
@@ -98,7 +98,7 @@ export function Blueprint({ scores, formData, plan }: BlueprintProps) {
                 <div className="border-t border-slate-200 pt-4">
                   <div className="flex items-center gap-2 mb-2">
                     <span className={`${colors.playIcon} text-sm`}>▶</span>
-                    <span className="text-xs font-bold uppercase tracking-wide text-slate-600">
+                    <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-600">
                       {pillar.sampleProtocol.title}
                     </span>
                   </div>

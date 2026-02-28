@@ -1,0 +1,198 @@
+import type { AchievementDefinition } from '@/types/achievements';
+
+/** All possible achievements a client can earn */
+export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
+  // ── Streaks (assessment consistency) ──
+  {
+    id: 'streak_first_steps',
+    type: 'streak',
+    category: 'assessment',
+    title: 'First Steps',
+    description: 'Complete your first assessment',
+    icon: 'Footprints',
+    threshold: 1,
+  },
+  {
+    id: 'streak_consistent',
+    type: 'streak',
+    category: 'assessment',
+    title: 'Consistent',
+    description: '2 consecutive on-time reassessments',
+    icon: 'Repeat',
+    threshold: 2,
+  },
+  {
+    id: 'streak_committed',
+    type: 'streak',
+    category: 'assessment',
+    title: 'Committed',
+    description: '4 consecutive on-time reassessments',
+    icon: 'CalendarCheck',
+    threshold: 4,
+  },
+  {
+    id: 'streak_dedicated',
+    type: 'streak',
+    category: 'assessment',
+    title: 'Dedicated',
+    description: '8 consecutive on-time reassessments',
+    icon: 'Crown',
+    threshold: 8,
+  },
+
+  // ── Milestones (score-based) ──
+  {
+    id: 'milestone_60',
+    type: 'milestone',
+    category: 'progress',
+    title: 'Breaking 60',
+    description: 'Overall score reaches 60',
+    icon: 'TrendingUp',
+    threshold: 60,
+  },
+  {
+    id: 'milestone_70',
+    type: 'milestone',
+    category: 'progress',
+    title: 'Breaking 70',
+    description: 'Overall score reaches 70',
+    icon: 'TrendingUp',
+    threshold: 70,
+  },
+  {
+    id: 'milestone_80',
+    type: 'milestone',
+    category: 'progress',
+    title: 'Breaking 80',
+    description: 'Overall score reaches 80',
+    icon: 'Zap',
+    threshold: 80,
+  },
+  {
+    id: 'milestone_90',
+    type: 'milestone',
+    category: 'progress',
+    title: 'Breaking 90',
+    description: 'Overall score reaches 90',
+    icon: 'Star',
+    threshold: 90,
+  },
+
+  // ── Trophies (special achievements) ──
+  {
+    id: 'trophy_first_assessment',
+    type: 'trophy',
+    category: 'assessment',
+    title: 'First Assessment',
+    description: 'Complete your very first assessment',
+    icon: 'Award',
+    threshold: 1,
+  },
+  {
+    id: 'trophy_all_improved',
+    type: 'trophy',
+    category: 'progress',
+    title: 'All Pillars Improved',
+    description: 'Every pillar score increased from previous assessment',
+    icon: 'ArrowUpCircle',
+    threshold: 5,
+  },
+  {
+    id: 'trophy_biggest_leap',
+    type: 'trophy',
+    category: 'progress',
+    title: 'Biggest Leap',
+    description: 'Single-assessment improvement of 10+ points overall',
+    icon: 'Rocket',
+    threshold: 10,
+  },
+  {
+    id: 'trophy_goal_crusher',
+    type: 'trophy',
+    category: 'goal',
+    title: 'Goal Crusher',
+    description: 'A goal metric reaches its target range',
+    icon: 'Target',
+    threshold: 1,
+  },
+  {
+    id: 'trophy_full_house',
+    type: 'trophy',
+    category: 'progress',
+    title: 'Full House',
+    description: 'All 5 pillar scores above 70',
+    icon: 'Trophy',
+    threshold: 5,
+  },
+
+  // ── Pillar-specific achievements ──
+  {
+    id: 'pillar_bodyComp_80',
+    type: 'trophy',
+    category: 'pillar',
+    title: 'Body Comp Beast',
+    description: 'Body Composition score reaches 80',
+    icon: 'Scale',
+    threshold: 80,
+  },
+  {
+    id: 'pillar_strength_80',
+    type: 'trophy',
+    category: 'pillar',
+    title: 'Strength Unlocked',
+    description: 'Strength score reaches 80',
+    icon: 'Dumbbell',
+    threshold: 80,
+  },
+  {
+    id: 'pillar_cardio_80',
+    type: 'trophy',
+    category: 'pillar',
+    title: 'Cardio Machine',
+    description: 'Cardio score reaches 80',
+    icon: 'Heart',
+    threshold: 80,
+  },
+  {
+    id: 'pillar_movementQuality_80',
+    type: 'trophy',
+    category: 'pillar',
+    title: 'Move Like Water',
+    description: 'Movement Quality score reaches 80',
+    icon: 'Activity',
+    threshold: 80,
+  },
+  {
+    id: 'pillar_lifestyle_80',
+    type: 'trophy',
+    category: 'pillar',
+    title: 'Life in Balance',
+    description: 'Lifestyle score reaches 80',
+    icon: 'Leaf',
+    threshold: 80,
+  },
+  {
+    id: 'pillar_weakest_link',
+    type: 'trophy',
+    category: 'pillar',
+    title: 'Your Next Frontier',
+    description: 'Everyone has one -- this pillar has the most room to grow. Time to flip the script.',
+    icon: 'Compass',
+    threshold: 2, // Requires at least 2 assessments
+  },
+  {
+    id: 'pillar_biggest_gain',
+    type: 'trophy',
+    category: 'pillar',
+    title: 'Pillar Power-Up',
+    description: 'A single pillar improves by 15+ points between assessments',
+    icon: 'Flame',
+    threshold: 15,
+  },
+];
+
+/** Map of achievement IDs for quick lookup */
+export const ACHIEVEMENT_MAP = Object.fromEntries(
+  ACHIEVEMENT_DEFINITIONS.map((def) => [def.id, def]),
+) as Record<string, AchievementDefinition>;
+

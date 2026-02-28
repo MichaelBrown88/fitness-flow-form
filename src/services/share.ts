@@ -40,7 +40,7 @@ export async function requestShareArtifacts(params: {
   const shareUrl = `${CONFIG.APP.HOST}/r/${shareToken}`;
 
   const clientName = formData.fullName || 'your client';
-  const whatsappText = `Here is ${clientName}'s FitnessFlow assessment report:\n${shareUrl}`;
+  const whatsappText = `Here is ${clientName}'s One Assess assessment report:\n${shareUrl}`;
 
   return {
     shareUrl,

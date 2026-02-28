@@ -26,7 +26,7 @@ export default function RoadmapTimeline({ phases }: { phases: RoadmapPhase[] }) 
                     title={`Expected improvement ~${p.expectedDelta}%`}
                   />
                 </div>
-                <div className="mt-2 text-[11px] text-slate-600 line-clamp-2">{p.rationale}</div>
+                <div className="mt-2 text-xs text-slate-600 line-clamp-2">{p.rationale}</div>
               </div>
             );
           })}

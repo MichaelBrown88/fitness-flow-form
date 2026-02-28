@@ -3,10 +3,8 @@ import type { CoachPlan, BodyCompInterpretation } from '@/lib/recommendations';
 import type { FormData } from '@/contexts/FormContext';
 import type { ScoreSummary } from '@/lib/scoring';
 import { CoachReportHeader } from './CoachReportHeader';
-import { CoachReportSessionScript } from './CoachReportSessionScript';
 import { CoachReportInternalNotes } from './CoachReportInternalNotes';
 import { CoachReportExerciseGuidance } from './CoachReportExerciseGuidance';
-import { CoachReportLegacyStrategies } from './CoachReportLegacyStrategies';
 import { CoachReportPostureAnalysis } from './CoachReportPostureAnalysis';
 import { CoachReportBodyComp } from './CoachReportBodyComp';
 
@@ -47,19 +45,15 @@ export default function CoachReport({
 
   return (
     <div className="space-y-10">
-      <CoachReportHeader clientName={clientName} goals={goals} scores={scores} />
-
-      <CoachReportSessionScript clientScript={plan.clientScript} />
+      <CoachReportHeader clientName={clientName} goals={goals} scores={scores} formData={formData} />
 
       <CoachReportInternalNotes plan={plan} />
 
       <CoachReportExerciseGuidance plan={plan} />
 
-      <CoachReportLegacyStrategies plan={plan} />
-
       {formData && <CoachReportPostureAnalysis formData={formData} />}
 
-      <CoachReportBodyComp bodyComp={bodyComp} segmentalGuidance={plan.segmentalGuidance} />
+      <CoachReportBodyComp bodyComp={bodyComp} segmentalGuidance={plan.segmentalGuidance} formData={formData} />
     </div>
   );
 }

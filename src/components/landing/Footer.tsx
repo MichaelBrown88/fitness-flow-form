@@ -29,13 +29,13 @@ export function Footer() {
           <div className="md:col-span-1">
             <Link to="/" className="flex items-center gap-2 mb-4">
               <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
-                FF
+                OA
               </div>
-              <span className="text-lg font-bold tracking-tight text-slate-900">FitnessFlow</span>
+              <span className="text-lg font-bold tracking-tight text-slate-900">One Assess</span>
             </Link>
             <p className="text-slate-400 text-sm leading-relaxed">
-              Evidence-based fitness assessments powered by our proprietary Clinical Logic Engine. 
-              Deliver exceptional results with confidence.
+              The all-in-one fitness assessment platform. 
+              Less admin, more coaching, better results.
             </p>
           </div>
 
@@ -91,7 +91,7 @@ export function Footer() {
             
             {/* Compliance Badges */}
             <div className="mt-6 pt-6 border-t border-slate-100">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Compliance</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-3">Compliance</p>
               <div className="flex flex-col gap-3">
                 {/* HIPAA Badge */}
                 <div className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-lg border border-slate-200">
@@ -112,7 +112,7 @@ export function Footer() {
         {/* Bottom bar */}
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center pt-8 border-t border-slate-100">
           <div className="flex items-center gap-4">
-            <p className="text-slate-400 text-sm font-medium">© {currentYear} FitnessFlow. All rights reserved.</p>
+            <p className="text-slate-400 text-sm font-medium">© {currentYear} One Assess. All rights reserved.</p>
             {/* Subtle platform admin link - barely noticeable */}
             <Link 
               to="/admin/login" 

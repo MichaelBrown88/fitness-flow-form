@@ -186,7 +186,7 @@ export function ClientReportGoals({
                   <div className="rounded-lg border border-primary/20 bg-brand-light p-5 shadow-sm">
                     <p className="text-sm text-slate-900 mb-3">{explanation}</p>
                     <div className="space-y-2">
-                      <p className="text-xs font-semibold text-primary uppercase tracking-wide">What this entails:</p>
+                      <p className="text-[10px] font-black text-primary uppercase tracking-[0.15em]">What this entails:</p>
                       <ul className="list-disc pl-5 text-sm text-slate-900 space-y-1">
                         {whatItEntails.map((item, j) => (
                           <li key={j}>{item}</li>
@@ -240,7 +240,7 @@ export function ClientReportGoals({
                   </div>
                   <p className="text-sm text-slate-900 mb-3">{explanation}</p>
                   <div className="space-y-2">
-                    <p className="text-xs font-semibold text-primary uppercase tracking-wide">What this entails:</p>
+                    <p className="text-[10px] font-black text-primary uppercase tracking-[0.15em]">What this entails:</p>
                     <ul className="list-disc pl-5 text-sm text-slate-900 space-y-1">
                       {whatItEntails.map((item, j) => (
                         <li key={j}>{item}</li>

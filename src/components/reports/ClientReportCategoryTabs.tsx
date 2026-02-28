@@ -86,7 +86,7 @@ export function ClientReportCategoryTabs({
                 {/* Radar chart & Posture Viewer */}
                 <div className="space-y-6">
                   <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-                    <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-6 text-center">
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 mb-6 text-center">
                       Functional Mobility Breakdown
                     </h4>
                     <div className="flex justify-center">
@@ -100,7 +100,7 @@ export function ClientReportCategoryTabs({
 
                   {cat.id === 'movementQuality' && formData?.postureAiResults && (
                     <div className="space-y-4">
-                      <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2 px-1">
+                      <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 mb-2 px-1">
                         Posture scan results
                       </h4>
                       <PostureAnalysisViewer

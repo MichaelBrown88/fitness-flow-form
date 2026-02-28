@@ -1,203 +1,114 @@
 /**
- * CoachReport Posture Analysis Component
- * Displays comprehensive AI posture analysis results
+ * CoachReport Posture Analysis — "Movement & Posture Red Flags"
+ * Shows only posture deviations with coaching-language recommendations.
  */
 
-import React from 'react';
-import { Activity } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { AlertTriangle } from 'lucide-react';
 import { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
 import type { FormData } from '@/contexts/FormContext';
 
-interface CoachReportPostureAnalysisProps {
-  formData: FormData;
+const VIEW_LABELS: Record<string, string> = { front: 'Front view', back: 'Back view', 'side-left': 'Left side', 'side-right': 'Right side' };
+const NORMAL_STATUSES = new Set(['Neutral', 'Normal', 'Centered', 'Straight', 'Good', 'Optimal']);
+const BODY_META: Record<string, { label: string; note: string }> = {
+  head_alignment: { label: 'Head Tilt', note: 'Consider including neck mobility and chin tucks in warm-up.' },
+  lateral_head_position: { label: 'Lateral Head Position', note: 'Consider cervical mobility drills before training.' },
+  head_updown: { label: 'Head Up/Down', note: 'Consider gentle neck stretches and awareness cues.' },
+  forward_head: { label: 'Forward Head Posture', note: 'Consider including chin tucks and upper-back mobility in warm-up.' },
+  shoulder_alignment: { label: 'Shoulder Alignment', note: 'Consider including shoulder mobility (wall angels, band work) in warm-up.' },
+  kyphosis: { label: 'Thoracic Kyphosis', note: 'Consider thoracic extensions and foam rolling in warm-up.' },
+  lordosis: { label: 'Lumbar Lordosis', note: 'Consider hip flexor stretches and core activation in warm-up.' },
+  pelvic_tilt: { label: 'Pelvic Tilt', note: 'Consider hip mobility and glute activation in warm-up.' },
+  hip_alignment: { label: 'Hip Alignment', note: 'Consider single-leg stability and hip mobility in warm-up.' },
+  hip_shift: { label: 'Hip Shift', note: 'Consider glute activation and unilateral drills in warm-up.' },
+  knee_alignment: { label: 'Knee Alignment', note: 'Consider hip and ankle mobility plus knee-over-toe drills.' },
+  knee_position: { label: 'Knee Position', note: 'Consider quad/hamstring mobility and landing mechanics focus.' },
+  spinal_curvature: { label: 'Spinal Curvature', note: 'Consider unilateral loading and rotational mobility in warm-up.' },
+  left_leg_alignment: { label: 'Left Leg Alignment', note: 'Consider single-leg balance and mobility work.' },
+  right_leg_alignment: { label: 'Right Leg Alignment', note: 'Consider single-leg balance and mobility work.' },
+};
+
+const ITEM_KEYS = ['head_alignment', 'lateral_head_position', 'head_updown', 'forward_head', 'shoulder_alignment', 'kyphosis', 'lordosis', 'pelvic_tilt', 'hip_alignment', 'hip_shift', 'knee_alignment', 'knee_position', 'spinal_curvature', 'left_leg_alignment', 'right_leg_alignment'] as const;
+
+function isDeviation(s: string | undefined) { return s && !NORMAL_STATUSES.has(s); }
+function badgeClass(s: string): string {
+  const l = s.toLowerCase();
+  if (l.includes('severe') || l.includes('significant')) return 'bg-red-100 text-red-800';
+  if (l.includes('moderate')) return 'bg-amber-100 text-amber-800';
+  if (l.includes('mild')) return 'bg-yellow-100 text-yellow-800';
+  return 'bg-slate-100 text-slate-700';
 }
 
-export function CoachReportPostureAnalysis({ formData }: CoachReportPostureAnalysisProps) {
+interface Deviation { id: string; bodyKey: string; bodyArea: string; view: string; status: string; description: string; }
+
+function collectDeviations(results: Record<string, PostureAnalysisResult>): Deviation[] {
+  const items: Deviation[] = [];
+  for (const [view, analysis] of Object.entries(results)) {
+    if (!analysis) continue;
+    for (const key of ITEM_KEYS) {
+      const obj = analysis[key as keyof PostureAnalysisResult] as { status?: string; description?: string } | undefined;
+      if (!obj?.status || !obj.description || !isDeviation(obj.status)) continue;
+      const meta = BODY_META[key] || { label: key, note: 'Consider addressing in warm-up.' };
+      items.push({ id: `${view}-${key}`, bodyKey: key, bodyArea: meta.label, view: VIEW_LABELS[view] || view, status: obj.status, description: obj.description });
+    }
+  }
+  return items;
+}
+
+export function CoachReportPostureAnalysis({ formData }: { formData: FormData }) {
+  const deviations = useMemo(() => formData?.postureAiResults ? collectDeviations(formData.postureAiResults) : [], [formData?.postureAiResults]);
+  const grouped = useMemo(() => {
+    const m = new Map<string, Deviation[]>();
+    for (const d of deviations) { const list = m.get(d.bodyArea) ?? []; list.push(d); m.set(d.bodyArea, list); }
+    return m;
+  }, [deviations]);
+  const images = useMemo(() => {
+    const urls: { view: string; url: string }[] = [];
+    for (const v of ['front', 'back', 'side-left', 'side-right'] as const) {
+      const url = (formData?.postureImagesStorage || formData?.postureImages || {})[v];
+      if (url && formData?.postureAiResults?.[v]) urls.push({ view: v, url });
+    }
+    return urls;
+  }, [formData]);
+
   if (!formData?.postureAiResults) return null;
 
   return (
-    <section className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="bg-primary p-2 rounded-lg">
-          <Activity className="h-5 w-5 text-white" />
-        </div>
-        <h3 className="text-xl font-bold text-slate-900">AI Posture Analysis</h3>
+    <section className="space-y-4">
+      <div className="flex items-center gap-2">
+        <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+        <h3 className="text-lg font-bold text-slate-900">Movement & Posture Red Flags</h3>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {(['front', 'back', 'side-left', 'side-right'] as const)
-          .filter((view) => formData.postureAiResults?.[view])
-          .map((view) => {
-            const analysis = formData.postureAiResults![view] as PostureAnalysisResult;
-            const imageUrl = formData.postureImages?.[view];
-            return (
-              <div key={view} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black uppercase tracking-widest text-primary">
-                    {view.toUpperCase()} VIEW
-                  </span>
-                </div>
-
-                {(imageUrl || formData.postureImagesStorage?.[view]) && (
-                  <div className="relative aspect-[3/4] rounded-xl overflow-hidden border-2 border-slate-200 bg-slate-50">
-                    <img
-                      src={formData.postureImagesStorage?.[view] || imageUrl}
-                      alt={view}
-                      className="w-full h-full object-cover"
-                      title="Reference lines: Red vertical (midline/plumb), Red horizontal (shoulders/hips)"
-                    />
-                    <div className="absolute bottom-2 left-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
-                      Reference lines: Vertical midline/plumb | Horizontal shoulder & hip lines
-                    </div>
+      {deviations.length === 0 ? (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 text-sm">No significant posture deviations detected.</div>
+      ) : (
+        <div className="space-y-4">
+          {Array.from(grouped.entries()).map(([bodyArea, list]) => (
+            <div key={bodyArea} className="rounded-xl border border-slate-200 bg-white p-4">
+              <p className="text-sm font-semibold text-slate-800 mb-2">{bodyArea}</p>
+              {list.map((d) => (
+                <div key={d.id} className="mb-3 last:mb-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <span className="text-xs text-slate-500">{d.view}</span>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded ${badgeClass(d.status)}`}>{d.status}</span>
                   </div>
-                )}
-
-                <div className="space-y-3 pt-2 border-t border-slate-100">
-                  {/* Unified Top-to-Bottom Order */}
-                  {analysis.head_alignment && (
-                    <div className="space-y-1">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold text-slate-700">Head Tilt</span>
-                        <span className="text-xs font-black text-slate-900">
-                          {analysis.head_alignment.status}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-600 leading-tight">
-                        {analysis.head_alignment.description}
-                      </p>
-                    </div>
-                  )}
-
-                  {analysis.forward_head && (
-                    <div className="space-y-1">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold text-slate-700">Forward Head Posture</span>
-                        <span className="text-xs font-black text-slate-900">
-                          {analysis.forward_head.status}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-600 leading-tight">
-                        {analysis.forward_head.description}
-                      </p>
-                    </div>
-                  )}
-
-                  {analysis.shoulder_alignment && (
-                    <div className="space-y-1">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold text-slate-700">Shoulder Alignment</span>
-                        <span className="text-xs font-black text-slate-900">
-                          {analysis.shoulder_alignment.status}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-600 leading-tight">
-                        {analysis.shoulder_alignment.description}
-                      </p>
-                    </div>
-                  )}
-
-                  {analysis.kyphosis && analysis.kyphosis.status !== 'Normal' && (
-                    <div className="space-y-1">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold text-slate-700">Thoracic Kyphosis</span>
-                        <span className="text-xs font-black text-slate-900">
-                          {analysis.kyphosis.status}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-600 leading-tight">{analysis.kyphosis.description}</p>
-                    </div>
-                  )}
-
-                  {analysis.spinal_curvature && analysis.spinal_curvature.status !== 'Normal' && (
-                    <div className="space-y-1">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold text-slate-700">Spinal Curvature</span>
-                        <span className="text-xs font-black text-slate-900">
-                          {analysis.spinal_curvature.status}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-600 leading-tight">{analysis.spinal_curvature.description}</p>
-                    </div>
-                  )}
-
-                  {analysis.lordosis && analysis.lordosis.status !== 'Normal' && (
-                    <div className="space-y-1">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold text-slate-700">Lumbar Lordosis</span>
-                        <span className="text-xs font-black text-slate-900">
-                          {analysis.lordosis.status}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-600 leading-tight">{analysis.lordosis.description}</p>
-                    </div>
-                  )}
-
-                  {analysis.hip_alignment && (
-                    <div className="space-y-1">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold text-slate-700">Hip Alignment</span>
-                        <span className="text-xs font-black text-slate-900">
-                          {analysis.hip_alignment.status}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-600 leading-tight">{analysis.hip_alignment.description}</p>
-                    </div>
-                  )}
-
-                  {analysis.pelvic_tilt && analysis.pelvic_tilt.status !== 'Neutral' && (
-                    <div className="space-y-1">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold text-slate-700">Pelvic Tilt</span>
-                        <span className="text-xs font-black text-slate-900">{analysis.pelvic_tilt.status}</span>
-                      </div>
-                      <p className="text-xs text-slate-600 leading-tight">{analysis.pelvic_tilt.description}</p>
-                    </div>
-                  )}
-
-                  {analysis.knee_alignment && (
-                    <div className="space-y-1">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold text-slate-700">Knee Alignment</span>
-                        <span className="text-xs font-black text-slate-900">{analysis.knee_alignment.status}</span>
-                      </div>
-                      <p className="text-xs text-slate-600 leading-tight">{analysis.knee_alignment.description}</p>
-                    </div>
-                  )}
-
-                  {analysis.knee_position && (
-                    <div className="space-y-1">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold text-slate-700">Knee Position</span>
-                        <span className="text-xs font-black text-slate-900">{analysis.knee_position.status}</span>
-                      </div>
-                      <p className="text-xs text-slate-600 leading-tight">{analysis.knee_position.description}</p>
-                    </div>
-                  )}
-
-                  {analysis.overall_assessment && (
-                    <div className="pt-2 border-t border-slate-100">
-                      <p className="text-xs font-semibold text-slate-700 mb-1">Overall Assessment:</p>
-                      <p className="text-xs text-slate-600 leading-relaxed">{analysis.overall_assessment}</p>
-                    </div>
-                  )}
-
-                  {analysis.deviations && analysis.deviations.length > 0 && (
-                    <div className="pt-2 border-t border-slate-100">
-                      <p className="text-xs font-bold text-slate-500 uppercase mb-1">Identified Deviations:</p>
-                      <ul className="list-disc list-inside space-y-0.5">
-                        {analysis.deviations.map((dev, idx) => (
-                          <li key={idx} className="text-xs text-slate-600">
-                            {dev}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                  <p className="text-sm text-slate-600 mb-1">{d.description}</p>
+                  <p className="text-xs italic text-slate-500">{BODY_META[d.bodyKey]?.note ?? 'Consider addressing in warm-up.'}</p>
                 </div>
-              </div>
-            );
-          })}
-      </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+      {images.length > 0 && (
+        <div className="flex flex-wrap gap-2 pt-2">
+          {images.map(({ view, url }) => (
+            <div key={view} className="w-16 h-20 rounded-lg overflow-hidden border border-slate-200 shrink-0">
+              <img src={url} alt={VIEW_LABELS[view] || view} className="w-full h-full object-cover" />
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
-

@@ -5,7 +5,7 @@
  */
 
 import type { CoachAssessmentSummary } from '@/services/coachAssessments';
-import type { PillarCadence } from '@/types/client';
+import type { PillarCadence, PartialAssessmentCategory } from '@/types/client';
 
 /** Dashboard view tabs */
 export type DashboardView = 'clients' | 'schedule' | 'team';
@@ -33,4 +33,14 @@ export type ClientGroup = {
   };
   /** One-time absolute due date overrides (pillar → Date) */
   dueDateOverrides?: Record<string, Date>;
+  /** Per-pillar last-completed dates for accurate overdue calculation */
+  pillarDates?: Record<string, Date>;
+  /** Client account status */
+  clientStatus?: 'active' | 'inactive' | 'paused' | 'archived';
+  /** Which pillars are actively tracked for this client */
+  activePillars?: PartialAssessmentCategory[];
+  /** Training start date — scheduling clock starts here */
+  trainingStartDate?: Date;
+  /** Fallback baseline date from the client profile (used when pillar dates are missing) */
+  lastAssessmentDate?: Date;
 };

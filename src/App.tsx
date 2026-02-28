@@ -9,7 +9,6 @@ import { ThemeManager } from "./components/layout/ThemeManager";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ImpersonationBanner } from "./components/ImpersonationBanner";
 import { ReloadPrompt } from "./components/pwa/ReloadPrompt";
-import { RequireClientAuth } from "./components/auth/RequireClientAuth";
 const InstallPrompt = lazy(() => import("./components/pwa/InstallPrompt").then(m => ({ default: m.InstallPrompt })));
 
 // Lazy load heavy page components
@@ -17,22 +16,17 @@ const Landing = lazy(() => import("./pages/Landing"));
 const SignUp = lazy(() => import("./pages/SignUp"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const Index = lazy(() => import("./pages/Index"));
-const Results = lazy(() => import("./pages/Results"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Login = lazy(() => import("./pages/Login"));
 const SignOut = lazy(() => import("./pages/SignOut"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const AssessmentReport = lazy(() => import("./pages/AssessmentReport"));
-const PublicClientReport = lazy(() => import("./pages/PublicClientReport"));
 const PublicReportViewer = lazy(() => import("./pages/PublicReportViewer"));
 const Settings = lazy(() => import("./pages/Settings"));
+const Achievements = lazy(() => import("./pages/Achievements"));
 const Companion = lazy(() => import("./pages/Companion"));
 const ClientDetail = lazy(() => import("./pages/ClientDetail"));
 const OrgAdmin = lazy(() => import("./pages/OrgAdmin"));
-
-// Client portal pages (air-gapped from coach/admin)
-const ClientPortal = lazy(() => import("./pages/portal/ClientPortal"));
-const ClientLogin = lazy(() => import("./pages/portal/ClientLogin"));
 
 // Platform admin pages (separate from org admin)
 const PlatformLogin = lazy(() => import("./pages/admin/PlatformLogin"));
@@ -44,9 +38,21 @@ const OrganizationManage = lazy(() => import("./pages/admin/OrganizationManage")
 const Terms = lazy(() => import("./pages/legal/Terms"));
 const Privacy = lazy(() => import("./pages/legal/Privacy"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      gcTime: 10 * 60 * 1000, // 10 minutes garbage collection
+    },
+  },
+});
 
-// ...
+/** Redirect authenticated users straight to /dashboard; show Landing to visitors */
+const AuthAwareLanding = () => {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (user) return <Navigate to="/dashboard" replace />;
+  return <Landing />;
+};
 
 const RequireAuth = ({ children }: { children: JSX.Element }) => {
   const { user, loading } = useAuth();
@@ -93,13 +99,13 @@ const App = () => (
                 <div className="flex min-h-screen items-center justify-center bg-slate-50">
                   <div className="flex flex-col items-center gap-4">
                     <div className="h-12 w-12 rounded-full border-4 border-slate-200 border-t-primary animate-spin" />
-                    <p className="text-xs font-black uppercase tracking-widest text-slate-400">Loading experience...</p>
+                    <p className="text-xs font-medium text-slate-400">Loading experience...</p>
                   </div>
                 </div>
               }>
                   <Routes>
-                    {/* Public routes (no auth required) */}
-                    <Route path="/" element={<Landing />} />
+                    {/* Root: landing for visitors, dashboard redirect for authenticated */}
+                    <Route path="/" element={<AuthAwareLanding />} />
                     <Route path="/signup" element={<Onboarding />} /> {/* Redirect signup to onboarding */}
                     <Route path="/login" element={<Login />} />
                     <Route path="/signout" element={<SignOut />} /> {/* Force sign out route */}
@@ -112,10 +118,15 @@ const App = () => (
                       path="/r/:token"
                       element={<PublicReportViewer />}
                     />
-                    {/* Legacy route for backward compatibility */}
+                    {/* Token-scoped achievements (no auth required) */}
+                    <Route
+                      path="/r/:token/achievements"
+                      element={<Achievements />}
+                    />
+                    {/* Legacy share route redirects to token-based URL */}
                     <Route
                       path="/share/:coachUid/:assessmentId"
-                      element={<PublicClientReport />}
+                      element={<Navigate to="/" replace />}
                     />
                     {/* Protected routes (auth required) */}
                     <Route
@@ -134,13 +145,10 @@ const App = () => (
                         </RequireAuth>
                       }
                     />
+                    {/* Legacy /results/:id route - redirect to coach assessment view */}
                     <Route
                       path="/results/:id"
-                      element={
-                        <RequireAuth>
-                          <Results />
-                        </RequireAuth>
-                      }
+                      element={<Navigate to="/dashboard" replace />}
                     />
                     <Route
                       path="/coach/assessments/:id"
@@ -167,6 +175,14 @@ const App = () => (
                       }
                     />
                     <Route
+                      path="/achievements"
+                      element={
+                        <RequireAuth>
+                          <Achievements />
+                        </RequireAuth>
+                      }
+                    />
+                    <Route
                       path="/org/dashboard"
                       element={
                         <RequireAuth>
@@ -177,16 +193,9 @@ const App = () => (
                     {/* Companion mode (Mobile view) - No RequireAuth because it uses a token */}
                     <Route path="/companion/:sessionId" element={<Companion />} />
                     
-                    {/* Client Portal routes (air-gapped from coach/admin) */}
-                    <Route path="/portal/login" element={<ClientLogin />} />
-                    <Route
-                      path="/portal"
-                      element={
-                        <RequireClientAuth>
-                          <ClientPortal />
-                        </RequireClientAuth>
-                      }
-                    />
+                    {/* Legacy portal routes - clients now use /r/:token */}
+                    <Route path="/portal/login" element={<Navigate to="/" replace />} />
+                    <Route path="/portal" element={<Navigate to="/" replace />} />
 
                     {/* Platform admin routes (separate from org admin) */}
                     <Route path="/admin/login" element={<PlatformLogin />} />

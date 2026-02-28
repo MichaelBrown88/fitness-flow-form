@@ -13,7 +13,7 @@
  * - No test/orphaned data
  */
 
-import { getDocs, getDoc } from 'firebase/firestore';
+import { getDocs, getDoc, collection } from 'firebase/firestore';
 import { 
   getOrganizationsCollection,
   getOrganizationDoc,
@@ -21,7 +21,6 @@ import {
   getLegacyUserProfilesCollection,
 } from '@/lib/database/collections';
 import { getDb } from '@/services/firebase';
-import { collection } from 'firebase/firestore';
 import { calculateMonthlyFee } from '@/lib/pricing';
 import { logger as appLogger } from '@/lib/utils/logger';
 

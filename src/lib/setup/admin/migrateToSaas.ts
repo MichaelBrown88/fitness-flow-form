@@ -94,7 +94,7 @@ interface ClientDocument {
   dateOfBirth: string;
   gender: string;
   assignedCoachUid: string;
-  status: 'active' | 'inactive' | 'on-hold';
+  status: 'active' | 'inactive' | 'paused';
   tags: string[];
   createdAt: unknown;
   updatedAt: unknown;
@@ -340,7 +340,7 @@ async function buildMigrationPlan(orgId: string, orgName: string): Promise<Migra
         dateOfBirth: (client.data.dateOfBirth as string) || '',
         gender: (client.data.gender as string) || '',
         assignedCoachUid: coach.uid,
-        status: (client.data.status as 'active' | 'inactive' | 'on-hold') || 'active',
+        status: (client.data.status as 'active' | 'inactive' | 'paused') || 'active',
         tags: (client.data.tags as string[]) || [],
         createdAt: client.data.createdAt || serverTimestamp(),
         updatedAt: serverTimestamp(),

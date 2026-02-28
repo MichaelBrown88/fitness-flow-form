@@ -21,7 +21,7 @@ import {
   AlertCircle, 
   X
 } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import type { BodyCompCompanionData } from '@/lib/types/companion';
@@ -175,7 +175,7 @@ export const BodyCompCompanionModal: React.FC<BodyCompCompanionModalProps> = ({
               <div className="bg-white p-4 rounded-3xl shadow-sm mb-4">
                 <Smartphone className="h-10 w-10 text-primary" />
               </div>
-              <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Use Your Phone</h3>
+              <h3 className="text-xl font-bold text-slate-900">Use Your Phone</h3>
               <p className="text-slate-500 text-xs mt-2">Connect your phone to take a photo</p>
             </div>
 
@@ -223,22 +223,22 @@ export const BodyCompCompanionModal: React.FC<BodyCompCompanionModalProps> = ({
           <div className="w-full lg:w-1/2 p-8 flex flex-col justify-center">
             <div className="space-y-6">
               <div>
-                <h4 className="text-lg font-black text-slate-900 mb-2">How to Use</h4>
+                <h4 className="text-lg font-bold text-slate-900 mb-2">How to Use</h4>
                 <ol className="space-y-3 text-sm text-slate-600">
                   <li className="flex gap-3">
-                    <span className="font-black text-primary">1.</span>
+                    <span className="font-bold text-primary">1.</span>
                     <span>Open the camera app on your phone</span>
                   </li>
                   <li className="flex gap-3">
-                    <span className="font-black text-primary">2.</span>
+                    <span className="font-bold text-primary">2.</span>
                     <span>Scan the QR code on the left</span>
                   </li>
                   <li className="flex gap-3">
-                    <span className="font-black text-primary">3.</span>
+                    <span className="font-bold text-primary">3.</span>
                     <span>Point your camera at the body comp report</span>
                   </li>
                   <li className="flex gap-3">
-                    <span className="font-black text-primary">4.</span>
+                    <span className="font-bold text-primary">4.</span>
                     <span>The photo will be taken automatically</span>
                   </li>
                 </ol>

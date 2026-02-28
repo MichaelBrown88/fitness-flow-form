@@ -44,14 +44,17 @@ export interface EquipmentConfig {
  * When enabled, these override clinical baselines for new clients
  */
 export interface DefaultCadenceConfig {
-  enabled: boolean; // Use org defaults vs clinical baselines
+  /** @deprecated No longer used — org defaults are always active */
+  enabled?: boolean;
   intervals: {
-    bodycomp: number;   // days (default: 30)
-    posture: number;    // days (default: 45)
-    fitness: number;    // days (default: 45)
-    strength: number;   // days (default: 60)
-    lifestyle: number;  // days (default: 45)
+    bodycomp: number;   // days (stored internally, displayed as weeks)
+    posture: number;    // days
+    fitness: number;    // days
+    strength: number;   // days
+    lifestyle: number;  // days
   };
+  /** Which pillars are tracked by default for new clients */
+  activePillars?: import('@/types/client').PartialAssessmentCategory[];
 }
 
 export interface OrgSettings {

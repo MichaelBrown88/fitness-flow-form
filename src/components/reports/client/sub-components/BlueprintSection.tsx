@@ -2,7 +2,8 @@ import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Carousel, CarouselContent, CarouselItem, CarouselDots } from '@/components/ui/carousel';
-import { Trophy, Lock, Play } from 'lucide-react';
+import { Trophy, Lock, Play, ArrowRight } from 'lucide-react';
+import { CardInfoDrawer } from '../../CardInfoDrawer';
 
 interface BlueprintPillar {
   title: string;
@@ -18,9 +19,10 @@ interface BlueprintPillar {
 interface BlueprintSectionProps {
   blueprintPillars: BlueprintPillar[];
   hideHeader?: boolean;
+  previousPhase?: string;
 }
 
-export const BlueprintSection: React.FC<BlueprintSectionProps> = ({ blueprintPillars, hideHeader }) => {
+export const BlueprintSection: React.FC<BlueprintSectionProps> = ({ blueprintPillars, hideHeader, previousPhase }) => {
   if (blueprintPillars.length === 0) return null;
 
   const renderPillarCard = (pillar: BlueprintPillar, idx: number, isDesktop: boolean) => {
@@ -29,7 +31,12 @@ export const BlueprintSection: React.FC<BlueprintSectionProps> = ({ blueprintPil
     const iconColor = 'text-gradient-dark';
 
     return (
-      <Card key={idx} className="overflow-hidden flex flex-col">
+      <Card key={idx} className="overflow-hidden flex flex-col h-full relative">
+        <CardInfoDrawer title={pillar.title}>
+          <p>This phase runs for <strong>{pillar.weeks}</strong> and focuses on {pillar.category}. {pillar.headline}</p>
+          <p>{pillar.description}</p>
+          <p>The sample protocol gives you a preview of the type of training you can expect during this phase.</p>
+        </CardInfoDrawer>
         <div className={isDesktop ? "p-4 sm:p-5 md:p-6 lg:p-8 flex-1" : "p-4 sm:p-5 md:p-6 lg:p-8 flex-1"}>
           <div className="flex justify-between items-start mb-6">
             <Badge className="glass-button-active text-white border-transparent">
@@ -50,7 +57,7 @@ export const BlueprintSection: React.FC<BlueprintSectionProps> = ({ blueprintPil
           <div className="glass-subtle rounded-xl p-5">
             <div className="flex items-center gap-2 mb-4 pb-3 border-b border-zinc-200">
               <Play className="w-3 h-3 text-zinc-400 fill-current" />
-              <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Sample Protocol</span>
+              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.15em]">Sample Protocol</span>
             </div>
             <div className="space-y-3">
               {pillar.protocol.map((row: { name: string; setsReps: string }, rIdx: number) => (
@@ -74,12 +81,19 @@ export const BlueprintSection: React.FC<BlueprintSectionProps> = ({ blueprintPil
             <div className="p-1 sm:p-1.5 md:p-2 bg-gradient-light text-zinc-900 rounded-lg">
               <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
             </div>
-            <h3 className="text-xs md:text-sm lg:text-base font-bold text-zinc-900 uppercase tracking-widest">The Blueprint</h3>
+            <h3 className="text-xs md:text-sm lg:text-base font-semibold text-zinc-900">The Blueprint</h3>
           </div>
         )}
         <p className="text-xs md:text-sm text-zinc-500 ml-0 sm:ml-8 md:ml-12">
           3 Strategic Pillars designed to bridge the gap from where you are to where you want to be.
         </p>
+        {previousPhase && blueprintPillars[0]?.title && previousPhase !== blueprintPillars[0].title && (
+          <div className="flex items-center gap-1.5 ml-0 sm:ml-8 md:ml-12 mt-2">
+            <span className="inline-flex items-center gap-1 text-xs font-semibold text-score-green-fg bg-score-green-light px-2.5 py-1 rounded-lg">
+              Phase shifted: {previousPhase} <ArrowRight className="w-3 h-3" /> {blueprintPillars[0].title}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Desktop Layout */}
@@ -90,7 +104,7 @@ export const BlueprintSection: React.FC<BlueprintSectionProps> = ({ blueprintPil
       {/* Mobile/Tablet Layout -- swipeable carousel */}
       <div className="lg:hidden">
         <Carousel opts={{ align: 'start', containScroll: 'trimSnaps' }} className="w-full">
-          <CarouselContent className="-ml-3">
+          <CarouselContent className="-ml-3 items-stretch">
             {blueprintPillars.map((pillar, idx) => (
               <CarouselItem key={idx} className="basis-[85%] pl-3">
                 {renderPillarCard(pillar, idx, false)}

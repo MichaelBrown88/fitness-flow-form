@@ -130,7 +130,7 @@ export function CompanionUI({
             <Loader2 className="h-10 w-10 text-white animate-spin" />
           </div>
         </div>
-        <h1 className="text-2xl font-black uppercase tracking-tight mb-2">Reading your report...</h1>
+        <h1 className="text-2xl font-bold mb-2">Reading your report...</h1>
         <p className="text-white/60 text-sm">Finding the numbers in your report</p>
       </div>
     );
@@ -142,7 +142,7 @@ export function CompanionUI({
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
             <Scan className="h-5 w-5 text-primary" />
-            <h1 className="text-xl font-black uppercase tracking-tight">Check the Numbers</h1>
+            <h1 className="text-xl font-bold">Check the Numbers</h1>
           </div>
           <button
             onClick={() => setOcrReviewData(null)}
@@ -154,7 +154,7 @@ export function CompanionUI({
         <div className="flex-1 overflow-y-auto space-y-3 mb-6">
           {Object.entries(ocrReviewData).map(([key, value]) => (
             <div key={key} className="bg-white/5 rounded-xl p-4 border border-white/10">
-              <label className="text-[10px] font-black uppercase tracking-widest text-primary mb-2 block">
+              <label className="text-[10px] font-black uppercase tracking-[0.15em] text-primary mb-2 block">
                 {fieldLabels[key] || key}
               </label>
               <div className="flex items-center gap-2">
@@ -217,7 +217,7 @@ export function CompanionUI({
         
         {/* View label */}
         <div className="px-4 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
-          <span className="text-xs font-black text-white uppercase tracking-widest">
+          <span className="text-[10px] font-black text-white uppercase tracking-[0.15em]">
             {mode === 'bodycomp' ? 'BODY COMP REPORT' : VIEWS[viewIdx]?.label || 'Ready'}
           </span>
         </div>
@@ -231,7 +231,7 @@ export function CompanionUI({
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 pt-12">
           {/* Guide box - wide and tall, almost full screen height */}
           <div
-            className={`w-[85%] max-w-md border-[4px] rounded-[40px] transition-all duration-300 ${getGuideBoxColor()}`}
+            className={`w-[85%] max-w-md border-[4px] rounded-3xl transition-all duration-300 ${getGuideBoxColor()}`}
             style={{ height: 'calc(100vh - 60px)' }}
           />
         </div>
@@ -240,7 +240,7 @@ export function CompanionUI({
       {/* Countdown Overlay */}
       {countdown !== null && mode !== 'bodycomp' && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/30 z-30 pointer-events-none">
-          <span className="text-[200px] font-black text-white drop-shadow-2xl">{countdown}</span>
+          <span className="text-[200px] font-bold text-white drop-shadow-2xl">{countdown}</span>
         </div>
       )}
 
@@ -281,7 +281,7 @@ export function CompanionUI({
             <div className="flex flex-col items-center gap-3 w-full max-w-xs">
               <Button
                 onClick={requestPermission}
-                className="bg-primary h-14 px-8 rounded-xl text-sm font-black uppercase shadow-lg w-full"
+                className="bg-primary h-14 px-8 rounded-xl text-sm font-semibold shadow-lg w-full"
               >
                 Enable Camera & Motion
               </Button>
@@ -289,7 +289,7 @@ export function CompanionUI({
                 <Button
                   variant="outline"
                   onClick={() => fileInputRef.current?.click()}
-                  className="h-12 px-6 rounded-xl text-xs font-bold uppercase bg-white/10 border-white/30 text-white hover:bg-white/20 w-full flex items-center justify-center gap-2"
+                  className="h-12 px-6 rounded-xl text-xs font-bold bg-white/10 border-white/30 text-white hover:bg-white/20 w-full flex items-center justify-center gap-2"
                 >
                   <ImagePlus className="h-4 w-4" />
                   Upload from Photos
@@ -307,7 +307,7 @@ export function CompanionUI({
                     onStartSequence();
                   }
                 }}
-                className="bg-emerald-500 hover:bg-emerald-600 h-16 px-10 rounded-xl text-base font-black uppercase shadow-lg text-white w-full"
+                className="bg-emerald-500 hover:bg-emerald-600 h-16 px-10 rounded-xl text-base font-semibold shadow-lg text-white w-full"
               >
                 Start Capture
               </Button>
@@ -315,7 +315,7 @@ export function CompanionUI({
                 <Button
                   variant="outline"
                   onClick={() => fileInputRef.current?.click()}
-                  className="h-10 px-4 rounded-xl text-xs font-bold uppercase bg-white/10 border-white/30 text-white hover:bg-white/20 flex items-center justify-center gap-2"
+                  className="h-10 px-4 rounded-xl text-xs font-bold bg-white/10 border-white/30 text-white hover:bg-white/20 flex items-center justify-center gap-2"
                 >
                   <ImagePlus className="h-3 w-3" />
                   Upload from Photos
@@ -327,7 +327,7 @@ export function CompanionUI({
             <Button
               variant="outline"
               onClick={() => fileInputRef.current?.click()}
-              className="h-12 px-6 rounded-xl text-xs font-bold uppercase bg-white/10 border-white/30 text-white hover:bg-white/20 flex items-center justify-center gap-2"
+              className="h-12 px-6 rounded-xl text-xs font-bold bg-white/10 border-white/30 text-white hover:bg-white/20 flex items-center justify-center gap-2"
             >
               <ImagePlus className="h-4 w-4" />
               Upload from Photos

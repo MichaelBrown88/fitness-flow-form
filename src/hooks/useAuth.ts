@@ -13,8 +13,8 @@ export interface AuthContextValue {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
   signOut: () => Promise<void>;
-  /** Send a magic link email for client portal access */
-  sendClientMagicLink: (email: string) => Promise<void>;
+  /** Send a magic link email for client access. Optional returnUrl redirects after auth. */
+  sendClientMagicLink: (email: string, returnUrl?: string) => Promise<void>;
   refreshSettings: () => Promise<void>;
   /** Impersonation state (platform admins only) */
   impersonation: ImpersonationSession | null;

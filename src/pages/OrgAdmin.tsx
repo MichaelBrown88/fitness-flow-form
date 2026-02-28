@@ -19,6 +19,7 @@ import { getOrgCoaches, addCoachToOrganization, removeCoachFromOrganization } fr
 import { calculateMonthlyFee } from '@/lib/pricing';
 import type { OrganizationDetails } from '@/types/platform';
 import { 
+  ArrowLeft,
   Building2, 
   Users, 
   FileText, 
@@ -246,8 +247,13 @@ const OrgAdmin = () => {
 
   return (
     <AppShell 
-      title="Organization Admin" 
-      subtitle={`Manage ${orgDetails.name || 'your organization'}`}
+      title="Organization" 
+      subtitle={orgDetails.name || 'Your organization'}
+      actions={
+        <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')} className="h-9 w-9 p-0">
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+      }
     >
       <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 pb-12 sm:pb-20">
         {/* Subscription Overview */}
@@ -280,11 +286,11 @@ const OrgAdmin = () => {
           </CardHeader>
           <CardContent className="p-4 sm:p-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-              <div className="bg-slate-50 rounded-lg p-3 sm:p-4 border border-slate-200">
+              <div className="bg-slate-50 rounded-lg p-3 sm:p-4">
                 <p className="text-[10px] sm:text-xs text-foreground-secondary mb-1 font-medium">Plan</p>
                 <p className="text-lg sm:text-xl font-semibold text-foreground capitalize">{orgDetails.plan || 'free'}</p>
               </div>
-              <div className="bg-slate-50 rounded-lg p-3 sm:p-4 border border-slate-200">
+              <div className="bg-slate-50 rounded-lg p-3 sm:p-4">
                 <p className="text-[10px] sm:text-xs text-foreground-secondary mb-1 font-medium">Monthly Fee</p>
                 <p className="text-lg sm:text-xl font-semibold text-foreground">
                   {orgDetails.isComped ? (
@@ -377,7 +383,7 @@ const OrgAdmin = () => {
               <Button
                 size="sm"
                 onClick={() => setShowAddCoachDialog(true)}
-                className="gradient-bg text-white hover:opacity-90 text-xs sm:text-sm h-8 sm:h-9"
+                className="gradient-bg text-white hover:opacity-90 text-xs sm:text-sm h-9"
               >
                 <UserPlus className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
                 Add Coach
@@ -393,7 +399,7 @@ const OrgAdmin = () => {
                   size="sm"
                   onClick={() => setShowAddCoachDialog(true)}
                   variant="outline"
-                  className="text-xs sm:text-sm h-8 sm:h-9"
+                  className="text-xs sm:text-sm h-9"
                 >
                   <UserPlus className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
                   Add Your First Coach
@@ -419,12 +425,12 @@ const OrgAdmin = () => {
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="text-xs sm:text-sm font-medium text-foreground truncate">{coach.displayName}</p>
                           {coach.role === 'org_admin' && (
-                            <span className="px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-bold bg-gradient-light text-gradient-dark border border-border-medium shrink-0">
+                            <span className="px-1.5 sm:px-2 py-0.5 rounded text-[10px] sm:text-[10px] font-bold bg-gradient-light text-gradient-dark border border-border-medium shrink-0">
                               Admin
                             </span>
                           )}
                           {atRiskCount > 0 && (
-                            <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-300 text-[9px] sm:text-[10px]">
+                            <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-300 text-[10px] sm:text-[10px]">
                               <AlertTriangle className="w-2.5 h-2.5 mr-1" />
                               {atRiskCount} at risk
                             </Badge>
@@ -462,7 +468,7 @@ const OrgAdmin = () => {
                             variant="ghost"
                             onClick={() => handleRemoveCoach(coach.uid, coach.displayName)}
                             disabled={removingCoach === coach.uid}
-                            className="text-foreground-tertiary hover:text-red-600 hover:bg-red-50 h-7 w-7 sm:h-8 sm:w-8 p-0 shrink-0"
+                            className="text-foreground-tertiary hover:text-red-600 hover:bg-red-50 h-9 w-9 sm:h-8 sm:w-8 p-0 shrink-0"
                           >
                             {removingCoach === coach.uid ? (
                               <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 border-2 border-foreground-tertiary border-t-transparent rounded-full animate-spin" />
@@ -514,21 +520,21 @@ const OrgAdmin = () => {
               <>
                 {/* Summary Stats */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-                  <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 text-center">
+                  <div className="bg-slate-50 rounded-lg p-3 text-center">
                     <p className="text-lg sm:text-xl font-bold text-foreground">{retentionSummary.totalClients}</p>
                     <p className="text-[10px] sm:text-xs text-foreground-secondary">Total Clients</p>
                   </div>
-                  <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-200 text-center">
+                  <div className="bg-emerald-50 rounded-lg p-3 text-center">
                     <p className="text-lg sm:text-xl font-bold text-emerald-700">
                       {retentionSummary.totalClients - retentionSummary.clientsNeedingAttention}
                     </p>
                     <p className="text-[10px] sm:text-xs text-emerald-600">Healthy (&lt;30d)</p>
                   </div>
-                  <div className="bg-amber-50 rounded-lg p-3 border border-amber-200 text-center">
+                  <div className="bg-amber-50 rounded-lg p-3 text-center">
                     <p className="text-lg sm:text-xl font-bold text-amber-700">{retentionSummary.clientsNeedingAttention}</p>
                     <p className="text-[10px] sm:text-xs text-amber-600">Need Attention (30-60d)</p>
                   </div>
-                  <div className="bg-red-50 rounded-lg p-3 border border-red-200 text-center">
+                  <div className="bg-red-50 rounded-lg p-3 text-center">
                     <p className="text-lg sm:text-xl font-bold text-red-700">{retentionSummary.clientsAtRiskOfChurn}</p>
                     <p className="text-[10px] sm:text-xs text-red-600">At Risk (&gt;60d)</p>
                   </div>
@@ -537,9 +543,9 @@ const OrgAdmin = () => {
                 {/* Critical Clients List */}
                 {criticalClients.length > 0 && (
                   <div className="space-y-2">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-red-600 flex items-center gap-1.5">
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-red-600 flex items-center gap-1.5">
                       <UserX className="w-3.5 h-3.5" />
-                      Critical - No Assessment in 90+ Days
+                      Critical — No Assessment in 90+ Days
                     </h4>
                     <div className="space-y-2">
                       {criticalClients.slice(0, 5).map((client) => (
@@ -572,9 +578,9 @@ const OrgAdmin = () => {
                 {/* At-Risk Clients List */}
                 {atRiskClients.length > 0 && (
                   <div className={`space-y-2 ${criticalClients.length > 0 ? 'mt-6' : ''}`}>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-amber-600 flex items-center gap-1.5">
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-amber-600 flex items-center gap-1.5">
                       <AlertTriangle className="w-3.5 h-3.5" />
-                      At Risk - No Assessment in 60-90 Days
+                      At Risk — No Assessment in 60–90 Days
                     </h4>
                     <div className="space-y-2">
                       {atRiskClients.slice(0, 5).map((client) => (
@@ -651,14 +657,14 @@ const OrgAdmin = () => {
 
       {/* Add Coach Dialog */}
       <Dialog open={showAddCoachDialog} onOpenChange={setShowAddCoachDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <UserPlus className="w-5 h-5 text-gradient-dark" />
               Add Coach to Organization
             </DialogTitle>
             <DialogDescription>
-              Add a coach by their email address. They must already have a FitnessFlow account.
+              Add a coach by their email address. They must already have a One Assess account.
               <br />
               <span className="text-xs text-amber-600 mt-2 block">
                 Note: Full invitation system with email sending will be implemented in a future update.

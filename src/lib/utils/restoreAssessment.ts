@@ -613,15 +613,12 @@ declare global {
   }
 }
 
-// Make it available globally for console access
-if (typeof window !== 'undefined') {
+// Make it available globally for console access (dev only)
+if (import.meta.env.DEV && typeof window !== 'undefined') {
   window.restoreClientAssessment = restoreClientAssessment;
   window.restoreAssessmentAsJSON = restoreAssessmentAsJSON;
   window.loadRestoredAssessment = loadRestoredAssessment;
   window.recoverMissingPostureImages = recoverMissingPostureImages;
-  logger.info('💾 Restore utility loaded!');
-  logger.info('💾 Use: restoreClientAssessment(undefined, "Hisham MM Abdoh")');
-  logger.info('💾 Or: restoreClientAssessment("your-coach-uid", "Hisham MM Abdoh")');
-  logger.info('💾 Recover missing images: recoverMissingPostureImages("Hisham MM Abdoh")');
+  logger.info('Restore utility loaded');
 }
 

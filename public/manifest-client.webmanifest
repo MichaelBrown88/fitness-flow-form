@@ -1,13 +1,13 @@
 {
-  "name": "My Fitness",
-  "short_name": "My Fitness",
+  "name": "One Assess",
+  "short_name": "One Assess",
   "description": "Your personal fitness assessment portal",
   "theme_color": "#0f172a",
   "background_color": "#f8fafc",
   "display": "standalone",
   "orientation": "any",
-  "start_url": "/portal",
-  "scope": "/portal",
+  "start_url": "/r/",
+  "scope": "/r",
   "categories": ["health", "fitness", "lifestyle"],
   "icons": [
     { "src": "/pwa-client-192x192.svg", "sizes": "192x192", "type": "image/svg+xml" },

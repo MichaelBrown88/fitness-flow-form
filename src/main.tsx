@@ -3,8 +3,13 @@ import App from "./App.tsx";
 import "./index.css";
 import { logger } from '@/lib/utils/logger';
 
-// Side-effect: register admin tools on window for console access
-import '@/lib/setup/admin/migrateOneFitness';
+// Side-effect: register admin tools on window for console access (dev only)
+if (import.meta.env.DEV) {
+  import('@/lib/setup/admin/migrateOneFitness');
+  import('@/lib/setup/admin/repairClientData');
+  import('@/services/achievements'); // registers populateClientData on window
+  import('@/services/diagnoseClient'); // registers diagnoseClient, fixClientAnimations on window
+}
 
 // Global error handlers — catch uncaught errors and rejected promises
 // so they route through the centralized logger rather than silently failing

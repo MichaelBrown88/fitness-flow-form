@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { updateOrgSettings, uploadOrgLogo, type OrgSettings, DEFAULT_EQUIPMENT_CONFIG } from '@/services/organizations';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { Loader2, Upload, Palette, ShieldCheck, Box, Settings as SettingsIcon, User, Building2, Calendar, ArrowLeft } from 'lucide-react';
 import { getAllGradients, type GradientId } from '@/lib/design/gradients';
 import { doc, setDoc } from 'firebase/firestore';
@@ -92,13 +92,12 @@ const Settings = () => {
   return (
     <AppShell
       title="Settings"
-      subtitle="Manage your profile and organization settings."
       actions={
         <Button
           variant="ghost"
           size="sm"
           onClick={() => navigate(ROUTES.DASHBOARD)}
-          className="h-8 w-8 p-0"
+          className="h-9 w-9 sm:h-8 sm:w-8 p-0"
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
@@ -107,10 +106,10 @@ const Settings = () => {
       <div className="max-w-4xl pb-20">
         {/* Tab Navigation */}
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="w-full mb-6 p-1 h-auto bg-slate-100 rounded-xl grid grid-cols-2 gap-1">
+          <TabsList className="w-full mb-6 p-1 h-auto bg-zinc-100 rounded-xl grid grid-cols-2 gap-1">
             <TabsTrigger 
               value="profile" 
-              className="flex items-center gap-2 py-2.5 px-4 rounded-lg text-sm font-semibold data-[state=active]:bg-white data-[state=active]:shadow-sm"
+              className="flex items-center gap-2 py-2.5 px-4 rounded-lg text-sm font-semibold data-[state=active]:bg-white"
             >
               <User className="h-4 w-4" />
               Profile
@@ -118,7 +117,7 @@ const Settings = () => {
             {isAdmin && (
               <TabsTrigger 
                 value="organization" 
-                className="flex items-center gap-2 py-2.5 px-4 rounded-lg text-sm font-semibold data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                className="flex items-center gap-2 py-2.5 px-4 rounded-lg text-sm font-semibold data-[state=active]:bg-white"
               >
                 <Building2 className="h-4 w-4" />
                 Organization
@@ -129,18 +128,16 @@ const Settings = () => {
           {/* Profile Tab */}
           <TabsContent value="profile" className="space-y-8 mt-0">
             {/* User Info & Role */}
-            <div className="flex items-center justify-between px-6 py-4 rounded-2xl bg-slate-900 text-white shadow-xl">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-1 opacity-80">Current Account</p>
-                <h2 className="text-lg font-bold leading-none">{profile?.displayName || user?.email}</h2>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 px-4 sm:px-6 py-4 rounded-2xl bg-zinc-900 text-white shadow-xl">
+              <div className="min-w-0">
+                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-primary mb-1 opacity-80">Current Account</p>
+                <h2 className="text-base sm:text-lg font-bold leading-none truncate">{profile?.displayName || user?.email}</h2>
               </div>
-              <div className="text-right flex flex-col items-end gap-2">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary opacity-80">Access Level</p>
-                <div className="flex items-center gap-3">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary text-white shadow-sm shadow-primary/20">
-                    {isAdmin ? 'Organization Admin' : 'Coach'}
-                  </span>
-                </div>
+              <div className="sm:text-right flex flex-col sm:items-end gap-1 shrink-0">
+                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-primary opacity-80">Access Level</p>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary text-white w-fit">
+                  {isAdmin ? 'Organization Admin' : 'Coach'}
+                </span>
               </div>
             </div>
 
@@ -153,7 +150,7 @@ const Settings = () => {
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label className="text-xs font-black uppercase tracking-widest text-slate-400">Email</Label>
+                    <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">Email</Label>
                     <Input 
                       value={user?.email || ''} 
                       disabled
@@ -161,7 +158,7 @@ const Settings = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-black uppercase tracking-widest text-slate-400">Display Name</Label>
+                    <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">Display Name</Label>
                     <Input 
                       value={profile?.displayName || ''} 
                       disabled
@@ -170,7 +167,7 @@ const Settings = () => {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs font-black uppercase tracking-widest text-slate-400">Organization</Label>
+                  <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">Organization</Label>
                   <Input 
                     value={orgSettings?.name || 'Not assigned'} 
                     disabled
@@ -245,7 +242,7 @@ const Settings = () => {
                 {/* Name and Gradient */}
                 <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
                   <div className="space-y-2">
-                    <Label className="text-xs font-black uppercase tracking-widest text-slate-400">Organization Name</Label>
+                    <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">Organization Name</Label>
                     <Input 
                       value={localOrgName} 
                       onChange={(e) => setLocalOrgName(e.target.value)}
@@ -254,7 +251,7 @@ const Settings = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-black uppercase tracking-widest text-slate-400">Brand Gradient</Label>
+                    <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">Brand Gradient</Label>
                     <Select value={localGradientId} onValueChange={(value) => setLocalGradientId(value as GradientId)}>
                       <SelectTrigger className="w-full rounded-xl border-slate-200 h-11">
                         <SelectValue />
@@ -275,7 +272,7 @@ const Settings = () => {
                         ))}
                       </SelectContent>
                     </Select>
-                    <div className="grid grid-cols-4 gap-2 mt-3">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mt-3">
                       {gradients.map((gradient) => (
                         <button
                           key={gradient.id}
@@ -316,14 +313,14 @@ const Settings = () => {
 
                 {/* Logo Upload */}
                 <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col items-center justify-center text-center space-y-4">
-                  <Label className="text-xs font-black uppercase tracking-widest text-slate-400 self-start">Organization Logo</Label>
-                  <div className="h-28 w-full flex items-center justify-center border-2 border-dashed border-slate-100 rounded-2xl bg-slate-50/50">
+                  <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 self-start">Organization Logo</Label>
+                  <div className="h-28 w-full flex items-center justify-center rounded-xl bg-slate-50">
                     {orgSettings?.logoUrl ? (
                       <img src={orgSettings.logoUrl} alt="Org Logo" className="h-20 w-auto object-contain" />
                     ) : (
                       <div className="flex flex-col items-center gap-1 text-slate-300">
                         <Upload className="h-6 w-6 opacity-20" />
-                        <span className="text-xs font-bold uppercase tracking-tighter">No Logo</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.15em]">No Logo</span>
                       </div>
                     )}
                   </div>
@@ -367,7 +364,7 @@ const Settings = () => {
                     };
                     const info = assessmentLabels[moduleId] || { label: moduleId, description: '' };
                     return (
-                      <div key={moduleId} className="flex items-center justify-between p-5 hover:bg-slate-50/50 transition-colors">
+                      <div key={moduleId} className="flex items-center justify-between gap-4 p-4 sm:p-5 hover:bg-zinc-50/50 transition-colors">
                         <div className="space-y-1">
                           <Label className="text-sm font-bold text-slate-800">{info.label}</Label>
                           <p className="text-xs text-slate-500 font-medium leading-relaxed max-w-md">

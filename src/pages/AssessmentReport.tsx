@@ -1,14 +1,15 @@
-import { useEffect, useState, useCallback, lazy, Suspense } from 'react';
+import { useState, useCallback, lazy, Suspense } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAssessmentLogic } from '@/hooks/useAssessmentLogic';
+import { useVersionSelector } from '@/hooks/useVersionSelector';
+import AssessmentVersionSelector from '@/components/reports/AssessmentVersionSelector';
 import AppShell from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { generateBodyCompInterpretation } from '@/lib/recommendations';
 import { requestShareArtifacts, sendReportEmail, type ShareArtifacts } from '@/services/share';
-import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Share2, ChevronDown, Link as LinkIcon, Mail, MessageCircle, MoreVertical, ArrowLeft, Edit2, Plus } from 'lucide-react';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2, Share2, Link as LinkIcon, Mail, MessageCircle, MoreVertical, ArrowLeft, Edit2, Plus } from 'lucide-react';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import {
   DropdownMenu,
@@ -17,10 +18,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
-// Load re-analysis utility
-import '@/lib/utils/reanalyzePosture';
-// Load restore utility
-import '@/lib/utils/restoreAssessment';
+import { copyTextToClipboard } from '@/lib/utils/clipboard';
 
 const ClientReport = lazy(() => import('@/components/reports/ClientReport'));
 const CoachReport = lazy(() => import('@/components/reports/CoachReport'));
@@ -34,18 +32,22 @@ const AssessmentReport = () => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const isMobile = useIsMobile();
   
-  // Use new Logic Hook
   const { 
     formData, 
     scores, 
     plan, 
-    previousScores, 
+    previousScores,
+    previousFormData, 
     loading, 
     error, 
-    planError 
+    planError,
+    allSnapshots,
   } = useAssessmentLogic(id);
+
+  const versionSelector = useVersionSelector(allSnapshots);
+
+  const [reportView, setReportView] = useState<'client' | 'coach'>('client');
 
   const [shareCache, setShareCache] = useState<Record<'client' | 'coach', ShareArtifacts | null>>({
     client: null,
@@ -92,10 +94,11 @@ const AssessmentReport = () => {
     if (!id || !formData || !user) return;
     try {
       setShareLoading(true);
-      const artifacts = await requestShareArtifacts({
+      // Pass a Promise to copyTextToClipboard so Safari preserves the user gesture
+      const urlPromise = requestShareArtifacts({
         assessmentId: id, view: 'client', coachUid: user.uid, formData, organizationId: profile?.organizationId, profile: profile || null,
-      });
-      await navigator.clipboard.writeText(artifacts.shareUrl);
+      }).then(a => a.shareUrl);
+      await copyTextToClipboard(urlPromise);
       toast({ title: UI_TOASTS.SUCCESS.LINK_COPIED, description: UI_TOASTS.SUCCESS.LINK_COPIED_DESC });
     } catch (e) {
       logger.error('Copy link failed', e);
@@ -156,9 +159,9 @@ const AssessmentReport = () => {
   if (loading) {
     return (
       <AppShell title="Assessment report">
-        <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-slate-100">
+        <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl">
           <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-          <p className="text-sm font-black uppercase tracking-widest text-slate-400">Loading Assessment...</p>
+          <p className="text-sm font-medium text-slate-400">Loading Assessment...</p>
         </div>
       </AppShell>
     );
@@ -186,15 +189,15 @@ const AssessmentReport = () => {
   if (planError) {
      return (
       <AppShell title="Assessment report" variant="full-width">
-        <div className="flex flex-col items-center justify-center py-20 bg-amber-50 rounded-xl border border-amber-200 p-8 text-center max-w-2xl mx-auto mt-10">
+        <div className="flex flex-col items-center justify-center py-12 sm:py-20 bg-amber-50 rounded-xl border border-amber-200 p-4 sm:p-8 text-center max-w-2xl mx-auto mt-4 sm:mt-10">
           <div className="bg-amber-100 p-3 rounded-full mb-4">
              <Loader2 className="h-6 w-6 text-amber-600" /> 
            </div> 
-          <h3 className="text-lg font-bold text-amber-900 mb-2">Report Generation Issue</h3>
-          <p className="text-amber-700 mb-6">We encountered an issue creating the AI Coach Plan. The raw assessment data is safe, but the recommendations could not be generated.</p>
-          <div className="flex gap-4">
-            <Button variant="outline" onClick={() => window.location.reload()}>Retry</Button>
-            <Button onClick={() => navigate(ROUTES.DASHBOARD)}>Return to Dashboard</Button>
+          <h3 className="text-base sm:text-lg font-bold text-amber-900 mb-2">Report Generation Issue</h3>
+          <p className="text-sm sm:text-base text-amber-700 mb-6">We encountered an issue creating the AI Coach Plan. The raw assessment data is safe, but the recommendations could not be generated.</p>
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto">
+            <Button variant="outline" onClick={() => window.location.reload()} className="w-full sm:w-auto">Retry</Button>
+            <Button onClick={() => navigate(ROUTES.DASHBOARD)} className="w-full sm:w-auto">Return to Dashboard</Button>
           </div>
         </div>
       </AppShell>
@@ -204,9 +207,9 @@ const AssessmentReport = () => {
   if (!plan) {
     return (
       <AppShell title="Assessment report">
-        <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-slate-100">
+        <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl">
           <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-          <p className="text-sm font-black uppercase tracking-widest text-slate-400">Generating Report...</p>
+          <p className="text-sm font-medium text-slate-400">Generating Report...</p>
         </div>
       </AppShell>
     );
@@ -251,109 +254,131 @@ const AssessmentReport = () => {
         title=""
         variant="full-width"
         actions={
-        isMobile ? (
-          /* ── Mobile: back + kebab (share folded in) ── */
-          <div className="flex items-center gap-1.5">
-            <Button variant="ghost" size="sm" onClick={navigateToDashboard} className="h-8 w-8 p-0">
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" onClick={navigateToDashboard} className="h-9 w-9 p-0">
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                <Button variant="ghost" size="sm" className="h-9 w-9 p-0">
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 rounded-xl">
-                <DropdownMenuItem onClick={handleCopyLink} className="py-3 text-sm font-medium">
+              <DropdownMenuContent align="end" className="w-52 rounded-xl">
+                <DropdownMenuItem onClick={handleCopyLink} disabled={shareLoading}>
                   <LinkIcon className="mr-2 h-4 w-4" />
                   Copy Link
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleSystemShare} className="py-3 text-sm font-medium">
+                <DropdownMenuItem onClick={handleSystemShare}>
                   <Share2 className="mr-2 h-4 w-4" />
-                  System Share
+                  Share
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleEmailLink} className="py-3 text-sm font-medium">
+                <DropdownMenuItem onClick={handleEmailLink}>
                   <Mail className="mr-2 h-4 w-4" />
                   Email Report
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleWhatsAppShare} className="py-3 text-sm font-medium">
+                <DropdownMenuItem onClick={handleWhatsAppShare}>
                   <MessageCircle className="mr-2 h-4 w-4" />
                   WhatsApp
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={navigateToEdit} className="py-3 text-sm font-medium">
+                <DropdownMenuItem onClick={navigateToEdit}>
                   <Edit2 className="mr-2 h-4 w-4" />
                   Edit Assessment
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={navigateToNew} className="py-3 text-sm font-medium">
+                <DropdownMenuItem onClick={navigateToNew}>
                   <Plus className="mr-2 h-4 w-4" />
                   New Assessment
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-        ) : (
-          /* ── Desktop: full button row ── */
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={navigateToDashboard}>Dashboard</Button>
-            <Button variant="outline" onClick={navigateToEdit}>Edit Assessment</Button>
-            <Button onClick={navigateToNew}>New assessment</Button>
-            <div className="flex -space-x-px">
-              <Button
-                className="rounded-r-none focus:z-10"
-                onClick={handleCopyLink}
-                disabled={shareLoading}
-              >
-                {shareLoading ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <LinkIcon className="mr-2 h-4 w-4" />
-                )}
-                Copy Link
-              </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    className="rounded-l-none px-2 focus:z-10"
-                    disabled={shareLoading}
-                  >
-                    <ChevronDown className="h-4 w-4" />
-                    <span className="sr-only">More share options</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 rounded-xl">
-                  <DropdownMenuItem onClick={handleSystemShare} className="py-3 text-sm font-medium">
-                    <Share2 className="mr-2 h-4 w-4" />
-                    System Share
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleEmailLink} className="py-3 text-sm font-medium">
-                    <Mail className="mr-2 h-4 w-4" />
-                    Email Report Link
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleWhatsAppShare} className="py-3 text-sm font-medium">
-                    <MessageCircle className="mr-2 h-4 w-4" />
-                    WhatsApp Message
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-        )
-      }
+        }
     >
-      <Suspense fallback={
-        <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-slate-100">
-          <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-          <p className="text-sm font-black uppercase tracking-widest text-slate-400">Generating Report...</p>
+      {/* Header row: client name left, view toggle right */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-10 pt-3 pb-1">
+        <div className="flex items-center justify-between">
+          <h1 className="text-base sm:text-lg font-bold text-slate-900 truncate">
+            {formData.fullName || 'Assessment'}
+          </h1>
+          <div className="inline-flex rounded-lg bg-slate-100 p-0.5 shrink-0 ml-3">
+            <button
+              onClick={() => setReportView('client')}
+              className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
+                reportView === 'client'
+                  ? 'bg-slate-900 text-white'
+                  : 'text-slate-500 hover:bg-slate-50'
+              }`}
+            >
+              Client
+            </button>
+            <button
+              onClick={() => setReportView('coach')}
+              className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
+                reportView === 'coach'
+                  ? 'bg-slate-900 text-white'
+                  : 'text-slate-500 hover:bg-slate-50'
+              }`}
+            >
+              Coach
+            </button>
+          </div>
         </div>
-      }>
-        <ClientReport
-          scores={scores}
-          goals={Array.isArray(formData.clientGoals) ? formData.clientGoals : []}
-          formData={formData}
-          plan={plan}
-          previousScores={previousScores}
-        />
-      </Suspense>
+      </div>
+
+      <div
+        className="transition-opacity duration-150"
+        style={{
+          opacity: versionSelector.isTransitioning ? 0 : 1,
+          transitionTimingFunction: 'var(--easing-apple, cubic-bezier(0.25, 0.1, 0.25, 1))',
+        }}
+      >
+        {/* Version selector — anchored above the report content */}
+        {versionSelector.totalCount >= 1 && (
+          <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-10 pt-2 pb-3 flex justify-center">
+            <AssessmentVersionSelector
+              snapshots={versionSelector.gridItems}
+              selectedIndex={versionSelector.selectedIndex}
+              totalCount={versionSelector.totalCount}
+              initialAssessment={versionSelector.initialAssessment}
+              initialAssessmentGlobalIndex={versionSelector.initialAssessmentGlobalIndex}
+              currentPage={versionSelector.currentPage}
+              totalPages={versionSelector.totalPages}
+              pageSize={versionSelector.pageSize}
+              onSelect={versionSelector.handleSelect}
+              onPageChange={versionSelector.handlePageChange}
+              getTrend={versionSelector.getTrend}
+            />
+          </div>
+        )}
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-10 pb-8 sm:pb-12">
+          <Suspense fallback={
+            <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl">
+              <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+              <p className="text-sm font-medium text-slate-400">Generating Report...</p>
+            </div>
+          }>
+            {reportView === 'client' ? (
+              <ClientReport
+                scores={versionSelector.selectedScores ?? scores}
+                goals={Array.isArray((versionSelector.selectedFormData ?? formData).clientGoals) ? (versionSelector.selectedFormData ?? formData).clientGoals : []}
+                formData={versionSelector.selectedFormData ?? formData}
+                plan={plan}
+                previousScores={versionSelector.previousScores ?? previousScores}
+                previousFormData={(versionSelector.previousFormData ?? previousFormData) ?? undefined}
+                standalone={false}
+              />
+            ) : (
+              <CoachReport
+                plan={plan}
+                scores={versionSelector.selectedScores ?? scores}
+                bodyComp={bodyComp}
+                formData={versionSelector.selectedFormData ?? formData}
+                highlightCategory={highlightCategory}
+              />
+            )}
+          </Suspense>
+        </div>
+      </div>
     </AppShell>
     </ErrorBoundary>
   );

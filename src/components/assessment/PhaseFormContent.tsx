@@ -13,7 +13,7 @@ import { phaseDefinitions, type PhaseField, type PhaseSection } from '@/lib/phas
 import { computeScores, buildRoadmap } from '@/lib/scoring';
 import { generateCoachPlan, generateBodyCompInterpretation } from '@/lib/recommendations';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAssessmentNavigation } from '@/hooks/useAssessmentNavigation';
 import { useAssessmentSave } from '@/hooks/useAssessmentSave';
@@ -505,7 +505,7 @@ export const PhaseFormContent = ({
 
           {/* Draft recovery banner */}
           {draftBanner && (
-            <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm animate-fade-in-up">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-sm animate-fade-in-up">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-slate-900">{UI_DRAFT.TITLE}</p>
                 <p className="text-xs text-slate-500 mt-0.5 truncate">
@@ -526,7 +526,7 @@ export const PhaseFormContent = ({
           <section className="space-y-2">
             <div className="flex items-center justify-between">
               {isPartialAssessment ? (
-                <span className="text-[10px] font-black uppercase tracking-widest bg-brand-light px-2 py-0.5 rounded text-primary">Quick Update: {partialCategory}</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.15em] bg-brand-light px-2 py-0.5 rounded text-primary">Quick Update: {partialCategory}</span>
               ) : <span />}
               {activePhase.id !== 'P7' && (
                 <button
@@ -538,8 +538,8 @@ export const PhaseFormContent = ({
                 </button>
               )}
             </div>
-            <h2 className="text-3xl font-bold tracking-tight text-slate-900">{activePhase.title}</h2>
-            <p className="text-slate-500 text-lg leading-relaxed max-w-2xl">{activePhase.summary}</p>
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-slate-900">{activePhase.title}</h2>
+            <p className="text-slate-500 text-sm sm:text-base md:text-lg leading-relaxed max-w-2xl">{activePhase.summary}</p>
           </section>
 
           <section className="space-y-6">
@@ -550,7 +550,7 @@ export const PhaseFormContent = ({
                 <Button
                   onClick={handleViewResults}
                   disabled={!anyAssessmentCompleted}
-                  className="h-14 px-10 rounded-2xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 shadow-xl transition-all hover:scale-[1.02] disabled:opacity-40 disabled:hover:scale-100 disabled:shadow-none"
+                  className="h-14 px-10 rounded-2xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 shadow-lg transition-all hover:scale-[1.02] disabled:opacity-40 disabled:hover:scale-100 disabled:shadow-none"
                 >
                   {isPartialAssessment ? 'Update Live Report' : anyAssessmentCompleted ? 'Generate Report' : 'Complete a section to generate report'}
                 </Button>
@@ -561,7 +561,7 @@ export const PhaseFormContent = ({
               <React.Suspense fallback={
                 <div className="flex flex-col items-center justify-center py-20 gap-4">
                   <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                  <p className="text-sm font-black uppercase tracking-widest text-slate-400">Finalizing Report...</p>
+                  <p className="text-sm font-medium text-slate-400">Finalizing Report...</p>
                   </div>
               }>
                 <AssessmentResults
@@ -592,8 +592,8 @@ export const PhaseFormContent = ({
               </React.Suspense>
             )}
           </section>
-          <footer className="pt-12 pb-8 text-center text-[10px] font-bold uppercase tracking-widest text-slate-300">
-            {orgSettings?.name || 'FitnessFlow'} Professional v2.1 • Confidential Client Data
+          <footer className="pt-12 pb-8 text-center text-[10px] font-black uppercase tracking-[0.15em] text-slate-300">
+            {orgSettings?.name || 'One Assess'} Professional v2.1 • Confidential Client Data
           </footer>
         </div>
       </main>

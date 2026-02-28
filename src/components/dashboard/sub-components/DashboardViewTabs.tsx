@@ -24,7 +24,7 @@ export const DashboardViewTabs: React.FC<DashboardViewTabsProps> = ({
   const tabClass = (tab: DashboardView) =>
     `flex-1 sm:flex-none px-3 sm:px-5 py-2 min-h-[44px] sm:min-h-0 text-xs sm:text-sm font-bold rounded-lg transition-all duration-200 touch-manipulation flex items-center justify-center gap-1.5 whitespace-nowrap ${
       view === tab
-        ? 'bg-white text-slate-900 shadow-sm scale-[1.02]'
+        ? 'bg-white text-slate-900 scale-[1.02]'
         : 'text-slate-500 hover:text-slate-700'
     }`;
 
@@ -60,7 +60,7 @@ export const DashboardViewTabs: React.FC<DashboardViewTabsProps> = ({
           placeholder={view === 'team' ? 'Search coaches…' : 'Search clients…'}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="h-10 sm:h-11 w-full pl-4 pr-10 text-sm rounded-xl border-slate-200 focus:border-slate-900 transition-colors bg-white/50 backdrop-blur-sm shadow-sm"
+          className="h-10 sm:h-11 w-full pl-4 pr-10 text-sm rounded-xl border-slate-200 focus:border-slate-900 transition-colors bg-white/50 backdrop-blur-sm"
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
           <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

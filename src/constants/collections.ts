@@ -5,6 +5,12 @@ export const COLLECTIONS = {
   CLIENTS: 'clients',
   ASSESSMENTS: 'assessments',
   PUBLIC_REPORTS: 'publicReports',
+  /** Subcollection under publicReports/{token} */
+  ACHIEVEMENTS: 'achievements',
+  /** Subcollection under publicReports/{token} */
+  NOTIFICATIONS: 'notifications',
+  /** Subcollection under publicReports/{token} */
+  PUBLIC_REPORT_SNAPSHOTS: 'snapshots',
   PLATFORM_ADMINS: 'platform_admins',
   SYSTEM_STATS: 'system_stats',
   AI_USAGE_LOGS: 'ai_usage_logs',

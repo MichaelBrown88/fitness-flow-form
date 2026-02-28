@@ -107,7 +107,7 @@ export function ClientReportWorkout({ plan, goalLabel }: ClientReportWorkoutProp
                     <div key={i} className="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50/50">
                       <div>
                         <p className="text-sm font-bold text-slate-900">{ex.name}</p>
-                        <p className="text-xs text-slate-500 uppercase tracking-widest">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.15em]">
                           {ex.addresses.join(' • ')}
                         </p>
                       </div>
@@ -119,7 +119,7 @@ export function ClientReportWorkout({ plan, goalLabel }: ClientReportWorkoutProp
 
             {/* Main Block */}
             <div className="bg-white rounded-3xl border-2 border-primary p-8 shadow-md space-y-6 relative overflow-hidden">
-              <div className="absolute top-0 right-0 -mt-2 -mr-2 bg-primary text-white text-xs font-black px-4 py-2 rotate-12 shadow-lg">
+              <div className="absolute top-0 right-0 -mt-2 -mr-2 bg-primary text-white text-xs font-bold px-4 py-2 rotate-12 shadow-lg">
                 GOAL BLOCK
               </div>
               <div className="flex items-center gap-3">
@@ -148,7 +148,7 @@ export function ClientReportWorkout({ plan, goalLabel }: ClientReportWorkoutProp
                         <p className="text-sm font-bold text-slate-900">{ex.name}</p>
                         <p className="text-xs text-slate-500 italic mt-0.5">{ex.reason}</p>
                       </div>
-                      <Badge className="bg-primary text-white border-none text-xs font-black">
+                      <Badge className="bg-primary text-white border-none text-xs font-bold">
                         {ex.setsReps || '3-4 Sets'}
                       </Badge>
                     </div>

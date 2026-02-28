@@ -25,7 +25,7 @@ export const ReportHeader: React.FC<ReportHeaderProps> = ({
             </span>
             <span className="text-[10px] sm:text-xs text-zinc-400 font-medium">{reportDate}</span>
           </div>
-          <h1 className="text-base sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-black tracking-tight text-zinc-900 leading-tight">
+          <h1 className="text-base sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-bold tracking-tight text-zinc-900 leading-tight">
             {clientName || 'Your Assessment Report'}
           </h1>
           <p className="hidden sm:block text-xs md:text-sm lg:text-base text-zinc-500 font-medium leading-snug">

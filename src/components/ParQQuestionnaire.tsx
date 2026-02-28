@@ -168,7 +168,7 @@ const ParQQuestionnaire: React.FC<ParQQuestionnaireProps> = ({ onExitParQ, onCom
 
       {/* Progress — identical to SingleFieldFlow */}
       <div className="space-y-2">
-        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400">
+        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">
           <span>Health Screening Progress</span>
           <span>{validQuestionIndex + 1} of {visibleQuestions.length}</span>
         </div>

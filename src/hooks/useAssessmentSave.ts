@@ -5,7 +5,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Timestamp } from 'firebase/firestore';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { saveCoachAssessment, updateCoachAssessment } from '@/services/coachAssessments';
 import { requestShareArtifacts, type ShareArtifacts } from '@/services/share';
 import type { FormData } from '@/contexts/FormContext';
@@ -87,6 +87,7 @@ export function useAssessmentSave({
       // Starting sync for client
       
       let assessmentId: string;
+      let shareToken: string | null = null;
       let category: string | null = null;
       
       try {
@@ -107,7 +108,6 @@ export function useAssessmentSave({
             assessmentId = parsed.assessmentId;
             sessionStorage.removeItem(STORAGE_KEYS.EDIT_ASSESSMENT);
             clearDraft();
-            // Set edit mode flag (used by AssessmentResults for navigation)
             setIsEditMode(true);
             toast({
               title: UI_TOASTS.SUCCESS.ASSESSMENT_UPDATED,
@@ -115,7 +115,7 @@ export function useAssessmentSave({
             });
             setSavingId(assessmentId);
             setSaving(false);
-            return; // Early return after update
+            return;
           }
         }
         
@@ -125,7 +125,7 @@ export function useAssessmentSave({
           category = cat;
           
           const { savePartialAssessment } = await import('@/services/coachAssessments');
-          assessmentId = await savePartialAssessment(
+          const result = await savePartialAssessment(
             user.uid, 
             user.email, 
             formData, 
@@ -135,26 +135,53 @@ export function useAssessmentSave({
             profile?.organizationId,
             profile
           );
+          assessmentId = result.assessmentId;
+          shareToken = result.shareToken;
           
           const { createOrUpdateClientProfile } = await import('@/services/clientProfiles');
-          const updateData: Record<string, Timestamp> = {};
           const now = Timestamp.now();
+          const updateData: Record<string, unknown> = {
+            lastAssessmentDate: now,
+          };
           
-          if (category === 'bodycomp') updateData.lastBodyCompDate = now;
+          if (category === 'bodycomp') updateData.lastInBodyDate = now;
           else if (category === 'posture') updateData.lastPostureDate = now;
           else if (category === 'fitness') updateData.lastFitnessDate = now;
           else if (category === 'strength') updateData.lastStrengthDate = now;
           else if (category === 'lifestyle') updateData.lastLifestyleDate = now;
           
-          if (Object.keys(updateData).length > 0) {
-            await createOrUpdateClientProfile(user.uid, storedName || clientName, updateData, profile?.organizationId, profile);
-          }
+          // Store shareToken on client profile for coach-side lookups
+          if (shareToken) updateData.shareToken = shareToken;
+          
+          await createOrUpdateClientProfile(user.uid, storedName || clientName, updateData, profile?.organizationId, profile);
           
           setHighlightCategory(category);
           sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
         } else {
           // Full assessment - save and silently generate cadence recommendations
-          assessmentId = await saveCoachAssessment(user.uid, user.email, formData, scores.overall, profile?.organizationId, profile);
+          const result = await saveCoachAssessment(user.uid, user.email, formData, scores.overall, profile?.organizationId, profile);
+          assessmentId = result.assessmentId;
+          shareToken = result.shareToken;
+
+          // Update client profile: lastAssessmentDate, all pillar dates, and shareToken
+          if (profile?.organizationId) {
+            try {
+              const { createOrUpdateClientProfile } = await import('@/services/clientProfiles');
+              const now = Timestamp.now();
+              const profileUpdate: Record<string, unknown> = {
+                lastAssessmentDate: now,
+                lastInBodyDate: now,
+                lastPostureDate: now,
+                lastFitnessDate: now,
+                lastStrengthDate: now,
+                lastLifestyleDate: now,
+              };
+              if (shareToken) profileUpdate.shareToken = shareToken;
+              await createOrUpdateClientProfile(user.uid, clientName, profileUpdate, profile.organizationId, profile);
+            } catch (profileErr) {
+              logger.warn('[Assessment] Failed to update client profile dates (non-fatal):', profileErr);
+            }
+          }
 
           // Silent Save: auto-generate and save retest schedule without dialog
           if (profile?.organizationId) {
@@ -170,16 +197,31 @@ export function useAssessmentSave({
                 sourceAssessmentId: assessmentId,
               });
               logger.info('[Assessment] Retest schedule silently saved', { clientName });
+
+              // Notify coach to review the client's schedule (non-blocking)
+              try {
+                const { writeNotification } = await import('@/services/notificationWriter');
+                await writeNotification({
+                  recipientUid: user.uid,
+                  type: 'schedule_review',
+                  title: `Review ${clientName}'s schedule`,
+                  body: 'Follow-up assessments are set to your defaults. Tap to review or adjust.',
+                  actionUrl: `/client/${encodeURIComponent(clientName)}`,
+                  priority: 'low',
+                });
+              } catch (notifErr) {
+                logger.warn('[Assessment] Failed to send schedule_review notification (non-fatal):', notifErr);
+              }
             } catch (cadenceErr) {
-              // Non-fatal: log but don't fail the assessment save
               logger.warn('[Assessment] Failed to auto-save retest schedule:', cadenceErr);
             }
           }
         }
       } catch (parseErr) {
-        // If parse error occurs, still try to save but with profile for validation
         try {
-          assessmentId = await saveCoachAssessment(user.uid, user.email, formData, scores.overall, profile?.organizationId, profile);
+          const result = await saveCoachAssessment(user.uid, user.email, formData, scores.overall, profile?.organizationId, profile);
+          assessmentId = result.assessmentId;
+          shareToken = result.shareToken;
         } catch (saveErr) {
           logger.error('Failed to save assessment:', saveErr);
           toast({
@@ -188,7 +230,7 @@ export function useAssessmentSave({
             variant: 'destructive'
           });
           setSaving(false);
-          return; // Exit early on save failure
+          return;
         }
       }
       
@@ -210,6 +252,83 @@ export function useAssessmentSave({
           logger.info('[Assessment] firstAssessmentCompleted flag set');
         } catch (flagErr) {
           logger.warn('[Assessment] Failed to set firstAssessmentCompleted flag (non-fatal):', flagErr);
+        }
+      }
+
+      // Evaluate achievements and send notifications via shareToken (non-blocking)
+      if (profile?.organizationId && assessmentId && shareToken) {
+        // Step 1: Evaluate achievements using token-scoped storage
+        try {
+          const { getDoc: getDocSnap } = await import('firebase/firestore');
+          const { getOrgAssessmentDoc } = await import('@/lib/database/collections');
+          const summarySnap = await getDocSnap(
+            getOrgAssessmentDoc(profile.organizationId, assessmentId)
+          );
+          const actualCount = (summarySnap.data()?.assessmentCount as number) ?? 1;
+          const previousOverallScore = (summarySnap.data()?.previousScore as number) ?? undefined;
+
+          let previousCategoryScores: Array<{ id: string; score: number }> | undefined;
+          try {
+            const { getSnapshots } = await import('@/services/assessmentHistory');
+            const snapshots = await getSnapshots(user.uid, clientName, 2, profile.organizationId);
+            if (snapshots.length >= 2 && snapshots[1].formData) {
+              const { computeScores } = await import('@/lib/scoring');
+              const prevScores = computeScores(snapshots[1].formData);
+              previousCategoryScores = prevScores.categories.map((c) => ({ id: c.id, score: c.score }));
+            }
+          } catch (prevErr) {
+            logger.debug('[Assessment] Could not fetch previous category scores (non-fatal):', prevErr);
+          }
+
+          const { evaluateAchievements } = await import('@/services/achievements');
+          const categoryScores = scores.categories.map((c) => ({ id: c.id, score: c.score }));
+
+          const unlocked = await evaluateAchievements({
+            shareToken,
+            organizationId: profile.organizationId,
+            overallScore: scores.overall,
+            categoryScores,
+            previousOverallScore,
+            previousCategoryScores,
+            assessmentCount: actualCount,
+          });
+
+          // Send achievement unlock notifications via token-scoped path
+          if (unlocked.length > 0) {
+            try {
+              const { writeNotification } = await import('@/services/notificationWriter');
+              for (const ach of unlocked) {
+                await writeNotification({
+                  shareToken,
+                  type: 'system',
+                  title: `Achievement Unlocked: ${ach.title}`,
+                  body: ach.description,
+                  priority: 'low',
+                });
+              }
+            } catch (notifErr) {
+              logger.warn('[Assessment] Failed to send achievement notifications (non-fatal):', notifErr);
+            }
+          }
+
+          logger.debug(`[Assessment] Achievements evaluated via token ${shareToken} (${unlocked.length} unlocked)`);
+        } catch (achErr) {
+          logger.warn('[Assessment] Failed to evaluate achievements (non-fatal):', achErr);
+        }
+
+        // Step 2: Send "assessment_complete" notification via token-scoped path
+        try {
+          const { writeNotification } = await import('@/services/notificationWriter');
+          await writeNotification({
+            shareToken,
+            type: 'assessment_complete',
+            title: 'Your assessment results are ready',
+            body: 'Your coach has completed your latest assessment. View your updated scores.',
+            priority: 'medium',
+          });
+          logger.debug('[Assessment] assessment_complete notification sent via token');
+        } catch (notifErr) {
+          logger.warn('[Assessment] Failed to send assessment_complete notification (non-fatal):', notifErr);
         }
       }
     } catch (e) {

@@ -4,7 +4,7 @@
  */
 
 import { useState, useRef, useCallback } from 'react';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { doc, setDoc, Timestamp } from 'firebase/firestore';
 import { getStorage, db } from '@/services/firebase';
 import { updatePostureImage, updateBodyCompImage } from '@/services/liveSessions';

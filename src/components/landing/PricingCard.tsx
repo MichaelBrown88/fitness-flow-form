@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Check } from 'lucide-react';
 import React from 'react';
+import GlassCard from '@/components/ui/GlassCard';
 
 interface PricingFeature {
   text: string;
@@ -28,18 +29,12 @@ export function PricingCard({
   ctaText = 'Get Started',
   index = 0,
 }: PricingCardProps) {
-  const GlassCard: React.FC<{ children?: React.ReactNode; className?: string }> = ({ children, className = "" }) => (
-    <div className={`backdrop-blur-2xl bg-white/60 border border-white/50 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:bg-white/80 transition-all duration-500 ${className}`}>
-      {children}
-    </div>
-  );
-
   if (highlighted) {
     return (
       <div className="relative transform md:-translate-y-4">
-        <div className="absolute inset-0 bg-gradient-to-b from-indigo-500 to-violet-600 rounded-[32px] blur-sm opacity-20"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-indigo-500 to-violet-600 rounded-3xl blur-sm opacity-20"></div>
         <GlassCard className="p-10 relative bg-white border-indigo-100 shadow-2xl">
-          <div className="absolute top-0 right-0 bg-gradient-to-l from-indigo-600 to-violet-600 text-white text-[10px] font-bold uppercase tracking-widest px-4 py-2 rounded-bl-2xl rounded-tr-2xl">
+          <div className="absolute top-0 right-0 bg-gradient-to-l from-indigo-600 to-violet-600 text-white text-[10px] font-bold uppercase tracking-[0.15em] px-4 py-2 rounded-bl-2xl rounded-tr-2xl">
             Most Popular
           </div>
           <h3 className="text-xl font-bold mb-2 text-slate-900">{name}</h3>
@@ -121,14 +116,13 @@ interface PricingSectionProps {
 export function PricingSection({ children }: PricingSectionProps) {
   return (
     <section id="pricing" className="py-24 bg-gradient-to-b from-white to-slate-50/50">
-      <div className="container mx-auto px-4">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
-            Simple,
-            <span className="gradient-text"> Transparent Pricing</span>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="text-center mb-16 sm:mb-20">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-6">
+            Simple, <span className="text-indigo-600">Transparent</span> Pricing
           </h2>
-          <p className="text-foreground-secondary max-w-2xl mx-auto">
-            Choose the plan that fits your needs. All plans include a 14-day free trial.
+          <p className="text-slate-500 text-lg max-w-2xl mx-auto">
+            14-day free trial on every plan. No credit card required.
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto items-center">

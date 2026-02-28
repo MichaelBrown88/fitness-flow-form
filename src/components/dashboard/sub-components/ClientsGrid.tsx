@@ -106,15 +106,15 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
             >
               <div className="flex items-start justify-between mb-3 sm:mb-4">
                 <div className="min-w-0 flex-1">
-                  <h3 className="text-base sm:text-lg font-black text-slate-900 truncate uppercase tracking-tight">
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900 truncate">
                     {group.name}
                   </h3>
-                  <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">
+                  <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.15em] mt-1">
                     {group.assessments.length} assessment{group.assessments.length !== 1 ? 's' : ''}
                   </p>
                 </div>
                 {group.scoreChange !== undefined && (
-                  <div className={`flex items-center gap-1 text-[10px] sm:text-xs font-black shadow-sm px-2 py-0.5 rounded-full ${
+                  <div className={`flex items-center gap-1 text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full ${
                     group.scoreChange >= 0 ? `bg-score-green-light text-score-green-fg` : `bg-score-red-light text-score-red-fg`
                   }`}>
                     {group.scoreChange >= 0 ? (
@@ -134,7 +134,7 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
                     <Badge 
                       key={s.pillar}
                       variant="outline" 
-                      className={`text-[9px] font-semibold gap-1 ${
+                      className={`text-[10px] font-semibold gap-1 ${
                         s.status === 'overdue'
                           ? SCORE_COLORS.red.pill
                           : SCORE_COLORS.amber.pill
@@ -150,12 +150,12 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
               <div className="space-y-2 mb-5 sm:mb-6">
                 <div className="flex items-center justify-between text-xs sm:text-sm p-2 bg-slate-50 rounded-lg group-hover:bg-white transition-colors border border-transparent group-hover:border-slate-100">
                   <span className="text-slate-500 font-medium">Latest Score</span>
-                  <span className="font-black text-slate-900">{group.latestScore}</span>
+                  <span className="font-bold text-slate-900">{group.latestScore}</span>
                 </div>
                 {group.latestDate && (
-                  <div className="flex items-center justify-between text-[11px] sm:text-xs px-2">
+                  <div className="flex items-center justify-between text-xs sm:text-xs px-2">
                     <span className="text-slate-400 font-medium">Last Assessment</span>
-                    <span className="text-slate-500 font-bold uppercase tracking-wide">
+                    <span className="text-slate-500 font-bold uppercase tracking-[0.15em]">
                       {group.latestDate.toLocaleDateString()}
                     </span>
                   </div>
@@ -185,7 +185,7 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-xl border-slate-200 p-1">
-                    <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-2 py-1.5">Assessment Type</DropdownMenuLabel>
+                    <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 px-2 py-1.5">Assessment Type</DropdownMenuLabel>
                     <DropdownMenuSeparator className="bg-slate-100" />
                     <DropdownMenuItem onClick={() => onNewAssessment(group.name)} className="rounded-lg text-xs font-bold px-2 py-2 cursor-pointer focus:bg-slate-50">
                       Full Assessment
@@ -220,7 +220,7 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
           <Button 
             variant="outline" 
             onClick={() => setVisibleCount(prev => prev + 12)}
-            className="text-slate-500 font-bold text-xs uppercase tracking-widest px-8 rounded-xl border-slate-200 hover:border-slate-900 hover:text-slate-900 transition-all"
+            className="text-slate-500 font-semibold text-xs px-8 rounded-xl border-slate-200 hover:border-slate-900 hover:text-slate-900 transition-all"
           >
             Show More Clients
           </Button>

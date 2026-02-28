@@ -39,7 +39,8 @@ export function useClientList(
 
     load();
     return () => { cancelled = true; };
-  }, [organizationId, scheduleVersion]);
+  // Re-fetch schedules when items change (e.g. after partial assessment updates lastAssessmentDate)
+  }, [organizationId, scheduleVersion, items.length]);
 
   const clientGroups = useMemo(() => {
     // Deduplicate by clientName (keep the latest summary per client)
@@ -50,8 +51,8 @@ export function useClientList(
       if (!existing) {
         byName.set(key, item);
       } else {
-        const existingTime = existing.createdAt?.toDate()?.getTime() || 0;
-        const itemTime = item.createdAt?.toDate()?.getTime() || 0;
+        const existingTime = (existing.updatedAt ?? existing.createdAt)?.toDate()?.getTime() || 0;
+        const itemTime = (item.updatedAt ?? item.createdAt)?.toDate()?.getTime() || 0;
         if (itemTime > existingTime) {
           byName.set(key, item);
         }
@@ -59,20 +60,27 @@ export function useClientList(
     }
 
     const result: ClientGroup[] = Array.from(byName.values()).map((item) => {
-      const schedule = scheduleMap.get(item.clientName.toLowerCase());
+      const nameKey = item.clientName.toLowerCase();
+      const slugKey = nameKey.replace(/\s+/g, '-');
+      const schedule = scheduleMap.get(nameKey) ?? scheduleMap.get(slugKey);
 
       return {
         id: item.id,
         name: item.clientName,
         assessments: [item],
         latestScore: item.overallScore || 0,
-        latestDate: item.createdAt?.toDate() || null,
+        latestDate: (item.updatedAt ?? item.createdAt)?.toDate() || null,
         scoreChange: item.trend,
         coachUid: item.coachUid,
         retestSchedule: schedule?.recommended || schedule?.custom
           ? { recommended: schedule!.recommended!, custom: schedule?.custom }
           : undefined,
         dueDateOverrides: schedule?.dueDateOverrides,
+        pillarDates: schedule?.pillarDates,
+        clientStatus: (schedule as Record<string, unknown>)?.clientStatus as ClientGroup['clientStatus'] ?? 'active',
+        activePillars: schedule?.activePillars,
+        trainingStartDate: schedule?.trainingStartDate,
+        lastAssessmentDate: schedule?.lastAssessmentDate,
       };
     });
 

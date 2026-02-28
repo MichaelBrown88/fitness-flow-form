@@ -14,6 +14,7 @@ export interface UseClientReportDataProps {
   goals?: string[];
   formData?: FormData;
   previousScores?: ScoreSummary | null;
+  previousFormData?: FormData;
 }
 
 export function useClientReportData({
@@ -21,6 +22,7 @@ export function useClientReportData({
   goals,
   formData,
   previousScores,
+  previousFormData,
 }: UseClientReportDataProps) {
   const safeScores = useMemo(() => {
     if (scores && scores.categories) return scores;
@@ -216,7 +218,22 @@ export function useClientReportData({
     }));
   }, [previousScores]);
 
-  const gapAnalysisData = useGapAnalysisData(safeScores, formData);
+  const gapAnalysisData = useGapAnalysisData(safeScores, formData, previousFormData);
+
+  // Compute previous gap analysis data (raw metric values from the prior assessment)
+  // so the UI can animate from old to new values.
+  const safePreviousScores = useMemo(() => {
+    if (previousScores && previousScores.categories) return previousScores;
+    return null;
+  }, [previousScores]);
+
+  const previousGapAnalysisData = useGapAnalysisData(
+    safePreviousScores ?? safeScores,
+    previousFormData ?? formData,
+    undefined,
+  );
+  // previousGapAnalysisData only contains meaningful values if previousFormData exists.
+  // If not, it mirrors current data (no animation needed).
   
   const reportDate = useMemo(() => {
     const date = new Date();
@@ -256,6 +273,7 @@ export function useClientReportData({
     overallRadarData,
     previousRadarData,
     gapAnalysisData,
+    previousGapAnalysisData: previousFormData ? previousGapAnalysisData : undefined,
     reportDate,
     blueprintPillars,
   };

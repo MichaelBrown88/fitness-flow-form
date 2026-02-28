@@ -1,6 +1,6 @@
 /**
  * Route guard for staff-only pages (coach and org_admin).
- * Redirects to /portal if a client accidentally navigates here.
+ * Redirects clients to home (clients access reports via /r/:token).
  * Redirects to /login if not authenticated.
  */
 
@@ -29,9 +29,9 @@ export function RequireStaffAuth({ children }: { children: JSX.Element }) {
     );
   }
 
-  // Client navigated to staff area → redirect to client portal
+  // Client navigated to staff area → redirect home (clients use /r/:token)
   if (profile?.role === 'client') {
-    return <Navigate to="/portal" replace />;
+    return <Navigate to="/" replace />;
   }
 
   return children;

@@ -92,7 +92,7 @@ export const AssessmentModals = ({
               </div>
             </div>
             <div className="space-y-4">
-              <h4 className="text-xl font-black uppercase tracking-widest text-white">Reading Report</h4>
+              <h4 className="text-xl font-bold text-white">Reading Report</h4>
               <p className="text-white/50 text-sm font-medium leading-relaxed">
                 Reading your report...
               </p>

@@ -32,19 +32,19 @@ export const AssessmentsTable: React.FC<AssessmentsTableProps> = ({
         <table className="min-w-full divide-y divide-slate-200 text-xs sm:text-sm">
           <thead className="bg-slate-50/50">
             <tr>
-              <th className="px-3 sm:px-4 md:px-6 py-3 text-left text-[10px] sm:text-xs font-bold uppercase tracking-widest text-slate-400">
+              <th className="px-3 sm:px-4 md:px-6 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
                 Client
               </th>
-              <th className="px-3 sm:px-4 md:px-6 py-3 text-left text-[10px] sm:text-xs font-bold uppercase tracking-widest text-slate-400 hidden sm:table-cell">
+              <th className="px-3 sm:px-4 md:px-6 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 hidden sm:table-cell">
                 Date
               </th>
-              <th className="px-3 sm:px-4 md:px-6 py-3 text-left text-[10px] sm:text-xs font-bold uppercase tracking-widest text-slate-400">
+              <th className="px-3 sm:px-4 md:px-6 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
                 Overall
               </th>
-              <th className="px-3 sm:px-4 md:px-6 py-3 text-left text-[10px] sm:text-xs font-bold uppercase tracking-widest text-slate-400 hidden md:table-cell">
+              <th className="px-3 sm:px-4 md:px-6 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 hidden md:table-cell">
                 Goals
               </th>
-              <th className="px-3 sm:px-4 md:px-6 py-3 text-right text-[10px] sm:text-xs font-bold uppercase tracking-widest text-slate-400">
+              <th className="px-3 sm:px-4 md:px-6 py-3 text-right text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
                 Actions
               </th>
             </tr>
@@ -70,7 +70,7 @@ export const AssessmentsTable: React.FC<AssessmentsTableProps> = ({
             ) : (
               filtered.slice(0, visibleCount).map((item) => (
                 <tr key={item.id} className="hover:bg-slate-50/80 transition-colors group">
-                  <td className="px-3 sm:px-4 md:px-6 py-4 text-xs sm:text-sm text-slate-900 font-semibold uppercase tracking-tight">
+                  <td className="px-3 sm:px-4 md:px-6 py-4 text-xs sm:text-sm text-slate-900 font-semibold">
                     <div className="flex flex-col">
                       <span>{item.clientName}</span>
                       <span className="text-[10px] sm:hidden text-slate-400 font-medium mt-1">
@@ -86,7 +86,7 @@ export const AssessmentsTable: React.FC<AssessmentsTableProps> = ({
                       : '—'}
                   </td>
                   <td className="px-3 sm:px-4 md:px-6 py-4">
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-900 text-white text-xs font-black shadow-sm group-hover:scale-105 transition-transform">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-900 text-white text-xs font-bold group-hover:scale-105 transition-transform">
                       {item.overallScore || '—'}
                     </span>
                   </td>
@@ -97,7 +97,7 @@ export const AssessmentsTable: React.FC<AssessmentsTableProps> = ({
                   </td>
                   <td className="px-3 sm:px-4 md:px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-1 sm:gap-3">
-                      <Button variant="outline" size="sm" asChild className="h-8 sm:h-9 px-3 sm:px-4 rounded-lg text-xs font-bold border-slate-200 hover:border-slate-900 hover:bg-slate-900 hover:text-white transition-all">
+                      <Button variant="outline" size="sm" asChild className="h-9 sm:h-8 px-3 sm:px-4 rounded-lg text-xs font-bold border-slate-200 hover:border-slate-900 hover:bg-slate-900 hover:text-white transition-all">
                         <Link to={`/coach/assessments/${item.id}`}>
                           <span className="hidden sm:inline">Open Report</span>
                           <span className="sm:hidden">Open</span>
@@ -107,7 +107,7 @@ export const AssessmentsTable: React.FC<AssessmentsTableProps> = ({
                         variant="ghost"
                         size="sm"
                         onClick={() => onDelete(item.id, item.clientName)}
-                        className="text-red-400 hover:text-red-600 hover:bg-red-50 h-8 w-8 sm:h-9 sm:w-9 p-0 rounded-lg group-hover:opacity-100 transition-opacity"
+                        className="text-red-400 hover:text-red-600 hover:bg-red-50 h-9 w-9 sm:h-8 sm:w-8 p-0 rounded-lg group-hover:opacity-100 transition-opacity"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -126,7 +126,7 @@ export const AssessmentsTable: React.FC<AssessmentsTableProps> = ({
             variant="outline" 
             onClick={onLoadMore}
             disabled={loadingMore}
-            className="text-slate-500 font-bold text-xs uppercase tracking-widest px-8 rounded-xl border-slate-200 hover:border-slate-900 hover:text-slate-900 transition-all"
+            className="text-slate-500 font-semibold text-xs px-8 rounded-xl border-slate-200 hover:border-slate-900 hover:text-slate-900 transition-all"
           >
             {loadingMore ? 'Loading...' : hasMore ? 'Load More from Database' : 'Show More Assessments'}
           </Button>

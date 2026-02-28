@@ -35,7 +35,7 @@ export const FieldSelect: React.FC<FieldSelectProps> = ({
               aria-label={option.label}
             >
               {option.tag && (
-                <div className={`absolute top-0 right-0 px-3 py-1 rounded-bl-xl text-[9px] font-black uppercase tracking-widest ${
+                <div className={`absolute top-0 right-0 px-3 py-1 rounded-bl-xl text-[10px] font-black uppercase tracking-[0.15em] ${
                   isSelected ? 'bg-white/20 text-white' : 'bg-slate-900 text-white'
                 }`}>
                   {option.tag}
@@ -60,7 +60,7 @@ export const FieldSelect: React.FC<FieldSelectProps> = ({
               </div>
             </button>
             {isSelected && option.value === 'yes' && id.toLowerCase().includes('pain') && (
-              <p className="px-2 py-1.5 rounded-lg bg-rose-50 border border-rose-100 text-[10px] font-black uppercase tracking-widest text-rose-600 flex items-center gap-2 animate-pulse shadow-sm">
+              <p className="px-2 py-1.5 rounded-lg bg-rose-50 text-[10px] font-black uppercase tracking-[0.15em] text-rose-600 flex items-center gap-2 animate-pulse">
                 <span className="text-sm">⚠️</span> Safety Flag: Do not load this movement pattern.
               </p>
             )}

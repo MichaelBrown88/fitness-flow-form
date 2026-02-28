@@ -162,7 +162,7 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
     <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
       {/* Progress within section */}
       <div className="space-y-2">
-        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400">
+        <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
           <span>{section.title} Progress</span>
           <span>{activeFieldIdx + 1} of {steps.length}</span>
         </div>
@@ -173,11 +173,11 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
 
         {movementPattern && (
           <div className="mb-6 flex items-center gap-2">
-            <span className="px-3 py-1 bg-brand-light text-primary rounded-full text-[10px] font-black uppercase tracking-[0.2em] border border-primary/10">
+            <span className="px-3 py-1 bg-brand-light text-primary rounded-full text-[10px] font-black uppercase tracking-[0.15em] border border-primary/10">
               {movementPattern}
             </span>
             {sharedSide && (
-              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border ${
+              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.15em] border ${
                 sharedSide === 'left'
                   ? 'bg-score-green-light text-score-green-fg border-score-green-muted'
                   : 'bg-primary/10 text-primary border-primary/10'
@@ -193,7 +193,7 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
           <div className="mb-6 flex flex-wrap items-center gap-2">
             <Button
               onClick={handleSnapPhoto}
-              className="h-10 px-5 rounded-xl bg-primary text-white font-bold gap-2 text-sm hover:brightness-110"
+              className="h-10 px-5 rounded-xl bg-primary text-white font-semibold gap-2 text-sm hover:brightness-110"
             >
               <Camera className="h-4 w-4" />
               Snap a Photo
@@ -210,7 +210,7 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
             <div key={field.id} className="space-y-3">
               {/* Show per-field side badge only when NOT using a group-level side indicator */}
               {field.side && !sharedSide && (
-                <span className={`text-[10px] font-black uppercase tracking-widest ${field.side === 'left' ? 'text-score-green-fg' : 'text-primary'}`}>
+                <span className={`text-[10px] font-black uppercase tracking-[0.15em] ${field.side === 'left' ? 'text-score-green-fg' : 'text-primary'}`}>
                   {field.side} Side
                 </span>
               )}

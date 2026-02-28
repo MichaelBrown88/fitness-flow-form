@@ -22,17 +22,25 @@ import {
   GitCompare,
   UserCog,
   ArrowRightLeft,
+  PauseCircle,
+  PlayCircle,
 } from 'lucide-react';
 
 interface ClientActionsDropdownProps {
   clientName: string;
   /** The Firestore ID of the client's latest assessment (if any) */
   latestAssessmentId?: string;
+  /** Current client status — when 'paused', shows Unpause option */
+  clientStatus?: string;
+  /** Callback to open the pause/unpause dialog */
+  onPauseToggle?: () => void;
 }
 
 export const ClientActionsDropdown: React.FC<ClientActionsDropdownProps> = ({
   clientName,
   latestAssessmentId,
+  clientStatus,
+  onPauseToggle,
 }) => {
   const navigate = useNavigate();
   const encodedName = encodeURIComponent(clientName);
@@ -50,7 +58,7 @@ export const ClientActionsDropdown: React.FC<ClientActionsDropdownProps> = ({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-xl border-slate-200 p-1">
         {/* View Section */}
-        <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-2 py-1.5">
+        <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 px-2 py-1.5">
           View
         </DropdownMenuLabel>
         <DropdownMenuItem
@@ -73,7 +81,7 @@ export const ClientActionsDropdown: React.FC<ClientActionsDropdownProps> = ({
         <DropdownMenuSeparator className="bg-slate-100" />
 
         {/* Manage Section */}
-        <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-2 py-1.5">
+        <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 px-2 py-1.5">
           Manage
         </DropdownMenuLabel>
         <DropdownMenuItem
@@ -90,6 +98,24 @@ export const ClientActionsDropdown: React.FC<ClientActionsDropdownProps> = ({
           <ArrowRightLeft className="h-3.5 w-3.5 text-slate-400" />
           Transfer Client
         </DropdownMenuItem>
+        {onPauseToggle && (
+          <DropdownMenuItem
+            onClick={onPauseToggle}
+            className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-slate-50 text-slate-600 gap-2"
+          >
+            {clientStatus === 'paused' ? (
+              <>
+                <PlayCircle className="h-3.5 w-3.5 text-emerald-500" />
+                Unpause Account
+              </>
+            ) : (
+              <>
+                <PauseCircle className="h-3.5 w-3.5 text-amber-500" />
+                Pause Account
+              </>
+            )}
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
