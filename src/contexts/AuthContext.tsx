@@ -3,6 +3,7 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  signInWithPopup,
   updateProfile,
   signOut as firebaseSignOut,
   sendSignInLinkToEmail,
@@ -11,7 +12,7 @@ import {
   type User,
 } from 'firebase/auth';
 import { doc, getDoc, onSnapshot, setDoc, collection, query, limit, getDocs, updateDoc } from 'firebase/firestore';
-import { getFirebaseAuth, getDb } from '@/services/firebase';
+import { getFirebaseAuth, getDb, googleProvider, appleProvider } from '@/services/firebase';
 import { getOrgSettings, type OrgSettings } from '@/services/organizations';
 import type { UserProfile } from '@/types/auth';
 import { isStaffRole } from '@/types/auth';
@@ -282,6 +283,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // State will be updated by onAuthStateChanged listener
   };
 
+  const signInWithGoogle = async () => {
+    const auth = getFirebaseAuth();
+    const result = await signInWithPopup(auth, googleProvider);
+    const newUser = result.user;
+    const db = getDb();
+
+    const profileRef = doc(db, 'userProfiles', newUser.uid);
+    const profileSnap = await getDoc(profileRef);
+    if (!profileSnap.exists()) {
+      const userProfile: UserProfile = {
+        uid: newUser.uid,
+        organizationId: `org-${newUser.uid}`,
+        role: 'org_admin',
+        displayName: newUser.displayName || 'Coach',
+        onboardingCompleted: false,
+      };
+      await setDoc(profileRef, userProfile);
+      await setDoc(doc(db, 'organizations', `org-${newUser.uid}`), {
+        name: '',
+        ownerId: newUser.uid,
+        subscription: {
+          plan: 'starter',
+          status: 'trial',
+          trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+          billingEmail: newUser.email || '',
+          clientSeats: 10,
+        },
+        createdAt: new Date(),
+      });
+    }
+  };
+
+  const signInWithApple = async () => {
+    const auth = getFirebaseAuth();
+    const result = await signInWithPopup(auth, appleProvider);
+    const newUser = result.user;
+    const db = getDb();
+
+    const profileRef = doc(db, 'userProfiles', newUser.uid);
+    const profileSnap = await getDoc(profileRef);
+    if (!profileSnap.exists()) {
+      const userProfile: UserProfile = {
+        uid: newUser.uid,
+        organizationId: `org-${newUser.uid}`,
+        role: 'org_admin',
+        displayName: newUser.displayName || 'Coach',
+        onboardingCompleted: false,
+      };
+      await setDoc(profileRef, userProfile);
+      await setDoc(doc(db, 'organizations', `org-${newUser.uid}`), {
+        name: '',
+        ownerId: newUser.uid,
+        subscription: {
+          plan: 'starter',
+          status: 'trial',
+          trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+          billingEmail: newUser.email || '',
+          clientSeats: 10,
+        },
+        createdAt: new Date(),
+      });
+    }
+  };
+
   /** Send a magic link email for client access.
    *  If returnUrl is provided, the link will redirect there after auth.
    *  Defaults to the current page URL. */
@@ -394,6 +459,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading, 
       signIn, 
       signUp, 
+      signInWithGoogle,
+      signInWithApple,
       signOut,
       sendClientMagicLink,
       refreshSettings,

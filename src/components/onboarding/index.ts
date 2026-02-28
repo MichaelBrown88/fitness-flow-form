@@ -3,5 +3,6 @@ export { IdentityStep } from './IdentityStep';
 export { BusinessInfoStep } from './BusinessInfoStep';
 export { EquipmentStep } from './EquipmentStep';
 export { PackageSelectionStep } from './PackageSelectionStep';
+export { AccountCreationStep } from './AccountCreationStep';
 export { OnboardingSuccess } from './OnboardingSuccess';
 export { OptionCard, OnboardingInput, GlassInput } from './SharedOnboardingComponents';

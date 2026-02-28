@@ -1,8 +1,8 @@
 /**
  * Onboarding Page
  *
- * Simplified 4-step flow:
- *   0 Account  ->  1 Business  ->  2 Equipment  ->  3 Plan  ->  Success
+ * 5-step flow:
+ *   0 Identity -> 1 Business -> 2 Equipment -> 3 Plan -> 4 Account -> Success
  */
 
 import { useOnboarding } from '@/hooks/useOnboarding';
@@ -12,6 +12,7 @@ import {
   BusinessInfoStep,
   EquipmentStep,
   PackageSelectionStep,
+  AccountCreationStep,
   OnboardingSuccess,
 } from '@/components/onboarding';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
@@ -24,15 +25,18 @@ export default function Onboarding() {
     savingMessage,
     loading,
     identityError,
+    accountError,
     onboardingData,
     handleIdentityNext,
     handleBusinessNext,
     handleEquipmentNext,
     handleCapacityNext,
+    handleAccountCreateWithPassword,
+    handleAccountCreateWithGoogle,
+    handleAccountCreateWithApple,
     handleBack,
   } = useOnboarding();
 
-  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
@@ -41,8 +45,7 @@ export default function Onboarding() {
     );
   }
 
-  // Success state
-  if (isComplete || step >= 4) {
+  if (isComplete || step >= 5) {
     return (
       <OnboardingLayout currentStep={-1} onBack={undefined}>
         <OnboardingSuccess businessName={onboardingData.businessProfile?.name || 'Your Business'} />
@@ -50,7 +53,6 @@ export default function Onboarding() {
     );
   }
 
-  // Saving state overlay
   if (saving) {
     return (
       <OnboardingLayout currentStep={-1} onBack={undefined}>
@@ -62,7 +64,6 @@ export default function Onboarding() {
     );
   }
 
-  // Render current step
   const renderStep = () => {
     switch (step) {
       case 0:
@@ -96,6 +97,18 @@ export default function Onboarding() {
             businessType={onboardingData.businessProfile?.type}
             onNext={handleCapacityNext}
             onBack={handleBack}
+          />
+        );
+      case 4:
+        return (
+          <AccountCreationStep
+            email={onboardingData.identity?.email || ''}
+            onCreateWithPassword={handleAccountCreateWithPassword}
+            onCreateWithGoogle={handleAccountCreateWithGoogle}
+            onCreateWithApple={handleAccountCreateWithApple}
+            onBack={handleBack}
+            error={accountError}
+            submitting={saving}
           />
         );
       default:

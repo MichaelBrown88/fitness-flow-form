@@ -6,7 +6,7 @@ import {
   persistentMultipleTabManager,
   type Firestore 
 } from 'firebase/firestore';
-import { getAuth, type Auth } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, OAuthProvider, type Auth } from 'firebase/auth';
 import { getFunctions, type Functions } from 'firebase/functions';
 import { getStorage as getFirebaseStorageInstance, type FirebaseStorage } from 'firebase/storage';
 import { CONFIG } from '@/config';
@@ -142,6 +142,9 @@ export const getFirebaseAuth = () => auth;
 export const getFirebaseFunctions = () => functions;
 export const getFirebaseStorage = () => storage;
 export const getStorage = () => storage; // Alias for compatibility
+
+export const googleProvider = new GoogleAuthProvider();
+export const appleProvider = new OAuthProvider('apple.com');
 
 export default getFirebaseApp;
 

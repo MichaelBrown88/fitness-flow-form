@@ -12,6 +12,8 @@ export interface AuthContextValue {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
+  signInWithApple: () => Promise<void>;
   signOut: () => Promise<void>;
   /** Send a magic link email for client access. Optional returnUrl redirects after auth. */
   sendClientMagicLink: (email: string, returnUrl?: string) => Promise<void>;

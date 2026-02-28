@@ -1,7 +1,9 @@
+import { useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import { sendEmailVerification } from 'firebase/auth';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Sparkles, ChevronDown, Menu, Building2, LayoutDashboard, Settings, LogOut } from 'lucide-react';
+import { Sparkles, ChevronDown, Menu, Building2, LayoutDashboard, Settings, LogOut, Mail, X } from 'lucide-react';
 import { ROUTES } from '@/constants/routes';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { ClientProfileDropdown } from '@/components/client/ClientProfileDropdown';
@@ -60,6 +62,17 @@ export default function AppShell({
   const initials =
     user?.displayName?.split(' ').map((n) => n[0]).join('').toUpperCase() ||
     (user?.email ? user.email[0]?.toUpperCase() : 'C');
+
+  const [emailBannerDismissed, setEmailBannerDismissed] = useState(false);
+  const handleResendVerification = useCallback(async () => {
+    if (user) {
+      try {
+        await sendEmailVerification(user);
+      } catch {
+        // silently fail — rate-limited
+      }
+    }
+  }, [user]);
 
   // Use public branding if provided (for unauthenticated routes), otherwise fallback to auth context
   const hasOrgLogo = publicLogoUrl || (orgSettings?.logoUrl && orgSettings.logoUrl.trim() !== '');
@@ -243,7 +256,29 @@ export default function AppShell({
           </div>
         </div>
       </header>
-      
+
+      {/* Email verification banner */}
+      {user && !user.emailVerified && !emailBannerDismissed && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center justify-center gap-3 text-sm">
+          <Mail className="h-4 w-4 text-amber-600 shrink-0" />
+          <span className="text-amber-800 font-medium">Verify your email — check your inbox</span>
+          <button
+            type="button"
+            onClick={handleResendVerification}
+            className="text-xs font-semibold text-amber-700 underline hover:text-amber-900"
+          >
+            Resend
+          </button>
+          <button
+            type="button"
+            onClick={() => setEmailBannerDismissed(true)}
+            className="ml-auto text-amber-400 hover:text-amber-600"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       <main className={`flex-1 ${variant === 'default' ? 'mx-auto max-w-7xl w-full px-3 sm:px-4 md:px-6 lg:px-10 py-4 sm:py-6 md:py-8 lg:py-12' : ''}`}>
         {variant === 'default' && !hideTitle && (
           <div className="mb-4 sm:mb-6 space-y-0.5">

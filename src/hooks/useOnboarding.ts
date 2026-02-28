@@ -1,22 +1,24 @@
 /**
  * useOnboarding Hook
  *
- * Manages the simplified 4-step onboarding flow:
- *   0  Account (IdentityStep)
+ * Manages the 5-step onboarding flow:
+ *   0  Identity (name + email only — no auth)
  *   1  Business (BusinessInfoStep)
  *   2  Equipment (EquipmentStep)
  *   3  Plan (PackageSelectionStep)
- *   4  Success (OnboardingSuccess)
+ *   4  Account (password + social sign-in — creates Firebase Auth account)
+ *   5  Success (OnboardingSuccess)
  *
- * Handles account creation, mid-flow persistence (sessionStorage),
- * and final organisation + profile writes.
+ * Account creation is deferred to the final step so users see value
+ * before committing. Email is captured early for abandoned-flow recovery.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { doc, setDoc } from 'firebase/firestore';
-import { getDb } from '@/services/firebase';
+import { sendEmailVerification } from 'firebase/auth';
+import { getDb, getFirebaseAuth } from '@/services/firebase';
 import { calculateMonthlyFee } from '@/lib/pricing';
 import { logger } from '@/lib/utils/logger';
 import { isTestEmail, makeTestEmailUnique } from '@/lib/utils/testAccountHelper';
@@ -31,39 +33,29 @@ import type {
   SubscriptionPlan,
 } from '@/types/onboarding';
 
-/* ------------------------------------------------------------------ */
-/*  Constants                                                          */
-/* ------------------------------------------------------------------ */
-
-const TOTAL_STEPS = 4; // 0-3 form steps; 4 = success screen
+const TOTAL_STEPS = 5; // 0-4 form steps; 5 = success screen
 const DEFAULT_GRADIENT = 'purple-indigo';
 const DEFAULT_SEATS = 15;
 
-/* ------------------------------------------------------------------ */
-/*  Types                                                              */
-/* ------------------------------------------------------------------ */
-
 export interface UseOnboardingResult {
-  // State
   step: number;
   isComplete: boolean;
   saving: boolean;
   savingMessage: string;
   loading: boolean;
   identityError: string | null;
+  accountError: string | null;
   onboardingData: Partial<OnboardingData>;
 
-  // Handlers (one per step + back)
-  handleIdentityNext: (data: IdentityData) => Promise<void>;
+  handleIdentityNext: (data: Pick<IdentityData, 'firstName' | 'lastName' | 'email'>) => void;
   handleBusinessNext: (data: BusinessProfileData) => void;
   handleEquipmentNext: (data: EquipmentConfig) => void;
-  handleCapacityNext: (seats: number) => Promise<void>;
+  handleCapacityNext: (seats: number) => void;
+  handleAccountCreateWithPassword: (password: string) => Promise<void>;
+  handleAccountCreateWithGoogle: () => Promise<void>;
+  handleAccountCreateWithApple: () => Promise<void>;
   handleBack: () => void;
 }
-
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
-/* ------------------------------------------------------------------ */
 
 function loadSession(): { step: number; data: Partial<OnboardingData> } | null {
   try {
@@ -77,12 +69,9 @@ function loadSession(): { step: number; data: Partial<OnboardingData> } | null {
 
 function saveSession(step: number, data: Partial<OnboardingData>) {
   try {
-    sessionStorage.setItem(
-      STORAGE_KEYS.ONBOARDING_SESSION,
-      JSON.stringify({ step, data }),
-    );
+    sessionStorage.setItem(STORAGE_KEYS.ONBOARDING_SESSION, JSON.stringify({ step, data }));
   } catch {
-    // Silently fail – quota exceeded etc.
+    // quota exceeded
   }
 }
 
@@ -94,35 +83,27 @@ function clearSession() {
   }
 }
 
-/* ------------------------------------------------------------------ */
-/*  Hook                                                               */
-/* ------------------------------------------------------------------ */
-
 export function useOnboarding(): UseOnboardingResult {
-  const { user, profile, orgSettings, loading, refreshSettings, signUp, signIn } = useAuth();
+  const { user, profile, orgSettings, loading, refreshSettings, signUp, signIn, signInWithGoogle, signInWithApple } = useAuth();
   const navigate = useNavigate();
 
-  // Step state
   const [step, setStep] = useState(0);
   const [hasCheckedStatus, setHasCheckedStatus] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
 
-  // Loading / saving
   const [saving, setSaving] = useState(false);
   const [savingMessage, setSavingMessage] = useState('');
   const [identityError, setIdentityError] = useState<string | null>(null);
+  const [accountError, setAccountError] = useState<string | null>(null);
 
-  // Onboarding data
   const [onboardingData, setOnboardingData] = useState<Partial<OnboardingData>>({});
 
-  // Avoid double-firing effects
   const resumedRef = useRef(false);
 
-  /* ---------- Resume from sessionStorage on mount ---------- */
+  /* ---------- Resume from sessionStorage ---------- */
   useEffect(() => {
     if (resumedRef.current) return;
     resumedRef.current = true;
-
     const session = loadSession();
     if (session) {
       logger.debug('Resuming onboarding from session', 'Onboarding', session);
@@ -131,7 +112,7 @@ export function useOnboarding(): UseOnboardingResult {
     }
   }, []);
 
-  /* ---------- Persist to sessionStorage on every step/data change ---------- */
+  /* ---------- Persist session ---------- */
   useEffect(() => {
     if (step > 0 && step < TOTAL_STEPS) {
       saveSession(step, onboardingData);
@@ -141,85 +122,135 @@ export function useOnboarding(): UseOnboardingResult {
   /* ---------- Redirect if already completed ---------- */
   useEffect(() => {
     if (loading || !user || !profile) return;
-
     const completed = profile.onboardingCompleted || orgSettings?.onboardingCompletedAt;
     if (completed && !hasCheckedStatus) {
       logger.info('Onboarding already completed – redirecting to dashboard.');
       navigate('/dashboard', { replace: true });
     }
-
     setHasCheckedStatus(true);
   }, [user, profile, orgSettings, loading, navigate, hasCheckedStatus]);
-
-  /* ---------- Helpers ---------- */
 
   const getSubscriptionPlan = useCallback((): SubscriptionPlan => {
     const bt = onboardingData.businessProfile?.type;
     return BUSINESS_TYPES.find(b => b.value === bt)?.recommendedPlan || 'starter';
   }, [onboardingData.businessProfile?.type]);
 
-  /* ---------- Step handlers ---------- */
-
-  /** Step 0  Account */
-  const handleIdentityNext = useCallback(async (data: IdentityData) => {
+  /* ---------- Step 0: Identity (no auth) ---------- */
+  const handleIdentityNext = useCallback((data: Pick<IdentityData, 'firstName' | 'lastName' | 'email'>) => {
     setIdentityError(null);
-    setOnboardingData((prev) => ({ ...prev, identity: data }));
+    setOnboardingData((prev) => ({
+      ...prev,
+      identity: {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        password: '',
+        acceptedTerms: false,
+      },
+    }));
 
-    // If already logged in, just advance
+    // If already logged in (resumed session), skip ahead
     if (user) {
       setStep(1);
       return;
     }
 
-    // Create account
-    try {
-      setSaving(true);
-      setSavingMessage('Creating your account...');
+    setStep(1);
+  }, [user]);
 
-      const originalEmail = data.email.trim();
+  /* ---------- Step 1: Business ---------- */
+  const handleBusinessNext = useCallback((data: BusinessProfileData) => {
+    setOnboardingData((prev) => ({ ...prev, businessProfile: data }));
+    setStep(2);
+  }, []);
+
+  /* ---------- Step 2: Equipment ---------- */
+  const handleEquipmentNext = useCallback((data: EquipmentConfig) => {
+    setOnboardingData((prev) => ({ ...prev, equipment: data }));
+    setStep(3);
+  }, []);
+
+  /* ---------- Step 3: Plan — just stores data, advances to account step ---------- */
+  const handleCapacityNext = useCallback((seats: number) => {
+    setOnboardingData((prev) => ({
+      ...prev,
+      branding: { gradientId: DEFAULT_GRADIENT, clientSeats: seats } as BrandingConfig,
+    }));
+
+    // If already authenticated (e.g., resumed or social sign-in from login), skip account step
+    if (user) {
+      completeOnboarding({
+        ...onboardingData,
+        branding: { gradientId: DEFAULT_GRADIENT, clientSeats: seats } as BrandingConfig,
+      });
+      return;
+    }
+
+    setStep(4);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onboardingData, user]);
+
+  /* ---------- Step 4: Account Creation ---------- */
+
+  const createAccountAndComplete = useCallback(async () => {
+    const finalData: Partial<OnboardingData> = {
+      ...onboardingData,
+    };
+    await completeOnboarding(finalData);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onboardingData]);
+
+  const handleAccountCreateWithPassword = useCallback(async (password: string) => {
+    setAccountError(null);
+    setSaving(true);
+    setSavingMessage('Creating your account...');
+
+    try {
+      const identity = onboardingData.identity;
+      if (!identity) throw new Error('Identity data missing');
+
+      const originalEmail = identity.email.trim();
       const emailToUse =
         import.meta.env.DEV && isTestEmail(originalEmail)
           ? makeTestEmailUnique(originalEmail)
           : originalEmail;
 
-      if (emailToUse !== originalEmail) {
-        logger.debug(`Using unique test email: ${emailToUse}`);
-        setOnboardingData((prev) => ({
-          ...prev,
-          identity: { ...data, email: emailToUse },
-        }));
-      }
+      const displayName = `${identity.firstName} ${identity.lastName}`.trim();
 
       try {
-        await signUp(emailToUse, data.password, `${data.firstName} ${data.lastName}`.trim());
-        logger.info('Account created – continuing onboarding');
-        setStep(1);
+        await signUp(emailToUse, password, displayName);
+        logger.info('Account created – completing onboarding');
+
+        // Send verification email (non-blocking)
+        try {
+          const auth = getFirebaseAuth();
+          if (auth.currentUser) {
+            await sendEmailVerification(auth.currentUser);
+            logger.info('Verification email sent');
+          }
+        } catch (verifyErr) {
+          logger.warn('Verification email failed (non-fatal):', verifyErr);
+        }
+
+        await createAccountAndComplete();
       } catch (signUpErr: unknown) {
-        const code =
-          signUpErr && typeof signUpErr === 'object' && 'code' in signUpErr
-            ? (signUpErr as { code: string }).code
-            : null;
+        const code = signUpErr && typeof signUpErr === 'object' && 'code' in signUpErr
+          ? (signUpErr as { code: string }).code : null;
 
         if (code === 'auth/email-already-in-use') {
           setSavingMessage('Email exists – signing you in...');
           try {
-            await signIn(emailToUse, data.password);
-            logger.info('Signed in – continuing onboarding');
-            setStep(1);
+            await signIn(emailToUse, password);
+            logger.info('Signed in – completing onboarding');
+            await createAccountAndComplete();
           } catch (signInErr: unknown) {
-            const siCode =
-              signInErr && typeof signInErr === 'object' && 'code' in signInErr
-                ? (signInErr as { code: string }).code
-                : null;
+            const siCode = signInErr && typeof signInErr === 'object' && 'code' in signInErr
+              ? (signInErr as { code: string }).code : null;
 
             if (siCode === 'auth/wrong-password' || siCode === 'auth/invalid-credential') {
-              setIdentityError('This email is already registered. Check your password or go to the login page.');
-            } else if (siCode === 'auth/user-not-found') {
-              setIdentityError('Email not found. Please double-check.');
+              setAccountError('This email is already registered. Check your password or go to the login page.');
             } else {
-              setIdentityError(
-                signInErr instanceof Error ? signInErr.message : 'Sign-in failed. Please try again.',
-              );
+              setAccountError(signInErr instanceof Error ? signInErr.message : 'Sign-in failed.');
             }
           }
         } else {
@@ -228,45 +259,53 @@ export function useOnboarding(): UseOnboardingResult {
       }
     } catch (err) {
       logger.error('Account creation failed:', err);
-      setIdentityError(err instanceof Error ? err.message : String(err));
+      setAccountError(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
       setSavingMessage('');
     }
-  }, [user, signUp, signIn]);
+  }, [onboardingData, signUp, signIn, createAccountAndComplete]);
 
-  /** Step 1  Business */
-  const handleBusinessNext = useCallback((data: BusinessProfileData) => {
-    setOnboardingData((prev) => ({ ...prev, businessProfile: data }));
-    setStep(2);
-  }, []);
+  const handleAccountCreateWithGoogle = useCallback(async () => {
+    setAccountError(null);
+    setSaving(true);
+    setSavingMessage('Signing in with Google...');
+    try {
+      await signInWithGoogle();
+      logger.info('Google sign-in successful – completing onboarding');
+      await createAccountAndComplete();
+    } catch (err) {
+      logger.error('Google sign-in failed:', err);
+      setAccountError(err instanceof Error ? err.message : 'Google sign-in failed.');
+    } finally {
+      setSaving(false);
+      setSavingMessage('');
+    }
+  }, [signInWithGoogle, createAccountAndComplete]);
 
-  /** Step 2  Equipment */
-  const handleEquipmentNext = useCallback((data: EquipmentConfig) => {
-    setOnboardingData((prev) => ({ ...prev, equipment: data }));
-    setStep(3);
-  }, []);
+  const handleAccountCreateWithApple = useCallback(async () => {
+    setAccountError(null);
+    setSaving(true);
+    setSavingMessage('Signing in with Apple...');
+    try {
+      await signInWithApple();
+      logger.info('Apple sign-in successful – completing onboarding');
+      await createAccountAndComplete();
+    } catch (err) {
+      logger.error('Apple sign-in failed:', err);
+      setAccountError(err instanceof Error ? err.message : 'Apple sign-in failed.');
+    } finally {
+      setSaving(false);
+      setSavingMessage('');
+    }
+  }, [signInWithApple, createAccountAndComplete]);
 
-  /** Step 3  Plan / Capacity  triggers completeOnboarding */
-  const handleCapacityNext = useCallback(async (seats: number) => {
-    const finalData: Partial<OnboardingData> = {
-      ...onboardingData,
-      branding: {
-        gradientId: DEFAULT_GRADIENT,
-        clientSeats: seats,
-      } as BrandingConfig,
-    };
-    await completeOnboarding(finalData);
-  }, // eslint-disable-next-line react-hooks/exhaustive-deps
-  [onboardingData]);
-
-  /** Back button */
+  /* ---------- Back ---------- */
   const handleBack = useCallback(() => {
     if (step > 0) setStep((s) => s - 1);
   }, [step]);
 
-  /* ---------- Final save ---------- */
-
+  /* ---------- Complete Onboarding ---------- */
   const completeOnboarding = useCallback(async (finalData: Partial<OnboardingData>) => {
     if (!user || !profile) return;
 
@@ -282,7 +321,6 @@ export function useOnboarding(): UseOnboardingResult {
 
       logger.info('Completing onboarding', { orgId, plan, seats });
 
-      // Map equipment config
       const equipmentConfig = finalData.equipment
         ? {
             bodyComposition: { enabled: finalData.equipment.scanner ?? false },
@@ -292,7 +330,6 @@ export function useOnboarding(): UseOnboardingResult {
           }
         : undefined;
 
-      // Update organisation (merge: true so it works whether doc exists or not)
       setSavingMessage('Saving configuration...');
       await setDoc(doc(db, 'organizations', orgId), {
         name: finalData.businessProfile?.name || '',
@@ -311,12 +348,10 @@ export function useOnboarding(): UseOnboardingResult {
         updatedAt: new Date(),
       }, { merge: true });
 
-      // Derive isActiveCoach: solo coaches are always active; gym/gym_chain uses explicit choice
       const isActiveCoach = finalData.businessProfile?.type === 'solo_coach'
         ? true
         : (finalData.businessProfile?.isActiveCoach ?? true);
 
-      // Update user profile (merge: true for same reason)
       await setDoc(doc(db, 'userProfiles', user.uid), {
         onboardingCompleted: true,
         isActiveCoach,
@@ -327,34 +362,23 @@ export function useOnboarding(): UseOnboardingResult {
         updatedAt: new Date(),
       }, { merge: true });
 
-      // Save audit record (non-critical — don't let it fail the whole flow)
       try {
         await setDoc(
           doc(db, 'onboarding_sessions', user.uid),
-          {
-            userId: user.uid,
-            organizationId: orgId,
-            data: finalData,
-            completedAt: new Date(),
-          },
+          { userId: user.uid, organizationId: orgId, data: finalData, completedAt: new Date() },
           { merge: true },
         );
       } catch (auditErr) {
         logger.warn('Audit record write failed (non-critical):', auditErr instanceof Error ? auditErr.message : String(auditErr));
       }
 
-      // Refresh auth context settings
-      try {
-        await refreshSettings();
-      } catch (err) {
+      try { await refreshSettings(); } catch (err) {
         logger.warn('Settings refresh after onboarding failed:', err instanceof Error ? err.message : String(err));
       }
 
-      // Clean up session persistence
       clearSession();
-
       setIsComplete(true);
-      setStep(TOTAL_STEPS); // step 4 = success screen
+      setStep(TOTAL_STEPS);
     } catch (error) {
       logger.error('Failed to complete onboarding:', error);
       setSavingMessage('Something went wrong. Please try again.');
@@ -363,8 +387,6 @@ export function useOnboarding(): UseOnboardingResult {
     }
   }, [user, profile, getSubscriptionPlan, refreshSettings]);
 
-  /* ---------- Return ---------- */
-
   return {
     step,
     isComplete,
@@ -372,12 +394,16 @@ export function useOnboarding(): UseOnboardingResult {
     savingMessage,
     loading,
     identityError,
+    accountError,
     onboardingData,
 
     handleIdentityNext,
     handleBusinessNext,
     handleEquipmentNext,
     handleCapacityNext,
+    handleAccountCreateWithPassword,
+    handleAccountCreateWithGoogle,
+    handleAccountCreateWithApple,
     handleBack,
   };
 }

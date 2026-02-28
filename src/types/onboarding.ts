@@ -13,7 +13,7 @@ export interface SignUpData {
   acceptedTerms: boolean;
 }
 
-// Identity data (Step 1) - includes signup credentials
+// Identity data (Step 0) - name and email only; password collected at account creation step
 export interface IdentityData {
   firstName: string;
   lastName: string;
@@ -148,10 +148,11 @@ export const BUSINESS_TYPES = [
   },
 ] as const;
 
-// Onboarding steps configuration (simplified 4-step flow + success)
+// Onboarding steps configuration (5-step flow + success)
 export const ONBOARDING_STEPS = [
-  { id: 'account', label: 'Account', description: 'Create your account' },
+  { id: 'identity', label: 'You', description: 'Tell us about yourself' },
   { id: 'business', label: 'Business', description: 'Tell us about your facility' },
   { id: 'equipment', label: 'Equipment', description: 'Configure your protocols' },
   { id: 'plan', label: 'Plan', description: 'Choose your plan' },
+  { id: 'account', label: 'Account', description: 'Create your account' },
 ] as const;
