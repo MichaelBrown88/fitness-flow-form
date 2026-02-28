@@ -11,12 +11,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { updateOrgSettings, uploadOrgLogo, type OrgSettings, DEFAULT_EQUIPMENT_CONFIG } from '@/services/organizations';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Upload, Palette, ShieldCheck, Box, Settings as SettingsIcon, User, Building2, Calendar, ArrowLeft } from 'lucide-react';
+import { Loader2, Upload, Palette, ShieldCheck, Box, Settings as SettingsIcon, User, Building2, Calendar, ArrowLeft, Bell } from 'lucide-react';
 import { getAllGradients, type GradientId } from '@/lib/design/gradients';
 import { doc, setDoc } from 'firebase/firestore';
 import { getDb } from '@/services/firebase';
 import { logger } from '@/lib/utils/logger';
 import { DefaultCadenceSettings } from '@/components/settings/DefaultCadenceSettings';
+import { NotificationSettings } from '@/components/settings/NotificationSettings';
 import { ROUTES } from '@/constants/routes';
 
 const Settings = () => {
@@ -106,23 +107,30 @@ const Settings = () => {
       <div className="max-w-4xl pb-20">
         {/* Tab Navigation */}
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="w-full mb-6 p-1 h-auto bg-zinc-100 rounded-xl grid grid-cols-2 gap-1">
-            <TabsTrigger 
-              value="profile" 
+          <TabsList className="w-full mb-6 p-1 h-auto bg-zinc-100 rounded-xl grid grid-cols-3 gap-1">
+            <TabsTrigger
+              value="profile"
               className="flex items-center gap-2 py-2.5 px-4 rounded-lg text-sm font-semibold data-[state=active]:bg-white"
             >
               <User className="h-4 w-4" />
               Profile
             </TabsTrigger>
             {isAdmin && (
-              <TabsTrigger 
-                value="organization" 
+              <TabsTrigger
+                value="organization"
                 className="flex items-center gap-2 py-2.5 px-4 rounded-lg text-sm font-semibold data-[state=active]:bg-white"
               >
                 <Building2 className="h-4 w-4" />
                 Organization
               </TabsTrigger>
             )}
+            <TabsTrigger
+              value="notifications"
+              className="flex items-center gap-2 py-2.5 px-4 rounded-lg text-sm font-semibold data-[state=active]:bg-white"
+            >
+              <Bell className="h-4 w-4" />
+              Notifications
+            </TabsTrigger>
           </TabsList>
 
           {/* Profile Tab */}
@@ -573,6 +581,10 @@ const Settings = () => {
             </section>
             </TabsContent>
           )}
+
+          <TabsContent value="notifications">
+            <NotificationSettings />
+          </TabsContent>
         </Tabs>
       </div>
     </AppShell>
