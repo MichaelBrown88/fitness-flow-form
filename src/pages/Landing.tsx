@@ -47,7 +47,7 @@ const pricingPlans = [
   {
     name: 'Starter',
     description: 'Perfect for solo coaches getting started',
-    price: '$29',
+    price: 29,
     features: [
       { text: 'Unlimited assessments', included: true },
       { text: 'Clinical Logic Engine analysis', included: true },
@@ -61,7 +61,7 @@ const pricingPlans = [
   {
     name: 'Professional',
     description: 'For gyms and growing teams',
-    price: '$79',
+    price: 79,
     highlighted: true,
     features: [
       { text: 'Everything in Starter', included: true },

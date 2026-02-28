@@ -14,6 +14,7 @@ import type { BrandingConfig, BusinessType } from '@/types/onboarding';
 import { BUSINESS_TYPES } from '@/types/onboarding';
 import { useCheckout } from '@/hooks/useCheckout';
 import { useAuth } from '@/hooks/useAuth';
+import { formatPrice } from '@/lib/utils/currency';
 
 interface PackageSelectionStepProps {
   data?: Partial<BrandingConfig>;
@@ -77,7 +78,7 @@ export function PackageSelectionStep({
           <div className="text-right">
             <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] mb-0.5">Estimated</span>
             <div className="flex items-baseline gap-0.5">
-              <span className="text-2xl font-bold text-slate-900">KWD {monthlyFee.toFixed(3)}</span>
+              <span className="text-2xl font-bold text-slate-900">{formatPrice(monthlyFee)}</span>
               <span className="text-xs text-slate-400">/mo</span>
             </div>
           </div>

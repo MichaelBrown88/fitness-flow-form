@@ -14,9 +14,9 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { sendEmailVerification } from 'firebase/auth';
 import { getDb, getFirebaseAuth } from '@/services/firebase';
 import { calculateMonthlyFee } from '@/lib/pricing';
@@ -86,6 +86,7 @@ function clearSession() {
 export function useOnboarding(): UseOnboardingResult {
   const { user, profile, orgSettings, loading, refreshSettings, signUp, signIn, signInWithGoogle, signInWithApple } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [step, setStep] = useState(0);
   const [hasCheckedStatus, setHasCheckedStatus] = useState(false);
@@ -97,8 +98,10 @@ export function useOnboarding(): UseOnboardingResult {
   const [accountError, setAccountError] = useState<string | null>(null);
 
   const [onboardingData, setOnboardingData] = useState<Partial<OnboardingData>>({});
+  const [inviteOrganizationId, setInviteOrganizationId] = useState<string | null>(null);
 
   const resumedRef = useRef(false);
+  const inviteCheckedRef = useRef(false);
 
   /* ---------- Resume from sessionStorage ---------- */
   useEffect(() => {
@@ -111,6 +114,28 @@ export function useOnboarding(): UseOnboardingResult {
       setOnboardingData(session.data);
     }
   }, []);
+
+  /* ---------- Detect invite token ---------- */
+  useEffect(() => {
+    if (inviteCheckedRef.current) return;
+    const inviteToken = searchParams.get('invite');
+    if (!inviteToken) return;
+    inviteCheckedRef.current = true;
+
+    const db = getDb();
+    getDoc(doc(db, 'invitations', inviteToken)).then((snap) => {
+      if (!snap.exists()) return;
+      const data = snap.data();
+      if (data.status !== 'pending') return;
+      if (data.expiresAt?.toDate && data.expiresAt.toDate() < new Date()) return;
+      if (data.expiresAt instanceof Date && data.expiresAt < new Date()) return;
+
+      setInviteOrganizationId(data.organizationId);
+      logger.info('Invite token accepted', { organizationId: data.organizationId });
+    }).catch((err) => {
+      logger.warn('Failed to validate invite token:', err instanceof Error ? err.message : String(err));
+    });
+  }, [searchParams]);
 
   /* ---------- Persist session ---------- */
   useEffect(() => {
@@ -352,7 +377,7 @@ export function useOnboarding(): UseOnboardingResult {
         ? true
         : (finalData.businessProfile?.isActiveCoach ?? true);
 
-      await setDoc(doc(db, 'userProfiles', user.uid), {
+      const profileUpdate: Record<string, unknown> = {
         onboardingCompleted: true,
         isActiveCoach,
         displayName: finalData.identity
@@ -360,7 +385,19 @@ export function useOnboarding(): UseOnboardingResult {
           : profile.displayName,
         email: finalData.identity?.email || user.email || null,
         updatedAt: new Date(),
-      }, { merge: true });
+      };
+
+      if (inviteOrganizationId) {
+        profileUpdate.organizationId = inviteOrganizationId;
+        profileUpdate.role = 'coach';
+
+        const inviteToken = searchParams.get('invite');
+        if (inviteToken) {
+          await setDoc(doc(db, 'invitations', inviteToken), { status: 'accepted' }, { merge: true });
+        }
+      }
+
+      await setDoc(doc(db, 'userProfiles', user.uid), profileUpdate, { merge: true });
 
       try {
         await setDoc(
@@ -385,7 +422,7 @@ export function useOnboarding(): UseOnboardingResult {
     } finally {
       setSaving(false);
     }
-  }, [user, profile, getSubscriptionPlan, refreshSettings]);
+  }, [user, profile, getSubscriptionPlan, refreshSettings, inviteOrganizationId, searchParams]);
 
   return {
     step,

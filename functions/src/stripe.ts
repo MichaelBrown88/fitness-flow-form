@@ -145,6 +145,52 @@ export async function handleCreateCheckoutSession(
 }
 
 // ---------------------------------------------------------------------------
+// createCustomerPortalSession — callable function handler
+// ---------------------------------------------------------------------------
+export interface PortalSessionRequest {
+  organizationId: string;
+}
+
+export async function handleCreateCustomerPortalSession(
+  request: CallableRequest<PortalSessionRequest>,
+) {
+  if (!request.auth?.uid) {
+    throw new Error('Authentication required.');
+  }
+
+  const { organizationId } = request.data;
+  if (!organizationId) {
+    throw new Error('Missing required field: organizationId.');
+  }
+
+  const db = admin.firestore();
+
+  const orgDoc = await db.doc(`organizations/${organizationId}`).get();
+  if (!orgDoc.exists) {
+    throw new Error('Organization not found.');
+  }
+  const orgData = orgDoc.data();
+  if (orgData?.ownerId !== request.auth.uid) {
+    throw new Error('Not authorized for this organization.');
+  }
+
+  const customerId = orgData?.stripe?.stripeCustomerId;
+  if (!customerId) {
+    throw new Error('No Stripe customer found for this organization. Please subscribe first.');
+  }
+
+  const stripe = getStripe();
+  const baseUrl = process.env.APP_URL || 'https://one-assess.com';
+
+  const session = await stripe.billingPortal.sessions.create({
+    customer: customerId,
+    return_url: `${baseUrl}/billing`,
+  });
+
+  return { url: session.url };
+}
+
+// ---------------------------------------------------------------------------
 // stripeWebhook — HTTP function handler
 // ---------------------------------------------------------------------------
 import type { Request, Response } from 'express';

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Check } from 'lucide-react';
 import React from 'react';
 import GlassCard from '@/components/ui/GlassCard';
+import { formatPrice } from '@/lib/utils/currency';
 
 interface PricingFeature {
   text: string;
@@ -11,7 +12,7 @@ interface PricingFeature {
 interface PricingCardProps {
   name: string;
   description: string;
-  price: string;
+  price: number | string;
   period?: string;
   features: PricingFeature[];
   highlighted?: boolean;
@@ -40,7 +41,9 @@ export function PricingCard({
           <h3 className="text-xl font-bold mb-2 text-slate-900">{name}</h3>
           <p className="text-sm text-slate-500 mb-8 font-medium">{description}</p>
           <div className="flex items-baseline gap-1 mb-8">
-            <span className="text-5xl font-bold text-slate-900">{price}</span>
+            <span className="text-5xl font-bold text-slate-900">
+              {typeof price === 'number' ? formatPrice(price) : price}
+            </span>
             <span className="text-slate-400 font-medium">{period}</span>
           </div>
           <Link 
@@ -77,8 +80,10 @@ export function PricingCard({
       <h3 className="text-xl font-bold mb-2 text-slate-900">{name}</h3>
       <p className="text-sm text-slate-500 mb-8 font-medium">{description}</p>
       <div className="flex items-baseline gap-1 mb-8">
-        <span className="text-5xl font-bold text-slate-900">{price}</span>
-        {price !== 'Custom' && <span className="text-slate-400 font-medium">{period}</span>}
+        <span className="text-5xl font-bold text-slate-900">
+          {typeof price === 'number' ? formatPrice(price) : price}
+        </span>
+        {typeof price === 'number' && <span className="text-slate-400 font-medium">{period}</span>}
       </div>
       <Link 
         to={ctaText === 'Contact Sales' ? '/contact' : '/onboarding'}

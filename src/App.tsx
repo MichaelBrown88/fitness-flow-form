@@ -28,6 +28,7 @@ const Companion = lazy(() => import("./pages/Companion"));
 const ClientDetail = lazy(() => import("./pages/ClientDetail"));
 const OrgAdmin = lazy(() => import("./pages/OrgAdmin"));
 const AssessmentComparison = lazy(() => import("./pages/AssessmentComparison"));
+const Billing = lazy(() => import("./pages/Billing"));
 
 // Platform admin pages (separate from org admin)
 const PlatformLogin = lazy(() => import("./pages/admin/PlatformLogin"));
@@ -216,6 +217,14 @@ const App = () => (
                       element={
                         <RequireAuth>
                           <OrgAdmin />
+                        </RequireAuth>
+                      }
+                    />
+                    <Route
+                      path="/billing"
+                      element={
+                        <RequireAuth>
+                          <Billing />
                         </RequireAuth>
                       }
                     />

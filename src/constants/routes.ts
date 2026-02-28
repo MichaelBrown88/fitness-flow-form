@@ -16,4 +16,6 @@ export const ROUTES = {
   COOKIES: '/cookies',
   DEMO: '/demo',
   COMPARE: '/compare',
+  BILLING: '/billing',
+  ONBOARDING: '/onboarding',
 } as const;

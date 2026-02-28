@@ -3,7 +3,8 @@ import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onCall, onRequest } from 'firebase-functions/v2/https';
 import { requestShareLinks, sendReportEmail } from './share';
-import { handleCreateCheckoutSession, handleStripeWebhook } from './stripe';
+import { handleCreateCheckoutSession, handleStripeWebhook, handleCreateCustomerPortalSession } from './stripe';
+import { handleSendCoachInvite } from './invites';
 import {
   handleOrganizationChange,
   handleUserProfileChange,
@@ -30,6 +31,14 @@ export const stripeWebhook = onRequest(
   { cors: false },
   handleStripeWebhook,
 );
+
+export const createCustomerPortalSession = onCall({
+  enforceAppCheck: false,
+}, handleCreateCustomerPortalSession);
+
+export const sendCoachInvite = onCall({
+  enforceAppCheck: false,
+}, handleSendCoachInvite);
 
 // Aggregation functions (write-time counters)
 export const aggregateOrganizationChanges = onDocumentWritten(
