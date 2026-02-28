@@ -8,6 +8,8 @@ export const ROUTES = {
   ORG_DASHBOARD: '/org/dashboard',
   CLIENT_VIEW: '/client/:id',
   PUBLIC_REPORT: '/r/:token',
+  ASSESSMENT_REPORT: '/coach/assessments/:id',
+  ASSESSMENT_REPORT_CLIENT: '/coach/assessments/:id/client',
   ABOUT: '/about',
   CONTACT: '/contact',
   BLOG: '/blog',

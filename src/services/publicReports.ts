@@ -24,6 +24,7 @@ export type PublicReportDoc = {
   clientName: string;
   clientNameLower: string;
   visibility: 'public' | 'private';
+  revoked?: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
   expiresAt?: Timestamp | null;

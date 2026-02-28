@@ -1,5 +1,5 @@
 import { useState, useCallback, lazy, Suspense } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { useAssessmentLogic } from '@/hooks/useAssessmentLogic';
 import { useVersionSelector } from '@/hooks/useVersionSelector';
 import AssessmentVersionSelector from '@/components/reports/AssessmentVersionSelector';
@@ -33,6 +33,7 @@ const AssessmentReport = () => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
   
   const { 
     formData, 
@@ -48,7 +49,8 @@ const AssessmentReport = () => {
 
   const versionSelector = useVersionSelector(allSnapshots);
 
-  const [reportView, setReportView] = useState<'client' | 'coach'>('client');
+  const isClientRoute = location.pathname.endsWith('/client');
+  const [reportView, setReportView] = useState<'client' | 'coach'>(isClientRoute ? 'client' : 'coach');
 
   const [shareCache, setShareCache] = useState<Record<'client' | 'coach', ShareArtifacts | null>>({
     client: null,

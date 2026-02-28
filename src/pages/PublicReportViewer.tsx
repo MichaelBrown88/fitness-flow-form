@@ -64,6 +64,12 @@ const PublicReportViewer = () => {
           return;
         }
 
+        if (data.revoked) {
+          setError('This report is no longer available.');
+          setLoading(false);
+          return;
+        }
+
         if (data.clientName) {
           document.title = `${data.clientName}'s Fitness Report | One Assess`;
         }

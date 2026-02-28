@@ -1,6 +1,8 @@
 import { httpsCallable } from 'firebase/functions';
+import { doc, updateDoc, collection, query, where, getDocs, limit, type Timestamp } from 'firebase/firestore';
 import { getFirebaseFunctions, getDb } from '@/services/firebase';
 import { CONFIG } from '@/config';
+import { COLLECTIONS } from '@/constants/collections';
 import { publishPublicReport } from './publicReports';
 import type { UserProfile } from '@/types/auth';
 
@@ -12,6 +14,14 @@ export type ShareArtifacts = {
   shareUrl: string;
   whatsappText: string;
 };
+
+export interface ShareTokenInfo {
+  token: string;
+  createdAt: Date;
+  lastAccessed?: Date;
+  revoked: boolean;
+  clientName: string;
+}
 
 /**
  * Get share artifacts (URL, PDF, WhatsApp text) for an assessment
@@ -51,4 +61,41 @@ export async function requestShareArtifacts(params: {
 export async function sendReportEmail(params: { assessmentId: string; view: ShareView; to: string; clientName?: string }) {
   const callable = httpsCallable(functions, CONFIG.AI.FUNCTIONS.EMAIL_REPORT);
   await callable(params);
+}
+
+/**
+ * Fetch all share tokens for a given assessment owned by this coach.
+ */
+export async function getShareTokensForAssessment(
+  coachUid: string,
+  assessmentId: string,
+): Promise<ShareTokenInfo[]> {
+  const q = query(
+    collection(getDb(), COLLECTIONS.PUBLIC_REPORTS),
+    where('coachUid', '==', coachUid),
+    where('assessmentId', '==', assessmentId),
+    limit(20),
+  );
+  const snapshot = await getDocs(q);
+
+  return snapshot.docs.map((d) => {
+    const data = d.data();
+    const createdAt = data.createdAt as Timestamp | undefined;
+    const lastAccessed = data.lastAccessed as Timestamp | undefined;
+    return {
+      token: d.id,
+      createdAt: createdAt?.toDate?.() ?? new Date(),
+      lastAccessed: lastAccessed?.toDate?.(),
+      revoked: data.revoked === true,
+      clientName: (data.clientName as string) || 'Unknown',
+    };
+  });
+}
+
+/**
+ * Mark a share token as revoked so the public viewer shows "no longer available".
+ */
+export async function revokeShareToken(token: string): Promise<void> {
+  const ref = doc(getDb(), COLLECTIONS.PUBLIC_REPORTS, token);
+  await updateDoc(ref, { revoked: true });
 }

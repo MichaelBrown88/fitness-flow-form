@@ -163,6 +163,14 @@ const App = () => (
                       element={<Navigate to="/dashboard" replace />}
                     />
                     <Route
+                      path="/coach/assessments/:id/client"
+                      element={
+                        <RequireAuth>
+                          <AssessmentReport />
+                        </RequireAuth>
+                      }
+                    />
+                    <Route
                       path="/coach/assessments/:id"
                       element={
                         <RequireAuth>
