@@ -75,19 +75,14 @@ export function HeroSection() {
                   Start Free Trial
                   <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                 </Link>
-                {/* Secondary — text link weight, not a competing button */}
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    document
-                      .getElementById("how-it-works")
-                      ?.scrollIntoView({ behavior: "smooth" });
-                  }}
+                {/* Secondary — links to interactive demo */}
+                <Link
+                  to="/demo"
                   className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors"
                 >
                   <Play className="w-3.5 h-3.5 fill-slate-600" />
                   See Demo
-                </button>
+                </Link>
               </>
             )}
           </div>

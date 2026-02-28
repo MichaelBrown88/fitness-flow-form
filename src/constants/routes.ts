@@ -8,4 +8,9 @@ export const ROUTES = {
   ORG_DASHBOARD: '/org/dashboard',
   CLIENT_VIEW: '/client/:id',
   PUBLIC_REPORT: '/r/:token',
+  ABOUT: '/about',
+  CONTACT: '/contact',
+  BLOG: '/blog',
+  COOKIES: '/cookies',
+  DEMO: '/demo',
 } as const;

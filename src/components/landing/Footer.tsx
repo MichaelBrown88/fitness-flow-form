@@ -122,14 +122,8 @@ export function Footer() {
             </Link>
           </div>
           <div className="flex gap-6 mt-4 md:mt-0">
-            <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-slate-900 transition-colors">
-              Twitter
-            </a>
-            <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-slate-900 transition-colors">
-              LinkedIn
-            </a>
-            <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-slate-900 transition-colors">
-              Instagram
+            <a href="mailto:support@one-assess.com" className="text-slate-400 hover:text-slate-900 transition-colors text-sm font-medium">
+              support@one-assess.com
             </a>
           </div>
         </div>

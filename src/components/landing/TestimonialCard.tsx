@@ -6,16 +6,27 @@ interface TestimonialCardProps {
   author: string;
   role: string;
   company: string;
+  avatarUrl?: string;
   index?: number;
 }
 
-export function TestimonialCard({ quote, author, role, company, index = 0 }: TestimonialCardProps) {
-  const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(author)}&background=6366f1&color=fff&size=128`;
-  
+export function TestimonialCard({ quote, author, role, company, avatarUrl, index = 0 }: TestimonialCardProps) {
+  const initials = author
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .slice(0, 2);
+
   return (
     <GlassCard className="p-8">
       <div className="flex items-center gap-4 mb-6">
-        <img src={avatarUrl} alt={author} className="w-12 h-12 rounded-full object-cover" />
+        {avatarUrl ? (
+          <img src={avatarUrl} alt={author} className="w-12 h-12 rounded-full object-cover" />
+        ) : (
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shrink-0">
+            {initials}
+          </div>
+        )}
         <div>
           <h4 className="font-bold text-slate-900">{author}</h4>
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">{role}</p>

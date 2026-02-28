@@ -37,6 +37,13 @@ const OrganizationManage = lazy(() => import("./pages/admin/OrganizationManage")
 // Legal pages
 const Terms = lazy(() => import("./pages/legal/Terms"));
 const Privacy = lazy(() => import("./pages/legal/Privacy"));
+const Cookies = lazy(() => import("./pages/legal/Cookies"));
+
+// Static pages
+const About = lazy(() => import("./pages/About"));
+const Contact = lazy(() => import("./pages/Contact"));
+const Blog = lazy(() => import("./pages/Blog"));
+const Demo = lazy(() => import("./pages/Demo"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -111,6 +118,11 @@ const App = () => (
                     <Route path="/signout" element={<SignOut />} /> {/* Force sign out route */}
                     <Route path="/terms" element={<Terms />} />
                     <Route path="/privacy" element={<Privacy />} />
+                    <Route path="/cookies" element={<Cookies />} />
+                    <Route path="/about" element={<About />} />
+                    <Route path="/contact" element={<Contact />} />
+                    <Route path="/blog" element={<Blog />} />
+                    <Route path="/demo" element={<Demo />} />
                     {/* Onboarding - allows unauthenticated access (will create account at step 1) */}
                     <Route path="/onboarding" element={<Onboarding />} />
                     {/* Public client-facing report (no auth) - Token-based secure sharing */}
