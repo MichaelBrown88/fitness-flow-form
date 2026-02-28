@@ -27,6 +27,7 @@ const Achievements = lazy(() => import("./pages/Achievements"));
 const Companion = lazy(() => import("./pages/Companion"));
 const ClientDetail = lazy(() => import("./pages/ClientDetail"));
 const OrgAdmin = lazy(() => import("./pages/OrgAdmin"));
+const AssessmentComparison = lazy(() => import("./pages/AssessmentComparison"));
 
 // Platform admin pages (separate from org admin)
 const PlatformLogin = lazy(() => import("./pages/admin/PlatformLogin"));
@@ -199,6 +200,14 @@ const App = () => (
                       element={
                         <RequireAuth>
                           <Achievements />
+                        </RequireAuth>
+                      }
+                    />
+                    <Route
+                      path="/compare"
+                      element={
+                        <RequireAuth>
+                          <AssessmentComparison />
                         </RequireAuth>
                       }
                     />

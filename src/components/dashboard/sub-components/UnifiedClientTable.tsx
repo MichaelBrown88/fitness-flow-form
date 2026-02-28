@@ -8,7 +8,7 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Pause, Archive, ArrowRightLeft, X } from 'lucide-react';
 import { ClientActionsDropdown } from './ClientActionsDropdown';
 import type { ClientGroup } from '@/hooks/dashboard/types';
 import { scoreGrade, SCORE_COLORS } from '@/lib/scoring/scoreColor';
@@ -167,6 +167,24 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [visibleCount, setVisibleCount] = useState(20);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('active');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    const visible = sorted.slice(0, visibleCount);
+    if (selected.size === visible.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(visible.map((c) => c.id)));
+    }
+  };
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -214,7 +232,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
 
   const thClass =
     'px-3 sm:px-4 md:px-6 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 cursor-pointer select-none hover:text-slate-600 transition-colors';
-  const colCount = (showCoachColumn ? 7 : 6);
+  const colCount = (showCoachColumn ? 8 : 7);
 
   return (
     <section className="space-y-4">
@@ -240,6 +258,14 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
         <table className="min-w-full divide-y divide-slate-200 text-xs sm:text-sm">
           <thead className="bg-slate-50/50">
             <tr>
+              <th className="px-2 sm:px-3 py-3 w-10" onClick={(e) => e.stopPropagation()}>
+                <input
+                  type="checkbox"
+                  checked={sorted.slice(0, visibleCount).length > 0 && selected.size === sorted.slice(0, visibleCount).length}
+                  onChange={toggleSelectAll}
+                  className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500 cursor-pointer"
+                />
+              </th>
               <th className={thClass} onClick={() => toggleSort('name')}>
                 Client{sortIcon('name')}
               </th>
@@ -289,9 +315,17 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                 return (
                   <tr
                     key={client.id}
-                    className={`hover:bg-slate-50/80 transition-colors group cursor-pointer ${dimClass}`}
+                    className={`hover:bg-slate-50/80 transition-colors group cursor-pointer ${dimClass} ${selected.has(client.id) ? 'bg-violet-50/50' : ''}`}
                     onClick={() => navigate(`/client/${encodeURIComponent(client.name)}`)}
                   >
+                    <td className="px-2 sm:px-3 py-4 w-10" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selected.has(client.id)}
+                        onChange={() => toggleSelect(client.id)}
+                        className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500 cursor-pointer"
+                      />
+                    </td>
                     <td className="px-3 sm:px-4 md:px-6 py-4 text-xs sm:text-sm text-slate-900 font-semibold">
                       <span className="flex items-center gap-2">
                         {client.name}
@@ -369,13 +403,21 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                   }
                 }}
               >
-                {/* Line 1: name + status + actions */}
+                {/* Line 1: checkbox + name + status + actions */}
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-slate-900 truncate flex-1 min-w-0">
-                    {client.name}
-                    {isPaused && <span className="text-[10px] text-slate-400 font-bold ml-2">Paused</span>}
-                    {isArchived && <span className="text-[10px] text-slate-400 font-bold ml-2">Archived</span>}
-                  </p>
+                  <div className="flex items-center gap-2 flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selected.has(client.id)}
+                      onChange={() => toggleSelect(client.id)}
+                      className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500 cursor-pointer shrink-0"
+                    />
+                    <p className="text-sm font-semibold text-slate-900 truncate">
+                      {client.name}
+                      {isPaused && <span className="text-[10px] text-slate-400 font-bold ml-2">Paused</span>}
+                      {isArchived && <span className="text-[10px] text-slate-400 font-bold ml-2">Archived</span>}
+                    </p>
+                  </div>
                   <div className="shrink-0" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                     <ClientActionsDropdown clientName={client.name} latestAssessmentId={client.assessments[0]?.id} />
                   </div>
@@ -414,6 +456,44 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
           >
             Show More Clients
           </Button>
+        </div>
+      )}
+
+      {/* Floating Bulk Action Bar */}
+      {selected.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white rounded-xl shadow-2xl px-5 py-3 flex items-center gap-4 animate-in slide-in-from-bottom-4 duration-200">
+          <span className="text-xs font-bold whitespace-nowrap">
+            {selected.size} selected
+          </span>
+          <div className="h-4 w-px bg-slate-700" />
+          <button
+            onClick={() => setSelected(new Set())}
+            className="flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-white transition-colors"
+          >
+            <Pause className="h-3.5 w-3.5" />
+            Pause
+          </button>
+          <button
+            onClick={() => setSelected(new Set())}
+            className="flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-white transition-colors"
+          >
+            <Archive className="h-3.5 w-3.5" />
+            Archive
+          </button>
+          <button
+            onClick={() => setSelected(new Set())}
+            className="flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-white transition-colors"
+          >
+            <ArrowRightLeft className="h-3.5 w-3.5" />
+            Transfer
+          </button>
+          <div className="h-4 w-px bg-slate-700" />
+          <button
+            onClick={() => setSelected(new Set())}
+            className="text-slate-400 hover:text-white transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
       )}
     </section>

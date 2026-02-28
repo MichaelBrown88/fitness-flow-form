@@ -1,6 +1,6 @@
 import React from 'react';
 import { Input } from '@/components/ui/input';
-import { Calendar, Users, BarChart3 } from 'lucide-react';
+import { Calendar, CalendarDays, Users, BarChart3 } from 'lucide-react';
 import { UI_TABS } from '@/constants/ui';
 import type { DashboardView } from '@/hooks/dashboard/types';
 
@@ -47,6 +47,10 @@ export const DashboardViewTabs: React.FC<DashboardViewTabsProps> = ({
               {scheduleCount}
             </span>
           )}
+        </button>
+        <button onClick={() => setView('calendar')} className={tabClass('calendar')}>
+          <CalendarDays className="w-3.5 h-3.5" />
+          {UI_TABS.CALENDAR}
         </button>
         {showTeamTab && (
           <button onClick={() => setView('team')} className={tabClass('team')}>

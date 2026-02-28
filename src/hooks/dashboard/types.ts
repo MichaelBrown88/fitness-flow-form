@@ -8,7 +8,7 @@ import type { CoachAssessmentSummary } from '@/services/coachAssessments';
 import type { PillarCadence, PartialAssessmentCategory } from '@/types/client';
 
 /** Dashboard view tabs */
-export type DashboardView = 'clients' | 'schedule' | 'team';
+export type DashboardView = 'clients' | 'schedule' | 'calendar' | 'team';
 
 /** Simplified analytics — only business-relevant counts */
 export type Analytics = {

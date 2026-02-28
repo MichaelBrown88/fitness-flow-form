@@ -14,6 +14,7 @@ import { DashboardViewTabs } from '@/components/dashboard/sub-components/Dashboa
 import { UnifiedClientTable } from '@/components/dashboard/sub-components/UnifiedClientTable';
 import { DashboardDialogs } from '@/components/dashboard/sub-components/DashboardDialogs';
 import { PriorityView } from '@/components/dashboard/sub-components/PriorityView';
+import { CalendarView } from '@/components/dashboard/sub-components/CalendarView';
 import { TeamView } from '@/components/dashboard/sub-components/TeamView';
 import { GettingStartedChecklist } from '@/components/dashboard/GettingStartedChecklist';
 
@@ -131,6 +132,14 @@ const Dashboard = () => {
                 search={search}
                 showCoachName={showCoachColumn}
                 coachMap={coachMap}
+              />
+            )}
+
+            {/* Calendar View */}
+            {view === 'calendar' && reassessmentQueue && (
+              <CalendarView
+                reassessmentQueue={reassessmentQueue}
+                onNewAssessmentForClient={handleNewAssessmentForClient}
               />
             )}
 

@@ -15,4 +15,5 @@ export const ROUTES = {
   BLOG: '/blog',
   COOKIES: '/cookies',
   DEMO: '/demo',
+  COMPARE: '/compare',
 } as const;

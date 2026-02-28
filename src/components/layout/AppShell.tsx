@@ -7,6 +7,7 @@ import { Sparkles, ChevronDown, Menu, Building2, LayoutDashboard, Settings, LogO
 import { ROUTES } from '@/constants/routes';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { ClientProfileDropdown } from '@/components/client/ClientProfileDropdown';
+import { CommandMenu } from '@/components/ui/CommandMenu';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -300,6 +301,7 @@ export default function AppShell({
         )}
         {children}
       </main>
+      <CommandMenu />
     </div>
   );
 }
