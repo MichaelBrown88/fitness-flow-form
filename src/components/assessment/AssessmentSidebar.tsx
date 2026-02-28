@@ -23,11 +23,13 @@ interface AssessmentSidebarProps {
   setIsReviewMode: (isReview: boolean) => void;
   setActiveFieldIdx: (idx: number) => void;
   isMobile: boolean;
+  timeEstimate?: string;
 }
 
 export const AssessmentSidebar = ({
   sidebarOpen,
   setSidebarOpen,
+  progressValue,
   visiblePhases,
   activePhaseIdx,
   setActivePhaseIdx,
@@ -40,8 +42,8 @@ export const AssessmentSidebar = ({
   setIsReviewMode,
   setActiveFieldIdx,
   isMobile,
+  timeEstimate,
 }: AssessmentSidebarProps) => {
-
   const handlePhaseClick = (idx: number, sections: PhaseSection[]) => {
     setIsReviewMode(true);
     setActivePhaseIdx(idx);
@@ -52,7 +54,6 @@ export const AssessmentSidebar = ({
     if (sections.length === 0 || isMobile) setSidebarOpen(false);
   };
 
-  // Determine phase state for consistent rendering
   const getPhaseState = (idx: number, phase: { id: string }) => {
     const isActive = idx === activePhaseIdx;
     const isResultsPhase = phase.id === 'P7';
@@ -68,112 +69,117 @@ export const AssessmentSidebar = ({
     return { isActive, isCompleted, isDisabled };
   };
 
+  const activePhase = visiblePhases[activePhaseIdx];
+  const activeSections = (activePhase?.sections || []) as PhaseSection[];
+  const completedPhases = visiblePhases.filter((_, i) => isPhaseCompleted(i)).length;
+  const totalPhases = visiblePhases.filter(p => p.id !== 'P7').length;
+
   return (
     <>
-      {/* ── Desktop sidebar ──────────────────────────────────────── */}
-      <aside className={`w-full lg:w-72 border-b lg:border-b-0 lg:border-r border-slate-200 bg-white p-6 shrink-0 lg:sticky top-[64px] z-30 overflow-y-auto max-h-[calc(100vh-64px)] ${sidebarOpen ? 'block fixed inset-0 z-50 pt-20' : 'hidden lg:block'}`}>
-        <div className="space-y-6">
-          {/* Mobile close button */}
-          <div className="flex items-center justify-between lg:hidden mb-4">
-            <h3 className="text-lg font-bold text-slate-900">Navigation</h3>
-            <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)} className="h-9 w-9 rounded-full bg-slate-100">
-              <X className="h-4 w-4 text-slate-600" />
-            </Button>
-          </div>
-
-          {/* Vertical stepper */}
-          <nav>
-            {visiblePhases.map((phase, idx) => {
-              const { isActive, isCompleted, isDisabled } = getPhaseState(idx, phase);
-              const sections = (phase.sections || []) as PhaseSection[];
-              const isLast = idx === visiblePhases.length - 1;
-
-              // Connecting line is branded if THIS phase is completed
-              const lineActive = isCompleted;
-
-              return (
-                <div key={phase.id} className="relative">
-                  {/* Connecting line (except last phase) */}
-                  {!isLast && (
-                    <div
-                      className={`absolute left-[15px] top-[32px] w-0.5 transition-colors duration-300 ${
-                        lineActive ? 'bg-primary' : 'bg-slate-200'
-                      }`}
-                      style={{
-                        height: isActive && sections.length > 0
-                          ? `calc(100% - 16px)`
-                          : '100%',
-                      }}
-                    />
-                  )}
-
-                  {/* Phase row */}
-                  <button
-                    onClick={() => !isDisabled && handlePhaseClick(idx, sections)}
-                    disabled={isDisabled}
-                    className={`relative flex w-full items-center gap-3 py-2.5 text-sm transition-colors ${
-                      isActive
-                        ? 'text-slate-900 font-bold'
-                        : isCompleted
-                          ? 'text-slate-700 font-medium'
-                          : isDisabled
-                            ? 'text-slate-300 cursor-not-allowed'
-                            : 'text-slate-500 font-medium hover:text-slate-700'
-                    }`}
-                  >
-                    {/* Numbered circle */}
-                    <span className={`relative z-10 flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all duration-300 ${
-                      isCompleted
-                        ? 'bg-primary text-primary-foreground'
-                        : isActive
-                          ? 'bg-primary text-primary-foreground ring-4 ring-primary/20'
-                          : isDisabled
-                            ? 'bg-slate-100 text-slate-300'
-                            : 'bg-slate-100 text-slate-400'
-                    }`}>
-                      {idx + 1}
-                    </span>
-                    <span className="truncate text-left">{phase.title}</span>
-                  </button>
-
-                  {/* Section sub-list */}
-                  {isActive && sections.length > 0 && (
-                    <div className="ml-[15px] pl-6 border-l-2 border-primary/20 space-y-0.5 pb-2 animate-in slide-in-from-top-2 duration-300">
-                      {sections.map(sec => {
-                        const isExpanded = expandedSections[sec.id];
-                        const isSecComp = isSectionCompleted(sec);
-                        return (
-                          <button
-                            key={sec.id}
-                            onClick={() => toggleSection(sec.id)}
-                            className={`flex w-full items-center py-1.5 text-xs transition-colors ${
-                              isExpanded
-                                ? 'text-slate-900 font-semibold'
-                                : isSecComp
-                                  ? 'text-slate-600'
-                                  : 'text-slate-400'
-                            } hover:text-slate-900`}
-                          >
-                            <span className={`w-1.5 h-1.5 rounded-full mr-2.5 shrink-0 transition-colors ${
-                              isExpanded ? 'bg-primary' : isSecComp ? 'bg-primary/40' : 'bg-slate-200'
-                            }`} />
-                            <span className="truncate">{sec.title}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </nav>
+      {/* Desktop sidebar — compact progress bar layout */}
+      <aside className={`w-full lg:w-64 border-b lg:border-b-0 lg:border-r border-slate-200 bg-white p-5 shrink-0 lg:sticky top-[64px] z-30 overflow-y-auto max-h-[calc(100vh-64px)] ${sidebarOpen ? 'block fixed inset-0 z-50 pt-20' : 'hidden lg:block'}`}>
+        {/* Mobile close button */}
+        <div className="flex items-center justify-between lg:hidden mb-4">
+          <h3 className="text-lg font-bold text-slate-900">Navigation</h3>
+          <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)} className="h-9 w-9 rounded-full bg-slate-100">
+            <X className="h-4 w-4 text-slate-600" />
+          </Button>
         </div>
+
+        {/* Progress bar + label */}
+        <div className="mb-5">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+              Progress
+            </span>
+            <span className="text-xs font-bold text-slate-600">
+              {Math.round(progressValue)}%
+            </span>
+          </div>
+          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${progressValue}%` }}
+            />
+          </div>
+          {timeEstimate && (
+            <p className="text-[10px] text-slate-400 mt-1.5 font-medium">{timeEstimate}</p>
+          )}
+        </div>
+
+        {/* Phase list (compact) */}
+        <div className="space-y-1 mb-4">
+          {visiblePhases.map((phase, idx) => {
+            const { isActive, isCompleted, isDisabled } = getPhaseState(idx, phase);
+            return (
+              <button
+                key={phase.id}
+                onClick={() => !isDisabled && handlePhaseClick(idx, (phase.sections || []) as PhaseSection[])}
+                disabled={isDisabled}
+                className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-colors ${
+                  isActive
+                    ? 'bg-primary/10 text-slate-900 font-bold'
+                    : isCompleted
+                      ? 'text-slate-600 font-medium hover:bg-slate-50'
+                      : isDisabled
+                        ? 'text-slate-300 cursor-not-allowed'
+                        : 'text-slate-500 font-medium hover:bg-slate-50'
+                }`}
+              >
+                <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+                  isCompleted
+                    ? 'bg-primary text-primary-foreground'
+                    : isActive
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-slate-100 text-slate-400'
+                }`}>
+                  {isCompleted ? '✓' : idx + 1}
+                </span>
+                <span className="truncate text-left text-xs">{phase.title}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Active phase sections */}
+        {activeSections.length > 0 && (
+          <div className="border-t border-slate-100 pt-3">
+            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 mb-2">
+              {activePhase.title}
+            </p>
+            <div className="space-y-0.5">
+              {activeSections.map(sec => {
+                const isExpanded = expandedSections[sec.id];
+                const isSecComp = isSectionCompleted(sec);
+                return (
+                  <button
+                    key={sec.id}
+                    onClick={() => toggleSection(sec.id)}
+                    className={`flex w-full items-center py-1.5 px-2 rounded text-xs transition-colors ${
+                      isExpanded
+                        ? 'text-slate-900 font-semibold bg-slate-50'
+                        : isSecComp
+                          ? 'text-slate-500'
+                          : 'text-slate-400'
+                    } hover:text-slate-900 hover:bg-slate-50`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full mr-2 shrink-0 ${
+                      isExpanded ? 'bg-primary' : isSecComp ? 'bg-primary/40' : 'bg-slate-200'
+                    }`} />
+                    <span className="truncate">{sec.title}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </aside>
 
-      {/* ── Mobile bottom phase strip ────────────────────────────── */}
+      {/* Mobile bottom phase strip */}
       <MobilePhaseStrip
         visiblePhases={visiblePhases}
         activePhaseIdx={activePhaseIdx}
+        progressValue={progressValue}
         getPhaseState={getPhaseState}
         onPhaseClick={(idx) => {
           const sections = (visiblePhases[idx].sections || []) as PhaseSection[];
@@ -184,11 +190,11 @@ export const AssessmentSidebar = ({
   );
 };
 
-// ── Mobile bottom strip — horizontal connected stepper ────────────
-
+// Mobile bottom strip — simplified with progress %
 interface MobilePhaseStripProps {
   visiblePhases: { id: string; title: string; sections?: PhaseSection[] }[];
   activePhaseIdx: number;
+  progressValue: number;
   getPhaseState: (idx: number, phase: { id: string }) => {
     isActive: boolean;
     isCompleted: boolean;
@@ -200,12 +206,12 @@ interface MobilePhaseStripProps {
 const MobilePhaseStrip: React.FC<MobilePhaseStripProps> = ({
   visiblePhases,
   activePhaseIdx,
+  progressValue,
   getPhaseState,
   onPhaseClick,
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to keep active phase visible
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -216,61 +222,46 @@ const MobilePhaseStrip: React.FC<MobilePhaseStripProps> = ({
     }
   }, [activePhaseIdx]);
 
+  const activePhase = visiblePhases[activePhaseIdx];
+
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-white border-t border-slate-200 safe-area-bottom">
-      <div className="relative">
-        {/* Fade edges */}
-        <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-white to-transparent z-10" />
-        <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white to-transparent z-10" />
-
+      {/* Progress bar at top */}
+      <div className="h-1 bg-slate-100">
         <div
-          ref={scrollRef}
-          className="flex items-center gap-0 px-6 py-3 overflow-x-auto scrollbar-hide"
-        >
-          {visiblePhases.map((phase, idx) => {
-            const { isActive, isCompleted, isDisabled } = getPhaseState(idx, phase);
-            const isLast = idx === visiblePhases.length - 1;
-            // Line between this phase and the next is branded if this phase is completed
-            const lineActive = isCompleted;
+          className="h-full bg-primary transition-all duration-300"
+          style={{ width: `${progressValue}%` }}
+        />
+      </div>
 
-            return (
-              <React.Fragment key={phase.id}>
-                <button
-                  data-phase-idx={idx}
-                  onClick={() => !isDisabled && onPhaseClick(idx)}
-                  disabled={isDisabled}
-                  className="flex flex-col items-center gap-1 shrink-0"
-                >
-                  {/* Circle */}
-                  <span className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all duration-300 ${
-                    isCompleted
-                      ? 'bg-primary text-primary-foreground'
-                      : isActive
-                        ? 'bg-primary text-primary-foreground ring-4 ring-primary/20'
-                        : isDisabled
-                          ? 'bg-slate-100 text-slate-300'
-                          : 'bg-slate-100 text-slate-400'
-                  }`}>
-                    {idx + 1}
-                  </span>
-                  {/* Title — only for active */}
-                  {isActive && (
-                    <span className="text-[10px] font-bold text-slate-900 whitespace-nowrap max-w-[72px] truncate">
-                      {phase.title}
-                    </span>
-                  )}
-                </button>
+      {/* Phase name + progress */}
+      <div className="flex items-center justify-between px-4 py-1">
+        <span className="text-xs font-bold text-slate-900 truncate">
+          {activePhase?.title}
+        </span>
+        <span className="text-[10px] font-bold text-slate-400">
+          {Math.round(progressValue)}%
+        </span>
+      </div>
 
-                {/* Connecting line */}
-                {!isLast && (
-                  <div className={`h-0.5 w-6 shrink-0 mx-1 transition-colors duration-300 ${
-                    lineActive ? 'bg-primary' : 'bg-slate-200'
-                  }`} />
-                )}
-              </React.Fragment>
-            );
-          })}
-        </div>
+      {/* Phase dots */}
+      <div ref={scrollRef} className="flex items-center justify-center gap-1.5 px-4 pb-2.5">
+        {visiblePhases.map((phase, idx) => {
+          const { isActive, isCompleted, isDisabled } = getPhaseState(idx, phase);
+          return (
+            <button
+              key={phase.id}
+              data-phase-idx={idx}
+              onClick={() => !isDisabled && onPhaseClick(idx)}
+              disabled={isDisabled}
+              className={`h-2 rounded-full transition-all duration-300 ${
+                isActive ? 'w-6 bg-primary' :
+                isCompleted ? 'w-2 bg-primary/60' :
+                'w-2 bg-slate-200'
+              }`}
+            />
+          );
+        })}
       </div>
     </div>
   );

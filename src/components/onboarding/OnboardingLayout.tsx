@@ -43,6 +43,7 @@ export function OnboardingLayout({ currentStep, children, onBack, leftContent }:
           {isStepPhase && (
             <p className="text-sm text-slate-500">
               Step {currentStep + 1} of {ONBOARDING_STEPS.length} — {ONBOARDING_STEPS[currentStep].description}
+              <span className="block text-xs text-slate-400 mt-1">~2 minutes total</span>
             </p>
           )}
         </div>
