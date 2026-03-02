@@ -16,4 +16,5 @@ export const COLLECTIONS = {
   AI_USAGE_LOGS: 'ai_usage_logs',
   LIVE_SESSIONS: 'live_sessions',
   LEARNED_OCR_PATTERNS: 'learned_ocr_patterns',
+  ROADMAPS: 'roadmaps',
 } as const;

@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, type ReactNode } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import AppShell from '@/components/layout/AppShell';
 import { Breadcrumb } from '@/components/ui/Breadcrumb';
 import { ROUTES } from '@/constants/routes';
@@ -36,9 +36,12 @@ import {
   RotateCcw,
   Trophy,
   CalendarClock,
+  Map,
 } from 'lucide-react';
 import { useTokenAchievements } from '@/hooks/useTokenAchievements';
 import { ACHIEVEMENT_DEFINITIONS } from '@/constants/achievements';
+import { getRoadmapForClient } from '@/services/roadmaps';
+import { ClipboardCheck } from 'lucide-react';
 
 import {
   DropdownMenu,
@@ -158,12 +161,27 @@ const ClientDetail = () => {
     handleReactivateClient,
     navigateBack,
   } = useClientDetail();
+  const navigate = useNavigate();
 
   const [transferOpen, setTransferOpen] = useState(false);
   const [pauseDialogOpen, setPauseDialogOpen] = useState(false);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [roadmapStatus, setRoadmapStatus] = useState<'loading' | 'none' | 'draft' | 'sent'>('loading');
   const isPaused = profile?.status === 'paused';
   const isArchived = profile?.status === 'archived';
+  const { effectiveOrgId } = useAuth();
+
+  useEffect(() => {
+    if (!effectiveOrgId || !clientName) return;
+    let cancelled = false;
+    getRoadmapForClient(effectiveOrgId, clientName).then((doc) => {
+      if (cancelled) return;
+      if (!doc) setRoadmapStatus('none');
+      else if (doc.shareToken) setRoadmapStatus('sent');
+      else setRoadmapStatus('draft');
+    }).catch(() => { if (!cancelled) setRoadmapStatus('none'); });
+    return () => { cancelled = true; };
+  }, [effectiveOrgId, clientName]);
 
   if (!user) {
     return (
@@ -375,7 +393,75 @@ const ClientDetail = () => {
           </div>
         </CollapsibleSection>
 
-        {/* 4. Client Achievements */}
+        {/* 4. Coach Findings */}
+        <CollapsibleSection
+          title="Coach Findings"
+          icon={<FileText className="h-5 w-5 text-primary" />}
+          defaultOpen={false}
+        >
+          {assessments.length === 0 ? (
+            <p className="text-sm text-slate-400 py-4 text-center">Complete an assessment to see coach findings.</p>
+          ) : (
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-800">Latest score: {stats.latestScore}/100</p>
+                {currentAssessment?.formData && (
+                  <p className="text-xs text-slate-500 mt-0.5 truncate">
+                    {Object.entries(categoryBreakdown).filter(([, v]) => v > 0 && v < 60).map(([k]) => {
+                      const labels: Record<string, string> = { bodyComp: 'Body Comp', movementQuality: 'Movement', strength: 'Strength', cardio: 'Cardio', lifestyle: 'Lifestyle' };
+                      return labels[k] || k;
+                    }).slice(0, 2).join(', ') || 'No priority areas'}{' '}
+                    {Object.entries(categoryBreakdown).filter(([, v]) => v > 0 && v < 60).length > 0 ? 'need attention' : ''}
+                  </p>
+                )}
+              </div>
+              <Button size="sm" variant="outline" className="rounded-lg text-xs shrink-0" asChild>
+                <Link to={`/coach/assessments/${assessments[0].id}`}>
+                  <ClipboardCheck className="h-3.5 w-3.5 mr-1.5" />
+                  View Report
+                </Link>
+              </Button>
+            </div>
+          )}
+        </CollapsibleSection>
+
+        {/* 5. Client Roadmap */}
+        <CollapsibleSection
+          title="Client Roadmap"
+          icon={<Map className="h-5 w-5 text-primary" />}
+          badge={roadmapStatus === 'sent' ? <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Sent</span>
+            : roadmapStatus === 'draft' ? <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Draft</span>
+            : undefined}
+        >
+          {assessments.length === 0 ? (
+            <p className="text-sm text-slate-400 py-4 text-center">Complete an assessment first.</p>
+          ) : roadmapStatus === 'loading' ? (
+            <p className="text-sm text-slate-400 py-4 text-center">Checking roadmap status...</p>
+          ) : roadmapStatus === 'none' ? (
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm text-slate-500">Roadmap not yet created for this client.</p>
+              <Button size="sm" className="rounded-lg text-xs shrink-0 bg-slate-900 text-white" asChild>
+                <Link to={`/coach/clients/${encodeURIComponent(clientName)}/roadmap`}>Create Roadmap</Link>
+              </Button>
+            </div>
+          ) : roadmapStatus === 'draft' ? (
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm text-slate-500">Roadmap created but not sent to client.</p>
+              <Button size="sm" variant="outline" className="rounded-lg text-xs shrink-0" asChild>
+                <Link to={`/coach/clients/${encodeURIComponent(clientName)}/roadmap`}>Review & Send</Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm text-slate-500">Roadmap has been shared with client.</p>
+              <Button size="sm" variant="outline" className="rounded-lg text-xs shrink-0" asChild>
+                <Link to={`/coach/clients/${encodeURIComponent(clientName)}/roadmap`}>View / Edit</Link>
+              </Button>
+            </div>
+          )}
+        </CollapsibleSection>
+
+        {/* 6. Client Achievements */}
         {profile?.shareToken && (
           <CollapsibleSection
             title="Client Achievements"

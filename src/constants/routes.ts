@@ -18,4 +18,5 @@ export const ROUTES = {
   COMPARE: '/compare',
   BILLING: '/billing',
   ONBOARDING: '/onboarding',
+  CLIENT_ROADMAP: '/coach/clients/:name/roadmap',
 } as const;

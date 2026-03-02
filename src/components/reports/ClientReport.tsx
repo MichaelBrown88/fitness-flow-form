@@ -9,13 +9,13 @@
  * expanded by default. An Expand/Collapse All toggle is in the header.
  */
 
-import React, { useState, useMemo, lazy, Suspense, useEffect } from 'react';
+import React, { useState, lazy, Suspense, useEffect } from 'react';
 import type { FormData } from '@/contexts/FormContext';
-import { computeScores, buildRoadmap, type ScoreSummary } from '@/lib/scoring';
+import type { ScoreSummary } from '@/lib/scoring';
 import type { CoachPlan } from '@/lib/recommendations';
 import {
   Loader2, ChevronDown,
-  Activity, BarChart3, TrendingUp, Heart, Target, Trophy, Clock,
+  Activity, BarChart3, TrendingUp, Heart, Target, Map,
 } from 'lucide-react';
 import {
   Collapsible,
@@ -36,12 +36,9 @@ import { StartingPointSection } from './client/sub-components/StartingPointSecti
 import { GapAnalysisSection } from './client/sub-components/GapAnalysisSection';
 import { StrengthsFocusSection } from './client/sub-components/StrengthsFocusSection';
 import { DestinationSection } from './client/sub-components/DestinationSection';
-import { BlueprintSection } from './client/sub-components/BlueprintSection';
-import { TimelineSection } from './client/sub-components/TimelineSection';
 
 // Hooks
 import { useClientReportData } from './client/useClientReportData';
-import { useGoalCountdown } from '@/hooks/useGoalCountdown';
 import { useScrollRevealSections } from '@/hooks/useScrollRevealSections';
 
 // ── Section config ────────────────────────────────────────────────────
@@ -53,8 +50,7 @@ const SECTION_IDS = [
   'lifestyle',
   'movement',
   'destination',
-  'blueprint',
-  'timeline',
+  'action-plan',
 ] as const;
 
 type SectionId = (typeof SECTION_IDS)[number];
@@ -67,8 +63,7 @@ const SECTION_ICON_MAP: Record<SectionId, React.ElementType> = {
   'lifestyle': Heart,
   'movement': Activity,
   'destination': Target,
-  'blueprint': Trophy,
-  'timeline': Clock,
+  'action-plan': Map,
 };
 
 const SECTION_META: Record<SectionId, {
@@ -83,11 +78,47 @@ const SECTION_META: Record<SectionId, {
   'lifestyle':       { title: 'Lifestyle Factors',             shortTitle: 'Lifestyle',  summary: 'Sleep, nutrition, stress, and activity habits',        icon: <Heart className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
   'movement':        { title: 'Posture, Movement & Mobility',  shortTitle: 'Movement',   summary: 'Movement quality, posture, and flexibility analysis',  icon: <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
   'destination':     { title: 'Your Destination',              shortTitle: 'Goals',      summary: 'Goals and what achieving them looks like',             icon: <Target className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
-  'blueprint':       { title: 'The Blueprint',                 shortTitle: 'Plan',       summary: 'Personalised action plan for each pillar',             icon: <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
-  'timeline':        { title: 'Your Timeline',                 shortTitle: 'Timeline',   summary: 'Projected milestones and review schedule',             icon: <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
+  'action-plan':     { title: 'Your Action Plan',              shortTitle: 'Plan',       summary: 'Personalised roadmap to reach your goals',             icon: <Map className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
 };
 
 const DEFAULT_OPEN: SectionId[] = ['starting-point'];
+
+// ── Roadmap CTA (replaces Blueprint + Timeline in client reports) ────
+
+function ActionPlanCTA({ clientName, standalone }: { clientName: string; standalone: boolean }) {
+  if (standalone) {
+    return (
+      <div className="rounded-xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-violet-50 to-white p-8 text-center space-y-4">
+        <div className="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-indigo-100 mx-auto">
+          <Map className="h-6 w-6 text-indigo-500" />
+        </div>
+        <h3 className="text-lg font-bold text-slate-900">Your Personalised Plan</h3>
+        <p className="text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">
+          Your coach is building a personalised roadmap based on your assessment results.
+          You&apos;ll be notified when it&apos;s ready to view.
+        </p>
+      </div>
+    );
+  }
+
+  const roadmapUrl = `/coach/clients/${encodeURIComponent(clientName)}/roadmap`;
+  return (
+    <div className="rounded-xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-violet-50 to-white p-6 text-center space-y-3">
+      <Map className="h-8 w-8 text-indigo-500 mx-auto" />
+      <h3 className="text-lg font-bold text-slate-900">Client Roadmap</h3>
+      <p className="text-sm text-slate-500 max-w-md mx-auto">
+        Create or review this client&apos;s personalised action plan based on the assessment findings.
+      </p>
+      <a
+        href={roadmapUrl}
+        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors"
+      >
+        <Map className="h-4 w-4" />
+        View Roadmap
+      </a>
+    </div>
+  );
+}
 
 // ── Collapsible section wrapper ───────────────────────────────────────
 // Renders the section's icon + title as the trigger (matching existing
@@ -152,7 +183,7 @@ const MOBILE_TAB_META: Record<MobileTabId, {
   overview:  { label: 'Overview',  icon: Activity },
   analysis:  { label: 'Analysis',  icon: BarChart3 },
   movement:  { label: 'Movement',  icon: Heart },
-  plan:      { label: 'Your Plan', icon: Trophy },
+  plan:      { label: 'Your Plan', icon: Map },
 };
 
 // ── Mobile bottom tab bar ────────────────────────────────────────────
@@ -228,20 +259,7 @@ export default function ClientReport({
     gapAnalysisData,
     previousGapAnalysisData,
     reportDate,
-    blueprintPillars,
-    weeksByCategory,
   } = useClientReportData({ scores, goals, formData, previousScores, previousFormData });
-
-  const countdownData = useGoalCountdown(orderedCats, weeksByCategory, previousScores);
-
-  const previousBlueprintPhase = useMemo(() => {
-    if (!previousFormData) return undefined;
-    try {
-      const prevScores = computeScores(previousFormData);
-      const prevRoadmap = buildRoadmap(prevScores, previousFormData);
-      return prevRoadmap[0]?.title;
-    } catch { return undefined; }
-  }, [previousFormData]);
 
   const isMobile = useIsMobile();
 
@@ -315,15 +333,8 @@ export default function ClientReport({
         return <MovementPostureMobility formData={formData} scores={scores} standalone={standalone} hideHeader previousFormData={previousFormData} />;
       case 'destination':
         return <DestinationSection goals={goals} formData={formData} hideHeader />;
-      case 'blueprint':
-        return <BlueprintSection blueprintPillars={blueprintPillars} hideHeader previousPhase={previousBlueprintPhase} />;
-      case 'timeline':
-        return (
-          <TimelineSection
-            countdownData={countdownData}
-            hideHeader
-          />
-        );
+      case 'action-plan':
+        return <ActionPlanCTA clientName={clientName} standalone={standalone} />;
       default:
         return null;
     }
@@ -408,11 +419,7 @@ export default function ClientReport({
               {mobileTab === 'plan' && (
                 <>
                   <DestinationSection goals={goals} formData={formData} hideHeader />
-                  <BlueprintSection blueprintPillars={blueprintPillars} hideHeader previousPhase={previousBlueprintPhase} />
-                  <TimelineSection
-                    countdownData={countdownData}
-                    hideHeader
-                  />
+                  <ActionPlanCTA clientName={clientName} standalone={standalone} />
                 </>
               )}
             </div>

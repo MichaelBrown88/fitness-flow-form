@@ -65,15 +65,16 @@ export default function AppShell({
     (user?.email ? user.email[0]?.toUpperCase() : 'C');
 
   const [emailBannerDismissed, setEmailBannerDismissed] = useState(false);
+  const [resendState, setResendState] = useState<'idle' | 'sent' | 'error'>('idle');
   const handleResendVerification = useCallback(async () => {
-    if (user) {
-      try {
-        await sendEmailVerification(user);
-      } catch {
-        // silently fail — rate-limited
-      }
+    if (!user || resendState === 'sent') return;
+    try {
+      await sendEmailVerification(user);
+      setResendState('sent');
+    } catch {
+      setResendState('error');
     }
-  }, [user]);
+  }, [user, resendState]);
 
   // Use public branding if provided (for unauthenticated routes), otherwise fallback to auth context
   const hasOrgLogo = publicLogoUrl || (orgSettings?.logoUrl && orgSettings.logoUrl.trim() !== '');
@@ -278,9 +279,10 @@ export default function AppShell({
           <button
             type="button"
             onClick={handleResendVerification}
-            className="text-xs font-semibold text-amber-700 underline hover:text-amber-900"
+            disabled={resendState === 'sent'}
+            className="text-xs font-semibold text-amber-700 underline hover:text-amber-900 disabled:opacity-50 disabled:no-underline disabled:cursor-default"
           >
-            Resend
+            {resendState === 'sent' ? 'Sent!' : resendState === 'error' ? 'Try again' : 'Resend'}
           </button>
           <button
             type="button"

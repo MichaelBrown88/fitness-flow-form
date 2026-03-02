@@ -197,7 +197,7 @@ export const UI_STATUS = {
 // Dashboard Tab Labels
 export const UI_TABS = {
   CLIENTS: 'Clients',
-  SCHEDULE: 'Schedule',
+  SCHEDULE: 'Tasks',
   CALENDAR: 'Calendar',
   TEAM: 'Team',
 } as const;

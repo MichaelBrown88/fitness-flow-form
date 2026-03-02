@@ -569,25 +569,15 @@ export const PhaseFormContent = ({
                   scores={scores}
                   roadmap={roadmap}
                   plan={plan}
-                  bodyCompInterp={bodyCompInterp}
                   savingId={savingId}
                   isEditMode={isEditMode}
                   onClearEditMode={() => setIsEditMode(false)}
                   onStartNew={handleStartNewAssessment}
-                  onShare={(view) => {
-                    handleShare(view);
-                  }}
-                  onCopyLink={(view) => {
-                    handleCopyLink(view);
-                  }}
-                  onEmailLink={(view) => {
-                    handleEmailLink(view);
-                  }}
-                  onWhatsAppShare={(view) => {
-                    handleWhatsAppShare(view);
-                  }}
+                  onShare={(view) => handleShare(view)}
+                  onCopyLink={(view) => handleCopyLink(view)}
+                  onEmailLink={(view) => handleEmailLink(view)}
+                  onWhatsAppShare={(view) => handleWhatsAppShare(view)}
                   shareLoading={shareLoading}
-                  highlightCategory={highlightCategory}
                 />
               </React.Suspense>
             )}

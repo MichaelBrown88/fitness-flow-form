@@ -29,6 +29,8 @@ const ClientDetail = lazy(() => import("./pages/ClientDetail"));
 const OrgAdmin = lazy(() => import("./pages/OrgAdmin"));
 const AssessmentComparison = lazy(() => import("./pages/AssessmentComparison"));
 const Billing = lazy(() => import("./pages/Billing"));
+const ClientRoadmap = lazy(() => import("./pages/ClientRoadmap"));
+const PublicRoadmapViewer = lazy(() => import("./pages/PublicRoadmapViewer"));
 
 // Platform admin pages (separate from org admin)
 const PlatformLogin = lazy(() => import("./pages/admin/PlatformLogin"));
@@ -132,6 +134,10 @@ const App = () => (
                       path="/r/:token"
                       element={<PublicReportViewer />}
                     />
+                    <Route
+                      path="/r/:token/roadmap"
+                      element={<PublicRoadmapViewer />}
+                    />
                     {/* Token-scoped achievements (no auth required) */}
                     <Route
                       path="/r/:token/achievements"
@@ -225,6 +231,14 @@ const App = () => (
                       element={
                         <RequireAuth>
                           <Billing />
+                        </RequireAuth>
+                      }
+                    />
+                    <Route
+                      path="/coach/clients/:name/roadmap"
+                      element={
+                        <RequireAuth>
+                          <ClientRoadmap />
                         </RequireAuth>
                       }
                     />

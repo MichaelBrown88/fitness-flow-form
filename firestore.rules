@@ -111,6 +111,15 @@ service cloud.firestore {
         }
       }
 
+      // Roadmaps (editable client action plans)
+      match /roadmaps/{roadmapId} {
+        // Org members can read/write, platform admin with permission
+        allow read: if isOrgMember(orgId) ||
+                    (isPlatformAdmin() && hasDataAccessPermission(orgId));
+        allow write: if isOrgMember(orgId) ||
+                     (isPlatformAdmin() && hasDataAccessPermission(orgId) && isNotImpersonating());
+      }
+
       // Settings and other non-sensitive subcollections
       match /settings/{document=**} {
         allow read: if isPlatformAdmin() || isOrgMember(orgId);
@@ -257,6 +266,11 @@ service cloud.firestore {
         allow read: if true;
         allow write: if isAuthenticated();
       }
+    }
+
+    // Collection group query for public roadmap access via share token
+    match /{path=**}/roadmaps/{roadmapId} {
+      allow read: if resource.data.shareToken != null && resource.data.shareToken != '';
     }
 
     match /live_sessions/{sessionId} {

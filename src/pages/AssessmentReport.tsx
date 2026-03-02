@@ -1,5 +1,5 @@
 import { useState, useCallback, lazy, Suspense } from 'react';
-import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAssessmentLogic } from '@/hooks/useAssessmentLogic';
 import { useVersionSelector } from '@/hooks/useVersionSelector';
 import AssessmentVersionSelector from '@/components/reports/AssessmentVersionSelector';
@@ -10,7 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { generateBodyCompInterpretation } from '@/lib/recommendations';
 import { requestShareArtifacts, sendReportEmail, type ShareArtifacts } from '@/services/share';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Share2, Link as LinkIcon, Mail, MessageCircle, MoreVertical, ArrowLeft, Edit2, Plus } from 'lucide-react';
+import { Loader2, Share2, Link as LinkIcon, Mail, MessageCircle, MoreVertical, ArrowLeft, Edit2, Plus, Eye } from 'lucide-react';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import {
   DropdownMenu,
@@ -33,7 +33,6 @@ const AssessmentReport = () => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const location = useLocation();
   
   const { 
     formData, 
@@ -49,8 +48,7 @@ const AssessmentReport = () => {
 
   const versionSelector = useVersionSelector(allSnapshots);
 
-  const isClientRoute = location.pathname.endsWith('/client');
-  const [reportView, setReportView] = useState<'client' | 'coach'>(isClientRoute ? 'client' : 'coach');
+  const [previewingClientView, setPreviewingClientView] = useState(false);
 
   const [shareCache, setShareCache] = useState<Record<'client' | 'coach', ShareArtifacts | null>>({
     client: null,
@@ -310,28 +308,13 @@ const AssessmentReport = () => {
           <h1 className="text-base sm:text-lg font-bold text-slate-900 truncate">
             {formData.fullName || 'Assessment'}
           </h1>
-          <div className="inline-flex rounded-lg bg-slate-100 p-0.5 shrink-0 ml-3">
-            <button
-              onClick={() => setReportView('client')}
-              className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
-                reportView === 'client'
-                  ? 'bg-slate-900 text-white'
-                  : 'text-slate-500 hover:bg-slate-50'
-              }`}
-            >
-              Client
-            </button>
-            <button
-              onClick={() => setReportView('coach')}
-              className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
-                reportView === 'coach'
-                  ? 'bg-slate-900 text-white'
-                  : 'text-slate-500 hover:bg-slate-50'
-              }`}
-            >
-              Coach
-            </button>
-          </div>
+          <button
+            onClick={() => setPreviewingClientView((v) => !v)}
+            className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 transition-colors shrink-0 ml-3"
+          >
+            <Eye className="h-3.5 w-3.5" />
+            {previewingClientView ? 'Back to coach view' : 'Preview client view'}
+          </button>
         </div>
       </div>
 
@@ -367,7 +350,7 @@ const AssessmentReport = () => {
               <p className="text-sm font-medium text-slate-400">Generating Report...</p>
             </div>
           }>
-            {reportView === 'client' ? (
+            {previewingClientView ? (
               <ClientReport
                 scores={versionSelector.selectedScores ?? scores}
                 goals={Array.isArray((versionSelector.selectedFormData ?? formData).clientGoals) ? (versionSelector.selectedFormData ?? formData).clientGoals : []}
@@ -375,7 +358,7 @@ const AssessmentReport = () => {
                 plan={plan}
                 previousScores={versionSelector.previousScores ?? previousScores}
                 previousFormData={(versionSelector.previousFormData ?? previousFormData) ?? undefined}
-                standalone={false}
+                standalone={true}
               />
             ) : (
               <CoachReport

@@ -5,7 +5,7 @@
  * Replaces the separate "Open Report" and "Assess" buttons.
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,11 +20,18 @@ import {
   MoreHorizontal,
   Eye,
   GitCompare,
+  Link2,
+  Check,
+  Map,
   UserCog,
   ArrowRightLeft,
   PauseCircle,
   PlayCircle,
 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { getShareTokensForAssessment } from '@/services/share';
+import { copyTextToClipboard } from '@/lib/utils/clipboard';
+import { CONFIG } from '@/config';
 
 interface ClientActionsDropdownProps {
   clientName: string;
@@ -43,7 +50,28 @@ export const ClientActionsDropdown: React.FC<ClientActionsDropdownProps> = ({
   onPauseToggle,
 }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const encodedName = encodeURIComponent(clientName);
+  const [linkState, setLinkState] = useState<'idle' | 'loading' | 'copied' | 'none'>('idle');
+
+  const handleCopyReportLink = async () => {
+    if (!latestAssessmentId || !user) return;
+    setLinkState('loading');
+    try {
+      const tokens = await getShareTokensForAssessment(user.uid, latestAssessmentId);
+      const active = tokens.find((t) => !t.revoked);
+      if (active) {
+        await copyTextToClipboard(`${CONFIG.APP.HOST}/r/${active.token}`);
+        setLinkState('copied');
+        setTimeout(() => setLinkState('idle'), 2000);
+      } else {
+        setLinkState('none');
+        setTimeout(() => setLinkState('idle'), 3000);
+      }
+    } catch {
+      setLinkState('idle');
+    }
+  };
 
   return (
     <DropdownMenu>
@@ -75,6 +103,33 @@ export const ClientActionsDropdown: React.FC<ClientActionsDropdownProps> = ({
           >
             <GitCompare className="h-3.5 w-3.5 text-slate-400" />
             View Full Report
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuItem
+          onClick={() => navigate(`/coach/clients/${encodedName}/roadmap`)}
+          className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-slate-50 text-slate-600 gap-2"
+        >
+          <Map className="h-3.5 w-3.5 text-slate-400" />
+          View Roadmap
+        </DropdownMenuItem>
+        {latestAssessmentId && (
+          <DropdownMenuItem
+            onClick={handleCopyReportLink}
+            disabled={linkState === 'loading'}
+            className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-slate-50 text-slate-600 gap-2"
+          >
+            {linkState === 'copied' ? (
+              <Check className="h-3.5 w-3.5 text-emerald-500" />
+            ) : (
+              <Link2 className="h-3.5 w-3.5 text-slate-400" />
+            )}
+            {linkState === 'copied'
+              ? 'Copied!'
+              : linkState === 'none'
+                ? 'Share from report first'
+                : linkState === 'loading'
+                  ? 'Finding link…'
+                  : 'Copy Report Link'}
           </DropdownMenuItem>
         )}
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   startOfMonth,
   endOfMonth,
@@ -6,41 +6,46 @@ import {
   endOfWeek,
   eachDayOfInterval,
   isSameMonth,
-  isSameDay,
   format,
   addMonths,
   subMonths,
   isToday,
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { UseReassessmentQueueResult } from '@/hooks/useReassessmentQueue';
+import { setDueDateOverride } from '@/services/clientProfiles';
+import { logger } from '@/lib/utils/logger';
+import { ClientPill, DayDetailPanel } from './CalendarDayDetail';
+import type { DueEntry, DayClients, DragPayload } from './CalendarDayDetail';
 
 interface CalendarViewProps {
   reassessmentQueue: UseReassessmentQueueResult;
   onNewAssessmentForClient: (clientName: string, category?: string) => void;
-}
-
-interface DayClients {
-  date: Date;
-  clients: { name: string; pillar: string }[];
+  organizationId?: string;
+  onScheduleChanged?: () => void;
 }
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MAX_VISIBLE_PILLS = 3;
 
 export const CalendarView: React.FC<CalendarViewProps> = ({
   reassessmentQueue,
   onNewAssessmentForClient,
+  organizationId,
+  onScheduleChanged,
 }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<DayClients | null>(null);
+  const [dragOverKey, setDragOverKey] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const dueByDay = useMemo(() => {
-    const map = new Map<string, { name: string; pillar: string }[]>();
+    const map = new Map<string, DueEntry[]>();
     for (const item of reassessmentQueue.queue) {
       for (const ps of item.pillarSchedules) {
         const key = format(ps.dueDate, 'yyyy-MM-dd');
         const existing = map.get(key) ?? [];
-        existing.push({ name: item.clientName, pillar: ps.pillar });
+        existing.push({ name: item.clientName, pillar: ps.pillar, status: ps.status });
         map.set(key, existing);
       }
     }
@@ -55,9 +60,40 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     return eachDayOfInterval({ start, end });
   }, [currentMonth]);
 
+  const handleDrop = useCallback(async (e: React.DragEvent, targetDate: Date) => {
+    e.preventDefault();
+    setDragOverKey(null);
+    if (!organizationId || saving) return;
+
+    try {
+      const raw = e.dataTransfer.getData('application/json');
+      if (!raw) return;
+      const payload: DragPayload = JSON.parse(raw);
+      const targetKey = format(targetDate, 'yyyy-MM-dd');
+      if (payload.fromDate === targetKey) return;
+
+      setSaving(true);
+      await setDueDateOverride(payload.clientName, organizationId, payload.pillar, targetDate);
+      onScheduleChanged?.();
+    } catch (err) {
+      logger.error('Failed to reschedule via drag-and-drop', err);
+    } finally {
+      setSaving(false);
+    }
+  }, [organizationId, saving, onScheduleChanged]);
+
+  const handleDragOver = useCallback((e: React.DragEvent, key: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverKey(key);
+  }, []);
+
+  const handleDragLeave = useCallback(() => {
+    setDragOverKey(null);
+  }, []);
+
   return (
     <div className="space-y-4">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <button
           onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
@@ -76,7 +112,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         </button>
       </div>
 
-      {/* Weekday headers */}
       <div className="grid grid-cols-7 gap-px">
         {WEEKDAY_LABELS.map((d) => (
           <div key={d} className="text-center text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 py-2">
@@ -85,75 +120,64 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         ))}
       </div>
 
-      {/* Day cells */}
       <div className="grid grid-cols-7 gap-px bg-slate-200 rounded-xl overflow-hidden border border-slate-200">
         {calendarDays.map((day) => {
           const key = format(day, 'yyyy-MM-dd');
           const clients = dueByDay.get(key) ?? [];
           const inMonth = isSameMonth(day, currentMonth);
           const today = isToday(day);
+          const isDropTarget = dragOverKey === key;
+          const visibleClients = clients.slice(0, MAX_VISIBLE_PILLS);
+          const overflow = clients.length - MAX_VISIBLE_PILLS;
 
           return (
-            <button
+            <div
               key={key}
-              onClick={() => {
-                if (clients.length > 0) {
-                  setSelectedDay({ date: day, clients });
-                }
-              }}
-              className={`relative min-h-[64px] sm:min-h-[80px] p-1.5 sm:p-2 text-left bg-white transition-colors ${
+              onClick={() => clients.length > 0 && setSelectedDay({ date: day, clients })}
+              onDragOver={(e) => handleDragOver(e, key)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, day)}
+              className={`relative min-h-[72px] sm:min-h-[96px] p-1 sm:p-1.5 text-left bg-white transition-colors ${
                 inMonth ? 'hover:bg-slate-50' : 'bg-slate-50/50'
-              } ${clients.length > 0 ? 'cursor-pointer' : 'cursor-default'}`}
+              } ${clients.length > 0 ? 'cursor-pointer' : 'cursor-default'} ${
+                isDropTarget ? 'ring-2 ring-inset ring-violet-400 bg-violet-50/50' : ''
+              }`}
             >
-              <span className={`text-xs font-semibold ${
-                today ? 'bg-slate-900 text-white w-6 h-6 rounded-full inline-flex items-center justify-center' :
+              <span className={`text-[10px] sm:text-xs font-semibold ${
+                today ? 'bg-slate-900 text-white w-5 h-5 sm:w-6 sm:h-6 rounded-full inline-flex items-center justify-center' :
                 inMonth ? 'text-slate-700' : 'text-slate-300'
               }`}>
                 {format(day, 'd')}
               </span>
               {clients.length > 0 && (
-                <div className="mt-1">
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-violet-100 text-violet-700">
-                    {clients.length} due
-                  </span>
+                <div className="mt-0.5 space-y-0.5">
+                  {visibleClients.map((entry, i) => (
+                    <ClientPill key={`${entry.name}-${entry.pillar}-${i}`} entry={entry} dateKey={key} />
+                  ))}
+                  {overflow > 0 && (
+                    <span className="block text-[9px] font-bold text-slate-400 pl-1">
+                      +{overflow} more
+                    </span>
+                  )}
                 </div>
               )}
-            </button>
+            </div>
           );
         })}
       </div>
 
-      {/* Selected day detail */}
-      {selectedDay && (
-        <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-bold text-slate-900">
-              {format(selectedDay.date, 'EEEE, MMM d')}
-            </h4>
-            <button
-              onClick={() => setSelectedDay(null)}
-              className="text-slate-400 hover:text-slate-600"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          <ul className="space-y-2">
-            {selectedDay.clients.map((c, i) => (
-              <li key={`${c.name}-${c.pillar}-${i}`} className="flex items-center justify-between">
-                <span className="text-sm text-slate-700">
-                  <span className="font-semibold">{c.name}</span>
-                  <span className="text-slate-400 ml-2 text-xs capitalize">{c.pillar}</span>
-                </span>
-                <button
-                  onClick={() => onNewAssessmentForClient(c.name, c.pillar)}
-                  className="text-[10px] font-bold uppercase tracking-wide text-violet-600 hover:text-violet-800 px-2 py-1 rounded-lg hover:bg-violet-50 transition-colors"
-                >
-                  Start
-                </button>
-              </li>
-            ))}
-          </ul>
+      {saving && (
+        <div className="text-xs text-center text-slate-400 font-medium animate-pulse">
+          Rescheduling…
         </div>
+      )}
+
+      {selectedDay && (
+        <DayDetailPanel
+          selectedDay={selectedDay}
+          onClose={() => setSelectedDay(null)}
+          onStartAssessment={onNewAssessmentForClient}
+        />
       )}
     </div>
   );

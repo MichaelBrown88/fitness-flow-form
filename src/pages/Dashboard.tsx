@@ -7,20 +7,26 @@ import { ROUTES } from '@/constants/routes';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import { clearDraft } from '@/hooks/useAssessmentDraft';
 
+import { useMemo, useState, useEffect } from 'react';
 import { useDashboardData } from '@/hooks/useDashboardData';
+import { useAuth } from '@/hooks/useAuth';
+import { getRoadmapForClient } from '@/services/roadmaps';
+import { getClientProfile } from '@/services/clientProfiles';
 
 import { DashboardHeader } from '@/components/dashboard/sub-components/DashboardHeader';
 import { DashboardViewTabs } from '@/components/dashboard/sub-components/DashboardViewTabs';
 import { UnifiedClientTable } from '@/components/dashboard/sub-components/UnifiedClientTable';
 import { DashboardDialogs } from '@/components/dashboard/sub-components/DashboardDialogs';
-import { PriorityView } from '@/components/dashboard/sub-components/PriorityView';
+import { TaskListView } from '@/components/dashboard/sub-components/TaskListView';
 import { CalendarView } from '@/components/dashboard/sub-components/CalendarView';
 import { TeamView } from '@/components/dashboard/sub-components/TeamView';
 import { GettingStartedChecklist } from '@/components/dashboard/GettingStartedChecklist';
+import { generateTasks, type QueueEntry, type RoadmapNeededInfo, type ProfileGapInfo } from '@/lib/tasks/generateTasks';
 
 const Dashboard = () => {
   const {
     user,
+    profile,
     loading,
     loadingData,
     search,
@@ -46,7 +52,73 @@ const Dashboard = () => {
   } = useDashboardData();
 
   const navigate = useNavigate();
+  const { effectiveOrgId } = useAuth();
   const overdueCount = reassessmentQueue?.summary?.overdue || 0;
+
+  const [roadmapsNeeded, setRoadmapsNeeded] = useState<RoadmapNeededInfo[]>([]);
+  const [incompleteProfiles, setIncompleteProfiles] = useState<ProfileGapInfo[]>([]);
+
+  useEffect(() => {
+    if (!effectiveOrgId || !user || !filteredClients || filteredClients.length === 0) return;
+    let cancelled = false;
+
+    (async () => {
+      const needed: RoadmapNeededInfo[] = [];
+      const gaps: ProfileGapInfo[] = [];
+
+      const clientsWithAssessments = filteredClients.filter((c) => c.assessments.length > 0);
+      const checks = clientsWithAssessments.slice(0, 50).map(async (client) => {
+        try {
+          const roadmap = await getRoadmapForClient(effectiveOrgId, client.name);
+          if (!roadmap && client.latestDate) {
+            needed.push({ clientName: client.name, assessmentDate: client.latestDate });
+          }
+        } catch { /* skip */ }
+      });
+
+      const profileChecks = filteredClients.slice(0, 50).map(async (client) => {
+        try {
+          const p = await getClientProfile(user.uid, client.name, effectiveOrgId);
+          if (!p) return;
+          const missing: string[] = [];
+          if (!p.email) missing.push('email');
+          if (!p.phone) missing.push('phone');
+          if (!p.dateOfBirth) missing.push('date of birth');
+          if (missing.length > 2) gaps.push({ clientName: client.name, missingFields: missing });
+        } catch { /* skip */ }
+      });
+
+      await Promise.all([...checks, ...profileChecks]);
+      if (!cancelled) {
+        setRoadmapsNeeded(needed);
+        setIncompleteProfiles(gaps);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [effectiveOrgId, user, filteredClients]);
+
+  const tasks = useMemo(() => {
+    if (!reassessmentQueue) return [];
+    const queueEntries: QueueEntry[] = reassessmentQueue.queue.flatMap((client) =>
+      client.pillarSchedules
+        .filter((ps) => ps.status !== 'up-to-date')
+        .map((ps) => ({
+          clientName: client.clientName,
+          pillar: ps.pillar,
+          dueDate: ps.dueDate,
+          status: ps.status === 'overdue' ? 'overdue' : 'due_soon',
+          coachUid: client.coachUid ?? undefined,
+        })),
+    );
+    return generateTasks({
+      reassessmentQueue: queueEntries,
+      draftAssessments: [],
+      roadmapsDueForReview: [],
+      roadmapsNeeded,
+      incompleteProfiles,
+    });
+  }, [reassessmentQueue, roadmapsNeeded, incompleteProfiles]);
 
   const handleGlobalNewAssessment = () => {
     sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
@@ -123,16 +195,9 @@ const Dashboard = () => {
               />
             )}
 
-            {/* Schedule View */}
-            {view === 'schedule' && reassessmentQueue && (
-              <PriorityView 
-                reassessmentQueue={reassessmentQueue}
-                onNewAssessmentForClient={handleNewAssessmentForClient}
-                onScheduleChanged={refreshSchedules}
-                search={search}
-                showCoachName={showCoachColumn}
-                coachMap={coachMap}
-              />
+            {/* Tasks View */}
+            {view === 'schedule' && (
+              <TaskListView tasks={tasks} search={search} />
             )}
 
             {/* Calendar View */}
@@ -140,6 +205,8 @@ const Dashboard = () => {
               <CalendarView
                 reassessmentQueue={reassessmentQueue}
                 onNewAssessmentForClient={handleNewAssessmentForClient}
+                organizationId={profile?.organizationId}
+                onScheduleChanged={refreshSchedules}
               />
             )}
 

@@ -7,6 +7,7 @@ import { logger } from '@/lib/utils/logger';
 if (import.meta.env.DEV) {
   import('@/lib/setup/admin/migrateOneFitness');
   import('@/lib/setup/admin/repairClientData');
+  import('@/lib/setup/admin/backfillRoadmaps');
   import('@/services/achievements'); // registers populateClientData on window
   import('@/services/diagnoseClient'); // registers diagnoseClient, fixClientAnimations on window
 }
