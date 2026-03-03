@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { CheckCircle2, Circle, Clock, ArrowRight, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
 import type { RoadmapItem, RoadmapItemStatus, RoadmapPhase } from '@/lib/roadmap/types';
 import { PHASE_NARRATIVES } from '@/lib/roadmap/types';
-import { TrackableList } from './TrackableBar';
+import { TrackableBar } from './TrackableBar';
 
 const STATUS_CONFIG: Record<RoadmapItemStatus, { icon: typeof Circle; color: string; bg: string }> = {
   not_started: { icon: Circle, color: 'text-slate-300', bg: 'border-slate-200' },
@@ -56,8 +56,8 @@ function MilestoneCard({ item, isLast }: { item: RoadmapItem; isLast: boolean })
           </div>
 
           {trackables && trackables.length > 0 && (
-            <div className="ml-9 bg-slate-50/80 rounded-lg p-3">
-              <TrackableList trackables={trackables} />
+            <div className="ml-9 mt-2">
+              <TrackableBar trackable={trackables[0]} compact />
             </div>
           )}
 

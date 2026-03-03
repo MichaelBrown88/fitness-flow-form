@@ -28,6 +28,8 @@ function blockToItem(block: RoadmapBlock, phase: RoadmapPhase): RoadmapItem {
     finding: block.finding, rationale: block.rationale, action: block.action,
     urgency: block.urgency, icon: block.icon, contraindications: block.contraindications, score: block.score,
     trackables: block.trackables,
+    scoreDetailId: block.scoreDetailId,
+    scoreCategoryId: block.scoreCategoryId,
   };
 }
 

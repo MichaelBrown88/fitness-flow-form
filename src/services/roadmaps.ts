@@ -18,6 +18,7 @@ import {
 import type { RoadmapDoc, RoadmapItem, RoadmapPhase, PhaseTarget } from '@/lib/roadmap/types';
 import type { ScoreSummary } from '@/lib/scoring/types';
 import { logger } from '@/lib/utils/logger';
+import { sanitizeForFirestore } from '@/lib/utils/firebaseUtils';
 
 type RoadmapWithId = RoadmapDoc & { id: string };
 
@@ -83,7 +84,7 @@ export async function createRoadmap(params: {
   if (params.phaseTargets) payload.phaseTargets = params.phaseTargets;
   if (params.baselineScores) payload.baselineScores = params.baselineScores;
   if (params.activePhase) payload.activePhase = params.activePhase;
-  await setDoc(ref, payload);
+  await setDoc(ref, sanitizeForFirestore(payload) as Record<string, unknown>);
   return ref.id;
 }
 

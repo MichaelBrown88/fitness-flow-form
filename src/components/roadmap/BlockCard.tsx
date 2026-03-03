@@ -5,7 +5,7 @@ import { GripVertical, AlertTriangle, Info, Trash2, ChevronDown, ChevronRight } 
 import { Activity, Dumbbell, Heart, Move, Scale, Target } from 'lucide-react';
 import type { RoadmapBlock, BlockUrgency, RoadmapItem } from '@/lib/roadmap/types';
 import { URGENCY_META } from '@/lib/roadmap/types';
-import { TrackableList } from './TrackableBar';
+import { TrackableBar } from './TrackableBar';
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Activity, Dumbbell, Heart, Move, Scale, Target, AlertTriangle, Info,
@@ -75,9 +75,8 @@ export function BlockCard({ block, variant = 'palette', onDelete }: BlockCardPro
           </div>
 
           {variant === 'timeline' && trackables && trackables.length > 0 && (
-            <div className="bg-slate-50/80 rounded-lg p-2.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-2">Trackables</p>
-              <TrackableList trackables={trackables} compact />
+            <div className="mt-1.5">
+              <TrackableBar trackable={trackables[0]} compact />
             </div>
           )}
 

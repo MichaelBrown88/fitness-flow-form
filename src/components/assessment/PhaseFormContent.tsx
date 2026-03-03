@@ -494,9 +494,6 @@ export const PhaseFormContent = ({
           setIsReviewMode={setIsReviewMode}
           setActiveFieldIdx={setActiveFieldIdx}
           isMobile={isMobile}
-          // @ts-expect-error - PhaseSection type mismatch with inferred type
-          visiblePhases={visiblePhases}
-
         />
       )}
 

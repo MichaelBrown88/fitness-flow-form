@@ -1,8 +1,15 @@
 import type { ScoreSummary, ScoreCategory } from '@/lib/scoring/types';
 import type { FormData } from '@/contexts/FormContext';
-import { MOVEMENT_LOGIC_DB } from '@/lib/clinical-data';
 import type { RoadmapBlock, RoadmapCategory, BlockUrgency, RoadmapPhase } from './types';
 import { resolveTrackables } from './trackableMapping';
+import { MOVEMENT_FINDING_DETAILS, CATEGORY_DETAIL_CONFIG } from './findingDetails';
+
+const CATEGORY_ICONS: Record<string, string> = {
+  bodyComp: 'Scale',
+  cardio: 'Activity',
+  strength: 'Dumbbell',
+  lifestyle: 'Heart',
+};
 
 const LOADING_GOALS = new Set(['build-muscle', 'build-strength', 'sport-performance']);
 
@@ -66,14 +73,21 @@ function buildMovementBlocks(
   formData: FormData,
 ): RoadmapBlock[] {
   const blocks: RoadmapBlock[] = [];
-  const headPos = Array.isArray(formData?.postureHeadOverall) ? formData.postureHeadOverall : [formData?.postureHeadOverall];
-  const shoulderPos = Array.isArray(formData?.postureShouldersOverall) ? formData.postureShouldersOverall : [formData?.postureShouldersOverall];
-  const hipPos = Array.isArray(formData?.postureHipsOverall) ? formData.postureHipsOverall : [formData?.postureHipsOverall];
+  const formSlice = {
+    postureHeadOverall: formData?.postureHeadOverall,
+    postureShouldersOverall: formData?.postureShouldersOverall,
+    postureHipsOverall: formData?.postureHipsOverall,
+    ohsTorsoLean: formData?.ohsTorsoLean,
+    ohsKneeAlignment: formData?.ohsKneeAlignment,
+    lungeLeftKneeAlignment: formData?.lungeLeftKneeAlignment,
+    lungeRightKneeAlignment: formData?.lungeRightKneeAlignment,
+    hingeBackRounding: formData?.hingeBackRounding,
+    ohsFeetPosition: formData?.ohsFeetPosition,
+    ohsHasPain: formData?.ohsHasPain,
+    hingeHasPain: formData?.hingeHasPain,
+    lungeHasPain: formData?.lungeHasPain,
+  };
   const hasPain = formData?.ohsHasPain === 'yes' || formData?.hingeHasPain === 'yes' || formData?.lungeHasPain === 'yes';
-
-  const postureDetail = cat.details.find((d) => d.id === 'posture');
-  const movementDetail = cat.details.find((d) => d.id === 'movement');
-  const mobilityDetail = cat.details.find((d) => d.id === 'mobility');
 
   if (hasPain) {
     blocks.push({
@@ -94,45 +108,41 @@ function buildMovementBlocks(
     });
   }
 
-  const deviations = [
-    { key: 'upper_crossed', condition: headPos.includes('forward-head') || shoulderPos.includes('rounded') },
-    { key: 'lower_crossed', condition: hipPos.includes('anterior-tilt') || formData?.ohsTorsoLean === 'excessive-lean' },
-    { key: 'knee_valgus', condition: formData?.ohsKneeAlignment === 'valgus' || formData?.lungeLeftKneeAlignment === 'caves-inward' || formData?.lungeRightKneeAlignment === 'caves-inward' },
-    { key: 'posterior_pelvic_tilt', condition: hipPos.includes('posterior-tilt') || formData?.hingeBackRounding === 'severe' },
-    { key: 'feet_pronation', condition: formData?.ohsFeetPosition === 'pronation' },
-  ];
-
-  for (const { key, condition } of deviations) {
-    if (!condition) continue;
-    const dev = MOVEMENT_LOGIC_DB[key];
-    if (!dev) continue;
-
+  for (const f of MOVEMENT_FINDING_DETAILS) {
+    if (!f.condition(formSlice)) continue;
+    const detail = cat.details.find((d) => d.id === f.scoreDetailId);
+    const score = detail?.score ?? cat.score;
     const { urgency, blocksGoal } = classifyUrgency(
-      postureDetail?.score ?? cat.score, 'movementQuality', goals,
-      dev.contraindications.length > 0, false,
+      score,
+      'movementQuality',
+      goals,
+      f.contraindications.length > 0,
+      false,
     );
-
     blocks.push({
-      id: `mq-${key}`,
-      title: `Correct ${dev.name}`,
-      description: dev.visualTrigger,
+      id: f.id,
+      title: f.title,
+      description: f.visualTrigger,
       category: 'movementQuality',
       phase: phaseFromUrgency(urgency),
-      targetWeeks: weeksFromScore(postureDetail?.score ?? cat.score),
+      targetWeeks: weeksFromScore(score),
       urgency,
       blocksGoal,
-      finding: `${dev.name} detected — ${dev.visualTrigger.toLowerCase()}. Posture scored ${postureDetail?.score ?? cat.score}/100.`,
+      finding: `${f.title} — ${f.visualTrigger.toLowerCase()}. ${f.scoreDetailId} scored ${score}/100.`,
       rationale: blocksGoal
-        ? `This postural deviation must be addressed before heavy loading. Overactive: ${dev.overactiveMuscles.join(', ')}. Underactive: ${dev.underactiveMuscles.join(', ')}.`
-        : `Correcting this will improve overall movement quality and reduce injury risk. Overactive: ${dev.overactiveMuscles.join(', ')}.`,
-      action: `Primary stretch: ${dev.primaryStretch}. Primary activation: ${dev.primaryActivation}. Progressive corrective exercise programme.`,
-      contraindications: dev.contraindications,
-      score: postureDetail?.score ?? cat.score,
+        ? `Address before heavy loading. Overactive: ${f.overactiveMuscles.join(', ')}. Underactive: ${f.underactiveMuscles.join(', ')}.`
+        : `Correcting this will improve movement quality. Overactive: ${f.overactiveMuscles.join(', ')}.`,
+      action: `Primary stretch: ${f.primaryStretch}. Primary activation: ${f.primaryActivation}. Progressive corrective programme.`,
+      contraindications: f.contraindications,
+      score,
       icon: 'Move',
+      scoreDetailId: f.scoreDetailId,
+      scoreCategoryId: 'movementQuality',
     });
   }
 
-  if (mobilityDetail && mobilityDetail.score > 0 && mobilityDetail.score < 70) {
+  const mobilityDetail = cat.details.find((d) => d.id === 'mobility');
+  if (mobilityDetail && mobilityDetail.score > 0 && mobilityDetail.score < 80) {
     const { urgency, blocksGoal } = classifyUrgency(mobilityDetail.score, 'movementQuality', goals, false, false);
     blocks.push({
       id: 'mq-mobility',
@@ -149,10 +159,13 @@ function buildMovementBlocks(
       contraindications: [],
       score: mobilityDetail.score,
       icon: 'Move',
+      scoreDetailId: 'mobility',
+      scoreCategoryId: 'movementQuality',
     });
   }
 
-  if (movementDetail && movementDetail.score > 0 && movementDetail.score < 65 && blocks.length === 0) {
+  const movementDetail = cat.details.find((d) => d.id === 'movement');
+  if (movementDetail && movementDetail.score > 0 && movementDetail.score < 80) {
     const { urgency, blocksGoal } = classifyUrgency(movementDetail.score, 'movementQuality', goals, false, false);
     blocks.push({
       id: 'mq-patterns',
@@ -169,56 +182,56 @@ function buildMovementBlocks(
       contraindications: cat.contraindications ?? [],
       score: movementDetail.score,
       icon: 'Move',
+      scoreDetailId: 'movement',
+      scoreCategoryId: 'movementQuality',
     });
   }
 
   return blocks;
 }
 
-function buildCategoryBlock(
+function buildCategoryDetailBlocks(
   cat: ScoreCategory,
   goals: string[],
   synthesisSeverity?: 'high' | 'medium' | 'low',
-): RoadmapBlock | null {
-  if (cat.score === 0) return null;
-  if (cat.score >= 80) return null;
-
-  const { urgency, blocksGoal } = classifyUrgency(cat.score, cat.id as RoadmapCategory, goals, false, false, synthesisSeverity);
-
-  const weakTop = cat.weaknesses.slice(0, 2).join('. ');
-  const strengthNote = cat.strengths.length > 0 ? ` Strength: ${cat.strengths[0]}.` : '';
-
-  const CATEGORY_CONFIG: Record<string, { title: string; icon: string; actionPrefix: string }> = {
-    bodyComp: { title: 'Improve Body Composition', icon: 'Scale', actionPrefix: 'Structured nutrition and training programme' },
-    cardio: { title: 'Build Cardiovascular Fitness', icon: 'Activity', actionPrefix: 'Progressive aerobic conditioning' },
-    strength: { title: 'Build Functional Strength', icon: 'Dumbbell', actionPrefix: 'Progressive resistance training' },
-    lifestyle: { title: 'Optimise Lifestyle Factors', icon: 'Heart', actionPrefix: 'Targeted lifestyle interventions' },
-  };
-
-  const config = CATEGORY_CONFIG[cat.id];
-  if (!config) return null;
-
-  const lowestDetail = [...cat.details].filter((d) => d.score > 0).sort((a, b) => a.score - b.score)[0];
-  const detailNote = lowestDetail ? ` Lowest sub-score: ${lowestDetail.label} at ${lowestDetail.score}/100.` : '';
-
-  return {
-    id: `cat-${cat.id}`,
-    title: config.title,
-    description: weakTop || cat.title,
-    category: cat.id as RoadmapCategory,
-    phase: phaseFromUrgency(urgency),
-    targetWeeks: weeksFromScore(cat.score),
-    urgency,
-    blocksGoal,
-    finding: `${cat.title} scored ${cat.score}/100.${detailNote}${strengthNote}`,
-    rationale: blocksGoal
-      ? `This is directly tied to your goals and needs focused attention to make meaningful progress.`
-      : `Improving ${cat.title.toLowerCase()} will support overall health and complement your primary goals.`,
-    action: `${config.actionPrefix} targeting ${cat.weaknesses[0]?.toLowerCase() || 'key areas identified in the assessment'}.`,
-    contraindications: cat.contraindications ?? [],
-    score: cat.score,
-    icon: config.icon,
-  };
+): RoadmapBlock[] {
+  const configs = CATEGORY_DETAIL_CONFIG[cat.id];
+  if (!configs) return [];
+  const blocks: RoadmapBlock[] = [];
+  for (const detail of cat.details) {
+    if (detail.score === 0 || detail.score >= 80) continue;
+    const config = configs.find((c) => c.id === detail.id);
+    if (!config) continue;
+    const { urgency, blocksGoal } = classifyUrgency(
+      detail.score,
+      cat.id as RoadmapCategory,
+      goals,
+      false,
+      false,
+      synthesisSeverity,
+    );
+    blocks.push({
+      id: `cat-${cat.id}-${detail.id}`,
+      title: config.title,
+      description: `${detail.label} scored ${detail.score}/100.`,
+      category: cat.id as RoadmapCategory,
+      phase: phaseFromUrgency(urgency),
+      targetWeeks: weeksFromScore(detail.score),
+      urgency,
+      blocksGoal,
+      finding: `${detail.label} scored ${detail.score}/100${detail.unit ? ` (${detail.value} ${detail.unit})` : ''}.`,
+      rationale: blocksGoal
+        ? 'This is directly tied to your goals and needs focused attention.'
+        : `Improving ${detail.label.toLowerCase()} will support overall health and complement your primary goals.`,
+      action: config.action,
+      contraindications: cat.contraindications ?? [],
+      score: detail.score,
+      icon: CATEGORY_ICONS[cat.id] ?? 'Target',
+      scoreDetailId: detail.id,
+      scoreCategoryId: cat.id,
+    });
+  }
+  return blocks;
 }
 
 function buildLifestyleSubBlocks(cat: ScoreCategory, goals: string[]): RoadmapBlock[] {
@@ -253,6 +266,8 @@ function buildLifestyleSubBlocks(cat: ScoreCategory, goals: string[]): RoadmapBl
       contraindications: [],
       score: detail.score,
       icon: 'Heart',
+      scoreDetailId: detail.id,
+      scoreCategoryId: 'lifestyle',
     });
   }
 
@@ -322,15 +337,13 @@ export function generateRoadmapBlocks(
     if (cat.id === 'movementQuality') continue;
 
     if (cat.id === 'lifestyle' && cat.score < 80) {
-      const subBlocks = buildLifestyleSubBlocks(cat, goals);
-      if (subBlocks.length > 0) {
-        subBlocks.forEach(add);
-        continue;
-      }
+      buildLifestyleSubBlocks(cat, goals).forEach(add);
+      continue;
     }
 
-    const block = buildCategoryBlock(cat, goals, synthSeverityMap.get(cat.id));
-    if (block) add(block);
+    if (cat.id === 'cardio' || cat.id === 'strength' || cat.id === 'bodyComp') {
+      buildCategoryDetailBlocks(cat, goals, synthSeverityMap.get(cat.id)).forEach(add);
+    }
   }
 
   const urgencyOrder: Record<BlockUrgency, number> = { critical: 0, prerequisite: 1, parallel: 2, optional: 3 };

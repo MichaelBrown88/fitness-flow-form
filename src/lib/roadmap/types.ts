@@ -37,6 +37,8 @@ export interface RoadmapItem {
   contraindications?: string[];
   score?: number;
   trackables?: Trackable[];
+  scoreDetailId?: string;
+  scoreCategoryId?: string;
 }
 
 export interface RoadmapBlock {
@@ -55,6 +57,8 @@ export interface RoadmapBlock {
   score: number;
   icon: string;
   trackables?: Trackable[];
+  scoreDetailId?: string;
+  scoreCategoryId?: string;
 }
 
 export interface PhaseTarget {

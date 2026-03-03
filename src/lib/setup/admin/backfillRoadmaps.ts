@@ -43,6 +43,8 @@ function blockToItem(block: import('@/lib/roadmap/types').RoadmapBlock, phase: R
     finding: block.finding, rationale: block.rationale, action: block.action,
     urgency: block.urgency, icon: block.icon, contraindications: block.contraindications, score: block.score,
     trackables: block.trackables,
+    scoreDetailId: block.scoreDetailId,
+    scoreCategoryId: block.scoreCategoryId,
   };
 }
 
