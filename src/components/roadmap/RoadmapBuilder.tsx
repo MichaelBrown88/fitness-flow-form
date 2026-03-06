@@ -11,13 +11,18 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates, arrayMove } from '@dnd-kit/sortable';
-import { Sparkles, Loader2, Send, Pencil } from 'lucide-react';
+import { Sparkles, Loader2, Send, Pencil, RotateCcw, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { RoadmapBlock, RoadmapItem, RoadmapPhase } from '@/lib/roadmap/types';
 import { PHASE_NARRATIVES } from '@/lib/roadmap/types';
+import { sortPhaseItems } from '@/lib/roadmap/sortPhaseItems';
+import { getPhaseFocus } from '@/lib/roadmap/coachContext';
+import type { CoachBrief } from '@/lib/roadmap/coachContext';
 import { BlockPalette } from './BlockPalette';
 import { BuilderTimeline } from './BuilderTimeline';
 import { BlockCard } from './BlockCard';
+import { CoachContextDialog } from './CoachContextDialog';
+import { PhaseFocusDialog } from './PhaseFocusDialog';
 
 const PHASES: RoadmapPhase[] = ['foundation', 'development', 'performance'];
 
@@ -53,28 +58,40 @@ export function generateRoadmapSummary(clientName: string, goals: string[], item
 interface Props {
   clientName: string;
   blocks: RoadmapBlock[];
+  allPossibleBlocks?: RoadmapBlock[];
   clientGoals: string[];
+  coachBrief?: CoachBrief | null;
   onCreate: (items: RoadmapItem[], summary: string) => Promise<void>;
   onAcceptAndSend?: (items: RoadmapItem[], summary: string) => Promise<void>;
   saving?: boolean;
 }
 
-export function RoadmapBuilder({ clientName, blocks, clientGoals, onCreate, onAcceptAndSend, saving }: Props) {
+export function RoadmapBuilder({ clientName, blocks, allPossibleBlocks = [], clientGoals, coachBrief, onCreate, onAcceptAndSend, saving }: Props) {
   const [customising, setCustomising] = useState(false);
-  const [paletteBlocks, setPaletteBlocks] = useState<RoadmapBlock[]>([]);
   const [timeline, setTimeline] = useState(() => {
     const m = new Map<RoadmapPhase, RoadmapItem[]>(PHASES.map((p) => [p, []]));
     for (const block of blocks) m.get(block.phase)!.push(blockToItem(block, block.phase));
+    PHASES.forEach((p) => {
+      const list = m.get(p) ?? [];
+      if (list.length) m.set(p, sortPhaseItems(list));
+    });
     return m;
   });
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [coachContextOpen, setCoachContextOpen] = useState(false);
+  const [phaseFocusPhase, setPhaseFocusPhase] = useState<RoadmapPhase | null>(null);
+
+  const allItems = useMemo(() => PHASES.flatMap((p) => timeline.get(p) ?? []), [timeline]);
+  const timelineIds = useMemo(() => new Set(allItems.map((i) => i.id)), [allItems]);
+  const paletteBlocks = useMemo(
+    () => allPossibleBlocks.filter((b) => !timelineIds.has(b.id)),
+    [allPossibleBlocks, timelineIds],
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
-
-  const allItems = useMemo(() => PHASES.flatMap((p) => timeline.get(p) ?? []), [timeline]);
   const totalWeeks = useMemo(() => (allItems.length > 0 ? Math.max(...allItems.map((i) => i.targetWeeks)) : 0), [allItems]);
   const summaryText = useMemo(() => generateRoadmapSummary(clientName, clientGoals, allItems, totalWeeks), [clientName, clientGoals, allItems, totalWeeks]);
 
@@ -99,10 +116,14 @@ export function RoadmapBuilder({ clientName, blocks, clientGoals, onCreate, onAc
     const overId = String(over.id);
     const target = PHASES.find((p) => overId === `phase-${p}` || findContainer(overId) === `phase-${p}`);
     if (src === 'palette' && target) {
-      const block = paletteBlocks.find((b) => b.id === active.id);
+      const block = allPossibleBlocks.find((b) => b.id === active.id);
       if (!block) return;
-      setPaletteBlocks((prev) => prev.filter((b) => b.id !== active.id));
-      setTimeline((prev) => { const n = new Map(prev); n.set(target, [...(n.get(target) ?? []), blockToItem(block, target)]); return n; });
+      setTimeline((prev) => {
+        const n = new Map(prev);
+        const nextList = [...(n.get(target) ?? []), blockToItem(block, target)];
+        n.set(target, sortPhaseItems(nextList));
+        return n;
+      });
     } else if (src?.startsWith('phase-') && target) {
       const srcPhase = src.replace('phase-', '') as RoadmapPhase;
       setTimeline((prev) => {
@@ -112,25 +133,30 @@ export function RoadmapBuilder({ clientName, blocks, clientGoals, onCreate, onAc
           const a = list.findIndex((i) => i.id === active.id), b = list.findIndex((i) => i.id === over.id);
           if (a !== -1 && b !== -1) n.set(target, arrayMove(list, a, b));
         } else {
-          const srcList = [...(n.get(srcPhase) ?? [])]; const idx = srcList.findIndex((i) => i.id === active.id);
-          if (idx !== -1) { const [moved] = srcList.splice(idx, 1); moved.phase = target; n.set(srcPhase, srcList); n.set(target, [...(n.get(target) ?? []), moved]); }
+          const srcList = [...(n.get(srcPhase) ?? [])];
+          const idx = srcList.findIndex((i) => i.id === active.id);
+          if (idx !== -1) {
+            const [moved] = srcList.splice(idx, 1);
+            moved.phase = target;
+            n.set(srcPhase, srcList);
+            const targetList = [...(n.get(target) ?? []), moved];
+            n.set(target, sortPhaseItems(targetList));
+          }
         }
         return n;
       });
     }
-  }, [findContainer, paletteBlocks]);
+  }, [findContainer, allPossibleBlocks]);
 
   const handleDelete = useCallback((id: string) => {
     for (const phase of PHASES) {
       const items = timeline.get(phase) ?? [];
       if (items.some((i) => i.id === id)) {
         setTimeline((prev) => { const n = new Map(prev); n.set(phase, items.filter((i) => i.id !== id)); return n; });
-        const original = blocks.find((b) => b.id === id);
-        if (original) setPaletteBlocks((prev) => [...prev, original]);
         return;
       }
     }
-  }, [timeline, blocks]);
+  }, [timeline]);
 
   const buildPayload = useCallback(() => {
     const items = allItems.map((item, i) => ({ ...item, priority: i + 1 }));
@@ -150,6 +176,16 @@ export function RoadmapBuilder({ clientName, blocks, clientGoals, onCreate, onAc
     await onCreate(items, summary);
   }, [buildPayload, onCreate]);
 
+  const handleResetToSuggested = useCallback(() => {
+    setTimeline(() => {
+      const m = new Map<RoadmapPhase, RoadmapItem[]>(PHASES.map((p) => [p, []]));
+      for (const block of blocks) m.get(block.phase)!.push(blockToItem(block, block.phase));
+      return m;
+    });
+  }, [blocks]);
+
+  const phaseFocusContent = phaseFocusPhase ? getPhaseFocus(phaseFocusPhase, clientGoals) : null;
+
   if (!customising) {
     return (
       <div className="space-y-6">
@@ -159,9 +195,23 @@ export function RoadmapBuilder({ clientName, blocks, clientGoals, onCreate, onAc
           </div>
           <h1 className="text-2xl font-bold text-slate-900">{clientName}&apos;s Suggested Roadmap</h1>
           <p className="text-sm text-slate-500 mt-1 max-w-md mx-auto">{summaryText}</p>
+          {coachBrief && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3 gap-1.5"
+              onClick={() => setCoachContextOpen(true)}
+            >
+              <FileText className="h-3.5 w-3.5" /> View client context
+            </Button>
+          )}
         </div>
         <div className="max-w-3xl mx-auto">
-          <BuilderTimeline timelineItems={timeline} onDelete={handleDelete} />
+          <BuilderTimeline
+            timelineItems={timeline}
+            onDelete={handleDelete}
+            onShowPhaseFocus={setPhaseFocusPhase}
+          />
         </div>
         <div className="sticky bottom-4 z-10 max-w-3xl mx-auto">
           <div className="rounded-2xl bg-white/90 backdrop-blur-sm border border-slate-200 shadow-lg p-4 flex items-center justify-between gap-3">
@@ -180,6 +230,17 @@ export function RoadmapBuilder({ clientName, blocks, clientGoals, onCreate, onAc
             </div>
           </div>
         </div>
+        <CoachContextDialog
+          open={coachContextOpen}
+          onOpenChange={setCoachContextOpen}
+          clientName={clientName}
+          brief={coachBrief}
+        />
+        <PhaseFocusDialog
+          open={phaseFocusPhase !== null}
+          onOpenChange={(open) => !open && setPhaseFocusPhase(null)}
+          content={phaseFocusContent}
+        />
       </div>
     );
   }
@@ -190,29 +251,59 @@ export function RoadmapBuilder({ clientName, blocks, clientGoals, onCreate, onAc
         <div className="text-center py-4">
           <h1 className="text-2xl font-bold text-slate-900">Customise {clientName}&apos;s Roadmap</h1>
           <p className="text-sm text-slate-500 mt-1 max-w-md mx-auto">Drag items between phases or remove items you don&apos;t want to include.</p>
+          {coachBrief && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3 gap-1.5"
+              onClick={() => setCoachContextOpen(true)}
+            >
+              <FileText className="h-3.5 w-3.5" /> View client context
+            </Button>
+          )}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           <div className="lg:col-span-2 lg:max-h-[80vh] lg:overflow-y-auto lg:pr-2 lg:sticky lg:top-4">
             <BlockPalette blocks={paletteBlocks} />
           </div>
           <div className="lg:col-span-3">
-            <BuilderTimeline timelineItems={timeline} onDelete={handleDelete} />
+            <BuilderTimeline
+              timelineItems={timeline}
+              onDelete={handleDelete}
+              onShowPhaseFocus={setPhaseFocusPhase}
+            />
           </div>
         </div>
         <div className="sticky bottom-4 z-10">
-          <div className="rounded-2xl bg-white/90 backdrop-blur-sm border border-slate-200 shadow-lg p-4 flex items-center justify-between">
+          <div className="rounded-2xl bg-white/90 backdrop-blur-sm border border-slate-200 shadow-lg p-4 flex flex-wrap items-center justify-between gap-3">
             <div className="text-sm text-slate-600">
               <span className="font-semibold text-slate-900">{allItems.length}</span> milestones
               {totalWeeks > 0 && <span className="text-xs text-slate-400 ml-2">~{totalWeeks}w</span>}
             </div>
-            <Button onClick={handleConfirmCreate} disabled={allItems.length === 0 || saving} className="gap-2">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-              Confirm & Create
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleResetToSuggested} className="gap-1.5">
+                <RotateCcw className="h-3.5 w-3.5" /> Reset to suggested
+              </Button>
+              <Button onClick={handleConfirmCreate} disabled={allItems.length === 0 || saving} className="gap-2">
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                Confirm & Create
+              </Button>
+            </div>
           </div>
         </div>
       </div>
       <DragOverlay>{activeBlock ? <BlockCard block={activeBlock} variant="palette" /> : null}</DragOverlay>
+      <CoachContextDialog
+        open={coachContextOpen}
+        onOpenChange={setCoachContextOpen}
+        clientName={clientName}
+        brief={coachBrief ?? null}
+      />
+      <PhaseFocusDialog
+        open={phaseFocusPhase !== null}
+        onOpenChange={(open) => !open && setPhaseFocusPhase(null)}
+        content={phaseFocusContent}
+      />
     </DndContext>
   );
 }

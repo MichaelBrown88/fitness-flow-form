@@ -3,6 +3,8 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import type { RoadmapItem, RoadmapPhase } from '@/lib/roadmap/types';
 import { PHASE_NARRATIVES } from '@/lib/roadmap/types';
 import { BlockCard } from './BlockCard';
+import { Button } from '@/components/ui/button';
+import { Info } from 'lucide-react';
 
 const PHASE_DOT: Record<RoadmapPhase, string> = {
   foundation: 'bg-emerald-500',
@@ -17,9 +19,10 @@ interface PhaseDropZoneProps {
   isLast: boolean;
   onDelete: (id: string) => void;
   onEdit: (id: string, updates: Partial<RoadmapItem>) => void;
+  onShowPhaseFocus?: (phase: RoadmapPhase) => void;
 }
 
-export function PhaseDropZone({ phase, items, phaseIndex, isLast, onDelete, onEdit }: PhaseDropZoneProps) {
+export function PhaseDropZone({ phase, items, phaseIndex, isLast, onDelete, onEdit, onShowPhaseFocus }: PhaseDropZoneProps) {
   const droppableId = `phase-${phase}`;
   const { isOver, setNodeRef } = useDroppable({ id: droppableId });
   const { title } = PHASE_NARRATIVES[phase];
@@ -34,6 +37,17 @@ export function PhaseDropZone({ phase, items, phaseIndex, isLast, onDelete, onEd
           <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
             Phase {phaseIndex + 1}: {title}
           </span>
+          {onShowPhaseFocus && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5 rounded-full text-slate-400 hover:text-slate-600"
+              onClick={() => onShowPhaseFocus(phase)}
+              aria-label={`What to focus on in ${title}`}
+            >
+              <Info className="h-3 w-3" />
+            </Button>
+          )}
         </div>
         <div className="h-px flex-1 bg-slate-200" />
       </div>

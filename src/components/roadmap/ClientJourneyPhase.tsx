@@ -29,7 +29,7 @@ function MilestoneCard({ item, isLast }: { item: RoadmapItem; isLast: boolean })
   const [detailsOpen, setDetailsOpen] = useState(false);
   const { icon: StatusIcon, color, bg } = STATUS_CONFIG[item.status];
   const isAchieved = item.status === 'achieved';
-  const hasDetails = !!(item.finding || item.action || item.rationale);
+  const hasDetails = !!(item.finding || item.rationale || (item.contraindications?.length ?? 0) > 0);
   const trackables = item.trackables;
 
   return (
@@ -80,10 +80,10 @@ function MilestoneCard({ item, isLast }: { item: RoadmapItem; isLast: boolean })
                       <p className="text-xs leading-relaxed text-slate-600">{item.finding}</p>
                     </div>
                   )}
-                  {item.action && (
-                    <div className="rounded-lg bg-indigo-50/60 px-3 py-2 space-y-0.5">
-                      <p className="text-[10px] font-bold uppercase tracking-wide text-indigo-500">What we are doing</p>
-                      <p className="text-xs leading-relaxed text-indigo-700">{item.action}</p>
+                  {item.rationale && (
+                    <div className="space-y-0.5">
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Why it matters</p>
+                      <p className="text-xs leading-relaxed text-slate-600">{item.rationale}</p>
                     </div>
                   )}
                   {(item.contraindications?.length ?? 0) > 0 && (

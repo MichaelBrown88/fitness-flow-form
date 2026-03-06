@@ -19,6 +19,7 @@ const PublicRoadmapViewer = () => {
     summary: string;
     items: import('@/lib/roadmap/types').RoadmapItem[];
     activePhase?: import('@/lib/roadmap/types').RoadmapPhase;
+    clientGoals?: string[];
   } | null>(null);
 
   useEffect(() => {
@@ -38,6 +39,7 @@ const PublicRoadmapViewer = () => {
           summary: doc.summary,
           items: doc.items,
           activePhase: doc.activePhase,
+          clientGoals: doc.clientGoals,
         });
       } catch (err) {
         if (cancelled) return;
@@ -114,6 +116,7 @@ const PublicRoadmapViewer = () => {
           summary={roadmap.summary}
           items={roadmap.items}
           activePhase={roadmap.activePhase}
+          clientGoals={roadmap.clientGoals}
         />
       </div>
     </AppShell>

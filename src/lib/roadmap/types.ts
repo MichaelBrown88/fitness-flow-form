@@ -84,6 +84,7 @@ export interface RoadmapDoc {
   phaseTargets?: Record<RoadmapPhase, PhaseTarget[]>;
   baselineScores?: Record<string, number>;
   activePhase?: RoadmapPhase;
+  clientGoals?: string[];
 }
 
 export interface ProgressSuggestion {

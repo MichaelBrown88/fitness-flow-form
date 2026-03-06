@@ -67,6 +67,7 @@ export async function createRoadmap(params: {
   phaseTargets?: Record<RoadmapPhase, PhaseTarget[]>;
   baselineScores?: Record<string, number>;
   activePhase?: RoadmapPhase;
+  clientGoals?: string[];
 }): Promise<string> {
   const ref = doc(orgRoadmapsRef(params.organizationId));
   const payload: Record<string, unknown> = {
@@ -84,6 +85,7 @@ export async function createRoadmap(params: {
   if (params.phaseTargets) payload.phaseTargets = params.phaseTargets;
   if (params.baselineScores) payload.baselineScores = params.baselineScores;
   if (params.activePhase) payload.activePhase = params.activePhase;
+  if (params.clientGoals?.length) payload.clientGoals = params.clientGoals;
   await setDoc(ref, sanitizeForFirestore(payload) as Record<string, unknown>);
   return ref.id;
 }

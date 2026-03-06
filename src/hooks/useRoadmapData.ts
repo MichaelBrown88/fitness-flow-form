@@ -9,8 +9,11 @@ import {
   setRoadmapShareToken,
   generateShareToken,
 } from '@/services/roadmaps';
-import { generateRoadmapBlocks } from '@/lib/roadmap/generateBlocks';
+import { generateRoadmapBlocks, getAllPossibleBlocksForClient } from '@/lib/roadmap/generateBlocks';
 import { compareRoadmapProgress, applyProgressSuggestions } from '@/lib/roadmap/compareProgress';
+import { refreshTrackablesFromScores } from '@/lib/roadmap/refreshTrackables';
+import { buildCoachBrief } from '@/lib/roadmap/coachContext';
+import type { CoachBrief } from '@/lib/roadmap/coachContext';
 import { generatePhaseTargets, extractBaselineScores, determineActivePhase, computePhaseProgress } from '@/lib/roadmap/phaseTargets';
 import type { RoadmapPhase, PhaseTarget } from '@/lib/roadmap/types';
 import { copyTextToClipboard } from '@/lib/utils/clipboard';
@@ -52,6 +55,7 @@ export function useRoadmapData(clientName: string) {
   const [shareToken, setShareToken] = useState<string | undefined>();
   const [progressSuggestions, setProgressSuggestions] = useState<ProgressSuggestion[]>([]);
   const [generatedBlocks, setGeneratedBlocks] = useState<RoadmapBlock[]>([]);
+  const [allPossibleBlocks, setAllPossibleBlocks] = useState<RoadmapBlock[]>([]);
   const [needsCreation, setNeedsCreation] = useState(false);
   const [latestAssessmentId, setLatestAssessmentId] = useState<string | null>(null);
   const [latestScores, setLatestScores] = useState<ScoreSummary | null>(null);
@@ -86,6 +90,7 @@ export function useRoadmapData(clientName: string) {
           if (!cancelled && assessment) {
             const scores = computeScores(assessment.formData);
             setGeneratedBlocks(generateRoadmapBlocks(scores, assessment.formData));
+            setAllPossibleBlocks(getAllPossibleBlocksForClient(scores, assessment.formData));
             setLatestScores(scores);
             setClientGoals(assessment.formData?.clientGoals ?? []);
 
@@ -107,6 +112,7 @@ export function useRoadmapData(clientName: string) {
         } else if (assessment) {
           const scores = computeScores(assessment.formData);
           setGeneratedBlocks(generateRoadmapBlocks(scores, assessment.formData));
+          setAllPossibleBlocks(getAllPossibleBlocksForClient(scores, assessment.formData));
           setLatestAssessmentId(assessment.id);
           setLatestScores(scores);
           setClientGoals(assessment.formData?.clientGoals ?? []);
@@ -137,22 +143,24 @@ export function useRoadmapData(clientName: string) {
       if (!effectiveOrgId || !user || !latestAssessmentId) return;
       try {
         setSaving(true);
-        const { targets, baselines, active } = buildCreatePayload(newItems);
+        const itemsToSave = latestScores ? refreshTrackablesFromScores(newItems, latestScores) : newItems;
+        const { targets, baselines, active } = buildCreatePayload(itemsToSave);
         const newId = await createRoadmap({
           organizationId: effectiveOrgId,
           clientName,
           assessmentId: latestAssessmentId,
           coachUid: user.uid,
           summary: newSummary,
-          items: newItems,
+          items: itemsToSave,
           previousScores: latestScores ?? undefined,
           phaseTargets: targets,
           baselineScores: baselines,
           activePhase: active,
+          clientGoals: clientGoals.length ? clientGoals : undefined,
         });
         setRoadmapId(newId);
         setSummary(newSummary);
-        setItems(newItems);
+        setItems(itemsToSave);
         setNeedsCreation(false);
         if (targets) setPhaseTargets(targets);
         if (baselines) setBaselineScores(baselines);
@@ -164,7 +172,7 @@ export function useRoadmapData(clientName: string) {
         setSaving(false);
       }
     },
-    [effectiveOrgId, user, clientName, latestAssessmentId, latestScores, buildCreatePayload],
+    [effectiveOrgId, user, clientName, latestAssessmentId, latestScores, clientGoals, buildCreatePayload],
   );
 
   const handleCreateAndShare = useCallback(
@@ -172,24 +180,26 @@ export function useRoadmapData(clientName: string) {
       if (!effectiveOrgId || !user || !latestAssessmentId) return;
       try {
         setSaving(true);
-        const { targets, baselines, active } = buildCreatePayload(newItems);
+        const itemsToSave = latestScores ? refreshTrackablesFromScores(newItems, latestScores) : newItems;
+        const { targets, baselines, active } = buildCreatePayload(itemsToSave);
         const newId = await createRoadmap({
           organizationId: effectiveOrgId,
           clientName,
           assessmentId: latestAssessmentId,
           coachUid: user.uid,
           summary: newSummary,
-          items: newItems,
+          items: itemsToSave,
           previousScores: latestScores ?? undefined,
           phaseTargets: targets,
           baselineScores: baselines,
           activePhase: active,
+          clientGoals: clientGoals.length ? clientGoals : undefined,
         });
         const token = generateShareToken();
         await setRoadmapShareToken(effectiveOrgId, newId, token);
         setRoadmapId(newId);
         setSummary(newSummary);
-        setItems(newItems);
+        setItems(itemsToSave);
         setShareToken(token);
         setNeedsCreation(false);
         if (targets) setPhaseTargets(targets);
@@ -221,7 +231,7 @@ export function useRoadmapData(clientName: string) {
         setSaving(false);
       }
     },
-    [effectiveOrgId, user, clientName, latestAssessmentId, latestScores, buildCreatePayload],
+    [effectiveOrgId, user, clientName, latestAssessmentId, latestScores, clientGoals, buildCreatePayload],
   );
 
   const debouncedSave = useCallback(
@@ -231,7 +241,8 @@ export function useRoadmapData(clientName: string) {
       saveTimer.current = setTimeout(async () => {
         setSaving(true);
         try {
-          await updateRoadmap(effectiveOrgId, roadmapId, { summary: newSummary, items: newItems });
+          const itemsToSave = latestScores ? refreshTrackablesFromScores(newItems, latestScores) : newItems;
+          await updateRoadmap(effectiveOrgId, roadmapId, { summary: newSummary, items: itemsToSave });
         } catch (err) {
           logger.error('Auto-save failed', 'ROADMAP_PAGE', err);
         } finally {
@@ -239,7 +250,7 @@ export function useRoadmapData(clientName: string) {
         }
       }, SAVE_DELAY_MS);
     },
-    [effectiveOrgId, roadmapId],
+    [effectiveOrgId, roadmapId, latestScores],
   );
 
   const handleSummaryChange = useCallback(
@@ -284,11 +295,12 @@ export function useRoadmapData(clientName: string) {
   const handleProgressConfirm = useCallback(
     (accepted: Set<string>) => {
       const updated = applyProgressSuggestions(items, accepted, progressSuggestions);
-      setItems(updated);
-      debouncedSave(summary, updated);
+      const refreshed = latestScores ? refreshTrackablesFromScores(updated, latestScores) : updated;
+      setItems(refreshed);
+      debouncedSave(summary, refreshed);
       setProgressSuggestions([]);
     },
-    [items, progressSuggestions, summary, debouncedSave],
+    [items, progressSuggestions, summary, debouncedSave, latestScores],
   );
 
   const currentScoreMap = useMemo(() => {
@@ -306,6 +318,15 @@ export function useRoadmapData(clientName: string) {
       performance: computePhaseProgress(phaseTargets.performance, currentScoreMap),
     };
   }, [phaseTargets, currentScoreMap]);
+
+  const coachBrief = useMemo((): CoachBrief | null => {
+    if (!generatedBlocks.length && !clientGoals.length) return null;
+    return buildCoachBrief(
+      clientGoals,
+      latestScores?.synthesis ?? [],
+      generatedBlocks,
+    );
+  }, [clientGoals, latestScores?.synthesis, generatedBlocks]);
 
   const scoreDeltas = useMemo(() => {
     if (!baselineScores) return {};
@@ -326,8 +347,10 @@ export function useRoadmapData(clientName: string) {
     shareState,
     progressSuggestions,
     generatedBlocks,
+    allPossibleBlocks,
     needsCreation,
     clientGoals,
+    coachBrief,
     phaseTargets,
     baselineScores,
     activePhase,

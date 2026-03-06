@@ -71,6 +71,7 @@ function buildMovementBlocks(
   cat: ScoreCategory,
   goals: string[],
   formData: FormData,
+  includeAllMetrics?: boolean,
 ): RoadmapBlock[] {
   const blocks: RoadmapBlock[] = [];
   const formSlice = {
@@ -142,7 +143,7 @@ function buildMovementBlocks(
   }
 
   const mobilityDetail = cat.details.find((d) => d.id === 'mobility');
-  if (mobilityDetail && mobilityDetail.score > 0 && mobilityDetail.score < 80) {
+  if (mobilityDetail && mobilityDetail.score > 0 && (includeAllMetrics || mobilityDetail.score < 80)) {
     const { urgency, blocksGoal } = classifyUrgency(mobilityDetail.score, 'movementQuality', goals, false, false);
     blocks.push({
       id: 'mq-mobility',
@@ -165,7 +166,7 @@ function buildMovementBlocks(
   }
 
   const movementDetail = cat.details.find((d) => d.id === 'movement');
-  if (movementDetail && movementDetail.score > 0 && movementDetail.score < 80) {
+  if (movementDetail && movementDetail.score > 0 && (includeAllMetrics || movementDetail.score < 80)) {
     const { urgency, blocksGoal } = classifyUrgency(movementDetail.score, 'movementQuality', goals, false, false);
     blocks.push({
       id: 'mq-patterns',
@@ -194,12 +195,14 @@ function buildCategoryDetailBlocks(
   cat: ScoreCategory,
   goals: string[],
   synthesisSeverity?: 'high' | 'medium' | 'low',
+  includeAllMetrics?: boolean,
 ): RoadmapBlock[] {
   const configs = CATEGORY_DETAIL_CONFIG[cat.id];
   if (!configs) return [];
   const blocks: RoadmapBlock[] = [];
   for (const detail of cat.details) {
-    if (detail.score === 0 || detail.score >= 80) continue;
+    if (detail.score === 0) continue;
+    if (!includeAllMetrics && detail.score >= 80) continue;
     const config = configs.find((c) => c.id === detail.id);
     if (!config) continue;
     const { urgency, blocksGoal } = classifyUrgency(
@@ -234,7 +237,7 @@ function buildCategoryDetailBlocks(
   return blocks;
 }
 
-function buildLifestyleSubBlocks(cat: ScoreCategory, goals: string[]): RoadmapBlock[] {
+function buildLifestyleSubBlocks(cat: ScoreCategory, goals: string[], includeAllMetrics?: boolean): RoadmapBlock[] {
   const blocks: RoadmapBlock[] = [];
   const SUB_CONFIG: Record<string, { title: string; action: string }> = {
     sleep: { title: 'Optimise Sleep Quality', action: 'Implement sleep hygiene protocols — consistent schedule, light management, and pre-bed routine — targeting 7-9 hours of quality sleep.' },
@@ -244,7 +247,8 @@ function buildLifestyleSubBlocks(cat: ScoreCategory, goals: string[]): RoadmapBl
   };
 
   for (const detail of cat.details) {
-    if (detail.score === 0 || detail.score >= 70) continue;
+    if (detail.score === 0) continue;
+    if (!includeAllMetrics && detail.score >= 70) continue;
     const sub = SUB_CONFIG[detail.id];
     if (!sub) continue;
 
@@ -319,7 +323,7 @@ export function generateRoadmapBlocks(
 
   const movement = scores.categories.find((c) => c.id === 'movementQuality');
   if (movement) {
-    const movementBlocks = buildMovementBlocks(movement, goals, formData);
+    const movementBlocks = buildMovementBlocks(movement, goals, formData, false);
     movementBlocks.forEach(add);
   }
 
@@ -337,12 +341,72 @@ export function generateRoadmapBlocks(
     if (cat.id === 'movementQuality') continue;
 
     if (cat.id === 'lifestyle' && cat.score < 80) {
-      buildLifestyleSubBlocks(cat, goals).forEach(add);
+      buildLifestyleSubBlocks(cat, goals, false).forEach(add);
       continue;
     }
 
     if (cat.id === 'cardio' || cat.id === 'strength' || cat.id === 'bodyComp') {
-      buildCategoryDetailBlocks(cat, goals, synthSeverityMap.get(cat.id)).forEach(add);
+      buildCategoryDetailBlocks(cat, goals, synthSeverityMap.get(cat.id), false).forEach(add);
+    }
+  }
+
+  const urgencyOrder: Record<BlockUrgency, number> = { critical: 0, prerequisite: 1, parallel: 2, optional: 3 };
+  blocks.sort((a, b) => urgencyOrder[a.urgency] - urgencyOrder[b.urgency]);
+
+  for (const block of blocks) {
+    block.trackables = resolveTrackables(block, scores);
+  }
+
+  return blocks;
+}
+
+/**
+ * Returns every block that could apply to this client (all categories/details with data),
+ * without filtering out "good" scores. Used as the full palette so the coach can add
+ * any metric to the roadmap. Superset of generateRoadmapBlocks.
+ */
+export function getAllPossibleBlocksForClient(
+  scores: ScoreSummary,
+  formData: FormData,
+): RoadmapBlock[] {
+  const goals = formData?.clientGoals ?? [];
+  const blocks: RoadmapBlock[] = [];
+  const seenIds = new Set<string>();
+
+  const add = (block: RoadmapBlock) => {
+    if (seenIds.has(block.id)) return;
+    seenIds.add(block.id);
+    blocks.push(block);
+  };
+
+  const synthBlocks = buildSynthesisBlocks(scores.synthesis, goals);
+  synthBlocks.forEach(add);
+
+  const movement = scores.categories.find((c) => c.id === 'movementQuality');
+  if (movement) {
+    buildMovementBlocks(movement, goals, formData, true).forEach(add);
+  }
+
+  const synthSeverityMap = new Map<string, 'high' | 'medium' | 'low'>();
+  for (const s of scores.synthesis) {
+    for (const cat of scores.categories) {
+      if (s.description.toLowerCase().includes(cat.title.toLowerCase())) {
+        const existing = synthSeverityMap.get(cat.id);
+        if (!existing || s.severity === 'high') synthSeverityMap.set(cat.id, s.severity);
+      }
+    }
+  }
+
+  for (const cat of scores.categories) {
+    if (cat.id === 'movementQuality') continue;
+
+    if (cat.id === 'lifestyle') {
+      buildLifestyleSubBlocks(cat, goals, true).forEach(add);
+      continue;
+    }
+
+    if (cat.id === 'cardio' || cat.id === 'strength' || cat.id === 'bodyComp') {
+      buildCategoryDetailBlocks(cat, goals, synthSeverityMap.get(cat.id), true).forEach(add);
     }
   }
 

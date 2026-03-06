@@ -23,8 +23,10 @@ export default function ClientRoadmap() {
     shareState,
     progressSuggestions,
     generatedBlocks,
+    allPossibleBlocks,
     needsCreation,
     clientGoals,
+    coachBrief,
     handleCreateRoadmap,
     handleCreateAndShare,
     handleSummaryChange,
@@ -67,7 +69,9 @@ export default function ClientRoadmap() {
           <RoadmapBuilder
             clientName={clientName}
             blocks={generatedBlocks}
+            allPossibleBlocks={allPossibleBlocks}
             clientGoals={clientGoals}
+            coachBrief={coachBrief}
             onCreate={handleCreateRoadmap}
             onAcceptAndSend={handleCreateAndShare}
             saving={saving}
@@ -110,6 +114,7 @@ export default function ClientRoadmap() {
         onItemsChange={handleItemsChange}
         saving={saving}
         generatedBlocks={generatedBlocks}
+        allPossibleBlocks={allPossibleBlocks}
       />
 
       {progressSuggestions.length > 0 && (

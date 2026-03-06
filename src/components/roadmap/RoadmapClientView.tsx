@@ -4,6 +4,20 @@ import { ClientJourneyPhase } from './ClientJourneyPhase';
 
 const PHASES: RoadmapPhase[] = ['foundation', 'development', 'performance'];
 
+const GOAL_LABELS: Record<string, string> = {
+  'weight-loss': 'Weight loss',
+  'build-muscle': 'Muscle building',
+  'build-strength': 'Strength',
+  'body-recomposition': 'Body recomposition',
+  'improve-fitness': 'Fitness',
+  'improve-mobility': 'Mobility',
+  'improve-posture': 'Posture',
+  'reduce-stress': 'Stress reduction',
+  'general-health': 'General health',
+  'sport-performance': 'Sport performance',
+  'rehabilitation': 'Rehabilitation',
+};
+
 type PhaseState = 'active' | 'upcoming' | 'completed';
 
 interface RoadmapClientViewProps {
@@ -12,11 +26,18 @@ interface RoadmapClientViewProps {
   items: RoadmapItem[];
   organizationName?: string;
   activePhase?: RoadmapPhase;
+  clientGoals?: string[];
 }
 
 export default function RoadmapClientView({
-  clientName, summary, items, organizationName, activePhase = 'foundation',
+  clientName,
+  summary,
+  items,
+  organizationName,
+  activePhase = 'foundation',
+  clientGoals,
 }: RoadmapClientViewProps) {
+  const primaryGoalLabel = clientGoals?.[0] ? (GOAL_LABELS[clientGoals[0]] ?? clientGoals[0]) : null;
   const achievedCount = items.filter((i) => i.status === 'achieved').length;
   const progressPct = items.length > 0 ? Math.round((achievedCount / items.length) * 100) : 0;
 
@@ -47,6 +68,9 @@ export default function RoadmapClientView({
         <h1 className="text-3xl font-bold text-slate-900">
           Hi {clientName.split(' ')[0]}, here&apos;s your plan
         </h1>
+        {primaryGoalLabel && (
+          <p className="text-sm font-medium text-slate-600">Goal: {primaryGoalLabel}</p>
+        )}
         {organizationName && (
           <p className="text-sm text-slate-500">Prepared by {organizationName}</p>
         )}
