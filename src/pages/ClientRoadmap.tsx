@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, Loader2, Send } from 'lucide-react';
+import { ArrowLeft, Check, Loader2, Send, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { ROUTES } from '@/constants/routes';
 import AppShell from '@/components/layout/AppShell';
+import RoadmapClientView from '@/components/roadmap/RoadmapClientView';
 import { RoadmapEditor } from '@/components/roadmap/RoadmapEditor';
 import { RoadmapBuilder } from '@/components/roadmap/RoadmapBuilder';
 import { ProgressReviewModal } from '@/components/roadmap/ProgressReviewModal';
@@ -13,6 +15,7 @@ export default function ClientRoadmap() {
   const { name } = useParams<{ name: string }>();
   const navigate = useNavigate();
   const clientName = decodeURIComponent(name ?? '');
+  const [editingRoadmap, setEditingRoadmap] = useState(false);
 
   const {
     roadmapId,
@@ -27,6 +30,7 @@ export default function ClientRoadmap() {
     needsCreation,
     clientGoals,
     coachBrief,
+    activePhase,
     handleCreateRoadmap,
     handleCreateAndShare,
     handleSummaryChange,
@@ -81,22 +85,34 @@ export default function ClientRoadmap() {
     );
   }
 
+  const headerActions = (
+    <div className="flex items-center gap-1">
+      <Button variant="ghost" size="sm" onClick={() => navigate(clientPath)} className="h-9 w-9 p-0">
+        <ArrowLeft className="h-4 w-4" />
+      </Button>
+      {editingRoadmap ? (
+        <Button variant="outline" size="sm" onClick={() => setEditingRoadmap(false)}>
+          Done editing
+        </Button>
+      ) : (
+        <Button variant="outline" size="sm" onClick={() => setEditingRoadmap(true)}>
+          <Pencil className="h-4 w-4 mr-1.5" />
+          Edit roadmap
+        </Button>
+      )}
+      <Button variant="outline" size="sm" onClick={handleShare} disabled={!roadmapId}>
+        {shareState === 'copied'
+          ? <><Check className="h-4 w-4 mr-1.5" />Copied!</>
+          : <><Send className="h-4 w-4 mr-1.5" />Send to Client</>
+        }
+      </Button>
+    </div>
+  );
+
   return (
     <AppShell
       title={clientName ? `${clientName}'s Roadmap` : 'Roadmap'}
-      actions={
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" onClick={() => navigate(clientPath)} className="h-9 w-9 p-0">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleShare} disabled={!roadmapId}>
-            {shareState === 'copied'
-              ? <><Check className="h-4 w-4 mr-1.5" />Copied!</>
-              : <><Send className="h-4 w-4 mr-1.5" />Send to Client</>
-            }
-          </Button>
-        </div>
-      }
+      actions={headerActions}
     >
     <div className="max-w-3xl mx-auto px-4 py-8">
       <Breadcrumb items={[
@@ -105,17 +121,28 @@ export default function ClientRoadmap() {
         { label: 'Roadmap' },
       ]} />
 
-      <h1 className="text-2xl font-bold mb-6">{clientName}&apos;s Journey</h1>
-
-      <RoadmapEditor
-        summary={summary}
-        items={items}
-        onSummaryChange={handleSummaryChange}
-        onItemsChange={handleItemsChange}
-        saving={saving}
-        generatedBlocks={generatedBlocks}
-        allPossibleBlocks={allPossibleBlocks}
-      />
+      {editingRoadmap ? (
+        <>
+          <h1 className="text-2xl font-bold mb-6">{clientName}&apos;s Journey — Editing</h1>
+          <RoadmapEditor
+            summary={summary}
+            items={items}
+            onSummaryChange={handleSummaryChange}
+            onItemsChange={handleItemsChange}
+            saving={saving}
+            generatedBlocks={generatedBlocks}
+            allPossibleBlocks={allPossibleBlocks}
+          />
+        </>
+      ) : (
+        <RoadmapClientView
+          clientName={clientName}
+          items={items}
+          mode="coach"
+          clientGoals={clientGoals}
+          activePhase={activePhase}
+        />
+      )}
 
       {progressSuggestions.length > 0 && (
         <ProgressReviewModal

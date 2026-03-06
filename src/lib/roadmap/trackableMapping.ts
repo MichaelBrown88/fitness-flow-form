@@ -1,6 +1,14 @@
 import type { ScoreSummary, ScoreDetail } from '@/lib/scoring/types';
 import type { RoadmapBlock, Trackable } from './types';
 
+const LIFESTYLE_ZONE_IDS = new Set(['sleep', 'stress', 'nutrition', 'hydration', 'activity']);
+
+const DEFAULT_ZONES: Trackable['zones'] = [
+  { min: 0, max: 40, color: 'red', label: 'Needs focus' },
+  { min: 40, max: 70, color: 'amber', label: 'Building' },
+  { min: 70, max: 100, color: 'green', label: 'Optimal' },
+];
+
 function targetForDetail(detail: ScoreDetail): number {
   if (detail.score >= 80) return 90;
   if (detail.score >= 60) return 80;
@@ -19,16 +27,24 @@ export function resolveTrackables(block: RoadmapBlock, scores: ScoreSummary): Tr
   if (!category) return [];
   const detail = category.details.find((d) => d.id === detailId);
   if (!detail || detail.score === 0) return [];
-  return [
-    {
-      id: detail.id,
-      label: detail.label,
-      baseline: detail.score,
-      target: targetForDetail(detail),
-      current: detail.score,
-      unit: detail.unit,
-    },
-  ];
+  const targetScore = targetForDetail(detail);
+  const val = detail.value;
+  const hasValue = detail.unit != null && typeof val === 'number' && !Number.isNaN(val);
+  const isZoneMetric = categoryId === 'lifestyle' && LIFESTYLE_ZONE_IDS.has(detailId);
+  const t: Trackable = {
+    id: detail.id,
+    label: detail.label,
+    baseline: detail.score,
+    target: targetScore,
+    current: detail.score,
+    unit: detail.unit,
+    ...(isZoneMetric && { displayMode: 'zone' as const, zones: DEFAULT_ZONES }),
+  };
+  if (hasValue) {
+    t.valueBaseline = val;
+    t.valueCurrent = val;
+  }
+  return [t];
 }
 
 function resolveSynthesisTrackables(block: RoadmapBlock, scores: ScoreSummary): Trackable[] {

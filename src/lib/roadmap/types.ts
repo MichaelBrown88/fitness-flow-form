@@ -9,6 +9,14 @@ export type RoadmapPhase = 'foundation' | 'development' | 'performance';
 
 export type BlockUrgency = 'critical' | 'prerequisite' | 'parallel' | 'optional';
 
+/** Zone for range/band metrics (sleep, nutrition, stress). */
+export interface TrackableZone {
+  min: number;
+  max: number;
+  color: 'red' | 'amber' | 'green';
+  label?: string;
+}
+
 export interface Trackable {
   id: string;
   label: string;
@@ -16,6 +24,14 @@ export interface Trackable {
   target: number;
   current: number;
   unit?: string;
+  /** When present, use for display instead of baseline/current/target (e.g. "72 kg" vs "65"). */
+  valueBaseline?: number;
+  valueCurrent?: number;
+  valueTarget?: number;
+  /** 'scale' = linear gradient (VO2, strength); 'zone' = segmented bands (sleep, nutrition, stress). */
+  displayMode?: 'scale' | 'zone';
+  /** Zone definitions for displayMode 'zone'. Default: 0–40 red, 40–70 amber, 70–100 green. */
+  zones?: TrackableZone[];
 }
 
 export interface RoadmapItem {
@@ -117,6 +133,21 @@ export const URGENCY_META: Record<BlockUrgency, { label: string; color: string; 
   parallel: { label: 'Parallel', color: 'text-blue-700', dot: 'bg-blue-500', border: 'border-blue-200 bg-blue-50/30' },
   optional: { label: 'Optional', color: 'text-slate-500', dot: 'bg-slate-400', border: 'border-slate-200 bg-slate-50/30' },
 };
+
+export type ClientUrgencyLevel = 'foundation' | 'growth' | 'optimisation';
+
+export const URGENCY_CLIENT_LABELS: Record<BlockUrgency, string> = {
+  critical: 'Foundation',
+  prerequisite: 'Foundation',
+  parallel: 'Growth',
+  optional: 'Optimisation',
+};
+
+export function getClientUrgency(u: BlockUrgency): ClientUrgencyLevel {
+  if (u === 'critical' || u === 'prerequisite') return 'foundation';
+  if (u === 'parallel') return 'growth';
+  return 'optimisation';
+}
 
 export const CATEGORY_ICONS: Record<RoadmapCategory, string> = {
   bodyComp: 'Scale',

@@ -1,18 +1,21 @@
-import { useState } from 'react';
-import { CheckCircle2, Circle, Clock, ArrowRight, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
-import type { RoadmapItem, RoadmapItemStatus, RoadmapPhase } from '@/lib/roadmap/types';
-import { PHASE_NARRATIVES } from '@/lib/roadmap/types';
+import { CheckCircle2, Circle, Clock, ArrowRight } from 'lucide-react';
+import type { RoadmapItem, RoadmapItemStatus, RoadmapPhase, RoadmapCategory } from '@/lib/roadmap/types';
+import { PHASE_NARRATIVES, URGENCY_CLIENT_LABELS } from '@/lib/roadmap/types';
+import { groupPhaseItemsByPillar, CATEGORY_ORDER } from '@/lib/roadmap/sortPhaseItems';
+import { getPillarLabel } from '@/constants/pillars';
 import { TrackableBar } from './TrackableBar';
 
 const STATUS_CONFIG: Record<RoadmapItemStatus, { icon: typeof Circle; color: string; bg: string }> = {
-  not_started: { icon: Circle, color: 'text-slate-300', bg: 'border-slate-200' },
-  in_progress: { icon: Clock, color: 'text-amber-500', bg: 'border-amber-200 bg-amber-50' },
-  achieved: { icon: CheckCircle2, color: 'text-emerald-500', bg: 'border-emerald-200 bg-emerald-50' },
-  adjusted: { icon: ArrowRight, color: 'text-violet-500', bg: 'border-violet-200 bg-violet-50' },
+  not_started: { icon: Circle, color: 'text-foreground-secondary', bg: 'border-border' },
+  in_progress: { icon: Clock, color: 'text-score-amber-fg', bg: 'border-score-amber-muted bg-score-amber-light' },
+  achieved: { icon: CheckCircle2, color: 'text-score-green-fg', bg: 'border-score-green-muted bg-score-green-light' },
+  adjusted: { icon: ArrowRight, color: 'text-primary', bg: 'border-border bg-brand-light' },
 };
 
 const PHASE_DOT: Record<RoadmapPhase, string> = {
-  foundation: 'bg-emerald-500', development: 'bg-blue-500', performance: 'bg-violet-500',
+  foundation: 'bg-score-green',
+  development: 'bg-primary',
+  performance: 'bg-primary',
 };
 
 type PhaseState = 'active' | 'upcoming' | 'completed';
@@ -26,16 +29,14 @@ interface Props {
 }
 
 function MilestoneCard({ item, isLast }: { item: RoadmapItem; isLast: boolean }) {
-  const [detailsOpen, setDetailsOpen] = useState(false);
   const { icon: StatusIcon, color, bg } = STATUS_CONFIG[item.status];
   const isAchieved = item.status === 'achieved';
-  const hasDetails = !!(item.finding || item.rationale || (item.contraindications?.length ?? 0) > 0);
   const trackables = item.trackables;
 
   return (
     <div className="relative">
       <div className={`rounded-xl border p-4 transition-colors ${
-        isAchieved ? 'bg-emerald-50/50 border-emerald-100' : 'bg-white border-slate-100'
+        isAchieved ? 'bg-score-green-light/50 border-score-green-muted' : 'bg-card border-border'
       }`}>
         <div className="space-y-3">
           <div className="flex items-start gap-3">
@@ -43,14 +44,20 @@ function MilestoneCard({ item, isLast }: { item: RoadmapItem; isLast: boolean })
               <StatusIcon className={`h-3.5 w-3.5 ${color}`} />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className={`text-sm font-semibold ${isAchieved ? 'text-emerald-700 line-through' : 'text-slate-900'}`}>
-                  {item.title}
-                </span>
-                {isAchieved && (
-                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">Completed</span>
-                )}
-                <span className="text-[10px] text-slate-400">~{item.targetWeeks} weeks</span>
+              <div className="flex flex-col gap-0.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`text-sm font-semibold ${isAchieved ? 'text-score-green-bold line-through' : 'text-foreground'}`}>
+                    {item.title}
+                  </span>
+                  {isAchieved && (
+                    <span className="rounded-full bg-score-green-muted px-2 py-0.5 text-[10px] font-semibold text-score-green-fg">Completed</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 text-[10px] uppercase tracking-wide text-foreground-secondary">
+                  <span>{URGENCY_CLIENT_LABELS[item.urgency ?? 'optional']}</span>
+                  <span className="text-border">·</span>
+                  <span>{getPillarLabel(item.category, 'short')}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -58,42 +65,6 @@ function MilestoneCard({ item, isLast }: { item: RoadmapItem; isLast: boolean })
           {trackables && trackables.length > 0 && (
             <div className="ml-9 mt-2">
               <TrackableBar trackable={trackables[0]} compact />
-            </div>
-          )}
-
-          {hasDetails && (
-            <div className="ml-9">
-              <button
-                type="button"
-                onClick={() => setDetailsOpen(!detailsOpen)}
-                className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-slate-600 transition"
-              >
-                {detailsOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                {detailsOpen ? 'Hide details' : 'View details'}
-              </button>
-
-              {detailsOpen && (
-                <div className="space-y-2 mt-2 border-t border-slate-100 pt-2">
-                  {item.finding && (
-                    <div className="space-y-0.5">
-                      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">What we found</p>
-                      <p className="text-xs leading-relaxed text-slate-600">{item.finding}</p>
-                    </div>
-                  )}
-                  {item.rationale && (
-                    <div className="space-y-0.5">
-                      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Why it matters</p>
-                      <p className="text-xs leading-relaxed text-slate-600">{item.rationale}</p>
-                    </div>
-                  )}
-                  {(item.contraindications?.length ?? 0) > 0 && (
-                    <div className="flex items-start gap-1.5 text-[10px] text-red-600 bg-red-50/50 rounded-lg px-2.5 py-1.5">
-                      <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
-                      <span><span className="font-semibold">Avoid:</span> {item.contraindications!.join(', ')}</span>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -110,27 +81,50 @@ export function ClientJourneyPhase({ phase, items, phaseIndex, isLastPhase, phas
   return (
     <div className={isUpcoming ? 'opacity-60' : ''}>
       <div className="flex items-center gap-2 mb-4">
-        <div className="h-px flex-1 bg-slate-200" />
-        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-50 border border-slate-200">
+        <div className="h-px flex-1 bg-border" />
+        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted border border-border">
           <div className={`h-2 w-2 rounded-full ${PHASE_DOT[phase]}`} />
-          <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
+          <span className="text-[10px] font-semibold text-foreground-secondary uppercase tracking-wide">
             Phase {phaseIndex + 1}: {title}
           </span>
           {phaseState === 'completed' && (
-            <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+            <CheckCircle2 className="h-3 w-3 text-score-green-fg" />
           )}
         </div>
-        <div className="h-px flex-1 bg-slate-200" />
+        <div className="h-px flex-1 bg-border" />
       </div>
 
-      <div className="space-y-0">
-        {items.map((item, i) => (
-          <MilestoneCard key={item.id} item={item} isLast={i === items.length - 1 && isLastPhase} />
-        ))}
+      <div className="space-y-6">
+        {(() => {
+          const byPillar = groupPhaseItemsByPillar(items);
+          const orderedCategories = (Object.entries(CATEGORY_ORDER) as [RoadmapCategory, number][])
+            .sort(([, a], [, b]) => a - b)
+            .map(([cat]) => cat);
+          let globalIndex = 0;
+          const totalItems = items.length;
+          return orderedCategories.map((category) => {
+            const pillarItems = byPillar.get(category);
+            if (!pillarItems || pillarItems.length === 0) return null;
+            return (
+              <div key={category} className="space-y-3">
+                <p className="text-[10px] uppercase tracking-wide text-foreground-secondary">
+                  {getPillarLabel(category, 'short')}
+                </p>
+                <div className="space-y-0">
+                  {pillarItems.map((item, j) => {
+                    globalIndex++;
+                    const isLast = globalIndex === totalItems && isLastPhase;
+                    return <MilestoneCard key={item.id} item={item} isLast={isLast} />;
+                  })}
+                </div>
+              </div>
+            );
+          });
+        })()}
       </div>
 
       {isUpcoming && items.length > 3 && (
-        <p className="text-xs text-slate-400 text-center py-2">{items.length} milestones ready for this phase</p>
+        <p className="text-[10px] text-foreground-secondary text-center py-2">{items.length} milestones ready for this phase</p>
       )}
 
       {!isLastPhase && <div className="h-6" />}

@@ -41,12 +41,18 @@ export function refreshTrackablesFromScores(
     const existing = item.trackables ?? [];
     const merged: Trackable[] = fresh.map((t) => {
       const prev = existing.find((e) => e.id === t.id);
-      return {
+      const mergedT: Trackable = {
         ...t,
         baseline: prev?.baseline ?? t.baseline,
         target: prev?.target ?? t.target,
         current: t.current,
       };
+      if (t.valueCurrent != null) mergedT.valueCurrent = t.valueCurrent;
+      if (t.valueBaseline != null)
+        mergedT.valueBaseline = prev?.valueBaseline ?? t.valueBaseline;
+      if (t.valueTarget != null || prev?.valueTarget != null)
+        mergedT.valueTarget = prev?.valueTarget ?? t.valueTarget ?? undefined;
+      return mergedT;
     });
     return { ...item, trackables: merged };
   });

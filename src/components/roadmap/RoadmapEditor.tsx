@@ -4,7 +4,9 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates, arrayMove } from '@dnd-kit/sortable';
+import { ArrowDownAZ } from 'lucide-react';
 import type { RoadmapItem, RoadmapPhase, RoadmapBlock } from '@/lib/roadmap/types';
+import { applySuggestedOrder } from '@/lib/roadmap/sortPhaseItems';
 import { PhaseDropZone } from './PhaseDropZone';
 import { BlockCard } from './BlockCard';
 import { BlockPalette } from './BlockPalette';
@@ -71,7 +73,8 @@ export const RoadmapEditor: React.FC<RoadmapEditorProps> = ({
   const grouped = useMemo(() => {
     const map = new Map<RoadmapPhase, RoadmapItem[]>();
     for (const p of PHASES) map.set(p, []);
-    for (const item of items) {
+    const byPriority = [...items].sort((a, b) => (a.priority ?? 999) - (b.priority ?? 999));
+    for (const item of byPriority) {
       const list = map.get(item.phase) ?? [];
       list.push(item);
       map.set(item.phase, list);
@@ -171,7 +174,18 @@ export const RoadmapEditor: React.FC<RoadmapEditorProps> = ({
           )}
           <div className={paletteBlocks.length > 0 ? 'lg:col-span-3' : 'lg:col-span-full'}>
             <div className="space-y-4">
-              <h3 className="text-sm font-bold text-slate-800">Journey Timeline</h3>
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-bold text-slate-800">Journey Timeline</h3>
+                <button
+                  type="button"
+                  onClick={() => onItemsChange(applySuggestedOrder(items))}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-foreground-secondary hover:text-foreground hover:bg-muted transition-colors"
+                  title="Reorder metrics by urgency (Foundation → Growth → Optimisation), then by pillar"
+                >
+                  <ArrowDownAZ className="h-3.5 w-3.5" />
+                  Order by urgency
+                </button>
+              </div>
               {displayPhases.map((phase, idx) => (
                 <PhaseDropZone
                   key={phase}
