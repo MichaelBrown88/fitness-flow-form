@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+import { useParams, useSearchParams, Link, useNavigate } from 'react-router-dom';
+import { Loader2, ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import AppShell from '@/components/layout/AppShell';
 import { getRoadmapByShareToken } from '@/services/roadmaps';
 import RoadmapClientView from '@/components/roadmap/RoadmapClientView';
 import { logger } from '@/lib/utils/logger';
 
 const PublicRoadmapViewer = () => {
   const { token } = useParams<{ token: string }>();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const reportToken = searchParams.get('reportToken');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [roadmap, setRoadmap] = useState<{
@@ -46,34 +51,72 @@ const PublicRoadmapViewer = () => {
     return () => { cancelled = true; };
   }, [token]);
 
+  const shellProps = {
+    title: roadmap ? `${roadmap.clientName}'s Plan` : 'Your Plan',
+    mode: 'public' as const,
+    showClientNav: !!token,
+    shareToken: token ?? undefined,
+    clientName: roadmap?.clientName ?? 'Client',
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
-      </div>
+      <AppShell {...shellProps}>
+        <div className="flex flex-col items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AppShell>
     );
   }
 
   if (error || !roadmap) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-center space-y-2">
-          <p className="text-lg font-semibold text-slate-700">Roadmap Not Found</p>
-          <p className="text-sm text-slate-500">{error ?? 'This link may have expired.'}</p>
+      <AppShell {...shellProps}>
+        <div className="max-w-2xl mx-auto px-4 py-8 text-center space-y-4">
+          <p className="text-lg font-semibold text-foreground">Roadmap Not Found</p>
+          <p className="text-sm text-muted-foreground">{error ?? 'This link may have expired.'}</p>
+          {reportToken && (
+            <Button variant="outline" size="sm" asChild>
+              <Link to={`/r/${reportToken}`}>Back to report</Link>
+            </Button>
+          )}
         </div>
-      </div>
+      </AppShell>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <RoadmapClientView
-        clientName={roadmap.clientName}
-        summary={roadmap.summary}
-        items={roadmap.items}
-        activePhase={roadmap.activePhase}
-      />
-    </div>
+    <AppShell {...shellProps}>
+      <div className="max-w-2xl mx-auto px-4 py-6">
+        {reportToken ? (
+          <div className="mb-4">
+            <Button variant="ghost" size="sm" className="h-9 w-9 p-0 rounded-xl shrink-0" asChild>
+              <Link to={`/r/${reportToken}`} aria-label="Back to report">
+                <ArrowLeft className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+        ) : (
+          <div className="mb-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-9 w-9 p-0 rounded-xl shrink-0"
+              aria-label="Go back"
+              onClick={() => navigate(-1)}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+        <RoadmapClientView
+          clientName={roadmap.clientName}
+          summary={roadmap.summary}
+          items={roadmap.items}
+          activePhase={roadmap.activePhase}
+        />
+      </div>
+    </AppShell>
   );
 };
 

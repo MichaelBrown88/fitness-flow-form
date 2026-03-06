@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Trash2, UserPlus } from 'lucide-react';
+import { Trash2, UserPlus, FileText, Pencil } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -10,8 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { formatGoal } from '../DashboardConstants';
-import type { CoachAssessmentSummary } from '@/services/coachAssessments';
+import { type AssessmentSnapshot, formatSnapshotTypeLabel } from '@/services/assessmentHistory';
 
 interface DashboardDialogsProps {
   deleteDialog: { id: string; name: string } | null;
@@ -19,9 +18,14 @@ interface DashboardDialogsProps {
   onDelete: () => void;
   clientHistoryDialog: string | null;
   setClientHistoryDialog: (val: string | null) => void;
-  clientHistory: CoachAssessmentSummary[];
+  clientHistory: AssessmentSnapshot[];
+  clientSummaryId: string | null;
   loadingHistory: boolean;
   onNewAssessment: (clientName: string) => void;
+  onEditSnapshot: (snapshot: AssessmentSnapshot) => void;
+  deleteSnapshotDialog: { clientName: string; snapshotId: string } | null;
+  setDeleteSnapshotDialog: (val: { clientName: string; snapshotId: string } | null) => void;
+  onDeleteSnapshot: () => Promise<void>;
 }
 
 export const DashboardDialogs: React.FC<DashboardDialogsProps> = ({
@@ -31,12 +35,37 @@ export const DashboardDialogs: React.FC<DashboardDialogsProps> = ({
   clientHistoryDialog,
   setClientHistoryDialog,
   clientHistory,
+  clientSummaryId,
   loadingHistory,
   onNewAssessment,
+  onEditSnapshot,
+  deleteSnapshotDialog,
+  setDeleteSnapshotDialog,
+  onDeleteSnapshot,
 }) => {
   return (
     <>
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Snapshot Confirmation */}
+      <Dialog open={!!deleteSnapshotDialog} onOpenChange={(open) => !open && setDeleteSnapshotDialog(null)}>
+        <DialogContent className="rounded-2xl max-w-[90vw] sm:max-w-[425px]">
+          <DialogHeader className="text-left">
+            <DialogTitle className="text-xl font-bold tracking-tight">Remove snapshot</DialogTitle>
+            <DialogDescription className="text-sm font-medium text-slate-500 pt-2">
+              Remove this assessment snapshot from history? If it was the latest, current will be restored from the previous snapshot.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-row gap-2 mt-6">
+            <Button variant="outline" onClick={() => setDeleteSnapshotDialog(null)} className="flex-1 rounded-xl font-bold h-11">
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={() => void onDeleteSnapshot()} className="flex-1 rounded-xl font-bold h-11">
+              Remove
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Assessment Dialog */}
       <Dialog open={!!deleteDialog} onOpenChange={(open) => !open && setDeleteDialog(null)}>
         <DialogContent className="rounded-2xl max-w-[90vw] sm:max-w-[425px]">
           <DialogHeader className="text-left">
@@ -77,42 +106,51 @@ export const DashboardDialogs: React.FC<DashboardDialogsProps> = ({
                 No assessment history found.
               </div>
             ) : (
-              clientHistory.map((assessment) => (
+              clientHistory.map((snapshot) => (
                 <div
-                  key={assessment.id}
+                  key={snapshot.id}
                   className="flex items-center justify-between p-4 border border-slate-100 rounded-xl hover:bg-slate-50 transition-all group"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-1">
-                      <div className="text-sm font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-lg group-hover:bg-slate-900 group-hover:text-white transition-colors">
-                        {assessment.overallScore}
+                      <div className="text-sm font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-lg">
+                        {snapshot.overallScore}
                       </div>
-                      {assessment.createdAt && (
-                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">
-                          {assessment.createdAt.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </div>
-                      )}
+                      <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">
+                        {snapshot.timestamp?.toDate?.()?.toLocaleDateString?.('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) ?? '—'}
+                      </div>
+                      <span className="text-xs text-slate-500 capitalize">
+                        {formatSnapshotTypeLabel(snapshot.type)}
+                      </span>
                     </div>
-                    {assessment.goals && assessment.goals.length > 0 && (
-                      <div className="text-xs sm:text-xs text-slate-500 font-medium truncate italic pr-4">
-                        {assessment.goals.map(formatGoal).join(', ')}
-                      </div>
-                    )}
                   </div>
-                  <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                    <Button variant="outline" size="sm" asChild className="h-9 sm:h-8 px-3 rounded-lg text-xs font-bold border-slate-200">
-                      <Link to={`/coach/assessments/${assessment.id}`}>
-                        Open
-                      </Link>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {clientSummaryId && (
+                      <Button variant="outline" size="sm" asChild className="h-8 px-3 rounded-lg text-xs font-bold">
+                        <Link to={`/coach/assessments/${clientSummaryId}?clientName=${encodeURIComponent(clientHistoryDialog || '')}`}>
+                          <FileText className="h-3.5 w-3.5 mr-1" />
+                          View
+                        </Link>
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onEditSnapshot(snapshot)}
+                      className="h-8 px-3 rounded-lg text-xs font-bold"
+                    >
+                      <Pencil className="h-3.5 w-3.5 mr-1" />
+                      Edit
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        setDeleteDialog({ id: assessment.id, name: clientHistoryDialog || '' });
-                        setClientHistoryDialog(null);
+                        if (clientHistoryDialog) {
+                          setDeleteSnapshotDialog({ clientName: clientHistoryDialog, snapshotId: snapshot.id ?? '' });
+                        }
                       }}
-                      className="text-red-400 hover:text-red-600 hover:bg-red-50 h-9 w-9 sm:h-8 sm:w-8 rounded-lg p-0"
+                      className="text-red-400 hover:text-red-600 hover:bg-red-50 h-8 w-8 rounded-lg p-0"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

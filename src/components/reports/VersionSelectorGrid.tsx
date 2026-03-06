@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ScoreBadge from './ScoreBadge';
 import type { VersionSelectorSnapshot } from './AssessmentVersionSelector';
+import { formatSnapshotTypeLabel } from '@/services/assessmentHistory';
 
 interface VersionSelectorGridProps {
   items: VersionSelectorSnapshot[];
@@ -82,8 +83,8 @@ const VersionSelectorGrid: React.FC<VersionSelectorGridProps> = ({
                 {formatGridDate(snap.date)}
               </span>
               <ScoreBadge score={snap.score} trend={trend} size="md" />
-              <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 leading-tight truncate max-w-full">
-                {snap.type}
+              <span className="text-[10px] font-semibold tracking-wide text-slate-400 leading-tight truncate max-w-full">
+                {formatSnapshotTypeLabel(snap.type)}
               </span>
             </button>
           );

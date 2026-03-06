@@ -21,9 +21,9 @@ export const ThemeManager: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const root = document.documentElement;
-    
-    // Get gradient ID from org settings, default to 'purple-indigo'
-    const gradientId = (orgSettings?.gradientId || 'purple-indigo') as GradientId;
+    // Only apply org gradient when custom branding is enabled; otherwise use One Assess default.
+    const useOrgGradient = orgSettings?.customBrandingEnabled === true;
+    const gradientId = (useOrgGradient ? (orgSettings?.gradientId || 'purple-indigo') : 'purple-indigo') as GradientId;
     const gradient = getGradient(gradientId);
     
     // Convert hex colors to HSL for CSS variables
@@ -77,7 +77,7 @@ export const ThemeManager: React.FC<{ children: React.ReactNode }> = ({ children
     // Store original hex for any direct use
     root.style.setProperty('--brand-primary', gradient.fromHex);
     
-  }, [orgSettings?.gradientId]);
+  }, [orgSettings?.gradientId, orgSettings?.customBrandingEnabled]);
 
   return <>{children}</>;
 };

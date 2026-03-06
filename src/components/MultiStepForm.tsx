@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { FormProvider } from '@/contexts/FormContext';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import AppShell from '@/components/layout/AppShell';
-import { PhaseFormContent } from './assessment/PhaseFormContent';
+import { AssessmentGate } from './assessment/AssessmentGate';
 import { useAuth } from '@/hooks/useAuth';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 
@@ -27,7 +27,7 @@ const MultiStepForm = () => {
             variant="full-width"
             onMenuToggle={() => setSidebarOpen(prev => !prev)}
           >
-            <PhaseFormContent demoTrigger={demoTrigger} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+            <AssessmentGate demoTrigger={demoTrigger} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
           </AppShell>
         </FormProvider>
       </TooltipProvider>

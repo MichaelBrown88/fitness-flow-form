@@ -10,12 +10,13 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { getClientAssessments, type CoachAssessmentSummary } from '@/services/coachAssessments';
+import { getClientAssessments, getDraftAssessment, type CoachAssessmentSummary } from '@/services/coachAssessments';
 import { getClientProfile, createOrUpdateClientProfile, subscribeToClientProfile, generateClientSlug, type ClientProfile } from '@/services/clientProfiles';
 import { getCoachAssessment } from '@/services/coachAssessments';
 import { 
   getCurrentAssessment, 
   getSnapshots,
+  deleteSnapshot,
   type AssessmentSnapshot
 } from '@/services/assessmentHistory';
 import { type FormData } from '@/contexts/FormContext';
@@ -23,6 +24,8 @@ import { computeScores } from '@/lib/scoring';
 import { logger } from '@/lib/utils/logger';
 import { UI_TOASTS } from '@/constants/ui';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
+import { ROUTES } from '@/constants/routes';
+import type { Timestamp } from 'firebase/firestore';
 
 // Types
 export interface ClientStats {
@@ -62,14 +65,20 @@ export interface UseClientDetailResult {
   isEditing: boolean;
   editData: Partial<ClientProfile>;
   deleteDialog: DeleteDialogState | null;
+  deleteSnapshotDialog: { snapshotId: string } | null;
+  incompleteDraft: { formData: FormData; updatedAt: Timestamp | null } | null;
   
   setIsEditing: React.Dispatch<React.SetStateAction<boolean>>;
   setEditData: React.Dispatch<React.SetStateAction<Partial<ClientProfile>>>;
   setDeleteDialog: React.Dispatch<React.SetStateAction<DeleteDialogState | null>>;
+  setDeleteSnapshotDialog: React.Dispatch<React.SetStateAction<{ snapshotId: string } | null>>;
   
   handleSaveProfile: () => Promise<void>;
   handleNewAssessment: (category?: 'bodycomp' | 'posture' | 'fitness' | 'strength' | 'lifestyle') => Promise<void>;
+  handleFinishAssessment: () => void;
   handleDeleteAssessment: (id: string) => Promise<void>;
+  handleEditSnapshot: (snapshot: AssessmentSnapshot) => void;
+  handleDeleteSnapshot: () => Promise<void>;
   handleTransferClient: (toCoachUid: string) => Promise<void>;
   handlePauseClient: (reason?: string) => Promise<void>;
   handleUnpauseClient: (mode: 'resume' | 'reset') => Promise<void>;
@@ -102,37 +111,53 @@ export function useClientDetail(): UseClientDetailResult {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<Partial<ClientProfile>>({});
   const [deleteDialog, setDeleteDialog] = useState<DeleteDialogState | null>(null);
+  const [deleteSnapshotDialog, setDeleteSnapshotDialog] = useState<{ snapshotId: string } | null>(null);
+  const [incompleteDraft, setIncompleteDraft] = useState<{ formData: FormData; updatedAt: Timestamp | null } | null>(null);
 
-  // Calculate stats from assessments
+  // Calculate stats from snapshots (actual assessment history: full + partials). Fall back to assessments/summary when no snapshots yet.
   const stats = useMemo<ClientStats>(() => {
-    if (assessments.length === 0) {
+    const latestScore = currentAssessment?.overallScore ?? snapshots[0]?.overallScore ?? assessments[0]?.overallScore ?? 0;
+    const previousScore = snapshots[1]?.overallScore ?? assessments[1]?.overallScore ?? 0;
+    const scoreChange = latestScore - previousScore;
+
+    if (snapshots.length > 0) {
+      const total = snapshots.length;
+      const sumScores = snapshots.reduce((sum, s) => sum + (s.overallScore ?? 0), 0);
+      const avgScore = total > 0 ? Math.round(sumScores / total) : 0;
       return {
-        totalAssessments: 0,
-        averageScore: 0,
-        latestScore: 0,
-        scoreChange: 0,
-        trend: 'neutral',
+        totalAssessments: total,
+        averageScore: avgScore,
+        latestScore,
+        scoreChange,
+        trend: scoreChange > 0 ? 'up' : scoreChange < 0 ? 'down' : 'neutral',
         categoryScores: {},
       };
     }
 
-    const latest = assessments[0];
-    const previous = assessments[1];
-    const scoreChange = previous ? (latest.overallScore || 0) - (previous.overallScore || 0) : 0;
-    
-    const avgScore = Math.round(
-      assessments.reduce((sum, a) => sum + (a.overallScore || 0), 0) / assessments.length
-    );
+    if (assessments.length > 0) {
+      const latest = assessments[0];
+      const avgScore = Math.round(
+        assessments.reduce((sum, a) => sum + (a.overallScore || 0), 0) / assessments.length
+      );
+      return {
+        totalAssessments: assessments.length,
+        averageScore: avgScore,
+        latestScore: latest.overallScore || 0,
+        scoreChange,
+        trend: scoreChange > 0 ? 'up' : scoreChange < 0 ? 'down' : 'neutral',
+        categoryScores: {},
+      };
+    }
 
     return {
-      totalAssessments: assessments.length,
-      averageScore: avgScore,
-      latestScore: latest.overallScore || 0,
-      scoreChange,
-      trend: scoreChange > 0 ? 'up' : scoreChange < 0 ? 'down' : 'neutral',
+      totalAssessments: 0,
+      averageScore: 0,
+      latestScore: 0,
+      scoreChange: 0,
+      trend: 'neutral' as const,
       categoryScores: {},
     };
-  }, [assessments]);
+  }, [snapshots, currentAssessment, assessments]);
 
   // Save profile changes (with rename + DOB recalculation support)
   const handleSaveProfile = useCallback(async () => {
@@ -269,6 +294,78 @@ export function useClientDetail(): UseClientDetailResult {
     }
   }, [user, toast]);
 
+  const handleEditSnapshot = useCallback((snapshot: AssessmentSnapshot) => {
+    const summaryId = assessments[0]?.id;
+    if (!summaryId) return;
+    try {
+      const rawType = snapshot.type;
+      const editType =
+        rawType?.startsWith('partial-')
+          ? rawType
+          : rawType === 'manual' || !rawType
+            ? 'partial-strength'
+            : rawType;
+      const editPayload = {
+        assessmentId: summaryId,
+        formData: snapshot.formData,
+        snapshotId: snapshot.id ?? undefined,
+        editType,
+      };
+      sessionStorage.setItem(STORAGE_KEYS.EDIT_ASSESSMENT, JSON.stringify(editPayload));
+      if (editType.startsWith('partial-')) {
+        const category = editType.replace('partial-', '');
+        sessionStorage.setItem(STORAGE_KEYS.PARTIAL_ASSESSMENT, JSON.stringify({
+          category,
+          clientName: snapshot.formData?.fullName || clientName,
+        }));
+      }
+    } catch (e) {
+      logger.warn('Failed to set EDIT_ASSESSMENT', 'CLIENT_DETAIL', e);
+    }
+    navigate(ROUTES.ASSESSMENT);
+  }, [assessments, clientName, navigate]);
+
+  const handleDeleteSnapshot = useCallback(async () => {
+    if (!user || !readOrgId || !deleteSnapshotDialog) return;
+    try {
+      const result = await deleteSnapshot(
+        user.uid,
+        clientName,
+        deleteSnapshotDialog.snapshotId,
+        readOrgId,
+      );
+      if (result.success) {
+        toast({ title: 'Snapshot removed', description: result.message });
+        setDeleteSnapshotDialog(null);
+        const [nextSnapshots, assessmentData, current] = await Promise.all([
+          getSnapshots(user.uid, clientName, 100, readOrgId),
+          getClientAssessments(user.uid, clientName, readOrgId),
+          getCurrentAssessment(user.uid, clientName, readOrgId),
+        ]);
+        setSnapshots(nextSnapshots);
+        setAssessments(assessmentData);
+        if (current) {
+          setCurrentAssessment({ formData: current.formData, overallScore: current.overallScore });
+        } else if (assessmentData.length > 0) {
+          const latest = await getCoachAssessment(user.uid, assessmentData[0].id, clientName, readOrgId, userProfile);
+          if (latest) {
+            setCurrentAssessment({ formData: latest.formData, overallScore: latest.overallScore });
+          }
+        } else {
+          setCurrentAssessment(null);
+        }
+      } else {
+        toast({ title: UI_TOASTS.ERROR.GENERIC, description: result.message, variant: 'destructive' });
+      }
+    } catch (err) {
+      toast({
+        title: UI_TOASTS.ERROR.GENERIC,
+        description: err instanceof Error ? err.message : 'Failed to delete snapshot',
+        variant: 'destructive',
+      });
+    }
+  }, [user, clientName, readOrgId, deleteSnapshotDialog, toast, userProfile]);
+
   // Navigate back
   const navigateBack = useCallback(() => {
     navigate('/');
@@ -361,6 +458,41 @@ export function useClientDetail(): UseClientDetailResult {
       unsubscribeProfile();
     };
   }, [user, clientName, userProfile?.organizationId]);
+
+  // Check for incomplete draft (Save for Later) so we can show "Finish assessment" CTA
+  useEffect(() => {
+    if (!clientName || !readOrgId) return;
+    getDraftAssessment(clientName, readOrgId)
+      .then((draft) => {
+        if (draft?.formData && Object.keys(draft.formData).length > 0) {
+          setIncompleteDraft(draft);
+        } else {
+          setIncompleteDraft(null);
+        }
+      })
+      .catch(() => setIncompleteDraft(null));
+  }, [clientName, readOrgId]);
+
+  const handleFinishAssessment = useCallback(() => {
+    if (!incompleteDraft) return;
+    try {
+      sessionStorage.setItem(
+        STORAGE_KEYS.DRAFT_ASSESSMENT,
+        JSON.stringify({
+          formData: incompleteDraft.formData,
+          timestamp: Date.now(),
+          clientName,
+        })
+      );
+      sessionStorage.setItem(
+        STORAGE_KEYS.PREFILL_CLIENT,
+        JSON.stringify({ clientName }),
+      );
+    } catch {
+      // non-fatal
+    }
+    navigate(ROUTES.ASSESSMENT);
+  }, [incompleteDraft, clientName, navigate]);
 
   // Load category scores for current assessment
   useEffect(() => {
@@ -538,14 +670,20 @@ export function useClientDetail(): UseClientDetailResult {
     isEditing,
     editData,
     deleteDialog,
+    deleteSnapshotDialog,
+    incompleteDraft,
     
     setIsEditing,
     setEditData,
     setDeleteDialog,
+    setDeleteSnapshotDialog,
     
     handleSaveProfile,
     handleNewAssessment,
+    handleFinishAssessment,
     handleDeleteAssessment,
+    handleEditSnapshot,
+    handleDeleteSnapshot,
     handleTransferClient,
     handlePauseClient,
     handleUnpauseClient,

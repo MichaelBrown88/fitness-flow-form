@@ -27,6 +27,7 @@ import {
   ArrowRightLeft,
   PauseCircle,
   PlayCircle,
+  History,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { getShareTokensForAssessment } from '@/services/share';
@@ -41,6 +42,8 @@ interface ClientActionsDropdownProps {
   clientStatus?: string;
   /** Callback to open the pause/unpause dialog */
   onPauseToggle?: () => void;
+  /** Callback to open assessment history dialog (main dashboard) */
+  onViewHistory?: (clientName: string) => void;
 }
 
 export const ClientActionsDropdown: React.FC<ClientActionsDropdownProps> = ({
@@ -48,6 +51,7 @@ export const ClientActionsDropdown: React.FC<ClientActionsDropdownProps> = ({
   latestAssessmentId,
   clientStatus,
   onPauseToggle,
+  onViewHistory,
 }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -96,6 +100,15 @@ export const ClientActionsDropdown: React.FC<ClientActionsDropdownProps> = ({
           <Eye className="h-3.5 w-3.5 text-slate-500" />
           Client Dashboard
         </DropdownMenuItem>
+        {onViewHistory && (
+          <DropdownMenuItem
+            onClick={() => onViewHistory(clientName)}
+            className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-slate-50 text-slate-600 gap-2"
+          >
+            <History className="h-3.5 w-3.5 text-slate-400" />
+            View History
+          </DropdownMenuItem>
+        )}
         {latestAssessmentId && (
           <DropdownMenuItem
             onClick={() => navigate(`/coach/assessments/${latestAssessmentId}?clientName=${encodedName}`)}

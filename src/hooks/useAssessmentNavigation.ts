@@ -3,12 +3,13 @@
  * Extracted from MultiStepForm to improve performance and separation of concerns
  */
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { phaseDefinitions, type PhaseSection, type PhaseId, type PhaseField } from '@/lib/phaseConfig';
 import type { FormData } from '@/contexts/FormContext';
 import type { OrgSettings } from '@/services/organizations';
 import { shouldShowField } from '@/lib/utils/equipmentFieldFilter';
 import { logger } from '@/lib/utils/logger';
+import { STORAGE_KEYS } from '@/constants/storageKeys';
 
 interface UseAssessmentNavigationProps {
   formData: FormData;
@@ -16,11 +17,23 @@ interface UseAssessmentNavigationProps {
 }
 
 export function useAssessmentNavigation({ formData, orgSettings }: UseAssessmentNavigationProps) {
-  // Partial assessment mode state
+  const getEditPartialCategory = (editType: string | undefined): string | null => {
+    if (!editType) return null;
+    if (editType.startsWith('partial-')) return editType.replace('partial-', '');
+    if (editType === 'manual') return 'strength';
+    return null;
+  };
+
+  // Partial assessment mode state (read from PARTIAL_ASSESSMENT or EDIT_ASSESSMENT for edit flow)
   const [isPartialAssessment, setIsPartialAssessment] = useState(() => {
     try {
-      const partialData = sessionStorage.getItem('partialAssessment');
-      return !!partialData;
+      if (sessionStorage.getItem(STORAGE_KEYS.PARTIAL_ASSESSMENT)) return true;
+      const editData = sessionStorage.getItem(STORAGE_KEYS.EDIT_ASSESSMENT);
+      if (editData) {
+        const parsed = JSON.parse(editData) as { editType?: string };
+        if (getEditPartialCategory(parsed.editType)) return true;
+      }
+      return false;
     } catch {
       return false;
     }
@@ -28,10 +41,15 @@ export function useAssessmentNavigation({ formData, orgSettings }: UseAssessment
 
   const [partialCategory, setPartialCategory] = useState<string | null>(() => {
     try {
-      const partialData = sessionStorage.getItem('partialAssessment');
+      const partialData = sessionStorage.getItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
       if (partialData) {
         const { category } = JSON.parse(partialData);
-        return category;
+        return category ?? null;
+      }
+      const editData = sessionStorage.getItem(STORAGE_KEYS.EDIT_ASSESSMENT);
+      if (editData) {
+        const parsed = JSON.parse(editData) as { editType?: string };
+        return getEditPartialCategory(parsed.editType);
       }
     } catch {
       return null;
@@ -39,11 +57,40 @@ export function useAssessmentNavigation({ formData, orgSettings }: UseAssessment
     return null;
   });
 
+  // Ensure partial mode is applied when editing a partial (EDIT_ASSESSMENT can be set before PARTIAL_ASSESSMENT)
+  useEffect(() => {
+    const editRaw = sessionStorage.getItem(STORAGE_KEYS.EDIT_ASSESSMENT);
+    if (!editRaw) return;
+    try {
+      const parsed = JSON.parse(editRaw) as { editType?: string; formData?: { fullName?: string } };
+      const category = getEditPartialCategory(parsed.editType);
+      if (!category) return;
+      sessionStorage.setItem(STORAGE_KEYS.PARTIAL_ASSESSMENT, JSON.stringify({
+        category,
+        clientName: parsed.formData?.fullName ?? '',
+      }));
+      setIsPartialAssessment(true);
+      setPartialCategory(category);
+    } catch {
+      // non-fatal
+    }
+  }, []);
+
   const getInitialPhase = () => {
     try {
-      const partialData = sessionStorage.getItem('partialAssessment');
+      const partialData = sessionStorage.getItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
       if (partialData) {
         return 1; // Jump to category phase in partial mode
+      }
+      const editData = sessionStorage.getItem(STORAGE_KEYS.EDIT_ASSESSMENT);
+      if (editData) {
+        const parsed = JSON.parse(editData) as { editType?: string };
+        if (getEditPartialCategory(parsed.editType)) return 1;
+      }
+      const saved = sessionStorage.getItem(STORAGE_KEYS.ASSESSMENT_PHASE);
+      if (saved !== null) {
+        const idx = parseInt(saved, 10);
+        if (Number.isFinite(idx) && idx >= 0) return Math.min(idx, 15);
       }
     } catch (e) {
       logger.warn('Failed to parse partial assessment data:', e);

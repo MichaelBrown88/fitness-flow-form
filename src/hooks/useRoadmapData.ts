@@ -15,6 +15,8 @@ import { generatePhaseTargets, extractBaselineScores, determineActivePhase, comp
 import type { RoadmapPhase, PhaseTarget } from '@/lib/roadmap/types';
 import { copyTextToClipboard } from '@/lib/utils/clipboard';
 import { CONFIG } from '@/config';
+import { getClientProfile } from '@/services/clientProfiles';
+import { writeNotification } from '@/services/notificationWriter';
 import { getDb } from '@/services/firebase';
 import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { ORGANIZATION } from '@/lib/database/paths';
@@ -197,6 +199,22 @@ export function useRoadmapData(clientName: string) {
         await copyTextToClipboard(`${CONFIG.APP.HOST}/r/${token}/roadmap`);
         setShareState('copied');
         setTimeout(() => setShareState('idle'), COPIED_FEEDBACK_MS);
+        try {
+          const profile = await getClientProfile(effectiveOrgId, clientName);
+          if (profile?.shareToken) {
+            const actionUrl = `${CONFIG.APP.HOST}/r/${token}/roadmap?reportToken=${profile.shareToken}`;
+            await writeNotification({
+              shareToken: profile.shareToken,
+              type: 'roadmap_ready',
+              title: 'Your personalised plan is ready',
+              body: 'Tap to view your roadmap.',
+              actionUrl,
+              priority: 'medium',
+            });
+          }
+        } catch (notifErr) {
+          logger.warn('[useRoadmapData] Failed to send roadmap_ready notification (non-fatal):', notifErr);
+        }
       } catch (err) {
         logger.error('Failed to create and share roadmap', 'ROADMAP_PAGE', err);
       } finally {
@@ -245,7 +263,23 @@ export function useRoadmapData(clientName: string) {
     await copyTextToClipboard(`${CONFIG.APP.HOST}/r/${token}/roadmap`);
     setShareState('copied');
     setTimeout(() => setShareState('idle'), COPIED_FEEDBACK_MS);
-  }, [effectiveOrgId, roadmapId, shareToken]);
+    try {
+      const profile = await getClientProfile(effectiveOrgId, clientName);
+      if (profile?.shareToken) {
+        const actionUrl = `${CONFIG.APP.HOST}/r/${token}/roadmap?reportToken=${profile.shareToken}`;
+        await writeNotification({
+          shareToken: profile.shareToken,
+          type: 'roadmap_ready',
+          title: 'Your personalised plan is ready',
+          body: 'Tap to view your roadmap.',
+          actionUrl,
+          priority: 'medium',
+        });
+      }
+    } catch (notifErr) {
+      logger.warn('[useRoadmapData] Failed to send roadmap_ready notification (non-fatal):', notifErr);
+    }
+  }, [effectiveOrgId, roadmapId, shareToken, clientName]);
 
   const handleProgressConfirm = useCallback(
     (accepted: Set<string>) => {

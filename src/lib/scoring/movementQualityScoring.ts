@@ -1,5 +1,6 @@
 import type { FormData } from '@/contexts/FormContext';
 import { MOVEMENT_LOGIC_DB } from '../clinical-data';
+import { POSTURE_STANDARD } from '@/lib/utils/postureAlignment';
 import type { ScoreCategory, ScoreDetail } from './types';
 
 export function scoreMovementQuality(form: FormData, age: number, gender: string): ScoreCategory {
@@ -83,13 +84,13 @@ export function scoreMovementQuality(form: FormData, age: number, gender: string
     }
     head = Math.round((fhpScore + tiltScore) / 2);
 
-    // Shoulders
+    // Shoulders (industry standard: Normal when height difference <1 cm)
     const shoulderData = ai.front?.shoulder_alignment;
     if (shoulderData) {
       const diff = Math.abs(shoulderData.height_difference_cm ?? 0);
-      if (shoulderData.status === 'Neutral' && diff < 0.5) shoulders = 100;
-      else if (diff < 1.0) shoulders = 75;
-      else if (diff < 2.0) shoulders = 50;
+      if (diff < POSTURE_STANDARD.SHOULDER_NORMAL_CM) shoulders = 100;
+      else if (diff < 2.0) shoulders = 75;
+      else if (diff < 3.0) shoulders = 50;
       else shoulders = 25;
     }
 

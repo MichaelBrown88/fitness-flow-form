@@ -6,6 +6,14 @@
  * "Zero Magic Strings" rule from .cursorrules
  */
 
+// Assessment submit button labels (Save for Later / Update Report / Generate Report)
+export const ASSESSMENT_SUBMIT_LABELS = {
+  SAVE_FOR_LATER: 'Save for Later',
+  UPDATE_REPORT: 'Update Report',
+  GENERATE_REPORT: 'Generate Report',
+  COMPLETE_SECTION_HINT: 'Complete a section to generate report',
+} as const;
+
 // Phase Titles and Summaries
 export const PHASE_TITLES = {
   P0: 'Basic Client Info',

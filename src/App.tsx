@@ -19,18 +19,32 @@ const Index = lazy(() => import("./pages/Index"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Login = lazy(() => import("./pages/Login"));
 const SignOut = lazy(() => import("./pages/SignOut"));
-const Dashboard = lazy(() => import("./pages/Dashboard"));
+const DashboardLayout = lazy(() => import("./pages/dashboard/DashboardLayout"));
+const DashboardClients = lazy(() => import("./pages/dashboard/DashboardClients"));
+const DashboardSchedule = lazy(() => import("./pages/dashboard/DashboardSchedule"));
+const DashboardCalendar = lazy(() => import("./pages/dashboard/DashboardCalendar"));
+const DashboardTeam = lazy(() => import("./pages/dashboard/DashboardTeam"));
 const AssessmentReport = lazy(() => import("./pages/AssessmentReport"));
 const PublicReportViewer = lazy(() => import("./pages/PublicReportViewer"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Achievements = lazy(() => import("./pages/Achievements"));
 const Companion = lazy(() => import("./pages/Companion"));
 const ClientDetail = lazy(() => import("./pages/ClientDetail"));
-const OrgAdmin = lazy(() => import("./pages/OrgAdmin"));
+const ClientDetailLayout = lazy(() => import("./pages/client/ClientDetailLayout"));
+const ClientOverview = lazy(() => import("./pages/client/ClientOverview"));
+const ClientHistory = lazy(() => import("./pages/client/ClientHistory"));
+const ClientRoadmapTab = lazy(() => import("./pages/client/ClientRoadmapTab"));
+const ClientSettings = lazy(() => import("./pages/client/ClientSettings"));
+const OrgAdminLayout = lazy(() => import("./pages/org/OrgAdminLayout"));
+const OrgOverview = lazy(() => import("./pages/org/OrgOverview"));
+const OrgTeam = lazy(() => import("./pages/org/OrgTeam"));
+const OrgRetention = lazy(() => import("./pages/org/OrgRetention"));
+const OrgBilling = lazy(() => import("./pages/org/OrgBilling"));
 const AssessmentComparison = lazy(() => import("./pages/AssessmentComparison"));
 const Billing = lazy(() => import("./pages/Billing"));
 const ClientRoadmap = lazy(() => import("./pages/ClientRoadmap"));
 const PublicRoadmapViewer = lazy(() => import("./pages/PublicRoadmapViewer"));
+const PublicLifestyleCheckin = lazy(() => import("./pages/PublicLifestyleCheckin"));
 
 // Platform admin pages (separate from org admin)
 const PlatformLogin = lazy(() => import("./pages/admin/PlatformLogin"));
@@ -143,20 +157,22 @@ const App = () => (
                       path="/r/:token/achievements"
                       element={<Achievements />}
                     />
+                    <Route
+                      path="/r/:token/lifestyle"
+                      element={<PublicLifestyleCheckin />}
+                    />
                     {/* Legacy share route redirects to token-based URL */}
                     <Route
                       path="/share/:coachUid/:assessmentId"
                       element={<Navigate to="/" replace />}
                     />
                     {/* Protected routes (auth required) */}
-                    <Route
-                      path="/dashboard"
-                      element={
-                        <RequireAuth>
-                          <Dashboard />
-                        </RequireAuth>
-                      }
-                    />
+                    <Route path="/dashboard" element={<RequireAuth><DashboardLayout /></RequireAuth>}>
+                      <Route index element={<DashboardClients />} />
+                      <Route path="schedule" element={<DashboardSchedule />} />
+                      <Route path="calendar" element={<DashboardCalendar />} />
+                      <Route path="team" element={<DashboardTeam />} />
+                    </Route>
                     <Route
                       path="/assessment"
                       element={
@@ -186,14 +202,12 @@ const App = () => (
                         </RequireAuth>
                       }
                     />
-                    <Route
-                      path="/client/:clientName"
-                      element={
-                        <RequireAuth>
-                          <ClientDetail />
-                        </RequireAuth>
-                      }
-                    />
+                    <Route path="/client/:clientName" element={<RequireAuth><ClientDetailLayout /></RequireAuth>}>
+                      <Route index element={<ClientOverview />} />
+                      <Route path="history" element={<ClientHistory />} />
+                      <Route path="roadmap" element={<ClientRoadmapTab />} />
+                      <Route path="settings" element={<ClientSettings />} />
+                    </Route>
                     <Route
                       path="/settings"
                       element={
@@ -218,14 +232,12 @@ const App = () => (
                         </RequireAuth>
                       }
                     />
-                    <Route
-                      path="/org/dashboard"
-                      element={
-                        <RequireAuth>
-                          <OrgAdmin />
-                        </RequireAuth>
-                      }
-                    />
+                    <Route path="/org/dashboard" element={<RequireAuth><OrgAdminLayout /></RequireAuth>}>
+                      <Route index element={<OrgOverview />} />
+                      <Route path="team" element={<OrgTeam />} />
+                      <Route path="retention" element={<OrgRetention />} />
+                      <Route path="billing" element={<OrgBilling />} />
+                    </Route>
                     <Route
                       path="/billing"
                       element={

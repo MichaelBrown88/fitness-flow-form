@@ -4,6 +4,20 @@ export type KneeDirection = 'valgus' | 'varus' | 'neutral';
 export type KneeLabel = 'straight' | 'valgus' | 'varus';
 
 /**
+ * Industry-standard thresholds for posture (align with common physio practice).
+ * CVA (Craniovertebral Angle) for Forward Head Posture: Neutral ≥50°, Mild 40–50°, Moderate 30–40°, Severe <30°.
+ * Shoulder height: Normal when difference <1 cm.
+ */
+export const POSTURE_STANDARD = {
+  /** CVA bands (degrees) for forward head posture */
+  CVA_NEUTRAL_MIN: 50,
+  CVA_MILD_MIN: 40,
+  CVA_MODERATE_MIN: 30,
+  /** Shoulder height difference (cm) below which alignment is Normal */
+  SHOULDER_NORMAL_CM: 1,
+} as const;
+
+/**
  * Clinical thresholds for posture assessment
  * These MUST stay in sync across wireframe + report logic.
  */

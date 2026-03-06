@@ -106,12 +106,10 @@ export function scoreBodyComp(form: FormData, age: number, gender: string): Scor
     ...(inbodyScore ? [{ id: 'inbodyScore', label: 'Body Comp Score', value: inbodyScore, score: clamp(inbodyScore) }] as ScoreDetail[] : []),
   ];
 
-  const score = Math.round((
-    bfScore * CONFIG.SCORING.WEIGHTS.BODY_FAT +
-    smmScore * CONFIG.SCORING.WEIGHTS.SMM +
-    visceralScore * CONFIG.SCORING.WEIGHTS.VISCERAL +
-    whrScore * CONFIG.SCORING.WEIGHTS.WHR
-  ));
+  const subScores = [bfScore, smmScore, visceralScore, whrScore].filter(s => s > 0);
+  const score = subScores.length > 0
+    ? Math.round(subScores.reduce((a, b) => a + b, 0) / subScores.length)
+    : 0;
 
   const strengths: string[] = [];
   const weaknesses: string[] = [];

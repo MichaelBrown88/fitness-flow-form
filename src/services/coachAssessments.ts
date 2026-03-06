@@ -1,4 +1,4 @@
-import { collection, addDoc, serverTimestamp, getDocs, query, orderBy, limit, doc, getDoc, deleteDoc, where, updateDoc, increment } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, getDocs, query, orderBy, limit, doc, getDoc, deleteDoc, where, updateDoc, increment, setDoc } from 'firebase/firestore';
 import type { Timestamp } from 'firebase/firestore';
 import type { FormData } from '@/contexts/FormContext';
 import { getDb } from '@/services/firebase';
@@ -7,6 +7,8 @@ import { validateOrganizationId } from '@/lib/utils/validateOrganizationId';
 import type { UserProfile } from '@/types/auth';
 import { COLLECTIONS } from '@/constants/collections';
 import { ORGANIZATION } from '@/lib/database/paths';
+import { generateClientSlug } from '@/services/clientProfiles';
+import { sanitizeForFirestore } from '@/lib/utils/firebaseUtils';
 import { logger } from '@/lib/utils/logger';
 
 const MAX_ASSESSMENTS_LIMIT = 200;
@@ -104,6 +106,56 @@ function resolveEffectiveCoach(
 }
 
 export type SaveResult = { assessmentId: string; shareToken: string | null };
+
+/**
+ * Save an incomplete assessment as draft only. Does not update live report or create snapshot.
+ * Used when coach clicks "Save for Later". Dashboard can check getDraftAssessment to show "Finish assessment" CTA.
+ */
+export async function saveDraftAssessment(
+  clientName: string,
+  formData: FormData,
+  organizationId: string,
+): Promise<void> {
+  const slug = generateClientSlug(clientName);
+  const draftRef = doc(getDb(), ORGANIZATION.assessmentDrafts.doc(organizationId, slug));
+  await setDoc(draftRef, {
+    clientName: clientName.trim(),
+    formData: sanitizeForFirestore(formData),
+    updatedAt: serverTimestamp(),
+    organizationId,
+  });
+}
+
+/**
+ * Get incomplete draft for a client, if any. Used by dashboard to show "Finish assessment" alert.
+ */
+export async function getDraftAssessment(
+  clientName: string,
+  organizationId: string,
+): Promise<{ formData: FormData; updatedAt: Timestamp | null } | null> {
+  const slug = generateClientSlug(clientName);
+  const draftRef = doc(getDb(), ORGANIZATION.assessmentDrafts.doc(organizationId, slug));
+  const snap = await getDoc(draftRef);
+  if (!snap.exists()) return null;
+  const data = snap.data();
+  return {
+    formData: (data?.formData ?? {}) as FormData,
+    updatedAt: (data?.updatedAt as Timestamp) ?? null,
+  };
+}
+
+/**
+ * Clear draft for a client after a complete assessment is saved (live report updated).
+ */
+export async function clearDraftAssessment(
+  clientName: string,
+  organizationId: string,
+): Promise<void> {
+  const slug = generateClientSlug(clientName);
+  const draftRef = doc(getDb(), ORGANIZATION.assessmentDrafts.doc(organizationId, slug));
+  const snap = await getDoc(draftRef);
+  if (snap.exists()) await deleteDoc(draftRef);
+}
 
 export async function saveCoachAssessment(
   coachUid: string,

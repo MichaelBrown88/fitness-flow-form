@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Carousel, CarouselContent, CarouselItem, CarouselDots } from '@/components/ui/carousel';
@@ -8,6 +8,7 @@ import type { GapAnalysisData } from '../../useGapAnalysisData';
 import type { FormData } from '@/contexts/FormContext';
 import { CardInfoDrawer } from '../../CardInfoDrawer';
 import { AnimatedValue } from './AnimatedValue';
+import { useAnimateOnView } from '@/hooks/useAnimateOnView';
 
 interface GapAnalysisSectionProps {
   gapAnalysisData: GapAnalysisData[];
@@ -27,6 +28,8 @@ const DeltaIndicator: React.FC<{ delta?: number }> = ({ delta }) => {
   );
 };
 
+const GAP_PHASE_DURATION_MS = 550;
+
 const GapMetricRow: React.FC<{
   label: string;
   current: string | number;
@@ -35,16 +38,47 @@ const GapMetricRow: React.FC<{
   delta?: number;
   /** Previous numeric value for scroll-triggered animation */
   fromValue?: number;
+  /** Original gap target (previous assessment target) for two-phase: first animate to this, then reveal new target */
+  originalTarget?: number;
   /** Decimal places for animated value */
   decimals?: number;
-}> = ({ label, current, target, isDesktop, delta, fromValue, decimals = 1 }) => {
-  // Determine if current value can be animated (is a parseable number with a different previous value)
+}> = ({ label, current, target, isDesktop, delta, fromValue, originalTarget, decimals = 1 }) => {
   const numericCurrent = typeof current === 'number' ? current : parseFloat(String(current));
-  const canAnimate = fromValue !== undefined && !isNaN(numericCurrent) && fromValue !== numericCurrent;
+  const numericTarget = typeof target === 'number' ? target : parseFloat(String(target));
+  const hasTwoPhase = originalTarget != null && !isNaN(originalTarget) && fromValue !== undefined
+    && !isNaN(numericCurrent) && originalTarget !== numericTarget;
+
+  const [phase, setPhase] = useState<1 | 2>(1);
+  const phase1Value = hasTwoPhase ? originalTarget! : numericCurrent;
+  const phase1From = hasTwoPhase ? fromValue! : (fromValue ?? numericCurrent);
+  const phase2Value = numericCurrent;
+  const phase2From = originalTarget ?? numericCurrent;
+
+  const value = phase === 1 ? phase1Value : phase2Value;
+  const from = phase === 1 ? phase1From : phase2From;
+
+  const { ref, displayValue, directionClassName } = useAnimateOnView({
+    value,
+    from,
+    decimals,
+    delta,
+    duration: GAP_PHASE_DURATION_MS,
+    onComplete: phase === 1 && hasTwoPhase ? () => setPhase(2) : undefined,
+  });
+
+  useEffect(() => {
+    if (!hasTwoPhase) setPhase(1);
+  }, [hasTwoPhase]);
+
+  const canAnimate = fromValue !== undefined && !isNaN(numericCurrent) && (fromValue !== numericCurrent || hasTwoPhase);
+  const targetDisplay = hasTwoPhase ? (phase === 1 ? originalTarget!.toFixed(decimals) : (typeof target === 'number' ? target.toFixed(decimals) : target)) : target;
 
   const renderCurrent = () => {
     if (canAnimate) {
-      return <AnimatedValue value={numericCurrent} from={fromValue} decimals={decimals} delta={delta} />;
+      if (hasTwoPhase) {
+        return <span ref={ref} className={directionClassName}>{displayValue}</span>;
+      }
+      return <AnimatedValue value={numericCurrent} from={fromValue} decimals={decimals} delta={delta} duration={GAP_PHASE_DURATION_MS} />;
     }
     return <>{current}</>;
   };
@@ -59,7 +93,7 @@ const GapMetricRow: React.FC<{
             <DeltaIndicator delta={delta} />
           </span>
           <ArrowRight className={`w-3 h-3 ${typeof current === 'number' || current !== '--' ? 'text-gradient-dark' : 'text-zinc-300'} flex-shrink-0`} />
-          <span className="text-sm font-bold text-gradient-dark text-right tabular-nums">{target}</span>
+          <span className="text-sm font-bold text-gradient-dark text-right tabular-nums">{targetDisplay}</span>
         </div>
       </div>
     );
@@ -73,7 +107,7 @@ const GapMetricRow: React.FC<{
         <DeltaIndicator delta={delta} />
       </span>
       <ArrowRight className={`w-3 h-3 ${typeof current === 'number' || current !== '--' ? 'text-gradient-dark' : 'text-zinc-300'} justify-self-center`} />
-      <span className="text-sm font-bold text-gradient-dark text-right tabular-nums">{target}</span>
+      <span className="text-sm font-bold text-gradient-dark text-right tabular-nums">{targetDisplay}</span>
     </div>
   );
 };
@@ -120,29 +154,32 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
               <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.15em] text-right col-start-2">Current</span>
               <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.15em] text-right col-start-4">Target</span>
             </div>
-            <GapMetricRow 
-              label="Body Weight (kg)" 
-              current={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.weight.current.toFixed(1) : '--'} 
+            <GapMetricRow
+              label="Body Weight (kg)"
+              current={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.weight.current.toFixed(1) : '--'}
               target={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.weight.target.toFixed(1) : '--'}
               isDesktop
               delta={bodyComp?.deltas?.weight}
               fromValue={prevBodyComp?.bodyCompGaps?.weight.current}
+              originalTarget={prevBodyComp?.bodyCompGaps?.weight.target}
             />
-            <GapMetricRow 
-              label="Muscle Mass (kg)" 
-              current={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.muscle.current.toFixed(1) : '--'} 
+            <GapMetricRow
+              label="Muscle Mass (kg)"
+              current={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.muscle.current.toFixed(1) : '--'}
               target={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.muscle.target.toFixed(1) : '--'}
               isDesktop
               delta={bodyComp?.deltas?.muscle}
               fromValue={prevBodyComp?.bodyCompGaps?.muscle.current}
+              originalTarget={prevBodyComp?.bodyCompGaps?.muscle.target}
             />
-            <GapMetricRow 
-              label="Body Fat (%)" 
-              current={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.fat.current.toFixed(1) : '--'} 
+            <GapMetricRow
+              label="Body Fat (%)"
+              current={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.fat.current.toFixed(1) : '--'}
               target={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.fat.target.toFixed(1) : '--'}
               isDesktop
               delta={bodyComp?.deltas?.fat}
               fromValue={prevBodyComp?.bodyCompGaps?.fat.current}
+              originalTarget={prevBodyComp?.bodyCompGaps?.fat.target}
             />
           </>
         ) : (
@@ -153,6 +190,7 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
               target={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.weight.target.toFixed(1) : '--'}
               delta={bodyComp?.deltas?.weight}
               fromValue={prevBodyComp?.bodyCompGaps?.weight.current}
+              originalTarget={prevBodyComp?.bodyCompGaps?.weight.target}
             />
             <GapMetricRow
               label="Muscle Mass (kg)"
@@ -160,6 +198,7 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
               target={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.muscle.target.toFixed(1) : '--'}
               delta={bodyComp?.deltas?.muscle}
               fromValue={prevBodyComp?.bodyCompGaps?.muscle.current}
+              originalTarget={prevBodyComp?.bodyCompGaps?.muscle.target}
             />
             <GapMetricRow
               label="Body Fat (%)"
@@ -167,6 +206,7 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
               target={bodyComp?.bodyCompGaps ? bodyComp.bodyCompGaps.fat.target.toFixed(1) : '--'}
               delta={bodyComp?.deltas?.fat}
               fromValue={prevBodyComp?.bodyCompGaps?.fat.current}
+              originalTarget={prevBodyComp?.bodyCompGaps?.fat.target}
             />
           </div>
         )}

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate, useBlocker } from 'react-router-dom';
 import AppShell from '@/components/layout/AppShell';
 import { useSettings } from '@/hooks/useSettings';
 import { Switch } from '@/components/ui/switch';
@@ -18,6 +18,7 @@ import { getDb } from '@/services/firebase';
 import { logger } from '@/lib/utils/logger';
 import { DefaultCadenceSettings } from '@/components/settings/DefaultCadenceSettings';
 import { NotificationSettings } from '@/components/settings/NotificationSettings';
+import { OrgSettingSwitch } from '@/components/settings/OrgSettingSwitch';
 import { ROUTES } from '@/constants/routes';
 
 const Settings = () => {
@@ -39,6 +40,21 @@ const Settings = () => {
       setLocalGradientId((orgSettings.gradientId as GradientId) || 'purple-indigo');
     }
   }, [orgSettings]);
+
+  const brandingDirty = useMemo(() => {
+    if (!orgSettings) return false;
+    return localOrgName !== orgSettings.name || localGradientId !== (orgSettings.gradientId || 'purple-indigo');
+  }, [orgSettings, localOrgName, localGradientId]);
+
+  const blocker = useBlocker(brandingDirty);
+  useEffect(() => {
+    if (blocker.state !== 'blocked') return;
+    if (window.confirm('You have unsaved branding changes. Leave anyway?')) {
+      blocker.proceed();
+    } else {
+      blocker.reset();
+    }
+  }, [blocker]);
 
   const handleSaveOrgInfo = async () => {
     if (!profile?.organizationId) return;
@@ -239,7 +255,36 @@ const Settings = () => {
 
           {/* Organization Tab (Admin Only) */}
           {isAdmin && (
-            <TabsContent value="organization" className="space-y-8 mt-0">
+            <TabsContent value="organization" className="mt-0">
+            <Tabs defaultValue="branding" className="w-full">
+              <TabsList className="w-full mb-6 p-1 h-auto bg-slate-100 rounded-xl grid grid-cols-4 gap-1">
+                <TabsTrigger value="branding" className="py-2.5 px-3 rounded-lg text-xs sm:text-sm font-semibold data-[state=active]:bg-white">Branding</TabsTrigger>
+                <TabsTrigger value="modules" className="py-2.5 px-3 rounded-lg text-xs sm:text-sm font-semibold data-[state=active]:bg-white">Modules</TabsTrigger>
+                <TabsTrigger value="equipment" className="py-2.5 px-3 rounded-lg text-xs sm:text-sm font-semibold data-[state=active]:bg-white">Equipment</TabsTrigger>
+                <TabsTrigger value="schedule" className="py-2.5 px-3 rounded-lg text-xs sm:text-sm font-semibold data-[state=active]:bg-white">Schedule</TabsTrigger>
+              </TabsList>
+              <TabsContent value="branding" className="space-y-8 mt-0">
+            {orgSettings?.customBrandingEnabled === false ? (
+            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+              <div className="flex items-center gap-2 text-slate-900 mb-2">
+                <Palette className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-bold">Custom Branding</h2>
+              </div>
+              <p className="text-sm text-slate-600">
+                Custom branding (your logo and brand colours on reports and in the app) is a paid add-on. All reports show &ldquo;Powered by One Assess&rdquo; so clients know the assessment platform behind your brand.
+              </p>
+              <p className="text-sm text-slate-500">
+                To add custom branding to your organization, contact us to enable this feature.
+              </p>
+              <Button
+                variant="outline"
+                className="rounded-xl border-slate-200"
+                onClick={() => window.open('mailto:support@one-assess.com?subject=Custom branding add-on', '_blank')}
+              >
+                Contact us to add custom branding
+              </Button>
+            </section>
+            ) : (
             <section className="space-y-4">
               <div className="flex items-center gap-2 text-slate-900 mb-2">
                 <Palette className="h-5 w-5 text-primary" />
@@ -348,7 +393,9 @@ const Settings = () => {
                 </div>
               </div>
             </section>
-
+            )}
+              </TabsContent>
+              <TabsContent value="modules" className="mt-0">
             {/* Assessment Modules */}
             <section className="space-y-4">
               <div className="flex items-center gap-2 text-slate-900 mb-2">
@@ -389,7 +436,8 @@ const Settings = () => {
                 </div>
               </div>
             </section>
-
+              </TabsContent>
+              <TabsContent value="equipment" className="mt-0">
             {/* Equipment Configuration */}
             <section className="space-y-4">
               <div className="flex items-center gap-2 text-slate-900 mb-2">
@@ -403,43 +451,30 @@ const Settings = () => {
 
                 {/* 1. Body Composition Analyser */}
                 <div className="space-y-4 pb-6 border-b border-slate-100">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <Label className="text-sm font-bold text-slate-800">Body Composition Analyser</Label>
-                      <p className="text-xs text-slate-500 mt-1">
-                        {orgSettings?.equipmentConfig?.bodyComposition?.enabled 
-                          ? 'Enabled: Assessments will use body composition analyser (e.g. InBody, DEXA)'
-                          : 'Disabled: Assessments will use body measurements + skinfold test (clients can still bring their own reports)'}
-                      </p>
-                    </div>
-                    <Switch
-                      checked={orgSettings?.equipmentConfig?.bodyComposition?.enabled ?? false}
-                      onCheckedChange={async (enabled) => {
-                        if (!profile?.organizationId || !orgSettings) return;
-                        try {
-                          await updateOrgSettings(profile.organizationId, {
-                            equipmentConfig: {
-                              ...(orgSettings.equipmentConfig || DEFAULT_EQUIPMENT_CONFIG),
-                              bodyComposition: {
-                                enabled,
-                              }
-                            }
-                          });
-                          await refreshSettings();
-                          toast({ 
-                            title: enabled 
-                              ? 'Body composition analyser enabled' 
-                              : 'Body composition analyser disabled - using equipment-free alternatives',
-                            description: enabled 
-                              ? 'Future assessments will use analyzer fields' 
-                              : 'Future assessments will use body measurements + skinfold (clients can bring reports)'
-                          });
-                        } catch (err) {
-                          toast({ title: 'Failed to update', variant: 'destructive' });
-                        }
-                      }}
-                    />
-                  </div>
+                  <OrgSettingSwitch
+                    label="Body Composition Analyser"
+                    description={orgSettings?.equipmentConfig?.bodyComposition?.enabled
+                      ? 'Enabled: Assessments will use body composition analyser (e.g. InBody, DEXA)'
+                      : 'Disabled: Assessments will use body measurements + skinfold test (clients can still bring their own reports)'}
+                    checked={orgSettings?.equipmentConfig?.bodyComposition?.enabled ?? false}
+                    onToggle={async (enabled) => {
+                      if (!profile?.organizationId || !orgSettings) return;
+                      try {
+                        await updateOrgSettings(profile.organizationId, {
+                          equipmentConfig: {
+                            ...(orgSettings.equipmentConfig || DEFAULT_EQUIPMENT_CONFIG),
+                            bodyComposition: { enabled },
+                          },
+                        });
+                        await refreshSettings();
+                        toast({
+                          title: enabled ? 'Body composition analyser enabled' : 'Body composition analyser disabled - using equipment-free alternatives',
+                        });
+                      } catch (err) {
+                        toast({ title: 'Failed to update', variant: 'destructive' });
+                      }
+                    }}
+                  />
                 </div>
 
                 {/* 2. Dynamometer / Grip Strength */}
@@ -566,7 +601,8 @@ const Settings = () => {
                 </div>
               </div>
             </section>
-
+              </TabsContent>
+              <TabsContent value="schedule" className="mt-0">
             {/* Default Retest Schedule */}
             <section className="space-y-4">
               <div className="flex items-center gap-2 text-slate-900 mb-2">
@@ -579,6 +615,8 @@ const Settings = () => {
                 onSave={refreshSettings}
               />
             </section>
+              </TabsContent>
+            </Tabs>
             </TabsContent>
           )}
 

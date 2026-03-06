@@ -27,7 +27,7 @@ export default function Stepper({
               className={cn(
                 'group flex items-center gap-2 chip',
                 isActive && 'bg-primary text-primary-foreground border-primary/60 shadow-md',
-                !isActive && isDone && 'bg-brand-light text-primary border-primary/10 hover:bg-brand-muted',
+                !isActive && isDone && 'bg-brand-light text-primary border-primary/10 hover:bg-brand-medium',
                 !isActive && !isDone && 'bg-muted text-muted-foreground border-border hover:bg-muted/80'
               )}
             >

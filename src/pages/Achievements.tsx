@@ -2,6 +2,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import type { Timestamp } from 'firebase/firestore';
 import { ArrowLeft, Loader2, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import AppShell from '@/components/layout/AppShell';
 import { useAchievements } from '@/hooks/useAchievements';
 import { useTokenAchievements } from '@/hooks/useTokenAchievements';
 import { ACHIEVEMENT_DEFINITIONS } from '@/constants/achievements';
@@ -57,16 +58,8 @@ export default function AchievementsPage() {
   const uidAchievements = useAchievements();
   const achievements: AchievementHookReturn = token ? tokenAchievements : uidAchievements;
 
-  if (achievements.isLoading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
-      </div>
-    );
-  }
-
   const { streaks, trophies, milestones } = fillDefaults(achievements);
-
+  const clientName = token ? 'Client' : undefined;
   const handleBack = () => {
     if (token) {
       navigate(`/r/${token}`);
@@ -75,7 +68,7 @@ export default function AchievementsPage() {
     }
   };
 
-  return (
+  const content = (
     <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8 space-y-6 sm:space-y-8">
       <div className="flex items-center gap-3">
         <Button
@@ -103,4 +96,28 @@ export default function AchievementsPage() {
       <MilestoneProgress milestones={milestones} />
     </div>
   );
+
+  if (achievements.isLoading) {
+    return token ? (
+      <AppShell title="Achievements" mode="public" showClientNav shareToken={token} clientName={clientName ?? 'Client'}>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        </div>
+      </AppShell>
+    ) : (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
+      </div>
+    );
+  }
+
+  if (token) {
+    return (
+      <AppShell title="Achievements" mode="public" showClientNav shareToken={token} clientName={clientName ?? 'Client'}>
+        {content}
+      </AppShell>
+    );
+  }
+
+  return content;
 }

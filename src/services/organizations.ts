@@ -80,6 +80,8 @@ export interface OrgSettings {
   onboardingCompletedAt?: Timestamp; // Firestore Timestamp
   // Platform admin controlled features
   demoAutoFillEnabled?: boolean; // Demo persona auto-fill (for affiliates/sales demos) - OFF by default
+  /** Paid add-on: when true, org may use custom logo and gradient; when false/undefined, One Assess branding only. Treat undefined as true for existing orgs (legacy). */
+  customBrandingEnabled?: boolean;
   // Default retest cadence for new clients
   defaultCadence?: DefaultCadenceConfig;
 }
@@ -131,6 +133,7 @@ const DEFAULT_SETTINGS: OrgSettings = {
   },
   equipmentConfig: DEFAULT_EQUIPMENT_CONFIG,
   demoAutoFillEnabled: false, // OFF by default - platform admin controlled for affiliates/sales demos
+  customBrandingEnabled: false, // New orgs get One Assess branding only until add-on is purchased
   defaultCadence: {
     enabled: false, // Off by default - use clinical baselines
     intervals: { bodycomp: 30, posture: 45, fitness: 45, strength: 60, lifestyle: 45 },
@@ -231,6 +234,7 @@ export async function getOrgSettings(orgId: string): Promise<OrgSettings> {
     })(),
     equipmentConfig: cleanEquipmentConfig,
     demoAutoFillEnabled: data.demoAutoFillEnabled ?? DEFAULT_SETTINGS.demoAutoFillEnabled,
+    customBrandingEnabled: data.customBrandingEnabled,
     defaultCadence: data.defaultCadence ?? DEFAULT_SETTINGS.defaultCadence,
   };
 }

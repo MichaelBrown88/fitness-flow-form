@@ -91,14 +91,11 @@ export function ClientProfileDropdown({
         </DropdownMenuItem>
 
         <DropdownMenuItem
-          disabled
-          className="flex items-center justify-between"
+          className="flex items-center gap-2"
+          onClick={() => navigate(`/r/${shareToken}/lifestyle`)}
         >
-          <span className="flex items-center gap-2">
-            <Heart className="h-4 w-4" />
-            Lifestyle Check-in
-          </span>
-          <span className="text-[10px] font-medium text-zinc-400">Coming soon</span>
+          <Heart className="h-4 w-4" />
+          Lifestyle Check-in
         </DropdownMenuItem>
 
         <DropdownMenuItem

@@ -88,7 +88,7 @@ export function useOnboarding(): UseOnboardingResult {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(() => loadSession()?.step ?? 0);
   const [hasCheckedStatus, setHasCheckedStatus] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
 
@@ -97,7 +97,7 @@ export function useOnboarding(): UseOnboardingResult {
   const [identityError, setIdentityError] = useState<string | null>(null);
   const [accountError, setAccountError] = useState<string | null>(null);
 
-  const [onboardingData, setOnboardingData] = useState<Partial<OnboardingData>>({});
+  const [onboardingData, setOnboardingData] = useState<Partial<OnboardingData>>(() => loadSession()?.data ?? {});
   const [inviteOrganizationId, setInviteOrganizationId] = useState<string | null>(null);
 
   const resumedRef = useRef(false);

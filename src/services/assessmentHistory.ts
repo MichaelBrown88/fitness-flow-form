@@ -3,6 +3,7 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  deleteDoc,
   collection,
   addDoc,
   query,
@@ -19,6 +20,7 @@ import { sanitizeForFirestore } from "@/lib/utils/firebaseUtils";
 import { PostureAnalysisResult } from "@/lib/ai/postureAnalysis";
 import { logger } from "@/lib/utils/logger";
 import { ORGANIZATION } from "@/lib/database/paths";
+import { getPillarLabel } from "@/constants/pillars";
 
 const MAX_HISTORY_LIMIT = 100;
 const MAX_SNAPSHOT_LIMIT = 100;
@@ -50,7 +52,8 @@ export type AssessmentChange = {
 export type AssessmentSnapshot = {
   id?: string;
   timestamp: Timestamp;
-  type: "monthly" | "full-assessment" | "manual";
+  /** full-assessment | partial-bodycomp | partial-posture | partial-fitness | partial-strength | partial-lifestyle | monthly (legacy: manual) */
+  type: "full-assessment" | "full" | "partial-bodycomp" | "partial-posture" | "partial-fitness" | "partial-strength" | "partial-lifestyle" | "monthly" | "manual";
   formData: FormData;
   overallScore: number;
   notes?: string;
@@ -336,7 +339,7 @@ export async function updateCurrentAssessment(
       changeType === "full"
         ? "full-assessment"
         : changeType.startsWith("partial-")
-        ? "manual"
+        ? changeType
         : "monthly";
     await createSnapshot(
       coachUid,
@@ -365,7 +368,7 @@ export async function createSnapshot(
   clientName: string,
   formData: FormData,
   overallScore: number,
-  snapshotType: AssessmentSnapshot["type"] = "manual",
+  snapshotType: AssessmentSnapshot["type"] = "full-assessment",
   notes?: string,
   organizationId?: string
 ): Promise<string> {
@@ -509,6 +512,210 @@ export async function getSnapshots(
 
   // Sort by timestamp descending
   return snapshots.sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis());
+}
+
+const HISTORY_LIST_LIMIT = 50;
+
+/** Human-readable label for snapshot type. Full or pillar short names (Body Comp, Strength, etc.). Never "Manual". */
+export function formatSnapshotTypeLabel(type: string): string {
+  if (type === 'full' || type === 'full-assessment') return 'Full';
+  if (type === 'monthly') return 'Monthly';
+  if (type === 'manual') return 'Partial';
+  if (type.startsWith('partial-')) {
+    const category = type.replace('partial-', '');
+    return getPillarLabel(category, 'short');
+  }
+  return type;
+}
+
+/**
+ * Get snapshot-based assessment history for a client (for dashboard history list).
+ * Returns snapshots in descending date order; use limit for pagination.
+ */
+export async function getClientAssessmentHistory(
+  coachUid: string,
+  clientName: string,
+  organizationId: string | undefined,
+  limitCount: number = HISTORY_LIST_LIMIT
+): Promise<AssessmentSnapshot[]> {
+  return getSnapshots(coachUid, clientName, limitCount, organizationId);
+}
+
+/**
+ * Delete a snapshot. If it was the most recent, restores current and summary from the previous snapshot (or clears if none).
+ */
+export async function deleteSnapshot(
+  coachUid: string,
+  clientName: string,
+  snapshotId: string,
+  organizationId: string
+): Promise<{ success: boolean; message: string }> {
+  const db = getDb();
+  const snapshots = await getSnapshots(coachUid, clientName, 100, organizationId);
+  const toDelete = snapshots.find((s) => s.id === snapshotId);
+  if (!toDelete) {
+    return { success: false, message: 'Snapshot not found' };
+  }
+
+  const slug = getClientSlug(clientName);
+  const snapRef = doc(db, ORGANIZATION.assessmentHistory.snapshots(organizationId, slug), snapshotId);
+  await deleteDoc(snapRef);
+
+  const wasLatest = snapshots[0]?.id === snapshotId;
+  if (wasLatest && snapshots.length > 1) {
+    const prev = snapshots[1];
+    await restoreFromSnapshot(coachUid, clientName, prev.id, organizationId);
+    const { summarizeScores } = await import('@/lib/scoring');
+    const summary = summarizeScores(prev.formData);
+    const assessmentsRef = collection(db, ORGANIZATION.assessments.collection(organizationId));
+    const q = query(
+      assessmentsRef,
+      where('clientNameLower', '==', clientName.toLowerCase()),
+      limit(1)
+    );
+    const sumSnap = await getDocs(q);
+    if (!sumSnap.empty) {
+      const prevScore = snapshots.length > 2 ? snapshots[2].overallScore : 0;
+      await updateDoc(sumSnap.docs[0].ref, {
+        formData: prev.formData,
+        overallScore: prev.overallScore,
+        scoresSummary: summary,
+        previousScore: prevScore,
+        trend: prev.overallScore - prevScore,
+      });
+    }
+    return { success: true, message: 'Snapshot deleted; current restored from previous.' };
+  }
+  if (wasLatest && snapshots.length === 1) {
+    const currentRef = doc(db, ORGANIZATION.assessmentHistory.current(organizationId, slug));
+    const emptyFormData = {} as FormData;
+    await setDoc(currentRef, {
+      formData: emptyFormData,
+      overallScore: 0,
+      lastUpdated: serverTimestamp(),
+      organizationId,
+    }, { merge: true });
+    const assessmentsRef = collection(db, ORGANIZATION.assessments.collection(organizationId));
+    const q = query(
+      assessmentsRef,
+      where('clientNameLower', '==', clientName.toLowerCase()),
+      limit(1)
+    );
+    const sumSnap = await getDocs(q);
+    if (!sumSnap.empty) {
+      await updateDoc(sumSnap.docs[0].ref, {
+        formData: emptyFormData,
+        overallScore: 0,
+        scoresSummary: { overall: 0, categories: [] },
+        previousScore: 0,
+        trend: 0,
+      });
+    }
+    return { success: true, message: 'Snapshot deleted; current cleared.' };
+  }
+  return { success: true, message: 'Snapshot deleted.' };
+}
+
+/**
+ * Update a snapshot in place (edit flow). Does not add a new snapshot.
+ * If the snapshot is the latest, also updates current and summary so the dashboard reflects the edit.
+ */
+export async function updateSnapshotInPlace(
+  coachUid: string,
+  clientName: string,
+  snapshotId: string,
+  formData: FormData,
+  overallScore: number,
+  organizationId: string
+): Promise<{ success: boolean; message: string }> {
+  const db = getDb();
+  const slug = getClientSlug(clientName);
+  const snapRef = doc(db, ORGANIZATION.assessmentHistory.snapshots(organizationId, slug), snapshotId);
+  const snapDoc = await getDoc(snapRef);
+  if (!snapDoc.exists()) {
+    return { success: false, message: 'Snapshot not found' };
+  }
+
+  await updateDoc(snapRef, {
+    formData: sanitizeForFirestore(formData),
+    overallScore: typeof overallScore === 'number' ? overallScore : 0,
+    lastUpdated: serverTimestamp(),
+  });
+
+  const snapshots = await getSnapshots(coachUid, clientName, 2, organizationId);
+  const isLatest = snapshots[0]?.id === snapshotId;
+  if (isLatest) {
+    const currentRef = doc(db, ORGANIZATION.assessmentHistory.current(organizationId, slug));
+    await setDoc(currentRef, {
+      formData: sanitizeForFirestore(formData),
+      overallScore: typeof overallScore === 'number' ? overallScore : 0,
+      lastUpdated: serverTimestamp(),
+      clientName: clientName || 'Unnamed client',
+      organizationId,
+      coachUid: coachUid || 'unknown',
+    }, { merge: false });
+
+    const { summarizeScores } = await import('@/lib/scoring');
+    const summary = summarizeScores(formData);
+    const assessmentsRef = collection(db, ORGANIZATION.assessments.collection(organizationId));
+    const q = query(
+      assessmentsRef,
+      where('clientNameLower', '==', clientName.toLowerCase()),
+      limit(1)
+    );
+    const sumSnap = await getDocs(q);
+    if (!sumSnap.empty) {
+      const prevScore = snapshots.length >= 2 ? snapshots[1].overallScore : 0;
+      await updateDoc(sumSnap.docs[0].ref, {
+        formData: sanitizeForFirestore(formData),
+        overallScore: typeof overallScore === 'number' ? overallScore : 0,
+        scoresSummary: summary,
+        previousScore: prevScore,
+        trend: (typeof overallScore === 'number' ? overallScore : 0) - prevScore,
+      });
+    }
+  }
+
+  return { success: true, message: 'Assessment updated.' };
+}
+
+/**
+ * Restore current assessment from a specific snapshot (by ID).
+ * Updates the live current doc and optionally the summary doc so dashboard reflects the restored state.
+ */
+export async function restoreCurrentFromSnapshot(
+  coachUid: string,
+  clientName: string,
+  snapshotId: string,
+  organizationId: string
+): Promise<{ success: boolean; message: string }> {
+  const result = await restoreFromSnapshot(coachUid, clientName, snapshotId, organizationId);
+  if (!result.success) return { success: false, message: result.message };
+  const snapshots = await getSnapshots(coachUid, clientName, 2, organizationId);
+  const restored = snapshots.find((s) => s.id === snapshotId);
+  if (restored) {
+    const db = getDb();
+    const { summarizeScores } = await import('@/lib/scoring');
+    const summary = summarizeScores(restored.formData);
+    const assessmentsRef = collection(db, ORGANIZATION.assessments.collection(organizationId));
+    const q = query(
+      assessmentsRef,
+      where('clientNameLower', '==', clientName.toLowerCase()),
+      limit(1)
+    );
+    const sumSnap = await getDocs(q);
+    if (!sumSnap.empty) {
+      const prevScore = snapshots[1]?.id === snapshotId ? 0 : snapshots.find((s) => s.id !== snapshotId)?.overallScore ?? 0;
+      await updateDoc(sumSnap.docs[0].ref, {
+        formData: restored.formData,
+        overallScore: restored.overallScore,
+        scoresSummary: summary,
+        previousScore: prevScore,
+        trend: restored.overallScore - prevScore,
+      });
+    }
+  }
+  return { success: true, message: result.message };
 }
 
 /**

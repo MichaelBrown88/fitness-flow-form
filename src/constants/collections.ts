@@ -11,6 +11,8 @@ export const COLLECTIONS = {
   NOTIFICATIONS: 'notifications',
   /** Subcollection under publicReports/{token} */
   PUBLIC_REPORT_SNAPSHOTS: 'snapshots',
+  /** Subcollection under publicReports/{token} — client self-service lifestyle check-ins */
+  LIFESTYLE_CHECKINS: 'lifestyleCheckins',
   PLATFORM_ADMINS: 'platform_admins',
   SYSTEM_STATS: 'system_stats',
   AI_USAGE_LOGS: 'ai_usage_logs',

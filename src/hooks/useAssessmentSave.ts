@@ -6,7 +6,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Timestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { saveCoachAssessment, updateCoachAssessment } from '@/services/coachAssessments';
+import { saveCoachAssessment, updateCoachAssessment, saveDraftAssessment, clearDraftAssessment } from '@/services/coachAssessments';
+import { isAssessmentComplete, type PartialCategory } from '@/lib/assessmentCompleteness';
 import { requestShareArtifacts, type ShareArtifacts } from '@/services/share';
 import type { FormData } from '@/contexts/FormContext';
 import type { ScoreSummary } from '@/lib/scoring';
@@ -94,9 +95,55 @@ export function useAssessmentSave({
         // Check for edit mode first
         const editData = sessionStorage.getItem(STORAGE_KEYS.EDIT_ASSESSMENT);
         if (editData) {
-          const parsed = JSON.parse(editData);
-          if (parsed.assessmentId) {
-            // Update existing assessment
+          const parsed = JSON.parse(editData) as { assessmentId?: string; formData?: FormData; snapshotId?: string; editType?: string };
+          if (parsed.assessmentId && profile?.organizationId) {
+            if (parsed.snapshotId) {
+              // Edit existing snapshot in place (no new row); for partial, merge with current so we don't wipe other pillars
+              const { getCurrentAssessment, updateSnapshotInPlace } = await import('@/services/assessmentHistory');
+              const isPartialEdit = parsed.editType?.startsWith('partial-');
+              let dataToSave = formData;
+              if (isPartialEdit) {
+                const current = await getCurrentAssessment(user.uid, clientName, profile.organizationId);
+                dataToSave = current?.formData && Object.keys(current.formData).length > 0
+                  ? { ...current.formData, ...formData }
+                  : formData;
+              }
+              const { computeScores } = await import('@/lib/scoring');
+              const mergedScores = computeScores(dataToSave);
+              const result = await updateSnapshotInPlace(
+                user.uid,
+                clientName,
+                parsed.snapshotId,
+                dataToSave,
+                mergedScores.overall,
+                profile.organizationId
+              );
+              if (result.success) {
+                sessionStorage.removeItem(STORAGE_KEYS.EDIT_ASSESSMENT);
+                sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
+                clearDraft();
+                setIsEditMode(true);
+                try {
+                  const { publishPublicReport } = await import('@/services/publicReports');
+                  await publishPublicReport({
+                    coachUid: user.uid,
+                    assessmentId: parsed.assessmentId,
+                    formData: dataToSave,
+                    organizationId: profile.organizationId,
+                  });
+                } catch (pubErr) {
+                  logger.warn('[Assessment] Failed to update public report after snapshot edit', pubErr);
+                }
+                toast({
+                  title: UI_TOASTS.SUCCESS.ASSESSMENT_UPDATED,
+                  description: 'Assessment updated without adding a new entry.',
+                });
+                setSavingId(parsed.assessmentId);
+                setSaving(false);
+                return;
+              }
+            }
+            // No snapshotId or update failed: fall back to full doc update (creates new snapshot)
             await updateCoachAssessment(
               user.uid,
               parsed.assessmentId,
@@ -123,6 +170,30 @@ export function useAssessmentSave({
         if (partialData) {
           const { category: cat, clientName: storedName } = JSON.parse(partialData);
           category = cat;
+
+          const mode = 'partial';
+          const partialCategory = cat as PartialCategory | undefined;
+          if (!isAssessmentComplete(formData, mode, partialCategory)) {
+            const orgId = profile?.organizationId;
+            if (orgId) {
+              await saveDraftAssessment(clientName, formData, orgId);
+            }
+            try {
+              sessionStorage.setItem(
+                STORAGE_KEYS.DRAFT_ASSESSMENT,
+                JSON.stringify({ formData, timestamp: Date.now(), clientName: storedName || clientName })
+              );
+            } catch {
+              // non-fatal
+            }
+            toast({
+              title: 'Draft saved',
+              description: 'Finish the assessment to update the live report.',
+            });
+            setSaving(false);
+            saveInitiatedRef.current = false;
+            return;
+          }
           
           const { savePartialAssessment } = await import('@/services/coachAssessments');
           const result = await savePartialAssessment(
@@ -157,11 +228,34 @@ export function useAssessmentSave({
           
           setHighlightCategory(category);
           sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
+          if (profile?.organizationId) await clearDraftAssessment(storedName || clientName, profile.organizationId);
         } else {
-          // Full assessment - save and silently generate cadence recommendations
+          // Full assessment
+          if (!isAssessmentComplete(formData, 'full')) {
+            const orgId = profile?.organizationId;
+            if (orgId) {
+              await saveDraftAssessment(clientName, formData, orgId);
+            }
+            try {
+              sessionStorage.setItem(
+                STORAGE_KEYS.DRAFT_ASSESSMENT,
+                JSON.stringify({ formData, timestamp: Date.now(), clientName })
+              );
+            } catch {
+              // non-fatal
+            }
+            toast({
+              title: 'Draft saved',
+              description: 'Finish the assessment to update the live report.',
+            });
+            setSaving(false);
+            saveInitiatedRef.current = false;
+            return;
+          }
           const result = await saveCoachAssessment(user.uid, user.email, formData, scores.overall, profile?.organizationId, profile);
           assessmentId = result.assessmentId;
           shareToken = result.shareToken;
+          if (profile?.organizationId) await clearDraftAssessment(clientName, profile.organizationId);
 
           // Update client profile: lastAssessmentDate, all pillar dates, and shareToken
           if (profile?.organizationId) {

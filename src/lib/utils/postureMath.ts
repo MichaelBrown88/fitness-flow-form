@@ -1,6 +1,5 @@
-import { LandmarkResult } from '@/lib/ai/postureLandmarks';
 import type { MediaPipeLandmark } from '@/lib/types/mediapipe';
-import { calculateFrontBackDeviationSummary } from '@/lib/utils/postureAlignment';
+import { calculateFrontBackDeviationSummary, POSTURE_STANDARD } from '@/lib/utils/postureAlignment';
 import { logger } from '@/lib/utils/logger';
 
 /**
@@ -147,7 +146,7 @@ export function calculateFrontViewMetrics(landmarks: MediaPipeLandmark[], view: 
     headTiltDegrees: headTilt,
     shoulderSymmetryCm: shoulderDiffCm,
     hipSymmetryCm: hipDiffCm,
-    shoulderSeverity: (shoulderDiffCm > 1.0 ? 'Asymmetric' : 'Neutral') as 'Neutral' | 'Asymmetric',
+    shoulderSeverity: (shoulderDiffCm >= POSTURE_STANDARD.SHOULDER_NORMAL_CM ? 'Asymmetric' : 'Neutral') as 'Neutral' | 'Asymmetric',
     hipSeverity: (hipDiffCm > 1.0 ? 'Asymmetric' : 'Neutral') as 'Neutral' | 'Asymmetric',
     hipShiftPercent,
     hipShiftDirection,
@@ -247,6 +246,20 @@ export function calculateSideViewMetrics(
   const headOffset = Math.max(0, headForwardOffset); // Only count forward deviation
   const headOffsetCm = (headOffset / torsoHeight) * CM_PER_TORSO;
 
+  // CVA-like angle (industry standard): angle between ear-shoulder line and horizontal.
+  // Approximates Craniovertebral Angle; Neutral ≥50°, Mild 40–50°, Moderate 30–40°, Severe <30°.
+  const dx = ear.x - shoulder.x;
+  const dy = ear.y - shoulder.y;
+  const len = Math.sqrt(dx * dx + dy * dy) || 1e-6;
+  const angleFromVerticalRad = Math.acos(Math.max(-1, Math.min(1, (shoulder.y - ear.y) / len)));
+  const cvaLikeDegrees = 90 - (angleFromVerticalRad * (180 / Math.PI));
+
+  const headSeverityFromCva: CalculatedPostureMetrics['headSeverity'] =
+    cvaLikeDegrees >= POSTURE_STANDARD.CVA_NEUTRAL_MIN ? 'Neutral'
+      : cvaLikeDegrees >= POSTURE_STANDARD.CVA_MILD_MIN ? 'Mild'
+      : cvaLikeDegrees >= POSTURE_STANDARD.CVA_MODERATE_MIN ? 'Moderate'
+      : 'Severe';
+
   // 2. Head Pitch (Frankfurt Plane) - Ear to Eye angle
   // In a level head, ear canal and outer eye should be roughly horizontal (0°)
   // Looking Down (Tucked): Eye Y is higher (lower value) than Ear Y (ears above eyes visually)
@@ -281,11 +294,9 @@ export function calculateSideViewMetrics(
   // This is a complex calculation in 2D, but we can look at the hip position relative to shoulder/knee
   const pelvicAngle = calculateAngle(shoulder, hip, knee);
 
-  const headSeverity: CalculatedPostureMetrics['headSeverity'] = headOffsetCm < 2 ? 'Neutral' : headOffsetCm < 4 ? 'Mild' : headOffsetCm < 6 ? 'Moderate' : 'Severe';
-  
   const metrics = {
     forwardHeadCm: headOffsetCm,
-    headSeverity,
+    headSeverity: headSeverityFromCva,
     pelvicTiltDegrees: pelvicAngle,
     headPitchDegrees,
     headPitchStatus,
@@ -293,7 +304,7 @@ export function calculateSideViewMetrics(
   
   // Log calculated metrics for side view
   logger.debug(`📊 [CALCULATED METRICS - ${view.toUpperCase()}]`);
-  logger.debug(`   Forward Head: ${headOffsetCm.toFixed(2)}cm (${headSeverity})`);
+  logger.debug(`   Forward Head: ${headOffsetCm.toFixed(2)}cm (${headSeverityFromCva})`);
   logger.debug(`   Head Pitch: ${headPitchDegrees.toFixed(1)}° (${headPitchStatus})`);
   logger.debug(`   Pelvic Angle: ${pelvicAngle.toFixed(1)}°`);
   logger.debug(`   Plumb Line X: ${(plumbLineX * 100).toFixed(1)}%`);

@@ -1,5 +1,5 @@
 import { useState, useEffect, type ReactNode } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import AppShell from '@/components/layout/AppShell';
 import { Breadcrumb } from '@/components/ui/Breadcrumb';
 import { ROUTES } from '@/constants/routes';
@@ -41,7 +41,8 @@ import {
 import { useTokenAchievements } from '@/hooks/useTokenAchievements';
 import { ACHIEVEMENT_DEFINITIONS } from '@/constants/achievements';
 import { getRoadmapForClient } from '@/services/roadmaps';
-import { ClipboardCheck } from 'lucide-react';
+import { formatSnapshotTypeLabel } from '@/services/assessmentHistory';
+import { ClipboardCheck, History, Pencil, Trash2, ExternalLink } from 'lucide-react';
 
 import {
   DropdownMenu,
@@ -139,8 +140,10 @@ const ClientDetail = () => {
     clientName,
     user,
     loading,
+    loadingSnapshots,
     assessments,
     profile,
+    snapshots,
     currentAssessment,
     categoryBreakdown,
     categoryChanges,
@@ -148,13 +151,19 @@ const ClientDetail = () => {
     isEditing,
     editData,
     deleteDialog,
+    deleteSnapshotDialog,
     setIsEditing,
     setEditData,
     setDeleteDialog,
+    setDeleteSnapshotDialog,
     handleSaveProfile,
     handleNewAssessment,
+    handleFinishAssessment,
     handleDeleteAssessment,
+    handleEditSnapshot,
+    handleDeleteSnapshot,
     handleTransferClient,
+    incompleteDraft,
     handlePauseClient,
     handleUnpauseClient,
     handleArchiveClient,
@@ -162,6 +171,7 @@ const ClientDetail = () => {
     navigateBack,
   } = useClientDetail();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [transferOpen, setTransferOpen] = useState(false);
   const [pauseDialogOpen, setPauseDialogOpen] = useState(false);
@@ -170,6 +180,28 @@ const ClientDetail = () => {
   const isPaused = profile?.status === 'paused';
   const isArchived = profile?.status === 'archived';
   const { effectiveOrgId } = useAuth();
+
+  useEffect(() => {
+    if (!loading && clientName) {
+      const edit = searchParams.get('edit');
+      const transfer = searchParams.get('transfer');
+      const next = new URLSearchParams(searchParams);
+      let updated = false;
+      if (edit === 'true') {
+        setIsEditing(true);
+        next.delete('edit');
+        updated = true;
+      }
+      if (transfer === 'true') {
+        setTransferOpen(true);
+        next.delete('transfer');
+        updated = true;
+      }
+      if (updated) {
+        setSearchParams(next, { replace: true });
+      }
+    }
+  }, [loading, clientName, searchParams, setSearchParams, setIsEditing]);
 
   useEffect(() => {
     if (!effectiveOrgId || !clientName) return;
@@ -254,6 +286,21 @@ const ClientDetail = () => {
         { label: 'Dashboard', href: ROUTES.DASHBOARD },
         { label: clientName },
       ]} />
+
+      {incompleteDraft && (
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-center justify-between gap-3">
+          <p className="text-sm font-medium text-amber-900">
+            This client has an incomplete assessment saved. Finish it to update their live report.
+          </p>
+          <Button
+            size="sm"
+            onClick={handleFinishAssessment}
+            className="shrink-0 bg-amber-600 hover:bg-amber-700 text-white rounded-lg"
+          >
+            Finish assessment
+          </Button>
+        </div>
+      )}
 
       {/* Custom header row: client name + Report button */}
       <div className="flex items-center justify-between gap-3 mb-6">
@@ -425,7 +472,74 @@ const ClientDetail = () => {
           )}
         </CollapsibleSection>
 
-        {/* 5. Client Roadmap */}
+        {/* 5. Assessment history */}
+        <CollapsibleSection
+          title="Assessment history"
+          icon={<History className="h-5 w-5 text-primary" />}
+          defaultOpen={true}
+        >
+          {loadingSnapshots ? (
+            <div className="py-8 flex justify-center">
+              <div className="w-6 h-6 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : snapshots.length === 0 ? (
+            <p className="text-sm text-slate-400 py-4 text-center">No assessment history yet. Complete an assessment to see past snapshots here.</p>
+          ) : (
+            <ul className="space-y-2">
+              {snapshots.map((snapshot) => (
+                <li
+                  key={snapshot.id ?? snapshot.timestamp.toMillis()}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-3"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-sm font-medium text-slate-900">
+                      {snapshot.timestamp?.toDate?.()?.toLocaleDateString?.() ?? '—'}
+                    </span>
+                    <span className="text-xs text-slate-500 font-medium tracking-wide">
+                      {formatSnapshotTypeLabel(snapshot.type)}
+                    </span>
+                    <span className="text-sm font-semibold text-slate-700">{snapshot.overallScore}/100</span>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {assessments[0]?.id && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 text-xs text-slate-600"
+                        asChild
+                      >
+                        <Link to={`/coach/assessments/${assessments[0].id}?clientName=${encodeURIComponent(clientName)}`}>
+                          <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                          View
+                        </Link>
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-2 text-xs text-slate-600"
+                      onClick={() => handleEditSnapshot(snapshot)}
+                    >
+                      <Pencil className="h-3.5 w-3.5 mr-1" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                      onClick={() => setDeleteSnapshotDialog({ snapshotId: snapshot.id ?? '' })}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-1" />
+                      Delete
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CollapsibleSection>
+
+        {/* 6. Client Roadmap */}
         <CollapsibleSection
           title="Client Roadmap"
           icon={<Map className="h-5 w-5 text-primary" />}
@@ -599,6 +713,26 @@ const ClientDetail = () => {
               onClick={() => deleteDialog && handleDeleteAssessment(deleteDialog.id)}
             >
               Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete snapshot confirmation */}
+      <Dialog open={!!deleteSnapshotDialog} onOpenChange={(open) => !open && setDeleteSnapshotDialog(null)}>
+        <DialogContent className="rounded-2xl max-w-[90vw] sm:max-w-[425px]">
+          <DialogHeader className="text-left">
+            <DialogTitle className="text-xl font-bold tracking-tight">Remove snapshot</DialogTitle>
+            <DialogDescription className="text-sm font-medium text-slate-500 pt-2">
+              Remove this assessment snapshot from history? If it was the latest, current will be restored from the previous snapshot.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-row gap-2 mt-6">
+            <Button variant="outline" onClick={() => setDeleteSnapshotDialog(null)} className="flex-1 rounded-xl font-bold h-11">
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={() => void handleDeleteSnapshot()} className="flex-1 rounded-xl font-bold h-11">
+              Remove
             </Button>
           </DialogFooter>
         </DialogContent>

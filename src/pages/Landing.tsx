@@ -80,7 +80,7 @@ const pricingPlans = [
     features: [
       { text: 'Everything in Professional', included: true },
       { text: 'Multiple locations', included: true },
-      { text: 'Custom domain & branding', included: true },
+      { text: 'Custom branding (logo & colours) and custom domain', included: true },
       { text: 'Dedicated account manager', included: true },
       { text: 'Custom integrations', included: true },
       { text: 'SLA guarantee', included: true },
@@ -98,7 +98,7 @@ const faqItems = [
   },
   {
     question: 'Can I customize the reports with my branding?',
-    answer: 'Yes! All plans include the ability to add your logo and brand colors to reports. Professional and Enterprise plans offer additional customization options including custom domains for sharing reports.',
+    answer: 'Reports always show "Powered by One Assess" so clients know the platform behind your brand. Your logo and brand colours on reports and in the app are available as a paid add-on on Professional and Enterprise plans. Custom domains for sharing reports are also available on higher tiers.',
   },
   {
     question: 'Is my clients\' data secure?',

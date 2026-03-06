@@ -107,7 +107,8 @@ export function PackageSelectionStep({
         <div className="space-y-2">
           {[
             'Unlimited assessments per client',
-            'White-labeled reports',
+            'Custom branding (logo & colours) on paid plans',
+            'Powered by One Assess on every report',
             'Clinical Logic Engine',
           ].map((feature) => (
             <div key={feature} className="flex items-center gap-2 text-xs text-slate-600">

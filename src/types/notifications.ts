@@ -13,6 +13,7 @@ import type { Timestamp } from 'firebase/firestore';
 /** Categories of notifications */
 export type NotificationType =
   | 'assessment_complete'    // Client: your assessment is ready
+  | 'roadmap_ready'          // Client: your personalised plan is ready
   | 'reassessment_due'       // Client: time for a retest
   | 'lifestyle_reminder'     // Client: complete your lifestyle check-in
   | 'new_client'             // Coach: a new client was added

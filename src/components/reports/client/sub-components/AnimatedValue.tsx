@@ -32,20 +32,23 @@ export const AnimatedValue: React.FC<AnimatedValueProps> = ({
 }) => {
   const hasAnimation = from !== undefined && from !== value;
 
-  const { ref, displayValue, directionClassName } = useAnimateOnView({
+  const { ref, displayValue, directionClassName, isPulsing } = useAnimateOnView({
     value,
     from: from ?? value,
     decimals,
     delta,
     duration,
+    pulseFirst: hasAnimation,
   });
 
   if (!hasAnimation) {
     return <span>{value.toFixed(decimals)}{suffix}</span>;
   }
 
+  const pulseClass = isPulsing ? 'inline-block scale-110 transition-transform duration-200' : '';
+
   return (
-    <span ref={ref} className={directionClassName}>
+    <span ref={ref} className={`${directionClassName} ${pulseClass}`.trim()}>
       {displayValue}{suffix}
     </span>
   );

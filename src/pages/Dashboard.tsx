@@ -38,7 +38,13 @@ const Dashboard = () => {
     clientHistoryDialog,
     setClientHistoryDialog,
     clientHistory,
+    clientSummaryId,
     loadingHistory,
+    handleViewHistory,
+    deleteSnapshotDialog,
+    setDeleteSnapshotDialog,
+    handleEditSnapshot,
+    handleDeleteSnapshot,
     analytics,
     filteredClients,
     reassessmentQueue,
@@ -192,6 +198,7 @@ const Dashboard = () => {
                 coachMap={coachMap}
                 orgDefaultIntervals={orgSettings?.defaultCadence?.intervals}
                 orgDefaultActivePillars={orgSettings?.defaultCadence?.activePillars}
+                onViewHistory={handleViewHistory}
               />
             )}
 
@@ -217,15 +224,20 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <DashboardDialogs 
+        <DashboardDialogs
           deleteDialog={deleteDialog}
           setDeleteDialog={setDeleteDialog}
           onDelete={handleDelete}
           clientHistoryDialog={clientHistoryDialog}
           setClientHistoryDialog={setClientHistoryDialog}
           clientHistory={clientHistory}
+          clientSummaryId={clientSummaryId}
           loadingHistory={loadingHistory}
           onNewAssessment={handleNewAssessmentForClient}
+          onEditSnapshot={handleEditSnapshot}
+          deleteSnapshotDialog={deleteSnapshotDialog}
+          setDeleteSnapshotDialog={setDeleteSnapshotDialog}
+          onDeleteSnapshot={handleDeleteSnapshot}
         />
       </AppShell>
     </ErrorBoundary>

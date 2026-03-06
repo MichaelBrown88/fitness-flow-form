@@ -38,11 +38,13 @@ export function scoreCardio(form: FormData, age: number, gender: string): ScoreC
       : 0)
     : 0;
 
-  const fitnessScore = hasTest
-    ? (hasHrr
-      ? clamp(hrrScore * 0.7 + rhrScore * 0.3)
-      : clamp(recoveryScore * 0.7 + rhrScore * 0.3))
-    : rhrScore;
+  const cardioSubScores = [
+    hasRhr ? rhrScore : 0,
+    hasHrr ? hrrScore : hasHr60 ? recoveryScore : 0,
+  ].filter(s => s > 0);
+  const fitnessScore = cardioSubScores.length > 0
+    ? clamp(cardioSubScores.reduce((a, b) => a + b, 0) / cardioSubScores.length)
+    : 0;
 
   const cardioClass =
     fitnessScore >= 90 ? 'Excellent'

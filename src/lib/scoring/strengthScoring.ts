@@ -70,23 +70,15 @@ export function scoreStrength(form: FormData, age: number, gender: string): Scor
     details.push({ id: 'grip', label: 'Grip (avg)', value: Math.round(gripAvg) || '-', unit: 'kg', score: Math.round(gripScore) });
   }
 
-  const filledTests = [hasPushups, hasSquats, hasPlank, hasGrip].filter(Boolean).length;
-
-  let score: number;
-  if (filledTests === 0) {
-    score = 0;
-  } else if (hasGrip) {
-    score = Math.round((pushScore * 0.3 + squatScore * 0.25 + plankScore * 0.25 + gripScore * 0.2) * (4 / filledTests));
-  } else {
-    const availableTests = [hasPushups, hasSquats, hasPlank].filter(Boolean).length;
-    if (availableTests === 3) {
-      score = Math.round(pushScore * 0.375 + squatScore * 0.3125 + plankScore * 0.3125);
-    } else if (availableTests === 2) {
-      score = Math.round(((hasPushups ? pushScore : 0) + (hasSquats ? squatScore : 0) + (hasPlank ? plankScore : 0)) / 2);
-    } else {
-      score = Math.round((hasPushups ? pushScore : 0) + (hasSquats ? squatScore : 0) + (hasPlank ? plankScore : 0));
-    }
-  }
+  const subScores = [
+    hasPushups ? pushScore : 0,
+    hasSquats ? squatScore : 0,
+    hasPlank ? plankScore : 0,
+    hasGrip ? gripScore : 0,
+  ].filter(s => s > 0);
+  const score = subScores.length > 0
+    ? Math.round(subScores.reduce((a, b) => a + b, 0) / subScores.length)
+    : 0;
 
   const strengths: string[] = [];
   const weaknesses: string[] = [];
@@ -110,7 +102,7 @@ export function scoreStrength(form: FormData, age: number, gender: string): Scor
     }
   });
 
-  if (score >= 75 && filledTests >= 2) strengths.push('Balanced muscular development across tests');
+  if (score >= 75 && subScores.length >= 2) strengths.push('Balanced muscular development across tests');
 
   return { id: 'strength', title: 'Functional Strength', score, details, strengths, weaknesses };
 }

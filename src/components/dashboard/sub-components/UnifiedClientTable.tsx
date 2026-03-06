@@ -28,6 +28,7 @@ interface UnifiedClientTableProps {
   coachMap?: Map<string, string>;
   orgDefaultIntervals?: Record<string, number>;
   orgDefaultActivePillars?: PartialAssessmentCategory[];
+  onViewHistory?: (clientName: string) => void;
 }
 
 const ALL_PILLARS: PartialAssessmentCategory[] = ['bodycomp', 'posture', 'fitness', 'strength', 'lifestyle'];
@@ -161,6 +162,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
   coachMap,
   orgDefaultIntervals,
   orgDefaultActivePillars,
+  onViewHistory,
 }) => {
   const navigate = useNavigate();
   const [sortKey, setSortKey] = useState<SortKey>('lastAssessed');
@@ -358,6 +360,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                       <ClientActionsDropdown
                         clientName={client.name}
                         latestAssessmentId={client.assessments[0]?.id}
+                        onViewHistory={onViewHistory}
                       />
                     </td>
                   </tr>
@@ -419,7 +422,11 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                     </p>
                   </div>
                   <div className="shrink-0" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-                    <ClientActionsDropdown clientName={client.name} latestAssessmentId={client.assessments[0]?.id} />
+                    <ClientActionsDropdown
+                      clientName={client.name}
+                      latestAssessmentId={client.assessments[0]?.id}
+                      onViewHistory={onViewHistory}
+                    />
                   </div>
                 </div>
 

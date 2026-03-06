@@ -20,4 +20,7 @@ export const STORAGE_KEYS = {
 
   // Assessment draft auto-save
   DRAFT_ASSESSMENT: 'draftAssessment',
+
+  // Assessment phase (for back/refresh persistence)
+  ASSESSMENT_PHASE: 'assessment_phase',
 } as const;

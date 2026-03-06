@@ -46,6 +46,7 @@ alwaysApply: true
 6. **No Hardcoding**:
    - Colors -> Tailwind classes/CSS variables.
    - Secrets -> `import.meta.env`.
+7. **Design system:** Follow `docs/DESIGN_SYSTEM.md` for colours, spacing, radius, motion, and branding so UI stays consistent.
 
 ## SaaS Readiness & Security
 

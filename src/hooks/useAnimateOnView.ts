@@ -2,6 +2,8 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 
 type Direction = 'up' | 'down' | 'neutral';
 
+const DEFAULT_PULSE_MS = 280;
+
 interface UseAnimateOnViewOptions {
   /** The target value to animate toward */
   value: number;
@@ -13,6 +15,12 @@ interface UseAnimateOnViewOptions {
   delta?: number;
   /** Animation duration in ms */
   duration?: number;
+  /** If true, briefly "pulse" on the from value before running the count-up (when from !== value) */
+  pulseFirst?: boolean;
+  /** Duration of the pulse phase in ms */
+  pulseDurationMs?: number;
+  /** Called when the count-up animation completes (after pulse if pulseFirst) */
+  onComplete?: () => void;
 }
 
 interface UseAnimateOnViewReturn {
@@ -26,6 +34,8 @@ interface UseAnimateOnViewReturn {
   directionClassName: string;
   /** Whether the element is currently visible */
   isInView: boolean;
+  /** True during the brief pulse phase before count-up (use for scale/ring styling) */
+  isPulsing: boolean;
 }
 
 /**
@@ -43,10 +53,15 @@ export function useAnimateOnView(opts: UseAnimateOnViewOptions): UseAnimateOnVie
     decimals = 0,
     delta,
     duration = 900,
+    pulseFirst = false,
+    pulseDurationMs = DEFAULT_PULSE_MS,
+    onComplete,
   } = opts;
 
   const [displayValue, setDisplayValue] = useState(formatNum(from, decimals));
   const [isInView, setIsInView] = useState(false);
+  const [isPulsing, setIsPulsing] = useState(false);
+  const pulseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const rafRef = useRef<number>(0);
   const nodeRef = useRef<Element | null>(null);
@@ -64,35 +79,51 @@ export function useAnimateOnView(opts: UseAnimateOnViewOptions): UseAnimateOnVie
         ? 'text-red-500'
         : '';
 
-  // Animation runner
-  const runAnimation = useCallback(() => {
+  // Count-up only (ease-out cubic)
+  const runCountUp = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
-
     const startTime = performance.now();
     const diff = value - from;
-
     if (diff === 0) {
       setDisplayValue(formatNum(value, decimals));
       return;
     }
-
     function tick(now: number) {
       const elapsed = now - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      // Ease-out cubic
       const eased = 1 - Math.pow(1 - progress, 3);
       const current = from + diff * eased;
       setDisplayValue(formatNum(current, decimals));
-
       if (progress < 1) {
         rafRef.current = requestAnimationFrame(tick);
+      } else {
+        onComplete?.();
       }
     }
-
-    // Reset to start value then animate
     setDisplayValue(formatNum(from, decimals));
     rafRef.current = requestAnimationFrame(tick);
-  }, [value, from, decimals, duration]);
+  }, [value, from, decimals, duration, onComplete]);
+
+  // Animation runner: optionally pulse on from value, then count-up
+  const runAnimation = useCallback(() => {
+    if (pulseTimeoutRef.current) clearTimeout(pulseTimeoutRef.current);
+    const diff = value - from;
+    if (diff === 0) {
+      setDisplayValue(formatNum(value, decimals));
+      return;
+    }
+    setDisplayValue(formatNum(from, decimals));
+    if (pulseFirst) {
+      setIsPulsing(true);
+      pulseTimeoutRef.current = setTimeout(() => {
+        pulseTimeoutRef.current = null;
+        setIsPulsing(false);
+        runCountUp();
+      }, pulseDurationMs);
+    } else {
+      runCountUp();
+    }
+  }, [value, from, decimals, pulseFirst, pulseDurationMs, runCountUp]);
 
   // Ref callback: wire up IntersectionObserver
   const setRef = useCallback(
@@ -125,15 +156,21 @@ export function useAnimateOnView(opts: UseAnimateOnViewOptions): UseAnimateOnVie
     [runAnimation],
   );
 
+  // When value/from change while in view (e.g. two-phase gap animation), re-run
+  useEffect(() => {
+    if (isInView && nodeRef.current) runAnimation();
+  }, [value, from]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (pulseTimeoutRef.current) clearTimeout(pulseTimeoutRef.current);
       if (observerRef.current) observerRef.current.disconnect();
     };
   }, []);
 
-  return { ref: setRef, displayValue, direction, directionClassName, isInView };
+  return { ref: setRef, displayValue, direction, directionClassName, isInView, isPulsing };
 }
 
 function formatNum(n: number, decimals: number): string {

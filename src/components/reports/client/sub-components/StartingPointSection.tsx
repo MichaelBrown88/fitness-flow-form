@@ -6,6 +6,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { CardInfoDrawer } from '../../CardInfoDrawer';
 import { useAnimateOnView } from '@/hooks/useAnimateOnView';
 
+const OVERALL_SCORE_ANIMATION_DURATION_MS = 1200;
+
 interface StartingPointSectionProps {
   scores: { overall: number };
   previousOverallScore?: number | null;
@@ -30,7 +32,7 @@ export const StartingPointSection: React.FC<StartingPointSectionProps> = ({
   const { ref: scoreRef, displayValue: animatedScore } = useAnimateOnView({
     value: scores.overall,
     from: animateFrom,
-    duration: 1200,
+    duration: OVERALL_SCORE_ANIMATION_DURATION_MS,
   });
   const scoreDiff = previousOverallScore != null ? scores.overall - previousOverallScore : null;
   const hasScoreChange = scoreDiff !== null && scoreDiff !== 0;

@@ -1,5 +1,5 @@
-import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, limit, getDocs, orderBy, startAfter } from 'firebase/firestore';
-import type { Timestamp, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, collection, addDoc, query, where, limit, getDocs, onSnapshot } from 'firebase/firestore';
+import type { Timestamp, Unsubscribe } from 'firebase/firestore';
 import type { FormData } from '@/contexts/FormContext';
 import { getDb, getFirebaseAuth } from '@/services/firebase';
 import { sanitizeForFirestore } from '@/lib/utils/firebaseUtils';
@@ -209,6 +209,42 @@ export async function getPublicSnapshot(
 }
 
 /**
+ * Subscribe to a public report document by token (real-time updates).
+ * Returns an unsubscribe function. Callback receives the doc or null if missing/invalid.
+ */
+export function subscribeToPublicReport(
+  token: string,
+  onData: (data: PublicReportDoc | null) => void,
+  onError?: (err: Error) => void,
+): Unsubscribe {
+  const ref = doc(getDb(), COLLECTIONS.PUBLIC_REPORTS, token);
+  return onSnapshot(
+    ref,
+    (snapshot) => {
+      if (!snapshot.exists()) {
+        onData(null);
+        return;
+      }
+      const data = snapshot.data() as Omit<PublicReportDoc, 'shareToken'>;
+      if (data.expiresAt && data.expiresAt.toMillis() < Date.now()) {
+        onData(null);
+        return;
+      }
+      if (data.visibility !== 'public') {
+        onData(null);
+        return;
+      }
+      onData({ shareToken: token, ...data } as PublicReportDoc);
+    },
+    (err) => {
+      logger.error('[subscribeToPublicReport] Error:', err);
+      onError?.(err);
+      onData(null);
+    },
+  );
+}
+
+/**
  * Get a public report by its secure token
  */
 export async function getPublicReportByToken(token: string): Promise<PublicReportDoc | null> {
@@ -242,6 +278,31 @@ export async function getPublicReportByToken(token: string): Promise<PublicRepor
     logger.error(`[getPublicReportByToken] Error fetching doc:`, err);
     throw err;
   }
+}
+
+export interface LifestyleCheckinPayload {
+  activityLevel?: string;
+  sleepArchetype?: string;
+  stressLevel?: string;
+  nutritionHabits?: string;
+  hydrationHabits?: string;
+  stepsPerDay?: string;
+}
+
+/**
+ * Submit a lifestyle check-in for a token-scoped public report.
+ * Writes to publicReports/{token}/lifestyleCheckins.
+ */
+export async function submitLifestyleCheckin(
+  token: string,
+  payload: LifestyleCheckinPayload,
+): Promise<string> {
+  const colRef = collection(getDb(), COLLECTIONS.PUBLIC_REPORTS, token, COLLECTIONS.LIFESTYLE_CHECKINS);
+  const docRef = await addDoc(colRef, {
+    ...payload,
+    createdAt: serverTimestamp(),
+  });
+  return docRef.id;
 }
 
 

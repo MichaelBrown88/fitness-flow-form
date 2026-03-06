@@ -266,6 +266,14 @@ service cloud.firestore {
         allow read: if true;
         allow write: if isAuthenticated();
       }
+      
+      // Token-scoped lifestyle check-ins: client self-service (token in path is secret)
+      // App must use limit() on list queries
+      match /lifestyleCheckins/{checkinId} {
+        allow read: if true;
+        allow create: if true;
+        allow update, delete: if isAuthenticated();
+      }
     }
 
     // Collection group query for public roadmap access via share token

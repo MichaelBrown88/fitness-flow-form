@@ -87,6 +87,12 @@ export const ORGANIZATION = {
     collection: (orgId: string) => `organizations/${orgId}/assessments` as const,
     doc: (orgId: string, assessmentId: string) => `organizations/${orgId}/assessments/${assessmentId}` as const,
   },
+
+  /** Incomplete assessment drafts (Save for Later); one doc per client, cleared when report is updated */
+  assessmentDrafts: {
+    collection: (orgId: string) => `organizations/${orgId}/assessmentDrafts` as const,
+    doc: (orgId: string, clientSlug: string) => `organizations/${orgId}/assessmentDrafts/${clientSlug}` as const,
+  },
   
   /** Usage and cost tracking within an organization */
   usage: {

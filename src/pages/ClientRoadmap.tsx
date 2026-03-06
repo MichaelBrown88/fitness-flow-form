@@ -3,6 +3,7 @@ import { ArrowLeft, Check, Loader2, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { ROUTES } from '@/constants/routes';
+import AppShell from '@/components/layout/AppShell';
 import { RoadmapEditor } from '@/components/roadmap/RoadmapEditor';
 import { RoadmapBuilder } from '@/components/roadmap/RoadmapBuilder';
 import { ProgressReviewModal } from '@/components/roadmap/ProgressReviewModal';
@@ -33,39 +34,66 @@ export default function ClientRoadmap() {
     dismissSuggestions,
   } = useRoadmapData(clientName);
 
+  const clientPath = `/client/${encodeURIComponent(clientName)}`;
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      <AppShell title={clientName ? `${clientName}'s Roadmap` : 'Roadmap'}>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AppShell>
     );
   }
-
-  const clientPath = `/client/${encodeURIComponent(clientName)}`;
 
   const showBuilder = needsCreation || (items.length === 0 && generatedBlocks.length > 0);
 
   if (showBuilder) {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <Breadcrumb items={[
-          { label: 'Dashboard', href: ROUTES.DASHBOARD },
-          { label: clientName, href: clientPath },
-          { label: 'Create Roadmap' },
-        ]} />
-        <RoadmapBuilder
-          clientName={clientName}
-          blocks={generatedBlocks}
-          clientGoals={clientGoals}
-          onCreate={handleCreateRoadmap}
-          onAcceptAndSend={handleCreateAndShare}
-          saving={saving}
-        />
-      </div>
+      <AppShell
+        title="Create Roadmap"
+        actions={
+          <Button variant="ghost" size="sm" onClick={() => navigate(clientPath)} className="h-9 w-9 p-0">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        }
+      >
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          <Breadcrumb items={[
+            { label: 'Dashboard', href: ROUTES.DASHBOARD },
+            { label: clientName, href: clientPath },
+            { label: 'Create Roadmap' },
+          ]} />
+          <RoadmapBuilder
+            clientName={clientName}
+            blocks={generatedBlocks}
+            clientGoals={clientGoals}
+            onCreate={handleCreateRoadmap}
+            onAcceptAndSend={handleCreateAndShare}
+            saving={saving}
+          />
+        </div>
+      </AppShell>
     );
   }
 
   return (
+    <AppShell
+      title={clientName ? `${clientName}'s Roadmap` : 'Roadmap'}
+      actions={
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" onClick={() => navigate(clientPath)} className="h-9 w-9 p-0">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleShare} disabled={!roadmapId}>
+            {shareState === 'copied'
+              ? <><Check className="h-4 w-4 mr-1.5" />Copied!</>
+              : <><Send className="h-4 w-4 mr-1.5" />Send to Client</>
+            }
+          </Button>
+        </div>
+      }
+    >
     <div className="max-w-3xl mx-auto px-4 py-8">
       <Breadcrumb items={[
         { label: 'Dashboard', href: ROUTES.DASHBOARD },
@@ -73,20 +101,7 @@ export default function ClientRoadmap() {
         { label: 'Roadmap' },
       ]} />
 
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate(clientPath)}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="text-2xl font-bold">{clientName}&apos;s Journey</h1>
-        </div>
-        <Button variant="outline" size="sm" onClick={handleShare} disabled={!roadmapId}>
-          {shareState === 'copied'
-            ? <><Check className="h-4 w-4 mr-1.5" />Copied!</>
-            : <><Send className="h-4 w-4 mr-1.5" />Send to Client</>
-          }
-        </Button>
-      </div>
+      <h1 className="text-2xl font-bold mb-6">{clientName}&apos;s Journey</h1>
 
       <RoadmapEditor
         summary={summary}
@@ -105,5 +120,6 @@ export default function ClientRoadmap() {
         />
       )}
     </div>
+    </AppShell>
   );
 }

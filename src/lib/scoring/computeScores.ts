@@ -19,10 +19,13 @@ export function computeScores(form: FormData): ScoreSummary {
     scoreMovementQuality(form, age, gender),
     scoreLifestyle(form, age, gender),
   ];
+  const filledCategories = categories.filter(c => c.score > 0);
   const overall =
-    Math.round(
-      categories.reduce((acc, c) => acc + c.score, 0) / (categories.length || 1)
-    );
+    filledCategories.length > 0
+      ? Math.round(
+          filledCategories.reduce((acc, c) => acc + c.score, 0) / filledCategories.length
+        )
+      : 0;
 
   const synthesis = generateSynthesis(categories, form);
 

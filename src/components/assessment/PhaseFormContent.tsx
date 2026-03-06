@@ -15,7 +15,7 @@ import { generateCoachPlan, generateBodyCompInterpretation } from '@/lib/recomme
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useAssessmentNavigation } from '@/hooks/useAssessmentNavigation';
+import { useAssessmentFlow } from '@/hooks/useAssessmentFlow';
 import { useAssessmentSave } from '@/hooks/useAssessmentSave';
 import { useCameraHandler } from '@/hooks/useCameraHandler';
 import { useDemoAssessment } from '@/hooks/useDemoAssessment';
@@ -24,6 +24,9 @@ import { useAssessmentDraft, getDraft, clearDraft } from '@/hooks/useAssessmentD
 import { logger } from '@/lib/utils/logger';
 import { UI_DRAFT } from '@/constants/ui';
 import { ROUTES } from '@/constants/routes';
+import { STORAGE_KEYS } from '@/constants/storageKeys';
+import { ASSESSMENT_SUBMIT_LABELS } from '@/constants/assessment';
+import { isAssessmentComplete, type PartialCategory } from '@/lib/assessmentCompleteness';
 import { AssessmentSidebar } from './AssessmentSidebar';
 import { AssessmentModals } from './AssessmentModals';
 import { SingleFieldFlow } from './SingleFieldFlow';
@@ -69,8 +72,7 @@ export const PhaseFormContent = ({
 
   const activeClientName = clientNameFromStorage || formData.fullName || '';
   
-  // Use navigation hook
-  const navigation = useAssessmentNavigation({ formData, orgSettings });
+  const flow = useAssessmentFlow({ formData, orgSettings });
   const {
     activePhaseIdx,
     setActivePhaseIdx,
@@ -85,7 +87,15 @@ export const PhaseFormContent = ({
     isSectionCompleted,
     isPhaseCompleted,
     progressValue,
-  } = navigation;
+    expandedSections,
+    setExpandedSections,
+    activeFieldIdx,
+    setActiveFieldIdx,
+    isReviewMode,
+    setIsReviewMode,
+    maxUnlockedPhaseIdx,
+    toggleSection: flowToggleSection,
+  } = flow;
 
 
   // Load current assessment data when starting partial assessment
@@ -172,11 +182,13 @@ export const PhaseFormContent = ({
     navigate(ROUTES.DASHBOARD);
   }, [navigate, toast]);
 
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [recentlyCompletedSections, setRecentlyCompletedSections] = useState<Set<string>>(new Set());
-  const [activeFieldIdx, setActiveFieldIdx] = useState(0);
   const [isDemoAssessment, setIsDemoAssessment] = useState(false);
-  const [isReviewMode, setIsReviewMode] = useState(false);
+
+  const toggleSection = (sectionId: string) => {
+    flowToggleSection(sectionId);
+    setSidebarOpen(false);
+  };
   
   const scores = useMemo(() => {
     try {
@@ -299,12 +311,6 @@ export const PhaseFormContent = ({
     toast,
   });
 
-
-
-  const maxUnlockedPhaseIdx = useMemo(() => {
-    return totalPhases - 1;
-  }, [totalPhases]);
-
   const anyAssessmentCompleted = useMemo(() => {
     const categories = ['inbodyScore', 'postureHeadOverall', 'pushupsOneMinuteReps', 'cardioTestSelected'];
     return categories.some((field) => {
@@ -312,6 +318,27 @@ export const PhaseFormContent = ({
       return val !== '' && val !== undefined && val !== null;
     });
   }, [formData]);
+
+  const assessmentMode = isPartialAssessment ? 'partial' : 'full';
+  const partialCategoryFromStorage = useMemo((): PartialCategory | undefined => {
+    try {
+      const raw = sessionStorage.getItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
+      if (!raw) return undefined;
+      const { category } = JSON.parse(raw);
+      return category;
+    } catch {
+      return undefined;
+    }
+  }, []);
+  const isComplete = isAssessmentComplete(formData, assessmentMode, partialCategoryFromStorage);
+  const hasExistingContext = isPartialAssessment || !!sessionStorage.getItem(STORAGE_KEYS.EDIT_ASSESSMENT);
+  const submitButtonLabel = !isComplete
+    ? ASSESSMENT_SUBMIT_LABELS.SAVE_FOR_LATER
+    : hasExistingContext
+      ? ASSESSMENT_SUBMIT_LABELS.UPDATE_REPORT
+      : ASSESSMENT_SUBMIT_LABELS.GENERATE_REPORT;
+  const submitButtonDisabled = !anyAssessmentCompleted;
+  const submitButtonHint = !anyAssessmentCompleted ? ASSESSMENT_SUBMIT_LABELS.COMPLETE_SECTION_HINT : submitButtonLabel;
 
   const getAllSections = useCallback(() => {
     const sections: SectionType[] = [];
@@ -340,8 +367,6 @@ export const PhaseFormContent = ({
       return () => clearTimeout(timeout);
     }
   }, [activePhase, activePhaseIdx, totalPhases, visiblePhases, setActivePhaseIdx]);
-
-  useEffect(() => { setActiveFieldIdx(0); }, [activePhaseIdx, expandedSections]);
 
   const handleViewResults = () => {
     if (activePhaseIdx === totalPhases - 1) return;
@@ -392,17 +417,6 @@ export const PhaseFormContent = ({
       void runDemoSequential();
     }
   }, [demoTrigger, isDemoAssessment, runDemoSequential]);
-
-  const toggleSection = (sectionId: string) => {
-    setIsReviewMode(true);
-    const phaseIdx = phaseDefinitions.findIndex(p => p.sections?.some(s => s.id === sectionId));
-    if (phaseIdx !== -1) {
-      setActivePhaseIdx(phaseIdx);
-    }
-    setExpandedSections({ [sectionId]: true });
-    setActiveFieldIdx(0);
-    setSidebarOpen(false); 
-  };
 
   const renderAllSections = () => {
     if (activePhase?.id === 'P7') return null;
@@ -546,10 +560,10 @@ export const PhaseFormContent = ({
               <div className="flex items-center justify-center border-t border-slate-200 pt-8">
                 <Button
                   onClick={handleViewResults}
-                  disabled={!anyAssessmentCompleted}
+                  disabled={submitButtonDisabled}
                   className="h-14 px-10 rounded-2xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 shadow-lg transition-all hover:scale-[1.02] disabled:opacity-40 disabled:hover:scale-100 disabled:shadow-none"
                 >
-                  {isPartialAssessment ? 'Update Live Report' : anyAssessmentCompleted ? 'Generate Report' : 'Complete a section to generate report'}
+                  {submitButtonHint}
                 </Button>
               </div>
             )}
