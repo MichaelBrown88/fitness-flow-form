@@ -26,8 +26,8 @@ function ItemCard({
 }) {
   if (items.length === 0) return null;
   return (
-    <div className={`rounded-xl border border-slate-200 bg-white p-4 shadow-sm ${borderClass}`}>
-      <h4 className="mb-3 flex items-center gap-2 text-sm font-bold text-slate-700">
+    <div className={`rounded-xl border border-border bg-card p-4 shadow-sm ${borderClass}`}>
+      <h4 className="mb-3 flex items-center gap-2 text-sm font-bold text-foreground">
         <Icon className="h-4 w-4 shrink-0" />
         {title}
       </h4>
@@ -35,7 +35,7 @@ function ItemCard({
         {items.map((item, i) => (
           <li
             key={i}
-            className={`flex gap-2 text-sm text-slate-600 ${itemBorderClass ? `pl-3 ${itemBorderClass}` : ''}`}
+            className={`flex gap-2 text-sm text-foreground-secondary ${itemBorderClass ? `pl-3 ${itemBorderClass}` : ''}`}
           >
             {item}
           </li>
@@ -59,9 +59,9 @@ export function CoachReportInternalNotes({ plan }: CoachReportInternalNotesProps
     <section className="space-y-6">
       <div className="flex items-center gap-3">
         <div className="bg-primary p-2 rounded-lg">
-          <Target className="h-5 w-5 text-white" />
+          <Target className="h-5 w-5 text-primary-foreground" />
         </div>
-        <h3 className="text-xl font-bold text-slate-900">Key Findings & Priorities</h3>
+        <h3 className="text-xl font-bold text-foreground">Priorities & limitations</h3>
       </div>
 
       <div className="space-y-4">
@@ -86,12 +86,12 @@ export function CoachReportInternalNotes({ plan }: CoachReportInternalNotesProps
           borderClass="border-l-4 border-l-slate-400"
         />
         {plan.clientScript.threeMonthOutlook.length > 0 && (
-          <div className="rounded-xl border border-slate-200 border-l-4 border-l-sky-500 bg-white p-4 shadow-sm">
-            <h4 className="mb-3 flex items-center gap-2 text-sm font-bold text-slate-700">
+          <div className="rounded-xl border border-border border-l-4 border-l-primary bg-card p-4 shadow-sm">
+            <h4 className="mb-3 flex items-center gap-2 text-sm font-bold text-foreground">
               <Target className="h-4 w-4 shrink-0" />
               Outlook
             </h4>
-            <p className="text-sm text-slate-600 leading-relaxed">
+            <p className="text-sm text-foreground-secondary leading-relaxed">
               {plan.clientScript.threeMonthOutlook.join(' ')}
             </p>
           </div>

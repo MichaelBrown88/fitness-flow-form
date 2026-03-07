@@ -10,13 +10,6 @@ interface ExerciseGuidanceProps {
   plan: CoachPlan;
 }
 
-function formatKeyIssue(issue: string): string {
-  return issue
-    .split('-')
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ');
-}
-
 function getMovementHint(exercises: Array<{ name: string }>): string | null {
   if (!exercises.length) return null;
   const first = exercises[0].name.toLowerCase();
@@ -53,34 +46,22 @@ export function CoachReportExerciseGuidance({ plan }: ExerciseGuidanceProps) {
   return (
     <section className="space-y-6">
       <div className="flex items-center gap-2">
-        <Compass className="h-4 w-4 text-sky-600" />
-        <h3 className="text-lg font-bold text-slate-900">Training Context</h3>
+        <Compass className="h-4 w-4 text-primary" />
+        <h3 className="text-lg font-bold text-foreground">Training Context</h3>
       </div>
 
       {/* Training Approach */}
-      <div className="bg-white rounded-lg border border-slate-200 p-4">
-        <h4 className="text-sm font-semibold text-slate-900 mb-2">Training Approach</h4>
-        <p className="text-sm text-slate-700">{priorities.focus}</p>
-        <p className="text-sm text-slate-600 mt-1">{priorities.equipment}</p>
+      <div className="rounded-xl border border-border bg-card p-4">
+        <h4 className="text-sm font-semibold text-foreground mb-2">Training Approach</h4>
+        <p className="text-sm text-foreground-secondary">{priorities.focus}</p>
+        <p className="text-sm text-foreground-secondary/80 mt-1">{priorities.equipment}</p>
       </div>
-
-      {/* Key Issues to Address */}
-      {priorities.keyIssues.length > 0 && (
-        <div className="bg-white rounded-lg border border-slate-200 p-4">
-          <h4 className="text-sm font-semibold text-slate-900 mb-2">Key Issues to Address</h4>
-          <ol className="list-decimal list-inside space-y-1 text-sm text-slate-700">
-            {priorities.keyIssues.map((issue, i) => (
-              <li key={i}>{formatKeyIssue(issue)}</li>
-            ))}
-          </ol>
-        </div>
-      )}
 
       {/* Movement Considerations */}
       {movementSummaries.length > 0 && (
-        <div className="bg-white rounded-lg border border-slate-200 p-4">
-          <h4 className="text-sm font-semibold text-slate-900 mb-2">Movement Considerations</h4>
-          <ul className="space-y-1.5 text-sm text-slate-700">
+        <div className="rounded-xl border border-border bg-card p-4">
+          <h4 className="text-sm font-semibold text-foreground mb-2">Movement Considerations</h4>
+          <ul className="space-y-1.5 text-sm text-foreground-secondary">
             {movementSummaries.map((s, i) => (
               <li key={i}>{s}</li>
             ))}
@@ -90,9 +71,9 @@ export function CoachReportExerciseGuidance({ plan }: ExerciseGuidanceProps) {
 
       {/* Areas Requiring Attention */}
       {(posturalCount > 0 || mobilityCount > 0 || asymmetryCount > 0) && (
-        <div className="bg-white rounded-lg border border-slate-200 p-4">
-          <h4 className="text-sm font-semibold text-slate-900 mb-2">Areas Requiring Attention</h4>
-          <ul className="space-y-1 text-sm text-slate-700">
+        <div className="rounded-xl border border-border bg-card p-4">
+          <h4 className="text-sm font-semibold text-foreground mb-2">Areas Requiring Attention</h4>
+          <ul className="space-y-1 text-sm text-foreground-secondary">
             {posturalCount > 0 && (
               <li>Postural corrections needed in {posturalCount} area{posturalCount > 1 ? 's' : ''}</li>
             )}
