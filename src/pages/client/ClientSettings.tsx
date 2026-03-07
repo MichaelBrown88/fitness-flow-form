@@ -37,7 +37,7 @@ export default function ClientSettings() {
   }, [profile, clientName, setEditData]);
 
   return (
-    <div className="max-w-2xl space-y-8">
+    <div className="space-y-8">
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
         <h2 className="text-lg font-bold text-slate-900">Profile & contact</h2>
         <div className="grid gap-2">

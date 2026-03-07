@@ -1,5 +1,5 @@
 /**
- * Client detail layout: shared data, breadcrumb, tabs (Overview | History | Roadmap | Settings), Outlet, and dialogs.
+ * Client detail layout: shared data, breadcrumb, tabs (Overview | Client Report | Roadmap | Achievements | Coaches Report | History | Settings), Outlet, and dialogs.
  */
 
 import { useState, useEffect } from 'react';
@@ -14,7 +14,6 @@ import { getRoadmapForClient } from '@/services/roadmaps';
 import {
   ArrowLeft,
   UserPlus,
-  FileText,
   MoreVertical,
   History,
   Map,
@@ -140,10 +139,6 @@ export default function ClientDetailLayout() {
     );
   }
 
-  const reportPath = assessments.length > 0
-    ? `/coach/assessments/${assessments[0].id}?clientName=${encodeURIComponent(clientName)}`
-    : null;
-
   return (
     <AppShell
       title={clientName}
@@ -207,50 +202,62 @@ export default function ClientDetailLayout() {
         <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-slate-900 truncate">
           {clientName}
         </h1>
-        {reportPath && (
-          <Button
-            size="sm"
-            className="h-8 px-3 rounded-lg bg-slate-900 text-white font-bold hover:bg-slate-800 gap-1.5 text-xs shrink-0"
-            asChild
-          >
-            <Link to={reportPath}>
-              <FileText className="h-3.5 w-3.5" />
-              Report
-            </Link>
-          </Button>
-        )}
       </div>
 
-      <nav className="flex items-center gap-1 mb-6 p-1 bg-slate-100 rounded-xl w-fit">
+      <nav className="flex flex-wrap items-center gap-1 mb-6 p-1 bg-slate-100 rounded-xl w-fit">
         <NavLink
           to={buildClientPath(clientName)}
           end
           className={({ isActive }) =>
-            `px-4 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-white text-slate-900' : 'text-slate-500 hover:text-slate-700'}`
+            `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-white text-slate-900' : 'text-slate-500 hover:text-slate-700'}`
           }
         >
           Overview
         </NavLink>
         <NavLink
-          to={buildClientPath(clientName, 'history')}
+          to={buildClientPath(clientName, 'report')}
           className={({ isActive }) =>
-            `px-4 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-white text-slate-900' : 'text-slate-500 hover:text-slate-700'}`
+            `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-white text-slate-900' : 'text-slate-500 hover:text-slate-700'}`
           }
         >
-          History
+          Client Report
         </NavLink>
         <NavLink
           to={buildClientPath(clientName, 'roadmap')}
           className={({ isActive }) =>
-            `px-4 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-white text-slate-900' : 'text-slate-500 hover:text-slate-700'}`
+            `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-white text-slate-900' : 'text-slate-500 hover:text-slate-700'}`
           }
         >
           Roadmap
         </NavLink>
         <NavLink
+          to={buildClientPath(clientName, 'achievements')}
+          className={({ isActive }) =>
+            `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-white text-slate-900' : 'text-slate-500 hover:text-slate-700'}`
+          }
+        >
+          Achievements
+        </NavLink>
+        <NavLink
+          to={buildClientPath(clientName, 'coaches-report')}
+          className={({ isActive }) =>
+            `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-white text-slate-900' : 'text-slate-500 hover:text-slate-700'}`
+          }
+        >
+          Coaches Report
+        </NavLink>
+        <NavLink
+          to={buildClientPath(clientName, 'history')}
+          className={({ isActive }) =>
+            `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-white text-slate-900' : 'text-slate-500 hover:text-slate-700'}`
+          }
+        >
+          History
+        </NavLink>
+        <NavLink
           to={buildClientPath(clientName, 'settings')}
           className={({ isActive }) =>
-            `px-4 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-white text-slate-900' : 'text-slate-500 hover:text-slate-700'}`
+            `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-white text-slate-900' : 'text-slate-500 hover:text-slate-700'}`
           }
         >
           Settings

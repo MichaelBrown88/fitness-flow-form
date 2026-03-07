@@ -34,6 +34,9 @@ const ClientDetailLayout = lazy(() => import("./pages/client/ClientDetailLayout"
 const ClientOverview = lazy(() => import("./pages/client/ClientOverview"));
 const ClientHistory = lazy(() => import("./pages/client/ClientHistory"));
 const ClientRoadmapTab = lazy(() => import("./pages/client/ClientRoadmapTab"));
+const ClientReportTab = lazy(() => import("./pages/client/ClientReportTab"));
+const ClientAchievementsTab = lazy(() => import("./pages/client/ClientAchievementsTab"));
+const CoachesReportTab = lazy(() => import("./pages/client/CoachesReportTab"));
 const ClientSettings = lazy(() => import("./pages/client/ClientSettings"));
 const OrgAdminLayout = lazy(() => import("./pages/org/OrgAdminLayout"));
 const OrgOverview = lazy(() => import("./pages/org/OrgOverview"));
@@ -204,8 +207,11 @@ const App = () => (
                     />
                     <Route path="/client/:clientName" element={<RequireAuth><ClientDetailLayout /></RequireAuth>}>
                       <Route index element={<ClientOverview />} />
-                      <Route path="history" element={<ClientHistory />} />
+                      <Route path="report" element={<ClientReportTab />} />
                       <Route path="roadmap" element={<ClientRoadmapTab />} />
+                      <Route path="achievements" element={<ClientAchievementsTab />} />
+                      <Route path="coaches-report" element={<CoachesReportTab />} />
+                      <Route path="history" element={<ClientHistory />} />
                       <Route path="settings" element={<ClientSettings />} />
                     </Route>
                     <Route
