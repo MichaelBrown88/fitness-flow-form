@@ -1,19 +1,11 @@
 import * as admin from 'firebase-admin';
 import type { CallableRequest } from 'firebase-functions/v2/https';
-import { APP_HOST, SENDGRID_API_KEY, SENDGRID_FROM } from './config';
+import { Resend } from 'resend';
+import { APP_HOST, RESEND_API_KEY, RESEND_FROM } from './config';
 import { ensureReportArtifacts } from './artifacts';
 import type { PublicReportDoc } from './types';
 
-let sendgridMail: typeof import('@sendgrid/mail') | null = null;
-if (SENDGRID_API_KEY) {
-  // Lazy import to avoid requiring the module when no API key is provided.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const mailModule = require('@sendgrid/mail');
-  sendgridMail = mailModule;
-  if (sendgridMail) {
-    sendgridMail.setApiKey(SENDGRID_API_KEY);
-  }
-}
+const resend = new Resend(RESEND_API_KEY);
 
 // Lazy initialization to ensure admin.initializeApp() is called first
 function getDb() {
@@ -84,7 +76,14 @@ async function ensurePublicReport(coachUid: string, assessmentId: string) {
   const legacyRef = getDb().doc(`publicReports/${coachUid}__${assessmentId}`);
   const snap = await legacyRef.get();
   if (!snap.exists) {
-    await ensureReportArtifacts({ coachUid, assessmentId });
+    const profileSnap = await getDb().doc(`userProfiles/${coachUid}`).get();
+    const organizationId = profileSnap.exists
+      ? (profileSnap.data() as { organizationId?: string })?.organizationId
+      : undefined;
+    if (!organizationId) {
+      throw new Error('User profile missing organizationId; cannot create report artifacts.');
+    }
+    await ensureReportArtifacts({ coachUid, assessmentId, organizationId });
     return (await legacyRef.get()).data() as PublicReportDoc | undefined;
   }
   return snap.data() as PublicReportDoc;
@@ -140,7 +139,7 @@ export async function sendReportEmail(request: CallableRequest<EmailPayload>) {
   if (!recipient) {
     throw new Error('invalid-email');
   }
-  if (!sendgridMail) {
+  if (!RESEND_API_KEY) {
     throw new Error('email-not-configured');
   }
 
@@ -163,11 +162,10 @@ export async function sendReportEmail(request: CallableRequest<EmailPayload>) {
       : `${data.clientName || 'Your'} One Fitness assessment report`;
   const text = `Here is the latest One Fitness assessment report:\n${shareUrl}`;
 
-  await sendgridMail.send({
+  await resend.emails.send({
     to: recipient,
-    from: SENDGRID_FROM,
+    from: RESEND_FROM,
     subject,
-    text,
     html: `<p>${text.replace(/\n/g, '<br/>')}</p>`,
   });
 
