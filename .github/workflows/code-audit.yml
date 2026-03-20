@@ -1,0 +1,54 @@
+name: Code Audit
+
+on:
+  workflow_dispatch:
+    inputs:
+      area:
+        description: 'Audit area'
+        required: true
+        default: 'assessment'
+        type: choice
+        options:
+          - assessment
+          - posture
+          - reports
+          - security
+          - billing
+          - onboarding
+          - dashboard
+          - full
+      run_id:
+        description: 'Run ID for result polling'
+        required: true
+        default: 'manual'
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run audit
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SLACK_ENGINEERING: ${{ secrets.SLACK_ENGINEERING }}
+          AUDIT_AREA: ${{ github.event.inputs.area }}
+          RUN_ID: ${{ github.event.inputs.run_id }}
+        run: |
+          node .github/scripts/run-audit.js
+
+      - name: Save audit result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-result-${{ github.event.inputs.run_id }}
+          path: audit-result.json
+          retention-days: 7
