@@ -43,7 +43,7 @@ jobs:
           AUDIT_AREA: ${{ github.event.inputs.area }}
           RUN_ID: ${{ github.event.inputs.run_id }}
         run: |
-          node .github/scripts/run-audit.js
+          node .github/scripts/run-audit.cjs
 
       - name: Save audit result
         if: always()
