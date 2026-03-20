@@ -12,6 +12,7 @@ export const ROUTES = {
   ORG_DASHBOARD_TEAM: '/org/dashboard/team',
   ORG_DASHBOARD_RETENTION: '/org/dashboard/retention',
   ORG_DASHBOARD_BILLING: '/org/dashboard/billing',
+  ORG_DASHBOARD_INTEGRATIONS: '/org/dashboard/integrations',
   CLIENT_VIEW: '/client/:id',
   CLIENT_HISTORY: '/client/:id/history',
   CLIENT_SETTINGS: '/client/:id/settings',
@@ -19,6 +20,8 @@ export const ROUTES = {
   PUBLIC_REPORT_ACHIEVEMENTS: '/r/:token/achievements',
   PUBLIC_REPORT_ROADMAP: '/r/:token/roadmap',
   PUBLIC_REPORT_LIFESTYLE: '/r/:token/lifestyle',
+  PUBLIC_REPORT_ERASURE: '/r/:token/erasure',
+  PUBLIC_REPORT_PRE_SESSION: '/r/:token/pre-session',
   ASSESSMENT_REPORT: '/coach/assessments/:id',
   ASSESSMENT_REPORT_CLIENT: '/coach/assessments/:id/client',
   ABOUT: '/about',
@@ -29,5 +32,13 @@ export const ROUTES = {
   COMPARE: '/compare',
   BILLING: '/billing',
   ONBOARDING: '/onboarding',
+  TRY: '/try',
   CLIENT_ROADMAP: '/coach/clients/:name/roadmap',
+
+  /** Platform admin (separate from org admin) */
+  ADMIN: '/admin',
+  ADMIN_LOGIN: '/admin/login',
+  ADMIN_SETUP: '/admin/setup',
+  ADMIN_ORGANIZATIONS: '/admin/organizations',
+  ADMIN_ORGANIZATION: (orgId: string) => `/admin/organizations/${orgId}` as const,
 } as const;

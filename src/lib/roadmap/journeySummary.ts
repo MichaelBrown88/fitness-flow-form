@@ -1,5 +1,6 @@
 import type { RoadmapPhase } from './types';
 import { PHASE_NARRATIVES } from './types';
+import { getSessionBasedExpectation } from '@/lib/goals/achievableLandmarks';
 
 const GOAL_LABELS: Record<string, string> = {
   'weight-loss': 'Weight loss',
@@ -17,6 +18,8 @@ const GOAL_LABELS: Record<string, string> = {
 
 export interface JourneySummaryContent {
   intro: string;
+  /** Short expectation line for default 3 sessions (e.g. for roadmap intro). */
+  sessionExpectation?: string;
   phaseBlurbs: { phase: RoadmapPhase; title: string; blurb: string }[];
   allMetricsActive: string;
 }
@@ -45,13 +48,24 @@ export function buildJourneySummaryContent(options: {
   const { clientName, clientGoals, itemCount, phaseCount, mode } = options;
   const firstName = clientName.split(' ')[0] ?? 'you';
   const primaryGoal = clientGoals?.[0] ? (GOAL_LABELS[clientGoals[0]] ?? clientGoals[0]) : null;
-  const goalPhrase = primaryGoal ? ` focused on ${primaryGoal}` : '';
+  const secondaryGoal = clientGoals?.[1] ? (GOAL_LABELS[clientGoals[1]] ?? clientGoals[1]) : null;
+  const goalPhrase = primaryGoal
+    ? secondaryGoal
+      ? ` focused on ${primaryGoal}, then ${secondaryGoal}`
+      : ` focused on ${primaryGoal}`
+    : '';
   const blurbs = mode === 'client' ? PHASE_BLURBS_CLIENT : PHASE_BLURBS_COACH;
 
   const intro =
     mode === 'client'
       ? `You're working across ${phaseCount} phase${phaseCount === 1 ? '' : 's'} with ${itemCount} milestone${itemCount === 1 ? '' : 's'}${goalPhrase}.`
       : `${firstName}'s working across ${phaseCount} phase${phaseCount === 1 ? '' : 's'} with ${itemCount} milestone${itemCount === 1 ? '' : 's'}${goalPhrase}.`;
+
+  const primaryGoalKey = clientGoals?.[0] ?? 'general-health';
+  const sessionExpectation =
+    mode === 'client'
+      ? `With 3 sessions per week and consistency you can expect ${getSessionBasedExpectation(primaryGoalKey, 3)}.`
+      : undefined;
 
   const phaseBlurbs = PHASES.map((phase) => ({
     phase,
@@ -64,5 +78,5 @@ export function buildJourneySummaryContent(options: {
       ? 'Progress toward later phase goals happens while you build the foundation — all your metrics stay active.'
       : "Progress toward later phase goals happens while they build the foundation — all of their metrics stay active.";
 
-  return { intro, phaseBlurbs, allMetricsActive };
+  return { intro, sessionExpectation, phaseBlurbs, allMetricsActive };
 }

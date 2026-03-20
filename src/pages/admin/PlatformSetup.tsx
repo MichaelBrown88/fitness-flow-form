@@ -76,7 +76,7 @@ const PlatformSetup = () => {
                   This will create the platform administrator account for:
                 </p>
                 <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
-                  <p className="text-white font-medium">michaeljbrown88@gmail.com</p>
+                  <p className="text-white font-medium">michael@one-assess.com</p>
                   <p className="text-xs text-slate-500 mt-1">Michael Brown - Platform Owner</p>
                 </div>
                 <p className="text-xs text-slate-500">

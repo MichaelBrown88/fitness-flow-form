@@ -43,4 +43,6 @@ export type ClientGroup = {
   trainingStartDate?: Date;
   /** Fallback baseline date from the client profile (used when pillar dates are missing) */
   lastAssessmentDate?: Date;
+  /** Internal coaching note pinned to the client card */
+  notes?: string;
 };

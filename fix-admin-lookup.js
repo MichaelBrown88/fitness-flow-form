@@ -26,8 +26,8 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 async function fixAdminLookup() {
-  const email = 'michaeljbrown88@gmail.com';
-  const uid = 'YdnNfYGwGkQvesM4MyVe41tajS2'; // Your actual UID from Firestore
+  const email = 'michael@one-assess.com';
+  const uid = 'spkSr1v5ISYR99SrVymoQnc4KYP2'; // Your actual UID from Firestore
   
   // Transform email to match the expected format
   const lookupKey = email.toLowerCase().replace(/[.@]/g, '_');

@@ -432,6 +432,15 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
         </div>
       )}
       <p className="text-xs md:text-sm text-zinc-500 mb-3 sm:mb-4 md:mb-5 lg:mb-6">Current metrics vs. optimal performance targets.</p>
+
+      {gapAnalysisData.some((g) => g.projectionMessage) && (
+        <div className="rounded-xl border border-border bg-muted/30 p-4 mb-4 sm:mb-5 text-sm text-foreground">
+          <p className="flex items-start gap-2">
+            <TrendingUp className="w-4 h-4 text-score-green shrink-0 mt-0.5" />
+            {gapAnalysisData.find((g) => g.projectionMessage)?.projectionMessage}
+          </p>
+        </div>
+      )}
       
       {/* Desktop Layout */}
       <div className="hidden lg:grid grid-cols-3 gap-4 sm:gap-5 md:gap-6 mb-6 md:mb-8">

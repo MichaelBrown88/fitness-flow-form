@@ -5,6 +5,7 @@ import { CONFIG } from '@/config';
 import { COLLECTIONS } from '@/constants/collections';
 import { publishPublicReport } from './publicReports';
 import type { UserProfile } from '@/types/auth';
+import { logger } from '@/lib/utils/logger';
 
 const functions = getFirebaseFunctions();
 
@@ -13,6 +14,8 @@ type ShareView = 'client' | 'coach';
 export type ShareArtifacts = {
   shareUrl: string;
   whatsappText: string;
+  /** Pre-composed message with score context — ready to copy and send via any channel */
+  shareMessage: string;
 };
 
 export interface ShareTokenInfo {
@@ -34,8 +37,10 @@ export async function requestShareArtifacts(params: {
   formData: import('@/contexts/FormContext').FormData;
   organizationId?: string;
   profile?: UserProfile | null;
+  overallScore?: number;
+  scoreDelta?: number;
 }): Promise<ShareArtifacts> {
-  const { assessmentId, view, coachUid, formData, organizationId, profile } = params;
+  const { assessmentId, view, coachUid, formData, organizationId, profile, overallScore, scoreDelta } = params;
   
   // First, ensure a public report exists (generates token if needed)
   const shareToken = await publishPublicReport({
@@ -50,11 +55,42 @@ export async function requestShareArtifacts(params: {
   const shareUrl = `${CONFIG.APP.HOST}/r/${shareToken}`;
 
   const clientName = formData.fullName || 'your client';
-  const whatsappText = `Here is ${clientName}'s One Assess assessment report:\n${shareUrl}`;
+  const firstName = clientName.split(' ')[0];
+
+  let scoreContext = '';
+  if (overallScore !== undefined) {
+    scoreContext = `Your overall score: ${overallScore}/100`;
+    if (scoreDelta !== undefined && scoreDelta !== 0) {
+      const sign = scoreDelta > 0 ? '+' : '';
+      scoreContext += ` (${sign}${scoreDelta} since last time)`;
+    }
+    scoreContext += '.\n';
+  }
+
+  const shareMessage = `Hi ${firstName} — your One Assess results are ready! 🎯\n${scoreContext}View your full report here: ${shareUrl}`;
+  const whatsappText = shareMessage;
+
+  // Notify the client that their report is ready (non-blocking, client view only)
+  if (view === 'client') {
+    try {
+      const { writeNotification } = await import('@/services/notificationWriter');
+      await writeNotification({
+        shareToken,
+        type: 'report_shared',
+        title: 'Your report is ready',
+        body: 'Your coach has shared your latest assessment results.',
+        priority: 'medium',
+        actionUrl: shareUrl,
+      });
+    } catch (err) {
+      logger.warn('[Share] Failed to send report_shared notification (non-fatal):', err);
+    }
+  }
 
   return {
     shareUrl,
     whatsappText,
+    shareMessage,
   };
 }
 

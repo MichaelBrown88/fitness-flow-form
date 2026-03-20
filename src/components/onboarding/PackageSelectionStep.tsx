@@ -1,106 +1,87 @@
 /**
  * Package Selection Step (Step 4)
  *
- * Capacity slider + Stripe checkout.
- * Fixed: tier label/plan variable mismatch.
- * Cleaned up: back button as text link, full-width primary CTA.
+ * Client count dropdown + Stripe checkout.
+ * Uses region-based pricing (GB, US, KW) and seat blocks.
  */
 
 import { useState } from 'react';
 import { CheckCircle, CreditCard } from 'lucide-react';
-import { calculateMonthlyFee } from '@/lib/pricing';
-import type { SubscriptionPlan } from '@/lib/pricing';
+import { SEAT_TIERS, REGION_TO_CURRENCY, DEFAULT_REGION, type Region } from '@/constants/pricing';
+import { getMonthlyPrice } from '@/lib/pricing/config';
+import { formatPrice, getLocaleForRegion } from '@/lib/utils/currency';
 import type { BrandingConfig, BusinessType } from '@/types/onboarding';
-import { BUSINESS_TYPES } from '@/types/onboarding';
 import { useCheckout } from '@/hooks/useCheckout';
 import { useAuth } from '@/hooks/useAuth';
-import { formatPrice } from '@/lib/utils/currency';
 
 interface PackageSelectionStepProps {
   data?: Partial<BrandingConfig>;
   businessType?: BusinessType;
-  onNext: (seats: number) => void;
+  region?: Region;
+  onNext: (clientCount: number) => void;
   onBack: () => void;
 }
 
+const DEFAULT_CLIENT_COUNT = 10;
+
 export function PackageSelectionStep({
   data,
-  businessType,
+  region = DEFAULT_REGION,
   onNext,
   onBack,
 }: PackageSelectionStepProps) {
-  const [seats, setSeats] = useState(data?.clientSeats || 15);
+  const clientCountFromData = data?.clientSeats ?? DEFAULT_CLIENT_COUNT;
+  const nearestTier = SEAT_TIERS.find((t) => t >= clientCountFromData) ?? SEAT_TIERS[0];
+  const [clientCount, setClientCount] = useState(nearestTier);
+
   const { startCheckout, loading: checkoutLoading, error: checkoutError, isStripeEnabled } = useCheckout();
   const { profile } = useAuth();
 
-  const getPlanForBusinessType = (): SubscriptionPlan => {
-    const config = BUSINESS_TYPES.find(b => b.value === businessType);
-    return config?.recommendedPlan || 'starter';
-  };
-
-  const plan = getPlanForBusinessType();
-  const monthlyFee = calculateMonthlyFee(plan, seats);
-
-  // Derive tier label from seat count (matches plan variable)
-  const tierLabel =
-    seats <= 15 ? 'Starter' :
-    seats <= 50 ? 'Professional' :
-    'Enterprise';
+  const currency = REGION_TO_CURRENCY[region];
+  const locale = getLocaleForRegion(region);
+  const monthlyFee = getMonthlyPrice(region, clientCount);
 
   const handleContinue = async () => {
     if (isStripeEnabled && profile?.organizationId) {
-      const checkoutPlan = plan === 'free' || plan === 'none' ? 'starter' : plan;
-      const redirected = await startCheckout(profile.organizationId, checkoutPlan, seats);
+      const redirected = await startCheckout(profile.organizationId, region, clientCount);
       if (!redirected) {
-        onNext(seats);
+        onNext(clientCount);
       }
     } else {
-      onNext(seats);
+      onNext(clientCount);
     }
   };
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-1">Choose your plan</h2>
-        <p className="text-sm text-slate-500">How many active clients will you be managing?</p>
+        <h2 className="text-2xl font-bold text-foreground mb-1">Choose your plan</h2>
+        <p className="text-sm text-foreground-secondary">How many active clients will you be managing?</p>
       </div>
 
-      <div className="bg-white p-6 rounded-xl border border-slate-200">
-        <div className="flex justify-between items-end mb-8">
+      <div className="bg-card p-6 rounded-xl border border-border">
+        <div className="flex justify-between items-end mb-6">
           <div>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-4xl font-bold text-slate-900">{seats}</span>
-              <span className="text-sm text-slate-400 font-bold">Seats</span>
-            </div>
-            <p className="text-xs font-bold text-slate-500 mt-1">{tierLabel} Tier</p>
+            <label className="block text-xs font-bold text-foreground-secondary mb-2">Client capacity</label>
+            <select
+              value={clientCount}
+              onChange={(e) => setClientCount(Number(e.target.value))}
+              className="block w-full max-w-[180px] h-12 rounded-xl border border-border bg-background px-4 text-base font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              {SEAT_TIERS.map((tier) => (
+                <option key={tier} value={tier}>
+                  {tier} clients
+                </option>
+              ))}
+              <option value={300}>300+ clients</option>
+            </select>
           </div>
           <div className="text-right">
-            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] mb-0.5">Estimated</span>
+            <span className="block text-[10px] font-bold text-foreground-tertiary uppercase tracking-[0.15em] mb-0.5">Monthly</span>
             <div className="flex items-baseline gap-0.5">
-              <span className="text-2xl font-bold text-slate-900">{formatPrice(monthlyFee)}</span>
-              <span className="text-xs text-slate-400">/mo</span>
+              <span className="text-2xl font-bold text-foreground">{formatPrice(monthlyFee, currency, locale)}</span>
+              <span className="text-xs text-foreground-tertiary">/mo</span>
             </div>
-          </div>
-        </div>
-
-        <div className="mb-6">
-          <input
-            type="range"
-            min="5"
-            max="100"
-            step="5"
-            value={seats}
-            onChange={(e) => setSeats(parseInt(e.target.value))}
-            className="w-full h-2 bg-slate-100 rounded-full appearance-none cursor-pointer accent-slate-900"
-            style={{
-              backgroundImage: `linear-gradient(to right, #0f172a 0%, #0f172a ${((seats - 5) / 95) * 100}%, #f1f5f9 ${((seats - 5) / 95) * 100}%, #f1f5f9 100%)`
-            }}
-          />
-          <div className="flex justify-between text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-[0.15em]">
-            <span>5</span>
-            <span>50</span>
-            <span>100+</span>
           </div>
         </div>
 
@@ -111,8 +92,8 @@ export function PackageSelectionStep({
             'Powered by One Assess on every report',
             'Clinical Logic Engine',
           ].map((feature) => (
-            <div key={feature} className="flex items-center gap-2 text-xs text-slate-600">
-              <CheckCircle size={14} className="text-emerald-500 shrink-0" />
+            <div key={feature} className="flex items-center gap-2 text-xs text-foreground-secondary">
+              <CheckCircle size={14} className="text-score-green shrink-0" />
               <span>{feature}</span>
             </div>
           ))}
@@ -120,7 +101,7 @@ export function PackageSelectionStep({
       </div>
 
       {checkoutError && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="rounded-lg border border-score-red-muted bg-score-red-light px-3 py-2 text-sm text-score-red-fg">
           {checkoutError}
         </div>
       )}
@@ -130,7 +111,7 @@ export function PackageSelectionStep({
           type="button"
           onClick={handleContinue}
           disabled={checkoutLoading}
-          className="w-full h-12 rounded-xl bg-slate-900 text-white font-bold text-sm hover:bg-slate-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+          className="w-full h-12 rounded-xl bg-foreground text-primary-foreground font-bold text-sm hover:opacity-90 transition-apple disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {checkoutLoading ? (
             <>
@@ -150,7 +131,7 @@ export function PackageSelectionStep({
           type="button"
           onClick={onBack}
           disabled={checkoutLoading}
-          className="w-full text-center text-xs font-medium text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50"
+          className="w-full text-center text-xs font-medium text-foreground-tertiary hover:text-foreground-secondary transition-apple disabled:opacity-50"
         >
           Go back
         </button>

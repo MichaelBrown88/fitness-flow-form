@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { ScoreSummary } from '@/lib/scoring';
 import type { FormData } from '@/contexts/FormContext';
 import { calculateBodyRecomposition, getTargetBodyFatFromLevel, getBodyFatRange } from '@/lib/utils/bodyRecomposition';
+import { getEffectiveGoalLevels, getSessionBasedExpectation } from '@/lib/goals/achievableLandmarks';
 
 interface ClientReportGoalsProps {
   goals?: string[];
@@ -62,12 +63,15 @@ export function ClientReportGoals({
 
   if (!goals || goals.length === 0) return null;
 
+  const primaryGoal = goals[0] || 'general-health';
+  const effectiveLevels = getEffectiveGoalLevels(primaryGoal, formData);
+
   const getGoalContent = (goal: string) => {
     let explanation = '';
     let whatItEntails: string[] = [];
 
     if (goal === 'body-recomposition') {
-      const recompLevel = (formData?.goalLevelBodyRecomp || 'athletic') as 'healthy' | 'fit' | 'athletic' | 'shredded';
+      const recompLevel = effectiveLevels.goalLevelBodyRecomp as 'healthy' | 'fit' | 'athletic' | 'shredded';
       const gender = (formData?.gender || 'male').toLowerCase() as 'male' | 'female';
       const weightKg = parseFloat(formData?.inbodyWeightKg || '0');
       const bf = parseFloat(formData?.inbodyBodyFatPct || '0');
@@ -97,7 +101,7 @@ export function ClientReportGoals({
         'Adequate recovery and sleep (7-9 hours) to support muscle growth in a deficit',
       ];
     } else if (goal === 'weight-loss') {
-      const weightLossPct = parseFloat(formData?.goalLevelWeightLoss || '15');
+      const weightLossPct = parseFloat(effectiveLevels.goalLevelWeightLoss) || 15;
       const weightKg = parseFloat(formData?.inbodyWeightKg || '0');
       const targetWeightLossKg = weightKg > 0 ? (weightKg * weightLossPct) / 100 : 0;
       explanation = `Your goal is to lose ${weightLossPct}% of your body weight (${targetWeightLossKg.toFixed(1)} kg), targeting a sustainable reduction of ~0.5-1% body weight per week. This approach preserves muscle mass while optimizing metabolic health.`;
@@ -108,7 +112,7 @@ export function ClientReportGoals({
         'Utilizing progressive overload to ensure you lose fat, not strength',
       ];
     } else if (goal === 'build-muscle') {
-      const muscleGainKg = parseFloat(formData?.goalLevelMuscle || '6');
+      const muscleGainKg = parseFloat(effectiveLevels.goalLevelMuscle) || 6;
       explanation = `Your goal is to build ${muscleGainKg} kg of muscle mass through a dedicated hypertrophy block. We will focus on increasing your skeletal muscle "engine" to boost metabolism and functional power.`;
       whatItEntails = [
         'A slight caloric surplus with high-quality protein distribution',
@@ -117,7 +121,7 @@ export function ClientReportGoals({
         'Prioritizing 7-9 hours of sleep to allow for tissue repair and growth',
       ];
     } else if (goal === 'build-strength') {
-      const strengthPct = parseFloat(formData?.goalLevelStrength || '30');
+      const strengthPct = parseFloat(effectiveLevels.goalLevelStrength) || 30;
       explanation = `Your goal is to increase strength by ${strengthPct}%, focusing on increasing absolute force production. We will prioritize neural adaptations and movement efficiency to help you lift heavier, safer.`;
       whatItEntails = [
         'Low-rep, high-intensity compound lifting sets',
@@ -126,7 +130,7 @@ export function ClientReportGoals({
         'Strategic use of accessory work to eliminate weak links',
       ];
     } else if (goal === 'improve-fitness') {
-      const fitnessLevel = formData?.goalLevelFitness || 'active';
+      const fitnessLevel = effectiveLevels.goalLevelFitness;
       const ambitionLabels = {
         'health': 'Health Focus (50th percentile)',
         'active': 'Active (75th percentile)',
@@ -163,16 +167,29 @@ export function ClientReportGoals({
     return 'General Health';
   };
 
+  const primaryLabel = goalLabel(primaryGoal);
+
   return (
     <section className="space-y-4">
       <h2 className="text-2xl font-bold text-slate-900">Your goals</h2>
 
+      <div className="rounded-xl border border-border bg-muted/30 p-4 text-sm text-foreground">
+        <p className="font-medium text-foreground mb-2">
+          Your primary goal is {primaryLabel}. With training and consistency:
+        </p>
+        <ul className="space-y-1 list-none">
+          <li>With <strong>3</strong> sessions per week you can expect {getSessionBasedExpectation(primaryGoal, 3)}.</li>
+          <li>With <strong>4</strong> sessions per week you can expect {getSessionBasedExpectation(primaryGoal, 4)}.</li>
+          <li>With <strong>5</strong> sessions per week you can expect {getSessionBasedExpectation(primaryGoal, 5)}.</li>
+        </ul>
+      </div>
+
       {goals.length > 1 ? (
         <Tabs defaultValue={goals[0]} className="w-full">
           <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4">
-            {goals.map((goal) => (
+            {goals.map((goal, idx) => (
               <TabsTrigger key={goal} value={goal} className="text-xs sm:text-sm">
-                {goalLabel(goal)}
+                {idx === 0 ? 'Primary: ' : 'Secondary: '}{goalLabel(goal)}
               </TabsTrigger>
             ))}
           </TabsList>

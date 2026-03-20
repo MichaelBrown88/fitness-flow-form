@@ -3,6 +3,7 @@ import { GOAL_TIMELINE_DB } from '../clinical-data';
 import { safeParse } from '../utils/numbers';
 import type { ScoreSummary, RoadmapPhase } from './types';
 import { calculateAge } from './scoringUtils';
+import { getEffectiveGoalLevels } from '@/lib/goals/achievableLandmarks';
 
 export function buildRoadmap(scores: ScoreSummary, formData?: FormData): RoadmapPhase[] {
   const phases: RoadmapPhase[] = [];
@@ -16,6 +17,7 @@ export function buildRoadmap(scores: ScoreSummary, formData?: FormData): Roadmap
 
   const goals = formData?.clientGoals || [];
   const primaryGoal = goals[0] || 'general-health';
+  const effectiveLevels = getEffectiveGoalLevels(primaryGoal, formData);
 
   // 1. FAT LOSS REALITY
   let fatLossWeeks = 0;
@@ -32,7 +34,7 @@ export function buildRoadmap(scores: ScoreSummary, formData?: FormData): Roadmap
   const isMuscleGoal = goals.includes('build-muscle');
 
   if (weight > 0 && isWeightLossGoal) {
-    const weightLossGoal = formData?.goalLevelWeightLoss || '15';
+    const weightLossGoal = effectiveLevels.goalLevelWeightLoss;
     if (weightLossGoal.includes('kg')) {
       weightToLose = safeParse(weightLossGoal.replace('kg', '')) || 5;
     } else {
@@ -57,7 +59,7 @@ export function buildRoadmap(scores: ScoreSummary, formData?: FormData): Roadmap
   );
 
   if (smm > 0 && isMuscleGoal) {
-    const muscleGainGoal = formData?.goalLevelMuscle || '6';
+    const muscleGainGoal = effectiveLevels.goalLevelMuscle;
     muscleToGain = safeParse(muscleGainGoal) || 2;
 
     const history = formData?.trainingHistory || 'beginner';

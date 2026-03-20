@@ -2,7 +2,7 @@
  * Onboarding Page
  *
  * 5-step flow:
- *   0 Identity -> 1 Business -> 2 Equipment -> 3 Plan -> 4 Account -> Success
+ *   0 Identity -> 1 Business -> 2 Account -> 3 Equipment (optional) -> 4 Plan -> Success
  */
 
 import { useOnboarding } from '@/hooks/useOnboarding';
@@ -30,6 +30,7 @@ export default function Onboarding() {
     handleIdentityNext,
     handleBusinessNext,
     handleEquipmentNext,
+    handleEquipmentSkip,
     handleCapacityNext,
     handleAccountCreateWithPassword,
     handleAccountCreateWithGoogle,
@@ -84,23 +85,6 @@ export default function Onboarding() {
         );
       case 2:
         return (
-          <EquipmentStep
-            data={onboardingData.equipment}
-            onNext={handleEquipmentNext}
-            onBack={handleBack}
-          />
-        );
-      case 3:
-        return (
-          <PackageSelectionStep
-            data={onboardingData.branding}
-            businessType={onboardingData.businessProfile?.type}
-            onNext={handleCapacityNext}
-            onBack={handleBack}
-          />
-        );
-      case 4:
-        return (
           <AccountCreationStep
             email={onboardingData.identity?.email || ''}
             onCreateWithPassword={handleAccountCreateWithPassword}
@@ -109,6 +93,25 @@ export default function Onboarding() {
             onBack={handleBack}
             error={accountError}
             submitting={saving}
+          />
+        );
+      case 3:
+        return (
+          <EquipmentStep
+            data={onboardingData.equipment}
+            onNext={handleEquipmentNext}
+            onSkip={handleEquipmentSkip}
+            onBack={handleBack}
+          />
+        );
+      case 4:
+        return (
+          <PackageSelectionStep
+            data={onboardingData.branding}
+            businessType={onboardingData.businessProfile?.type}
+            region={onboardingData.businessProfile?.region ?? 'GB'}
+            onNext={handleCapacityNext}
+            onBack={handleBack}
           />
         );
       default:

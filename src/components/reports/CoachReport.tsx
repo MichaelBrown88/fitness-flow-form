@@ -75,8 +75,15 @@ export default function CoachReport({
         </div>
         {goals.length > 0 && (
           <p className="text-sm leading-relaxed text-foreground-secondary mb-3">
-            <span className="font-semibold text-foreground">Goals: </span>
-            {goals.map((g) => g.replace(/-/g, ' ')).join(', ')}
+            <span className="font-semibold text-foreground">Primary goal: </span>
+            {goals[0].replace(/-/g, ' ')}
+            {goals.length > 1 && (
+              <>
+                {' · '}
+                <span className="font-semibold text-foreground">Secondary: </span>
+                {goals.slice(1).map((g) => g.replace(/-/g, ' ')).join(', ')}
+              </>
+            )}
           </p>
         )}
         <p className="text-sm leading-relaxed text-foreground-secondary">

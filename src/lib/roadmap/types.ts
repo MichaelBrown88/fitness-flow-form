@@ -86,6 +86,8 @@ export interface PhaseTarget {
 
 export interface RoadmapDoc {
   clientName: string;
+  /** Stable UUID for the client — populated for new roadmaps and backfilled by migration */
+  clientId?: string;
   assessmentId: string;
   coachUid: string;
   organizationId: string;
@@ -101,6 +103,10 @@ export interface RoadmapDoc {
   baselineScores?: Record<string, number>;
   activePhase?: RoadmapPhase;
   clientGoals?: string[];
+  /** Latest scores from the most recent assessment — used for drift detection */
+  currentScores?: Record<string, number>;
+  /** When currentScores were last refreshed from an assessment save */
+  lastScoreRefreshedAt?: Timestamp;
 }
 
 export interface ProgressSuggestion {

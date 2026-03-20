@@ -10,12 +10,17 @@
 import {
   getDoc,
   setDoc,
+  updateDoc,
+  deleteDoc,
   getDocs,
   query,
   where,
+  orderBy,
   limit as firestoreLimit,
+  serverTimestamp,
+  type DocumentData,
 } from 'firebase/firestore';
-import type { PlatformAdmin } from '@/types/platform';
+import type { PlatformAdmin, PlatformPermission } from '@/types/platform';
 import { logger } from '@/lib/utils/logger';
 import {
   getPlatformAdminsCollection,
@@ -127,13 +132,13 @@ export async function createPlatformAdmin(
     const oldAdminData = existingAdmin;
 
     // Create new record with real UID
-    const admin: Omit<PlatformAdmin, 'uid'> = {
+    const admin: DocumentData = {
       email: normalizedEmail,
       displayName: oldAdminData.displayName || displayName,
       permissions: oldAdminData.permissions,
       isPasswordSet: true,
       createdAt: oldAdminData.createdAt,
-      lastLoginAt: new Date(),
+      lastLoginAt: serverTimestamp(),
     };
 
     await setDoc(getPlatformAdminDoc(uid), admin);
@@ -142,7 +147,7 @@ export async function createPlatformAdmin(
     await setDoc(getPlatformAdminLookupDoc(normalizedEmail), {
       uid: uid,
       email: normalizedEmail,
-      updatedAt: new Date(),
+      updatedAt: serverTimestamp(),
     }, { merge: true });
 
     logger.info('Platform admin migrated from pending to real UID:', email);
@@ -150,12 +155,12 @@ export async function createPlatformAdmin(
   }
 
   // Create new admin record
-  const admin: Omit<PlatformAdmin, 'uid'> = {
+  const admin: DocumentData = {
     email: normalizedEmail,
     displayName,
     permissions: ['view_metrics', 'view_organizations', 'view_ai_costs', 'manage_organizations', 'manage_admins'],
     isPasswordSet: false,
-    createdAt: new Date(),
+    createdAt: serverTimestamp(),
   };
 
   await setDoc(getPlatformAdminDoc(uid), admin);
@@ -164,7 +169,7 @@ export async function createPlatformAdmin(
   await setDoc(getPlatformAdminLookupDoc(normalizedEmail), {
     uid: uid,
     email: normalizedEmail,
-    createdAt: new Date(),
+    createdAt: serverTimestamp(),
   });
 
   logger.info('Platform admin created:', email);
@@ -176,7 +181,7 @@ export async function createPlatformAdmin(
 export async function markPasswordSet(uid: string): Promise<void> {
   await setDoc(
     getPlatformAdminDoc(uid),
-    { isPasswordSet: true, updatedAt: new Date() },
+    { isPasswordSet: true, updatedAt: serverTimestamp() },
     { merge: true }
   );
 }
@@ -187,7 +192,7 @@ export async function markPasswordSet(uid: string): Promise<void> {
 export async function updateLastLogin(uid: string): Promise<void> {
   await setDoc(
     getPlatformAdminDoc(uid),
-    { lastLoginAt: new Date() },
+    { lastLoginAt: serverTimestamp() },
     { merge: true }
   );
 }
@@ -207,4 +212,67 @@ export async function seedPlatformAdmin(email: string, displayName: string): Pro
   const placeholderUid = `pending_${Date.now()}`;
   await createPlatformAdmin(placeholderUid, email, displayName);
   logger.info('Platform admin seeded:', email);
+}
+
+/**
+ * List all platform admins (for admin management UI)
+ */
+export async function listPlatformAdmins(): Promise<PlatformAdmin[]> {
+  try {
+    const adminQuery = query(
+      getPlatformAdminsCollection(),
+      orderBy('createdAt', 'asc'),
+      firestoreLimit(100)
+    );
+    const snapshot = await getDocs(adminQuery);
+    return snapshot.docs.map((doc) => {
+      const d = doc.data();
+      return {
+        uid: doc.id,
+        email: d.email ?? '',
+        displayName: d.displayName ?? '',
+        permissions: d.permissions ?? [],
+        isPasswordSet: d.isPasswordSet ?? false,
+        createdAt: d.createdAt?.toDate?.() ?? new Date(),
+        lastLoginAt: d.lastLoginAt?.toDate?.(),
+      } as PlatformAdmin;
+    });
+  } catch (error) {
+    logger.error('Error listing platform admins:', error);
+    return [];
+  }
+}
+
+/**
+ * Remove a platform admin (requires manage_admins permission - enforced by caller)
+ */
+export async function removePlatformAdmin(uid: string): Promise<void> {
+  try {
+    const docRef = getPlatformAdminDoc(uid);
+    await deleteDoc(docRef);
+    logger.info('Platform admin removed:', uid);
+  } catch (error) {
+    logger.error('Error removing platform admin:', error);
+    throw error;
+  }
+}
+
+/**
+ * Update platform admin permissions
+ */
+export async function updatePlatformAdminPermissions(
+  uid: string,
+  permissions: PlatformPermission[]
+): Promise<void> {
+  try {
+    const docRef = getPlatformAdminDoc(uid);
+    await updateDoc(docRef, {
+      permissions,
+      updatedAt: serverTimestamp(),
+    });
+    logger.info('Platform admin permissions updated:', uid);
+  } catch (error) {
+    logger.error('Error updating platform admin permissions:', error);
+    throw error;
+  }
 }

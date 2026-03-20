@@ -1,94 +1,223 @@
 ---
-description: 
+description:
 alwaysApply: true
 ---
 
-## North Star alignment
-
-Read `NORTH_STAR.md` at the repository root. Prioritise work that moves One Assess toward first paying customer and £49/mo solo tier adoption. When uncertain, apply the decision filter in that file: does this move us closer to a coach paying £49/mo?
-
-# Project Rules & Best Practices
-
-## Tech Stack
-
-- **Frontend**: React + Vite + Tailwind CSS + shadcn/ui
-- **Backend**: Firebase (Firestore, Auth, Functions)
-- **Tools**: MCP Servers (StackHawk, Context7, Tavily, Sequential Thinking)
-- **Icons**: Lucide React
-
-## Strategic Planning & "Anti-Bloat" Protocol (CRITICAL)
-
-- **The "Right Tool" Check**: Before implementing ANY feature using an AI API, you MUST evaluate if a specialized open-source library can do it better/cheaper.
-  - _Example_: Do not use AI for image alignment; suggest mediapipe or face-api.js.
-- **Pushback Policy**: If I ask for a solution that is inefficient, fragile, or introduces unnecessary AI cost, you MUST pause and warn me.
-- **Unknown Unknowns**: Protect me from my own ignorance. If my approach violates standard architecture patterns or security best practices, explicitly highlight the risk before writing code.
-
-## Architecture & Logic Isolation (NEW)
-
-- **Logic/UI Separation**: Components should primarily handle rendering. Heavy logic, data fetching, and side effects MUST be extracted into Custom Hooks (e.g., `useAssessmentLogic`).
-  - _Red Flag_: If a component has more `useEffect` logic than JSX, it needs refactoring.
-- **Public View Isolation (Air-Gap)**: NEVER render "Coach/Admin" components in a public route by hiding features with flags. Create dedicated "Viewer" components (e.g., `PublicReportViewer`) that strictly consume public-safe data.
-
-## Performance & Efficiency Protocol
-
-- **No Global State for High-Frequency Inputs**:
-  - **Rule**: Do NOT use Context directly on `onChange` for inputs.
-  - **Solution**: Use Debounced Local State (SmartInput pattern) or react-hook-form. Sync to global state only on `onBlur` or after a delay.
-- **Lazy Load Large Assets**:
-  - **Rule**: Heavy libraries (jspdf, mediapipe, html2canvas) and large static datasets MUST use Dynamic Imports (`await import(...)`) inside the function that needs them.
-- **Scalable Database Queries**:
-  - **Rule**: Never write a Firestore query for a list view without a `limit()`.
-  - **Solution**: Always implement Cursor-Based Pagination for lists > 20 items.
-
-## Code Quality Standards
-
-1. **No "Vibe Coding" artifacts**: No `console.log`, commented-out code, or `TODO` comments in final output.
-2. **Strict Typing**: Avoid `any`. Use `unknown` or specific interfaces. Use `safeParse` helpers for math/logic to prevent `NaN` crashes.
-3. **Small Components**: If a component exceeds 150 lines, break it into sub-components.
-4. **Functional Approach**: Use functional components and Hooks only.
-5. **Zero Magic Strings**: All keys/paths must be defined in `@/constants` (e.g., `STORAGE_KEYS`, `ROUTES`).
-6. **No Hardcoding**:
-   - Colors -> Tailwind classes/CSS variables.
-   - Secrets -> `import.meta.env`.
-7. **Design system:** Follow `docs/DESIGN_SYSTEM.md` for colours, spacing, radius, motion, and branding so UI stays consistent.
-
-## SaaS Readiness & Security
-
-- **Multi-tenancy**: Always verify data belongs to the correct `organizationId`.
-- **Server-Side Security**: Never perform sensitive logic (e.g., PDF generation, emails) client-side if it exposes secrets. Use Cloud Functions.
-- **Data Safety**: Never trust user input in calculations. Use helper functions to sanitize numbers before math operations.
-
-## Connectivity & Services
-
-- **Firebase**: NEVER initialize Firebase in a component. Import `db` or `auth` from `@/services/firebase`.
-- **External APIs**: Use the pre-configured Axios instance in `@/services/api`. Do not use raw `fetch` in components.
-
-## Data Architecture & Analytics Protocol (CRITICAL)
-
-Every feature that generates user activity or structured data must be built analytics-ready from the first write. Cutting corners here creates permanent technical debt that cannot be backfilled cheaply.
-
-- **Write computed summaries at write time**: Any document that contributes to analytics MUST include pre-computed summary fields (e.g. `scoresSummary`, `categoryScores`) at the point of write. Never re-derive them from raw data at query time — this is fragile and will break as scoring logic evolves.
-- **Append-only for analytics, upsert for dashboards**: Use a dedicated historical/snapshot collection (e.g. `snapshots`, `history`) as the source of truth for analytics counts. The dashboard "current state" upsert pattern (one row per client) is for display only — never the basis for counts or distributions.
-- **Plan indexes on day one**: Any new collection used in a `collectionGroup()` or compound `where()` query MUST have its composite index added to `firestore.indexes.json` in the same PR as the feature code. Index deployments must precede function deployments.
-- **`collectionGroup` over cross-collection scans**: When querying a logical entity spread across org subcollections (e.g. all snapshots platform-wide), use `collectionGroup()` with a `COLLECTION_GROUP` scoped index. Never loop over organisations to query each subcollection individually.
-- **New entities that generate events**: Any new entity type (e.g. a new assessment module, a new session type) must emit to the appropriate append-only collection from the first write so it is captured in analytics from day one. Do not add analytics as an afterthought.
-- **Analytics reads are server-side only**: Population-level queries (scanning thousands of docs) MUST run in Cloud Functions, never in client-side hooks. The frontend reads only pre-aggregated output docs (e.g. `platform_analytics/population`).
-
-## Cursor prompt output (issues & fixes)
-
-When you identify concrete issues—especially security, TypeScript, Firebase, performance, or architecture—end the substantive part of your answer with a section titled:
-
-## 📋 Cursor Prompts — Copy & Paste These
-
-For each issue use this pattern (repeat per issue):
+# One Assess — Elite Coding Standards
+# Stack: React 18 + Vite + TypeScript + Tailwind + shadcn/ui + Firebase + MediaPipe
+# Mission: Eliminate assessment admin burden for fitness coaches. Every line of code serves this.
 
 ---
-**File:** `src/path/to/file.tsx`
-**Issue:** [one line description]
-**Cursor Prompt:**
-```
-[Self-contained prompt the developer can paste into Cursor]
-```
+
+## 🎯 NORTH STAR
+
+Before writing any code ask: does this move us closer to a coach paying for One Assess?
+If the answer is no, flag it and ask before proceeding.
+
 ---
 
-Prompts must be specific, actionable, and work without additional context.
+## 🚨 CRITICAL: ANTI-BLOAT PROTOCOL
+
+- **AI cost check**: Before ANY AI API call, evaluate if MediaPipe, a local algorithm, or a pre-computed value can do it. We have zero per-analysis cost because MediaPipe runs locally. Protect this advantage.
+- **Pushback required**: If a requested solution is inefficient, fragile, costly, or violates architecture — STOP. Warn explicitly before writing code.
+- **Unknown unknowns**: If my approach violates security, architecture, or SaaS best practices — say so before writing a single line.
+- **Scope creep alert**: If a request would add significant complexity without clear revenue impact, flag it.
+
+---
+
+## 🏗️ ARCHITECTURE — NON-NEGOTIABLE
+
+### Multi-tenancy
+- EVERY Firestore query MUST verify `organizationId` ownership
+- NEVER return data across org boundaries
+- Pattern: `where('organizationId', '==', orgId)` on every collection query
+- If you see a query missing this check — flag it as a critical security issue
+
+### Public View Air-Gap
+- NEVER render coach/admin components in public routes behind feature flags
+- Public routes MUST use dedicated Viewer components (PublicReportViewer, PublicRoadmapViewer)
+- Public components consume ONLY public-safe data from public Firestore paths
+- Violating this exposes internal coach data to clients — treat as critical
+
+### Logic / UI Separation
+- Components handle rendering only
+- Business logic, data fetching, side effects → Custom Hooks
+- Red flag: component with more useEffect logic than JSX → refactor immediately
+- Naming: `useAssessmentLogic`, `useDashboardData`, `usePostureAnalysis`
+
+### Firebase Initialisation
+- NEVER initialise Firebase in a component
+- ALWAYS import `db`, `auth`, `functions` from `@/services/firebase`
+- One initialisation point, no exceptions
+
+### Server-Side Sensitive Operations
+- PDF generation → Cloud Function only
+- Email sending → Cloud Function only (Resend via functions)
+- Billing logic → Cloud Function only
+- Admin operations → Cloud Function with auth verification
+- NEVER expose Stripe keys, Resend keys, or service account credentials client-side
+
+---
+
+## ⚡ PERFORMANCE — FIREBASE EFFICIENCY
+
+### Query Rules
+- NEVER write a Firestore list query without `limit()`
+- Maximum 20 items without cursor-based pagination
+- Use `startAfter()` for pagination — never skip-based
+- `collectionGroup()` queries MUST have composite indexes in `firestore.indexes.json`
+- NEVER loop over organisations to query each subcollection — use `collectionGroup()`
+
+### Cost Control
+- Batch related writes with `writeBatch()` — never individual writes in a loop
+- Use `onSnapshot` only for data that needs real-time updates — use `getDoc/getDocs` for static reads
+- Aggregate dashboard counts at write time — never count documents at query time
+- Pre-computed summary fields are mandatory for any analytics feature
+
+### MediaPipe
+- MediaPipe WASM is bundled locally — NEVER load from CDN in production
+- Use the singleton pattern in `mediapipeSingleton.ts` — never initialise multiple instances
+- Warm up MediaPipe on app load, not on first use
+- Camera pipeline: capture → MediaPipe → landmarks → analysis → render (never skip steps)
+
+### React Performance
+- Memoize expensive calculations: `useMemo` for scoring, `useCallback` for handlers
+- No context directly on `onChange` — use debounced local state (SmartInput pattern)
+- Sync to global state only on `onBlur` or after 300ms debounce
+- Lazy load heavy libraries: `await import('jspdf')`, `await import('html2canvas')`
+- Dynamic imports for routes — never bundle everything upfront
+- Watch for stale closures in useEffect — exhaustive-deps is non-negotiable
+
+---
+
+## 🔒 SECURITY — ZERO TOLERANCE
+
+### Authentication
+- Every Cloud Function that accesses user data MUST verify auth first
+- Pattern: `const { uid } = await verifyAuth(context)` before any Firestore access
+- Rate limiting is already implemented in `rateLimit.ts` — apply it to every public function
+
+### Input Validation
+- NEVER trust user input in calculations — use `safeParse` helpers from `@/lib/utils/numbers`
+- Sanitize before math: `safeNumber(value)` prevents NaN cascades through scoring
+- Validate `organizationId` format before any query: `validateOrganizationId()`
+- Reject unexpected field names in Firestore writes — whitelist allowed fields
+
+### Secrets
+- NEVER hardcode API keys, tokens, or secrets
+- Client-side: `import.meta.env.VITE_*` only
+- Server-side (Functions): `process.env.*` loaded from `.env` (gitignored)
+- service-account.json is in .gitignore — NEVER commit it
+
+### Firestore Rules
+- After any schema change, review `firestore.rules`
+- Default deny — never open a collection without explicit rules
+- Test rules changes with the Firebase emulator before deploying
+
+---
+
+## 📊 ANALYTICS — WRITE-TIME FIRST
+
+These rules prevent permanent technical debt:
+
+- Every document that contributes to analytics MUST include pre-computed summaries at write time
+  - Example: assessment writes `scoresSummary`, `categoryScores`, `pillarBreakdown`
+- Append-only collections for analytics counts (never upsert for count sources)
+- Dashboard "current state" upsert is for display only — never the basis for counts
+- New indexes MUST be added to `firestore.indexes.json` in the same PR as the feature
+- Population-level analytics queries run in Cloud Functions only — never client-side hooks
+- New entity types emit to append-only collections from first write — no analytics afterthought
+
+---
+
+## 🧹 CODE QUALITY — NO EXCEPTIONS
+
+### TypeScript
+- Strict mode — no `any` ever. Use `unknown` + type guards or specific interfaces
+- No type assertions (`as SomeType`) without a comment explaining why it's safe
+- Discriminated unions for state machines (assessment phases, loading states)
+- Exhaustive switch statements with `never` checks
+
+### Component Standards
+- Maximum 150 lines per component — split into sub-components if exceeded
+- Functional components and hooks only — no class components
+- Props interfaces defined above the component, named `[ComponentName]Props`
+- No inline object/array creation in JSX — extract to constants
+
+### Constants
+- Zero magic strings — all keys, routes, collection names in `@/constants/`
+  - `ROUTES.*` for navigation
+  - `COLLECTIONS.*` from `@/lib/database/collections`
+  - `STORAGE_KEYS.*` for localStorage
+- Zero hardcoded colors — Tailwind classes or CSS variables only
+- Zero hardcoded copy that coaches will see — extract to constants for future i18n
+
+### Clean Code
+- No `console.log` in committed code — use the logger utility in `@/lib/utils/logger`
+- No commented-out code — delete it, git history exists
+- No TODO comments — create a GitHub issue instead
+- No `@ts-ignore` — fix the type error properly
+
+---
+
+## 🎨 DESIGN SYSTEM
+
+- Follow `docs/DESIGN_SYSTEM.md` for ALL visual decisions
+- Colors: use design tokens only — never hardcode hex values in components
+- Spacing: Tailwind scale only — no arbitrary values without justification
+- Typography: defined type scale only
+- Motion: follow animation constants — no ad-hoc transition values
+- Components: use shadcn/ui primitives as the base — don't reinvent
+- Dark mode: every component must work in both light and dark
+
+---
+
+## 🚀 SAAS-SPECIFIC PATTERNS
+
+### Stripe Integration
+- Subscription status MUST be verified server-side before granting feature access
+- Use `FeatureGate` component for any premium feature
+- Webhook events are the source of truth — not client-side state
+- Always handle: `payment_failed`, `subscription_cancelled`, `subscription_past_due`
+
+### Onboarding Flow
+- New org creation triggers `logOnboardingStep` — never skip this
+- `GettingStartedChecklist` tracks completion — update it when adding new onboarding steps
+- First assessment is the activation event — everything in onboarding points to this
+
+### Error Handling
+- Use `ErrorBoundary` components at route level
+- Cloud Functions return structured errors: `{ code: string, message: string }`
+- Client handles error codes explicitly — no generic "something went wrong"
+- Log errors with context: `logger.error('context', { userId, orgId, error })`
+
+---
+
+## 🤖 CTO AGENT INTEGRATION
+
+When the CTO agent (in APEX OS) provides feedback:
+
+1. It will provide ready-to-paste Cursor prompts
+2. Each prompt is scoped to a specific file and issue
+3. Apply them one at a time — never batch unreviewed changes
+4. After applying, run `tsc --noEmit` to verify TypeScript is clean
+5. Run the app and test the affected feature before committing
+6. Commit with the message format: `fix: [issue] in [file] (CTO review)`
+
+---
+
+## 📋 PRE-COMMIT CHECKLIST
+
+Before every commit verify:
+- [ ] `tsc --noEmit` passes with zero errors
+- [ ] No `console.log` statements
+- [ ] No commented-out code
+- [ ] No hardcoded secrets
+- [ ] Every new Firestore query has `limit()` and `organizationId` check
+- [ ] New analytics features write summaries at write time
+- [ ] New indexes added to `firestore.indexes.json` if needed
+- [ ] `service-account.json` is NOT in the staged files
+
+---
+
+*Every line of code is a step toward eliminating assessment admin burden for coaches. Write accordingly.*

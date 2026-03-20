@@ -5,9 +5,7 @@ import {
   updateDoc,
   deleteDoc,
   collection,
-  addDoc,
   query,
-  where,
   orderBy,
   limit,
   getDocs,
@@ -19,11 +17,11 @@ import type { FormData } from "@/contexts/FormContext";
 import { sanitizeForFirestore } from "@/lib/utils/firebaseUtils";
 import { PostureAnalysisResult } from "@/lib/ai/postureAnalysis";
 import { logger } from "@/lib/utils/logger";
-import { ORGANIZATION } from "@/lib/database/paths";
+import { ORGANIZATION, sessionIdFromDate } from "@/lib/database/paths";
+import { generateClientSlug } from "@/services/clientProfiles";
 import { getPillarLabel } from "@/constants/pillars";
 
-const MAX_HISTORY_LIMIT = 100;
-const MAX_SNAPSHOT_LIMIT = 100;
+const MAX_SESSION_LIMIT = 100;
 
 export type FormValue =
   | string
@@ -34,6 +32,7 @@ export type FormValue =
   | Record<string, string>
   | Record<string, PostureAnalysisResult>;
 
+/** @deprecated v1 field-level diff type — kept for backward compat with callers */
 export type AssessmentChange = {
   id?: string;
   timestamp: Timestamp;
@@ -51,49 +50,53 @@ export type AssessmentChange = {
 
 export type AssessmentSnapshot = {
   id?: string;
+  schemaVersion?: number;
   timestamp: Timestamp;
-  /** full-assessment | partial-bodycomp | partial-posture | partial-fitness | partial-strength | partial-lifestyle | monthly (legacy: manual) */
-  type: "full-assessment" | "full" | "partial-bodycomp" | "partial-posture" | "partial-fitness" | "partial-strength" | "partial-lifestyle" | "monthly" | "manual";
+  /** full-assessment | pillar-* (new) | partial-* (legacy) | monthly | manual */
+  type: "full-assessment" | "full" | "partial-bodycomp" | "partial-posture" | "partial-fitness" | "partial-strength" | "partial-lifestyle" | "monthly" | "manual" | `pillar-${string}`;
+  assessmentType?: "full" | "pillar";
+  pillar?: string;
   formData: FormData;
   overallScore: number;
   notes?: string;
+  scoresSummary?: {
+    overall: number;
+    categories: { id: string; score: number; weaknesses: string[] }[];
+  };
 };
 
-/** Delegate to the single source of truth for slug generation */
-const getClientSlug = (clientName: string) => {
-  const safeName = (clientName || "unnamed-client").trim().replace(/\s+/g, " ") || "unnamed-client";
-  return safeName.toLowerCase().replace(/\s+/g, "-");
-};
+// ---------------------------------------------------------------------------
+// Internal path helpers
+// ---------------------------------------------------------------------------
 
-/**
- * Get the current assessment document reference
- * Uses organization path when orgId is provided
- */
-const getCurrentAssessmentDoc = (orgId: string, clientName: string) =>
-  doc(getDb(), ORGANIZATION.assessmentHistory.current(orgId, getClientSlug(clientName)));
+const slug = (name: string) => generateClientSlug(name);
 
-/**
- * Get the history collection reference
- * Uses organization path when orgId is provided
- */
-const getHistoryCollection = (orgId: string, clientName: string) =>
-  collection(getDb(), ORGANIZATION.assessmentHistory.history(orgId, getClientSlug(clientName)));
+const getCurrentStateDoc = (orgId: string, clientName: string) =>
+  doc(getDb(), ORGANIZATION.clients.current(orgId, slug(clientName)));
 
-/**
- * Get the snapshots collection reference
- * Uses organization path when orgId is provided
- */
-const getSnapshotsCollection = (orgId: string, clientName: string) =>
-  collection(getDb(), ORGANIZATION.assessmentHistory.snapshots(orgId, getClientSlug(clientName)));
+const getSessionsCol = (orgId: string, clientName: string) =>
+  collection(getDb(), ORGANIZATION.clients.sessions.collection(orgId, slug(clientName)));
 
-/**
- * Get the current assessment for a client
- * @param coachUid - The coach's user ID (kept for backwards compatibility, used as updatedBy)
- * @param clientName - The client's name
- * @param organizationId - Required: The organization ID for path construction
- */
+const getClientProfileDoc = (orgId: string, clientName: string) =>
+  doc(getDb(), ORGANIZATION.clients.doc(orgId, slug(clientName)));
+
+// ---------------------------------------------------------------------------
+// No-op detection — avoids writing identical data and incrementing counters
+// ---------------------------------------------------------------------------
+
+function hasFormDataChanged(oldData: FormData, newData: FormData): boolean {
+  return (
+    JSON.stringify(sanitizeForFirestore(oldData)) !==
+    JSON.stringify(sanitizeForFirestore(newData))
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
 export async function getCurrentAssessment(
-  coachUid: string,
+  _coachUid: string,
   clientName: string,
   organizationId?: string
 ): Promise<{
@@ -103,13 +106,14 @@ export async function getCurrentAssessment(
   organizationId?: string;
 } | null> {
   if (!organizationId) {
-    logger.warn('getCurrentAssessment called without organizationId', 'assessmentHistory');
+    logger.warn("getCurrentAssessment called without organizationId", "assessmentHistory");
     return null;
   }
 
-  const ref = getCurrentAssessmentDoc(organizationId, clientName);
+  const ref = getCurrentStateDoc(organizationId, clientName);
   const snap = await getDoc(ref);
   if (!snap.exists()) return null;
+
   const data = snap.data() as {
     formData?: FormData;
     overallScore?: number;
@@ -117,12 +121,8 @@ export async function getCurrentAssessment(
     organizationId?: string;
   };
 
-  // Security check: verify organizationId matches
   if (data.organizationId && data.organizationId !== organizationId) {
-    logger.warn(
-      `Organization ID mismatch for client ${clientName}`,
-      'assessmentHistory:security'
-    );
+    logger.warn(`Organization ID mismatch for client ${clientName}`, "assessmentHistory:security");
     return null;
   }
 
@@ -135,129 +135,9 @@ export async function getCurrentAssessment(
 }
 
 /**
- * Calculate what fields changed between old and new form data
- */
-function calculateChanges(
-  oldData: FormData,
-  newData: FormData,
-  category?: "bodycomp" | "posture" | "fitness" | "strength" | "lifestyle" | "all"
-): Record<string, { old: FormValue; new: FormValue }> {
-  const changes: Record<string, { old: FormValue; new: FormValue }> = {};
-
-  // Define field categories
-  const categoryFields: Record<string, string[]> = {
-    bodycomp: [
-      "inbodyWeightKg",
-      "inbodyBodyFatPct",
-      "bodyFatMassKg",
-      "inbodyBmi",
-      "visceralFatLevel",
-      "skeletalMuscleMassKg",
-      "totalBodyWaterL",
-      "waistHipRatio",
-      "segmentalArmRightKg",
-      "segmentalArmLeftKg",
-      "segmentalLegRightKg",
-      "segmentalLegLeftKg",
-      "segmentalTrunkKg",
-      "bmrKcal",
-      "inbodyScore",
-    ],
-    posture: [
-      "postureInputMode",
-      "postureAiResults",
-      "postureSeverity",
-      "postureForwardHead",
-      "postureRoundedShoulders",
-      "postureHeadOverall",
-      "postureShouldersOverall",
-      "postureBackOverall",
-      "postureHipsOverall",
-      "postureKneesOverall",
-    ],
-    fitness: [
-      "cardioTestType",
-      "cardioTestSelected",
-      "cardioRestingHr",
-      "cardioPost1MinHr",
-      "cardioMedicationFlag",
-      "cardioFinalHeartRate",
-      "cardioVo2MaxEstimate",
-      "cardioTestInstructions",
-      "cardioNotes",
-      "ymcaStepHeight",
-      "ymcaMetronomeBpm",
-      "ymcaPreTestHeartRate",
-      "ymcaPost1MinHeartRate",
-      "ymcaRecoveryHeartRate1",
-      "ymcaRpe",
-      "ymcaNotes",
-      "treadmillProtocol",
-      "treadmillIncline",
-      "treadmillSpeed",
-      "treadmillDurationMin",
-      "treadmillFinalHeartRate",
-      "treadmillRpe",
-      "treadmillTerminationReason",
-      "treadmillNotes",
-    ],
-    strength: [
-      "pushupMaxReps",
-      "squatsOneMinuteReps",
-      "pushupsOneMinuteReps",
-      "gripLeftKg",
-      "gripRightKg",
-      "chairStandReps",
-      "dynamometerForce",
-    ],
-    lifestyle: [
-      "activityLevel",
-      "sleepDuration",
-      "sleepQuality",
-      "sleepConsistency",
-      "stressLevel",
-      "workHoursPerDay",
-      "nutritionHabits",
-      "hydrationHabits",
-      "stepsPerDay",
-      "sedentaryHours",
-      "caffeineCupsPerDay",
-      "alcoholFrequency",
-      "lastCaffeineIntake",
-    ],
-  };
-
-  const fieldsToCheck = category
-    ? categoryFields[category] || []
-    : Object.keys(newData);
-
-  for (const field of fieldsToCheck) {
-    const oldValue = oldData[field as keyof FormData];
-    const newValue = newData[field as keyof FormData];
-
-    if (
-      oldValue !== newValue &&
-      (oldValue !== undefined || newValue !== undefined)
-    ) {
-      changes[field] = {
-        old: oldValue ?? null,
-        new: newValue ?? null,
-      };
-    }
-  }
-
-  return changes;
-}
-
-/**
- * Update current assessment and log changes
- * @param coachUid - The coach's user ID (used for tracking who made changes)
- * @param clientName - The client's name
- * @param formData - The form data to save
- * @param overallScore - The calculated overall score
- * @param changeType - The type of change being made
- * @param category - The category of the change (optional)
- * @param organizationId - Required: The organization ID for path construction
+ * Returns true when changes were detected and a save + session occurred.
+ * Returns false when the incoming data is identical — callers must respect
+ * this to avoid incrementing assessment counters on a no-op save.
  */
 export async function updateCurrentAssessment(
   coachUid: string,
@@ -265,35 +145,20 @@ export async function updateCurrentAssessment(
   formData: FormData,
   overallScore: number,
   changeType: AssessmentChange["type"],
-  category?: AssessmentChange["category"],
-  organizationId?: string
-): Promise<void> {
+  _category?: AssessmentChange["category"],
+  organizationId?: string,
+  scoresSummary?: AssessmentSnapshot["scoresSummary"],
+): Promise<boolean> {
   if (!organizationId) {
-    throw new Error('organizationId is required for updateCurrentAssessment');
+    throw new Error("organizationId is required for updateCurrentAssessment");
   }
 
-  // Get current assessment
-  const current = await getCurrentAssessment(
-    coachUid,
-    clientName,
-    organizationId
-  );
+  const current = await getCurrentAssessment("", clientName, organizationId);
   const oldData = current?.formData ?? ({} as FormData);
 
-  // Calculate changes - filter out 'all' category for calculateChanges
-  const changes = calculateChanges(
-    oldData,
-    formData,
-    category === "all" ? undefined : category
-  );
+  if (!hasFormDataChanged(oldData, formData)) return false;
 
-  // If no changes, skip update
-  if (Object.keys(changes).length === 0) {
-    return;
-  }
-
-  // Update current assessment using organization path
-  const currentRef = getCurrentAssessmentDoc(organizationId, clientName);
+  const currentRef = getCurrentStateDoc(organizationId, clientName);
   try {
     await setDoc(
       currentRef,
@@ -302,45 +167,26 @@ export async function updateCurrentAssessment(
         overallScore: overallScore ?? 0,
         lastUpdated: serverTimestamp(),
         clientName: clientName || "Unnamed client",
-        organizationId: organizationId,
-        coachUid: coachUid, // Track which coach made the update
+        organizationId,
+        coachUid,
       },
-      { merge: false }
+      { merge: false },
     );
   } catch (err) {
-    logger.error(`[SYNC] ✗ Failed to save current assessment:`, err);
+    logger.error("[SYNC] ✗ Failed to save current state:", err);
     throw err;
   }
 
-  // Log change to history using organization path
-  const historyRef = getHistoryCollection(organizationId, clientName);
-  try {
-    await addDoc(historyRef, {
-      timestamp: serverTimestamp(),
-      type: changeType,
-      category: category || "all",
-      changes: sanitizeForFirestore(changes),
-      updatedBy: coachUid || "unknown",
-      organizationId: organizationId,
-    });
-  } catch (err) {
-    logger.warn(`[SYNC] ✗ Failed to log history (non-critical):`, err);
-  }
+  const shouldCreateSession =
+    changeType === "full" || changeType.startsWith("partial-");
 
-  // Check if we should create a snapshot (monthly, full assessment, or partial update)
-  const now = new Date();
-  const shouldCreateSnapshot =
-    changeType === "full" ||
-    changeType.startsWith("partial-") ||
-    (now.getDate() === 1 && !current?.lastUpdated);
-
-  if (shouldCreateSnapshot) {
-    const snapshotType =
+  if (shouldCreateSession) {
+    const snapshotType: AssessmentSnapshot["type"] =
       changeType === "full"
         ? "full-assessment"
         : changeType.startsWith("partial-")
-        ? changeType
-        : "monthly";
+          ? (changeType as AssessmentSnapshot["type"])
+          : "monthly";
     await createSnapshot(
       coachUid,
       clientName,
@@ -348,20 +194,17 @@ export async function updateCurrentAssessment(
       overallScore,
       snapshotType,
       undefined,
-      organizationId
+      organizationId,
+      scoresSummary,
     );
   }
+
+  return true;
 }
 
 /**
- * Create a snapshot of the current assessment state
- * @param coachUid - The coach's user ID (tracked for audit purposes)
- * @param clientName - The client's name
- * @param formData - The form data to snapshot
- * @param overallScore - The calculated overall score
- * @param snapshotType - The type of snapshot
- * @param notes - Optional notes for the snapshot
- * @param organizationId - Required: The organization ID for path construction
+ * Write an immutable session document to the sessions sub-collection.
+ * Uses a chronologically-sortable ISO timestamp as the document ID.
  */
 export async function createSnapshot(
   coachUid: string,
@@ -370,113 +213,54 @@ export async function createSnapshot(
   overallScore: number,
   snapshotType: AssessmentSnapshot["type"] = "full-assessment",
   notes?: string,
-  organizationId?: string
+  organizationId?: string,
+  scoresSummary?: AssessmentSnapshot["scoresSummary"],
 ): Promise<string> {
   if (!organizationId) {
-    throw new Error('organizationId is required for createSnapshot');
+    throw new Error("organizationId is required for createSnapshot");
   }
 
-  const snapshotsRef = getSnapshotsCollection(organizationId, clientName);
-  const docRef = await addDoc(snapshotsRef, {
+  const isPillar =
+    snapshotType.startsWith("pillar-") || snapshotType.startsWith("partial-");
+  const derivedAssessmentType: "full" | "pillar" = isPillar ? "pillar" : "full";
+  const derivedPillar = isPillar
+    ? snapshotType.replace(/^(pillar-|partial-)/, "")
+    : undefined;
+
+  const sessionId = sessionIdFromDate();
+  const sessionRef = doc(getSessionsCol(organizationId, clientName), sessionId);
+
+  await setDoc(sessionRef, {
+    schemaVersion: 2,
     timestamp: serverTimestamp(),
     type: snapshotType,
+    assessmentType: derivedAssessmentType,
+    ...(derivedPillar ? { pillar: derivedPillar } : {}),
     formData: sanitizeForFirestore(formData),
     overallScore: overallScore ?? 0,
     notes: notes ?? null,
-    organizationId: organizationId,
+    organizationId,
     createdBy: coachUid,
-  });
-  return docRef.id;
-}
-
-/**
- * Get change history for a client
- * @param coachUid - The coach's user ID (kept for backwards compatibility)
- * @param clientName - The client's name
- * @param limitCount - Maximum number of history entries to return
- * @param organizationId - Required: The organization ID for path construction
- */
-export async function getChangeHistory(
-  coachUid: string,
-  clientName: string,
-  limitCount: number = 100,
-  organizationId?: string
-): Promise<AssessmentChange[]> {
-  if (!organizationId) {
-    logger.warn('getChangeHistory called without organizationId', 'assessmentHistory');
-    return [];
-  }
-
-  const resolvedLimit = Math.min(limitCount, MAX_HISTORY_LIMIT);
-  const historyRef = getHistoryCollection(organizationId, clientName);
-
-  const q = query(
-    historyRef,
-    orderBy("timestamp", "desc"),
-    limit(resolvedLimit)
-  );
-
-  let snap;
-  try {
-    snap = await getDocs(q);
-  } catch (error) {
-    if (
-      error &&
-      typeof error === "object" &&
-      "code" in error &&
-      error.code === "failed-precondition"
-    ) {
-      // Fallback without orderBy if index doesn't exist
-      const fallbackQuery = query(historyRef, limit(resolvedLimit));
-      snap = await getDocs(fallbackQuery);
-    } else {
-      throw error;
-    }
-  }
-
-  const changes: AssessmentChange[] = [];
-  snap.forEach((docSnap) => {
-    const data = docSnap.data() as Partial<AssessmentChange>;
-    changes.push({
-      id: docSnap.id,
-      timestamp: (data.timestamp as Timestamp) ?? Timestamp.now(),
-      type: data.type as AssessmentChange["type"],
-      category: data.category as AssessmentChange["category"],
-      changes: data.changes ?? {},
-      updatedBy: data.updatedBy ?? "",
-    });
+    ...(scoresSummary ? { scoresSummary } : {}),
   });
 
-  // Sort by timestamp descending
-  return changes.sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis());
+  return sessionId;
 }
 
-/**
- * Get snapshots for a client
- * @param coachUid - The coach's user ID (kept for backwards compatibility)
- * @param clientName - The client's name
- * @param limitCount - Maximum number of snapshots to return
- * @param organizationId - Required: The organization ID for path construction
- */
 export async function getSnapshots(
-  coachUid: string,
+  _coachUid: string,
   clientName: string,
   limitCount: number = 50,
-  organizationId?: string
+  organizationId?: string,
 ): Promise<AssessmentSnapshot[]> {
   if (!organizationId) {
-    logger.warn('getSnapshots called without organizationId', 'assessmentHistory');
+    logger.warn("getSnapshots called without organizationId", "assessmentHistory");
     return [];
   }
 
-  const resolvedLimit = Math.min(limitCount, MAX_SNAPSHOT_LIMIT);
-  const snapshotsRef = getSnapshotsCollection(organizationId, clientName);
-
-  const q = query(
-    snapshotsRef,
-    orderBy("timestamp", "desc"),
-    limit(resolvedLimit)
-  );
+  const resolvedLimit = Math.min(limitCount, MAX_SESSION_LIMIT);
+  const sessionsCol = getSessionsCol(organizationId, clientName);
+  const q = query(sessionsCol, orderBy("timestamp", "desc"), limit(resolvedLimit));
 
   let snap;
   try {
@@ -488,9 +272,7 @@ export async function getSnapshots(
       "code" in error &&
       error.code === "failed-precondition"
     ) {
-      // Fallback without orderBy if index doesn't exist
-      const fallbackQuery = query(snapshotsRef, limit(resolvedLimit));
-      snap = await getDocs(fallbackQuery);
+      snap = await getDocs(query(sessionsCol, limit(resolvedLimit)));
     } else {
       throw error;
     }
@@ -501,109 +283,118 @@ export async function getSnapshots(
     const data = docSnap.data() as Partial<AssessmentSnapshot>;
     snapshots.push({
       id: docSnap.id,
+      schemaVersion: typeof data.schemaVersion === "number" ? data.schemaVersion : undefined,
       timestamp: (data.timestamp as Timestamp) ?? Timestamp.now(),
       type: data.type as AssessmentSnapshot["type"],
+      assessmentType: data.assessmentType,
+      pillar: data.pillar,
       formData: (data.formData as FormData) ?? ({} as FormData),
-      overallScore:
-        typeof data.overallScore === "number" ? data.overallScore : 0,
+      overallScore: typeof data.overallScore === "number" ? data.overallScore : 0,
       notes: data.notes,
+      scoresSummary: data.scoresSummary,
     });
   });
 
-  // Sort by timestamp descending
   return snapshots.sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis());
 }
 
 const HISTORY_LIST_LIMIT = 50;
 
-/** Human-readable label for snapshot type. Full or pillar short names (Body Comp, Strength, etc.). Never "Manual". */
-export function formatSnapshotTypeLabel(type: string): string {
-  if (type === 'full' || type === 'full-assessment') return 'Full';
-  if (type === 'monthly') return 'Monthly';
-  if (type === 'manual') return 'Partial';
-  if (type.startsWith('partial-')) {
-    const category = type.replace('partial-', '');
-    return getPillarLabel(category, 'short');
+/** Human-readable label for snapshot type. */
+export function formatSnapshotTypeLabel(type: string | undefined | null): string {
+  if (!type) return "Pillar";
+  if (type === "full" || type === "full-assessment") return "Full";
+  if (type === "monthly") return "Full";
+  if (type.startsWith("partial-")) {
+    const category = type.replace("partial-", "");
+    return getPillarLabel(category, "short");
   }
+  if (type.startsWith("pillar-")) {
+    const category = type.replace("pillar-", "");
+    return getPillarLabel(category, "short");
+  }
+  if (type === "partial" || type === "manual") return "Pillar";
   return type;
 }
 
 /**
- * Get snapshot-based assessment history for a client (for dashboard history list).
- * Returns snapshots in descending date order; use limit for pagination.
+ * Get session-based assessment history for a client (for dashboard history list).
+ * Returns sessions in descending date order.
  */
 export async function getClientAssessmentHistory(
   coachUid: string,
   clientName: string,
   organizationId: string | undefined,
-  limitCount: number = HISTORY_LIST_LIMIT
+  limitCount: number = HISTORY_LIST_LIMIT,
 ): Promise<AssessmentSnapshot[]> {
   return getSnapshots(coachUid, clientName, limitCount, organizationId);
 }
 
 /**
- * Delete a snapshot. If it was the most recent, restores current and summary from the previous snapshot (or clears if none).
+ * @deprecated v1 field-level change history. Returns empty array in v2.
+ * Use getSnapshots() (sessions) to see assessment history.
+ */
+export async function getChangeHistory(
+  _coachUid: string,
+  _clientName: string,
+  _limitCount: number = 100,
+  _organizationId?: string,
+): Promise<AssessmentChange[]> {
+  return [];
+}
+
+/**
+ * Delete a session. If it was the most recent, restores current/state from
+ * the previous session (or clears if none).
  */
 export async function deleteSnapshot(
   coachUid: string,
   clientName: string,
   snapshotId: string,
-  organizationId: string
+  organizationId: string,
 ): Promise<{ success: boolean; message: string }> {
   const db = getDb();
   const snapshots = await getSnapshots(coachUid, clientName, 100, organizationId);
   const toDelete = snapshots.find((s) => s.id === snapshotId);
   if (!toDelete) {
-    return { success: false, message: 'Snapshot not found' };
+    return { success: false, message: "Snapshot not found" };
   }
 
-  const slug = getClientSlug(clientName);
-  const snapRef = doc(db, ORGANIZATION.assessmentHistory.snapshots(organizationId, slug), snapshotId);
+  const clientSlug = slug(clientName);
+  const snapRef = doc(db, ORGANIZATION.clients.sessions.doc(organizationId, clientSlug, snapshotId));
   await deleteDoc(snapRef);
 
   const wasLatest = snapshots[0]?.id === snapshotId;
+
   if (wasLatest && snapshots.length > 1) {
     const prev = snapshots[1];
     await restoreFromSnapshot(coachUid, clientName, prev.id, organizationId);
-    const { summarizeScores } = await import('@/lib/scoring');
+    const { summarizeScores } = await import("@/lib/scoring");
     const summary = summarizeScores(prev.formData);
-    const assessmentsRef = collection(db, ORGANIZATION.assessments.collection(organizationId));
-    const q = query(
-      assessmentsRef,
-      where('clientNameLower', '==', clientName.toLowerCase()),
-      limit(1)
-    );
-    const sumSnap = await getDocs(q);
-    if (!sumSnap.empty) {
-      const prevScore = snapshots.length > 2 ? snapshots[2].overallScore : 0;
-      await updateDoc(sumSnap.docs[0].ref, {
-        formData: prev.formData,
-        overallScore: prev.overallScore,
-        scoresSummary: summary,
-        previousScore: prevScore,
-        trend: prev.overallScore - prevScore,
-      });
-    }
-    return { success: true, message: 'Snapshot deleted; current restored from previous.' };
+    const clientRef = getClientProfileDoc(organizationId, clientName);
+    const prevScore = snapshots.length > 2 ? snapshots[2].overallScore : 0;
+    await updateDoc(clientRef, {
+      formData: prev.formData,
+      overallScore: prev.overallScore,
+      scoresSummary: summary,
+      previousScore: prevScore,
+      trend: prev.overallScore - prevScore,
+    });
+    return { success: true, message: "Snapshot deleted; current restored from previous." };
   }
+
   if (wasLatest && snapshots.length === 1) {
-    const currentRef = doc(db, ORGANIZATION.assessmentHistory.current(organizationId, slug));
+    const currentRef = getCurrentStateDoc(organizationId, clientName);
     const emptyFormData = {} as FormData;
-    await setDoc(currentRef, {
-      formData: emptyFormData,
-      overallScore: 0,
-      lastUpdated: serverTimestamp(),
-      organizationId,
-    }, { merge: true });
-    const assessmentsRef = collection(db, ORGANIZATION.assessments.collection(organizationId));
-    const q = query(
-      assessmentsRef,
-      where('clientNameLower', '==', clientName.toLowerCase()),
-      limit(1)
+    await setDoc(
+      currentRef,
+      { formData: emptyFormData, overallScore: 0, lastUpdated: serverTimestamp(), organizationId },
+      { merge: true },
     );
-    const sumSnap = await getDocs(q);
-    if (!sumSnap.empty) {
-      await updateDoc(sumSnap.docs[0].ref, {
+    const clientRef = getClientProfileDoc(organizationId, clientName);
+    const clientSnap = await getDoc(clientRef);
+    if (clientSnap.exists()) {
+      await updateDoc(clientRef, {
         formData: emptyFormData,
         overallScore: 0,
         scoresSummary: { overall: 0, categories: [] },
@@ -611,14 +402,15 @@ export async function deleteSnapshot(
         trend: 0,
       });
     }
-    return { success: true, message: 'Snapshot deleted; current cleared.' };
+    return { success: true, message: "Snapshot deleted; current cleared." };
   }
-  return { success: true, message: 'Snapshot deleted.' };
+
+  return { success: true, message: "Snapshot deleted." };
 }
 
 /**
- * Update a snapshot in place (edit flow). Does not add a new snapshot.
- * If the snapshot is the latest, also updates current and summary so the dashboard reflects the edit.
+ * Update a session in place (edit flow). Does not add a new session.
+ * If the session is the latest, also updates current/state and client profile.
  */
 export async function updateSnapshotInPlace(
   coachUid: string,
@@ -626,87 +418,202 @@ export async function updateSnapshotInPlace(
   snapshotId: string,
   formData: FormData,
   overallScore: number,
-  organizationId: string
+  organizationId: string,
 ): Promise<{ success: boolean; message: string }> {
   const db = getDb();
-  const slug = getClientSlug(clientName);
-  const snapRef = doc(db, ORGANIZATION.assessmentHistory.snapshots(organizationId, slug), snapshotId);
+  const clientSlug = slug(clientName);
+  const snapRef = doc(db, ORGANIZATION.clients.sessions.doc(organizationId, clientSlug, snapshotId));
   const snapDoc = await getDoc(snapRef);
   if (!snapDoc.exists()) {
-    return { success: false, message: 'Snapshot not found' };
+    return { success: false, message: "Snapshot not found" };
   }
 
   await updateDoc(snapRef, {
     formData: sanitizeForFirestore(formData),
-    overallScore: typeof overallScore === 'number' ? overallScore : 0,
+    overallScore: typeof overallScore === "number" ? overallScore : 0,
     lastUpdated: serverTimestamp(),
   });
 
   const snapshots = await getSnapshots(coachUid, clientName, 2, organizationId);
   const isLatest = snapshots[0]?.id === snapshotId;
-  if (isLatest) {
-    const currentRef = doc(db, ORGANIZATION.assessmentHistory.current(organizationId, slug));
-    await setDoc(currentRef, {
-      formData: sanitizeForFirestore(formData),
-      overallScore: typeof overallScore === 'number' ? overallScore : 0,
-      lastUpdated: serverTimestamp(),
-      clientName: clientName || 'Unnamed client',
-      organizationId,
-      coachUid: coachUid || 'unknown',
-    }, { merge: false });
 
-    const { summarizeScores } = await import('@/lib/scoring');
-    const summary = summarizeScores(formData);
-    const assessmentsRef = collection(db, ORGANIZATION.assessments.collection(organizationId));
-    const q = query(
-      assessmentsRef,
-      where('clientNameLower', '==', clientName.toLowerCase()),
-      limit(1)
-    );
-    const sumSnap = await getDocs(q);
-    if (!sumSnap.empty) {
-      const prevScore = snapshots.length >= 2 ? snapshots[1].overallScore : 0;
-      await updateDoc(sumSnap.docs[0].ref, {
+  if (isLatest) {
+    const currentRef = getCurrentStateDoc(organizationId, clientName);
+    await setDoc(
+      currentRef,
+      {
         formData: sanitizeForFirestore(formData),
-        overallScore: typeof overallScore === 'number' ? overallScore : 0,
+        overallScore: typeof overallScore === "number" ? overallScore : 0,
+        lastUpdated: serverTimestamp(),
+        clientName: clientName || "Unnamed client",
+        organizationId,
+        coachUid: coachUid || "unknown",
+      },
+      { merge: false },
+    );
+
+    const { summarizeScores } = await import("@/lib/scoring");
+    const summary = summarizeScores(formData);
+    const clientRef = getClientProfileDoc(organizationId, clientName);
+    const clientSnap = await getDoc(clientRef);
+    if (clientSnap.exists()) {
+      const prevScore = snapshots.length >= 2 ? snapshots[1].overallScore : 0;
+      await updateDoc(clientRef, {
+        formData: sanitizeForFirestore(formData),
+        overallScore: typeof overallScore === "number" ? overallScore : 0,
         scoresSummary: summary,
         previousScore: prevScore,
-        trend: (typeof overallScore === 'number' ? overallScore : 0) - prevScore,
+        trend: (typeof overallScore === "number" ? overallScore : 0) - prevScore,
       });
     }
   }
 
-  return { success: true, message: 'Assessment updated.' };
+  return { success: true, message: "Assessment updated." };
 }
 
 /**
- * Restore current assessment from a specific snapshot (by ID).
- * Updates the live current doc and optionally the summary doc so dashboard reflects the restored state.
+ * Edit a session in place and cascade field changes forward through all subsequent sessions.
+ *
+ * Each partial assessment only explicitly changes certain fields; the rest are inherited from the
+ * previous session. When an earlier session is edited, the changed fields are propagated forward
+ * through every subsequent session that "inherited" them. Fields explicitly changed by a later
+ * partial assessment are left untouched.
+ */
+export async function updateSnapshotWithCascade(
+  coachUid: string,
+  clientName: string,
+  snapshotId: string,
+  newFormData: FormData,
+  organizationId: string,
+): Promise<{ success: boolean; message: string; cascadedCount: number }> {
+  const db = getDb();
+  const clientSlug = slug(clientName);
+
+  const snapshots = await getSnapshots(coachUid, clientName, 100, organizationId);
+  const editedIdx = snapshots.findIndex((s) => s.id === snapshotId);
+  if (editedIdx === -1) return { success: false, message: "Snapshot not found", cascadedCount: 0 };
+
+  const { computeScores, summarizeScores } = await import("@/lib/scoring");
+  const originalFormDatas = snapshots.map((s) => s.formData);
+
+  const editedScore = computeScores(newFormData).overall;
+  const editedSummary = summarizeScores(newFormData);
+  const editedRef = doc(db, ORGANIZATION.clients.sessions.doc(organizationId, clientSlug, snapshotId));
+  await updateDoc(editedRef, {
+    formData: sanitizeForFirestore(newFormData),
+    overallScore: editedScore,
+    scoresSummary: editedSummary,
+    lastUpdated: serverTimestamp(),
+  });
+
+  let previousCascadedFormData: FormData = newFormData;
+  let cascadedCount = 0;
+
+  for (let i = editedIdx - 1; i >= 0; i--) {
+    const snapshot = snapshots[i];
+    const parentOriginalFormData = originalFormDatas[i + 1];
+    const updatedFormData: Record<string, unknown> = {
+      ...(snapshot.formData as unknown as Record<string, unknown>),
+    };
+    let anyFieldChanged = false;
+
+    for (const key of Object.keys({ ...parentOriginalFormData, ...newFormData })) {
+      const snapRec = snapshot.formData as unknown as Record<string, unknown>;
+      const fieldInSnapshot = JSON.stringify(snapRec[key]);
+      const fieldInParentOriginal = JSON.stringify(
+        (parentOriginalFormData as unknown as Record<string, unknown>)[key],
+      );
+
+      if (fieldInSnapshot === fieldInParentOriginal) {
+        const newVal = (previousCascadedFormData as unknown as Record<string, unknown>)[key];
+        if (JSON.stringify(newVal) !== fieldInSnapshot) {
+          updatedFormData[key] = newVal;
+          anyFieldChanged = true;
+        }
+      }
+    }
+
+    if (!anyFieldChanged || !snapshot.id) {
+      previousCascadedFormData = snapshot.formData;
+      continue;
+    }
+
+    const cascadedFormData = updatedFormData as unknown as FormData;
+    const score = computeScores(cascadedFormData).overall;
+    const summary = summarizeScores(cascadedFormData);
+
+    const snapRef = doc(db, ORGANIZATION.clients.sessions.doc(organizationId, clientSlug, snapshot.id));
+    await updateDoc(snapRef, {
+      formData: sanitizeForFirestore(cascadedFormData),
+      overallScore: score,
+      scoresSummary: summary,
+      lastUpdated: serverTimestamp(),
+    });
+
+    previousCascadedFormData = cascadedFormData;
+    cascadedCount++;
+  }
+
+  const latestFormData = editedIdx === 0 ? newFormData : previousCascadedFormData;
+  const latestScore = computeScores(latestFormData).overall;
+  const currentRef = getCurrentStateDoc(organizationId, clientName);
+  await setDoc(
+    currentRef,
+    {
+      formData: sanitizeForFirestore(latestFormData),
+      overallScore: latestScore,
+      lastUpdated: serverTimestamp(),
+      clientName: clientName || "Unnamed client",
+      organizationId,
+      coachUid: coachUid || "unknown",
+    },
+    { merge: false },
+  );
+
+  const latestSummary = summarizeScores(latestFormData);
+  const clientRef = getClientProfileDoc(organizationId, clientName);
+  const clientSnap = await getDoc(clientRef);
+  if (clientSnap.exists()) {
+    const secondLatest = snapshots.length > 1 ? snapshots[1] : null;
+    const prevScore = secondLatest?.overallScore ?? 0;
+    await updateDoc(clientRef, {
+      formData: sanitizeForFirestore(latestFormData),
+      overallScore: latestScore,
+      scoresSummary: latestSummary,
+      previousScore: prevScore,
+      trend: latestScore - prevScore,
+    });
+  }
+
+  const msg =
+    cascadedCount > 0
+      ? `Assessment updated and changes cascaded to ${cascadedCount} subsequent assessment${cascadedCount > 1 ? "s" : ""}.`
+      : "Assessment updated.";
+  return { success: true, message: msg, cascadedCount };
+}
+
+/**
+ * Restore current/state from a specific session (by ID) and update the client profile.
  */
 export async function restoreCurrentFromSnapshot(
   coachUid: string,
   clientName: string,
   snapshotId: string,
-  organizationId: string
+  organizationId: string,
 ): Promise<{ success: boolean; message: string }> {
   const result = await restoreFromSnapshot(coachUid, clientName, snapshotId, organizationId);
   if (!result.success) return { success: false, message: result.message };
+
   const snapshots = await getSnapshots(coachUid, clientName, 2, organizationId);
   const restored = snapshots.find((s) => s.id === snapshotId);
   if (restored) {
-    const db = getDb();
-    const { summarizeScores } = await import('@/lib/scoring');
+    const { summarizeScores } = await import("@/lib/scoring");
     const summary = summarizeScores(restored.formData);
-    const assessmentsRef = collection(db, ORGANIZATION.assessments.collection(organizationId));
-    const q = query(
-      assessmentsRef,
-      where('clientNameLower', '==', clientName.toLowerCase()),
-      limit(1)
-    );
-    const sumSnap = await getDocs(q);
-    if (!sumSnap.empty) {
-      const prevScore = snapshots[1]?.id === snapshotId ? 0 : snapshots.find((s) => s.id !== snapshotId)?.overallScore ?? 0;
-      await updateDoc(sumSnap.docs[0].ref, {
+    const clientRef = getClientProfileDoc(organizationId, clientName);
+    const clientSnap = await getDoc(clientRef);
+    if (clientSnap.exists()) {
+      const prevScore = snapshots.find((s) => s.id !== snapshotId)?.overallScore ?? 0;
+      await updateDoc(clientRef, {
         formData: restored.formData,
         overallScore: restored.overallScore,
         scoresSummary: summary,
@@ -715,119 +622,55 @@ export async function restoreCurrentFromSnapshot(
       });
     }
   }
+
   return { success: true, message: result.message };
 }
 
 /**
- * Reconstruct assessment state at a specific date
- * @param coachUid - The coach's user ID (kept for backwards compatibility)
- * @param clientName - The client's name
- * @param targetDate - The date to reconstruct the assessment for
- * @param organizationId - Required: The organization ID for path construction
+ * Reconstruct assessment state at a specific date.
+ * In v2, sessions contain full formData — we find the latest session before the target date.
  */
 export async function reconstructAssessmentAtDate(
   coachUid: string,
   clientName: string,
   targetDate: Date,
-  organizationId?: string
+  organizationId?: string,
 ): Promise<{ formData: FormData; overallScore: number } | null> {
   if (!organizationId) {
-    logger.warn('reconstructAssessmentAtDate called without organizationId', 'assessmentHistory');
+    logger.warn("reconstructAssessmentAtDate called without organizationId", "assessmentHistory");
     return null;
   }
 
-  const targetTimestamp = Timestamp.fromDate(targetDate);
-
-  // Find nearest snapshot before target date
-  const snapshots = await getSnapshots(
-    coachUid,
-    clientName,
-    100,
-    organizationId
-  );
-  const nearestSnapshot = snapshots
+  const sessions = await getSnapshots(coachUid, clientName, 100, organizationId);
+  const nearest = sessions
     .filter((s) => s.timestamp.toDate() <= targetDate)
     .sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis())[0];
 
-  // Start with snapshot or empty
-  const reconstructedData: FormData =
-    nearestSnapshot?.formData ?? ({} as FormData);
-  let reconstructedScore = nearestSnapshot?.overallScore ?? 0;
+  if (!nearest) return null;
 
-  // Get all changes between snapshot and target date
-  const historyRef = getHistoryCollection(organizationId, clientName);
-  const q = query(
-    historyRef,
-    where(
-      "timestamp",
-      ">",
-      nearestSnapshot?.timestamp ?? Timestamp.fromDate(new Date(0))
-    ),
-    where("timestamp", "<=", targetTimestamp),
-    orderBy("timestamp", "asc"),
-    limit(100)
-  );
-
-  const changesSnap = await getDocs(q);
-  const changes: AssessmentChange[] = [];
-  changesSnap.forEach((docSnap) => {
-    const data = docSnap.data() as Partial<AssessmentChange>;
-    changes.push({
-      id: docSnap.id,
-      timestamp: (data.timestamp as Timestamp) ?? Timestamp.now(),
-      type: data.type as AssessmentChange["type"],
-      category: data.category as AssessmentChange["category"],
-      changes: data.changes ?? {},
-      updatedBy: data.updatedBy ?? "",
-    });
-  });
-
-  // Apply changes chronologically
-  for (const change of changes) {
-    for (const [field, values] of Object.entries(change.changes)) {
-      if (field in reconstructedData) {
-        (reconstructedData as unknown as Record<string, FormValue>)[field] =
-          values.new;
-      }
-    }
-  }
-
-  // Recalculate score if we have the computeScores function available
+  let reconstructedScore = nearest.overallScore;
   try {
     const { computeScores } = await import("@/lib/scoring");
-    const scores = computeScores(reconstructedData);
-    reconstructedScore = scores.overall;
+    reconstructedScore = computeScores(nearest.formData).overall;
   } catch (e) {
-    logger.warn("Could not recalculate score", 'assessmentHistory', e);
+    logger.warn("Could not recalculate score", "assessmentHistory", e);
   }
 
-  return {
-    formData: reconstructedData,
-    overallScore: reconstructedScore,
-  };
+  return { formData: nearest.formData, overallScore: reconstructedScore };
 }
 
-/**
- * Update posture analysis results in the current assessment
- * Useful for re-analyzing with corrected logic
- * @param coachUid - The coach's user ID (kept for backwards compatibility)
- * @param clientName - The client's name
- * @param view - The posture view being updated
- * @param analysis - The posture analysis result
- * @param organizationId - Required: The organization ID for path construction
- */
 export async function updatePostureAnalysis(
-  coachUid: string,
+  _coachUid: string,
   clientName: string,
   view: "front" | "back" | "side-left" | "side-right",
   analysis: PostureAnalysisResult,
-  organizationId?: string
+  organizationId?: string,
 ): Promise<void> {
   if (!organizationId) {
-    throw new Error('organizationId is required for updatePostureAnalysis');
+    throw new Error("organizationId is required for updatePostureAnalysis");
   }
 
-  const currentRef = getCurrentAssessmentDoc(organizationId, clientName);
+  const currentRef = getCurrentStateDoc(organizationId, clientName);
   const currentSnap = await getDoc(currentRef);
 
   if (!currentSnap.exists()) {
@@ -839,7 +682,6 @@ export async function updatePostureAnalysis(
     organizationId?: string;
   };
 
-  // Security check
   if (currentData.organizationId && currentData.organizationId !== organizationId) {
     throw new Error("Organization ID mismatch");
   }
@@ -855,29 +697,21 @@ export async function updatePostureAnalysis(
   });
 }
 
-/**
- * Compare two assessment states
- */
 export function compareAssessments(
   oldData: FormData,
   newData: FormData,
-  _category?: string
+  _category?: string,
 ): Record<string, { old: FormValue; new: FormValue; changed: boolean }> {
-  const comparison: Record<
-    string,
-    { old: FormValue; new: FormValue; changed: boolean }
-  > = {};
+  const comparison: Record<string, { old: FormValue; new: FormValue; changed: boolean }> = {};
   const allFields = new Set([...Object.keys(oldData), ...Object.keys(newData)]);
 
   for (const field of allFields) {
     const oldValue = oldData[field as keyof FormData] as FormValue;
     const newValue = newData[field as keyof FormData] as FormValue;
-    const changed = oldValue !== newValue;
-
     comparison[field] = {
       old: oldValue ?? null,
       new: newValue ?? null,
-      changed,
+      changed: oldValue !== newValue,
     };
   }
 
@@ -885,69 +719,56 @@ export function compareAssessments(
 }
 
 /**
- * Restore a client's current assessment from a specific snapshot
- * Useful for recovering from accidental overwrites
- * @param coachUid - The coach's user ID (tracked for audit purposes)
- * @param clientName - The client's name
- * @param snapshotId - Optional specific snapshot ID to restore
- * @param organizationId - Required: The organization ID for path construction
+ * Restore current/state from a specific session. Updates only the live current doc.
+ * Callers that also need the client profile updated should use restoreCurrentFromSnapshot.
  */
 export async function restoreFromSnapshot(
   coachUid: string,
   clientName: string,
   snapshotId?: string,
-  organizationId?: string
+  organizationId?: string,
 ): Promise<{ success: boolean; message: string; restoredScore?: number }> {
   if (!organizationId) {
-    return { success: false, message: 'organizationId is required for restoreFromSnapshot' };
+    return { success: false, message: "organizationId is required for restoreFromSnapshot" };
   }
 
   try {
-    // Get all snapshots for this client
     const snapshots = await getSnapshots(coachUid, clientName, 50, organizationId);
 
     if (snapshots.length === 0) {
       return { success: false, message: `No snapshots found for client "${clientName}"` };
     }
 
-    // Find the snapshot to restore (either by ID or use the second most recent)
     let snapshotToRestore: AssessmentSnapshot | undefined;
-
     if (snapshotId) {
-      snapshotToRestore = snapshots.find(s => s.id === snapshotId);
+      snapshotToRestore = snapshots.find((s) => s.id === snapshotId);
       if (!snapshotToRestore) {
         return { success: false, message: `Snapshot with ID "${snapshotId}" not found` };
       }
     } else {
-      // Use the second snapshot (first is probably the corrupted one)
-      if (snapshots.length < 2) {
-        // Only one snapshot - use it
-        snapshotToRestore = snapshots[0];
-      } else {
-        snapshotToRestore = snapshots[1]; // Second most recent
-      }
+      snapshotToRestore = snapshots.length < 2 ? snapshots[0] : snapshots[1];
     }
 
-    // Log what we're doing
-    const snapshotDate = snapshotToRestore.timestamp?.toDate?.()?.toLocaleString?.() || 'unknown date';
-    logger.info(`[RESTORE] Restoring "${clientName}" from snapshot ${snapshotToRestore.id} (${snapshotDate})`, 'assessmentHistory');
+    const snapshotDate =
+      snapshotToRestore.timestamp?.toDate?.()?.toLocaleString?.() || "unknown date";
+    logger.info(
+      `[RESTORE] Restoring "${clientName}" from session ${snapshotToRestore.id} (${snapshotDate})`,
+      "assessmentHistory",
+    );
 
-    // Get the current assessment ref using organization path
-    const currentRef = getCurrentAssessmentDoc(organizationId, clientName);
-
-    // Restore the snapshot to current
+    const currentRef = getCurrentStateDoc(organizationId, clientName);
     await setDoc(
       currentRef,
       {
         formData: sanitizeForFirestore(snapshotToRestore.formData),
         overallScore: snapshotToRestore.overallScore ?? 0,
         lastUpdated: serverTimestamp(),
-        clientName: clientName,
-        organizationId: organizationId,
+        clientName,
+        organizationId,
         restoredBy: coachUid,
         restoredFromSnapshot: snapshotToRestore.id,
       },
-      { merge: false }
+      { merge: false },
     );
 
     return {
@@ -956,31 +777,25 @@ export async function restoreFromSnapshot(
       restoredScore: snapshotToRestore.overallScore,
     };
   } catch (error) {
-    logger.error(`[RESTORE] Failed to restore from snapshot:`, error);
+    logger.error("[RESTORE] Failed to restore from snapshot:", error);
     return { success: false, message: `Restore failed: ${error}` };
   }
 }
 
-/**
- * List available snapshots for a client (for debugging/recovery)
- * @param coachUid - The coach's user ID (kept for backwards compatibility)
- * @param clientName - The client's name
- * @param organizationId - Required: The organization ID for path construction
- */
 export async function listClientSnapshots(
   coachUid: string,
   clientName: string,
-  organizationId?: string
+  organizationId?: string,
 ): Promise<{ id: string; date: string; score: number; type: string }[]> {
   if (!organizationId) {
-    logger.warn('listClientSnapshots called without organizationId', 'assessmentHistory');
+    logger.warn("listClientSnapshots called without organizationId", "assessmentHistory");
     return [];
   }
 
   const snapshots = await getSnapshots(coachUid, clientName, 20, organizationId);
-  return snapshots.map(s => ({
-    id: s.id || 'unknown',
-    date: s.timestamp?.toDate?.()?.toLocaleString?.() || 'unknown',
+  return snapshots.map((s) => ({
+    id: s.id || "unknown",
+    date: s.timestamp?.toDate?.()?.toLocaleString?.() || "unknown",
     score: s.overallScore,
     type: s.type,
   }));

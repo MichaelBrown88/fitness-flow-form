@@ -8,6 +8,7 @@ import { useGapAnalysisData } from '../useGapAnalysisData';
 import { calculateAge } from '@/lib/scoring';
 import { calculateBodyRecomposition, getTargetBodyFatFromLevel, getBodyFatRange } from '@/lib/utils/bodyRecomposition';
 import { generateBlueprint } from '@/lib/strategy/blueprintEngine';
+import { getEffectiveGoalLevels } from '@/lib/goals/achievableLandmarks';
 
 export interface UseClientReportDataProps {
   scores: ScoreSummary;
@@ -81,12 +82,11 @@ export function useClientReportData({
   
   const weeksByCategory = useMemo(() => {
     const map: Record<string, number> = {};
+    const primaryGoal = (goals || [])[0] || 'general-health';
+    const effectiveLevels = getEffectiveGoalLevels(primaryGoal, formData);
     const weightKg = parseFloat(formData?.inbodyWeightKg || '0');
-    // const heightM = (parseFloat(formData?.heightCm || '0') || 0) / 100;
-    // const healthyMax = heightM > 0 ? 25 * heightM * heightM : 0;
-    // const primaryGoal = (goals || [])[0] || 'general-health';
     
-    const levelWL = formData?.goalLevelWeightLoss || '15';
+    const levelWL = effectiveLevels.goalLevelWeightLoss;
     let wlTarget = 0;
     if (weightKg > 0 && !isBodyRecomp) {
       if (levelWL.includes('kg')) {
@@ -100,7 +100,7 @@ export function useClientReportData({
     const fatLossRate = 0.5;
     const fatLossWeeks = wlTarget > 0 ? Math.ceil(wlTarget / fatLossRate) : 16;
     
-    const levelBR = formData?.goalLevelBodyRecomp || 'athletic';
+    const levelBR = effectiveLevels.goalLevelBodyRecomp;
     let recompWeeks = 0;
     if (isBodyRecomp && weightKg > 0) {
       const bf = parseFloat(formData?.inbodyBodyFatPct || '0');
@@ -127,7 +127,7 @@ export function useClientReportData({
       }
     }
     
-    const levelMG = formData?.goalLevelMuscle || '6';
+    const levelMG = effectiveLevels.goalLevelMuscle;
     const muscleTargetKg = parseFloat(levelMG) || 6;
     
     const history = formData?.trainingHistory || 'beginner';
@@ -140,7 +140,7 @@ export function useClientReportData({
     const strengthScore = safeScores.categories.find(c => c.id === 'strength')?.score || 0;
     if (strengthScore > 70 && history !== 'beginner') muscleWeeks = Math.round(muscleWeeks * 0.7);
     
-    const levelST = formData?.goalLevelStrength || '30';
+    const levelST = effectiveLevels.goalLevelStrength;
     const strengthPct = parseFloat(levelST) || 30;
     
     let strengthRate = 1.0;
@@ -151,7 +151,7 @@ export function useClientReportData({
     let strengthWeeks = Math.ceil(strengthPct / strengthRate);
     strengthWeeks = Math.max(8, Math.min(36, strengthWeeks));
     
-    const levelFT = formData?.goalLevelFitness || 'active';
+    const levelFT = effectiveLevels.goalLevelFitness;
     const cardioWeeks = levelFT === 'elite' ? 20 : levelFT === 'athletic' ? 16 : levelFT === 'active' ? 12 : 8;
     const mobilityWeeks = 6;
     const postureWeeks = 6;

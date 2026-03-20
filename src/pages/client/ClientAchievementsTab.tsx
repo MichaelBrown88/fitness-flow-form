@@ -1,10 +1,16 @@
 /**
- * Achievements tab: same format as the client-facing achievements page (StreakDisplay, TrophyGrid, MilestoneProgress).
+ * Achievements tab: reads from the canonical org-scoped path
+ * organizations/{orgId}/clients/{clientId}/achievements
+ *
+ * Populated by:
+ *   - evaluateAchievements() on every assessment save (new achievements)
+ *   - migrateAchievements Cloud Function (one-time migration of legacy data)
  */
 
 import type { Timestamp } from 'firebase/firestore';
 import { useOutletContext } from 'react-router-dom';
-import { useTokenAchievements } from '@/hooks/useTokenAchievements';
+import { useOrgClientAchievements } from '@/hooks/useOrgClientAchievements';
+import { useAuth } from '@/hooks/useAuth';
 import { ACHIEVEMENT_DEFINITIONS } from '@/constants/achievements';
 import { StreakDisplay } from '@/components/achievements/StreakDisplay';
 import { TrophyGrid } from '@/components/achievements/TrophyGrid';
@@ -13,14 +19,13 @@ import { Loader2, Trophy } from 'lucide-react';
 import type { ClientDetailOutletContext } from './ClientDetailLayout';
 import type { Achievement } from '@/types/achievements';
 
-type TokenAchievementsReturn = ReturnType<typeof useTokenAchievements>;
+type OrgAchievementsReturn = ReturnType<typeof useOrgClientAchievements>;
 
-/** Fill in missing achievements with empty defaults so client and coach see the same layout */
-function fillDefaults(achievements: TokenAchievementsReturn) {
-  const existingIds = new Set(achievements.achievements.map((a) => a.id));
-  const streaks = [...achievements.streaks];
-  const trophies = [...achievements.trophies];
-  const milestones = [...achievements.milestones];
+function fillDefaults(data: OrgAchievementsReturn) {
+  const existingIds = new Set(data.achievements.map((a) => a.id));
+  const streaks = [...data.streaks];
+  const trophies = [...data.trophies];
+  const milestones = [...data.milestones];
 
   for (const def of ACHIEVEMENT_DEFINITIONS) {
     if (existingIds.has(def.id)) continue;
@@ -47,28 +52,41 @@ function fillDefaults(achievements: TokenAchievementsReturn) {
 
 export default function ClientAchievementsTab() {
   const { profile } = useOutletContext<ClientDetailOutletContext>();
-  const shareToken = profile?.shareToken;
+  const { profile: coachProfile } = useAuth();
 
-  if (!shareToken) {
+  // Resolve the stable clientId: prefer profile.clientId, fall back to the
+  // doc ID (which equals the legacy name-slug until backfillClientIds runs)
+  const orgId = coachProfile?.organizationId ?? profile?.organizationId;
+  const clientId = profile?.clientId;
+
+  if (!clientId) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-slate-50 p-8 text-center max-w-md mx-auto">
         <Trophy className="h-10 w-10 text-slate-300 mx-auto mb-3" />
-        <p className="text-sm font-medium text-slate-600">No share link yet</p>
+        <p className="text-sm font-medium text-slate-600">Achievements pending migration</p>
         <p className="text-xs text-slate-500 mt-1">
-          Share the client report or roadmap to enable achievements. Achievements will appear here once the client views their content.
+          Run <code className="bg-slate-100 px-1 rounded">backfillClientIds()</code> then{' '}
+          <code className="bg-slate-100 px-1 rounded">migrateAchievements()</code> from the browser
+          console to load this client's achievements.
         </p>
       </div>
     );
   }
 
-  return <ClientAchievementsContent shareToken={shareToken} />;
+  return <ClientAchievementsContent orgId={orgId ?? ''} clientId={clientId} />;
 }
 
-function ClientAchievementsContent({ shareToken }: { shareToken: string }) {
-  const achievements = useTokenAchievements(shareToken);
-  const { streaks, trophies, milestones } = fillDefaults(achievements);
+function ClientAchievementsContent({
+  orgId,
+  clientId,
+}: {
+  orgId: string;
+  clientId: string;
+}) {
+  const data = useOrgClientAchievements(orgId, clientId);
+  const { streaks, trophies, milestones } = fillDefaults(data);
 
-  if (achievements.isLoading) {
+  if (data.isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -86,12 +104,12 @@ function ClientAchievementsContent({ shareToken }: { shareToken: string }) {
         <div className="min-w-0">
           <h1 className="text-lg sm:text-xl font-bold text-zinc-900">Achievements</h1>
           <p className="text-xs sm:text-sm text-zinc-500">
-            {achievements.unlockedCount} of {ACHIEVEMENT_DEFINITIONS.length} unlocked
+            {data.unlockedCount} of {ACHIEVEMENT_DEFINITIONS.length} unlocked
           </p>
         </div>
       </div>
 
-      <StreakDisplay streaks={streaks} currentStreak={achievements.currentStreak} />
+      <StreakDisplay streaks={streaks} currentStreak={data.currentStreak} />
       <TrophyGrid trophies={trophies} />
       <MilestoneProgress milestones={milestones} />
     </div>

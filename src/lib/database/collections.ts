@@ -1,228 +1,223 @@
 /**
- * Firestore Collection Reference Helpers
- * 
- * Provides type-safe collection and document references
- * using the centralized path configuration.
+ * Firestore Collection Reference Helpers — v2
+ *
+ * Type-safe wrappers around the path constants.
+ * Import these instead of constructing paths manually anywhere in the codebase.
  */
 
-import { collection, doc, CollectionReference, DocumentReference } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  CollectionReference,
+  DocumentReference,
+} from 'firebase/firestore';
 import { getDb } from '@/services/firebase';
-import { PLATFORM, ORGANIZATION, LEGACY, PUBLIC, AI_USAGE, SYSTEM_STATS } from './paths';
+import {
+  PLATFORM,
+  ANALYTICS,
+  ORGANIZATION,
+  USER_PROFILES,
+  PUBLIC,
+  NOTIFICATIONS,
+  SYSTEM_STATS,
+} from './paths';
 
-// ============================================================================
-// PLATFORM COLLECTIONS
-// ============================================================================
+// ---------------------------------------------------------------------------
+// Organizations
+// ---------------------------------------------------------------------------
 
-/** Get platform admins collection reference */
-export function getPlatformAdminsCollection(): CollectionReference {
-  return collection(getDb(), PLATFORM.admins.collection());
-}
+export const getOrganizationsCollection = (): CollectionReference =>
+  collection(getDb(), ORGANIZATION.collection());
 
-/** Get platform admin document reference */
-export function getPlatformAdminDoc(uid: string): DocumentReference {
-  return doc(getDb(), PLATFORM.admins.doc(uid));
-}
+export const getOrganizationDoc = (orgId: string): DocumentReference =>
+  doc(getDb(), ORGANIZATION.doc(orgId));
 
-/** Get platform admin lookup document reference */
-export function getPlatformAdminLookupDoc(email: string): DocumentReference {
-  return doc(getDb(), PLATFORM.admins.lookupCollection(), PLATFORM.admins.lookupKey(email));
-}
+// ---------------------------------------------------------------------------
+// Coaches
+// ---------------------------------------------------------------------------
 
-/** Get platform config document reference (feature flags, maintenance settings) */
-export function getPlatformConfigDoc(): DocumentReference {
-  return doc(getDb(), PLATFORM.config());
-}
+export const getOrgCoachesCollection = (orgId: string): CollectionReference =>
+  collection(getDb(), ORGANIZATION.coaches.collection(orgId));
 
-// ============================================================================
-// ORGANIZATION COLLECTIONS
-// ============================================================================
+export const getOrgCoachDoc = (orgId: string, coachId: string): DocumentReference =>
+  doc(getDb(), ORGANIZATION.coaches.doc(orgId, coachId));
 
-/** Get organizations collection reference */
-export function getOrganizationsCollection(): CollectionReference {
-  return collection(getDb(), ORGANIZATION.collection());
-}
+// ---------------------------------------------------------------------------
+// Clients
+// ---------------------------------------------------------------------------
 
-/** Get organization document reference */
-export function getOrganizationDoc(orgId: string): DocumentReference {
-  return doc(getDb(), ORGANIZATION.doc(orgId));
-}
+export const getOrgClientsCollection = (orgId: string): CollectionReference =>
+  collection(getDb(), ORGANIZATION.clients.collection(orgId));
 
-/** Get coaches collection within an organization */
-export function getOrgCoachesCollection(orgId: string): CollectionReference {
-  return collection(getDb(), ORGANIZATION.coaches.collection(orgId));
-}
+export const getOrgClientDoc = (orgId: string, clientSlug: string): DocumentReference =>
+  doc(getDb(), ORGANIZATION.clients.doc(orgId, clientSlug));
 
-/** Get specific coach document within an organization */
-export function getOrgCoachDoc(orgId: string, coachId: string): DocumentReference {
-  return doc(getDb(), ORGANIZATION.coaches.doc(orgId, coachId));
-}
+// ---------------------------------------------------------------------------
+// Current Assessment State  (live composite, one per client)
+// ---------------------------------------------------------------------------
 
-/** Get clients collection within an organization */
-export function getOrgClientsCollection(orgId: string): CollectionReference {
-  return collection(getDb(), ORGANIZATION.clients.collection(orgId));
-}
+export const getClientCurrentStateDoc = (
+  orgId: string,
+  clientSlug: string,
+): DocumentReference => doc(getDb(), ORGANIZATION.clients.current(orgId, clientSlug));
 
-/** Get specific client document within an organization */
-export function getOrgClientDoc(orgId: string, clientId: string): DocumentReference {
-  return doc(getDb(), ORGANIZATION.clients.doc(orgId, clientId));
-}
+// ---------------------------------------------------------------------------
+// Sessions  (assessment event log, append-only)
+// ---------------------------------------------------------------------------
 
-/** Get client document by name (generates ID from name) */
-export function getOrgClientDocByName(orgId: string, clientName: string): DocumentReference {
-  const clientId = ORGANIZATION.clients.generateId(clientName);
-  return doc(getDb(), ORGANIZATION.clients.doc(orgId, clientId));
-}
+export const getClientSessionsCollection = (
+  orgId: string,
+  clientSlug: string,
+): CollectionReference =>
+  collection(getDb(), ORGANIZATION.clients.sessions.collection(orgId, clientSlug));
 
-/** Get assessments collection within an organization */
-export function getOrgAssessmentsCollection(orgId: string): CollectionReference {
-  return collection(getDb(), ORGANIZATION.assessments.collection(orgId));
-}
+export const getClientSessionDoc = (
+  orgId: string,
+  clientSlug: string,
+  sessionId: string,
+): DocumentReference =>
+  doc(getDb(), ORGANIZATION.clients.sessions.doc(orgId, clientSlug, sessionId));
 
-/** Get specific assessment document within an organization */
-export function getOrgAssessmentDoc(orgId: string, assessmentId: string): DocumentReference {
-  return doc(getDb(), ORGANIZATION.assessments.doc(orgId, assessmentId));
-}
+// ---------------------------------------------------------------------------
+// Roadmap  (one per client)
+// ---------------------------------------------------------------------------
 
-/** Get usage collection within an organization */
-export function getOrgUsageCollection(orgId: string): CollectionReference {
-  return collection(getDb(), ORGANIZATION.usage.collection(orgId));
-}
+export const getClientRoadmapDoc = (
+  orgId: string,
+  clientSlug: string,
+): DocumentReference => doc(getDb(), ORGANIZATION.clients.roadmap(orgId, clientSlug));
 
-/** Get current month's usage document */
-export function getOrgCurrentUsageDoc(orgId: string): DocumentReference {
-  return doc(getDb(), ORGANIZATION.usage.month(orgId, ORGANIZATION.usage.currentMonth()));
-}
+// ---------------------------------------------------------------------------
+// Achievements  (one per client)
+// ---------------------------------------------------------------------------
 
-/** Get assessment history collection within an organization */
-export function getOrgAssessmentHistoryCollection(orgId: string): CollectionReference {
-  return collection(getDb(), ORGANIZATION.assessmentHistory.collection(orgId));
-}
+export const getClientAchievementsDoc = (
+  orgId: string,
+  clientSlug: string,
+): DocumentReference =>
+  doc(getDb(), ORGANIZATION.clients.achievements(orgId, clientSlug));
 
-/** Get current assessment document for a client (deep history structure) */
-export function getOrgCurrentAssessmentDoc(orgId: string, clientSlug: string): DocumentReference {
-  return doc(getDb(), ORGANIZATION.assessmentHistory.current(orgId, clientSlug));
-}
+// ---------------------------------------------------------------------------
+// Assessment Draft  (save-for-later, one per client)
+// ---------------------------------------------------------------------------
 
-/** Get history collection for a client's assessments */
-export function getOrgAssessmentHistoryChangesCollection(orgId: string, clientSlug: string): CollectionReference {
-  return collection(getDb(), ORGANIZATION.assessmentHistory.history(orgId, clientSlug));
-}
+export const getClientDraftDoc = (
+  orgId: string,
+  clientSlug: string,
+): DocumentReference => doc(getDb(), ORGANIZATION.clients.draft(orgId, clientSlug));
 
-/** Get snapshots collection for a client's assessments */
-export function getOrgAssessmentSnapshotsCollection(orgId: string, clientSlug: string): CollectionReference {
-  return collection(getDb(), ORGANIZATION.assessmentHistory.snapshots(orgId, clientSlug));
-}
+// ---------------------------------------------------------------------------
+// GDPR Erasure Requests
+// ---------------------------------------------------------------------------
 
-// ============================================================================
-// LEGACY COLLECTIONS (for backward compatibility)
-// ============================================================================
+export const getErasureRequestsCollection = (orgId: string): CollectionReference =>
+  collection(getDb(), ORGANIZATION.erasureRequests.collection(orgId));
 
-/** Get legacy coaches collection */
-export function getLegacyCoachesCollection(): CollectionReference {
-  return collection(getDb(), LEGACY.coaches.collection());
-}
+export const getErasureRequestDoc = (
+  orgId: string,
+  requestId: string,
+): DocumentReference =>
+  doc(getDb(), ORGANIZATION.erasureRequests.doc(orgId, requestId));
 
-/** Get legacy coach document */
-export function getLegacyCoachDoc(uid: string): DocumentReference {
-  return doc(getDb(), LEGACY.coaches.doc(uid));
-}
+// ---------------------------------------------------------------------------
+// User Profiles
+// ---------------------------------------------------------------------------
 
-/** Get legacy clients collection under a coach */
-export function getLegacyClientsCollection(coachUid: string): CollectionReference {
-  return collection(getDb(), LEGACY.coaches.clients(coachUid));
-}
+export const getUserProfilesCollection = (): CollectionReference =>
+  collection(getDb(), USER_PROFILES.collection());
 
-/** Get legacy client document under a coach */
-export function getLegacyClientDoc(coachUid: string, clientId: string): DocumentReference {
-  return doc(getDb(), LEGACY.coaches.clientDoc(coachUid, clientId));
-}
+export const getUserProfileDoc = (uid: string): DocumentReference =>
+  doc(getDb(), USER_PROFILES.doc(uid));
 
-/** Get legacy assessments collection under a coach */
-export function getLegacyAssessmentsCollection(coachUid: string): CollectionReference {
-  return collection(getDb(), LEGACY.coaches.assessments(coachUid));
-}
+// ---------------------------------------------------------------------------
+// Public Reports  (client PWA credential)
+// ---------------------------------------------------------------------------
 
-/** Get legacy userProfiles collection */
-export function getLegacyUserProfilesCollection(): CollectionReference {
-  return collection(getDb(), LEGACY.userProfiles.collection());
-}
+export const getPublicReportsCollection = (): CollectionReference =>
+  collection(getDb(), PUBLIC.reports.collection());
 
-/** Get legacy userProfile document */
-export function getLegacyUserProfileDoc(uid: string): DocumentReference {
-  return doc(getDb(), LEGACY.userProfiles.doc(uid));
-}
+export const getPublicReportDoc = (token: string): DocumentReference =>
+  doc(getDb(), PUBLIC.reports.doc(token));
 
-/** Get legacy root-level assessments collection */
-export function getLegacyRootAssessmentsCollection(): CollectionReference {
-  return collection(getDb(), LEGACY.assessments.collection());
-}
+// ---------------------------------------------------------------------------
+// Live Sessions  (real-time camera, posture capture)
+// ---------------------------------------------------------------------------
 
-// ============================================================================
-// PUBLIC COLLECTIONS
-// ============================================================================
+export const getLiveSessionsCollection = (): CollectionReference =>
+  collection(getDb(), PUBLIC.liveSessions.collection());
 
-/** Get public reports collection */
-export function getPublicReportsCollection(): CollectionReference {
-  return collection(getDb(), PUBLIC.reports.collection());
-}
+export const getLiveSessionDoc = (sessionId: string): DocumentReference =>
+  doc(getDb(), PUBLIC.liveSessions.doc(sessionId));
 
-/** Get public report document */
-export function getPublicReportDoc(token: string): DocumentReference {
-  return doc(getDb(), PUBLIC.reports.doc(token));
-}
+// ---------------------------------------------------------------------------
+// Notifications
+// ---------------------------------------------------------------------------
 
-/** Get live sessions collection */
-export function getLiveSessionsCollection(): CollectionReference {
-  return collection(getDb(), PUBLIC.sessions.collection());
-}
+export const getNotificationsCollection = (uid: string): CollectionReference =>
+  collection(getDb(), NOTIFICATIONS.collection(uid));
 
-/** Get live session document */
-export function getLiveSessionDoc(sessionId: string): DocumentReference {
-  return doc(getDb(), PUBLIC.sessions.doc(sessionId));
-}
+export const getNotificationDoc = (uid: string, notificationId: string): DocumentReference =>
+  doc(getDb(), NOTIFICATIONS.doc(uid, notificationId));
 
-// ============================================================================
-// AI USAGE COLLECTIONS
-// ============================================================================
+// ---------------------------------------------------------------------------
+// Platform Analytics  (read by platform admin, written by Cloud Functions)
+// ---------------------------------------------------------------------------
 
-/** Get AI usage logs collection */
-export function getAIUsageLogsCollection(): CollectionReference {
-  return collection(getDb(), AI_USAGE.logs.collection());
-}
+export const getAnalyticsPopulationDoc = (): DocumentReference =>
+  doc(getDb(), ANALYTICS.population());
 
-/** Get AI usage log document */
-export function getAIUsageLogDoc(logId: string): DocumentReference {
-  return doc(getDb(), AI_USAGE.logs.doc(logId));
-}
+export const getAnalyticsMilestonesDoc = (): DocumentReference =>
+  doc(getDb(), ANALYTICS.milestones());
 
-// ============================================================================
-// PLATFORM METRICS (aggregated data)
-// ============================================================================
+// ---------------------------------------------------------------------------
+// Platform Admin
+// ---------------------------------------------------------------------------
 
-/** Get platform metrics document */
-export function getPlatformMetricsDoc(): DocumentReference {
-  return doc(getDb(), PLATFORM.metrics.current());
-}
+export const getPlatformAdminsCollection = (): CollectionReference =>
+  collection(getDb(), PLATFORM.admins.collection());
 
-// ============================================================================
-// SYSTEM STATS (Aggregated Counters)
-// ============================================================================
+export const getPlatformAdminDoc = (uid: string): DocumentReference =>
+  doc(getDb(), PLATFORM.admins.doc(uid));
 
-/** Get system stats global metrics document */
-export function getSystemStatsDoc(): DocumentReference {
-  return doc(getDb(), SYSTEM_STATS.globalMetrics());
-}
+export const getPlatformAdminLookupDoc = (email: string): DocumentReference =>
+  doc(
+    getDb(),
+    PLATFORM.admins.lookupCollection(),
+    PLATFORM.admins.lookupKey(email),
+  );
 
-// ============================================================================
-// AUDIT LOGS (Compliance & Security)
-// ============================================================================
+export const getPlatformConfigDoc = (): DocumentReference =>
+  doc(getDb(), PLATFORM.config());
 
-/** Get platform audit logs collection */
-export function getPlatformAuditLogsCollection(): CollectionReference {
-  return collection(getDb(), PLATFORM.auditLogs.collection());
-}
+export const getPlatformAuditLogsCollection = (): CollectionReference =>
+  collection(getDb(), PLATFORM.auditLogs.collection());
 
-/** Get impersonation audit logs collection */
-export function getImpersonationAuditLogsCollection(): CollectionReference {
-  return collection(getDb(), PLATFORM.auditLogs.impersonation.collection());
-}
+export const getImpersonationAuditLogsCollection = (): CollectionReference =>
+  collection(getDb(), PLATFORM.auditLogs.impersonation.collection());
+
+// ---------------------------------------------------------------------------
+// System Stats
+// ---------------------------------------------------------------------------
+
+export const getSystemStatsDoc = (): DocumentReference =>
+  doc(getDb(), SYSTEM_STATS.globalMetrics());
+
+// ---------------------------------------------------------------------------
+// Legacy collection helpers (old v1 schema — used only by migration/export tooling)
+// These paths still exist in Firestore during the cutover window.
+// ---------------------------------------------------------------------------
+
+/** organizations/{orgId}/assessments — flat current-state docs (slug or UUID keyed) */
+export const getOrgAssessmentsCollection = (orgId: string): CollectionReference =>
+  collection(getDb(), `organizations/${orgId}/assessments`);
+
+export const getOrgAssessmentDoc = (orgId: string, assessmentId: string): DocumentReference =>
+  doc(getDb(), `organizations/${orgId}/assessments/${assessmentId}`);
+
+/** organizations/{orgId}/assessmentHistory — per-client history root */
+export const getOrgAssessmentHistoryCollection = (orgId: string): CollectionReference =>
+  collection(getDb(), `organizations/${orgId}/assessmentHistory`);
+
+/** ai_usage_logs — root-level AI cost tracking */
+export const getAIUsageLogsCollection = (): CollectionReference =>
+  collection(getDb(), 'ai_usage_logs');

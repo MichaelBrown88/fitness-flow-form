@@ -84,8 +84,9 @@ export default function Terms() {
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-foreground mb-4">3. Subscription and Billing</h2>
             <p className="text-foreground-secondary leading-relaxed mb-4">
-              One Assess operates on a subscription model. Subscription fees are billed monthly or annually 
-              based on your selected plan. All fees are in Kuwaiti Dinar (KWD) unless otherwise stated.
+              One Assess operates on a subscription model. Subscription fees are billed monthly (or annually where
+              offered) based on your selected plan and client capacity. Fees are charged in the currency of your
+              selected billing region: British Pound (GBP), US Dollar (USD), or Kuwaiti Dinar (KWD).
             </p>
             <h3 className="text-xl font-semibold text-foreground mb-3">3.1 Free Trial</h3>
             <p className="text-foreground-secondary leading-relaxed mb-4">

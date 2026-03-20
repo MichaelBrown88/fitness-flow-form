@@ -16,21 +16,21 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { sendEmailVerification } from 'firebase/auth';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { sendEmailVerification, EmailAuthProvider, linkWithCredential, GoogleAuthProvider, OAuthProvider, updateProfile } from 'firebase/auth';
 import { getDb, getFirebaseAuth } from '@/services/firebase';
-import { calculateMonthlyFee } from '@/lib/pricing';
+import { logOnboardingStep } from '@/services/platform/platformMetrics';
+import { getMonthlyPrice, getPriceInSmallestUnit } from '@/lib/pricing/config';
+import { REGION_TO_CURRENCY, DEFAULT_REGION } from '@/constants/pricing';
 import { logger } from '@/lib/utils/logger';
 import { isTestEmail, makeTestEmailUnique } from '@/lib/utils/testAccountHelper';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
-import { BUSINESS_TYPES } from '@/types/onboarding';
 import type {
   IdentityData,
   BusinessProfileData,
   EquipmentConfig,
   BrandingConfig,
   OnboardingData,
-  SubscriptionPlan,
 } from '@/types/onboarding';
 
 const TOTAL_STEPS = 5; // 0-4 form steps; 5 = success screen
@@ -50,6 +50,7 @@ export interface UseOnboardingResult {
   handleIdentityNext: (data: Pick<IdentityData, 'firstName' | 'lastName' | 'email'>) => void;
   handleBusinessNext: (data: BusinessProfileData) => void;
   handleEquipmentNext: (data: EquipmentConfig) => void;
+  handleEquipmentSkip: () => void;
   handleCapacityNext: (seats: number) => void;
   handleAccountCreateWithPassword: (password: string) => Promise<void>;
   handleAccountCreateWithGoogle: () => Promise<void>;
@@ -155,11 +156,6 @@ export function useOnboarding(): UseOnboardingResult {
     setHasCheckedStatus(true);
   }, [user, profile, orgSettings, loading, navigate, hasCheckedStatus]);
 
-  const getSubscriptionPlan = useCallback((): SubscriptionPlan => {
-    const bt = onboardingData.businessProfile?.type;
-    return BUSINESS_TYPES.find(b => b.value === bt)?.recommendedPlan || 'starter';
-  }, [onboardingData.businessProfile?.type]);
-
   /* ---------- Step 0: Identity (no auth) ---------- */
   const handleIdentityNext = useCallback((data: Pick<IdentityData, 'firstName' | 'lastName' | 'email'>) => {
     setIdentityError(null);
@@ -181,49 +177,60 @@ export function useOnboarding(): UseOnboardingResult {
     }
 
     setStep(1);
+    logOnboardingStep(1);
   }, [user]);
 
   /* ---------- Step 1: Business ---------- */
   const handleBusinessNext = useCallback((data: BusinessProfileData) => {
     setOnboardingData((prev) => ({ ...prev, businessProfile: data }));
-    setStep(2);
+    setStep(2); // → Account Creation
+    logOnboardingStep(2);
   }, []);
 
-  /* ---------- Step 2: Equipment ---------- */
+  /* ---------- Step 3: Equipment ---------- */
   const handleEquipmentNext = useCallback((data: EquipmentConfig) => {
     setOnboardingData((prev) => ({ ...prev, equipment: data }));
-    setStep(3);
+    setStep(4); // → Plan selection
+    logOnboardingStep(4);
   }, []);
 
-  /* ---------- Step 3: Plan — just stores data, advances to account step ---------- */
-  const handleCapacityNext = useCallback((seats: number) => {
+  /* ---------- Step 3: Equipment skip ---------- */
+  const handleEquipmentSkip = useCallback(() => {
+    // Store minimal config so completeOnboarding knows setup is pending
     setOnboardingData((prev) => ({
       ...prev,
-      branding: { gradientId: DEFAULT_GRADIENT, clientSeats: seats } as BrandingConfig,
+      equipment: {
+        scanner: false,
+        treadmill: false,
+        dynamometer: false,
+        bodyCompositionMethod: 'measurements',
+        gripStrengthEnabled: false,
+        gripStrengthMethod: 'none',
+        configPending: true,
+      } as EquipmentConfig & { configPending: boolean },
     }));
+    setStep(4); // → Plan selection
+    logOnboardingStep(4);
+  }, []);
 
-    // If already authenticated (e.g., resumed or social sign-in from login), skip account step
-    if (user) {
-      completeOnboarding({
-        ...onboardingData,
-        branding: { gradientId: DEFAULT_GRADIENT, clientSeats: seats } as BrandingConfig,
-      });
-      return;
-    }
-
-    setStep(4);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onboardingData, user]);
-
-  /* ---------- Step 4: Account Creation ---------- */
-
-  const createAccountAndComplete = useCallback(async () => {
-    const finalData: Partial<OnboardingData> = {
+  /* ---------- Step 4: Plan — user already exists; complete onboarding ---------- */
+  const handleCapacityNext = useCallback((seats: number) => {
+    const finalBranding = { gradientId: DEFAULT_GRADIENT, clientSeats: seats } as BrandingConfig;
+    setOnboardingData((prev) => ({ ...prev, branding: finalBranding }));
+    completeOnboarding({
       ...onboardingData,
-    };
-    await completeOnboarding(finalData);
+      branding: finalBranding,
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onboardingData]);
+
+  /* ---------- Step 2: Account Creation — advances to Equipment (step 3) ---------- */
+
+  const advanceAfterAccountCreation = useCallback(() => {
+    setStep(3); // → Equipment step
+    logOnboardingStep(3);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleAccountCreateWithPassword = useCallback(async (password: string) => {
     setAccountError(null);
@@ -241,14 +248,24 @@ export function useOnboarding(): UseOnboardingResult {
           : originalEmail;
 
       const displayName = `${identity.firstName} ${identity.lastName}`.trim();
+      const auth = getFirebaseAuth();
 
       try {
-        await signUp(emailToUse, password, displayName);
-        logger.info('Account created – completing onboarding');
+        if (auth.currentUser?.isAnonymous) {
+          // Sandbox trial user — link the anonymous account to a real credential
+          setSavingMessage('Upgrading your trial account...');
+          const credential = EmailAuthProvider.credential(emailToUse, password);
+          const linkedUser = auth.currentUser;
+          await linkWithCredential(linkedUser, credential);
+          await updateProfile(linkedUser, { displayName });
+          logger.info('Anonymous account linked with email credential');
+        } else {
+          await signUp(emailToUse, password, displayName);
+          logger.info('Account created – advancing to equipment step');
+        }
 
         // Send verification email (non-blocking)
         try {
-          const auth = getFirebaseAuth();
           if (auth.currentUser) {
             await sendEmailVerification(auth.currentUser);
             logger.info('Verification email sent');
@@ -257,7 +274,7 @@ export function useOnboarding(): UseOnboardingResult {
           logger.warn('Verification email failed (non-fatal):', verifyErr);
         }
 
-        await createAccountAndComplete();
+        advanceAfterAccountCreation();
       } catch (signUpErr: unknown) {
         const code = signUpErr && typeof signUpErr === 'object' && 'code' in signUpErr
           ? (signUpErr as { code: string }).code : null;
@@ -266,8 +283,8 @@ export function useOnboarding(): UseOnboardingResult {
           setSavingMessage('Email exists – signing you in...');
           try {
             await signIn(emailToUse, password);
-            logger.info('Signed in – completing onboarding');
-            await createAccountAndComplete();
+            logger.info('Signed in – advancing to equipment step');
+            advanceAfterAccountCreation();
           } catch (signInErr: unknown) {
             const siCode = signInErr && typeof signInErr === 'object' && 'code' in signInErr
               ? (signInErr as { code: string }).code : null;
@@ -289,16 +306,23 @@ export function useOnboarding(): UseOnboardingResult {
       setSaving(false);
       setSavingMessage('');
     }
-  }, [onboardingData, signUp, signIn, createAccountAndComplete]);
+  }, [onboardingData, signUp, signIn, advanceAfterAccountCreation]);
 
   const handleAccountCreateWithGoogle = useCallback(async () => {
     setAccountError(null);
     setSaving(true);
     setSavingMessage('Signing in with Google...');
     try {
-      await signInWithGoogle();
-      logger.info('Google sign-in successful – completing onboarding');
-      await createAccountAndComplete();
+      const auth = getFirebaseAuth();
+      if (auth.currentUser?.isAnonymous) {
+        const { linkWithPopup } = await import('firebase/auth');
+        await linkWithPopup(auth.currentUser, new GoogleAuthProvider());
+        logger.info('Anonymous account linked with Google');
+      } else {
+        await signInWithGoogle();
+        logger.info('Google sign-in successful – advancing to equipment step');
+      }
+      advanceAfterAccountCreation();
     } catch (err) {
       logger.error('Google sign-in failed:', err);
       setAccountError(err instanceof Error ? err.message : 'Google sign-in failed.');
@@ -306,16 +330,23 @@ export function useOnboarding(): UseOnboardingResult {
       setSaving(false);
       setSavingMessage('');
     }
-  }, [signInWithGoogle, createAccountAndComplete]);
+  }, [signInWithGoogle, advanceAfterAccountCreation]);
 
   const handleAccountCreateWithApple = useCallback(async () => {
     setAccountError(null);
     setSaving(true);
     setSavingMessage('Signing in with Apple...');
     try {
-      await signInWithApple();
-      logger.info('Apple sign-in successful – completing onboarding');
-      await createAccountAndComplete();
+      const auth = getFirebaseAuth();
+      if (auth.currentUser?.isAnonymous) {
+        const { linkWithPopup } = await import('firebase/auth');
+        await linkWithPopup(auth.currentUser, new OAuthProvider('apple.com'));
+        logger.info('Anonymous account linked with Apple');
+      } else {
+        await signInWithApple();
+        logger.info('Apple sign-in successful – advancing to equipment step');
+      }
+      advanceAfterAccountCreation();
     } catch (err) {
       logger.error('Apple sign-in failed:', err);
       setAccountError(err instanceof Error ? err.message : 'Apple sign-in failed.');
@@ -323,7 +354,7 @@ export function useOnboarding(): UseOnboardingResult {
       setSaving(false);
       setSavingMessage('');
     }
-  }, [signInWithApple, createAccountAndComplete]);
+  }, [signInWithApple, advanceAfterAccountCreation]);
 
   /* ---------- Back ---------- */
   const handleBack = useCallback(() => {
@@ -340,11 +371,13 @@ export function useOnboarding(): UseOnboardingResult {
     try {
       const db = getDb();
       const orgId = profile.organizationId;
-      const plan = getSubscriptionPlan();
-      const seats = finalData.branding?.clientSeats || DEFAULT_SEATS;
-      const monthlyFee = calculateMonthlyFee(plan, seats);
+      const region = finalData.businessProfile?.region ?? DEFAULT_REGION;
+      const clientCount = finalData.branding?.clientSeats || DEFAULT_SEATS;
+      const currency = REGION_TO_CURRENCY[region];
+      const monthlyAmount = getMonthlyPrice(region, clientCount);
+      const amountCents = getPriceInSmallestUnit(monthlyAmount, currency);
 
-      logger.info('Completing onboarding', { orgId, plan, seats });
+      logger.info('Completing onboarding', { orgId, region, clientCount });
 
       const equipmentConfig = finalData.equipment
         ? {
@@ -359,18 +392,30 @@ export function useOnboarding(): UseOnboardingResult {
       await setDoc(doc(db, 'organizations', orgId), {
         name: finalData.businessProfile?.name || '',
         type: finalData.businessProfile?.type || 'solo_coach',
+        region,
         gradientId: finalData.branding?.gradientId || DEFAULT_GRADIENT,
         equipmentConfig,
         subscription: {
-          plan,
+          plan: 'starter',
           status: 'trial',
           trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-          clientSeats: seats,
-          amountFils: Math.ceil(monthlyFee * 1000),
+          clientSeats: clientCount,
+          region,
+          currency,
+          clientCount,
+          amountCents,
+          amountFils: currency === 'KWD' ? amountCents : undefined,
           billingEmail: finalData.identity?.email || user.email || '',
         },
-        onboardingCompletedAt: new Date(),
-        updatedAt: new Date(),
+        onboardingCompletedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        dpa: {
+          accepted: true,
+          version: 1,
+          acceptedByUid: user.uid,
+          acceptedAt: serverTimestamp(),
+          note: 'Implicit acceptance of Data Processing Agreement at onboarding completion.',
+        },
       }, { merge: true });
 
       const isActiveCoach = finalData.businessProfile?.type === 'solo_coach'
@@ -384,7 +429,7 @@ export function useOnboarding(): UseOnboardingResult {
           ? `${finalData.identity.firstName} ${finalData.identity.lastName}`
           : profile.displayName,
         email: finalData.identity?.email || user.email || null,
-        updatedAt: new Date(),
+        updatedAt: serverTimestamp(),
       };
 
       if (inviteOrganizationId) {
@@ -402,7 +447,7 @@ export function useOnboarding(): UseOnboardingResult {
       try {
         await setDoc(
           doc(db, 'onboarding_sessions', user.uid),
-          { userId: user.uid, organizationId: orgId, data: finalData, completedAt: new Date() },
+          { userId: user.uid, organizationId: orgId, data: finalData, completedAt: serverTimestamp() },
           { merge: true },
         );
       } catch (auditErr) {
@@ -422,7 +467,7 @@ export function useOnboarding(): UseOnboardingResult {
     } finally {
       setSaving(false);
     }
-  }, [user, profile, getSubscriptionPlan, refreshSettings, inviteOrganizationId, searchParams]);
+  }, [user, profile, refreshSettings, inviteOrganizationId, searchParams]);
 
   return {
     step,
@@ -437,6 +482,7 @@ export function useOnboarding(): UseOnboardingResult {
     handleIdentityNext,
     handleBusinessNext,
     handleEquipmentNext,
+    handleEquipmentSkip,
     handleCapacityNext,
     handleAccountCreateWithPassword,
     handleAccountCreateWithGoogle,

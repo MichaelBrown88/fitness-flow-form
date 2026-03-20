@@ -27,6 +27,26 @@ function itemToBlockLike(item: RoadmapItem): RoadmapBlock {
 }
 
 /**
+ * Snaps the baseline of each trackable to its current value for items in a
+ * specific phase. Call this when the client advances to a new phase so that
+ * drift detection and progress bars measure against the new starting point.
+ */
+export function snapTrackableBaselines(
+  items: RoadmapItem[],
+  phase: string,
+): RoadmapItem[] {
+  return items.map((item) => {
+    if (item.phase !== phase || !item.trackables?.length) return item;
+    const snapped = item.trackables.map((t) => ({
+      ...t,
+      baseline: t.current,
+      ...(t.valueCurrent != null ? { valueBaseline: t.valueCurrent } : {}),
+    }));
+    return { ...item, trackables: snapped };
+  });
+}
+
+/**
  * Refreshes each item's trackables[].current from the latest assessment scores.
  * Preserves baseline and target from existing trackables so the client view shows
  * progress toward the original goals; only current is updated from scores.

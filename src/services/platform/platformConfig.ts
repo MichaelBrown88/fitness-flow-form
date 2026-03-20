@@ -8,8 +8,9 @@
  * Uses real-time listeners for instant propagation of config changes.
  */
 
-import { getDoc, setDoc, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { getDoc, setDoc, onSnapshot, serverTimestamp, Unsubscribe } from 'firebase/firestore';
 import { getPlatformConfigDoc } from '@/lib/database/collections';
+import { logAdminAction } from './auditLog';
 import type { PlatformConfig, PlatformFeatureFlags } from '@/types/platform';
 import { DEFAULT_PLATFORM_CONFIG } from '@/types/platform';
 import { logger } from '@/lib/utils/logger';
@@ -115,11 +116,12 @@ export async function updateFeatureFlag(
         ...currentConfig.features,
         [featureKey]: enabled,
       },
-      updatedAt: new Date(),
+      updatedAt: serverTimestamp(),
       updatedBy: adminUid,
     });
 
     logger.info(`Feature flag ${featureKey} set to ${enabled} by ${adminUid}`);
+    await logAdminAction(adminUid, 'feature_toggle', featureKey, { enabled });
   } catch (error) {
     logger.error(`Error updating feature flag ${featureKey}:`, error);
     throw error;
@@ -145,7 +147,7 @@ export async function updateFeatureFlags(
         ...currentConfig.features,
         ...features,
       },
-      updatedAt: new Date(),
+      updatedAt: serverTimestamp(),
       updatedBy: adminUid,
     });
 
@@ -180,11 +182,16 @@ export async function setMaintenanceMode(
         message: isEnabled ? message : undefined,
         affected_features: isEnabled ? affectedFeatures : undefined,
       },
-      updatedAt: new Date(),
+      updatedAt: serverTimestamp(),
       updatedBy: adminUid,
     });
 
     logger.info(`Maintenance mode ${isEnabled ? 'enabled' : 'disabled'} by ${adminUid}`);
+    await logAdminAction(adminUid, 'maintenance_mode', undefined, {
+      isEnabled,
+      message: message ?? undefined,
+      affectedFeatures: affectedFeatures ?? undefined,
+    });
   } catch (error) {
     logger.error('Error setting maintenance mode:', error);
     throw error;

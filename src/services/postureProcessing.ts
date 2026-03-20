@@ -21,12 +21,44 @@ import { buildPostureResult } from '@/lib/ai/postureTemplates';
 import { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
 import { logger } from '@/lib/utils/logger';
 
+export interface LandmarkConfidence {
+  confident: boolean;
+  avgVisibility: number;
+  retakeReason?: string;
+}
+
 export interface PostureProcessingResult {
   alignedImage: string; // Image with green reference lines
   imageWithDeviations: string; // Image with green + red deviation lines
   wireframeImage?: string; // Image with MediaPipe skeleton overlay (for debugging/visualization)
   analysis: PostureAnalysisResult; // Complete analysis with metrics and descriptions
   landmarks: LandmarkResult; // Detected landmarks
+  landmarkConfidence: LandmarkConfidence; // Visibility-based quality signal
+}
+
+// Indices of the structural landmarks whose visibility most affects analysis quality
+const STRUCTURAL_LANDMARK_INDICES = [11, 12, 23, 24, 27, 28]; // shoulders, hips, ankles
+const MIN_LANDMARK_CONFIDENCE = 0.6;
+
+function assessLandmarkConfidence(
+  raw: import('@/lib/types/mediapipe').MediaPipeLandmark[] | undefined
+): LandmarkConfidence {
+  if (!raw || raw.length === 0) {
+    return { confident: false, avgVisibility: 0, retakeReason: 'No landmarks detected — ensure full body is visible' };
+  }
+  const structural = STRUCTURAL_LANDMARK_INDICES.map(i => raw[i]).filter(Boolean);
+  if (structural.length === 0) {
+    return { confident: false, avgVisibility: 0, retakeReason: 'Key body points not detected — step back so full body is in frame' };
+  }
+  const avgVisibility = structural.reduce((sum, l) => sum + (l.visibility ?? 0), 0) / structural.length;
+  if (avgVisibility < MIN_LANDMARK_CONFIDENCE) {
+    return {
+      confident: false,
+      avgVisibility,
+      retakeReason: 'Poor landmark confidence — try better lighting or form-fitting clothing',
+    };
+  }
+  return { confident: true, avgVisibility };
 }
 
 // Progress stages for UI feedback
@@ -116,12 +148,18 @@ export async function processPostureImage(
 
     logger.debug(`Complete processing for ${view}`, ctx);
     
+    const landmarkConfidence = assessLandmarkConfidence(landmarks.raw);
+    if (!landmarkConfidence.confident) {
+      logger.warn(`[POSTURE] Low landmark confidence (${landmarkConfidence.avgVisibility.toFixed(2)}): ${landmarkConfidence.retakeReason}`, ctx);
+    }
+
     return {
       alignedImage: imageData,
       imageWithDeviations: wireframeImage,
       wireframeImage,
       analysis,
       landmarks,
+      landmarkConfidence,
     };
   } catch (error) {
     logger.error(`Fatal error processing ${view}`, ctx, error);

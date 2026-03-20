@@ -29,6 +29,18 @@ export const FEATURE_DESCRIPTIONS: Record<keyof typeof FEATURE_FLAGS, string> = 
 /** Feature flag type for type safety */
 export type FeatureFlagKey = typeof FEATURE_FLAGS[keyof typeof FEATURE_FLAGS];
 
+/** Platform Dashboard tab IDs (zero magic strings) */
+export const PLATFORM_DASHBOARD_TABS = {
+  OVERVIEW: 'overview',
+  ORGANIZATIONS: 'organizations',
+  FINANCIAL: 'financial',
+  ADMIN: 'admin',
+  DATA_INTELLIGENCE: 'data-intelligence',
+  PLATFORM_INTELLIGENCE: 'platform-intelligence',
+} as const;
+
+export type PlatformDashboardTab = (typeof PLATFORM_DASHBOARD_TABS)[keyof typeof PLATFORM_DASHBOARD_TABS];
+
 /**
  * Stripe Configuration Constants
  * 

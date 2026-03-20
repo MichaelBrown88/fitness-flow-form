@@ -12,6 +12,7 @@ import { calculateBodyRecomposition, getTargetBodyFatFromLevel, getBodyFatRange 
 import { calculateFunctionalGaps } from '@/lib/utils/functionalStrength';
 import { calculateCardioAnalysis, mapFitnessGoalLevel } from '@/lib/utils/cardioAnalysis';
 import { convertGripStrength } from '@/lib/utils/measurementConverters';
+import { getEffectiveGoalLevels } from '@/lib/goals/achievableLandmarks';
 
 /** Per-sub-metric delta from previous assessment (positive = improvement) */
 export interface GapDeltas {
@@ -31,6 +32,8 @@ export interface GapAnalysisData {
   status: 'red' | 'yellow' | 'green' | 'gray';
   /** Per-sub-metric deltas from previous assessment */
   deltas?: GapDeltas;
+  /** When trend data exists, short projection line (e.g. "on track to reach X in ~Y weeks"). */
+  projectionMessage?: string;
   bodyCompGaps?: {
     weight: { current: number; target: number; gap: number };
     muscle: { current: number; target: number; gap: number };
@@ -117,6 +120,7 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData, pr
     
     const goals = formData?.clientGoals || [];
     const primaryGoal = goals[0] || 'general-health';
+    const effectiveLevels = getEffectiveGoalLevels(primaryGoal, formData);
     
     // Body Composition
     const bodyCompGap: GapAnalysisData = (() => {
@@ -133,14 +137,6 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData, pr
       } else if ((gender === 'male' && bf <= 20) || (gender === 'female' && bf <= 28)) {
         status = 'yellow';
       }
-      
-      const goalLevel = primaryGoal === 'weight-loss' 
-        ? (formData?.goalLevelWeightLoss || '15')
-        : primaryGoal === 'build-muscle'
-        ? (formData?.goalLevelMuscle || '6')
-        : primaryGoal === 'body-recomposition'
-        ? (formData?.goalLevelBodyRecomp || 'athletic')
-        : '15';
       
       let targetValue = '';
       let targetLabel = '';
@@ -168,7 +164,7 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData, pr
         
         if (isBodyRecomp && weightKg > 0) {
           // Body recomposition logic
-          const recompLevel = (formData?.goalLevelBodyRecomp || 'athletic') as 'healthy' | 'fit' | 'athletic' | 'shredded';
+          const recompLevel = effectiveLevels.goalLevelBodyRecomp as 'healthy' | 'fit' | 'athletic' | 'shredded';
           const genderKey = gender as 'male' | 'female';
           const targetBodyFat = getTargetBodyFatFromLevel(recompLevel, genderKey);
           const targetBFRange = getBodyFatRange(recompLevel, genderKey);
@@ -192,7 +188,7 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData, pr
           // COMBINED GOAL: Weight Loss + Muscle Gain (Lean Gain / Transformation)
           // 1. Calculate Weight Loss Target in KG
           let fatLossKg = 0;
-          const weightLossGoal = formData?.goalLevelWeightLoss || '15';
+          const weightLossGoal = effectiveLevels.goalLevelWeightLoss;
           if (weightLossGoal.includes('kg')) {
             fatLossKg = parseFloat(weightLossGoal.replace('kg', '')) || 5;
           } else {
@@ -201,7 +197,7 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData, pr
           }
           
           // 2. Calculate Muscle Gain Target in KG
-          const muscleGainGoal = formData?.goalLevelMuscle || '6';
+          const muscleGainGoal = effectiveLevels.goalLevelMuscle;
           const muscleGainKg = parseFloat(muscleGainGoal) || 2;
           
           // 3. Vector math: Net weight change
@@ -222,7 +218,7 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData, pr
         }
         else if (isWeightLossGoal && weightKg > 0) {
           // Pure Weight Loss logic
-          const weightLossGoal = formData?.goalLevelWeightLoss || '15';
+          const weightLossGoal = effectiveLevels.goalLevelWeightLoss;
           let targetWeightLossKg = 0;
           if (weightLossGoal.includes('kg')) {
             targetWeightLossKg = parseFloat(weightLossGoal.replace('kg', '')) || 5;
@@ -252,7 +248,7 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData, pr
         } 
         else if (isMuscleGoal && weightKg > 0) {
           // Pure Muscle Gain logic
-          const muscleGainKg = parseFloat(formData?.goalLevelMuscle || '6') || 6;
+          const muscleGainKg = parseFloat(effectiveLevels.goalLevelMuscle) || 6;
           targetWeight = weightKg + muscleGainKg;
           targetMuscle = currentMuscleMass + muscleGainKg;
           
@@ -345,8 +341,21 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData, pr
       if (weightDelta !== undefined) bodyCompDeltas.weight = weightDelta;
       const muscleDelta = numDelta('skeletalMuscleMassKg');
       if (muscleDelta !== undefined) bodyCompDeltas.muscle = muscleDelta;
-      const fatDelta = numDelta('inbodyBodyFatPct', true); // invert: lower fat = positive
+      const fatDelta = numDelta('inbodyBodyFatPct', true); // invert: lower fat = positive (improvement)
       if (fatDelta !== undefined) bodyCompDeltas.fat = fatDelta;
+
+      // Projection: at current rate, weeks to reach target (assume 12 weeks between assessments)
+      const ASSESSMENT_INTERVAL_WEEKS = 12;
+      let projectionMessage: string | undefined;
+      if (previousFormData && bf > 0 && fatDelta !== undefined && fatDelta > 0 && bf > targetBF) {
+        const gapPct = bf - targetBF;
+        const ratePerWeek = fatDelta / ASSESSMENT_INTERVAL_WEEKS;
+        if (ratePerWeek > 0) {
+          const weeksToTarget = Math.round((gapPct / ratePerWeek));
+          const capped = Math.max(4, Math.min(104, weeksToTarget));
+          projectionMessage = `At your current progress you're on track to reach your target in approximately ${capped} weeks.`;
+        }
+      }
 
       return {
         title: 'BODY COMPOSITION',
@@ -361,6 +370,7 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData, pr
         status,
         bodyCompGaps,
         deltas: Object.keys(bodyCompDeltas).length > 0 ? bodyCompDeltas : undefined,
+        projectionMessage,
       };
     })();
     
@@ -370,7 +380,7 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData, pr
       
       // Get ambition level for strength
       // Map strength options (10, 20, 30, 40) to ambition levels (health, active, athletic, elite)
-      const strengthGoalValue = formData?.goalLevelStrength || '30';
+      const strengthGoalValue = effectiveLevels.goalLevelStrength;
       const strengthAmbitionMap: Record<string, string> = {
         '10': 'health',
         '20': 'active',
@@ -522,7 +532,7 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData, pr
       const genderKey = (gender || 'male') as 'male' | 'female';
       
       // Get fitness ambition level
-      const fitnessGoalValue = formData?.goalLevelFitness || 'active';
+      const fitnessGoalValue = effectiveLevels.goalLevelFitness;
       const ambitionLevel = mapFitnessGoalLevel(fitnessGoalValue);
       
       // Calculate cardio gaps using new function

@@ -2,12 +2,11 @@
  * Client Submissions Service
  * 
  * Handles CRUD for client self-service captures.
- * Collection: clientSubmissions/{clientUid}/items/{submissionId}
+ * Collection: organizations/{orgId}/clientSubmissions/{clientUid}/items/{submissionId}
  */
 
 import {
   collection,
-  doc,
   addDoc,
   getDocs,
   query,
@@ -22,6 +21,14 @@ import { getDb } from '@/services/firebase';
 import { logger } from '@/lib/utils/logger';
 import type { AnySubmission, SubmissionType } from '@/types/submissions';
 import type { FormData } from '@/contexts/FormContext';
+import { ORGANIZATION } from '@/lib/database/paths';
+
+function submissionsRef(organizationId: string, clientUid: string) {
+  return collection(
+    getDb(),
+    ORGANIZATION.clientSubmissions.itemsCollection(organizationId, clientUid),
+  );
+}
 
 /**
  * Save a body composition scan submission
@@ -33,8 +40,7 @@ export async function saveBodyCompSubmission(
   extractedData: Partial<FormData>,
   ocrConfidence: number
 ): Promise<string> {
-  const db = getDb();
-  const ref = collection(db, 'clientSubmissions', clientUid, 'items');
+  const ref = submissionsRef(organizationId, clientUid);
   
   const submission = {
     clientUid,
@@ -61,8 +67,7 @@ export async function savePostureSubmission(
   images: { front?: string; right?: string; back?: string; left?: string },
   viewCount: number
 ): Promise<string> {
-  const db = getDb();
-  const ref = collection(db, 'clientSubmissions', clientUid, 'items');
+  const ref = submissionsRef(organizationId, clientUid);
   
   const submission = {
     clientUid,
@@ -87,8 +92,7 @@ export async function saveLifestyleSubmission(
   organizationId: string,
   responses: Partial<FormData>
 ): Promise<string> {
-  const db = getDb();
-  const ref = collection(db, 'clientSubmissions', clientUid, 'items');
+  const ref = submissionsRef(organizationId, clientUid);
   
   const submission = {
     clientUid,
@@ -109,12 +113,12 @@ export async function saveLifestyleSubmission(
  */
 export async function getClientSubmissions(
   clientUid: string,
+  organizationId: string,
   typeFilter?: SubmissionType,
   maxResults = 20
 ): Promise<AnySubmission[]> {
-  const db = getDb();
-  const ref = collection(db, 'clientSubmissions', clientUid, 'items');
-  
+  const ref = submissionsRef(organizationId, clientUid);
+
   let q = query(ref, orderBy('createdAt', 'desc'), limit(maxResults));
   if (typeFilter) {
     q = query(ref, where('type', '==', typeFilter), orderBy('createdAt', 'desc'), limit(maxResults));
@@ -129,12 +133,12 @@ export async function getClientSubmissions(
  */
 export function subscribeToSubmissions(
   clientUid: string,
+  organizationId: string,
   onUpdate: (submissions: AnySubmission[]) => void,
   statusFilter?: 'pending' | 'reviewed'
 ): Unsubscribe {
-  const db = getDb();
-  const ref = collection(db, 'clientSubmissions', clientUid, 'items');
-  
+  const ref = submissionsRef(organizationId, clientUid);
+
   let q = query(ref, orderBy('createdAt', 'desc'), limit(20));
   if (statusFilter) {
     q = query(ref, where('status', '==', statusFilter), orderBy('createdAt', 'desc'), limit(20));

@@ -12,6 +12,7 @@ import { useState, useCallback } from 'react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { STRIPE_CONFIG } from '@/constants/platform';
 import { logger } from '@/lib/utils/logger';
+import type { Region } from '@/constants/pricing';
 import type { CreateCheckoutRequest, CreateCheckoutResponse } from '@/types/platform';
 
 export function useCheckout() {
@@ -26,7 +27,7 @@ export function useCheckout() {
    * @returns true if redirect was initiated, false if Stripe is not configured
    */
   const startCheckout = useCallback(
-    async (organizationId: string, plan: CreateCheckoutRequest['plan'], seats: number): Promise<boolean> => {
+    async (organizationId: string, region: Region, clientCount: number): Promise<boolean> => {
       // If Stripe is not configured, skip payment entirely
       if (!STRIPE_CONFIG.isEnabled) {
         logger.info('[Checkout] Stripe not configured — skipping payment (trial mode)');
@@ -44,7 +45,7 @@ export function useCheckout() {
           'createCheckoutSession'
         );
 
-        const result = await createSession({ organizationId, plan, seats });
+        const result = await createSession({ organizationId, region, clientCount });
         const { sessionUrl } = result.data;
 
         if (!sessionUrl) {
@@ -77,8 +78,45 @@ export function useCheckout() {
     []
   );
 
+  const purchaseCreditTopup = useCallback(
+    async (organizationId: string): Promise<boolean> => {
+      if (!STRIPE_CONFIG.isEnabled) {
+        logger.info('[Checkout] Stripe not configured — skipping credit topup');
+        return false;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const functions = getFunctions();
+        const createSession = httpsCallable<{ organizationId: string }, { sessionUrl: string }>(
+          functions,
+          'createCreditTopupSession'
+        );
+
+        const result = await createSession({ organizationId });
+        const { sessionUrl } = result.data;
+
+        if (!sessionUrl) throw new Error('No checkout session URL returned from server.');
+
+        window.location.href = sessionUrl;
+        return true;
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Unable to start credit checkout.';
+        setError(message);
+        logger.error('[Checkout] Failed to start credit topup:', message);
+        return false;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
   return {
     startCheckout,
+    purchaseCreditTopup,
     loading,
     error,
     /** Whether Stripe payment is available (env key is set) */

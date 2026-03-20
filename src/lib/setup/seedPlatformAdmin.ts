@@ -18,7 +18,7 @@ import {
 
 // Platform owner configuration
 const PLATFORM_OWNER = {
-  email: 'michaeljbrown88@gmail.com',
+  email: 'michael@one-assess.com',
   displayName: 'Michael Brown',
   permissions: [
     'view_metrics',

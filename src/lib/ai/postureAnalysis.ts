@@ -204,8 +204,6 @@ export async function classifyPostureView(
   }
 
   try {
-    await logAIUsage(coachUid, 'posture_analysis', 'ai_success', 'gemini');
-
     const firebaseApp = getApp();
     const ai = getAI(firebaseApp, {
       backend: new VertexAIBackend()
@@ -525,14 +523,14 @@ export async function analyzePostureImage(
       return data;
     } catch (parseError) {
       logger.error('JSON parsing error', ctx, parseError);
-      await logAIUsage(coachUid, 'posture_analysis', 'error', 'local');
+      await logAIUsage(coachUid, 'posture_analysis', 'error', 'gemini');
       throw new Error(`Failed to parse AI response as JSON: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
     }
 
   } catch (err) {
     logger.error('Posture Analysis Error', 'POSTURE_AI', err);
     try {
-      await logAIUsage(coachUid, 'posture_analysis', 'error', 'local');
+      await logAIUsage(coachUid, 'posture_analysis', 'error', 'gemini');
     } catch (logError) {
       logger.warn('Failed to log error', 'POSTURE_AI', logError);
     }

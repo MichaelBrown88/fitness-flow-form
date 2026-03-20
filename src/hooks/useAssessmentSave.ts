@@ -7,6 +7,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { Timestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { saveCoachAssessment, updateCoachAssessment, saveDraftAssessment, clearDraftAssessment } from '@/services/coachAssessments';
+import { enqueueAssessment } from '@/lib/offline/pendingAssessments';
 import { isAssessmentComplete, type PartialCategory } from '@/lib/assessmentCompleteness';
 import { requestShareArtifacts, type ShareArtifacts } from '@/services/share';
 import type { FormData } from '@/contexts/FormContext';
@@ -59,6 +60,34 @@ export function useAssessmentSave({
   const handleSaveToDashboard = useCallback(async () => {
     if (!user || saving || savingId || saveInitiatedRef.current) return;
     saveInitiatedRef.current = true;
+
+    // Sandbox trial gate — block save when trial limit is exhausted
+    if (orgSettings?.subscription?.plan === 'sandbox') {
+      const remaining =
+        typeof orgSettings.trialAssessmentsRemaining === 'number'
+          ? orgSettings.trialAssessmentsRemaining
+          : 0;
+      if (remaining <= 0) {
+        saveInitiatedRef.current = false;
+        toast({
+          title: 'Trial limit reached',
+          description: 'Create your free account to unlock unlimited assessments.',
+          variant: 'destructive',
+        });
+        window.location.href = '/onboarding';
+        return;
+      }
+      // Decrement the counter (optimistic — full decrement happens in save service)
+      const { doc, updateDoc, increment } = await import('firebase/firestore');
+      const { getDb } = await import('@/services/firebase');
+      const db = getDb();
+      const orgId = profile?.organizationId;
+      if (orgId) {
+        void updateDoc(doc(db, 'organizations', orgId), {
+          trialAssessmentsRemaining: increment(-1),
+        });
+      }
+    }
     
     let clientName = (formData.fullName || 'Unnamed client').trim();
 
@@ -83,6 +112,34 @@ export function useAssessmentSave({
       }
     }
     
+    // Offline path — persist to IndexedDB and return early
+    if (!navigator.onLine && !isDemoAssessment) {
+      try {
+        await enqueueAssessment({
+          id: `${user.uid}_${Date.now()}`,
+          queuedAt: Date.now(),
+          coachUid: user.uid,
+          organizationId: profile?.organizationId ?? '',
+          formData,
+          scores,
+          isDemoAssessment,
+        });
+        toast({
+          title: 'Saved offline',
+          description: 'Your assessment will sync automatically when you reconnect.',
+        });
+      } catch (err) {
+        logger.error('[Assessment] Failed to queue offline save:', err);
+        toast({
+          title: 'Could not save offline',
+          description: 'Please reconnect before saving.',
+          variant: 'destructive',
+        });
+      }
+      saveInitiatedRef.current = false;
+      return;
+    }
+
     try {
       setSaving(true);
       // Starting sync for client
@@ -90,6 +147,7 @@ export function useAssessmentSave({
       let assessmentId: string;
       let shareToken: string | null = null;
       let category: string | null = null;
+      let publicReportSynced = true;
       
       try {
         // Check for edit mode first
@@ -98,8 +156,8 @@ export function useAssessmentSave({
           const parsed = JSON.parse(editData) as { assessmentId?: string; formData?: FormData; snapshotId?: string; editType?: string };
           if (parsed.assessmentId && profile?.organizationId) {
             if (parsed.snapshotId) {
-              // Edit existing snapshot in place (no new row); for partial, merge with current so we don't wipe other pillars
-              const { getCurrentAssessment, updateSnapshotInPlace } = await import('@/services/assessmentHistory');
+              // Edit existing snapshot in place with cascade; for partial, merge with current so we don't wipe other pillars
+              const { getCurrentAssessment, updateSnapshotWithCascade } = await import('@/services/assessmentHistory');
               const isPartialEdit = parsed.editType?.startsWith('partial-');
               let dataToSave = formData;
               if (isPartialEdit) {
@@ -108,14 +166,11 @@ export function useAssessmentSave({
                   ? { ...current.formData, ...formData }
                   : formData;
               }
-              const { computeScores } = await import('@/lib/scoring');
-              const mergedScores = computeScores(dataToSave);
-              const result = await updateSnapshotInPlace(
+              const result = await updateSnapshotWithCascade(
                 user.uid,
                 clientName,
                 parsed.snapshotId,
                 dataToSave,
-                mergedScores.overall,
                 profile.organizationId
               );
               if (result.success) {
@@ -136,7 +191,7 @@ export function useAssessmentSave({
                 }
                 toast({
                   title: UI_TOASTS.SUCCESS.ASSESSMENT_UPDATED,
-                  description: 'Assessment updated without adding a new entry.',
+                  description: result.message,
                 });
                 setSavingId(parsed.assessmentId);
                 setSaving(false);
@@ -208,7 +263,8 @@ export function useAssessmentSave({
           );
           assessmentId = result.assessmentId;
           shareToken = result.shareToken;
-          
+          publicReportSynced = result.publicReportSynced;
+
           const { createOrUpdateClientProfile } = await import('@/services/clientProfiles');
           const now = Timestamp.now();
           const updateData: Record<string, unknown> = {
@@ -255,6 +311,7 @@ export function useAssessmentSave({
           const result = await saveCoachAssessment(user.uid, user.email, formData, scores.overall, profile?.organizationId, profile);
           assessmentId = result.assessmentId;
           shareToken = result.shareToken;
+          publicReportSynced = result.publicReportSynced;
           if (profile?.organizationId) await clearDraftAssessment(clientName, profile.organizationId);
 
           // Update client profile: lastAssessmentDate, all pillar dates, and shareToken
@@ -316,6 +373,7 @@ export function useAssessmentSave({
           const result = await saveCoachAssessment(user.uid, user.email, formData, scores.overall, profile?.organizationId, profile);
           assessmentId = result.assessmentId;
           shareToken = result.shareToken;
+          publicReportSynced = result.publicReportSynced;
         } catch (saveErr) {
           logger.error('Failed to save assessment:', saveErr);
           toast({
@@ -335,6 +393,14 @@ export function useAssessmentSave({
         description: category ? `${category.charAt(0).toUpperCase() + category.slice(1)} data updated and merged.` : `Progress for ${clientName} has been saved.` 
       });
 
+      if (!publicReportSynced) {
+        toast({
+          title: 'Assessment saved',
+          description: "Client report link may be outdated — reshare to refresh.",
+          variant: 'destructive',
+        });
+      }
+
       // Set firstAssessmentCompleted flag (one-time, non-blocking)
       if (!profile?.firstAssessmentCompleted) {
         try {
@@ -349,17 +415,57 @@ export function useAssessmentSave({
         }
       }
 
-      // Evaluate achievements and send notifications via shareToken (non-blocking)
+      // Write health data consent record on first assessment for this client (non-blocking, idempotent)
+      // This creates an auditable record that the coach collected health data on the client's behalf.
+      if (profile?.organizationId && assessmentId && clientName) {
+        try {
+          const { doc: fsDoc, setDoc: fsSetDoc, serverTimestamp: fsSvr } = await import('firebase/firestore');
+          const { getDb: fsDb } = await import('@/services/firebase');
+          const { resolveClientId: rcId } = await import('@/services/clientProfiles');
+          const cId = (await rcId(profile.organizationId, clientName)) ?? assessmentId;
+          // Use a deterministic doc ID so this write is idempotent on retry
+          const consentDocId = `health_data_v1`;
+          const consentPath = `organizations/${profile.organizationId}/clients/${cId}/consents/${consentDocId}`;
+          const consentRef = fsDoc(fsDb(), consentPath);
+          await fsSetDoc(consentRef, {
+            type: 'health_data_processing',
+            version: 1,
+            grantedByCoachUid: user.uid,
+            grantedAt: fsSvr(),
+            firstAssessmentId: assessmentId,
+            note: 'Implicit consent: coach collected health data on behalf of client during first assessment.',
+          }, { merge: true });
+          logger.debug('[Assessment] Health data consent record written');
+        } catch (consentErr) {
+          logger.warn('[Assessment] Failed to write consent record (non-fatal):', consentErr);
+        }
+      }
+
+      // Evaluate achievements, refresh roadmap drift, and send notifications (non-blocking)
       if (profile?.organizationId && assessmentId && shareToken) {
-        // Step 1: Evaluate achievements using token-scoped storage
+        // Resolve stable clientId once — used by both achievements and drift refresh
+        let resolvedClientId: string = assessmentId;
+        try {
+          const { resolveClientId } = await import('@/services/clientProfiles');
+          resolvedClientId = (await resolveClientId(profile.organizationId, clientName)) ?? assessmentId;
+        } catch (resolveErr) {
+          logger.warn('[Assessment] Could not resolve clientId (non-fatal):', resolveErr);
+        }
+
+        // Step 1: Evaluate achievements using org-scoped storage
         try {
           const { getDoc: getDocSnap } = await import('firebase/firestore');
           const { getOrgAssessmentDoc } = await import('@/lib/database/collections');
           const summarySnap = await getDocSnap(
             getOrgAssessmentDoc(profile.organizationId, assessmentId)
           );
-          const actualCount = (summarySnap.data()?.assessmentCount as number) ?? 1;
-          const previousOverallScore = (summarySnap.data()?.previousScore as number) ?? undefined;
+          const summaryRaw = summarySnap.data() as
+            | { assessmentCount?: unknown; previousScore?: unknown }
+            | undefined;
+          const actualCount =
+            typeof summaryRaw?.assessmentCount === 'number' ? summaryRaw.assessmentCount : 1;
+          const previousOverallScore =
+            typeof summaryRaw?.previousScore === 'number' ? summaryRaw.previousScore : undefined;
 
           let previousCategoryScores: Array<{ id: string; score: number }> | undefined;
           try {
@@ -378,8 +484,9 @@ export function useAssessmentSave({
           const categoryScores = scores.categories.map((c) => ({ id: c.id, score: c.score }));
 
           const unlocked = await evaluateAchievements({
-            shareToken,
             organizationId: profile.organizationId,
+            clientId: resolvedClientId,
+            shareToken,
             overallScore: scores.overall,
             categoryScores,
             previousOverallScore,
@@ -410,7 +517,94 @@ export function useAssessmentSave({
           logger.warn('[Assessment] Failed to evaluate achievements (non-fatal):', achErr);
         }
 
-        // Step 2: Send "assessment_complete" notification via token-scoped path
+        // Step 2: Refresh roadmap drift scores + check phase completion (non-blocking)
+        try {
+          const { refreshRoadmapScores, getRoadmapForClient } = await import('@/services/roadmaps');
+          const driftScores: Record<string, number> = {};
+          scores.categories.forEach((c) => { driftScores[c.id] = c.score; });
+          await refreshRoadmapScores(
+            profile.organizationId,
+            clientName,
+            driftScores,
+            resolvedClientId,
+            scores,
+          );
+          logger.debug('[Assessment] Roadmap scores refreshed for drift detection');
+
+          // Check if all phase targets are now met → notify client + coach
+          const roadmap = await getRoadmapForClient(
+            profile.organizationId,
+            clientName,
+            resolvedClientId,
+          );
+          if (roadmap?.phaseTargets && roadmap.activePhase) {
+            const targets = roadmap.phaseTargets[roadmap.activePhase] ?? [];
+            const allMet =
+              targets.length > 0 &&
+              targets.every((t) => (driftScores[t.category] ?? 0) >= t.targetScore);
+            if (allMet) {
+              const { writeNotification } = await import('@/services/notificationWriter');
+              const phaseName =
+                roadmap.activePhase.charAt(0).toUpperCase() + roadmap.activePhase.slice(1);
+              await Promise.all([
+                writeNotification({
+                  shareToken,
+                  type: 'phase_complete',
+                  title: `${phaseName} phase complete!`,
+                  body: `You've hit every target in the ${phaseName} phase. Your coach will review and advance your plan.`,
+                  priority: 'high',
+                }),
+                writeNotification({
+                  recipientUid: user.uid,
+                  type: 'phase_complete',
+                  title: `${formData.fullName || clientName} completed the ${phaseName} phase`,
+                  body: `All ${phaseName} phase targets have been reached — consider advancing their plan.`,
+                  priority: 'high',
+                  actionUrl: `/client/${encodeURIComponent(clientName)}/roadmap`,
+                }),
+              ]);
+              logger.debug(`[Assessment] Phase complete notifications sent (${roadmap.activePhase})`);
+            }
+          }
+        } catch (driftErr) {
+          logger.warn('[Assessment] Failed to refresh roadmap scores (non-fatal):', driftErr);
+        }
+
+        // Step 2b: Score drop alert — notify coach if overall score fell by 5+ points
+        try {
+          const { getDoc: getDocForScore } = await import('firebase/firestore');
+          const { getOrgAssessmentDoc: getOrgAssessmentDocRef } = await import(
+            '@/lib/database/collections'
+          );
+          const prevSnap = await getDocForScore(
+            getOrgAssessmentDocRef(profile.organizationId, assessmentId),
+          );
+          const prevRaw = prevSnap.data() as { previousScore?: unknown } | undefined;
+          const previousScore =
+            typeof prevRaw?.previousScore === 'number' ? prevRaw.previousScore : undefined;
+
+          if (previousScore !== undefined && scores.overall < previousScore - 5) {
+            const { writeNotification } = await import('@/services/notificationWriter');
+            await writeNotification({
+              recipientUid: user.uid,
+              type: 'score_drop',
+              title: `Score drop: ${formData.fullName || clientName}`,
+              body: `Overall score fell from ${Math.round(previousScore)} to ${Math.round(scores.overall)}. A review may be warranted.`,
+              priority: 'high',
+              actionUrl: `/client/${encodeURIComponent(clientName)}`,
+              meta: {
+                previousScore,
+                currentScore: scores.overall,
+                delta: Math.round(scores.overall - previousScore),
+              },
+            });
+            logger.debug('[Assessment] Score drop notification sent to coach');
+          }
+        } catch (dropErr) {
+          logger.warn('[Assessment] Failed to evaluate score drop (non-fatal):', dropErr);
+        }
+
+        // Step 3: Send "assessment_complete" notification via token-scoped path
         try {
           const { writeNotification } = await import('@/services/notificationWriter');
           await writeNotification({

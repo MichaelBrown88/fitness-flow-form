@@ -2,10 +2,10 @@
  * Client detail layout: shared data, breadcrumb, tabs (Overview | Client Report | Roadmap | Achievements | Coaches Report | History | Settings), Outlet, and dialogs.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, NavLink, useNavigate, useSearchParams, Outlet } from 'react-router-dom';
 import AppShell from '@/components/layout/AppShell';
-import { Breadcrumb } from '@/components/ui/Breadcrumb';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
 import { ROUTES } from '@/constants/routes';
 import { useClientDetail } from '@/hooks/useClientDetail';
@@ -18,6 +18,7 @@ import {
   History,
   Map,
   Settings as SettingsIcon,
+  Trash2,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -33,6 +34,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { TransferClientDialog } from '@/components/client/TransferClientDialog';
 import { PauseClientDialog } from '@/components/client/PauseClientDialog';
 import { ArchiveClientDialog } from '@/components/client/ArchiveClientDialog';
@@ -40,6 +42,11 @@ import type { UseClientDetailResult } from '@/hooks/useClientDetail';
 
 export type ClientDetailOutletContext = UseClientDetailResult & {
   roadmapStatus: 'loading' | 'none' | 'draft' | 'sent';
+  /**
+   * True when the roadmap was built on scores that are older than the most recent
+   * assessment save. The coach dashboard surfaces this as a "plan may be outdated" hint.
+   */
+  isRoadmapStale: boolean;
 };
 
 function buildClientPath(name: string, sub?: string): string {
@@ -56,6 +63,10 @@ export default function ClientDetailLayout() {
   const [transferOpen, setTransferOpen] = useState(false);
   const [pauseDialogOpen, setPauseDialogOpen] = useState(false);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [deleteClientOpen, setDeleteClientOpen] = useState(false);
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const deleteInputRef = useRef<HTMLInputElement>(null);
 
   const {
     clientName,
@@ -78,11 +89,13 @@ export default function ClientDetailLayout() {
     handleUnpauseClient,
     handleArchiveClient,
     handleReactivateClient,
+    handleDeleteClientPermanently,
   } = clientData;
 
   const isPaused = profile?.status === 'paused';
   const isArchived = profile?.status === 'archived';
   const [roadmapStatus, setRoadmapStatus] = useState<'loading' | 'none' | 'draft' | 'sent'>('loading');
+  const [isRoadmapStale, setIsRoadmapStale] = useState(false);
   const { effectiveOrgId } = useAuth();
 
   useEffect(() => {
@@ -111,11 +124,26 @@ export default function ClientDetailLayout() {
     if (!effectiveOrgId || !clientName) return;
     let cancelled = false;
     getRoadmapForClient(effectiveOrgId, clientName)
-      .then((doc) => {
+      .then((roadmapDoc) => {
         if (cancelled) return;
-        if (!doc) setRoadmapStatus('none');
-        else if (doc.shareToken) setRoadmapStatus('sent');
-        else setRoadmapStatus('draft');
+        if (!roadmapDoc) {
+          setRoadmapStatus('none');
+          return;
+        }
+        setRoadmapStatus(roadmapDoc.shareToken ? 'sent' : 'draft');
+
+        // Drift detection: stale when the plan's assessmentId differs from the latest
+        // assessment that refreshed currentScores (i.e. new assessment run since plan was built).
+        const hasCurrentScores = !!roadmapDoc.currentScores && !!roadmapDoc.lastScoreRefreshedAt;
+        if (hasCurrentScores && roadmapDoc.baselineScores && roadmapDoc.currentScores) {
+          const baselineKeys = Object.keys(roadmapDoc.baselineScores);
+          const drifted = baselineKeys.some((key) => {
+            const baseline = roadmapDoc.baselineScores![key] ?? 0;
+            const current = roadmapDoc.currentScores![key] ?? 0;
+            return Math.abs(current - baseline) >= 10;
+          });
+          setIsRoadmapStale(drifted);
+        }
       })
       .catch(() => {
         if (!cancelled) setRoadmapStatus('none');
@@ -175,6 +203,13 @@ export default function ClientDetailLayout() {
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setArchiveDialogOpen(true)} className="py-3 text-sm font-medium">
                 {isArchived ? 'Reactivate Client' : 'Archive Client'}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => { setDeleteConfirmName(''); setDeleteClientOpen(true); }}
+                className="py-3 text-sm font-medium text-red-600 focus:text-red-600 focus:bg-red-50"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Permanently
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -239,14 +274,6 @@ export default function ClientDetailLayout() {
           Achievements
         </NavLink>
         <NavLink
-          to={buildClientPath(clientName, 'coaches-report')}
-          className={({ isActive }) =>
-            `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-white text-slate-900' : 'text-slate-500 hover:text-slate-700'}`
-          }
-        >
-          Coaches Report
-        </NavLink>
-        <NavLink
           to={buildClientPath(clientName, 'history')}
           className={({ isActive }) =>
             `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-white text-slate-900' : 'text-slate-500 hover:text-slate-700'}`
@@ -264,7 +291,7 @@ export default function ClientDetailLayout() {
         </NavLink>
       </nav>
 
-      <Outlet context={{ ...clientData, roadmapStatus } satisfies ClientDetailOutletContext} />
+      <Outlet context={{ ...clientData, roadmapStatus, isRoadmapStale } satisfies ClientDetailOutletContext} />
 
       <Dialog open={!!deleteDialog} onOpenChange={(open) => !open && setDeleteDialog(null)}>
         <DialogContent>
@@ -325,6 +352,60 @@ export default function ClientDetailLayout() {
         onArchive={handleArchiveClient}
         onReactivate={handleReactivateClient}
       />
+
+      <Dialog
+        open={deleteClientOpen}
+        onOpenChange={(open) => { if (!deleting) { setDeleteClientOpen(open); setDeleteConfirmName(''); } }}
+      >
+        <DialogContent className="sm:max-w-[440px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="h-5 w-5" />
+              Permanently Delete {clientName}?
+            </DialogTitle>
+            <DialogDescription className="pt-2 space-y-2">
+              <span className="block">
+                This will permanently delete <strong>{clientName}</strong> and remove all their data — assessments, history, snapshots, and reports. This cannot be undone.
+              </span>
+              <span className="block mt-2 font-medium text-slate-700">
+                Type <strong>{clientName}</strong> to confirm:
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <Input
+              ref={deleteInputRef}
+              value={deleteConfirmName}
+              onChange={(e) => setDeleteConfirmName(e.target.value)}
+              placeholder={clientName}
+              className="rounded-xl"
+              disabled={deleting}
+              autoFocus
+            />
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setDeleteClientOpen(false)} disabled={deleting} className="rounded-xl h-11 px-6 font-bold">
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleteConfirmName !== clientName || deleting}
+              className="rounded-xl h-11 px-6 font-bold"
+              onClick={async () => {
+                setDeleting(true);
+                try {
+                  await handleDeleteClientPermanently();
+                  setDeleteClientOpen(false);
+                } finally {
+                  setDeleting(false);
+                }
+              }}
+            >
+              {deleting ? 'Deleting…' : 'Delete Permanently'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }

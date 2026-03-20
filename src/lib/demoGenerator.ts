@@ -288,7 +288,8 @@ export async function generateDemoData(): Promise<Partial<FormData>> {
     ? Math.floor(95 + rng() * 20) // 95-115
     : Math.floor(115 + rng() * 25); // 115-140
   
-  // Goals - based on archetype
+  // Goals - based on archetype. First goal = primary, rest = secondary.
+  // goalLevel* are optional; when omitted, app uses achievable landmarks (getEffectiveGoalLevels).
   let clientGoals: string[];
   let goalLevelWeightLoss: string | undefined;
   let goalLevelMuscle: string | undefined;

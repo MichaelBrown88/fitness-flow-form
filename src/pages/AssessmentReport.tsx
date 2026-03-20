@@ -5,7 +5,7 @@ import { useVersionSelector } from '@/hooks/useVersionSelector';
 import { useReportShare } from '@/hooks/useReportShare';
 import AssessmentVersionSelector from '@/components/reports/AssessmentVersionSelector';
 import AppShell from '@/components/layout/AppShell';
-import { Breadcrumb } from '@/components/ui/Breadcrumb';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { generateBodyCompInterpretation } from '@/lib/recommendations';
@@ -53,17 +53,24 @@ const AssessmentReport = () => {
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [versionSelectorExpanded, setVersionSelectorExpanded] = useState(false);
 
+  const scoreDelta = (scores && previousScores)
+    ? (scores.overall - previousScores.overall)
+    : undefined;
+
   const {
     handleCopyLink,
     handleEmailLink,
     handleSystemShare,
     handleWhatsAppShare,
+    handleCopyMessage,
     shareLoading,
   } = useReportShare({
     assessmentId: id,
     formData: formData ?? null,
     user,
     profile: profile ?? null,
+    overallScore: scores?.overall,
+    scoreDelta,
   });
 
   if (loading) {

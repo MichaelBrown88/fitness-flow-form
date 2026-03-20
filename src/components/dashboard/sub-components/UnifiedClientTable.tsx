@@ -8,7 +8,7 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, TrendingDown, Minus, Pause, Archive, ArrowRightLeft, X } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Pause, Archive, ArrowRightLeft, X, Pin } from 'lucide-react';
 import { ClientActionsDropdown } from './ClientActionsDropdown';
 import type { ClientGroup } from '@/hooks/dashboard/types';
 import { scoreGrade, SCORE_COLORS } from '@/lib/scoring/scoreColor';
@@ -334,6 +334,14 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                         {isPaused && <span className="text-[10px] text-slate-400 font-bold">Paused</span>}
                         {isArchived && <span className="text-[10px] text-slate-400 font-bold">Archived</span>}
                       </span>
+                      {client.notes && (
+                        <span className="flex items-center gap-1 mt-0.5">
+                          <Pin className="h-2.5 w-2.5 text-amber-400 shrink-0" />
+                          <span className="text-[10px] text-slate-400 font-normal truncate max-w-[200px]">
+                            {client.notes.length > 80 ? `${client.notes.slice(0, 80)}…` : client.notes}
+                          </span>
+                        </span>
+                      )}
                     </td>
                     {showCoachColumn && (
                       <td className="px-3 sm:px-4 md:px-6 py-4 text-xs text-slate-500 font-medium hidden md:table-cell">
@@ -429,6 +437,15 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                     />
                   </div>
                 </div>
+
+                {client.notes && (
+                  <div className="flex items-center gap-1 mt-1.5">
+                    <Pin className="h-2.5 w-2.5 text-amber-400 shrink-0" />
+                    <span className="text-[10px] text-slate-400 truncate">
+                      {client.notes.length > 80 ? `${client.notes.slice(0, 80)}…` : client.notes}
+                    </span>
+                  </div>
+                )}
 
                 {/* Line 2: score, trend, coach, date, next due — all visible */}
                 <div className="flex items-center gap-2 mt-2 flex-wrap">

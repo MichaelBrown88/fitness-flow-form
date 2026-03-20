@@ -2,12 +2,16 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import { logger } from '@/lib/utils/logger';
+import { initAppCheck } from '@/services/firebase';
 
-// Side-effect: register admin tools on window for console access (dev only)
+// Initialise App Check as early as possible so all subsequent calls are covered.
+// No-op when VITE_RECAPTCHA_SITE_KEY is absent (dev without explicit setup).
+initAppCheck();
+
+// Side-effect: register admin tools on window for console access
+// DEV-only tools stay guarded; migration tools (importPlatformData, deleteV1Paths) load always
+import('@/lib/setup/admin/platformDataReconciler');
 if (import.meta.env.DEV) {
-  import('@/lib/setup/admin/migrateOneFitness');
-  import('@/lib/setup/admin/repairClientData');
-  import('@/lib/setup/admin/backfillRoadmaps');
   import('@/services/achievements'); // registers populateClientData on window
   import('@/services/diagnoseClient'); // registers diagnoseClient, fixClientAnimations on window
 }

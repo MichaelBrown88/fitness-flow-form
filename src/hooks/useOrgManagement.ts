@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { getFirebaseAuth } from '@/services/firebase';
@@ -14,13 +15,14 @@ import {
   getPlatformAdmin, 
   getOrganizationDetails,
   updateOrganizationDetails,
-  deleteOrganization,
+  callDeleteOrganization,
   pauseSubscription,
   cancelSubscription,
   reactivateSubscription,
   grantDataAccess,
   revokeDataAccess,
 } from '@/services/platformAdmin';
+import { logAdminAction } from '@/services/platform/auditLog';
 import type { PlatformAdmin, OrganizationDetails } from '@/types/platform';
 import { logger } from '@/lib/utils/logger';
 
@@ -47,6 +49,8 @@ export interface UseOrgManagementResult {
   setDeleteConfirmText: React.Dispatch<React.SetStateAction<string>>;
   setShowGrantAccessDialog: React.Dispatch<React.SetStateAction<boolean>>;
   setShowRevokeAccessDialog: React.Dispatch<React.SetStateAction<boolean>>;
+  setShowPermanentlyDeleteDialog: React.Dispatch<React.SetStateAction<boolean>>;
+  setPermanentlyDeleteConfirmText: React.Dispatch<React.SetStateAction<string>>;
   setAccessReason: React.Dispatch<React.SetStateAction<string>>;
 
   // Handlers
@@ -59,10 +63,12 @@ export interface UseOrgManagementResult {
   handleGrantAccess: () => Promise<void>;
   handleRevokeAccess: () => Promise<void>;
   handleUpdateDemoAutoFill: (enabled: boolean) => Promise<void>;
+  handlePermanentlyDelete: () => Promise<void>;
 }
 
 export function useOrgManagement(orgId: string | undefined): UseOrgManagementResult {
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   // Core state
   const [admin, setAdmin] = useState<PlatformAdmin | null>(null);
@@ -79,6 +85,8 @@ export function useOrgManagement(orgId: string | undefined): UseOrgManagementRes
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [showGrantAccessDialog, setShowGrantAccessDialog] = useState(false);
   const [showRevokeAccessDialog, setShowRevokeAccessDialog] = useState(false);
+  const [showPermanentlyDeleteDialog, setShowPermanentlyDeleteDialog] = useState(false);
+  const [permanentlyDeleteConfirmText, setPermanentlyDeleteConfirmText] = useState('');
   const [accessReason, setAccessReason] = useState('');
 
   // Load organization details
@@ -141,59 +149,80 @@ export function useOrgManagement(orgId: string | undefined): UseOrgManagementRes
       await updateOrganizationDetails(orgId, org);
       await loadOrganizationDetails(orgId);
       setEditing(false);
+      toast({ title: 'Organization updated' });
     } catch (error) {
       logger.error('Failed to save organization details', 'ORG_MANAGE', error);
+      toast({ title: 'Failed to save', description: error instanceof Error ? error.message : 'Unknown error', variant: 'destructive' });
     } finally {
       setSaving(false);
     }
-  }, [org, orgId, loadOrganizationDetails]);
+  }, [org, orgId, loadOrganizationDetails, toast]);
 
   const handleDelete = useCallback(async () => {
-    if (!orgId || deleteConfirmText !== org?.name) {
+    if (!orgId || deleteConfirmText !== org?.name || !admin) {
       return;
     }
     
     try {
-      await deleteOrganization(orgId);
+      // Soft delete: mark org as deleted so it's hidden from dashboard
+      await updateOrganizationDetails(orgId, {
+        metadata: {
+          ...org?.metadata,
+          isDeleted: true,
+          deletedAt: new Date(),
+          deletedBy: admin.uid,
+        },
+      });
+      if (admin.uid) {
+        await logAdminAction(admin.uid, 'org_soft_delete', orgId, { reason: 'Platform admin action' });
+      }
+      toast({ title: 'Organization archived (soft deleted)' });
       navigate('/admin', { replace: true });
     } catch (error) {
       logger.error('Failed to delete organization', 'ORG_MANAGE', error);
+      toast({ title: 'Failed to delete', description: error instanceof Error ? error.message : 'Unknown error', variant: 'destructive' });
     }
-  }, [orgId, deleteConfirmText, org?.name, navigate]);
+  }, [orgId, deleteConfirmText, org?.name, org?.metadata, admin, navigate, toast]);
 
   const handlePause = useCallback(async () => {
-    if (!orgId) return;
+    if (!orgId || !admin) return;
     
     try {
-      await pauseSubscription(orgId);
+      await pauseSubscription(orgId, admin.uid);
       await loadOrganizationDetails(orgId);
       setShowPauseDialog(false);
+      toast({ title: 'Subscription paused' });
     } catch (error) {
       logger.error('Failed to pause subscription', 'ORG_MANAGE', error);
+      toast({ title: 'Failed to pause subscription', description: error instanceof Error ? error.message : 'Unknown error', variant: 'destructive' });
     }
-  }, [orgId, loadOrganizationDetails]);
+  }, [orgId, admin, loadOrganizationDetails, toast]);
 
   const handleCancel = useCallback(async () => {
-    if (!orgId) return;
+    if (!orgId || !admin) return;
     
     try {
-      await cancelSubscription(orgId);
+      await cancelSubscription(orgId, admin.uid);
       await loadOrganizationDetails(orgId);
+      toast({ title: 'Subscription cancelled' });
     } catch (error) {
       logger.error('Failed to cancel subscription', 'ORG_MANAGE', error);
+      toast({ title: 'Failed to cancel subscription', description: error instanceof Error ? error.message : 'Unknown error', variant: 'destructive' });
     }
-  }, [orgId, loadOrganizationDetails]);
+  }, [orgId, admin, loadOrganizationDetails, toast]);
 
   const handleReactivate = useCallback(async () => {
-    if (!orgId) return;
+    if (!orgId || !admin) return;
     
     try {
-      await reactivateSubscription(orgId);
+      await reactivateSubscription(orgId, admin.uid);
       await loadOrganizationDetails(orgId);
+      toast({ title: 'Subscription reactivated' });
     } catch (error) {
       logger.error('Failed to reactivate subscription', 'ORG_MANAGE', error);
+      toast({ title: 'Failed to reactivate', description: error instanceof Error ? error.message : 'Unknown error', variant: 'destructive' });
     }
-  }, [orgId, loadOrganizationDetails]);
+  }, [orgId, admin, loadOrganizationDetails, toast]);
 
   const handleGrantAccess = useCallback(async () => {
     if (!orgId || !admin) return;
@@ -203,38 +232,60 @@ export function useOrgManagement(orgId: string | undefined): UseOrgManagementRes
       await loadOrganizationDetails(orgId);
       setShowGrantAccessDialog(false);
       setAccessReason('');
+      toast({ title: 'Data access granted' });
     } catch (error) {
       logger.error('Failed to grant data access', 'ORG_MANAGE', error);
+      toast({ title: 'Failed to grant access', description: error instanceof Error ? error.message : 'Unknown error', variant: 'destructive' });
     }
-  }, [orgId, admin, accessReason, loadOrganizationDetails]);
+  }, [orgId, admin, accessReason, loadOrganizationDetails, toast]);
 
   const handleRevokeAccess = useCallback(async () => {
-    if (!orgId) return;
+    if (!orgId || !admin) return;
     
     try {
-      await revokeDataAccess(orgId);
+      await revokeDataAccess(orgId, admin.uid);
       await loadOrganizationDetails(orgId);
       setShowRevokeAccessDialog(false);
+      toast({ title: 'Data access revoked' });
     } catch (error) {
       logger.error('Failed to revoke data access', 'ORG_MANAGE', error);
+      toast({ title: 'Failed to revoke access', description: error instanceof Error ? error.message : 'Unknown error', variant: 'destructive' });
     }
-  }, [orgId, loadOrganizationDetails]);
+  }, [orgId, admin, loadOrganizationDetails, toast]);
 
   const handleUpdateDemoAutoFill = useCallback(async (enabled: boolean) => {
-    if (!orgId || !org) return;
+    if (!orgId || !org || !admin) return;
     
     try {
       setSaving(true);
       await updateOrganizationDetails(orgId, { demoAutoFillEnabled: enabled });
       setOrg({ ...org, demoAutoFillEnabled: enabled });
+      await logAdminAction(admin.uid, 'demo_autofill_toggle', orgId, { enabled });
+      toast({ title: enabled ? 'Demo auto-fill enabled' : 'Demo auto-fill disabled' });
       logger.info(`Demo auto-fill ${enabled ? 'enabled' : 'disabled'}`, 'ORG_MANAGE', { orgId });
     } catch (error) {
       logger.error('Failed to update demo auto-fill', 'ORG_MANAGE', error);
-      throw error; // Re-throw for UI to handle
+      toast({ title: 'Failed to update demo auto-fill', description: error instanceof Error ? error.message : 'Unknown error', variant: 'destructive' });
+      throw error;
     } finally {
       setSaving(false);
     }
-  }, [orgId, org]);
+  }, [orgId, org, admin, toast]);
+
+  const handlePermanentlyDelete = useCallback(async () => {
+    if (!orgId || permanentlyDeleteConfirmText !== 'PERMANENTLY DELETE' || !admin) return;
+    try {
+      await callDeleteOrganization(orgId, true);
+      if (admin.uid) {
+        await logAdminAction(admin.uid, 'org_permanent_delete', orgId, {});
+      }
+      toast({ title: 'Organization permanently deleted' });
+      navigate('/admin', { replace: true });
+    } catch (error) {
+      logger.error('Failed to permanently delete organization', 'ORG_MANAGE', error);
+      toast({ title: 'Failed to delete', description: error instanceof Error ? error.message : 'Unknown error', variant: 'destructive' });
+    }
+  }, [orgId, permanentlyDeleteConfirmText, admin, navigate, toast]);
 
   return {
     // State
@@ -246,9 +297,11 @@ export function useOrgManagement(orgId: string | undefined): UseOrgManagementRes
     showDeleteDialog,
     showPauseDialog,
     deleteConfirmText,
-    showGrantAccessDialog,
-    showRevokeAccessDialog,
-    accessReason,
+  showGrantAccessDialog,
+  showRevokeAccessDialog,
+  showPermanentlyDeleteDialog,
+  permanentlyDeleteConfirmText,
+  accessReason,
     hasDataAccess,
 
     // Setters
@@ -257,9 +310,11 @@ export function useOrgManagement(orgId: string | undefined): UseOrgManagementRes
     setShowDeleteDialog,
     setShowPauseDialog,
     setDeleteConfirmText,
-    setShowGrantAccessDialog,
-    setShowRevokeAccessDialog,
-    setAccessReason,
+  setShowGrantAccessDialog,
+  setShowRevokeAccessDialog,
+  setShowPermanentlyDeleteDialog,
+  setPermanentlyDeleteConfirmText,
+  setAccessReason,
 
     // Handlers
     handleSignOut,
@@ -268,8 +323,9 @@ export function useOrgManagement(orgId: string | undefined): UseOrgManagementRes
     handlePause,
     handleCancel,
     handleReactivate,
-    handleGrantAccess,
-    handleRevokeAccess,
-    handleUpdateDemoAutoFill,
+  handleGrantAccess,
+  handleRevokeAccess,
+  handleUpdateDemoAutoFill,
+  handlePermanentlyDelete,
   };
 }

@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, serverTimestamp, onSnapshot, Timestamp, collection, query, where, getDocs, limit, writeBatch, addDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, serverTimestamp, onSnapshot, Timestamp, collection, query, where, getDocs, limit, writeBatch, addDoc, increment } from 'firebase/firestore';
 import { getDb } from '@/services/firebase';
 import { validateOrganizationId } from '@/lib/utils/validateOrganizationId';
 import type { UserProfile } from '@/types/auth';
@@ -22,6 +22,17 @@ export interface StoredRetestSchedule {
 }
 
 export type ClientProfile = {
+  /**
+   * Stable UUID for this client — used as the Firestore document ID for new clients.
+   * Legacy clients (created before the UUID migration) will have this populated
+   * by the backfillClientIds Cloud Function; until then it may be absent.
+   */
+  clientId?: string;
+  /**
+   * Legacy name-based slug (populated by backfillClientIds for migrated clients).
+   * Used to maintain lookup continuity after UUID migration.
+   */
+  legacySlug?: string;
   clientName: string;
   email?: string;
   phone?: string;
@@ -105,6 +116,43 @@ const clientProfileDoc = (orgId: string, clientName: string) => {
 };
 
 /**
+ * Resolve the stable UUID for a client from a name or slug.
+ *
+ * Resolution order:
+ * 1. Check `clientLookup/{slug}` — populated for new clients and migrated legacy clients.
+ * 2. Fallback: query `clients` where `clientName == ...` and read `clientId` from the doc.
+ *
+ * Returns `null` if the client cannot be found.
+ */
+export async function resolveClientId(
+  orgId: string,
+  clientNameOrSlug: string,
+): Promise<string | null> {
+  const db = getDb();
+  const slug = generateClientSlug(clientNameOrSlug);
+
+  // 1. Check lookup collection
+  const lookupSnap = await getDoc(doc(db, ORGANIZATION.clientLookup.doc(orgId, slug)));
+  if (lookupSnap.exists()) {
+    return (lookupSnap.data() as { clientId: string }).clientId ?? null;
+  }
+
+  // 2. Fallback: query by clientName (legacy slug-keyed docs won't be in lookup yet)
+  const q = query(
+    collection(db, ORGANIZATION.clients.collection(orgId)),
+    where('clientName', '==', clientNameOrSlug),
+    limit(1),
+  );
+  const snap = await getDocs(q);
+  if (!snap.empty) {
+    const data = snap.docs[0].data() as ClientProfile;
+    return data.clientId ?? snap.docs[0].id;
+  }
+
+  return null;
+}
+
+/**
  * Get a client profile
  * @param coachUid - The coach's user ID (kept for backwards compatibility)
  * @param clientName - The client's name
@@ -148,6 +196,8 @@ export interface ClientScheduleData {
   activePillars?: import('@/types/client').PartialAssessmentCategory[];
   /** Training start date — scheduling clock starts here instead of assessment date */
   trainingStartDate?: Date;
+  /** Internal coaching note from the client profile */
+  notes?: string;
 }
 
 /**
@@ -172,6 +222,7 @@ export async function listClientSchedules(
       activePillars: data.activePillars,
       trainingStartDate: data.trainingStartDate ? new Date(data.trainingStartDate) : undefined,
       lastAssessmentDate: data.lastAssessmentDate?.toDate(),
+      notes: data.notes,
     };
 
     if (data.retestSchedule) {
@@ -271,34 +322,71 @@ export async function createOrUpdateClientProfile(
   organizationId?: string,
   profile?: UserProfile | null,
 ): Promise<void> {
-  // Validate organizationId before proceeding
   const validOrgId = validateOrganizationId(organizationId, profile);
 
-  const ref = clientProfileDoc(validOrgId, clientName);
-  const snap = await getDoc(ref);
+  // First, check if a client doc already exists at the legacy slug path
+  const legacyRef = clientProfileDoc(validOrgId, clientName);
+  const legacySnap = await getDoc(legacyRef);
 
-  const existingData = snap.exists() ? (snap.data() as ClientProfile) : null;
-
-  if (snap.exists()) {
-    // Verify ownership: if existing doc has orgId, it must match validated orgId
+  if (legacySnap.exists()) {
+    const existingData = legacySnap.data() as ClientProfile;
     if (existingData?.organizationId && existingData.organizationId !== validOrgId) {
       throw new Error('Cannot update client profile: Organization mismatch.');
     }
+    await updateDoc(legacyRef, {
+      ...data,
+      organizationId: validOrgId,
+      updatedAt: serverTimestamp(),
+    });
+    return;
+  }
 
-    await updateDoc(ref, {
+  // New client: check clientLookup to see if they were already created with a UUID
+  const slug = generateClientSlug(clientName);
+  const lookupRef = doc(getDb(), ORGANIZATION.clientLookup.doc(validOrgId, slug));
+  const lookupSnap = await getDoc(lookupRef);
+
+  if (lookupSnap.exists()) {
+    // Client exists at a UUID doc ID — update that doc
+    const { clientId: existingUuid } = lookupSnap.data() as { clientId: string; clientName: string };
+    const uuidRef = doc(getDb(), ORGANIZATION.clients.doc(validOrgId, existingUuid));
+    await updateDoc(uuidRef, {
       ...data,
       organizationId: validOrgId,
       updatedAt: serverTimestamp(),
     });
-  } else {
-    await setDoc(ref, {
-      clientName,
-      organizationId: validOrgId,
-      assignedCoachUid: coachUid,
-      ...data,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+    return;
+  }
+
+  // Truly new client: generate a stable UUID and write both the profile and lookup docs
+  const newClientId = crypto.randomUUID();
+  const uuidRef = doc(getDb(), ORGANIZATION.clients.doc(validOrgId, newClientId));
+  await setDoc(uuidRef, {
+    clientName,
+    clientId: newClientId,
+    legacySlug: slug,
+    organizationId: validOrgId,
+    assignedCoachUid: coachUid,
+    ...data,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  // Write lookup so slug → UUID resolution works in all callers
+  await setDoc(lookupRef, { clientId: newClientId, clientName });
+
+  // Notify the coach that a new client has been added (non-blocking)
+  try {
+    const { writeNotification } = await import('@/services/notificationWriter');
+    await writeNotification({
+      recipientUid: coachUid,
+      type: 'new_client',
+      title: `${clientName} added`,
+      body: 'New client profile created. Schedule their first assessment when ready.',
+      priority: 'low',
+      actionUrl: `/client/${encodeURIComponent(clientName)}`,
     });
+  } catch {
+    logger.warn('[ClientProfiles] Failed to send new_client notification (non-fatal)');
   }
 }
 
@@ -473,18 +561,8 @@ export async function renameClient(
       await updateDoc(ref, { clientName: normalizedNew, updatedAt: serverTimestamp() });
     }
 
-    // Update summaries clientName display
-    const assessmentsRef = collection(db, ORGANIZATION.assessments.collection(validOrgId));
-    const q = query(assessmentsRef, where('clientNameLower', '==', oldSlug.replace(/-/g, ' ')), limit(MAX_BATCH_LIMIT));
-    const summaries = await getDocs(q);
-    if (summaries.size > 0) {
-      const batch = writeBatch(db);
-      summaries.docs.forEach((d) => batch.update(d.ref, { clientName: normalizedNew }));
-      await batch.commit();
-    }
-
-    // Update live doc clientName
-    const currentPath = ORGANIZATION.assessmentHistory.current(validOrgId, oldSlug);
+    // Update current/state clientName display
+    const currentPath = ORGANIZATION.clients.current(validOrgId, oldSlug);
     const currentSnap = await getDoc(doc(db, currentPath));
     if (currentSnap.exists()) {
       await updateDoc(doc(db, currentPath), { clientName: normalizedNew });
@@ -516,25 +594,9 @@ export async function renameClient(
     updatedAt: serverTimestamp(),
   });
 
-  // 2b. Update all assessment summaries
-  const assessmentsRef = collection(db, ORGANIZATION.assessments.collection(validOrgId));
-  const summaryQ = query(assessmentsRef, where('clientNameLower', '==', normalizedOld.toLowerCase()), limit(MAX_BATCH_LIMIT));
-  const summaries = await getDocs(summaryQ);
-  if (summaries.size > 0) {
-    const batch = writeBatch(db);
-    summaries.docs.forEach((d) => {
-      batch.update(d.ref, {
-        clientName: normalizedNew,
-        clientNameLower: normalizedNew.toLowerCase(),
-      });
-    });
-    await batch.commit();
-  }
-
-  // 2c. Migrate assessment history (recursive subcollection copy)
-  // Copy current/data
-  const oldCurrentPath = ORGANIZATION.assessmentHistory.current(validOrgId, oldSlug);
-  const newCurrentPath = ORGANIZATION.assessmentHistory.current(validOrgId, newSlug);
+  // 2b. Migrate current/state
+  const oldCurrentPath = ORGANIZATION.clients.current(validOrgId, oldSlug);
+  const newCurrentPath = ORGANIZATION.clients.current(validOrgId, newSlug);
   const oldCurrentSnap = await getDoc(doc(db, oldCurrentPath));
   if (oldCurrentSnap.exists()) {
     await setDoc(doc(db, newCurrentPath), {
@@ -543,34 +605,23 @@ export async function renameClient(
     });
   }
 
-  // Copy history subcollection
-  const oldHistoryPath = ORGANIZATION.assessmentHistory.history(validOrgId, oldSlug);
-  const newHistoryPath = ORGANIZATION.assessmentHistory.history(validOrgId, newSlug);
-  const historyDocs = await getDocs(query(collection(db, oldHistoryPath), limit(MAX_BATCH_LIMIT)));
-  for (const histDoc of historyDocs.docs) {
-    await setDoc(doc(collection(db, newHistoryPath)), histDoc.data());
+  // 2c. Migrate sessions (preserve document IDs for chronological sort)
+  const oldSessionsPath = ORGANIZATION.clients.sessions.collection(validOrgId, oldSlug);
+  const newSessionsPath = ORGANIZATION.clients.sessions.collection(validOrgId, newSlug);
+  const sessionDocs = await getDocs(query(collection(db, oldSessionsPath), limit(MAX_BATCH_LIMIT)));
+  for (const sessionDoc of sessionDocs.docs) {
+    await setDoc(doc(collection(db, newSessionsPath), sessionDoc.id), sessionDoc.data());
   }
 
-  // Copy snapshots subcollection (preserve original formData.fullName for historical accuracy)
-  const oldSnapshotsPath = ORGANIZATION.assessmentHistory.snapshots(validOrgId, oldSlug);
-  const newSnapshotsPath = ORGANIZATION.assessmentHistory.snapshots(validOrgId, newSlug);
-  const snapshotDocs = await getDocs(query(collection(db, oldSnapshotsPath), limit(MAX_BATCH_LIMIT)));
-  for (const snapDoc of snapshotDocs.docs) {
-    await setDoc(doc(collection(db, newSnapshotsPath)), snapDoc.data());
-  }
-
-  // 2d. Verify counts match before deleting
-  const copiedHistory = await getDocs(query(collection(db, newHistoryPath), limit(MAX_BATCH_LIMIT)));
-  const copiedSnapshots = await getDocs(query(collection(db, newSnapshotsPath), limit(MAX_BATCH_LIMIT)));
-
-  if (copiedHistory.size < historyDocs.size || copiedSnapshots.size < snapshotDocs.size) {
+  // 2d. Verify session copies match before deleting
+  const copiedSessions = await getDocs(query(collection(db, newSessionsPath), limit(MAX_BATCH_LIMIT)));
+  if (copiedSessions.size < sessionDocs.size) {
     logger.error('[Rename] Copy verification failed, aborting deletion of old docs');
     return { success: false, message: 'Migration verification failed. Old data preserved.' };
   }
 
-  // 2e. Delete old documents recursively
-  for (const histDoc of historyDocs.docs) await deleteDoc(histDoc.ref);
-  for (const snapDoc of snapshotDocs.docs) await deleteDoc(snapDoc.ref);
+  // 2e. Delete old documents
+  for (const sessionDoc of sessionDocs.docs) await deleteDoc(sessionDoc.ref);
   if (oldCurrentSnap.exists()) await deleteDoc(doc(db, oldCurrentPath));
   await deleteDoc(oldRef);
 
@@ -624,54 +675,21 @@ export async function transferClient(
     updatedAt: serverTimestamp(),
   });
 
-  // 2. Update coachUid on ALL assessment summaries (with performedByUid preservation)
-  const assessmentsRef = collection(db, ORGANIZATION.assessments.collection(validOrgId));
-  const summaryQ = query(
-    assessmentsRef,
-    where('clientNameLower', '==', normalized.toLowerCase()),
-    limit(MAX_BATCH_LIMIT),
-  );
-  const summaries = await getDocs(summaryQ);
-  let updatedCount = 0;
+  // 2. Update coachUid on the client profile doc
+  await updateDoc(profileRef, {
+    coachUid: toCoachUid,
+    updatedAt: serverTimestamp(),
+  });
 
-  if (summaries.size > 0) {
-    const batch = writeBatch(db);
-    summaries.docs.forEach((d) => {
-      const data = d.data();
-      const updateFields: Record<string, unknown> = { coachUid: toCoachUid };
-      // Preserve original creator as performedByUid if not already set
-      if (!data.performedByUid && data.coachUid && data.coachUid !== toCoachUid) {
-        updateFields.performedByUid = data.coachUid;
-      }
-      batch.update(d.ref, updateFields);
-      updatedCount++;
-    });
-    await batch.commit();
-  }
-
-  // 3. Update coachUid on the live assessment doc
-  const currentPath = ORGANIZATION.assessmentHistory.current(validOrgId, slug);
+  // 3. Update coachUid on the live current/state doc
+  const currentPath = ORGANIZATION.clients.current(validOrgId, slug);
   const currentSnap = await getDoc(doc(db, currentPath));
   if (currentSnap.exists()) {
     await updateDoc(doc(db, currentPath), { coachUid: toCoachUid });
   }
 
-  // 4. Log the transfer in change history
-  const historyPath = ORGANIZATION.assessmentHistory.history(validOrgId, slug);
-  await addDoc(collection(db, historyPath), {
-    timestamp: serverTimestamp(),
-    type: TRANSFER_CHANGE_TYPE,
-    category: 'all',
-    changes: {
-      coachUid: { old: fromCoachUid, new: toCoachUid },
-      assignedCoachUid: { old: fromCoachUid, new: toCoachUid },
-    },
-    updatedBy: fromCoachUid,
-    organizationId: validOrgId,
-  });
-
-  logger.info(`[Transfer] Client "${normalized}" transferred from ${fromCoachUid} to ${toCoachUid} (${updatedCount} summaries updated)`);
-  return { success: true, message: `Client transferred successfully. ${updatedCount} assessments reassigned.` };
+  logger.info(`[Transfer] Client "${normalized}" transferred from ${fromCoachUid} to ${toCoachUid}`);
+  return { success: true, message: 'Client transferred successfully.' };
 }
 
 // ============================================================================
@@ -913,4 +931,77 @@ export async function reactivateClient(params: {
   }
 
   await updateDoc(clientRef, updates);
+}
+
+/**
+ * Permanently delete a client and ALL associated data from Firestore.
+ * This action is irreversible.
+ */
+export async function deleteClientPermanently(params: {
+  organizationId: string;
+  clientSlug: string;
+  clientName: string;
+  /** Known assessment summary doc ID — used for a direct delete so the client disappears from the dashboard immediately even if clientNameLower is missing/mismatched. */
+  knownAssessmentId?: string;
+}): Promise<void> {
+  const { organizationId, clientSlug, clientName, knownAssessmentId } = params;
+  const db = getDb();
+  const clientNameLower = clientName.toLowerCase();
+
+  async function deleteSubcollection(colPath: string): Promise<void> {
+    const colRef = collection(db, colPath);
+    const snap = await getDocs(colRef);
+    if (snap.empty) return;
+    const BATCH_SIZE = 400;
+    let batch = writeBatch(db);
+    let count = 0;
+    for (const docSnap of snap.docs) {
+      batch.delete(docSnap.ref);
+      count++;
+      if (count >= BATCH_SIZE) {
+        await batch.commit();
+        batch = writeBatch(db);
+        count = 0;
+      }
+    }
+    if (count > 0) await batch.commit();
+  }
+
+  // 1. Delete sessions sub-collection
+  await deleteSubcollection(ORGANIZATION.clients.sessions.collection(organizationId, clientSlug)).catch((): void => undefined);
+
+  // 2. Delete current/state doc
+  await deleteDoc(doc(db, ORGANIZATION.clients.current(organizationId, clientSlug))).catch((): void => undefined);
+
+  // 3. Delete draft
+  await deleteDoc(doc(db, ORGANIZATION.clients.draft(organizationId, clientSlug))).catch((): void => undefined);
+
+  // 4. Delete roadmap and achievements
+  await deleteDoc(doc(db, ORGANIZATION.clients.roadmap(organizationId, clientSlug))).catch((): void => undefined);
+  await deleteDoc(doc(db, ORGANIZATION.clients.achievements(organizationId, clientSlug))).catch((): void => undefined);
+
+  // 5. Delete public report share tokens
+  try {
+    const publicReportsSnap = await getDocs(
+      query(
+        collection(db, 'publicReports'),
+        where('clientName', '==', clientName),
+        where('organizationId', '==', organizationId),
+      ),
+    );
+    if (!publicReportsSnap.empty) {
+      const batch = writeBatch(db);
+      publicReportsSnap.forEach((d) => batch.delete(d.ref));
+      await batch.commit();
+    }
+  } catch { /* non-fatal */ }
+
+  // 6. Delete client profile
+  await deleteDoc(doc(db, ORGANIZATION.clients.doc(organizationId, clientSlug))).catch((): void => undefined);
+
+  // 7. Decrement org stats
+  await updateDoc(doc(db, ORGANIZATION.doc(organizationId)), {
+    'stats.clientCount': increment(-1),
+    'stats.lastUpdated': serverTimestamp(),
+  }).catch((): void => undefined);
 }

@@ -1,22 +1,42 @@
+/**
+ * Firestore collection name constants — v2
+ * Used for collectionGroup queries and anywhere a raw collection name string is needed.
+ * For full paths use ORGANIZATION / PLATFORM / PUBLIC from @/lib/database/paths.
+ */
 export const COLLECTIONS = {
   ORGANIZATIONS: 'organizations',
-  USER_PROFILES: 'userProfiles',
   COACHES: 'coaches',
   CLIENTS: 'clients',
-  ASSESSMENTS: 'assessments',
-  PUBLIC_REPORTS: 'publicReports',
-  /** Subcollection under publicReports/{token} */
+  USER_PROFILES: 'userProfiles',
+
+  // Client subcollections
+  /** Live composite state — one doc per client, ID always 'state' */
+  CURRENT: 'current',
+  /** Immutable assessment event log — one doc per session */
+  SESSIONS: 'sessions',
+  /** Roadmap phases + metrics — one doc per client, ID always 'plan' */
+  ROADMAP: 'roadmap',
+  /** Achievements — one doc per client, ID always 'record' */
   ACHIEVEMENTS: 'achievements',
-  /** Subcollection under publicReports/{token} */
+  /** Save-for-later draft — one doc per client, ID always 'draft' */
+  ASSESSMENT_DRAFTS: 'assessmentDrafts',
+
+  // Public / shared
+  PUBLIC_REPORTS: 'publicReports',
+  LIVE_SESSIONS: 'live_sessions',
+
+  // Public report subcollections
   NOTIFICATIONS: 'notifications',
-  /** Subcollection under publicReports/{token} */
+  /** Historical snapshots: publicReports/{token}/snapshots/{snapshotId} */
   PUBLIC_REPORT_SNAPSHOTS: 'snapshots',
-  /** Subcollection under publicReports/{token} — client self-service lifestyle check-ins */
   LIFESTYLE_CHECKINS: 'lifestyleCheckins',
+  /** Submitted before a returning client's session — coach sees latest on ClientOverview */
+  PRE_SESSION_CHECKINS: 'preSessionCheckins',
+
+  // Platform
   PLATFORM_ADMINS: 'platform_admins',
   SYSTEM_STATS: 'system_stats',
-  AI_USAGE_LOGS: 'ai_usage_logs',
-  LIVE_SESSIONS: 'live_sessions',
+
+  // Misc
   LEARNED_OCR_PATTERNS: 'learned_ocr_patterns',
-  ROADMAPS: 'roadmaps',
 } as const;

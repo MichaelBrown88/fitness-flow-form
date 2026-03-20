@@ -26,7 +26,13 @@ export interface AssessmentLogicState {
   allSnapshots: SnapshotInput[];
 }
 
-export function useAssessmentLogic(assessmentId: string | undefined): AssessmentLogicState {
+/**
+ * @param assessmentId  - Firestore doc ID (slug) or 'latest'. If clientNameOverride is provided,
+ *                        'latest' is used automatically for the lookup.
+ * @param clientNameOverride - When provided, bypasses the assessmentId Firestore doc lookup and
+ *                             fetches directly from current/state via the 'latest' path.
+ */
+export function useAssessmentLogic(assessmentId: string | undefined, clientNameOverride?: string): AssessmentLogicState {
   const { user, profile } = useAuth();
   
   const [state, setState] = useState<AssessmentLogicState>({
@@ -48,7 +54,8 @@ export function useAssessmentLogic(assessmentId: string | undefined): Assessment
     // Wait for profile to load so we have the organizationId for Firestore lookups.
     // Without it, every org-scoped query returns null and the user sees a
     // brief "Assessment not found" flash before the profile arrives.
-    if (!user || !assessmentId || !profile?.organizationId) return;
+    if (!user || !profile?.organizationId) return;
+    if (!clientNameOverride && !assessmentId) return;
     
     let isMounted = true;
     
@@ -57,11 +64,13 @@ export function useAssessmentLogic(assessmentId: string | undefined): Assessment
         setState(prev => ({ ...prev, loading: true, error: null }));
         
         // 1. Fetch Assessment Data
-        // Get clientName from query params if available (for efficient lookup)
+        // clientNameOverride (from outlet context) takes priority over URL query param.
+        // When present, we use 'latest' so getCoachAssessment reads current/state directly.
         const params = new URLSearchParams(window.location.search);
-        const clientNameQuery = params.get('clientName');
+        const clientNameQuery = clientNameOverride || params.get('clientName') || undefined;
+        const resolvedAssessmentId = clientNameOverride ? 'latest' : assessmentId!;
         
-        const data = await getCoachAssessment(user.uid, assessmentId, clientNameQuery || undefined, profile?.organizationId, profile);
+        const data = await getCoachAssessment(user.uid, resolvedAssessmentId, clientNameQuery, profile?.organizationId, profile);
         if (!data) {
           throw new Error("Assessment not found for this coach.");
         }
@@ -172,16 +181,23 @@ export function useAssessmentLogic(assessmentId: string | undefined): Assessment
         }
         
         // 6. Publish Public Report (Background)
-        const publishKey = `${user.uid}__${assessmentId}`;
-        if (publishedKeyRef.current !== publishKey) {
-            publishedKeyRef.current = publishKey;
-            publishPublicReport({
-                coachUid: user.uid,
-                assessmentId,
-                formData: fd,
-                organizationId: profile?.organizationId,
-                profile,
-            }).catch(e => logger.error('Background publish failed', e));
+        // When using the 'latest' lookup path, assessmentId may be undefined.
+        // Fall back to the resolved slug so publishPublicReport always has a stable key.
+        const publishId = assessmentId ?? resolvedAssessmentId;
+        if (!publishId || publishId === 'latest') {
+            // Skip publish — no stable ID to key the public report on
+        } else {
+            const publishKey = `${user.uid}__${publishId}`;
+            if (publishedKeyRef.current !== publishKey) {
+                publishedKeyRef.current = publishKey;
+                publishPublicReport({
+                    coachUid: user.uid,
+                    assessmentId: publishId,
+                    formData: fd,
+                    organizationId: profile?.organizationId,
+                    profile,
+                }).catch(e => logger.error('Background publish failed', e));
+            }
         }
 
       } catch (err) {
@@ -196,7 +212,7 @@ export function useAssessmentLogic(assessmentId: string | undefined): Assessment
     })();
 
     return () => { isMounted = false; };
-  }, [user, assessmentId, profile?.organizationId]);
+  }, [user, assessmentId, clientNameOverride, profile?.organizationId]);
 
   return state;
 }

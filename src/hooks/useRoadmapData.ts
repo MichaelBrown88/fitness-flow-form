@@ -11,7 +11,7 @@ import {
 } from '@/services/roadmaps';
 import { generateRoadmapBlocks, getAllPossibleBlocksForClient } from '@/lib/roadmap/generateBlocks';
 import { compareRoadmapProgress, applyProgressSuggestions } from '@/lib/roadmap/compareProgress';
-import { refreshTrackablesFromScores } from '@/lib/roadmap/refreshTrackables';
+import { refreshTrackablesFromScores, snapTrackableBaselines } from '@/lib/roadmap/refreshTrackables';
 import { buildCoachBrief } from '@/lib/roadmap/coachContext';
 import type { CoachBrief } from '@/lib/roadmap/coachContext';
 import { generatePhaseTargets, extractBaselineScores, determineActivePhase, computePhaseProgress } from '@/lib/roadmap/phaseTargets';
@@ -31,16 +31,33 @@ const SAVE_DELAY_MS = 1500;
 const COPIED_FEEDBACK_MS = 2000;
 
 async function loadLatestAssessment(orgId: string, clientName: string) {
+  // In v2 the client profile doc has no inline formData — it lives in current/state.
+  // Read the client slug from the profile first, then fetch current/state.
   const q = query(
-    collection(getDb(), ORGANIZATION.assessments.collection(orgId)),
+    collection(getDb(), ORGANIZATION.clients.collection(orgId)),
     where('clientNameLower', '==', clientName.toLowerCase()),
     orderBy('createdAt', 'desc'),
     limit(1),
   );
   const snap = await getDocs(q);
   if (snap.empty) return null;
-  const d = snap.docs[0];
-  return { id: d.id, formData: d.data().formData as FormData };
+  const profileDoc = snap.docs[0];
+  const slug = profileDoc.id;
+
+  const { getCurrentAssessment } = await import('@/services/assessmentHistory');
+  const current = await getCurrentAssessment('', clientName, orgId);
+  if (current && Object.keys(current.formData ?? {}).length > 0) {
+    return { id: slug, formData: current.formData };
+  }
+
+  // Fallback: try the latest session directly
+  const { getSnapshots } = await import('@/services/assessmentHistory');
+  const sessions = await getSnapshots('', clientName, 1, orgId);
+  if (sessions.length > 0 && Object.keys(sessions[0].formData ?? {}).length > 0) {
+    return { id: slug, formData: sessions[0].formData };
+  }
+
+  return null;
 }
 
 export function useRoadmapData(clientName: string) {
@@ -100,7 +117,18 @@ export function useRoadmapData(clientName: string) {
               const newActivePhase = determineActivePhase(existing.phaseTargets, currentScoreMap);
               if (newActivePhase !== (existing.activePhase ?? 'foundation')) {
                 setActivePhase(newActivePhase);
-                updateRoadmap(effectiveOrgId, existing.id, { activePhase: newActivePhase } as Record<string, unknown>).catch(() => {});
+                // Snap trackable baselines to current values for the new phase
+                // so progress bars reset relative to the new starting point.
+                const snappedItems = snapTrackableBaselines(
+                  refreshTrackablesFromScores(existing.items, scores),
+                  newActivePhase,
+                );
+                setItems(snappedItems);
+                updateRoadmap(effectiveOrgId, existing.id, {
+                  activePhase: newActivePhase,
+                  baselineScores: currentScoreMap,
+                  items: snappedItems,
+                } as Record<string, unknown>).catch(() => {});
               }
             }
 

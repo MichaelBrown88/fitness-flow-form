@@ -36,20 +36,38 @@ export interface PlatformMetrics {
   totalCoaches: number;
   totalClients: number;
   
-  // Financial metrics (in cents for precision)
+  // Financial metrics (reporting currency stored in GBP pence)
   mrrCents: number;        // Monthly recurring revenue
   arrCents: number;        // Annual recurring revenue
   
-  // AI costs (in cents)
+  // AI costs (reporting currency stored in GBP pence)
   aiCostsMtdCents: number; // Month-to-date AI costs
   aiCostsLastMonthCents: number;
+  totalAiCostsCents: number;
   
   // Assessment metrics
   totalAssessments: number;
   assessmentsThisMonth: number;
-  
+
+  // Funnel metrics
+  trialConversionsThisMonth?: number;
+  churnsThisMonth?: number;
+  churnsLifetime?: number;
+
   // Timestamps
   updatedAt: Date;
+}
+
+export interface PlatformMetricsHistoryEntry {
+  date: string; // YYYY-MM-DD
+  mrrCents: number;
+  activeOrgs: number;
+  trialOrgs: number;
+  totalOrgs: number;
+  totalAssessments: number;
+  assessmentsThisMonth: number;
+  aiCostsMtdCents: number; // GBP pence
+  totalAiCostsCents: number; // GBP pence
 }
 
 // Historical metrics for charts
@@ -57,6 +75,7 @@ export interface PlatformMetricsHistory {
   date: string; // YYYY-MM-DD
   metrics: Partial<PlatformMetrics>;
 }
+
 
 // Data access permission for GDPR/HIPAA compliance
 export interface DataAccessPermission {
@@ -80,6 +99,8 @@ export interface SupportAccessSettings {
   supportAccessReason?: string;
 }
 
+import type { Region } from '@/constants/pricing';
+
 // Organization summary for platform admin view
 export interface OrganizationSummary {
   id: string;
@@ -88,11 +109,24 @@ export interface OrganizationSummary {
   plan: 'starter' | 'professional' | 'enterprise' | 'free' | 'none';
   status: 'trial' | 'active' | 'cancelled' | 'past_due' | 'none';
   isComped?: boolean; // True if free/complimentary subscription (excluded from MRR)
-  clientSeats?: number; // Number of client seats in subscription
-  monthlyFeeKwd?: number; // Monthly subscription fee in KWD (calculated)
+  clientSeats?: number; // Number of client seats in subscription (legacy)
+  monthlyFeeKwd?: number; // Monthly subscription fee in KWD (legacy/fallback)
+  /** Billing region (GB, US, KW) */
+  region?: Region;
+  /** Currency for display (GBP, USD, KWD) */
+  currency?: string;
+  /** Seat block / plan size (5, 10, 20, 35, 50, 75, 100, 150, 250, 300+) */
+  seatBlock?: number;
+  /** Monthly amount in main unit (e.g. 29 for £29) for display */
+  monthlyAmountLocal?: number;
+  /** Custom branding add-on enabled */
+  customBrandingEnabled?: boolean;
+  /** When custom branding was purchased */
+  customBrandingPaidAt?: Date;
   coachCount: number;
   clientCount: number;
   assessmentCount: number;
+  assessmentsThisMonth?: number;
   aiCostsMtdCents: number;
   createdAt: Date;
   trialEndsAt?: Date;
@@ -118,12 +152,19 @@ export interface OrganizationDetails extends OrganizationSummary {
   metadata?: {
     isTest?: boolean;
     isDeleted?: boolean;
+    deletedAt?: Date;
+    deletedBy?: string;
     migratedFromLegacy?: boolean;
     isInternal?: boolean; // True for owner's company (e.g., One Fitness)
   };
 
   // Support access settings for GDPR/HIPAA compliance
   supportAccess?: SupportAccessSettings;
+
+  /** Stripe subscription IDs (for support/debugging) */
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  stripePriceId?: string;
 }
 
 // AI cost breakdown per organization
@@ -162,13 +203,17 @@ export interface SystemStats {
   
   // Assessment counts
   totalAssessments: number;
+  assessments_this_month?: number;
   
   // AI usage
   totalAiTokensUsed: number; // Total tokens consumed across all time
   totalAiCostsFils: number; // Total costs in fils (1 KWD = 1000 fils)
+  totalAiCostsGbpPence?: number;
+  aiCostsMtdGbpPence?: number;
   
-  // Revenue (in fils)
-  monthlyRecurringRevenueFils: number; // MRR
+  // Revenue
+  monthlyRecurringRevenueFils?: number; // Legacy MRR in KWD fils
+  monthlyRecurringRevenueGbpPence?: number; // MRR in GBP pence (reporting currency)
   
   // Timestamps
   lastUpdated: Date;
@@ -182,6 +227,9 @@ export interface OrganizationStats {
   assessmentCount: number;
   aiCostsMtdFils: number; // Month-to-date AI costs
   totalAiCostsFils: number; // All-time AI costs
+  assessmentsThisMonth?: number;
+  aiCostsMtdGbpPence?: number;
+  totalAiCostsGbpPence?: number;
   lastAssessmentDate?: Date; // Last active date
   lastUpdated: Date;
 }
@@ -222,8 +270,12 @@ export interface PlatformConfig {
  */
 export interface CreateCheckoutRequest {
   organizationId: string;
-  plan: 'starter' | 'professional' | 'enterprise';
-  seats: number;
+  region: Region;
+  clientCount: number;
+  /** @deprecated Use region + clientCount. Kept for backward compat during migration. */
+  plan?: 'starter' | 'professional' | 'enterprise';
+  /** @deprecated Use clientCount. Kept for backward compat during migration. */
+  seats?: number;
 }
 
 export interface CreateCheckoutResponse {

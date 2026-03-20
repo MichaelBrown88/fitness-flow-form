@@ -42,12 +42,16 @@ const testimonials = [
   },
 ];
 
-// Pricing data
-const pricingPlans = [
+// Pricing data — uses UK (GB) base from src/lib/pricing/config
+import { getMonthlyPrice } from '@/lib/pricing/config';
+import { DEFAULT_REGION, DEFAULT_CURRENCY } from '@/constants/pricing';
+import { formatPrice } from '@/lib/utils/currency';
+
+const pricingPlansData = [
   {
     name: 'Starter',
     description: 'Perfect for solo coaches getting started',
-    price: 29,
+    price: getMonthlyPrice(DEFAULT_REGION, 10),
     features: [
       { text: 'Unlimited assessments', included: true },
       { text: 'Clinical Logic Engine analysis', included: true },
@@ -61,7 +65,7 @@ const pricingPlans = [
   {
     name: 'Professional',
     description: 'For gyms and growing teams',
-    price: 79,
+    price: getMonthlyPrice(DEFAULT_REGION, 35),
     highlighted: true,
     features: [
       { text: 'Everything in Starter', included: true },
@@ -76,7 +80,7 @@ const pricingPlans = [
   {
     name: 'Enterprise',
     description: 'For gym chains and large organizations',
-    price: 'Custom',
+    price: 'Custom' as const,
     features: [
       { text: 'Everything in Professional', included: true },
       { text: 'Multiple locations', included: true },
@@ -89,6 +93,11 @@ const pricingPlans = [
     ctaText: 'Contact Sales',
   },
 ];
+
+const pricingPlans = pricingPlansData.map((plan) => ({
+  ...plan,
+  price: typeof plan.price === 'number' ? formatPrice(plan.price, DEFAULT_CURRENCY, 'en-GB') : plan.price,
+}));
 
 // FAQ data
 const faqItems = [
@@ -186,10 +195,10 @@ export default function Landing() {
             </Link>
           ) : (
             <Link 
-              to="/onboarding"
+              to="/try"
               className="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 text-sm"
             >
-              Start Free Trial <ArrowRight size={16} />
+              Try Free — No Sign-up <ArrowRight size={16} />
             </Link>
           )}
         </div>

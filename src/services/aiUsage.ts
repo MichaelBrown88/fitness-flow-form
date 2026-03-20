@@ -1,8 +1,9 @@
 import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, Timestamp, doc, getDoc } from 'firebase/firestore';
 import { getDb } from '@/services/firebase';
+import { estimateCostFils, PROVIDER_COST_USD, TOKENS_PER_REQUEST } from '@/lib/ai/aiPricing';
 import { logger } from '@/lib/utils/logger';
 
-export type AIUsageType = 'ocr_inbody' | 'posture_analysis' | 'exercise_recommendation';
+export type AIUsageType = 'ocr_inbody' | 'posture_analysis' | 'exercise_recommendation' | 'comparison_narrative';
 export type AIUsageStatus = 'local_success' | 'ai_fallback' | 'ai_success' | 'error';
 
 export interface AIUsageLog {
@@ -10,7 +11,7 @@ export interface AIUsageLog {
   timestamp: Timestamp;
   type: AIUsageType;
   status: AIUsageStatus;
-  provider: 'local' | 'gemini' | 'mediapipe';
+  provider: 'local' | 'gemini' | 'mediapipe' | 'pattern';
   organizationId?: string;
   coachUid: string;
   costEstimate?: number;
@@ -52,15 +53,11 @@ export async function logAIUsage(
     
     const finalOrganizationId = organizationId || await resolveOrganizationId(coachUid);
     
-    let costEstimate = 0;
-    let costFils = 0;
-    let tokensUsed = 0;
-    
-    if (provider === 'gemini') {
-      costEstimate = 0.000675;
-      costFils = Math.ceil(costEstimate * 0.305 * 1000);
-      tokensUsed = 7000;
-    }
+    const knownProvider =
+      provider !== 'local' && provider !== 'mediapipe' && provider !== 'pattern';
+    const costEstimate = knownProvider ? (PROVIDER_COST_USD[provider] ?? PROVIDER_COST_USD.gemini) : 0;
+    const costFils = knownProvider ? estimateCostFils(provider) : 0;
+    const tokensUsed = knownProvider ? TOKENS_PER_REQUEST : 0;
 
     await addDoc(usageRef, {
       timestamp: serverTimestamp(),
@@ -113,9 +110,10 @@ export async function getAIUsageStats(
   const logs: AIUsageLog[] = [];
   snap.forEach(doc => logs.push({ id: doc.id, ...doc.data() } as AIUsageLog));
 
+  const localProviders = new Set(['local', 'mediapipe', 'pattern']);
   const totalRequests = logs.length;
-  const aiRequests = logs.filter(l => l.provider === 'gemini').length;
-  const localRequests = logs.filter(l => l.provider !== 'gemini').length;
+  const aiRequests = logs.filter(l => !localProviders.has(l.provider)).length;
+  const localRequests = logs.filter(l => localProviders.has(l.provider)).length;
   const totalCost = logs.reduce((sum, l) => sum + (l.costEstimate || 0), 0);
   
   const savingsRate = totalRequests > 0 ? (localRequests / totalRequests) * 100 : 100;

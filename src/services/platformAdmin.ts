@@ -14,18 +14,28 @@ export {
   markPasswordSet,
   updateLastLogin,
   seedPlatformAdmin,
+  listPlatformAdmins,
+  removePlatformAdmin,
+  updatePlatformAdminPermissions,
 } from './platform/platformAdmin';
+
+export { getAuditLogs } from './platform/auditLog';
 
 // Platform Metrics & Organization Management
 export {
   getLiveMetrics,
   getDefaultMetrics,
+  getRevenueByRegion,
+  type RevenueByRegionResult,
+  getMetricsHistory,
+  getOnboardingFunnel,
   getAssessmentChartData,
   getOrgCoachesWithStats,
   getOrganizations,
   getOrganizationDetails,
   updateOrganizationDetails,
   deleteOrganization,
+  callDeleteOrganization,
   pauseSubscription,
   cancelSubscription,
   reactivateSubscription,
@@ -37,8 +47,11 @@ export {
 export {
   calculateAICostsMTD,
   getAICostsByFeature,
+  getAICostsByFeatureAllTime,
   getOrgAICostsByFeature,
   getAICostBreakdown,
+  getAIErrorRateMTD,
+  type AIErrorRate,
 } from './platform/aiUsageTracking';
 
 // Platform Configuration (Feature Flags & Maintenance)

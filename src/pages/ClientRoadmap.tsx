@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Check, Loader2, Send, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Breadcrumb } from '@/components/ui/Breadcrumb';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { ROUTES } from '@/constants/routes';
 import AppShell from '@/components/layout/AppShell';
 import RoadmapClientView from '@/components/roadmap/RoadmapClientView';

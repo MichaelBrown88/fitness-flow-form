@@ -4,6 +4,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselDots } from '@/compone
 import { Target, CheckCircle2, Scale, Activity, Heart, Lock, Dumbbell } from 'lucide-react';
 import type { FormData } from '@/contexts/FormContext';
 import { getBodyFatRange, getTargetBodyFatFromLevel, calculateBodyRecomposition } from '@/lib/utils/bodyRecomposition';
+import { getEffectiveGoalLevels } from '@/lib/goals/achievableLandmarks';
 import { CardInfoDrawer } from '../../CardInfoDrawer';
 
 /** Shorter labels for goal tabs on small screens */
@@ -28,6 +29,18 @@ export const DestinationSection: React.FC<DestinationSectionProps> = ({
 }) => {
   if (!goals || goals.length === 0) return null;
 
+  const primaryGoal = goals[0] || 'general-health';
+  const effectiveLevels = getEffectiveGoalLevels(primaryGoal, formData);
+
+  const getLevelForGoal = (g: string): string => {
+    if (g === 'weight-loss') return effectiveLevels.goalLevelWeightLoss;
+    if (g === 'build-muscle') return effectiveLevels.goalLevelMuscle;
+    if (g === 'body-recomposition') return effectiveLevels.goalLevelBodyRecomp;
+    if (g === 'build-strength') return effectiveLevels.goalLevelStrength;
+    if (g === 'improve-fitness') return effectiveLevels.goalLevelFitness;
+    return '15';
+  };
+
   return (
     <section className="w-full min-w-0 overflow-x-hidden">
       {!hideHeader && (
@@ -42,17 +55,7 @@ export const DestinationSection: React.FC<DestinationSectionProps> = ({
       <Carousel opts={{ align: 'start', containScroll: 'trimSnaps' }} className="w-full">
         <CarouselContent className="-ml-3 items-stretch">
           {goals.map((goal, idx) => {
-            const goalLevel = goal === 'weight-loss' 
-              ? (formData?.goalLevelWeightLoss || '15')
-              : goal === 'build-muscle'
-              ? (formData?.goalLevelMuscle || '6')
-              : goal === 'body-recomposition'
-              ? (formData?.goalLevelBodyRecomp || 'athletic')
-              : goal === 'build-strength'
-              ? (formData?.goalLevelStrength || '30')
-              : goal === 'improve-fitness'
-              ? (formData?.goalLevelFitness || 'active')
-              : '15';
+            const goalLevel = getLevelForGoal(goal);
             
             let explanation = '';
             let whatItEntails: string[] = [];

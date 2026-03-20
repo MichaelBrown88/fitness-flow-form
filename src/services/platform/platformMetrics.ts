@@ -8,59 +8,119 @@
  * - Data access permissions (GDPR/HIPAA)
  */
 
+import { httpsCallable } from 'firebase/functions';
 import {
   doc,
   getDoc,
+  getDocFromServer,
   updateDoc,
   deleteDoc,
-  collection,
   getDocs,
-  getCountFromServer,
   query,
   where,
   orderBy,
   startAfter,
   limit as firestoreLimit,
+  serverTimestamp,
   QueryDocumentSnapshot,
   DocumentData,
 } from 'firebase/firestore';
-import { getDb } from '@/services/firebase';
+import { getDb, getFirebaseFunctions } from '@/services/firebase';
 import { calculateMonthlyFee } from '@/lib/pricing';
+import { getMonthlyPrice, getPriceInSmallestUnit } from '@/lib/pricing/config';
+import { REGION_TO_CURRENCY } from '@/constants/pricing';
+import type { Region } from '@/constants/pricing';
 import type {
   PlatformMetrics,
+  PlatformMetricsHistoryEntry,
   OrganizationSummary,
   OrganizationDetails,
 } from '@/types/platform';
 import { logger } from '@/lib/utils/logger';
-import { ORGANIZATION } from '@/lib/database/paths';
+import { ORGANIZATION, PLATFORM } from '@/lib/database/paths';
 import {
   getPlatformAdminsCollection,
   getOrganizationsCollection,
   getOrganizationDoc,
-  getLegacyUserProfilesCollection,
+  getUserProfilesCollection,
   getSystemStatsDoc,
   getOrgCoachesCollection,
   getOrgAssessmentsCollection,
   getOrgClientsCollection,
 } from '@/lib/database/collections';
-import { calculateAICostsMTD, getOrgAICostsByFeature } from './aiUsageTracking';
+import { filsToGbpPence, usdCentsToGbpPence } from '@/lib/utils/currency';
+import { logAdminAction } from './auditLog';
 
 const PLATFORM_ADMIN_QUERY_LIMIT = 1;
 const COACH_PROFILE_LIMIT = 500;
 const ORG_LIST_LIMIT_MAX = 200;
 const ORG_FILTER_BUFFER_MULTIPLIER = 3;
-const COACH_ASSESSMENTS_LIMIT = 500;
+
+export interface RevenueByRegionResult {
+  byRegion: {
+    GB?: { amountLocal: number; currency: 'GBP'; gbpPence: number };
+    US?: { amountLocal: number; currency: 'USD'; gbpPence: number };
+    KW?: { amountLocal: number; currency: 'KWD'; gbpPence: number };
+  };
+  totalGbpPence: number;
+}
+
+/**
+ * Get revenue grouped by region (UK £, US $, KW KWD, Total £).
+ */
+export async function getRevenueByRegion(): Promise<RevenueByRegionResult> {
+  const result: RevenueByRegionResult = { byRegion: {}, totalGbpPence: 0 };
+  try {
+    const orgsSnap = await getDocs(getOrganizationsCollection());
+    const regionTotals = new Map<string, { amountLocal: number; currency: 'GBP' | 'USD' | 'KWD' }>();
+
+    orgsSnap.docs.forEach((orgDoc) => {
+      const data = orgDoc.data();
+      const status = data.subscription?.status;
+      const isComped = data.subscription?.isComped === true;
+      if (status !== 'active' || isComped) return;
+
+      const region = (data.subscription?.region ?? data.region) as Region | undefined;
+      const currency = data.subscription?.currency ?? (region ? REGION_TO_CURRENCY[region] : undefined);
+      if (!region || !currency) return;
+
+      const amountCents = data.subscription?.amountCents ?? data.subscription?.amountFils;
+      if (amountCents == null || amountCents <= 0) return;
+
+      const existing = regionTotals.get(region) ?? { amountLocal: 0, currency };
+      if (currency === 'GBP') existing.amountLocal += amountCents;
+      else if (currency === 'USD') existing.amountLocal += amountCents;
+      else existing.amountLocal += amountCents;
+      regionTotals.set(region, existing);
+    });
+
+    let totalGbpPence = 0;
+    regionTotals.forEach((v, region) => {
+      let gbpPence = 0;
+      const key = region as 'GB' | 'US' | 'KW';
+      if (v.currency === 'GBP') gbpPence = v.amountLocal;
+      else if (v.currency === 'USD') gbpPence = usdCentsToGbpPence(v.amountLocal);
+      else gbpPence = filsToGbpPence(v.amountLocal);
+      const entry = { amountLocal: v.amountLocal, currency: v.currency, gbpPence };
+      (result.byRegion as Record<string, typeof entry>)[key] = entry;
+      totalGbpPence += gbpPence;
+    });
+    result.totalGbpPence = totalGbpPence;
+  } catch (error) {
+    logger.error('Error computing revenue by region:', error);
+  }
+  return result;
+}
 
 /**
  * Get live platform metrics
  * This reads from ONE document instead of querying all collections (highly efficient!)
- * Currency is in fils (1 KWD = 1000 fils)
+ * MRR/ARR are in GBP pence (reporting currency).
  */
 export async function getLiveMetrics(): Promise<PlatformMetrics> {
   try {
-    // Read from aggregated system_stats document (single document read - extremely fast!)
     const systemStatsRef = getSystemStatsDoc();
-    const systemStatsSnap = await getDoc(systemStatsRef);
+    let systemStatsSnap = await getDocFromServer(systemStatsRef).catch(() => getDoc(systemStatsRef));
 
     if (!systemStatsSnap.exists()) {
       logger.warn('system_stats/global_metrics does not exist yet. Returning defaults. Cloud Functions will populate it on next write.');
@@ -70,42 +130,19 @@ export async function getLiveMetrics(): Promise<PlatformMetrics> {
     const stats = systemStatsSnap.data();
     const now = new Date();
 
-    // Calculate assessments this month by querying organization assessments
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    let assessmentsThisMonth = 0;
-    try {
-      // Get all organizations
-      const orgsSnapshot = await getDocs(getOrganizationsCollection());
+    const assessmentsThisMonth = typeof stats.assessments_this_month === 'number'
+      ? stats.assessments_this_month
+      : 0;
 
-      // Query assessments from each organization's collection
-      for (const orgDoc of orgsSnapshot.docs) {
-        try {
-          const orgId = orgDoc.id;
-          const assessmentsRef = getOrgAssessmentsCollection(orgId);
-          const assessmentsQuery = query(assessmentsRef, firestoreLimit(COACH_ASSESSMENTS_LIMIT));
-          const assessmentsSnapshot = await getDocs(assessmentsQuery);
+    const aiCostsMtdCents = typeof stats.aiCostsMtdGbpPence === 'number' && stats.aiCostsMtdGbpPence >= 0
+      ? stats.aiCostsMtdGbpPence
+      : 0;
+    const totalAiCostsCents = typeof stats.totalAiCostsGbpPence === 'number' && stats.totalAiCostsGbpPence >= 0
+      ? stats.totalAiCostsGbpPence
+      : 0;
 
-          assessmentsSnapshot.docs.forEach(assessmentDoc => {
-            const assessmentData = assessmentDoc.data();
-            const createdAt = assessmentData.createdAt?.toDate?.() || assessmentData.timestamp?.toDate?.();
-            if (createdAt && createdAt >= startOfMonth) {
-              assessmentsThisMonth++;
-            }
-          });
-        } catch (e) {
-          // Skip orgs without assessments
-          logger.debug(`No assessments for org ${orgDoc.id}`);
-        }
-      }
-    } catch (error) {
-      logger.warn('Error calculating assessments this month, using fallback:', error);
-      assessmentsThisMonth = Math.floor((stats.totalAssessments || 0) / 30);
-    }
-
-    // Calculate actual AI costs from logs (more accurate than aggregated stats)
-    const aiCostsMtdCents = await calculateAICostsMTD();
-
-    logger.debug(`Metrics loaded from system_stats (efficient single-read): totalOrgs=${stats.totalOrgs || 0}, activeOrgs=${stats.activeOrgs || 0}, mrrFils=${stats.monthlyRecurringRevenueFils || 0}`);
+    const mrrGbpPence = stats.monthlyRecurringRevenueGbpPence ?? stats.monthlyRecurringRevenueFils ?? 0;
+    logger.debug(`Metrics loaded from system_stats (efficient single-read): totalOrgs=${stats.totalOrgs || 0}, activeOrgs=${stats.activeOrgs || 0}, mrrGbpPence=${mrrGbpPence}`);
 
     return {
       totalOrganizations: stats.totalOrgs || 0,
@@ -114,12 +151,16 @@ export async function getLiveMetrics(): Promise<PlatformMetrics> {
       totalUsers: (stats.totalCoaches || 0) + (stats.totalClients || 0),
       totalCoaches: stats.totalCoaches || 0,
       totalClients: stats.totalClients || 0,
-      mrrCents: stats.monthlyRecurringRevenueFils || 0,
-      arrCents: (stats.monthlyRecurringRevenueFils || 0) * 12,
+      mrrCents: mrrGbpPence,
+      arrCents: mrrGbpPence * 12,
       aiCostsMtdCents: aiCostsMtdCents,
       aiCostsLastMonthCents: 0,
+      totalAiCostsCents,
       totalAssessments: stats.totalAssessments || 0,
       assessmentsThisMonth,
+      trialConversionsThisMonth: stats.trialConversionsThisMonth ?? 0,
+      churnsThisMonth: stats.churnsThisMonth ?? 0,
+      churnsLifetime: stats.churnsLifetime ?? 0,
       updatedAt: stats.lastUpdated?.toDate?.() || now,
     };
   } catch (error) {
@@ -130,60 +171,13 @@ export async function getLiveMetrics(): Promise<PlatformMetrics> {
 
 /**
  * Get assessment chart data for last 30 days
- * Queries from organization assessments collections
+ * Uses server-side aggregation (Cloud Function) when available.
  */
 export async function getAssessmentChartData(): Promise<Array<{ date: string; assessments: number }>> {
   try {
-    const now = new Date();
-    const thirtyDaysAgo = new Date(now);
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    // Collect all assessments from last 30 days
-    const assessmentsByDate = new Map<string, number>();
-
-    // Initialize all 30 days to 0
-    for (let i = 0; i < 30; i++) {
-      const date = new Date(now);
-      date.setDate(date.getDate() - i);
-      const dateKey = date.toISOString().split('T')[0]; // YYYY-MM-DD
-      assessmentsByDate.set(dateKey, 0);
-    }
-
-    // Get all organizations
-    const orgsSnapshot = await getDocs(getOrganizationsCollection());
-
-    // Query assessments from each organization
-    for (const orgDoc of orgsSnapshot.docs) {
-      try {
-        const orgId = orgDoc.id;
-        const assessmentsRef = getOrgAssessmentsCollection(orgId);
-        const assessmentsQuery = query(assessmentsRef, firestoreLimit(COACH_ASSESSMENTS_LIMIT));
-        const assessmentsSnapshot = await getDocs(assessmentsQuery);
-
-        assessmentsSnapshot.docs.forEach(assessmentDoc => {
-          const assessmentData = assessmentDoc.data();
-          const createdAt = assessmentData.createdAt?.toDate?.() || assessmentData.timestamp?.toDate?.();
-
-          if (createdAt && createdAt >= thirtyDaysAgo) {
-            const dateKey = createdAt.toISOString().split('T')[0]; // YYYY-MM-DD
-            const currentCount = assessmentsByDate.get(dateKey) || 0;
-            assessmentsByDate.set(dateKey, currentCount + 1);
-          }
-        });
-      } catch (e) {
-        // Skip orgs without assessments
-      }
-    }
-
-    // Convert to array and sort by date
-    const chartData = Array.from(assessmentsByDate.entries())
-      .map(([date, count]) => ({
-        date,
-        assessments: count,
-      }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-
-    return chartData;
+    const fn = httpsCallable<null, Array<{ date: string; assessments: number }>>(getFirebaseFunctions(), 'getAssessmentChartData');
+    const res = await fn(null);
+    return Array.isArray(res.data) ? res.data : [];
   } catch (error) {
     logger.error('Error fetching assessment chart data:', error);
     return [];
@@ -262,7 +256,7 @@ export async function getOrgCoachesWithStats(orgId: string): Promise<Array<{
     // If no coaches in org collection, fallback to userProfiles
     if (coachesWithStats.length === 0) {
       const coachProfilesQuery = query(
-        getLegacyUserProfilesCollection(),
+        getUserProfilesCollection(),
         where('organizationId', '==', orgId),
         where('role', 'in', ['coach', 'org_admin']),
         firestoreLimit(COACH_PROFILE_LIMIT)
@@ -338,8 +332,8 @@ export async function getOrganizations(
         const orgId = doc.id;
         const stats = data.stats || {}; // Aggregated stats from Cloud Functions
 
-        // Skip deleted or test organizations (marked as deleted in metadata)
-        if (data.metadata?.isDeleted === true || data.metadata?.isTest === true) {
+        // Skip deleted organizations (test orgs are shown; filter by UI)
+        if (data.metadata?.isDeleted === true) {
           return null;
         }
 
@@ -362,8 +356,13 @@ export async function getOrganizations(
         const plan = data.subscription?.plan || 'free';
         const clientSeats = data.subscription?.clientSeats || 0;
         const isComped = data.subscription?.isComped === true;
-        // Calculate monthly fee (0 if comped, otherwise based on plan and seats)
-        const monthlyFeeKwd = isComped ? 0 : calculateMonthlyFee(plan, clientSeats);
+        const region = (data.subscription?.region ?? data.region) as Region | undefined;
+        const currency = data.subscription?.currency ?? (region ? REGION_TO_CURRENCY[region] : undefined);
+        const seatBlock = data.subscription?.clientCount ?? clientSeats;
+        const amountCents = data.subscription?.amountCents ?? data.subscription?.amountFils;
+        const monthlyAmountLocal = isComped ? 0 : (amountCents != null && currency
+          ? (currency === 'KWD' ? (amountCents as number) / 1000 : (amountCents as number) / 100)
+          : calculateMonthlyFee(plan, clientSeats)); // Legacy: KWD
 
         return {
           id: orgId,
@@ -371,47 +370,39 @@ export async function getOrganizations(
           type: data.type || 'solo_coach',
           plan: plan,
           status: data.subscription?.status || 'none',
-          isComped: isComped, // Track if comped (excluded from MRR)
+          isComped: isComped,
           clientSeats: clientSeats,
-          monthlyFeeKwd: monthlyFeeKwd,
+          monthlyFeeKwd: currency === 'KWD' ? monthlyAmountLocal : undefined,
+          region,
+          currency,
+          seatBlock: seatBlock || clientSeats,
+          monthlyAmountLocal: currency ? monthlyAmountLocal : undefined,
+          customBrandingEnabled: data.customBrandingEnabled === true,
+          customBrandingPaidAt: data.customBrandingPaidAt?.toDate?.(),
           coachCount: stats.coachCount || 0,
           clientCount: stats.clientCount || 0,
           assessmentCount: stats.assessmentCount || 0,
-          aiCostsMtdCents: stats.aiCostsMtdFils || 0, // Already in fils, but using Cents field name
+          assessmentsThisMonth: stats.assessmentsThisMonth ?? 0,
+          aiCostsMtdCents: stats.aiCostsMtdGbpPence ?? (stats.aiCostsMtdFils != null ? filsToGbpPence(stats.aiCostsMtdFils) : 0),
           createdAt: data.createdAt?.toDate?.() || new Date(),
           trialEndsAt: data.subscription?.trialEndsAt?.toDate?.(),
-          lastActiveDate: stats.lastAssessmentDate?.toDate?.(), // For activity tracking
-        } as OrganizationSummary & { lastActiveDate?: Date };
+          lastActiveDate: stats.lastAssessmentDate?.toDate?.(),
+          onboardingCompletedAt: data.onboardingCompletedAt?.toDate?.(),
+          isTest: data.metadata?.isTest === true,
+        } as OrganizationSummary & { lastActiveDate?: Date; onboardingCompletedAt?: Date; isTest?: boolean };
       })
-      .filter((org): org is OrganizationSummary & { lastActiveDate?: Date } => {
-        // Filter out nulls and empty organizations (no coaches, no clients, no assessments)
+      .filter((org): org is OrganizationSummary & { lastActiveDate?: Date; onboardingCompletedAt?: Date; isTest?: boolean } => {
         if (!org) return false;
-        // Keep organizations with at least one coach, client, or assessment
-        // OR keep comped organizations (they might be new)
-        return org.coachCount > 0 || org.clientCount > 0 || org.assessmentCount > 0 || org.isComped;
+        // Keep orgs with data, comped, or test/incomplete (so admins can see and remove them)
+        const hasData = org.coachCount > 0 || org.clientCount > 0 || org.assessmentCount > 0;
+        const isIncomplete = !org.onboardingCompletedAt && (!org.name || org.name === 'Unnamed Organization');
+        return hasData || org.isComped || org.isTest === true || isIncomplete;
       }) as OrganizationSummary[];
 
     // Sort by createdAt descending
     organizations.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
-    // Calculate actual AI costs for each organization from logs
-    const organizationsWithCosts = await Promise.all(
-      organizations.map(async (org) => {
-        try {
-          const orgCosts = await getOrgAICostsByFeature(org.id);
-          const totalCosts = orgCosts.reduce((sum, item) => sum + item.costFils, 0);
-          return {
-            ...org,
-            aiCostsMtdCents: totalCosts, // Update with actual calculated costs
-          };
-        } catch (e) {
-          logger.warn(`Failed to calculate AI costs for org ${org.id}:`, e);
-          return org; // Return original if calculation fails
-        }
-      })
-    );
-
-    const limitedOrganizations = organizationsWithCosts.slice(0, limitCount);
+    const limitedOrganizations = organizations.slice(0, limitCount);
     const lastDoc = orgsSnapshot.docs[orgsSnapshot.docs.length - 1];
     return { organizations: limitedOrganizations, lastDoc };
   } catch (error) {
@@ -435,24 +426,17 @@ export async function getOrganizationDetails(orgId: string): Promise<Organizatio
     const data = orgSnap.data();
     const stats = data.stats || {};
 
-    // Calculate actual AI costs from logs (more accurate)
-    const actualAICostsMTD = await getOrgAICostsByFeature(orgId);
-    const totalAICostsMTD = actualAICostsMTD.reduce((sum, item) => sum + item.costFils, 0);
-
-    // Extract subscription details
     const plan = data.subscription?.plan || 'free';
     const clientSeats = data.subscription?.clientSeats || 0;
     const isComped = data.subscription?.isComped === true;
-
-    // Use stored amountFils (source of truth) and convert to KWD
-    // amountFils is stored in fils (1 KWD = 1000 fils) to avoid floating point precision issues
-    // If amountFils doesn't exist, calculate it as fallback
-    const storedAmountFils = data.subscription?.amountFils;
-    const monthlyFeeKwd = isComped
-      ? 0
-      : (storedAmountFils !== undefined && storedAmountFils !== null)
-        ? storedAmountFils / 1000  // Convert fils to KWD
-        : calculateMonthlyFee(plan, clientSeats);  // Fallback calculation
+    const region = (data.subscription?.region ?? data.region) as Region | undefined;
+    const currency = data.subscription?.currency ?? (region ? REGION_TO_CURRENCY[region] : undefined);
+    const seatBlock = data.subscription?.clientCount ?? clientSeats;
+    const amountCents = data.subscription?.amountCents ?? data.subscription?.amountFils;
+    const monthlyAmountLocal = isComped ? 0 : (amountCents != null && currency
+      ? (currency === 'KWD' ? (amountCents as number) / 1000 : (amountCents as number) / 100)
+      : (data.subscription?.amountFils != null ? data.subscription.amountFils / 1000 : calculateMonthlyFee(plan, clientSeats)));
+    const monthlyFeeKwd = currency === 'KWD' ? monthlyAmountLocal : (region ? getMonthlyPrice(region, seatBlock || clientSeats) : 0);
 
     return {
       id: orgSnap.id,
@@ -463,10 +447,16 @@ export async function getOrganizationDetails(orgId: string): Promise<Organizatio
       isComped,
       clientSeats,
       monthlyFeeKwd,
+      region,
+      currency,
+      seatBlock: seatBlock || clientSeats,
+      monthlyAmountLocal: currency ? monthlyAmountLocal : undefined,
+      customBrandingEnabled: data.customBrandingEnabled === true,
+      customBrandingPaidAt: data.customBrandingPaidAt?.toDate?.(),
       coachCount: stats.coachCount || 0,
       clientCount: stats.clientCount || 0,
       assessmentCount: stats.assessmentCount || 0,
-      aiCostsMtdCents: totalAICostsMTD, // Use actual calculated costs
+      aiCostsMtdCents: stats.aiCostsMtdGbpPence ?? (stats.aiCostsMtdFils != null ? filsToGbpPence(stats.aiCostsMtdFils) : 0),
       createdAt: data.createdAt?.toDate?.() || new Date(),
       trialEndsAt: data.subscription?.trialEndsAt?.toDate?.(),
       lastActiveDate: stats.lastAssessmentDate?.toDate?.(),
@@ -490,6 +480,9 @@ export async function getOrganizationDetails(orgId: string): Promise<Organizatio
         grantedBy: data.dataAccessPermission.grantedBy,
         reason: data.dataAccessPermission.reason,
       } : undefined,
+      stripeCustomerId: data.stripe?.stripeCustomerId,
+      stripeSubscriptionId: data.stripe?.stripeSubscriptionId,
+      stripePriceId: data.stripe?.stripePriceId,
     } as OrganizationDetails;
   } catch (error) {
     logger.error('Error fetching organization details:', error);
@@ -507,7 +500,7 @@ export async function updateOrganizationDetails(
   try {
     const orgRef = getOrganizationDoc(orgId);
     const updateData: Record<string, unknown> = {
-      updatedAt: new Date(),
+      updatedAt: serverTimestamp(),
     };
 
     // Map OrganizationDetails fields to Firestore document structure
@@ -522,33 +515,56 @@ export async function updateOrganizationDetails(
     // Platform admin controlled features
     if (updates.demoAutoFillEnabled !== undefined) updateData.demoAutoFillEnabled = updates.demoAutoFillEnabled;
 
+    // Handle metadata (soft delete, etc.)
+    if (updates.metadata !== undefined) {
+      const metaSnap = await getDoc(orgRef);
+      const currentMeta = metaSnap.data()?.metadata || {};
+      updateData.metadata = { ...currentMeta, ...updates.metadata };
+    }
+
     // Handle data access permission updates (GDPR/HIPAA)
     if (updates.dataAccessPermission !== undefined) {
       updateData.dataAccessPermission = updates.dataAccessPermission;
     }
 
-    // Handle subscription updates
-    if (updates.plan !== undefined || updates.status !== undefined || updates.isComped !== undefined || updates.clientSeats !== undefined) {
+    // Handle subscription updates (region, seatBlock, plan, status, isComped, clientSeats)
+    const subFields = updates.region !== undefined || updates.seatBlock !== undefined || updates.plan !== undefined
+      || updates.status !== undefined || updates.isComped !== undefined || updates.clientSeats !== undefined;
+    if (subFields) {
       const orgSnap = await getDoc(orgRef);
       const currentData = orgSnap.data();
       const currentSubscription = currentData?.subscription || {};
+      const region = (updates.region ?? currentSubscription.region ?? currentData?.region) as Region | undefined;
+      const seatBlock = updates.seatBlock ?? updates.clientSeats ?? currentSubscription.clientCount ?? currentSubscription.clientSeats ?? 0;
 
-      updateData.subscription = {
+      const subscriptionUpdate: Record<string, unknown> = {
         ...currentSubscription,
         ...(updates.plan !== undefined && { plan: updates.plan }),
         ...(updates.status !== undefined && { status: updates.status }),
         ...(updates.isComped !== undefined && { isComped: updates.isComped }),
         ...(updates.clientSeats !== undefined && { clientSeats: updates.clientSeats }),
+        ...(updates.region !== undefined && { region: updates.region }),
+        ...(updates.seatBlock !== undefined && { clientCount: updates.seatBlock, clientSeats: updates.seatBlock }),
       };
 
-      // Recalculate monthly fee if plan or seats changed
-      if (updates.plan !== undefined || updates.clientSeats !== undefined) {
+      if (region && (updates.region !== undefined || updates.seatBlock !== undefined || updates.clientSeats !== undefined)) {
+        const currency = REGION_TO_CURRENCY[region];
+        const isComped = updates.isComped !== undefined ? updates.isComped : currentSubscription.isComped === true;
+        const monthlyAmount = isComped ? 0 : getMonthlyPrice(region, seatBlock);
+        const amountCents = isComped ? 0 : getPriceInSmallestUnit(monthlyAmount, currency);
+        subscriptionUpdate.currency = currency;
+        subscriptionUpdate.clientCount = seatBlock;
+        subscriptionUpdate.amountCents = amountCents;
+        if (currency === 'KWD') subscriptionUpdate.amountFils = amountCents;
+      } else if (updates.plan !== undefined || updates.clientSeats !== undefined) {
         const plan = updates.plan || currentSubscription.plan || 'free';
-        const seats = updates.clientSeats || currentSubscription.clientSeats || 0;
+        const seats = updates.clientSeats ?? seatBlock;
         const isComped = updates.isComped !== undefined ? updates.isComped : currentSubscription.isComped === true;
         const monthlyFeeKwd = isComped ? 0 : calculateMonthlyFee(plan, seats);
-        (updateData.subscription as Record<string, unknown>).amountFils = monthlyFeeKwd * 1000; // Convert to fils
+        subscriptionUpdate.amountFils = monthlyFeeKwd * 1000;
       }
+
+      updateData.subscription = subscriptionUpdate;
     }
 
     await updateDoc(orgRef, updateData);
@@ -560,7 +576,8 @@ export async function updateOrganizationDetails(
 }
 
 /**
- * Delete organization
+ * Delete organization (client-side: deletes org doc only; no Auth).
+ * For full hard delete including Auth users, use callDeleteOrganization (Cloud Function).
  */
 export async function deleteOrganization(orgId: string): Promise<void> {
   try {
@@ -573,17 +590,77 @@ export async function deleteOrganization(orgId: string): Promise<void> {
   }
 }
 
+export interface OnboardingFunnel {
+  step1?: number;
+  step2?: number;
+  step3?: number;
+  step4?: number;
+  lastUpdated?: { seconds: number; nanoseconds: number };
+}
+
+/**
+ * Get onboarding funnel counts for platform dashboard.
+ */
+export async function getOnboardingFunnel(): Promise<OnboardingFunnel> {
+  try {
+    const ref = doc(getDb(), PLATFORM.onboardingFunnel());
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return {};
+    const data = snap.data();
+    return {
+      step1: typeof data.step1 === 'number' ? data.step1 : 0,
+      step2: typeof data.step2 === 'number' ? data.step2 : 0,
+      step3: typeof data.step3 === 'number' ? data.step3 : 0,
+      step4: typeof data.step4 === 'number' ? data.step4 : 0,
+      lastUpdated: data.lastUpdated as { seconds: number; nanoseconds: number } | undefined,
+    };
+  } catch (err) {
+    logger.warn('Failed to fetch onboarding funnel:', err);
+    return {};
+  }
+}
+
+/**
+ * Log onboarding step for funnel analytics (fire-and-forget; no PII).
+ */
+export function logOnboardingStep(step: number): void {
+  if (typeof step !== 'number' || step < 1 || step > 4) return;
+  const fn = httpsCallable<{ step: number }, { success: boolean }>(
+    getFirebaseFunctions(),
+    'logOnboardingStep',
+  );
+  fn({ step }).catch(() => { /* fire-and-forget */ });
+}
+
+/**
+ * Permanently delete organization via Cloud Function (deletes org, subcollections, userProfiles, and Auth users).
+ */
+export async function callDeleteOrganization(
+  orgId: string,
+  deleteAuthUsers = true,
+): Promise<{ success: boolean; message: string }> {
+  const fn = httpsCallable<
+    { orgId: string; deleteAuthUsers?: boolean },
+    { success: boolean; message: string }
+  >(getFirebaseFunctions(), 'deleteOrganizationCallable');
+  const res = await fn({ orgId, deleteAuthUsers });
+  return res.data;
+}
+
 /**
  * Pause organization subscription
  */
-export async function pauseSubscription(orgId: string): Promise<void> {
+export async function pauseSubscription(orgId: string, adminUid?: string): Promise<void> {
   try {
     const orgRef = getOrganizationDoc(orgId);
     await updateDoc(orgRef, {
       'subscription.status': 'paused',
-      updatedAt: new Date(),
+      updatedAt: serverTimestamp(),
     });
     logger.info(`Subscription paused for organization ${orgId}`);
+    if (adminUid) {
+      await logAdminAction(adminUid, 'subscription_pause', orgId);
+    }
   } catch (error) {
     logger.error(`Error pausing subscription for ${orgId}:`, error);
     throw error;
@@ -593,14 +670,17 @@ export async function pauseSubscription(orgId: string): Promise<void> {
 /**
  * Cancel organization subscription
  */
-export async function cancelSubscription(orgId: string): Promise<void> {
+export async function cancelSubscription(orgId: string, adminUid?: string): Promise<void> {
   try {
     const orgRef = getOrganizationDoc(orgId);
     await updateDoc(orgRef, {
       'subscription.status': 'cancelled',
-      updatedAt: new Date(),
+      updatedAt: serverTimestamp(),
     });
     logger.info(`Subscription cancelled for organization ${orgId}`);
+    if (adminUid) {
+      await logAdminAction(adminUid, 'subscription_cancel', orgId);
+    }
   } catch (error) {
     logger.error(`Error cancelling subscription for ${orgId}:`, error);
     throw error;
@@ -610,14 +690,17 @@ export async function cancelSubscription(orgId: string): Promise<void> {
 /**
  * Reactivate organization subscription
  */
-export async function reactivateSubscription(orgId: string): Promise<void> {
+export async function reactivateSubscription(orgId: string, adminUid?: string): Promise<void> {
   try {
     const orgRef = getOrganizationDoc(orgId);
     await updateDoc(orgRef, {
       'subscription.status': 'active',
-      updatedAt: new Date(),
+      updatedAt: serverTimestamp(),
     });
     logger.info(`Subscription reactivated for organization ${orgId}`);
+    if (adminUid) {
+      await logAdminAction(adminUid, 'subscription_reactivate', orgId);
+    }
   } catch (error) {
     logger.error(`Error reactivating subscription for org ${orgId}:`, error);
     throw error;
@@ -637,13 +720,14 @@ export async function grantDataAccess(
     const orgRef = getOrganizationDoc(orgId);
     const updateData = {
       'dataAccessPermission.platformAdminAccess': true,
-      'dataAccessPermission.grantedAt': new Date(),
+      'dataAccessPermission.grantedAt': serverTimestamp(),
       'dataAccessPermission.grantedBy': platformAdminUid,
       'dataAccessPermission.reason': reason || 'Support request',
-      updatedAt: new Date(),
+      updatedAt: serverTimestamp(),
     };
     await updateDoc(orgRef, updateData);
     logger.info(`Data access granted for org ${orgId} by ${platformAdminUid}`);
+    await logAdminAction(platformAdminUid, 'data_access_grant', orgId, { reason: reason ?? undefined });
   } catch (error) {
     logger.error(`Error granting data access for org ${orgId}:`, error);
     throw error;
@@ -653,7 +737,7 @@ export async function grantDataAccess(
 /**
  * Revoke data access permission from platform admin (GDPR/HIPAA compliance)
  */
-export async function revokeDataAccess(orgId: string): Promise<void> {
+export async function revokeDataAccess(orgId: string, adminUid?: string): Promise<void> {
   try {
     const orgRef = getOrganizationDoc(orgId);
     const updateData: Record<string, unknown> = {
@@ -661,13 +745,34 @@ export async function revokeDataAccess(orgId: string): Promise<void> {
       'dataAccessPermission.grantedAt': null,
       'dataAccessPermission.grantedBy': null,
       'dataAccessPermission.reason': null,
-      updatedAt: new Date(),
+      updatedAt: serverTimestamp(),
     };
     await updateDoc(orgRef, updateData);
     logger.info(`Data access revoked for org ${orgId}`);
+    if (adminUid) {
+      await logAdminAction(adminUid, 'data_access_revoke', orgId);
+    }
   } catch (error) {
     logger.error(`Error revoking data access for org ${orgId}:`, error);
     throw error;
+  }
+}
+
+/**
+ * Get platform metrics history for the last N days.
+ * Uses callable (server-side) to bypass Firestore rules.
+ */
+export async function getMetricsHistory(days: number = 30): Promise<PlatformMetricsHistoryEntry[]> {
+  try {
+    const fn = httpsCallable<
+      { days?: number },
+      PlatformMetricsHistoryEntry[]
+    >(getFirebaseFunctions(), 'getMetricsHistory');
+    const res = await fn({ days });
+    return Array.isArray(res.data) ? res.data : [];
+  } catch (error) {
+    logger.error('Error fetching metrics history:', error);
+    return [];
   }
 }
 
@@ -687,8 +792,11 @@ export function getDefaultMetrics(): PlatformMetrics {
     arrCents: 0,
     aiCostsMtdCents: 0,
     aiCostsLastMonthCents: 0,
+    totalAiCostsCents: 0,
     totalAssessments: 0,
     assessmentsThisMonth: 0,
+    trialConversionsThisMonth: 0,
+    churnsThisMonth: 0,
     updatedAt: now,
   };
 }

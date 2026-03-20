@@ -238,6 +238,9 @@ export const PhaseFormContent = ({
     ocrReviewData,
     setOcrReviewData,
     isProcessingOcr,
+    processingMode,
+    postureRetakeWarning,
+    clearPostureRetakeWarning,
     postureStep,
     setPostureStep,
     handleCapture,
@@ -613,6 +616,9 @@ export const PhaseFormContent = ({
         postureStep={postureStep}
         setPostureStep={setPostureStep}
         isProcessingOcr={isProcessingOcr}
+        processingMode={processingMode}
+        postureRetakeWarning={postureRetakeWarning}
+        clearPostureRetakeWarning={clearPostureRetakeWarning}
         ocrReviewData={ocrReviewData}
         setOcrReviewData={setOcrReviewData}
         applyOcrData={applyOcrData}

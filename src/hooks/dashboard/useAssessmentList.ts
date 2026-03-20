@@ -66,8 +66,7 @@ export function useAssessmentList({
   useEffect(() => {
     if (loading || !user || !readOrgId) return;
 
-    // Use organization-centric path for assessments (effectiveOrgId for impersonation)
-    const assessmentsRef = collection(getDb(), ORGANIZATION.assessments.collection(readOrgId));
+    const assessmentsRef = collection(getDb(), ORGANIZATION.clients.collection(readOrgId));
 
     // When resolvedCoachFilter is null, fetch ALL org assessments (admin view)
     const q = resolvedCoachFilter
@@ -189,8 +188,7 @@ export function useAssessmentList({
     if (hasMore && lastDoc && user && readOrgId) {
       setLoadingMore(true);
       try {
-        // Use organization-centric path (effectiveOrgId for impersonation)
-        const assessmentsRef = collection(getDb(), ORGANIZATION.assessments.collection(readOrgId));
+        const assessmentsRef = collection(getDb(), ORGANIZATION.clients.collection(readOrgId));
         const nextQuery = resolvedCoachFilter
           ? query(
               assessmentsRef,

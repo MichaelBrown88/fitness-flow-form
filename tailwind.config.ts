@@ -72,6 +72,13 @@ export default {
           elevated: "hsl(var(--card-elevated))",
           subtle: "hsl(var(--card-subtle))",
         },
+        admin: {
+          bg: "hsl(var(--admin-bg))",
+          card: "hsl(var(--admin-card))",
+          border: "hsl(var(--admin-border))",
+          fg: "hsl(var(--admin-fg))",
+          "fg-muted": "hsl(var(--admin-fg-muted))",
+        },
         score: {
           green: {
             DEFAULT: "hsl(var(--score-green))",

@@ -5,7 +5,9 @@ import { doc, getDoc } from 'firebase/firestore';
 import { CreditCard, Users, ArrowLeft, ExternalLink } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { getDb } from '@/services/firebase';
-import { formatPrice } from '@/lib/utils/currency';
+import { formatPrice, getLocaleForRegion } from '@/lib/utils/currency';
+import { REGION_TO_CURRENCY, DEFAULT_REGION, DEFAULT_CURRENCY } from '@/constants/pricing';
+import type { Region } from '@/constants/pricing';
 import { logger } from '@/lib/utils/logger';
 import { ROUTES } from '@/constants/routes';
 
@@ -13,7 +15,11 @@ interface SubscriptionInfo {
   plan: string;
   status: string;
   clientSeats: number;
-  amountFils: number;
+  clientCount?: number;
+  region?: Region;
+  currency?: string;
+  amountCents?: number;
+  amountFils?: number;
 }
 
 interface OrgBillingData {
@@ -52,13 +58,21 @@ function BillingPage() {
     getDoc(doc(db, 'organizations', profile.organizationId)).then((snap) => {
       if (!snap.exists()) return;
       const data = snap.data();
+      const sub = data.subscription ?? {};
+      const region = (sub.region as Region) ?? DEFAULT_REGION;
+      const currency = sub.currency ?? REGION_TO_CURRENCY[region];
+      const amountCents = sub.amountCents ?? sub.amountFils;
       setOrgData({
         name: data.name ?? '',
         subscription: {
-          plan: data.subscription?.plan ?? 'starter',
-          status: data.subscription?.status ?? 'trial',
-          clientSeats: data.subscription?.clientSeats ?? 0,
-          amountFils: data.subscription?.amountFils ?? 0,
+          plan: sub.plan ?? 'starter',
+          status: sub.status ?? 'trial',
+          clientSeats: sub.clientSeats ?? sub.clientCount ?? 0,
+          clientCount: sub.clientCount ?? sub.clientSeats ?? 0,
+          region,
+          currency,
+          amountCents: amountCents ?? 0,
+          amountFils: sub.amountFils ?? 0,
         },
         stripeCustomerId: data.stripe?.stripeCustomerId,
         coachCount: data._counts?.coaches ?? 1,
@@ -113,7 +127,11 @@ function BillingPage() {
     );
   }
 
-  const monthlyAmount = orgData ? orgData.subscription.amountFils / 1000 : 0;
+  const currency = orgData?.subscription.currency ?? DEFAULT_CURRENCY;
+  const amountCents = orgData?.subscription.amountCents ?? orgData?.subscription.amountFils ?? 0;
+  const monthlyAmount = currency === 'KWD' ? (amountCents as number) / 1000 : (amountCents as number) / 100;
+  const region = (orgData?.subscription.region as Region) ?? DEFAULT_REGION;
+  const locale = getLocaleForRegion(region);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -135,7 +153,7 @@ function BillingPage() {
               <div>
                 <p className="text-xl font-bold text-slate-900 capitalize">{orgData?.subscription.plan}</p>
                 <p className="text-sm text-slate-500 mt-1">
-                  {monthlyAmount > 0 ? `${formatPrice(monthlyAmount)}/month` : 'Free trial'}
+                  {monthlyAmount > 0 ? `${formatPrice(monthlyAmount, currency, locale)}/month` : 'Free trial'}
                 </p>
               </div>
               <PlanBadge status={orgData?.subscription.status ?? 'trial'} />
@@ -150,7 +168,7 @@ function BillingPage() {
               </div>
               <div>
                 <p className="text-sm font-bold text-slate-900">
-                  {orgData?.coachCount ?? 0} / {orgData?.subscription.clientSeats ?? 0} seats used
+                  {orgData?.coachCount ?? 0} / {orgData?.subscription.clientCount ?? orgData?.subscription.clientSeats ?? 0} seats used
                 </p>
                 <p className="text-xs text-slate-400">Active coach seats</p>
               </div>
@@ -160,7 +178,7 @@ function BillingPage() {
                 className="h-full rounded-full bg-indigo-500 transition-all"
                 style={{
                   width: `${Math.min(
-                    ((orgData?.coachCount ?? 0) / Math.max(orgData?.subscription.clientSeats ?? 1, 1)) * 100,
+                    ((orgData?.coachCount ?? 0) / Math.max(orgData?.subscription.clientCount ?? orgData?.subscription.clientSeats ?? 1, 1)) * 100,
                     100,
                   )}%`,
                 }}

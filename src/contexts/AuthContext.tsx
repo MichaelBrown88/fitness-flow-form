@@ -11,13 +11,14 @@ import {
   signInWithEmailLink,
   type User,
 } from 'firebase/auth';
-import { doc, getDoc, onSnapshot, setDoc, collection, query, limit, getDocs, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, setDoc, collection, query, limit, getDocs, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { getFirebaseAuth, getDb, googleProvider, appleProvider } from '@/services/firebase';
 import { getOrgSettings, type OrgSettings } from '@/services/organizations';
 import type { UserProfile } from '@/types/auth';
 import { isStaffRole } from '@/types/auth';
 import { AuthContext } from '@/hooks/useAuth';
 import { logger } from '@/lib/utils/logger';
+import { isTestEmail } from '@/lib/utils/testAccountHelper';
 import { 
   startImpersonation as startImpersonationService, 
   endImpersonation as endImpersonationService,
@@ -130,23 +131,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Apply safety defaults
           if (!currentProfile.role) currentProfile.role = 'org_admin';
           
-          // Legacy Auto-Heal: If onboarding is NOT complete, check if they have assessments
-          if (currentProfile.onboardingCompleted === false) {
+          // Auto-heal: If onboarding not complete but org has assessments, mark onboarding complete
+          if (
+            currentProfile.onboardingCompleted === false &&
+            currentProfile.organizationId
+          ) {
             try {
-              const assessmentsRef = collection(db, 'coaches', firebaseUser.uid, 'assessments');
+              const assessmentsRef = collection(
+                db,
+                'organizations',
+                currentProfile.organizationId,
+                'assessments'
+              );
               const assessmentSnap = await getDocs(query(assessmentsRef, limit(1)));
-              
               if (!assessmentSnap.empty) {
-                logger.info('[AUTH] Legacy user detected with assessments. Auto-completing onboarding.');
-                await updateDoc(profileRef, { 
+                logger.info('[AUTH] User has org assessments; auto-completing onboarding.');
+                await updateDoc(profileRef, {
                   onboardingCompleted: true,
-                  updatedAt: new Date()
+                  updatedAt: serverTimestamp(),
                 });
-                // Snapshot will trigger again with updated data
                 return;
               }
             } catch (err) {
-              logger.debug('[AUTH] Legacy check skipped:', err);
+              logger.debug('[AUTH] Onboarding check skipped:', err);
             }
           }
         } else {
@@ -276,8 +283,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         billingEmail: email,
         clientSeats: 10, // Default, will be updated in Phase 1
       },
-      createdAt: new Date(),
-      // onboardingCompletedAt will be set when onboarding is complete
+      createdAt: serverTimestamp(),
+      ...(isTestEmail(email) && { metadata: { isTest: true } }),
     });
     
     // State will be updated by onAuthStateChanged listener
@@ -310,7 +317,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           billingEmail: newUser.email || '',
           clientSeats: 10,
         },
-        createdAt: new Date(),
+        createdAt: serverTimestamp(),
+        ...(isTestEmail(newUser.email || '') && { metadata: { isTest: true } }),
       });
     }
   };
@@ -342,7 +350,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           billingEmail: newUser.email || '',
           clientSeats: 10,
         },
-        createdAt: new Date(),
+        createdAt: serverTimestamp(),
+        ...(isTestEmail(newUser.email || '') && { metadata: { isTest: true } }),
       });
     }
   };

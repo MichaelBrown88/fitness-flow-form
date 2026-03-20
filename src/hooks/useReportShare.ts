@@ -11,15 +11,20 @@ import { logger } from '@/lib/utils/logger';
 import { copyTextToClipboard } from '@/lib/utils/clipboard';
 import type { FormData } from '@/contexts/FormContext';
 import type { UserProfile } from '@/types/auth';
+import type { ScoreSummary } from '@/lib/scoring/types';
 
 export interface UseReportShareParams {
   assessmentId: string | undefined;
   formData: FormData | null;
   user: { uid: string } | null;
   profile: UserProfile | null;
+  overallScore?: number;
+  scoreDelta?: number;
+  currentScores?: ScoreSummary;
+  previousScores?: ScoreSummary;
 }
 
-export function useReportShare({ assessmentId: id, formData, user, profile }: UseReportShareParams) {
+export function useReportShare({ assessmentId: id, formData, user, profile, overallScore, scoreDelta, currentScores, previousScores }: UseReportShareParams) {
   const { toast } = useToast();
   const [shareCache, setShareCache] = useState<Record<'client' | 'coach', ShareArtifacts | null>>({
     client: null,
@@ -38,11 +43,44 @@ export function useReportShare({ assessmentId: id, formData, user, profile }: Us
         formData,
         organizationId: profile?.organizationId,
         profile: profile || null,
+        overallScore,
+        scoreDelta,
       });
       setShareCache((prev) => ({ ...prev, [view]: artifacts }));
+
+      // Fire-and-forget: generate "what changed" narrative on first client share
+      if (view === 'client' && currentScores && previousScores && formData.fullName) {
+        (async () => {
+          try {
+            const { generateWhatChangedNarrative } = await import('@/lib/ai/whatChangedNarrative');
+            const { doc, updateDoc } = await import('firebase/firestore');
+            const { getDb } = await import('@/services/firebase');
+            const { COLLECTIONS } = await import('@/constants/collections');
+
+            const narrative = await generateWhatChangedNarrative({
+              coachUid: user.uid,
+              organizationId: profile?.organizationId,
+              clientName: formData.fullName,
+              currentScores,
+              previousScores,
+            });
+
+            // Extract token from the shareUrl and write narrative to public report doc
+            const shareToken = artifacts.shareUrl.split('/r/')[1];
+            if (shareToken) {
+              const db = getDb();
+              const reportRef = doc(db, COLLECTIONS.PUBLIC_REPORTS, shareToken);
+              await updateDoc(reportRef, { changeNarrative: narrative });
+            }
+          } catch (err) {
+            logger.warn('[Share] Narrative generation failed (non-fatal):', err);
+          }
+        })();
+      }
+
       return artifacts;
     },
-    [id, shareCache, user, formData, profile?.organizationId],
+    [id, shareCache, user, formData, profile?.organizationId, overallScore, scoreDelta, currentScores, previousScores],
   );
 
   const handleCopyLink = useCallback(async () => {
@@ -153,6 +191,8 @@ export function useReportShare({ assessmentId: id, formData, user, profile }: Us
         formData,
         organizationId: profile?.organizationId,
         profile: profile || null,
+        overallScore,
+        scoreDelta,
       });
       const url = `https://wa.me/?text=${encodeURIComponent(artifacts.whatsappText)}`;
       window.open(url, '_blank', 'noopener,noreferrer');
@@ -166,7 +206,31 @@ export function useReportShare({ assessmentId: id, formData, user, profile }: Us
     } finally {
       setShareLoading(false);
     }
-  }, [id, formData, user, profile?.organizationId, toast]);
+  }, [id, formData, user, profile?.organizationId, overallScore, scoreDelta, toast]);
+
+  const handleCopyMessage = useCallback(async () => {
+    if (!id || !formData || !user) return;
+    try {
+      setShareLoading(true);
+      const messagePromise = requestShareArtifacts({
+        assessmentId: id,
+        view: 'client',
+        coachUid: user.uid,
+        formData,
+        organizationId: profile?.organizationId,
+        profile: profile || null,
+        overallScore,
+        scoreDelta,
+      }).then((a) => a.shareMessage);
+      await copyTextToClipboard(messagePromise);
+      toast({ title: 'Message copied', description: 'Paste and send via any channel.' });
+    } catch (e) {
+      logger.error('Copy message failed', e);
+      toast({ title: UI_TOASTS.ERROR.COPY_FAILED, variant: 'destructive' });
+    } finally {
+      setShareLoading(false);
+    }
+  }, [id, formData, user, profile?.organizationId, overallScore, scoreDelta, toast]);
 
   return {
     ensureShareArtifacts,
@@ -174,6 +238,7 @@ export function useReportShare({ assessmentId: id, formData, user, profile }: Us
     handleEmailLink,
     handleSystemShare,
     handleWhatsAppShare,
+    handleCopyMessage,
     shareLoading,
   };
 }

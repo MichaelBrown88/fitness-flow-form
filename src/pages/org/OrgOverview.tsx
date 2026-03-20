@@ -1,7 +1,20 @@
+import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
+import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { getDb } from '@/services/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Package, Users, FileText } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Package, Users, FileText, Trash2, Check } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 import type { OrgAdminOutletContext } from './OrgAdminLayout';
+
+interface ErasureRequest {
+  id: string;
+  shareToken: string;
+  reason: string;
+  status: string;
+  requestedAt: { toDate?: () => Date } | null;
+}
 
 export default function OrgOverview() {
   const {
@@ -10,7 +23,30 @@ export default function OrgOverview() {
     totalClientSeats,
     maxSeats,
     seatsUsedPercentage,
+    pendingErasureCount,
   } = useOutletContext<OrgAdminOutletContext>();
+
+  const { effectiveOrgId, profile } = useAuth();
+  const orgId = effectiveOrgId || profile?.organizationId;
+  const [erasureRequests, setErasureRequests] = useState<ErasureRequest[]>([]);
+
+  useEffect(() => {
+    if (!orgId || pendingErasureCount === 0) return;
+    const q = query(
+      collection(getDb(), `organizations/${orgId}/erasureRequests`),
+      where('status', '==', 'pending'),
+    );
+    getDocs(q).then((snap) => {
+      setErasureRequests(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ErasureRequest, 'id'>) })));
+    }).catch(() => {});
+  }, [orgId, pendingErasureCount]);
+
+  async function markActioned(requestId: string) {
+    if (!orgId) return;
+    const ref = doc(getDb(), `organizations/${orgId}/erasureRequests/${requestId}`);
+    await updateDoc(ref, { status: 'actioned' });
+    setErasureRequests((prev) => prev.filter((r) => r.id !== requestId));
+  }
 
   if (!orgDetails) return null;
 
@@ -123,6 +159,49 @@ export default function OrgOverview() {
           </CardContent>
         </Card>
       </div>
+
+      {erasureRequests.length > 0 && (
+        <Card className="border-rose-200 bg-rose-50/30">
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="flex items-center gap-2 text-sm text-rose-700">
+              <Trash2 className="h-4 w-4" />
+              Pending data erasure requests
+            </CardTitle>
+            <CardDescription className="text-xs text-rose-600">
+              These clients have submitted a GDPR Article 17 right-to-erasure request. Action each
+              request within 30 days.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-4 sm:p-6 pt-0 space-y-3">
+            {erasureRequests.map((req) => (
+              <div key={req.id} className="flex items-start justify-between gap-4 rounded-lg border border-rose-100 bg-white px-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-medium text-slate-800">
+                    Token: <span className="font-mono">{req.shareToken.slice(0, 12)}…</span>
+                  </p>
+                  {req.reason && (
+                    <p className="mt-0.5 text-xs text-slate-500 line-clamp-2">{req.reason}</p>
+                  )}
+                  {req.requestedAt?.toDate && (
+                    <p className="mt-0.5 text-[10px] text-slate-400">
+                      {req.requestedAt.toDate().toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0 gap-1.5 border-rose-200 text-rose-700 hover:bg-rose-50"
+                  onClick={() => markActioned(req.id)}
+                >
+                  <Check className="h-3 w-3" />
+                  Mark actioned
+                </Button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

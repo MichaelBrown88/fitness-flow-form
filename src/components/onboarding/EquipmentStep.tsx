@@ -12,6 +12,7 @@ import { useState } from 'react';
 interface EquipmentStepProps {
   data?: Partial<EquipmentConfig>;
   onNext: (data: EquipmentConfig) => void;
+  onSkip?: () => void;
   onBack: () => void;
 }
 
@@ -59,7 +60,7 @@ function EquipmentCard({ active, onToggle, icon: Icon, title, description, activ
   );
 }
 
-export function EquipmentStep({ data, onNext, onBack }: EquipmentStepProps) {
+export function EquipmentStep({ data, onNext, onSkip, onBack }: EquipmentStepProps) {
   const [scanner, setScanner] = useState(data?.scanner ?? false);
   const [treadmill, setTreadmill] = useState(data?.treadmill ?? false);
   const [dynamometer, setDynamometer] = useState(data?.dynamometer ?? false);
@@ -142,6 +143,15 @@ export function EquipmentStep({ data, onNext, onBack }: EquipmentStepProps) {
           Continue
         </button>
       </div>
+      {onSkip && (
+        <button
+          type="button"
+          onClick={onSkip}
+          className="w-full text-center text-xs text-slate-400 hover:text-slate-600 font-medium py-1 transition-colors"
+        >
+          I'll configure this later
+        </button>
+      )}
     </div>
   );
 }

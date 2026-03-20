@@ -6,11 +6,11 @@ import { Link, useOutletContext } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useRoadmapData } from '@/hooks/useRoadmapData';
 import RoadmapClientView from '@/components/roadmap/RoadmapClientView';
-import { Loader2, Map, Plus } from 'lucide-react';
+import { AlertTriangle, Loader2, Map, Plus } from 'lucide-react';
 import type { ClientDetailOutletContext } from './ClientDetailLayout';
 
 export default function ClientRoadmapTab() {
-  const { clientName, assessments } = useOutletContext<ClientDetailOutletContext>();
+  const { clientName, assessments, isRoadmapStale } = useOutletContext<ClientDetailOutletContext>();
   const effectiveName = clientName ?? '';
 
   const {
@@ -61,6 +61,15 @@ export default function ClientRoadmapTab() {
 
   return (
     <div className="space-y-6">
+      {isRoadmapStale && (
+        <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+          <span>
+            This client's scores have shifted significantly since this plan was built. Consider reviewing
+            and updating the roadmap to reflect their current progress.
+          </span>
+        </div>
+      )}
       <RoadmapClientView
         clientName={effectiveName}
         summary={summary}

@@ -9,6 +9,57 @@ import type { FormData } from '@/contexts/FormContext';
 import { calculateAge } from '@/lib/scoring';
 import { NORMATIVE_SCORING_DB } from '@/lib/clinical-data';
 import { SCORE_COLORS } from '@/lib/scoring/scoreColor';
+import { getEffectiveGoalLevels } from '@/lib/goals/achievableLandmarks';
+
+type GoalTier = 'health-minimum' | 'average' | 'above-average' | 'elite';
+
+function toBodyCompTier(primaryGoal: string, levels: ReturnType<typeof getEffectiveGoalLevels>): GoalTier {
+  if (primaryGoal === 'weight-loss') {
+    const pct = parseFloat(levels.goalLevelWeightLoss) || 10;
+    if (pct >= 20) return 'elite';
+    if (pct >= 15) return 'above-average';
+    if (pct >= 10) return 'average';
+    return 'health-minimum';
+  }
+  if (primaryGoal === 'build-muscle') {
+    const kg = parseFloat(levels.goalLevelMuscle) || 6;
+    if (kg >= 8) return 'elite';
+    if (kg >= 6) return 'above-average';
+    if (kg >= 4) return 'average';
+    return 'health-minimum';
+  }
+  if (primaryGoal === 'body-recomposition') {
+    const l = levels.goalLevelBodyRecomp;
+    if (l === 'shredded') return 'elite';
+    if (l === 'athletic') return 'above-average';
+    if (l === 'fit') return 'average';
+    return 'health-minimum';
+  }
+  return 'average';
+}
+
+function toStrengthTier(primaryGoal: string, levels: ReturnType<typeof getEffectiveGoalLevels>): GoalTier {
+  if (primaryGoal === 'build-strength' || primaryGoal === 'build-muscle') {
+    const v = levels.goalLevelStrength;
+    const pct = parseFloat(v) || 30;
+    if (pct >= 40) return 'elite';
+    if (pct >= 30) return 'above-average';
+    if (pct >= 20) return 'average';
+    return 'health-minimum';
+  }
+  return 'average';
+}
+
+function toCardioTier(primaryGoal: string, levels: ReturnType<typeof getEffectiveGoalLevels>): GoalTier {
+  if (primaryGoal === 'improve-fitness') {
+    const l = levels.goalLevelFitness;
+    if (l === 'elite') return 'elite';
+    if (l === 'athletic') return 'above-average';
+    if (l === 'active') return 'average';
+    return 'health-minimum';
+  }
+  return 'average';
+}
 
 interface GapAnalysisProps {
   scores: ScoreSummary;
@@ -41,6 +92,9 @@ export function GapAnalysis({ scores, formData }: GapAnalysisProps) {
   const visceral = parseFloat(formData?.visceralFatLevel || '0');
   const pushups = parseFloat(formData?.pushupsOneMinuteReps || formData?.pushupMaxReps || '0');
   const restingHr = parseFloat(formData?.cardioRestingHr || '0');
+  const goals = formData?.clientGoals || [];
+  const primaryGoal = goals[0] || 'general-health';
+  const effectiveLevels = getEffectiveGoalLevels(primaryGoal, formData);
   
   // Body Composition Gap
   const getBodyCompGap = (): PillarGap => {
@@ -58,14 +112,7 @@ export function GapAnalysis({ scores, formData }: GapAnalysisProps) {
       currentColor = 'yellow';
     }
     
-    // Get goal level from form data
-    const goals = formData?.clientGoals || [];
-    const primaryGoal = goals[0] || 'general-health';
-    const goalLevel = primaryGoal === 'weight-loss' 
-      ? (formData?.goalLevelWeightLoss || 'average')
-      : primaryGoal === 'build-muscle'
-      ? (formData?.goalLevelMuscle || 'average')
-      : 'average';
+    const goalLevel = toBodyCompTier(primaryGoal, effectiveLevels);
     
     // Calculate realistic target based on goal level and current BF
     let goalValue = '';
@@ -178,14 +225,7 @@ export function GapAnalysis({ scores, formData }: GapAnalysisProps) {
       currentColor = 'yellow';
     }
     
-    // Get goal level from form data
-    const goals = formData?.clientGoals || [];
-    const primaryGoal = goals[0] || 'general-health';
-    const goalLevel = primaryGoal === 'build-strength' 
-      ? (formData?.goalLevelStrength || 'average')
-      : primaryGoal === 'build-muscle'
-      ? (formData?.goalLevelMuscle || 'average')
-      : 'average';
+    const goalLevel = toStrengthTier(primaryGoal, effectiveLevels);
     
     let goalValue = '';
     let goalLabel = '';
@@ -286,12 +326,7 @@ export function GapAnalysis({ scores, formData }: GapAnalysisProps) {
       }
     }
     
-    // Get goal level from form data
-    const goals = formData?.clientGoals || [];
-    const primaryGoal = goals[0] || 'general-health';
-    const goalLevel = primaryGoal === 'improve-fitness' 
-      ? (formData?.goalLevelFitness || 'average')
-      : 'average';
+    const goalLevel = toCardioTier(primaryGoal, effectiveLevels);
     
     let goalValue = '';
     let goalLabel = '';

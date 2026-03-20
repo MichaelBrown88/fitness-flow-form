@@ -4,11 +4,12 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate, Outlet, NavLink } from 'react-router-dom';
-import { getFirebaseAuth } from '@/services/firebase';
+import { getFirebaseAuth, getDb } from '@/services/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
+import { collection, query, where, getCountFromServer } from 'firebase/firestore';
 import { useAuth } from '@/hooks/useAuth';
 import { getOrganizationDetails, getOrgCoachesWithStats } from '@/services/platformAdmin';
-import { getOrgCoaches, addCoachToOrganization, removeCoachFromOrganization } from '@/services/coachManagement';
+import { getOrgCoaches, addCoachToOrganization, removeCoachFromOrganization, sendCoachInviteEmail } from '@/services/coachManagement';
 import { calculateMonthlyFee } from '@/lib/pricing';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/utils/logger';
@@ -50,6 +51,7 @@ export type OrgAdminOutletContext = {
   totalClientSeats: number;
   maxSeats: number;
   seatsUsedPercentage: number;
+  pendingErasureCount: number;
   setOrgDetails: React.Dispatch<React.SetStateAction<OrganizationDetails | null>>;
   setCoaches: React.Dispatch<React.SetStateAction<OrgCoach[]>>;
   handleRemoveCoach: (coachUid: string, coachName: string) => Promise<void>;
@@ -68,6 +70,7 @@ export default function OrgAdminLayout() {
   const [newCoachEmail, setNewCoachEmail] = useState('');
   const [addingCoach, setAddingCoach] = useState(false);
   const [removingCoach, setRemovingCoach] = useState<string | null>(null);
+  const [pendingErasureCount, setPendingErasureCount] = useState(0);
 
   const readOrgId = effectiveOrgId || profile?.organizationId;
 
@@ -114,6 +117,15 @@ export default function OrgAdminLayout() {
     return () => unsubscribe();
   }, [navigate, profile?.role, effectiveOrgId, readOrgId]);
 
+  useEffect(() => {
+    if (!readOrgId) return;
+    const erasureRef = collection(getDb(), `organizations/${readOrgId}/erasureRequests`);
+    const q = query(erasureRef, where('status', '==', 'pending'));
+    getCountFromServer(q)
+      .then((snap) => setPendingErasureCount(snap.data().count))
+      .catch(() => {});
+  }, [readOrgId]);
+
   const monthlyFee =
     orgDetails?.monthlyFeeKwd ??
     (orgDetails ? calculateMonthlyFee(orgDetails.plan || 'free', orgDetails.clientSeats || 0) : 0);
@@ -122,26 +134,42 @@ export default function OrgAdminLayout() {
   const seatsUsedPercentage = maxSeats > 0 ? (totalClientSeats / maxSeats) * 100 : 0;
 
   const handleAddCoach = async () => {
-    if (!profile?.organizationId || !newCoachEmail.trim()) return;
+    if (!profile?.organizationId || !newCoachEmail.trim() || !orgDetails) return;
     const emailRegex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
     if (!emailRegex.test(newCoachEmail)) {
       toast({ title: 'Invalid email', description: 'Please enter a valid email address.', variant: 'destructive' });
       return;
     }
+    const email = newCoachEmail.trim();
     setAddingCoach(true);
     try {
-      const result = await addCoachToOrganization(profile.organizationId, newCoachEmail.trim());
+      const result = await addCoachToOrganization(profile.organizationId, email);
       if (result.success) {
-        toast({ title: 'Coach added', description: `${newCoachEmail} has been added to your organization.` });
+        toast({ title: 'Coach added', description: `${email} has been added to your organization.` });
         setNewCoachEmail('');
         setShowAddCoachDialog(false);
         const updatedCoaches = await getOrgCoaches(readOrgId!);
         setCoaches(updatedCoaches);
         const updatedOrg = await getOrganizationDetails(readOrgId!);
         setOrgDetails(updatedOrg);
-      } else {
-        toast({ title: 'Failed to add coach', description: result.error || 'Unknown error occurred.', variant: 'destructive' });
+        return;
       }
+      if (result.error === 'COACH_NOT_FOUND') {
+        await sendCoachInviteEmail({
+          email,
+          organizationId: profile.organizationId,
+          organizationName: orgDetails.name || 'Your organization',
+          invitedBy: profile.displayName || 'A team admin',
+        });
+        toast({
+          title: 'Invitation sent',
+          description: `An email was sent to ${email}. They can sign up and join your organization from the link.`,
+        });
+        setNewCoachEmail('');
+        setShowAddCoachDialog(false);
+        return;
+      }
+      toast({ title: 'Failed to add coach', description: result.error || 'Unknown error occurred.', variant: 'destructive' });
     } catch (error) {
       logger.error('Error adding coach:', error);
       toast({
@@ -222,6 +250,7 @@ export default function OrgAdminLayout() {
     totalClientSeats,
     maxSeats,
     seatsUsedPercentage,
+    pendingErasureCount,
     setOrgDetails,
     setCoaches,
     handleRemoveCoach,
@@ -244,7 +273,14 @@ export default function OrgAdminLayout() {
     >
       <nav className="flex gap-1 p-1 rounded-xl bg-slate-100 mb-6">
         <NavLink to={ROUTES.ORG_DASHBOARD} end className={tabClass}>
-          Overview
+          <span className="flex items-center gap-2">
+            Overview
+            {pendingErasureCount > 0 && (
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold text-white leading-none">
+                {pendingErasureCount > 9 ? '9+' : pendingErasureCount}
+              </span>
+            )}
+          </span>
         </NavLink>
         <NavLink to={ROUTES.ORG_DASHBOARD_TEAM} className={tabClass}>
           Team
@@ -254,6 +290,9 @@ export default function OrgAdminLayout() {
         </NavLink>
         <NavLink to={ROUTES.ORG_DASHBOARD_BILLING} className={tabClass}>
           Billing
+        </NavLink>
+        <NavLink to={ROUTES.ORG_DASHBOARD_INTEGRATIONS} className={tabClass}>
+          Integrations
         </NavLink>
       </nav>
 
@@ -267,11 +306,7 @@ export default function OrgAdminLayout() {
               Add Coach to Organization
             </DialogTitle>
             <DialogDescription>
-              Add a coach by their email address. They must already have a One Assess account.
-              <br />
-              <span className="text-xs text-amber-600 mt-2 block">
-                Note: Full invitation system with email sending will be implemented in a future update.
-              </span>
+              Enter the coach&apos;s email. If they already have an account, they&apos;ll be added immediately. Otherwise we&apos;ll send them an invitation to sign up and join your organization.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">

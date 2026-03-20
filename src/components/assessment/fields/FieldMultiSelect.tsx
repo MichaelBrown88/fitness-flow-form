@@ -8,6 +8,8 @@ interface FieldMultiSelectProps {
   options?: ReadonlyArray<{ readonly value: string; readonly label: string; readonly subtitle?: string; readonly isRecommended?: boolean; readonly tag?: string }>;
   value: FieldValue;
   handleChange: (val: FieldValue) => void;
+  /** When provided, shows a badge on each selected option (e.g. "Primary", "Secondary" by index). */
+  selectionLabels?: (index: number) => string;
 }
 
 export const FieldMultiSelect: React.FC<FieldMultiSelectProps> = ({
@@ -15,6 +17,7 @@ export const FieldMultiSelect: React.FC<FieldMultiSelectProps> = ({
   options,
   value,
   handleChange,
+  selectionLabels,
 }) => {
   const selected = Array.isArray(value) ? (value as string[]) : [];
   
@@ -30,6 +33,8 @@ export const FieldMultiSelect: React.FC<FieldMultiSelectProps> = ({
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
       {options?.map((opt, idx) => {
         const isActive = selected.includes(opt.value);
+        const selectedIndex = isActive ? selected.indexOf(opt.value) : -1;
+        const selectionLabel = selectionLabels && selectedIndex >= 0 ? selectionLabels(selectedIndex) : null;
         const colorClass = FIELD_COLORS[idx % FIELD_COLORS.length];
 
         return (
@@ -45,11 +50,11 @@ export const FieldMultiSelect: React.FC<FieldMultiSelectProps> = ({
             aria-pressed={isActive}
             aria-label={opt.label}
           >
-            {opt.tag && (
+            {(opt.tag || selectionLabel) && (
               <div className={`absolute top-0 right-0 px-3 py-1 rounded-bl-xl text-[10px] font-black uppercase tracking-[0.15em] ${
                 isActive ? 'bg-white/20 text-white' : 'bg-slate-900 text-white'
               }`}>
-                {opt.tag}
+                {selectionLabel ?? opt.tag}
               </div>
             )}
 

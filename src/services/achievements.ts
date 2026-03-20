@@ -9,6 +9,7 @@ import {
 } from 'firebase/firestore';
 import { getDb } from '@/services/firebase';
 import { COLLECTIONS } from '@/constants/collections';
+import { ORGANIZATION } from '@/lib/database/paths';
 import { ACHIEVEMENT_DEFINITIONS } from '@/constants/achievements';
 import type { Achievement } from '@/types/achievements';
 import { logger } from '@/lib/utils/logger';
@@ -16,16 +17,26 @@ import { logger } from '@/lib/utils/logger';
 const MAX_ACHIEVEMENTS = 50;
 
 /**
- * Get the token-scoped achievements collection.
+ * Get the org-scoped achievements collection for a client.
+ * Path: organizations/{orgId}/clients/{clientId}/achievements
+ *
+ * Falls back to the legacy token-scoped path when clientId is unavailable.
+ */
+function achievementsCollection(organizationId: string, clientId: string) {
+  return collection(getDb(), ORGANIZATION.clientAchievements.collection(organizationId, clientId));
+}
+
+/**
+ * Legacy: get the token-scoped achievements collection for backward compat reads.
  * Path: publicReports/{shareToken}/achievements
  */
-function achievementsCollection(shareToken: string) {
+function legacyAchievementsCollection(shareToken: string) {
   return collection(getDb(), COLLECTIONS.PUBLIC_REPORTS, shareToken, COLLECTIONS.ACHIEVEMENTS);
 }
 
-/** Fetch all existing achievements for a client via their share token */
-async function getExistingAchievements(shareToken: string): Promise<Map<string, Achievement>> {
-  const q = query(achievementsCollection(shareToken), limit(MAX_ACHIEVEMENTS));
+/** Fetch all existing achievements for a client */
+async function getExistingAchievements(organizationId: string, clientId: string): Promise<Map<string, Achievement>> {
+  const q = query(achievementsCollection(organizationId, clientId), limit(MAX_ACHIEVEMENTS));
   const snap = await getDocs(q);
   const map = new Map<string, Achievement>();
   snap.docs.forEach((d) => {
@@ -35,9 +46,11 @@ async function getExistingAchievements(shareToken: string): Promise<Map<string, 
 }
 
 interface EvaluationInput {
-  /** Share token that scopes achievements to publicReports/{shareToken}/achievements */
-  shareToken: string;
   organizationId: string;
+  /** Stable client UUID — used as the Firestore path key for achievement storage */
+  clientId: string;
+  /** Legacy share token — kept for compatibility with `populateClientData` and public views */
+  shareToken?: string;
   overallScore: number;
   categoryScores: Array<{ id: string; score: number }>;
   previousOverallScore?: number;
@@ -56,8 +69,8 @@ export type UnlockedAchievement = { id: string; title: string; description: stri
  */
 export async function evaluateAchievements(input: EvaluationInput): Promise<UnlockedAchievement[]> {
   const {
-    shareToken,
     organizationId,
+    clientId,
     overallScore,
     categoryScores,
     previousOverallScore,
@@ -68,7 +81,7 @@ export async function evaluateAchievements(input: EvaluationInput): Promise<Unlo
   const newlyUnlocked: UnlockedAchievement[] = [];
 
   try {
-    const existing = await getExistingAchievements(shareToken);
+    const existing = await getExistingAchievements(organizationId, clientId);
     const batch = writeBatch(getDb());
     let changesMade = false;
 
@@ -78,7 +91,7 @@ export async function evaluateAchievements(input: EvaluationInput): Promise<Unlo
       : null;
 
     for (const def of ACHIEVEMENT_DEFINITIONS) {
-      const ref = doc(achievementsCollection(shareToken), def.id);
+      const ref = doc(achievementsCollection(organizationId, clientId), def.id);
       const current = existing.get(def.id);
 
       if (current?.unlockedAt) continue;
@@ -187,7 +200,7 @@ export async function evaluateAchievements(input: EvaluationInput): Promise<Unlo
 
     if (changesMade) {
       await batch.commit();
-      logger.debug(`Achievements evaluated for token ${shareToken} (${newlyUnlocked.length} unlocked)`, 'ACHIEVEMENTS');
+      logger.debug(`Achievements evaluated for client ${clientId} (${newlyUnlocked.length} unlocked)`, 'ACHIEVEMENTS');
     }
   } catch (error) {
     logger.error('Failed to evaluate achievements', 'ACHIEVEMENTS', error);
@@ -241,9 +254,11 @@ export async function populateClientData(): Promise<number> {
       // Every client with a public report has done at least 1 assessment
       const assessmentCount = 1;
 
+      // Use shareToken as a fallback clientId for the populate utility (DEV only)
       const unlocked = await evaluateAchievements({
-        shareToken,
         organizationId: orgId,
+        clientId: (data.assessmentId as string) || shareToken,
+        shareToken,
         overallScore: scores.overall,
         categoryScores,
         assessmentCount,

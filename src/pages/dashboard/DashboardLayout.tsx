@@ -5,6 +5,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import AppShell from '@/components/layout/AppShell';
+import { OfflineBanner } from '@/components/OfflineBanner';
 import { Button } from '@/components/ui/button';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { Plus } from 'lucide-react';
@@ -138,6 +139,7 @@ export default function DashboardLayout() {
 
   return (
     <ErrorBoundary>
+      <OfflineBanner />
       <AppShell
         title="Dashboard"
         hideTitle

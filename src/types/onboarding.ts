@@ -22,12 +22,14 @@ export interface IdentityData {
   acceptedTerms: boolean;
 }
 
-// Business profile data (Step 2) - name, type, and coaching role
+// Business profile data (Step 2) - name, type, coaching role, and billing region
 export interface BusinessProfileData {
   name: string;
   type: BusinessType;
   /** Does the admin also coach clients directly? Auto-true for solo_coach. */
   isActiveCoach?: boolean;
+  /** Billing region for pricing (GB, US, KW) */
+  region?: Region;
 }
 
 // Equipment config (Step 3) - what physical equipment the gym has
@@ -42,6 +44,8 @@ export interface EquipmentConfig {
   gripStrengthMethod?: 'dynamometer' | 'none';
 }
 
+import type { Region } from '@/constants/pricing';
+
 // Branding config - deferred to Settings, not part of onboarding flow
 export interface BrandingConfig {
   gradientId: string; // References gradient system - maps to brand color
@@ -49,7 +53,7 @@ export interface BrandingConfig {
   logoFile?: File; // Logo file for upload (optional - added later in Settings)
 }
 
-// Full onboarding data (simplified 4-step flow)
+// Full onboarding data (simplified 5-step flow)
 export interface OnboardingData {
   identity: IdentityData;
   businessProfile: BusinessProfileData;
@@ -74,7 +78,11 @@ export interface Subscription {
   status: SubscriptionStatus;
   trialEndsAt?: Date;
   billingEmail: string;
-  clientSeats: number; // How many client slots
+  clientSeats: number; // How many client slots (legacy)
+  region?: Region;
+  currency?: string;
+  clientCount?: number; // Seat block (5, 10, 20, 35, 50, 75, 100, 150, 250, 300+)
+  amountCents?: number; // Amount in smallest unit (pence/cents/fils)
 }
 
 // Organization data (extended)

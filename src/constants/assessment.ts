@@ -156,7 +156,7 @@ export const ASSESSMENT_LABELS = {
     gripPlatePinchSeconds: 'Plate pinch time (seconds)',
   },
   P6: {
-    clientGoals: 'Client Goals',
+    clientGoals: 'Primary and secondary goals',
     goalLevelWeightLoss: 'Weight loss target',
     goalLevelMuscle: 'Muscle gain target',
     goalLevelStrength: 'Strength target',
@@ -272,7 +272,7 @@ export const ASSESSMENT_TOOLTIPS = {
     gripPlatePinchSeconds: 'Instructions:\n1. Pinch grip a standardized weight plate (10kg for females, 15kg for males).\n2. Lift and hold for maximum time.\n3. Record time in seconds until grip fails.',
   },
   P6: {
-    clientGoals: 'Instructions:\n1. Select all goals that apply to the client.\n2. Specific levels will be requested for each selection to calibrate the roadmap.',
+    clientGoals: 'Select your primary goal first (the one you want to focus on first). Then add any secondary goals. Order determines how we structure your phases: Phase 1 focuses on your primary goal.',
     goalLevelWeightLoss: 'Select your target weight loss. This can be a percentage of your total body weight or a specific amount in kilograms.',
     goalLevelMuscle: 'Select your target muscle gain in kilograms. The recommended option provides a realistic and sustainable rate of muscle growth.',
     goalLevelStrength: 'Select your target strength improvement. Recommended options are based on your training experience and current fitness level.',
@@ -332,7 +332,7 @@ export const ASSESSMENT_PLACEHOLDERS = {
     gripPlatePinchSeconds: 'e.g., 30',
   },
   P6: {
-    clientGoals: 'Select one or more goals',
+    clientGoals: 'Select primary goal first, then any secondary goals',
   },
 } as const;
 

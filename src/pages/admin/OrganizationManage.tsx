@@ -44,6 +44,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { REGIONS, REGION_LABELS, SEAT_TIERS, DEFAULT_REGION, DEFAULT_CURRENCY } from '@/constants/pricing';
+import { formatPrice } from '@/lib/utils/currency';
+import { getLocaleForRegion } from '@/lib/utils/currency';
+import type { Region } from '@/constants/pricing';
 
 // Sub-components for cleaner organization
 const LoadingState = () => (
@@ -87,6 +91,8 @@ const OrganizationManage = () => {
     deleteConfirmText,
     showGrantAccessDialog,
     showRevokeAccessDialog,
+    showPermanentlyDeleteDialog,
+    permanentlyDeleteConfirmText,
     accessReason,
     hasDataAccess,
     setOrg,
@@ -96,6 +102,8 @@ const OrganizationManage = () => {
     setDeleteConfirmText,
     setShowGrantAccessDialog,
     setShowRevokeAccessDialog,
+    setShowPermanentlyDeleteDialog,
+    setPermanentlyDeleteConfirmText,
     setAccessReason,
     handleSignOut,
     handleSave,
@@ -106,6 +114,7 @@ const OrganizationManage = () => {
     handleGrantAccess,
     handleRevokeAccess,
     handleUpdateDemoAutoFill,
+    handlePermanentlyDelete,
   } = useOrgManagement(orgId);
 
   // Handle impersonation start
@@ -184,6 +193,7 @@ const OrganizationManage = () => {
               onCancel={handleCancel}
               onReactivate={handleReactivate}
               onDelete={() => setShowDeleteDialog(true)}
+              onPermanentlyDelete={() => setShowPermanentlyDeleteDialog(true)}
               onImpersonate={() => setShowImpersonateDialog(true)}
               isImpersonating={!!impersonation}
             />
@@ -213,6 +223,14 @@ const OrganizationManage = () => {
         confirmText={deleteConfirmText}
         setConfirmText={setDeleteConfirmText}
         onDelete={handleDelete}
+      />
+
+      <PermanentlyDeleteDialog
+        open={showPermanentlyDeleteDialog}
+        onOpenChange={setShowPermanentlyDeleteDialog}
+        confirmText={permanentlyDeleteConfirmText}
+        setConfirmText={setPermanentlyDeleteConfirmText}
+        onDelete={handlePermanentlyDelete}
       />
 
       <PauseDialog
@@ -466,7 +484,14 @@ interface SubscriptionCardProps {
   setOrg: React.Dispatch<React.SetStateAction<OrganizationDetails | null>>;
 }
 
-const SubscriptionCard = ({ org, editing, saving, setOrg }: SubscriptionCardProps) => (
+const SubscriptionCard = ({ org, editing, saving, setOrg }: SubscriptionCardProps) => {
+  const region = (org.region ?? DEFAULT_REGION) as Region;
+  const seatBlock = org.seatBlock ?? org.clientSeats ?? 10;
+  const currency = org.currency ?? DEFAULT_CURRENCY;
+  const locale = getLocaleForRegion(region);
+  const monthlyAmount = org.monthlyAmountLocal ?? org.monthlyFeeKwd ?? 0;
+
+  return (
   <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
     <div className="flex items-center justify-between mb-4">
       <h2 className="text-white font-semibold">Subscription</h2>
@@ -474,53 +499,63 @@ const SubscriptionCard = ({ org, editing, saving, setOrg }: SubscriptionCardProp
     </div>
     <div className="space-y-3">
       <div>
-        <Label className="text-xs text-slate-500 mb-1">Plan</Label>
+        <Label className="text-xs text-slate-500 mb-1">Region</Label>
         {editing ? (
           <Select
-            value={org.plan || 'free'}
-            onValueChange={(value: string) => setOrg({ ...org, plan: value as OrganizationDetails['plan'] })}
+            value={region}
+            onValueChange={(value: string) => setOrg({ ...org, region: value as Region })}
           >
             <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="free">Free</SelectItem>
-              <SelectItem value="starter">Starter</SelectItem>
-              <SelectItem value="professional">Professional</SelectItem>
-              <SelectItem value="enterprise">Enterprise</SelectItem>
+              {REGIONS.map((r) => (
+                <SelectItem key={r} value={r}>{REGION_LABELS[r]}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         ) : (
-          <p className="text-sm text-white font-medium capitalize">{org.plan || 'free'}</p>
+          <p className="text-sm text-white font-medium">{REGION_LABELS[region] ?? org.region ?? '—'}</p>
         )}
       </div>
-      {editing && (
-        <div>
-          <Label className="text-xs text-slate-500 mb-1">Client Seats</Label>
-          <Input
-            type="number"
-            min="0"
-            value={org.clientSeats || 0}
-            onChange={(e) => setOrg({ ...org, clientSeats: parseInt(e.target.value) || 0 })}
-            className="bg-slate-800 border-slate-700 text-white"
-          />
-        </div>
-      )}
-      {org.clientSeats && org.clientSeats > 0 && !editing && (
-        <div>
-          <p className="text-xs text-slate-500 mb-1">Client Seats</p>
-          <p className="text-sm text-slate-300">{org.clientSeats}</p>
-        </div>
-      )}
+      <div>
+        <Label className="text-xs text-slate-500 mb-1">Client count (plan)</Label>
+        {editing ? (
+          <Select
+            value={String(seatBlock)}
+            onValueChange={(value: string) => setOrg({ ...org, seatBlock: parseInt(value, 10) })}
+          >
+            <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {SEAT_TIERS.map((t) => (
+                <SelectItem key={t} value={String(t)}>{t} clients</SelectItem>
+              ))}
+              <SelectItem value="300">300+ clients</SelectItem>
+            </SelectContent>
+          </Select>
+        ) : (
+          <p className="text-sm text-slate-300">{seatBlock} clients</p>
+        )}
+      </div>
       <div>
         <p className="text-xs text-slate-500 mb-1">Monthly Fee</p>
         <p className="text-sm text-slate-300">
           {org.isComped ? (
             <span className="text-violet-400 font-medium">Comped (Free)</span>
           ) : (
-            org.monthlyFeeKwd !== undefined 
-              ? new Intl.NumberFormat('en-KW', { style: 'currency', currency: 'KWD', minimumFractionDigits: 2 }).format(org.monthlyFeeKwd)
-              : '—'
+            currency ? formatPrice(monthlyAmount, currency, locale) : '—'
+          )}
+        </p>
+      </div>
+      <div>
+        <p className="text-xs text-slate-500 mb-1">Custom branding</p>
+        <p className="text-sm text-slate-300">
+          {org.customBrandingEnabled ? (
+            <span className="text-emerald-400">Enabled{org.customBrandingPaidAt ? ` (${org.customBrandingPaidAt.toLocaleDateString()})` : ''}</span>
+          ) : (
+            'Not purchased'
           )}
         </p>
       </div>
@@ -554,6 +589,33 @@ const SubscriptionCard = ({ org, editing, saving, setOrg }: SubscriptionCardProp
           </span>
         )}
       </div>
+
+      {(org.stripeCustomerId || org.stripeSubscriptionId || org.stripePriceId) && (
+        <div className="pt-3 border-t border-slate-800">
+          <h3 className="text-xs font-medium text-slate-400 mb-2">Stripe (support)</h3>
+          <div className="space-y-1.5 text-xs font-mono text-slate-400">
+            {org.stripeCustomerId && (
+              <div>
+                <span className="text-slate-500">Customer:</span>{' '}
+                <span className="text-slate-300 break-all">{org.stripeCustomerId}</span>
+              </div>
+            )}
+            {org.stripeSubscriptionId && (
+              <div>
+                <span className="text-slate-500">Subscription:</span>{' '}
+                <span className="text-slate-300 break-all">{org.stripeSubscriptionId}</span>
+              </div>
+            )}
+            {org.stripePriceId && (
+              <div>
+                <span className="text-slate-500">Price:</span>{' '}
+                <span className="text-slate-300">{org.stripePriceId}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {editing && (
         <div className="pt-2 border-t border-slate-800">
           <Label className="flex items-center gap-2 text-xs text-slate-400">
@@ -578,7 +640,8 @@ const SubscriptionCard = ({ org, editing, saving, setOrg }: SubscriptionCardProp
       </div>
     </div>
   </div>
-);
+  );
+};
 
 // Data Access Card
 interface DataAccessCardProps {
@@ -678,7 +741,7 @@ const StatisticsCard = ({ org, hasDataAccess }: StatisticsCardProps) => (
           <span className="text-xs text-slate-500">AI Costs (MTD)</span>
         </div>
         <span className="text-sm text-amber-400 font-medium">
-          {new Intl.NumberFormat('en-KW', { style: 'currency', currency: 'KWD' }).format((org.aiCostsMtdCents || 0) / 1000)}
+          {new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format((org.aiCostsMtdCents || 0) / 100)}
         </span>
       </div>
     </div>
@@ -738,11 +801,12 @@ interface ActionsCardProps {
   onCancel: () => void;
   onReactivate: () => void;
   onDelete: () => void;
+  onPermanentlyDelete: () => void;
   onImpersonate: () => void;
   isImpersonating: boolean;
 }
 
-const ActionsCard = ({ org, onPause, onCancel, onReactivate, onDelete, onImpersonate, isImpersonating }: ActionsCardProps) => (
+const ActionsCard = ({ org, onPause, onCancel, onReactivate, onDelete, onPermanentlyDelete, onImpersonate, isImpersonating }: ActionsCardProps) => (
   <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
     <h2 className="text-white font-semibold mb-4">Actions</h2>
     <div className="space-y-2">
@@ -798,7 +862,16 @@ const ActionsCard = ({ org, onPause, onCancel, onReactivate, onDelete, onImperso
         className="w-full border-red-700 text-red-400 hover:bg-red-900/20"
       >
         <Trash2 className="w-4 h-4 mr-2" />
-        Delete Organization
+        Archive (Soft Delete)
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onPermanentlyDelete}
+        className="w-full border-red-800 text-red-500 hover:bg-red-900/30"
+      >
+        <Trash2 className="w-4 h-4 mr-2" />
+        Permanently Delete
       </Button>
     </div>
   </div>
@@ -906,15 +979,15 @@ const DeleteDialog = ({ open, onOpenChange, orgName, confirmText, setConfirmText
   <Dialog open={open} onOpenChange={onOpenChange}>
     <DialogContent className="bg-slate-900 border-slate-800 text-white">
       <DialogHeader>
-        <DialogTitle className="text-white">Delete Organization</DialogTitle>
+        <DialogTitle className="text-white">Archive Organization</DialogTitle>
         <DialogDescription className="text-slate-400">
-          This action cannot be undone. This will permanently delete the organization and all associated data.
+          This will soft-delete the organization. It will be hidden from the dashboard but data is retained. Use Permanently Delete to remove all data.
         </DialogDescription>
       </DialogHeader>
       <div className="space-y-4">
         <div>
           <Label className="text-xs text-slate-400 mb-2 block">
-            Type <strong>{orgName}</strong> to confirm deletion:
+            Type <strong>{orgName}</strong> to confirm archive:
           </Label>
           <Input
             value={confirmText}
@@ -939,7 +1012,59 @@ const DeleteDialog = ({ open, onOpenChange, orgName, confirmText, setConfirmText
           className="bg-red-600 hover:bg-red-700"
         >
           <Trash2 className="w-4 h-4 mr-2" />
-          Delete Organization
+          Archive Organization
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+);
+
+interface PermanentlyDeleteDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  confirmText: string;
+  setConfirmText: (text: string) => void;
+  onDelete: () => void;
+}
+
+const PermanentlyDeleteDialog = ({ open, onOpenChange, confirmText, setConfirmText, onDelete }: PermanentlyDeleteDialogProps) => (
+  <Dialog open={open} onOpenChange={onOpenChange}>
+    <DialogContent className="bg-slate-900 border-slate-800 text-white">
+      <DialogHeader>
+        <DialogTitle className="text-white">Permanently Delete Organization</DialogTitle>
+        <DialogDescription className="text-slate-400">
+          This will permanently delete the organization, all subcollections, user profiles, and Firebase Auth users. This cannot be undone.
+        </DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4">
+        <div>
+          <Label className="text-xs text-slate-400 mb-2 block">
+            Type <strong>PERMANENTLY DELETE</strong> to confirm:
+          </Label>
+          <Input
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            placeholder="PERMANENTLY DELETE"
+            className="bg-slate-800 border-slate-700 text-white"
+          />
+        </div>
+      </div>
+      <DialogFooter>
+        <Button
+          variant="outline"
+          onClick={() => { onOpenChange(false); setConfirmText(''); }}
+          className="border-slate-700 text-slate-300 hover:bg-slate-700"
+        >
+          Cancel
+        </Button>
+        <Button
+          variant="destructive"
+          onClick={onDelete}
+          disabled={confirmText !== 'PERMANENTLY DELETE'}
+          className="bg-red-600 hover:bg-red-700"
+        >
+          <Trash2 className="w-4 h-4 mr-2" />
+          Permanently Delete
         </Button>
       </DialogFooter>
     </DialogContent>

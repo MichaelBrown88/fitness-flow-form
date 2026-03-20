@@ -11,7 +11,7 @@ import type { ClientDetailOutletContext } from './ClientDetailLayout';
 const ClientReport = lazy(() => import('@/components/reports/ClientReport'));
 
 export default function ClientReportTab() {
-  const { assessments } = useOutletContext<ClientDetailOutletContext>();
+  const { assessments, clientName } = useOutletContext<ClientDetailOutletContext>();
   const assessmentId = assessments[0]?.id;
 
   const {
@@ -22,9 +22,9 @@ export default function ClientReportTab() {
     previousFormData,
     loading,
     error,
-  } = useAssessmentLogic(assessmentId);
+  } = useAssessmentLogic(assessmentId, clientName);
 
-  if (!assessmentId) {
+  if (!assessmentId && !clientName) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-slate-50 p-8 text-center">
         <FileText className="h-10 w-10 text-slate-300 mx-auto mb-3" />

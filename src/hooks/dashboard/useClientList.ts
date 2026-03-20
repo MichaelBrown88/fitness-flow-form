@@ -81,6 +81,7 @@ export function useClientList(
         activePillars: schedule?.activePillars,
         trainingStartDate: schedule?.trainingStartDate,
         lastAssessmentDate: schedule?.lastAssessmentDate,
+        notes: schedule?.notes,
       };
     });
 

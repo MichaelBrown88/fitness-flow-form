@@ -84,6 +84,11 @@ export interface OrgSettings {
   customBrandingEnabled?: boolean;
   // Default retest cadence for new clients
   defaultCadence?: DefaultCadenceConfig;
+  /** Billing / trial fields stored on the org root document (optional) */
+  subscription?: { plan?: string };
+  trialAssessmentsRemaining?: number;
+  /** Remaining AI assessment credits (Stripe / billing) */
+  assessmentCredits?: number;
 }
 
 /**

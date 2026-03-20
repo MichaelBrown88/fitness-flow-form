@@ -183,14 +183,20 @@ const DEFAULT_PHASE_FOCUS: Record<RoadmapPhase, string[]> = {
 
 /**
  * Returns focus content for a phase, tailored to the client's primary goal when possible.
+ * When a secondary goal exists, development phase includes a note to shift toward it.
  */
 export function getPhaseFocus(
   phase: RoadmapPhase,
   clientGoals: string[],
 ): PhaseFocusContent {
   const primaryGoal = clientGoals[0];
+  const secondaryGoal = clientGoals[1];
   const goalFocus = primaryGoal && PHASE_FOCUS_BY_GOAL[phase][primaryGoal];
-  const focusPoints = goalFocus ?? DEFAULT_PHASE_FOCUS[phase];
+  let focusPoints = goalFocus ?? DEFAULT_PHASE_FOCUS[phase];
+  if (phase === 'development' && secondaryGoal) {
+    const secondaryLabel = GOAL_LABELS[secondaryGoal] ?? secondaryGoal.replace(/-/g, ' ');
+    focusPoints = [...focusPoints, `Then shift focus toward ${secondaryLabel}.`];
+  }
   const narrative = PHASE_NARRATIVES[phase];
 
   return {

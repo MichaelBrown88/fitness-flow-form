@@ -23,6 +23,8 @@ export interface UsePublicReportResult {
   error: string | null;
   loading: boolean;
   clientName: string;
+  /** AI-generated "what changed" narrative — set after coach first shares the report */
+  changeNarrative: string | null;
 }
 
 function parseDoc(
@@ -60,6 +62,7 @@ export function usePublicReport(token: string | undefined): UsePublicReportResul
   const [plan, setPlan] = useState<import('@/lib/recommendations').CoachPlan | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [changeNarrative, setChangeNarrative] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) {
@@ -116,6 +119,7 @@ export function usePublicReport(token: string | undefined): UsePublicReportResul
         setPreviousFormData(prevFd);
         setPreviousScores(prevS);
         setSnapshotSummaries(summaries);
+        setChangeNarrative(data.changeNarrative ?? null);
         setLoading(false);
 
         if (data.organizationId) {
@@ -158,5 +162,6 @@ export function usePublicReport(token: string | undefined): UsePublicReportResul
     error,
     loading,
     clientName,
+    changeNarrative,
   };
 }

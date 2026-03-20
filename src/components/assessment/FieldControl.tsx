@@ -176,11 +176,12 @@ export function FieldControl({
         );
       case 'multiselect':
         return (
-          <FieldMultiSelect 
+          <FieldMultiSelect
             id={field.id}
             options={fieldOptions}
             value={value as string[]}
             handleChange={handleChange}
+            selectionLabels={field.id === 'clientGoals' ? (i) => (i === 0 ? 'Primary' : 'Secondary') : undefined}
           />
         );
       case 'parq':

@@ -84,6 +84,7 @@ export interface UseClientDetailResult {
   handleUnpauseClient: (mode: 'resume' | 'reset') => Promise<void>;
   handleArchiveClient: (reason?: string) => Promise<void>;
   handleReactivateClient: (mode: 'resume' | 'reset') => Promise<void>;
+  handleDeleteClientPermanently: () => Promise<void>;
   navigateBack: () => void;
 }
 
@@ -411,17 +412,21 @@ export function useClientDetail(): UseClientDetailResult {
     (async () => {
       try {
         setLoading(true);
-        const [data, current] = await Promise.all([
+        const [data, current, sessions] = await Promise.all([
           getClientAssessments(user.uid, clientName, userProfile?.organizationId),
           getCurrentAssessment(user.uid, clientName, userProfile?.organizationId),
+          getSnapshots(user.uid, clientName, 1, userProfile?.organizationId),
         ]);
         setAssessments(data);
 
-        // Set current assessment from history, or fall back to latest assessment
-        if (current) {
+        // Priority: current/state doc → latest session formData → latest assessment doc
+        if (current && Object.keys(current.formData ?? {}).length > 0) {
           setCurrentAssessment(current);
+        } else if (sessions.length > 0 && Object.keys(sessions[0].formData ?? {}).length > 0) {
+          // Fallback: derive current state from the latest session (handles missing current/state)
+          const latest = sessions[0];
+          setCurrentAssessment({ formData: latest.formData, overallScore: latest.overallScore });
         } else if (data.length > 0) {
-          // Fallback: load formData from the latest assessment if no history exists
           const latestAssessment = await getCoachAssessment(user.uid, data[0].id, clientName, userProfile?.organizationId, userProfile);
           if (latestAssessment) {
             setCurrentAssessment({
@@ -570,10 +575,11 @@ export function useClientDetail(): UseClientDetailResult {
 
   // Pause client account (coach-initiated)
   const handlePauseClient = useCallback(async (reason?: string) => {
-    if (!userProfile?.organizationId || !clientName) return;
+    const orgId = readOrgId;
+    if (!orgId || !clientName) return;
     const { pauseClient } = await import('@/services/clientProfiles');
     await pauseClient({
-      organizationId: userProfile.organizationId,
+      organizationId: orgId,
       clientSlug: generateClientSlug(clientName),
       pausedBy: user?.uid || 'unknown',
       reason,
@@ -597,10 +603,11 @@ export function useClientDetail(): UseClientDetailResult {
 
   // Unpause client account
   const handleUnpauseClient = useCallback(async (mode: 'resume' | 'reset') => {
-    if (!userProfile?.organizationId || !clientName) return;
+    const orgId = readOrgId;
+    if (!orgId || !clientName) return;
     const { unpauseClient } = await import('@/services/clientProfiles');
     await unpauseClient({
-      organizationId: userProfile.organizationId,
+      organizationId: orgId,
       clientSlug: generateClientSlug(clientName),
       mode,
       profile: userProfile,
@@ -625,32 +632,70 @@ export function useClientDetail(): UseClientDetailResult {
   }, [userProfile, clientName, toast]);
 
   const handleArchiveClient = useCallback(async (reason?: string) => {
-    if (!userProfile?.organizationId || !clientName) return;
-    const { archiveClient } = await import('@/services/clientProfiles');
-    await archiveClient({
-      organizationId: userProfile.organizationId,
-      clientSlug: generateClientSlug(clientName),
-      archivedBy: user?.uid || 'unknown',
-      reason,
-      profile: userProfile,
-    });
-    toast({ title: `${clientName} archived`, description: 'Removed from dashboard. Data preserved.' });
-  }, [userProfile, clientName, user, toast]);
+    const orgId = readOrgId;
+    if (!orgId || !clientName) return;
+    try {
+      const { archiveClient } = await import('@/services/clientProfiles');
+      await archiveClient({
+        organizationId: orgId,
+        clientSlug: generateClientSlug(clientName),
+        archivedBy: user?.uid || 'unknown',
+        reason,
+        profile: userProfile,
+      });
+      // Full reload so dashboard re-fetches client status from Firestore
+      window.location.href = ROUTES.DASHBOARD;
+    } catch (err) {
+      logger.error('Failed to archive client', 'CLIENT_DETAIL', err);
+      toast({ title: 'Failed to archive', description: err instanceof Error ? err.message : 'Please try again.', variant: 'destructive' });
+      throw err;
+    }
+  }, [readOrgId, clientName, user, userProfile, toast]);
 
   const handleReactivateClient = useCallback(async (mode: 'resume' | 'reset') => {
-    if (!userProfile?.organizationId || !clientName) return;
-    const { reactivateClient } = await import('@/services/clientProfiles');
-    await reactivateClient({
-      organizationId: userProfile.organizationId,
-      clientSlug: generateClientSlug(clientName),
-      mode,
-      profile: userProfile,
-    });
-    toast({
-      title: `${clientName} reactivated`,
-      description: mode === 'resume' ? 'Schedule resumed.' : 'Schedule reset to today.',
-    });
-  }, [userProfile, clientName, toast]);
+    const orgId = readOrgId;
+    if (!orgId || !clientName) return;
+    try {
+      const { reactivateClient } = await import('@/services/clientProfiles');
+      await reactivateClient({
+        organizationId: orgId,
+        clientSlug: generateClientSlug(clientName),
+        mode,
+        profile: userProfile,
+      });
+      // Full reload so dashboard re-fetches client status from Firestore
+      window.location.href = ROUTES.DASHBOARD;
+    } catch (err) {
+      logger.error('Failed to reactivate client', 'CLIENT_DETAIL', err);
+      toast({ title: 'Failed to reactivate', description: err instanceof Error ? err.message : 'Please try again.', variant: 'destructive' });
+      throw err;
+    }
+  }, [readOrgId, clientName, userProfile, toast]);
+
+  const handleDeleteClientPermanently = useCallback(async () => {
+    const orgId = readOrgId;
+    if (!orgId || !clientName) {
+      toast({ title: 'Delete failed', description: 'Organisation context not found. Please refresh and try again.', variant: 'destructive' });
+      return;
+    }
+    try {
+      const { deleteClientPermanently } = await import('@/services/clientProfiles');
+      await deleteClientPermanently({
+        organizationId: orgId,
+        clientSlug: generateClientSlug(clientName),
+        clientName,
+        knownAssessmentId: assessments[0]?.id,
+      });
+      toast({ title: `${clientName} permanently deleted`, description: 'All client data has been removed.' });
+      // Use a hard navigation so the dashboard's Firestore listener re-initialises
+      // with fresh data rather than serving a stale cached snapshot.
+      window.location.href = ROUTES.DASHBOARD;
+    } catch (err) {
+      logger.error('Failed to permanently delete client', 'CLIENT_DETAIL', err);
+      toast({ title: 'Delete failed', description: err instanceof Error ? err.message : 'Please try again.', variant: 'destructive' });
+      throw err;
+    }
+  }, [readOrgId, clientName, assessments, navigate, toast]);
 
   return {
     clientName,
@@ -689,6 +734,7 @@ export function useClientDetail(): UseClientDetailResult {
     handleUnpauseClient,
     handleArchiveClient,
     handleReactivateClient,
+    handleDeleteClientPermanently,
     navigateBack,
   };
 }

@@ -38,11 +38,16 @@ export function useCameraHandler({
   const [showBodyCompCompanion, setShowBodyCompCompanion] = useState(false);
   const [ocrReviewData, setOcrReviewData] = useState<Partial<FormData> | null>(null);
   const [isProcessingOcr, setIsProcessingOcr] = useState(false);
+  const [processingMode, setProcessingMode] = useState<'ocr' | 'posture' | null>(null);
+  const [postureRetakeWarning, setPostureRetakeWarning] = useState<string | null>(null);
   const [postureStep, setPostureStep] = useState<number>(0);
+
+  const clearPostureRetakeWarning = useCallback(() => setPostureRetakeWarning(null), []);
 
   const handleCapture = useCallback(async (imageSrc: string) => {
     if (showCamera === 'ocr') {
       setShowCamera(false);
+      setProcessingMode('ocr');
       setIsProcessingOcr(true);
       
       toast({ 
@@ -66,6 +71,7 @@ export function useCameraHandler({
         toast({ title: "Scan failed", description: "An error occurred during AI analysis.", variant: "destructive" });
       } finally {
         setIsProcessingOcr(false);
+        setProcessingMode(null);
       }
     } else if (showCamera === 'posture') {
       const views: ('front' | 'side-right' | 'side-left' | 'back')[] = ['front', 'side-right', 'side-left', 'back'];
@@ -74,6 +80,7 @@ export function useCameraHandler({
       toast({ title: `${currentView.toUpperCase()} captured`, description: "Processing image alignment..." });
       
       try {
+        setProcessingMode('posture');
         setIsProcessingOcr(true);
         
         toast({ title: "Processing posture...", description: "Aligning, calculating, and analyzing..." });
@@ -109,6 +116,7 @@ export function useCameraHandler({
         setShowCamera(false);
       } finally {
         setIsProcessingOcr(false);
+        setProcessingMode(null);
       }
     }
   }, [showCamera, postureStep, toast, updateFormData]);
@@ -157,6 +165,9 @@ export function useCameraHandler({
     ocrReviewData,
     setOcrReviewData,
     isProcessingOcr,
+    processingMode,
+    postureRetakeWarning,
+    clearPostureRetakeWarning,
     postureStep,
     setPostureStep,
     // Handlers

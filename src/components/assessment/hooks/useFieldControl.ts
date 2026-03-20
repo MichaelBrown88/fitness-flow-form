@@ -3,7 +3,6 @@ import { useFormContext, type FormData } from '@/contexts/FormContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { getOrgCoaches } from '@/services/coachManagement';
-import { getBodyFatRange } from '@/lib/utils/bodyRecomposition';
 import { safeParse } from '@/lib/utils/numbers';
 import { logger } from '@/lib/utils/logger';
 import type { PhaseField } from '@/types/assessment';
@@ -101,11 +100,6 @@ export function useFieldControl({ field }: UseFieldControlProps) {
 
   // Dynamic status/options
   const fieldOptions = useMemo(() => {
-    const history = formData.trainingHistory || 'beginner';
-    const gender = (formData.gender || 'male').toLowerCase() as 'male' | 'female';
-    const weightKg = safeParse(formData.inbodyWeightKg);
-    const bf = safeParse(formData.inbodyBodyFatPct);
-
     if (field.id === 'cardioTestSelected' && field.options) {
       const hasCardioEquipment = orgSettings?.equipmentConfig?.cardioEquipment?.enabled ?? false;
       if (!hasCardioEquipment) {
@@ -114,84 +108,8 @@ export function useFieldControl({ field }: UseFieldControlProps) {
       return field.options;
     }
 
-    if (field.id === 'goalLevelBodyRecomp') {
-      const isBeginner = history === 'beginner';
-      const isAdvanced = history === 'advanced';
-      return [
-        {
-          value: 'healthy',
-          label: `Healthy / Soft (${getBodyFatRange('healthy', gender)[0]}-${getBodyFatRange('healthy', gender)[1]}%)`,
-          subtitle: isBeginner ? 'Great entry point for your level.' : undefined
-        },
-        {
-          value: 'fit',
-          label: `Fit (${getBodyFatRange('fit', gender)[0]}-${getBodyFatRange('fit', gender)[1]}%)`
-        },
-        {
-          value: 'athletic',
-          label: `Athletic (${getBodyFatRange('athletic', gender)[0]}-${getBodyFatRange('athletic', gender)[1]}%)`,
-          isRecommended: isBeginner,
-          tag: isBeginner ? 'Recommended' : undefined,
-          subtitle: isBeginner ? 'The "Holy Grail": Build muscle and lose fat simultaneously.' : undefined
-        },
-        {
-          value: 'shredded',
-          label: `Shredded (<${getBodyFatRange('shredded', gender)[1]}%)`,
-          subtitle: isAdvanced ? 'Not Recommended: Switch to distinct phases instead.' : undefined
-        },
-      ];
-    }
-
-    // Dynamic strength goal recommendations based on training level and body composition
-    if (field.id === 'goalLevelStrength') {
-      const isBeginner = history === 'beginner';
-      const isIntermediate = history === 'intermediate';
-      const isAdvanced = history === 'advanced';
-      // Check if obese (>30% BF for males, >40% for females)
-      const isObese = bf > (gender === 'male' ? 30 : 40);
-
-      return [
-        {
-          value: 'foundation',
-          label: 'Build a foundation – Focus on technique and consistency',
-          isRecommended: isObese,
-          tag: isObese ? 'Recommended' : undefined,
-        },
-        {
-          value: 'modest-10-15',
-          label: 'Improve strength by 10-15% – Modest, sustainable gains',
-          isRecommended: isBeginner || isObese,
-          tag: (isBeginner && !isObese) ? 'Recommended' : undefined,
-        },
-        {
-          value: 'solid-20-25',
-          label: 'Improve strength by 20-25% – Solid progress',
-          isRecommended: isBeginner || isIntermediate || isObese,
-          tag: isIntermediate && !isObese ? 'Recommended' : undefined,
-        },
-        {
-          value: 'ambitious-30-40',
-          label: 'Improve strength by 30-40% – Ambitious gains',
-          isRecommended: isIntermediate || (isAdvanced && !isObese),
-          tag: (isIntermediate || (isAdvanced && !isObese)) ? 'Recommended' : undefined,
-        },
-        {
-          value: 'aggressive-50',
-          label: 'Improve strength by 50%+ – Aggressive progression',
-          isRecommended: isAdvanced && !isObese,
-          tag: undefined, // Don't auto-recommend this
-          subtitle: isObese ? 'Not recommended at current body composition' : undefined,
-        },
-        {
-          value: 'maximize',
-          label: 'Maximize strength potential – Elite-level focus',
-          subtitle: !isAdvanced ? 'Typically for advanced lifters with 2+ years experience' : undefined,
-        },
-      ];
-    }
-
     return field.options;
-  }, [field.id, field.options, formData.gender, formData.trainingHistory, formData.inbodyWeightKg, formData.inbodyBodyFatPct, orgSettings?.equipmentConfig?.cardioEquipment?.enabled]);
+  }, [field.id, field.options, orgSettings?.equipmentConfig?.cardioEquipment?.enabled]);
 
   const shouldShow = useMemo(() => {
     if (!('conditional' in field) || !field.conditional || !field.conditional.showWhen) return true;
@@ -226,17 +144,6 @@ export function useFieldControl({ field }: UseFieldControlProps) {
     
     if (field.id === 'postureInputMode' && value === 'manual') {
       updates.postureAiResults = null;
-    }
-
-    if (field.id === 'goalLevelMuscle' && formData.trainingHistory === 'advanced') {
-      const muscleVal = safeParse(value as string);
-      if (muscleVal >= 6) {
-        toast({
-          title: "Ambitious Goal Detected",
-          description: `For an advanced lifter, ${muscleVal}kg of lean tissue is a multi-year project. We will break this down into smaller 12-week blocks for you.`,
-          duration: 6000,
-        });
-      }
     }
 
     if (field.id === 'clientGoals' && Array.isArray(value) && value.includes('body-recomposition') && formData.trainingHistory === 'advanced') {

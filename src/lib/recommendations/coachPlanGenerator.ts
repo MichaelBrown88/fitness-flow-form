@@ -13,6 +13,7 @@ import { generateClientWorkout, generateCoachExerciseLists } from '../recommenda
 import { safeParse } from '../utils/numbers';
 import type { CoachPlan } from './types';
 import { EXERCISES } from './exercisePresets';
+import { getEffectiveGoalAmbition } from '@/lib/goals/achievableLandmarks';
 
 export async function generateCoachPlan(form: FormData, scores: ScoreSummary): Promise<CoachPlan> {
   // Check if form has ANY data - if not, return empty plan
@@ -53,14 +54,7 @@ export async function generateCoachPlan(form: FormData, scores: ScoreSummary): P
 
   const goals = Array.isArray(form.clientGoals) ? form.clientGoals : [];
   const primaryGoalRaw = goals[0] || 'general-health';
-
-  // Derive goal ambition level from primary goal's specific level field
-  let goalAmbition = '15';
-  if (primaryGoalRaw === 'weight-loss') goalAmbition = form.goalLevelWeightLoss || '15';
-  else if (primaryGoalRaw === 'build-muscle') goalAmbition = form.goalLevelMuscle || '6';
-  else if (primaryGoalRaw === 'body-recomposition') goalAmbition = form.goalLevelBodyRecomp || 'athletic';
-  else if (primaryGoalRaw === 'build-strength') goalAmbition = form.goalLevelStrength || '30';
-  else if (primaryGoalRaw === 'improve-fitness') goalAmbition = form.goalLevelFitness || 'active';
+  const goalAmbition = getEffectiveGoalAmbition(primaryGoalRaw, form);
 
   // Convert numeric goal values to descriptive text
   let levelText = 'foundational';

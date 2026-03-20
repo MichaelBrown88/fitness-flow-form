@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useEffect, lazy, Suspense } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import AppShell from '@/components/layout/AppShell';
 import { usePublicReport } from '@/hooks/usePublicReport';
 import { getPublicSnapshot } from '@/services/publicReports';
@@ -9,7 +10,10 @@ import type { VersionSelectorSnapshot } from '@/components/reports/AssessmentVer
 import type { FormData } from '@/contexts/FormContext';
 import { computeScores } from '@/lib/scoring';
 import { generateBodyCompInterpretation } from '@/lib/recommendations';
-import { Loader2 } from 'lucide-react';
+import { Download, Loader2, Zap } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { PostureComparisonCard } from '@/components/client/PostureComparisonCard';
+import type { AssessmentSnapshot } from '@/services/assessmentHistory';
 import { logger } from '@/lib/utils/logger';
 
 const ClientReport = lazy(() => import('@/components/reports/ClientReport'));
@@ -35,11 +39,36 @@ const PublicReportViewer = () => {
     error,
     loading,
     clientName,
+    changeNarrative,
   } = usePublicReport(token);
 
   const [selectedVersionIndex, setSelectedVersionIndex] = useState(0);
   const [versionPage, setVersionPage] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  async function handleExportData() {
+    if (!token) return;
+    setExporting(true);
+    try {
+      const fn = httpsCallable<{ shareToken: string }, Record<string, unknown>>(
+        getFunctions(),
+        'exportClientData',
+      );
+      const result = await fn({ shareToken: token });
+      const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `my-data-${token.slice(0, 8)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      logger.warn('[Export] Failed to export client data:', err);
+    } finally {
+      setExporting(false);
+    }
+  }
   const [activeFormData, setActiveFormData] = useState<FormData | null>(null);
   const [activeScores, setActiveScores] = useState<typeof scores>(null);
   const [activePreviousFormData, setActivePreviousFormData] = useState<FormData | undefined>(undefined);
@@ -220,6 +249,17 @@ const PublicReportViewer = () => {
   const displayPrevFormData = activePreviousFormData ?? previousFormData;
   const displayPrevScores = activePreviousScores ?? previousScores;
 
+  // Build minimal snapshot list for PostureComparisonCard (latest + previous only)
+  const postureSnapshots = useMemo<AssessmentSnapshot[]>(() => {
+    const latest = displayFormData && scores
+      ? { id: 'latest', timestamp: snapshotSummaries[0]?.date ?? null, overallScore: displayScores?.overall ?? 0, formData: displayFormData, type: 'full' as const }
+      : null;
+    const previous = displayPrevFormData && displayPrevScores
+      ? { id: 'previous', timestamp: snapshotSummaries[1]?.date ?? null, overallScore: displayPrevScores.overall ?? 0, formData: displayPrevFormData, type: 'full' as const }
+      : null;
+    return [latest, previous].filter(Boolean) as AssessmentSnapshot[];
+  }, [displayFormData, displayPrevFormData, displayScores, displayPrevScores, snapshotSummaries]);
+
   return (
     <AppShell
       title={`${clientName}'s Report`}
@@ -245,6 +285,33 @@ const PublicReportViewer = () => {
             onPageChange={setVersionPage}
             getTrend={getTrend}
           />
+        </div>
+      )}
+
+      {changeNarrative && (
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-10 pt-4">
+          <div className="rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-50 to-violet-50 px-4 py-4">
+            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-indigo-400 mb-1.5">What changed</p>
+            <p className="text-sm text-indigo-900 leading-relaxed">{changeNarrative}</p>
+          </div>
+        </div>
+      )}
+
+      {token && (
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-10 pt-4">
+          <Link
+            to={`/r/${token}/pre-session`}
+            className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 hover:bg-amber-100 transition-colors group"
+          >
+            <Zap className="h-4 w-4 text-amber-500 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-amber-900">Got a session coming up?</p>
+              <p className="text-xs text-amber-700 mt-0.5">Tap to send your coach a quick check-in before you arrive.</p>
+            </div>
+            <span className="text-xs font-semibold text-amber-700 shrink-0 group-hover:underline">
+              Check in →
+            </span>
+          </Link>
         </div>
       )}
 
@@ -275,6 +342,33 @@ const PublicReportViewer = () => {
           />
         </Suspense>
       </div>
+
+      {postureSnapshots.length >= 2 && (
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-10 py-6">
+          <PostureComparisonCard snapshots={postureSnapshots} />
+        </div>
+      )}
+
+      {token && (
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-10 pb-12 pt-4 flex flex-col items-center gap-3">
+          <button
+            onClick={handleExportData}
+            disabled={exporting}
+            className="flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50"
+          >
+            {exporting
+              ? <Loader2 className="h-3 w-3 animate-spin" />
+              : <Download className="h-3 w-3" />}
+            Download my data (GDPR Article 20)
+          </button>
+          <a
+            href={`/r/${token}/erasure`}
+            className="text-[11px] text-slate-400 hover:text-slate-600 underline underline-offset-2 transition-colors"
+          >
+            Request data deletion (GDPR Article 17)
+          </a>
+        </div>
+      )}
     </AppShell>
   );
 };

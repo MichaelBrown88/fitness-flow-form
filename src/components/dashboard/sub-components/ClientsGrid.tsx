@@ -13,6 +13,7 @@ import {
   Camera,
   Activity,
   Dumbbell,
+  Pin,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -104,7 +105,7 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
                   : 'border-slate-200 hover:border-slate-300'
               }`}
             >
-              <div className="flex items-start justify-between mb-3 sm:mb-4">
+                <div className="flex items-start justify-between mb-3 sm:mb-4">
                 <div className="min-w-0 flex-1">
                   <h3 className="text-base sm:text-lg font-bold text-slate-900 truncate">
                     {group.name}
@@ -112,6 +113,14 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
                   <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.15em] mt-1">
                     {group.assessments.length} assessment{group.assessments.length !== 1 ? 's' : ''}
                   </p>
+                  {group.notes && (
+                    <span className="flex items-center gap-1 mt-1">
+                      <Pin className="h-2.5 w-2.5 text-amber-400 shrink-0" />
+                      <span className="text-[10px] text-slate-400 font-normal truncate max-w-[160px]">
+                        {group.notes.length > 60 ? `${group.notes.slice(0, 60)}…` : group.notes}
+                      </span>
+                    </span>
+                  )}
                 </div>
                 {group.scoreChange !== undefined && (
                   <div className={`flex items-center gap-1 text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full ${

@@ -2,306 +2,254 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
     // =========================================================
-    // 🛡️ HELPER FUNCTIONS
+    // HELPER FUNCTIONS
     // =========================================================
-    
+
     function isAuthenticated() {
       return request.auth != null;
     }
-    
-    function getUserProfile() {
-      return get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data;
-    }
-    
-    // Check if user is a platform admin (check platform_admins collection)
+
     function isPlatformAdmin() {
-      return isAuthenticated() && 
-             exists(/databases/$(database)/documents/platform_admins/$(request.auth.uid));
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/platform_admins/$(request.auth.uid));
     }
-    
-    // Check if a platform admin is NOT currently impersonating an org
-    // When impersonating, writes to org data are blocked server-side
+
+    // Platform admin is not currently impersonating an org (blocks writes during impersonation)
     function isNotImpersonating() {
       return !exists(/databases/$(database)/documents/platform/active_impersonations/sessions/$(request.auth.uid));
     }
-    
-    function isOrgMember(orgId) {
-      let profile = getUserProfile();
-      return isAuthenticated() && profile.organizationId == orgId;
+
+    // Coach belongs to the given org (checked against the coaches subcollection)
+    function isOrgCoach(orgId) {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/organizations/$(orgId)/coaches/$(request.auth.uid));
     }
-    
+
+    // Coach has admin or owner role in the given org
     function isOrgAdmin(orgId) {
-      let profile = getUserProfile();
-      return isOrgMember(orgId) && profile.role == 'org_admin';
+      return isOrgCoach(orgId) &&
+        get(/databases/$(database)/documents/organizations/$(orgId)/coaches/$(request.auth.uid)).data.role in ['owner', 'admin'];
     }
-    
-    // Check if organization has granted data access permission to platform admin
-    // Comped organizations (like One Fitness - owner's company) automatically have access
-    function hasDataAccessPermission(orgId) {
+
+    // Platform admin has data access to org (owner's org is always comped)
+    function hasDataAccess(orgId) {
       let orgData = get(/databases/$(database)/documents/organizations/$(orgId)).data;
-      // Comped organizations get automatic access (owner's company for testing)
-      // Check if explicit permission granted
-      return (orgData.keys().hasAll(['subscription']) && 
-              orgData.subscription.keys().hasAll(['isComped']) && 
-              orgData.subscription.isComped == true) || 
-             (orgData.keys().hasAll(['dataAccessPermission']) && 
-              orgData.dataAccessPermission.keys().hasAll(['platformAdminAccess']) && 
-              orgData.dataAccessPermission.platformAdminAccess == true);
+      return (orgData.get('subscription', {}).get('isComped', false) == true) ||
+             (orgData.get('dataAccessPermission', {}).get('platformAdminAccess', false) == true);
     }
-    
+
+    // Org coach or platform admin with data access
+    function canReadOrgData(orgId) {
+      return isOrgCoach(orgId) || (isPlatformAdmin() && hasDataAccess(orgId));
+    }
+
+    function canWriteOrgData(orgId) {
+      return isOrgCoach(orgId) ||
+        (isPlatformAdmin() && hasDataAccess(orgId) && isNotImpersonating());
+    }
+
     // =========================================================
-    // 📂 COLLECTION RULES
+    // ORGANIZATIONS
     // =========================================================
-    
-    // 1. ORGANIZATIONS
+
     match /organizations/{orgId} {
-      // Platform admin can read org metadata, but NOT sensitive data (assessments, clients) without permission
-      // Org members can read their own org
-      allow read: if isPlatformAdmin() || isOrgMember(orgId);
+      allow read: if isPlatformAdmin() || isOrgCoach(orgId);
       allow write: if isPlatformAdmin() || isOrgAdmin(orgId);
-      
-      // Subcollections: Coaches, Clients, Assessments - GDPR/HIPAA protected
-      // Platform admin writes require: data access permission AND not currently impersonating
+
+      // Coaches
       match /coaches/{coachId} {
-        // Platform admin needs explicit permission OR org is platform owner (One Fitness)
-        allow read: if (isPlatformAdmin() && hasDataAccessPermission(orgId)) ||
-                    isOrgMember(orgId);
-        // Platform admin can write for migration/maintenance if org has granted data access
-        // BUT NOT while impersonating (read-only mode enforced server-side)
-        allow write: if isOrgMember(orgId) ||
-                     (isPlatformAdmin() && hasDataAccessPermission(orgId) && isNotImpersonating());
+        allow read: if canReadOrgData(orgId);
+        allow write: if isOrgAdmin(orgId) ||
+          (isPlatformAdmin() && hasDataAccess(orgId) && isNotImpersonating());
+        // Allow self-write on invite accept
+        allow create: if isAuthenticated() && request.auth.uid == coachId;
+      }
 
-        match /{allChildren=**} {
-          allow read: if (isPlatformAdmin() && hasDataAccessPermission(orgId)) ||
-                      isOrgMember(orgId);
-          allow write: if isOrgMember(orgId) ||
-                       (isPlatformAdmin() && hasDataAccessPermission(orgId) && isNotImpersonating());
+      // Clients + all subcollections (current, sessions, roadmap, achievements, drafts)
+      match /clients/{clientSlug} {
+        allow read: if canReadOrgData(orgId);
+        allow write: if canWriteOrgData(orgId);
+
+        // Live composite state — source of truth for current client data
+        match /current/{doc} {
+          allow read: if canReadOrgData(orgId);
+          allow write: if canWriteOrgData(orgId);
+        }
+
+        // Assessment event log — append-only, immutable after write
+        match /sessions/{sessionId} {
+          allow read: if canReadOrgData(orgId);
+          // Only allow create (no update/delete — sessions are immutable)
+          allow create: if canWriteOrgData(orgId);
+          allow update, delete: if isPlatformAdmin();
+        }
+
+        // Roadmap — phases and metric thresholds
+        match /roadmap/{doc} {
+          allow read: if canReadOrgData(orgId);
+          allow write: if canWriteOrgData(orgId);
+        }
+
+        // Achievements — milestones, status badges, streaks
+        match /achievements/{doc} {
+          allow read: if canReadOrgData(orgId);
+          allow write: if canWriteOrgData(orgId);
+        }
+
+        // Assessment drafts — save-for-later
+        match /assessmentDrafts/{doc} {
+          allow read: if canReadOrgData(orgId);
+          allow write: if canWriteOrgData(orgId);
         }
       }
 
-      match /clients/{clientId} {
-        allow read: if (isPlatformAdmin() && hasDataAccessPermission(orgId)) ||
-                    isOrgMember(orgId);
-        allow write: if isOrgMember(orgId) ||
-                     (isPlatformAdmin() && hasDataAccessPermission(orgId) && isNotImpersonating());
-      }
-
-      match /assessments/{assessmentId} {
-        allow read: if (isPlatformAdmin() && hasDataAccessPermission(orgId)) ||
-                    isOrgMember(orgId);
-        allow write: if isOrgMember(orgId) ||
-                     (isPlatformAdmin() && hasDataAccessPermission(orgId) && isNotImpersonating());
-      }
-
-      // Assessment History (deep structure for tracking changes over time)
-      match /assessmentHistory/{clientSlug} {
-        allow read: if (isPlatformAdmin() && hasDataAccessPermission(orgId)) ||
-                    isOrgMember(orgId);
-        allow write: if isOrgMember(orgId) ||
-                     (isPlatformAdmin() && hasDataAccessPermission(orgId) && isNotImpersonating());
-
-        // Allow access to nested subcollections: current/data, history/*, snapshots/*
-        match /{subcollection}/{document=**} {
-          allow read: if (isPlatformAdmin() && hasDataAccessPermission(orgId)) ||
-                      isOrgMember(orgId);
-          allow write: if isOrgMember(orgId) ||
-                       (isPlatformAdmin() && hasDataAccessPermission(orgId) && isNotImpersonating());
-        }
-      }
-
-      // Roadmaps (editable client action plans)
-      match /roadmaps/{roadmapId} {
-        // Org members can read/write, platform admin with permission
-        allow read: if isOrgMember(orgId) ||
-                    (isPlatformAdmin() && hasDataAccessPermission(orgId));
-        allow write: if isOrgMember(orgId) ||
-                     (isPlatformAdmin() && hasDataAccessPermission(orgId) && isNotImpersonating());
-      }
-
-      // Settings and other non-sensitive subcollections
-      match /settings/{document=**} {
-        allow read: if isPlatformAdmin() || isOrgMember(orgId);
-        allow write: if isPlatformAdmin() || isOrgAdmin(orgId);
+      // GDPR erasure requests
+      match /erasureRequests/{requestId} {
+        allow read: if isOrgAdmin(orgId) || (isPlatformAdmin() && hasDataAccess(orgId));
+        allow create: if true; // Anyone can submit an erasure request
+        allow update: if isOrgAdmin(orgId) || (isPlatformAdmin() && hasDataAccess(orgId));
+        allow delete: if false;
       }
     }
-    
-    // 2. USER PROFILES
-    match /userProfiles/{userId} {
-      // Allow reading:
-      // - Your own profile
-      // - Platform admin can read all
-      // - Org members can read profiles in their org (enables collection queries with where(organizationId))
-      allow read: if request.auth.uid == userId 
-                  || isPlatformAdmin()
-                  || (isAuthenticated() && resource.data.organizationId == getUserProfile().organizationId);
-      
-      allow write: if request.auth.uid == userId || isPlatformAdmin();
-    }
-    
-    // 3. COACHES & LEGACY DATA
-    // Platform admin gets full read access for auditing/migration
-    // Write still requires proper ownership checks
-    match /coaches/{coachId} {
-      allow read: if request.auth.uid == coachId ||
-                  isPlatformAdmin() ||
-                  (isAuthenticated() &&
-                   get(/databases/$(database)/documents/userProfiles/$(coachId)).data.organizationId == getUserProfile().organizationId);
-      allow write: if request.auth.uid == coachId ||
-                   isPlatformAdmin() ||
-                   (isAuthenticated() &&
-                    get(/databases/$(database)/documents/userProfiles/$(coachId)).data.organizationId == getUserProfile().organizationId &&
-                    getUserProfile().role == 'org_admin');
 
-      match /{document=**} {
-        allow read: if request.auth.uid == coachId ||
-                    isPlatformAdmin() ||
-                    (isAuthenticated() &&
-                     get(/databases/$(database)/documents/userProfiles/$(coachId)).data.organizationId == getUserProfile().organizationId);
-        allow write: if request.auth.uid == coachId ||
-                     isPlatformAdmin() ||
-                     (isAuthenticated() &&
-                      get(/databases/$(database)/documents/userProfiles/$(coachId)).data.organizationId == getUserProfile().organizationId &&
-                      getUserProfile().role == 'org_admin');
-      }
+    // =========================================================
+    // USER PROFILES  (one per Firebase Auth user — coaches)
+    // =========================================================
+
+    match /userProfiles/{uid} {
+      allow read: if request.auth.uid == uid ||
+        isPlatformAdmin() ||
+        (isAuthenticated() &&
+          resource.data.organizationId ==
+          get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.organizationId);
+      allow write: if request.auth.uid == uid || isPlatformAdmin();
     }
-    
-    // 4. SYSTEM STATS (Platform Admin Only)
+
+    // =========================================================
+    // PUBLIC REPORTS  (client PWA credential)
+    // shareToken is both the doc ID and the client's credential.
+    // The document holds enough data to render the client's current view.
+    // =========================================================
+
+    match /publicReports/{token} {
+      allow read: if true; // Token is the credential — anyone with the URL can read
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated() && resource.data.coachUid == request.auth.uid;
+    }
+
+    // =========================================================
+    // LIVE SESSIONS  (real-time posture capture)
+    // =========================================================
+
+    match /live_sessions/{sessionId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      // Unauthenticated companion (client mobile) may only update capture fields
+      allow update: if !isAuthenticated() &&
+        exists(/databases/$(database)/documents/live_sessions/$(sessionId)) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'companionJoined', 'lastHeartbeat', 'postureImages',
+          'analysis', 'companionLogs',
+          'landmarks_front', 'landmarks_back',
+          'landmarks_side-left', 'landmarks_side-right'
+        ]);
+    }
+
+    // =========================================================
+    // NOTIFICATIONS  (per-user feed, keyed by Firebase Auth UID)
+    // =========================================================
+
+    match /notifications/{uid}/items/{notificationId} {
+      allow read: if isAuthenticated() && request.auth.uid == uid;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && request.auth.uid == uid;
+      allow delete: if isAuthenticated() && request.auth.uid == uid;
+    }
+
+    // =========================================================
+    // PLATFORM ANALYTICS  (Cloud Functions write only)
+    // =========================================================
+
+    match /platform_analytics/{doc} {
+      allow read: if isPlatformAdmin();
+      // Frontend may only clear the "new badge" marker — nothing else
+      allow update: if isPlatformAdmin() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['seenByAdminAt']);
+      allow write: if false;
+    }
+
+    // =========================================================
+    // SYSTEM STATS
+    // =========================================================
+
     match /system_stats/{document} {
       allow read: if isPlatformAdmin();
-      allow write: if isPlatformAdmin(); // Allow platform admin for maintenance
-    }
-    
-    // 5. AI USAGE LOGS
-    match /ai_usage_logs/{logId} {
-      allow read: if isPlatformAdmin() || 
-                  (isAuthenticated() && 
-                   resource.data.organizationId == getUserProfile().organizationId);
-      allow create: if isAuthenticated(); // App creates logs
-      allow write: if false; // Only Cloud Functions update costs
-    }
-    
-    // 6. PLATFORM ADMINS
-    match /platform_admins/{adminId} {
-      allow read: if isAuthenticated(); // Anyone authenticated can check
-      allow write: if isPlatformAdmin(); // Platform admin can update (e.g., last login)
-    }
-    
-    match /platform_admin_lookup/{lookupId} {
-      allow read: if isAuthenticated();
-      allow write: if false; // Only server-side
-    }
-    
-    // 7. PLATFORM CONFIG (Feature Flags & Maintenance)
-    match /platform/{document} {
-      // All authenticated users can read feature flags (needed to check if features are enabled)
-      allow read: if isAuthenticated();
-      // Only platform admins can modify feature flags and maintenance settings
       allow write: if isPlatformAdmin();
-      
-      // Active impersonation markers (used by security rules to block writes during impersonation)
+    }
+
+    // =========================================================
+    // PLATFORM CONFIG  (feature flags, maintenance mode)
+    // Public read so unauthenticated users can see maintenance page.
+    // =========================================================
+
+    match /platform/{document} {
+      allow read: if true;
+      allow write: if isPlatformAdmin();
+
       match /active_impersonations/sessions/{adminUid} {
-        // Security rules need to read these to enforce write blocking
         allow read: if isAuthenticated();
-        // Only the admin themselves can create/delete their own impersonation marker
         allow write: if isPlatformAdmin() && request.auth.uid == adminUid;
       }
     }
-    
-    // 8. PLATFORM AUDIT LOGS (Impersonation, Security Events)
-    match /platform_audit_logs/{document=**} {
-      // Only platform admins can read audit logs
-      allow read: if isPlatformAdmin();
-      // Only platform admins can write audit logs
+
+    // =========================================================
+    // PLATFORM ADMINS
+    // =========================================================
+
+    match /platform_admins/{adminId} {
+      allow read: if isAuthenticated();
       allow write: if isPlatformAdmin();
     }
-    
-    // 9. COACH NOTIFICATIONS (legacy UID-keyed — kept for coach-to-coach notifications)
-    match /notifications/{recipientUid}/items/{notificationId} {
-      allow read: if isAuthenticated() && request.auth.uid == recipientUid;
-      allow update: if isAuthenticated() && request.auth.uid == recipientUid;
-      allow create: if isAuthenticated();
-      allow delete: if isAuthenticated() && request.auth.uid == recipientUid;
-    }
-    
-    // 10. CLIENT SUBMISSIONS
-    // Clients can read/create their own submissions
-    // Coaches in the same org can read submissions for review
-    match /clientSubmissions/{clientUid}/items/{submissionId} {
-      allow read: if isAuthenticated() && (
-        request.auth.uid == clientUid ||
-        (resource.data.organizationId == getUserProfile().organizationId)
-      );
-      allow create: if isAuthenticated() && request.auth.uid == clientUid;
-      allow update: if isAuthenticated() && 
-                    resource.data.organizationId == getUserProfile().organizationId &&
-                    getUserProfile().role in ['org_admin', 'coach'];
-    }
-    
-    // =========================================================
-    // 🔓 PUBLIC ROUTES
-    // =========================================================
-    
-    match /publicReports/{reportId} {
-      allow read: if true;
-      allow write: if isAuthenticated();
-      
-      // Token-scoped achievements: public read, authenticated write
-      match /achievements/{achievementId} {
-        allow read: if true;
-        allow write: if isAuthenticated();
-      }
-      
-      // Token-scoped notifications: public read/update (mark-as-read), authenticated write
-      match /notifications/{notificationId} {
-        allow read: if true;
-        allow create: if isAuthenticated();
-        allow update: if true;
-        allow delete: if isAuthenticated();
-      }
-      
-      // Token-scoped snapshots: public read, authenticated write
-      match /snapshots/{snapshotId} {
-        allow read: if true;
-        allow write: if isAuthenticated();
-      }
-      
-      // Token-scoped lifestyle check-ins: client self-service (token in path is secret)
-      // App must use limit() on list queries
-      match /lifestyleCheckins/{checkinId} {
-        allow read: if true;
-        allow create: if true;
-        allow update, delete: if isAuthenticated();
-      }
+
+    match /platform_admin_lookup/{lookupId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
     }
 
-    // Collection group query for public roadmap access via share token
-    match /{path=**}/roadmaps/{roadmapId} {
-      allow read: if resource.data.shareToken != null && resource.data.shareToken != '';
+    // =========================================================
+    // PLATFORM AUDIT LOGS
+    // =========================================================
+
+    match /platform_audit_logs/{document=**} {
+      allow read: if isPlatformAdmin();
+      allow write: if isPlatformAdmin();
     }
 
-    match /live_sessions/{sessionId} {
-      // Allow anyone to read sessions (for token validation in companion app)
-      // This enables mobile handoff features where clients scan QR codes without authentication
-      allow read: if true;
-      
-      // Allow authenticated users to create sessions
-      allow create: if isAuthenticated();
-      
-      // Allow updates if:
-      // 1. User is authenticated (normal flow from main app)
-      // 2. OR session exists (mobile handoff via QR code - token validated client-side)
-      // Security: SessionId and companionToken are random, validated client-side before allowing updates
-      // This allows mobile users to upload images without requiring authentication
-      allow update: if isAuthenticated() || 
-                     exists(/databases/$(database)/documents/live_sessions/$(sessionId));
-      
-      // Additional permission for platform admins with data access
-      allow read: if isPlatformAdmin() && 
-                   resource.data.keys().hasAll(['organizationId']) &&
-                   resource.data.organizationId != null &&
-                   hasDataAccessPermission(resource.data.organizationId);
+    // =========================================================
+    // AI USAGE LOGS  (root-level, written by Cloud Functions)
+    // Platform admins can read all logs.
+    // Org coaches can read logs scoped to their organisation.
+    // Writes are Cloud Function only (no client write path).
+    // =========================================================
+
+    match /ai_usage_logs/{logId} {
+      allow read: if isPlatformAdmin() ||
+        (isAuthenticated() &&
+          resource.data.organizationId != null &&
+          isOrgCoach(resource.data.organizationId));
+      allow write: if false;
+    }
+
+    // =========================================================
+    // RATE LIMIT COUNTERS  (Cloud Functions only)
+    // =========================================================
+
+    match /_rateLimits/{key} {
+      allow read, write: if false;
     }
   }
 }

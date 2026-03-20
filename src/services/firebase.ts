@@ -9,6 +9,7 @@ import {
 import { getAuth, GoogleAuthProvider, OAuthProvider, type Auth } from 'firebase/auth';
 import { getFunctions, type Functions } from 'firebase/functions';
 import { getStorage as getFirebaseStorageInstance, type FirebaseStorage } from 'firebase/storage';
+import { initializeAppCheck, ReCaptchaV3Provider, type AppCheck } from 'firebase/app-check';
 import { CONFIG } from '@/config';
 
 // Suppress noisy Firebase transport warnings in development
@@ -145,6 +146,39 @@ export const getStorage = () => storage; // Alias for compatibility
 
 export const googleProvider = new GoogleAuthProvider();
 export const appleProvider = new OAuthProvider('apple.com');
+
+/**
+ * Initialize Firebase App Check with reCAPTCHA v3.
+ * Only active when VITE_RECAPTCHA_SITE_KEY is set in the environment.
+ * In development, set VITE_APP_CHECK_DEBUG=true and use the debug token
+ * printed to the console to allow local testing.
+ *
+ * To activate enforcement on Cloud Functions, flip `enforceAppCheck: true`
+ * on each function in functions/src/index.ts after verifying the site key works.
+ */
+let appCheckInstance: AppCheck | null = null;
+
+export function initAppCheck(): AppCheck | null {
+  if (appCheckInstance) return appCheckInstance;
+
+  const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined;
+  if (!siteKey) return null;
+
+  try {
+    if (import.meta.env.DEV || import.meta.env.VITE_APP_CHECK_DEBUG === 'true') {
+      // @ts-expect-error — debug token registration for local development
+      self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+    }
+    appCheckInstance = initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(siteKey),
+      isTokenAutoRefreshEnabled: true,
+    });
+    return appCheckInstance;
+  } catch (err) {
+    console.warn('[FIREBASE] App Check initialization failed (non-fatal):', err);
+    return null;
+  }
+}
 
 export default getFirebaseApp;
 

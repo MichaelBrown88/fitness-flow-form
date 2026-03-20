@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useEffect, useMemo, useCallback, lazy, Suspense, type ReactNode } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { PILLAR_DISPLAY } from '@/constants/pillars';
@@ -13,8 +13,20 @@ import {
   Target as TargetIcon,
   UserPlus,
   ChevronDown,
+  ClipboardList,
+  Loader2,
+  Zap,
+  AlertCircle,
 } from 'lucide-react';
+import { PostureComparisonCard } from '@/components/client/PostureComparisonCard';
 import type { ClientDetailOutletContext } from './ClientDetailLayout';
+import { computeScores } from '@/lib/scoring';
+import { generateCoachPlan, generateBodyCompInterpretation, type CoachPlan } from '@/lib/recommendations';
+import { getLatestPreSessionCheckin, type PreSessionCheckinPayload } from '@/services/publicReports';
+import type { FormData } from '@/contexts/FormContext';
+import type { ScoreSummary } from '@/lib/scoring/types';
+
+const CoachReport = lazy(() => import('@/components/reports/CoachReport'));
 
 function CollapsibleSection({
   title,
@@ -51,6 +63,40 @@ function CollapsibleSection({
   );
 }
 
+/**
+ * Mounts only when the "Coach Summary" section is expanded.
+ * Computes the plan once on mount and renders CoachReport.
+ */
+function CoachSummaryContent({ formData, scores }: { formData: FormData; scores: ScoreSummary }) {
+  const [plan, setPlan] = useState<CoachPlan | null>(null);
+  const bodyComp = useMemo(() => generateBodyCompInterpretation(formData, scores), [formData, scores]);
+
+  useEffect(() => {
+    generateCoachPlan(formData, scores).then(setPlan);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (!plan) {
+    return (
+      <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-400">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Generating summary…
+      </div>
+    );
+  }
+
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-400">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Loading…
+      </div>
+    }>
+      <CoachReport plan={plan} scores={scores} bodyComp={bodyComp} formData={formData} />
+    </Suspense>
+  );
+}
+
 export default function ClientOverview() {
   const ctx = useOutletContext<ClientDetailOutletContext>();
   const {
@@ -59,7 +105,33 @@ export default function ClientOverview() {
     categoryChanges,
     stats,
     handleNewAssessment,
+    profile,
+    snapshots,
   } = ctx;
+
+  const scores = useMemo(
+    () => currentAssessment ? computeScores(currentAssessment.formData) : null,
+    [currentAssessment],
+  );
+
+  const shareToken = profile?.shareToken;
+  type PreSessionCheckin = PreSessionCheckinPayload & { createdAt: Date; id: string };
+  const [preSessionCheckin, setPreSessionCheckin] = useState<PreSessionCheckin | null>(null);
+  const [checkinDismissed, setCheckinDismissed] = useState(false);
+
+  const loadPreSessionCheckin = useCallback(async () => {
+    if (!shareToken) return;
+    try {
+      const checkin = await getLatestPreSessionCheckin(shareToken);
+      setPreSessionCheckin(checkin);
+    } catch {
+      // non-fatal — pre-session check-in is optional
+    }
+  }, [shareToken]);
+
+  useEffect(() => {
+    void loadPreSessionCheckin();
+  }, [loadPreSessionCheckin]);
 
   return (
     <div className="space-y-8">
@@ -131,6 +203,57 @@ export default function ClientOverview() {
         )}
       </CollapsibleSection>
 
+      {preSessionCheckin && !checkinDismissed && (
+        <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 sm:p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2 shrink-0">
+              <Zap className="h-4 w-4 text-amber-500" />
+              <span className="text-sm font-semibold text-amber-900">Pre-session note</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCheckinDismissed(true)}
+              className="text-xs text-amber-600 hover:text-amber-800 font-medium shrink-0"
+            >
+              Dismiss
+            </button>
+          </div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3 text-sm">
+            {preSessionCheckin.energyLevel !== undefined && (
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-[0.15em] text-amber-600">Energy</span>
+                <span className="font-semibold text-amber-900">{preSessionCheckin.energyLevel}/5</span>
+              </div>
+            )}
+            {preSessionCheckin.hasPain !== undefined && (
+              <div className="flex items-center gap-2">
+                {preSessionCheckin.hasPain
+                  ? <AlertCircle className="h-3.5 w-3.5 text-red-500 shrink-0" />
+                  : null}
+                <span className="text-[10px] font-black uppercase tracking-[0.15em] text-amber-600">Pain</span>
+                <span className={`font-semibold ${preSessionCheckin.hasPain ? 'text-red-700' : 'text-emerald-700'}`}>
+                  {preSessionCheckin.hasPain ? 'Yes' : 'No'}
+                </span>
+              </div>
+            )}
+            {preSessionCheckin.painDetails && (
+              <p className="sm:col-span-3 text-xs text-amber-800 bg-amber-100 rounded-lg px-3 py-2">
+                {preSessionCheckin.painDetails}
+              </p>
+            )}
+            {preSessionCheckin.focusArea && (
+              <div className="sm:col-span-3">
+                <span className="text-[10px] font-black uppercase tracking-[0.15em] text-amber-600">Focus: </span>
+                <span className="text-sm text-amber-900">{preSessionCheckin.focusArea}</span>
+              </div>
+            )}
+          </div>
+          <p className="text-[10px] text-amber-500 mt-2">
+            Submitted {preSessionCheckin.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </p>
+        </div>
+      )}
+
       <CollapsibleSection title="Quick Assessments" icon={<TargetIcon className="h-5 w-5 text-primary" />}>
         <div className="grid gap-2 sm:gap-3 grid-cols-3 sm:grid-cols-5">
           {[
@@ -153,6 +276,23 @@ export default function ClientOverview() {
         </div>
       </CollapsibleSection>
 
+      <CollapsibleSection
+        title="Posture Comparison"
+        icon={<UserCheck className="h-5 w-5 text-primary" />}
+        defaultOpen={false}
+      >
+        <PostureComparisonCard snapshots={snapshots ?? []} />
+      </CollapsibleSection>
+
+      {currentAssessment && scores && (
+        <CollapsibleSection
+          title="Coach Summary"
+          icon={<ClipboardList className="h-5 w-5 text-primary" />}
+          defaultOpen={false}
+        >
+          <CoachSummaryContent formData={currentAssessment.formData} scores={scores} />
+        </CollapsibleSection>
+      )}
     </div>
   );
 }

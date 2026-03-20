@@ -18,8 +18,6 @@ import {
   where,
   limit,
   writeBatch,
-  addDoc,
-  serverTimestamp,
 } from 'firebase/firestore';
 import type { Timestamp } from 'firebase/firestore';
 import { getDb } from '@/services/firebase';
@@ -88,7 +86,7 @@ export async function recalculateClientScores(
   const { computeScores, summarizeScores } = await import('@/lib/scoring');
 
   // 1. Update live doc
-  const currentPath = ORGANIZATION.assessmentHistory.current(organizationId, slug);
+  const currentPath = ORGANIZATION.clients.current(organizationId, slug);
   const currentSnap = await getDoc(doc(db, currentPath));
   if (currentSnap.exists()) {
     const data = currentSnap.data() as { formData: FormData; overallScore: number };
@@ -106,8 +104,8 @@ export async function recalculateClientScores(
     }
   }
 
-  // 2. Update all snapshots
-  const snapshotsPath = ORGANIZATION.assessmentHistory.snapshots(organizationId, slug);
+  // 2. Update all sessions
+  const snapshotsPath = ORGANIZATION.clients.sessions.collection(organizationId, slug);
   const snapshotDocs = await getDocs(query(collection(db, snapshotsPath), limit(MAX_BATCH_LIMIT)));
 
   for (const snapDoc of snapshotDocs.docs) {
@@ -126,8 +124,8 @@ export async function recalculateClientScores(
     }
   }
 
-  // 3. Update all summaries
-  const assessmentsRef = collection(db, ORGANIZATION.assessments.collection(organizationId));
+  // 3. Update client profile doc (v2: one doc per client in clients collection)
+  const assessmentsRef = collection(db, ORGANIZATION.clients.collection(organizationId));
   const summaryQ = query(
     assessmentsRef,
     where('clientNameLower', '==', clientName.toLowerCase()),
@@ -162,19 +160,6 @@ export async function recalculateClientScores(
     }
     result.summariesUpdated = batchCount;
   }
-
-  // 4. Log the correction in change history
-  const historyPath = ORGANIZATION.assessmentHistory.history(organizationId, slug);
-  await addDoc(collection(db, historyPath), {
-    timestamp: serverTimestamp(),
-    type: 'correction',
-    category: 'all',
-    changes: Object.fromEntries(
-      Object.entries(correctedFields).map(([key, value]) => [key, { old: 'corrected', new: value }]),
-    ),
-    updatedBy: 'system',
-    organizationId,
-  });
 
   result.success = true;
   result.message = `Recalculated: live=${result.liveDocUpdated ? 1 : 0}, snapshots=${result.snapshotsUpdated}, summaries=${result.summariesUpdated}`;

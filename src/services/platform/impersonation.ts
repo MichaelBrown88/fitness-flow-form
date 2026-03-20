@@ -14,6 +14,7 @@
 import { doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { getDb } from '@/services/firebase';
 import { isPlatformAdmin } from './platformAdmin';
+import { logAdminAction } from './auditLog';
 import { logger } from '@/lib/utils/logger';
 import { PLATFORM } from '@/lib/database/paths';
 
@@ -97,7 +98,7 @@ export async function startImpersonation(
     expiresAt: session.expiresAt.toISOString(),
   });
 
-  // Log to Firestore audit trail
+  // Log to Firestore audit trail (detailed subcollection)
   await logImpersonationEvent({
     eventType: 'session_start',
     adminUid,
@@ -106,6 +107,9 @@ export async function startImpersonation(
     targetOrgName,
     details: reason || 'No reason provided',
   });
+
+  // Log to main audit log for unified UI
+  await logAdminAction(adminUid, 'impersonation_start', targetOrgId, { targetOrgName, reason });
 
   // Store in session storage (not localStorage for security)
   sessionStorage.setItem(IMPERSONATION_SESSION_KEY, JSON.stringify({
@@ -152,6 +156,9 @@ export async function endImpersonation(): Promise<void> {
     targetOrgName: session.targetOrgName,
     details: `Session duration: ${Math.round((Date.now() - session.startedAt.getTime()) / 1000 / 60)} minutes`,
   });
+
+  // Log to main audit log for unified UI
+  await logAdminAction(session.adminUid, 'impersonation_end', session.targetOrgId, { targetOrgName: session.targetOrgName });
 
   // Clear session storage
   sessionStorage.removeItem(IMPERSONATION_SESSION_KEY);

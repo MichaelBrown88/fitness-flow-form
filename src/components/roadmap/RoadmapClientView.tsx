@@ -73,6 +73,9 @@ export default function RoadmapClientView({
         return (
           <div className="rounded-xl bg-brand-light p-6 border border-border space-y-4">
             <p className="text-sm leading-relaxed text-foreground">{content.intro}</p>
+            {content.sessionExpectation && (
+              <p className="text-xs text-foreground-secondary">{content.sessionExpectation}</p>
+            )}
             <div className="space-y-2">
               {content.phaseBlurbs.map(({ phase, title, blurb }) => (
                 <div key={phase} className="text-xs">

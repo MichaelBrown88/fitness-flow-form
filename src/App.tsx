@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { ThemeManager } from "./components/layout/ThemeManager";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ImpersonationBanner } from "./components/ImpersonationBanner";
+import { MaintenanceBanner } from "./components/MaintenanceBanner";
 import { ReloadPrompt } from "./components/pwa/ReloadPrompt";
 const InstallPrompt = lazy(() => import("./components/pwa/InstallPrompt").then(m => ({ default: m.InstallPrompt })));
 
@@ -36,18 +37,21 @@ const ClientHistory = lazy(() => import("./pages/client/ClientHistory"));
 const ClientRoadmapTab = lazy(() => import("./pages/client/ClientRoadmapTab"));
 const ClientReportTab = lazy(() => import("./pages/client/ClientReportTab"));
 const ClientAchievementsTab = lazy(() => import("./pages/client/ClientAchievementsTab"));
-const CoachesReportTab = lazy(() => import("./pages/client/CoachesReportTab"));
 const ClientSettings = lazy(() => import("./pages/client/ClientSettings"));
 const OrgAdminLayout = lazy(() => import("./pages/org/OrgAdminLayout"));
 const OrgOverview = lazy(() => import("./pages/org/OrgOverview"));
 const OrgTeam = lazy(() => import("./pages/org/OrgTeam"));
 const OrgRetention = lazy(() => import("./pages/org/OrgRetention"));
 const OrgBilling = lazy(() => import("./pages/org/OrgBilling"));
+const OrgIntegrations = lazy(() => import("./pages/org/OrgIntegrations"));
 const AssessmentComparison = lazy(() => import("./pages/AssessmentComparison"));
 const Billing = lazy(() => import("./pages/Billing"));
 const ClientRoadmap = lazy(() => import("./pages/ClientRoadmap"));
 const PublicRoadmapViewer = lazy(() => import("./pages/PublicRoadmapViewer"));
 const PublicLifestyleCheckin = lazy(() => import("./pages/PublicLifestyleCheckin"));
+const PublicPreSessionCheckin = lazy(() => import("./pages/PublicPreSessionCheckin"));
+const RequestErasure = lazy(() => import("./pages/RequestErasure"));
+const SandboxTrial = lazy(() => import("./pages/SandboxTrial"));
 
 // Platform admin pages (separate from org admin)
 const PlatformLogin = lazy(() => import("./pages/admin/PlatformLogin"));
@@ -122,6 +126,7 @@ const App = () => (
                 }}
               >
               <ErrorBoundary>
+              <MaintenanceBanner />
               <ImpersonationBanner />
               <Suspense fallback={
                 <div className="flex min-h-screen items-center justify-center bg-slate-50">
@@ -146,6 +151,8 @@ const App = () => (
                     <Route path="/demo" element={<Demo />} />
                     {/* Onboarding - allows unauthenticated access (will create account at step 1) */}
                     <Route path="/onboarding" element={<Onboarding />} />
+                    {/* Zero-friction sandbox trial — no sign-up required */}
+                    <Route path="/try" element={<SandboxTrial />} />
                     {/* Public client-facing report (no auth) - Token-based secure sharing */}
                     <Route
                       path="/r/:token"
@@ -163,6 +170,14 @@ const App = () => (
                     <Route
                       path="/r/:token/lifestyle"
                       element={<PublicLifestyleCheckin />}
+                    />
+                    <Route
+                      path="/r/:token/erasure"
+                      element={<RequestErasure />}
+                    />
+                    <Route
+                      path="/r/:token/pre-session"
+                      element={<PublicPreSessionCheckin />}
                     />
                     {/* Legacy share route redirects to token-based URL */}
                     <Route
@@ -210,7 +225,7 @@ const App = () => (
                       <Route path="report" element={<ClientReportTab />} />
                       <Route path="roadmap" element={<ClientRoadmapTab />} />
                       <Route path="achievements" element={<ClientAchievementsTab />} />
-                      <Route path="coaches-report" element={<CoachesReportTab />} />
+                      <Route path="coaches-report" element={<Navigate to=".." replace />} />
                       <Route path="history" element={<ClientHistory />} />
                       <Route path="settings" element={<ClientSettings />} />
                     </Route>
@@ -243,6 +258,7 @@ const App = () => (
                       <Route path="team" element={<OrgTeam />} />
                       <Route path="retention" element={<OrgRetention />} />
                       <Route path="billing" element={<OrgBilling />} />
+                      <Route path="integrations" element={<OrgIntegrations />} />
                     </Route>
                     <Route
                       path="/billing"

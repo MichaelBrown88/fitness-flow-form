@@ -169,6 +169,7 @@ const Dashboard = () => {
             coachFirstName={coachFirstName}
             totalClients={analytics?.totalClients ?? 0}
             totalAssessments={analytics?.totalAssessments ?? 0}
+            overdueCount={overdueCount}
           />
 
           <GettingStartedChecklist

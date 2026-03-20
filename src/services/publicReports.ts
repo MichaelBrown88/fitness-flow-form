@@ -31,6 +31,8 @@ export type PublicReportDoc = {
   formData: FormData;
   previousFormData?: FormData;
   snapshotSummaries?: SnapshotSummary[];
+  /** AI-generated 2-sentence progress summary — written after coach first shares the report */
+  changeNarrative?: string;
 };
 
 /**
@@ -75,8 +77,10 @@ export async function publishPublicReport(params: {
   visibility?: 'public' | 'private';
   organizationId?: string;
   profile?: UserProfile | null;
+  /** Snapshot type label written to the history subcollection. Defaults to 'full-assessment'. */
+  snapshotType?: string;
 }): Promise<string> {
-  const { coachUid, assessmentId, formData, visibility = 'public', organizationId, profile } = params;
+  const { coachUid, assessmentId, formData, visibility = 'public', organizationId, profile, snapshotType = 'full-assessment' } = params;
   
   // Validate organizationId before proceeding
   // If updating existing report, verify ownership
@@ -160,10 +164,11 @@ export async function publishPublicReport(params: {
       const snapshotId = `${assessmentId}_${Date.now()}`;
       const snapshotRef = doc(getDb(), COLLECTIONS.PUBLIC_REPORTS, shareToken, COLLECTIONS.PUBLIC_REPORT_SNAPSHOTS, snapshotId);
       await setDoc(snapshotRef, sanitizeForFirestore({
+        schemaVersion: 1,
         formData: safeFormData,
         overallScore,
         timestamp: serverTimestamp(),
-        type: 'full-assessment',
+        type: snapshotType,
       }));
 
       // Update snapshotSummaries on the main doc (capped at 50)
@@ -174,7 +179,7 @@ export async function publishPublicReport(params: {
         id: snapshotId,
         score: overallScore,
         date: serverTimestamp() as unknown as Timestamp,
-        type: 'full-assessment',
+        type: snapshotType,
       };
       const updatedSummaries = [newSummary, ...existingSummaries].slice(0, 50);
       await setDoc(ref, { snapshotSummaries: updatedSummaries }, { merge: true });
@@ -303,6 +308,57 @@ export async function submitLifestyleCheckin(
     createdAt: serverTimestamp(),
   });
   return docRef.id;
+}
+
+export interface PreSessionCheckinPayload {
+  energyLevel?: number;
+  hasPain?: boolean;
+  painDetails?: string;
+  focusArea?: string;
+}
+
+/**
+ * Submit a pre-session check-in for a returning client.
+ * Writes to publicReports/{token}/preSessionCheckins.
+ */
+export async function submitPreSessionCheckin(
+  token: string,
+  payload: PreSessionCheckinPayload,
+): Promise<string> {
+  const colRef = collection(getDb(), COLLECTIONS.PUBLIC_REPORTS, token, COLLECTIONS.PRE_SESSION_CHECKINS);
+  const docRef = await addDoc(colRef, {
+    ...payload,
+    createdAt: serverTimestamp(),
+  });
+  return docRef.id;
+}
+
+/**
+ * Fetch the most recent pre-session check-in for a client.
+ * Returns null if none exists or if it's older than maxAgeHours.
+ */
+export async function getLatestPreSessionCheckin(
+  token: string,
+  maxAgeHours = 24,
+): Promise<(PreSessionCheckinPayload & { createdAt: Date; id: string }) | null> {
+  const { query: firestoreQuery, orderBy, limit, getDocs } = await import('firebase/firestore');
+  const colRef = collection(getDb(), COLLECTIONS.PUBLIC_REPORTS, token, COLLECTIONS.PRE_SESSION_CHECKINS);
+  const q = firestoreQuery(colRef, orderBy('createdAt', 'desc'), limit(1));
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  const docSnap = snap.docs[0];
+  const data = docSnap.data();
+  const createdAt: Date = data.createdAt?.toDate?.() ?? new Date(0);
+  const ageHours = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60);
+  if (ageHours > maxAgeHours) return null;
+  return {
+    id: docSnap.id,
+    energyLevel: data.energyLevel,
+    hasPain: data.hasPain,
+    painDetails: data.painDetails,
+    focusArea: data.focusArea,
+    createdAt,
+  };
 }
 
 
