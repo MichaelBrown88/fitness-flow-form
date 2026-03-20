@@ -7,9 +7,10 @@
  * - Track coach activity and seats
  */
 
-import { doc, setDoc, updateDoc, deleteDoc, getDoc, getDocs, query, where, collection } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, deleteDoc, getDoc, getDocs, query, where, collection, serverTimestamp } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getDb } from '@/services/firebase';
-import { getLegacyUserProfilesCollection, getOrgCoachesCollection } from '@/lib/database/collections';
+import { getUserProfilesCollection, getOrgCoachesCollection } from '@/lib/database/collections';
 import { logger } from '@/lib/utils/logger';
 import type { UserProfile } from '@/types/auth';
 import { COLLECTIONS } from '@/constants/collections';
@@ -30,7 +31,7 @@ export async function addCoachToOrganization(
     // In the future, we'd send an invitation email and create the profile when they accept
     
     // Check if a user profile already exists with this email
-    const userProfilesRef = getLegacyUserProfilesCollection();
+    const userProfilesRef = getUserProfilesCollection();
     const emailQuery = query(userProfilesRef, where('email', '==', coachEmail.toLowerCase()));
     const emailSnapshot = await getDocs(emailQuery);
     
@@ -53,7 +54,7 @@ export async function addCoachToOrganization(
       await updateDoc(doc(getDb(), COLLECTIONS.USER_PROFILES, existingProfile.id), {
         organizationId: orgId,
         role: 'coach',
-        updatedAt: new Date(),
+        updatedAt: serverTimestamp(),
       });
       
       logger.info(`Added existing coach ${coachEmail} to org ${orgId}`);
@@ -65,10 +66,10 @@ export async function addCoachToOrganization(
     // For now, we create a minimal profile that will be updated when they sign up
     // Note: We can't create Firebase Auth users from the client side for security reasons
     
-    logger.warn(`Coach ${coachEmail} does not exist yet. Full invitation flow requires server-side email sending.`);
-    return { 
-      success: false, 
-      error: 'Coach invitation system requires server-side implementation. Coach must sign up first, then you can assign them to your organization.' 
+    logger.warn(`Coach ${coachEmail} does not exist yet. Use sendCoachInviteEmail to send an invitation.`);
+    return {
+      success: false,
+      error: 'COACH_NOT_FOUND', // Caller can use this to trigger email invite
     };
   } catch (error) {
     logger.error('Error adding coach to organization:', error);
@@ -112,7 +113,7 @@ export async function removeCoachFromOrganization(
     await updateDoc(coachProfileRef, {
       organizationId: null,
       role: null,
-      updatedAt: new Date(),
+      updatedAt: serverTimestamp(),
     });
     
     logger.info(`Removed coach ${coachUid} from org ${orgId}`);
@@ -124,6 +125,25 @@ export async function removeCoachFromOrganization(
       error: error instanceof Error ? error.message : 'Unknown error removing coach' 
     };
   }
+}
+
+/**
+ * Send a coach invitation email via Cloud Function.
+ * Recipient gets a link to onboarding?invite={token}; on sign-up they are assigned to the org.
+ * Requires a transactional email provider configured in Functions.
+ */
+export async function sendCoachInviteEmail(params: {
+  email: string;
+  organizationId: string;
+  organizationName: string;
+  invitedBy: string;
+}): Promise<void> {
+  const functions = getFunctions();
+  const sendInvite = httpsCallable<
+    { email: string; organizationId: string; organizationName: string; invitedBy: string },
+    { success: boolean }
+  >(functions, 'sendCoachInvite');
+  await sendInvite(params);
 }
 
 /**
@@ -140,12 +160,13 @@ export async function createCoachInvitationLink(
     
     // Create invitation document
     const invitationId = `${orgId}_${coachEmail.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${Date.now()}`;
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     const invitationDoc = {
       orgId,
       coachEmail: coachEmail.toLowerCase(),
       status: 'pending',
-      createdAt: new Date(),
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+      createdAt: serverTimestamp(),
+      expiresAt,
     };
     
     await setDoc(doc(db, 'coachInvitations', invitationId), invitationDoc);
@@ -206,7 +227,7 @@ export async function getOrgCoaches(orgId: string): Promise<Array<{
     }
 
     // Fallback: query userProfiles for coaches in this org
-    const userProfilesRef = getLegacyUserProfilesCollection();
+    const userProfilesRef = getUserProfilesCollection();
     const orgQuery = query(userProfilesRef, where('organizationId', '==', orgId));
     const snapshot = await getDocs(orgQuery);
 

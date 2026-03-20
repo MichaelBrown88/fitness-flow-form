@@ -12,17 +12,10 @@
 import * as admin from 'firebase-admin';
 import * as crypto from 'crypto';
 import type { CallableRequest } from 'firebase-functions/v2/https';
-import { APP_HOST, SENDGRID_API_KEY, SENDGRID_FROM } from './config';
+import { Resend } from 'resend';
+import { APP_HOST, RESEND_API_KEY, RESEND_FROM } from './config';
 
-let sendgridMail: typeof import('@sendgrid/mail') | null = null;
-if (SENDGRID_API_KEY) {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const mailModule = require('@sendgrid/mail');
-  sendgridMail = mailModule;
-  if (sendgridMail) {
-    sendgridMail.setApiKey(SENDGRID_API_KEY);
-  }
-}
+const resend = new Resend(RESEND_API_KEY);
 
 export interface CoachInviteRequest {
   email: string;
@@ -84,10 +77,10 @@ export async function handleSendCoachInvite(
 
   const inviteLink = `${APP_HOST}/onboarding?invite=${token}`;
 
-  if (sendgridMail) {
-    await sendgridMail.send({
+  if (RESEND_API_KEY) {
+    await resend.emails.send({
       to: email,
-      from: SENDGRID_FROM,
+      from: RESEND_FROM,
       subject: `You've been invited to join ${organizationName}`,
       html: `
         <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
