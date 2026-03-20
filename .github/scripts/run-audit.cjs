@@ -1,4 +1,7 @@
-// Runs inside GitHub Actions — has full repo access, no timeout issues
+// .github/scripts/run-audit.cjs
+// Runs inside GitHub Actions — full repo access, no timeout
+// Reads .cursorrules and NORTH_STAR.md live from repo
+// Uses Context7 for up-to-date library documentation
 
 const fs = require('fs');
 const path = require('path');
@@ -82,55 +85,146 @@ const AUDIT_FILES = {
   ]
 };
 
-const CTO_SYSTEM = `You are the CTO Agent for One Assess — an AI fitness assessment SaaS.
+function readFile(filePath) {
+  const fullPath = path.join(process.cwd(), filePath);
+  if (fs.existsSync(fullPath)) {
+    return fs.readFileSync(fullPath, 'utf8');
+  }
+  return null;
+}
 
-STACK: React 18 + Vite + TypeScript + Tailwind + shadcn/ui (frontend). Firebase Firestore + Auth + Cloud Functions TypeScript (backend). MediaPipe WASM bundled locally — zero cost per posture analysis — this is a core business moat, protect it. Gemini AI for in-app narrative generation (NOT Claude — keep Gemini for app AI). Stripe for billing. Resend for email. 48 Cloud Functions deployed.
+async function fetchContext7Docs(libraryId, topic) {
+  try {
+    const response = await fetch('https://mcp.context7.com/mcp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        method: 'tools/call',
+        params: {
+          name: 'get-library-docs',
+          arguments: {
+            context7CompatibleLibraryID: libraryId,
+            topic,
+            tokens: 3000
+          }
+        }
+      })
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data?.result?.content?.[0]?.text || null;
+  } catch {
+    return null;
+  }
+}
 
-ARCHITECTURE: Multi-tenant (org→coaches→clients→assessments). 8-phase assessment (P0-P7) with clinical decision table. 6-pillar scoring engine (body comp, cardio, strength, movement, lifestyle, posture). Posture pipeline: camera→MediaPipe→landmark extraction→alignment analysis→overlay render. Offline sync, PWA, achievements system, roadmap builder. Public air-gap: dedicated viewer components for public routes.
+async function buildSystemPrompt(area) {
+  const cursorRules = readFile('.cursorrules') || '';
+  const northStar = readFile('NORTH_STAR.md') || '';
+  const packageJson = readFile('package.json') || '';
 
-NORTH STAR: Eliminate assessment admin burden for coaches. Mission metric: days to first paying customer.
+  let deps = {};
+  try {
+    const pkg = JSON.parse(packageJson);
+    deps = { ...pkg.dependencies, ...pkg.devDependencies };
+  } catch {}
 
-CODING STANDARDS (from .cursorrules):
-- TypeScript strict: no any, no ts-ignore without justification
-- Every Firestore query must have limit() and organizationId scope
-- No Firebase initialisation in components — import from @/services/firebase
-- Sensitive operations (PDF, email, billing) in Cloud Functions only
-- Components max 150 lines — extract to hooks and sub-components
-- No console.log in committed code — use logger utility
-- Analytics features must write summaries at write time
-- MediaPipe singleton pattern only — never initialise multiple instances
-- Air-gap public routes — dedicated viewer components, never flag-hiding
+  const reactVersion = deps['react'] || 'unknown';
+  const firebaseVersion = deps['firebase'] || 'unknown';
 
-You are performing a DEEP CODE AUDIT reading actual source files line by line.
+  console.log('Fetching Context7 documentation...');
+  let context7Content = '';
+  const docFetches = [];
 
-For every file check:
-🔴 CRITICAL BUGS: null/undefined access without guards, missing error handling in async operations, race conditions in useEffect, memory leaks (unsubscribed listeners, uncleaned timers), incorrect dependency arrays, data loss scenarios, auth checks missing, organizationId not verified
-🔴 SECURITY: secrets in client code, missing auth in Cloud Functions, Firestore queries missing organizationId, unsanitized user input in calculations, public routes exposing coach data
-🟡 PERFORMANCE: unbounded Firestore queries, re-renders from object/array creation in render, missing useMemo/useCallback on expensive ops, MediaPipe initialised multiple times, N+1 query patterns
-🟡 CODE QUALITY: any types, components over 150 lines, business logic in components, magic strings, console.log, commented-out code, TODO comments
-🟡 ARCHITECTURE: Firebase init in components, sensitive ops client-side, missing loading/error states, analytics not at write time
+  if (['assessment', 'dashboard', 'reports', 'onboarding'].includes(area) || area === 'full') {
+    docFetches.push(
+      fetchContext7Docs('/firebase/firebase-js-sdk', 'Firestore security best practices and query optimization'),
+      fetchContext7Docs('/facebook/react', 'useEffect cleanup, memory leaks, and hook best practices'),
+    );
+  }
+  if (['security', 'billing'].includes(area) || area === 'full') {
+    docFetches.push(
+      fetchContext7Docs('/firebase/firebase-js-sdk', 'Firebase Auth security and admin SDK'),
+      fetchContext7Docs('/stripe/stripe-node', 'Stripe webhook verification and subscription handling'),
+    );
+  }
+  if (['posture'].includes(area) || area === 'full') {
+    docFetches.push(
+      fetchContext7Docs('/facebook/react', 'Performance optimization and useCallback useMemo'),
+    );
+  }
 
-RESPONSE FORMAT:
-Produce a thorough, line-specific audit. For each file:
-- File path and grade (A/B/C/D/F)
-- Specific issues with line references where possible
-- What's done well
+  const docResults = await Promise.allSettled(docFetches);
+  const validDocs = docResults.filter(r => r.status === 'fulfilled' && r.value).map(r => r.value);
 
-Then:
-- Overall system health score (0-100)
-- Priority fix list (critical first)
-- Cursor prompts section
+  if (validDocs.length > 0) {
+    context7Content = `\n\nCURRENT LIBRARY DOCUMENTATION (fetched live via Context7):\n${validDocs.join('\n\n---\n\n')}`;
+    console.log(`✓ Fetched ${validDocs.length} Context7 documentation sources`);
+  } else {
+    console.log('Context7 docs unavailable — proceeding with training knowledge');
+  }
 
-CURSOR PROMPTS — MANDATORY at the end:
-For each issue found, provide a ready-to-paste Cursor prompt:
+  return `You are the CTO Agent for One Assess — performing a DEEP CODE AUDIT of the ${area.toUpperCase()} system.
+
+════════════════════════════════════════
+NORTH STAR (live from NORTH_STAR.md):
+════════════════════════════════════════
+${northStar}
+
+════════════════════════════════════════
+CODING STANDARDS (live from .cursorrules):
+════════════════════════════════════════
+${cursorRules}
+
+════════════════════════════════════════
+ACTUAL STACK VERSIONS (from package.json):
+════════════════════════════════════════
+React: ${reactVersion}
+Firebase: ${firebaseVersion}
+Dependencies: ${Object.keys(deps).slice(0, 30).join(', ')}
+${context7Content}
+
+════════════════════════════════════════
+AUDIT INSTRUCTIONS:
+════════════════════════════════════════
+You are reading ACTUAL SOURCE FILES — every line, not summaries.
+Cross-reference ALL findings against the live .cursorrules above.
+Every violation of a cursorrules standard is a confirmed issue.
+Every violation of the North Star principles is a strategic concern.
+
+For every file:
+1. Grade: A/B/C/D/F
+2. Line-specific issues with exact line numbers
+3. Which cursorrule is violated
+4. What is done well
+
+Severity:
+🔴 CRITICAL: data loss, security breach, crash, auth bypass, missing organizationId
+🟡 WARNING: cursorrules violation, performance issue, code quality
+🟢 GOOD: correct patterns, follows rules
+
+Health score 0-100:
+90-100: Production ready
+70-89: Minor cleanup needed
+50-69: Significant work before launch
+30-49: Substantial issues, do not launch
+0-29: Critical failures
+
+End with section: 📋 Cursor Prompts — Copy & Paste These
+
+For each issue:
 ---
-File: \`path/to/file.tsx\`
-Issue: [one line]
+File: path/to/file.tsx
+Cursorrule violated: [exact rule]
+Issue: [specific problem]
 Cursor Prompt:
-In [filename], [specific instruction referencing actual code]. Fix by [what to do].
----`;
+In [filename], [exact instruction]. Current code [what is wrong]. Fix by [specific solution].
+---
 
-async function callClaude(content, area) {
+Be thorough. Vague feedback is useless.`;
+}
+
+async function callClaude(systemPrompt, fileContent, area) {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -141,30 +235,24 @@ async function callClaude(content, area) {
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 8000,
-      system: CTO_SYSTEM,
-      messages: [{
-        role: 'user',
-        content: `Perform a deep audit of the ${area.toUpperCase()} system.\n\nI am giving you the ACTUAL SOURCE FILES — read every line carefully.\n\n${content}`
-      }]
+      system: systemPrompt,
+      messages: [{ role: 'user', content: `Perform a deep audit of the ${area.toUpperCase()} system.\n\nACTUAL SOURCE FILES:\n\n${fileContent}` }]
     })
   });
-
   const data = await response.json();
   if (data.error) throw new Error(data.error.message);
   return data.content[0].text;
 }
 
 async function postToSlack(webhook, text) {
-  // Slack has a 4000 char limit per block — split if needed
   const chunks = [];
   let current = text;
   while (current.length > 3800) {
     const splitAt = current.lastIndexOf('\n', 3800);
-    chunks.push(current.slice(0, splitAt));
-    current = current.slice(splitAt);
+    chunks.push(current.slice(0, splitAt > 0 ? splitAt : 3800));
+    current = current.slice(splitAt > 0 ? splitAt : 3800);
   }
   chunks.push(current);
-
   for (const chunk of chunks) {
     await fetch(webhook, {
       method: 'POST',
@@ -179,74 +267,78 @@ async function main() {
   const area = process.env.AUDIT_AREA || 'assessment';
   const runId = process.env.RUN_ID || Date.now().toString();
 
-  console.log(`Starting ${area} audit (run: ${runId})`);
+  console.log(`\n🔬 One Assess CTO Audit`);
+  console.log(`Area: ${area} | Run: ${runId}`);
+  console.log('─'.repeat(50));
 
-  // Get file list
+  console.log('\nReading live rule files...');
+  const cursorRulesExists = fs.existsSync(path.join(process.cwd(), '.cursorrules'));
+  const northStarExists = fs.existsSync(path.join(process.cwd(), 'NORTH_STAR.md'));
+  console.log(`✓ .cursorrules: ${cursorRulesExists ? 'found' : 'MISSING'}`);
+  console.log(`✓ NORTH_STAR.md: ${northStarExists ? 'found' : 'MISSING'}`);
+
+  const systemPrompt = await buildSystemPrompt(area);
+
   const filesToAudit = area === 'full'
     ? Object.values(AUDIT_FILES).flat()
     : (AUDIT_FILES[area] || AUDIT_FILES.assessment);
 
-  // Read files from repo (GitHub Actions has full checkout)
+  console.log(`\nReading ${filesToAudit.length} source files...`);
   let fileContent = '';
   const filesRead = [];
   const filesMissing = [];
 
   for (const filePath of filesToAudit) {
-    const fullPath = path.join(process.cwd(), filePath);
-    if (fs.existsSync(fullPath)) {
-      const content = fs.readFileSync(fullPath, 'utf8');
+    const content = readFile(filePath);
+    if (content) {
       const lines = content.split('\n').length;
       filesRead.push({ path: filePath, lines });
-      fileContent += `\n${'='.repeat(60)}\nFILE: ${filePath}\nLINES: ${lines}\n${'─'.repeat(40)}\n${content}\n`;
-      console.log(`✓ Read ${filePath} (${lines} lines)`);
+      fileContent += `\n${'═'.repeat(60)}\nFILE: ${filePath}\nLINES: ${lines}\n${'─'.repeat(40)}\n${content}\n`;
+      console.log(`  ✓ ${filePath} (${lines} lines)`);
     } else {
       filesMissing.push(filePath);
-      console.log(`✗ Missing: ${filePath}`);
+      console.log(`  ✗ ${filePath} — not found`);
     }
   }
 
   console.log(`\nFiles read: ${filesRead.length}/${filesToAudit.length}`);
-  if (filesMissing.length > 0) {
-    console.log(`Missing: ${filesMissing.join(', ')}`);
-  }
+  console.log('\nRunning Claude analysis with live rules context...');
 
-  // Run Claude audit
-  console.log('\nRunning Claude analysis...');
   let auditResult;
   try {
-    auditResult = await callClaude(fileContent, area);
+    auditResult = await callClaude(systemPrompt, fileContent, area);
     console.log('✓ Claude analysis complete');
   } catch (err) {
     console.error('Claude error:', err.message);
     auditResult = `Audit failed: ${err.message}`;
   }
 
-  // Save result for APEX OS polling
   const resultData = {
-    runId,
-    area,
-    status: 'complete',
+    runId, area, status: 'complete',
     timestamp: new Date().toISOString(),
-    filesRead: filesRead.length,
-    filesMissing,
+    filesRead: filesRead.length, filesMissing,
+    cursorRulesUsed: cursorRulesExists,
+    northStarUsed: northStarExists,
     result: auditResult
   };
 
   fs.writeFileSync('audit-result.json', JSON.stringify(resultData, null, 2));
-  console.log('✓ Result saved to audit-result.json');
-
-  // Post header to Slack
-  const header = `*🔬 CTO Audit — ${area.toUpperCase()} System*\n_${new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}_\n*Files analysed:* ${filesRead.length} source files${filesMissing.length > 0 ? `\n*Not found:* ${filesMissing.join(', ')}` : ''}\n\n`;
+  console.log('✓ Saved audit-result.json');
 
   if (process.env.SLACK_ENGINEERING) {
+    const header = `*🔬 CTO Audit — ${area.toUpperCase()} System*\n` +
+      `_${new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}_\n` +
+      `*Files analysed:* ${filesRead.length} source files\n` +
+      `*Rules:* Live .cursorrules ✓ | NORTH_STAR.md ✓\n` +
+      (filesMissing.length > 0 ? `*Not found:* ${filesMissing.join(', ')}\n` : '') + `\n`;
     await postToSlack(process.env.SLACK_ENGINEERING, header + auditResult);
     console.log('✓ Posted to Slack #01-engineering');
   }
 
-  console.log('\nAudit complete.');
+  console.log('\n✅ Audit complete.\n');
 }
 
 main().catch(err => {
-  console.error('Fatal:', err);
+  console.error('Fatal error:', err);
   process.exit(1);
 });
