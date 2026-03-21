@@ -23,7 +23,9 @@ async function main(): Promise<void> {
     throw new Error('Set STRIPE_SECRET_KEY (test or live) before running this script.');
   }
 
-  const stripe = new Stripe(key, { apiVersion: '2026-01-28.clover' });
+  const stripe = new Stripe(key, {
+    apiVersion: '2024-11-20.acacia' as Stripe.StripeConfig['apiVersion'],
+  });
   const isLive = key.startsWith('sk_live');
   const mode = isLive ? 'LIVE' : 'TEST';
 

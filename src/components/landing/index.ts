@@ -12,6 +12,7 @@ export { FAQAccordion, FAQSection } from './FAQAccordion';
 export { CTASection } from './CTASection';
 export { Footer } from './Footer';
 export { Navbar } from './Navbar';
+export { LandingTrialCtaLink } from './LandingTrialCtaLink';
 export { HowItWorksSection } from './HowItWorksSection';
 export { ScannerShowcase } from './ScannerShowcase';
 export { UnderTheHood } from './UnderTheHood';

@@ -291,6 +291,14 @@ export interface CreateCheckoutResponse {
   sessionId: string;
 }
 
+/** Logged-out landing flow — same GB capacity prices, no organizationId (test mode only on server). */
+export interface CreateLandingGuestCheckoutRequest {
+  region: Region;
+  clientCount: number;
+  billingPeriod: BillingPeriod;
+  packageTrack: PackageTrack;
+}
+
 /**
  * Stripe subscription state stored on organization document.
  * Updated by the stripeWebhook Cloud Function.

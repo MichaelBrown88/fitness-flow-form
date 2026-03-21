@@ -1,3 +1,4 @@
+import './init-env';
 import * as admin from 'firebase-admin';
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
@@ -5,6 +6,7 @@ import { onCall, onRequest } from 'firebase-functions/v2/https';
 import { requestShareLinks, sendReportEmail } from './share';
 import {
   handleCreateCheckoutSession,
+  handleCreateLandingGuestCheckoutSession,
   handleStripeWebhook,
   handleCreateCustomerPortalSession,
   handleCreateBrandingCheckoutSession,
@@ -74,6 +76,17 @@ export const createCheckoutSession = onCall({
   await assertRateLimit(db, key, { maxRequests: 10, windowSeconds: 60 });
   return handleCreateCheckoutSession(request);
 });
+
+/** Unauthenticated: landing-page “Get started” → Stripe Checkout (STRIPE_MODE=test + ENABLE_LANDING_GUEST_CHECKOUT only). */
+export const createLandingGuestCheckoutSession = onCall(
+  {
+    enforceAppCheck: false,
+    invoker: 'public',
+  },
+  async (request) => {
+    return handleCreateLandingGuestCheckoutSession(request);
+  },
+);
 
 export const stripeWebhook = onRequest(
   { cors: false },

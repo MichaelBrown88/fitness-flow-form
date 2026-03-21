@@ -24,6 +24,8 @@ export const ROUTES = {
   PUBLIC_REPORT_PRE_SESSION: '/r/:token/pre-session',
   ASSESSMENT_REPORT: '/coach/assessments/:id',
   ASSESSMENT_REPORT_CLIENT: '/coach/assessments/:id/client',
+  /** Marketing pricing — same page as landing pricing; reachable when signed in (unlike `/`). */
+  PRICING: '/pricing',
   ABOUT: '/about',
   CONTACT: '/contact',
   BLOG: '/blog',

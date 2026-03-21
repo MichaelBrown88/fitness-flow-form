@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { LandingTrialCtaLink } from "@/components/landing/LandingTrialCtaLink";
 import {
   ArrowRight,
   Play,
@@ -68,13 +69,12 @@ export function HeroSection() {
             ) : (
               <>
                 {/* Primary — solid, compact */}
-                <Link
-                  to="/onboarding"
+                <LandingTrialCtaLink
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-slate-900/20 group"
                 >
                   Start Free Trial
                   <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                </Link>
+                </LandingTrialCtaLink>
                 {/* Secondary — links to interactive demo */}
                 <Link
                   to="/demo"

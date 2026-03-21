@@ -42,12 +42,15 @@ export const PLATFORM_DASHBOARD_TABS = {
 export type PlatformDashboardTab = (typeof PLATFORM_DASHBOARD_TABS)[keyof typeof PLATFORM_DASHBOARD_TABS];
 
 /**
- * Stripe Configuration Constants
- * 
- * All Stripe keys are sourced from environment variables.
- * If VITE_STRIPE_PUBLISHABLE_KEY is not set, payment is skipped
- * and onboarding falls back to free trial mode.
+ * Stripe & billing (client). Keys come from env; see `.env.example`.
  */
+
+/**
+ * Dev-only: authenticated “Test Stripe checkout” via `createCheckoutSession` (requires sign-in + org).
+ */
+export const LANDING_CHECKOUT_TEST_ENABLED =
+  import.meta.env.DEV && import.meta.env.VITE_ENABLE_LANDING_CHECKOUT_TEST === 'true';
+
 export const STRIPE_CONFIG = {
   /** Client-side publishable key — safe to expose in frontend */
   publishableKey: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '',
@@ -58,3 +61,20 @@ export const STRIPE_CONFIG = {
   /** Cancel redirect path if user backs out of checkout */
   cancelPath: '/billing',
 } as const;
+
+const landingGuestOptInRaw = String(import.meta.env.VITE_ENABLE_LANDING_GUEST_CHECKOUT ?? '')
+  .trim()
+  .toLowerCase();
+const landingGuestOptIn =
+  landingGuestOptInRaw === 'true' ||
+  landingGuestOptInRaw === '1' ||
+  landingGuestOptInRaw === 'yes';
+
+/**
+ * Logged-out landing paid flow → `createLandingGuestCheckoutSession` (server: STRIPE_MODE=test + ENABLE_LANDING_GUEST_CHECKOUT).
+ * On when publishable key is set, not explicitly disabled, and (Vite dev server OR explicit opt-in).
+ */
+export const LANDING_GUEST_CHECKOUT_ENABLED =
+  STRIPE_CONFIG.isEnabled &&
+  import.meta.env.VITE_DISABLE_LANDING_GUEST_CHECKOUT !== 'true' &&
+  (import.meta.env.DEV || landingGuestOptIn);

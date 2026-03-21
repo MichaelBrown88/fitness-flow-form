@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { LandingTrialCtaLink } from '@/components/landing/LandingTrialCtaLink';
 
 export function Navbar() {
   const { user } = useAuth();
@@ -75,12 +76,9 @@ export function Navbar() {
                 >
                   Log in
                 </Link>
-                <Link 
-                  to="/onboarding"
-                  className="bg-slate-900 text-white px-5 py-2 rounded-full text-sm font-semibold hover:bg-slate-800 transition-all shadow-md hover:shadow-lg active:scale-95"
-                >
+                <LandingTrialCtaLink className="bg-slate-900 text-white px-5 py-2 rounded-full text-sm font-semibold hover:bg-slate-800 transition-all shadow-md hover:shadow-lg active:scale-95">
                   Start Free Trial
-                </Link>
+                </LandingTrialCtaLink>
               </>
             )}
           </div>
@@ -128,13 +126,12 @@ export function Navbar() {
                 >
                   Log in
                 </Link>
-                <Link 
-                  to="/onboarding"
+                <LandingTrialCtaLink
                   className="bg-slate-900 text-white py-3.5 rounded-xl font-semibold w-full shadow-lg"
-                  onClick={() => setIsMobileMenuOpen(false)}
+                  onNavigate={() => setIsMobileMenuOpen(false)}
                 >
                   Start Free Trial
-                </Link>
+                </LandingTrialCtaLink>
               </>
             )}
           </div>

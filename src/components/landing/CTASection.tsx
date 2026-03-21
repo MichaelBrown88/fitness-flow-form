@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { LandingTrialCtaLink } from '@/components/landing/LandingTrialCtaLink';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
 
 export function CTASection() {
@@ -36,13 +37,10 @@ export function CTASection() {
               </Link>
             ) : (
               <div className="flex flex-col items-center gap-4">
-                <Link 
-                  to="/onboarding"
-                  className="inline-flex items-center justify-center gap-2 bg-white text-slate-900 px-8 py-4 rounded-xl text-base font-bold shadow-lg shadow-white/10 hover:bg-slate-100 transition-colors"
-                >
+                <LandingTrialCtaLink className="inline-flex items-center justify-center gap-2 bg-white text-slate-900 px-8 py-4 rounded-xl text-base font-bold shadow-lg shadow-white/10 hover:bg-slate-100 transition-colors">
                   Start Free Trial
                   <ArrowRight className="h-5 w-5" />
-                </Link>
+                </LandingTrialCtaLink>
                 <p className="text-slate-500 text-sm">No credit card required</p>
               </div>
             )}

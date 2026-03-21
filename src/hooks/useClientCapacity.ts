@@ -9,8 +9,8 @@ import { getDb } from '@/services/firebase';
 import {
   FREE_TIER_CLIENT_LIMIT,
   FREE_TIER_MONTHLY_AI_CREDITS,
-  UNLIMITED_CREDITS,
   getPaidTierByClientCount,
+  isUnlimitedAiCredits,
   getPaidTierById,
   isPaidCapacityTierId,
   type PaidCapacityTierId,
@@ -135,10 +135,9 @@ export function useClientCapacity(): ClientCapacityState & {
             : FREE_TIER_MONTHLY_AI_CREDITS;
 
     const aiCredits = raw.assessmentCredits;
-    const isUnlimited =
-      aiCredits === UNLIMITED_CREDITS || (aiCredits != null && aiCredits >= 9999);
     // Missing balance = permissive until webhook backfills credits (legacy orgs)
-    const canUseAIAssessment = isUnlimited || aiCredits === null || aiCredits > 0;
+    const canUseAIAssessment =
+      isUnlimitedAiCredits(aiCredits) || aiCredits === null || aiCredits > 0;
 
     const count = raw.statsClientCount;
     const canAddClient = count < cap;

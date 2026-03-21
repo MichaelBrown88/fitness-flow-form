@@ -1,9 +1,9 @@
-import { Link } from 'react-router-dom';
 import { 
   Clock, Moon, FileSpreadsheet, FileText, Smartphone, 
   Calculator, Sun, Check 
 } from 'lucide-react';
 import GlassCard from '@/components/ui/GlassCard';
+import { LandingTrialCtaLink } from '@/components/landing/LandingTrialCtaLink';
 import SectionHeader from '@/components/landing/SectionHeader';
 import StickyCardStack from '@/components/ui/StickyCardStack';
 
@@ -146,12 +146,9 @@ export function ROIComparison() {
                   <p className="text-xs text-indigo-500 mt-2 font-medium">"Spend less time planning, more time coaching."</p>
                 </div>
                 
-                <Link 
-                  to="/onboarding"
-                  className="inline-flex items-center justify-center gap-2 mt-6 px-6 py-3 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 transition-all shadow-lg hover:shadow-xl"
-                >
+                <LandingTrialCtaLink className="inline-flex items-center justify-center gap-2 mt-6 px-6 py-3 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 transition-all shadow-lg hover:shadow-xl">
                   Start Free Trial
-                </Link>
+                </LandingTrialCtaLink>
               </div>
             </GlassCard>
           </div>

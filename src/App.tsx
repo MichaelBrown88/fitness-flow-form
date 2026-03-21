@@ -142,6 +142,8 @@ const App = () => (
                   <Routes>
                     {/* Root: landing for visitors, dashboard redirect for authenticated */}
                     <Route path="/" element={<AuthAwareLanding />} />
+                    {/* Pricing: always shows marketing plans (for signed-in Stripe tests — see VITE_ENABLE_LANDING_CHECKOUT_TEST) */}
+                    <Route path={ROUTES.PRICING} element={<Landing />} />
                     <Route path="/signup" element={<Onboarding />} /> {/* Redirect signup to onboarding */}
                     <Route path="/login" element={<Login />} />
                     <Route path="/signout" element={<SignOut />} /> {/* Force sign out route */}
