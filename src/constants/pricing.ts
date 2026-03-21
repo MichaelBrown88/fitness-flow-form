@@ -1,9 +1,44 @@
 /**
  * Pricing Constants
  *
- * Zero magic strings for region, currency, and seat tiers.
- * Used by pricing config and components.
+ * Region/currency for multi-tenant reporting; capacity packages (GBP) from shared billing module.
  */
+
+import {
+  CAPACITY_TIERS,
+  NEW_CAPACITY_TIERS,
+  LEGACY_CAPACITY_TIERS,
+  getPaidTierByClientCount,
+  type CapacityTier,
+  type PaidCapacityTierId,
+  type BillingPeriod,
+  type CapacityTierId,
+} from '@shared/billing/capacityTiers';
+
+export {
+  CAPACITY_TIERS,
+  NEW_CAPACITY_TIERS,
+  LEGACY_CAPACITY_TIERS,
+  PAID_TIER_IDS,
+  TIER_F_CLIENT_CAP,
+  SOLO_MAX_CLIENT_LIMIT,
+  GYM_MAX_CLIENT_LIMIT,
+  GYM_TRIAL_CLIENT_CAP,
+  CUSTOM_BRANDING_PRICE_GBP,
+  FREE_TIER_CLIENT_LIMIT,
+  FREE_TIER_MONTHLY_AI_CREDITS,
+  getPaidTierByClientCount,
+  getPaidTierForPackageTrack,
+  getActivePaidTiersForTrack,
+  getPaidTierById,
+  isPaidCapacityTierId,
+  annualSavingsVsMonthly,
+  type CapacityTier,
+  type PaidCapacityTierId,
+  type BillingPeriod,
+  type CapacityTierId,
+  type PackageTrack,
+} from '@shared/billing/capacityTiers';
 
 export const REGIONS = ['GB', 'US', 'KW'] as const;
 export type Region = (typeof REGIONS)[number];
@@ -11,6 +46,15 @@ export type Region = (typeof REGIONS)[number];
 export const CURRENCIES = ['GBP', 'USD', 'KWD'] as const;
 export type Currency = (typeof CURRENCIES)[number];
 
+/** Distinct client limits across active GB solo + gym tiers (reference / admin). */
+export const CAPACITY_CLIENT_LIMITS = [
+  10, 20, 35, 50, 75, 100, 150, 200, 250,
+] as const;
+export type CapacityClientLimit = (typeof CAPACITY_CLIENT_LIMITS)[number];
+
+/**
+ * @deprecated Legacy Everfit-style seat counts — used only for US/KW pricing tables and admin fallbacks.
+ */
 export const SEAT_TIERS = [5, 10, 20, 35, 50, 75, 100, 150, 250, 300] as const;
 export type SeatTier = (typeof SEAT_TIERS)[number];
 
@@ -26,22 +70,12 @@ export const REGION_LABELS: Record<Region, string> = {
   KW: 'Kuwait',
 };
 
-/** Default region for new orgs (UK base) */
 export const DEFAULT_REGION: Region = 'GB';
-
-/** Default currency (UK base) */
 export const DEFAULT_CURRENCY: Currency = 'GBP';
 
-/** KWD to GBP rate for platform reporting (base currency). Used to convert AI costs and regional totals. */
 export const KWD_TO_GBP = 2.6;
 
-/**
- * Monthly AI assessment credits replenished per seat tier.
- * Each AI scan (OCR or posture) consumes 1 credit.
- * Non-AI assessments are always free.
- * Tiers with 300 seats get unlimited credits (represented as -1).
- */
-export const MONTHLY_CREDITS_BY_TIER: Record<number, number> = {
+const LEGACY_MONTHLY_CREDITS: Record<number, number> = {
   5: 15,
   10: 30,
   20: 60,
@@ -51,15 +85,40 @@ export const MONTHLY_CREDITS_BY_TIER: Record<number, number> = {
   100: 200,
   150: 300,
   250: 500,
-  300: -1, // unlimited
+  300: -1,
 };
+
+function buildMonthlyCreditsByTier(): Record<number, number> {
+  const m: Record<number, number> = { ...LEGACY_MONTHLY_CREDITS };
+  for (const t of NEW_CAPACITY_TIERS) {
+    if (t.packageTrack === 'solo') {
+      m[t.clientLimit] = t.monthlyAiCredits;
+    }
+  }
+  for (const t of LEGACY_CAPACITY_TIERS) {
+    if (m[t.clientLimit] == null) {
+      m[t.clientLimit] = t.monthlyAiCredits;
+    }
+  }
+  return m;
+}
+
+/**
+ * Monthly AI credits by nominal client/seat limit.
+ * Each AI OCR or posture scan consumes 1 credit. Non-AI assessments are free.
+ */
+export const MONTHLY_CREDITS_BY_TIER: Record<number, number> = buildMonthlyCreditsByTier();
+
+/** Ambiguous limits (e.g. 50/100 on both tracks): default to solo ladder for generic lookups. */
+export function monthlyAiCreditsForClientLimit(clientLimit: number): number {
+  const direct = MONTHLY_CREDITS_BY_TIER[clientLimit];
+  if (direct != null) return direct;
+  return getPaidTierByClientCount(clientLimit, 'solo').monthlyAiCredits;
+}
 
 /** Sentinel value for unlimited credits */
 export const UNLIMITED_CREDITS = -1;
 
-/**
- * Credit top-up pack: 20 scans for a fixed price per region.
- */
 export const CREDIT_TOPUP_PRICE: Record<Region, number> = {
   GB: 9,
   US: 12,

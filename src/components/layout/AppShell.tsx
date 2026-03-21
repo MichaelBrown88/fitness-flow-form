@@ -76,8 +76,9 @@ export default function AppShell({
     }
   }, [user, resendState]);
 
-  // Custom branding: only when explicitly enabled. Treat undefined as true for existing orgs (legacy).
-  const customBrandingEnabled = orgSettings?.customBrandingEnabled !== false;
+  // Paid custom branding, or legacy orgs with no flag set (grandfathered).
+  const customBrandingEnabled =
+    orgSettings?.customBrandingEnabled === true || orgSettings?.customBrandingEnabled === undefined;
   // Use public branding if provided (for unauthenticated routes), otherwise fallback to auth context. Gate on custom branding.
   const hasOrgLogo = customBrandingEnabled && (publicLogoUrl || (orgSettings?.logoUrl && orgSettings.logoUrl.trim() !== ''));
   const logoUrl = !customBrandingEnabled ? null : (publicLogoUrl !== undefined ? publicLogoUrl : (hasOrgLogo ? orgSettings?.logoUrl : null));

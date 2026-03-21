@@ -88,11 +88,13 @@ export default function Terms() {
               offered) based on your selected plan and client capacity. Fees are charged in the currency of your
               selected billing region: British Pound (GBP), US Dollar (USD), or Kuwaiti Dinar (KWD).
             </p>
-            <h3 className="text-xl font-semibold text-foreground mb-3">3.1 Free Trial</h3>
+            <h3 className="text-xl font-semibold text-foreground mb-3">3.1 Free tier and trial</h3>
             <p className="text-foreground-secondary leading-relaxed mb-4">
-              New users may be eligible for a 14-day free trial. The trial period begins upon account creation. 
-              At the end of the trial period, your subscription will automatically convert to a paid plan 
-              unless you cancel before the trial expires.
+              Solo coach accounts may use a free tier with a limited number of active clients and no payment
+              method required; this is not a time-limited trial. Gym, studio, and multi-coach accounts may be
+              offered a 14-day trial from account creation. Trial terms, including any client limits during the
+              trial, are shown in the product at signup. When a trial ends, access to paid features requires an
+              active subscription — we do not silently convert you to a paid plan without checkout.
             </p>
             <h3 className="text-xl font-semibold text-foreground mb-3">3.2 Cancellation</h3>
             <p className="text-foreground-secondary leading-relaxed mb-4">

@@ -57,10 +57,26 @@ export interface DefaultCadenceConfig {
   activePillars?: import('@/types/client').PartialAssessmentCategory[];
 }
 
+/** Billing fields mirrored from `organizations/{id}` for dashboard guards. */
+export interface OrgSubscriptionSnapshot {
+  plan?: string;
+  planKind?: string;
+  status?: string;
+  trialEndsAt?: Timestamp | Date;
+  clientCap?: number;
+  trialClientCap?: number;
+  clientSeats?: number;
+  monthlyAiCredits?: number;
+  packageTrack?: string;
+  billingEmail?: string;
+}
+
 export interface OrgSettings {
   name: string;
   /** Facility type set during onboarding (solo_coach, gym, gym_chain) */
   type?: string;
+  /** Billing region from onboarding (GB, US, KW). */
+  region?: string;
   logoUrl?: string;
   brandColor?: string; // hex (deprecated - use gradientId instead)
   gradientId?: string; // Gradient ID from gradient system (e.g., 'purple-indigo', 'blue-cyan')
@@ -84,8 +100,8 @@ export interface OrgSettings {
   customBrandingEnabled?: boolean;
   // Default retest cadence for new clients
   defaultCadence?: DefaultCadenceConfig;
-  /** Billing / trial fields stored on the org root document (optional) */
-  subscription?: { plan?: string };
+  /** Billing / trial fields on the org root document */
+  subscription?: OrgSubscriptionSnapshot;
   trialAssessmentsRemaining?: number;
   /** Remaining AI assessment credits (Stripe / billing) */
   assessmentCredits?: number;
@@ -225,6 +241,8 @@ export async function getOrgSettings(orgId: string): Promise<OrgSettings> {
   // Return cleaned data structure
   return {
     name: data.name ?? DEFAULT_SETTINGS.name,
+    type: data.type,
+    region: data.region,
     brandColor: data.brandColor ?? DEFAULT_SETTINGS.brandColor,
     gradientId: data.gradientId ?? DEFAULT_SETTINGS.gradientId,
     logoUrl: data.logoUrl,
@@ -241,6 +259,10 @@ export async function getOrgSettings(orgId: string): Promise<OrgSettings> {
     demoAutoFillEnabled: data.demoAutoFillEnabled ?? DEFAULT_SETTINGS.demoAutoFillEnabled,
     customBrandingEnabled: data.customBrandingEnabled,
     defaultCadence: data.defaultCadence ?? DEFAULT_SETTINGS.defaultCadence,
+    subscription: data.subscription as OrgSettings['subscription'],
+    assessmentCredits: typeof data.assessmentCredits === 'number' ? data.assessmentCredits : undefined,
+    trialAssessmentsRemaining:
+      typeof data.trialAssessmentsRemaining === 'number' ? data.trialAssessmentsRemaining : undefined,
   };
 }
 

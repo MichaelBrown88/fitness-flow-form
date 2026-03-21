@@ -19,6 +19,7 @@ import { isStaffRole } from '@/types/auth';
 import { AuthContext } from '@/hooks/useAuth';
 import { logger } from '@/lib/utils/logger';
 import { isTestEmail } from '@/lib/utils/testAccountHelper';
+import { GYM_TRIAL_CLIENT_CAP } from '@/constants/pricing';
 import { 
   startImpersonation as startImpersonationService, 
   endImpersonation as endImpersonationService,
@@ -196,9 +197,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               const orgData = orgSnap.data();
               setOrgSettings({
                 name: orgData.name || 'Your Organization',
+                type: orgData.type,
+                region: orgData.region,
                 brandColor: orgData.brandColor || '#03dee2',
                 gradientId: orgData.gradientId || 'purple-indigo',
                 logoUrl: orgData.logoUrl,
+                customBrandingEnabled: orgData.customBrandingEnabled,
+                subscription: orgData.subscription,
+                assessmentCredits:
+                  typeof orgData.assessmentCredits === 'number' ? orgData.assessmentCredits : undefined,
+                trialAssessmentsRemaining:
+                  typeof orgData.trialAssessmentsRemaining === 'number'
+                    ? orgData.trialAssessmentsRemaining
+                    : undefined,
                 modules: (() => {
                   const raw = {
                     parq: true,
@@ -221,7 +232,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   return raw;
                 })() as OrgSettings['modules'],
                 equipmentConfig: orgData.equipmentConfig,
-                onboardingCompletedAt: orgData.onboardingCompletedAt
+                onboardingCompletedAt: orgData.onboardingCompletedAt,
               } as OrgSettings);
             }
             setLoading(false);
@@ -274,14 +285,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     // Create initial organization document (minimal, will be populated during onboarding)
     await setDoc(doc(db, 'organizations', `org-${newUser.uid}`), {
-      name: '', // Will be set during onboarding
+      name: '',
       ownerId: newUser.uid,
+      customBrandingEnabled: false,
       subscription: {
         plan: 'starter',
+        planKind: 'pending_onboarding',
         status: 'trial',
-        trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days
+        trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
         billingEmail: email,
-        clientSeats: 10, // Default, will be updated in Phase 1
+        clientSeats: GYM_TRIAL_CLIENT_CAP,
+        clientCap: GYM_TRIAL_CLIENT_CAP,
+        trialClientCap: GYM_TRIAL_CLIENT_CAP,
       },
       createdAt: serverTimestamp(),
       ...(isTestEmail(email) && { metadata: { isTest: true } }),
@@ -310,12 +325,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await setDoc(doc(db, 'organizations', `org-${newUser.uid}`), {
         name: '',
         ownerId: newUser.uid,
+        customBrandingEnabled: false,
         subscription: {
           plan: 'starter',
+          planKind: 'pending_onboarding',
           status: 'trial',
           trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
           billingEmail: newUser.email || '',
-          clientSeats: 10,
+          clientSeats: GYM_TRIAL_CLIENT_CAP,
+          clientCap: GYM_TRIAL_CLIENT_CAP,
+          trialClientCap: GYM_TRIAL_CLIENT_CAP,
         },
         createdAt: serverTimestamp(),
         ...(isTestEmail(newUser.email || '') && { metadata: { isTest: true } }),
@@ -343,12 +362,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await setDoc(doc(db, 'organizations', `org-${newUser.uid}`), {
         name: '',
         ownerId: newUser.uid,
+        customBrandingEnabled: false,
         subscription: {
           plan: 'starter',
+          planKind: 'pending_onboarding',
           status: 'trial',
           trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
           billingEmail: newUser.email || '',
-          clientSeats: 10,
+          clientSeats: GYM_TRIAL_CLIENT_CAP,
+          clientCap: GYM_TRIAL_CLIENT_CAP,
+          trialClientCap: GYM_TRIAL_CLIENT_CAP,
         },
         createdAt: serverTimestamp(),
         ...(isTestEmail(newUser.email || '') && { metadata: { isTest: true } }),

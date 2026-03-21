@@ -1,10 +1,12 @@
 /**
- * Pricing Config - Everfit-style seat blocks, UK base £29
+ * Pricing Config
  *
- * Location-based pricing (UK, US, Kuwait). Lookup tables only; no formulas in production.
+ * UK (GB): CFO capacity packages via shared billing tiers.
+ * US/KW: legacy seat-block lookup tables until regional capacity prices exist.
  */
 
-import type { Region, SeatTier } from '@/constants/pricing';
+import type { Region } from '@/constants/pricing';
+import { getPaidTierByClientCount, CUSTOM_BRANDING_PRICE_GBP } from '@shared/billing/capacityTiers';
 
 /** Subscription monthly price by region and client count (main unit: GBP, USD, KWD) */
 export const PRICING_SUBSCRIPTION: Record<Region, Record<number, number>> = {
@@ -55,7 +57,7 @@ export const PRICING_OVERAGE_RATE: Record<Region, number> = {
 
 /** Custom branding one-off add-on (main unit) */
 export const CUSTOM_BRANDING: Record<Region, number> = {
-  GB: 60,
+  GB: CUSTOM_BRANDING_PRICE_GBP,
   US: 85,
   KW: 23,
 };
@@ -67,6 +69,9 @@ export const CUSTOM_BRANDING: Record<Region, number> = {
 export function getMonthlyPrice(region: Region, clientCount: number): number {
   const safeCount = Math.max(0, Math.floor(Number(clientCount)));
   if (Number.isNaN(safeCount)) return 0;
+  if (region === 'GB') {
+    return getPaidTierByClientCount(safeCount, 'solo').monthlyPriceGbp;
+  }
   const tiers = PRICING_SUBSCRIPTION[region];
   const tierKeys = [5, 10, 20, 35, 50, 75, 100, 150, 250, 300];
   if (safeCount <= 300) {

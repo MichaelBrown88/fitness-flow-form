@@ -18,12 +18,12 @@ export function PricingSection({ children }: PricingSectionProps) {
         <div ref={headerRef}>
           <SectionHeader
             title={<>Simple, <span className="text-indigo-600">Transparent</span> Pricing</>}
-            subtitle="14-day free trial on every plan. No credit card required."
+            subtitle="Start free, then pick Solo Coach or Gym / Studio and choose client seats — same flow as signup. UK prices in GBP."
             spacing="mb-16 sm:mb-20"
           />
         </div>
 
-        <div ref={gridRef} className="grid md:grid-cols-3 gap-8 items-start">
+        <div ref={gridRef} className="w-full">
           {children}
         </div>
       </div>

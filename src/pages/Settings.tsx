@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useBlocker } from 'react-router-dom';
+import { useNavigate, useBlocker, Link } from 'react-router-dom';
 import AppShell from '@/components/layout/AppShell';
 import { useSettings } from '@/hooks/useSettings';
 import { Switch } from '@/components/ui/switch';
@@ -283,6 +283,57 @@ const Settings = () => {
               >
                 Contact us to add custom branding
               </Button>
+              <p className="text-xs text-slate-500">
+                Or{' '}
+                <Link to={`${ROUTES.CONTACT}?interest=custom-branding`} className="font-semibold text-primary underline-offset-4 hover:underline">
+                  request via the contact form
+                </Link>
+                .
+              </p>
+
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 p-6 space-y-4 mt-6">
+                <h3 className="text-sm font-bold text-slate-900">Preview branding (optional)</h3>
+                <p className="text-xs text-slate-500">
+                  Save a name and gradient for when you purchase. Clients and navigation still show One Assess
+                  branding until the add-on is active.
+                </p>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+                    Organization name
+                  </Label>
+                  <Input
+                    value={localOrgName}
+                    onChange={(e) => setLocalOrgName(e.target.value)}
+                    placeholder="Organization name"
+                    className="rounded-xl border-slate-200 h-11"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+                    Brand gradient
+                  </Label>
+                  <Select value={localGradientId} onValueChange={(value) => setLocalGradientId(value as GradientId)}>
+                    <SelectTrigger className="w-full rounded-xl border-slate-200 h-11">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {gradients.map((gradient) => (
+                        <SelectItem key={gradient.id} value={gradient.id}>
+                          {gradient.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  type="button"
+                  className="rounded-xl"
+                  disabled={isSaving || !brandingDirty}
+                  onClick={() => void handleSaveOrgInfo()}
+                >
+                  {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save preview'}
+                </Button>
+              </div>
             </section>
             ) : (
             <section className="space-y-4">

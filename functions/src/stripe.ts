@@ -5,16 +5,32 @@
  * All Stripe secret-key operations stay server-side per .cursorrules:
  * "Never perform sensitive logic client-side if it exposes secrets."
  *
- * Environment variables required (set via Firebase Functions config):
- *   STRIPE_SECRET_KEY      — Stripe secret API key
- *   STRIPE_WEBHOOK_SECRET  — Stripe webhook signing secret
- *   STRIPE_PRICE_<REGION>_<CLIENT_COUNT> — e.g. STRIPE_PRICE_GB_5, STRIPE_PRICE_GB_10, STRIPE_PRICE_US_5, ...
- *   (Legacy: STRIPE_PRICE_STARTER, STRIPE_PRICE_PRO, STRIPE_PRICE_ENTERPRISE still supported if request has plan/seats)
+ * Environment variables (see root .env.example):
+ *   STRIPE_SECRET_KEY | STRIPE_SECRET_KEY_TEST | STRIPE_SECRET_KEY_LIVE
+ *   STRIPE_MODE=test|live
+ *   STRIPE_WEBHOOK_SECRET (+ _TEST / _LIVE optional)
+ *   STRIPE_PACKAGE_<S10|…|G250|A|…|F>_<MONTHLY|ANNUAL>_<TEST|LIVE> — capacity prices (GBP)
+ *   Legacy: STRIPE_PRICE_<REGION>_<TIER>, STRIPE_PRICE_STARTER|PRO|ENTERPRISE
  */
 
 import * as admin from 'firebase-admin';
 import Stripe from 'stripe';
 import type { CallableRequest } from 'firebase-functions/v2/https';
+import {
+  capacityPriceEnvKey,
+  brandingPriceEnvKey,
+  getPaidTierByClientCount,
+  getPaidTierForPackageTrack,
+  getPaidTierById,
+  getMonthlyAiCreditsForTier,
+  paidTierFromPriceId,
+  stripeModeSuffix,
+  isPaidCapacityTierId,
+  type BillingPeriod,
+  type PaidCapacityTierId,
+  type PackageTrack,
+  FREE_TIER_MONTHLY_AI_CREDITS,
+} from './shared/billing/capacityTiers';
 
 const SEAT_TIERS = [5, 10, 20, 35, 50, 75, 100, 150, 250, 300] as const;
 type Region = 'GB' | 'US' | 'KW';
@@ -24,11 +40,45 @@ type Region = 'GB' | 'US' | 'KW';
 // ---------------------------------------------------------------------------
 let stripeInstance: Stripe | null = null;
 
+function resolveStripeSecretKey(): string {
+  const mode = (process.env.STRIPE_MODE || 'test').toLowerCase();
+  if (mode === 'live') {
+    return (
+      process.env.STRIPE_SECRET_KEY_LIVE ||
+      process.env.STRIPE_SECRET_KEY ||
+      ''
+    );
+  }
+  return (
+    process.env.STRIPE_SECRET_KEY_TEST ||
+    process.env.STRIPE_SECRET_KEY ||
+    ''
+  );
+}
+
+function resolveWebhookSecret(): string {
+  const mode = (process.env.STRIPE_MODE || 'test').toLowerCase();
+  if (mode === 'live') {
+    return (
+      process.env.STRIPE_WEBHOOK_SECRET_LIVE ||
+      process.env.STRIPE_WEBHOOK_SECRET ||
+      ''
+    );
+  }
+  return (
+    process.env.STRIPE_WEBHOOK_SECRET_TEST ||
+    process.env.STRIPE_WEBHOOK_SECRET ||
+    ''
+  );
+}
+
 function getStripe(): Stripe {
   if (!stripeInstance) {
-    const key = process.env.STRIPE_SECRET_KEY;
+    const key = resolveStripeSecretKey();
     if (!key) {
-      throw new Error('STRIPE_SECRET_KEY is not configured. Set it in Cloud Functions environment.');
+      throw new Error(
+        'Stripe secret key not configured. Set STRIPE_SECRET_KEY or STRIPE_SECRET_KEY_TEST / STRIPE_SECRET_KEY_LIVE.',
+      );
     }
     stripeInstance = new Stripe(key, { apiVersion: '2026-01-28.clover' });
   }
@@ -53,10 +103,21 @@ function regionToCurrency(region: string): string {
 // ---------------------------------------------------------------------------
 export interface CheckoutRequest {
   organizationId: string;
-  region: Region;
-  clientCount: number;
+  /** Capacity-based CFO packages (preferred). */
+  tierId?: PaidCapacityTierId;
+  /** Monthly vs annual capacity checkout (GBP). */
+  billingPeriod?: BillingPeriod;
+  /** GB capacity ladder: solo vs gym (same client count → different Stripe price). */
+  packageTrack?: PackageTrack;
+  /** Legacy seat-based checkout */
+  region?: Region;
+  clientCount?: number;
   plan?: 'starter' | 'professional' | 'enterprise';
   seats?: number;
+}
+
+function isPaidTierId(value: unknown): value is PaidCapacityTierId {
+  return typeof value === 'string' && isPaidCapacityTierId(value);
 }
 
 export async function handleCreateCheckoutSession(
@@ -66,7 +127,8 @@ export async function handleCreateCheckoutSession(
     throw new Error('Authentication required.');
   }
 
-  const { organizationId, region, clientCount, plan, seats } = request.data;
+  const { organizationId, region, clientCount, plan, seats, tierId, billingPeriod, packageTrack } =
+    request.data;
 
   if (!organizationId) {
     throw new Error('Missing required field: organizationId.');
@@ -75,8 +137,42 @@ export async function handleCreateCheckoutSession(
   let priceId: string | undefined;
   let effectiveRegion: Region = region ?? 'GB';
   let effectiveClientCount: number = clientCount ?? seats ?? 10;
+  let capacityTierId: PaidCapacityTierId | undefined;
+  let capacityBillingPeriod: BillingPeriod = 'monthly';
 
-  if (region != null && clientCount != null) {
+  if (isPaidTierId(tierId) && (billingPeriod === 'monthly' || billingPeriod === 'annual')) {
+    capacityTierId = tierId;
+    capacityBillingPeriod = billingPeriod;
+    const mode = stripeModeSuffix();
+    const envKey = capacityPriceEnvKey(tierId, billingPeriod, mode);
+    priceId = process.env[envKey];
+    effectiveRegion = 'GB';
+    const tierRow = getPaidTierById(tierId);
+    effectiveClientCount = tierRow?.clientLimit ?? effectiveClientCount;
+    if (!priceId) {
+      throw new Error(
+        `Stripe Price ID not configured for ${envKey}. Create the price in Stripe and set the env var.`,
+      );
+    }
+  } else if (
+    effectiveRegion === 'GB' &&
+    clientCount != null &&
+    (billingPeriod === 'monthly' || billingPeriod === 'annual' || billingPeriod === undefined)
+  ) {
+    const track: PackageTrack = packageTrack === 'gym' ? 'gym' : 'solo';
+    const row = getPaidTierForPackageTrack(clientCount, track);
+    const bp: BillingPeriod = billingPeriod === 'annual' ? 'annual' : 'monthly';
+    const mode = stripeModeSuffix();
+    const envKey = capacityPriceEnvKey(row.id, bp, mode);
+    const pid = process.env[envKey];
+    if (pid) {
+      priceId = pid;
+      capacityTierId = row.id;
+      capacityBillingPeriod = bp;
+      effectiveClientCount = row.clientLimit;
+    }
+  }
+  if (!priceId && region != null && clientCount != null) {
     priceId = getPriceIdForTier(effectiveRegion, effectiveClientCount);
   }
   if (!priceId && plan && seats != null) {
@@ -93,7 +189,7 @@ export async function handleCreateCheckoutSession(
   if (!priceId) {
     throw new Error(
       `Stripe Price ID not configured for region=${effectiveRegion} clientCount=${effectiveClientCount}. ` +
-      'Set STRIPE_PRICE_<REGION>_<TIER> (e.g. STRIPE_PRICE_GB_10) in environment.'
+        'Set capacity env vars (STRIPE_PACKAGE_* ) or STRIPE_PRICE_<REGION>_<TIER>.',
     );
   }
 
@@ -131,6 +227,19 @@ export async function handleCreateCheckoutSession(
 
   const baseUrl = process.env.APP_URL || 'https://one-assess.com';
 
+  const tierRow = capacityTierId ? getPaidTierById(capacityTierId) : undefined;
+  const meta: Record<string, string> = {
+    organizationId,
+    region: String(effectiveRegion),
+    clientCount: String(effectiveClientCount),
+  };
+  if (capacityTierId && tierRow) {
+    meta.tierId = capacityTierId;
+    meta.billingPeriod = capacityBillingPeriod;
+    meta.clientLimit = String(tierRow.clientLimit);
+    meta.monthlyAiCredits = String(tierRow.monthlyAiCredits);
+  }
+
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     mode: 'subscription',
@@ -140,19 +249,11 @@ export async function handleCreateCheckoutSession(
         quantity: 1,
       },
     ],
-    success_url: `${baseUrl}/onboarding?step=success&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${baseUrl}/onboarding?step=payment`,
-    metadata: {
-      organizationId,
-      region: String(effectiveRegion),
-      clientCount: String(effectiveClientCount),
-    },
+    success_url: `${baseUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${baseUrl}/billing`,
+    metadata: meta,
     subscription_data: {
-      metadata: {
-        organizationId,
-        region: String(effectiveRegion),
-        clientCount: String(effectiveClientCount),
-      },
+      metadata: { ...meta },
     },
   });
 
@@ -215,11 +316,18 @@ export interface BrandingCheckoutRequest {
   organizationId: string;
 }
 
-const BRANDING_PRICE_IDS: Record<string, string | undefined> = {
-  GBP: process.env.STRIPE_PRICE_BRANDING_GBP,
-  USD: process.env.STRIPE_PRICE_BRANDING_USD,
-  KWD: process.env.STRIPE_PRICE_BRANDING_KWD,
-};
+function brandingPriceIdForCurrency(currency: string): string | undefined {
+  const mode = stripeModeSuffix();
+  if (currency === 'GBP') {
+    return (
+      process.env[brandingPriceEnvKey(mode)] ||
+      process.env.STRIPE_PRICE_BRANDING_GBP
+    );
+  }
+  if (currency === 'USD') return process.env.STRIPE_PRICE_BRANDING_USD;
+  if (currency === 'KWD') return process.env.STRIPE_PRICE_BRANDING_KWD;
+  return undefined;
+}
 
 export async function handleCreateBrandingCheckoutSession(
   request: CallableRequest<BrandingCheckoutRequest>,
@@ -248,10 +356,10 @@ export async function handleCreateBrandingCheckoutSession(
 
   const region = (orgData?.subscription?.region ?? orgData?.region) as string || 'GB';
   const currency = regionToCurrency(region);
-  const priceId = BRANDING_PRICE_IDS[currency];
+  const priceId = brandingPriceIdForCurrency(currency);
   if (!priceId) {
     throw new Error(
-      `Stripe Price ID for custom branding (${currency}) not configured. Set STRIPE_PRICE_BRANDING_GBP / USD / KWD.`
+      `Stripe Price ID for custom branding (${currency}) not configured. Set STRIPE_CUSTOM_BRANDING_${stripeModeSuffix()} or STRIPE_PRICE_BRANDING_* .`,
     );
   }
 
@@ -294,7 +402,7 @@ export async function handleCreateBrandingCheckoutSession(
 import type { Request, Response } from 'express';
 
 export async function handleStripeWebhook(req: Request, res: Response) {
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const webhookSecret = resolveWebhookSecret();
   if (!webhookSecret) {
     console.error('[Stripe Webhook] STRIPE_WEBHOOK_SECRET not configured');
     res.status(500).send('Webhook secret not configured');
@@ -323,31 +431,51 @@ export async function handleStripeWebhook(req: Request, res: Response) {
       const session = event.data.object as Stripe.Checkout.Session;
       const orgId = session.metadata?.organizationId;
       const region = (session.metadata?.region as string) || 'GB';
-      const clientCount = parseInt(session.metadata?.clientCount || session.metadata?.seats || '10', 10);
+      const legacyClientCount = parseInt(session.metadata?.clientCount || session.metadata?.seats || '10', 10);
       const currency = regionToCurrency(region);
 
       if (orgId && session.subscription) {
+        const subId =
+          typeof session.subscription === 'string' ? session.subscription : session.subscription.id;
+        const sub = await stripe.subscriptions.retrieve(subId);
+        const item = sub.items?.data?.[0];
+        const priceObj = item?.price;
+        const stripePriceId = typeof priceObj === 'string' ? priceObj : priceObj?.id;
         let amountCents = 0;
-        if (typeof session.subscription === 'string') {
-          const sub = await stripe.subscriptions.retrieve(session.subscription);
-          const item = sub.items?.data?.[0];
-          const unitAmount = (item?.price as { unit_amount?: number } | undefined)?.unit_amount;
-          if (unitAmount != null) {
-            amountCents = unitAmount;
-          }
+        const unitAmount = (priceObj as { unit_amount?: number } | undefined)?.unit_amount;
+        if (unitAmount != null) {
+          amountCents = unitAmount;
         }
+
+        const tierFromPrice = paidTierFromPriceId(stripePriceId);
+        const metaTier = session.metadata?.tierId;
+        const capacityTierId: PaidCapacityTierId | undefined = isPaidTierId(metaTier)
+          ? metaTier
+          : tierFromPrice;
+        const tierRow = capacityTierId ? getPaidTierById(capacityTierId) : undefined;
+        const clientLimit =
+          tierRow?.clientLimit ??
+          parseInt(session.metadata?.clientLimit || String(legacyClientCount), 10);
+        const fromMetaCredits = parseInt(session.metadata?.monthlyAiCredits || '0', 10);
+        const monthlyAiCredits =
+          tierRow?.monthlyAiCredits ??
+          (fromMetaCredits > 0 ? fromMetaCredits : getPaidTierByClientCount(legacyClientCount).monthlyAiCredits);
 
         const updateData: Record<string, unknown> = {
           'subscription.status': 'active',
-          'stripe.stripeSubscriptionId': session.subscription,
+          'stripe.stripeSubscriptionId': subId,
           'stripe.stripeCustomerId': session.customer,
-          'stripe.stripePriceId': session.metadata?.plan || session.metadata?.clientCount || '',
-          'subscription.plan': 'starter',
-          'subscription.clientSeats': clientCount,
+          'stripe.stripePriceId': stripePriceId || session.metadata?.plan || session.metadata?.clientCount || '',
+          'subscription.plan': capacityTierId ? `package_${capacityTierId.toLowerCase()}` : 'starter',
+          'subscription.clientSeats': clientLimit,
           'subscription.region': region,
           'subscription.currency': currency,
-          'subscription.clientCount': clientCount,
+          'subscription.clientCount': clientLimit,
           'subscription.amountCents': amountCents,
+          'subscription.capacityTierId': capacityTierId ?? null,
+          'subscription.clientCap': clientLimit,
+          'subscription.monthlyAiCredits': monthlyAiCredits,
+          assessmentCredits: monthlyAiCredits > 0 ? monthlyAiCredits : FREE_TIER_MONTHLY_AI_CREDITS,
         };
         if (currency === 'KWD') {
           updateData['subscription.amountFils'] = amountCents;
@@ -392,6 +520,29 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         const updateData: Record<string, unknown> = {
           'subscription.status': status,
         };
+
+        const item0 = subscription.items?.data?.[0];
+        const priceObj = item0?.price;
+        const stripePriceId = typeof priceObj === 'string' ? priceObj : priceObj?.id;
+        const tierFromPrice = paidTierFromPriceId(stripePriceId);
+        const metaTier = subscription.metadata?.tierId;
+        const capacityTierId: PaidCapacityTierId | undefined = isPaidTierId(metaTier)
+          ? metaTier
+          : tierFromPrice;
+        if (capacityTierId) {
+          const row = getPaidTierById(capacityTierId);
+          if (row) {
+            updateData['subscription.capacityTierId'] = capacityTierId;
+            updateData['subscription.clientCap'] = row.clientLimit;
+            updateData['subscription.clientSeats'] = row.clientLimit;
+            updateData['subscription.clientCount'] = row.clientLimit;
+            updateData['subscription.monthlyAiCredits'] = row.monthlyAiCredits;
+            updateData['subscription.plan'] = `package_${capacityTierId.toLowerCase()}`;
+          }
+        }
+        if (stripePriceId) {
+          updateData['stripe.stripePriceId'] = stripePriceId;
+        }
 
         // cancel_at gives us the period end if set
         if (subscription.cancel_at) {
@@ -469,26 +620,32 @@ export async function handleStripeWebhook(req: Request, res: Response) {
       if (!orgId) break;
 
       const orgSnap = await db.doc(`organizations/${orgId}`).get();
-      const clientSeats: number = orgSnap.data()?.subscription?.clientSeats ?? 5;
+      const orgSub = orgSnap.data()?.subscription as Record<string, unknown> | undefined;
+      const capacityTierId = orgSub?.capacityTierId as string | undefined;
+      const clientSeats: number = (orgSub?.clientSeats as number) ?? (orgSub?.clientCap as number) ?? 5;
 
-      // Credit allocation lookup (mirrors MONTHLY_CREDITS_BY_TIER in pricing constants)
-      const CREDIT_BY_TIER: Record<number, number> = {
-        5: 15, 10: 30, 20: 60, 35: 90, 50: 100,
-        75: 150, 100: 200, 150: 300, 250: 500, 300: -1,
-      };
-      const tiers = [5, 10, 20, 35, 50, 75, 100, 150, 250, 300];
-      const tier = Math.max(...tiers.filter(t => t <= clientSeats), 5);
-      const monthlyCredits = CREDIT_BY_TIER[tier] ?? 30;
+      const item0 = sub.items?.data?.[0];
+      const priceObj = item0?.price;
+      const stripePriceId = typeof priceObj === 'string' ? priceObj : priceObj?.id;
+      const tierFromPrice = paidTierFromPriceId(stripePriceId);
 
-      if (monthlyCredits === -1) {
-        // Unlimited plan — set a high sentinel rather than incrementing
+      let monthlyCredits = 0;
+      if (isPaidTierId(capacityTierId)) {
+        monthlyCredits = getMonthlyAiCreditsForTier(capacityTierId);
+      } else if (tierFromPrice) {
+        monthlyCredits = getMonthlyAiCreditsForTier(tierFromPrice);
+      } else {
+        monthlyCredits = getPaidTierByClientCount(clientSeats).monthlyAiCredits;
+      }
+
+      if (monthlyCredits < 0 || monthlyCredits >= 9999) {
         await db.doc(`organizations/${orgId}`).update({
           assessmentCredits: 9999,
           creditsReplenishedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
       } else {
         await db.doc(`organizations/${orgId}`).update({
-          assessmentCredits: monthlyCredits, // Reset (not accumulate) each billing cycle
+          assessmentCredits: monthlyCredits,
           creditsReplenishedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
       }

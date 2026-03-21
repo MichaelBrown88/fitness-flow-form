@@ -1,3 +1,4 @@
+import { ROUTES } from "@/constants/routes";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -46,6 +47,8 @@ const OrgBilling = lazy(() => import("./pages/org/OrgBilling"));
 const OrgIntegrations = lazy(() => import("./pages/org/OrgIntegrations"));
 const AssessmentComparison = lazy(() => import("./pages/AssessmentComparison"));
 const Billing = lazy(() => import("./pages/Billing"));
+const BillingSuccess = lazy(() => import("./pages/BillingSuccess"));
+const Subscribe = lazy(() => import("./pages/Subscribe"));
 const ClientRoadmap = lazy(() => import("./pages/ClientRoadmap"));
 const PublicRoadmapViewer = lazy(() => import("./pages/PublicRoadmapViewer"));
 const PublicLifestyleCheckin = lazy(() => import("./pages/PublicLifestyleCheckin"));
@@ -265,6 +268,22 @@ const App = () => (
                       element={
                         <RequireAuth>
                           <Billing />
+                        </RequireAuth>
+                      }
+                    />
+                    <Route
+                      path="/billing/success"
+                      element={
+                        <RequireAuth>
+                          <BillingSuccess />
+                        </RequireAuth>
+                      }
+                    />
+                    <Route
+                      path={ROUTES.SUBSCRIBE}
+                      element={
+                        <RequireAuth>
+                          <Subscribe />
                         </RequireAuth>
                       }
                     />

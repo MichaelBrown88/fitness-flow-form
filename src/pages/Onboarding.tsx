@@ -1,21 +1,25 @@
 /**
  * Onboarding Page
  *
- * 5-step flow:
- *   0 Identity -> 1 Business -> 2 Account -> 3 Equipment (optional) -> 4 Plan -> Success
+ * Flow: Identity → Business → Account → Equipment → [Gym: Team] → Plan → Success
  */
 
+import { useMemo } from 'react';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import {
   OnboardingLayout,
   IdentityStep,
   BusinessInfoStep,
   EquipmentStep,
+  TeamRosterStep,
   PackageSelectionStep,
   AccountCreationStep,
   OnboardingSuccess,
 } from '@/components/onboarding';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+import { getOnboardingProgressState, ONBOARDING_FLOW_STEPS } from '@/types/onboarding';
+
+const SUCCESS_STEP = 6;
 
 export default function Onboarding() {
   const {
@@ -31,12 +35,24 @@ export default function Onboarding() {
     handleBusinessNext,
     handleEquipmentNext,
     handleEquipmentSkip,
-    handleCapacityNext,
+    handleTeamNext,
+    handlePlanNext,
     handleAccountCreateWithPassword,
     handleAccountCreateWithGoogle,
     handleAccountCreateWithApple,
     handleBack,
   } = useOnboarding();
+
+  const progress = useMemo(() => {
+    if (step < 0 || step >= SUCCESS_STEP) {
+      return { steps: ONBOARDING_FLOW_STEPS, activeIndex: -1 };
+    }
+    return getOnboardingProgressState(step, onboardingData.businessProfile?.type);
+  }, [step, onboardingData.businessProfile?.type]);
+
+  const isGym =
+    onboardingData.businessProfile?.type === 'gym' ||
+    onboardingData.businessProfile?.type === 'gym_chain';
 
   if (loading) {
     return (
@@ -46,9 +62,9 @@ export default function Onboarding() {
     );
   }
 
-  if (isComplete || step >= 5) {
+  if (isComplete || step >= SUCCESS_STEP) {
     return (
-      <OnboardingLayout currentStep={-1} onBack={undefined}>
+      <OnboardingLayout progressSteps={[]} activeProgressIndex={-1} onBack={undefined}>
         <OnboardingSuccess businessName={onboardingData.businessProfile?.name || 'Your Business'} />
       </OnboardingLayout>
     );
@@ -56,7 +72,7 @@ export default function Onboarding() {
 
   if (saving) {
     return (
-      <OnboardingLayout currentStep={-1} onBack={undefined}>
+      <OnboardingLayout progressSteps={progress.steps} activeProgressIndex={progress.activeIndex} onBack={undefined}>
         <div className="flex flex-col items-center justify-center py-16">
           <div className="w-10 h-10 border-2 border-slate-200 border-t-slate-900 rounded-full animate-spin mb-4" />
           <p className="text-sm text-slate-500">{savingMessage}</p>
@@ -105,12 +121,31 @@ export default function Onboarding() {
           />
         );
       case 4:
+        if (isGym) {
+          return (
+            <TeamRosterStep
+              initialValue={onboardingData.teamRoster}
+              onNext={handleTeamNext}
+              onBack={handleBack}
+            />
+          );
+        }
         return (
           <PackageSelectionStep
             data={onboardingData.branding}
             businessType={onboardingData.businessProfile?.type}
             region={onboardingData.businessProfile?.region ?? 'GB'}
-            onNext={handleCapacityNext}
+            onNext={handlePlanNext}
+            onBack={handleBack}
+          />
+        );
+      case 5:
+        return (
+          <PackageSelectionStep
+            data={onboardingData.branding}
+            businessType={onboardingData.businessProfile?.type}
+            region={onboardingData.businessProfile?.region ?? 'GB'}
+            onNext={handlePlanNext}
             onBack={handleBack}
           />
         );
@@ -122,7 +157,8 @@ export default function Onboarding() {
   return (
     <ErrorBoundary>
       <OnboardingLayout
-        currentStep={step}
+        progressSteps={progress.steps}
+        activeProgressIndex={progress.activeIndex}
         onBack={step > 0 ? handleBack : undefined}
       >
         {renderStep()}

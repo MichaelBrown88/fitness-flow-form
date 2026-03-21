@@ -13,7 +13,7 @@ import {
   ROIComparison,
   BuiltByExperts,
   PricingSection,
-  PricingCard,
+  LandingPricingPlans,
   FAQSection,
   CTASection,
   Footer,
@@ -42,63 +42,6 @@ const testimonials = [
   },
 ];
 
-// Pricing data — uses UK (GB) base from src/lib/pricing/config
-import { getMonthlyPrice } from '@/lib/pricing/config';
-import { DEFAULT_REGION, DEFAULT_CURRENCY } from '@/constants/pricing';
-import { formatPrice } from '@/lib/utils/currency';
-
-const pricingPlansData = [
-  {
-    name: 'Starter',
-    description: 'Perfect for solo coaches getting started',
-    price: getMonthlyPrice(DEFAULT_REGION, 10),
-    features: [
-      { text: 'Unlimited assessments', included: true },
-      { text: 'Clinical Logic Engine analysis', included: true },
-      { text: 'Branded live reports', included: true },
-      { text: 'Client portal access', included: true },
-      { text: 'Team members', included: false },
-      { text: 'Custom domain', included: false },
-      { text: 'Priority support', included: false },
-    ],
-  },
-  {
-    name: 'Professional',
-    description: 'For gyms and growing teams',
-    price: getMonthlyPrice(DEFAULT_REGION, 35),
-    highlighted: true,
-    features: [
-      { text: 'Everything in Starter', included: true },
-      { text: 'Unlimited team members', included: true },
-      { text: 'Advanced analytics', included: true },
-      { text: 'Client progress tracking', included: true },
-      { text: 'API access', included: true },
-      { text: 'Custom domain', included: false },
-      { text: 'Priority support', included: true },
-    ],
-  },
-  {
-    name: 'Enterprise',
-    description: 'For gym chains and large organizations',
-    price: 'Custom' as const,
-    features: [
-      { text: 'Everything in Professional', included: true },
-      { text: 'Multiple locations', included: true },
-      { text: 'Custom branding (logo & colours) and custom domain', included: true },
-      { text: 'Dedicated account manager', included: true },
-      { text: 'Custom integrations', included: true },
-      { text: 'SLA guarantee', included: true },
-      { text: '24/7 phone support', included: true },
-    ],
-    ctaText: 'Contact Sales',
-  },
-];
-
-const pricingPlans = pricingPlansData.map((plan) => ({
-  ...plan,
-  price: typeof plan.price === 'number' ? formatPrice(plan.price, DEFAULT_CURRENCY, 'en-GB') : plan.price,
-}));
-
 // FAQ data
 const faqItems = [
   {
@@ -107,7 +50,7 @@ const faqItems = [
   },
   {
     question: 'Can I customize the reports with my branding?',
-    answer: 'Reports always show "Powered by One Assess" so clients know the platform behind your brand. Your logo and brand colours on reports and in the app are available as a paid add-on on Professional and Enterprise plans. Custom domains for sharing reports are also available on higher tiers.',
+    answer: 'Reports always show "Powered by One Assess" so clients know the platform behind your brand. Your logo and brand colours on reports and in the app are available as a paid add-on on paid plans. Custom domains for sharing reports are also available on higher tiers.',
   },
   {
     question: 'Is my clients\' data secure?',
@@ -119,11 +62,12 @@ const faqItems = [
   },
   {
     question: 'Can I try it before committing?',
-    answer: 'Yes! All plans include a 14-day free trial with full access to all features. No credit card required to start. Cancel anytime during the trial if it\'s not right for you.',
+    answer:
+      'Solo coaches can use the free plan forever for up to 2 clients — no card required. Gyms and studios get a 14-day trial with a generous client cap during the trial; subscribe when you are ready to continue.',
   },
   {
     question: 'How do I invite my team members?',
-    answer: 'On Professional and Enterprise plans, you can invite team members directly from your dashboard. They\'ll receive an email invitation to join your organization. You can manage their permissions and access levels.',
+    answer: 'On paid plans you can invite team members directly from your dashboard. They\'ll receive an email invitation to join your organization. You can manage their permissions and access levels.',
   },
 ];
 
@@ -163,18 +107,7 @@ export default function Landing() {
         <BuiltByExperts />
 
         <PricingSection>
-          {pricingPlans.map((plan, index) => (
-            <PricingCard
-              key={plan.name}
-              name={plan.name}
-              description={plan.description}
-              price={plan.price}
-              features={plan.features}
-              highlighted={plan.highlighted}
-              ctaText={plan.ctaText}
-              index={index}
-            />
-          ))}
+          <LandingPricingPlans />
         </PricingSection>
 
         <FAQSection items={faqItems} />

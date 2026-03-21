@@ -11,6 +11,7 @@
     "clean": "rimraf lib",
     "deploy": "npm run build && firebase deploy --only functions",
     "lint": "eslint \"src/**/*.{ts,js}\"",
+    "stripe:catalog": "npx ts-node --transpile-only src/scripts/createStripeCatalog.ts",
     "serve": "npm run build && firebase emulators:start --only functions",
     "start": "ts-node -r tsconfig-paths/register src/index.ts"
   },

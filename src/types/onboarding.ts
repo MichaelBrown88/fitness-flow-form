@@ -1,3 +1,5 @@
+import { NEW_CAPACITY_TIERS, type PackageTrack } from '@/constants/pricing';
+
 // Subscription tiers (determines features, not roles)
 export type SubscriptionPlan = 'starter' | 'professional' | 'enterprise';
 export type SubscriptionStatus = 'trial' | 'active' | 'cancelled' | 'past_due';
@@ -50,6 +52,8 @@ import type { Region } from '@/constants/pricing';
 export interface BrandingConfig {
   gradientId: string; // References gradient system - maps to brand color
   clientSeats: number; // Number of client seats needed (from plan step)
+  /** GB checkout track selected on plan step */
+  packageTrack?: PackageTrack;
   logoFile?: File; // Logo file for upload (optional - added later in Settings)
 }
 
@@ -58,6 +62,8 @@ export interface OnboardingData {
   identity: IdentityData;
   businessProfile: BusinessProfileData;
   equipment: EquipmentConfig;
+  /** Gym / studio: coach names (one per line) before plan step */
+  teamRoster?: string;
   branding: BrandingConfig; // Only clientSeats used during onboarding; gradientId gets a default
 }
 
@@ -72,17 +78,28 @@ export interface OnboardingSession {
   updatedAt: Date;
 }
 
+export type SubscriptionPlanKind = 'solo_free' | 'gym_trial' | 'paid' | 'pending_onboarding';
+
 // Subscription data
 export interface Subscription {
   plan: SubscriptionPlan;
   status: SubscriptionStatus;
+  /** Product billing segment — drives caps and paywall */
+  planKind?: SubscriptionPlanKind;
   trialEndsAt?: Date;
+  /** Effective max active clients (Firestore rules + UI) */
+  clientCap?: number;
+  /** During gym_trial: soft cap (typically 100) */
+  trialClientCap?: number;
   billingEmail: string;
   clientSeats: number; // How many client slots (legacy)
   region?: Region;
   currency?: string;
   clientCount?: number; // Seat block (5, 10, 20, 35, 50, 75, 100, 150, 250, 300+)
   amountCents?: number; // Amount in smallest unit (pence/cents/fils)
+  capacityTierId?: string;
+  packageTrack?: PackageTrack;
+  monthlyAiCredits?: number;
 }
 
 // Organization data (extended)
@@ -118,15 +135,15 @@ export const SKINFOLD_METHODS = [
   { value: 'durnin-womersley-4', label: 'Durnin-Womersley 4-Site' },
 ] as const;
 
-// Client seat tiers with pricing
-export const CLIENT_SEAT_TIERS = [
-  { seats: 10, label: '10 clients', price: 0, included: true },
-  { seats: 25, label: '25 clients', price: 19 },
-  { seats: 50, label: '50 clients', price: 39 },
-  { seats: 100, label: '100 clients', price: 69 },
-  { seats: 250, label: '250 clients', price: 99 },
-  { seats: -1, label: 'Unlimited', price: 149 },
-] as const;
+// Client capacity tiers (GBP monthly — solo track for branding step defaults)
+export const CLIENT_SEAT_TIERS = NEW_CAPACITY_TIERS.filter((t) => t.packageTrack === 'solo').map(
+  (t, i) => ({
+    seats: t.clientLimit,
+    label: `Up to ${t.clientLimit} clients`,
+    price: t.monthlyPriceGbp,
+    included: i === 0,
+  }),
+) as readonly { seats: number; label: string; price: number; included?: boolean }[];
 
 // Business type configurations
 export const BUSINESS_TYPES = [
@@ -156,11 +173,34 @@ export const BUSINESS_TYPES = [
   },
 ] as const;
 
-// Onboarding steps configuration (5-step flow + success)
-export const ONBOARDING_STEPS = [
+/** Ordered steps matching `useOnboarding` flow indices (0–5); gyms insert Team at index 4 before Plan at 5. */
+export const ONBOARDING_FLOW_STEPS = [
   { id: 'identity', label: 'You', description: 'Tell us about yourself' },
-  { id: 'business', label: 'Business', description: 'Tell us about your facility' },
+  { id: 'business', label: 'Business', description: 'Your facility or practice' },
+  { id: 'account', label: 'Account', description: 'Create your account and verify email' },
   { id: 'equipment', label: 'Equipment', description: 'Configure your protocols' },
-  { id: 'plan', label: 'Plan', description: 'Choose your plan' },
-  { id: 'account', label: 'Account', description: 'Create your account' },
+  { id: 'team', label: 'Team', description: 'Coach names (gyms and studios)' },
+  { id: 'plan', label: 'Plan', description: 'Confirm or choose your plan' },
 ] as const;
+
+export type OnboardingFlowStepMeta = (typeof ONBOARDING_FLOW_STEPS)[number];
+
+/** @deprecated Use ONBOARDING_FLOW_STEPS */
+export const ONBOARDING_STEPS = ONBOARDING_FLOW_STEPS;
+
+export function getOnboardingProgressState(
+  flowStep: number,
+  businessType: BusinessType | undefined,
+): { steps: readonly OnboardingFlowStepMeta[]; activeIndex: number } {
+  const isGym = businessType === 'gym' || businessType === 'gym_chain';
+  const full = ONBOARDING_FLOW_STEPS;
+  if (isGym) {
+    const idx = Math.min(Math.max(0, flowStep), full.length - 1);
+    return { steps: full, activeIndex: idx };
+  }
+  const soloSteps = full.filter((s) => s.id !== 'team');
+  if (flowStep <= 3) return { steps: soloSteps, activeIndex: flowStep };
+  if (flowStep === 4) return { steps: soloSteps, activeIndex: 4 };
+  if (flowStep >= 5) return { steps: soloSteps, activeIndex: 4 };
+  return { steps: soloSteps, activeIndex: 0 };
+}

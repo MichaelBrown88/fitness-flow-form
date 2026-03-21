@@ -16,6 +16,9 @@ interface SubscriptionInfo {
   status: string;
   clientSeats: number;
   clientCount?: number;
+  clientCap?: number;
+  monthlyAiCredits?: number;
+  capacityTierId?: string;
   region?: Region;
   currency?: string;
   amountCents?: number;
@@ -27,6 +30,8 @@ interface OrgBillingData {
   subscription: SubscriptionInfo;
   stripeCustomerId?: string;
   coachCount: number;
+  statsClientCount: number;
+  assessmentCredits?: number;
 }
 
 function PlanBadge({ status }: { status: string }) {
@@ -62,6 +67,7 @@ function BillingPage() {
       const region = (sub.region as Region) ?? DEFAULT_REGION;
       const currency = sub.currency ?? REGION_TO_CURRENCY[region];
       const amountCents = sub.amountCents ?? sub.amountFils;
+      const clientCap = sub.clientCap ?? sub.clientSeats ?? sub.clientCount ?? 2;
       setOrgData({
         name: data.name ?? '',
         subscription: {
@@ -69,6 +75,9 @@ function BillingPage() {
           status: sub.status ?? 'trial',
           clientSeats: sub.clientSeats ?? sub.clientCount ?? 0,
           clientCount: sub.clientCount ?? sub.clientSeats ?? 0,
+          clientCap,
+          monthlyAiCredits: typeof sub.monthlyAiCredits === 'number' ? sub.monthlyAiCredits : undefined,
+          capacityTierId: typeof sub.capacityTierId === 'string' ? sub.capacityTierId : undefined,
           region,
           currency,
           amountCents: amountCents ?? 0,
@@ -76,6 +85,8 @@ function BillingPage() {
         },
         stripeCustomerId: data.stripe?.stripeCustomerId,
         coachCount: data._counts?.coaches ?? 1,
+        statsClientCount: typeof data.stats?.clientCount === 'number' ? data.stats.clientCount : 0,
+        assessmentCredits: typeof data.assessmentCredits === 'number' ? data.assessmentCredits : undefined,
       });
     }).catch((err) => {
       logger.error('Failed to load billing data:', err);
@@ -161,16 +172,21 @@ function BillingPage() {
           </div>
 
           <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Usage</h2>
+            <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Client capacity</h2>
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-slate-100 flex items-center justify-center">
                 <Users size={18} className="text-slate-600" />
               </div>
               <div>
                 <p className="text-sm font-bold text-slate-900">
-                  {orgData?.coachCount ?? 0} / {orgData?.subscription.clientCount ?? orgData?.subscription.clientSeats ?? 0} seats used
+                  {orgData?.statsClientCount ?? 0} /{' '}
+                  {orgData?.subscription.clientCap ??
+                    orgData?.subscription.clientCount ??
+                    orgData?.subscription.clientSeats ??
+                    2}{' '}
+                  clients
                 </p>
-                <p className="text-xs text-slate-400">Active coach seats</p>
+                <p className="text-xs text-slate-400">Active (non-archived) clients vs plan limit</p>
               </div>
             </div>
             <div className="mt-4 h-2 rounded-full bg-slate-100 overflow-hidden">
@@ -178,12 +194,31 @@ function BillingPage() {
                 className="h-full rounded-full bg-indigo-500 transition-all"
                 style={{
                   width: `${Math.min(
-                    ((orgData?.coachCount ?? 0) / Math.max(orgData?.subscription.clientCount ?? orgData?.subscription.clientSeats ?? 1, 1)) * 100,
+                    ((orgData?.statsClientCount ?? 0) /
+                      Math.max(
+                        orgData?.subscription.clientCap ??
+                          orgData?.subscription.clientCount ??
+                          orgData?.subscription.clientSeats ??
+                          1,
+                        1,
+                      )) *
+                      100,
                     100,
                   )}%`,
                 }}
               />
             </div>
+            {orgData?.subscription.monthlyAiCredits != null && (
+              <div className="mt-6 pt-6 border-t border-slate-100">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">AI credits</p>
+                <p className="text-sm font-bold text-slate-900">
+                  {orgData.assessmentCredits ?? '—'} / {orgData.subscription.monthlyAiCredits} remaining this cycle
+                </p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Each AI body-comp import or posture analysis uses one credit. Resets on subscription renewal.
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="bg-white rounded-xl border border-slate-200 p-6">

@@ -53,8 +53,8 @@ export const STRIPE_CONFIG = {
   publishableKey: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '',
   /** Whether Stripe is configured and payment should be collected */
   isEnabled: !!import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY,
-  /** Success redirect path after checkout completion */
-  successPath: '/onboarding?step=success',
+  /** Success redirect path after capacity checkout (Stripe appends session_id) */
+  successPath: '/billing/success',
   /** Cancel redirect path if user backs out of checkout */
-  cancelPath: '/onboarding?step=payment',
+  cancelPath: '/billing',
 } as const;

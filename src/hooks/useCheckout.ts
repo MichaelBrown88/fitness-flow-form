@@ -12,7 +12,7 @@ import { useState, useCallback } from 'react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { STRIPE_CONFIG } from '@/constants/platform';
 import { logger } from '@/lib/utils/logger';
-import type { Region } from '@/constants/pricing';
+import type { Region, BillingPeriod, PackageTrack } from '@/constants/pricing';
 import type { CreateCheckoutRequest, CreateCheckoutResponse } from '@/types/platform';
 
 export function useCheckout() {
@@ -27,7 +27,13 @@ export function useCheckout() {
    * @returns true if redirect was initiated, false if Stripe is not configured
    */
   const startCheckout = useCallback(
-    async (organizationId: string, region: Region, clientCount: number): Promise<boolean> => {
+    async (
+      organizationId: string,
+      region: Region,
+      clientCount: number,
+      billingPeriod: BillingPeriod = 'monthly',
+      packageTrack?: PackageTrack,
+    ): Promise<boolean> => {
       // If Stripe is not configured, skip payment entirely
       if (!STRIPE_CONFIG.isEnabled) {
         logger.info('[Checkout] Stripe not configured — skipping payment (trial mode)');
@@ -45,7 +51,13 @@ export function useCheckout() {
           'createCheckoutSession'
         );
 
-        const result = await createSession({ organizationId, region, clientCount });
+        const result = await createSession({
+          organizationId,
+          region,
+          clientCount,
+          billingPeriod,
+          ...(region === 'GB' && packageTrack ? { packageTrack } : {}),
+        });
         const { sessionUrl } = result.data;
 
         if (!sessionUrl) {

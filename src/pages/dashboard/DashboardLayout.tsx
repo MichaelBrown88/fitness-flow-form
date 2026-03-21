@@ -4,6 +4,7 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
+import { Timestamp } from 'firebase/firestore';
 import AppShell from '@/components/layout/AppShell';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { Button } from '@/components/ui/button';
@@ -27,11 +28,22 @@ export type DashboardOutletContext = ReturnType<typeof useDashboardData> & {
   tasks: CoachTask[];
 };
 
+function trialEndedAt(trialEndsAt: unknown): boolean {
+  const d =
+    trialEndsAt instanceof Timestamp
+      ? trialEndsAt.toDate()
+      : trialEndsAt instanceof Date
+        ? trialEndsAt
+        : null;
+  if (!d) return false;
+  return d.getTime() < Date.now();
+}
+
 export default function DashboardLayout() {
   const dashboardData = useDashboardData();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, effectiveOrgId } = useAuth();
+  const { user, effectiveOrgId, orgSettings, profile } = useAuth();
 
   const {
     loading,
@@ -90,6 +102,23 @@ export default function DashboardLayout() {
       window.clearTimeout(timeoutId);
     };
   }, [effectiveOrgId, dataUser, filteredClients]);
+
+  useEffect(() => {
+    if (!orgSettings || !profile?.onboardingCompleted) return;
+    const path = location.pathname;
+    if (
+      path.startsWith(ROUTES.SUBSCRIBE) ||
+      path.startsWith(ROUTES.BILLING) ||
+      path.startsWith(ROUTES.ONBOARDING)
+    ) {
+      return;
+    }
+    const sub = orgSettings.subscription;
+    if (!sub || sub.planKind === 'solo_free') return;
+    if (sub.status !== 'trial') return;
+    if (!trialEndedAt(sub.trialEndsAt)) return;
+    navigate(ROUTES.SUBSCRIBE, { replace: true, state: { from: path } });
+  }, [orgSettings, profile?.onboardingCompleted, location.pathname, navigate]);
 
   const tasks = useMemo(() => {
     if (!reassessmentQueue) return [];
@@ -164,6 +193,9 @@ export default function DashboardLayout() {
             hasClients={(analytics?.totalClients ?? 0) > 0}
             hasAssessments={(analytics?.totalAssessments ?? 0) > 0}
             hasSharedReport={false}
+            businessProfileComplete={Boolean(orgSettings?.name?.trim() && orgSettings?.region)}
+            showTrialSubscribeNudge={orgSettings?.subscription?.planKind === 'gym_trial'}
+            showBrandingNudge={orgSettings?.customBrandingEnabled === false}
           />
 
           <div className="bg-white rounded-2xl p-3 sm:p-4 md:p-6 lg:p-8 overflow-hidden">

@@ -50,6 +50,28 @@ service cloud.firestore {
         (isPlatformAdmin() && hasDataAccess(orgId) && isNotImpersonating());
     }
 
+    /** Max active (non-archived) clients for billing — subscription.clientCap, legacy clientSeats, or free tier 2 */
+    function effectiveClientCap(orgId) {
+      let org = get(/databases/$(database)/documents/organizations/$(orgId)).data;
+      let sub = org.get('subscription', {});
+      let cap = sub.get('clientCap', null);
+      if (cap != null) {
+        return int(cap);
+      }
+      let seats = sub.get('clientSeats', null);
+      if (seats != null) {
+        return int(seats);
+      }
+      return 2;
+    }
+
+    /** Denormalized active client count (maintained by Cloud Function aggregation) */
+    function statsClientCount(orgId) {
+      let org = get(/databases/$(database)/documents/organizations/$(orgId)).data;
+      let stats = org.get('stats', {});
+      return int(stats.get('clientCount', 0));
+    }
+
     // =========================================================
     // ORGANIZATIONS
     // =========================================================
@@ -70,7 +92,11 @@ service cloud.firestore {
       // Clients + all subcollections (current, sessions, roadmap, achievements, drafts)
       match /clients/{clientSlug} {
         allow read: if canReadOrgData(orgId);
-        allow write: if canWriteOrgData(orgId);
+        allow create: if canWriteOrgData(orgId) && (
+            (isPlatformAdmin() && hasDataAccess(orgId) && isNotImpersonating()) ||
+            statsClientCount(orgId) < effectiveClientCap(orgId)
+          );
+        allow update, delete: if canWriteOrgData(orgId);
 
         // Live composite state — source of truth for current client data
         match /current/{doc} {

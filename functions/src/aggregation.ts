@@ -428,9 +428,13 @@ export async function handleAssessmentChange(
   }
 }
 
+function isBillingActiveClientStatus(status: unknown): boolean {
+  return status !== 'archived';
+}
+
 /**
  * Handle client changes in organizations/{orgId}/clients
- * Updates stats.clientCount and system_stats.totalClients.
+ * Updates stats.clientCount (non-archived only) and system_stats.totalClients.
  */
 export async function handleClientChange(
   change: Change<admin.firestore.DocumentSnapshot>,
@@ -438,17 +442,40 @@ export async function handleClientChange(
 ): Promise<void> {
   const isCreated = !change.before.exists && change.after.exists;
   const isDeleted = change.before.exists && !change.after.exists;
-
-  if (!isCreated && !isDeleted) return;
+  const isUpdated = change.before.exists && change.after.exists;
 
   const orgId = orgIdFromPath ?? change.after.data()?.organizationId ?? change.before.data()?.organizationId;
 
   if (isCreated) {
-    await updateSystemStats({ totalClients: 1 });
-    await updateOrgStats(orgId, { clientCount: 1 });
-  } else if (isDeleted) {
-    await updateSystemStats({ totalClients: -1 });
-    await updateOrgStats(orgId, { clientCount: -1 });
+    const status = change.after.data()?.status;
+    if (isBillingActiveClientStatus(status)) {
+      await updateSystemStats({ totalClients: 1 });
+      await updateOrgStats(orgId, { clientCount: 1 });
+    }
+    return;
+  }
+
+  if (isDeleted) {
+    const status = change.before.data()?.status;
+    if (isBillingActiveClientStatus(status)) {
+      await updateSystemStats({ totalClients: -1 });
+      await updateOrgStats(orgId, { clientCount: -1 });
+    }
+    return;
+  }
+
+  if (isUpdated) {
+    const beforeStatus = change.before.data()?.status;
+    const afterStatus = change.after.data()?.status;
+    const beforeActive = isBillingActiveClientStatus(beforeStatus);
+    const afterActive = isBillingActiveClientStatus(afterStatus);
+    if (beforeActive && !afterActive) {
+      await updateSystemStats({ totalClients: -1 });
+      await updateOrgStats(orgId, { clientCount: -1 });
+    } else if (!beforeActive && afterActive) {
+      await updateSystemStats({ totalClients: 1 });
+      await updateOrgStats(orgId, { clientCount: 1 });
+    }
   }
 }
 

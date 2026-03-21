@@ -99,7 +99,7 @@ export interface SupportAccessSettings {
   supportAccessReason?: string;
 }
 
-import type { Region } from '@/constants/pricing';
+import type { Region, PaidCapacityTierId, BillingPeriod, PackageTrack } from '@/constants/pricing';
 
 // Organization summary for platform admin view
 export interface OrganizationSummary {
@@ -270,8 +270,14 @@ export interface PlatformConfig {
  */
 export interface CreateCheckoutRequest {
   organizationId: string;
-  region: Region;
-  clientCount: number;
+  /** GBP capacity checkout — set with billingPeriod when using package prices. */
+  tierId?: PaidCapacityTierId;
+  billingPeriod?: BillingPeriod;
+  /** GB: solo vs gym price ladder */
+  packageTrack?: PackageTrack;
+  /** Legacy / US / KW seat checkout */
+  region?: Region;
+  clientCount?: number;
   /** @deprecated Use region + clientCount. Kept for backward compat during migration. */
   plan?: 'starter' | 'professional' | 'enterprise';
   /** @deprecated Use clientCount. Kept for backward compat during migration. */

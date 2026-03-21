@@ -44,7 +44,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { REGIONS, REGION_LABELS, SEAT_TIERS, DEFAULT_REGION, DEFAULT_CURRENCY } from '@/constants/pricing';
+import {
+  REGIONS,
+  REGION_LABELS,
+  SEAT_TIERS,
+  CAPACITY_CLIENT_LIMITS,
+  DEFAULT_REGION,
+  DEFAULT_CURRENCY,
+} from '@/constants/pricing';
+
+const PLAN_SEAT_OPTIONS = [...new Set([...CAPACITY_CLIENT_LIMITS, ...SEAT_TIERS, 300])].sort((a, b) => a - b);
 import { formatPrice } from '@/lib/utils/currency';
 import { getLocaleForRegion } from '@/lib/utils/currency';
 import type { Region } from '@/constants/pricing';
@@ -529,10 +538,11 @@ const SubscriptionCard = ({ org, editing, saving, setOrg }: SubscriptionCardProp
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {SEAT_TIERS.map((t) => (
-                <SelectItem key={t} value={String(t)}>{t} clients</SelectItem>
+              {PLAN_SEAT_OPTIONS.map((t) => (
+                <SelectItem key={t} value={String(t)}>
+                  {t === 300 ? '300+ clients' : `${t} clients`}
+                </SelectItem>
               ))}
-              <SelectItem value="300">300+ clients</SelectItem>
             </SelectContent>
           </Select>
         ) : (

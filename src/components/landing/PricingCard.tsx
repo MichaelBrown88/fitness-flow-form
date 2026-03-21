@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import { Check } from 'lucide-react';
-import React from 'react';
 import GlassCard from '@/components/ui/GlassCard';
 import { DEFAULT_CURRENCY } from '@/constants/pricing';
 import { formatPrice } from '@/lib/utils/currency';
@@ -113,29 +112,3 @@ export function PricingCard({
     </GlassCard>
   );
 }
-
-// Pricing Section wrapper
-interface PricingSectionProps {
-  children: React.ReactNode;
-}
-
-export function PricingSection({ children }: PricingSectionProps) {
-  return (
-    <section id="pricing" className="py-24 bg-gradient-to-b from-background to-secondary/50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="text-center mb-16 sm:mb-20">
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-6">
-            Simple, <span className="text-primary">Transparent</span> Pricing
-          </h2>
-          <p className="text-foreground-secondary text-lg max-w-2xl mx-auto">
-            14-day free trial on every plan. No credit card required.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto items-center">
-          {children}
-        </div>
-      </div>
-    </section>
-  );
-}
-

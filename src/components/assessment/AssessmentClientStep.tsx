@@ -4,12 +4,15 @@
  */
 
 import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useFormContext } from '@/contexts/FormContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useAssessmentList } from '@/hooks/dashboard/useAssessmentList';
+import { useClientCapacity } from '@/hooks/useClientCapacity';
 import { Button } from '@/components/ui/button';
 import { UserPlus, Users } from 'lucide-react';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
+import { ROUTES } from '@/constants/routes';
 
 export function AssessmentClientStep({
   onContinue,
@@ -26,6 +29,7 @@ export function AssessmentClientStep({
     effectiveOrgId,
     coachUidFilter: undefined,
   });
+  const { loading: capLoading, canAddClient, clientCount, clientLimit } = useClientCapacity();
 
   const clientNames = useMemo(() => {
     const names = new Set<string>();
@@ -94,16 +98,26 @@ export function AssessmentClientStep({
         </div>
       ) : null}
 
-      <div className="pt-4 border-t border-slate-200">
+      <div className="pt-4 border-t border-slate-200 space-y-2">
         <Button
           type="button"
           onClick={handleNewClient}
           variant="outline"
+          disabled={capLoading || !canAddClient}
           className="w-full sm:w-auto h-12 px-6 rounded-xl font-bold gap-2 border-slate-200"
         >
           <UserPlus className="h-4 w-4" />
           New client (enter details in form)
         </Button>
+        {!capLoading && !canAddClient && (
+          <p className="text-xs text-amber-700">
+            You&apos;re at your plan limit ({clientCount}/{clientLimit} clients).{' '}
+            <Link to={ROUTES.BILLING} className="font-semibold underline underline-offset-2">
+              Upgrade to add clients
+            </Link>
+            .
+          </p>
+        )}
       </div>
     </div>
   );

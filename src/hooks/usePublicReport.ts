@@ -126,10 +126,10 @@ export function usePublicReport(token: string | undefined): UsePublicReportResul
           import('@/services/organizations')
             .then(({ getOrgSettings }) => getOrgSettings(data.organizationId!))
             .then((settings) => {
-              if (settings.customBrandingEnabled === false) {
-                setOrgDetails(null);
-              } else {
+              if (settings.customBrandingEnabled === true) {
                 setOrgDetails({ name: settings.name, logoUrl: settings.logoUrl });
+              } else {
+                setOrgDetails(null);
               }
               if (settings.name && data.clientName) {
                 document.title = `${data.clientName}'s Fitness Report | ${settings.name}`;

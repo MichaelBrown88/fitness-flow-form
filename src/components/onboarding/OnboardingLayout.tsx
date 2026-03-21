@@ -8,19 +8,28 @@
  * Replaces the previous glassmorphism modal overlay.
  */
 
-import { ONBOARDING_STEPS } from '@/types/onboarding';
 import { ArrowLeft, LogOut } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import type { OnboardingFlowStepMeta } from '@/types/onboarding';
 
 interface OnboardingLayoutProps {
-  currentStep: number;
+  /** Progress list (solo omits Team; gym includes all steps). */
+  progressSteps: readonly OnboardingFlowStepMeta[];
+  /** Index into `progressSteps` for sidebar + bar (0-based). */
+  activeProgressIndex: number;
   children: React.ReactNode;
   onBack?: () => void;
   /** Optional contextual content for the left panel (desktop only) */
   leftContent?: React.ReactNode;
 }
 
-export function OnboardingLayout({ currentStep, children, onBack, leftContent }: OnboardingLayoutProps) {
+export function OnboardingLayout({
+  progressSteps,
+  activeProgressIndex,
+  children,
+  onBack,
+  leftContent,
+}: OnboardingLayoutProps) {
   const { user, signOut } = useAuth();
 
   const handleSignOut = async () => {
@@ -29,8 +38,8 @@ export function OnboardingLayout({ currentStep, children, onBack, leftContent }:
     window.location.href = '/';
   };
 
-  const isStepPhase = currentStep >= 0 && currentStep < ONBOARDING_STEPS.length;
-  const progress = isStepPhase ? ((currentStep + 1) / ONBOARDING_STEPS.length) * 100 : 100;
+  const isStepPhase = activeProgressIndex >= 0 && activeProgressIndex < progressSteps.length;
+  const progress = isStepPhase ? ((activeProgressIndex + 1) / progressSteps.length) * 100 : 100;
 
   return (
     <div className="fixed inset-0 z-[100] flex bg-white">
@@ -42,7 +51,8 @@ export function OnboardingLayout({ currentStep, children, onBack, leftContent }:
           </h1>
           {isStepPhase && (
             <p className="text-sm text-slate-500">
-              Step {currentStep + 1} of {ONBOARDING_STEPS.length} — {ONBOARDING_STEPS[currentStep].description}
+              Step {activeProgressIndex + 1} of {progressSteps.length} —{' '}
+              {progressSteps[activeProgressIndex]?.description}
               <span className="block text-xs text-slate-400 mt-1">~2 minutes total</span>
             </p>
           )}
@@ -57,9 +67,9 @@ export function OnboardingLayout({ currentStep, children, onBack, leftContent }:
 
         {/* Step list */}
         <div className="space-y-3">
-          {ONBOARDING_STEPS.map((step, index) => {
-            const isComplete = index < currentStep;
-            const isCurrent = index === currentStep;
+          {progressSteps.map((step, index) => {
+            const isComplete = index < activeProgressIndex;
+            const isCurrent = index === activeProgressIndex;
             return (
               <div
                 key={step.id}
@@ -100,7 +110,7 @@ export function OnboardingLayout({ currentStep, children, onBack, leftContent }:
             {/* Mobile: step label */}
             {isStepPhase && (
               <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 lg:hidden">
-                Step {currentStep + 1} / {ONBOARDING_STEPS.length}
+                Step {activeProgressIndex + 1} / {progressSteps.length}
               </span>
             )}
           </div>

@@ -6,6 +6,7 @@ export { TestimonialsSection } from './TestimonialsSection';
 export { ROIComparison } from './ROIComparison';
 export { BuiltByExperts } from './BuiltByExperts';
 export { PricingCard } from './PricingCard';
+export { LandingPricingPlans } from './LandingPricingPlans';
 export { PricingSection } from './PricingSection';
 export { FAQAccordion, FAQSection } from './FAQAccordion';
 export { CTASection } from './CTASection';

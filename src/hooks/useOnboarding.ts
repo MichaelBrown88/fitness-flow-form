@@ -1,27 +1,32 @@
 /**
  * useOnboarding Hook
  *
- * Manages the 5-step onboarding flow:
- *   0  Identity (name + email only — no auth)
+ * Flow (indices):
+ *   0  Identity (name + email — no auth)
  *   1  Business (BusinessInfoStep)
- *   2  Equipment (EquipmentStep)
- *   3  Plan (PackageSelectionStep)
- *   4  Account (password + social sign-in — creates Firebase Auth account)
- *   5  Success (OnboardingSuccess)
- *
- * Account creation is deferred to the final step so users see value
- * before committing. Email is captured early for abandoned-flow recovery.
+ *   2  Account (password / social — verify email sent here)
+ *   3  Equipment (EquipmentStep)
+ *   4  Team (TeamRosterStep) for gym / gym_chain; PackageSelectionStep for solo_coach
+ *   5  PackageSelectionStep (gym only)
+ *   6  Success (OnboardingSuccess)
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp, deleteField } from 'firebase/firestore';
 import { sendEmailVerification, EmailAuthProvider, linkWithCredential, GoogleAuthProvider, OAuthProvider, updateProfile } from 'firebase/auth';
 import { getDb, getFirebaseAuth } from '@/services/firebase';
 import { logOnboardingStep } from '@/services/platform/platformMetrics';
 import { getMonthlyPrice, getPriceInSmallestUnit } from '@/lib/pricing/config';
-import { REGION_TO_CURRENCY, DEFAULT_REGION } from '@/constants/pricing';
+import {
+  REGION_TO_CURRENCY,
+  DEFAULT_REGION,
+  FREE_TIER_MONTHLY_AI_CREDITS,
+  FREE_TIER_CLIENT_LIMIT,
+  GYM_TRIAL_CLIENT_CAP,
+  getPaidTierForPackageTrack,
+} from '@/constants/pricing';
 import { logger } from '@/lib/utils/logger';
 import { isTestEmail, makeTestEmailUnique } from '@/lib/utils/testAccountHelper';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
@@ -33,7 +38,8 @@ import type {
   OnboardingData,
 } from '@/types/onboarding';
 
-const TOTAL_STEPS = 5; // 0-4 form steps; 5 = success screen
+/** Form steps use 0–5; step 6 is success. */
+const TOTAL_STEPS = 6;
 const DEFAULT_GRADIENT = 'purple-indigo';
 const DEFAULT_SEATS = 15;
 
@@ -51,7 +57,8 @@ export interface UseOnboardingResult {
   handleBusinessNext: (data: BusinessProfileData) => void;
   handleEquipmentNext: (data: EquipmentConfig) => void;
   handleEquipmentSkip: () => void;
-  handleCapacityNext: (seats: number) => void;
+  handleTeamNext: (coachRosterNotes: string) => void;
+  handlePlanNext: (payload: Pick<BrandingConfig, 'clientSeats' | 'packageTrack' | 'gradientId'>) => void;
   handleAccountCreateWithPassword: (password: string) => Promise<void>;
   handleAccountCreateWithGoogle: () => Promise<void>;
   handleAccountCreateWithApple: () => Promise<void>;
@@ -103,6 +110,7 @@ export function useOnboarding(): UseOnboardingResult {
 
   const resumedRef = useRef(false);
   const inviteCheckedRef = useRef(false);
+  const completingRef = useRef(false);
 
   /* ---------- Resume from sessionStorage ---------- */
   useEffect(() => {
@@ -190,13 +198,12 @@ export function useOnboarding(): UseOnboardingResult {
   /* ---------- Step 3: Equipment ---------- */
   const handleEquipmentNext = useCallback((data: EquipmentConfig) => {
     setOnboardingData((prev) => ({ ...prev, equipment: data }));
-    setStep(4); // → Plan selection
+    setStep(4);
     logOnboardingStep(4);
   }, []);
 
   /* ---------- Step 3: Equipment skip ---------- */
   const handleEquipmentSkip = useCallback(() => {
-    // Store minimal config so completeOnboarding knows setup is pending
     setOnboardingData((prev) => ({
       ...prev,
       equipment: {
@@ -209,20 +216,16 @@ export function useOnboarding(): UseOnboardingResult {
         configPending: true,
       } as EquipmentConfig & { configPending: boolean },
     }));
-    setStep(4); // → Plan selection
+    setStep(4);
     logOnboardingStep(4);
   }, []);
 
-  /* ---------- Step 4: Plan — user already exists; complete onboarding ---------- */
-  const handleCapacityNext = useCallback((seats: number) => {
-    const finalBranding = { gradientId: DEFAULT_GRADIENT, clientSeats: seats } as BrandingConfig;
-    setOnboardingData((prev) => ({ ...prev, branding: finalBranding }));
-    completeOnboarding({
-      ...onboardingData,
-      branding: finalBranding,
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onboardingData]);
+  /* ---------- Step 4 (gym): Team roster → Plan ---------- */
+  const handleTeamNext = useCallback((coachRosterNotes: string) => {
+    setOnboardingData((prev) => ({ ...prev, teamRoster: coachRosterNotes }));
+    setStep(5);
+    logOnboardingStep(5);
+  }, []);
 
   /* ---------- Step 2: Account Creation — advances to Equipment (step 3) ---------- */
 
@@ -358,12 +361,18 @@ export function useOnboarding(): UseOnboardingResult {
 
   /* ---------- Back ---------- */
   const handleBack = useCallback(() => {
-    if (step > 0) setStep((s) => s - 1);
-  }, [step]);
+    setStep((s) => {
+      if (s <= 0) return 0;
+      if (s === 5) return 4;
+      return s - 1;
+    });
+  }, []);
 
   /* ---------- Complete Onboarding ---------- */
   const completeOnboarding = useCallback(async (finalData: Partial<OnboardingData>) => {
     if (!user || !profile) return;
+    if (completingRef.current) return;
+    completingRef.current = true;
 
     setSaving(true);
     setSavingMessage('Finalising your setup...');
@@ -372,12 +381,15 @@ export function useOnboarding(): UseOnboardingResult {
       const db = getDb();
       const orgId = profile.organizationId;
       const region = finalData.businessProfile?.region ?? DEFAULT_REGION;
-      const clientCount = finalData.branding?.clientSeats || DEFAULT_SEATS;
       const currency = REGION_TO_CURRENCY[region];
-      const monthlyAmount = getMonthlyPrice(region, clientCount);
+      const bizType = finalData.businessProfile?.type || 'solo_coach';
+      const isSolo = bizType === 'solo_coach';
+      const interestSeats = finalData.branding?.clientSeats || DEFAULT_SEATS;
+      const monthlyAmount = getMonthlyPrice(region, interestSeats);
       const amountCents = getPriceInSmallestUnit(monthlyAmount, currency);
+      const gymTrialTier = getPaidTierForPackageTrack(GYM_TRIAL_CLIENT_CAP, 'gym');
 
-      logger.info('Completing onboarding', { orgId, region, clientCount });
+      logger.info('Completing onboarding', { orgId, region, bizType, interestSeats });
 
       const equipmentConfig = finalData.equipment
         ? {
@@ -388,25 +400,54 @@ export function useOnboarding(): UseOnboardingResult {
           }
         : undefined;
 
+      const billingEmail = finalData.identity?.email || user.email || '';
+
+      const subscriptionSolo = {
+        plan: 'starter' as const,
+        planKind: 'solo_free' as const,
+        status: 'active' as const,
+        clientCap: FREE_TIER_CLIENT_LIMIT,
+        clientSeats: FREE_TIER_CLIENT_LIMIT,
+        trialClientCap: deleteField(),
+        trialEndsAt: deleteField(),
+        monthlyAiCredits: FREE_TIER_MONTHLY_AI_CREDITS,
+        region,
+        currency,
+        packageTrack: finalData.branding?.packageTrack ?? 'solo',
+        clientCount: interestSeats,
+        amountCents: region === 'GB' ? 0 : amountCents,
+        amountFils: currency === 'KWD' ? amountCents : undefined,
+        billingEmail,
+      };
+
+      const subscriptionGym = {
+        plan: 'starter' as const,
+        planKind: 'gym_trial' as const,
+        status: 'trial' as const,
+        trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        clientCap: GYM_TRIAL_CLIENT_CAP,
+        trialClientCap: GYM_TRIAL_CLIENT_CAP,
+        clientSeats: GYM_TRIAL_CLIENT_CAP,
+        monthlyAiCredits: gymTrialTier.monthlyAiCredits,
+        region,
+        currency,
+        packageTrack: 'gym' as const,
+        clientCount: interestSeats,
+        amountCents,
+        amountFils: currency === 'KWD' ? amountCents : undefined,
+        billingEmail,
+      };
+
       setSavingMessage('Saving configuration...');
       await setDoc(doc(db, 'organizations', orgId), {
         name: finalData.businessProfile?.name || '',
-        type: finalData.businessProfile?.type || 'solo_coach',
+        type: bizType,
         region,
         gradientId: finalData.branding?.gradientId || DEFAULT_GRADIENT,
         equipmentConfig,
-        subscription: {
-          plan: 'starter',
-          status: 'trial',
-          trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-          clientSeats: clientCount,
-          region,
-          currency,
-          clientCount,
-          amountCents,
-          amountFils: currency === 'KWD' ? amountCents : undefined,
-          billingEmail: finalData.identity?.email || user.email || '',
-        },
+        customBrandingEnabled: false,
+        coachRosterNotes: finalData.teamRoster?.trim() || deleteField(),
+        subscription: isSolo ? subscriptionSolo : subscriptionGym,
         onboardingCompletedAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         dpa: {
@@ -465,9 +506,26 @@ export function useOnboarding(): UseOnboardingResult {
       logger.error('Failed to complete onboarding:', error);
       setSavingMessage('Something went wrong. Please try again.');
     } finally {
+      completingRef.current = false;
       setSaving(false);
     }
   }, [user, profile, refreshSettings, inviteOrganizationId, searchParams]);
+
+  const handlePlanNext = useCallback(
+    (branding: Pick<BrandingConfig, 'clientSeats' | 'packageTrack' | 'gradientId'>) => {
+      setOnboardingData((prev) => {
+        const finalBranding: BrandingConfig = {
+          gradientId: branding.gradientId ?? prev.branding?.gradientId ?? DEFAULT_GRADIENT,
+          clientSeats: branding.clientSeats,
+          packageTrack: branding.packageTrack,
+        };
+        const finalData: Partial<OnboardingData> = { ...prev, branding: finalBranding };
+        void completeOnboarding(finalData);
+        return finalData;
+      });
+    },
+    [completeOnboarding],
+  );
 
   return {
     step,
@@ -483,7 +541,8 @@ export function useOnboarding(): UseOnboardingResult {
     handleBusinessNext,
     handleEquipmentNext,
     handleEquipmentSkip,
-    handleCapacityNext,
+    handleTeamNext,
+    handlePlanNext,
     handleAccountCreateWithPassword,
     handleAccountCreateWithGoogle,
     handleAccountCreateWithApple,

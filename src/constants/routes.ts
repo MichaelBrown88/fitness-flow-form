@@ -31,6 +31,9 @@ export const ROUTES = {
   DEMO: '/demo',
   COMPARE: '/compare',
   BILLING: '/billing',
+  BILLING_SUCCESS: '/billing/success',
+  /** Gym trial expired — full-page upgrade (Everfit-style entry to checkout). */
+  SUBSCRIBE: '/subscribe',
   ONBOARDING: '/onboarding',
   TRY: '/try',
   CLIENT_ROADMAP: '/coach/clients/:name/roadmap',

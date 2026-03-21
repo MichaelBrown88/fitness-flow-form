@@ -58,7 +58,7 @@ const Dashboard = () => {
   } = useDashboardData();
 
   const navigate = useNavigate();
-  const { effectiveOrgId } = useAuth();
+  const { effectiveOrgId, orgSettings } = useAuth();
   const overdueCount = reassessmentQueue?.summary?.overdue || 0;
 
   const [roadmapsNeeded, setRoadmapsNeeded] = useState<RoadmapNeededInfo[]>([]);
@@ -176,6 +176,9 @@ const Dashboard = () => {
             hasClients={(analytics?.totalClients ?? 0) > 0}
             hasAssessments={(analytics?.totalAssessments ?? 0) > 0}
             hasSharedReport={false}
+            businessProfileComplete={Boolean(orgSettings?.name?.trim() && orgSettings?.region)}
+            showTrialSubscribeNudge={orgSettings?.subscription?.planKind === 'gym_trial'}
+            showBrandingNudge={orgSettings?.customBrandingEnabled === false}
           />
 
           {/* Main Content */}

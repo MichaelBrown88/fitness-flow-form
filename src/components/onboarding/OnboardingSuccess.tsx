@@ -7,6 +7,7 @@
 
 import { Link } from 'react-router-dom';
 import { ArrowRight, ClipboardList } from 'lucide-react';
+import { ROUTES } from '@/constants/routes';
 
 interface OnboardingSuccessProps {
   businessName: string;
@@ -32,7 +33,7 @@ export function OnboardingSuccess({ businessName }: OnboardingSuccessProps) {
 
       {/* Primary CTA */}
       <Link
-        to="/assessment"
+        to={ROUTES.ASSESSMENT}
         className="w-full max-w-sm h-14 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 shadow-lg"
       >
         <ClipboardList size={18} />

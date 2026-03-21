@@ -111,6 +111,7 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@shared/billing": path.resolve(__dirname, "./functions/src/shared/billing"),
     },
   },
   test: {
