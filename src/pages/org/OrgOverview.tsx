@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Package, Users, FileText, Trash2, Check } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import type { OrgAdminOutletContext } from './OrgAdminLayout';
+import { formatPrice, getLocaleForRegion } from '@/lib/utils/currency';
+import { DEFAULT_REGION, type Region } from '@/constants/pricing';
 
 interface ErasureRequest {
   id: string;
@@ -95,7 +97,11 @@ export default function OrgOverview() {
                 {orgDetails.isComped ? (
                   <span className="text-gradient-dark">Free</span>
                 ) : (
-                  new Intl.NumberFormat('en-KW', { style: 'currency', currency: 'KWD', minimumFractionDigits: 2 }).format(monthlyFee)
+                  formatPrice(
+                    monthlyFee,
+                    orgDetails.currency || 'GBP',
+                    getLocaleForRegion((orgDetails.region ?? DEFAULT_REGION) as Region),
+                  )
                 )}
               </p>
             </div>

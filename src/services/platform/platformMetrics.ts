@@ -28,7 +28,7 @@ import {
 import { getDb, getFirebaseFunctions } from '@/services/firebase';
 import { calculateMonthlyFee } from '@/lib/pricing';
 import { getMonthlyPrice, getPriceInSmallestUnit } from '@/lib/pricing/config';
-import { REGION_TO_CURRENCY } from '@/constants/pricing';
+import { DEFAULT_REGION, REGION_TO_CURRENCY } from '@/constants/pricing';
 import type { Region } from '@/constants/pricing';
 import type {
   PlatformMetrics,
@@ -357,12 +357,21 @@ export async function getOrganizations(
         const clientSeats = data.subscription?.clientSeats || 0;
         const isComped = data.subscription?.isComped === true;
         const region = (data.subscription?.region ?? data.region) as Region | undefined;
-        const currency = data.subscription?.currency ?? (region ? REGION_TO_CURRENCY[region] : undefined);
+        const effectiveRegion = region ?? DEFAULT_REGION;
+        const currency =
+          data.subscription?.currency ?? REGION_TO_CURRENCY[effectiveRegion];
         const seatBlock = data.subscription?.clientCount ?? clientSeats;
         const amountCents = data.subscription?.amountCents ?? data.subscription?.amountFils;
-        const monthlyAmountLocal = isComped ? 0 : (amountCents != null && currency
-          ? (currency === 'KWD' ? (amountCents as number) / 1000 : (amountCents as number) / 100)
-          : calculateMonthlyFee(plan, clientSeats)); // Legacy: KWD
+        const seatsForPrice = seatBlock || clientSeats;
+        const monthlyAmountLocal = isComped
+          ? 0
+          : amountCents != null && currency
+            ? (currency === 'KWD'
+              ? (amountCents as number) / 1000
+              : (amountCents as number) / 100)
+            : effectiveRegion === 'KW'
+              ? calculateMonthlyFee(plan, clientSeats)
+              : getMonthlyPrice(effectiveRegion, seatsForPrice);
 
         return {
           id: orgId,
@@ -373,7 +382,7 @@ export async function getOrganizations(
           isComped: isComped,
           clientSeats: clientSeats,
           monthlyFeeKwd: currency === 'KWD' ? monthlyAmountLocal : undefined,
-          region,
+          region: effectiveRegion,
           currency,
           seatBlock: seatBlock || clientSeats,
           monthlyAmountLocal: currency ? monthlyAmountLocal : undefined,
@@ -430,13 +439,23 @@ export async function getOrganizationDetails(orgId: string): Promise<Organizatio
     const clientSeats = data.subscription?.clientSeats || 0;
     const isComped = data.subscription?.isComped === true;
     const region = (data.subscription?.region ?? data.region) as Region | undefined;
-    const currency = data.subscription?.currency ?? (region ? REGION_TO_CURRENCY[region] : undefined);
+    const effectiveRegion = region ?? DEFAULT_REGION;
+    const currency = data.subscription?.currency ?? REGION_TO_CURRENCY[effectiveRegion];
     const seatBlock = data.subscription?.clientCount ?? clientSeats;
     const amountCents = data.subscription?.amountCents ?? data.subscription?.amountFils;
-    const monthlyAmountLocal = isComped ? 0 : (amountCents != null && currency
-      ? (currency === 'KWD' ? (amountCents as number) / 1000 : (amountCents as number) / 100)
-      : (data.subscription?.amountFils != null ? data.subscription.amountFils / 1000 : calculateMonthlyFee(plan, clientSeats)));
-    const monthlyFeeKwd = currency === 'KWD' ? monthlyAmountLocal : (region ? getMonthlyPrice(region, seatBlock || clientSeats) : 0);
+    const seatsForPrice = seatBlock || clientSeats;
+    const monthlyAmountLocal = isComped
+      ? 0
+      : amountCents != null && currency
+        ? (currency === 'KWD'
+          ? (amountCents as number) / 1000
+          : (amountCents as number) / 100)
+        : effectiveRegion === 'KW'
+          ? (data.subscription?.amountFils != null
+            ? Number(data.subscription.amountFils) / 1000
+            : calculateMonthlyFee(plan, clientSeats))
+          : getMonthlyPrice(effectiveRegion, seatsForPrice);
+    const monthlyFeeKwd = currency === 'KWD' ? monthlyAmountLocal : undefined;
 
     return {
       id: orgSnap.id,
@@ -447,7 +466,7 @@ export async function getOrganizationDetails(orgId: string): Promise<Organizatio
       isComped,
       clientSeats,
       monthlyFeeKwd,
-      region,
+      region: effectiveRegion,
       currency,
       seatBlock: seatBlock || clientSeats,
       monthlyAmountLocal: currency ? monthlyAmountLocal : undefined,

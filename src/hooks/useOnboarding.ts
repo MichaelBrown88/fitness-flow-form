@@ -439,25 +439,29 @@ export function useOnboarding(): UseOnboardingResult {
       };
 
       setSavingMessage('Saving configuration...');
-      await setDoc(doc(db, 'organizations', orgId), {
-        name: finalData.businessProfile?.name || '',
-        type: bizType,
-        region,
-        gradientId: finalData.branding?.gradientId || DEFAULT_GRADIENT,
-        equipmentConfig,
-        customBrandingEnabled: false,
-        coachRosterNotes: finalData.teamRoster?.trim() || deleteField(),
-        subscription: isSolo ? subscriptionSolo : subscriptionGym,
-        onboardingCompletedAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        dpa: {
-          accepted: true,
-          version: 1,
-          acceptedByUid: user.uid,
-          acceptedAt: serverTimestamp(),
-          note: 'Implicit acceptance of Data Processing Agreement at onboarding completion.',
-        },
-      }, { merge: true });
+      // Invited coaches join an existing org — do not merge subscription/DPA onto the
+      // personal shell org or the target org from the client (org writes require isOrgAdmin).
+      if (!inviteOrganizationId) {
+        await setDoc(doc(db, 'organizations', orgId), {
+          name: finalData.businessProfile?.name || '',
+          type: bizType,
+          region,
+          gradientId: finalData.branding?.gradientId || DEFAULT_GRADIENT,
+          equipmentConfig,
+          customBrandingEnabled: false,
+          coachRosterNotes: finalData.teamRoster?.trim() || deleteField(),
+          subscription: isSolo ? subscriptionSolo : subscriptionGym,
+          onboardingCompletedAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          dpa: {
+            accepted: true,
+            version: 1,
+            acceptedByUid: user.uid,
+            acceptedAt: serverTimestamp(),
+            note: 'Implicit acceptance of Data Processing Agreement at onboarding completion.',
+          },
+        }, { merge: true });
+      }
 
       const isActiveCoach = finalData.businessProfile?.type === 'solo_coach'
         ? true
@@ -488,7 +492,12 @@ export function useOnboarding(): UseOnboardingResult {
       try {
         await setDoc(
           doc(db, 'onboarding_sessions', user.uid),
-          { userId: user.uid, organizationId: orgId, data: finalData, completedAt: serverTimestamp() },
+          {
+            userId: user.uid,
+            organizationId: inviteOrganizationId ?? orgId,
+            data: finalData,
+            completedAt: serverTimestamp(),
+          },
           { merge: true },
         );
       } catch (auditErr) {

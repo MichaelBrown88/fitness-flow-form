@@ -9,7 +9,6 @@ import { clearDraft } from '@/hooks/useAssessmentDraft';
 
 import { useMemo, useState, useEffect } from 'react';
 import { useDashboardData } from '@/hooks/useDashboardData';
-import { useAuth } from '@/hooks/useAuth';
 import { getRoadmapForClient } from '@/services/roadmaps';
 import { getClientProfile } from '@/services/clientProfiles';
 
@@ -55,10 +54,10 @@ const Dashboard = () => {
     showCoachColumn,
     coachMap,
     orgSettings,
+    effectiveOrgId,
   } = useDashboardData();
 
   const navigate = useNavigate();
-  const { effectiveOrgId, orgSettings } = useAuth();
   const overdueCount = reassessmentQueue?.summary?.overdue || 0;
 
   const [roadmapsNeeded, setRoadmapsNeeded] = useState<RoadmapNeededInfo[]>([]);

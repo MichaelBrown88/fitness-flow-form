@@ -1,10 +1,10 @@
 {
   "meta": {
     "product": "One Assess",
-    "lastUpdated": "2026-03-20",
+    "lastUpdated": "2026-03-22",
     "updatedBy": "Chief of Staff — APEX OS",
-    "launchReadiness": 52,
-    "currentFocus": "Stripe integration — #1 revenue blocker",
+    "launchReadiness": 58,
+    "currentFocus": "UK LTD incorporation (AML pending) + Stripe live env and dashboard completion",
     "northStar": "Eliminate assessment admin burden for coaches. First paying customer is the only metric."
   },
 
@@ -13,15 +13,16 @@
     {
       "id": "stripe-001",
       "title": "Stripe end-to-end payment flow",
-      "description": "Full subscription billing — coaches can pay, plans are enforced, failures are handled",
+      "description": "Capacity-based subscriptions — checkout, webhooks, plan enforcement, failed payments handled in Functions; live keys and production smoke tests remaining",
       "status": "in_progress",
       "priority": "P0",
       "agent": "CFO + CTO",
       "productionReady": false,
       "blocksLaunch": true,
       "tasks": [
-        { "id": "stripe-001-a", "title": "Set up Stripe account under one-assess.com business identity", "status": "todo" },
-        { "id": "stripe-001-b", "title": "Create pricing tables in Stripe dashboard (solo £49/mo, studio £129/mo)", "status": "todo" },
+        { "id": "stripe-001-a", "title": "Stripe Business account under one-assess.com (full verification after LTD incorporated)", "status": "in_progress" },
+        { "id": "stripe-001-b", "title": "Stripe Dashboard: products and prices matching capacity / package tiers", "status": "in_progress" },
+        { "id": "stripe-001-m", "title": "Functions: checkout, webhooks, auth on billing endpoints, rate limiting, payment-failure handling — implemented", "status": "done" },
         { "id": "stripe-001-c", "title": "Add live Stripe secret key to Firebase Functions environment", "status": "todo" },
         { "id": "stripe-001-d", "title": "Add live Stripe publishable key to frontend .env", "status": "todo" },
         { "id": "stripe-001-e", "title": "Register Stripe webhook endpoint in Stripe dashboard", "status": "todo" },
@@ -30,26 +31,26 @@
         { "id": "stripe-001-h", "title": "Test subscription creation webhook fires and updates Firestore", "status": "todo" },
         { "id": "stripe-001-i", "title": "Test failed payment handling (card declined flow)", "status": "todo" },
         { "id": "stripe-001-j", "title": "Test subscription cancellation flow", "status": "todo" },
-        { "id": "stripe-001-k", "title": "Verify FeatureGate component enforces plan limits correctly", "status": "todo" },
+        { "id": "stripe-001-k", "title": "Verify FeatureGate and paywalls enforce capacity / plan limits correctly", "status": "in_progress" },
         { "id": "stripe-001-l", "title": "Deploy updated functions and smoke test in production", "status": "todo" }
       ]
     },
 
     {
       "id": "pricing-002",
-      "title": "Pricing decision and page",
-      "description": "Finalise tier pricing, update landing page, wire to Stripe products",
-      "status": "todo",
+      "title": "Pricing decision, landing, and Stripe alignment",
+      "description": "Capacity-based GB/US/KW pricing in app and landing; final commercial numbers and Stripe catalog alignment",
+      "status": "in_progress",
       "priority": "P0",
       "agent": "CFO",
       "productionReady": false,
       "blocksLaunch": true,
       "tasks": [
-        { "id": "pricing-002-a", "title": "Finalise pricing: Solo £49/mo, Studio £129/mo, annual 20% discount", "status": "todo" },
-        { "id": "pricing-002-b", "title": "Define feature matrix per tier (what's included/excluded)", "status": "todo" },
-        { "id": "pricing-002-c", "title": "Update PricingSection.tsx with real prices and features", "status": "todo" },
-        { "id": "pricing-002-d", "title": "Create Stripe products and prices matching the tiers", "status": "todo" },
-        { "id": "pricing-002-e", "title": "Wire Stripe price IDs into constants/pricing.ts", "status": "todo" },
+        { "id": "pricing-002-a", "title": "Finalise commercial pricing (capacity packages, annual discount policy)", "status": "in_progress" },
+        { "id": "pricing-002-b", "title": "Define feature matrix per tier (included / excluded)", "status": "in_progress" },
+        { "id": "pricing-002-c", "title": "Landing pricing UI — LandingPricingPlans, PricingSection, ROI comparison", "status": "done" },
+        { "id": "pricing-002-d", "title": "Create Stripe products and prices matching live capacity tiers", "status": "todo" },
+        { "id": "pricing-002-e", "title": "Wire Stripe price IDs into constants/pricing.ts and shared billing module", "status": "done" },
         { "id": "pricing-002-f", "title": "Test upgrade flow from free trial to paid", "status": "todo" }
       ]
     },
@@ -193,19 +194,22 @@
 
     {
       "id": "business-registration-010",
-      "title": "Business registration and banking",
-      "description": "Complete UK business setup to enable Stripe and proper billing",
-      "status": "todo",
+      "title": "UK LTD incorporation and banking",
+      "description": "ONE ASSESS LTD via The Formation Company — Privacy Package with 1 year registered agent (£141.99, purchased 21/03/2026); AML after submission; Companies House Gov.uk identity verification required",
+      "status": "in_progress",
       "priority": "P0",
       "agent": "CFO + CEO",
       "productionReady": false,
       "blocksLaunch": true,
       "tasks": [
-        { "id": "biz-010-a", "title": "Register UK limited company or sole trader", "status": "todo" },
-        { "id": "biz-010-b", "title": "Set up business bank account", "status": "todo" },
-        { "id": "biz-010-c", "title": "Set up digital business address if needed", "status": "todo" },
-        { "id": "biz-010-d", "title": "Complete Stripe business verification with UK entity", "status": "todo" },
-        { "id": "biz-010-e", "title": "Link bank account to Stripe for payouts", "status": "todo" }
+        { "id": "biz-010-a", "title": "Pay formation agent — The Formation Company Privacy Package + 1yr registered agent (£141.99)", "status": "done" },
+        { "id": "biz-010-b", "title": "Complete and submit company and director information in Formation Company portal", "status": "in_progress" },
+        { "id": "biz-010-c", "title": "Companies House personal identity verification (Gov.uk — Director/PSC Personal Verification Code)", "status": "todo" },
+        { "id": "biz-010-d", "title": "AML checks and incorporation — status Awaiting AML Approval (ONE ASSESS LTD)", "status": "in_progress" },
+        { "id": "biz-010-e", "title": "Registered office, directors service address, digital mail forwarding (1 year — included in package)", "status": "in_progress" },
+        { "id": "biz-010-f", "title": "Open business bank account (optional via formation package)", "status": "todo" },
+        { "id": "biz-010-g", "title": "Complete Stripe business verification with UK entity once incorporated", "status": "todo" },
+        { "id": "biz-010-h", "title": "Link business bank account to Stripe for payouts", "status": "todo" }
       ]
     }
   ],

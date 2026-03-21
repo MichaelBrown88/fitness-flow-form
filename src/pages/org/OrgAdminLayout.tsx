@@ -11,6 +11,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { getOrganizationDetails, getOrgCoachesWithStats } from '@/services/platformAdmin';
 import { getOrgCoaches, addCoachToOrganization, removeCoachFromOrganization, sendCoachInviteEmail } from '@/services/coachManagement';
 import { calculateMonthlyFee } from '@/lib/pricing';
+import { getMonthlyPrice } from '@/lib/pricing/config';
+import { DEFAULT_REGION, type Region } from '@/constants/pricing';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/utils/logger';
 import AppShell from '@/components/layout/AppShell';
@@ -127,8 +129,17 @@ export default function OrgAdminLayout() {
   }, [readOrgId]);
 
   const monthlyFee =
-    orgDetails?.monthlyFeeKwd ??
-    (orgDetails ? calculateMonthlyFee(orgDetails.plan || 'free', orgDetails.clientSeats || 0) : 0);
+    orgDetails == null || orgDetails.isComped
+      ? 0
+      : orgDetails.monthlyAmountLocal != null
+        ? orgDetails.monthlyAmountLocal
+        : (() => {
+            const r = (orgDetails.region ?? DEFAULT_REGION) as Region;
+            const seats = orgDetails.seatBlock ?? orgDetails.clientSeats ?? 0;
+            return r === 'KW'
+              ? calculateMonthlyFee(orgDetails.plan || 'free', seats)
+              : getMonthlyPrice(r, seats);
+          })();
   const totalClientSeats = coaches.reduce((sum, coach) => sum + coach.clientCount, 0);
   const maxSeats = orgDetails?.clientSeats || 0;
   const seatsUsedPercentage = maxSeats > 0 ? (totalClientSeats / maxSeats) * 100 : 0;

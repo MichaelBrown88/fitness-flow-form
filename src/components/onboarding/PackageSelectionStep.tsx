@@ -16,6 +16,7 @@ import {
   type Region,
   type BillingPeriod,
 } from '@/constants/pricing';
+import { getMonthlyPrice } from '@/lib/pricing/config';
 import { formatPrice, getLocaleForRegion } from '@/lib/utils/currency';
 import type { BrandingConfig, BusinessType } from '@/types/onboarding';
 import {

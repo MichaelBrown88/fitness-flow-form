@@ -117,6 +117,7 @@ export function useDashboardData() {
     user,
     profile,
     orgSettings,
+    effectiveOrgId,
     loading,
     loadingData,
     items,

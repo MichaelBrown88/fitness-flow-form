@@ -16,6 +16,12 @@
 import * as admin from 'firebase-admin';
 import Stripe from 'stripe';
 import { assertRateLimit, buildRateLimitKey } from './rateLimit';
+import {
+  parseMetadataInt,
+  METADATA_MAX_CLIENT_CAP,
+  METADATA_MAX_MONTHLY_AI_CREDITS,
+  METADATA_MAX_CREDIT_TOPUP_QTY,
+} from './metadataInts';
 import { HttpsError, type CallableRequest } from 'firebase-functions/v2/https';
 import {
   capacityPriceEnvKey,
@@ -102,6 +108,26 @@ function regionToCurrency(region: string): string {
   return map[region] || 'GBP';
 }
 
+async function enforceBillingCallableRateLimit(
+  db: admin.firestore.Firestore,
+  namespace: string,
+  uid: string,
+  rawIp: string | undefined,
+): Promise<void> {
+  try {
+    await assertRateLimit(
+      db,
+      buildRateLimitKey(namespace, uid, rawIp),
+      { maxRequests: 15, windowSeconds: 60 },
+    );
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === 'RATE_LIMITED') {
+      throw new HttpsError('resource-exhausted', 'Too many requests. Try again shortly.');
+    }
+    throw e;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // createCheckoutSession — callable function handler
 // ---------------------------------------------------------------------------
@@ -130,6 +156,14 @@ export async function handleCreateCheckoutSession(
   if (!request.auth?.uid) {
     throw new Error('Authentication required.');
   }
+
+  const db = admin.firestore();
+  await enforceBillingCallableRateLimit(
+    db,
+    'stripe_checkout',
+    request.auth.uid,
+    request.rawRequest?.ip,
+  );
 
   const { organizationId, region, clientCount, plan, seats, tierId, billingPeriod, packageTrack } =
     request.data;
@@ -198,7 +232,6 @@ export async function handleCreateCheckoutSession(
   }
 
   const stripe = getStripe();
-  const db = admin.firestore();
 
   const orgDoc = await db.doc(`organizations/${organizationId}`).get();
   if (!orgDoc.exists) {
@@ -392,6 +425,12 @@ export async function handleCreateCustomerPortalSession(
   }
 
   const db = admin.firestore();
+  await enforceBillingCallableRateLimit(
+    db,
+    'stripe_portal',
+    request.auth.uid,
+    request.rawRequest?.ip,
+  );
 
   const orgDoc = await db.doc(`organizations/${organizationId}`).get();
   if (!orgDoc.exists) {
@@ -451,6 +490,13 @@ export async function handleCreateBrandingCheckoutSession(
   }
 
   const db = admin.firestore();
+  await enforceBillingCallableRateLimit(
+    db,
+    'stripe_branding_checkout',
+    request.auth.uid,
+    request.rawRequest?.ip,
+  );
+
   const orgDoc = await db.doc(`organizations/${organizationId}`).get();
   if (!orgDoc.exists) {
     throw new Error('Organization not found.');
@@ -546,7 +592,11 @@ export async function handleStripeWebhook(req: Request, res: Response) {
       }
       const orgId = session.metadata?.organizationId;
       const region = (session.metadata?.region as string) || 'GB';
-      const legacyClientCount = parseInt(session.metadata?.clientCount || session.metadata?.seats || '10', 10);
+      const legacyClientCount = parseMetadataInt(
+        session.metadata?.clientCount || session.metadata?.seats || undefined,
+        10,
+        METADATA_MAX_CLIENT_CAP,
+      );
       const currency = regionToCurrency(region);
 
       if (orgId && session.subscription) {
@@ -570,8 +620,16 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         const tierRow = capacityTierId ? getPaidTierById(capacityTierId) : undefined;
         const clientLimit =
           tierRow?.clientLimit ??
-          parseInt(session.metadata?.clientLimit || String(legacyClientCount), 10);
-        const fromMetaCredits = parseInt(session.metadata?.monthlyAiCredits || '0', 10);
+          parseMetadataInt(
+            session.metadata?.clientLimit,
+            legacyClientCount,
+            METADATA_MAX_CLIENT_CAP,
+          );
+        const fromMetaCredits = parseMetadataInt(
+          session.metadata?.monthlyAiCredits,
+          0,
+          METADATA_MAX_MONTHLY_AI_CREDITS,
+        );
         const monthlyAiCredits =
           tierRow?.monthlyAiCredits ??
           (fromMetaCredits > 0 ? fromMetaCredits : getPaidTierByClientCount(legacyClientCount).monthlyAiCredits);
@@ -609,7 +667,11 @@ export async function handleStripeWebhook(req: Request, res: Response) {
 
       // Credit top-up: add the purchased credits to the org's balance
       if (orgId && session.payment_status === 'paid' && session.metadata?.type === 'credit_topup') {
-        const qty = parseInt(session.metadata?.creditQuantity || '20', 10);
+        const qty = parseMetadataInt(
+          session.metadata?.creditQuantity,
+          20,
+          METADATA_MAX_CREDIT_TOPUP_QTY,
+        );
         await db.doc(`organizations/${orgId}`).update({
           assessmentCredits: admin.firestore.FieldValue.increment(qty),
           lastCreditTopupAt: admin.firestore.FieldValue.serverTimestamp(),

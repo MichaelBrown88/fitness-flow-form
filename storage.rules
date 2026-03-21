@@ -2,35 +2,47 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
+
     // ============================================================
-    // SECURITY: Path-based access control for SaaS isolation
+    // Multi-tenant isolation (Firestore-backed)
     // ============================================================
-    // Each organization's data is stored under organizations/{orgId}/
-    // This prevents cross-organization data access at the path level.
-    //
-    // TODO: For stricter enforcement, implement Custom Claims:
-    // 1. Create Cloud Function to set auth.token.organizationId on login
-    // 2. Change write rule to: request.auth.token.organizationId == orgId
-    // ============================================================
+    // Impersonation uses client-side effectiveOrgId only; JWT is unchanged.
+    // Platform admins are not in every org's coaches map, so isPlatformAdmin()
+    // allows support/impersonation to access org assets when needed.
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isPlatformAdmin() {
+      return isAuthenticated() &&
+        firestore.exists(/databases/(default)/documents/platform_admins/$(request.auth.uid));
+    }
+
+    function isOrgCoach(orgId) {
+      return isAuthenticated() &&
+        firestore.exists(
+          /databases/(default)/documents/organizations/$(orgId)/coaches/$(request.auth.uid)
+        );
+    }
+
+    function canAccessOrgStorage(orgId) {
+      return isOrgCoach(orgId) || isPlatformAdmin();
+    }
 
     // Organization-specific data (logos, client images, posture scans, etc.)
     // Path structure: organizations/{orgId}/**
     match /organizations/{orgId}/{allPaths=**} {
-      // Authenticated users can read (needed for displaying logos, images)
-      allow read: if request.auth != null;
-      
-      // Authenticated users can write to organization paths
-      // Path isolation provides basic protection against cross-org writes
-      allow write: if request.auth != null;
+      allow read: if canAccessOrgStorage(orgId);
+      allow write: if canAccessOrgStorage(orgId);
     }
-    
-    // Live session data (real-time companion uploads during posture/InBody scans)
-    // These are temporary files synced between desktop and mobile
+
+    // Reserved for future companion uploads. App currently uses
+    // organizations/{orgId}/clients/... only (see backgroundUpload.ts).
     match /live_sessions/{sessionId}/{allPaths=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if false;
     }
-    
+
     // No catch-all rule = everything else is DENIED by default
-    // This prevents writes to arbitrary paths like /, /admin/, /system/, etc.
   }
 }

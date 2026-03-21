@@ -68,6 +68,9 @@ async function deliver(
   }
 }
 
+/** Max active webhook endpoints processed per fan-out (cursorrules: bounded list queries). */
+const WEBHOOK_FANOUT_LIMIT = 20;
+
 /**
  * Fan out a webhook event to all active, subscribed endpoints for an org.
  * Called from Firestore triggers.
@@ -82,6 +85,7 @@ export async function fanOutWebhookEvent(
   const webhooksSnap = await db
     .collection(`organizations/${orgId}/webhooks`)
     .where('active', '==', true)
+    .limit(WEBHOOK_FANOUT_LIMIT)
     .get();
 
   if (webhooksSnap.empty) return;
