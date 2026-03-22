@@ -1,5 +1,8 @@
 import { doc, getDoc, setDoc, updateDoc, deleteDoc, serverTimestamp, onSnapshot, Timestamp, collection, query, where, getDocs, limit, writeBatch, addDoc, increment } from 'firebase/firestore';
-import { ORG_CLIENT_PROFILES_QUERY_LIMIT } from '@/constants/firestoreQueryLimits';
+import {
+  ORG_CLIENT_PROFILES_QUERY_LIMIT,
+  PUBLIC_REPORTS_BY_CLIENT_DELETE_LIMIT,
+} from '@/constants/firestoreQueryLimits';
 import { getDb } from '@/services/firebase';
 import { validateOrganizationId } from '@/lib/utils/validateOrganizationId';
 import type { UserProfile } from '@/types/auth';
@@ -726,6 +729,41 @@ export async function pauseClient(params: {
   });
 }
 
+const CLIENT_BATCH_WRITE_MAX = 400;
+
+/**
+ * Pause many clients in chunked Firestore batches (same fields as {@link pauseClient}).
+ */
+export async function batchPauseClients(params: {
+  organizationId: string;
+  clientSlugs: string[];
+  pausedBy: string;
+  profile?: UserProfile | null;
+}): Promise<void> {
+  const { clientSlugs, pausedBy, profile } = params;
+  const validOrgId = validateOrganizationId(params.organizationId, profile);
+  const db = getDb();
+  const pauseApproved = pausedBy !== 'client-request';
+  const payload = {
+    status: 'paused' as const,
+    pausedAt: serverTimestamp(),
+    pausedBy,
+    pauseReason: null,
+    pauseApproved,
+    updatedAt: serverTimestamp(),
+  };
+
+  for (let i = 0; i < clientSlugs.length; i += CLIENT_BATCH_WRITE_MAX) {
+    const chunk = clientSlugs.slice(i, i + CLIENT_BATCH_WRITE_MAX);
+    const batch = writeBatch(db);
+    for (const slug of chunk) {
+      const ref = doc(db, ORGANIZATION.clients.doc(validOrgId, slug));
+      batch.update(ref, payload);
+    }
+    await batch.commit();
+  }
+}
+
 /**
  * Unpause a client's account.
  * The coach can choose to resume remaining time or reset countdowns.
@@ -867,6 +905,41 @@ export async function archiveClient(params: {
 }
 
 /**
+ * Archive many clients in chunked Firestore batches (same fields as {@link archiveClient}).
+ */
+export async function batchArchiveClients(params: {
+  organizationId: string;
+  clientSlugs: string[];
+  archivedBy: string;
+  profile?: UserProfile | null;
+}): Promise<void> {
+  const { clientSlugs, archivedBy, profile } = params;
+  const validOrgId = validateOrganizationId(params.organizationId, profile);
+  const db = getDb();
+  const payload = {
+    status: 'archived' as const,
+    archivedAt: serverTimestamp(),
+    archivedBy,
+    archiveReason: null,
+    pausedAt: null,
+    pausedBy: null,
+    pauseReason: null,
+    pauseApproved: null,
+    updatedAt: serverTimestamp(),
+  };
+
+  for (let i = 0; i < clientSlugs.length; i += CLIENT_BATCH_WRITE_MAX) {
+    const chunk = clientSlugs.slice(i, i + CLIENT_BATCH_WRITE_MAX);
+    const batch = writeBatch(db);
+    for (const slug of chunk) {
+      const ref = doc(db, ORGANIZATION.clients.doc(validOrgId, slug));
+      batch.update(ref, payload);
+    }
+    await batch.commit();
+  }
+}
+
+/**
  * Reactivate an archived client. Same options as unpause:
  * - resume: shift all pillar dates forward by the archived duration
  * - reset: start fresh from today
@@ -954,21 +1027,24 @@ export async function deleteClientPermanently(params: {
 
   async function deleteSubcollection(colPath: string): Promise<void> {
     const colRef = collection(db, colPath);
-    const snap = await getDocs(colRef);
-    if (snap.empty) return;
-    const BATCH_SIZE = 400;
-    let batch = writeBatch(db);
-    let count = 0;
-    for (const docSnap of snap.docs) {
-      batch.delete(docSnap.ref);
-      count++;
-      if (count >= BATCH_SIZE) {
-        await batch.commit();
-        batch = writeBatch(db);
-        count = 0;
+    const PAGE = 400;
+    while (true) {
+      const snap = await getDocs(query(colRef, limit(PAGE)));
+      if (snap.empty) return;
+      let batch = writeBatch(db);
+      let count = 0;
+      for (const docSnap of snap.docs) {
+        batch.delete(docSnap.ref);
+        count++;
+        if (count >= PAGE) {
+          await batch.commit();
+          batch = writeBatch(db);
+          count = 0;
+        }
       }
+      if (count > 0) await batch.commit();
+      if (snap.size < PAGE) return;
     }
-    if (count > 0) await batch.commit();
   }
 
   // 1. Delete sessions sub-collection
@@ -991,6 +1067,7 @@ export async function deleteClientPermanently(params: {
         collection(db, 'publicReports'),
         where('clientName', '==', clientName),
         where('organizationId', '==', organizationId),
+        limit(PUBLIC_REPORTS_BY_CLIENT_DELETE_LIMIT),
       ),
     );
     if (!publicReportsSnap.empty) {

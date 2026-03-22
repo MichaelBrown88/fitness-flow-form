@@ -11,6 +11,7 @@ import {
 import { updatePostureAnalysis } from '@/services/assessmentHistory';
 import { auth, storage } from '@/services/firebase';
 import { ref, getDownloadURL, getBytes } from 'firebase/storage';
+import { logger } from '@/lib/utils/logger';
 
 /**
  * Re-analyze all posture images for a client
@@ -44,7 +45,7 @@ export async function reanalyzeClientPosture(
       const postureImages = current.formData.postureImagesStorage || current.formData.postureImages;
       if (postureImages && typeof postureImages === 'object' && Object.keys(postureImages).length > 0) {
         hasImagesFromAssessment = true;
-        console.log('[REANALYZE] Found posture images in assessment document');
+        logger.debug('[REANALYZE] Found posture images in assessment document');
         
         const { processPostureImage } = await import('@/services/postureProcessing');
         
@@ -52,7 +53,7 @@ export async function reanalyzeClientPosture(
           const imageUrl = postureImages[view];
           if (imageUrl && typeof imageUrl === 'string') {
             try {
-              console.log(`[REANALYZE] Re-analyzing ${view} view from assessment document...`);
+              logger.debug(`[REANALYZE] Re-analyzing ${view} view from assessment document...`);
               
               let imageDataUrl: string;
               
@@ -82,7 +83,7 @@ export async function reanalyzeClientPosture(
                     });
                   }
                 } catch (fetchError) {
-                  console.warn(`[REANALYZE] SDK fetch failed, trying direct URL:`, fetchError);
+                  logger.warn(`[REANALYZE] SDK fetch failed, trying direct URL:`, fetchError);
                   imageDataUrl = imageUrl;
                 }
               } else {
@@ -102,12 +103,12 @@ export async function reanalyzeClientPosture(
               );
               
               results.success++;
-              console.log(`[REANALYZE] ✓ Successfully re-analyzed ${view} view from assessment`);
+              logger.debug(`[REANALYZE] ✓ Successfully re-analyzed ${view} view from assessment`);
             } catch (error) {
               const errorMsg = error instanceof Error ? error.message : String(error);
               results.failed++;
               results.errors.push(`${view}: ${errorMsg}`);
-              console.error(`[REANALYZE] ✗ Failed to re-analyze ${view} view:`, error);
+              logger.error(`[REANALYZE] ✗ Failed to re-analyze ${view} view:`, error);
             }
           }
         }
@@ -116,7 +117,7 @@ export async function reanalyzeClientPosture(
     
     // If no images in assessment, try live sessions
     if (!hasImagesFromAssessment) {
-      console.log('[REANALYZE] No images in assessment, checking live sessions...');
+      logger.debug('[REANALYZE] No images in assessment, checking live sessions...');
       if (!organizationId) {
         throw new Error('organizationId is required to load live session posture data');
       }
@@ -140,15 +141,15 @@ export async function reanalyzeClientPosture(
       for (const view of views) {
         if (latestSession.images[view]) {
           try {
-            console.log(`[REANALYZE] Re-analyzing ${view} view from live session...`);
+            logger.debug(`[REANALYZE] Re-analyzing ${view} view from live session...`);
             await reanalyzePostureImage(latestSession.sessionId, view, organizationId);
             results.success++;
-            console.log(`[REANALYZE] ✓ Successfully re-analyzed ${view} view`);
+            logger.debug(`[REANALYZE] ✓ Successfully re-analyzed ${view} view`);
           } catch (error) {
             const errorMsg = error instanceof Error ? error.message : String(error);
             results.failed++;
             results.errors.push(`${view}: ${errorMsg}`);
-            console.error(`[REANALYZE] ✗ Failed to re-analyze ${view} view:`, error);
+            logger.error(`[REANALYZE] ✗ Failed to re-analyze ${view} view:`, error);
           }
         }
       }
@@ -165,6 +166,6 @@ export async function reanalyzeClientPosture(
  */
 if (import.meta.env.DEV && typeof window !== 'undefined') {
   (window as Window & typeof globalThis & { reanalyzeClientPosture?: typeof reanalyzeClientPosture }).reanalyzeClientPosture = reanalyzeClientPosture;
-  console.log('💡 Re-analysis utility loaded! Use: reanalyzeClientPosture("Client Name")');
+  logger.info('💡 Re-analysis utility loaded! Use: reanalyzeClientPosture("Client Name")');
 }
 

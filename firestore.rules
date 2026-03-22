@@ -11,9 +11,31 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Custom claim set via Admin SDK (optional; speeds up access before platform_admins/{uid} exists)
+    function isPlatformAdminToken() {
+      return request.auth != null &&
+        request.auth.token.platformAdmin == true;
+    }
+
     function isPlatformAdmin() {
       return isAuthenticated() &&
-        exists(/databases/$(database)/documents/platform_admins/$(request.auth.uid));
+        (exists(/databases/$(database)/documents/platform_admins/$(request.auth.uid)) ||
+          isPlatformAdminToken());
+    }
+
+    // First-time bootstrap: lookup row lists this auth uid, or pending_* before migration
+    function platformAdminLookupForAuth() {
+      return get(/databases/$(database)/documents/platform_admin_lookup/$(request.auth.token.email));
+    }
+
+    function canBootstrapPlatformAdminDoc(adminId) {
+      return isAuthenticated() &&
+        request.auth.uid == adminId &&
+        request.auth.token.email is string &&
+        request.auth.token.email.size() > 0 &&
+        exists(/databases/$(database)/documents/platform_admin_lookup/$(request.auth.token.email)) &&
+        (platformAdminLookupForAuth().data.uid == adminId ||
+          platformAdminLookupForAuth().data.uid.matches('pending_.+'));
     }
 
     // Platform admin is not currently impersonating an org (blocks writes during impersonation)
@@ -69,6 +91,33 @@ service cloud.firestore {
     // Owning coach UID on a public report doc (for subcollection writes).
     function publicReportCoachUid(token) {
       return get(/databases/$(database)/documents/publicReports/$(token)).data.coachUid;
+    }
+
+    // AI usage log create — coaches append-only for their own UID and org (no update/delete from client)
+    function aiUsageLogCreateKeysValid() {
+      return request.resource.data.keys().hasOnly([
+        'timestamp', 'type', 'status', 'provider', 'coachUid',
+        'organizationId', 'costEstimate', 'costFils', 'tokensUsed', 'metadata'
+      ]);
+    }
+
+    function aiUsageLogCreateAllowed() {
+      let d = request.resource.data;
+      return aiUsageLogCreateKeysValid() &&
+        isAuthenticated() &&
+        isNotImpersonating() &&
+        d.coachUid == request.auth.uid &&
+        d.organizationId is string &&
+        d.organizationId.size() > 0 &&
+        isOrgCoach(d.organizationId) &&
+        d.type in ['ocr_inbody', 'posture_analysis', 'exercise_recommendation', 'comparison_narrative'] &&
+        d.status in ['local_success', 'ai_fallback', 'ai_success', 'error'] &&
+        d.provider in ['local', 'gemini', 'mediapipe', 'pattern'] &&
+        d.costEstimate is number &&
+        d.costFils is number &&
+        d.tokensUsed is number &&
+        d.metadata is map &&
+        d.timestamp == request.time;
     }
 
     // =========================================================
@@ -295,12 +344,16 @@ service cloud.firestore {
 
     match /platform_admins/{adminId} {
       allow read: if isAuthenticated();
-      allow write: if isPlatformAdmin();
+      allow create, update: if isPlatformAdmin() || canBootstrapPlatformAdminDoc(adminId);
+      allow delete: if isPlatformAdmin();
     }
 
+    // Canonical lookup id must equal lowercased auth email (see PLATFORM.admins.lookupKey).
+    // get: unauthenticated platform login checks email against lookup; ids are guessable only if email is known.
     match /platform_admin_lookup/{lookupId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
+      allow get: if true;
+      allow list: if false;
+      allow create, update, delete: if false;
     }
 
     // =========================================================
@@ -313,10 +366,10 @@ service cloud.firestore {
     }
 
     // =========================================================
-    // AI USAGE LOGS  (root-level, written by Cloud Functions)
+    // AI USAGE LOGS  (root-level)
     // Platform admins can read all logs.
-    // Org coaches can read logs scoped to their organisation.
-    // Writes are Cloud Function only (no client write path).
+    // Org coaches can read logs for their organisation (organizationId set on doc).
+    // Coaches may create append-only logs for self + org (validated). Updates/deletes: Admin SDK / platform only.
     // =========================================================
 
     match /ai_usage_logs/{logId} {
@@ -324,7 +377,8 @@ service cloud.firestore {
         (isAuthenticated() &&
           resource.data.organizationId != null &&
           isOrgCoach(resource.data.organizationId));
-      allow write: if false;
+      allow create: if aiUsageLogCreateAllowed();
+      allow update, delete: if false;
     }
 
     // =========================================================

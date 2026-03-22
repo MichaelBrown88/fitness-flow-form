@@ -1,5 +1,5 @@
-import { useState, lazy, Suspense } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useState, lazy, Suspense, useEffect } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAssessmentLogic } from '@/hooks/useAssessmentLogic';
 import { useVersionSelector } from '@/hooks/useVersionSelector';
 import { useReportShare } from '@/hooks/useReportShare';
@@ -9,7 +9,7 @@ import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { generateBodyCompInterpretation } from '@/lib/recommendations';
-import { Loader2, Share2, Link as LinkIcon, Mail, MessageCircle, MoreVertical, ArrowLeft, Edit2, Plus, Eye } from 'lucide-react';
+import { Loader2, Share2, MoreVertical, ArrowLeft, Edit2, Plus, Eye } from 'lucide-react';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import {
   DropdownMenu,
@@ -17,24 +17,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { ShareWithClientReportDialog } from '@/components/reports/ShareWithClientReportDialog';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 
 const ClientReport = lazy(() => import('@/components/reports/ClientReport'));
 const CoachReport = lazy(() => import('@/components/reports/CoachReport'));
 
-import { ROUTES } from '@/constants/routes';
+import { ROUTES, COACH_ASSESSMENT_QUERY } from '@/constants/routes';
 
 const AssessmentReport = () => {
   const { id } = useParams();
   const { user, profile } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const {
     formData,
@@ -62,7 +57,6 @@ const AssessmentReport = () => {
     handleEmailLink,
     handleSystemShare,
     handleWhatsAppShare,
-    handleCopyMessage,
     shareLoading,
   } = useReportShare({
     assessmentId: id,
@@ -72,6 +66,18 @@ const AssessmentReport = () => {
     overallScore: scores?.overall,
     scoreDelta,
   });
+
+  useEffect(() => {
+    const wantsShare =
+      searchParams.get(COACH_ASSESSMENT_QUERY.OPEN_SHARE_MODAL) ===
+      COACH_ASSESSMENT_QUERY.OPEN_SHARE_VALUE;
+    if (!wantsShare) return;
+    if (loading || !formData || !scores || !plan) return;
+    setShareModalOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete(COACH_ASSESSMENT_QUERY.OPEN_SHARE_MODAL);
+    setSearchParams(next, { replace: true });
+  }, [loading, formData, scores, plan, searchParams, setSearchParams]);
 
   if (loading) {
     return (
@@ -295,34 +301,15 @@ const AssessmentReport = () => {
         </div>
       </div>
 
-      <Dialog open={shareModalOpen} onOpenChange={setShareModalOpen}>
-        <DialogContent className="sm:max-w-md rounded-2xl">
-          <DialogHeader>
-            <DialogTitle>Share with client</DialogTitle>
-            <DialogDescription>
-              Copy the report link, send by email, or open in WhatsApp.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-2 pt-2">
-            <Button variant="outline" className="justify-start gap-2 h-11" onClick={() => { void handleCopyLink(); setShareModalOpen(false); }} disabled={shareLoading}>
-              <LinkIcon className="h-4 w-4" />
-              Copy link
-            </Button>
-            <Button variant="outline" className="justify-start gap-2 h-11" onClick={() => { void handleEmailLink(); setShareModalOpen(false); }} disabled={shareLoading}>
-              <Mail className="h-4 w-4" />
-              Email report
-            </Button>
-            <Button variant="outline" className="justify-start gap-2 h-11" onClick={() => { void handleSystemShare(); setShareModalOpen(false); }} disabled={shareLoading}>
-              <Share2 className="h-4 w-4" />
-              Share (device)
-            </Button>
-            <Button variant="outline" className="justify-start gap-2 h-11" onClick={() => { void handleWhatsAppShare(); setShareModalOpen(false); }} disabled={shareLoading}>
-              <MessageCircle className="h-4 w-4" />
-              WhatsApp
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ShareWithClientReportDialog
+        open={shareModalOpen}
+        onOpenChange={setShareModalOpen}
+        shareLoading={shareLoading}
+        onCopyLink={handleCopyLink}
+        onEmailLink={handleEmailLink}
+        onSystemShare={handleSystemShare}
+        onWhatsAppShare={handleWhatsAppShare}
+      />
     </AppShell>
     </ErrorBoundary>
   );

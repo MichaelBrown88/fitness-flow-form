@@ -1,6 +1,7 @@
 import React from 'react';
 import { CreditBalance } from '@/components/org/billing/CreditBalance';
 import { useAuth } from '@/hooks/useAuth';
+import { DASHBOARD_TASKS } from '@/constants/dashboardTasksCopy';
 
 interface DashboardHeaderProps {
   coachFirstName: string;
@@ -28,22 +29,22 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   return (
     <div className="mb-4 sm:mb-6">
       <div className="flex items-start justify-between gap-2">
-        <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-slate-900">
+        <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-foreground">
           {getGreeting()}, {coachFirstName}.
         </h1>
         {assessmentCredits !== undefined && (
           <CreditBalance credits={assessmentCredits} className="shrink-0" />
         )}
       </div>
-      <p className="text-sm text-slate-400 font-medium mt-0.5 flex items-center gap-1.5 flex-wrap">
+      <p className="text-sm text-muted-foreground font-medium mt-0.5 flex items-center gap-1.5 flex-wrap">
         <span>{totalClients} {totalClients === 1 ? 'client' : 'clients'}</span>
-        <span className="text-slate-300">·</span>
+        <span className="text-border">·</span>
         <span>{totalAssessments} {totalAssessments === 1 ? 'assessment' : 'assessments'}</span>
         {overdueCount > 0 && (
           <>
-            <span className="text-slate-300">·</span>
-            <span className="text-amber-600 font-semibold">
-              {overdueCount} overdue
+            <span className="text-border">·</span>
+            <span className="text-score-amber-fg font-semibold">
+              {DASHBOARD_TASKS.HEADER_PAST_CADENCE(overdueCount)}
             </span>
           </>
         )}

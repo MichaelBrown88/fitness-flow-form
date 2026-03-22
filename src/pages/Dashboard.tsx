@@ -21,6 +21,7 @@ import { CalendarView } from '@/components/dashboard/sub-components/CalendarView
 import { TeamView } from '@/components/dashboard/sub-components/TeamView';
 import { GettingStartedChecklist } from '@/components/dashboard/GettingStartedChecklist';
 import { generateTasks, type QueueEntry, type RoadmapNeededInfo, type ProfileGapInfo } from '@/lib/tasks/generateTasks';
+import { staffPreferredFirstName } from '@/lib/utils/staffDisplayName';
 
 const Dashboard = () => {
   const {
@@ -152,7 +153,7 @@ const Dashboard = () => {
     );
   }
 
-  const coachFirstName = user?.displayName ? user.displayName.split(' ')[0] : 'Coach';
+  const coachFirstName = staffPreferredFirstName(profile, user);
 
   return (
     <ErrorBoundary>
@@ -178,15 +179,6 @@ const Dashboard = () => {
             overdueCount={overdueCount}
           />
 
-          <GettingStartedChecklist
-            hasClients={(analytics?.totalClients ?? 0) > 0}
-            hasAssessments={(analytics?.totalAssessments ?? 0) > 0}
-            hasSharedReport={hasSharedReport}
-            businessProfileComplete={Boolean(orgSettings?.name?.trim() && orgSettings?.region)}
-            showTrialSubscribeNudge={orgSettings?.subscription?.planKind === 'gym_trial'}
-            showBrandingNudge={orgSettings?.customBrandingEnabled === false}
-          />
-
           {/* Main Content */}
           <div className="bg-card text-card-foreground rounded-2xl border border-border p-3 sm:p-4 md:p-6 lg:p-8 overflow-hidden">
             <DashboardViewTabs 
@@ -209,6 +201,10 @@ const Dashboard = () => {
                 orgDefaultIntervals={orgSettings?.defaultCadence?.intervals}
                 orgDefaultActivePillars={orgSettings?.defaultCadence?.activePillars}
                 onViewHistory={handleViewHistory}
+                writeOrganizationId={profile?.organizationId}
+                coachUid={user?.uid}
+                profile={profile}
+                onBulkComplete={refreshSchedules}
               />
             )}
 
@@ -233,6 +229,23 @@ const Dashboard = () => {
             )}
           </div>
         </div>
+
+        <GettingStartedChecklist
+          hasClients={(analytics?.totalClients ?? 0) > 0}
+          hasAssessments={(analytics?.totalAssessments ?? 0) > 0}
+          hasSharedReport={hasSharedReport}
+          primaryAssessmentIdForShare={
+            filteredClients.find((c) => c.assessments.length > 0)?.assessments[0]?.id ?? null
+          }
+          primaryClientNameForShare={
+            filteredClients.find((c) => c.assessments.length > 0)?.name ?? null
+          }
+          businessProfileComplete={Boolean(orgSettings?.name?.trim() && orgSettings?.region)}
+          equipmentDetailsDone={Boolean(orgSettings?.onboardingCompletedAt)}
+          isOrgAdmin={profile?.role === 'org_admin'}
+          showTrialSubscribeNudge={orgSettings?.subscription?.planKind === 'gym_trial'}
+          showBrandingNudge={orgSettings?.customBrandingEnabled === false}
+        />
 
         <DashboardDialogs
           deleteDialog={deleteDialog}

@@ -13,6 +13,14 @@ import {
 import { useTeamDashboard } from '@/hooks/dashboard/useTeamDashboard';
 import type { CoachMetrics } from '@/services/teamMetrics';
 import { SCORE_COLORS } from '@/lib/scoring/scoreColor';
+import { Button } from '@/components/ui/button';
+
+/** Cloud Function returns ISO strings; normalize for sorting and display. */
+function parseCoachLastActive(iso: string | null): Date | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -93,7 +101,7 @@ const SortHeader: React.FC<{
 // ── Main Component ───────────────────────────────────────────────────
 
 export const TeamView: React.FC<TeamViewProps> = ({ search }) => {
-  const { loading, summary, coaches } = useTeamDashboard();
+  const { loading, error, missingOrganization, summary, coaches, refresh } = useTeamDashboard();
   const [sortKey, setSortKey] = useState<SortKey>('assessments30d');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
 
@@ -125,7 +133,13 @@ export const TeamView: React.FC<TeamViewProps> = ({ search }) => {
         case 'overdueCount': aVal = a.overdueCount; bVal = b.overdueCount; break;
         case 'avgScore': aVal = a.avgScore; bVal = b.avgScore; break;
         case 'avgTrend': aVal = a.avgTrend; bVal = b.avgTrend; break;
-        case 'lastActive': aVal = a.lastActive?.getTime() ?? 0; bVal = b.lastActive?.getTime() ?? 0; break;
+        case 'lastActive': {
+          const ad = parseCoachLastActive(a.lastActive);
+          const bd = parseCoachLastActive(b.lastActive);
+          aVal = ad?.getTime() ?? 0;
+          bVal = bd?.getTime() ?? 0;
+          break;
+        }
         default: aVal = 0; bVal = 0;
       }
       if (typeof aVal === 'string' && typeof bVal === 'string') {
@@ -140,6 +154,30 @@ export const TeamView: React.FC<TeamViewProps> = ({ search }) => {
       <div className="flex items-center justify-center py-20 text-sm text-slate-400 font-medium">
         <Loader2 className="w-5 h-5 animate-spin mr-2" />
         Loading team data…
+      </div>
+    );
+  }
+
+  if (missingOrganization) {
+    return (
+      <div className="text-center py-20 space-y-3 max-w-md mx-auto">
+        <AlertCircle className="w-10 h-10 text-score-amber mx-auto" />
+        <p className="text-sm font-semibold text-slate-700">Organization not available</p>
+        <p className="text-xs text-slate-500">
+          Team metrics need an organization context. Try signing out and back in, or contact support if this persists.
+        </p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-20 space-y-4 max-w-md mx-auto">
+        <AlertCircle className="w-10 h-10 text-score-red mx-auto" />
+        <p className="text-sm font-semibold text-slate-700">{error}</p>
+        <Button type="button" variant="outline" className="rounded-xl" onClick={() => void refresh()}>
+          Try again
+        </Button>
       </div>
     );
   }
@@ -233,8 +271,10 @@ const CoachRow: React.FC<{
   coach: CoachMetrics;
   daysSince: (d: Date | null) => string;
 }> = ({ coach, daysSince }) => {
-  const lastActiveLabel = daysSince(coach.lastActive);
-  const isInactive = !coach.lastActive || (Date.now() - coach.lastActive.getTime()) > 14 * 24 * 60 * 60 * 1000;
+  const lastActiveDate = parseCoachLastActive(coach.lastActive);
+  const lastActiveLabel = daysSince(lastActiveDate);
+  const isInactive =
+    !lastActiveDate || Date.now() - lastActiveDate.getTime() > 14 * 24 * 60 * 60 * 1000;
 
   return (
     <tr className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">

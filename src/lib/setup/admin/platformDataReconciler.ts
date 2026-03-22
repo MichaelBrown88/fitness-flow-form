@@ -14,6 +14,7 @@ import { getDb, getFirebaseFunctions } from '@/services/firebase';
 import { filsToGbpPence } from '@/lib/utils/currency';
 import { getLogCostFils } from '@/lib/ai/aiPricing';
 import { logger } from '@/lib/utils/logger';
+import { ORG_CLIENT_PROFILES_QUERY_LIMIT, ORG_COACHES_SUBCOLLECTION_LIMIT } from '@/constants/firestoreQueryLimits';
 
 type OrgSummary = {
   orgId: string;
@@ -145,7 +146,7 @@ function getAssessmentHistoryOrgId(path: string): string | null {
 }
 
 async function loadAssessmentEvents(): Promise<AssessmentEvent[]> {
-  const historySnap = await getDocs(query(collectionGroup(getDb(), 'history')));
+  const historySnap = await getDocs(query(collectionGroup(getDb(), 'history'), limit(500)));
   const events: AssessmentEvent[] = [];
 
   historySnap.docs.forEach((docSnap) => {
@@ -824,20 +825,26 @@ export async function platformAudit(): Promise<void> {
   const orgsSnap = await getDocs(getOrganizationsCollection());
   const orgs = orgsSnap.docs.map(d => ({ id: d.id, name: d.data().name ?? d.id }));
 
-  console.group('%c Platform Data Audit', 'font-size:14px;font-weight:bold;color:#818cf8');
-  console.log(`Organisations: ${orgs.length}`);
+  logger.debug('Platform Data Audit');
+  logger.debug(`Organisations: ${orgs.length}`);
   for (const org of orgs) {
-    console.group(`📁 ${org.name} (${org.id})`);
+    logger.debug(`📁 ${org.name} (${org.id})`);
 
-    const clientsSnap = await getDocs(getOrgClientsCollection(org.id));
+    const clientsSnap = await getDocs(
+      query(getOrgClientsCollection(org.id), limit(ORG_CLIENT_PROFILES_QUERY_LIMIT)),
+    );
     const clients = clientsSnap.docs.map(d => ({ id: d.id, name: d.data().clientName ?? d.id }));
-    console.log(`Clients: ${clients.length}`);
+    logger.debug(`Clients: ${clients.length}`);
 
-    const coachesSnap = await getDocs(collection(db, `organizations/${org.id}/coaches`));
-    console.log(`Coaches: ${coachesSnap.size}`);
+    const coachesSnap = await getDocs(
+      query(collection(db, `organizations/${org.id}/coaches`), limit(ORG_COACHES_SUBCOLLECTION_LIMIT)),
+    );
+    logger.debug(`Coaches: ${coachesSnap.size}`);
 
-    const assessmentsSnap = await getDocs(getOrgAssessmentsCollection(org.id));
-    console.log(`Current assessment docs: ${assessmentsSnap.size}`);
+    const assessmentsSnap = await getDocs(
+      query(getOrgAssessmentsCollection(org.id), limit(ORG_CLIENT_PROFILES_QUERY_LIMIT)),
+    );
+    logger.debug(`Current assessment docs: ${assessmentsSnap.size}`);
 
     // Count snapshots per client
     let totalSnapshots = 0;
@@ -845,37 +852,41 @@ export async function platformAudit(): Promise<void> {
     for (const client of clients) {
       const slug = client.id;
       const snapRef = collection(db, `organizations/${org.id}/assessmentHistory/${slug}/snapshots`);
-      const snapSnap = await getDocs(snapRef);
+      const snapSnap = await getDocs(query(snapRef, limit(500)));
       totalSnapshots += snapSnap.size;
       if (snapSnap.size > 0) snapshotBreakdown.push(`  ${client.name}: ${snapSnap.size} snapshots`);
     }
-    console.log(`Assessment snapshots total: ${totalSnapshots}`);
-    if (snapshotBreakdown.length) console.log(snapshotBreakdown.join('\n'));
+    logger.debug(`Assessment snapshots total: ${totalSnapshots}`);
+    if (snapshotBreakdown.length) logger.debug(snapshotBreakdown.join('\n'));
 
     // Public reports
     const reportsSnap = await getDocs(
-      query(collection(db, 'publicReports'), where('organizationId', '==', org.id))
+      query(
+        collection(db, 'publicReports'),
+        where('organizationId', '==', org.id),
+        limit(100),
+      ),
     );
-    console.log(`Public reports: ${reportsSnap.size}`);
+    logger.debug(`Public reports: ${reportsSnap.size}`);
 
     // Count report version docs (formerly 'snapshots' subcollection)
     let totalReportVersions = 0;
     for (const reportDoc of reportsSnap.docs) {
-      const versionsSnap = await getDocs(collection(db, `publicReports/${reportDoc.id}/reportVersions`));
-      const legacySnap = await getDocs(collection(db, `publicReports/${reportDoc.id}/snapshots`));
+      const versionsSnap = await getDocs(
+        query(collection(db, `publicReports/${reportDoc.id}/reportVersions`), limit(200)),
+      );
+      const legacySnap = await getDocs(
+        query(collection(db, `publicReports/${reportDoc.id}/snapshots`), limit(200)),
+      );
       totalReportVersions += versionsSnap.size + legacySnap.size;
     }
-    console.log(`Report version docs (incl. legacy): ${totalReportVersions}`);
-
-    console.groupEnd();
+    logger.debug(`Report version docs (incl. legacy): ${totalReportVersions}`);
   }
 
   // Platform-level orphan check
   const publicReportsAll = await getDocs(query(collection(db, 'publicReports'), limit(500)));
-  console.log(`\nPublicReports total (all orgs): ${publicReportsAll.size}`);
-
-  console.groupEnd();
-  console.log('✅ Audit complete.');
+  logger.debug(`\nPublicReports total (all orgs): ${publicReportsAll.size}`);
+  logger.debug('✅ Audit complete.');
 }
 
 /**
@@ -1029,7 +1040,7 @@ export async function exportPlatformData(): Promise<void> {
       }
 
       orgEntry.clients.push(clientEntry);
-      console.log(`  ✅ ${slug}: ${clientEntry.sessions.length} session(s) exported`);
+      logger.debug(`  ✅ ${slug}: ${clientEntry.sessions.length} session(s) exported`);
     }
 
     output.orgs.push(orgEntry);
@@ -1044,17 +1055,16 @@ export async function exportPlatformData(): Promise<void> {
   a.click();
   URL.revokeObjectURL(url);
 
-  console.group('%c Platform Export Complete', 'color:#10b981;font-weight:bold;font-size:14px');
+  logger.debug('Platform Export Complete');
   for (const org of output.orgs) {
-    console.log(`Org: ${org.name} (${org.orgId})`);
-    console.log(`  Coaches: ${org.coaches.length}`);
-    console.log(`  Clients: ${org.clients.length}`);
+    logger.debug(`Org: ${org.name} (${org.orgId})`);
+    logger.debug(`  Coaches: ${org.coaches.length}`);
+    logger.debug(`  Clients: ${org.clients.length}`);
     for (const c of org.clients) {
-      console.log(`  └─ ${c.slug}: ${c.sessions.length} sessions`);
+      logger.debug(`  └─ ${c.slug}: ${c.sessions.length} sessions`);
     }
   }
-  console.log('\n📁 JSON file downloaded to your Downloads folder.');
-  console.groupEnd();
+  logger.debug('\n📁 JSON file downloaded to your Downloads folder.');
 }
 
 /**
@@ -1065,34 +1075,32 @@ export async function inspectCollections(): Promise<void> {
   const db = getDb();
   const orgsSnap = await getDocs(getOrganizationsCollection());
 
-  console.group('%c Collection Inspector', 'font-size:14px;font-weight:bold;color:#f59e0b');
+  logger.debug('Collection Inspector');
   for (const orgDoc of orgsSnap.docs) {
     const orgId = orgDoc.id;
     const orgName = orgDoc.data().name ?? orgId;
-    console.group(`📁 ${orgName} (${orgId})`);
+    logger.debug(`📁 ${orgName} (${orgId})`);
 
-    console.group('clients/');
-    const clientsSnap = await getDocs(getOrgClientsCollection(orgId));
+    logger.debug('clients/');
+    const clientsSnap = await getDocs(
+      query(getOrgClientsCollection(orgId), limit(ORG_CLIENT_PROFILES_QUERY_LIMIT)),
+    );
     for (const c of clientsSnap.docs) {
       const d = c.data();
       const isSlug = /^[a-z][a-z0-9-._]+$/.test(c.id);
-      console.log(`${isSlug ? '✅' : '❌'} ${c.id}  →  clientName: "${d.clientName ?? '—'}"  archived: ${d.archived ?? false}`);
+      logger.debug(`${isSlug ? '✅' : '❌'} ${c.id}  →  clientName: "${d.clientName ?? '—'}"  archived: ${d.archived ?? false}`);
     }
-    console.groupEnd();
-
-    console.group('assessments/');
-    const assessmentsSnap = await getDocs(getOrgAssessmentsCollection(orgId));
+    logger.debug('assessments/');
+    const assessmentsSnap = await getDocs(
+      query(getOrgAssessmentsCollection(orgId), limit(ORG_CLIENT_PROFILES_QUERY_LIMIT)),
+    );
     for (const a of assessmentsSnap.docs) {
       const d = a.data();
       const isSlug = /^[a-z][a-z0-9-._]+$/.test(a.id);
-      console.log(`${isSlug ? '✅' : '❌'} ${a.id}  →  clientNameLower: "${d.clientNameLower ?? '—'}"  overallScore: ${d.overallScore ?? 0}`);
+      logger.debug(`${isSlug ? '✅' : '❌'} ${a.id}  →  clientNameLower: "${d.clientNameLower ?? '—'}"  overallScore: ${d.overallScore ?? 0}`);
     }
-    console.groupEnd();
-
-    console.groupEnd();
   }
-  console.groupEnd();
-  console.log('✅ Inspection complete.');
+  logger.debug('✅ Inspection complete.');
 }
 
 /**
@@ -1135,10 +1143,9 @@ export async function cleanupOrphanDocs(dryRun = true): Promise<{
   }
 
   if (dryRun) {
-    console.group(`%c cleanupOrphanDocs — DRY RUN (${toDelete.length} would be deleted)`, 'color:#f59e0b;font-weight:bold');
-    for (const d of toDelete) console.log(`  🗑  ${d.collection}/${d.id}`);
-    console.groupEnd();
-    console.log('Run await cleanupOrphanDocs(false) to delete for real.');
+    logger.debug(`cleanupOrphanDocs — DRY RUN (${toDelete.length} would be deleted)`);
+    for (const d of toDelete) logger.debug(`  🗑  ${d.collection}/${d.id}`);
+    logger.debug('Run await cleanupOrphanDocs(false) to delete for real.');
     return { toDelete, deleted: 0 };
   }
 
@@ -1146,9 +1153,9 @@ export async function cleanupOrphanDocs(dryRun = true): Promise<{
   for (const d of toDelete) {
     await deleteDoc(doc(db, d.collection, d.id));
     deleted++;
-    console.log(`Deleted: ${d.collection}/${d.id}`);
+    logger.debug(`Deleted: ${d.collection}/${d.id}`);
   }
-  console.log(`✅ Deleted ${deleted} orphan docs.`);
+  logger.debug(`✅ Deleted ${deleted} orphan docs.`);
   return { toDelete, deleted };
 }
 
@@ -1244,10 +1251,9 @@ export async function migrateAssessmentsToSlugIds(): Promise<{ migrated: string[
     }
   }
 
-  console.group('%c migrateAssessmentsToSlugIds', 'color:#10b981;font-weight:bold');
-  console.log('Migrated:', migrated);
-  console.log('Skipped:', skipped);
-  console.groupEnd();
+  logger.debug('migrateAssessmentsToSlugIds');
+  logger.debug('Migrated:', migrated);
+  logger.debug('Skipped:', skipped);
   return { migrated, skipped };
 }
 
@@ -1341,7 +1347,7 @@ export async function importPlatformData(): Promise<void> {
     const { orgId, clients } = org;
     if (!orgId || !Array.isArray(clients)) continue;
 
-    console.group(`%c Org: ${org.name} (${orgId})`, 'color:#6366f1;font-weight:bold');
+    logger.debug(`Org: ${org.name} (${orgId})`);
 
     for (const client of clients) {
       const { slug, sessions } = client;
@@ -1436,13 +1442,11 @@ export async function importPlatformData(): Promise<void> {
       }
 
       totalClients++;
-      console.log(`  ✅ ${slug}: ${sessions.length} session(s)`);
+      logger.debug(`  ✅ ${slug}: ${sessions.length} session(s)`);
     }
-
-    console.groupEnd();
   }
 
-  console.log(`\n✅ Import complete: ${totalClients} client(s), ${totalSessions} session(s) written to v2 paths.`);
+  logger.debug(`\n✅ Import complete: ${totalClients} client(s), ${totalSessions} session(s) written to v2 paths.`);
 }
 
 // ---------------------------------------------------------------------------
@@ -1481,7 +1485,7 @@ export async function backfillAchievements(): Promise<void> {
 
   const clientsSnap = await getDocs(getOrgClientsCollection(orgId));
 
-  console.group(`%c Backfilling achievements — Org: ${orgId}`, 'color:#6366f1;font-weight:bold');
+  logger.debug(`Backfilling achievements — Org: ${orgId}`);
 
   let totalClients = 0;
   let totalUnlocked = 0;
@@ -1496,7 +1500,7 @@ export async function backfillAchievements(): Promise<void> {
     const sessionsCol = collection(db, `organizations/${orgId}/clients/${slug}/sessions`);
     const sessionsSnap = await getDocs(query(sessionsCol, orderBy('timestamp', 'asc')));
     if (sessionsSnap.empty) {
-      console.log(`  — ${clientName}: no sessions, skipping`);
+      logger.debug(`  — ${clientName}: no sessions, skipping`);
       continue;
     }
 
@@ -1509,7 +1513,7 @@ export async function backfillAchievements(): Promise<void> {
       s => s.formData && Object.keys(s.formData).length > 0,
     );
     if (!latestSession?.formData) {
-      console.log(`  — ${clientName}: sessions have no formData, skipping`);
+      logger.debug(`  — ${clientName}: sessions have no formData, skipping`);
       continue;
     }
 
@@ -1545,16 +1549,13 @@ export async function backfillAchievements(): Promise<void> {
     totalUnlocked += unlocked.length;
 
     if (unlocked.length > 0) {
-      console.group(`  🏆 ${clientName}: ${unlocked.length} achievement(s) unlocked`);
-      unlocked.forEach(a => console.log(`    - ${a.title}: ${a.description}`));
-      console.groupEnd();
+      logger.debug(`  🏆 ${clientName}: ${unlocked.length} achievement(s) unlocked`);
+      unlocked.forEach(a => logger.debug(`    - ${a.title}: ${a.description}`));
     } else {
-      console.log(`  ✓ ${clientName}: no new achievements (score: ${Math.round(overallScore)})`);
+      logger.debug(`  ✓ ${clientName}: no new achievements (score: ${Math.round(overallScore)})`);
     }
   }
-
-  console.groupEnd();
-  console.log(`\n✅ Backfill complete: ${totalClients} client(s), ${totalUnlocked} achievement(s) unlocked.`);
+  logger.debug(`\n✅ Backfill complete: ${totalClients} client(s), ${totalUnlocked} achievement(s) unlocked.`);
 }
 
 // ---------------------------------------------------------------------------
@@ -1576,23 +1577,21 @@ export async function repairCurrentState(): Promise<void> {
     { success: boolean; fixed: number; skipped: number; results: { slug: string; status: string; score?: number }[] }
   >(fns, 'repairClientProfiles');
 
-  console.group('%c repairCurrentState', 'color:#6366f1;font-weight:bold');
-  console.log('Calling server-side repair (admin SDK)…');
+  logger.debug('repairCurrentState');
+  logger.debug('Calling server-side repair (admin SDK)…');
 
   const { data } = await repairFn({});
 
   for (const r of data.results) {
     if (r.status === 'repaired') {
-      console.log(`  ✅ ${r.slug}: repaired (score=${r.score ?? '?'})`);
+      logger.debug(`  ✅ ${r.slug}: repaired (score=${r.score ?? '?'})`);
     } else if (r.status === 'ok') {
-      console.log(`  — ${r.slug}: already OK`);
+      logger.debug(`  — ${r.slug}: already OK`);
     } else {
-      console.warn(`  ⚠️  ${r.slug}: ${r.status}`);
+      logger.warn(`  ⚠️  ${r.slug}: ${r.status}`);
     }
   }
-
-  console.groupEnd();
-  console.log(`\n✅ Repair complete: ${data.fixed} fixed, ${data.skipped} already OK or skipped.`);
+  logger.debug(`\n✅ Repair complete: ${data.fixed} fixed, ${data.skipped} already OK or skipped.`);
 }
 
 // ---------------------------------------------------------------------------
@@ -1608,7 +1607,7 @@ export async function diagnoseCurrentState(): Promise<void> {
   const db = getDb();
   const clientsSnap = await getDocs(getOrgClientsCollection(orgId));
 
-  console.group(`%c Diagnosing current/state — Org: ${orgId}`, 'color:#6366f1;font-weight:bold');
+  logger.debug(`Diagnosing current/state — Org: ${orgId}`);
 
   for (const clientDoc of clientsSnap.docs) {
     const slug = clientDoc.id;
@@ -1621,7 +1620,7 @@ export async function diagnoseCurrentState(): Promise<void> {
     const currentSnap = await getDoc(currentRef);
 
     if (!currentSnap.exists()) {
-      console.warn(`  ❌ ${clientName}: current/state MISSING`);
+      logger.warn(`  ❌ ${clientName}: current/state MISSING`);
       continue;
     }
 
@@ -1629,14 +1628,12 @@ export async function diagnoseCurrentState(): Promise<void> {
     const fdKeys = data.formData ? Object.keys(data.formData).length : 0;
 
     if (fdKeys === 0) {
-      console.warn(`  ⚠️  ${clientName}: current/state exists but formData is EMPTY`);
+      logger.warn(`  ⚠️  ${clientName}: current/state exists but formData is EMPTY`);
     } else {
-      console.log(`  ✅ ${clientName}: overallScore=${data.overallScore ?? 0} | formData fields=${fdKeys} | scoresSummary=${data.scoresSummary ? 'yes' : 'no'}`);
+      logger.debug(`  ✅ ${clientName}: overallScore=${data.overallScore ?? 0} | formData fields=${fdKeys} | scoresSummary=${data.scoresSummary ? 'yes' : 'no'}`);
     }
   }
-
-  console.groupEnd();
-  console.log('✅ Diagnosis complete.');
+  logger.debug('✅ Diagnosis complete.');
 }
 
 // ---------------------------------------------------------------------------
@@ -1659,7 +1656,7 @@ export async function deleteV1Paths(): Promise<void> {
 
   for (const orgDoc of orgsSnap.docs) {
     const orgId = orgDoc.id;
-    console.group(`%c Org: ${orgId}`, 'color:#ef4444;font-weight:bold');
+    logger.debug(`Org: ${orgId}`);
 
     const v1Collections = ['assessments', 'roadmaps', 'assessmentDrafts'];
 
@@ -1671,7 +1668,7 @@ export async function deleteV1Paths(): Promise<void> {
         await deleteDoc(d.ref);
         totalDeleted++;
       }
-      console.log(`  🗑 Deleted ${colSnap.size} doc(s) from ${colName}`);
+      logger.debug(`  🗑 Deleted ${colSnap.size} doc(s) from ${colName}`);
     }
 
     // assessmentHistory has nested subcollections (current, history, snapshots)
@@ -1687,7 +1684,7 @@ export async function deleteV1Paths(): Promise<void> {
             totalDeleted++;
           }
           if (!subSnap.empty) {
-            console.log(`  🗑 Deleted ${subSnap.size} doc(s) from assessmentHistory/${clientDoc.id}/${sub}`);
+            logger.debug(`  🗑 Deleted ${subSnap.size} doc(s) from assessmentHistory/${clientDoc.id}/${sub}`);
           }
         } catch {
           // subcollection may not exist
@@ -1696,11 +1693,9 @@ export async function deleteV1Paths(): Promise<void> {
       await deleteDoc(clientDoc.ref);
       totalDeleted++;
     }
-
-    console.groupEnd();
   }
 
-  console.log(`\n✅ v1 cleanup complete: ${totalDeleted} legacy doc(s) deleted.`);
+  logger.debug(`\n✅ v1 cleanup complete: ${totalDeleted} legacy doc(s) deleted.`);
 }
 
 if (typeof window !== 'undefined') {

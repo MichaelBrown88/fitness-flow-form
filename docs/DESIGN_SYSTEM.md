@@ -60,9 +60,23 @@ Prefer the shared classes and tokens so motion feels consistent:
 4. No new hardcoded brand colours (indigo/violet/slate for UI chrome)?
 5. If a new token is added, is it added to `index.css` (and theme if needed) and documented here?
 
+## Token mapping (replace raw Tailwind greys / brand hues)
+
+| Intent | Prefer |
+|--------|--------|
+| Page background | `bg-background`, `bg-background-secondary` |
+| Primary text | `text-foreground` |
+| Secondary / helper text | `text-muted-foreground` |
+| Cards / surfaces | `bg-card`, `border-border` |
+| Brand accent (light UI) | `text-primary`, `bg-primary/10`, `border-primary/30` |
+| Score / traffic colours | `hsl(var(--score-red))`, `--score-amber`, `--score-green` (see `index.css`) |
+| Admin distribution bars | `hsl(var(--chart-distribution-orange))`, `--chart-distribution-yellow`, score + `--gradient-from` |
+
+**Allowed raw hex exceptions:** Third-party brand marks (e.g. OAuth provider icons), screenshots, or assets that must match vendor guidelines. Document new exceptions in the PR.
+
 ## Optional: Linting
 
-Consider stylelint or ESLint rules to flag hardcoded `indigo-`, `violet-`, or `slate-` in component files and prefer token-based classes so the system stays consistent over time.
+Consider stylelint or ESLint `no-restricted-syntax` (or a custom rule) to **warn** on new `slate-*` / `indigo-*` / `violet-*` class names in `src/components/**` during migration; grandfather existing files or suppress with a one-line comment when unavoidable.
 
 ## Interaction and UX standards
 

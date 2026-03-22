@@ -33,11 +33,11 @@ const SectionHeader = ({
   const centered = align === "center";
 
   const pillColors = dark
-    ? "bg-indigo-500/20 border-indigo-500/30 text-indigo-300"
-    : "bg-white border-slate-200 text-slate-600";
+    ? "bg-primary/20 border-primary/30 text-primary"
+    : "bg-card border-border text-muted-foreground";
 
-  const titleColor = dark ? "text-white" : "text-slate-900";
-  const subtitleColor = dark ? "text-slate-400" : "text-slate-500";
+  const titleColor = dark ? "text-white" : "text-foreground";
+  const subtitleColor = dark ? "text-muted-foreground" : "text-muted-foreground";
 
   return (
     <div className={`${centered ? "text-center" : ""} ${spacing}`}>

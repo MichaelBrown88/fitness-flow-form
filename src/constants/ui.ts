@@ -204,6 +204,14 @@ export const UI_TABS = {
   TEAM: 'Team',
 } as const;
 
+/** Clients tab empty states */
+export const UI_DASHBOARD_CLIENTS = {
+  EMPTY_TITLE: 'No clients yet',
+  EMPTY_BODY: 'Run a new assessment to add your first client and see them here.',
+  EMPTY_CTA: 'New assessment',
+  SEARCH_NO_MATCH: 'No clients match that name.',
+} as const;
+
 // Schedule Tab Labels
 export const UI_SCHEDULE = {
   OVERDUE: 'Overdue',

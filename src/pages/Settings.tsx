@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useBlocker, Link } from 'react-router-dom';
+import { useNavigate, useBlocker, Link, useSearchParams } from 'react-router-dom';
 import AppShell from '@/components/layout/AppShell';
 import { useSettings } from '@/hooks/useSettings';
 import { Switch } from '@/components/ui/switch';
@@ -33,6 +33,22 @@ const Settings = () => {
 
   // Check if user is an organization admin (coaches have limited access)
   const isAdmin = profile?.role === 'org_admin';
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const orgTabParam = searchParams.get('orgTab');
+
+  const mainTab = useMemo(() => {
+    if (tabParam === 'notifications') return 'notifications';
+    if (tabParam === 'organization' && isAdmin) return 'organization';
+    return 'profile';
+  }, [tabParam, isAdmin]);
+
+  const orgTab = useMemo(() => {
+    const t = orgTabParam ?? 'branding';
+    if (t === 'modules' || t === 'equipment' || t === 'schedule' || t === 'branding') return t;
+    return 'branding';
+  }, [orgTabParam]);
 
   useEffect(() => {
     if (orgSettings) {
@@ -122,7 +138,23 @@ const Settings = () => {
     >
       <div className="max-w-4xl pb-20">
         {/* Tab Navigation */}
-        <Tabs defaultValue="profile" className="w-full">
+        <Tabs
+          value={mainTab}
+          onValueChange={(v) => {
+            setSearchParams(
+              (prev) => {
+                const p = new URLSearchParams(prev);
+                p.set('tab', v);
+                if (v !== 'organization') {
+                  p.delete('orgTab');
+                }
+                return p;
+              },
+              { replace: true },
+            );
+          }}
+          className="w-full"
+        >
           <TabsList className="w-full mb-6 p-1 h-auto bg-zinc-100 rounded-xl grid grid-cols-3 gap-1">
             <TabsTrigger
               value="profile"
@@ -256,7 +288,21 @@ const Settings = () => {
           {/* Organization Tab (Admin Only) */}
           {isAdmin && (
             <TabsContent value="organization" className="mt-0">
-            <Tabs defaultValue="branding" className="w-full">
+            <Tabs
+              value={orgTab}
+              onValueChange={(v) => {
+                setSearchParams(
+                  (prev) => {
+                    const p = new URLSearchParams(prev);
+                    p.set('tab', 'organization');
+                    p.set('orgTab', v);
+                    return p;
+                  },
+                  { replace: true },
+                );
+              }}
+              className="w-full"
+            >
               <TabsList className="w-full mb-6 p-1 h-auto bg-slate-100 rounded-xl grid grid-cols-4 gap-1">
                 <TabsTrigger value="branding" className="py-2.5 px-3 rounded-lg text-xs sm:text-sm font-semibold data-[state=active]:bg-white">Branding</TabsTrigger>
                 <TabsTrigger value="modules" className="py-2.5 px-3 rounded-lg text-xs sm:text-sm font-semibold data-[state=active]:bg-white">Modules</TabsTrigger>

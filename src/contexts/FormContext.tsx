@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
-import { logger } from '@/lib/utils/logger';
+import { getInitialFormDataFromSession } from '@/contexts/form/initialFormFromSession';
 
 export interface FormData {
   /** Client Profile */
@@ -421,52 +421,9 @@ const initialFormData: FormData = {
 };
 
 export const FormProvider = ({ children }: { children: ReactNode }) => {
-  // Check for pre-filled client data from dashboard or edit mode
-  const getInitialData = (): FormData => {
-    try {
-      // Check for edit assessment data first (has priority)
-      const editData = sessionStorage.getItem(STORAGE_KEYS.EDIT_ASSESSMENT);
-      if (editData) {
-        const parsed = JSON.parse(editData) as { formData?: FormData; editType?: string };
-        if (parsed.formData) {
-          if (parsed.editType?.startsWith('partial-')) {
-            const category = parsed.editType.replace('partial-', '');
-            try {
-              sessionStorage.setItem(STORAGE_KEYS.PARTIAL_ASSESSMENT, JSON.stringify({
-                category,
-                clientName: parsed.formData?.fullName ?? '',
-              }));
-            } catch {
-              // non-fatal
-            }
-          }
-          return { ...initialFormData, ...parsed.formData };
-        }
-      }
-      
-      // Check for saved draft (Save for Later / Finish assessment)
-      const draftData = sessionStorage.getItem(STORAGE_KEYS.DRAFT_ASSESSMENT);
-      if (draftData) {
-        const parsed = JSON.parse(draftData);
-        if (parsed.formData && typeof parsed.formData === 'object') {
-          return { ...initialFormData, ...parsed.formData };
-        }
-      }
-
-      // Check for pre-filled client data from dashboard
-      const prefillData = sessionStorage.getItem(STORAGE_KEYS.PREFILL_CLIENT);
-      if (prefillData) {
-        const data = JSON.parse(prefillData);
-        sessionStorage.removeItem(STORAGE_KEYS.PREFILL_CLIENT);
-        return { ...initialFormData, ...data };
-      }
-    } catch (e) {
-      logger.warn('Failed to parse prefill/edit data:', e);
-    }
-    return initialFormData;
-  };
-
-  const [formData, setFormData] = useState<FormData>(getInitialData());
+  const [formData, setFormData] = useState<FormData>(() =>
+    getInitialFormDataFromSession<FormData>(initialFormData),
+  );
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 5;
 

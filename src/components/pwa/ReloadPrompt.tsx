@@ -7,6 +7,7 @@
 
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { Button } from '@/components/ui/button';
+import { logger } from '@/lib/utils/logger';
 import { RefreshCw, X } from 'lucide-react';
 
 export function ReloadPrompt() {
@@ -23,7 +24,7 @@ export function ReloadPrompt() {
       }
     },
     onRegisterError(error) {
-      console.error('SW registration error:', error);
+      logger.error('SW registration error:', error);
     },
   });
 

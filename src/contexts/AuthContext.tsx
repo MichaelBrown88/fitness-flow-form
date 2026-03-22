@@ -19,7 +19,12 @@ import { isStaffRole } from '@/types/auth';
 import { AuthContext } from '@/hooks/useAuth';
 import { logger } from '@/lib/utils/logger';
 import { isTestEmail } from '@/lib/utils/testAccountHelper';
+import {
+  deriveInitialStaffDisplayName,
+  GENERIC_STAFF_DISPLAY_PLACEHOLDER,
+} from '@/lib/utils/staffDisplayName';
 import { GYM_TRIAL_CLIENT_CAP } from '@/constants/pricing';
+import { CLIENT_EMAIL_LOOKUP_LIMIT } from '@/constants/firestoreQueryLimits';
 import { 
   startImpersonation as startImpersonationService, 
   endImpersonation as endImpersonationService,
@@ -131,6 +136,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           currentProfile = profileSnap.data() as UserProfile;
           // Apply safety defaults
           if (!currentProfile.role) currentProfile.role = 'org_admin';
+
+          if (
+            currentProfile.displayName === GENERIC_STAFF_DISPLAY_PLACEHOLDER &&
+            firebaseUser.email
+          ) {
+            const suggested = deriveInitialStaffDisplayName(
+              firebaseUser.email,
+              firebaseUser.displayName,
+            );
+            if (suggested !== GENERIC_STAFF_DISPLAY_PLACEHOLDER) {
+              void updateDoc(profileRef, {
+                displayName: suggested,
+                updatedAt: serverTimestamp(),
+              }).catch((e) => logger.warn('[AUTH] displayName heal skipped:', e));
+              currentProfile = { ...currentProfile, displayName: suggested };
+            }
+          }
           
           // Auto-heal: If onboarding not complete but org has assessments, mark onboarding complete
           if (
@@ -178,7 +200,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               uid: firebaseUser.uid,
               organizationId: `org-${firebaseUser.uid}`,
               role: 'org_admin',
-              displayName: firebaseUser.displayName || 'Coach',
+              displayName: deriveInitialStaffDisplayName(
+                firebaseUser.email,
+                firebaseUser.displayName,
+              ),
               onboardingCompleted: false
             };
           }
@@ -318,7 +343,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         uid: newUser.uid,
         organizationId: `org-${newUser.uid}`,
         role: 'org_admin',
-        displayName: newUser.displayName || 'Coach',
+        displayName: deriveInitialStaffDisplayName(newUser.email, newUser.displayName),
         onboardingCompleted: false,
       };
       await setDoc(profileRef, userProfile);
@@ -355,7 +380,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         uid: newUser.uid,
         organizationId: `org-${newUser.uid}`,
         role: 'org_admin',
-        displayName: newUser.displayName || 'Coach',
+        displayName: deriveInitialStaffDisplayName(newUser.email, newUser.displayName),
         onboardingCompleted: false,
       };
       await setDoc(profileRef, userProfile);
@@ -415,10 +440,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               const db = getDb();
 
               // Find the client profile doc by email across all orgs
-              const { collectionGroup, where: fbWhere, getDocs: fbGetDocs, query: fbQuery, updateDoc: fbUpdate } = await import('firebase/firestore');
+              const {
+                collectionGroup,
+                where: fbWhere,
+                getDocs: fbGetDocs,
+                query: fbQuery,
+                updateDoc: fbUpdate,
+                limit: fbLimit,
+              } = await import('firebase/firestore');
               const clientQ = fbQuery(
                 collectionGroup(db, 'clients'),
                 fbWhere('email', '==', clientEmail),
+                fbLimit(CLIENT_EMAIL_LOOKUP_LIMIT),
               );
               const clientSnap = await fbGetDocs(clientQ);
               for (const clientDoc of clientSnap.docs) {

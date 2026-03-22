@@ -23,6 +23,7 @@ import { DashboardDialogs } from '@/components/dashboard/sub-components/Dashboar
 import { GettingStartedChecklist } from '@/components/dashboard/GettingStartedChecklist';
 import { generateTasks, type QueueEntry, type RoadmapNeededInfo, type ProfileGapInfo } from '@/lib/tasks/generateTasks';
 import type { CoachTask } from '@/lib/tasks/generateTasks';
+import { staffPreferredFirstName } from '@/lib/utils/staffDisplayName';
 
 export type DashboardOutletContext = ReturnType<typeof useDashboardData> & {
   tasks: CoachTask[];
@@ -171,7 +172,7 @@ export default function DashboardLayout() {
     );
   }
 
-  const coachFirstName = dataUser?.displayName ? dataUser.displayName.split(' ')[0] : 'Coach';
+  const coachFirstName = staffPreferredFirstName(profile, dataUser);
 
   return (
     <ErrorBoundary>
@@ -194,15 +195,7 @@ export default function DashboardLayout() {
             coachFirstName={coachFirstName}
             totalClients={analytics?.totalClients ?? 0}
             totalAssessments={analytics?.totalAssessments ?? 0}
-          />
-
-          <GettingStartedChecklist
-            hasClients={(analytics?.totalClients ?? 0) > 0}
-            hasAssessments={(analytics?.totalAssessments ?? 0) > 0}
-            hasSharedReport={hasSharedReport}
-            businessProfileComplete={Boolean(orgSettings?.name?.trim() && orgSettings?.region)}
-            showTrialSubscribeNudge={orgSettings?.subscription?.planKind === 'gym_trial'}
-            showBrandingNudge={orgSettings?.customBrandingEnabled === false}
+            overdueCount={reassessmentQueue?.summary?.overdue ?? 0}
           />
 
           <div className="bg-card text-card-foreground rounded-2xl border border-border p-3 sm:p-4 md:p-6 lg:p-8 overflow-hidden">
@@ -217,6 +210,23 @@ export default function DashboardLayout() {
             <Outlet context={{ ...dashboardData, tasks } satisfies DashboardOutletContext} />
           </div>
         </div>
+
+        <GettingStartedChecklist
+          hasClients={(analytics?.totalClients ?? 0) > 0}
+          hasAssessments={(analytics?.totalAssessments ?? 0) > 0}
+          hasSharedReport={hasSharedReport}
+          primaryAssessmentIdForShare={
+            filteredClients.find((c) => c.assessments.length > 0)?.assessments[0]?.id ?? null
+          }
+          primaryClientNameForShare={
+            filteredClients.find((c) => c.assessments.length > 0)?.name ?? null
+          }
+          businessProfileComplete={Boolean(orgSettings?.name?.trim() && orgSettings?.region)}
+          equipmentDetailsDone={Boolean(orgSettings?.onboardingCompletedAt)}
+          isOrgAdmin={profile?.role === 'org_admin'}
+          showTrialSubscribeNudge={orgSettings?.subscription?.planKind === 'gym_trial'}
+          showBrandingNudge={orgSettings?.customBrandingEnabled === false}
+        />
 
         <DashboardDialogs
           deleteDialog={dashboardData.deleteDialog}

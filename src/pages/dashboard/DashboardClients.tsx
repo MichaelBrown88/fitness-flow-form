@@ -14,6 +14,10 @@ export default function DashboardClients() {
       orgDefaultIntervals={ctx.orgSettings?.defaultCadence?.intervals}
       orgDefaultActivePillars={ctx.orgSettings?.defaultCadence?.activePillars}
       onViewHistory={ctx.handleViewHistory}
+      writeOrganizationId={ctx.profile?.organizationId}
+      coachUid={ctx.user?.uid}
+      profile={ctx.profile}
+      onBulkComplete={ctx.refreshSchedules}
     />
   );
 }

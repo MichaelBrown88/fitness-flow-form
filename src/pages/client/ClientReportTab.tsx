@@ -2,10 +2,14 @@
  * Client Report tab: client-facing report for the latest assessment (embedded in client detail).
  */
 
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useAssessmentLogic } from '@/hooks/useAssessmentLogic';
-import { Loader2, FileText } from 'lucide-react';
+import { useReportShare } from '@/hooks/useReportShare';
+import { useAuth } from '@/hooks/useAuth';
+import { Loader2, FileText, Share2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ShareWithClientReportDialog } from '@/components/reports/ShareWithClientReportDialog';
 import type { ClientDetailOutletContext } from './ClientDetailLayout';
 
 const ClientReport = lazy(() => import('@/components/reports/ClientReport'));
@@ -13,6 +17,8 @@ const ClientReport = lazy(() => import('@/components/reports/ClientReport'));
 export default function ClientReportTab() {
   const { assessments, clientName } = useOutletContext<ClientDetailOutletContext>();
   const assessmentId = assessments[0]?.id;
+  const { user, profile } = useAuth();
+  const [shareModalOpen, setShareModalOpen] = useState(false);
 
   const {
     formData,
@@ -23,6 +29,24 @@ export default function ClientReportTab() {
     loading,
     error,
   } = useAssessmentLogic(assessmentId, clientName);
+
+  const scoreDelta =
+    scores && previousScores ? scores.overall - previousScores.overall : undefined;
+
+  const {
+    handleCopyLink,
+    handleEmailLink,
+    handleSystemShare,
+    handleWhatsAppShare,
+    shareLoading,
+  } = useReportShare({
+    assessmentId,
+    formData: formData ?? null,
+    user,
+    profile: profile ?? null,
+    overallScore: scores?.overall,
+    scoreDelta,
+  });
 
   if (!assessmentId && !clientName) {
     return (
@@ -54,7 +78,20 @@ export default function ClientReportTab() {
   const goals = Array.isArray(formData.clientGoals) ? formData.clientGoals : [];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <Button
+          type="button"
+          size="sm"
+          className="h-9 rounded-lg bg-slate-900 text-white font-medium gap-1.5"
+          onClick={() => setShareModalOpen(true)}
+          disabled={shareLoading}
+        >
+          <Share2 className="h-4 w-4" />
+          Share with client
+        </Button>
+      </div>
+
       <Suspense
         fallback={
           <div className="flex flex-col items-center justify-center py-16">
@@ -73,6 +110,16 @@ export default function ClientReportTab() {
           standalone={true}
         />
       </Suspense>
+
+      <ShareWithClientReportDialog
+        open={shareModalOpen}
+        onOpenChange={setShareModalOpen}
+        shareLoading={shareLoading}
+        onCopyLink={handleCopyLink}
+        onEmailLink={handleEmailLink}
+        onSystemShare={handleSystemShare}
+        onWhatsAppShare={handleWhatsAppShare}
+      />
     </div>
   );
 }

@@ -4,6 +4,7 @@
  */
 
 import { getHardcodedTestImages, hasHardcodedImages } from './hardcodedPostureImages';
+import { logger } from '@/lib/utils/logger';
 
 // Sample posture images - using publicly available test images
 // These are placeholder URLs that work for testing the AI analysis flow
@@ -35,7 +36,7 @@ async function imageUrlToBase64(url: string): Promise<string> {
       reader.readAsDataURL(blob);
     });
   } catch (error) {
-    console.error('Error converting image to base64:', error);
+    logger.error('Error converting image to base64:', error);
     throw error;
   }
 }
@@ -49,7 +50,7 @@ async function imageUrlToBase64(url: string): Promise<string> {
 export async function loadTestPostureImages(): Promise<Record<string, string>> {
   // First, try to use hard-coded images if available
   if (hasHardcodedImages()) {
-    console.log('[TEST] Using hard-coded test images');
+    logger.debug('[TEST] Using hard-coded test images');
     return getHardcodedTestImages();
   }
   
@@ -73,17 +74,17 @@ export async function loadTestPostureImages(): Promise<Record<string, string>> {
   for (const view of views) {
     const url = TEST_IMAGE_URLS[view];
     if (!url || url.trim() === '') {
-      console.warn(`[TEST] No URL configured for ${view}, skipping`);
+      logger.warn(`[TEST] No URL configured for ${view}, skipping`);
       continue;
     }
     
     try {
-      console.log(`[TEST] Loading test image for ${view} from ${url}...`);
+      logger.debug(`[TEST] Loading test image for ${view} from ${url}...`);
       const base64 = await imageUrlToBase64(url);
       images[view] = base64;
-      console.log(`[TEST] Loaded test image for ${view}`);
+      logger.debug(`[TEST] Loaded test image for ${view}`);
     } catch (error) {
-      console.error(`[TEST] Failed to load test image for ${view}:`, error);
+      logger.error(`[TEST] Failed to load test image for ${view}:`, error);
       throw new Error(`Failed to load test image for ${view}. Check the URL is accessible and CORS-enabled.`);
     }
   }
@@ -124,7 +125,7 @@ export async function loadImagesFromFiles(files: {
           throw new Error(`File ${file.name} is not a valid image format. Please use JPEG, PNG, HEIC, or WebP.`);
         }
         
-        console.log(`[UPLOAD] Processing ${view} from file: ${file.name} (${file.type || 'unknown type'}, ${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+        logger.debug(`[UPLOAD] Processing ${view} from file: ${file.name} (${file.type || 'unknown type'}, ${(file.size / 1024 / 1024).toFixed(2)}MB)`);
         const base64 = await fileToBase64(file);
         
         // Validate the result
@@ -133,9 +134,9 @@ export async function loadImagesFromFiles(files: {
         }
         
         images[view] = base64;
-        console.log(`[UPLOAD] Successfully loaded ${view} from file: ${file.name} (${base64.substring(0, 50)}...)`);
+        logger.debug(`[UPLOAD] Successfully loaded ${view} from file: ${file.name} (${base64.substring(0, 50)}...)`);
       } catch (error) {
-        console.error(`[UPLOAD] Failed to load ${view} from file ${file.name}:`, error);
+        logger.error(`[UPLOAD] Failed to load ${view} from file ${file.name}:`, error);
         throw new Error(`Failed to load ${view} image (${file.name}): ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
@@ -145,7 +146,7 @@ export async function loadImagesFromFiles(files: {
     throw new Error('No images were successfully loaded from the uploaded files. Please check that the files are valid images.');
   }
   
-  console.log(`[UPLOAD] Successfully loaded ${Object.keys(images).length} images:`, Object.keys(images));
+  logger.debug(`[UPLOAD] Successfully loaded ${Object.keys(images).length} images:`, Object.keys(images));
   return images;
 }
 
@@ -161,7 +162,7 @@ async function fileToBase64(file: File): Promise<string> {
   
   if (isHeic) {
     try {
-      console.log(`[HEIC] Converting HEIC file: ${file.name}`);
+      logger.debug(`[HEIC] Converting HEIC file: ${file.name}`);
       // Convert HEIC to JPEG using heic2any
       const heic2any = (await import('heic2any')).default;
       const convertedBlob = await heic2any({
@@ -202,17 +203,17 @@ async function fileToBase64(file: File): Promise<string> {
           // Create a proper JPEG data URL
           base64String = `data:image/jpeg;base64,${base64Part}`;
           
-          console.log(`[HEIC] Successfully converted ${file.name} to JPEG (${base64String.substring(0, 50)}...)`);
+          logger.debug(`[HEIC] Successfully converted ${file.name} to JPEG (${base64String.substring(0, 50)}...)`);
           resolve(base64String);
         };
         reader.onerror = (err) => {
-          console.error('[HEIC] FileReader error:', err);
+          logger.error('[HEIC] FileReader error:', err);
           reject(new Error('Failed to read converted HEIC file'));
         };
         reader.readAsDataURL(jpegBlob);
       });
     } catch (error) {
-      console.error('[HEIC] Failed to convert HEIC file:', error);
+      logger.error('[HEIC] Failed to convert HEIC file:', error);
       throw new Error(`Failed to convert HEIC file: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -229,7 +230,7 @@ async function fileToBase64(file: File): Promise<string> {
       resolve(base64String);
     };
     reader.onerror = (err) => {
-      console.error('[FILE] FileReader error:', err);
+      logger.error('[FILE] FileReader error:', err);
       reject(new Error('Failed to read file'));
     };
     reader.readAsDataURL(file);

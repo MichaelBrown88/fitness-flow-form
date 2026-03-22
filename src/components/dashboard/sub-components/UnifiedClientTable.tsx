@@ -8,13 +8,17 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, TrendingDown, Minus, Pause, Archive, ArrowRightLeft, X, Pin } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Pin } from 'lucide-react';
 import { ClientActionsDropdown } from './ClientActionsDropdown';
+import { ClientTableBulkActions } from './unifiedClientTableBulk';
 import type { ClientGroup } from '@/hooks/dashboard/types';
+import type { UserProfile } from '@/types/auth';
 import { scoreGrade, SCORE_COLORS } from '@/lib/scoring/scoreColor';
 import { BASE_CADENCE_INTERVALS } from '@/types/client';
 import type { PartialAssessmentCategory } from '@/types/client';
 import { getPillarLabel } from '@/constants/pillars';
+import { ROUTES } from '@/constants/routes';
+import { UI_DASHBOARD_CLIENTS } from '@/constants/ui';
 
 type SortKey = 'name' | 'lastAssessed' | 'score';
 type SortDir = 'asc' | 'desc';
@@ -29,6 +33,11 @@ interface UnifiedClientTableProps {
   orgDefaultIntervals?: Record<string, number>;
   orgDefaultActivePillars?: PartialAssessmentCategory[];
   onViewHistory?: (clientName: string) => void;
+  /** Bulk pause/archive writes (real org id, not impersonation read scope) */
+  writeOrganizationId?: string;
+  coachUid?: string;
+  profile?: UserProfile | null;
+  onBulkComplete?: () => void;
 }
 
 const ALL_PILLARS: PartialAssessmentCategory[] = ['bodycomp', 'posture', 'fitness', 'strength', 'lifestyle'];
@@ -163,6 +172,10 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
   orgDefaultIntervals,
   orgDefaultActivePillars,
   onViewHistory,
+  writeOrganizationId,
+  coachUid,
+  profile,
+  onBulkComplete,
 }) => {
   const navigate = useNavigate();
   const [sortKey, setSortKey] = useState<SortKey>('lastAssessed');
@@ -303,8 +316,24 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={colCount} className="px-6 py-12 text-center text-sm text-slate-400 font-medium">
-                  {search ? 'No clients match that name.' : 'No clients found.'}
+                <td colSpan={colCount} className="px-6 py-12 text-center">
+                  {search ? (
+                    <p className="text-sm text-muted-foreground font-medium">
+                      {UI_DASHBOARD_CLIENTS.SEARCH_NO_MATCH}
+                    </p>
+                  ) : (
+                    <div className="flex flex-col items-center gap-4 max-w-sm mx-auto">
+                      <p className="text-sm font-semibold text-foreground">{UI_DASHBOARD_CLIENTS.EMPTY_TITLE}</p>
+                      <p className="text-sm text-muted-foreground">{UI_DASHBOARD_CLIENTS.EMPTY_BODY}</p>
+                      <Button
+                        type="button"
+                        className="rounded-xl font-bold"
+                        onClick={() => navigate(ROUTES.ASSESSMENT)}
+                      >
+                        {UI_DASHBOARD_CLIENTS.EMPTY_CTA}
+                      </Button>
+                    </div>
+                  )}
                 </td>
               </tr>
             ) : (
@@ -389,8 +418,24 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
             </div>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-400 font-medium">
-            {search ? 'No clients match that name.' : 'No clients found.'}
+          <div className="rounded-xl border border-border bg-card p-6 text-center">
+            {search ? (
+              <p className="text-sm text-muted-foreground font-medium">
+                {UI_DASHBOARD_CLIENTS.SEARCH_NO_MATCH}
+              </p>
+            ) : (
+              <div className="flex flex-col items-center gap-4 max-w-sm mx-auto">
+                <p className="text-sm font-semibold text-foreground">{UI_DASHBOARD_CLIENTS.EMPTY_TITLE}</p>
+                <p className="text-sm text-muted-foreground">{UI_DASHBOARD_CLIENTS.EMPTY_BODY}</p>
+                <Button
+                  type="button"
+                  className="rounded-xl font-bold w-full sm:w-auto"
+                  onClick={() => navigate(ROUTES.ASSESSMENT)}
+                >
+                  {UI_DASHBOARD_CLIENTS.EMPTY_CTA}
+                </Button>
+              </div>
+            )}
           </div>
         ) : (
           sorted.slice(0, visibleCount).map((client) => {
@@ -483,43 +528,16 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
         </div>
       )}
 
-      {/* Floating Bulk Action Bar */}
-      {selected.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white rounded-xl shadow-2xl px-5 py-3 flex items-center gap-4 animate-in slide-in-from-bottom-4 duration-200">
-          <span className="text-xs font-bold whitespace-nowrap">
-            {selected.size} selected
-          </span>
-          <div className="h-4 w-px bg-slate-700" />
-          <button
-            onClick={() => setSelected(new Set())}
-            className="flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-white transition-colors"
-          >
-            <Pause className="h-3.5 w-3.5" />
-            Pause
-          </button>
-          <button
-            onClick={() => setSelected(new Set())}
-            className="flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-white transition-colors"
-          >
-            <Archive className="h-3.5 w-3.5" />
-            Archive
-          </button>
-          <button
-            onClick={() => setSelected(new Set())}
-            className="flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-white transition-colors"
-          >
-            <ArrowRightLeft className="h-3.5 w-3.5" />
-            Transfer
-          </button>
-          <div className="h-4 w-px bg-slate-700" />
-          <button
-            onClick={() => setSelected(new Set())}
-            className="text-slate-400 hover:text-white transition-colors"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      )}
+      <ClientTableBulkActions
+        selected={selected}
+        clients={clients}
+        onClearSelection={() => setSelected(new Set())}
+        writeOrganizationId={writeOrganizationId}
+        coachUid={coachUid}
+        profile={profile}
+        onBulkComplete={onBulkComplete}
+        navigate={navigate}
+      />
     </section>
   );
 };

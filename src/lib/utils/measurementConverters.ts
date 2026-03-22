@@ -5,6 +5,8 @@
  * This allows different facilities to use different equipment while maintaining comparable results.
  */
 
+import { logger } from '@/lib/utils/logger';
+
 /**
  * Grip Strength Conversion
  * Converts various grip strength tests to equivalent dynamometer kg for scoring
@@ -106,7 +108,7 @@ export function convertGripStrength(
       
     case 'deadhang':
       if (!bodyweightKg || !gender) {
-        console.warn('[CONVERT] Dead hang conversion requires bodyweight and gender');
+        logger.warn('[CONVERT] Dead hang conversion requires bodyweight and gender');
         return rawValue; // Fallback
       }
       return convertDeadHangToGripStrength(rawValue, bodyweightKg, gender);
@@ -116,7 +118,7 @@ export function convertGripStrength(
       const distance = metadata?.distanceMeters || rawValue; // If rawValue is distance
       const time = metadata?.timeSeconds;
       if (!bodyweightKg) {
-        console.warn('[CONVERT] Farmers walk conversion requires bodyweight');
+        logger.warn('[CONVERT] Farmers walk conversion requires bodyweight');
         return rawValue;
       }
       // Convert loadPerHand to number, defaulting to 0 if not provided
@@ -254,7 +256,7 @@ export function calculateBodyFatFromMeasurements(
   } else {
     // US Navy method for women: %BF = 163.205 × log10(waist + hip - neck) - 97.684 × log10(height) - 78.387
     if (!hipCm) {
-      console.warn('[CONVERT] Hip measurement required for women');
+      logger.warn('[CONVERT] Hip measurement required for women');
       return 0;
     }
     const bodyFatPct = 163.205 * Math.log10(waistCm + hipCm - neckCm) - 97.684 * Math.log10(heightCm) - 78.387;
@@ -283,7 +285,7 @@ export function convertBodyComposition(
       
     case 'skinfold':
       if (!skinfoldMethod) {
-        console.warn('[CONVERT] Skinfold method not specified');
+        logger.warn('[CONVERT] Skinfold method not specified');
         return 0;
       }
       
@@ -332,7 +334,7 @@ export function convertBodyComposition(
       
     case 'measurements':
       if (!heightCm) {
-        console.warn('[CONVERT] Height required for measurement-based body fat calculation');
+        logger.warn('[CONVERT] Height required for measurement-based body fat calculation');
         return 0;
       }
       return calculateBodyFatFromMeasurements(

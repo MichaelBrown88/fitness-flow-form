@@ -5,7 +5,7 @@ Canonical platform data model and maintenance workflow for One Assess.
 ## Canonical Data
 
 - Business data lives under `organizations/{orgId}/...`
-- AI usage lives in `ai_usage_logs`
+- AI usage lives in `ai_usage_logs` (coaches append via validated client `create`; Admin SDK bypasses rules for platform jobs; no client update/delete)
 - Dashboard aggregates live in `system_stats/global_metrics`
 - Historical metrics live in `platform/metrics/history/{date}`
 - Product activity lives in `platform_activity_feed`

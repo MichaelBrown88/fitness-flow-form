@@ -73,7 +73,9 @@ function CoachSummaryContent({ formData, scores }: { formData: FormData; scores:
 
   useEffect(() => {
     generateCoachPlan(formData, scores).then(setPlan);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // CoachSummaryContent mounts only when the coach summary section is expanded; run once per mount
+    // to avoid re-calling the AI/plan pipeline on every parent re-render with the same snapshot.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot on expand; parent remounts when collapsed
   }, []);
 
   if (!plan) {

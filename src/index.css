@@ -73,6 +73,10 @@ All colors MUST be HSL.
     --score-red-muted: 0 93% 94%;        /* red-100 */
     --score-red-bold: 0 63% 31%;         /* red-900 */
 
+    /* Admin chart buckets (pillar distribution bars) */
+    --chart-distribution-orange: 25 95% 53%;
+    --chart-distribution-yellow: 45 93% 47%;
+
     --border: 0 0% 82%;                 /* #d2d2d7 */
     --border-medium: 0 0% 78%;         /* #c7c7cc */
     --border-dark: 0 0% 65%;           /* #a1a1a6 */

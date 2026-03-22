@@ -3,6 +3,7 @@ import Webcam from 'react-webcam';
 import { Button } from '../ui/button';
 import { X, AlertCircle, Smartphone, Camera, RefreshCcw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { logger } from '@/lib/utils/logger';
 
 /**
  * MANUAL SNAP VERSION
@@ -53,7 +54,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
             window.addEventListener('deviceorientation', handleOrientation);
           }
         })
-        .catch(console.error);
+        .catch((e: unknown) => logger.error('[CameraCapture] deviceorientation permission', e));
     } else {
       window.addEventListener('deviceorientation', handleOrientation);
     }
@@ -77,7 +78,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
   }, [onCapture, toast, mode, isVertical]);
 
   const handleUserMediaError = (err: string | DOMException) => {
-    console.error('Webcam error:', err);
+    logger.error('Webcam error:', err);
     setError('Could not access camera.');
   };
 

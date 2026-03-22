@@ -12,6 +12,8 @@ import { getStorage as getFirebaseStorageInstance, type FirebaseStorage } from '
 import { initializeAppCheck, ReCaptchaV3Provider, type AppCheck } from 'firebase/app-check';
 import { CONFIG } from '@/config';
 
+// Uses console.* here intentionally: Firebase bootstrap and DEV transport filtering run before app logger wiring.
+
 // Suppress noisy Firebase transport warnings in development
 // These are harmless network retry attempts that Firebase SDK handles automatically
 if (import.meta.env.DEV) {

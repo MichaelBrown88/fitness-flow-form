@@ -19,6 +19,8 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      // Optional: warn on raw slate/indigo/violet utilities — noisy until migration completes; enable when ready.
+      // "no-restricted-syntax": ["warn", { selector: "...", message: "Prefer design tokens (docs/DESIGN_SYSTEM.md)" }],
       "react-hooks/exhaustive-deps": "error",
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/no-unused-vars": "off",

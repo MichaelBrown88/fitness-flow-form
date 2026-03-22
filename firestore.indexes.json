@@ -1,6 +1,15 @@
 {
   "indexes": [
     {
+      "collectionGroup": "ai_usage_logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "organizationId", "order": "ASCENDING" },
+        { "fieldPath": "coachUid", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "clients",
       "queryScope": "COLLECTION",
       "fields": [
@@ -95,13 +104,6 @@
       "fields": [
         { "fieldPath": "organizationId", "order": "ASCENDING" },
         { "fieldPath": "clientSlug", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "roadmap",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        { "fieldPath": "shareToken", "order": "ASCENDING" }
       ]
     }
   ],

@@ -5,7 +5,7 @@
  * Each webhook has: URL, secret, events to subscribe to, active toggle.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { addDoc, collection, deleteDoc, doc, getDocs, limit, query, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { ORG_WEBHOOKS_QUERY_LIMIT } from '@/constants/firestoreQueryLimits';
 import { getDb } from '@/services/firebase';
@@ -51,8 +51,10 @@ export function WebhooksManager({ organizationId }: WebhooksManagerProps) {
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
-  const db = getDb();
-  const webhooksRef = collection(db, `organizations/${organizationId}/webhooks`);
+  const webhooksRef = useMemo(
+    () => collection(getDb(), `organizations/${organizationId}/webhooks`),
+    [organizationId],
+  );
 
   useEffect(() => {
     getDocs(query(webhooksRef, limit(ORG_WEBHOOKS_QUERY_LIMIT)))
@@ -61,8 +63,7 @@ export function WebhooksManager({ organizationId }: WebhooksManagerProps) {
       })
       .catch(err => logger.error('[Webhooks] Load failed:', err))
       .finally(() => setLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [organizationId]);
+  }, [webhooksRef]);
 
   const handleAdd = async () => {
     if (!newUrl.startsWith('https://')) {
