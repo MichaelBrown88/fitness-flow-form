@@ -135,7 +135,7 @@ try {
 export { db };
 
 export const auth = getAuth(app);
-export const functions = getFunctions(app);
+export const functions = getFunctions(app, CONFIG.FIREBASE.FUNCTIONS_REGION);
 export const storage = getFirebaseStorageInstance(app);
 
 export const getDb = () => db;

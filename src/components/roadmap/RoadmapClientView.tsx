@@ -16,15 +16,19 @@ interface RoadmapClientViewProps {
   clientGoals?: string[];
   mode?: 'client' | 'coach';
   showEditButton?: boolean;
+  /** When true, parent owns max-width / horizontal padding (e.g. public page wrapper). */
+  embedded?: boolean;
 }
 
 export default function RoadmapClientView({
   clientName,
+  summary,
   items,
   organizationName,
   activePhase = 'foundation',
   clientGoals,
   mode = 'client',
+  embedded = false,
 }: RoadmapClientViewProps) {
   const achievedCount = items.filter((i) => i.status === 'achieved').length;
   const progressPct = items.length > 0 ? Math.round((achievedCount / items.length) * 100) : 0;
@@ -49,8 +53,14 @@ export default function RoadmapClientView({
     return 'upcoming';
   };
 
+  const rootClass = embedded
+    ? 'space-y-8 py-8'
+    : 'max-w-2xl mx-auto px-4 py-8 space-y-8';
+
+  const summaryTrimmed = summary?.trim();
+
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8 space-y-8">
+    <div className={rootClass}>
       <header className="text-center space-y-3">
         <p className="text-[10px] font-semibold uppercase tracking-widest text-primary">Your Journey</p>
         <h1 className="text-3xl font-bold text-foreground">
@@ -72,6 +82,11 @@ export default function RoadmapClientView({
         });
         return (
           <div className="rounded-xl bg-brand-light p-6 border border-border space-y-4">
+            {summaryTrimmed && (
+              <p className="text-sm leading-relaxed text-foreground font-medium border-b border-border pb-3">
+                {summaryTrimmed}
+              </p>
+            )}
             <p className="text-sm leading-relaxed text-foreground">{content.intro}</p>
             {content.sessionExpectation && (
               <p className="text-xs text-foreground-secondary">{content.sessionExpectation}</p>
@@ -98,9 +113,20 @@ export default function RoadmapClientView({
             {achievedCount} of {items.length} milestones completed
           </span>
         </div>
-        <div className="h-2 rounded-full bg-muted overflow-hidden">
+        <div
+          className="h-2 rounded-full bg-muted overflow-hidden"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={items.length === 0 ? 0 : progressPct}
+          aria-valuetext={
+            items.length === 0
+              ? 'No milestones yet'
+              : `${achievedCount} of ${items.length} milestones completed (${progressPct} percent)`
+          }
+        >
           <div
-            className="h-full rounded-full bg-score-green transition-all duration-700"
+            className="h-full rounded-full bg-score-green motion-safe:transition-all motion-safe:duration-700"
             style={{ width: `${progressPct}%` }}
           />
         </div>

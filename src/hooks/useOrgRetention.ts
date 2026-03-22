@@ -6,7 +6,8 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { collection, query, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, limit, query, Timestamp } from 'firebase/firestore';
+import { ORG_CLIENT_PROFILES_QUERY_LIMIT } from '@/constants/firestoreQueryLimits';
 import { getDb } from '@/services/firebase';
 import { ORGANIZATION } from '@/lib/database/paths';
 import { logger } from '@/lib/utils/logger';
@@ -109,7 +110,7 @@ export function useOrgRetention(
     try {
       const db = getDb();
       const clientsRef = collection(db, ORGANIZATION.clients.collection(organizationId));
-      const clientsSnap = await getDocs(query(clientsRef));
+      const clientsSnap = await getDocs(query(clientsRef, limit(ORG_CLIENT_PROFILES_QUERY_LIMIT)));
 
       // Create a map of coach UIDs to names
       const coachMap = new Map(coaches.map(c => [c.uid, c.displayName]));

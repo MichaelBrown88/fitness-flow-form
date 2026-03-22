@@ -120,7 +120,7 @@ export async function getRevenueByRegion(): Promise<RevenueByRegionResult> {
 export async function getLiveMetrics(): Promise<PlatformMetrics> {
   try {
     const systemStatsRef = getSystemStatsDoc();
-    let systemStatsSnap = await getDocFromServer(systemStatsRef).catch(() => getDoc(systemStatsRef));
+    const systemStatsSnap = await getDocFromServer(systemStatsRef).catch(() => getDoc(systemStatsRef));
 
     if (!systemStatsSnap.exists()) {
       logger.warn('system_stats/global_metrics does not exist yet. Returning defaults. Cloud Functions will populate it on next write.');

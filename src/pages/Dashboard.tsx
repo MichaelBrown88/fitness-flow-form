@@ -55,6 +55,7 @@ const Dashboard = () => {
     coachMap,
     orgSettings,
     effectiveOrgId,
+    hasSharedReport,
   } = useDashboardData();
 
   const navigate = useNavigate();
@@ -136,10 +137,16 @@ const Dashboard = () => {
 
   if (loading || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-slate-400 font-medium">
+      <div
+        className="flex min-h-screen items-center justify-center text-sm text-muted-foreground font-medium"
+        aria-busy="true"
+        aria-live="polite"
+        role="status"
+      >
         <div className="flex flex-col items-center gap-4">
-          <div className="w-8 h-8 border-4 border-slate-900 border-t-transparent rounded-full animate-spin" />
-          <span>Loading your dashboard…</span>
+          <span className="sr-only">Loading your dashboard</span>
+          <div className="w-8 h-8 border-4 border-muted-foreground/25 border-t-primary rounded-full motion-safe:animate-spin" />
+          <span aria-hidden>Loading your dashboard…</span>
         </div>
       </div>
     );
@@ -155,7 +162,7 @@ const Dashboard = () => {
         actions={
           <Button
             onClick={handleGlobalNewAssessment}
-            className="h-9 px-4 rounded-xl bg-slate-900 text-white font-bold hover:bg-slate-800 gap-2 text-xs"
+            className="h-9 px-4 rounded-xl font-bold gap-2 text-xs"
           >
             <Plus className="h-4 w-4" />
             <span className="hidden sm:inline">New Assessment</span>
@@ -174,14 +181,14 @@ const Dashboard = () => {
           <GettingStartedChecklist
             hasClients={(analytics?.totalClients ?? 0) > 0}
             hasAssessments={(analytics?.totalAssessments ?? 0) > 0}
-            hasSharedReport={false}
+            hasSharedReport={hasSharedReport}
             businessProfileComplete={Boolean(orgSettings?.name?.trim() && orgSettings?.region)}
             showTrialSubscribeNudge={orgSettings?.subscription?.planKind === 'gym_trial'}
             showBrandingNudge={orgSettings?.customBrandingEnabled === false}
           />
 
           {/* Main Content */}
-          <div className="bg-white rounded-2xl p-3 sm:p-4 md:p-6 lg:p-8 overflow-hidden">
+          <div className="bg-card text-card-foreground rounded-2xl border border-border p-3 sm:p-4 md:p-6 lg:p-8 overflow-hidden">
             <DashboardViewTabs 
               view={view}
               setView={setView}

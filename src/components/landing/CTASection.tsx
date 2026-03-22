@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { LandingTrialCtaLink } from '@/components/landing/LandingTrialCtaLink';
+import { LANDING_COPY, landingTrialAriaLabel } from '@/constants/landingCopy';
+import { LANDING_GUEST_CHECKOUT_ENABLED } from '@/constants/platform';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
 
 export function CTASection() {
@@ -22,8 +24,8 @@ export function CTASection() {
           <h2 ref={headingRef} className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-6 leading-tight">
             Assess Smarter. Retain Longer.
           </h2>
-          <p ref={subtitleRef} className="text-lg text-slate-400 mb-10 max-w-2xl mx-auto">
-            Start your free trial today. No credit card, no setup, no risk.
+          <p ref={subtitleRef} className="text-lg text-slate-300 mb-10 max-w-2xl mx-auto">
+            {LANDING_COPY.ctaSectionSubtitle}
           </p>
           
           <div ref={ctaRef}>
@@ -37,11 +39,14 @@ export function CTASection() {
               </Link>
             ) : (
               <div className="flex flex-col items-center gap-4">
-                <LandingTrialCtaLink className="inline-flex items-center justify-center gap-2 bg-white text-slate-900 px-8 py-4 rounded-xl text-base font-bold shadow-lg shadow-white/10 hover:bg-slate-100 transition-colors">
+                <LandingTrialCtaLink
+                  className="inline-flex items-center justify-center gap-2 bg-white text-slate-900 px-8 py-4 rounded-xl text-base font-bold shadow-lg shadow-white/10 hover:bg-slate-100 transition-colors"
+                  ariaLabel={landingTrialAriaLabel('cta', LANDING_GUEST_CHECKOUT_ENABLED)}
+                >
                   Start Free Trial
                   <ArrowRight className="h-5 w-5" />
                 </LandingTrialCtaLink>
-                <p className="text-slate-500 text-sm">No credit card required</p>
+                <p className="text-slate-400 text-sm">{LANDING_COPY.ctaSectionMicrocopy}</p>
               </div>
             )}
           </div>

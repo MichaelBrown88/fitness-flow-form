@@ -159,6 +159,17 @@ All colors MUST be HSL.
   .landing-page {
     background-color: #F5F5F7;
   }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html:has(.landing-page) {
+      scroll-behavior: smooth;
+    }
+  }
+
+  /* Fixed pill nav: anchor targets clear the bar */
+  .landing-page main > section[id] {
+    scroll-margin-top: 6.5rem;
+  }
 }
 
 /* Design Utilities */

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import { ROUTES } from '@/constants/routes';
 import { ArrowRight } from 'lucide-react';
 import {
   Navbar,
@@ -17,8 +18,10 @@ import {
   FAQSection,
   CTASection,
   Footer,
+  LandingBackToTop,
 } from '@/components/landing';
 import { useAuth } from '@/hooks/useAuth';
+import { LANDING_COPY } from '@/constants/landingCopy';
 
 // Testimonial data
 const testimonials = [
@@ -71,19 +74,37 @@ const faqItems = [
   },
 ];
 
+const LANDING_SCROLL_PATHS: readonly string[] = [ROUTES.HOME, ROUTES.PRICING];
+
 export default function Landing() {
   const { user } = useAuth();
+  const location = useLocation();
 
-  // Scroll to top on mount
   useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
+    if (!LANDING_SCROLL_PATHS.includes(location.pathname)) return;
+
+    const id = location.hash.replace(/^#/, '').trim();
+    if (id) {
+      const decoded = decodeURIComponent(id);
+      const prefersReduced =
+        typeof window.matchMedia === 'function' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const behavior: ScrollBehavior = prefersReduced ? 'auto' : 'smooth';
+
+      const t = window.setTimeout(() => {
+        document.getElementById(decoded)?.scrollIntoView({ block: 'start', behavior });
+      }, 0);
+      return () => window.clearTimeout(t);
+    }
+
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [location.pathname, location.hash]);
 
   return (
     <div className="min-h-screen landing-page">
       <Navbar />
-      
-      <main>
+
+      <main id="main-content" className="pb-28 md:pb-0">
         <HeroSection />
         <HowItWorksSection />
         <ScannerShowcase />
@@ -115,23 +136,25 @@ export default function Landing() {
       </main>
 
       <Footer />
-      
+
+      <LandingBackToTop />
+
       {/* Sticky Bottom CTA for Mobile — frosted glass bar, Apple-style */}
       <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden">
         <div className="bg-white/80 backdrop-blur-xl border-t border-slate-200/60 px-4 py-3 safe-area-pb">
           {user ? (
-            <Link 
+            <Link
               to="/dashboard"
               className="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 text-sm"
             >
               Go to Dashboard <ArrowRight size={16} />
             </Link>
           ) : (
-            <Link 
+            <Link
               to="/try"
               className="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 text-sm"
             >
-              Try Free — No Sign-up <ArrowRight size={16} />
+              {LANDING_COPY.mobileStickyCta} <ArrowRight size={16} />
             </Link>
           )}
         </div>

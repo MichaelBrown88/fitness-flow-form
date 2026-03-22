@@ -61,7 +61,6 @@ async function main(): Promise<void> {
             : 10;
       const row = getPaidTierByClientCount(seats, 'solo');
       const tierId = row.id as PaidCapacityTierId;
-      // eslint-disable-next-line no-console -- migration script
       console.log(
         `${COMMIT ? 'UPDATE' : 'DRY-RUN'} ${docSnap.id}: clientCap=${row.clientLimit}, capacityTierId=${tierId}, monthlyAiCredits=${row.monthlyAiCredits}`,
       );
@@ -78,7 +77,6 @@ async function main(): Promise<void> {
   }
 
   if (!COMMIT || pending.length === 0) {
-    // eslint-disable-next-line no-console -- migration script
     console.log(COMMIT ? 'No documents to update.' : `Dry-run complete (${pending.length} would update). Set MIGRATE_BILLING_COMMIT=1 to write.`);
     return;
   }
@@ -94,7 +92,6 @@ async function main(): Promise<void> {
       });
     }
     await batch.commit();
-    // eslint-disable-next-line no-console -- migration script
     console.log(`Committed batch ${Math.floor(i / BATCH_MAX) + 1} (${chunk.length} docs).`);
   }
 }

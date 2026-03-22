@@ -86,6 +86,11 @@ export function useDashboardData() {
     return items.filter((item) => item.clientName.toLowerCase().includes(term));
   }, [items, search]);
 
+  const hasSharedReport = useMemo(
+    () => clientGroups.some((g) => typeof g.shareToken === 'string' && g.shareToken.trim().length > 0),
+    [clientGroups],
+  );
+
   // Coach name map for admin views (uid -> displayName)
   const [coachMap, setCoachMap] = useState<Map<string, string>>(new Map());
   const showCoachColumn = isAdmin && !isActiveCoach;
@@ -142,6 +147,7 @@ export function useDashboardData() {
     loadingMore,
     filtered,
     filteredClients,
+    hasSharedReport,
     clientGroups,
     reassessmentQueue,
     refreshSchedules,

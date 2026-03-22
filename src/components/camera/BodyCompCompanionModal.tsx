@@ -9,10 +9,11 @@ import {
   DialogFooter 
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { 
-  createLiveSession, 
-  subscribeToLiveSession, 
-  type LiveSession 
+import {
+  createLiveSession,
+  LIVE_SESSION_PLACEHOLDER_CLIENT_ID,
+  subscribeToLiveSession,
+  type LiveSession,
 } from '@/services/liveSessions';
 import { 
   Smartphone, 
@@ -51,19 +52,28 @@ export const BodyCompCompanionModal: React.FC<BodyCompCompanionModalProps> = ({
 
   // 1. Create Session (same pattern as PostureCompanionModal)
   useEffect(() => {
-    if (isOpen && !session) {
-      const init = async () => {
-        try {
-          const newSession = await createLiveSession('current-client', profile?.organizationId, profile);
+    if (!isOpen || session) return;
+    let cancelled = false;
+    const init = async () => {
+      try {
+        const newSession = await createLiveSession(
+          LIVE_SESSION_PLACEHOLDER_CLIENT_ID,
+          profile?.organizationId,
+          profile,
+        );
+        if (!cancelled) {
           setSession(newSession);
           setError(null);
-        } catch (err) {
-          setError("Connection failed. Please check your internet.");
         }
-      };
-      init();
-    }
-  }, [isOpen, session, profile?.organizationId]);
+      } catch {
+        if (!cancelled) setError("Connection failed. Please check your internet.");
+      }
+    };
+    void init();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, session, profile]);
 
   // 1.5 Pre-warm Firebase AI when modal opens (while user scans QR code)
   // This initializes the Gemini model so OCR starts faster when image arrives

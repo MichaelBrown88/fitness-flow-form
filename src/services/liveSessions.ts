@@ -36,6 +36,12 @@ export interface LiveSession {
 
 const SESSIONS_COLLECTION = 'live_sessions';
 
+/**
+ * `createLiveSession` uses this clientId until sessions are keyed by real client slug.
+ * Queries for posture merge / reanalyze must use the same value.
+ */
+export const LIVE_SESSION_PLACEHOLDER_CLIENT_ID = 'current-client' as const;
+
 /** Generate a short cryptographically secure ID (URL-safe, no special chars). */
 function generateSecureId(length: number): string {
   if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
@@ -367,28 +373,21 @@ export const updateBodyCompImage = async (
  * Get sessions for a specific client (for comparison features)
  * Limited to most recent sessions to prevent unbounded queries
  */
-export const getClientSessions = async (clientId: string, organizationId?: string, maxResults = 20): Promise<LiveSession[]> => {
+export const getClientSessions = async (
+  clientId: string,
+  organizationId: string,
+  maxResults = 20,
+): Promise<LiveSession[]> => {
   const { collection, query, where, getDocs, limit } = await import('firebase/firestore');
   const sessionsRef = collection(db, SESSIONS_COLLECTION);
-  
-  let q;
-  if (organizationId) {
-    // Query without orderBy to avoid index requirement - we'll sort in memory
-    q = query(
-      sessionsRef,
-      where('clientId', '==', clientId),
-      where('organizationId', '==', organizationId),
-      limit(maxResults)
-    );
-  } else {
-    // Query without orderBy to avoid index requirement - we'll sort in memory
-    q = query(
-      sessionsRef,
-      where('clientId', '==', clientId),
-      limit(maxResults)
-    );
-  }
-  
+
+  const q = query(
+    sessionsRef,
+    where('clientId', '==', clientId),
+    where('organizationId', '==', organizationId),
+    limit(maxResults),
+  );
+
   const snapshot = await getDocs(q);
   const sessions = snapshot.docs.map(doc => doc.data() as LiveSession);
   
@@ -412,7 +411,10 @@ export interface ClientSessionSummary {
   analysis: Record<string, PostureAnalysisResult>; // view -> analysis
 }
 
-export const getClientPostureImages = async (clientId: string, organizationId?: string): Promise<Record<string, ClientSessionSummary>> => {
+export const getClientPostureImages = async (
+  clientId: string,
+  organizationId: string,
+): Promise<Record<string, ClientSessionSummary>> => {
   const sessions = await getClientSessions(clientId, organizationId);
   const result: Record<string, ClientSessionSummary> = {};
   

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { ROUTES } from '@/constants/routes';
 import { Button } from '@/components/ui/button';
 import { Trash2, UserPlus, FileText, Pencil } from 'lucide-react';
 import {
@@ -102,8 +103,18 @@ export const DashboardDialogs: React.FC<DashboardDialogsProps> = ({
                 <span>Loading history…</span>
               </div>
             ) : clientHistory.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-slate-400 font-medium text-sm">
-                No assessment history found.
+              <div className="flex flex-col items-center justify-center py-20 text-muted-foreground font-medium text-sm text-center gap-4 px-4">
+                <p>No assessment history found.</p>
+                {clientHistoryDialog ? (
+                  <Button variant="default" className="rounded-xl font-bold" asChild>
+                    <Link
+                      to={`${ROUTES.ASSESSMENT}?client=${encodeURIComponent(clientHistoryDialog)}`}
+                      onClick={() => setClientHistoryDialog(null)}
+                    >
+                      Run an assessment
+                    </Link>
+                  </Button>
+                ) : null}
               </div>
             ) : (
               clientHistory.map((snapshot) => (
@@ -171,7 +182,7 @@ export const DashboardDialogs: React.FC<DashboardDialogsProps> = ({
                   setClientHistoryDialog(null);
                 }
               }}
-              className="sm:flex-1 bg-slate-900 text-white hover:bg-slate-800 rounded-xl font-bold h-11 shadow-sm transition-all"
+              className="sm:flex-1 rounded-xl font-bold h-11 shadow-sm transition-all"
             >
               <UserPlus className="h-4 w-4 mr-2" />
               New Assessment

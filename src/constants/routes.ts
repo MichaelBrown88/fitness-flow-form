@@ -24,7 +24,7 @@ export const ROUTES = {
   PUBLIC_REPORT_PRE_SESSION: '/r/:token/pre-session',
   ASSESSMENT_REPORT: '/coach/assessments/:id',
   ASSESSMENT_REPORT_CLIENT: '/coach/assessments/:id/client',
-  /** Marketing pricing — same page as landing pricing; reachable when signed in (unlike `/`). */
+  /** Marketing pricing — same page as landing pricing section; always reachable when signed in. */
   PRICING: '/pricing',
   ABOUT: '/about',
   CONTACT: '/contact',
@@ -46,4 +46,10 @@ export const ROUTES = {
   ADMIN_SETUP: '/admin/setup',
   ADMIN_ORGANIZATIONS: '/admin/organizations',
   ADMIN_ORGANIZATION: (orgId: string) => `/admin/organizations/${orgId}` as const,
+} as const;
+
+/** Query keys for public client routes (support diagnostics). */
+export const PUBLIC_CLIENT_URL_QUERY = {
+  /** `?roadmapDebug=1` on `/r/:token/roadmap` shows roadmap load diagnostics. */
+  ROADMAP_DEBUG: 'roadmapDebug',
 } as const;

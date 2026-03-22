@@ -172,7 +172,7 @@ export function useClientReportData({
       map[cat.id] = base;
     }
     return map;
-  }, [orderedCats, formData, isBodyRecomp, safeScores.categories]);
+  }, [orderedCats, formData, isBodyRecomp, safeScores.categories, goals]);
   
   const maxWeeks = useMemo(() => Math.max(...orderedCats.map(c => weeksByCategory[c.id] ?? 0), 0), [orderedCats, weeksByCategory]);
   

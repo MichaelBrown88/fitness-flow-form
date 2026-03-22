@@ -3,7 +3,11 @@
  * Can be called from browser console or integrated into UI
  */
 
-import { getClientPostureImages, reanalyzePostureImage } from '@/services/liveSessions';
+import {
+  getClientPostureImages,
+  LIVE_SESSION_PLACEHOLDER_CLIENT_ID,
+  reanalyzePostureImage,
+} from '@/services/liveSessions';
 import { updatePostureAnalysis } from '@/services/assessmentHistory';
 import { auth, storage } from '@/services/firebase';
 import { ref, getDownloadURL, getBytes } from 'firebase/storage';
@@ -113,7 +117,10 @@ export async function reanalyzeClientPosture(
     // If no images in assessment, try live sessions
     if (!hasImagesFromAssessment) {
       console.log('[REANALYZE] No images in assessment, checking live sessions...');
-      const sessions = await getClientPostureImages(clientName, organizationId);
+      if (!organizationId) {
+        throw new Error('organizationId is required to load live session posture data');
+      }
+      const sessions = await getClientPostureImages(LIVE_SESSION_PLACEHOLDER_CLIENT_ID, organizationId);
       
       if (Object.keys(sessions).length === 0) {
         throw new Error(`No posture images found for client: ${clientName}`);

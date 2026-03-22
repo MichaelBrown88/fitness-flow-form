@@ -103,10 +103,11 @@ export function useAssessmentLogic(assessmentId: string | undefined, clientNameO
                   }
               }
               
-              // If still missing, try live sessions
-              if (!fd.postureImagesStorage && !fd.postureAiResults) {
-                 const { getClientPostureImages } = await import('@/services/liveSessions');
-                 const sessions = await getClientPostureImages(clientNameForLookup, profile?.organizationId);
+              // If still missing, try live sessions (same clientId as createLiveSession)
+              const orgId = profile?.organizationId;
+              if (!fd.postureImagesStorage && !fd.postureAiResults && orgId) {
+                 const { getClientPostureImages, LIVE_SESSION_PLACEHOLDER_CLIENT_ID } = await import('@/services/liveSessions');
+                 const sessions = await getClientPostureImages(LIVE_SESSION_PLACEHOLDER_CLIENT_ID, orgId);
                  // ... (Simplified logic: grab best match)
                  const sessionsWithPosture = Object.values(sessions).filter(s => 
                    (s.images && Object.keys(s.images).length > 0) || (s.analysis && Object.keys(s.analysis).length > 0)
@@ -212,7 +213,7 @@ export function useAssessmentLogic(assessmentId: string | undefined, clientNameO
     })();
 
     return () => { isMounted = false; };
-  }, [user, assessmentId, clientNameOverride, profile?.organizationId]);
+  }, [user, assessmentId, clientNameOverride, profile]);
 
   return state;
 }

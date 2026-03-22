@@ -60,6 +60,14 @@ export function PostureComparisonCard({ snapshots }: PostureComparisonCardProps)
   const [rightIdx, setRightIdx] = useState(1);
   const [activeView, setActiveView] = useState<PostureView>('front');
 
+  const leftSession = sessionsWithImages[leftIdx];
+  const rightSession = sessionsWithImages[rightIdx];
+
+  const availableViews = useMemo<PostureView[]>(() => {
+    const views: PostureView[] = ['front', 'side-left', 'back', 'side-right'];
+    return views.filter((v) => leftSession?.images[v] || rightSession?.images[v]);
+  }, [leftSession, rightSession]);
+
   if (sessionsWithImages.length < 2) {
     return (
       <div className="rounded-xl bg-slate-50 px-5 py-8 text-center space-y-1">
@@ -72,14 +80,6 @@ export function PostureComparisonCard({ snapshots }: PostureComparisonCardProps)
       </div>
     );
   }
-
-  const leftSession = sessionsWithImages[leftIdx];
-  const rightSession = sessionsWithImages[rightIdx];
-
-  const availableViews = useMemo<PostureView[]>(() => {
-    const views: PostureView[] = ['front', 'side-left', 'back', 'side-right'];
-    return views.filter((v) => leftSession?.images[v] || rightSession?.images[v]);
-  }, [leftSession, rightSession]);
 
   return (
     <div className="space-y-4">

@@ -289,16 +289,6 @@ const Companion = () => {
     throttledSpeak('Sequence cancelled.', true);
   }, [sessionId, throttledSpeak]);
 
-  // Start capture sequence
-  const startSequence = useCallback(() => {
-    if (flowState !== 'ready' || currentView >= VIEWS.length) return;
-
-    isSequenceCancelledRef.current = false;
-    setFlowState('capturing');
-    setCurrentView(0);
-    startCountdown(0);
-  }, [flowState, currentView]);
-
   // Countdown and capture with cancellation support
   const startCountdown = useCallback((viewIdx: number) => {
     // Check if cancelled
@@ -373,6 +363,16 @@ const Companion = () => {
       }
     }, 1000);
   }, [captureImage, speak, throttledSpeak]);
+
+  // Start capture sequence
+  const startSequence = useCallback(() => {
+    if (flowState !== 'ready' || currentView >= VIEWS.length) return;
+
+    isSequenceCancelledRef.current = false;
+    setFlowState('capturing');
+    setCurrentView(0);
+    startCountdown(0);
+  }, [flowState, currentView, startCountdown]);
 
   // Initial setup
   useEffect(() => {

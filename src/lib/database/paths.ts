@@ -179,6 +179,11 @@ export const PUBLIC = {
     doc: (token: string) => `publicReports/${token}` as const,
   },
 
+  /** Token-keyed roadmap mirror for anonymous client viewer (see roadmaps.ts). */
+  roadmaps: {
+    doc: (token: string) => `publicRoadmaps/${token}` as const,
+  },
+
   liveSessions: {
     collection: () => 'live_sessions' as const,
     doc: (sessionId: string) => `live_sessions/${sessionId}` as const,

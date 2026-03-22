@@ -6,7 +6,7 @@
  * and use "Push 1 Week" for the most common scheduling action.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   Calendar,
   Scan,
@@ -120,7 +120,10 @@ export function RetestScheduleCard({
   const clientActivePillars = profile?.activePillars
     ?? orgDefaultActivePillars
     ?? ALL_PILLARS;
-  const activePillarSet = new Set(clientActivePillars);
+  const activePillarSet = useMemo(
+    () => new Set(clientActivePillars),
+    [clientActivePillars],
+  );
 
   const lastAssessmentDate = profile?.lastAssessmentDate?.toDate();
   const trainingStart = profile?.trainingStartDate ? new Date(profile.trainingStartDate) : undefined;
@@ -130,13 +133,22 @@ export function RetestScheduleCard({
     ? (trainingStart && trainingStart > lastAssessmentDate ? trainingStart : lastAssessmentDate)
     : undefined;
 
-  const pillarDateMap: Record<string, Date | undefined> = {
-    bodycomp: profile?.lastInBodyDate?.toDate(),
-    posture: profile?.lastPostureDate?.toDate(),
-    fitness: profile?.lastFitnessDate?.toDate(),
-    strength: profile?.lastStrengthDate?.toDate(),
-    lifestyle: profile?.lastLifestyleDate?.toDate(),
-  };
+  const pillarDateMap = useMemo(
+    (): Record<string, Date | undefined> => ({
+      bodycomp: profile?.lastInBodyDate?.toDate(),
+      posture: profile?.lastPostureDate?.toDate(),
+      fitness: profile?.lastFitnessDate?.toDate(),
+      strength: profile?.lastStrengthDate?.toDate(),
+      lifestyle: profile?.lastLifestyleDate?.toDate(),
+    }),
+    [
+      profile?.lastInBodyDate,
+      profile?.lastPostureDate,
+      profile?.lastFitnessDate,
+      profile?.lastStrengthDate,
+      profile?.lastLifestyleDate,
+    ],
+  );
 
   const handleTogglePillar = useCallback(async (pillar: PartialAssessmentCategory) => {
     const newSet = new Set(activePillarSet);

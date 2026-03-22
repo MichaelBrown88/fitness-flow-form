@@ -28,9 +28,24 @@ export function MovementPostureMobility({ formData, scores, standalone = false, 
   const { toast } = useToast();
   const { profile } = useAuth();
   const [isReanalyzing, setIsReanalyzing] = useState(false);
-  
+
+  const movementDelta = useMemo(() => {
+    if (!formData || !previousFormData) return null;
+    const currentMvmt = scores.categories.find(c => c.id === 'movementQuality');
+    if (!currentMvmt) return null;
+    try {
+      const prevScores = computeScores(previousFormData);
+      const prevMvmt = prevScores.categories.find(c => c.id === 'movementQuality');
+      if (!prevMvmt) return null;
+      const diff = currentMvmt.score - prevMvmt.score;
+      if (diff > 0) return { direction: 'up' as const, value: diff };
+      if (diff < 0) return { direction: 'down' as const, value: Math.abs(diff) };
+    } catch { /* previous data may be malformed */ }
+    return null;
+  }, [scores, previousFormData, formData]);
+
   if (!formData) return null;
-  
+
   const handleReanalyze = async () => {
     if (!formData.fullName) {
       toast({
@@ -172,21 +187,6 @@ export function MovementPostureMobility({ formData, scores, standalone = false, 
   };
   
   const movementPatternScore = calculateMovementPatternScore();
-  
-  const movementDelta = useMemo(() => {
-    if (!previousFormData) return null;
-    const currentMvmt = scores.categories.find(c => c.id === 'movementQuality');
-    if (!currentMvmt) return null;
-    try {
-      const prevScores = computeScores(previousFormData);
-      const prevMvmt = prevScores.categories.find(c => c.id === 'movementQuality');
-      if (!prevMvmt) return null;
-      const diff = currentMvmt.score - prevMvmt.score;
-      if (diff > 0) return { direction: 'up' as const, value: diff };
-      if (diff < 0) return { direction: 'down' as const, value: Math.abs(diff) };
-    } catch { /* previous data may be malformed */ }
-    return null;
-  }, [scores, previousFormData]);
 
   // Build specific movement assessment findings from actual test data
   // Organize by assessment type to ensure we show at least 2 assessments

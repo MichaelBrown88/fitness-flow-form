@@ -56,8 +56,14 @@ export default function Onboarding() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="animate-pulse text-slate-400 text-sm">Loading...</div>
+      <div
+        className="min-h-screen flex items-center justify-center bg-background"
+        role="status"
+        aria-busy="true"
+        aria-live="polite"
+      >
+        <span className="sr-only">Loading onboarding</span>
+        <div className="animate-pulse text-muted-foreground text-sm">Loading…</div>
       </div>
     );
   }
@@ -73,9 +79,15 @@ export default function Onboarding() {
   if (saving) {
     return (
       <OnboardingLayout progressSteps={progress.steps} activeProgressIndex={progress.activeIndex} onBack={undefined}>
-        <div className="flex flex-col items-center justify-center py-16">
-          <div className="w-10 h-10 border-2 border-slate-200 border-t-slate-900 rounded-full animate-spin mb-4" />
-          <p className="text-sm text-slate-500">{savingMessage}</p>
+        <div
+          className="flex flex-col items-center justify-center py-16"
+          role="status"
+          aria-busy="true"
+          aria-live="polite"
+        >
+          <span className="sr-only">{savingMessage}</span>
+          <div className="w-10 h-10 border-2 border-muted border-t-primary rounded-full motion-safe:animate-spin mb-4" aria-hidden />
+          <p className="text-sm text-muted-foreground">{savingMessage}</p>
         </div>
       </OnboardingLayout>
     );

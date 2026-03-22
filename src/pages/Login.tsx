@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { logger } from '@/lib/utils/logger';
+import { mapFirebaseAuthError } from '@/lib/utils/mapFirebaseAuthError';
+import { ROUTES } from '@/constants/routes';
 
 const Login = () => {
   const { signIn, signInWithGoogle, signInWithApple, loading, user, profile } = useAuth();
@@ -20,12 +22,12 @@ const Login = () => {
   const [submitting, setSubmitting] = useState(false);
   const [resetSent, setResetSent] = useState(false);
 
-  const from = (location.state as { from?: string } | null)?.from || '/dashboard';
+  const from = (location.state as { from?: string } | null)?.from || ROUTES.DASHBOARD;
 
   useEffect(() => {
     if (!loading && user && profile) {
       if (!profile.onboardingCompleted) {
-        navigate('/onboarding', { replace: true });
+        navigate(ROUTES.ONBOARDING, { replace: true });
         return;
       }
       navigate(from, { replace: true });
@@ -41,11 +43,7 @@ const Login = () => {
       await signIn(email.trim(), password);
       logger.info('Login successful');
     } catch (err: unknown) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : 'Unable to sign in. Please check your details and try again.';
-      setError(message);
+      setError(mapFirebaseAuthError(err, 'Unable to sign in. Please check your details and try again.'));
       logger.error('Login failed:', err instanceof Error ? err.message : String(err));
     } finally {
       setSubmitting(false);
@@ -79,7 +77,9 @@ const Login = () => {
       else await signInWithApple();
       logger.info(`${provider} sign-in successful`);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : `${provider} sign-in failed.`);
+      setError(
+        mapFirebaseAuthError(err, `${provider === 'google' ? 'Google' : 'Apple'} sign-in failed. Try again.`),
+      );
       logger.error(`${provider} sign-in failed:`, err instanceof Error ? err.message : String(err));
     } finally {
       setSubmitting(false);
@@ -106,7 +106,15 @@ const Login = () => {
 
       {/* Right side - Form */}
       <div className="flex-1 flex items-center justify-center p-8">
-        <div className="w-full max-w-md">
+          <div className="w-full max-w-md">
+          <p className="mb-4 text-center lg:text-left">
+            <Link
+              to={ROUTES.HOME}
+              className="text-sm font-medium text-slate-600 hover:text-slate-900 underline-offset-4 hover:underline"
+            >
+              ← Back to website
+            </Link>
+          </p>
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2 mb-8 justify-center">
             <div className="w-10 h-10 rounded-xl gradient-bg flex items-center justify-center">
@@ -223,13 +231,8 @@ const Login = () => {
 
             <p className="mt-6 text-center text-sm text-slate-600">
               Don't have an account?{' '}
-              <Link to="/onboarding" className="text-indigo-600 font-medium hover:underline">
+              <Link to={ROUTES.ONBOARDING} className="text-indigo-600 font-medium hover:underline">
                 Start your free trial
-              </Link>
-            </p>
-            <p className="mt-2 text-center text-xs text-slate-500">
-              <Link to="/" className="text-slate-400 hover:text-slate-600">
-                Back to home
               </Link>
             </p>
           </div>

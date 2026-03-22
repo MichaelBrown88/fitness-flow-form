@@ -1,8 +1,9 @@
 import './init-env';
+import { randomUUID } from 'node:crypto';
 import * as admin from 'firebase-admin';
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
-import { onCall, onRequest } from 'firebase-functions/v2/https';
+import { HttpsError, onCall, onRequest } from 'firebase-functions/v2/https';
 import { requestShareLinks, sendReportEmail } from './share';
 import {
   handleCreateCheckoutSession,
@@ -34,6 +35,7 @@ import {
   deleteLegacyCollectionsCallable,
   seedAIConfigCallable,
 } from './metricsApi';
+import { handleSyncPublicRoadmapMirror } from './syncPublicRoadmapMirrorCallable';
 import { handleDeleteOrganization } from './deleteOrganization';
 import { handleLogOnboardingStep } from './onboardingAnalytics';
 import { computeTeamMetrics } from './teamMetrics';
@@ -403,8 +405,6 @@ export const backfillClientIds = onCall(
     const adminDoc = await db.doc(`platform_admins/${request.auth.uid}`).get();
     if (!adminDoc.exists) throw new Error('Platform admin access required.');
 
-    const { randomUUID } = require('crypto') as { randomUUID: () => string };
-
     const orgsSnap = await db.collection('organizations').get();
     let migrated = 0;
     let skipped = 0;
@@ -490,6 +490,35 @@ export const getClientAchievements = onCall(
 
     const achievements = achSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
     return { achievements };
+  },
+);
+
+/**
+ * Anonymous / first-hit: ensure publicRoadmaps/{token} exists for legacy roadmap share links.
+ * Rate-limited. Accepts roadmap hex token (24 chars) or public report UUID (`/r/{reportId}/roadmap`).
+ * cors: true so Firebase Hosting / custom domains work (CORS_ORIGINS is localhost-only).
+ */
+export const syncPublicRoadmapMirror = onCall(
+  { enforceAppCheck: false, cors: true, invoker: 'public', timeoutSeconds: 30 },
+  async (request) => {
+    const db = admin.firestore();
+    const key = buildRateLimitKey(
+      'pubRoadmapSync',
+      request.auth?.uid,
+      request.rawRequest?.ip,
+    );
+    try {
+      await assertRateLimit(db, key, { maxRequests: 30, windowSeconds: 60 });
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === 'RATE_LIMITED') {
+        throw new HttpsError(
+          'resource-exhausted',
+          'Too many roadmap sync requests. Try again shortly.',
+        );
+      }
+      throw e;
+    }
+    return handleSyncPublicRoadmapMirror(request);
   },
 );
 

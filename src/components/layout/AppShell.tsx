@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { sendEmailVerification } from 'firebase/auth';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Sparkles, ChevronDown, Menu, Building2, LayoutDashboard, Settings, LogOut, Mail, X } from 'lucide-react';
+import { Sparkles, ChevronDown, Menu, Building2, LayoutDashboard, Settings, LogOut, Mail, X, Globe } from 'lucide-react';
 import { ROUTES } from '@/constants/routes';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { ClientProfileDropdown } from '@/components/client/ClientProfileDropdown';
@@ -86,9 +86,9 @@ export default function AppShell({
 
   if (mode === 'public') {
     return (
-      <div className="min-h-screen bg-slate-50 text-slate-900">
-        {/* Header: logo + client nav */}
-        <header className="bg-white border-b border-slate-200 py-3 px-4 sm:px-6">
+      <div className="min-h-screen bg-background text-foreground">
+        {/* Header: logo + client nav — semantic tokens for light/dark (DESIGN_SYSTEM) */}
+        <header className="bg-card border-b border-border py-3 px-4 sm:px-6">
           <div className="flex items-center justify-between max-w-7xl mx-auto">
             {/* Logo */}
             <div className="flex items-center gap-2">
@@ -100,10 +100,13 @@ export default function AppShell({
                 />
               ) : (
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
+                  <div
+                    className="w-8 h-8 rounded-full bg-gradient-to-tr from-[hsl(var(--gradient-from))] to-[hsl(var(--gradient-to))] flex items-center justify-center text-primary-foreground font-bold text-sm shadow-md"
+                    aria-hidden
+                  >
                     OA
                   </div>
-                  <span className="font-bold text-slate-900">One Assess</span>
+                  <span className="font-bold text-foreground">One Assess</span>
                 </div>
               )}
             </div>
@@ -125,18 +128,17 @@ export default function AppShell({
           {children}
         </main>
 
-        {/* Simple Footer */}
-        <footer className="text-center py-8 text-xs text-slate-400">
+        <footer className="text-center py-8 text-xs text-muted-foreground border-t border-border/60">
           Powered by One Assess
         </footer>
       </div>
     );
   }
 
-  // Coach mode: full layout with navigation
+  // Coach mode: full layout with navigation (semantic tokens — aligns with public AppShell + dark mode)
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50 text-slate-900">
-      <header className="border-b border-slate-200 bg-white sticky top-0 z-50 w-full shrink-0">
+    <div className="flex flex-col min-h-screen bg-background text-foreground">
+      <header className="border-b border-border bg-card sticky top-0 z-50 w-full shrink-0">
         <div className="flex items-center justify-between h-14 sm:h-16 px-3 sm:px-4 md:px-6 lg:px-10">
           {/* Left side: Logo */}
           <div className="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0">
@@ -145,7 +147,7 @@ export default function AppShell({
                 variant="ghost"
                 size="icon"
                 onClick={onMenuToggle}
-                className="lg:hidden h-10 w-10 sm:h-9 sm:w-9 text-slate-500"
+                className="lg:hidden h-10 w-10 sm:h-9 sm:w-9 text-muted-foreground"
               >
                 <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
@@ -161,18 +163,18 @@ export default function AppShell({
               ) : (
                 // SaaS default logo (One Assess)
                 <div className="flex items-center gap-1.5 sm:gap-2">
-                  <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center text-white font-bold text-[10px] sm:text-sm shadow-md">
+                  <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-[hsl(var(--gradient-from))] to-[hsl(var(--gradient-to))] flex items-center justify-center text-primary-foreground font-bold text-[10px] sm:text-sm shadow-md">
                     OA
                   </div>
-                  <span className="text-base sm:text-lg font-bold tracking-tight text-slate-900 hidden sm:inline">One Assess</span>
+                  <span className="text-base sm:text-lg font-bold tracking-tight text-foreground hidden sm:inline">One Assess</span>
                 </div>
               )}
               {customBrandingEnabled && (
-                <div className="hidden leading-tight md:block border-l border-slate-200 pl-3 md:pl-4">
-                  <p className="text-[10px] sm:text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">
+                <div className="hidden leading-tight md:block border-l border-border pl-3 md:pl-4">
+                  <p className="text-[10px] sm:text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
                     {orgName}
                   </p>
-                  <p className="text-[10px] sm:text-xs font-semibold text-slate-600">
+                  <p className="text-[10px] sm:text-xs font-semibold text-foreground-secondary">
                     Professional Intake
                   </p>
                 </div>
@@ -187,7 +189,7 @@ export default function AppShell({
                 variant="ghost"
                 size="icon"
                 onClick={onDemoFill}
-                className="h-8 w-8 sm:h-9 sm:w-9 text-slate-400 hover:text-primary hover:bg-brand-light"
+                className="h-8 w-8 sm:h-9 sm:w-9 text-muted-foreground hover:text-primary hover:bg-brand-light"
                 title="Auto-fill demo data"
               >
                 <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -198,12 +200,12 @@ export default function AppShell({
               {actions ? <div className="flex gap-1 sm:gap-2">{actions}</div> : null}
 
               {user && profile?.role === 'org_admin' && (
-                <Button variant="ghost" size="icon" asChild className="h-8 w-8 sm:h-9 sm:w-9 text-slate-400 hover:text-slate-600 hidden sm:flex" title="Organization">
+                <Button variant="ghost" size="icon" asChild className="h-8 w-8 sm:h-9 sm:w-9 text-muted-foreground hover:text-foreground hidden sm:flex" title="Organization">
                   <Link to="/org/dashboard"><Building2 className="h-4 w-4" /></Link>
                 </Button>
               )}
               {user && (
-                <Button variant="ghost" size="icon" asChild className="h-8 w-8 sm:h-9 sm:w-9 text-slate-400 hover:text-slate-600 hidden sm:flex" title="Settings">
+                <Button variant="ghost" size="icon" asChild className="h-8 w-8 sm:h-9 sm:w-9 text-muted-foreground hover:text-foreground hidden sm:flex" title="Settings">
                   <Link to={ROUTES.SETTINGS}><Settings className="h-4 w-4" /></Link>
                 </Button>
               )}
@@ -215,21 +217,21 @@ export default function AppShell({
                     <DropdownMenuTrigger asChild>
                       <button
                         type="button"
-                        className="flex items-center gap-1 sm:gap-2 rounded-full p-0.5 sm:p-1 hover:bg-slate-50 transition-colors"
+                        className="flex items-center gap-1 sm:gap-2 rounded-full p-0.5 sm:p-1 hover:bg-muted/60 transition-colors"
                       >
                         <span 
                           className="flex h-9 w-9 sm:h-8 sm:w-8 items-center justify-center rounded-full text-xs sm:text-xs font-bold text-white gradient-bg"
                         >
                           {initials}
                         </span>
-                        <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4 text-slate-400 mr-0.5 sm:mr-1" />
+                        <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground mr-0.5 sm:mr-1" />
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-52">
                       <DropdownMenuLabel className="font-normal">
                         <div className="flex flex-col space-y-1">
                           <p className="text-sm font-medium leading-none">{user.displayName || 'Coach Account'}</p>
-                          <p className="text-xs leading-none text-slate-500">{user.email}</p>
+                          <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
                         </div>
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator />
@@ -251,6 +253,12 @@ export default function AppShell({
                         <Link to={ROUTES.SETTINGS} className="flex items-center gap-2">
                           <Settings className="h-4 w-4" />
                           Settings
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to={ROUTES.HOME} className="flex items-center gap-2">
+                          <Globe className="h-4 w-4" />
+                          Website
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
@@ -302,8 +310,8 @@ export default function AppShell({
       <main className={`flex-1 ${variant === 'default' ? 'mx-auto max-w-7xl w-full px-3 sm:px-4 md:px-6 lg:px-10 py-4 sm:py-6 md:py-8 lg:py-12' : ''}`}>
         {variant === 'default' && !hideTitle && (
           <div className="mb-4 sm:mb-6 space-y-0.5">
-            <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-slate-900">{title}</h1>
-            {subtitle && <p className="text-sm text-slate-500 font-medium">{subtitle}</p>}
+            <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-foreground">{title}</h1>
+            {subtitle && <p className="text-sm text-muted-foreground font-medium">{subtitle}</p>}
           </div>
         )}
         {children}

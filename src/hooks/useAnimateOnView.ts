@@ -159,7 +159,7 @@ export function useAnimateOnView(opts: UseAnimateOnViewOptions): UseAnimateOnVie
   // When value/from change while in view (e.g. two-phase gap animation), re-run
   useEffect(() => {
     if (isInView && nodeRef.current) runAnimation();
-  }, [value, from]);
+  }, [value, from, isInView, runAnimation]);
 
   // Cleanup on unmount
   useEffect(() => {

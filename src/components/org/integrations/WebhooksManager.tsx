@@ -6,7 +6,8 @@
  */
 
 import { useState, useEffect } from 'react';
-import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDocs, limit, query, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { ORG_WEBHOOKS_QUERY_LIMIT } from '@/constants/firestoreQueryLimits';
 import { getDb } from '@/services/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,7 +55,7 @@ export function WebhooksManager({ organizationId }: WebhooksManagerProps) {
   const webhooksRef = collection(db, `organizations/${organizationId}/webhooks`);
 
   useEffect(() => {
-    getDocs(webhooksRef)
+    getDocs(query(webhooksRef, limit(ORG_WEBHOOKS_QUERY_LIMIT)))
       .then(snap => {
         setWebhooks(snap.docs.map(d => ({ id: d.id, ...d.data() }) as WebhookConfig));
       })

@@ -137,6 +137,7 @@ export default function ClientRoadmap() {
       ) : (
         <RoadmapClientView
           clientName={clientName}
+          summary={summary}
           items={items}
           mode="coach"
           clientGoals={clientGoals}

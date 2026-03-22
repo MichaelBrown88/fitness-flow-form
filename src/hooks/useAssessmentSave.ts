@@ -645,7 +645,7 @@ export function useAssessmentSave({
         saveInitiatedRef.current = false;
       }
     }
-  }, [user, saving, savingId, formData, scores, profile, orgSettings, toast]);
+  }, [user, saving, savingId, formData, scores, profile, orgSettings, toast, isDemoAssessment]);
 
   // Auto-save when results phase is reached
   useEffect(() => {

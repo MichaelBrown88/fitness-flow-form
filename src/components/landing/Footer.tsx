@@ -1,13 +1,14 @@
 import { Link } from 'react-router-dom';
+import { LANDING_COPY } from '@/constants/landingCopy';
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
 
   const footerLinks = {
     product: [
-      { label: 'Features', href: '#features' },
-      { label: 'Pricing', href: '#pricing' },
-      { label: 'FAQ', href: '#faq' },
+      { label: 'Features', to: '/#features' },
+      { label: 'Pricing', to: '/#pricing' },
+      { label: 'FAQ', to: '/#faq' },
     ],
     company: [
       { label: 'About', href: '/about' },
@@ -45,12 +46,12 @@ export function Footer() {
             <ul className="space-y-3">
               {footerLinks.product.map((link) => (
                 <li key={link.label}>
-                  <a 
-                    href={link.href}
+                  <Link
+                    to={link.to}
                     className="text-slate-500 hover:text-indigo-600 transition-colors text-sm font-medium"
                   >
                     {link.label}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -114,9 +115,10 @@ export function Footer() {
           <div className="flex items-center gap-4">
             <p className="text-slate-400 text-sm font-medium">© {currentYear} One Assess. All rights reserved.</p>
             {/* Subtle platform admin link - barely noticeable */}
-            <Link 
-              to="/admin/login" 
+            <Link
+              to="/admin/login"
               className="text-slate-700 hover:text-slate-500 text-[10px] transition-colors"
+              aria-label={LANDING_COPY.footerAdminLinkAriaLabel}
             >
               ·
             </Link>

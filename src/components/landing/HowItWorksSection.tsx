@@ -4,9 +4,12 @@ import StickyCardStack from '@/components/ui/StickyCardStack';
 
 export function HowItWorksSection() {
   return (
-    <section id="how-it-works" className="py-24 sm:py-32 px-6 relative bg-slate-50 overflow-hidden">
+    <section
+      id="how-it-works"
+      className="relative overflow-hidden border-t border-slate-200/80 bg-white px-6 pt-16 sm:pt-20 pb-24 sm:pb-32"
+    >
       {/* Background decoration */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute top-[20%] right-[-5%] w-96 h-96 bg-blue-100/40 rounded-full blur-3xl" />
         <div className="absolute bottom-[10%] left-[-5%] w-96 h-96 bg-indigo-100/40 rounded-full blur-3xl" />
       </div>

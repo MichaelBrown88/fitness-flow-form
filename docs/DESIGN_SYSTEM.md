@@ -63,3 +63,7 @@ Prefer the shared classes and tokens so motion feels consistent:
 ## Optional: Linting
 
 Consider stylelint or ESLint rules to flag hardcoded `indigo-`, `violet-`, or `slate-` in component files and prefer token-based classes so the system stays consistent over time.
+
+## Interaction and UX standards
+
+For loading states, errors, focus, accessibility expectations, and how to run MCP-assisted UX reviews alongside this document, see [UI_UX_STANDARDS.md](./UI_UX_STANDARDS.md).

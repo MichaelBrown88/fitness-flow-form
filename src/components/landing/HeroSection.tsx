@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 import { LandingTrialCtaLink } from "@/components/landing/LandingTrialCtaLink";
+import { LANDING_COPY, landingTrialAriaLabel } from "@/constants/landingCopy";
+import { LANDING_GUEST_CHECKOUT_ENABLED } from "@/constants/platform";
 import {
   ArrowRight,
   Play,
@@ -23,18 +25,23 @@ export function HeroSection() {
   const visualY = 40 * (1 - Math.min(1, progress * 2));
 
   return (
-    <section className="relative pt-24 sm:pt-32 lg:pt-36 pb-4 px-5 sm:px-6 overflow-hidden">
-      {/* Soft Pastel Background Elements */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[1000px] bg-blue-100/40 rounded-full blur-[120px] -z-10 animate-blob mix-blend-multiply" />
-      <div className="absolute top-1/2 left-0 w-[800px] h-[800px] bg-indigo-100/40 rounded-full blur-[120px] -z-10 animate-blob animation-delay-2000 mix-blend-multiply" />
-      <div className="absolute bottom-0 right-0 w-[800px] h-[800px] bg-rose-100/40 rounded-full blur-[120px] -z-10 animate-blob animation-delay-4000 mix-blend-multiply" />
+    <section className="relative pt-24 sm:pt-32 lg:pt-36 pb-16 sm:pb-20 lg:pb-24 px-5 sm:px-6">
+      {/* Blobs only: overflow hidden here so card shadows / floaters are not clipped */}
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
+        aria-hidden
+      >
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[1000px] bg-blue-100/40 rounded-full blur-[120px] motion-safe:animate-blob mix-blend-multiply" />
+        <div className="absolute top-1/2 left-0 w-[800px] h-[800px] bg-indigo-100/40 rounded-full blur-[120px] motion-safe:animate-blob animation-delay-2000 mix-blend-multiply" />
+        <div className="absolute bottom-0 right-0 w-[800px] h-[800px] bg-rose-100/40 rounded-full blur-[120px] motion-safe:animate-blob animation-delay-4000 mix-blend-multiply" />
+      </div>
 
-      <div className="max-w-5xl mx-auto w-full relative z-10">
-        {/* ── Text Block — tight, compact, high hierarchy ── */}
-        <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-12 lg:mb-16">
-          {/* Headline — visually dominant, first thing the eye hits */}
+      <div className="max-w-6xl mx-auto w-full relative z-10">
+        {/* ── Text Block — larger type, clear hierarchy ── */}
+        <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-14 lg:mb-16">
+          {/* Headline */}
           <h1
-            className="text-[2.5rem] leading-[1.08] sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-4 sm:mb-5 text-slate-900 animate-fade-in-up"
+            className="text-[3rem] leading-[1.06] sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight mb-5 sm:mb-6 text-slate-900 motion-safe:animate-fade-in-up"
             style={{ animationDelay: "0.05s" }}
           >
             Assess Smarter.
@@ -44,9 +51,9 @@ export function HeroSection() {
             </span>
           </h1>
 
-          {/* Subtitle — secondary, tight proximity to headline */}
+          {/* Subtitle */}
           <p
-            className="text-base sm:text-lg text-slate-500 max-w-md mx-auto mb-6 sm:mb-8 leading-relaxed animate-fade-in-up"
+            className="text-lg sm:text-xl md:text-2xl text-slate-600 max-w-xl md:max-w-2xl mx-auto mb-7 sm:mb-10 leading-snug sm:leading-relaxed motion-safe:animate-fade-in-up"
             style={{ animationDelay: "0.15s" }}
           >
             One platform for every assessment. Clients love the reports. You
@@ -55,54 +62,58 @@ export function HeroSection() {
 
           {/* CTA cluster — compact inline, clear primary/secondary distinction */}
           <div
-            className="flex items-center justify-center gap-3 sm:gap-4 mb-4 sm:mb-5 animate-fade-in-up"
+            className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 mb-4 sm:mb-5 motion-safe:animate-fade-in-up"
             style={{ animationDelay: "0.25s" }}
           >
             {user ? (
               <Link
                 to="/dashboard"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-slate-900/20 group"
+                className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-slate-900 text-white text-base font-semibold hover:bg-slate-800 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-slate-900/20 group"
               >
                 Go to Dashboard
-                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
               </Link>
             ) : (
               <>
-                {/* Primary — solid, compact */}
                 <LandingTrialCtaLink
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-slate-900/20 group"
+                  className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-slate-900 text-white text-base font-semibold hover:bg-slate-800 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-slate-900/20 group"
+                  ariaLabel={landingTrialAriaLabel(
+                    "hero",
+                    LANDING_GUEST_CHECKOUT_ENABLED,
+                  )}
                 >
                   Start Free Trial
-                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                 </LandingTrialCtaLink>
-                {/* Secondary — links to interactive demo */}
                 <Link
                   to="/demo"
-                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors"
+                  className="inline-flex items-center gap-2 text-base font-semibold text-slate-700 rounded-full border border-slate-200/90 bg-white/70 px-5 py-3 shadow-sm backdrop-blur-sm hover:border-slate-300 hover:bg-white hover:text-slate-900 transition-colors"
                 >
-                  <Play className="w-3.5 h-3.5 fill-slate-600" />
+                  <Play className="w-4 h-4 shrink-0 fill-slate-600" aria-hidden />
                   See Demo
                 </Link>
               </>
             )}
           </div>
 
-          {/* Trust badges — tight proximity to CTA, reduces friction at decision point */}
-          <div
-            className="flex items-center justify-center gap-3 text-xs sm:text-sm font-medium text-slate-400 animate-fade-in-up"
+          <p
+            className="flex flex-wrap items-center justify-center gap-x-2 text-sm sm:text-base font-medium text-slate-500 motion-safe:animate-fade-in-up"
             style={{ animationDelay: "0.3s" }}
           >
-            <div className="flex items-center gap-1">
-              <Check className="w-3.5 h-3.5 text-emerald-500" />
-              <span>5,000+ assessments</span>
-            </div>
-            <span className="text-slate-300">·</span>
-            <span>14-day free trial</span>
-          </div>
+            <Check
+              className="h-4 w-4 shrink-0 text-emerald-500"
+              aria-hidden
+            />
+            <span className="text-center">{LANDING_COPY.heroTrustMicro}</span>
+          </p>
         </div>
 
-        {/* ── Product Visual — scroll-driven reveal, peeks above fold ── */}
-        <div ref={visualRef} className="relative max-w-2xl lg:max-w-3xl mx-auto">
+        {/* ── Product Visual — scroll-driven reveal; extra bottom space for shadows & float chips ── */}
+        <div
+          ref={visualRef}
+          className="relative mx-auto max-w-3xl lg:max-w-4xl xl:max-w-5xl pb-6 md:pb-12"
+          aria-hidden
+        >
           <div
             className="will-change-transform"
             style={{
@@ -110,33 +121,33 @@ export function HeroSection() {
               transform: `translateY(${visualY}px) scale(${visualScale})`,
             }}
           >
-            {/* Main Report Card */}
-            <div className="relative bg-white/60 backdrop-blur-xl border border-white/60 rounded-3xl shadow-2xl p-5 sm:p-8">
+            {/* Main Report Card (decorative preview — parent has aria-hidden) */}
+            <div className="relative rounded-3xl border border-white/60 bg-white/60 p-6 shadow-2xl backdrop-blur-xl sm:p-10">
               {/* Header */}
-              <div className="flex justify-between items-start mb-5 sm:mb-8">
-                <div>
-                  <h3 className="text-lg sm:text-2xl font-bold text-slate-900">
+              <div className="mb-6 flex items-start justify-between gap-3 sm:mb-10">
+                <div className="min-w-0">
+                  <p className="text-xl font-bold text-slate-900 sm:text-3xl">
                     Fitness Score
-                  </h3>
-                  <p className="text-slate-500 text-xs sm:text-sm">
+                  </p>
+                  <p className="text-sm text-slate-500 sm:text-base">
                     Comprehensive Athlete Profile
                   </p>
                 </div>
-                <div className="flex items-center gap-1.5 bg-white px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full shadow-sm">
-                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-500" />
-                  <span className="text-[10px] font-bold text-slate-700 uppercase tracking-[0.15em]">
+                <div className="flex shrink-0 items-center gap-2 rounded-full bg-white px-3 py-1.5 shadow-sm sm:px-4 sm:py-2">
+                  <div className="h-2 w-2 rounded-full bg-emerald-500 sm:h-2.5 sm:w-2.5" />
+                  <span className="text-[11px] font-bold text-slate-700 uppercase tracking-[0.15em] sm:text-xs">
                     Active
                   </span>
                 </div>
               </div>
 
               {/* Radar Chart Visual */}
-              <div className="relative h-44 sm:h-64 w-full flex items-center justify-center mb-5 sm:mb-8">
+              <div className="relative mb-6 flex h-52 w-full items-center justify-center sm:mb-10 sm:h-72 lg:h-80">
                 {/* Background Circles */}
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-44 sm:w-64 h-44 sm:h-64 rounded-full border border-slate-200" />
-                  <div className="w-32 sm:w-48 h-32 sm:h-48 rounded-full border border-slate-200 absolute" />
-                  <div className="w-20 sm:w-32 h-20 sm:h-32 rounded-full border border-slate-200 absolute" />
+                  <div className="h-52 w-52 rounded-full border border-slate-200 sm:h-72 sm:w-72" />
+                  <div className="absolute h-40 w-40 rounded-full border border-slate-200 sm:h-56 sm:w-56" />
+                  <div className="absolute h-28 w-28 rounded-full border border-slate-200 sm:h-40 sm:w-40" />
                 </div>
 
                 {/* The Radar Shape */}
@@ -158,40 +169,40 @@ export function HeroSection() {
                 </svg>
 
                 {/* Center Score */}
-                <div className="absolute flex flex-col items-center justify-center bg-white rounded-full w-16 h-16 sm:w-24 sm:h-24 shadow-lg border-4 border-slate-50">
-                  <span className="text-xl sm:text-3xl font-black text-slate-900">
+                <div className="absolute flex h-20 w-20 flex-col items-center justify-center rounded-full border-4 border-slate-50 bg-white shadow-lg sm:h-28 sm:w-28">
+                  <span className="text-2xl font-black text-slate-900 sm:text-4xl">
                     82
                   </span>
-                  <span className="text-[10px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 sm:text-xs">
                     Overall
                   </span>
                 </div>
               </div>
 
               {/* Metrics Pills */}
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                <div className="bg-emerald-50 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-emerald-100 flex items-center gap-2 sm:gap-3">
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
-                    <Scale className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <div className="flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3 sm:gap-4 sm:rounded-2xl sm:p-4">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 sm:h-11 sm:w-11">
+                    <Scale className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-emerald-800 uppercase">
+                    <p className="text-[11px] font-bold uppercase text-emerald-800 sm:text-xs">
                       Body Comp
                     </p>
-                    <p className="text-xs sm:text-sm font-bold text-slate-900">
+                    <p className="text-sm font-bold text-slate-900 sm:text-base">
                       18.5% BF
                     </p>
                   </div>
                 </div>
-                <div className="bg-amber-50 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-amber-100 flex items-center gap-2 sm:gap-3">
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">
-                    <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <div className="flex items-center gap-3 rounded-xl border border-amber-100 bg-amber-50 p-3 sm:gap-4 sm:rounded-2xl sm:p-4">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600 sm:h-11 sm:w-11">
+                    <Zap className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-amber-800 uppercase">
+                    <p className="text-[11px] font-bold uppercase text-amber-800 sm:text-xs">
                       Movement
                     </p>
-                    <p className="text-xs sm:text-sm font-bold text-slate-900">
+                    <p className="text-sm font-bold text-slate-900 sm:text-base">
                       85/100
                     </p>
                   </div>
@@ -200,40 +211,47 @@ export function HeroSection() {
             </div>
 
             {/* Floating Elements — desktop only, add visual interest */}
-            <div className="absolute -right-4 sm:-right-8 top-8 sm:top-12 bg-white p-3 sm:p-4 rounded-2xl shadow-xl border border-slate-100 animate-float hidden md:block">
+            <div className="absolute -right-4 top-[5.25rem] hidden rounded-2xl border border-slate-100 bg-white p-3 shadow-xl motion-safe:animate-float sm:-right-8 sm:top-[6.75rem] sm:p-4 md:block">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600">
-                  <ScanLine size={20} />
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600 sm:h-12 sm:w-12">
+                  <ScanLine className="h-5 w-5 sm:h-6 sm:w-6" />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-slate-500">
+                  <p className="text-xs font-semibold text-slate-500 sm:text-sm">
                     Body Comp Scan
                   </p>
-                  <p className="text-sm font-bold text-slate-900">Imported</p>
+                  <p className="text-sm font-bold text-slate-900 sm:text-base">
+                    Imported
+                  </p>
                 </div>
                 <Check
-                  className="text-emerald-500 ml-2"
-                  size={16}
+                  className="ml-1 shrink-0 text-emerald-500 sm:ml-2"
+                  size={18}
                   strokeWidth={3}
                 />
               </div>
             </div>
 
             <div
-              className="absolute -left-4 sm:-left-6 bottom-16 sm:bottom-24 bg-white p-3 sm:p-4 rounded-2xl shadow-xl border border-slate-100 animate-float hidden md:block"
+              className="absolute -left-4 bottom-20 hidden rounded-2xl border border-slate-100 bg-white p-3 shadow-xl motion-safe:animate-float sm:-left-6 sm:bottom-28 sm:p-4 md:block"
               style={{ animationDelay: "1s" }}
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-rose-100 rounded-xl flex items-center justify-center text-rose-600">
-                  <Activity size={20} />
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-100 text-rose-600 sm:h-12 sm:w-12">
+                  <Activity className="h-5 w-5 sm:h-6 sm:w-6" />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-slate-500">
+                  <p className="text-xs font-semibold text-slate-500 sm:text-sm">
                     Forward Head
                   </p>
-                  <p className="text-sm font-bold text-slate-900">Detected</p>
+                  <p className="text-sm font-bold text-slate-900 sm:text-base">
+                    Detected
+                  </p>
                 </div>
-                <AlertCircle className="text-amber-500 ml-2" size={16} />
+                <AlertCircle
+                  className="ml-1 shrink-0 text-amber-500 sm:ml-2"
+                  size={18}
+                />
               </div>
             </div>
           </div>

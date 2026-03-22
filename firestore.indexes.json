@@ -96,6 +96,13 @@
         { "fieldPath": "organizationId", "order": "ASCENDING" },
         { "fieldPath": "clientSlug", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "roadmap",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "shareToken", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

@@ -1,4 +1,5 @@
 import { useNavigate, useParams } from 'react-router-dom';
+import { ROUTES } from '@/constants/routes';
 import type { Timestamp } from 'firebase/firestore';
 import { ArrowLeft, Loader2, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -64,7 +65,7 @@ export default function AchievementsPage() {
     if (token) {
       navigate(`/r/${token}`);
     } else {
-      navigate(-1);
+      navigate(ROUTES.DASHBOARD);
     }
   };
 
@@ -84,8 +85,8 @@ export default function AchievementsPage() {
           <Trophy className="w-5 h-5 text-white" />
         </div>
         <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-bold text-zinc-900">Achievements</h1>
-          <p className="text-xs sm:text-sm text-zinc-500">
+          <h1 className="text-lg sm:text-xl font-bold text-foreground">Achievements</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">
             {achievements.unlockedCount} of {ACHIEVEMENT_DEFINITIONS.length} unlocked
           </p>
         </div>
@@ -101,12 +102,12 @@ export default function AchievementsPage() {
     return token ? (
       <AppShell title="Achievements" mode="public" showClientNav shareToken={token} clientName={clientName ?? 'Client'}>
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <Loader2 className="h-6 w-6 text-primary motion-safe:animate-spin" />
         </div>
       </AppShell>
     ) : (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
+        <Loader2 className="h-6 w-6 text-muted-foreground motion-safe:animate-spin" />
       </div>
     );
   }

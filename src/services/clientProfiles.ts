@@ -1,4 +1,5 @@
 import { doc, getDoc, setDoc, updateDoc, deleteDoc, serverTimestamp, onSnapshot, Timestamp, collection, query, where, getDocs, limit, writeBatch, addDoc, increment } from 'firebase/firestore';
+import { ORG_CLIENT_PROFILES_QUERY_LIMIT } from '@/constants/firestoreQueryLimits';
 import { getDb } from '@/services/firebase';
 import { validateOrganizationId } from '@/lib/utils/validateOrganizationId';
 import type { UserProfile } from '@/types/auth';
@@ -198,6 +199,8 @@ export interface ClientScheduleData {
   trainingStartDate?: Date;
   /** Internal coaching note from the client profile */
   notes?: string;
+  /** Public report share token when the client report has been published */
+  shareToken?: string;
 }
 
 /**
@@ -212,7 +215,7 @@ export async function listClientSchedules(
   if (!organizationId) return result;
 
   const colRef = collection(getDb(), ORGANIZATION.clients.collection(organizationId));
-  const snap = await getDocs(query(colRef));
+  const snap = await getDocs(query(colRef, limit(ORG_CLIENT_PROFILES_QUERY_LIMIT)));
 
   for (const docSnap of snap.docs) {
     const data = docSnap.data() as ClientProfile;
@@ -223,6 +226,7 @@ export async function listClientSchedules(
       trainingStartDate: data.trainingStartDate ? new Date(data.trainingStartDate) : undefined,
       lastAssessmentDate: data.lastAssessmentDate?.toDate(),
       notes: data.notes,
+      shareToken: typeof data.shareToken === 'string' && data.shareToken.trim() !== '' ? data.shareToken.trim() : undefined,
     };
 
     if (data.retestSchedule) {

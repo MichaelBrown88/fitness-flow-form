@@ -356,7 +356,7 @@ export const PhaseFormContent = ({
     const newExpandedSections: Record<string, boolean> = {};
     allSections.forEach((section, index) => { newExpandedSections[section.id] = index === 0; });
     setExpandedSections(newExpandedSections);
-  }, [activePhaseIdx, getAllSections]);
+  }, [activePhaseIdx, getAllSections, setExpandedSections]);
 
   // Skip empty phases (e.g. filtered-out equipment phases)
   useEffect(() => {

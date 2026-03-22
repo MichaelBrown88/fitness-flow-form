@@ -21,6 +21,14 @@ export const CONFIG = {
     STORAGE_BUCKET: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
     MESSAGING_SENDER_ID: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
     APP_ID: import.meta.env.VITE_FIREBASE_APP_ID,
+    /**
+     * Callable HTTPS region (must match deployed `syncPublicRoadmapMirror` etc.).
+     * Override with `VITE_FIREBASE_FUNCTIONS_REGION` if functions are not in `us-central1`.
+     */
+    FUNCTIONS_REGION: (() => {
+      const r = import.meta.env.VITE_FIREBASE_FUNCTIONS_REGION;
+      return typeof r === 'string' && r.trim() !== '' ? r.trim() : 'us-central1';
+    })(),
   },
 
   // --- AI & MACHINE LEARNING ---

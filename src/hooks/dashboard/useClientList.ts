@@ -82,6 +82,7 @@ export function useClientList(
         trainingStartDate: schedule?.trainingStartDate,
         lastAssessmentDate: schedule?.lastAssessmentDate,
         notes: schedule?.notes,
+        shareToken: schedule?.shareToken,
       };
     });
 

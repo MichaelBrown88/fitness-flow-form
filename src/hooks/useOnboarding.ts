@@ -131,9 +131,10 @@ export function useOnboarding(): UseOnboardingResult {
     if (!inviteToken) return;
     inviteCheckedRef.current = true;
 
+    let cancelled = false;
     const db = getDb();
     getDoc(doc(db, 'invitations', inviteToken)).then((snap) => {
-      if (!snap.exists()) return;
+      if (cancelled || !snap.exists()) return;
       const data = snap.data();
       if (data.status !== 'pending') return;
       if (data.expiresAt?.toDate && data.expiresAt.toDate() < new Date()) return;
@@ -142,8 +143,13 @@ export function useOnboarding(): UseOnboardingResult {
       setInviteOrganizationId(data.organizationId);
       logger.info('Invite token accepted', { organizationId: data.organizationId });
     }).catch((err) => {
-      logger.warn('Failed to validate invite token:', err instanceof Error ? err.message : String(err));
+      if (!cancelled) {
+        logger.warn('Failed to validate invite token:', err instanceof Error ? err.message : String(err));
+      }
     });
+    return () => {
+      cancelled = true;
+    };
   }, [searchParams]);
 
   /* ---------- Persist session ---------- */
@@ -232,7 +238,6 @@ export function useOnboarding(): UseOnboardingResult {
   const advanceAfterAccountCreation = useCallback(() => {
     setStep(3); // → Equipment step
     logOnboardingStep(3);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleAccountCreateWithPassword = useCallback(async (password: string) => {

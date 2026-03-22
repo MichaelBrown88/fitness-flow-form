@@ -81,14 +81,6 @@ const queryClient = new QueryClient({
   },
 });
 
-/** Redirect authenticated users straight to /dashboard; show Landing to visitors */
-const AuthAwareLanding = () => {
-  const { user, loading } = useAuth();
-  if (loading) return null;
-  if (user) return <Navigate to="/dashboard" replace />;
-  return <Landing />;
-};
-
 const RequireAuth = ({ children }: { children: JSX.Element }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
@@ -119,7 +111,13 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <ReloadPrompt />
-      <Suspense fallback={null}><InstallPrompt /></Suspense>
+      <Suspense
+        fallback={
+          <div className="min-h-0 shrink-0" aria-hidden />
+        }
+      >
+        <InstallPrompt />
+      </Suspense>
           <AuthProvider>
             <ThemeManager>
               <BrowserRouter
@@ -131,18 +129,28 @@ const App = () => (
               <ErrorBoundary>
               <MaintenanceBanner />
               <ImpersonationBanner />
-              <Suspense fallback={
-                <div className="flex min-h-screen items-center justify-center bg-slate-50">
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="h-12 w-12 rounded-full border-4 border-slate-200 border-t-primary animate-spin" />
-                    <p className="text-xs font-medium text-slate-400">Loading experience...</p>
+              <Suspense
+                fallback={
+                  <div
+                    className="flex min-h-screen items-center justify-center bg-background"
+                    aria-busy="true"
+                    aria-live="polite"
+                    role="status"
+                  >
+                    <div className="flex flex-col items-center gap-4">
+                      <span className="sr-only">Loading One Assess</span>
+                      <div className="h-12 w-12 rounded-full border-4 border-muted border-t-primary motion-safe:animate-spin" />
+                      <p className="text-xs font-medium text-muted-foreground" aria-hidden>
+                        Loading One Assess…
+                      </p>
+                    </div>
                   </div>
-                </div>
-              }>
+                }
+              >
                   <Routes>
-                    {/* Root: landing for visitors, dashboard redirect for authenticated */}
-                    <Route path="/" element={<AuthAwareLanding />} />
-                    {/* Pricing: always shows marketing plans (for signed-in Stripe tests — see VITE_ENABLE_LANDING_CHECKOUT_TEST) */}
+                    {/* Root: marketing landing for everyone; signed-in users use Navbar → Dashboard */}
+                    <Route path="/" element={<Landing />} />
+                    {/* Pricing: same marketing plans as landing #pricing */}
                     <Route path={ROUTES.PRICING} element={<Landing />} />
                     <Route path="/signup" element={<Onboarding />} /> {/* Redirect signup to onboarding */}
                     <Route path="/login" element={<Login />} />

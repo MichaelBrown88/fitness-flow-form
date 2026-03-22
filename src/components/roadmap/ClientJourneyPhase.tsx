@@ -41,12 +41,12 @@ function MilestoneCard({ item, isLast }: { item: RoadmapItem; isLast: boolean })
         <div className="space-y-3">
           <div className="flex items-start gap-3">
             <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 ${bg}`}>
-              <StatusIcon className={`h-3.5 w-3.5 ${color}`} />
+              <StatusIcon className={`h-3.5 w-3.5 ${color}`} aria-hidden />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex flex-col gap-0.5">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className={`text-sm font-semibold ${isAchieved ? 'text-score-green-bold line-through' : 'text-foreground'}`}>
+                  <span className={`text-sm font-semibold ${isAchieved ? 'text-score-green-bold' : 'text-foreground'}`}>
                     {item.title}
                   </span>
                   {isAchieved && (
@@ -79,7 +79,13 @@ export function ClientJourneyPhase({ phase, items, phaseIndex, isLastPhase, phas
   const isUpcoming = phaseState === 'upcoming';
 
   return (
-    <div className={isUpcoming ? 'opacity-60' : ''}>
+    <div
+      className={
+        isUpcoming
+          ? 'rounded-xl border border-dashed border-muted-foreground/35 bg-muted/25 p-3 -mx-1 sm:-mx-0'
+          : ''
+      }
+    >
       <div className="flex items-center gap-2 mb-4">
         <div className="h-px flex-1 bg-border" />
         <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted border border-border">
@@ -88,7 +94,7 @@ export function ClientJourneyPhase({ phase, items, phaseIndex, isLastPhase, phas
             Phase {phaseIndex + 1}: {title}
           </span>
           {phaseState === 'completed' && (
-            <CheckCircle2 className="h-3 w-3 text-score-green-fg" />
+            <CheckCircle2 className="h-3 w-3 text-score-green-fg" aria-hidden />
           )}
         </div>
         <div className="h-px flex-1 bg-border" />

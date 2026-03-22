@@ -50,26 +50,25 @@ service cloud.firestore {
         (isPlatformAdmin() && hasDataAccess(orgId) && isNotImpersonating());
     }
 
-    /** Max active (non-archived) clients for billing — subscription.clientCap, legacy clientSeats, or free tier 2 */
+    // Max active (non-archived) clients for billing - subscription.clientCap, legacy clientSeats, or free tier 2
     function effectiveClientCap(orgId) {
       let org = get(/databases/$(database)/documents/organizations/$(orgId)).data;
       let sub = org.get('subscription', {});
       let cap = sub.get('clientCap', null);
-      if (cap != null) {
-        return int(cap);
-      }
       let seats = sub.get('clientSeats', null);
-      if (seats != null) {
-        return int(seats);
-      }
-      return 2;
+      return cap != null ? int(cap) : (seats != null ? int(seats) : 2);
     }
 
-    /** Denormalized active client count (maintained by Cloud Function aggregation) */
+    // Denormalized active client count (maintained by Cloud Function aggregation)
     function statsClientCount(orgId) {
       let org = get(/databases/$(database)/documents/organizations/$(orgId)).data;
       let stats = org.get('stats', {});
       return int(stats.get('clientCount', 0));
+    }
+
+    // Owning coach UID on a public report doc (for subcollection writes).
+    function publicReportCoachUid(token) {
+      return get(/databases/$(database)/documents/publicReports/$(token)).data.coachUid;
     }
 
     // =========================================================
@@ -160,9 +159,53 @@ service cloud.firestore {
     // =========================================================
 
     match /publicReports/{token} {
-      allow read: if true; // Token is the credential — anyone with the URL can read
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated();
+      allow read: if true; // Token is the credential - anyone with the URL can read
+      allow create: if isAuthenticated() && request.resource.data.coachUid == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.coachUid == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.coachUid == request.auth.uid;
+    }
+
+    // Token-scoped subcollections (snapshots, achievements, notifications, client check-ins)
+    match /publicReports/{token}/snapshots/{snapshotId} {
+      allow read: if true;
+      allow write: if isAuthenticated() && publicReportCoachUid(token) == request.auth.uid;
+    }
+
+    match /publicReports/{token}/achievements/{achievementId} {
+      allow read: if true;
+      allow write: if isAuthenticated() && publicReportCoachUid(token) == request.auth.uid;
+    }
+
+    match /publicReports/{token}/notifications/{notificationId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && publicReportCoachUid(token) == request.auth.uid;
+      allow update: if
+        (isAuthenticated() && publicReportCoachUid(token) == request.auth.uid) ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if isAuthenticated() && publicReportCoachUid(token) == request.auth.uid;
+    }
+
+    match /publicReports/{token}/lifestyleCheckins/{checkinId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    match /publicReports/{token}/preSessionCheckins/{checkinId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    // =========================================================
+    // PUBLIC ROADMAPS  (token mirror for client roadmap viewer)
+    // Written when coach sets roadmap shareToken; doc ID = that token.
+    // =========================================================
+
+    match /publicRoadmaps/{token} {
+      allow read: if true;
+      allow create: if isAuthenticated() && request.resource.data.coachUid == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.coachUid == request.auth.uid;
       allow delete: if isAuthenticated() && resource.data.coachUid == request.auth.uid;
     }
 
@@ -171,9 +214,23 @@ service cloud.firestore {
     // =========================================================
 
     match /live_sessions/{sessionId} {
-      allow read: if true;
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated();
+      // Single-doc fetch: sessionId + companionToken are unguessable; companion listens without auth.
+      allow get: if true;
+      // Org-scoped listing for coach dashboards (matches client queries that filter organizationId).
+      allow list: if isAuthenticated() &&
+        resource.data.organizationId != null &&
+        (isOrgCoach(resource.data.organizationId) ||
+          (isPlatformAdmin() && hasDataAccess(resource.data.organizationId)));
+
+      allow create: if isAuthenticated() &&
+        request.resource.data.organizationId != null &&
+        request.resource.data.clientId != null &&
+        isOrgCoach(request.resource.data.organizationId);
+
+      allow update: if isAuthenticated() &&
+        resource.data.organizationId != null &&
+        isOrgCoach(resource.data.organizationId);
+
       // Unauthenticated companion (client mobile) may only update capture fields
       allow update: if !isAuthenticated() &&
         exists(/databases/$(database)/documents/live_sessions/$(sessionId)) &&

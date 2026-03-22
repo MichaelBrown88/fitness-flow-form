@@ -6,22 +6,39 @@ export interface LandingTrialCtaLinkProps {
   className: string;
   children: React.ReactNode;
   onNavigate?: () => void;
+  /** Distinct name when multiple “Start free trial” links exist (WCAG 2.4.4). */
+  ariaLabel?: string;
 }
 
 /**
  * Logged-out “Start free trial” style CTAs: when guest Stripe checkout is enabled, send users to
  * the pricing block (`#pricing`) so “Get started” opens Checkout; otherwise `/onboarding`.
  */
-export function LandingTrialCtaLink({ className, children, onNavigate }: LandingTrialCtaLinkProps) {
+export function LandingTrialCtaLink({
+  className,
+  children,
+  onNavigate,
+  ariaLabel,
+}: LandingTrialCtaLinkProps) {
   if (LANDING_GUEST_CHECKOUT_ENABLED) {
     return (
-      <a href="#pricing" className={className} onClick={onNavigate}>
+      <a
+        href="#pricing"
+        className={className}
+        onClick={onNavigate}
+        aria-label={ariaLabel}
+      >
         {children}
       </a>
     );
   }
   return (
-    <Link to={ROUTES.ONBOARDING} className={className} onClick={onNavigate}>
+    <Link
+      to={ROUTES.ONBOARDING}
+      className={className}
+      onClick={onNavigate}
+      aria-label={ariaLabel}
+    >
       {children}
     </Link>
   );

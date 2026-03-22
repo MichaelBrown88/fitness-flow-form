@@ -245,6 +245,7 @@ export function TrackableBar({ trackable, compact }: TrackableBarProps) {
   }
 
   if (isZone) {
+    const zoneSrSummary = `${label}. Current ${fmt(dispCurrent, unit)}, starting ${fmt(dispBaseline, unit)}, goal ${fmt(dispTarget, unit)}.`;
     return (
       <div className={compact ? 'space-y-1' : 'space-y-1.5'}>
         {!compact && (
@@ -252,6 +253,7 @@ export function TrackableBar({ trackable, compact }: TrackableBarProps) {
             <span className="text-foreground-secondary font-medium">{label}</span>
           </div>
         )}
+        {compact && <span className="sr-only">{zoneSrSummary}</span>}
         <ZoneBar
           baselinePct={baselinePct}
           currentPct={currentPct}
@@ -268,8 +270,10 @@ export function TrackableBar({ trackable, compact }: TrackableBarProps) {
   }
 
   if (compact) {
+    const whoopSrSummary = `${label}. Current ${fmt(dispCurrent, unit)}, starting ${fmt(dispBaseline, unit)}, goal ${fmt(dispTarget, unit)}.`;
     return (
       <div className="space-y-1">
+        <span className="sr-only">{whoopSrSummary}</span>
         <WhoopStyleBar
           baselinePct={baselinePct}
           currentPct={currentPct}

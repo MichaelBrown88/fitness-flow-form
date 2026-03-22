@@ -374,7 +374,7 @@ export async function runPopulationAnalytics(): Promise<void> {
     }
     lastDoc = page.docs[page.docs.length - 1];
     if (page.size < BATCH) break;
-  } while (true);
+  } while (lastDoc !== undefined);
 
   logger.info(`[PopulationAnalytics] Accepted ${allSnapshotDocs.length} assessment sessions from ${validOrgIds.size} valid org(s)`);
 

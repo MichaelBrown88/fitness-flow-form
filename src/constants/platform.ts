@@ -45,12 +45,6 @@ export type PlatformDashboardTab = (typeof PLATFORM_DASHBOARD_TABS)[keyof typeof
  * Stripe & billing (client). Keys come from env; see `.env.example`.
  */
 
-/**
- * Dev-only: authenticated “Test Stripe checkout” via `createCheckoutSession` (requires sign-in + org).
- */
-export const LANDING_CHECKOUT_TEST_ENABLED =
-  import.meta.env.DEV && import.meta.env.VITE_ENABLE_LANDING_CHECKOUT_TEST === 'true';
-
 export const STRIPE_CONFIG = {
   /** Client-side publishable key — safe to expose in frontend */
   publishableKey: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '',

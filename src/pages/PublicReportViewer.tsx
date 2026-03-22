@@ -12,6 +12,7 @@ import { computeScores } from '@/lib/scoring';
 import { generateBodyCompInterpretation } from '@/lib/recommendations';
 import { Download, Loader2, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import { PostureComparisonCard } from '@/components/client/PostureComparisonCard';
 import type { AssessmentSnapshot } from '@/services/assessmentHistory';
 import { logger } from '@/lib/utils/logger';
@@ -46,10 +47,12 @@ const PublicReportViewer = () => {
   const [versionPage, setVersionPage] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   async function handleExportData() {
     if (!token) return;
     setExporting(true);
+    setExportError(null);
     try {
       const fn = httpsCallable<{ shareToken: string }, Record<string, unknown>>(
         getFunctions(),
@@ -65,6 +68,7 @@ const PublicReportViewer = () => {
       URL.revokeObjectURL(url);
     } catch (err) {
       logger.warn('[Export] Failed to export client data:', err);
+      setExportError('Download failed. Check your connection and try again.');
     } finally {
       setExporting(false);
     }
@@ -190,12 +194,56 @@ const PublicReportViewer = () => {
     [token, selectedVersionIndex, snapshotSummaries, formData, fetchSnapshot, paginableCount, totalPages],
   );
 
+  const postureSnapshots = useMemo<AssessmentSnapshot[]>(() => {
+    const displayFormData = activeFormData ?? formData;
+    const displayScores = activeScores ?? scores;
+    const displayPrevFormData = activePreviousFormData ?? previousFormData;
+    const displayPrevScores = activePreviousScores ?? previousScores;
+    if (!displayFormData || !scores) return [];
+    const latest =
+      displayFormData && scores
+        ? {
+            id: 'latest',
+            timestamp: snapshotSummaries[0]?.date ?? null,
+            overallScore: displayScores?.overall ?? 0,
+            formData: displayFormData,
+            type: 'full' as const,
+          }
+        : null;
+    const previous =
+      displayPrevFormData && displayPrevScores
+        ? {
+            id: 'previous',
+            timestamp: snapshotSummaries[1]?.date ?? null,
+            overallScore: displayPrevScores.overall ?? 0,
+            formData: displayPrevFormData,
+            type: 'full' as const,
+          }
+        : null;
+    return [latest, previous].filter(Boolean) as AssessmentSnapshot[];
+  }, [
+    activeFormData,
+    formData,
+    activeScores,
+    scores,
+    activePreviousFormData,
+    previousFormData,
+    activePreviousScores,
+    previousScores,
+    snapshotSummaries,
+  ]);
+
   if (loading) {
     return (
       <AppShell title="Your fitness report" mode="public">
-        <div className="flex flex-col items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-          <p className="text-sm text-slate-600">Loading your report...</p>
+        <div
+          className="flex flex-col items-center justify-center py-20 px-4"
+          aria-busy="true"
+          aria-live="polite"
+        >
+          <span className="sr-only">Loading your report</span>
+          <Loader2 className="h-8 w-8 text-primary mb-4 motion-safe:animate-spin" aria-hidden />
+          <p className="text-sm text-muted-foreground">Loading your report…</p>
         </div>
       </AppShell>
     );
@@ -205,7 +253,7 @@ const PublicReportViewer = () => {
     const isEmptyToken = !token || error === 'Invalid report link.';
     return (
       <AppShell title="Your fitness report" mode="public" showClientNav={!!token} shareToken={token ?? undefined} clientName={clientName}>
-        <div className="max-w-md mx-auto rounded-xl border border-border bg-white p-6 sm:p-8 text-center space-y-4">
+        <div className="max-w-md mx-auto rounded-xl border border-border bg-card text-card-foreground p-6 sm:p-8 text-center space-y-4">
           {isEmptyToken ? (
             <>
               <p className="text-sm font-medium text-foreground">
@@ -236,9 +284,14 @@ const PublicReportViewer = () => {
         shareToken={token ?? undefined}
         clientName={clientName}
       >
-        <div className="flex flex-col items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-          <p className="text-sm font-medium text-slate-400">Generating Report...</p>
+        <div
+          className="flex flex-col items-center justify-center py-20 px-4"
+          aria-busy="true"
+          aria-live="polite"
+        >
+          <span className="sr-only">Generating report</span>
+          <Loader2 className="h-8 w-8 text-primary mb-4 motion-safe:animate-spin" aria-hidden />
+          <p className="text-sm font-medium text-muted-foreground">Generating report…</p>
         </div>
       </AppShell>
     );
@@ -248,17 +301,6 @@ const PublicReportViewer = () => {
   const displayScores = activeScores ?? scores;
   const displayPrevFormData = activePreviousFormData ?? previousFormData;
   const displayPrevScores = activePreviousScores ?? previousScores;
-
-  // Build minimal snapshot list for PostureComparisonCard (latest + previous only)
-  const postureSnapshots = useMemo<AssessmentSnapshot[]>(() => {
-    const latest = displayFormData && scores
-      ? { id: 'latest', timestamp: snapshotSummaries[0]?.date ?? null, overallScore: displayScores?.overall ?? 0, formData: displayFormData, type: 'full' as const }
-      : null;
-    const previous = displayPrevFormData && displayPrevScores
-      ? { id: 'previous', timestamp: snapshotSummaries[1]?.date ?? null, overallScore: displayPrevScores.overall ?? 0, formData: displayPrevFormData, type: 'full' as const }
-      : null;
-    return [latest, previous].filter(Boolean) as AssessmentSnapshot[];
-  }, [displayFormData, displayPrevFormData, displayScores, displayPrevScores, snapshotSummaries]);
 
   return (
     <AppShell
@@ -290,9 +332,9 @@ const PublicReportViewer = () => {
 
       {changeNarrative && (
         <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-10 pt-4">
-          <div className="rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-50 to-violet-50 px-4 py-4">
-            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-indigo-400 mb-1.5">What changed</p>
-            <p className="text-sm text-indigo-900 leading-relaxed">{changeNarrative}</p>
+          <div className="rounded-xl border border-border bg-muted/50 px-4 py-4">
+            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground mb-1.5">What changed</p>
+            <p className="text-sm text-foreground leading-relaxed">{changeNarrative}</p>
           </div>
         </div>
       )}
@@ -317,6 +359,8 @@ const PublicReportViewer = () => {
 
       <div
         className="transition-opacity duration-150"
+        aria-busy={isTransitioning}
+        aria-live={isTransitioning ? 'polite' : undefined}
         style={{
           opacity: isTransitioning ? 0 : 1,
           transitionTimingFunction: 'var(--easing-apple, cubic-bezier(0.25, 0.1, 0.25, 1))',
@@ -324,9 +368,14 @@ const PublicReportViewer = () => {
       >
         <Suspense
           fallback={
-            <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-slate-100">
-              <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-              <p className="text-sm font-medium text-slate-400">Loading Your Report...</p>
+            <div
+              className="flex flex-col items-center justify-center py-20 bg-card rounded-xl border border-border"
+              aria-busy="true"
+              aria-live="polite"
+            >
+              <span className="sr-only">Loading report content</span>
+              <Loader2 className="h-8 w-8 text-primary mb-4 motion-safe:animate-spin" aria-hidden />
+              <p className="text-sm font-medium text-muted-foreground">Loading report…</p>
             </div>
           }
         >
@@ -351,22 +400,29 @@ const PublicReportViewer = () => {
 
       {token && (
         <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-10 pb-12 pt-4 flex flex-col items-center gap-3">
-          <button
-            onClick={handleExportData}
+          <Button
+            type="button"
+            variant="ghost"
+            size="lg"
+            onClick={() => void handleExportData()}
             disabled={exporting}
-            className="flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50"
+            className="min-h-11 h-auto py-3 px-4 text-sm text-muted-foreground hover:text-foreground gap-2"
           >
-            {exporting
-              ? <Loader2 className="h-3 w-3 animate-spin" />
-              : <Download className="h-3 w-3" />}
+            {exporting ? (
+              <Loader2 className="h-4 w-4 shrink-0 motion-safe:animate-spin" aria-hidden />
+            ) : (
+              <Download className="h-4 w-4 shrink-0" aria-hidden />
+            )}
             Download my data (GDPR Article 20)
-          </button>
-          <a
-            href={`/r/${token}/erasure`}
-            className="text-[11px] text-slate-400 hover:text-slate-600 underline underline-offset-2 transition-colors"
-          >
-            Request data deletion (GDPR Article 17)
-          </a>
+          </Button>
+          {exportError ? (
+            <p className="text-sm text-destructive text-center max-w-md" role="alert">
+              {exportError}
+            </p>
+          ) : null}
+          <Button variant="ghost" size="lg" className="min-h-11 h-auto py-3 px-4 text-sm" asChild>
+            <Link to={`/r/${token}/erasure`}>Request data deletion (GDPR Article 17)</Link>
+          </Button>
         </div>
       )}
     </AppShell>

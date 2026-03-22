@@ -8,6 +8,7 @@ import {
   updateRoadmap,
   setRoadmapShareToken,
   generateShareToken,
+  ensurePublicRoadmapMirrorIfMissing,
 } from '@/services/roadmaps';
 import { generateRoadmapBlocks, getAllPossibleBlocksForClient } from '@/lib/roadmap/generateBlocks';
 import { compareRoadmapProgress, applyProgressSuggestions } from '@/lib/roadmap/compareProgress';
@@ -100,6 +101,11 @@ export function useRoadmapData(clientName: string) {
           setSummary(existing.summary);
           setItems(existing.items);
           setShareToken(existing.shareToken);
+          if (existing.shareToken) {
+            ensurePublicRoadmapMirrorIfMissing(effectiveOrgId, existing.id).catch((e) => {
+              logger.warn('[Roadmap] Could not ensure public roadmap mirror', e);
+            });
+          }
           if (existing.phaseTargets) setPhaseTargets(existing.phaseTargets);
           if (existing.baselineScores) setBaselineScores(existing.baselineScores);
           if (existing.activePhase) setActivePhase(existing.activePhase);

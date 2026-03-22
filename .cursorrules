@@ -45,6 +45,19 @@ If the answer is no, flag it and ask before proceeding.
 - Red flag: component with more useEffect logic than JSX → refactor immediately
 - Naming: `useAssessmentLogic`, `useDashboardData`, `usePostureAnalysis`
 
+### useEffect discipline (external sync only)
+- `useEffect` is for **external synchronization**: DOM/browser APIs, subscriptions, timers that need teardown, imperative third-party widgets, `IntersectionObserver`, `matchMedia`, etc.
+- **Do not** use `useEffect` to derive values from props/state — use render-time logic or `useMemo`.
+- **Forbidden**: syncing props into local state; firing fetches only because a component mounted without **abort** or **stale guard** (`cancelled` flag / `AbortController`) before `setState`; empty dependency arrays that still close over changing values (unless truly once and idempotent — document why).
+- **Required**: return a **cleanup** for every listener, interval, or subscription; for async work, ignore results after unmount or dependency change; put non-trivial effect logic in a **custom hook** so pages stay thin.
+- **`react-hooks/exhaustive-deps` is an error** — never blanket-disable without a short comment and reviewer-visible justification.
+- **Soft cap**: more than **four** `useEffect` hooks in one component or hook file is a signal to split responsibilities or extract hooks.
+
+### Firestore reads in hooks
+- **One custom hook per resource** (or clear sub-resource): pages do not own `onSnapshot` wiring.
+- **`onSnapshot`**: always return **unsubscribe** from `useEffect` cleanup; avoid duplicate listeners when dependencies change.
+- Prefer **`getDoc` / `getDocs`** when data does not need live updates (cost and simplicity).
+
 ### Firebase Initialisation
 - NEVER initialise Firebase in a component
 - ALWAYS import `db`, `auth`, `functions` from `@/services/firebase`
@@ -86,7 +99,8 @@ If the answer is no, flag it and ask before proceeding.
 - Sync to global state only on `onBlur` or after 300ms debounce
 - Lazy load heavy libraries: `await import('jspdf')`, `await import('html2canvas')`
 - Dynamic imports for routes — never bundle everything upfront
-- Watch for stale closures in useEffect — exhaustive-deps is non-negotiable
+- Watch for stale closures in useEffect — `react-hooks/exhaustive-deps` must pass (see **useEffect discipline** above)
+- Prefer **`useQuery`** from TanStack Query for cacheable one-shot/async reads (HTTP or callable-shaped flows); do not force it onto live `onSnapshot` pipelines
 
 ---
 
@@ -163,6 +177,7 @@ These rules prevent permanent technical debt:
 ## 🎨 DESIGN SYSTEM
 
 - Follow `docs/DESIGN_SYSTEM.md` for ALL visual decisions
+- Follow `docs/UI_UX_STANDARDS.md` for interaction patterns, loading/error/empty states, focus, and MCP-assisted UX review expectations
 - Colors: use design tokens only — never hardcode hex values in components
 - Spacing: Tailwind scale only — no arbitrary values without justification
 - Typography: defined type scale only
