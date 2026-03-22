@@ -56,8 +56,7 @@ export function HeroSection() {
             className="text-lg sm:text-xl md:text-2xl text-slate-600 max-w-xl md:max-w-2xl mx-auto mb-7 sm:mb-10 leading-snug sm:leading-relaxed motion-safe:animate-fade-in-up"
             style={{ animationDelay: "0.15s" }}
           >
-            One platform for every assessment. Clients love the reports. You
-            love the retention.
+            {LANDING_COPY.heroSubtitle}
           </p>
 
           {/* CTA cluster — compact inline, clear primary/secondary distinction */}

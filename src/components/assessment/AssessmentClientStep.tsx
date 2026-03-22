@@ -22,7 +22,7 @@ export function AssessmentClientStep({
 }) {
   const { updateFormData } = useFormContext();
   const { user, profile, loading: authLoading, effectiveOrgId } = useAuth();
-  const { items, loading: listLoading } = useAssessmentList({
+  const { items, loadingData: listLoading } = useAssessmentList({
     user,
     profile,
     loading: authLoading,

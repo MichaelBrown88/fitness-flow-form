@@ -1,6 +1,7 @@
 import { ArrowRight, Heart, ScanLine, Activity, Smartphone, Dumbbell } from 'lucide-react';
 import SectionHeader from '@/components/landing/SectionHeader';
 import StickyCardStack from '@/components/ui/StickyCardStack';
+import { LANDING_COPY } from '@/constants/landingCopy';
 
 export function HowItWorksSection() {
   return (
@@ -102,7 +103,7 @@ export function HowItWorksSection() {
               </div>
 
               <p className="text-slate-500 text-sm leading-relaxed mt-auto">
-                Turn data into a narrative. The system instantly generates a "Gap Analysis" report, showing clients exactly where they are versus where they need to be.
+                {LANDING_COPY.howItWorksStep2Footer}
               </p>
             </div>
           </div>
@@ -145,7 +146,7 @@ export function HowItWorksSection() {
               </div>
 
               <p className="text-slate-500 text-sm leading-relaxed mt-auto">
-                Retaining clients requires showing progress. Quickly re-assess specific pillars (like just Fitness or Body Comp) without re-doing the whole intake.
+                {LANDING_COPY.howItWorksStep3Footer}
               </p>
             </div>
           </div>

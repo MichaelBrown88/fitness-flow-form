@@ -2,7 +2,8 @@
  * Platform Audit Log Service
  *
  * Logs admin actions for compliance and security. Used for feature toggles,
- * maintenance mode, data access grants/revokes, subscription changes, etc.
+ * maintenance mode, data access grants/revokes, subscription changes,
+ * org soft/permanent deletes, etc.
  */
 
 import { addDoc, getDocs, query, orderBy, limit, startAfter, serverTimestamp } from 'firebase/firestore';
@@ -20,7 +21,9 @@ export type AuditAction =
   | 'subscription_reactivate'
   | 'demo_autofill_toggle'
   | 'impersonation_start'
-  | 'impersonation_end';
+  | 'impersonation_end'
+  | 'org_soft_delete'
+  | 'org_permanent_delete';
 
 export interface AuditLogEntry {
   id: string;

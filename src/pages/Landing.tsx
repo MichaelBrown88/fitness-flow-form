@@ -21,58 +21,7 @@ import {
   LandingBackToTop,
 } from '@/components/landing';
 import { useAuth } from '@/hooks/useAuth';
-import { LANDING_COPY } from '@/constants/landingCopy';
-
-// Testimonial data
-const testimonials = [
-  {
-    quote: 'One Assess has completely transformed how I run assessments. What used to take me 2 hours now takes 15 minutes, and my clients love the professional reports.',
-    author: 'Sarah Chen',
-    role: 'Performance Coach',
-    company: 'Elite Fitness Studio',
-  },
-  {
-    quote: 'The Clinical Logic Engine is incredibly accurate. It catches biomechanical issues I might miss, and the evidence-based reports make it easy to explain findings to clients with confidence.',
-    author: 'Marcus Johnson',
-    role: 'Gym Owner',
-    company: 'Iron Works Gym',
-  },
-  {
-    quote: 'We rolled this out to all 12 coaches in our gym. The consistency in our assessments has improved dramatically, and client retention is up 25%.',
-    author: 'Emma Rodriguez',
-    role: 'Head of Training',
-    company: 'FitLife Chain',
-  },
-];
-
-// FAQ data
-const faqItems = [
-  {
-    question: 'How does the Clinical Logic Engine work?',
-    answer: 'Our proprietary Clinical Logic Engine uses deterministic algorithms (not AI guessing) to analyze biomechanical data. It maps 360+ key points on the body against a database of 5,000+ validated clinical benchmarks. Each measurement is compared to normative data, and our engine generates evidence-based findings in seconds. You can review and customize all results before generating client reports.',
-  },
-  {
-    question: 'Can I customize the reports with my branding?',
-    answer: 'Reports always show "Powered by One Assess" so clients know the platform behind your brand. Your logo and brand colours on reports and in the app are available as a paid add-on on paid plans. Custom domains for sharing reports are also available on higher tiers.',
-  },
-  {
-    question: 'Is my clients\' data secure?',
-    answer: 'Absolutely. We use bank-level encryption for all data at rest and in transit. Your clients\' photos and personal information are stored securely and never shared with third parties. We\'re GDPR compliant and take privacy seriously.',
-  },
-  {
-    question: 'Do I need special equipment for posture analysis?',
-    answer: 'No special equipment needed! A smartphone camera works perfectly. We recommend good lighting and a plain background for best results. Our app guides you through capturing the right angles.',
-  },
-  {
-    question: 'Can I try it before committing?',
-    answer:
-      'Solo coaches can use the free plan forever for up to 2 clients — no card required. Gyms and studios get a 14-day trial with a generous client cap during the trial; subscribe when you are ready to continue.',
-  },
-  {
-    question: 'How do I invite my team members?',
-    answer: 'On paid plans you can invite team members directly from your dashboard. They\'ll receive an email invitation to join your organization. You can manage their permissions and access levels.',
-  },
-];
+import { LANDING_COPY, LANDING_FAQ_ITEMS, LANDING_TESTIMONIALS } from '@/constants/landingCopy';
 
 const LANDING_SCROLL_PATHS: readonly string[] = [ROUTES.HOME, ROUTES.PRICING];
 
@@ -112,7 +61,7 @@ export default function Landing() {
         <FeaturesSection />
 
         <TestimonialsSection>
-          {testimonials.map((testimonial, index) => (
+          {LANDING_TESTIMONIALS.map((testimonial, index) => (
             <TestimonialCard
               key={testimonial.author}
               quote={testimonial.quote}
@@ -131,7 +80,7 @@ export default function Landing() {
           <LandingPricingPlans />
         </PricingSection>
 
-        <FAQSection items={faqItems} />
+        <FAQSection items={[...LANDING_FAQ_ITEMS]} />
         <CTASection />
       </main>
 

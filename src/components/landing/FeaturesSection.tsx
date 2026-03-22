@@ -2,13 +2,9 @@ import { Brain, BarChart3, Users, Shield, X, Check, ArrowRight } from 'lucide-re
 import GlassCard from '@/components/ui/GlassCard';
 import SectionHeader from '@/components/landing/SectionHeader';
 import StickyCardStack from '@/components/ui/StickyCardStack';
+import { LANDING_COPY, LANDING_FEATURE_CARDS } from '@/constants/landingCopy';
 
-const features = [
-  { title: "Clinical Logic Engine", icon: Brain, desc: "360+ data points checked against 5,000+ clinical benchmarks. Automatically." },
-  { title: "Gamified Progress", icon: BarChart3, desc: "Turn health data into a score clients want to improve. Retention built-in." },
-  { title: "Team Management", icon: Users, desc: "Standardize assessments across every coach. One method, one brand." },
-  { title: "Secure & Private", icon: Shield, desc: "Enterprise-grade encryption. HIPAA and GDPR compliant." },
-];
+const FEATURE_ICONS = [Brain, BarChart3, Users, Shield] as const;
 
 export function FeaturesSection() {
   return (
@@ -22,24 +18,27 @@ export function FeaturesSection() {
           header={
             <SectionHeader
               title={<>Why Top Facilities Switch to <span className="text-indigo-600">One Assess</span></>}
-              subtitle="One platform for assessment, reporting, and tracking. Less admin, more coaching."
+              subtitle={LANDING_COPY.featuresSubtitle}
             />
           }
         >
           {/* Left: Feature list */}
           <div>
             <div className="grid gap-6">
-              {features.map((f, i) => (
-                <div key={i} className="flex gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-center shrink-0 text-indigo-600">
-                    <f.icon size={20} />
+              {LANDING_FEATURE_CARDS.map((f, i) => {
+                const Icon = FEATURE_ICONS[i] ?? Brain;
+                return (
+                  <div key={f.title} className="flex gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-center shrink-0 text-indigo-600">
+                      <Icon size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">{f.title}</h3>
+                      <p className="text-sm text-slate-500 leading-relaxed">{f.desc}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-900">{f.title}</h3>
-                    <p className="text-sm text-slate-500 leading-relaxed">{f.desc}</p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             
             {/* Compliance Badges */}

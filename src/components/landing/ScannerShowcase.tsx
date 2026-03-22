@@ -2,6 +2,7 @@ import { Smartphone, ScanLine, Check } from 'lucide-react';
 import GlassCard from '@/components/ui/GlassCard';
 import SectionHeader from '@/components/landing/SectionHeader';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
+import { LANDING_COPY } from '@/constants/landingCopy';
 
 export function ScannerShowcase() {
   const headerRef = useScrollReveal({ staggerDelay: 150, staggerIndex: 0 });
@@ -14,7 +15,7 @@ export function ScannerShowcase() {
         <div ref={headerRef}>
           <SectionHeader
             title="Intelligent Capture"
-            subtitle="Turn photos into data points instantly. No manual typing needed."
+            subtitle={LANDING_COPY.scannerShowcaseSubtitle}
           />
         </div>
 
