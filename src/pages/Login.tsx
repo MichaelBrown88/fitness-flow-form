@@ -10,6 +10,8 @@ import { Label } from '@/components/ui/label';
 import { logger } from '@/lib/utils/logger';
 import { mapFirebaseAuthError } from '@/lib/utils/mapFirebaseAuthError';
 import { ROUTES } from '@/constants/routes';
+import { Seo } from '@/components/seo/Seo';
+import { SEO_NOINDEX_FUNNEL } from '@/constants/seo';
 
 const Login = () => {
   const { signIn, signInWithGoogle, signInWithApple, loading, user, profile } = useAuth();
@@ -88,6 +90,12 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex">
+      <Seo
+        pathname={ROUTES.LOGIN}
+        title={SEO_NOINDEX_FUNNEL.title}
+        description={SEO_NOINDEX_FUNNEL.description}
+        noindex
+      />
       {/* Left side */}
       <div className="hidden lg:flex flex-1 gradient-bg p-12 flex-col justify-center">
         <div className="max-w-md">

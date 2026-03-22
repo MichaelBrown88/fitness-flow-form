@@ -2,10 +2,21 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Navbar, Footer } from '@/components/landing';
+import { Seo } from '@/components/seo/Seo';
+import { ROUTES } from '@/constants/routes';
+import { requireSeoForPath } from '@/constants/seo';
+
+const cookiesSeo = requireSeoForPath(ROUTES.COOKIES);
 
 export default function Cookies() {
   return (
     <div className="min-h-screen bg-white">
+      <Seo
+        pathname={ROUTES.COOKIES}
+        title={cookiesSeo.title}
+        description={cookiesSeo.description}
+        noindex={cookiesSeo.noindex}
+      />
       <Navbar />
 
       <main className="max-w-4xl mx-auto px-4 py-16">

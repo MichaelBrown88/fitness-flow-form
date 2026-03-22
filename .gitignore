@@ -73,6 +73,7 @@ coverage/
 # Generated files
 repomix-output.xml
 *.xml
+!public/sitemap.xml
 
 # Cursor IDE
 .cursor/

@@ -2,10 +2,19 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, Rss } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Navbar, Footer } from '@/components/landing';
+import { Seo } from '@/components/seo/Seo';
+import { ROUTES } from '@/constants/routes';
+import { SEO_NOINDEX_BLOG } from '@/constants/seo';
 
 export default function Blog() {
   return (
     <div className="min-h-screen bg-white">
+      <Seo
+        pathname={ROUTES.BLOG}
+        title={SEO_NOINDEX_BLOG.title}
+        description={SEO_NOINDEX_BLOG.description}
+        noindex
+      />
       <Navbar />
 
       <main className="max-w-4xl mx-auto px-4 py-16">

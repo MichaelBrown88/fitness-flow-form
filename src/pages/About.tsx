@@ -2,6 +2,9 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, Target, Users, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Navbar, Footer } from '@/components/landing';
+import { Seo } from '@/components/seo/Seo';
+import { ROUTES } from '@/constants/routes';
+import { requireSeoForPath } from '@/constants/seo';
 
 const values = [
   {
@@ -24,9 +27,17 @@ const values = [
   },
 ];
 
+const aboutSeo = requireSeoForPath(ROUTES.ABOUT);
+
 export default function About() {
   return (
     <div className="min-h-screen bg-white">
+      <Seo
+        pathname={ROUTES.ABOUT}
+        title={aboutSeo.title}
+        description={aboutSeo.description}
+        noindex={aboutSeo.noindex}
+      />
       <Navbar />
 
       <main className="max-w-4xl mx-auto px-4 py-16">

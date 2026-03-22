@@ -4,6 +4,11 @@ import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Navbar, Footer } from '@/components/landing';
 import { DEMO_SCORES, DEMO_GOALS, DEMO_PLAN, DEMO_FORM_DATA } from '@/constants/demoData';
+import { Seo } from '@/components/seo/Seo';
+import { ROUTES } from '@/constants/routes';
+import { requireSeoForPath } from '@/constants/seo';
+
+const demoSeo = requireSeoForPath(ROUTES.DEMO);
 import type { FormData } from '@/contexts/FormContext';
 
 const ClientReport = lazy(() => import('@/components/reports/ClientReport'));
@@ -11,6 +16,12 @@ const ClientReport = lazy(() => import('@/components/reports/ClientReport'));
 export default function Demo() {
   return (
     <div className="min-h-screen bg-white">
+      <Seo
+        pathname={ROUTES.DEMO}
+        title={demoSeo.title}
+        description={demoSeo.description}
+        noindex={demoSeo.noindex}
+      />
       <Navbar />
 
       <main className="max-w-5xl mx-auto px-4 py-16">

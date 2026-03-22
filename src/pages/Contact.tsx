@@ -5,6 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Navbar, Footer } from '@/components/landing';
+import { Seo } from '@/components/seo/Seo';
+import { ROUTES } from '@/constants/routes';
+import { requireSeoForPath } from '@/constants/seo';
+
+const contactSeo = requireSeoForPath(ROUTES.CONTACT);
 
 export default function Contact() {
   const [submitted, setSubmitted] = useState(false);
@@ -23,6 +28,12 @@ export default function Contact() {
 
   return (
     <div className="min-h-screen bg-white">
+      <Seo
+        pathname={ROUTES.CONTACT}
+        title={contactSeo.title}
+        description={contactSeo.description}
+        noindex={contactSeo.noindex}
+      />
       <Navbar />
 
       <main className="max-w-4xl mx-auto px-4 py-16">

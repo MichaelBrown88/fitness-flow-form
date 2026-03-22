@@ -19,15 +19,13 @@
     <link rel="apple-touch-icon" href="/pwa-192x192.svg" />
     <meta name="theme-color" content="#0f172a" />
 
-    <link rel="canonical" href="https://one-assess.com/" />
-
     <meta property="og:title" content="One Assess - AI-Powered Fitness Assessments" />
     <meta
       property="og:description"
       content="Transform your gym's assessment process with AI-powered posture analysis and automated client reports. Start your free trial today."
     />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://one-assess.com" />
+    <meta property="og:url" content="https://one-assess.com/" />
     <meta property="og:image" content="https://one-assess.com/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -39,20 +37,28 @@
     <meta name="twitter:description" content="Save 90% of time on fitness assessments with AI-powered posture analysis and automated reports." />
     <meta name="twitter:image" content="https://one-assess.com/og-image.png" />
     
-    <!-- Structured Data for SEO -->
+    <!-- Structured data baseline; per-route title/description set by the app (react-helmet-async). -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "One Assess",
-      "applicationCategory": "HealthApplication",
-      "operatingSystem": "Web",
-      "description": "AI-powered fitness assessment platform for coaches and gyms",
-      "offers": {
-        "@type": "Offer",
-        "price": "29",
-        "priceCurrency": "KWD"
-      }
+      "@graph": [
+        {
+          "@type": "Organization",
+          "name": "One Assess",
+          "url": "https://one-assess.com/",
+          "logo": "https://one-assess.com/favicon.svg",
+          "description": "Fitness assessment software for coaches and gyms — AI posture analysis, client reports, and retention tools."
+        },
+        {
+          "@type": "SoftwareApplication",
+          "name": "One Assess",
+          "applicationCategory": "HealthApplication",
+          "operatingSystem": "Web",
+          "description": "AI-powered fitness assessment platform for coaches and gyms: movement and posture insights, automated reporting, and client progress tracking.",
+          "url": "https://one-assess.com/",
+          "publisher": { "@type": "Organization", "name": "One Assess" }
+        }
+      ]
     }
     </script>
   </head>

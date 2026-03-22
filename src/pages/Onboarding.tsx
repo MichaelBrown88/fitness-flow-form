@@ -5,7 +5,10 @@
  */
 
 import { useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useOnboarding } from '@/hooks/useOnboarding';
+import { Seo } from '@/components/seo/Seo';
+import { SEO_NOINDEX_ONBOARDING } from '@/constants/seo';
 import {
   OnboardingLayout,
   IdentityStep,
@@ -22,6 +25,7 @@ import { getOnboardingProgressState, ONBOARDING_FLOW_STEPS } from '@/types/onboa
 const SUCCESS_STEP = 6;
 
 export default function Onboarding() {
+  const location = useLocation();
   const {
     step,
     isComplete,
@@ -54,31 +58,48 @@ export default function Onboarding() {
     onboardingData.businessProfile?.type === 'gym' ||
     onboardingData.businessProfile?.type === 'gym_chain';
 
+  const funnelSeo = (
+    <Seo
+      pathname={location.pathname}
+      title={SEO_NOINDEX_ONBOARDING.title}
+      description={SEO_NOINDEX_ONBOARDING.description}
+      noindex
+    />
+  );
+
   if (loading) {
     return (
-      <div
-        className="min-h-screen flex items-center justify-center bg-background"
-        role="status"
-        aria-busy="true"
-        aria-live="polite"
-      >
-        <span className="sr-only">Loading onboarding</span>
-        <div className="animate-pulse text-muted-foreground text-sm">Loading…</div>
-      </div>
+      <>
+        {funnelSeo}
+        <div
+          className="min-h-screen flex items-center justify-center bg-background"
+          role="status"
+          aria-busy="true"
+          aria-live="polite"
+        >
+          <span className="sr-only">Loading onboarding</span>
+          <div className="animate-pulse text-muted-foreground text-sm">Loading…</div>
+        </div>
+      </>
     );
   }
 
   if (isComplete || step >= SUCCESS_STEP) {
     return (
-      <OnboardingLayout progressSteps={[]} activeProgressIndex={-1} onBack={undefined}>
-        <OnboardingSuccess businessName={onboardingData.businessProfile?.name || 'Your Business'} />
-      </OnboardingLayout>
+      <>
+        {funnelSeo}
+        <OnboardingLayout progressSteps={[]} activeProgressIndex={-1} onBack={undefined}>
+          <OnboardingSuccess businessName={onboardingData.businessProfile?.name || 'Your Business'} />
+        </OnboardingLayout>
+      </>
     );
   }
 
   if (saving) {
     return (
-      <OnboardingLayout progressSteps={progress.steps} activeProgressIndex={progress.activeIndex} onBack={undefined}>
+      <>
+        {funnelSeo}
+        <OnboardingLayout progressSteps={progress.steps} activeProgressIndex={progress.activeIndex} onBack={undefined}>
         <div
           className="flex flex-col items-center justify-center py-16"
           role="status"
@@ -90,6 +111,7 @@ export default function Onboarding() {
           <p className="text-sm text-muted-foreground">{savingMessage}</p>
         </div>
       </OnboardingLayout>
+      </>
     );
   }
 
@@ -167,14 +189,17 @@ export default function Onboarding() {
   };
 
   return (
-    <ErrorBoundary>
-      <OnboardingLayout
-        progressSteps={progress.steps}
-        activeProgressIndex={progress.activeIndex}
-        onBack={step > 0 ? handleBack : undefined}
-      >
-        {renderStep()}
-      </OnboardingLayout>
-    </ErrorBoundary>
+    <>
+      {funnelSeo}
+      <ErrorBoundary>
+        <OnboardingLayout
+          progressSteps={progress.steps}
+          activeProgressIndex={progress.activeIndex}
+          onBack={step > 0 ? handleBack : undefined}
+        >
+          {renderStep()}
+        </OnboardingLayout>
+      </ErrorBoundary>
+    </>
   );
 }

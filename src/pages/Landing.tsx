@@ -22,6 +22,8 @@ import {
 } from '@/components/landing';
 import { useAuth } from '@/hooks/useAuth';
 import { LANDING_COPY, LANDING_FAQ_ITEMS, LANDING_TESTIMONIALS } from '@/constants/landingCopy';
+import { Seo } from '@/components/seo/Seo';
+import { requireSeoForPath, SEO_INDEXABLE_BY_PATH } from '@/constants/seo';
 
 const LANDING_SCROLL_PATHS: readonly string[] = [ROUTES.HOME, ROUTES.PRICING];
 
@@ -49,8 +51,17 @@ export default function Landing() {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, [location.pathname, location.hash]);
 
+  const seoMeta =
+    SEO_INDEXABLE_BY_PATH[location.pathname] ?? requireSeoForPath(ROUTES.HOME);
+
   return (
     <div className="min-h-screen landing-page">
+      <Seo
+        pathname={location.pathname}
+        title={seoMeta.title}
+        description={seoMeta.description}
+        noindex={seoMeta.noindex}
+      />
       <Navbar />
 
       <main id="main-content" className="pb-28 md:pb-0">

@@ -15,7 +15,6 @@ const InstallPrompt = lazy(() => import("./components/pwa/InstallPrompt").then(m
 
 // Lazy load heavy page components
 const Landing = lazy(() => import("./pages/Landing"));
-const SignUp = lazy(() => import("./pages/SignUp"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const Index = lazy(() => import("./pages/Index"));
 const NotFound = lazy(() => import("./pages/NotFound"));

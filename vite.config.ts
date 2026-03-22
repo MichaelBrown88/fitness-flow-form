@@ -64,7 +64,7 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'robots.txt', 'og-image.png'],
+      includeAssets: ['favicon.svg', 'robots.txt', 'og-image.png', 'sitemap.xml'],
       manifest: {
         name: 'OA Coach',
         short_name: 'OA Coach',

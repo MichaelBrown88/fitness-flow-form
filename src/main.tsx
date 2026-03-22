@@ -1,4 +1,5 @@
 import { createRoot } from "react-dom/client";
+import { HelmetProvider } from "react-helmet-async";
 import App from "./App.tsx";
 import "./index.css";
 import { logger } from '@/lib/utils/logger';
@@ -33,4 +34,8 @@ if (!rootElement) {
   throw new Error("Root element not found. Check index.html.");
 }
 
-createRoot(rootElement).render(<App />);
+createRoot(rootElement).render(
+  <HelmetProvider>
+    <App />
+  </HelmetProvider>,
+);

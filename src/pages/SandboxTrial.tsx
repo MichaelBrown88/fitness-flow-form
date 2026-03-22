@@ -17,6 +17,10 @@ import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { getFirebaseAuth, getDb } from '@/services/firebase';
 import { ROUTES } from '@/constants/routes';
 import { logger } from '@/lib/utils/logger';
+import { Seo } from '@/components/seo/Seo';
+import { requireSeoForPath } from '@/constants/seo';
+
+const trySeo = requireSeoForPath(ROUTES.TRY);
 
 export const SANDBOX_ASSESSMENTS_LIMIT = 3;
 
@@ -97,6 +101,12 @@ export default function SandboxTrial() {
   if (error) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-8 text-center">
+        <Seo
+          pathname={ROUTES.TRY}
+          title={trySeo.title}
+          description={trySeo.description}
+          noindex={trySeo.noindex}
+        />
         <p className="text-sm text-slate-500">{error}</p>
         <button
           onClick={() => window.location.reload()}
@@ -110,6 +120,12 @@ export default function SandboxTrial() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-white">
+      <Seo
+        pathname={ROUTES.TRY}
+        title={trySeo.title}
+        description={trySeo.description}
+        noindex={trySeo.noindex}
+      />
       <div className="h-12 w-12 rounded-full border-4 border-slate-200 border-t-primary animate-spin" />
       <p className="text-sm font-medium text-slate-400">Setting up your trial…</p>
     </div>
