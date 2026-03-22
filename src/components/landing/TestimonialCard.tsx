@@ -35,7 +35,7 @@ export function TestimonialCard({ quote, author, role, company, avatarUrl, index
       <div className="flex gap-1 text-amber-400 mb-4">
         {[1,2,3,4,5].map(s => <Star key={s} size={16} fill="currentColor" />)}
       </div>
-      <p className="text-slate-600 leading-relaxed font-medium text-sm">"{quote}"</p>
+      <p className="text-balance text-slate-600 leading-relaxed font-medium text-sm">"{quote}"</p>
     </GlassCard>
   );
 }

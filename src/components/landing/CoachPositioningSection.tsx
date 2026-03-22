@@ -57,7 +57,7 @@ export function CoachPositioningSection() {
                 >
                   <Check className="size-4" strokeWidth={2.5} />
                 </span>
-                <span>{line}</span>
+                <span className="text-balance">{line}</span>
               </li>
             ))}
           </ul>

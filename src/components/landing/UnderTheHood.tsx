@@ -42,8 +42,8 @@ export function UnderTheHood() {
                   {i + 1}
                 </div>
                 <div>
-                  <h4 className="font-bold text-white mb-1">{item.title}</h4>
-                  <p className="text-sm text-slate-500">{item.desc}</p>
+                  <h4 className="text-balance font-bold text-white mb-1">{item.title}</h4>
+                  <p className="text-balance text-sm text-slate-500">{item.desc}</p>
                 </div>
               </div>
             ))}
@@ -86,7 +86,7 @@ export function UnderTheHood() {
 
               <div className="mt-8 p-4 bg-indigo-900/30 border border-indigo-500/30 rounded-xl">
                  <p className="text-[10px] text-indigo-300 uppercase font-black tracking-[0.15em] mb-2">Insight Generated</p>
-                 <p className="text-white font-medium">"Forward head posture detected. Recommend chin tucks and thoracic extension exercises."</p>
+                 <p className="text-balance text-white font-medium">"Forward head posture detected. Recommend chin tucks and thoracic extension exercises."</p>
               </div>
             </div>
           </div>

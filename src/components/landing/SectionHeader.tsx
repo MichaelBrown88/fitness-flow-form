@@ -51,14 +51,14 @@ const SectionHeader = ({
       )}
 
       <h2
-        className={`text-3xl sm:text-4xl md:text-5xl font-bold ${titleColor} mb-6 leading-tight`}
+        className={`text-balance text-3xl sm:text-4xl md:text-5xl font-bold ${titleColor} mb-6 leading-tight`}
       >
         {title}
       </h2>
 
       {subtitle && (
         <p
-          className={`text-lg ${subtitleColor} leading-relaxed ${
+          className={`text-balance text-lg ${subtitleColor} leading-relaxed ${
             centered ? "max-w-2xl mx-auto" : "max-w-2xl"
           }`}
         >

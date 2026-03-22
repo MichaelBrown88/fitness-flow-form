@@ -14,7 +14,8 @@ const values = [
   {
     icon: Target,
     title: 'Designed for Retention',
-    description: 'Clients stay when they see progress. Every feature — the score, the gamification, the live reports — exists to make your clients feel invested in their journey.',
+    description:
+      'Clients stay when they see progress. Every feature (the score, the gamification, the live reports) exists to make your clients feel invested in their journey.',
     color: 'indigo',
   },
   {
@@ -54,7 +55,7 @@ export function BuiltByExperts() {
                   Built by <span className={LANDING_H2_ACCENT_LIGHT}>Coaches</span>, for Coaches
                 </>
               }
-              subtitle="One Assess was built to solve a real problem — my own. Now it helps coaches everywhere."
+              subtitle="One Assess was built to solve a real problem: my own. Now it helps coaches everywhere."
             />
           }
         >
@@ -65,8 +66,8 @@ export function BuiltByExperts() {
                 <div className={`w-16 h-16 rounded-2xl ${colorClasses[value.color]} border-2 flex items-center justify-center mb-6 shadow-sm`}>
                   <Icon size={28} />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-3">{value.title}</h3>
-                <p className="text-slate-500 text-sm leading-relaxed flex-grow">
+                <h3 className="text-balance text-xl font-bold text-slate-900 mb-3">{value.title}</h3>
+                <p className="text-balance text-slate-500 text-sm leading-relaxed flex-grow">
                   {value.description}
                 </p>
               </GlassCard>
@@ -75,7 +76,7 @@ export function BuiltByExperts() {
         </StickyCardStack>
 
         <div className="mt-16 text-center">
-          <p className="text-slate-400 text-sm max-w-2xl mx-auto">
+          <p className="text-balance text-slate-400 text-sm max-w-2xl mx-auto">
             Every feature in One Assess exists because a coach needed it.
             If you have an idea that would make your workflow better, we want to hear it.
           </p>

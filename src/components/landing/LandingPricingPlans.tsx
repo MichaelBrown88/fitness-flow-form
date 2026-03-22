@@ -93,7 +93,7 @@ export function LandingPricingPlans() {
         <GlassCard className="p-8 sm:p-10 bg-card/70 hover:shadow-xl transition-apple">
           <h3 className="text-xl font-bold mb-2 text-foreground">Free</h3>
           <p className="text-sm text-foreground-secondary mb-8 font-medium">
-            Up to {FREE_TIER_CLIENT_LIMIT} clients — no card
+            Up to {FREE_TIER_CLIENT_LIMIT} clients, no card
           </p>
           <div className="flex items-baseline gap-1 mb-8">
             <span className="text-5xl font-bold text-foreground">
@@ -127,8 +127,8 @@ export function LandingPricingPlans() {
             className="font-medium text-primary underline-offset-4 hover:underline"
           >
             Create your account first
-          </Link>{' '}
-          — no payment required.
+          </Link>
+          {', no payment required.'}
         </p>
       ) : null}
 

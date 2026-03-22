@@ -17,7 +17,7 @@ export type SeoPageMeta = {
   noindex?: boolean;
 };
 
-/** Legal paths — not on ROUTES object as named constants elsewhere. */
+/** Legal paths (not on ROUTES object as named constants elsewhere). */
 export const SEO_PATH = {
   TERMS: '/terms',
   PRIVACY: '/privacy',
@@ -29,46 +29,46 @@ export const SEO_PATH = {
  */
 export const SEO_INDEXABLE_BY_PATH: Record<string, SeoPageMeta> = {
   [ROUTES.HOME]: {
-    title: 'One Assess — AI fitness assessments for coaches & gyms',
+    title: 'Fitness assessment software for coaches & gyms | One Assess',
     description:
-      'Cut assessment admin with AI posture analysis, automated client reports, and progress tracking. Built for personal trainers and gyms.',
+      'AI posture analysis, professional client reports, and progress tracking for personal trainers and gyms. Try free, see the demo, or start a gym trial.',
   },
   [ROUTES.PRICING]: {
-    title: 'Pricing — One Assess | Fitness assessment software for gyms',
+    title: 'Pricing & plans for coaches & gyms | One Assess',
     description:
-      'Plans for solo coaches and gyms. AI-powered assessments, branded reports, and client retention tools. See pricing and start a trial.',
+      'Solo is free with no card; gyms get a 14-day trial. Choose Solo or Gym and your seats. Prices match what you see at checkout.',
   },
   [ROUTES.ABOUT]: {
-    title: 'About — One Assess | Coach-first fitness assessment platform',
+    title: 'About One Assess | Fitness assessments for working coaches',
     description:
-      'Why we built One Assess: less spreadsheet time, better client retention, and assessments that coaches actually use.',
+      'Why we built coach-first assessment software: less spreadsheet time, clearer client reports, and retention tools gyms actually use.',
   },
   [ROUTES.CONTACT]: {
-    title: 'Contact — One Assess | Support for coaches & gyms',
+    title: 'Contact One Assess | Support for coaches and gym teams',
     description:
-      'Get in touch with One Assess for product questions, partnerships, or support. We help coaches streamline fitness assessments.',
+      'Questions about fitness assessment software, partnerships, or billing? Reach our team; we help coaches and gyms get set up fast.',
   },
   [ROUTES.DEMO]: {
-    title: 'Demo report — One Assess | Sample client fitness assessment',
+    title: 'Sample fitness assessment report | Interactive demo | One Assess',
     description:
-      'Explore a sample One Assess client report: scores, posture insights, and coaching-ready outputs from a full assessment.',
+      'Explore a full sample client report: movement and posture insights, scores, and coaching-ready outputs from One Assess.',
   },
   [ROUTES.TRY]: {
-    title: 'Try One Assess free — 3 AI assessments, no signup',
+    title: 'Try AI fitness assessments free | No signup | One Assess',
     description:
-      'Run up to three AI-powered fitness assessments in the sandbox. See posture analysis and reporting before you create an account.',
+      'Coach sandbox: run up to 3 AI-powered assessments with posture analysis and reporting. No signup. Create your account when you are ready.',
   },
   [SEO_PATH.TERMS]: {
-    title: 'Terms of Service — One Assess',
+    title: 'Terms of Service | One Assess',
     description: 'Terms of Service for the One Assess fitness assessment platform for coaches and gyms.',
   },
   [SEO_PATH.PRIVACY]: {
-    title: 'Privacy Policy — One Assess',
+    title: 'Privacy Policy | One Assess',
     description:
       'How One Assess collects, uses, and protects data for coaches, gyms, and their clients.',
   },
   [ROUTES.COOKIES]: {
-    title: 'Cookie Policy — One Assess',
+    title: 'Cookie Policy | One Assess',
     description: 'How One Assess uses cookies and similar technologies on our website and app.',
   },
 };
@@ -96,19 +96,19 @@ export const PUBLIC_SITEMAP_PATHS: readonly string[] = [
 ];
 
 export const SEO_NOINDEX_FUNNEL: SeoPageMeta = {
-  title: 'Sign in — One Assess',
+  title: 'Sign in | One Assess',
   description: 'Coach sign-in for One Assess.',
   noindex: true,
 };
 
 export const SEO_NOINDEX_ONBOARDING: SeoPageMeta = {
-  title: 'Get started — One Assess',
+  title: 'Get started | One Assess',
   description: 'Create your One Assess account and set up your gym or coaching practice.',
   noindex: true,
 };
 
 export const SEO_NOINDEX_BLOG: SeoPageMeta = {
-  title: 'Blog — One Assess',
+  title: 'Blog | One Assess',
   description: 'Articles on fitness assessment best practices and product updates from One Assess.',
   noindex: true,
 };

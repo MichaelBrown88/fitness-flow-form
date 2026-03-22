@@ -27,12 +27,12 @@ export function CTASection() {
         <div className="max-w-3xl mx-auto text-center">
           <h2
             ref={headingRef}
-            className="mb-6 text-3xl font-bold leading-tight text-white sm:text-4xl md:text-5xl"
+            className="text-balance mb-6 text-3xl font-bold leading-tight text-white sm:text-4xl md:text-5xl"
           >
             Assess Smarter.{' '}
             <span className={LANDING_H2_ACCENT_ON_DARK}>Retain Longer.</span>
           </h2>
-          <p ref={subtitleRef} className="text-lg text-slate-300 mb-10 max-w-2xl mx-auto">
+          <p ref={subtitleRef} className="text-balance text-lg text-slate-300 mb-10 max-w-2xl mx-auto">
             {LANDING_COPY.ctaSectionSubtitle}
           </p>
           

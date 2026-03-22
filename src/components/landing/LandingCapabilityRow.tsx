@@ -13,14 +13,14 @@ export const LandingCapabilityRow = forwardRef<HTMLDivElement, LandingCapability
         <p className="text-xs font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500">
           {row.eyebrow}
         </p>
-        <h3 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl">
+        <h3 className="text-balance text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl">
           {row.title}
         </h3>
         <ul className="space-y-3 text-sm font-medium leading-relaxed text-slate-600 dark:text-slate-400 sm:text-base">
           {row.bullets.map((b) => (
             <li key={b} className="flex gap-3">
               <span className="mt-2 size-1.5 shrink-0 rounded-full bg-indigo-500" aria-hidden />
-              <span>{b}</span>
+              <span className="text-balance">{b}</span>
             </li>
           ))}
         </ul>

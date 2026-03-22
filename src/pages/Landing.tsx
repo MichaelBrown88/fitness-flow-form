@@ -65,7 +65,9 @@ export default function Landing() {
       <Navbar />
 
       <main id="main-content" className="pb-28 md:pb-0">
-        <HeroSection />
+        <HeroSection
+          variant={location.pathname === ROUTES.PRICING ? 'pricing' : 'home'}
+        />
         <HowItWorksSection />
         <LandingCapabilitiesSection />
 

@@ -2,7 +2,7 @@
  * Coach-visible marketing copy for the public landing. Single source for hero/CTA consistency.
  */
 
-/** H2 keyword accent on light sections — matches hero “Retain Longer” gradient. */
+/** H2 keyword accent on light sections (matches hero “Retain Longer” gradient). */
 export const LANDING_H2_ACCENT_LIGHT =
   'text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-indigo-600';
 
@@ -12,32 +12,40 @@ export const LANDING_H2_ACCENT_ON_DARK =
 
 export const LANDING_COPY = {
   heroTrustMicro: '5k+ assessments · Solo free · Gym 14-day trial',
+  /** Single hero subheading under H1 on `/` (aligned with home SEO keywords). */
   heroSubtitle:
-    'Professional reports and a secure link clients can revisit. Show progress between sessions—coach more, chase updates less.',
+    'Fitness assessment software for coaches and gyms. AI posture checks and professional reports. Track progress between sessions with less admin.',
+  /** H1 first line when `pathname` is `/pricing` (same landing shell as home). */
+  heroPricingTitleLine1: 'Pricing for',
+  /** H1 gradient line for `/pricing`. */
+  heroPricingTitleAccent: 'coaches & gyms.',
+  /** Hero + pricing section subcopy on `/pricing` (also used under the pricing table). */
+  heroPricingSubtitle:
+    'Solo is free with no card, and gyms get a 14-day trial. Choose Solo or Gym and your seats. Prices match what you see at checkout.',
 
   howItWorksPill: 'The Workflow',
   howItWorksTitleBefore: 'A Connected ',
   howItWorksTitleAccent: 'Ecosystem',
   howItWorksSubtitle:
-    'From first assessment to long-term retention—clear steps for you, a polished experience for your clients.',
+    'From first assessment through long-term retention: clear steps for you and a polished experience for every client.',
 
   howItWorksStep1Title: 'Assess',
   howItWorksStep1Footer:
-    'Guided intake on tablet or phone—posture from the camera, movement screens, and body comp without retyping everything. The same flow every time.',
+    'Guided intake on tablet or phone: posture from the camera, movement screens, and body comp without retyping everything. The same flow every time.',
 
   howItWorksStep2Title: 'Report and share',
   howItWorksStep2Footer:
-    'Turn results into a clear story. Send a private link so clients reopen their report anytime—and see what to focus on next, step by step.',
+    'Turn results into a clear story. Send a private link so clients reopen their report anytime, and see what to focus on next, step by step.',
 
   howItWorksStep3Title: 'Stay on track',
   howItWorksStep3Footer:
-    'Show progress between sessions: milestones they can see, lighter check-ins on one area, and a view of change over time—so you spot who needs a nudge.',
+    'Show progress between sessions with milestones clients can see, lighter single-area check-ins, and change over time so you see who needs a nudge.',
 
   capabilitiesPill: 'One Workflow',
   capabilitiesSectionTitleBefore: 'Everything In One Calm ',
   capabilitiesSectionTitleAccent: 'Workflow',
   capabilitiesSectionSubtitle:
-    'Capture, explain, and follow through—without extra tools or a pile of admin.',
+    'Capture, explain, and follow through without extra tools or a pile of admin.',
 
   capabilitiesComplianceAriaLabel: 'Compliance certifications',
   capabilitiesComplianceHeading: 'Certified compliance',
@@ -46,7 +54,7 @@ export const LANDING_COPY = {
   capabilitiesCompliantLabel: 'Compliant',
 
   ctaSectionSubtitle:
-    'Professional assessments, secure client links, and progress between sessions. Solo: free tier without a card. Gyms: start a 14-day trial, then subscribe when you are ready.',
+    'Professional assessments, secure client links, and progress between sessions. Solo is free without a card; gyms get a 14-day trial, then subscribe when you are ready.',
   ctaSectionMicrocopy: 'No card required to start on the solo free tier.',
   mobileStickyCta: 'Start free',
   footerAdminLinkAriaLabel: 'Platform admin login',
@@ -55,7 +63,7 @@ export const LANDING_COPY = {
   coachPositioningTitleBefore: "We Don't Replace Your ",
   coachPositioningTitleAccent: 'Coaching',
   coachPositioningSubtitle:
-    'One Assess does not generate workout programs. We help you run consistent assessments, turn results into clear professional reports, and keep progress visible between sessions—so you spend less time on admin and more time doing what only a coach can do. Judgment and programming stay yours.',
+    'One Assess does not generate workout programs. We help you run consistent assessments, clear professional reports, and visible progress between sessions. Less admin, more time for the coaching only you can do. Your programming and judgment stay yours.',
   testimonialsSectionTitleBefore: 'Trusted by ',
   testimonialsSectionTitleAccent: 'Coaches Everywhere',
 
@@ -64,7 +72,7 @@ export const LANDING_COPY = {
 } as const;
 
 export const LANDING_COACH_POSITIONING_BULLETS: readonly string[] = [
-  'No auto-generated training plans—your programs stay yours.',
+  'No auto-generated training plans. Your programs stay yours.',
   'Built to add clarity and consistency to your workflow, not to sit in your seat with the client.',
   'Less paperwork and chasing updates; more room for coaching that needs a human touch.',
 ];
@@ -107,7 +115,7 @@ export const LANDING_CAPABILITY_VISUAL_COPY = {
   },
   progress: {
     journeyEyebrow: 'Your Journey',
-    planHeadline: "Hi Alex—here's your plan",
+    planHeadline: "Hi Alex, here's your plan",
     overallProgress: 'Overall progress',
     milestonesSummary: '3 of 8 milestones completed',
     phasePill: 'Phase 2: Development',
@@ -120,10 +128,10 @@ export const LANDING_CAPABILITY_VISUAL_COPY = {
 export const LANDING_CAPABILITY_ROWS: readonly LandingCapabilityRowCopy[] = [
   {
     eyebrow: 'Capture',
-    title: 'Posture, movement, and body comp—without the busywork',
+    title: 'Posture, movement, and body comp without the busywork',
     bullets: [
       'Use your phone for posture capture with on-screen guidance.',
-      'Add body comp from a printout or photo—confirm and move on.',
+      'Add body comp from a printout or photo, confirm, and move on.',
       'One guided flow your whole team can repeat.',
     ],
     imageSide: 'right',
@@ -134,7 +142,7 @@ export const LANDING_CAPABILITY_ROWS: readonly LandingCapabilityRowCopy[] = [
     title: 'Reports clients actually open',
     bullets: [
       'Professional output you review before it goes out.',
-      'Clients use a secure link in the browser—no extra app.',
+      'Clients use a secure link in the browser. No extra app.',
       'Same link can show their plan and wins alongside the report.',
     ],
     imageSide: 'left',
@@ -177,7 +185,7 @@ export const LANDING_TESTIMONIALS: readonly LandingTestimonial[] = [
   },
   {
     quote:
-      'Clients actually use the link between sessions—fewer "send that again" messages. I stay on top of who needs a follow-up, and retention feels noticeably stickier.',
+      'Clients actually use the link between sessions. Fewer "send that again" messages. I stay on top of who needs a follow-up, and retention feels noticeably stickier.',
     author: 'Priya Nair',
     role: 'Online Coach',
     company: 'Stronger Daily',
@@ -218,7 +226,7 @@ export const LANDING_FAQ_ITEMS: readonly LandingFaqItem[] = [
   {
     question: 'Can I try it before committing?',
     answer:
-      'Solo coaches can use the free plan forever for up to 2 clients — no card required. Gyms and studios get a 14-day trial with a generous client cap during the trial; subscribe when you are ready to continue.',
+      'Solo coaches can use the free plan forever for up to 2 clients, no card required. Gyms and studios get a 14-day trial with a generous client cap during the trial; subscribe when you are ready to continue.',
   },
   {
     question: 'How do I invite my team members?',
@@ -228,7 +236,7 @@ export const LANDING_FAQ_ITEMS: readonly LandingFaqItem[] = [
   {
     question: 'How do clients see their report and plan?',
     answer:
-      'You share a secure, private link per client. They can view their report, phased plan, and progress in the browser—no separate client app required. You stay in control of what you send.',
+      'You share a secure, private link per client. They can view their report, phased plan, and progress in the browser. No separate client app required. You stay in control of what you send.',
   },
   {
     question: 'Do clients need to sign up or create an account?',
@@ -244,30 +252,30 @@ export function landingTrialAriaLabel(
   if (goesToPricingFirst) {
     switch (context) {
       case 'nav':
-        return 'Start free trial — jump to pricing and plans';
+        return 'Start free trial, jump to pricing and plans';
       case 'hero':
-        return 'Start free trial — view pricing and plans';
+        return 'Start free trial, view pricing and plans';
       case 'cta':
-        return 'Start free trial — view pricing and plans';
+        return 'Start free trial, view pricing and plans';
       case 'roi':
-        return 'Start free trial — view pricing and plans';
+        return 'Start free trial, view pricing and plans';
       case 'mobileNav':
-        return 'Start free trial — jump to pricing and plans';
+        return 'Start free trial, jump to pricing and plans';
       default:
         return 'Start free trial';
     }
   }
   switch (context) {
     case 'nav':
-      return 'Start free trial — begin coach signup';
+      return 'Start free trial, begin coach signup';
     case 'hero':
-      return 'Start free trial — begin coach signup';
+      return 'Start free trial, begin coach signup';
     case 'cta':
-      return 'Start free trial — begin coach signup';
+      return 'Start free trial, begin coach signup';
     case 'roi':
-      return 'Start free trial — begin coach signup';
+      return 'Start free trial, begin coach signup';
     case 'mobileNav':
-      return 'Start free trial — begin coach signup';
+      return 'Start free trial, begin coach signup';
     default:
       return 'Start free trial';
   }

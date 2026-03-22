@@ -71,7 +71,7 @@ export function HowItWorksSection() {
                 </div>
               </div>
 
-              <p className="text-slate-500 text-sm leading-relaxed mt-auto">
+              <p className="text-balance text-slate-500 text-sm leading-relaxed mt-auto">
                 {LANDING_COPY.howItWorksStep1Footer}
               </p>
             </div>
@@ -112,7 +112,7 @@ export function HowItWorksSection() {
                 </div>
               </div>
 
-              <p className="text-slate-500 text-sm leading-relaxed mt-auto">
+              <p className="text-balance text-slate-500 text-sm leading-relaxed mt-auto">
                 {LANDING_COPY.howItWorksStep2Footer}
               </p>
             </div>
@@ -155,7 +155,7 @@ export function HowItWorksSection() {
                 </div>
               </div>
 
-              <p className="text-slate-500 text-sm leading-relaxed mt-auto">
+              <p className="text-balance text-slate-500 text-sm leading-relaxed mt-auto">
                 {LANDING_COPY.howItWorksStep3Footer}
               </p>
             </div>

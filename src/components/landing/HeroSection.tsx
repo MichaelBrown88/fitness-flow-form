@@ -18,8 +18,16 @@ import { useAuth } from "@/hooks/useAuth";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 import { HeroRadarPillarsAround } from "@/components/landing/HeroRadarPillarsAround";
 
-export function HeroSection() {
+export type HeroSectionVariant = "home" | "pricing";
+
+export type HeroSectionProps = {
+  /** `/` uses brand H1 + heroSubtitle; `/pricing` uses pricing H1 + heroPricingSubtitle. */
+  variant?: HeroSectionVariant;
+};
+
+export function HeroSection({ variant = "home" }: HeroSectionProps) {
   const { user } = useAuth();
+  const isPricing = variant === "pricing";
   /** Fixed-duration entrance after headline CSS stagger — not tied to scroll position. */
   const visualRevealRef = useScrollReveal<HTMLDivElement>({
     staggerIndex: 1,
@@ -46,22 +54,34 @@ export function HeroSection() {
         <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-14 lg:mb-16">
           {/* Headline */}
           <h1
-            className="text-[3rem] leading-[1.06] sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight mb-5 sm:mb-6 text-slate-900 motion-safe:animate-fade-in-up"
+            className="text-balance text-[3rem] leading-[1.06] sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight mb-5 sm:mb-6 text-slate-900 motion-safe:animate-fade-in-up"
             style={{ animationDelay: "0.05s" }}
           >
-            Assess Smarter.
-            <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-indigo-600">
-              Retain Longer.
-            </span>
+            {isPricing ? (
+              <>
+                {LANDING_COPY.heroPricingTitleLine1}
+                <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-indigo-600">
+                  {LANDING_COPY.heroPricingTitleAccent}
+                </span>
+              </>
+            ) : (
+              <>
+                Assess Smarter.
+                <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-indigo-600">
+                  Retain Longer.
+                </span>
+              </>
+            )}
           </h1>
 
-          {/* Subtitle */}
+          {/* Subtitle — one block under H1 (copy blends SEO terms into the product line). */}
           <p
-            className="text-lg sm:text-xl md:text-2xl text-slate-600 max-w-xl md:max-w-2xl mx-auto mb-7 sm:mb-10 leading-snug sm:leading-relaxed motion-safe:animate-fade-in-up"
+            className="text-balance text-lg sm:text-xl md:text-2xl text-slate-600 max-w-xl md:max-w-2xl mx-auto mb-7 sm:mb-10 leading-snug sm:leading-relaxed motion-safe:animate-fade-in-up"
             style={{ animationDelay: "0.15s" }}
           >
-            {LANDING_COPY.heroSubtitle}
+            {isPricing ? LANDING_COPY.heroPricingSubtitle : LANDING_COPY.heroSubtitle}
           </p>
 
           {/* CTA cluster — compact inline, clear primary/secondary distinction */}
@@ -108,7 +128,7 @@ export function HeroSection() {
               className="h-4 w-4 shrink-0 text-emerald-500"
               aria-hidden
             />
-            <span className="text-center">{LANDING_COPY.heroTrustMicro}</span>
+            <span className="text-center text-balance">{LANDING_COPY.heroTrustMicro}</span>
           </p>
         </div>
 
