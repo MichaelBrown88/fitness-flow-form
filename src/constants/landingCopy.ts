@@ -2,48 +2,156 @@
  * Coach-visible marketing copy for the public landing. Single source for hero/CTA consistency.
  */
 
+/** H2 keyword accent on light sections — matches hero “Retain Longer” gradient. */
+export const LANDING_H2_ACCENT_LIGHT =
+  'text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-indigo-600';
+
+/** H2 keyword accent on dark sections (e.g. Under the hood). */
+export const LANDING_H2_ACCENT_ON_DARK =
+  'text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-violet-300';
+
 export const LANDING_COPY = {
-  /** Single hero trust line under CTAs (keep short for scanability). */
   heroTrustMicro: '5k+ assessments · Solo free · Gym 14-day trial',
-  /** Hero subhead: reports + share link + between-session value (max ~2 sentences). */
   heroSubtitle:
     'Professional reports and a secure link clients can revisit. Show progress between sessions—coach more, chase updates less.',
+
+  howItWorksPill: 'The Workflow',
+  howItWorksTitleBefore: 'A Connected ',
+  howItWorksTitleAccent: 'Ecosystem',
+  howItWorksSubtitle:
+    'From first assessment to long-term retention—clear steps for you, a polished experience for your clients.',
+
+  howItWorksStep1Title: 'Assess',
+  howItWorksStep1Footer:
+    'Guided intake on tablet or phone—posture from the camera, movement screens, and body comp without retyping everything. The same flow every time.',
+
+  howItWorksStep2Title: 'Report and share',
   howItWorksStep2Footer:
-    'Turn data into a narrative with instant gap-style reports. Share a private link so clients reopen results anytime—and see how their plan breaks into phases.',
+    'Turn results into a clear story. Send a private link so clients reopen their report anytime—and see what to focus on next, step by step.',
+
+  howItWorksStep3Title: 'Stay on track',
   howItWorksStep3Footer:
-    'Retention means showing progress. Re-check single pillars without repeating the full intake, compare assessments over time, and spot who needs a nudge before they go quiet.',
-  /** Features section header subtitle. */
-  featuresSubtitle:
-    'From first assessment to long-term follow-up: structured data, client-facing progress, and less spreadsheet work.',
-  /** Scanner section: capture → output thread. */
-  scannerShowcaseSubtitle:
-    'Turn photos into structured data—no manual typing. Feed it straight into client-ready reports and secure share links.',
+    'Show progress between sessions: milestones they can see, lighter check-ins on one area, and a view of change over time—so you spot who needs a nudge.',
+
+  capabilitiesPill: 'One Workflow',
+  capabilitiesSectionTitleBefore: 'Everything In One Calm ',
+  capabilitiesSectionTitleAccent: 'Workflow',
+  capabilitiesSectionSubtitle:
+    'Capture, explain, and follow through—without extra tools or a pile of admin.',
+
+  capabilitiesComplianceAriaLabel: 'Compliance certifications',
+  capabilitiesComplianceHeading: 'Certified compliance',
+  capabilitiesHipaaBadgeAbbrev: 'HIPAA',
+  capabilitiesGdprBadgeAbbrev: 'GDPR',
+  capabilitiesCompliantLabel: 'Compliant',
+
   ctaSectionSubtitle:
     'Professional assessments, secure client links, and progress between sessions. Solo: free tier without a card. Gyms: start a 14-day trial, then subscribe when you are ready.',
   ctaSectionMicrocopy: 'No card required to start on the solo free tier.',
   mobileStickyCta: 'Start free',
   footerAdminLinkAriaLabel: 'Platform admin login',
+
+  coachPositioningPill: 'Your Expertise',
+  coachPositioningTitleBefore: "We Don't Replace Your ",
+  coachPositioningTitleAccent: 'Coaching',
+  coachPositioningSubtitle:
+    'One Assess does not generate workout programs. We help you run consistent assessments, turn results into clear professional reports, and keep progress visible between sessions—so you spend less time on admin and more time doing what only a coach can do. Judgment and programming stay yours.',
+  testimonialsSectionTitleBefore: 'Trusted by ',
+  testimonialsSectionTitleAccent: 'Coaches Everywhere',
+
+  faqSectionTitleBefore: 'Frequently Asked ',
+  faqSectionTitleAccent: 'Questions',
 } as const;
 
-/** Four feature rows: order matches icon list in FeaturesSection. */
-export const LANDING_FEATURE_CARDS = [
+export const LANDING_COACH_POSITIONING_BULLETS: readonly string[] = [
+  'No auto-generated training plans—your programs stay yours.',
+  'Built to add clarity and consistency to your workflow, not to sit in your seat with the client.',
+  'Less paperwork and chasing updates; more room for coaching that needs a human touch.',
+];
+
+export type LandingCapabilityVisualId = 'capture' | 'reportPortal' | 'progress';
+
+export interface LandingCapabilityRowCopy {
+  eyebrow: string;
+  title: string;
+  bullets: readonly string[];
+  imageSide: 'left' | 'right';
+  visualId: LandingCapabilityVisualId;
+}
+
+/** Decorative labels inside capability visuals (landing-only; keep in sync with product patterns). */
+export const LANDING_CAPABILITY_VISUAL_COPY = {
+  capture: {
+    poseGuideLabel: 'Front view',
+    framingHint: 'Step into the frame',
+    bodyCompTitle: 'Body comp',
+    weightRow: 'Weight',
+    bodyFatRow: 'Body fat',
+    weightValue: '82 kg',
+    bodyFatValue: '18%',
+    confirmHint: 'Confirm to save',
+  },
+  reportPortal: {
+    reportBadge: 'Assessment report',
+    reportDate: 'Jan 12, 2025',
+    clientNameLine: 'Alex Chen',
+    reportTagline: 'Your personalized journey to better health and performance.',
+    sectionStartingPoint: 'Your Starting Point',
+    sectionGapAnalysis: 'Gap Analysis',
+    linkCaption: 'What clients see',
+    mobilePreviewTitle: 'Their phone',
+    tabOverview: 'Overview',
+    tabAnalysis: 'Analysis',
+    tabMovement: 'Movement',
+    tabPlan: 'Your plan',
+  },
+  progress: {
+    journeyEyebrow: 'Your Journey',
+    planHeadline: "Hi Alex—here's your plan",
+    overallProgress: 'Overall progress',
+    milestonesSummary: '3 of 8 milestones completed',
+    phasePill: 'Phase 2: Development',
+    milestoneTitle: 'Two strength sessions weekly',
+    milestoneMeta: 'This phase · Strength',
+    completedBadge: 'Completed',
+  },
+} as const;
+
+export const LANDING_CAPABILITY_ROWS: readonly LandingCapabilityRowCopy[] = [
   {
-    title: 'Clinical Logic Engine',
-    desc: '360+ data points checked against 5,000+ clinical benchmarks. Automatically.',
+    eyebrow: 'Capture',
+    title: 'Posture, movement, and body comp—without the busywork',
+    bullets: [
+      'Use your phone for posture capture with on-screen guidance.',
+      'Add body comp from a printout or photo—confirm and move on.',
+      'One guided flow your whole team can repeat.',
+    ],
+    imageSide: 'right',
+    visualId: 'capture',
   },
   {
-    title: 'Progress clients see',
-    desc: 'Scores, milestones, and achievements clients want to improve—on the secure link you share.',
+    eyebrow: 'Share',
+    title: 'Reports clients actually open',
+    bullets: [
+      'Professional output you review before it goes out.',
+      'Clients use a secure link in the browser—no extra app.',
+      'Same link can show their plan and wins alongside the report.',
+    ],
+    imageSide: 'left',
+    visualId: 'reportPortal',
   },
   {
-    title: 'Team management',
-    desc: 'Same assessment rails and shared client views across every coach. One method, one brand.',
+    eyebrow: 'Follow through',
+    title: 'Progress that keeps people with you',
+    bullets: [
+      'Phases and next steps stay visible between sessions.',
+      'Milestones give clients something to aim for.',
+      'See who might be drifting before they ghost.',
+    ],
+    imageSide: 'right',
+    visualId: 'progress',
   },
-  {
-    title: 'Secure & private',
-    desc: 'Enterprise-grade encryption. HIPAA and GDPR compliant.',
-  },
-] as const;
+];
 
 export interface LandingTestimonial {
   quote: string;
@@ -82,6 +190,11 @@ export interface LandingFaqItem {
 }
 
 export const LANDING_FAQ_ITEMS: readonly LandingFaqItem[] = [
+  {
+    question: 'Does One Assess write workout programs for my clients?',
+    answer:
+      'No. One Assess does not generate workout programs. It supports assessment capture, professional reports, and visibility on progress and plans you define. You stay in control of programming and coaching decisions.',
+  },
   {
     question: 'How does the Clinical Logic Engine work?',
     answer:
@@ -124,7 +237,6 @@ export const LANDING_FAQ_ITEMS: readonly LandingFaqItem[] = [
   },
 ];
 
-/** Accessible names for multiple “Start free trial” controls (screen readers). */
 export function landingTrialAriaLabel(
   context: 'nav' | 'hero' | 'cta' | 'roi' | 'mobileNav',
   goesToPricingFirst: boolean,

@@ -1,265 +1,118 @@
-import {
-  useRef,
-  useState,
-  useEffect,
-  Children,
-  type ReactNode,
-  type CSSProperties,
-} from "react";
+import { Children, type ReactNode } from "react";
+import { useScrollReveal } from "@/hooks/useScrollReveal";
 
-/* ------------------------------------------------------------------ */
-/*  Types                                                              */
-/* ------------------------------------------------------------------ */
+/** Delay between staggered reveals (fixed-duration; not tied to scroll speed). */
+const STAGGER_MS = 100;
+const REVEAL_DURATION_MS = 900;
+const REVEAL_THRESHOLD = 0.08;
 
 type Variant = "slide-up" | "crossfade-scale" | "card-stack" | "crossfade";
 
 interface StickyCardStackProps {
   children: ReactNode;
-  /** Section header — stays pinned while cards transition */
   header?: ReactNode;
-  /** Transition style between cards */
+  /**
+   * Previously selected scroll-scrubbed transitions on small screens.
+   * Ignored — layout is always a responsive grid with intersection-triggered reveals.
+   */
   variant: Variant;
-  /** Grid columns on desktop. Default: children count */
   desktopCols?: 2 | 3;
-  /** Gap class for desktop grid. Default: "gap-8" */
   desktopGap?: string;
-  /** Breakpoint where sticky becomes grid. Default: "lg" */
+  /** When multi-column grid starts: `md` or `lg` */
   breakpoint?: "md" | "lg";
 }
 
-/* ------------------------------------------------------------------ */
-/*  Scroll-through-container progress (0 → 1)                         */
-/* ------------------------------------------------------------------ */
-
-function useStickyProgress<T extends HTMLElement = HTMLDivElement>() {
-  const ref = useRef<T>(null);
-  const [progress, setProgress] = useState(0);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-
-    const prefersReducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)"
-    ).matches;
-    if (prefersReducedMotion) {
-      setProgress(1);
-      return;
-    }
-
-    let ticking = false;
-
-    const onScroll = () => {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(() => {
-        const rect = el.getBoundingClientRect();
-        // 0 = top of container at top of viewport
-        // 1 = bottom of container at bottom of viewport
-        const scrollable = rect.height - window.innerHeight;
-        if (scrollable <= 0) {
-          setProgress(1);
-          ticking = false;
-          return;
-        }
-        const raw = -rect.top / scrollable;
-        setProgress(Math.min(1, Math.max(0, raw)));
-        ticking = false;
-      });
-    };
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  return { ref, progress };
+function ScrollRevealHeader({
+  children,
+  staggerDelay,
+}: {
+  children: ReactNode;
+  staggerDelay: number;
+}) {
+  const ref = useScrollReveal({
+    staggerIndex: 0,
+    staggerDelay,
+    distance: 36,
+    duration: REVEAL_DURATION_MS,
+    threshold: REVEAL_THRESHOLD,
+  });
+  return <div ref={ref}>{children}</div>;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Per-card transform calculators by variant                          */
-/* ------------------------------------------------------------------ */
-
-/** Returns opacity + transform style for a card at `cardProgress` (-1→0→1).
- *  -1 = waiting to enter, 0 = active center, 1 = exited */
-function getCardStyle(
-  variant: Variant,
-  cardProgress: number, // -1 (before) → 0 (active) → 1 (after)
-  _index: number,
-  _total: number
-): CSSProperties {
-  const abs = Math.abs(cardProgress);
-  const clamp01 = Math.min(1, Math.max(0, abs));
-
-  switch (variant) {
-    /* ── slide-up: pages turning ── */
-    case "slide-up": {
-      const y = cardProgress * 50; // -50 (above) → 0 → 50 (below)
-      return {
-        opacity: 1 - clamp01,
-        transform: `translateY(${y}px)`,
-      };
-    }
-
-    /* ── crossfade-scale: upgrade feel ── */
-    case "crossfade-scale": {
-      const scale = 1 - clamp01 * 0.08; // 1.0 → 0.92
-      return {
-        opacity: 1 - clamp01,
-        transform: `scale(${scale})`,
-      };
-    }
-
-    /* ── card-stack: deck peel ── */
-    case "card-stack": {
-      if (cardProgress <= 0) {
-        // Active or waiting — stack offset
-        const offsetY = Math.max(0, -cardProgress) * 8;
-        const rotate = Math.max(0, -cardProgress) * 1.5;
-        return {
-          opacity: 1,
-          transform: `translateY(${offsetY}px) rotate(${rotate}deg)`,
-        };
-      }
-      // Exiting — slide up and out
-      return {
-        opacity: 1 - clamp01,
-        transform: `translateY(${-cardProgress * 60}px) rotate(${-cardProgress * 2}deg)`,
-      };
-    }
-
-    /* ── crossfade: simple opacity ── */
-    case "crossfade":
-    default: {
-      return {
-        opacity: 1 - clamp01,
-        transform: "none",
-      };
-    }
-  }
+function ScrollRevealGridCell({
+  index,
+  staggerIndexOffset,
+  staggerDelay,
+  children,
+}: {
+  index: number;
+  staggerIndexOffset: number;
+  staggerDelay: number;
+  children: ReactNode;
+}) {
+  const horizontal = index % 2 === 1;
+  const ref = useScrollReveal({
+    staggerIndex: index + staggerIndexOffset,
+    staggerDelay,
+    axis: horizontal ? "x" : "y",
+    direction: horizontal ? -1 : 1,
+    distance: horizontal ? 28 : 40,
+    duration: REVEAL_DURATION_MS,
+    threshold: REVEAL_THRESHOLD,
+  });
+  return (
+    <div ref={ref} className="min-h-0 h-full">
+      {children}
+    </div>
+  );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Component                                                          */
-/* ------------------------------------------------------------------ */
+function buildGridClass(
+  cols: 2 | 3,
+  breakpoint: "md" | "lg",
+  desktopGap: string,
+): string {
+  const bp = breakpoint === "md" ? "md" : "lg";
+  const multi = cols === 2 ? "grid-cols-2" : "grid-cols-3";
+  return `grid grid-cols-1 ${desktopGap} ${bp}:${multi} items-stretch`;
+}
 
+/**
+ * Responsive section grid with optional header.
+ * Each cell reveals with a fixed-duration fade + motion when it enters the viewport
+ * (IntersectionObserver — scroll speed does not change animation pace).
+ */
 export default function StickyCardStack({
   children,
   header,
-  variant,
+  variant: _variant,
   desktopCols,
   desktopGap = "gap-8",
   breakpoint = "lg",
 }: StickyCardStackProps) {
+  void _variant;
   const items = Children.toArray(children);
   const count = items.length;
-  const { ref, progress } = useStickyProgress<HTMLDivElement>();
-
-  // Breakpoint-based media query for SSR-safe hydration
-  const [isDesktop, setIsDesktop] = useState(false);
-
-  useEffect(() => {
-    const mq = window.matchMedia(
-      breakpoint === "md" ? "(min-width: 768px)" : "(min-width: 1024px)"
-    );
-    const update = () => setIsDesktop(mq.matches);
-    update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
-  }, [breakpoint]);
-
-  // Reduced motion: fall back to stacked layout
-  const [reducedMotion, setReducedMotion] = useState(false);
-  useEffect(() => {
-    setReducedMotion(
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    );
-  }, []);
-
-  /* ── Desktop: normal grid ── */
-  if (isDesktop) {
-    const cols = desktopCols ?? (count <= 2 ? 2 : 3);
-    const gridClass =
-      cols === 2
-        ? `grid grid-cols-2 ${desktopGap}`
-        : `grid grid-cols-3 ${desktopGap}`;
-    return (
-      <div>
-        {header}
-        <div className={gridClass}>{children}</div>
-      </div>
-    );
-  }
-
-  /* ── Mobile reduced motion: stacked ── */
-  if (reducedMotion) {
-    return (
-      <div>
-        {header}
-        <div className="space-y-6">{children}</div>
-      </div>
-    );
-  }
-
-  /* ── Mobile: sticky scrollytelling ── */
-  const containerHeight = `${count * 100}vh`;
-
-  // Which card is "active"?
-  const activeIndex = Math.min(
-    count - 1,
-    Math.floor(progress * count)
-  );
+  const cols = desktopCols ?? (count <= 2 ? 2 : 3);
+  const gridClass = buildGridClass(cols, breakpoint, desktopGap);
+  const staggerOffset = header ? 1 : 0;
 
   return (
-    <div ref={ref} style={{ height: containerHeight }} className="relative">
-      <div className="sticky top-0 h-screen flex flex-col items-center justify-center overflow-hidden">
-        {/* Pinned header */}
-        {header && (
-          <div className="w-full px-5 pt-6 pb-2 shrink-0">{header}</div>
-        )}
-
-        {/* Card area */}
-        <div className="relative flex-1 w-[90vw] max-w-md flex items-center justify-center">
-          {items.map((child, i) => {
-            // cardProgress: 0 = fully active, negative = hasn't arrived, positive = has left
-            const segmentSize = 1 / count;
-            const segmentCenter = segmentSize * i + segmentSize / 2;
-            const cardProgress = (progress - segmentCenter) / (segmentSize / 2);
-
-            const style = getCardStyle(variant, cardProgress, i, count);
-            const isActive = i === activeIndex;
-            const isVisible = Math.abs(cardProgress) < 1.5;
-
-            return (
-              <div
-                key={i}
-                className="absolute inset-0 flex items-center justify-center will-change-transform"
-                style={{
-                  ...style,
-                  zIndex: isActive ? 10 : count - i,
-                  pointerEvents: isActive ? "auto" : "none",
-                  visibility: isVisible ? "visible" : "hidden",
-                }}
-              >
-                <div className="w-full">{child}</div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Progress dots */}
-        <div className="flex gap-2 pb-6 pt-3 shrink-0">
-          {items.map((_, i) => (
-            <div
-              key={i}
-              className={`h-1.5 rounded-full transition-all duration-300 ${
-                i === activeIndex
-                  ? "w-6 bg-slate-900"
-                  : "w-1.5 bg-slate-300"
-              }`}
-            />
-          ))}
-        </div>
+    <div>
+      {header ? (
+        <ScrollRevealHeader staggerDelay={STAGGER_MS}>{header}</ScrollRevealHeader>
+      ) : null}
+      <div className={gridClass}>
+        {items.map((child, i) => (
+          <ScrollRevealGridCell
+            key={i}
+            index={i}
+            staggerIndexOffset={staggerOffset}
+            staggerDelay={STAGGER_MS}
+          >
+            {child}
+          </ScrollRevealGridCell>
+        ))}
       </div>
     </div>
   );

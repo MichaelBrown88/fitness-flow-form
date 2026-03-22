@@ -8,6 +8,7 @@ import { landingTrialAriaLabel } from '@/constants/landingCopy';
 import { LANDING_GUEST_CHECKOUT_ENABLED } from '@/constants/platform';
 import SectionHeader from '@/components/landing/SectionHeader';
 import StickyCardStack from '@/components/ui/StickyCardStack';
+import { LANDING_H2_ACCENT_LIGHT } from '@/constants/landingCopy';
 
 export function ROIComparison() {
   return (
@@ -20,7 +21,12 @@ export function ROIComparison() {
           breakpoint="lg"
           header={
             <SectionHeader
-              title={<>Reclaim Your <span className="text-indigo-600">Evenings</span></>}
+              title={
+                <>
+                  Reclaim Your{' '}
+                  <span className={LANDING_H2_ACCENT_LIGHT}>Evenings</span>
+                </>
+              }
               subtitle="Stop the admin night shift. One platform replaces your spreadsheet-photo-email patchwork."
               spacing="mb-16 sm:mb-20"
             />

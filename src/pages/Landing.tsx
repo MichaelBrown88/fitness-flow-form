@@ -6,12 +6,12 @@ import {
   Navbar,
   HeroSection,
   HowItWorksSection,
-  ScannerShowcase,
-  UnderTheHood,
-  FeaturesSection,
+  LandingCapabilitiesSection,
   TestimonialsSection,
   TestimonialCard,
   ROIComparison,
+  UnderTheHood,
+  CoachPositioningSection,
   BuiltByExperts,
   PricingSection,
   LandingPricingPlans,
@@ -56,9 +56,7 @@ export default function Landing() {
       <main id="main-content" className="pb-28 md:pb-0">
         <HeroSection />
         <HowItWorksSection />
-        <ScannerShowcase />
-        <UnderTheHood />
-        <FeaturesSection />
+        <LandingCapabilitiesSection />
 
         <TestimonialsSection>
           {LANDING_TESTIMONIALS.map((testimonial, index) => (
@@ -74,6 +72,8 @@ export default function Landing() {
         </TestimonialsSection>
 
         <ROIComparison />
+        <UnderTheHood />
+        <CoachPositioningSection />
         <BuiltByExperts />
 
         <PricingSection>

@@ -2,6 +2,7 @@ import { Heart, Target, Lightbulb } from 'lucide-react';
 import GlassCard from '@/components/ui/GlassCard';
 import SectionHeader from '@/components/landing/SectionHeader';
 import StickyCardStack from '@/components/ui/StickyCardStack';
+import { LANDING_H2_ACCENT_LIGHT } from '@/constants/landingCopy';
 
 const values = [
   {
@@ -48,7 +49,11 @@ export function BuiltByExperts() {
           header={
             <SectionHeader
               pill="Our Story"
-              title={<>Built by <span className="text-indigo-600">Coaches</span>, for Coaches</>}
+              title={
+                <>
+                  Built by <span className={LANDING_H2_ACCENT_LIGHT}>Coaches</span>, for Coaches
+                </>
+              }
               subtitle="One Assess was built to solve a real problem — my own. Now it helps coaches everywhere."
             />
           }

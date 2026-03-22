@@ -1,7 +1,10 @@
 import { ArrowRight, Heart, ScanLine, Activity, Smartphone, Dumbbell } from 'lucide-react';
 import SectionHeader from '@/components/landing/SectionHeader';
 import StickyCardStack from '@/components/ui/StickyCardStack';
-import { LANDING_COPY } from '@/constants/landingCopy';
+import {
+  LANDING_COPY,
+  LANDING_H2_ACCENT_LIGHT,
+} from '@/constants/landingCopy';
 
 export function HowItWorksSection() {
   return (
@@ -23,9 +26,16 @@ export function HowItWorksSection() {
           breakpoint="lg"
           header={
             <SectionHeader
-              pill="The Workflow"
-              title="A Connected Ecosystem"
-              subtitle="From first contact to long-term retention. One Assess unifies every step of the coaching journey."
+              pill={LANDING_COPY.howItWorksPill}
+              title={
+                <>
+                  {LANDING_COPY.howItWorksTitleBefore}
+                  <span className={LANDING_H2_ACCENT_LIGHT}>
+                    {LANDING_COPY.howItWorksTitleAccent}
+                  </span>
+                </>
+              }
+              subtitle={LANDING_COPY.howItWorksSubtitle}
               spacing="mb-16 sm:mb-20 lg:mb-24"
             />
           }
@@ -36,7 +46,7 @@ export function HowItWorksSection() {
             <div className="relative p-8 border border-slate-200 bg-white/50 backdrop-blur-sm rounded-3xl h-full flex flex-col shadow-sm">
               <div className="flex items-center gap-4 mb-8">
                 <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-200">1</div>
-                <h3 className="text-xl font-bold text-slate-900">Guided Intake</h3>
+                <h3 className="text-xl font-bold text-slate-900">{LANDING_COPY.howItWorksStep1Title}</h3>
               </div>
               
               {/* UI Mockup */}
@@ -62,7 +72,7 @@ export function HowItWorksSection() {
               </div>
 
               <p className="text-slate-500 text-sm leading-relaxed mt-auto">
-                No more paper forms. A streamlined, tablet-friendly interface guides you through PAR-Q, body comp, and movement screens ensuring consistent data collection every time.
+                {LANDING_COPY.howItWorksStep1Footer}
               </p>
             </div>
           </div>
@@ -73,7 +83,7 @@ export function HowItWorksSection() {
             <div className="relative p-8 border border-slate-200 bg-white/50 backdrop-blur-sm rounded-3xl h-full flex flex-col shadow-sm">
               <div className="flex items-center gap-4 mb-8">
                 <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-indigo-200">2</div>
-                <h3 className="text-xl font-bold text-slate-900">Instant Report</h3>
+                <h3 className="text-xl font-bold text-slate-900">{LANDING_COPY.howItWorksStep2Title}</h3>
               </div>
 
               {/* UI Mockup: Gap Analysis */}
@@ -108,13 +118,13 @@ export function HowItWorksSection() {
             </div>
           </div>
 
-          {/* Step 3: Micro-Updates */}
+          {/* Step 3: Stay on track */}
           <div className="group relative">
             <div className="absolute inset-0 bg-gradient-to-b from-emerald-50 to-white rounded-3xl" />
             <div className="relative p-8 border border-slate-200 bg-white/50 backdrop-blur-sm rounded-3xl h-full flex flex-col shadow-sm">
               <div className="flex items-center gap-4 mb-8">
                 <div className="w-12 h-12 rounded-2xl bg-emerald-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-emerald-200">3</div>
-                <h3 className="text-xl font-bold text-slate-900">Micro-Updates</h3>
+                <h3 className="text-xl font-bold text-slate-900">{LANDING_COPY.howItWorksStep3Title}</h3>
               </div>
 
               {/* UI Mockup: Quick Actions */}

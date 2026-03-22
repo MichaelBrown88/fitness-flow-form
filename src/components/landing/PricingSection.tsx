@@ -1,6 +1,7 @@
 import React from 'react';
 import SectionHeader from '@/components/landing/SectionHeader';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
+import { LANDING_H2_ACCENT_LIGHT } from '@/constants/landingCopy';
 
 interface PricingSectionProps {
   children: React.ReactNode;
@@ -17,7 +18,12 @@ export function PricingSection({ children }: PricingSectionProps) {
       <div className="max-w-7xl mx-auto">
         <div ref={headerRef}>
           <SectionHeader
-            title={<>Simple, <span className="text-indigo-600">transparent</span> pricing</>}
+            title={
+              <>
+                Simple,{' '}
+                <span className={LANDING_H2_ACCENT_LIGHT}>Transparent</span> Pricing
+              </>
+            }
             subtitle="Start free, then choose Solo or Gym and your seats. Prices in GBP — same tiers as in the app."
             spacing="mb-12 sm:mb-16"
           />

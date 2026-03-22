@@ -8,6 +8,7 @@ import {
 import GlassCard from '@/components/ui/GlassCard';
 import SectionHeader from '@/components/landing/SectionHeader';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
+import { LANDING_COPY, LANDING_H2_ACCENT_LIGHT } from '@/constants/landingCopy';
 
 export interface FAQItem {
   question: string;
@@ -26,7 +27,14 @@ export function FAQSection({ items }: FAQSectionProps) {
     <section id="faq" className="py-24 sm:py-32 px-6 max-w-3xl mx-auto">
       <div ref={headerRef}>
         <SectionHeader
-          title="Frequently Asked Questions"
+          title={
+            <>
+              {LANDING_COPY.faqSectionTitleBefore}
+              <span className={LANDING_H2_ACCENT_LIGHT}>
+                {LANDING_COPY.faqSectionTitleAccent}
+              </span>
+            </>
+          }
           subtitle="Everything you need to know about getting started."
         />
       </div>

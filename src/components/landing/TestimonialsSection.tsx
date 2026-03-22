@@ -1,6 +1,7 @@
 import React from 'react';
 import SectionHeader from '@/components/landing/SectionHeader';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
+import { LANDING_COPY, LANDING_H2_ACCENT_LIGHT } from '@/constants/landingCopy';
 
 interface TestimonialsSectionProps {
   children: React.ReactNode;
@@ -15,7 +16,14 @@ export function TestimonialsSection({ children }: TestimonialsSectionProps) {
       <div className="max-w-7xl mx-auto">
         <div ref={headerRef}>
           <SectionHeader
-            title="Trusted by Coaches Everywhere"
+            title={
+              <>
+                {LANDING_COPY.testimonialsSectionTitleBefore}
+                <span className={LANDING_H2_ACCENT_LIGHT}>
+                  {LANDING_COPY.testimonialsSectionTitleAccent}
+                </span>
+              </>
+            }
             subtitle="Real results from fitness professionals who switched to One Assess."
           />
         </div>

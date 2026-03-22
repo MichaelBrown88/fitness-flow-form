@@ -11,18 +11,23 @@ import {
   Check,
   ScanLine,
   AlertCircle,
+  Sparkles,
+  FileCheck,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useScrollProgress } from "@/hooks/useScrollProgress";
+import { useScrollReveal } from "@/hooks/useScrollReveal";
+import { HeroRadarPillarsAround } from "@/components/landing/HeroRadarPillarsAround";
 
 export function HeroSection() {
   const { user } = useAuth();
-  const { ref: visualRef, progress } = useScrollProgress<HTMLDivElement>();
-
-  // Scroll-driven transforms for the product visual
-  const visualOpacity = Math.min(1, progress * 2.5);
-  const visualScale = 0.92 + Math.min(0.08, progress * 0.2);
-  const visualY = 40 * (1 - Math.min(1, progress * 2));
+  /** Fixed-duration entrance after headline CSS stagger — not tied to scroll position. */
+  const visualRevealRef = useScrollReveal<HTMLDivElement>({
+    staggerIndex: 1,
+    staggerDelay: 420,
+    distance: 48,
+    duration: 1100,
+    threshold: 0.04,
+  });
 
   return (
     <section className="relative pt-24 sm:pt-32 lg:pt-36 pb-16 sm:pb-20 lg:pb-24 px-5 sm:px-6">
@@ -107,19 +112,13 @@ export function HeroSection() {
           </p>
         </div>
 
-        {/* ── Product Visual — scroll-driven reveal; extra bottom space for shadows & float chips ── */}
+        {/* ── Product Visual — intersection-triggered reveal (pace independent of scroll speed) ── */}
         <div
-          ref={visualRef}
-          className="relative mx-auto max-w-3xl lg:max-w-4xl xl:max-w-5xl pb-6 md:pb-12"
+          ref={visualRevealRef}
+          className="relative mx-auto max-w-3xl lg:max-w-4xl xl:max-w-5xl pb-6 md:pb-12 motion-safe:will-change-transform"
           aria-hidden
         >
-          <div
-            className="will-change-transform"
-            style={{
-              opacity: visualOpacity,
-              transform: `translateY(${visualY}px) scale(${visualScale})`,
-            }}
-          >
+          <div className="relative">
             {/* Main Report Card (decorative preview — parent has aria-hidden) */}
             <div className="relative rounded-3xl border border-white/60 bg-white/60 p-6 shadow-2xl backdrop-blur-xl sm:p-10">
               {/* Header */}
@@ -140,46 +139,52 @@ export function HeroSection() {
                 </div>
               </div>
 
-              {/* Radar Chart Visual */}
-              <div className="relative mb-6 flex h-52 w-full items-center justify-center sm:mb-10 sm:h-72 lg:h-80">
-                {/* Background Circles */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="h-52 w-52 rounded-full border border-slate-200 sm:h-72 sm:w-72" />
-                  <div className="absolute h-40 w-40 rounded-full border border-slate-200 sm:h-56 sm:w-56" />
-                  <div className="absolute h-28 w-28 rounded-full border border-slate-200 sm:h-40 sm:w-40" />
-                </div>
+              {/* Radar chart: inset graphic on lg+ so pillar cards sit in the outer margin (not on the polygon) */}
+              <div className="relative mb-6 flex w-full justify-center overflow-visible sm:mb-10 lg:mb-12">
+                <div className="relative aspect-square h-52 w-52 shrink-0 overflow-visible sm:h-72 sm:w-72 lg:h-[22rem] lg:w-[22rem] xl:h-[23rem] xl:w-[23rem]">
+                  {/* Background Circles + SVG + score — inset on large screens */}
+                  <div className="absolute inset-0 lg:inset-[12%]">
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="h-full w-full rounded-full border border-slate-200" />
+                      <div className="absolute h-[77%] w-[77%] rounded-full border border-slate-200" />
+                      <div className="absolute h-[54%] w-[54%] rounded-full border border-slate-200" />
+                    </div>
 
-                {/* The Radar Shape */}
-                <svg
-                  viewBox="0 0 100 100"
-                  className="w-full h-full absolute drop-shadow-xl"
-                >
-                  <polygon
-                    points="50,15 85,35 75,80 25,80 15,35"
-                    fill="rgba(99, 102, 241, 0.2)"
-                    stroke="#6366f1"
-                    strokeWidth="2"
-                  />
-                  <circle cx="50" cy="15" r="3" fill="#6366f1" />
-                  <circle cx="85" cy="35" r="3" fill="#6366f1" />
-                  <circle cx="75" cy="80" r="3" fill="#6366f1" />
-                  <circle cx="25" cy="80" r="3" fill="#6366f1" />
-                  <circle cx="15" cy="35" r="3" fill="#6366f1" />
-                </svg>
+                    <svg
+                      viewBox="0 0 100 100"
+                      className="absolute h-full w-full drop-shadow-xl"
+                      aria-hidden
+                    >
+                      <polygon
+                        points="50,15 85,35 75,80 25,80 15,35"
+                        fill="rgba(99, 102, 241, 0.2)"
+                        stroke="#6366f1"
+                        strokeWidth="2"
+                      />
+                      <circle cx="50" cy="15" r="3" fill="#6366f1" />
+                      <circle cx="85" cy="35" r="3" fill="#6366f1" />
+                      <circle cx="75" cy="80" r="3" fill="#6366f1" />
+                      <circle cx="25" cy="80" r="3" fill="#6366f1" />
+                      <circle cx="15" cy="35" r="3" fill="#6366f1" />
+                    </svg>
 
-                {/* Center Score */}
-                <div className="absolute flex h-20 w-20 flex-col items-center justify-center rounded-full border-4 border-slate-50 bg-white shadow-lg sm:h-28 sm:w-28">
-                  <span className="text-2xl font-black text-slate-900 sm:text-4xl">
-                    82
-                  </span>
-                  <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 sm:text-xs">
-                    Overall
-                  </span>
+                    <div className="absolute left-1/2 top-1/2 z-30 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full border-4 border-slate-50 bg-white shadow-lg sm:h-28 sm:w-28">
+                      <span className="text-2xl font-black text-slate-900 sm:text-4xl">
+                        82
+                      </span>
+                      <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 sm:text-xs">
+                        Overall
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Desktop: pillar cards in outer ring (full box); chart lives in inset above */}
+                  <HeroRadarPillarsAround />
                 </div>
               </div>
 
-              {/* Metrics Pills */}
-              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              {/* Metrics: two wide pills below lg only */}
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:hidden">
                 <div className="flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3 sm:gap-4 sm:rounded-2xl sm:p-4">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 sm:h-11 sm:w-11">
                     <Scale className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -209,8 +214,27 @@ export function HeroSection() {
               </div>
             </div>
 
-            {/* Floating Elements — desktop only, add visual interest */}
-            <div className="absolute -right-4 top-[5.25rem] hidden rounded-2xl border border-slate-100 bg-white p-3 shadow-xl motion-safe:animate-float sm:-right-8 sm:top-[6.75rem] sm:p-4 md:block">
+            {/* Floating Elements — md+ only */}
+            <div
+              className="absolute -left-8 bottom-64 z-10 hidden rounded-2xl border border-emerald-100 bg-white p-3 shadow-xl motion-safe:animate-float sm:-left-10 sm:bottom-72 sm:p-4 lg:-left-12 lg:bottom-80 md:block"
+              style={{ animationDelay: "0.4s" }}
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 sm:h-12 sm:w-12">
+                  <Sparkles className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden />
+                </div>
+                <div className="text-left">
+                  <p className="text-xs font-semibold text-slate-500 sm:text-sm">
+                    Milestone
+                  </p>
+                  <p className="text-sm font-bold text-slate-900 sm:text-base">
+                    Unlocked
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="absolute -right-8 top-[5.25rem] hidden rounded-2xl border border-slate-100 bg-white p-3 shadow-xl motion-safe:animate-float sm:-right-12 sm:top-[6.75rem] sm:p-4 lg:-right-14 md:block">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600 sm:h-12 sm:w-12">
                   <ScanLine className="h-5 w-5 sm:h-6 sm:w-6" />
@@ -232,7 +256,7 @@ export function HeroSection() {
             </div>
 
             <div
-              className="absolute -left-4 bottom-20 hidden rounded-2xl border border-slate-100 bg-white p-3 shadow-xl motion-safe:animate-float sm:-left-6 sm:bottom-28 sm:p-4 md:block"
+              className="absolute -left-8 bottom-28 hidden rounded-2xl border border-slate-100 bg-white p-3 shadow-xl motion-safe:animate-float sm:-left-10 sm:bottom-36 lg:-left-12 lg:bottom-44 sm:p-4 md:block"
               style={{ animationDelay: "1s" }}
             >
               <div className="flex items-center gap-3">
@@ -251,6 +275,25 @@ export function HeroSection() {
                   className="ml-1 shrink-0 text-amber-500 sm:ml-2"
                   size={18}
                 />
+              </div>
+            </div>
+
+            <div
+              className="absolute -right-8 bottom-16 z-10 hidden rounded-2xl border border-indigo-100 bg-white p-3 shadow-xl motion-safe:animate-float sm:-right-12 sm:bottom-20 sm:p-4 lg:-right-14 lg:bottom-24 md:block"
+              style={{ animationDelay: "1.4s" }}
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600 sm:h-11 sm:w-11">
+                  <FileCheck className="h-5 w-5 sm:h-[22px] sm:w-[22px]" aria-hidden />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 sm:text-sm">
+                    Report
+                  </p>
+                  <p className="text-sm font-bold text-slate-900 sm:text-base">
+                    Ready to share
+                  </p>
+                </div>
               </div>
             </div>
           </div>

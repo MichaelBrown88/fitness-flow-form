@@ -1,6 +1,7 @@
 import { Activity } from 'lucide-react';
 import SectionHeader from '@/components/landing/SectionHeader';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
+import { LANDING_H2_ACCENT_ON_DARK } from '@/constants/landingCopy';
 
 export function UnderTheHood() {
   // Apple-style stagger: header → text → visual
@@ -17,7 +18,12 @@ export function UnderTheHood() {
           <SectionHeader
             pill="Clinical Logic Engine"
             pillIcon={<Activity size={12} />}
-            title={<>Data, not just <span className="text-indigo-400">pretty pictures.</span></>}
+            title={
+              <>
+                Data, Not Just{' '}
+                <span className={LANDING_H2_ACCENT_ON_DARK}>Pretty Pictures.</span>
+              </>
+            }
             subtitle="360+ data points analyzed against 5,000+ clinical benchmarks to generate actionable insights."
             dark
           />
