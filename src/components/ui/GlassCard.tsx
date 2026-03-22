@@ -14,7 +14,7 @@ const GlassCard = forwardRef<HTMLDivElement, GlassCardProps>(
   ({ children, className = "" }, ref) => (
     <div
       ref={ref}
-      className={`backdrop-blur-2xl bg-white/60 border border-white/50 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:bg-white/80 transition-all duration-300 ${className}`}
+      className={`rounded-2xl border border-slate-200/70 bg-white/85 shadow-sm backdrop-blur-md transition-all duration-300 hover:border-slate-200 hover:bg-white/92 hover:shadow-md dark:border-slate-700/80 dark:bg-slate-900/75 dark:hover:border-slate-600 ${className}`}
     >
       {children}
     </div>

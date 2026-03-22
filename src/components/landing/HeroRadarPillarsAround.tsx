@@ -25,42 +25,42 @@ const HERO_RADAR_PILLAR_META: Record<
   bodyComp: {
     Icon: Scale,
     value: "18.5% BF",
-    ring: "bg-emerald-100 text-emerald-600",
-    soft: "bg-emerald-50",
-    label: "text-emerald-800",
-    border: "border-emerald-100",
+    ring: "bg-indigo-100 text-indigo-700",
+    soft: "bg-white/90",
+    label: "text-indigo-900/90",
+    border: "border-indigo-100/80",
   },
   cardio: {
     Icon: Heart,
     value: "72/100",
-    ring: "bg-sky-100 text-sky-600",
-    soft: "bg-sky-50",
-    label: "text-sky-800",
-    border: "border-sky-100",
+    ring: "bg-indigo-100 text-indigo-700",
+    soft: "bg-white/90",
+    label: "text-indigo-900/90",
+    border: "border-indigo-100/80",
   },
   strength: {
     Icon: Dumbbell,
     value: "80/100",
-    ring: "bg-violet-100 text-violet-600",
-    soft: "bg-violet-50",
-    label: "text-violet-800",
-    border: "border-violet-100",
+    ring: "bg-indigo-100 text-indigo-700",
+    soft: "bg-white/90",
+    label: "text-indigo-900/90",
+    border: "border-indigo-100/80",
   },
   movementQuality: {
     Icon: Zap,
     value: "85/100",
-    ring: "bg-amber-100 text-amber-600",
-    soft: "bg-amber-50",
-    label: "text-amber-800",
-    border: "border-amber-100",
+    ring: "bg-indigo-100 text-indigo-700",
+    soft: "bg-white/90",
+    label: "text-indigo-900/90",
+    border: "border-indigo-100/80",
   },
   lifestyle: {
     Icon: Moon,
     value: "76/100",
-    ring: "bg-rose-100 text-rose-600",
-    soft: "bg-rose-50",
-    label: "text-rose-800",
-    border: "border-rose-100",
+    ring: "bg-indigo-100 text-indigo-700",
+    soft: "bg-white/90",
+    label: "text-indigo-900/90",
+    border: "border-indigo-100/80",
   },
 };
 
@@ -124,7 +124,7 @@ export function HeroRadarPillarsAround() {
         return (
           <div
             key={id}
-            className={`pointer-events-none absolute z-20 hidden w-[4.5rem] flex-col items-center gap-1 rounded-xl border px-1 py-2 text-center shadow-sm backdrop-blur-sm lg:flex xl:w-[5.25rem] xl:gap-1.5 xl:rounded-2xl xl:px-1.5 xl:py-2.5 ${meta.border} ${meta.soft}`}
+            className={`pointer-events-none absolute z-20 hidden w-[4.5rem] flex-col items-center gap-1 rounded-lg border px-1 py-2 text-center shadow-sm backdrop-blur-sm lg:flex xl:w-[5.25rem] xl:gap-1.5 xl:rounded-xl xl:px-1.5 xl:py-2.5 ${meta.border} ${meta.soft}`}
             style={{
               left: `${leftPct}%`,
               top: `${topPct}%`,

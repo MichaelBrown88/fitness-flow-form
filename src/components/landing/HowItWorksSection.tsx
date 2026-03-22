@@ -14,8 +14,8 @@ export function HowItWorksSection() {
     >
       {/* Background decoration */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute top-[20%] right-[-5%] w-96 h-96 bg-blue-100/40 rounded-full blur-3xl" />
-        <div className="absolute bottom-[10%] left-[-5%] w-96 h-96 bg-indigo-100/40 rounded-full blur-3xl" />
+        <div className="absolute top-[20%] right-[-5%] h-96 w-96 rounded-full bg-indigo-100/25 blur-3xl" />
+        <div className="absolute bottom-[10%] left-[-5%] h-96 w-96 rounded-full bg-violet-100/20 blur-3xl" />
       </div>
 
       <div className="max-w-7xl mx-auto relative z-10">
@@ -42,10 +42,10 @@ export function HowItWorksSection() {
         >
           {/* Step 1: Guided Assessment */}
           <div className="group relative">
-            <div className="absolute inset-0 bg-gradient-to-b from-blue-50 to-white rounded-3xl" />
-            <div className="relative p-8 border border-slate-200 bg-white/50 backdrop-blur-sm rounded-3xl h-full flex flex-col shadow-sm">
-              <div className="flex items-center gap-4 mb-8">
-                <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-200">1</div>
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-indigo-50/50 to-white" />
+            <div className="relative flex h-full flex-col rounded-2xl border border-slate-200/90 bg-white/70 p-8 shadow-sm backdrop-blur-sm">
+              <div className="mb-8 flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-600 text-xl font-bold text-white shadow-md shadow-indigo-900/10">1</div>
                 <h3 className="text-xl font-bold text-slate-900">{LANDING_COPY.howItWorksStep1Title}</h3>
               </div>
               
@@ -53,10 +53,10 @@ export function HowItWorksSection() {
               <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 mb-6">
                 <div className="flex justify-between items-center mb-4">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">Movement Screen</span>
-                  <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-full">Step 4/12</span>
+                  <span className="rounded-full bg-indigo-50 px-2 py-1 text-[10px] font-bold text-indigo-700">Step 4/12</span>
                 </div>
-                <div className="h-1.5 w-full bg-slate-100 rounded-full mb-6 overflow-hidden">
-                  <div className="h-full w-1/3 bg-blue-500 rounded-full" />
+                <div className="mb-6 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                  <div className="h-full w-1/3 rounded-full bg-indigo-500" />
                 </div>
                 <p className="text-sm font-bold text-slate-900 mb-3">Knee Alignment (Squat)</p>
                 <div className="space-y-2">
@@ -64,9 +64,9 @@ export function HowItWorksSection() {
                     <div className="w-4 h-4 rounded-full border-2 border-slate-300" />
                     <span className="text-xs text-slate-600 font-medium">Stable / Neutral</span>
                   </div>
-                  <div className="flex items-center gap-3 p-2.5 rounded-xl border-2 border-blue-600 bg-blue-50">
-                    <div className="w-4 h-4 rounded-full border-[5px] border-blue-600" />
-                    <span className="text-xs text-blue-900 font-bold">Valgus (Caves In)</span>
+                  <div className="flex items-center gap-3 rounded-lg border-2 border-indigo-600 bg-indigo-50/80 p-2.5">
+                    <div className="h-4 w-4 rounded-full border-[5px] border-indigo-600" />
+                    <span className="text-xs font-bold text-indigo-950">Valgus (Caves In)</span>
                   </div>
                 </div>
               </div>
@@ -79,17 +79,17 @@ export function HowItWorksSection() {
 
           {/* Step 2: The Report */}
           <div className="group relative">
-            <div className="absolute inset-0 bg-gradient-to-b from-indigo-50 to-white rounded-3xl" />
-            <div className="relative p-8 border border-slate-200 bg-white/50 backdrop-blur-sm rounded-3xl h-full flex flex-col shadow-sm">
-              <div className="flex items-center gap-4 mb-8">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-indigo-200">2</div>
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-indigo-50/50 to-white" />
+            <div className="relative flex h-full flex-col rounded-2xl border border-slate-200/90 bg-white/70 p-8 shadow-sm backdrop-blur-sm">
+              <div className="mb-8 flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-600 text-xl font-bold text-white shadow-md shadow-indigo-900/10">2</div>
                 <h3 className="text-xl font-bold text-slate-900">{LANDING_COPY.howItWorksStep2Title}</h3>
               </div>
 
               {/* UI Mockup: Gap Analysis */}
               <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 mb-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="p-1.5 bg-rose-100 rounded-lg text-rose-600"><Heart size={14} /></div>
+                  <div className="rounded-lg bg-indigo-100 p-1.5 text-indigo-700"><Heart size={14} /></div>
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em]">Metabolic Fitness</span>
                 </div>
                 
@@ -120,10 +120,10 @@ export function HowItWorksSection() {
 
           {/* Step 3: Stay on track */}
           <div className="group relative">
-            <div className="absolute inset-0 bg-gradient-to-b from-emerald-50 to-white rounded-3xl" />
-            <div className="relative p-8 border border-slate-200 bg-white/50 backdrop-blur-sm rounded-3xl h-full flex flex-col shadow-sm">
-              <div className="flex items-center gap-4 mb-8">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-emerald-200">3</div>
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-indigo-50/35 to-white" />
+            <div className="relative flex h-full flex-col rounded-2xl border border-slate-200/90 bg-white/70 p-8 shadow-sm backdrop-blur-sm">
+              <div className="mb-8 flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-600 text-xl font-bold text-white shadow-md shadow-indigo-900/10">3</div>
                 <h3 className="text-xl font-bold text-slate-900">{LANDING_COPY.howItWorksStep3Title}</h3>
               </div>
 
@@ -131,7 +131,7 @@ export function HowItWorksSection() {
               <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 mb-6">
                 <div className="flex justify-between items-center mb-4">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">Client Dashboard</span>
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <div className="h-2 w-2 animate-pulse rounded-full bg-indigo-500" />
                 </div>
                 
                 <div className="grid grid-cols-2 gap-2">
@@ -139,10 +139,10 @@ export function HowItWorksSection() {
                     <ScanLine size={16} className="text-slate-400" />
                     <span className="text-[10px] font-bold text-slate-600 uppercase">Body Comp Scan</span>
                   </div>
-                  <div className="p-3 rounded-xl border border-emerald-500 bg-emerald-50 flex flex-col items-center gap-2 relative overflow-hidden">
-                    <Activity size={16} className="text-emerald-600" />
-                    <span className="text-[10px] font-bold text-emerald-800 uppercase">Log Fitness</span>
-                    <div className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border border-white" />
+                  <div className="relative flex flex-col items-center gap-2 overflow-hidden rounded-lg border border-indigo-200 bg-indigo-50/80 p-3">
+                    <Activity size={16} className="text-indigo-700" />
+                    <span className="text-[10px] font-bold uppercase text-indigo-900">Log Fitness</span>
+                    <div className="absolute right-0 top-0 h-2 w-2 rounded-full border border-white bg-indigo-600" />
                   </div>
                   <div className="p-3 rounded-xl border border-slate-100 bg-slate-50 flex flex-col items-center gap-2">
                     <Smartphone size={16} className="text-slate-400" />

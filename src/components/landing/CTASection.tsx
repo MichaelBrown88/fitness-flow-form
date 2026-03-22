@@ -20,7 +20,7 @@ export function CTASection() {
     <section className="py-24 sm:py-32 bg-slate-900 relative overflow-hidden">
       {/* Subtle gradient glow */}
       <div className="absolute inset-0 -z-0">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-600/20 rounded-full blur-[120px]" />
+        <div className="absolute left-1/2 top-1/2 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-600/14 blur-[100px]" />
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">

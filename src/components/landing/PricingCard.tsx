@@ -33,7 +33,7 @@ export function PricingCard({
   if (highlighted) {
     return (
       <div className="relative transform md:-translate-y-4">
-        <div className="absolute inset-0 bg-gradient-to-b from-gradient-from to-gradient-to rounded-3xl blur-sm opacity-20"></div>
+        <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gradient-from to-gradient-to opacity-20 blur-sm" />
         <GlassCard className="p-10 relative bg-card border border-brand-medium shadow-2xl">
           <div className="absolute top-0 right-0 bg-gradient-to-l from-gradient-from to-gradient-to text-primary-foreground text-[10px] font-bold uppercase tracking-[0.15em] px-4 py-2 rounded-bl-2xl rounded-tr-2xl">
             Most Popular

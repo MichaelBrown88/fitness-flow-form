@@ -44,9 +44,9 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
         className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
         aria-hidden
       >
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[1000px] bg-blue-100/40 rounded-full blur-[120px] motion-safe:animate-blob mix-blend-multiply" />
-        <div className="absolute top-1/2 left-0 w-[800px] h-[800px] bg-indigo-100/40 rounded-full blur-[120px] motion-safe:animate-blob animation-delay-2000 mix-blend-multiply" />
-        <div className="absolute bottom-0 right-0 w-[800px] h-[800px] bg-rose-100/40 rounded-full blur-[120px] motion-safe:animate-blob animation-delay-4000 mix-blend-multiply" />
+        <div className="absolute top-0 left-1/2 h-[880px] w-[880px] -translate-x-1/2 rounded-full bg-indigo-100/25 blur-[100px] motion-safe:animate-blob" />
+        <div className="absolute top-1/2 left-0 h-[720px] w-[720px] rounded-full bg-violet-100/20 blur-[100px] motion-safe:animate-blob animation-delay-2000" />
+        <div className="absolute bottom-0 right-0 h-[640px] w-[640px] rounded-full bg-indigo-200/15 blur-[100px] motion-safe:animate-blob animation-delay-4000" />
       </div>
 
       <div className="max-w-6xl mx-auto w-full relative z-10">
@@ -92,7 +92,7 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
             {user ? (
               <Link
                 to="/dashboard"
-                className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-slate-900 text-white text-base font-semibold hover:bg-slate-800 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-slate-900/20 group"
+                className="group inline-flex items-center gap-2 rounded-xl bg-slate-900 px-8 py-3.5 text-base font-semibold text-white shadow-md shadow-slate-900/15 transition-all hover:bg-slate-800 hover:shadow-lg active:scale-[0.99]"
               >
                 Go to Dashboard
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
@@ -100,7 +100,7 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
             ) : (
               <>
                 <LandingTrialCtaLink
-                  className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-slate-900 text-white text-base font-semibold hover:bg-slate-800 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-slate-900/20 group"
+                  className="group inline-flex items-center gap-2 rounded-xl bg-slate-900 px-8 py-3.5 text-base font-semibold text-white shadow-md shadow-slate-900/15 transition-all hover:bg-slate-800 hover:shadow-lg active:scale-[0.99]"
                   ariaLabel={landingTrialAriaLabel(
                     "hero",
                     LANDING_GUEST_CHECKOUT_ENABLED,
@@ -111,7 +111,7 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
                 </LandingTrialCtaLink>
                 <Link
                   to="/demo"
-                  className="inline-flex items-center gap-2 text-base font-semibold text-slate-700 rounded-full border border-slate-200/90 bg-white/70 px-5 py-3 shadow-sm backdrop-blur-sm hover:border-slate-300 hover:bg-white hover:text-slate-900 transition-colors"
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white/90 px-5 py-3 text-base font-semibold text-slate-700 shadow-sm backdrop-blur-sm transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-900"
                 >
                   <Play className="w-4 h-4 shrink-0 fill-slate-600" aria-hidden />
                   See Demo
@@ -125,7 +125,7 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
             style={{ animationDelay: "0.3s" }}
           >
             <Check
-              className="h-4 w-4 shrink-0 text-emerald-500"
+              className="h-4 w-4 shrink-0 text-indigo-600"
               aria-hidden
             />
             <span className="text-center text-balance">{LANDING_COPY.heroTrustMicro}</span>
@@ -140,7 +140,7 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
         >
           <div className="relative">
             {/* Main Report Card (decorative preview — parent has aria-hidden) */}
-            <div className="relative rounded-3xl border border-white/60 bg-white/60 p-6 shadow-2xl backdrop-blur-xl sm:p-10">
+            <div className="relative rounded-2xl border border-slate-200/80 bg-white/90 p-6 shadow-lg backdrop-blur-md sm:p-10">
               {/* Header */}
               <div className="mb-6 flex items-start justify-between gap-3 sm:mb-10">
                 <div className="min-w-0">
@@ -152,7 +152,7 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2 rounded-full bg-white px-3 py-1.5 shadow-sm sm:px-4 sm:py-2">
-                  <div className="h-2 w-2 rounded-full bg-emerald-500 sm:h-2.5 sm:w-2.5" />
+                  <div className="h-2 w-2 rounded-full bg-indigo-500 sm:h-2.5 sm:w-2.5" />
                   <span className="text-[11px] font-bold text-slate-700 uppercase tracking-[0.15em] sm:text-xs">
                     Active
                   </span>
@@ -205,12 +205,12 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
 
               {/* Metrics: two wide pills below lg only */}
               <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:hidden">
-                <div className="flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3 sm:gap-4 sm:rounded-2xl sm:p-4">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 sm:h-11 sm:w-11">
+                <div className="flex items-center gap-3 rounded-xl border border-indigo-100/90 bg-indigo-50/60 p-3 sm:gap-4 sm:p-4">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 sm:h-11 sm:w-11">
                     <Scale className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
                   <div>
-                    <p className="text-[11px] font-bold uppercase text-emerald-800 sm:text-xs">
+                    <p className="text-[11px] font-bold uppercase text-indigo-900/90 sm:text-xs">
                       Body Comp
                     </p>
                     <p className="text-sm font-bold text-slate-900 sm:text-base">
@@ -218,12 +218,12 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 rounded-xl border border-amber-100 bg-amber-50 p-3 sm:gap-4 sm:rounded-2xl sm:p-4">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600 sm:h-11 sm:w-11">
+                <div className="flex items-center gap-3 rounded-xl border border-slate-200/90 bg-slate-50/80 p-3 sm:gap-4 sm:p-4">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-100/80 text-indigo-600 sm:h-11 sm:w-11">
                     <Zap className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
                   <div>
-                    <p className="text-[11px] font-bold uppercase text-amber-800 sm:text-xs">
+                    <p className="text-[11px] font-bold uppercase text-slate-700 sm:text-xs">
                       Movement
                     </p>
                     <p className="text-sm font-bold text-slate-900 sm:text-base">
@@ -236,11 +236,11 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
 
             {/* Floating Elements — md+ only */}
             <div
-              className="absolute -left-8 bottom-64 z-10 hidden rounded-2xl border border-emerald-100 bg-white p-3 shadow-xl motion-safe:animate-float sm:-left-10 sm:bottom-72 sm:p-4 lg:-left-12 lg:bottom-80 md:block"
+              className="absolute -left-8 bottom-64 z-10 hidden rounded-xl border border-slate-200/90 bg-white/95 p-3 shadow-md motion-safe:animate-float sm:-left-10 sm:bottom-72 sm:p-4 lg:-left-12 lg:bottom-80 md:block"
               style={{ animationDelay: "0.4s" }}
             >
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 sm:h-12 sm:w-12">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 sm:h-12 sm:w-12">
                   <Sparkles className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden />
                 </div>
                 <div className="text-left">
@@ -254,9 +254,9 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
               </div>
             </div>
 
-            <div className="absolute -right-8 top-[5.25rem] hidden rounded-2xl border border-slate-100 bg-white p-3 shadow-xl motion-safe:animate-float sm:-right-12 sm:top-[6.75rem] sm:p-4 lg:-right-14 md:block">
+            <div className="absolute -right-8 top-[5.25rem] hidden rounded-xl border border-slate-200/90 bg-white/95 p-3 shadow-md motion-safe:animate-float sm:-right-12 sm:top-[6.75rem] sm:p-4 lg:-right-14 md:block">
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600 sm:h-12 sm:w-12">
+                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 sm:h-12 sm:w-12">
                   <ScanLine className="h-5 w-5 sm:h-6 sm:w-6" />
                 </div>
                 <div>
@@ -268,7 +268,7 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
                   </p>
                 </div>
                 <Check
-                  className="ml-1 shrink-0 text-emerald-500 sm:ml-2"
+                  className="ml-1 shrink-0 text-indigo-600 sm:ml-2"
                   size={18}
                   strokeWidth={3}
                 />
@@ -276,11 +276,11 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
             </div>
 
             <div
-              className="absolute -left-8 bottom-28 hidden rounded-2xl border border-slate-100 bg-white p-3 shadow-xl motion-safe:animate-float sm:-left-10 sm:bottom-36 lg:-left-12 lg:bottom-44 sm:p-4 md:block"
+              className="absolute -left-8 bottom-28 hidden rounded-xl border border-slate-200/90 bg-white/95 p-3 shadow-md motion-safe:animate-float sm:-left-10 sm:bottom-36 lg:-left-12 lg:bottom-44 sm:p-4 md:block"
               style={{ animationDelay: "1s" }}
             >
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-100 text-rose-600 sm:h-12 sm:w-12">
+                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-slate-100 text-slate-600 sm:h-12 sm:w-12">
                   <Activity className="h-5 w-5 sm:h-6 sm:w-6" />
                 </div>
                 <div>
@@ -292,18 +292,18 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
                   </p>
                 </div>
                 <AlertCircle
-                  className="ml-1 shrink-0 text-amber-500 sm:ml-2"
+                  className="ml-1 shrink-0 text-score-amber sm:ml-2"
                   size={18}
                 />
               </div>
             </div>
 
             <div
-              className="absolute -right-8 bottom-16 z-10 hidden rounded-2xl border border-indigo-100 bg-white p-3 shadow-xl motion-safe:animate-float sm:-right-12 sm:bottom-20 sm:p-4 lg:-right-14 lg:bottom-24 md:block"
+              className="absolute -right-8 bottom-16 z-10 hidden rounded-xl border border-slate-200/90 bg-white/95 p-3 shadow-md motion-safe:animate-float sm:-right-12 sm:bottom-20 sm:p-4 lg:-right-14 lg:bottom-24 md:block"
               style={{ animationDelay: "1.4s" }}
             >
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600 sm:h-11 sm:w-11">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 sm:h-11 sm:w-11">
                   <FileCheck className="h-5 w-5 sm:h-[22px] sm:w-[22px]" aria-hidden />
                 </div>
                 <div>

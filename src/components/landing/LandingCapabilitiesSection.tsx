@@ -51,7 +51,7 @@ export function LandingCapabilitiesSection() {
         </div>
 
         <div
-          className="mt-14 rounded-3xl border border-slate-200/90 bg-white/70 px-6 py-8 shadow-sm backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/40 sm:mt-20 sm:px-8 sm:py-10"
+          className="mt-14 rounded-2xl border border-slate-200/90 bg-white/80 px-6 py-8 shadow-sm backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/45 sm:mt-20 sm:px-8 sm:py-10"
           aria-label={LANDING_COPY.capabilitiesComplianceAriaLabel}
         >
           <p className="mb-5 text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500">

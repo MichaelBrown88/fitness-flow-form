@@ -34,14 +34,14 @@ export function ROIComparison() {
         >
           {/* The "Old Way" - Chaos */}
           <div className="relative group">
-            <div className="absolute inset-0 bg-red-500/5 rounded-3xl transform rotate-[-2deg] scale-105 transition-transform duration-300 group-hover:rotate-[-3deg]" />
-            <GlassCard className="p-8 border-red-100 bg-red-50/50 relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-4 opacity-10">
-                <Clock size={120} className="text-red-900" />
+            <div className="absolute inset-0 scale-[1.02] rotate-[-1.5deg] rounded-2xl bg-slate-200/25 transition-transform duration-300 group-hover:rotate-[-2deg]" />
+            <GlassCard className="relative overflow-hidden border-slate-200/90 bg-slate-50/70 p-8">
+              <div className="absolute right-0 top-0 p-4 opacity-[0.07]">
+                <Clock size={120} className="text-slate-900" />
               </div>
               
               <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-6 text-red-600 font-black uppercase text-[10px] tracking-[0.15em]">
+                <div className="mb-6 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.15em] text-slate-600">
                   <Moon size={14} /> 9:45 PM - The Admin Grind
                 </div>
                 <h3 className="text-2xl font-bold text-slate-900 mb-2">The "Frankenstein" Stack</h3>
@@ -50,7 +50,7 @@ export function ROIComparison() {
                 <div className="space-y-3">
                   <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between opacity-80 hover:opacity-100 transition-opacity">
                     <div className="flex items-center gap-3">
-                      <div className="p-2 bg-green-100 rounded-lg text-green-700"><FileSpreadsheet size={18} /></div>
+                      <div className="rounded-lg bg-slate-100 p-2 text-slate-600"><FileSpreadsheet size={18} /></div>
                       <div className="text-sm">
                         <p className="font-bold text-slate-900">Google Sheets</p>
                         <p className="text-xs text-slate-500">Manual data entry & formulas</p>
@@ -61,7 +61,7 @@ export function ROIComparison() {
 
                   <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between opacity-80 hover:opacity-100 transition-opacity">
                     <div className="flex items-center gap-3">
-                      <div className="p-2 bg-blue-100 rounded-lg text-blue-700"><FileText size={18} /></div>
+                      <div className="rounded-lg bg-slate-100 p-2 text-slate-600"><FileText size={18} /></div>
                       <div className="text-sm">
                         <p className="font-bold text-slate-900">Word Docs</p>
                         <p className="text-xs text-slate-500">Copy-pasting reports</p>
@@ -72,7 +72,7 @@ export function ROIComparison() {
 
                   <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between opacity-80 hover:opacity-100 transition-opacity">
                     <div className="flex items-center gap-3">
-                      <div className="p-2 bg-purple-100 rounded-lg text-purple-700"><Smartphone size={18} /></div>
+                      <div className="rounded-lg bg-slate-100 p-2 text-slate-600"><Smartphone size={18} /></div>
                       <div className="text-sm">
                         <p className="font-bold text-slate-900">Posture App</p>
                         <p className="text-xs text-slate-500">$29/mo separate sub</p>
@@ -83,7 +83,7 @@ export function ROIComparison() {
 
                   <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between opacity-80 hover:opacity-100 transition-opacity">
                     <div className="flex items-center gap-3">
-                      <div className="p-2 bg-orange-100 rounded-lg text-orange-700"><Calculator size={18} /></div>
+                      <div className="rounded-lg bg-slate-100 p-2 text-slate-600"><Calculator size={18} /></div>
                       <div className="text-sm">
                         <p className="font-bold text-slate-900">1RM Calculator</p>
                         <p className="text-xs text-slate-500">Another browser tab open</p>
@@ -93,8 +93,8 @@ export function ROIComparison() {
                   </div>
                 </div>
 
-                <div className="mt-8 pt-6 border-t border-red-200">
-                  <div className="flex items-center justify-between text-red-900">
+                <div className="mt-8 border-t border-slate-200 pt-6">
+                  <div className="flex items-center justify-between text-slate-800">
                     <span className="font-bold text-sm">Weekly Unpaid Admin</span>
                     <span className="font-black text-xl">10+ Hours</span>
                   </div>
@@ -105,10 +105,10 @@ export function ROIComparison() {
 
           {/* The New Way - Flow */}
           <div className="relative">
-            <div className="absolute inset-0 bg-indigo-600/20 rounded-3xl blur-xl" />
-            <GlassCard className="p-8 border-indigo-200 bg-white relative z-10 shadow-xl">
-              <div className="absolute top-0 right-0 p-4 opacity-10">
-                <Sun size={120} className="text-amber-500" />
+            <div className="absolute inset-0 rounded-2xl bg-indigo-600/12 blur-xl" />
+            <GlassCard className="relative z-10 border-indigo-200/80 bg-white p-8 shadow-md">
+              <div className="absolute right-0 top-0 p-4 opacity-[0.08]">
+                <Sun size={120} className="text-indigo-500" />
               </div>
 
               <div className="relative z-10">
@@ -132,15 +132,15 @@ export function ROIComparison() {
                   
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <Check size={14} className="text-emerald-500" />
+                      <Check size={14} className="text-indigo-600" />
                       <span>Posture analyzed automatically</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <Check size={14} className="text-emerald-500" />
+                      <Check size={14} className="text-indigo-600" />
                       <span>1RM & Zones calculated</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <Check size={14} className="text-emerald-500" />
+                      <Check size={14} className="text-indigo-600" />
                       <span>Report generated & sent to client</span>
                     </div>
                   </div>

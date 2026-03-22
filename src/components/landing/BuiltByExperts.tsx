@@ -38,7 +38,7 @@ export function BuiltByExperts() {
       {/* Background decoration */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
         <div className="absolute top-[30%] left-[-10%] w-96 h-96 bg-indigo-100/30 rounded-full blur-3xl" />
-        <div className="absolute bottom-[20%] right-[-10%] w-96 h-96 bg-rose-100/20 rounded-full blur-3xl" />
+        <div className="absolute bottom-[20%] right-[-10%] h-96 w-96 rounded-full bg-violet-100/18 blur-3xl" />
       </div>
 
       <div className="max-w-7xl mx-auto relative z-10">

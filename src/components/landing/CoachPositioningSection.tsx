@@ -21,7 +21,7 @@ export function CoachPositioningSection() {
         aria-hidden
       >
         <div className="absolute left-[-10%] top-[25%] h-96 w-96 rounded-full bg-indigo-100/35 blur-3xl dark:bg-indigo-950/20" />
-        <div className="absolute bottom-[15%] right-[-8%] h-80 w-80 rounded-full bg-rose-100/25 blur-3xl dark:bg-rose-950/15" />
+        <div className="absolute bottom-[15%] right-[-8%] h-80 w-80 rounded-full bg-violet-100/20 blur-3xl dark:bg-violet-950/15" />
       </div>
 
       <div className="relative z-10 mx-auto max-w-7xl">
@@ -43,7 +43,7 @@ export function CoachPositioningSection() {
         </div>
 
         <div ref={bodyRef} className="mx-auto max-w-2xl">
-          <ul className="space-y-0 overflow-hidden rounded-3xl border border-slate-200/90 bg-white/75 shadow-sm backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/40">
+          <ul className="space-y-0 overflow-hidden rounded-2xl border border-slate-200/90 bg-white/80 shadow-sm backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/45">
             {LANDING_COACH_POSITIONING_BULLETS.map((line, index) => (
               <li
                 key={line}

@@ -222,7 +222,7 @@ export function Navbar() {
           role="dialog"
           aria-modal="true"
           aria-label="Mobile navigation"
-          className="absolute top-24 left-4 right-4 p-6 rounded-3xl bg-white/90 backdrop-blur-2xl border border-white/40 shadow-2xl md:hidden animate-fade-in-up"
+          className="animate-fade-in-up absolute left-4 right-4 top-24 rounded-2xl border border-slate-200/80 bg-white/92 p-6 shadow-lg backdrop-blur-xl md:hidden"
         >
           <div className="flex flex-col gap-6 text-center">
             {NAV_LINKS.map((link) => (

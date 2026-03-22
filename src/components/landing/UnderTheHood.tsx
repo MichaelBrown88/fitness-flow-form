@@ -52,7 +52,7 @@ export function UnderTheHood() {
           {/* Right: Terminal visual (appears last) */}
           <div ref={visualRef} className="relative">
             <div className="absolute inset-0 bg-indigo-600/20 blur-[100px] rounded-full"></div>
-            <div className="relative bg-slate-800/50 backdrop-blur-xl border border-slate-700 rounded-3xl p-8">
+            <div className="relative rounded-2xl border border-slate-700 bg-slate-800/50 p-8 backdrop-blur-lg">
               <div className="flex items-center justify-between mb-8 border-b border-slate-700 pb-4">
                 <span className="text-sm font-mono text-slate-400">PROCESSING_job_ID_8829</span>
                 <span className="flex items-center gap-2 text-xs font-bold text-emerald-400">
