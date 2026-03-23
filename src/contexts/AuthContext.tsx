@@ -225,7 +225,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 type: orgData.type,
                 region: orgData.region,
                 brandColor: orgData.brandColor || '#03dee2',
-                gradientId: orgData.gradientId || 'purple-indigo',
+                gradientId: orgData.gradientId || 'volt',
                 logoUrl: orgData.logoUrl,
                 customBrandingEnabled: orgData.customBrandingEnabled,
                 subscription: orgData.subscription,

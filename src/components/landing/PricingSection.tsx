@@ -13,7 +13,7 @@ export function PricingSection({ children }: PricingSectionProps) {
 
   return (
     <section id="pricing" className="py-20 sm:py-28 px-6 relative overflow-hidden bg-white">
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full max-w-5xl bg-gradient-to-r from-slate-50/40 via-indigo-50/25 to-slate-50/40 blur-3xl -z-10" />
+      <div className="absolute left-1/2 top-1/2 -z-10 h-full w-full max-w-5xl -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-slate-100/50 via-gradient-light/25 to-slate-100/50 blur-3xl" />
 
       <div className="max-w-7xl mx-auto">
         <div ref={headerRef}>

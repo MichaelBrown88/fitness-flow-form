@@ -50,7 +50,7 @@ export function ClientProfileDropdown({
           type="button"
           className="flex items-center gap-1 rounded-full p-0.5 hover:bg-slate-50 transition-colors"
         >
-          <span className="flex h-8 w-8 items-center justify-center rounded-full text-[10px] font-bold text-white bg-gradient-to-tr from-violet-600 to-indigo-600">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-tr from-gradient-from to-gradient-to text-[10px] font-bold text-primary-foreground">
             {initials}
           </span>
           <ChevronDown className="h-3 w-3 text-slate-400 mr-0.5" />

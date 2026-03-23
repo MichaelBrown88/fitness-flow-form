@@ -107,14 +107,14 @@ export default function Landing() {
           {user ? (
             <Link
               to="/dashboard"
-              className="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 text-sm"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-sm font-bold text-primary-foreground shadow-lg"
             >
               Go to Dashboard <ArrowRight size={16} />
             </Link>
           ) : (
             <Link
               to="/try"
-              className="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 text-sm"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-sm font-bold text-primary-foreground shadow-lg"
             >
               {LANDING_COPY.mobileStickyCta} <ArrowRight size={16} />
             </Link>

@@ -19,7 +19,7 @@ export const LandingCapabilityRow = forwardRef<HTMLDivElement, LandingCapability
         <ul className="space-y-3 text-sm font-medium leading-relaxed text-slate-600 dark:text-slate-400 sm:text-base">
           {row.bullets.map((b) => (
             <li key={b} className="flex gap-3">
-              <span className="mt-2 size-1.5 shrink-0 rounded-full bg-indigo-500" aria-hidden />
+              <span className="mt-2 size-1.5 shrink-0 rounded-full bg-primary" aria-hidden />
               <span className="text-balance">{b}</span>
             </li>
           ))}

@@ -88,9 +88,9 @@ const DEFAULT_OPEN: SectionId[] = ['starting-point'];
 function ActionPlanCTA({ clientName, standalone }: { clientName: string; standalone: boolean }) {
   if (standalone) {
     return (
-      <div className="rounded-xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-violet-50 to-white p-8 text-center space-y-4">
-        <div className="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-indigo-100 mx-auto">
-          <Map className="h-6 w-6 text-indigo-500" />
+      <div className="space-y-4 rounded-xl border border-gradient-medium/50 bg-gradient-to-br from-gradient-light via-white to-white p-8 text-center">
+        <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/15">
+          <Map className="h-6 w-6 text-primary" />
         </div>
         <h3 className="text-lg font-bold text-slate-900">Your Personalised Plan</h3>
         <p className="text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">
@@ -103,15 +103,15 @@ function ActionPlanCTA({ clientName, standalone }: { clientName: string; standal
 
   const roadmapUrl = `/coach/clients/${encodeURIComponent(clientName)}/roadmap`;
   return (
-    <div className="rounded-xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-violet-50 to-white p-6 text-center space-y-3">
-      <Map className="h-8 w-8 text-indigo-500 mx-auto" />
+    <div className="space-y-3 rounded-xl border border-gradient-medium/50 bg-gradient-to-br from-gradient-light via-white to-white p-6 text-center">
+      <Map className="mx-auto h-8 w-8 text-primary" />
       <h3 className="text-lg font-bold text-slate-900">Client Roadmap</h3>
       <p className="text-sm text-slate-500 max-w-md mx-auto">
         Create or review this client&apos;s personalised action plan based on the assessment findings.
       </p>
       <a
         href={roadmapUrl}
-        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors"
+        className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:opacity-90"
       >
         <Map className="h-4 w-4" />
         View Roadmap

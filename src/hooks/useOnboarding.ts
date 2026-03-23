@@ -40,7 +40,7 @@ import type {
 
 /** Form steps use 0–5; step 6 is success. */
 const TOTAL_STEPS = 6;
-const DEFAULT_GRADIENT = 'purple-indigo';
+const DEFAULT_GRADIENT = 'volt';
 const DEFAULT_SEATS = 15;
 
 export interface UseOnboardingResult {

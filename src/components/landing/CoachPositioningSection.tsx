@@ -20,8 +20,8 @@ export function CoachPositioningSection() {
         className="pointer-events-none absolute inset-0 overflow-hidden"
         aria-hidden
       >
-        <div className="absolute left-[-10%] top-[25%] h-96 w-96 rounded-full bg-indigo-100/35 blur-3xl dark:bg-indigo-950/20" />
-        <div className="absolute bottom-[15%] right-[-8%] h-80 w-80 rounded-full bg-violet-100/20 blur-3xl dark:bg-violet-950/15" />
+        <div className="absolute left-[-10%] top-[25%] h-96 w-96 rounded-full bg-gradient-light/30 blur-3xl dark:bg-slate-800/25" />
+        <div className="absolute bottom-[15%] right-[-8%] h-80 w-80 rounded-full bg-slate-300/12 blur-3xl dark:bg-slate-800/20" />
       </div>
 
       <div className="relative z-10 mx-auto max-w-7xl">
@@ -52,7 +52,7 @@ export function CoachPositioningSection() {
                 }`}
               >
                 <span
-                  className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-300"
+                  className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary dark:bg-primary/20 dark:text-primary"
                   aria-hidden
                 >
                   <Check className="size-4" strokeWidth={2.5} />

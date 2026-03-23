@@ -46,7 +46,7 @@ export function ReportPortalCapabilityGraphic() {
         </div>
       </div>
 
-      <div className="absolute -bottom-1 right-0 w-[min(100%,11.75rem)] rounded-2xl border-2 border-indigo-200 bg-white shadow-xl dark:border-indigo-800 dark:bg-card motion-safe:animate-fade-in-up sm:-right-2 sm:bottom-0 sm:w-[12.5rem]">
+      <div className="absolute -bottom-1 right-0 w-[min(100%,11.75rem)] rounded-2xl border-2 border-primary/35 bg-white shadow-xl dark:border-primary/40 dark:bg-card motion-safe:animate-fade-in-up sm:-right-2 sm:bottom-0 sm:w-[12.5rem]">
         <div className="border-b border-slate-100 px-3 py-2 dark:border-border">
           <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
             {r.linkCaption}
@@ -63,11 +63,11 @@ export function ReportPortalCapabilityGraphic() {
             <div
               key={label}
               className={`flex min-h-9 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-md px-0.5 py-1 ${
-                active ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'
+                active ? 'text-primary' : 'text-slate-400 dark:text-slate-500'
               }`}
             >
               {active ? (
-                <div className="h-0.5 w-6 rounded-full bg-indigo-500 dark:bg-indigo-400" />
+                <div className="h-0.5 w-6 rounded-full bg-primary" />
               ) : (
                 <div className="h-0.5 w-6" />
               )}

@@ -26,7 +26,7 @@ const Settings = () => {
   const { user, profile, orgSettings, refreshSettings } = useAuth();
   const { toast } = useToast();
   const [localOrgName, setLocalOrgName] = useState(orgSettings?.name || '');
-  const [localGradientId, setLocalGradientId] = useState<GradientId>((orgSettings?.gradientId as GradientId) || 'purple-indigo');
+  const [localGradientId, setLocalGradientId] = useState<GradientId>((orgSettings?.gradientId as GradientId) || 'volt');
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const gradients = getAllGradients();
@@ -53,13 +53,13 @@ const Settings = () => {
   useEffect(() => {
     if (orgSettings) {
       setLocalOrgName(orgSettings.name);
-      setLocalGradientId((orgSettings.gradientId as GradientId) || 'purple-indigo');
+      setLocalGradientId((orgSettings.gradientId as GradientId) || 'volt');
     }
   }, [orgSettings]);
 
   const brandingDirty = useMemo(() => {
     if (!orgSettings) return false;
-    return localOrgName !== orgSettings.name || localGradientId !== (orgSettings.gradientId || 'purple-indigo');
+    return localOrgName !== orgSettings.name || localGradientId !== (orgSettings.gradientId || 'volt');
   }, [orgSettings, localOrgName, localGradientId]);
 
   const blocker = useBlocker(brandingDirty);

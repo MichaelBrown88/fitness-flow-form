@@ -9,27 +9,26 @@ const values = [
     icon: Heart,
     title: 'Born from Frustration',
     description: 'I was drowning in spreadsheets, photos in Google Drive, and hand-typed emails. I built One Assess because no tool did what I actually needed on the gym floor.',
-    color: 'rose',
+    color: 'slate',
   },
   {
     icon: Target,
     title: 'Designed for Retention',
     description:
       'Clients stay when they see progress. Every feature (the score, the gamification, the live reports) exists to make your clients feel invested in their journey.',
-    color: 'indigo',
+    color: 'volt',
   },
   {
     icon: Lightbulb,
     title: 'Practical, Not Academic',
     description: 'No unnecessary complexity. Every data point, every recommendation, every metric was chosen because it changes how a coach writes a program.',
-    color: 'amber',
+    color: 'slate',
   },
 ];
 
 const colorClasses: Record<string, string> = {
-  rose: 'bg-rose-50 text-rose-600 border-rose-100',
-  indigo: 'bg-indigo-50 text-indigo-600 border-indigo-100',
-  amber: 'bg-amber-50 text-amber-600 border-amber-100',
+  slate: 'border-slate-200 bg-slate-50 text-slate-700',
+  volt: 'border-gradient-medium/50 bg-gradient-light/90 text-primary',
 };
 
 export function BuiltByExperts() {
@@ -37,8 +36,8 @@ export function BuiltByExperts() {
     <section className="py-24 sm:py-32 px-6 bg-white relative overflow-hidden">
       {/* Background decoration */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute top-[30%] left-[-10%] w-96 h-96 bg-indigo-100/30 rounded-full blur-3xl" />
-        <div className="absolute bottom-[20%] right-[-10%] h-96 w-96 rounded-full bg-violet-100/18 blur-3xl" />
+        <div className="absolute left-[-10%] top-[30%] h-96 w-96 rounded-full bg-slate-300/12 blur-3xl" />
+        <div className="absolute bottom-[20%] right-[-10%] h-96 w-96 rounded-full bg-gradient-light/25 blur-3xl" />
       </div>
 
       <div className="max-w-7xl mx-auto relative z-10">

@@ -183,11 +183,11 @@ export default function SignUp() {
               />
               <label htmlFor="terms" className="text-sm text-foreground-secondary leading-relaxed">
                 I agree to the{' '}
-                <Link to="/terms" className="text-indigo-600 hover:underline">
+                <Link to="/terms" className="text-primary hover:underline">
                   Terms of Service
                 </Link>{' '}
                 and{' '}
-                <Link to="/privacy" className="text-indigo-600 hover:underline">
+                <Link to="/privacy" className="text-primary hover:underline">
                   Privacy Policy
                 </Link>
               </label>
@@ -220,7 +220,7 @@ export default function SignUp() {
 
           <p className="mt-6 text-center text-sm text-foreground-secondary">
             Already have an account?{' '}
-            <Link to="/login" className="text-indigo-600 font-medium hover:underline">
+            <Link to="/login" className="font-medium text-primary hover:underline">
               Log in
             </Link>
           </p>

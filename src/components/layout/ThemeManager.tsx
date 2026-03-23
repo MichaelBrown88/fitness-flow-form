@@ -2,6 +2,16 @@ import React, { useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { getGradient, type GradientId } from '@/lib/design/gradients';
 
+/** WCAG-related luminance for sRGB hex (e.g. `#dfff00`). */
+function relativeLuminanceFromHex(hex: string): number {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  const lin = (c: number) =>
+    c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+}
+
 /**
  * ThemeManager
  * Applies the organization's gradient selection to CSS variables
@@ -15,6 +25,7 @@ import { getGradient, type GradientId } from '@/lib/design/gradients';
  * - --gradient-from-hex, --gradient-to-hex (for SVG/CSS)
  * - --gradient-light, --gradient-medium, --gradient-dark (tints)
  * - --primary, --ring (uses gradient-from)
+ * - --primary-foreground (dark on volt, light on deep primaries)
  */
 export const ThemeManager: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { orgSettings } = useAuth();
@@ -23,7 +34,7 @@ export const ThemeManager: React.FC<{ children: React.ReactNode }> = ({ children
     const root = document.documentElement;
     // Only apply org gradient when custom branding is enabled; otherwise use One Assess default.
     const useOrgGradient = orgSettings?.customBrandingEnabled === true;
-    const gradientId = (useOrgGradient ? (orgSettings?.gradientId || 'purple-indigo') : 'purple-indigo') as GradientId;
+    const gradientId = (useOrgGradient ? (orgSettings?.gradientId || 'volt') : 'volt') as GradientId;
     const gradient = getGradient(gradientId);
     
     // Convert hex colors to HSL for CSS variables
@@ -76,6 +87,11 @@ export const ThemeManager: React.FC<{ children: React.ReactNode }> = ({ children
     
     // Store original hex for any direct use
     root.style.setProperty('--brand-primary', gradient.fromHex);
+
+    const lum = relativeLuminanceFromHex(gradient.fromHex);
+    const primaryFg = lum > 0.45 ? '220 20% 8%' : '0 0% 100%';
+    root.style.setProperty('--primary-foreground', primaryFg);
+    root.style.setProperty('--sidebar-primary-foreground', primaryFg);
     
   }, [orgSettings?.gradientId, orgSettings?.customBrandingEnabled]);
 

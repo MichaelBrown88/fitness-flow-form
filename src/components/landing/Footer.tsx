@@ -29,7 +29,7 @@ export function Footer() {
           {/* Brand */}
           <div className="md:col-span-1">
             <Link to="/" className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-tr from-gradient-from to-gradient-to text-sm font-bold text-primary-foreground shadow-md">
                 OA
               </div>
               <span className="text-lg font-bold tracking-tight text-slate-900">One Assess</span>
@@ -48,7 +48,7 @@ export function Footer() {
                 <li key={link.label}>
                   <Link
                     to={link.to}
-                    className="text-slate-500 hover:text-indigo-600 transition-colors text-sm font-medium"
+                    className="text-sm font-medium text-slate-500 transition-colors hover:text-primary"
                   >
                     {link.label}
                   </Link>
@@ -65,7 +65,7 @@ export function Footer() {
                 <li key={link.label}>
                   <Link 
                     to={link.href}
-                    className="text-slate-500 hover:text-indigo-600 transition-colors text-sm font-medium"
+                    className="text-sm font-medium text-slate-500 transition-colors hover:text-primary"
                   >
                     {link.label}
                   </Link>
@@ -82,7 +82,7 @@ export function Footer() {
                 <li key={link.label}>
                   <Link 
                     to={link.href}
-                    className="text-slate-500 hover:text-indigo-600 transition-colors text-sm font-medium"
+                    className="text-sm font-medium text-slate-500 transition-colors hover:text-primary"
                   >
                     {link.label}
                   </Link>
@@ -102,7 +102,7 @@ export function Footer() {
                 
                 {/* GDPR Badge */}
                 <div className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-lg border border-slate-200">
-                  <div className="w-8 h-8 rounded bg-indigo-600 flex items-center justify-center text-white text-xs font-bold">GDPR</div>
+                  <div className="flex h-8 w-8 items-center justify-center rounded bg-primary text-xs font-bold text-primary-foreground">GDPR</div>
                   <span className="text-xs font-semibold text-slate-700">Compliant</span>
                 </div>
               </div>

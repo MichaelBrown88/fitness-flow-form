@@ -190,8 +190,8 @@ export function RoadmapBuilder({ clientName, blocks, allPossibleBlocks = [], cli
     return (
       <div className="space-y-6">
         <div className="text-center py-4">
-          <div className="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500 mb-3">
-            <Sparkles className="h-6 w-6 text-white" />
+          <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-gradient-from to-gradient-to text-primary-foreground">
+            <Sparkles className="h-6 w-6 text-primary-foreground" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900">{clientName}&apos;s Suggested Roadmap</h1>
           <p className="text-sm text-slate-500 mt-1 max-w-md mx-auto">{summaryText}</p>

@@ -2,13 +2,13 @@
  * Coach-visible marketing copy for the public landing. Single source for hero/CTA consistency.
  */
 
-/** H2 keyword accent on light sections (matches hero “Retain Longer” gradient). */
+/** H2 keyword accent on light sections (uses product gradient tokens). */
 export const LANDING_H2_ACCENT_LIGHT =
-  'text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-indigo-600';
+  'text-transparent bg-clip-text bg-gradient-to-r from-gradient-from to-gradient-to';
 
 /** H2 keyword accent on dark sections (e.g. Under the hood). */
 export const LANDING_H2_ACCENT_ON_DARK =
-  'text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-violet-300';
+  'text-transparent bg-clip-text bg-gradient-to-r from-gradient-from to-gradient-to';
 
 export const LANDING_COPY = {
   heroTrustMicro: '5k+ assessments · Solo free · Gym 14-day trial',

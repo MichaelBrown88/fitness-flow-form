@@ -105,23 +105,23 @@ export function ROIComparison() {
 
           {/* The New Way - Flow */}
           <div className="relative">
-            <div className="absolute inset-0 rounded-2xl bg-indigo-600/12 blur-xl" />
-            <GlassCard className="relative z-10 border-indigo-200/80 bg-white p-8 shadow-md">
+            <div className="absolute inset-0 rounded-2xl bg-primary/10 blur-xl" />
+            <GlassCard className="relative z-10 border-gradient-medium/50 bg-white p-8 shadow-md">
               <div className="absolute right-0 top-0 p-4 opacity-[0.08]">
-                <Sun size={120} className="text-indigo-500" />
+                <Sun size={120} className="text-primary" />
               </div>
 
               <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-6 text-indigo-600 font-black uppercase text-[10px] tracking-[0.15em]">
+                <div className="mb-6 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.15em] text-primary">
                   <Sun size={14} /> 5:00 PM - Done for the day
                 </div>
                 <h3 className="text-2xl font-bold text-slate-900 mb-2">The All-in-One Flow</h3>
                 <p className="text-slate-500 text-sm mb-8">Assessment finished? Your work is done.</p>
 
                 <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 mb-8 relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500" />
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white">
+                  <div className="absolute left-0 top-0 h-full w-1 bg-primary" />
+                  <div className="mb-4 flex items-center gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
                       <Check size={20} strokeWidth={3} />
                     </div>
                     <div>
@@ -132,26 +132,26 @@ export function ROIComparison() {
                   
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <Check size={14} className="text-indigo-600" />
+                      <Check size={14} className="text-primary" />
                       <span>Posture analyzed automatically</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <Check size={14} className="text-indigo-600" />
+                      <Check size={14} className="text-primary" />
                       <span>1RM & Zones calculated</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <Check size={14} className="text-indigo-600" />
+                      <Check size={14} className="text-primary" />
                       <span>Report generated & sent to client</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="mt-8 pt-6 border-t border-slate-100">
-                  <div className="flex items-center justify-between text-indigo-900">
-                    <span className="font-bold text-sm">Weekly Unpaid Admin</span>
-                    <span className="font-black text-xl">0 Hours</span>
+                  <div className="flex items-center justify-between text-slate-900">
+                    <span className="text-sm font-bold">Weekly Unpaid Admin</span>
+                    <span className="text-xl font-black">0 Hours</span>
                   </div>
-                  <p className="text-xs text-indigo-500 mt-2 font-medium">"Spend less time planning, more time coaching."</p>
+                  <p className="mt-2 text-xs font-medium text-primary">"Spend less time planning, more time coaching."</p>
                 </div>
                 
                 <LandingTrialCtaLink

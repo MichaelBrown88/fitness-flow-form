@@ -131,7 +131,7 @@ export function PackageSelectionStep({
     onNext({
       clientSeats: clientCount,
       packageTrack: track,
-      gradientId: data?.gradientId ?? 'purple-indigo',
+      gradientId: data?.gradientId ?? 'volt',
     });
   };
 

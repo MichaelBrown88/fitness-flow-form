@@ -1,6 +1,10 @@
 import { Link } from "react-router-dom";
 import { LandingTrialCtaLink } from "@/components/landing/LandingTrialCtaLink";
-import { LANDING_COPY, landingTrialAriaLabel } from "@/constants/landingCopy";
+import {
+  LANDING_COPY,
+  LANDING_H2_ACCENT_LIGHT,
+  landingTrialAriaLabel,
+} from "@/constants/landingCopy";
 import { LANDING_GUEST_CHECKOUT_ENABLED } from "@/constants/platform";
 import {
   ArrowRight,
@@ -44,9 +48,9 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
         className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
         aria-hidden
       >
-        <div className="absolute top-0 left-1/2 h-[880px] w-[880px] -translate-x-1/2 rounded-full bg-indigo-100/25 blur-[100px] motion-safe:animate-blob" />
-        <div className="absolute top-1/2 left-0 h-[720px] w-[720px] rounded-full bg-violet-100/20 blur-[100px] motion-safe:animate-blob animation-delay-2000" />
-        <div className="absolute bottom-0 right-0 h-[640px] w-[640px] rounded-full bg-indigo-200/15 blur-[100px] motion-safe:animate-blob animation-delay-4000" />
+        <div className="absolute left-1/2 top-0 h-[880px] w-[880px] -translate-x-1/2 rounded-full bg-slate-300/12 blur-[100px] motion-safe:animate-blob" />
+        <div className="absolute left-0 top-1/2 h-[720px] w-[720px] rounded-full bg-gradient-light/30 blur-[100px] motion-safe:animate-blob animation-delay-2000" />
+        <div className="absolute bottom-0 right-0 h-[640px] w-[640px] rounded-full bg-slate-400/10 blur-[100px] motion-safe:animate-blob animation-delay-4000" />
       </div>
 
       <div className="max-w-6xl mx-auto w-full relative z-10">
@@ -61,7 +65,7 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
               <>
                 {LANDING_COPY.heroPricingTitleLine1}
                 <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-indigo-600">
+                <span className={LANDING_H2_ACCENT_LIGHT}>
                   {LANDING_COPY.heroPricingTitleAccent}
                 </span>
               </>
@@ -69,9 +73,7 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
               <>
                 Assess Smarter.
                 <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-indigo-600">
-                  Retain Longer.
-                </span>
+                <span className={LANDING_H2_ACCENT_LIGHT}>Retain Longer.</span>
               </>
             )}
           </h1>
@@ -92,7 +94,7 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
             {user ? (
               <Link
                 to="/dashboard"
-                className="group inline-flex items-center gap-2 rounded-xl bg-slate-900 px-8 py-3.5 text-base font-semibold text-white shadow-md shadow-slate-900/15 transition-all hover:bg-slate-800 hover:shadow-lg active:scale-[0.99]"
+                className="group inline-flex items-center gap-2 rounded-xl bg-primary px-8 py-3.5 text-base font-semibold text-primary-foreground shadow-md transition-all hover:opacity-90 active:scale-[0.99]"
               >
                 Go to Dashboard
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
@@ -100,7 +102,7 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
             ) : (
               <>
                 <LandingTrialCtaLink
-                  className="group inline-flex items-center gap-2 rounded-xl bg-slate-900 px-8 py-3.5 text-base font-semibold text-white shadow-md shadow-slate-900/15 transition-all hover:bg-slate-800 hover:shadow-lg active:scale-[0.99]"
+                  className="group inline-flex items-center gap-2 rounded-xl bg-primary px-8 py-3.5 text-base font-semibold text-primary-foreground shadow-md transition-all hover:opacity-90 active:scale-[0.99]"
                   ariaLabel={landingTrialAriaLabel(
                     "hero",
                     LANDING_GUEST_CHECKOUT_ENABLED,
@@ -125,7 +127,7 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
             style={{ animationDelay: "0.3s" }}
           >
             <Check
-              className="h-4 w-4 shrink-0 text-indigo-600"
+              className="h-4 w-4 shrink-0 text-primary"
               aria-hidden
             />
             <span className="text-center text-balance">{LANDING_COPY.heroTrustMicro}</span>
@@ -152,7 +154,7 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2 rounded-full bg-white px-3 py-1.5 shadow-sm sm:px-4 sm:py-2">
-                  <div className="h-2 w-2 rounded-full bg-indigo-500 sm:h-2.5 sm:w-2.5" />
+                  <div className="h-2 w-2 rounded-full bg-primary sm:h-2.5 sm:w-2.5" />
                   <span className="text-[11px] font-bold text-slate-700 uppercase tracking-[0.15em] sm:text-xs">
                     Active
                   </span>
@@ -205,12 +207,12 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
 
               {/* Metrics: two wide pills below lg only */}
               <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:hidden">
-                <div className="flex items-center gap-3 rounded-xl border border-indigo-100/90 bg-indigo-50/60 p-3 sm:gap-4 sm:p-4">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 sm:h-11 sm:w-11">
+                <div className="flex items-center gap-3 rounded-xl border border-gradient-medium/40 bg-gradient-light/50 p-3 sm:gap-4 sm:p-4">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary sm:h-11 sm:w-11">
                     <Scale className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
                   <div>
-                    <p className="text-[11px] font-bold uppercase text-indigo-900/90 sm:text-xs">
+                    <p className="text-[11px] font-bold uppercase text-slate-800 sm:text-xs">
                       Body Comp
                     </p>
                     <p className="text-sm font-bold text-slate-900 sm:text-base">
@@ -219,7 +221,7 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
                   </div>
                 </div>
                 <div className="flex items-center gap-3 rounded-xl border border-slate-200/90 bg-slate-50/80 p-3 sm:gap-4 sm:p-4">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-100/80 text-indigo-600 sm:h-11 sm:w-11">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary sm:h-11 sm:w-11">
                     <Zap className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
                   <div>
@@ -240,7 +242,7 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
               style={{ animationDelay: "0.4s" }}
             >
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 sm:h-12 sm:w-12">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/12 text-primary sm:h-12 sm:w-12">
                   <Sparkles className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden />
                 </div>
                 <div className="text-left">
@@ -256,7 +258,7 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
 
             <div className="absolute -right-8 top-[5.25rem] hidden rounded-xl border border-slate-200/90 bg-white/95 p-3 shadow-md motion-safe:animate-float sm:-right-12 sm:top-[6.75rem] sm:p-4 lg:-right-14 md:block">
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 sm:h-12 sm:w-12">
+                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary/12 text-primary sm:h-12 sm:w-12">
                   <ScanLine className="h-5 w-5 sm:h-6 sm:w-6" />
                 </div>
                 <div>
@@ -268,7 +270,7 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
                   </p>
                 </div>
                 <Check
-                  className="ml-1 shrink-0 text-indigo-600 sm:ml-2"
+                  className="ml-1 shrink-0 text-primary sm:ml-2"
                   size={18}
                   strokeWidth={3}
                 />
@@ -303,7 +305,7 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
               style={{ animationDelay: "1.4s" }}
             >
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 sm:h-11 sm:w-11">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/12 text-primary sm:h-11 sm:w-11">
                   <FileCheck className="h-5 w-5 sm:h-[22px] sm:w-[22px]" aria-hidden />
                 </div>
                 <div>

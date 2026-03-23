@@ -23,8 +23,8 @@ export function LandingCapabilitiesSection() {
         className="pointer-events-none absolute inset-0 overflow-hidden"
         aria-hidden
       >
-        <div className="absolute right-[-6%] top-[18%] h-96 w-96 rounded-full bg-violet-100/35 blur-3xl dark:bg-violet-950/20" />
-        <div className="absolute bottom-[12%] left-[-8%] h-96 w-96 rounded-full bg-indigo-100/40 blur-3xl dark:bg-indigo-950/25" />
+        <div className="absolute right-[-6%] top-[18%] h-96 w-96 rounded-full bg-slate-300/14 blur-3xl dark:bg-slate-800/25" />
+        <div className="absolute bottom-[12%] left-[-8%] h-96 w-96 rounded-full bg-gradient-light/30 blur-3xl dark:bg-slate-800/20" />
       </div>
 
       <div className="relative z-10 mx-auto max-w-7xl">
@@ -59,7 +59,7 @@ export function LandingCapabilitiesSection() {
           </p>
           <div className="flex flex-wrap gap-3">
             <div className="flex min-h-11 min-w-[44px] items-center gap-3 rounded-2xl border border-slate-200/90 bg-white/90 px-3.5 py-2 shadow-sm dark:border-slate-600 dark:bg-slate-950/50">
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600 text-[10px] font-bold text-white">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-gradient-from to-gradient-to text-[10px] font-bold text-primary-foreground">
                 {LANDING_COPY.capabilitiesHipaaBadgeAbbrev}
               </div>
               <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">

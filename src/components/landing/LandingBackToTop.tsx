@@ -26,7 +26,7 @@ export function LandingBackToTop() {
     <button
       type="button"
       onClick={scrollToTop}
-      className="fixed z-[45] bottom-24 right-4 md:bottom-8 md:right-6 flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white/90 text-slate-700 shadow-lg backdrop-blur-md transition hover:bg-white hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+      className="fixed z-[45] bottom-24 right-4 md:bottom-8 md:right-6 flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white/90 text-slate-700 shadow-lg backdrop-blur-md transition hover:bg-white hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       aria-label="Back to top"
     >
       <ArrowUp className="h-5 w-5" aria-hidden />

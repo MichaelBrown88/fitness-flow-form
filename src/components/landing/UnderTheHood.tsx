@@ -38,7 +38,7 @@ export function UnderTheHood() {
               { title: "Trend Analysis", desc: "Detect micro-improvements that standard scales miss." }
             ].map((item, i) => (
               <div key={i} className="flex gap-4">
-                <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0 text-indigo-400 font-bold">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-700 bg-slate-800 font-bold text-primary">
                   {i + 1}
                 </div>
                 <div>
@@ -51,7 +51,7 @@ export function UnderTheHood() {
           
           {/* Right: Terminal visual (appears last) */}
           <div ref={visualRef} className="relative">
-            <div className="absolute inset-0 bg-indigo-600/20 blur-[100px] rounded-full"></div>
+            <div className="absolute inset-0 rounded-full bg-primary/15 blur-[100px]" />
             <div className="relative rounded-2xl border border-slate-700 bg-slate-800/50 p-8 backdrop-blur-lg">
               <div className="flex items-center justify-between mb-8 border-b border-slate-700 pb-4">
                 <span className="text-sm font-mono text-slate-400">PROCESSING_job_ID_8829</span>
@@ -63,29 +63,29 @@ export function UnderTheHood() {
               
               <div className="space-y-4 font-mono text-sm">
                 <div className="flex items-center gap-3 text-slate-300">
-                  <span className="text-indigo-400">➜</span>
+                  <span className="text-primary">➜</span>
                   <span>Ingesting image data...</span>
                   <span className="ml-auto text-slate-500">Done</span>
                 </div>
                 <div className="flex items-center gap-3 text-slate-300">
-                  <span className="text-indigo-400">➜</span>
+                  <span className="text-primary">➜</span>
                   <span>Extracting landmarks...</span>
                   <span className="ml-auto text-slate-500">32pts</span>
                 </div>
                 <div className="flex items-center gap-3 text-slate-300">
-                  <span className="text-indigo-400">➜</span>
+                  <span className="text-primary">➜</span>
                   <span>Calculating craniovertebral angle...</span>
                   <span className="ml-auto text-amber-400">42° (Low)</span>
                 </div>
                 <div className="flex items-center gap-3 text-slate-300">
-                  <span className="text-indigo-400">➜</span>
+                  <span className="text-primary">➜</span>
                   <span>Generating recommendations...</span>
                   <span className="ml-auto text-slate-500">3 items</span>
                 </div>
               </div>
 
-              <div className="mt-8 p-4 bg-indigo-900/30 border border-indigo-500/30 rounded-xl">
-                 <p className="text-[10px] text-indigo-300 uppercase font-black tracking-[0.15em] mb-2">Insight Generated</p>
+              <div className="mt-8 rounded-xl border border-primary/35 bg-slate-800/80 p-4">
+                 <p className="mb-2 text-[10px] font-black uppercase tracking-[0.15em] text-primary">Insight Generated</p>
                  <p className="text-balance text-white font-medium">"Forward head posture detected. Recommend chin tucks and thoracic extension exercises."</p>
               </div>
             </div>

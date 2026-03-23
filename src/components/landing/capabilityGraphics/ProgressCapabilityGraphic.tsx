@@ -16,14 +16,14 @@ export function ProgressCapabilityGraphic() {
           <span className="text-muted-foreground">{p.milestonesSummary}</span>
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-muted">
-          <div className="h-full w-[38%] rounded-full bg-indigo-500 dark:bg-indigo-400" />
+          <div className="h-full w-[38%] rounded-full bg-primary" />
         </div>
       </div>
 
       <div className="flex items-center gap-2">
         <div className="h-px flex-1 bg-border" />
         <div className="flex items-center gap-1.5 rounded-full border border-border bg-muted px-3 py-1">
-          <div className="h-2 w-2 shrink-0 rounded-full bg-indigo-500 dark:bg-indigo-400" />
+          <div className="h-2 w-2 shrink-0 rounded-full bg-primary" />
           <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             {p.phasePill}
           </span>

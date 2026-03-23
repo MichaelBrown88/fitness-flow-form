@@ -60,7 +60,7 @@ export default function CategoryRadarChart({ details, categoryName }: CategoryRa
   // Map each category tab to a distinct base colour
 const CATEGORY_COLORS: Record<string, string> = {
   'Body Composition': '#10b981',        // emerald-500
-  'Functional Strength': '#6366f1',    // indigo-500
+  'Functional Strength': 'var(--gradient-from-hex)',
   'Metabolic Fitness': '#0ea5e9',          // sky-500
   'Movement Quality': '#f59e0b',        // amber-500
   'Lifestyle Factors': '#a855f7',               // purple-500

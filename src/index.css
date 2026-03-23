@@ -9,11 +9,11 @@ All colors MUST be HSL.
 @layer base {
   :root {
     /* Apple Design Language - Neutral Colors (Fixed) */
-    --background: 0 0% 100%;           /* Pure white */
-    --background-secondary: 0 0% 96%;  /* #f5f5f7 */
-    --background-tertiary: 0 0% 90%;  /* #e5e5e7 */
+    --background: 220 14% 99%;         /* Cool off-white */
+    --background-secondary: 220 12% 96%;
+    --background-tertiary: 220 10% 92%;
     
-    --foreground: 0 0% 11%;            /* #1d1d1f - Primary text */
+    --foreground: 220 18% 11%;       /* Charcoal primary text */
     --foreground-secondary: 0 0% 45%;  /* #6e6e73 - Secondary text */
     --foreground-tertiary: 0 0% 53%;   /* #86868b - Tertiary text */
     --foreground-quaternary: 0 0% 65%; /* #a1a1a6 - Disabled text */
@@ -26,21 +26,21 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 11%;
 
-    /* Gradient System - Default: Purple Indigo */
-    --gradient-from: 258 90% 66%;      /* indigo-500 #6366f1 */
-    --gradient-to: 271 81% 56%;        /* purple-500 #a855f7 */
-    --gradient-from-hex: #6366f1;
-    --gradient-to-hex: #a855f7;
-    --gradient-light: 258 90% 97%;     /* indigo-50 */
-    --gradient-medium: 258 90% 94%;    /* indigo-100 */
-    --gradient-dark: 258 90% 51%;      /* indigo-600 */
+    /* Gradient System - Default: Volt (chartreuse accent, charcoal-friendly) */
+    --gradient-from: 68 100% 50%;      /* ~#dfff00 */
+    --gradient-to: 72 100% 40%;        /* ~#9fcc00 */
+    --gradient-from-hex: #dfff00;
+    --gradient-to-hex: #9fcc00;
+    --gradient-light: 68 100% 96%;
+    --gradient-medium: 68 90% 88%;
+    --gradient-dark: 72 100% 32%;
     
-    /* Primary uses gradient colors */
+    /* Primary uses gradient-from; foreground switches via ThemeManager (dark on volt) */
     --primary: var(--gradient-from);
-    --primary-foreground: 0 0% 100%;
+    --primary-foreground: 220 20% 8%;
     
     --brand-primary: var(--gradient-from-hex);
-    --brand-primary-transparent: rgba(99, 102, 241, 0.1);
+    --brand-primary-transparent: hsl(68 100% 50% / 0.12);
 
     --secondary: 0 0% 96%;
     --secondary-foreground: 0 0% 11%;
@@ -140,7 +140,7 @@ All colors MUST be HSL.
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    --shadow-colored: 0 10px 15px -3px rgba(99, 102, 241, 0.1), 0 4px 6px -2px rgba(99, 102, 241, 0.05);
+    --shadow-colored: 0 10px 24px -4px hsl(220 18% 11% / 0.08);
   }
 }
 
@@ -238,9 +238,9 @@ All colors MUST be HSL.
   
   .glass-button-active {
     background: linear-gradient(to right, hsl(var(--gradient-from)), hsl(var(--gradient-to)));
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 0 2px 10px rgba(99, 102, 241, 0.25);
+    color: hsl(var(--primary-foreground));
+    border: 1px solid hsl(220 18% 11% / 0.12);
+    box-shadow: 0 2px 12px hsl(68 100% 50% / 0.22);
   }
   
   .glass-label {

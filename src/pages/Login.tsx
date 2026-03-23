@@ -212,7 +212,7 @@ const Login = () => {
                 <button
                   type="button"
                   onClick={handleForgotPassword}
-                  className="text-xs text-indigo-600 hover:text-indigo-800 transition-colors"
+                  className="text-xs text-primary transition-colors hover:opacity-80"
                   disabled={submitting}
                 >
                   Forgot password?
@@ -239,7 +239,7 @@ const Login = () => {
 
             <p className="mt-6 text-center text-sm text-slate-600">
               Don't have an account?{' '}
-              <Link to={ROUTES.ONBOARDING} className="text-indigo-600 font-medium hover:underline">
+              <Link to={ROUTES.ONBOARDING} className="font-medium text-primary hover:underline">
                 Start your free trial
               </Link>
             </p>
