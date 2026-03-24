@@ -5,7 +5,10 @@
     "updatedBy": "Chief of Staff — APEX OS",
     "launchReadiness": 58,
     "currentFocus": "UK LTD incorporation (AML pending) + Stripe live env and dashboard completion",
-    "northStar": "Eliminate assessment admin burden for coaches. First paying customer is the only metric."
+    "northStar": "Eliminate assessment admin burden for coaches. First paying customer is the only metric.",
+    "northStarMetric": "Days to first paying customer",
+    "postLaunchMetric": "Monthly Recurring Revenue (MRR)",
+    "mrrTarget": "£3,900 (100 coaches x £39/mo)"
   },
 
   "epics": [
@@ -253,5 +256,34 @@
       "completedDate": "2026-03-20",
       "notes": "NORTH_STAR.md and upgraded .cursorrules committed to repo root"
     }
-  ]
+  ],
+
+  "decisions": [
+    {
+      "date": "2026-03-24",
+      "decision": "APEX OS restructured as project-agnostic system. Project context now loaded from this file and project CLAUDE.md.",
+      "madeBy": "Michael"
+    },
+    {
+      "date": "2026-03-24",
+      "decision": "Pricing finalised: Free / £39 Solo / £149 Gym. Custom branding £79 one-time add-on.",
+      "madeBy": "Michael"
+    },
+    {
+      "date": "2026-03-20",
+      "decision": "SendGrid replaced with Resend. Domain verified. Transactional email live.",
+      "madeBy": "Michael"
+    },
+    {
+      "date": "2026-03-20",
+      "decision": "Firebase admin migrated to michael@one-assess.com. 48 Cloud Functions deployed.",
+      "madeBy": "Michael"
+    }
+  ],
+
+  "guardian": {
+    "instructions": "When a commit lands, scan the commit message for task IDs matching the pattern below. If found and the message contains a completion keyword, set that task status to done and record the commit SHA in a commitRef field on the task. Then recalculate meta.launchReadiness as (done tasks / total tasks) * 100 rounded to nearest 5. Update meta.lastUpdated to today and meta.updatedBy to guardian.",
+    "taskIdPattern": "stripe-001-[a-z]|pricing-002-[a-z]|social-proof-003-[a-z]|trial-funnel-004-[a-z]|beta-outreach-005-[a-z]|email-006-[a-z]|code-007-[a-z]|seo-008-[a-z]|gdpr-009-[a-z]|biz-010-[a-z]",
+    "completionKeywords": ["fix", "complete", "done", "finish", "resolve", "implement", "add", "build", "close"]
+  }
 }
