@@ -37,7 +37,7 @@ export default function OrgRetention() {
           ) : (
             <>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-                <div className="bg-slate-50 rounded-lg p-3 text-center">
+                <div className="bg-muted/50 rounded-lg p-3 text-center">
                   <p className="text-lg sm:text-xl font-bold text-foreground">{retentionSummary.totalClients}</p>
                   <p className="text-[10px] sm:text-xs text-foreground-secondary">Total Clients</p>
                 </div>

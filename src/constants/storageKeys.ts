@@ -4,6 +4,9 @@
  */
 
 export const STORAGE_KEYS = {
+  /** Light/dark appearance; keep in sync with inline script in index.html (FOUC). */
+  COLOR_MODE: 'oneassess-color-mode',
+
   // Assessment Flow
   PARTIAL_ASSESSMENT: 'partialAssessment',
   EDIT_ASSESSMENT: 'editAssessmentData',

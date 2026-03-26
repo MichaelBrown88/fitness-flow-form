@@ -82,13 +82,13 @@ export function InstallPrompt() {
   if (visible && deferredPrompt) {
     return (
       <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-[360px] z-[99] animate-in slide-in-from-bottom-4 fade-in duration-300">
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl p-4 flex items-start gap-3 border border-slate-200 dark:border-slate-700/50">
+        <div className="bg-background dark:bg-foreground rounded-xl shadow-xl p-4 flex items-start gap-3 border border-border dark:border-border/50">
           <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-violet-100 dark:bg-violet-500/20 flex items-center justify-center">
             <Download className="w-4 h-4 text-violet-600 dark:text-violet-400" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-slate-900 dark:text-white">Install One Assess</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="text-sm font-semibold text-foreground dark:text-white">Install One Assess</p>
+            <p className="text-xs text-muted-foreground dark:text-muted-foreground mt-0.5">
               Add to your home screen for the best experience.
             </p>
             <div className="flex gap-2 mt-3">
@@ -103,7 +103,7 @@ export function InstallPrompt() {
                 size="sm"
                 variant="ghost"
                 onClick={handleDismiss}
-                className="h-9 sm:h-8 px-3 text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white rounded-lg"
+                className="h-9 sm:h-8 px-3 text-xs text-muted-foreground hover:text-foreground-secondary dark:text-muted-foreground dark:hover:text-white rounded-lg"
               >
                 Not now
               </Button>
@@ -111,7 +111,7 @@ export function InstallPrompt() {
           </div>
           <button
             onClick={handleDismiss}
-            className="flex-shrink-0 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors"
+            className="flex-shrink-0 text-muted-foreground hover:text-foreground-secondary dark:text-muted-foreground dark:hover:text-muted-foreground/60 transition-colors"
             aria-label="Dismiss"
           >
             <X className="w-4 h-4" />
@@ -125,27 +125,27 @@ export function InstallPrompt() {
   if (showIOSPrompt) {
     return (
       <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-[360px] z-[99] animate-in slide-in-from-bottom-4 fade-in duration-300">
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl p-4 flex items-start gap-3 border border-slate-200 dark:border-slate-700/50">
+        <div className="bg-background dark:bg-foreground rounded-xl shadow-xl p-4 flex items-start gap-3 border border-border dark:border-border/50">
           <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center">
             <Share className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-slate-900 dark:text-white">Install One Assess</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+            <p className="text-sm font-semibold text-foreground dark:text-white">Install One Assess</p>
+            <p className="text-xs text-muted-foreground dark:text-muted-foreground mt-1 leading-relaxed">
               Tap <Share className="w-3 h-3 inline -mt-0.5" /> then <strong>&quot;Add to Home Screen&quot;</strong> for the full app experience.
             </p>
             <Button
               size="sm"
               variant="ghost"
               onClick={handleDismiss}
-              className="h-9 sm:h-8 px-3 text-xs text-slate-500 mt-2 rounded-lg"
+              className="h-9 sm:h-8 px-3 text-xs text-muted-foreground mt-2 rounded-lg"
             >
               Got it
             </Button>
           </div>
           <button
             onClick={handleDismiss}
-            className="flex-shrink-0 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors"
+            className="flex-shrink-0 text-muted-foreground hover:text-foreground-secondary dark:text-muted-foreground dark:hover:text-muted-foreground/60 transition-colors"
             aria-label="Dismiss"
           >
             <X className="w-4 h-4" />

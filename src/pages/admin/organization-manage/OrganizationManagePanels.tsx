@@ -61,8 +61,8 @@ import type { Region } from '@/constants/pricing';
 const PLAN_SEAT_OPTIONS = [...new Set([...CAPACITY_CLIENT_LIMITS, ...SEAT_TIERS, 300])].sort((a, b) => a - b);
 
 export const LoadingState = () => (
-  <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-    <div className="text-slate-400 flex items-center gap-2">
+  <div className="min-h-screen bg-background flex items-center justify-center">
+    <div className="text-muted-foreground flex items-center gap-2">
       <Building2 className="w-4 h-4 animate-pulse" />
       Loading organization...
     </div>
@@ -70,9 +70,9 @@ export const LoadingState = () => (
 );
 
 export const NotFoundState = ({ onBack }: { onBack: () => void }) => (
-  <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+  <div className="min-h-screen bg-background flex items-center justify-center">
     <div className="text-center space-y-4">
-      <p className="text-slate-400">Organization not found</p>
+      <p className="text-muted-foreground">Organization not found</p>
       <Button onClick={onBack} variant="outline">
         <ArrowLeft className="w-4 h-4 mr-2" />
         Back to Dashboard
@@ -91,14 +91,14 @@ interface HeaderProps {
 }
 
 export const Header = ({ org, onBack, onSignOut, onImpersonate, isImpersonating }: HeaderProps) => (
-  <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur-xl sticky top-0 z-50">
+  <header className="border-b border-border bg-foreground/50 backdrop-blur-xl sticky top-0 z-50">
     <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
       <div className="flex items-center gap-3">
         <Button
           variant="ghost"
           size="sm"
           onClick={onBack}
-          className="text-slate-400 hover:text-white"
+          className="text-muted-foreground hover:text-white"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back
@@ -108,7 +108,7 @@ export const Header = ({ org, onBack, onSignOut, onImpersonate, isImpersonating 
         </div>
         <div>
           <h1 className="text-white font-semibold">{org.name || 'Organization'}</h1>
-          <p className="text-xs text-slate-500">{org.id}</p>
+          <p className="text-xs text-muted-foreground">{org.id}</p>
         </div>
       </div>
       
@@ -127,7 +127,7 @@ export const Header = ({ org, onBack, onSignOut, onImpersonate, isImpersonating 
           variant="ghost"
           size="sm"
           onClick={onSignOut}
-          className="text-slate-400 hover:text-white"
+          className="text-muted-foreground hover:text-white"
         >
           <LogOut className="w-4 h-4" />
         </Button>
@@ -147,7 +147,7 @@ interface OrganizationDetailsCardProps {
 }
 
 export const OrganizationDetailsCard = ({ org, editing, saving, setOrg, setEditing, onSave }: OrganizationDetailsCardProps) => (
-  <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
+  <div className="bg-foreground/50 border border-border rounded-2xl p-6">
     <div className="flex items-center justify-between mb-4">
       <h2 className="text-white font-semibold">Organization Details</h2>
       {!editing ? (
@@ -155,7 +155,7 @@ export const OrganizationDetailsCard = ({ org, editing, saving, setOrg, setEditi
           variant="outline"
           size="sm"
           onClick={() => setEditing(true)}
-          className="border-slate-700 text-slate-300 hover:bg-slate-700"
+          className="border-border text-muted-foreground/60 hover:bg-muted"
         >
           <Edit className="w-4 h-4 mr-2" />
           Edit
@@ -166,7 +166,7 @@ export const OrganizationDetailsCard = ({ org, editing, saving, setOrg, setEditi
             variant="outline"
             size="sm"
             onClick={() => setEditing(false)}
-            className="border-slate-700 text-slate-300 hover:bg-slate-700"
+            className="border-border text-muted-foreground/60 hover:bg-muted"
           >
             Cancel
           </Button>
@@ -186,25 +186,25 @@ export const OrganizationDetailsCard = ({ org, editing, saving, setOrg, setEditi
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label className="text-xs text-slate-500 mb-1">Organization Name</Label>
+          <Label className="text-xs text-muted-foreground mb-1">Organization Name</Label>
           {editing ? (
             <Input
               value={org.name || ''}
               onChange={(e) => setOrg({ ...org, name: e.target.value })}
-              className="bg-slate-800 border-slate-700 text-white"
+              className="bg-foreground/90 border-border text-white"
             />
           ) : (
-            <p className="text-sm text-slate-300">{org.name || 'N/A'}</p>
+            <p className="text-sm text-muted-foreground/60">{org.name || 'N/A'}</p>
           )}
         </div>
         <div>
-          <Label className="text-xs text-slate-500 mb-1">Type</Label>
+          <Label className="text-xs text-muted-foreground mb-1">Type</Label>
           {editing ? (
             <Select
               value={org.type || 'gym'}
               onValueChange={(value: OrganizationDetails['type']) => setOrg({ ...org, type: value })}
             >
-              <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+              <SelectTrigger className="bg-foreground/90 border-border text-white">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -214,14 +214,14 @@ export const OrganizationDetailsCard = ({ org, editing, saving, setOrg, setEditi
               </SelectContent>
             </Select>
           ) : (
-            <p className="text-sm text-slate-300 capitalize">{(org.type || 'gym').replace('_', ' ')}</p>
+            <p className="text-sm text-muted-foreground/60 capitalize">{(org.type || 'gym').replace('_', ' ')}</p>
           )}
         </div>
       </div>
 
       {/* Contact Information */}
-      <div className="pt-4 border-t border-slate-800">
-        <h3 className="text-sm font-medium text-slate-400 mb-3">Contact Information</h3>
+      <div className="pt-4 border-t border-border">
+        <h3 className="text-sm font-medium text-muted-foreground mb-3">Contact Information</h3>
         <div className="space-y-3">
           <ContactField
             icon={<Mail className="w-3 h-3" />}
@@ -247,7 +247,7 @@ export const OrganizationDetailsCard = ({ org, editing, saving, setOrg, setEditi
             onChange={(value) => setOrg({ ...org, address: value })}
           />
           <div>
-            <Label className="text-xs text-slate-500 mb-1 flex items-center gap-1">
+            <Label className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
               <Globe className="w-3 h-3" />
               Website
             </Label>
@@ -256,10 +256,10 @@ export const OrganizationDetailsCard = ({ org, editing, saving, setOrg, setEditi
                 type="url"
                 value={org.website || ''}
                 onChange={(e) => setOrg({ ...org, website: e.target.value })}
-                className="bg-slate-800 border-slate-700 text-white"
+                className="bg-foreground/90 border-border text-white"
               />
             ) : (
-              <p className="text-sm text-slate-300">
+              <p className="text-sm text-muted-foreground/60">
                 {org.website ? (
                   <a href={org.website} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline">
                     {org.website}
@@ -288,7 +288,7 @@ interface ContactFieldProps {
 
 const ContactField = ({ icon, label, value, editing, type = 'text', onChange }: ContactFieldProps) => (
   <div>
-    <Label className="text-xs text-slate-500 mb-1 flex items-center gap-1">
+    <Label className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
       {icon}
       {label}
     </Label>
@@ -297,10 +297,10 @@ const ContactField = ({ icon, label, value, editing, type = 'text', onChange }: 
         type={type}
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
-        className="bg-slate-800 border-slate-700 text-white"
+        className="bg-foreground/90 border-border text-white"
       />
     ) : (
-      <p className="text-sm text-slate-300">{value || 'N/A'}</p>
+      <p className="text-sm text-muted-foreground/60">{value || 'N/A'}</p>
     )}
   </div>
 );
@@ -321,20 +321,20 @@ export const SubscriptionCard = ({ org, editing, saving, setOrg }: SubscriptionC
   const monthlyAmount = org.monthlyAmountLocal ?? org.monthlyFeeKwd ?? 0;
 
   return (
-  <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
+  <div className="bg-foreground/50 border border-border rounded-2xl p-6">
     <div className="flex items-center justify-between mb-4">
       <h2 className="text-white font-semibold">Subscription</h2>
       {editing && <span className="text-xs text-amber-400">Editing Mode</span>}
     </div>
     <div className="space-y-3">
       <div>
-        <Label className="text-xs text-slate-500 mb-1">Region</Label>
+        <Label className="text-xs text-muted-foreground mb-1">Region</Label>
         {editing ? (
           <Select
             value={region}
             onValueChange={(value: string) => setOrg({ ...org, region: value as Region })}
           >
-            <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+            <SelectTrigger className="bg-foreground/90 border-border text-white">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -348,13 +348,13 @@ export const SubscriptionCard = ({ org, editing, saving, setOrg }: SubscriptionC
         )}
       </div>
       <div>
-        <Label className="text-xs text-slate-500 mb-1">Client count (plan)</Label>
+        <Label className="text-xs text-muted-foreground mb-1">Client count (plan)</Label>
         {editing ? (
           <Select
             value={String(seatBlock)}
             onValueChange={(value: string) => setOrg({ ...org, seatBlock: parseInt(value, 10) })}
           >
-            <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+            <SelectTrigger className="bg-foreground/90 border-border text-white">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -366,12 +366,12 @@ export const SubscriptionCard = ({ org, editing, saving, setOrg }: SubscriptionC
             </SelectContent>
           </Select>
         ) : (
-          <p className="text-sm text-slate-300">{seatBlock} clients</p>
+          <p className="text-sm text-muted-foreground/60">{seatBlock} clients</p>
         )}
       </div>
       <div>
-        <p className="text-xs text-slate-500 mb-1">Monthly Fee</p>
-        <p className="text-sm text-slate-300">
+        <p className="text-xs text-muted-foreground mb-1">Monthly Fee</p>
+        <p className="text-sm text-muted-foreground/60">
           {org.isComped ? (
             <span className="text-violet-400 font-medium">Comped (Free)</span>
           ) : (
@@ -380,8 +380,8 @@ export const SubscriptionCard = ({ org, editing, saving, setOrg }: SubscriptionC
         </p>
       </div>
       <div>
-        <p className="text-xs text-slate-500 mb-1">Custom branding</p>
-        <p className="text-sm text-slate-300">
+        <p className="text-xs text-muted-foreground mb-1">Custom branding</p>
+        <p className="text-sm text-muted-foreground/60">
           {org.customBrandingEnabled ? (
             <span className="text-emerald-400">Enabled{org.customBrandingPaidAt ? ` (${org.customBrandingPaidAt.toLocaleDateString()})` : ''}</span>
           ) : (
@@ -390,13 +390,13 @@ export const SubscriptionCard = ({ org, editing, saving, setOrg }: SubscriptionC
         </p>
       </div>
       <div>
-        <Label className="text-xs text-slate-500 mb-1">Status</Label>
+        <Label className="text-xs text-muted-foreground mb-1">Status</Label>
         {editing ? (
           <Select
             value={org.status || 'none'}
             onValueChange={(value: string) => setOrg({ ...org, status: value as OrganizationDetails['status'] })}
           >
-            <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+            <SelectTrigger className="bg-foreground/90 border-border text-white">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -413,7 +413,7 @@ export const SubscriptionCard = ({ org, editing, saving, setOrg }: SubscriptionC
             org.status === 'trial' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
             org.status === 'cancelled' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
             org.isComped ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' :
-            'bg-slate-500/20 text-slate-400 border-slate-500/30'
+            'bg-muted/500/20 text-muted-foreground border-border/600/30'
           }`}>
             {org.isComped ? 'Comped' : org.status || 'none'}
           </span>
@@ -421,25 +421,25 @@ export const SubscriptionCard = ({ org, editing, saving, setOrg }: SubscriptionC
       </div>
 
       {(org.stripeCustomerId || org.stripeSubscriptionId || org.stripePriceId) && (
-        <div className="pt-3 border-t border-slate-800">
-          <h3 className="text-xs font-medium text-slate-400 mb-2">Stripe (support)</h3>
-          <div className="space-y-1.5 text-xs font-mono text-slate-400">
+        <div className="pt-3 border-t border-border">
+          <h3 className="text-xs font-medium text-muted-foreground mb-2">Stripe (support)</h3>
+          <div className="space-y-1.5 text-xs font-mono text-muted-foreground">
             {org.stripeCustomerId && (
               <div>
-                <span className="text-slate-500">Customer:</span>{' '}
-                <span className="text-slate-300 break-all">{org.stripeCustomerId}</span>
+                <span className="text-muted-foreground">Customer:</span>{' '}
+                <span className="text-muted-foreground/60 break-all">{org.stripeCustomerId}</span>
               </div>
             )}
             {org.stripeSubscriptionId && (
               <div>
-                <span className="text-slate-500">Subscription:</span>{' '}
-                <span className="text-slate-300 break-all">{org.stripeSubscriptionId}</span>
+                <span className="text-muted-foreground">Subscription:</span>{' '}
+                <span className="text-muted-foreground/60 break-all">{org.stripeSubscriptionId}</span>
               </div>
             )}
             {org.stripePriceId && (
               <div>
-                <span className="text-slate-500">Price:</span>{' '}
-                <span className="text-slate-300">{org.stripePriceId}</span>
+                <span className="text-muted-foreground">Price:</span>{' '}
+                <span className="text-muted-foreground/60">{org.stripePriceId}</span>
               </div>
             )}
           </div>
@@ -447,26 +447,26 @@ export const SubscriptionCard = ({ org, editing, saving, setOrg }: SubscriptionC
       )}
 
       {editing && (
-        <div className="pt-2 border-t border-slate-800">
-          <Label className="flex items-center gap-2 text-xs text-slate-400">
+        <div className="pt-2 border-t border-border">
+          <Label className="flex items-center gap-2 text-xs text-muted-foreground">
             <input
               type="checkbox"
               checked={org.isComped || false}
               onChange={(e) => setOrg({ ...org, isComped: e.target.checked })}
-              className="rounded border-slate-700 bg-slate-800"
+              className="rounded border-border bg-foreground/90"
             />
             Comped Subscription (Free Access)
           </Label>
         </div>
       )}
       {!editing && org.isComped && (
-        <div className="pt-2 border-t border-slate-800">
+        <div className="pt-2 border-t border-border">
           <p className="text-xs text-indigo-400">This organization has complimentary access</p>
         </div>
       )}
       <div>
-        <p className="text-xs text-slate-500 mb-1">Created</p>
-        <p className="text-sm text-slate-300">{org.createdAt.toLocaleDateString()}</p>
+        <p className="text-xs text-muted-foreground mb-1">Created</p>
+        <p className="text-sm text-muted-foreground/60">{org.createdAt.toLocaleDateString()}</p>
       </div>
     </div>
   </div>
@@ -489,7 +489,7 @@ export const DataAccessCard = ({ org, hasDataAccess, onGrantAccess, onRevokeAcce
           <AlertTriangle className="w-5 h-5 text-amber-400 mt-0.5" />
           <div className="flex-1">
             <h3 className="text-white font-semibold mb-1">Data Access Restricted</h3>
-            <p className="text-xs text-slate-400 mb-3">
+            <p className="text-xs text-muted-foreground mb-3">
               Per GDPR/HIPAA compliance, platform admins cannot view assessment or client data without explicit permission.
             </p>
             <Button
@@ -513,7 +513,7 @@ export const DataAccessCard = ({ org, hasDataAccess, onGrantAccess, onRevokeAcce
           <Unlock className="w-5 h-5 text-emerald-400 mt-0.5" />
           <div className="flex-1">
             <h3 className="text-white font-semibold mb-1">Data Access Granted</h3>
-            <p className="text-xs text-slate-400 mb-2">
+            <p className="text-xs text-muted-foreground mb-2">
               Granted: {org.dataAccessPermission.grantedAt.toLocaleDateString()}
               {org.dataAccessPermission.reason && (
                 <span className="block mt-1">Reason: {org.dataAccessPermission.reason}</span>
@@ -531,7 +531,7 @@ export const DataAccessCard = ({ org, hasDataAccess, onGrantAccess, onRevokeAcce
               </Button>
             )}
             {org.isComped === true && (
-              <p className="text-xs text-slate-500 mt-2">
+              <p className="text-xs text-muted-foreground mt-2">
                 Comped organizations have permanent access (owner's company)
               </p>
             )}
@@ -551,11 +551,11 @@ interface StatisticsCardProps {
 }
 
 export const StatisticsCard = ({ org, hasDataAccess }: StatisticsCardProps) => (
-  <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
+  <div className="bg-foreground/50 border border-border rounded-2xl p-6">
     <h2 className="text-white font-semibold mb-4">Statistics</h2>
     {!hasDataAccess && (
-      <div className="mb-4 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
-        <p className="text-xs text-slate-400">
+      <div className="mb-4 p-3 bg-muted/40 rounded-lg border border-border">
+        <p className="text-xs text-muted-foreground">
           <AlertTriangle className="w-3 h-3 inline mr-1 text-amber-400" />
           Only aggregated counts visible.
         </p>
@@ -565,10 +565,10 @@ export const StatisticsCard = ({ org, hasDataAccess }: StatisticsCardProps) => (
       <StatRow icon={<Users className="w-4 h-4" />} label="Coaches" value={org.coachCount} />
       <StatRow icon={<Users className="w-4 h-4" />} label="Clients" value={org.clientCount} />
       <StatRow icon={<FileText className="w-4 h-4" />} label="Assessments" value={org.assessmentCount} />
-      <div className="flex items-center justify-between pt-2 border-t border-slate-800">
+      <div className="flex items-center justify-between pt-2 border-t border-border">
         <div className="flex items-center gap-2">
           <DollarSign className="w-4 h-4 text-amber-500" />
-          <span className="text-xs text-slate-500">AI Costs (MTD)</span>
+          <span className="text-xs text-muted-foreground">AI Costs (MTD)</span>
         </div>
         <span className="text-sm text-amber-400 font-medium">
           {new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format((org.aiCostsMtdCents || 0) / 100)}
@@ -581,8 +581,8 @@ export const StatisticsCard = ({ org, hasDataAccess }: StatisticsCardProps) => (
 const StatRow = ({ icon, label, value }: { icon: ReactNode; label: string; value: number | undefined }) => (
   <div className="flex items-center justify-between">
     <div className="flex items-center gap-2">
-      <span className="text-slate-500">{icon}</span>
-      <span className="text-xs text-slate-500">{label}</span>
+      <span className="text-muted-foreground">{icon}</span>
+      <span className="text-xs text-muted-foreground">{label}</span>
     </div>
     <span className="text-sm text-white font-medium">{value ?? 0}</span>
   </div>
@@ -596,14 +596,14 @@ interface PlatformFeaturesCardProps {
 }
 
 export const PlatformFeaturesCard = ({ org, saving, onUpdateDemoAutoFill }: PlatformFeaturesCardProps) => (
-  <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
+  <div className="bg-foreground/50 border border-border rounded-2xl p-6">
     <h2 className="text-white font-semibold mb-4">Platform Features</h2>
-    <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+    <div className="flex items-center justify-between p-4 bg-muted/40 rounded-lg border border-border">
       <div className="flex-1">
         <Label className="text-sm font-semibold text-white mb-1 block">
           Demo Auto-Fill (Affiliate/Sales Tool)
         </Label>
-        <p className="text-xs text-slate-400 leading-relaxed">
+        <p className="text-xs text-muted-foreground leading-relaxed">
           Enable AI-powered demo persona auto-fill for affiliates.
           <br />
           <span className="text-amber-400 font-medium">Platform admin controlled.</span>
@@ -637,7 +637,7 @@ interface ActionsCardProps {
 }
 
 export const ActionsCard = ({ org, onPause, onCancel, onReactivate, onDelete, onPermanentlyDelete, onImpersonate, isImpersonating }: ActionsCardProps) => (
-  <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
+  <div className="bg-foreground/50 border border-border rounded-2xl p-6">
     <h2 className="text-white font-semibold mb-4">Actions</h2>
     <div className="space-y-2">
       {/* Impersonation - Primary action for support */}
@@ -657,7 +657,7 @@ export const ActionsCard = ({ org, onPause, onCancel, onReactivate, onDelete, on
           variant="outline"
           size="sm"
           onClick={onPause}
-          className="w-full border-slate-700 text-slate-300 hover:bg-slate-700"
+          className="w-full border-border text-muted-foreground/60 hover:bg-muted"
         >
           <Pause className="w-4 h-4 mr-2" />
           Pause Subscription
@@ -668,7 +668,7 @@ export const ActionsCard = ({ org, onPause, onCancel, onReactivate, onDelete, on
           variant="outline"
           size="sm"
           onClick={onCancel}
-          className="w-full border-slate-700 text-slate-300 hover:bg-slate-700"
+          className="w-full border-border text-muted-foreground/60 hover:bg-muted"
         >
           <XCircle className="w-4 h-4 mr-2" />
           Cancel Subscription
@@ -679,7 +679,7 @@ export const ActionsCard = ({ org, onPause, onCancel, onReactivate, onDelete, on
           variant="outline"
           size="sm"
           onClick={onReactivate}
-          className="w-full border-slate-700 text-slate-300 hover:bg-slate-700"
+          className="w-full border-border text-muted-foreground/60 hover:bg-muted"
         >
           <Play className="w-4 h-4 mr-2" />
           Reactivate Subscription
@@ -718,33 +718,33 @@ interface GrantAccessDialogProps {
 
 export const GrantAccessDialog = ({ open, onOpenChange, accessReason, setAccessReason, onGrant }: GrantAccessDialogProps) => (
   <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent className="bg-slate-900 border-slate-800 text-white">
+    <DialogContent className="bg-foreground border-border text-white">
       <DialogHeader>
         <DialogTitle className="text-white flex items-center gap-2">
           <Unlock className="w-5 h-5 text-amber-400" />
           Grant Data Access Permission
         </DialogTitle>
-        <DialogDescription className="text-slate-400">
+        <DialogDescription className="text-muted-foreground">
           Granting access allows platform admins to view assessment and client data. Required for GDPR/HIPAA compliance.
         </DialogDescription>
       </DialogHeader>
       <div className="space-y-4">
         <div>
-          <Label className="text-xs text-slate-400 mb-2 block">Reason for Access (Required):</Label>
+          <Label className="text-xs text-muted-foreground mb-2 block">Reason for Access (Required):</Label>
           <Input
             value={accessReason}
             onChange={(e) => setAccessReason(e.target.value)}
             placeholder="e.g., Support ticket #12345"
-            className="bg-slate-800 border-slate-700 text-white"
+            className="bg-foreground/90 border-border text-white"
           />
-          <p className="text-xs text-slate-500 mt-1">This will be logged for compliance auditing.</p>
+          <p className="text-xs text-muted-foreground mt-1">This will be logged for compliance auditing.</p>
         </div>
       </div>
       <DialogFooter>
         <Button
           variant="outline"
           onClick={() => { onOpenChange(false); setAccessReason(''); }}
-          className="border-slate-700 text-slate-300 hover:bg-slate-700"
+          className="border-border text-muted-foreground/60 hover:bg-muted"
         >
           Cancel
         </Button>
@@ -769,13 +769,13 @@ interface RevokeAccessDialogProps {
 
 export const RevokeAccessDialog = ({ open, onOpenChange, onRevoke }: RevokeAccessDialogProps) => (
   <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent className="bg-slate-900 border-slate-800 text-white">
+    <DialogContent className="bg-foreground border-border text-white">
       <DialogHeader>
         <DialogTitle className="text-white flex items-center gap-2">
           <Lock className="w-5 h-5 text-red-400" />
           Revoke Data Access Permission
         </DialogTitle>
-        <DialogDescription className="text-slate-400">
+        <DialogDescription className="text-muted-foreground">
           Revoking access will prevent platform admins from viewing assessment and client data.
         </DialogDescription>
       </DialogHeader>
@@ -783,7 +783,7 @@ export const RevokeAccessDialog = ({ open, onOpenChange, onRevoke }: RevokeAcces
         <Button
           variant="outline"
           onClick={() => onOpenChange(false)}
-          className="border-slate-700 text-slate-300 hover:bg-slate-700"
+          className="border-border text-muted-foreground/60 hover:bg-muted"
         >
           Cancel
         </Button>
@@ -807,23 +807,23 @@ interface DeleteDialogProps {
 
 export const DeleteDialog = ({ open, onOpenChange, orgName, confirmText, setConfirmText, onDelete }: DeleteDialogProps) => (
   <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent className="bg-slate-900 border-slate-800 text-white">
+    <DialogContent className="bg-foreground border-border text-white">
       <DialogHeader>
         <DialogTitle className="text-white">Archive Organization</DialogTitle>
-        <DialogDescription className="text-slate-400">
+        <DialogDescription className="text-muted-foreground">
           This will soft-delete the organization. It will be hidden from the dashboard but data is retained. Use Permanently Delete to remove all data.
         </DialogDescription>
       </DialogHeader>
       <div className="space-y-4">
         <div>
-          <Label className="text-xs text-slate-400 mb-2 block">
+          <Label className="text-xs text-muted-foreground mb-2 block">
             Type <strong>{orgName}</strong> to confirm archive:
           </Label>
           <Input
             value={confirmText}
             onChange={(e) => setConfirmText(e.target.value)}
             placeholder={orgName}
-            className="bg-slate-800 border-slate-700 text-white"
+            className="bg-foreground/90 border-border text-white"
           />
         </div>
       </div>
@@ -831,7 +831,7 @@ export const DeleteDialog = ({ open, onOpenChange, orgName, confirmText, setConf
         <Button
           variant="outline"
           onClick={() => { onOpenChange(false); setConfirmText(''); }}
-          className="border-slate-700 text-slate-300 hover:bg-slate-700"
+          className="border-border text-muted-foreground/60 hover:bg-muted"
         >
           Cancel
         </Button>
@@ -859,23 +859,23 @@ interface PermanentlyDeleteDialogProps {
 
 export const PermanentlyDeleteDialog = ({ open, onOpenChange, confirmText, setConfirmText, onDelete }: PermanentlyDeleteDialogProps) => (
   <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent className="bg-slate-900 border-slate-800 text-white">
+    <DialogContent className="bg-foreground border-border text-white">
       <DialogHeader>
         <DialogTitle className="text-white">Permanently Delete Organization</DialogTitle>
-        <DialogDescription className="text-slate-400">
+        <DialogDescription className="text-muted-foreground">
           This will permanently delete the organization, all subcollections, user profiles, and Firebase Auth users. This cannot be undone.
         </DialogDescription>
       </DialogHeader>
       <div className="space-y-4">
         <div>
-          <Label className="text-xs text-slate-400 mb-2 block">
+          <Label className="text-xs text-muted-foreground mb-2 block">
             Type <strong>PERMANENTLY DELETE</strong> to confirm:
           </Label>
           <Input
             value={confirmText}
             onChange={(e) => setConfirmText(e.target.value)}
             placeholder="PERMANENTLY DELETE"
-            className="bg-slate-800 border-slate-700 text-white"
+            className="bg-foreground/90 border-border text-white"
           />
         </div>
       </div>
@@ -883,7 +883,7 @@ export const PermanentlyDeleteDialog = ({ open, onOpenChange, confirmText, setCo
         <Button
           variant="outline"
           onClick={() => { onOpenChange(false); setConfirmText(''); }}
-          className="border-slate-700 text-slate-300 hover:bg-slate-700"
+          className="border-border text-muted-foreground/60 hover:bg-muted"
         >
           Cancel
         </Button>
@@ -909,10 +909,10 @@ interface PauseDialogProps {
 
 export const PauseDialog = ({ open, onOpenChange, onPause }: PauseDialogProps) => (
   <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent className="bg-slate-900 border-slate-800 text-white">
+    <DialogContent className="bg-foreground border-border text-white">
       <DialogHeader>
         <DialogTitle className="text-white">Pause Subscription</DialogTitle>
-        <DialogDescription className="text-slate-400">
+        <DialogDescription className="text-muted-foreground">
           Pausing will temporarily suspend service. The organization will retain access but billing will be paused.
         </DialogDescription>
       </DialogHeader>
@@ -920,7 +920,7 @@ export const PauseDialog = ({ open, onOpenChange, onPause }: PauseDialogProps) =
         <Button
           variant="outline"
           onClick={() => onOpenChange(false)}
-          className="border-slate-700 text-slate-300 hover:bg-slate-700"
+          className="border-border text-muted-foreground/60 hover:bg-muted"
         >
           Cancel
         </Button>
@@ -946,13 +946,13 @@ interface ImpersonateDialogProps {
 
 export const ImpersonateDialog = ({ open, onOpenChange, orgName, reason, setReason, onImpersonate, loading }: ImpersonateDialogProps) => (
   <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent className="bg-slate-900 border-slate-800 text-white">
+    <DialogContent className="bg-foreground border-border text-white">
       <DialogHeader>
         <DialogTitle className="text-white flex items-center gap-2">
           <Eye className="w-5 h-5 text-amber-400" />
           View as Organization
         </DialogTitle>
-        <DialogDescription className="text-slate-400">
+        <DialogDescription className="text-muted-foreground">
           You will view the app as if you were a member of <strong className="text-white">{orgName}</strong>. 
           This is a <span className="text-amber-400 font-medium">read-only</span> session and all actions will be logged for audit purposes.
         </DialogDescription>
@@ -973,21 +973,21 @@ export const ImpersonateDialog = ({ open, onOpenChange, orgName, reason, setReas
           </div>
         </div>
         <div>
-          <Label className="text-xs text-slate-400 mb-2 block">Reason for Access (Optional but recommended):</Label>
+          <Label className="text-xs text-muted-foreground mb-2 block">Reason for Access (Optional but recommended):</Label>
           <Textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="e.g., Support ticket #12345, investigating reported bug, training demo..."
-            className="bg-slate-800 border-slate-700 text-white min-h-[80px]"
+            className="bg-foreground/90 border-border text-white min-h-[80px]"
           />
-          <p className="text-xs text-slate-500 mt-1">This will be recorded in the audit log.</p>
+          <p className="text-xs text-muted-foreground mt-1">This will be recorded in the audit log.</p>
         </div>
       </div>
       <DialogFooter>
         <Button
           variant="outline"
           onClick={() => { onOpenChange(false); setReason(''); }}
-          className="border-slate-700 text-slate-300 hover:bg-slate-700"
+          className="border-border text-muted-foreground/60 hover:bg-muted"
         >
           Cancel
         </Button>

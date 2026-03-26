@@ -28,12 +28,12 @@ export function ClientReportScoreOverview({
     <section className="space-y-10 py-4">
       <div className="flex flex-col items-center text-center space-y-6">
         <div className="space-y-2">
-          <h2 className="text-3xl font-extrabold tracking-tight text-slate-900">Your Fitness Score</h2>
-          <p className="text-slate-500 font-medium">A comprehensive snapshot of your current physical condition.</p>
+          <h2 className="text-3xl font-extrabold tracking-tight text-foreground">Your Fitness Score</h2>
+          <p className="text-muted-foreground font-medium">A comprehensive snapshot of your current physical condition.</p>
         </div>
         
         {/* Overall score centered and prominent */}
-        <div className={`flex h-40 w-40 items-center justify-center rounded-full border-8 bg-white shadow-xl ${circleColor(scores.overall)} transition-transform hover:scale-105 duration-300`}>
+        <div className={`flex h-40 w-40 items-center justify-center rounded-full border-8 bg-card shadow-xl ${circleColor(scores.overall)} transition-transform hover:scale-105 duration-300`}>
           <div className="flex flex-col items-center">
             <span className="text-5xl font-bold">{scores.overall}</span>
             <span className="text-[10px] font-black uppercase tracking-[0.15em] opacity-70">Overall</span>
@@ -45,10 +45,10 @@ export function ClientReportScoreOverview({
       <div className="flex flex-wrap items-start justify-center gap-6 md:gap-10">
         {orderedCats.map((cat) => (
           <div key={cat.id} className="flex flex-col items-center group">
-            <div className={`flex h-16 w-16 items-center justify-center rounded-full border-4 bg-white shadow-sm transition-all group-hover:shadow-md group-hover:-translate-y-1 ${circleColor(cat.score)}`}>
+            <div className={`flex h-16 w-16 items-center justify-center rounded-full border-4 bg-card shadow-sm transition-all group-hover:shadow-md group-hover:-translate-y-1 ${circleColor(cat.score)}`}>
               <span className="text-lg font-bold">{cat.score}</span>
             </div>
-            <span className="mt-3 w-24 text-center text-[10px] font-black text-slate-500 uppercase tracking-[0.15em] leading-tight">
+            <span className="mt-3 w-24 text-center text-[10px] font-black text-muted-foreground uppercase tracking-[0.15em] leading-tight">
               {niceLabel(cat.id)}
             </span>
           </div>
@@ -56,12 +56,12 @@ export function ClientReportScoreOverview({
       </div>
 
       {/* Overall Profile Radar */}
-      <div className="max-w-2xl mx-auto mt-12 bg-white rounded-3xl border border-slate-100 p-8 shadow-sm">
+      <div className="max-w-2xl mx-auto mt-12 bg-card rounded-3xl border border-border p-8 shadow-sm">
         <div className="text-center mb-6">
-          <h3 className="text-sm font-semibold text-slate-400">Profile Balance</h3>
+          <h3 className="text-sm font-semibold text-foreground-tertiary">Profile Balance</h3>
         </div>
         <OverallRadarChart data={overallRadarData} />
-        <p className="text-center text-xs text-slate-400 mt-4 italic">
+        <p className="text-center text-xs text-foreground-tertiary mt-4 italic">
           This graph shows how balanced your fitness is across all categories.
         </p>
       </div>
@@ -70,8 +70,8 @@ export function ClientReportScoreOverview({
       {scores.synthesis && scores.synthesis.length > 0 && (
         <div className="max-w-2xl mx-auto mt-12 space-y-4">
           <div className="text-center mb-6">
-            <h3 className="text-sm font-semibold text-slate-400">Expert Synthesis</h3>
-            <p className="text-xs text-slate-500 mt-1">How your different results interact</p>
+            <h3 className="text-sm font-semibold text-foreground-tertiary">Expert Synthesis</h3>
+            <p className="text-xs text-muted-foreground mt-1">How your different results interact</p>
           </div>
           {scores.synthesis.map((item, idx) => (
             <div 

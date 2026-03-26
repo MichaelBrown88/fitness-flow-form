@@ -93,8 +93,8 @@ export const PriorityView: React.FC<ScheduleAgendaProps> = ({
         <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-score-green-light flex items-center justify-center">
           <CheckCircle className={`w-8 h-8 ${SCORE_COLORS.green.icon}`} />
         </div>
-        <h3 className="text-lg font-semibold text-slate-900 mb-2">No Clients Yet</h3>
-        <p className="text-sm text-slate-500 max-w-sm mx-auto">
+        <h3 className="mb-2 text-lg font-semibold text-foreground">No Clients Yet</h3>
+        <p className="text-sm text-muted-foreground max-w-sm mx-auto">
           Complete your first assessment to start tracking schedules.
         </p>
       </div>
@@ -104,7 +104,7 @@ export const PriorityView: React.FC<ScheduleAgendaProps> = ({
   const totalFlat = agenda.reduce((acc, g) => acc + g.items.length, 0);
   if (totalFlat === 0 && search.trim()) {
     return (
-      <div className="py-12 text-center text-sm text-slate-400 font-medium">
+      <div className="py-12 text-center text-sm text-muted-foreground font-medium">
         No schedule items match that name.
       </div>
     );
@@ -117,15 +117,15 @@ export const PriorityView: React.FC<ScheduleAgendaProps> = ({
   return (
     <div className="space-y-6">
       {/* Inline summary */}
-      <p className="text-sm text-slate-500 flex items-center gap-2 flex-wrap">
+      <p className="text-sm text-muted-foreground flex items-center gap-2 flex-wrap">
         {overdueCount > 0 && (
           <span className="text-score-red-fg font-semibold">{overdueCount} overdue</span>
         )}
-        {overdueCount > 0 && dueThisWeek > 0 && <span className="text-slate-300">·</span>}
+        {overdueCount > 0 && dueThisWeek > 0 && <span className="text-muted-foreground/60">·</span>}
         {dueThisWeek > 0 && (
           <span className="text-score-amber-fg font-semibold">{dueThisWeek} due this week</span>
         )}
-        {(overdueCount > 0 || dueThisWeek > 0) && onTrack > 0 && <span className="text-slate-300">·</span>}
+        {(overdueCount > 0 || dueThisWeek > 0) && onTrack > 0 && <span className="text-muted-foreground/60">·</span>}
         {onTrack > 0 && (
           <span className="text-score-green-fg font-semibold">{onTrack} on track</span>
         )}
@@ -173,11 +173,11 @@ const AgendaSection: React.FC<AgendaSectionProps> = ({
         onClick={() => setExpanded(!expanded)}
         className="flex items-center gap-2 mb-2 w-full text-left"
       >
-        <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+        <span className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
           {group.label}
         </span>
-        <span className="text-[10px] font-bold text-slate-300">({group.items.length})</span>
-        <ChevronRight className={`w-3 h-3 text-slate-400 transition-transform ${expanded ? 'rotate-90' : ''}`} />
+        <span className="text-[10px] font-bold text-muted-foreground/60">({group.items.length})</span>
+        <ChevronRight className={`w-3 h-3 text-muted-foreground transition-transform ${expanded ? 'rotate-90' : ''}`} />
       </button>
       {expanded && (
         <div className="space-y-0.5">
@@ -221,23 +221,23 @@ const AgendaRow: React.FC<AgendaRowProps> = ({
     ? 'text-score-red-fg'
     : item.horizon === 'this-week'
     ? 'text-score-amber-fg'
-    : 'text-slate-500';
+    : 'text-muted-foreground';
 
   return (
-    <div className="flex items-center gap-3 py-3 px-3 rounded-xl hover:bg-slate-50 transition-colors group">
-      <Icon className="h-4 w-4 text-slate-400 shrink-0" />
+    <div className="flex items-center gap-3 py-3 px-3 rounded-xl hover:bg-muted transition-colors group">
+      <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
       <button
         onClick={() => navigate(`/client/${encodeURIComponent(item.clientName)}`)}
-        className="text-sm font-semibold text-slate-900 truncate hover:underline text-left min-w-0 flex-shrink"
+        className="min-w-0 flex-shrink truncate text-left text-sm font-semibold text-foreground hover:underline"
       >
         {item.clientName}
       </button>
       {showCoachName && item.coachUid && coachMap?.get(item.coachUid) && (
-        <span className="text-xs text-slate-400 truncate hidden sm:inline">
+        <span className="text-xs text-muted-foreground truncate hidden sm:inline">
           {coachMap.get(item.coachUid)}
         </span>
       )}
-      <span className="text-xs text-slate-400 hidden sm:inline">
+      <span className="text-xs text-muted-foreground hidden sm:inline">
         {pillarLabel(item.pillar)}
       </span>
       <span className={`text-xs font-semibold ml-auto shrink-0 ${dueColor}`}>
@@ -248,7 +248,7 @@ const AgendaRow: React.FC<AgendaRowProps> = ({
         size="sm"
         onClick={() => onPush(item)}
         disabled={isPushing}
-        className="h-8 px-2 text-xs text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+        className="h-8 px-2 text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
       >
         {isPushing ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Push 1 wk'}
       </Button>
@@ -256,7 +256,7 @@ const AgendaRow: React.FC<AgendaRowProps> = ({
         <Button
           size="sm"
           onClick={() => onStart(item.clientName, item.pillar === 'full' ? undefined : item.pillar)}
-          className="h-8 px-3 text-xs bg-slate-900 text-white hover:bg-slate-800 shrink-0"
+          className="h-8 px-3 text-xs bg-foreground text-white hover:bg-foreground/90 shrink-0"
         >
           Start
         </Button>

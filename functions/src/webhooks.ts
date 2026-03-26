@@ -15,6 +15,7 @@
 
 import * as admin from 'firebase-admin';
 import * as crypto from 'crypto';
+import { maybeSendFirstAssessmentCelebrationEmail } from './transactionalEmails';
 
 export type WebhookEvent =
   | 'assessment.completed'
@@ -139,4 +140,10 @@ export async function handleAssessmentCompletedTrigger(
     overallScore: sessionData.overallScore ?? null,
     assessedAt: sessionData.createdAt ?? null,
   });
+
+  try {
+    await maybeSendFirstAssessmentCelebrationEmail(orgId, clientSlug, sessionData);
+  } catch (err) {
+    console.error('[handleAssessmentCompletedTrigger] first-assessment email failed', err);
+  }
 }

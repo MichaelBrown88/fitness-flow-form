@@ -514,15 +514,15 @@ export const PhaseFormContent = ({
         />
       )}
 
-      <main className={`flex-1 bg-slate-50/50 p-6 lg:p-10 pb-24 lg:pb-10 overflow-y-auto ${isPartialAssessment ? 'w-full' : ''}`}>
+      <main className={`flex-1 bg-muted/50 p-6 lg:p-10 pb-24 lg:pb-10 overflow-y-auto ${isPartialAssessment ? 'w-full' : ''}`}>
         <div className={`mx-auto ${activePhase?.id === 'P7' ? 'max-w-none' : 'max-w-3xl'} space-y-8`}>
 
           {/* Draft recovery banner */}
           {draftBanner && (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-sm animate-fade-in-up">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-xl border border-border bg-background p-3 sm:p-4 shadow-sm animate-fade-in-up">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-900">{UI_DRAFT.TITLE}</p>
-                <p className="text-xs text-slate-500 mt-0.5 truncate">
+                <p className="text-sm font-semibold text-foreground">{UI_DRAFT.TITLE}</p>
+                <p className="text-xs text-muted-foreground mt-0.5 truncate">
                   {draftBanner.clientName} &middot; {new Date(draftBanner.timestamp).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                 </p>
               </div>
@@ -545,22 +545,22 @@ export const PhaseFormContent = ({
               {activePhase.id !== 'P7' && (
                 <button
                   onClick={handleSaveAndExit}
-                  className="flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-slate-600 transition-colors"
+                  className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground-secondary transition-colors"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
                   Save &amp; Exit
                 </button>
               )}
             </div>
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-slate-900">{activePhase.title}</h2>
-            <p className="text-slate-500 text-sm sm:text-base md:text-lg leading-relaxed max-w-2xl">{activePhase.summary}</p>
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-foreground">{activePhase.title}</h2>
+            <p className="text-muted-foreground text-sm sm:text-base md:text-lg leading-relaxed max-w-2xl">{activePhase.summary}</p>
           </section>
 
           <section className="space-y-6">
             {renderAllSections()}
             
             {activePhaseIdx >= 1 && activePhaseIdx < totalPhases - 1 && (
-              <div className="flex items-center justify-center border-t border-slate-200 pt-8">
+              <div className="flex items-center justify-center border-t border-border pt-8">
                 <Button
                   onClick={handleViewResults}
                   disabled={submitButtonDisabled}
@@ -575,7 +575,7 @@ export const PhaseFormContent = ({
               <React.Suspense fallback={
                 <div className="flex flex-col items-center justify-center py-20 gap-4">
                   <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                  <p className="text-sm font-medium text-slate-400">Finalizing Report...</p>
+                  <p className="text-sm font-medium text-muted-foreground">Finalizing Report...</p>
                   </div>
               }>
                 <AssessmentResults
@@ -596,7 +596,7 @@ export const PhaseFormContent = ({
               </React.Suspense>
             )}
           </section>
-          <footer className="pt-12 pb-8 text-center text-[10px] font-black uppercase tracking-[0.15em] text-slate-300">
+          <footer className="pt-12 pb-8 text-center text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/60">
             {orgSettings?.name || 'One Assess'} Professional v2.1 • Confidential Client Data
           </footer>
         </div>

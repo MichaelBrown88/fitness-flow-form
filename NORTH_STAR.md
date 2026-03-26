@@ -33,7 +33,7 @@ Every coach who uses One Assess gets back 2-3 hours per client assessment. They 
 
 **Michael Brown**
 - Working personal trainer and PT studio owner (One Fitness Studio)
-- Based in Kuwait, UK-registered business
+- Based in Kuwait; UK trading entity **ONE ASSESS LTD** (incorporated UK limited company, March 2026)
 - Solo founder, bootstrapped
 - Built this to solve his own problem — then realised every coach has the same problem
 - Business email: michael@one-assess.com

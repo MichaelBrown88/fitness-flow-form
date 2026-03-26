@@ -28,14 +28,20 @@ export function TestimonialCard({ quote, author, role, company, avatarUrl, index
           </div>
         )}
         <div>
-          <h4 className="font-bold text-slate-900">{author}</h4>
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">{role}</p>
+          <h4 className="font-bold text-foreground">{author}</h4>
+          <p className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
+            {role}
+          </p>
         </div>
       </div>
-      <div className="flex gap-1 text-amber-400 mb-4">
-        {[1,2,3,4,5].map(s => <Star key={s} size={16} fill="currentColor" />)}
+      <div className="mb-4 flex gap-1 text-amber-500 dark:text-amber-400">
+        {[1, 2, 3, 4, 5].map((s) => (
+          <Star key={s} size={16} fill="currentColor" />
+        ))}
       </div>
-      <p className="text-balance text-slate-600 leading-relaxed font-medium text-sm">"{quote}"</p>
+      <p className="text-balance text-sm font-medium leading-relaxed text-muted-foreground">
+        &ldquo;{quote}&rdquo;
+      </p>
     </GlassCard>
   );
 }

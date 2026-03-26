@@ -154,7 +154,7 @@ export const RoadmapEditor: React.FC<RoadmapEditorProps> = ({
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={(e) => setActiveId(String(e.active.id))} onDragEnd={handleDragEnd}>
       <div className="space-y-6">
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Journey Summary</label>
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Journey Summary</label>
           <textarea
             value={localSummary}
             onChange={(e) => setLocalSummary(e.target.value)}
@@ -162,9 +162,9 @@ export const RoadmapEditor: React.FC<RoadmapEditorProps> = ({
               if (localSummary !== summary) onSummaryChange(localSummary);
             }}
             placeholder="High-level overview of this client's journey..."
-            className="w-full min-h-[72px] rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm leading-relaxed text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-400 resize-y"
+            className="w-full min-h-[72px] rounded-xl border border-border bg-background px-4 py-3 text-sm leading-relaxed text-foreground-secondary placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-400 resize-y"
           />
-          {saving && <p className="text-xs text-slate-400 font-medium animate-pulse">Saving...</p>}
+          {saving && <p className="text-xs text-muted-foreground font-medium animate-pulse">Saving...</p>}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {paletteBlocks.length > 0 && (
@@ -175,7 +175,7 @@ export const RoadmapEditor: React.FC<RoadmapEditorProps> = ({
           <div className={paletteBlocks.length > 0 ? 'lg:col-span-3' : 'lg:col-span-full'}>
             <div className="space-y-4">
               <div className="flex items-center justify-between gap-2">
-                <h3 className="text-sm font-bold text-slate-800">Journey Timeline</h3>
+                <h3 className="text-sm font-bold text-foreground">Journey Timeline</h3>
                 <button
                   type="button"
                   onClick={() => onItemsChange(applySuggestedOrder(items))}

@@ -27,7 +27,7 @@ export default function Contact() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
       <Seo
         pathname={ROUTES.CONTACT}
         title={contactSeo.title}
@@ -58,7 +58,7 @@ export default function Contact() {
                   <Mail className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-900 mb-1">Email</h3>
+                  <h3 className="font-bold text-foreground mb-1">Email</h3>
                   <a
                     href="mailto:support@one-assess.com"
                     className="text-sm text-indigo-600 hover:underline"
@@ -69,11 +69,11 @@ export default function Contact() {
               </div>
             </div>
 
-            <div className="mt-10 p-6 rounded-2xl bg-slate-50 border border-slate-200">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-2">
+            <div className="mt-10 p-6 rounded-2xl bg-muted/50 border border-border">
+              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.15em] mb-2">
                 Response Time
               </p>
-              <p className="text-sm text-slate-600 leading-relaxed">
+              <p className="text-sm text-foreground-secondary leading-relaxed">
                 We typically respond within one business day. For urgent issues,
                 include "URGENT" in your subject line.
               </p>
@@ -86,8 +86,8 @@ export default function Contact() {
                 <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 mb-4">
                   <Send className="w-5 h-5" />
                 </div>
-                <h3 className="font-bold text-slate-900 mb-2">Message Ready</h3>
-                <p className="text-sm text-slate-500">
+                <h3 className="font-bold text-foreground mb-2">Message Ready</h3>
+                <p className="text-sm text-muted-foreground">
                   Your email client should have opened with the message pre-filled.
                   If it didn't, email us directly at{' '}
                   <a href="mailto:support@one-assess.com" className="text-indigo-600 hover:underline">
@@ -116,7 +116,7 @@ export default function Contact() {
                     className="flex w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
                   />
                 </div>
-                <Button type="submit" className="w-full h-12 bg-slate-900 text-white hover:bg-slate-800">
+                <Button type="submit" className="w-full h-12 bg-foreground text-white hover:bg-foreground/90">
                   Send Message
                 </Button>
               </form>

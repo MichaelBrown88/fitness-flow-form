@@ -1,4 +1,5 @@
 import { forwardRef, type ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
 interface GlassCardProps {
   children?: ReactNode;
@@ -7,18 +8,21 @@ interface GlassCardProps {
 
 /**
  * Glass-morphism card for landing page use only.
- * Do NOT use on white/slate-50 backgrounds — it will be invisible.
+ * Uses `.glass-card` from `index.css` so dark mode follows `--card` (not `--foreground`).
  * Import from here; never define locally in a component file.
  */
 const GlassCard = forwardRef<HTMLDivElement, GlassCardProps>(
   ({ children, className = "" }, ref) => (
     <div
       ref={ref}
-      className={`rounded-2xl border border-slate-200/70 bg-white/85 shadow-sm backdrop-blur-md transition-all duration-300 hover:border-slate-200 hover:bg-white/92 hover:shadow-md dark:border-slate-700/80 dark:bg-slate-900/75 dark:hover:border-slate-600 ${className}`}
+      className={cn(
+        "rounded-2xl glass-card text-card-foreground shadow-sm transition-all duration-300 hover:shadow-md",
+        className,
+      )}
     >
       {children}
     </div>
-  )
+  ),
 );
 
 GlassCard.displayName = "GlassCard";

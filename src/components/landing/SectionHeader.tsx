@@ -15,6 +15,8 @@ interface SectionHeaderProps {
   dark?: boolean;
   /** Bottom margin override. Default: "mb-16 sm:mb-20" */
   spacing?: string;
+  /** Merged with subtitle layout; use for stronger body copy contrast (e.g. landing stripes). */
+  subtitleClassName?: string;
 }
 
 /**
@@ -29,6 +31,7 @@ const SectionHeader = ({
   align = "center",
   dark = false,
   spacing = "mb-16 sm:mb-20",
+  subtitleClassName,
 }: SectionHeaderProps) => {
   const centered = align === "center";
 
@@ -58,9 +61,9 @@ const SectionHeader = ({
 
       {subtitle && (
         <p
-          className={`text-balance text-lg ${subtitleColor} leading-relaxed ${
-            centered ? "max-w-2xl mx-auto" : "max-w-2xl"
-          }`}
+          className={`text-balance text-lg leading-relaxed ${
+            subtitleClassName ?? subtitleColor
+          } ${centered ? "max-w-2xl mx-auto" : "max-w-2xl"}`}
         >
           {subtitle}
         </p>

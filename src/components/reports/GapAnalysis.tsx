@@ -389,21 +389,21 @@ export function GapAnalysis({ scores, formData }: GapAnalysisProps) {
       case 'yellow':
         return `${SCORE_COLORS.amber.text} font-bold`;
       case 'black':
-        return 'text-slate-900 font-bold';
+        return 'text-foreground font-bold';
       default:
-        return 'text-slate-500 font-bold';
+        return 'text-muted-foreground font-bold';
     }
   };
   
   return (
     <div className="space-y-3">
-      <h2 className="text-lg font-semibold text-slate-700">Where You Are → Where You're Going</h2>
+      <h2 className="text-lg font-semibold text-foreground">Where You Are → Where You're Going</h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {pillars.map((pillar, idx) => (
-          <div key={idx} className="bg-white rounded-lg border border-slate-200 p-4 space-y-3">
+          <div key={idx} className="bg-card rounded-lg border border-border p-4 space-y-3">
             <div className="flex items-center gap-2">
               <span className="text-xl">{pillar.icon}</span>
-              <h3 className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
                 {pillar.title}
               </h3>
             </div>
@@ -413,22 +413,22 @@ export function GapAnalysis({ scores, formData }: GapAnalysisProps) {
                 <div className={`text-2xl font-bold ${getColorClasses(pillar.current.color)}`}>
                   {pillar.current.value}
                 </div>
-                <div className="text-xs text-slate-600 mt-0.5">{pillar.current.label}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">{pillar.current.label}</div>
               </div>
               
               <div className="flex items-center gap-2">
-                <span className="text-slate-300 text-lg">→</span>
+                <span className="text-muted-foreground/60 text-lg">→</span>
                 <div>
                   <div className={`text-2xl font-bold ${getColorClasses(pillar.goal.color)}`}>
                     {pillar.goal.value}
                   </div>
-                  <div className="text-xs text-slate-600 mt-0.5">{pillar.goal.label}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">{pillar.goal.label}</div>
                 </div>
               </div>
             </div>
             
-            <div className="bg-slate-50 rounded p-2.5 mt-3 border border-slate-100">
-              <p className="text-xs text-slate-700 leading-relaxed">{pillar.note}</p>
+            <div className="bg-muted rounded p-2.5 mt-3 border border-border">
+              <p className="text-xs text-foreground leading-relaxed">{pillar.note}</p>
             </div>
           </div>
         ))}

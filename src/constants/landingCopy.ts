@@ -6,6 +6,13 @@
 export const LANDING_H2_ACCENT_LIGHT =
   'text-transparent bg-clip-text bg-gradient-to-r from-gradient-from to-gradient-to';
 
+/**
+ * Accent word(s) on light backgrounds (white/slate-50): `--gradient-dark` stays readable.
+ * In dark mode, restores the full brand gradient for the same accent span.
+ */
+export const LANDING_H2_ACCENT_LIGHT_READABLE =
+  'text-gradient-dark dark:text-transparent dark:bg-clip-text dark:bg-gradient-to-r dark:from-gradient-from dark:to-gradient-to';
+
 /** H2 keyword accent on dark sections (e.g. Under the hood). */
 export const LANDING_H2_ACCENT_ON_DARK =
   'text-transparent bg-clip-text bg-gradient-to-r from-gradient-from to-gradient-to';

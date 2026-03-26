@@ -17,7 +17,22 @@
     <!-- Favicon & PWA -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/pwa-192x192.svg" />
-    <meta name="theme-color" content="#0f172a" />
+    <!-- Must match src/constants/themeChrome.ts (same as --background light/dark in index.css) -->
+    <meta name="theme-color" content="#fcfcfd" />
+    <!-- FOUC: sync key with STORAGE_KEYS.COLOR_MODE in src/constants/storageKeys.ts -->
+    <script>
+      (function () {
+        var light = '#fcfcfd';
+        var dark = '#050912';
+        try {
+          if (localStorage.getItem('oneassess-color-mode') === 'dark') {
+            document.documentElement.classList.add('dark');
+            var m = document.querySelector('meta[name="theme-color"]');
+            if (m) m.setAttribute('content', dark);
+          }
+        } catch (e) {}
+      })();
+    </script>
 
     <meta property="og:title" content="Fitness assessment software for coaches &amp; gyms | One Assess" />
     <meta

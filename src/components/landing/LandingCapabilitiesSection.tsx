@@ -4,7 +4,7 @@ import { useScrollReveal } from '@/hooks/useScrollReveal';
 import {
   LANDING_CAPABILITY_ROWS,
   LANDING_COPY,
-  LANDING_H2_ACCENT_LIGHT,
+  LANDING_H2_ACCENT_LIGHT_READABLE,
 } from '@/constants/landingCopy';
 
 export function LandingCapabilitiesSection() {
@@ -17,14 +17,14 @@ export function LandingCapabilitiesSection() {
   return (
     <section
       id="features"
-      className="relative overflow-hidden border-t border-slate-200/80 bg-white px-6 py-24 dark:border-border dark:bg-background sm:py-32"
+      className="relative overflow-hidden border-t border-border/80 bg-background px-6 py-24 dark:border-border dark:bg-background sm:py-32"
     >
       <div
         className="pointer-events-none absolute inset-0 overflow-hidden"
         aria-hidden
       >
-        <div className="absolute right-[-6%] top-[18%] h-96 w-96 rounded-full bg-slate-300/14 blur-3xl dark:bg-slate-800/25" />
-        <div className="absolute bottom-[12%] left-[-8%] h-96 w-96 rounded-full bg-gradient-light/30 blur-3xl dark:bg-slate-800/20" />
+        <div className="absolute right-[-6%] top-[18%] h-96 w-96 rounded-full bg-muted/22 blur-3xl dark:bg-background-tertiary/30" />
+        <div className="absolute bottom-[12%] left-[-8%] h-96 w-96 rounded-full bg-gradient-light/30 blur-3xl dark:bg-background-tertiary/25" />
       </div>
 
       <div className="relative z-10 mx-auto max-w-7xl">
@@ -34,12 +34,13 @@ export function LandingCapabilitiesSection() {
             title={
               <>
                 {LANDING_COPY.capabilitiesSectionTitleBefore}
-                <span className={LANDING_H2_ACCENT_LIGHT}>
+                <span className={LANDING_H2_ACCENT_LIGHT_READABLE}>
                   {LANDING_COPY.capabilitiesSectionTitleAccent}
                 </span>
               </>
             }
             subtitle={LANDING_COPY.capabilitiesSectionSubtitle}
+            subtitleClassName="text-muted-foreground"
             spacing="mb-16 sm:mb-20"
           />
         </div>
@@ -51,26 +52,26 @@ export function LandingCapabilitiesSection() {
         </div>
 
         <div
-          className="mt-14 rounded-2xl border border-slate-200/90 bg-white/80 px-6 py-8 shadow-sm backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/45 sm:mt-20 sm:px-8 sm:py-10"
+          className="mt-14 rounded-2xl border border-border/90 bg-card/80 px-6 py-8 shadow-sm backdrop-blur-sm dark:border-border dark:bg-card/45 sm:mt-20 sm:px-8 sm:py-10"
           aria-label={LANDING_COPY.capabilitiesComplianceAriaLabel}
         >
-          <p className="mb-5 text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500">
+          <p className="mb-5 text-[10px] font-black uppercase tracking-[0.15em] text-foreground-tertiary">
             {LANDING_COPY.capabilitiesComplianceHeading}
           </p>
           <div className="flex flex-wrap gap-3">
-            <div className="flex min-h-11 min-w-[44px] items-center gap-3 rounded-2xl border border-slate-200/90 bg-white/90 px-3.5 py-2 shadow-sm dark:border-slate-600 dark:bg-slate-950/50">
+            <div className="flex min-h-11 min-w-[44px] items-center gap-3 rounded-2xl border border-border/90 bg-card/90 px-3.5 py-2 shadow-sm dark:border-border dark:bg-card/50">
               <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-gradient-from to-gradient-to text-[10px] font-bold text-primary-foreground">
                 {LANDING_COPY.capabilitiesHipaaBadgeAbbrev}
               </div>
-              <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+              <span className="text-sm font-semibold text-foreground">
                 {LANDING_COPY.capabilitiesCompliantLabel}
               </span>
             </div>
-            <div className="flex min-h-11 min-w-[44px] items-center gap-3 rounded-2xl border border-slate-200/90 bg-white/90 px-3.5 py-2 shadow-sm dark:border-slate-600 dark:bg-slate-950/50">
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-[10px] font-bold text-white dark:bg-slate-100 dark:text-slate-900">
+            <div className="flex min-h-11 min-w-[44px] items-center gap-3 rounded-2xl border border-border/90 bg-card/90 px-3.5 py-2 shadow-sm dark:border-border dark:bg-card/50">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-foreground text-[10px] font-bold text-background dark:bg-foreground dark:text-background">
                 {LANDING_COPY.capabilitiesGdprBadgeAbbrev}
               </div>
-              <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+              <span className="text-sm font-semibold text-foreground">
                 {LANDING_COPY.capabilitiesCompliantLabel}
               </span>
             </div>

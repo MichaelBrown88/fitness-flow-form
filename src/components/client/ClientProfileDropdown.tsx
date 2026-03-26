@@ -48,12 +48,12 @@ export function ClientProfileDropdown({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="flex items-center gap-1 rounded-full p-0.5 hover:bg-slate-50 transition-colors"
+          className="flex items-center gap-1 rounded-full p-0.5 hover:bg-muted/50 transition-colors"
         >
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-tr from-gradient-from to-gradient-to text-[10px] font-bold text-primary-foreground">
             {initials}
           </span>
-          <ChevronDown className="h-3 w-3 text-slate-400 mr-0.5" />
+          <ChevronDown className="h-3 w-3 text-muted-foreground mr-0.5" />
         </button>
       </DropdownMenuTrigger>
 
@@ -62,7 +62,7 @@ export function ClientProfileDropdown({
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium leading-none">{clientName}</p>
-            <p className="text-xs leading-none text-zinc-500">Your Profile</p>
+            <p className="text-xs leading-none text-muted-foreground">Your Profile</p>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -87,7 +87,7 @@ export function ClientProfileDropdown({
             <Camera className="h-4 w-4" />
             Posture Scan
           </span>
-          <span className="text-[10px] font-medium text-zinc-400">Coming soon</span>
+          <span className="text-[10px] font-medium text-muted-foreground">Coming soon</span>
         </DropdownMenuItem>
 
         <DropdownMenuItem
@@ -106,7 +106,7 @@ export function ClientProfileDropdown({
             <Scale className="h-4 w-4" />
             Body Comp Scan
           </span>
-          <span className="text-[10px] font-medium text-zinc-400">Coming soon</span>
+          <span className="text-[10px] font-medium text-muted-foreground">Coming soon</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

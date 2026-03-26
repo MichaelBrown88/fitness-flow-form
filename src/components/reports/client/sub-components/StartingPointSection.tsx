@@ -5,6 +5,7 @@ import OverallRadarChart, { type RadarData } from '../../OverallRadarChart';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { CardInfoDrawer } from '../../CardInfoDrawer';
 import { useAnimateOnView } from '@/hooks/useAnimateOnView';
+import { CHART_HEX } from '@/lib/design/chartColors';
 
 const OVERALL_SCORE_ANIMATION_DURATION_MS = 1200;
 
@@ -41,10 +42,10 @@ export const StartingPointSection: React.FC<StartingPointSectionProps> = ({
     <section className="w-full min-w-0 overflow-x-hidden">
       {!hideHeader && (
         <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 mb-2 sm:mb-3 md:mb-4 lg:mb-5 xl:mb-6">
-          <div className="p-1 sm:p-1.5 md:p-2 bg-gradient-light text-zinc-900 rounded-lg">
+          <div className="p-1 sm:p-1.5 md:p-2 bg-gradient-light text-foreground rounded-lg">
             <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
           </div>
-          <h3 className="text-xs md:text-sm lg:text-base font-semibold text-zinc-900">Your Starting Point</h3>
+          <h3 className="text-xs md:text-sm lg:text-base font-semibold text-foreground">Your Starting Point</h3>
         </div>
       )}
       
@@ -61,7 +62,7 @@ export const StartingPointSection: React.FC<StartingPointSectionProps> = ({
               <circle 
                 cx="50" cy="50" r="42" 
                 fill="transparent" 
-                stroke="#f4f4f5" 
+                stroke={CHART_HEX.ringTrackLight} 
                 strokeWidth={gaugeStroke} 
                 strokeLinecap="round"
                 strokeDasharray="190 264" 
@@ -99,12 +100,12 @@ export const StartingPointSection: React.FC<StartingPointSectionProps> = ({
             </svg>
             
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-zinc-900 tracking-tight leading-none">{animatedScore}</span>
+              <span className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-foreground tracking-tight leading-none">{animatedScore}</span>
             </div>
           </div>
 
           {/* Score label + trend indicator -- sits below ring */}
-          <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.15em] mb-1 sm:mb-1.5">Overall Score</span>
+          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.15em] mb-1 sm:mb-1.5">Overall Score</span>
           {scoreDiff !== null && scoreDiff !== 0 && (
             <div className={`inline-flex items-center gap-0.5 text-[10px] sm:text-xs font-semibold mb-2 sm:mb-3 ${scoreDiff > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
               {scoreDiff > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
@@ -114,13 +115,13 @@ export const StartingPointSection: React.FC<StartingPointSectionProps> = ({
           {(scoreDiff === null || scoreDiff === 0) && <div className="mb-2 sm:mb-3" />}
 
           {/* Badge */}
-          <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 md:px-5 py-1.5 sm:py-2 rounded-full bg-gradient-light text-zinc-900 text-xs sm:text-sm font-bold border border-gradient-medium mb-2 sm:mb-3 md:mb-4">
-            <Trophy className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 fill-current text-zinc-900" />
+          <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 md:px-5 py-1.5 sm:py-2 rounded-full bg-gradient-light text-foreground text-xs sm:text-sm font-bold border border-gradient-medium mb-2 sm:mb-3 md:mb-4">
+            <Trophy className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 fill-current text-foreground" />
             <span className="text-center">{archetype.name}</span>
           </div>
 
           {/* Description -- visible on all screens */}
-          <p className="text-xs sm:text-xs md:text-sm text-zinc-500 font-medium leading-relaxed max-w-[240px] sm:max-w-[260px] mx-auto">
+          <p className="text-xs sm:text-xs md:text-sm text-muted-foreground font-medium leading-relaxed max-w-[240px] sm:max-w-[260px] mx-auto">
             {archetype.description}
           </p>
         </Card>
@@ -136,8 +137,8 @@ export const StartingPointSection: React.FC<StartingPointSectionProps> = ({
           </CardInfoDrawer>
           <div className="flex justify-between items-start mb-1 sm:mb-4">
             <div>
-              <h4 className="text-sm font-bold text-zinc-900">Performance Profile</h4>
-              <p className="text-xs text-zinc-500 mt-0.5 sm:mt-1">
+              <h4 className="text-sm font-bold text-foreground">Performance Profile</h4>
+              <p className="text-xs text-muted-foreground mt-0.5 sm:mt-1">
                 Visualizing your current baseline across health pillars.
               </p>
             </div>

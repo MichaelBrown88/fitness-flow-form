@@ -79,7 +79,7 @@ function Hero({
             }`}>
               {s.value}
             </p>
-            <p className="text-xs text-slate-500 mt-1">{s.label}</p>
+            <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
           </div>
         ))}
       </div>
@@ -87,7 +87,7 @@ function Hero({
       {/* Efficacy proof sentence */}
       {efficacyPct !== null && (
         <div className="border-l-2 border-emerald-500 pl-4">
-          <p className="text-sm text-slate-300 leading-relaxed">
+          <p className="text-sm text-muted-foreground/60 leading-relaxed">
             <span className="text-emerald-400 font-semibold text-base">{efficacyPct}%</span>
             {' '}of clients who return for a second assessment show a measurable improvement in overall score.
             No competitor captures all five health domains in one structured record.
@@ -120,7 +120,7 @@ function OutcomeProof({
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {/* Outcome bars */}
       <div className="space-y-3">
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
           Outcome — clients with 2+ sessions
         </p>
 
@@ -129,7 +129,7 @@ function OutcomeProof({
             {(
               [
                 { key: 'improved', label: 'Improved', color: 'bg-emerald-500', n: overall.improved },
-                { key: 'stable',   label: 'Stable',   color: 'bg-slate-600',   n: overall.stable   },
+                { key: 'stable',   label: 'Stable',   color: 'bg-muted-foreground',   n: overall.stable   },
                 { key: 'declined', label: 'Declined', color: 'bg-red-500/70',  n: overall.declined },
               ] as const
             ).map(row => {
@@ -137,9 +137,9 @@ function OutcomeProof({
               return (
                 <div key={row.key} className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-300">{row.label}</span>
-                    <span className="tabular-nums text-slate-400">
-                      {pct}% <span className="text-slate-600">({row.n})</span>
+                    <span className="text-muted-foreground/60">{row.label}</span>
+                    <span className="tabular-nums text-muted-foreground">
+                      {pct}% <span className="text-foreground-secondary">({row.n})</span>
                     </span>
                   </div>
                   <div className="h-2 bg-admin-bg rounded-full overflow-hidden">
@@ -155,7 +155,7 @@ function OutcomeProof({
             {/* Engagement depth breakdown */}
             {outcomeFunnel && (
               <div className="pt-2 border-t border-admin-border/50 space-y-1.5">
-                <p className="text-[10px] text-slate-600 uppercase tracking-wider">By engagement depth</p>
+                <p className="text-[10px] text-foreground-secondary uppercase tracking-wider">By engagement depth</p>
                 {(
                   [
                     { key: '2-3' as const, label: '2–3 sessions' },
@@ -167,11 +167,11 @@ function OutcomeProof({
                   if (b.total === 0) return null;
                   const pct = Math.round((b.improved / b.total) * 100);
                   return (
-                    <div key={key} className="flex items-center justify-between text-xs text-slate-500">
+                    <div key={key} className="flex items-center justify-between text-xs text-muted-foreground">
                       <span>{label}</span>
                       <span className="tabular-nums">
                         <span className="text-emerald-400">{pct}%</span> improved
-                        <span className="text-slate-600 ml-1">n={b.total}</span>
+                        <span className="text-foreground-secondary ml-1">n={b.total}</span>
                       </span>
                     </div>
                   );
@@ -180,7 +180,7 @@ function OutcomeProof({
             )}
           </div>
         ) : (
-          <p className="text-xs text-slate-600">
+          <p className="text-xs text-foreground-secondary">
             Requires 2+ clients with 2+ sessions. Click "Recompute" once more follow-up assessments are complete.
           </p>
         )}
@@ -188,7 +188,7 @@ function OutcomeProof({
 
       {/* Engagement stats */}
       <div className="space-y-3">
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
           Engagement
         </p>
 
@@ -196,13 +196,13 @@ function OutcomeProof({
           {returnRate !== undefined && (
             <div>
               <p className="text-3xl font-bold text-white tabular-nums">{returnRate}%</p>
-              <p className="text-xs text-slate-500 mt-0.5">client return rate (2nd session)</p>
+              <p className="text-xs text-muted-foreground mt-0.5">client return rate (2nd session)</p>
             </div>
           )}
           {avgDays !== null && avgDays !== undefined && (
             <div>
               <p className="text-3xl font-bold text-white tabular-nums">{avgDays}</p>
-              <p className="text-xs text-slate-500 mt-0.5">avg days between sessions</p>
+              <p className="text-xs text-muted-foreground mt-0.5">avg days between sessions</p>
             </div>
           )}
           {patterns && (
@@ -210,7 +210,7 @@ function OutcomeProof({
               <p className="text-3xl font-bold text-white tabular-nums">
                 {patterns.avgSessionsPerClient}×
               </p>
-              <p className="text-xs text-slate-500 mt-0.5">avg sessions per client</p>
+              <p className="text-xs text-muted-foreground mt-0.5">avg sessions per client</p>
             </div>
           )}
         </div>
@@ -269,15 +269,15 @@ function PopulationSnapshot({
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {/* Average scores per pillar */}
       <div className="space-y-3">
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
           Average scores — {uniqueClientCount} client{uniqueClientCount !== 1 ? 's' : ''}
         </p>
         <div className="space-y-2.5">
           {avgScores.map(({ pillar, label, avg }) => (
             <div key={pillar} className="space-y-1">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-300">{label}</span>
-                <span className="tabular-nums font-semibold text-slate-200">{avg}</span>
+                <span className="text-muted-foreground/60">{label}</span>
+                <span className="tabular-nums font-semibold text-muted-foreground">{avg}</span>
               </div>
               <div className="h-1.5 bg-admin-bg rounded-full overflow-hidden">
                 <div
@@ -296,15 +296,15 @@ function PopulationSnapshot({
       <div className="space-y-5">
         {topGoals.length > 0 && (
           <div className="space-y-2.5">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Top client goals
             </p>
             {topGoals.map(g => {
               const pct = totalGoalVotes > 0 ? Math.round((g.value / totalGoalVotes) * 100) : 0;
               return (
-                <div key={g.name} className="flex items-center justify-between text-xs text-slate-300">
+                <div key={g.name} className="flex items-center justify-between text-xs text-muted-foreground/60">
                   <span className="truncate mr-3">{g.name}</span>
-                  <span className="tabular-nums text-slate-500 shrink-0">{pct}%</span>
+                  <span className="tabular-nums text-muted-foreground shrink-0">{pct}%</span>
                 </div>
               );
             })}
@@ -313,13 +313,13 @@ function PopulationSnapshot({
 
         {topPatterns.length > 0 && (
           <div className="space-y-2.5">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Clinical risk signals
             </p>
             {topPatterns.map(p => (
-              <div key={p.pattern} className="flex items-center justify-between text-xs text-slate-300">
+              <div key={p.pattern} className="flex items-center justify-between text-xs text-muted-foreground/60">
                 <span className="truncate mr-3">{p.pattern}</span>
-                <span className="tabular-nums text-slate-500 shrink-0">{p.pct}%</span>
+                <span className="tabular-nums text-muted-foreground shrink-0">{p.pct}%</span>
               </div>
             ))}
           </div>
@@ -346,7 +346,7 @@ function GrowthTrend({
 
   return (
     <div>
-      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">
         Platform growth
       </p>
       <div className="flex items-end gap-1.5" style={{ height: 72 }}>
@@ -357,7 +357,7 @@ function GrowthTrend({
           const monthLabel = m.slice(5);
           return (
             <div key={m} className="flex-1 flex flex-col items-center gap-0.5 h-full">
-              <p className="text-[9px] text-slate-600 tabular-nums leading-none h-3 flex items-center">
+              <p className="text-[9px] text-foreground-secondary tabular-nums leading-none h-3 flex items-center">
                 {score !== undefined ? Math.round(score) : ''}
               </p>
               <div className="flex-1 w-full flex items-end">
@@ -366,12 +366,12 @@ function GrowthTrend({
                   style={{ height: `${heightPct}%` }}
                 />
               </div>
-              <p className="text-[9px] text-slate-600 leading-none h-3 flex items-center">{monthLabel}</p>
+              <p className="text-[9px] text-foreground-secondary leading-none h-3 flex items-center">{monthLabel}</p>
             </div>
           );
         })}
       </div>
-      <p className="text-[10px] text-slate-600 mt-2">
+      <p className="text-[10px] text-foreground-secondary mt-2">
         Sessions per month · numbers above bars = avg score that month
       </p>
     </div>
@@ -388,17 +388,17 @@ function EngagementLadder({ cohorts }: { cohorts: EngagementCohort[] }) {
 
   return (
     <div>
-      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
         Engagement ladder
       </p>
-      <p className="text-xs text-slate-600 mb-4">
+      <p className="text-xs text-foreground-secondary mb-4">
         The more sessions a client completes, the higher they score — the platform's compounding value proposition.
       </p>
       <div className="space-y-3">
         {sorted.map(c => (
           <div key={c.bracket} className="flex items-center gap-3">
-            <p className="w-16 text-xs text-slate-400 shrink-0">{c.label}</p>
-            <div className="flex-1 bg-slate-800 rounded-full h-1.5 overflow-hidden">
+            <p className="w-16 text-xs text-muted-foreground shrink-0">{c.label}</p>
+            <div className="flex-1 bg-foreground/90 rounded-full h-1.5 overflow-hidden">
               <div
                 className="h-full rounded-full bg-indigo-500"
                 style={{ width: `${Math.min(100, c.avgScore)}%` }}
@@ -412,7 +412,7 @@ function EngagementLadder({ cohorts }: { cohorts: EngagementCohort[] }) {
                 {c.avgImprovement >= 0 ? '+' : ''}{c.avgImprovement.toFixed(1)} pts
               </p>
             )}
-            <p className="w-14 text-[10px] text-slate-600 text-right shrink-0">{c.count} clients</p>
+            <p className="w-14 text-[10px] text-foreground-secondary text-right shrink-0">{c.count} clients</p>
           </div>
         ))}
       </div>
@@ -443,10 +443,10 @@ function PillarGains({ improvements }: { improvements: Record<string, number> })
 
   return (
     <div>
-      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
         Where the platform moves the needle
       </p>
-      <p className="text-xs text-slate-600 mb-4">
+      <p className="text-xs text-foreground-secondary mb-4">
         Average score change per domain across all clients with 2+ sessions.
       </p>
       <div className="space-y-2.5">
@@ -454,8 +454,8 @@ function PillarGains({ improvements }: { improvements: Record<string, number> })
           const barPct = Math.round((Math.abs(i.delta) / maxAbs) * 100);
           return (
             <div key={i.key} className="flex items-center gap-3">
-              <p className="w-36 text-xs text-slate-300 shrink-0">{i.label}</p>
-              <div className="flex-1 bg-slate-800 rounded-full h-1 overflow-hidden">
+              <p className="w-36 text-xs text-muted-foreground/60 shrink-0">{i.label}</p>
+              <div className="flex-1 bg-foreground/90 rounded-full h-1 overflow-hidden">
                 <div
                   className={`h-full rounded-full ${i.delta >= 0 ? 'bg-emerald-500' : 'bg-red-500'}`}
                   style={{ width: `${barPct}%` }}
@@ -488,7 +488,7 @@ function toLifestyleColor(key: string, domain: string): string {
   if (['poor', 'high', 'very-high', 'daily'].includes(k)) return 'bg-red-500/70';
   if (['fair', 'moderate', 'lightly-active', 'occasionally', 'weekly'].includes(k)) return 'bg-amber-500/60';
   if (['good', 'excellent', 'low', 'very-low', 'moderately-active', 'very-active', 'extremely-active', 'never'].includes(k)) return 'bg-emerald-500/60';
-  return 'bg-slate-600';
+  return 'bg-muted-foreground';
 }
 
 function LifestyleRisk({
@@ -507,12 +507,12 @@ function LifestyleRisk({
 
   return (
     <div>
-      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
         Lifestyle risk intelligence
       </p>
-      <p className="text-xs text-slate-600 mb-4">
+      <p className="text-xs text-foreground-secondary mb-4">
         Distribution of key lifestyle risk factors across the client population.
-        <span className="text-slate-700 ml-1">Red = risk · Amber = moderate · Green = healthy</span>
+        <span className="text-foreground-secondary ml-1">Red = risk · Amber = moderate · Green = healthy</span>
       </p>
       <div className="space-y-4">
         {valid.map(section => {
@@ -527,7 +527,7 @@ function LifestyleRisk({
           if (total === 0) return null;
           return (
             <div key={section.label}>
-              <p className="text-[10px] text-slate-400 mb-1.5 uppercase tracking-wide">{section.label}</p>
+              <p className="text-[10px] text-muted-foreground mb-1.5 uppercase tracking-wide">{section.label}</p>
               <div className="flex gap-0.5 h-3 rounded-full overflow-hidden">
                 {sortedKeys.map(k => {
                   const pct = Math.round(((data[k] ?? 0) / total) * 100);
@@ -544,7 +544,7 @@ function LifestyleRisk({
               </div>
               <div className="flex gap-3 mt-1 flex-wrap">
                 {sortedKeys.map(k => (
-                  <span key={k} className="text-[9px] text-slate-500 capitalize">
+                  <span key={k} className="text-[9px] text-muted-foreground capitalize">
                     {k}: {total > 0 ? Math.round(((data[k] ?? 0) / total) * 100) : 0}%
                   </span>
                 ))}
@@ -568,10 +568,10 @@ function CorrelationIntelligence({ findings }: { findings: CorrelationFinding[] 
 
   return (
     <div>
-      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
         Cross-domain intelligence
       </p>
-      <p className="text-xs text-slate-600 mb-4">
+      <p className="text-xs text-foreground-secondary mb-4">
         Pearson correlations across lifestyle, clinical, and performance domains.
         Only a platform capturing all five pillars can surface findings like these.
       </p>
@@ -582,18 +582,18 @@ function CorrelationIntelligence({ findings }: { findings: CorrelationFinding[] 
             f.strength === 'strong'
               ? 'text-indigo-400'
               : f.strength === 'moderate'
-              ? 'text-slate-300'
-              : 'text-slate-500';
+              ? 'text-muted-foreground/60'
+              : 'text-muted-foreground';
           return (
             <div key={i} className="flex items-start gap-3">
               <span className={`text-[10px] font-mono tabular-nums shrink-0 mt-0.5 ${strengthColor}`}>
                 r={f.r >= 0 ? '+' : ''}{f.r.toFixed(2)}
               </span>
-              <p className="text-xs text-slate-400 leading-relaxed">
+              <p className="text-xs text-muted-foreground leading-relaxed">
                 Clients with higher{' '}
-                <span className="text-slate-200">{f.labelA}</span>
+                <span className="text-muted-foreground">{f.labelA}</span>
                 {' '}tend to score {dirWord} in{' '}
-                <span className="text-slate-200">{f.labelB}</span>
+                <span className="text-muted-foreground">{f.labelB}</span>
                 {' '}({f.diffPct}% difference, n={f.n})
               </p>
             </div>
@@ -613,10 +613,10 @@ function AnalyticsCapabilities({ milestoneProgress }: { milestoneProgress: Miles
 
   return (
     <div>
-      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
         Analytics capabilities
       </p>
-      <p className="text-xs text-slate-600 mb-4">
+      <p className="text-xs text-foreground-secondary mb-4">
         Capabilities unlock automatically as the dataset grows. Each threshold represents a qualitative leap in what the data can reveal.
       </p>
       <div className="space-y-3">
@@ -629,7 +629,7 @@ function AnalyticsCapabilities({ milestoneProgress }: { milestoneProgress: Miles
           return (
             <div key={t.tier} className="flex items-start gap-3">
               <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 mt-0.5 ${
-                unlocked ? 'bg-indigo-500 border-indigo-500' : 'border-slate-700'
+                unlocked ? 'bg-indigo-500 border-indigo-500' : 'border-border'
               }`}>
                 {unlocked && (
                   <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 10 10" fill="none">
@@ -638,23 +638,23 @@ function AnalyticsCapabilities({ milestoneProgress }: { milestoneProgress: Miles
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className={`text-xs font-medium ${unlocked ? 'text-white' : 'text-slate-500'}`}>
+                <p className={`text-xs font-medium ${unlocked ? 'text-white' : 'text-muted-foreground'}`}>
                   {t.label}
                 </p>
-                <p className="text-[10px] text-slate-600 mt-0.5 leading-relaxed">
+                <p className="text-[10px] text-foreground-secondary mt-0.5 leading-relaxed">
                   {unlocked
                     ? t.description
                     : `${t.preview} (${t.threshold - currentCount} more sessions needed)`}
                 </p>
                 {progress !== null && (
                   <div className="mt-1.5 flex items-center gap-2">
-                    <div className="flex-1 bg-slate-800 rounded-full h-0.5">
+                    <div className="flex-1 bg-foreground/90 rounded-full h-0.5">
                       <div
                         className="h-full rounded-full bg-indigo-600"
                         style={{ width: `${progress}%` }}
                       />
                     </div>
-                    <span className="text-[9px] text-slate-600">{currentCount}/{t.threshold}</span>
+                    <span className="text-[9px] text-foreground-secondary">{currentCount}/{t.threshold}</span>
                   </div>
                 )}
               </div>
@@ -778,7 +778,7 @@ export function PlatformDashboardDataIntelligenceTab() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-24 text-slate-500 gap-2">
+      <div className="flex items-center justify-center py-24 text-muted-foreground gap-2">
         <RefreshCw className="w-4 h-4 animate-spin" />
         <span className="text-sm">Loading…</span>
       </div>
@@ -789,12 +789,12 @@ export function PlatformDashboardDataIntelligenceTab() {
   if (!populationData) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-5 text-center">
-        <div className="w-14 h-14 rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center">
-          <Database className="w-7 h-7 text-slate-500" />
+        <div className="w-14 h-14 rounded-2xl bg-foreground/90 border border-border flex items-center justify-center">
+          <Database className="w-7 h-7 text-muted-foreground" />
         </div>
         <div className="max-w-sm space-y-1.5">
           <h3 className="text-white font-semibold">No data yet</h3>
-          <p className="text-slate-500 text-sm">
+          <p className="text-muted-foreground text-sm">
             The nightly job runs at 02:00 UTC. Click below to compute now.
           </p>
         </div>
@@ -815,7 +815,7 @@ export function PlatformDashboardDataIntelligenceTab() {
 
       {/* Page bar */}
       <div className="flex items-center justify-between gap-4">
-        <p className="text-xs text-slate-600">
+        <p className="text-xs text-foreground-secondary">
           {lastComputedLabel ? `Last computed ${lastComputedLabel}` : 'Data Intelligence'}
         </p>
         <Button
@@ -823,7 +823,7 @@ export function PlatformDashboardDataIntelligenceTab() {
           size="sm"
           onClick={handleCompute}
           disabled={computing}
-          className="text-slate-500 hover:text-slate-300 text-xs h-7 px-2"
+          className="text-muted-foreground hover:text-muted-foreground/60 text-xs h-7 px-2"
         >
           {computing
             ? <RefreshCw className="w-3 h-3 mr-1.5 animate-spin" />
@@ -851,7 +851,7 @@ export function PlatformDashboardDataIntelligenceTab() {
 
       {/* ② Proof */}
       <div className="space-y-3">
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
           Does the product work?
         </p>
         <OutcomeProof
@@ -866,7 +866,7 @@ export function PlatformDashboardDataIntelligenceTab() {
 
       {/* ③ Population snapshot */}
       <div className="space-y-3">
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
           Who are the clients?
         </p>
         <PopulationSnapshot
@@ -884,14 +884,14 @@ export function PlatformDashboardDataIntelligenceTab() {
       <div className="space-y-5">
         <button
           type="button"
-          className="flex items-center gap-2 text-xs text-slate-500 hover:text-slate-300 transition-colors"
+          className="flex items-center gap-2 text-xs text-muted-foreground hover:text-muted-foreground/60 transition-colors"
           onClick={() => setShowFullAnalysis(v => !v)}
         >
           {showFullAnalysis
             ? <ChevronUp className="w-3.5 h-3.5" />
             : <ChevronDown className="w-3.5 h-3.5" />}
           {showFullAnalysis ? 'Hide full analysis' : 'View full analysis'}
-          <span className="text-slate-700">— growth, engagement ladder, pillar gains, lifestyle risks, correlations, capabilities</span>
+          <span className="text-foreground-secondary">— growth, engagement ladder, pillar gains, lifestyle risks, correlations, capabilities</span>
         </button>
 
         {showFullAnalysis && (

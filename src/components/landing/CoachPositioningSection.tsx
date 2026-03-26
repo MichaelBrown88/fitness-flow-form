@@ -4,7 +4,7 @@ import { useScrollReveal } from '@/hooks/useScrollReveal';
 import {
   LANDING_COPY,
   LANDING_COACH_POSITIONING_BULLETS,
-  LANDING_H2_ACCENT_LIGHT,
+  LANDING_H2_ACCENT_LIGHT_READABLE,
 } from '@/constants/landingCopy';
 
 export function CoachPositioningSection() {
@@ -13,15 +13,15 @@ export function CoachPositioningSection() {
 
   return (
     <section
-      className="relative overflow-hidden border-t border-slate-200/80 bg-white px-6 py-20 dark:border-border dark:bg-background sm:py-28"
+      className="relative overflow-hidden border-t border-border/80 bg-background px-6 py-20 dark:border-border dark:bg-background sm:py-28"
       aria-labelledby="coach-positioning-heading"
     >
       <div
         className="pointer-events-none absolute inset-0 overflow-hidden"
         aria-hidden
       >
-        <div className="absolute left-[-10%] top-[25%] h-96 w-96 rounded-full bg-gradient-light/30 blur-3xl dark:bg-slate-800/25" />
-        <div className="absolute bottom-[15%] right-[-8%] h-80 w-80 rounded-full bg-slate-300/12 blur-3xl dark:bg-slate-800/20" />
+        <div className="absolute left-[-10%] top-[25%] h-96 w-96 rounded-full bg-gradient-light/30 blur-3xl dark:bg-background-tertiary/30" />
+        <div className="absolute bottom-[15%] right-[-8%] h-80 w-80 rounded-full bg-muted/20 blur-3xl dark:bg-background-tertiary/25" />
       </div>
 
       <div className="relative z-10 mx-auto max-w-7xl">
@@ -31,24 +31,25 @@ export function CoachPositioningSection() {
             title={
               <span id="coach-positioning-heading">
                 {LANDING_COPY.coachPositioningTitleBefore}
-                <span className={LANDING_H2_ACCENT_LIGHT}>
+                <span className={LANDING_H2_ACCENT_LIGHT_READABLE}>
                   {LANDING_COPY.coachPositioningTitleAccent}
                 </span>
               </span>
             }
             subtitle={LANDING_COPY.coachPositioningSubtitle}
+            subtitleClassName="text-muted-foreground"
             align="center"
             spacing="mb-10 sm:mb-12"
           />
         </div>
 
         <div ref={bodyRef} className="mx-auto max-w-2xl">
-          <ul className="space-y-0 overflow-hidden rounded-2xl border border-slate-200/90 bg-white/80 shadow-sm backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/45">
+          <ul className="space-y-0 overflow-hidden rounded-2xl border border-border/90 bg-card/80 shadow-sm backdrop-blur-sm dark:border-border dark:bg-card/45">
             {LANDING_COACH_POSITIONING_BULLETS.map((line, index) => (
               <li
                 key={line}
-                className={`flex gap-4 px-5 py-4 text-left text-sm font-medium leading-relaxed text-slate-600 sm:gap-5 sm:px-7 sm:py-5 sm:text-base dark:text-slate-300 ${
-                  index > 0 ? 'border-t border-slate-100 dark:border-slate-700/80' : ''
+                className={`flex gap-4 px-5 py-4 text-left text-sm font-medium leading-relaxed text-muted-foreground sm:gap-5 sm:px-7 sm:py-5 sm:text-base ${
+                  index > 0 ? 'border-t border-border dark:border-border/80' : ''
                 }`}
               >
                 <span

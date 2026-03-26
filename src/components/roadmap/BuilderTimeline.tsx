@@ -12,7 +12,7 @@ interface BuilderTimelineProps {
 export function BuilderTimeline({ timelineItems, onDelete, onShowPhaseFocus }: BuilderTimelineProps) {
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-bold text-slate-800 mb-2">Journey Timeline</h3>
+      <h3 className="text-sm font-bold text-foreground mb-2">Journey Timeline</h3>
       {PHASES.map((phase, idx) => (
         <PhaseDropZone
           key={phase}

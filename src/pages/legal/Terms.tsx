@@ -17,7 +17,7 @@ const termsSeo = requireSeoForPath(SEO_PATH.TERMS);
 
 export default function Terms() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
       <Seo
         pathname={SEO_PATH.TERMS}
         title={termsSeo.title}

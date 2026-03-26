@@ -93,7 +93,7 @@ export function WebhooksManager({ organizationId }: WebhooksManagerProps) {
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteDoc(doc(db, `organizations/${organizationId}/webhooks/${id}`));
+      await deleteDoc(doc(getDb(), `organizations/${organizationId}/webhooks/${id}`));
       setWebhooks(prev => prev.filter(w => w.id !== id));
       toast({ title: 'Webhook removed' });
     } catch (err) {
@@ -104,7 +104,7 @@ export function WebhooksManager({ organizationId }: WebhooksManagerProps) {
 
   const handleToggleActive = async (webhook: WebhookConfig) => {
     try {
-      await updateDoc(doc(db, `organizations/${organizationId}/webhooks/${webhook.id}`), {
+      await updateDoc(doc(getDb(), `organizations/${organizationId}/webhooks/${webhook.id}`), {
         active: !webhook.active,
       });
       setWebhooks(prev => prev.map(w => w.id === webhook.id ? { ...w, active: !w.active } : w));
@@ -120,18 +120,18 @@ export function WebhooksManager({ organizationId }: WebhooksManagerProps) {
   };
 
   if (loading) {
-    return <div className="h-20 animate-pulse bg-slate-100 rounded-xl" />;
+    return <div className="h-20 animate-pulse bg-muted rounded-xl" />;
   }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
             <Webhook className="h-4 w-4 text-primary" />
             Outbound Webhooks
           </h3>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-muted-foreground mt-0.5">
             Receive real-time events in your own systems. All requests are HMAC-SHA256 signed.
           </p>
         </div>
@@ -147,16 +147,16 @@ export function WebhooksManager({ organizationId }: WebhooksManagerProps) {
       </div>
 
       {webhooks.length === 0 && !showForm && (
-        <div className="rounded-xl border-2 border-dashed border-slate-200 p-8 text-center text-sm text-slate-400">
+        <div className="rounded-xl border-2 border-dashed border-border p-8 text-center text-sm text-muted-foreground">
           No webhooks configured yet.
         </div>
       )}
 
       {webhooks.map(webhook => (
-        <div key={webhook.id} className="rounded-xl border border-slate-200 p-4 space-y-3">
+        <div key={webhook.id} className="rounded-xl border border-border p-4 space-y-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-sm font-bold text-slate-900 truncate">{webhook.url}</p>
+              <p className="text-sm font-bold text-foreground truncate">{webhook.url}</p>
               <div className="flex items-center gap-1.5 mt-1">
                 {webhook.events.map(e => (
                   <span key={e} className="text-[10px] font-bold bg-primary/5 text-primary px-2 py-0.5 rounded-full">{e}</span>
@@ -164,21 +164,21 @@ export function WebhooksManager({ organizationId }: WebhooksManagerProps) {
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <button onClick={() => handleToggleActive(webhook)} className="text-slate-400 hover:text-slate-700">
+              <button onClick={() => handleToggleActive(webhook)} className="text-muted-foreground hover:text-foreground-secondary">
                 {webhook.active
                   ? <ToggleRight className="h-5 w-5 text-primary" />
                   : <ToggleLeft className="h-5 w-5" />}
               </button>
-              <button onClick={() => handleDelete(webhook.id)} className="text-slate-300 hover:text-red-500">
+              <button onClick={() => handleDelete(webhook.id)} className="text-muted-foreground/60 hover:text-red-500">
                 <Trash2 className="h-4 w-4" />
               </button>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <code className="flex-1 text-[10px] bg-slate-50 rounded-lg px-3 py-1.5 text-slate-500 truncate font-mono">
+            <code className="flex-1 text-[10px] bg-muted/50 rounded-lg px-3 py-1.5 text-muted-foreground truncate font-mono">
               {webhook.secret}
             </code>
-            <button onClick={() => copySecret(webhook.secret)} className="text-slate-400 hover:text-primary">
+            <button onClick={() => copySecret(webhook.secret)} className="text-muted-foreground hover:text-primary">
               <Copy className="h-3.5 w-3.5" />
             </button>
           </div>
@@ -187,7 +187,7 @@ export function WebhooksManager({ organizationId }: WebhooksManagerProps) {
 
       {showForm && (
         <div className="rounded-xl border-2 border-primary/20 bg-brand-light p-4 space-y-4">
-          <p className="text-xs font-bold text-slate-700">New Endpoint</p>
+          <p className="text-xs font-bold text-foreground-secondary">New Endpoint</p>
           <Input
             placeholder="https://your-server.com/webhook"
             value={newUrl}
@@ -195,7 +195,7 @@ export function WebhooksManager({ organizationId }: WebhooksManagerProps) {
             className="rounded-xl"
           />
           <div>
-            <p className="text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wide">Subscribe to events</p>
+            <p className="text-[10px] font-bold text-muted-foreground mb-2 uppercase tracking-wide">Subscribe to events</p>
             <div className="flex flex-wrap gap-2">
               {WEBHOOK_EVENTS.map(evt => {
                 const selected = newEvents.includes(evt.id);
@@ -208,8 +208,8 @@ export function WebhooksManager({ organizationId }: WebhooksManagerProps) {
                     )}
                     className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-colors ${
                       selected
-                        ? 'bg-primary text-white border-primary'
-                        : 'bg-white text-slate-600 border-slate-200 hover:border-primary/30'
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background text-foreground-secondary border-border hover:border-primary/30'
                     }`}
                   >
                     {evt.label}
@@ -219,10 +219,10 @@ export function WebhooksManager({ organizationId }: WebhooksManagerProps) {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <code className="flex-1 text-[10px] bg-white rounded-lg px-3 py-1.5 text-slate-500 truncate font-mono">
+            <code className="flex-1 text-[10px] bg-background rounded-lg px-3 py-1.5 text-muted-foreground truncate font-mono">
               Secret: {newSecret}
             </code>
-            <button onClick={() => copySecret(newSecret)} className="text-slate-400 hover:text-primary">
+            <button onClick={() => copySecret(newSecret)} className="text-muted-foreground hover:text-primary">
               <Copy className="h-3.5 w-3.5" />
             </button>
           </div>
@@ -232,7 +232,7 @@ export function WebhooksManager({ organizationId }: WebhooksManagerProps) {
             </Button>
             <Button
               size="sm"
-              className="rounded-xl font-bold text-xs bg-primary text-white"
+              className="rounded-xl font-bold text-xs bg-primary text-primary-foreground"
               onClick={handleAdd}
               disabled={saving || !newUrl || newEvents.length === 0}
             >

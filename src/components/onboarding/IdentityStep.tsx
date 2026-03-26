@@ -42,14 +42,14 @@ export function IdentityStep({ data, onNext, error: externalError }: IdentitySte
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-1">Let's get started</h2>
-        <p className="text-sm text-slate-500">Tell us a bit about yourself. Takes about 2 minutes.</p>
+        <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-1">Let's get started</h2>
+        <p className="text-sm text-muted-foreground">Tell us a bit about yourself. Takes about 2 minutes.</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-bold text-slate-600 mb-1.5">First Name</label>
+            <label className="block text-xs font-bold text-foreground-secondary mb-1.5">First Name</label>
             <OnboardingInput
               type="text"
               required
@@ -60,7 +60,7 @@ export function IdentityStep({ data, onNext, error: externalError }: IdentitySte
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-slate-600 mb-1.5">Last Name</label>
+            <label className="block text-xs font-bold text-foreground-secondary mb-1.5">Last Name</label>
             <OnboardingInput
               type="text"
               required
@@ -72,7 +72,7 @@ export function IdentityStep({ data, onNext, error: externalError }: IdentitySte
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-slate-600 mb-1.5">Work Email</label>
+          <label className="block text-xs font-bold text-foreground-secondary mb-1.5">Work Email</label>
           <OnboardingInput
             type="email"
             required
@@ -81,8 +81,8 @@ export function IdentityStep({ data, onNext, error: externalError }: IdentitySte
             onChange={(e) => setEmail(e.target.value)}
           />
           {showTestEmailHint && uniqueTestEmail && (
-            <p className="mt-1.5 text-xs text-slate-400">
-              Test mode — will use: <span className="font-mono text-slate-600">{uniqueTestEmail}</span>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Test mode — will use: <span className="font-mono text-foreground-secondary">{uniqueTestEmail}</span>
             </p>
           )}
         </div>
@@ -95,7 +95,7 @@ export function IdentityStep({ data, onNext, error: externalError }: IdentitySte
 
         <button
           type="submit"
-          className="w-full h-12 rounded-xl bg-slate-900 text-white font-bold text-sm hover:bg-slate-800 transition-colors"
+          className="w-full h-12 rounded-xl bg-foreground text-white font-bold text-sm hover:bg-foreground/90 transition-colors"
         >
           Continue
         </button>

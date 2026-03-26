@@ -33,11 +33,11 @@ export const FieldAIPosture: React.FC<FieldAIPostureProps> = ({
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="p-8 bg-brand-light rounded-3xl border-2 border-dashed border-primary/20 flex flex-col items-center text-center space-y-6">
-        <div className="bg-white p-4 rounded-3xl shadow-sm">
+        <div className="bg-background p-4 rounded-3xl shadow-sm">
           <Smartphone className="h-10 w-10 text-primary" />
         </div>
         <div className="space-y-2">
-          <h4 className="text-xl font-bold text-slate-900">AI Posture Analysis</h4>
+          <h4 className="text-xl font-bold text-foreground">AI Posture Analysis</h4>
           <p className="text-primary/70 text-sm font-medium max-w-xs mx-auto">
             {hasResults 
               ? "Scan complete! You can re-scan if needed or continue to the next step."
@@ -49,7 +49,7 @@ export const FieldAIPosture: React.FC<FieldAIPostureProps> = ({
           {isMobile ? (
             <Button 
               onClick={() => onShowCamera?.('posture')}
-              className="flex-1 h-14 rounded-2xl bg-primary text-white font-bold text-xs gap-3 shadow-lg shadow-primary/20"
+              className="flex-1 h-14 rounded-2xl bg-primary text-primary-foreground font-bold text-xs gap-3 shadow-lg shadow-primary/20"
             >
               <CameraIcon className="h-5 w-5" />
               Start Posture Scan
@@ -57,7 +57,7 @@ export const FieldAIPosture: React.FC<FieldAIPostureProps> = ({
           ) : (
             <Button 
               onClick={onShowPostureCompanion}
-              className="flex-1 h-14 rounded-2xl bg-primary text-white font-bold text-xs gap-3 shadow-lg shadow-primary/20"
+              className="flex-1 h-14 rounded-2xl bg-primary text-primary-foreground font-bold text-xs gap-3 shadow-lg shadow-primary/20"
             >
               <Smartphone className="h-5 w-5" />
               Open Remote Mode

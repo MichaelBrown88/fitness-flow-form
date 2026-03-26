@@ -36,7 +36,7 @@ function badgeClass(s: string): string {
   if (l.includes('severe') || l.includes('significant')) return 'bg-red-100 text-red-800';
   if (l.includes('moderate')) return 'bg-amber-100 text-amber-800';
   if (l.includes('mild')) return 'bg-yellow-100 text-yellow-800';
-  return 'bg-slate-100 text-slate-700';
+  return 'bg-muted text-foreground';
 }
 
 interface Deviation { id: string; bodyKey: string; bodyArea: string; view: string; status: string; description: string; }
@@ -77,23 +77,23 @@ export function CoachReportPostureAnalysis({ formData }: { formData: FormData })
     <section className="space-y-4">
       <div className="flex items-center gap-2">
         <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
-        <h3 className="text-lg font-bold text-slate-900">Movement & Posture Red Flags</h3>
+        <h3 className="text-lg font-bold text-foreground">Movement & Posture Red Flags</h3>
       </div>
       {deviations.length === 0 ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 text-sm">No significant posture deviations detected.</div>
       ) : (
         <div className="space-y-4">
           {Array.from(grouped.entries()).map(([bodyArea, list]) => (
-            <div key={bodyArea} className="rounded-xl border border-slate-200 bg-white p-4">
-              <p className="text-sm font-semibold text-slate-800 mb-2">{bodyArea}</p>
+            <div key={bodyArea} className="rounded-xl border border-border bg-card p-4">
+              <p className="text-sm font-semibold text-foreground mb-2">{bodyArea}</p>
               {list.map((d) => (
                 <div key={d.id} className="mb-3 last:mb-0">
                   <div className="flex flex-wrap items-center gap-2 mb-1">
-                    <span className="text-xs text-slate-500">{d.view}</span>
+                    <span className="text-xs text-muted-foreground">{d.view}</span>
                     <span className={`text-xs font-medium px-2 py-0.5 rounded ${badgeClass(d.status)}`}>{d.status}</span>
                   </div>
-                  <p className="text-sm text-slate-600 mb-1">{d.description}</p>
-                  <p className="text-xs italic text-slate-500">{BODY_META[d.bodyKey]?.note ?? 'Consider addressing in warm-up.'}</p>
+                  <p className="text-sm text-muted-foreground mb-1">{d.description}</p>
+                  <p className="text-xs italic text-muted-foreground">{BODY_META[d.bodyKey]?.note ?? 'Consider addressing in warm-up.'}</p>
                 </div>
               ))}
             </div>
@@ -103,7 +103,7 @@ export function CoachReportPostureAnalysis({ formData }: { formData: FormData })
       {images.length > 0 && (
         <div className="flex flex-wrap gap-2 pt-2">
           {images.map(({ view, url }) => (
-            <div key={view} className="w-16 h-20 rounded-lg overflow-hidden border border-slate-200 shrink-0">
+            <div key={view} className="w-16 h-20 rounded-lg overflow-hidden border border-border shrink-0">
               <img src={url} alt={VIEW_LABELS[view] || view} className="w-full h-full object-cover" />
             </div>
           ))}

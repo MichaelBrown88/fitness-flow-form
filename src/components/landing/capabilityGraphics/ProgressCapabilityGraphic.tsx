@@ -4,10 +4,10 @@ import { LANDING_CAPABILITY_VISUAL_COPY } from '@/constants/landingCopy';
 export function ProgressCapabilityGraphic() {
   const p = LANDING_CAPABILITY_VISUAL_COPY.progress;
   return (
-    <div className="mx-auto max-w-sm space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-lg dark:border-border dark:bg-card">
+    <div className="mx-auto max-w-sm space-y-4 rounded-2xl border border-border bg-card p-5 shadow-lg dark:border-border dark:bg-card">
       <header className="space-y-1 text-center">
         <p className="text-[10px] font-semibold uppercase tracking-widest text-primary">{p.journeyEyebrow}</p>
-        <p className="text-base font-bold text-slate-900 dark:text-slate-50 sm:text-lg">{p.planHeadline}</p>
+        <p className="text-base font-bold text-foreground sm:text-lg">{p.planHeadline}</p>
       </header>
 
       <div className="space-y-3 rounded-xl border border-border bg-card p-4">

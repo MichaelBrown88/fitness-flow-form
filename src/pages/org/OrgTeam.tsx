@@ -20,7 +20,7 @@ export default function OrgTeam() {
             <Button
               size="sm"
               onClick={() => setShowAddCoachDialog(true)}
-              className="gradient-bg text-white hover:opacity-90 text-xs sm:text-sm h-9"
+              className="gradient-bg text-primary-foreground hover:opacity-90 text-xs sm:text-sm h-9"
             >
               <UserPlus className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
               Add Coach
@@ -47,7 +47,7 @@ export default function OrgTeam() {
                   <div
                     key={coach.uid}
                     className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 p-3 sm:p-4 rounded-lg border transition-colors ${
-                      atRiskCount > 0 ? 'bg-amber-50/50 border-amber-200 hover:border-amber-300' : 'bg-slate-50 border-slate-200 hover:border-border-medium'
+                      atRiskCount > 0 ? 'bg-amber-50/50 border-amber-200 hover:border-amber-300' : 'bg-muted/50 border-border hover:border-border-medium'
                     }`}
                   >
                     <div className="flex-1 min-w-0">

@@ -35,7 +35,7 @@ interface Props {
 function TrendIcon({ delta }: { delta: number }) {
   if (delta > 0) return <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />;
   if (delta < 0) return <TrendingDown className="w-3.5 h-3.5 text-red-400" />;
-  return <Minus className="w-3.5 h-3.5 text-slate-500" />;
+  return <Minus className="w-3.5 h-3.5 text-muted-foreground" />;
 }
 
 function KpiCard({
@@ -51,7 +51,7 @@ function KpiCard({
     <div className="bg-admin-card border border-admin-border rounded-xl p-4 space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-xs text-admin-fg-muted">{label}</span>
-        <Icon className={`w-4 h-4 ${accent ? 'text-indigo-400' : 'text-slate-500'}`} />
+        <Icon className={`w-4 h-4 ${accent ? 'text-indigo-400' : 'text-muted-foreground'}`} />
       </div>
       <p className={`text-2xl font-semibold ${accent ? 'text-indigo-300' : 'text-admin-fg'}`}>{value}</p>
       {sub && <p className="text-xs text-admin-fg-muted">{sub}</p>}
@@ -126,7 +126,7 @@ export function PlatformIntelligenceSection({ metrics, revenueByRegion, metricsH
             <span className="text-xl font-semibold text-admin-fg">{recentTotal.toLocaleString()}</span>
             <div className="flex items-center gap-1 mb-0.5">
               <TrendIcon delta={velocityDelta} />
-              <span className={`text-xs ${velocityDelta > 0 ? 'text-emerald-400' : velocityDelta < 0 ? 'text-red-400' : 'text-slate-500'}`}>
+              <span className={`text-xs ${velocityDelta > 0 ? 'text-emerald-400' : velocityDelta < 0 ? 'text-red-400' : 'text-muted-foreground'}`}>
                 {velocityDelta !== 0 ? `${velocityDelta > 0 ? '+' : ''}${velocityDelta}% vs prev 30d` : 'No prior data'}
               </span>
             </div>

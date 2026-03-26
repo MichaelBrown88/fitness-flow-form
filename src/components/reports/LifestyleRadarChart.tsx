@@ -1,5 +1,6 @@
 import React from 'react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
+import { CHART_HEX, LIFESTYLE_RADAR_FILL } from '@/lib/design/chartColors';
 
 interface LifestyleFactor {
   name: string;
@@ -29,7 +30,7 @@ const renderCustomAxisTick = ({ payload, x, y, textAnchor, index }: AxisTickProp
         dy={y < 150 ? -10 : y > 250 ? 15 : 0}
         dx={textAnchor === 'start' ? 10 : textAnchor === 'end' ? -10 : 0}
         textAnchor={textAnchor}
-        fill="#0f766e" // teal-700
+        fill={LIFESTYLE_RADAR_FILL}
         fontSize="12px"
         fontWeight="600"
       >
@@ -51,10 +52,10 @@ export default function LifestyleRadarChart({ factors }: LifestyleRadarChartProp
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="rounded-lg border bg-white p-3 shadow-lg">
-          <p className="font-semibold text-slate-900">{data.fullLabel}</p>
-          <p className="text-sm text-slate-600 mt-1">{data.tooltip}</p>
-          <p className="text-xs text-slate-500 mt-2">Score: {data.value}/100</p>
+        <div className="rounded-lg border border-border bg-card p-3 shadow-lg">
+          <p className="font-semibold text-foreground">{data.fullLabel}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{data.tooltip}</p>
+          <p className="mt-2 text-xs text-muted-foreground">Score: {data.value}/100</p>
         </div>
       );
     }
@@ -67,22 +68,22 @@ export default function LifestyleRadarChart({ factors }: LifestyleRadarChartProp
   const minOpacity = 0.2;
   const maxOpacity = 0.7;
   const dynamicOpacity = minOpacity + (maxOpacity - minOpacity) * normalized;
-  const baseColor = '#0f766e'; // teal-700
+  const baseColor = LIFESTYLE_RADAR_FILL;
 
   return (
     <div className="w-full" style={{ height: '400px' }}>
       <ResponsiveContainer width="100%" height="100%">
         <RadarChart data={data}>
-          <PolarGrid stroke="#e2e8f0" />
+          <PolarGrid stroke={CHART_HEX.gridLightAlt} />
           <PolarAngleAxis
             dataKey="factor"
             tick={renderCustomAxisTick}
-            tickLine={{ stroke: '#cbd5e1' }}
+            tickLine={{ stroke: CHART_HEX.gridLight }}
           />
           <PolarRadiusAxis
             angle={90}
             domain={[0, 100]}
-            tick={{ fill: '#94a3b8', fontSize: 10 }}
+            tick={{ fill: CHART_HEX.tickMuted, fontSize: 10 }}
             tickCount={5}
           />
           <Radar

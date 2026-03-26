@@ -112,6 +112,17 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        landing: {
+          contrast: {
+            bg: "hsl(var(--landing-contrast-bg))",
+            fg: "hsl(var(--landing-contrast-fg))",
+            muted: "hsl(var(--landing-contrast-muted))",
+            subtle: "hsl(var(--landing-contrast-subtle))",
+            border: "hsl(var(--landing-contrast-border))",
+            surface: "hsl(var(--landing-contrast-surface))",
+            "surface-elevated": "hsl(var(--landing-contrast-surface-elevated))",
+          },
+        },
       },
       borderRadius: {
         DEFAULT: "var(--radius)",      /* 12px - Apple standard */

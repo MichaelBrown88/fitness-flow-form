@@ -33,8 +33,8 @@ function ScoreCell({ score, compare }: { score: number; compare?: number }) {
 function LoadingState() {
   return (
     <div className="flex flex-col items-center gap-3 py-16">
-      <div className="w-6 h-6 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
-      <span className="text-sm text-slate-400 font-medium">Loading assessment…</span>
+      <div className="w-6 h-6 border-2 border-foreground border-t-transparent rounded-full animate-spin" />
+      <span className="text-sm text-muted-foreground font-medium">Loading assessment…</span>
     </div>
   );
 }
@@ -50,8 +50,8 @@ const AssessmentComparison = () => {
   if (!idA || !idB) {
     return (
       <AppShell title="Compare Assessments">
-        <p className="text-sm text-slate-500 text-center py-16">
-          Two assessment IDs are required. Use <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">/compare?a=ID1&b=ID2</code>
+        <p className="text-sm text-muted-foreground text-center py-16">
+          Two assessment IDs are required. Use <code className="bg-muted px-1.5 py-0.5 rounded text-xs">/compare?a=ID1&b=ID2</code>
         </p>
       </AppShell>
     );
@@ -65,45 +65,45 @@ const AssessmentComparison = () => {
       <div className="space-y-6 max-w-4xl mx-auto">
         {/* Overall Scores */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="rounded-xl border border-slate-200 bg-white p-6 text-center space-y-2">
-            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+          <div className="rounded-xl border border-border bg-background p-6 text-center space-y-2">
+            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
               {nameA}
             </p>
             {a.loading ? <LoadingState /> : (
-              <p className="text-3xl font-bold text-slate-900">{a.scores?.overall ?? '—'}</p>
+              <p className="text-3xl font-bold text-foreground">{a.scores?.overall ?? '—'}</p>
             )}
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-6 text-center space-y-2">
-            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+          <div className="rounded-xl border border-border bg-background p-6 text-center space-y-2">
+            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
               {nameB}
             </p>
             {b.loading ? <LoadingState /> : (
-              <p className="text-3xl font-bold text-slate-900">{b.scores?.overall ?? '—'}</p>
+              <p className="text-3xl font-bold text-foreground">{b.scores?.overall ?? '—'}</p>
             )}
           </div>
         </div>
 
         {/* Category Breakdown */}
         {!a.loading && !b.loading && a.scores && b.scores && (
-          <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50/50">
+          <div className="rounded-xl border border-border bg-background overflow-hidden">
+            <table className="min-w-full divide-y divide-border text-sm">
+              <thead className="bg-muted/50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+                  <th className="px-6 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
                     Category
                   </th>
-                  <th className="px-6 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+                  <th className="px-6 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
                     {nameA}
                   </th>
-                  <th className="px-6 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+                  <th className="px-6 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
                     {nameB}
                   </th>
-                  <th className="px-6 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+                  <th className="px-6 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
                     Diff
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-border">
                 {CATEGORY_IDS.map((id) => {
                   const catA = a.scores?.categories?.find((c) => c.id === id);
                   const catB = b.scores?.categories?.find((c) => c.id === id);
@@ -111,8 +111,8 @@ const AssessmentComparison = () => {
                   const scoreB = catB?.score ?? 0;
                   const diff = scoreB - scoreA;
                   return (
-                    <tr key={id} className="hover:bg-slate-50/80">
-                      <td className="px-6 py-4 font-semibold text-slate-900">
+                    <tr key={id} className="hover:bg-muted/50/80">
+                      <td className="px-6 py-4 font-semibold text-foreground">
                         {CATEGORY_LABELS[id]}
                       </td>
                       <td className="px-6 py-4">
@@ -127,7 +127,7 @@ const AssessmentComparison = () => {
                             {diff > 0 ? '+' : ''}{diff}
                           </span>
                         ) : (
-                          <span className="text-xs text-slate-300">—</span>
+                          <span className="text-xs text-muted-foreground/60">—</span>
                         )}
                       </td>
                     </tr>

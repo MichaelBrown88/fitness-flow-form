@@ -111,7 +111,7 @@ export function DemographicsCard({
                   ? 'bg-emerald-500/10 text-emerald-400'
                   : monthTrend.delta < 0
                     ? 'bg-red-500/10 text-red-400'
-                    : 'bg-slate-500/10 text-slate-400'
+                    : 'bg-muted/500/10 text-muted-foreground'
               }`}>
                 {monthTrend.label}
               </span>

@@ -92,7 +92,7 @@ const OrganizationManage = () => {
   if (!org) return <NotFoundState onBack={() => navigate('/admin')} />;
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
       <Header
         org={org}
         onBack={() => navigate('/admin')}

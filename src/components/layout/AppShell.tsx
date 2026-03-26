@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Sparkles, ChevronDown, Menu, Building2, LayoutDashboard, Settings, LogOut, Mail, X, Globe } from 'lucide-react';
 import { ROUTES } from '@/constants/routes';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { ClientProfileDropdown } from '@/components/client/ClientProfileDropdown';
 import { CommandMenu } from '@/components/ui/CommandMenu';
@@ -114,6 +115,7 @@ export default function AppShell({
             {/* Client nav: notification bell + profile dropdown (token-based, no auth required) */}
             {showClientNav && shareToken && (
               <div className="flex items-center gap-1.5">
+                <ThemeToggle className="h-9 w-9 text-muted-foreground" />
                 <NotificationBell shareToken={shareToken} />
                 <ClientProfileDropdown
                   clientName={clientName || 'Client'}
@@ -184,6 +186,7 @@ export default function AppShell({
 
           {/* Right side: actions/user */}
           <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 shrink-0">
+            <ThemeToggle className="h-8 w-8 sm:h-9 sm:w-9 text-muted-foreground" />
             {showDemoFill && onDemoFill && (
               <Button
                 variant="ghost"

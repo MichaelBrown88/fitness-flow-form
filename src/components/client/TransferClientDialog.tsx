@@ -97,12 +97,12 @@ export function TransferClientDialog({
 
         <div className="py-4 space-y-3">
           {loading ? (
-            <p className="text-sm text-slate-500">Loading coaches...</p>
+            <p className="text-sm text-muted-foreground">Loading coaches...</p>
           ) : coaches.length === 0 ? (
-            <p className="text-sm text-slate-500">No other coaches available.</p>
+            <p className="text-sm text-muted-foreground">No other coaches available.</p>
           ) : (
             <div className="grid gap-2">
-              <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500">
+              <label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
                 Transfer to
               </label>
               <Select value={selectedCoach} onValueChange={setSelectedCoach}>
@@ -132,7 +132,7 @@ export function TransferClientDialog({
           <Button
             onClick={handleConfirm}
             disabled={!selectedCoach || submitting}
-            className="bg-slate-900 text-white rounded-xl h-11 px-6 font-bold"
+            className="bg-foreground text-white rounded-xl h-11 px-6 font-bold"
           >
             {submitting ? 'Transferring...' : 'Transfer Client'}
           </Button>

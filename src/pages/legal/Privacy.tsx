@@ -17,7 +17,7 @@ const privacySeo = requireSeoForPath(SEO_PATH.PRIVACY);
 
 export default function Privacy() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
       <Seo
         pathname={SEO_PATH.PRIVACY}
         title={privacySeo.title}

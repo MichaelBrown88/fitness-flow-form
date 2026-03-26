@@ -25,9 +25,12 @@ export interface DragPayload {
 }
 
 const STATUS_COLORS: Record<ScheduleStatus, string> = {
-  'overdue': 'border-red-300 bg-red-50 text-red-700',
-  'due-soon': 'border-amber-300 bg-amber-50 text-amber-700',
-  'up-to-date': 'border-slate-200 bg-slate-50 text-slate-600',
+  overdue:
+    'border-red-300 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/55 dark:text-red-200',
+  'due-soon':
+    'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-200',
+  'up-to-date':
+    'border-border bg-muted text-foreground dark:bg-background-tertiary dark:text-muted-foreground',
 };
 
 const PILLAR_ABBREV: Record<string, string> = {
@@ -74,8 +77,8 @@ export function ClientPill({ entry, dateKey, day, dayClients, onPillClick, isSel
       draggable
       onDragStart={handleDragStart}
       onClick={handleClick}
-      className={`flex items-center gap-0.5 px-1 py-0.5 rounded border text-[9px] sm:text-[10px] font-semibold leading-tight cursor-grab active:cursor-grabbing truncate ${STATUS_COLORS[entry.status]} ${
-        isSelected ? 'ring-2 ring-violet-500 ring-offset-1' : ''
+      className={`flex cursor-grab items-center gap-0.5 truncate rounded border px-1 py-0.5 text-[9px] font-semibold leading-tight active:cursor-grabbing sm:text-[10px] ${STATUS_COLORS[entry.status]} ${
+        isSelected ? 'ring-2 ring-violet-500 ring-offset-1 ring-offset-background' : ''
       }`}
       title={`${entry.name} — ${getPillarLabel(entry.pillar)} (Ctrl/Cmd+click to select multiple)`}
     >
@@ -106,12 +109,12 @@ export function DayDetailPanel({
   const [openDatePopoverId, setOpenDatePopoverId] = useState<string | null>(null);
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
+    <div className="space-y-3 rounded-xl border border-border bg-card p-4">
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-bold text-slate-900">
+        <h4 className="text-sm font-bold text-foreground">
           {format(selectedDay.date, 'EEEE, MMM d')}
         </h4>
-        <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+        <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground">
           <X className="h-4 w-4" />
         </button>
       </div>
@@ -126,9 +129,9 @@ export function DayDetailPanel({
                   c.status === 'overdue' ? 'bg-red-500' :
                   c.status === 'due-soon' ? 'bg-amber-500' : 'bg-emerald-500'
                 }`} />
-                <span className="text-sm text-slate-700 truncate">
+                <span className="truncate text-sm text-foreground">
                   <span className="font-semibold">{c.name}</span>
-                  <span className="text-slate-400 ml-2 text-xs">{getPillarLabel(c.pillar)}</span>
+                  <span className="ml-2 text-xs text-muted-foreground">{getPillarLabel(c.pillar)}</span>
                 </span>
               </div>
               <div className="flex items-center gap-1 shrink-0">
@@ -138,7 +141,7 @@ export function DayDetailPanel({
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 gap-1 text-xs text-slate-600 hover:text-slate-900"
+                        className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground"
                       >
                         <CalendarIcon className="h-3 w-3" />
                         Change date
@@ -162,7 +165,7 @@ export function DayDetailPanel({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 gap-1 text-[10px] font-bold uppercase tracking-wide text-violet-600 hover:text-violet-800 hover:bg-violet-50"
+                  className="h-7 gap-1 text-[10px] font-bold uppercase tracking-wide text-violet-600 hover:bg-violet-500/10 hover:text-violet-700 dark:text-violet-400 dark:hover:bg-violet-950/50 dark:hover:text-violet-300"
                   onClick={() => onStartAssessment(c.name, c.pillar)}
                 >
                   <Play className="h-3 w-3" />

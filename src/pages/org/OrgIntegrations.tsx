@@ -14,17 +14,17 @@ export default function OrgIntegrations() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-lg font-bold text-slate-900">Integrations</h2>
-        <p className="text-sm text-slate-500 mt-1">
+        <h2 className="text-lg font-bold text-foreground">Integrations</h2>
+        <p className="text-sm text-muted-foreground mt-1">
           Connect your external tools and import client data.
         </p>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6">
+      <div className="rounded-2xl border border-border bg-background p-6">
         <WebhooksManager organizationId={organizationId} />
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6">
+      <div className="rounded-2xl border border-border bg-background p-6">
         <CsvClientImport organizationId={organizationId} coachUid={coachUid} />
       </div>
     </div>

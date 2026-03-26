@@ -103,7 +103,7 @@ export default function Landing() {
 
       {/* Sticky Bottom CTA for Mobile — frosted glass bar, Apple-style */}
       <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden">
-        <div className="bg-white/80 backdrop-blur-xl border-t border-slate-200/60 px-4 py-3 safe-area-pb">
+        <div className="safe-area-pb border-t border-border/60 bg-background/80 px-4 py-3 backdrop-blur-xl dark:border-border dark:bg-background/95">
           {user ? (
             <Link
               to="/dashboard"

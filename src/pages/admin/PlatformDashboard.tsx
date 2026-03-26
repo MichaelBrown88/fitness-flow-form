@@ -116,7 +116,7 @@ const PlatformDashboard = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-admin-bg flex items-center justify-center">
-        <div className="text-slate-400 flex items-center gap-2">
+        <div className="text-muted-foreground flex items-center gap-2">
           <RefreshCw className="w-4 h-4 animate-spin" />
           Loading dashboard...
         </div>
@@ -134,14 +134,14 @@ const PlatformDashboard = () => {
             </div>
             <div>
               <h1 className="text-white font-semibold">Platform Dashboard</h1>
-              <p className="text-xs text-slate-500">{admin?.email}</p>
+              <p className="text-xs text-muted-foreground">{admin?.email}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={handleRefresh} disabled={refreshing} className="text-slate-400 hover:text-white">
+            <Button variant="ghost" size="sm" onClick={handleRefresh} disabled={refreshing} className="text-muted-foreground hover:text-white">
               <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
             </Button>
-            <Button variant="ghost" size="sm" onClick={handleSignOut} className="text-slate-400 hover:text-white">
+            <Button variant="ghost" size="sm" onClick={handleSignOut} className="text-muted-foreground hover:text-white">
               <LogOut className="w-4 h-4" />
             </Button>
           </div>

@@ -137,7 +137,7 @@ export const URGENCY_META: Record<BlockUrgency, { label: string; color: string; 
   critical: { label: 'Critical', color: 'text-red-700', dot: 'bg-red-500', border: 'border-red-200 bg-red-50/30' },
   prerequisite: { label: 'Prerequisite', color: 'text-amber-700', dot: 'bg-amber-500', border: 'border-amber-200 bg-amber-50/30' },
   parallel: { label: 'Parallel', color: 'text-blue-700', dot: 'bg-blue-500', border: 'border-blue-200 bg-blue-50/30' },
-  optional: { label: 'Optional', color: 'text-slate-500', dot: 'bg-slate-400', border: 'border-slate-200 bg-slate-50/30' },
+  optional: { label: 'Optional', color: 'text-muted-foreground', dot: 'bg-muted-foreground', border: 'border-border bg-muted/30' },
 };
 
 export type ClientUrgencyLevel = 'foundation' | 'growth' | 'optimisation';

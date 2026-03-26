@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { LandingTrialCtaLink } from "@/components/landing/LandingTrialCtaLink";
 import {
   LANDING_COPY,
-  LANDING_H2_ACCENT_LIGHT,
+  LANDING_H2_ACCENT_LIGHT_READABLE,
   landingTrialAriaLabel,
 } from "@/constants/landingCopy";
 import { LANDING_GUEST_CHECKOUT_ENABLED } from "@/constants/platform";
@@ -48,9 +48,9 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
         className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
         aria-hidden
       >
-        <div className="absolute left-1/2 top-0 h-[880px] w-[880px] -translate-x-1/2 rounded-full bg-slate-300/12 blur-[100px] motion-safe:animate-blob" />
-        <div className="absolute left-0 top-1/2 h-[720px] w-[720px] rounded-full bg-gradient-light/30 blur-[100px] motion-safe:animate-blob animation-delay-2000" />
-        <div className="absolute bottom-0 right-0 h-[640px] w-[640px] rounded-full bg-slate-400/10 blur-[100px] motion-safe:animate-blob animation-delay-4000" />
+        <div className="absolute left-1/2 top-0 h-[880px] w-[880px] -translate-x-1/2 rounded-full bg-muted/20 blur-[100px] motion-safe:animate-blob dark:bg-primary/8" />
+        <div className="absolute left-0 top-1/2 h-[720px] w-[720px] rounded-full bg-gradient-light/30 blur-[100px] motion-safe:animate-blob animation-delay-2000 dark:bg-gradient-light/15" />
+        <div className="absolute bottom-0 right-0 h-[640px] w-[640px] rounded-full bg-foreground/6 blur-[100px] motion-safe:animate-blob animation-delay-4000 dark:bg-background-tertiary/40" />
       </div>
 
       <div className="max-w-6xl mx-auto w-full relative z-10">
@@ -58,14 +58,14 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
         <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-14 lg:mb-16">
           {/* Headline */}
           <h1
-            className="text-balance text-[3rem] leading-[1.06] sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight mb-5 sm:mb-6 text-slate-900 motion-safe:animate-fade-in-up"
+            className="text-balance mb-5 text-[3rem] font-bold leading-[1.06] tracking-tight text-foreground motion-safe:animate-fade-in-up sm:mb-6 sm:text-6xl md:text-7xl lg:text-8xl"
             style={{ animationDelay: "0.05s" }}
           >
             {isPricing ? (
               <>
                 {LANDING_COPY.heroPricingTitleLine1}
                 <br />
-                <span className={LANDING_H2_ACCENT_LIGHT}>
+                <span className={LANDING_H2_ACCENT_LIGHT_READABLE}>
                   {LANDING_COPY.heroPricingTitleAccent}
                 </span>
               </>
@@ -73,14 +73,14 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
               <>
                 Assess Smarter.
                 <br />
-                <span className={LANDING_H2_ACCENT_LIGHT}>Retain Longer.</span>
+                <span className={LANDING_H2_ACCENT_LIGHT_READABLE}>Retain Longer.</span>
               </>
             )}
           </h1>
 
           {/* Subtitle — one block under H1 (copy blends SEO terms into the product line). */}
           <p
-            className="text-balance text-lg sm:text-xl md:text-2xl text-slate-600 max-w-xl md:max-w-2xl mx-auto mb-7 sm:mb-10 leading-snug sm:leading-relaxed motion-safe:animate-fade-in-up"
+            className="text-balance mx-auto mb-7 max-w-xl text-lg leading-snug text-muted-foreground motion-safe:animate-fade-in-up sm:mb-10 sm:text-xl sm:leading-relaxed md:max-w-2xl md:text-2xl"
             style={{ animationDelay: "0.15s" }}
           >
             {isPricing ? LANDING_COPY.heroPricingSubtitle : LANDING_COPY.heroSubtitle}
@@ -113,9 +113,9 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
                 </LandingTrialCtaLink>
                 <Link
                   to="/demo"
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white/90 px-5 py-3 text-base font-semibold text-slate-700 shadow-sm backdrop-blur-sm transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-900"
+                  className="inline-flex items-center gap-2 rounded-xl border border-border/90 bg-card/90 px-5 py-3 text-base font-semibold text-foreground shadow-sm backdrop-blur-sm transition-colors hover:border-border-medium hover:bg-card dark:border-border dark:bg-card/90"
                 >
-                  <Play className="w-4 h-4 shrink-0 fill-slate-600" aria-hidden />
+                  <Play className="h-4 w-4 shrink-0 fill-muted-foreground" aria-hidden />
                   See Demo
                 </Link>
               </>
@@ -123,7 +123,7 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
           </div>
 
           <p
-            className="flex flex-wrap items-center justify-center gap-x-2 text-sm sm:text-base font-medium text-slate-500 motion-safe:animate-fade-in-up"
+            className="flex flex-wrap items-center justify-center gap-x-2 text-sm font-medium text-muted-foreground motion-safe:animate-fade-in-up sm:text-base"
             style={{ animationDelay: "0.3s" }}
           >
             <Check
@@ -142,20 +142,20 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
         >
           <div className="relative">
             {/* Main Report Card (decorative preview — parent has aria-hidden) */}
-            <div className="relative rounded-2xl border border-slate-200/80 bg-white/90 p-6 shadow-lg backdrop-blur-md sm:p-10">
+            <div className="relative rounded-2xl border border-border/80 bg-card/90 p-6 shadow-lg backdrop-blur-md dark:border-border dark:bg-card/95 dark:shadow-xl dark:shadow-black/40 sm:p-10">
               {/* Header */}
               <div className="mb-6 flex items-start justify-between gap-3 sm:mb-10">
                 <div className="min-w-0">
-                  <p className="text-xl font-bold text-slate-900 sm:text-3xl">
+                  <p className="text-xl font-bold text-foreground sm:text-3xl">
                     Fitness Score
                   </p>
-                  <p className="text-sm text-slate-500 sm:text-base">
+                  <p className="text-sm text-muted-foreground sm:text-base">
                     Comprehensive Athlete Profile
                   </p>
                 </div>
-                <div className="flex shrink-0 items-center gap-2 rounded-full bg-white px-3 py-1.5 shadow-sm sm:px-4 sm:py-2">
+                <div className="flex shrink-0 items-center gap-2 rounded-full bg-card px-3 py-1.5 shadow-sm dark:bg-background-secondary sm:px-4 sm:py-2">
                   <div className="h-2 w-2 rounded-full bg-primary sm:h-2.5 sm:w-2.5" />
-                  <span className="text-[11px] font-bold text-slate-700 uppercase tracking-[0.15em] sm:text-xs">
+                  <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-foreground sm:text-xs">
                     Active
                   </span>
                 </div>
@@ -167,14 +167,14 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
                   {/* Background Circles + SVG + score — inset on large screens */}
                   <div className="absolute inset-0 lg:inset-[12%]">
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="h-full w-full rounded-full border border-slate-200" />
-                      <div className="absolute h-[77%] w-[77%] rounded-full border border-slate-200" />
-                      <div className="absolute h-[54%] w-[54%] rounded-full border border-slate-200" />
+                      <div className="h-full w-full rounded-full border border-border dark:border-border/70" />
+                      <div className="absolute h-[77%] w-[77%] rounded-full border border-border dark:border-border/70" />
+                      <div className="absolute h-[54%] w-[54%] rounded-full border border-border dark:border-border/70" />
                     </div>
 
                     <svg
                       viewBox="0 0 100 100"
-                      className="absolute h-full w-full drop-shadow-xl"
+                      className="absolute h-full w-full drop-shadow-xl dark:opacity-90"
                       aria-hidden
                     >
                       <polygon
@@ -190,11 +190,11 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
                       <circle cx="15" cy="35" r="3" fill="var(--gradient-from-hex)" />
                     </svg>
 
-                    <div className="absolute left-1/2 top-1/2 z-30 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full border-4 border-slate-50 bg-white shadow-lg sm:h-28 sm:w-28">
-                      <span className="text-2xl font-black text-slate-900 sm:text-4xl">
+                    <div className="absolute left-1/2 top-1/2 z-30 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full border-4 border-background bg-card shadow-lg dark:border-border dark:bg-background-secondary sm:h-28 sm:w-28">
+                      <span className="text-2xl font-black text-foreground sm:text-4xl">
                         82
                       </span>
-                      <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 sm:text-xs">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground sm:text-xs">
                         Overall
                       </span>
                     </div>
@@ -207,28 +207,28 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
 
               {/* Metrics: two wide pills below lg only */}
               <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:hidden">
-                <div className="flex items-center gap-3 rounded-xl border border-gradient-medium/40 bg-gradient-light/50 p-3 sm:gap-4 sm:p-4">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary sm:h-11 sm:w-11">
+                <div className="flex items-center gap-3 rounded-xl border border-gradient-medium/40 bg-gradient-light/50 p-3 dark:border-primary/25 dark:bg-primary/10 sm:gap-4 sm:p-4">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-gradient-dark dark:bg-primary/25 dark:text-primary sm:h-11 sm:w-11">
                     <Scale className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
                   <div>
-                    <p className="text-[11px] font-bold uppercase text-slate-800 sm:text-xs">
+                    <p className="text-[11px] font-bold uppercase text-foreground sm:text-xs">
                       Body Comp
                     </p>
-                    <p className="text-sm font-bold text-slate-900 sm:text-base">
+                    <p className="text-sm font-bold text-foreground sm:text-base">
                       18.5% BF
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 rounded-xl border border-slate-200/90 bg-slate-50/80 p-3 sm:gap-4 sm:p-4">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary sm:h-11 sm:w-11">
+                <div className="flex items-center gap-3 rounded-xl border border-border/90 bg-muted/80 p-3 dark:border-border dark:bg-background-tertiary/80 sm:gap-4 sm:p-4">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-gradient-dark dark:bg-primary/25 dark:text-primary sm:h-11 sm:w-11">
                     <Zap className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
                   <div>
-                    <p className="text-[11px] font-bold uppercase text-slate-700 sm:text-xs">
+                    <p className="text-[11px] font-bold uppercase text-foreground sm:text-xs">
                       Movement
                     </p>
-                    <p className="text-sm font-bold text-slate-900 sm:text-base">
+                    <p className="text-sm font-bold text-foreground sm:text-base">
                       85/100
                     </p>
                   </div>
@@ -238,39 +238,39 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
 
             {/* Floating Elements — md+ only */}
             <div
-              className="absolute -left-8 bottom-64 z-10 hidden rounded-xl border border-slate-200/90 bg-white/95 p-3 shadow-md motion-safe:animate-float sm:-left-10 sm:bottom-72 sm:p-4 lg:-left-12 lg:bottom-80 md:block"
+              className="absolute -left-8 bottom-64 z-10 hidden rounded-xl border border-border/90 bg-card/95 p-3 shadow-md motion-safe:animate-float dark:border-border dark:bg-card/95 dark:shadow-lg dark:shadow-black/30 sm:-left-10 sm:bottom-72 sm:p-4 lg:-left-12 lg:bottom-80 md:block"
               style={{ animationDelay: "0.4s" }}
             >
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/12 text-primary sm:h-12 sm:w-12">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/12 text-gradient-dark dark:bg-primary/20 dark:text-primary sm:h-12 sm:w-12">
                   <Sparkles className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden />
                 </div>
                 <div className="text-left">
-                  <p className="text-xs font-semibold text-slate-500 sm:text-sm">
+                  <p className="text-xs font-semibold text-muted-foreground sm:text-sm">
                     Milestone
                   </p>
-                  <p className="text-sm font-bold text-slate-900 sm:text-base">
+                  <p className="text-sm font-bold text-foreground sm:text-base">
                     Unlocked
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="absolute -right-8 top-[5.25rem] hidden rounded-xl border border-slate-200/90 bg-white/95 p-3 shadow-md motion-safe:animate-float sm:-right-12 sm:top-[6.75rem] sm:p-4 lg:-right-14 md:block">
+            <div className="absolute -right-8 top-[5.25rem] hidden rounded-xl border border-border/90 bg-card/95 p-3 shadow-md motion-safe:animate-float dark:border-border dark:bg-card/95 dark:shadow-lg dark:shadow-black/30 sm:-right-12 sm:top-[6.75rem] sm:p-4 lg:-right-14 md:block">
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary/12 text-primary sm:h-12 sm:w-12">
+                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary/12 text-gradient-dark dark:bg-primary/20 dark:text-primary sm:h-12 sm:w-12">
                   <ScanLine className="h-5 w-5 sm:h-6 sm:w-6" />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-slate-500 sm:text-sm">
+                  <p className="text-xs font-semibold text-muted-foreground sm:text-sm">
                     Body Comp Scan
                   </p>
-                  <p className="text-sm font-bold text-slate-900 sm:text-base">
+                  <p className="text-sm font-bold text-foreground sm:text-base">
                     Imported
                   </p>
                 </div>
                 <Check
-                  className="ml-1 shrink-0 text-primary sm:ml-2"
+                  className="ml-1 shrink-0 text-gradient-dark dark:text-primary sm:ml-2"
                   size={18}
                   strokeWidth={3}
                 />
@@ -278,18 +278,18 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
             </div>
 
             <div
-              className="absolute -left-8 bottom-28 hidden rounded-xl border border-slate-200/90 bg-white/95 p-3 shadow-md motion-safe:animate-float sm:-left-10 sm:bottom-36 lg:-left-12 lg:bottom-44 sm:p-4 md:block"
+              className="absolute -left-8 bottom-28 hidden rounded-xl border border-border/90 bg-card/95 p-3 shadow-md motion-safe:animate-float dark:border-border dark:bg-card/95 dark:shadow-lg dark:shadow-black/30 sm:-left-10 sm:bottom-36 lg:-left-12 lg:bottom-44 sm:p-4 md:block"
               style={{ animationDelay: "1s" }}
             >
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-slate-100 text-slate-600 sm:h-12 sm:w-12">
+                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-muted text-muted-foreground dark:bg-background-tertiary sm:h-12 sm:w-12">
                   <Activity className="h-5 w-5 sm:h-6 sm:w-6" />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-slate-500 sm:text-sm">
+                  <p className="text-xs font-semibold text-muted-foreground sm:text-sm">
                     Forward Head
                   </p>
-                  <p className="text-sm font-bold text-slate-900 sm:text-base">
+                  <p className="text-sm font-bold text-foreground sm:text-base">
                     Detected
                   </p>
                 </div>
@@ -301,18 +301,18 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
             </div>
 
             <div
-              className="absolute -right-8 bottom-16 z-10 hidden rounded-xl border border-slate-200/90 bg-white/95 p-3 shadow-md motion-safe:animate-float sm:-right-12 sm:bottom-20 sm:p-4 lg:-right-14 lg:bottom-24 md:block"
+              className="absolute -right-8 bottom-16 z-10 hidden rounded-xl border border-border/90 bg-card/95 p-3 shadow-md motion-safe:animate-float dark:border-border dark:bg-card/95 dark:shadow-lg dark:shadow-black/30 sm:-right-12 sm:bottom-20 sm:p-4 lg:-right-14 lg:bottom-24 md:block"
               style={{ animationDelay: "1.4s" }}
             >
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/12 text-primary sm:h-11 sm:w-11">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/12 text-gradient-dark dark:bg-primary/20 dark:text-primary sm:h-11 sm:w-11">
                   <FileCheck className="h-5 w-5 sm:h-[22px] sm:w-[22px]" aria-hidden />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-slate-500 sm:text-sm">
+                  <p className="text-xs font-semibold text-muted-foreground sm:text-sm">
                     Report
                   </p>
-                  <p className="text-sm font-bold text-slate-900 sm:text-base">
+                  <p className="text-sm font-bold text-foreground sm:text-base">
                     Ready to share
                   </p>
                 </div>

@@ -67,7 +67,7 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="text-lg font-bold text-slate-800">Client Report</h2>
+        <h2 className="text-lg font-bold text-foreground">Client Report</h2>
 
         <div className="flex flex-wrap gap-2">
           <div className="flex -space-x-px">
@@ -122,7 +122,7 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
       <Suspense fallback={
         <div className="flex flex-col items-center justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-          <p className="text-sm font-medium text-slate-400">Loading Report...</p>
+          <p className="text-sm font-medium text-muted-foreground">Loading Report...</p>
         </div>
       }>
         <ClientReport 

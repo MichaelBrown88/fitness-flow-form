@@ -78,7 +78,7 @@ export function PauseClientDialog({
           </AlertDialogHeader>
 
           <div className="py-4 space-y-3">
-            <label className="flex items-start gap-3 rounded-xl border border-slate-200 p-3 cursor-pointer hover:bg-slate-50 transition-colors">
+            <label className="flex items-start gap-3 rounded-xl border border-border p-3 cursor-pointer hover:bg-muted/50 transition-colors">
               <input
                 type="radio"
                 name="unpause-mode"
@@ -88,13 +88,13 @@ export function PauseClientDialog({
                 className="mt-0.5 accent-emerald-600"
               />
               <div>
-                <div className="text-sm font-bold text-slate-900">Resume remaining time</div>
-                <div className="text-xs text-slate-500 mt-0.5">
+                <div className="text-sm font-bold text-foreground">Resume remaining time</div>
+                <div className="text-xs text-muted-foreground mt-0.5">
                   Countdowns pick up where they left off before the pause.
                 </div>
               </div>
             </label>
-            <label className="flex items-start gap-3 rounded-xl border border-slate-200 p-3 cursor-pointer hover:bg-slate-50 transition-colors">
+            <label className="flex items-start gap-3 rounded-xl border border-border p-3 cursor-pointer hover:bg-muted/50 transition-colors">
               <input
                 type="radio"
                 name="unpause-mode"
@@ -104,8 +104,8 @@ export function PauseClientDialog({
                 className="mt-0.5 accent-emerald-600"
               />
               <div>
-                <div className="text-sm font-bold text-slate-900">Reset fresh from today</div>
-                <div className="text-xs text-slate-500 mt-0.5">
+                <div className="text-sm font-bold text-foreground">Reset fresh from today</div>
+                <div className="text-xs text-muted-foreground mt-0.5">
                   All reassessment countdowns restart from today&apos;s date.
                 </div>
               </div>
@@ -143,7 +143,7 @@ export function PauseClientDialog({
         </AlertDialogHeader>
 
         <div className="py-4">
-          <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 block mb-2">
+          <label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground block mb-2">
             Reason (optional)
           </label>
           <Textarea

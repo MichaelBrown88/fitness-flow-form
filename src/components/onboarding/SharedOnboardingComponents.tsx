@@ -10,7 +10,7 @@ import { Check } from 'lucide-react';
 /** Standard text input for the onboarding flow */
 export const OnboardingInput = ({ className = "", ...props }: React.InputHTMLAttributes<HTMLInputElement>) => (
   <input
-    className={`w-full px-4 py-3.5 rounded-xl bg-white border border-slate-200 focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10 outline-none transition-all text-sm font-medium placeholder:text-slate-400 ${className}`}
+    className={`w-full px-4 py-3.5 rounded-xl bg-background border border-border focus:border-foreground focus:ring-2 focus:ring-foreground/10 outline-none transition-all text-sm font-medium placeholder:text-muted-foreground ${className}`}
     {...props}
   />
 );
@@ -38,29 +38,29 @@ export const OptionCard = ({
     onClick={onClick}
     className={`w-full p-4 rounded-xl border-2 cursor-pointer transition-colors relative ${
       selected
-        ? 'bg-white border-slate-900 shadow-sm'
-        : 'bg-white border-slate-200 hover:border-slate-400'
+        ? 'bg-background border-foreground shadow-sm'
+        : 'bg-background border-border hover:border-muted-foreground/50'
     }`}
   >
     <div className="flex items-start gap-3">
       {Icon && (
         <div
           className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
-            selected ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500'
+            selected ? 'bg-foreground text-white' : 'bg-muted text-muted-foreground'
           }`}
         >
           <Icon size={20} />
         </div>
       )}
       <div className="flex-1 min-w-0">
-        <h4 className={`font-bold text-sm ${selected ? 'text-slate-900' : 'text-slate-700'}`}>
+        <h4 className={`font-bold text-sm ${selected ? 'text-foreground' : 'text-foreground-secondary'}`}>
           {title}
         </h4>
-        {subtitle && <p className="text-xs text-slate-500 mt-0.5 leading-snug">{subtitle}</p>}
+        {subtitle && <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{subtitle}</p>}
         {children}
       </div>
       {selected && (
-        <div className="w-5 h-5 bg-slate-900 rounded-full flex items-center justify-center text-white shrink-0">
+        <div className="w-5 h-5 bg-foreground rounded-full flex items-center justify-center text-white shrink-0">
           <Check size={12} strokeWidth={3} />
         </div>
       )}

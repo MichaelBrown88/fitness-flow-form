@@ -23,10 +23,10 @@ export function OrgSettingSwitch({
   disabled = false,
 }: OrgSettingSwitchProps) {
   return (
-    <div className="flex items-center justify-between gap-4 p-4 sm:p-5 hover:bg-zinc-50/50 transition-colors">
+    <div className="flex items-center justify-between gap-4 p-4 sm:p-5 hover:bg-muted/50 transition-colors">
       <div className="space-y-1 flex-1 min-w-0">
-        <Label className="text-sm font-bold text-slate-800">{label}</Label>
-        <p className="text-xs text-slate-500 font-medium leading-relaxed max-w-md">{description}</p>
+        <Label className="text-sm font-bold text-foreground">{label}</Label>
+        <p className="text-xs text-muted-foreground font-medium leading-relaxed max-w-md">{description}</p>
       </div>
       <Switch
         checked={checked}

@@ -92,8 +92,8 @@ function ActionPlanCTA({ clientName, standalone }: { clientName: string; standal
         <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/15">
           <Map className="h-6 w-6 text-primary" />
         </div>
-        <h3 className="text-lg font-bold text-slate-900">Your Personalised Plan</h3>
-        <p className="text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">
+        <h3 className="text-lg font-bold text-foreground">Your Personalised Plan</h3>
+        <p className="text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
           Your coach is building a personalised roadmap based on your assessment results.
           You&apos;ll be notified when it&apos;s ready to view.
         </p>
@@ -105,8 +105,8 @@ function ActionPlanCTA({ clientName, standalone }: { clientName: string; standal
   return (
     <div className="space-y-3 rounded-xl border border-gradient-medium/50 bg-gradient-to-br from-gradient-light via-white to-white p-6 text-center">
       <Map className="mx-auto h-8 w-8 text-primary" />
-      <h3 className="text-lg font-bold text-slate-900">Client Roadmap</h3>
-      <p className="text-sm text-slate-500 max-w-md mx-auto">
+      <h3 className="text-lg font-bold text-foreground">Client Roadmap</h3>
+      <p className="text-sm text-muted-foreground max-w-md mx-auto">
         Create or review this client&apos;s personalised action plan based on the assessment findings.
       </p>
       <a
@@ -146,20 +146,20 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
             aria-expanded={open}
           >
             <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 min-w-0">
-              <div className="sm:p-1.5 md:p-2 sm:bg-gradient-light text-zinc-500 sm:text-zinc-900 sm:rounded-lg shrink-0">
+              <div className="sm:p-1.5 md:p-2 sm:bg-gradient-light text-muted-foreground sm:text-foreground sm:rounded-lg shrink-0">
                 {meta.icon}
               </div>
               <div className="min-w-0">
-                <h3 className="text-xs md:text-sm lg:text-base font-semibold text-zinc-900">
+                <h3 className="text-xs md:text-sm lg:text-base font-semibold text-foreground">
                   {meta.title}
                 </h3>
                 {!open && (
-                  <p className="text-xs text-zinc-400 mt-0.5 truncate">{meta.summary}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{meta.summary}</p>
                 )}
               </div>
             </div>
             <ChevronDown
-              className={`h-4 w-4 text-zinc-400 shrink-0 ml-3 transition-transform duration-200 ${
+              className={`h-4 w-4 text-muted-foreground shrink-0 ml-3 transition-transform duration-200 ${
                 open ? 'rotate-180' : ''
               }`}
             />
@@ -194,7 +194,7 @@ interface MobileReportNavProps {
 }
 
 const MobileReportNav: React.FC<MobileReportNavProps> = ({ activeTab, onSelect }) => (
-  <nav className="fixed bottom-0 inset-x-0 z-50 bg-white border-t border-slate-200 shadow-[0_-2px_10px_rgba(0,0,0,0.06)] pb-2 safe-area-pb md:hidden">
+  <nav className="fixed bottom-0 inset-x-0 z-50 bg-card border-t border-border shadow-[0_-2px_10px_rgba(0,0,0,0.06)] pb-2 safe-area-pb md:hidden">
     <div className="flex items-stretch justify-around px-3">
       {MOBILE_TAB_IDS.map(id => {
         const { icon: Icon, label } = MOBILE_TAB_META[id];
@@ -206,7 +206,7 @@ const MobileReportNav: React.FC<MobileReportNavProps> = ({ activeTab, onSelect }
             className={`relative flex-1 flex flex-col items-center gap-1 py-3 transition-colors touch-manipulation ${
               isActive
                 ? 'text-primary'
-                : 'text-slate-400 active:text-slate-600'
+                : 'text-foreground-tertiary active:text-muted-foreground'
             }`}
           >
             {isActive && (
@@ -214,7 +214,7 @@ const MobileReportNav: React.FC<MobileReportNavProps> = ({ activeTab, onSelect }
             )}
             <Icon className={`h-[22px] w-[22px] ${isActive ? 'text-primary' : ''}`} />
             <span className={`text-[10px] font-bold uppercase tracking-[0.15em] leading-tight ${
-              isActive ? 'text-primary' : 'text-slate-400'
+              isActive ? 'text-primary' : 'text-foreground-tertiary'
             }`}>
               {label}
             </span>
@@ -289,8 +289,8 @@ export default function ClientReport({
   }
 
   const containerClass = standalone
-    ? 'min-h-screen bg-zinc-50 text-zinc-900 px-3 sm:px-4 md:px-6 lg:px-8 xl:px-12 py-2 sm:py-4 md:py-6 lg:py-8 xl:py-12 overflow-x-hidden'
-    : 'w-full text-zinc-900 overflow-x-hidden';
+    ? 'min-h-screen bg-muted/50 text-foreground px-3 sm:px-4 md:px-6 lg:px-8 xl:px-12 py-2 sm:py-4 md:py-6 lg:py-8 xl:py-12 overflow-x-hidden'
+    : 'w-full text-foreground overflow-x-hidden';
 
   const contentClass = standalone
     ? 'max-w-[1400px] mx-auto space-y-2 sm:space-y-3 md:space-y-4 lg:space-y-5 xl:space-y-6 w-full min-w-0'
@@ -359,9 +359,9 @@ export default function ClientReport({
 
         {activeView === 'coach' ? (
           <Suspense fallback={
-            <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-zinc-200">
+            <div className="flex flex-col items-center justify-center py-20 bg-card rounded-xl border border-border">
               <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-              <p className="text-sm font-medium text-zinc-400">Loading Coach Plan...</p>
+              <p className="text-sm font-medium text-muted-foreground">Loading Coach Plan...</p>
             </div>
           }>
             {plan ? (
@@ -372,9 +372,9 @@ export default function ClientReport({
                 formData={formData}
               />
             ) : (
-              <div className="bg-white rounded-xl p-8 border border-zinc-200">
-                <h2 className="text-xl font-bold text-zinc-900 mb-4">Coach Report</h2>
-                <p className="text-zinc-600">Generating coach plan...</p>
+              <div className="bg-card rounded-xl p-8 border border-border">
+                <h2 className="text-xl font-bold text-foreground mb-4">Coach Report</h2>
+                <p className="text-foreground-secondary">Generating coach plan...</p>
               </div>
             )}
           </Suspense>
@@ -387,8 +387,8 @@ export default function ClientReport({
                 const { icon: TabIcon, label } = MOBILE_TAB_META[mobileTab];
                 return (
                   <>
-                    <TabIcon className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
-                    <h3 className="text-xs font-semibold text-zinc-900">
+                    <TabIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    <h3 className="text-xs font-semibold text-foreground">
                       {label}
                     </h3>
                   </>

@@ -146,14 +146,14 @@ export function CompanionUI({
           </div>
           <button
             onClick={() => setOcrReviewData(null)}
-            className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center"
+            className="h-8 w-8 rounded-full bg-background/10 flex items-center justify-center"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
         <div className="flex-1 overflow-y-auto space-y-3 mb-6">
           {Object.entries(ocrReviewData).map(([key, value]) => (
-            <div key={key} className="bg-white/5 rounded-xl p-4 border border-white/10">
+            <div key={key} className="bg-background/5 rounded-xl p-4 border border-white/10">
               <label className="text-[10px] font-black uppercase tracking-[0.15em] text-primary mb-2 block">
                 {fieldLabels[key] || key}
               </label>
@@ -164,7 +164,7 @@ export function CompanionUI({
                   onChange={(e) =>
                     setOcrReviewData((prev) => (prev ? { ...prev, [key]: e.target.value } : null))
                   }
-                  className="bg-white/10 border-white/20 text-white text-lg font-bold h-10 flex-1"
+                  className="bg-background/10 border-white/20 text-white text-lg font-bold h-10 flex-1"
                 />
               </div>
             </div>
@@ -174,11 +174,15 @@ export function CompanionUI({
           <Button
             variant="outline"
             onClick={() => setOcrReviewData(null)}
-            className="flex-1 bg-white/10 text-white"
+            className="flex-1 bg-background/10 text-white"
           >
             Cancel
           </Button>
-          <Button onClick={onApplyOcr} disabled={isUploading > 0} className="flex-1 bg-primary">
+          <Button
+            onClick={onApplyOcr}
+            disabled={isUploading > 0}
+            className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+          >
             Apply
           </Button>
         </div>
@@ -272,7 +276,7 @@ export function CompanionUI({
           {mode === 'bodycomp' ? (
             <button
               onClick={onCapture}
-              className="h-16 w-16 rounded-full border-4 border-white bg-white/20 flex items-center justify-center"
+              className="h-16 w-16 rounded-full border-4 border-white bg-background/20 flex items-center justify-center"
             >
               <Camera className="h-6 w-6 text-white" />
             </button>
@@ -281,7 +285,7 @@ export function CompanionUI({
             <div className="flex flex-col items-center gap-3 w-full max-w-xs">
               <Button
                 onClick={requestPermission}
-                className="bg-primary h-14 px-8 rounded-xl text-sm font-semibold shadow-lg w-full"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 h-14 px-8 rounded-xl text-sm font-semibold shadow-lg w-full"
               >
                 Enable Camera & Motion
               </Button>
@@ -289,7 +293,7 @@ export function CompanionUI({
                 <Button
                   variant="outline"
                   onClick={() => fileInputRef.current?.click()}
-                  className="h-12 px-6 rounded-xl text-xs font-bold bg-white/10 border-white/30 text-white hover:bg-white/20 w-full flex items-center justify-center gap-2"
+                  className="h-12 px-6 rounded-xl text-xs font-bold bg-background/10 border-white/30 text-white hover:bg-background/20 w-full flex items-center justify-center gap-2"
                 >
                   <ImagePlus className="h-4 w-4" />
                   Upload from Photos
@@ -315,7 +319,7 @@ export function CompanionUI({
                 <Button
                   variant="outline"
                   onClick={() => fileInputRef.current?.click()}
-                  className="h-10 px-4 rounded-xl text-xs font-bold bg-white/10 border-white/30 text-white hover:bg-white/20 flex items-center justify-center gap-2"
+                  className="h-10 px-4 rounded-xl text-xs font-bold bg-background/10 border-white/30 text-white hover:bg-background/20 flex items-center justify-center gap-2"
                 >
                   <ImagePlus className="h-3 w-3" />
                   Upload from Photos
@@ -327,7 +331,7 @@ export function CompanionUI({
             <Button
               variant="outline"
               onClick={() => fileInputRef.current?.click()}
-              className="h-12 px-6 rounded-xl text-xs font-bold bg-white/10 border-white/30 text-white hover:bg-white/20 flex items-center justify-center gap-2"
+              className="h-12 px-6 rounded-xl text-xs font-bold bg-background/10 border-white/30 text-white hover:bg-background/20 flex items-center justify-center gap-2"
             >
               <ImagePlus className="h-4 w-4" />
               Upload from Photos

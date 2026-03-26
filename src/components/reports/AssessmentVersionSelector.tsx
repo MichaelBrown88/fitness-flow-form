@@ -63,9 +63,9 @@ const AssessmentVersionSelector: React.FC<AssessmentVersionSelectorProps> = ({
         onNext={() => onSelect(selectedIndex + 1)}
         gridTrigger={
           <PopoverTrigger asChild>
-            <button className="flex items-center justify-center gap-2 min-w-0 rounded-lg px-2 py-1 hover:bg-slate-50/80 transition-colors duration-150">
+            <button className="flex items-center justify-center gap-2 min-w-0 rounded-lg px-2 py-1 hover:bg-muted/80 transition-colors duration-150">
               <ScoreBadge score={current?.score ?? 0} trend={currentTrend} size="sm" />
-              <span className="text-xs text-slate-500 leading-tight truncate">
+              <span className="text-xs text-muted-foreground leading-tight truncate">
                 {current ? current.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}
               </span>
             </button>
@@ -74,7 +74,7 @@ const AssessmentVersionSelector: React.FC<AssessmentVersionSelectorProps> = ({
         hasPrev={selectedIndex > 0}
         hasNext={selectedIndex < totalCount - 1}
       />
-      <PopoverContent align="center" className="w-auto p-0 rounded-2xl border border-slate-200 shadow-lg">
+      <PopoverContent align="center" className="w-auto p-0 rounded-2xl border border-border shadow-lg">
         <VersionSelectorGrid
           items={snapshots}
           selectedIndex={selectedIndex}
@@ -88,7 +88,7 @@ const AssessmentVersionSelector: React.FC<AssessmentVersionSelectorProps> = ({
         />
         {initialAssessment && totalCount > 1 && (
           <>
-            <div className="border-t border-dashed border-slate-200 mx-4" />
+            <div className="border-t border-dashed border-border mx-4" />
             <div className="px-4 pb-3 pt-2">
               <VersionSelectorOrigin
                 snapshot={initialAssessment}

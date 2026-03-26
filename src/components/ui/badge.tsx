@@ -8,7 +8,7 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
-        default: "gradient-bg text-white",
+        default: "gradient-bg text-primary-foreground",
         secondary: "glass-subtle text-foreground",
         destructive: "bg-destructive/90 text-destructive-foreground",
         outline: "glass-label text-foreground",
@@ -26,4 +26,6 @@ function Badge({ className, variant, ...props }: BadgeProps) {
   return <div className={cn(badgeVariants({ variant }), className)} {...props} />;
 }
 
+/* shadcn/ui: `badgeVariants` is consumed by other modules (same pattern as upstream). */
+// eslint-disable-next-line react-refresh/only-export-components -- variant helper co-located with Badge
 export { Badge, badgeVariants };

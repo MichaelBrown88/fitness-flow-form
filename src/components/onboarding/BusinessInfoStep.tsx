@@ -147,7 +147,7 @@ export function BusinessInfoStep({ data, onNext, onBack }: BusinessInfoStepProps
                 </p>
               </div>
               <div className={`relative w-10 h-6 rounded-full shrink-0 transition-apple ${isActiveCoach ? 'bg-primary' : 'bg-muted'}`}>
-                <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${isActiveCoach ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
+                <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-background shadow-sm transition-transform ${isActiveCoach ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
               </div>
             </button>
           </div>

@@ -107,11 +107,11 @@ export function LifestyleFactorsBar({ formData, previousFormData }: LifestyleFac
   }
   
   return (
-    <div className="sm:border-none sm:shadow-sm sm:bg-white sm:p-4 md:p-6 sm:ring-1 sm:ring-zinc-100 sm:rounded-xl">
+    <div className="sm:border-none sm:shadow-sm sm:bg-card sm:p-4 md:p-6 sm:ring-1 sm:ring-border sm:rounded-xl">
       <div className="flex flex-wrap items-start gap-2 sm:gap-3 md:gap-4">
         <div className="shrink-0 w-full sm:w-auto mb-1 sm:mb-0">
-          <span className="text-xs font-semibold text-zinc-700 block">Lifestyle factors to address</span>
-          <span className="text-[10px] text-zinc-400 block mt-0.5">These habits are currently limiting your progress</span>
+          <span className="text-xs font-semibold text-foreground-secondary block">Lifestyle factors to address</span>
+          <span className="text-[10px] text-muted-foreground block mt-0.5">These habits are currently limiting your progress</span>
         </div>
         {factors.map((factor, idx) => {
           const IconComponent = factor.icon;
@@ -120,9 +120,9 @@ export function LifestyleFactorsBar({ formData, previousFormData }: LifestyleFac
           return (
             <div
               key={idx}
-              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-zinc-200 text-zinc-600 bg-white sm:glass-button-active sm:text-white sm:border-transparent transition-apple hover:scale-105"
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-border text-foreground-secondary bg-card sm:glass-button-active sm:text-primary-foreground sm:border-transparent transition-apple hover:scale-105"
             >
-              <IconComponent className="hidden sm:block w-3.5 h-3.5 text-white" />
+              <IconComponent className="hidden sm:block w-3.5 h-3.5 sm:text-primary-foreground text-muted-foreground" />
               <span className="text-xs md:text-sm font-medium whitespace-nowrap">
                 {factor.label}
               </span>

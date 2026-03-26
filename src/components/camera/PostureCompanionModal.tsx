@@ -88,7 +88,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden rounded-3xl p-0 border-none bg-white">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden rounded-3xl p-0 border-none bg-background">
         <DialogHeader className="sr-only">
           <DialogTitle>Posture Capture</DialogTitle>
           <DialogDescription>
@@ -98,16 +98,16 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
         <div className="flex flex-col lg:flex-row h-full">
           
           {/* LEFT: CONNECTION STATUS & QR */}
-          <div className="w-full lg:w-1/3 bg-slate-50 p-8 border-r border-slate-100 flex flex-col items-center">
+          <div className="w-full lg:w-1/3 bg-muted/50 p-8 border-r border-border flex flex-col items-center">
             <div className="flex flex-col items-center text-center mb-8">
-              <div className="bg-white p-4 rounded-3xl shadow-sm mb-4">
+              <div className="bg-background p-4 rounded-3xl shadow-sm mb-4">
                 <Smartphone className="h-10 w-10 text-primary" />
               </div>
-              <h3 className="text-xl font-bold text-slate-900">Use Your Phone</h3>
-              <p className="text-slate-500 text-xs mt-2">Connect your phone to take photos</p>
+              <h3 className="text-xl font-bold text-foreground">Use Your Phone</h3>
+              <p className="text-muted-foreground text-xs mt-2">Connect your phone to take photos</p>
             </div>
 
-            <div className="p-4 bg-white rounded-3xl shadow-xl border-4 border-white mb-6 flex items-center justify-center min-h-[212px]">
+            <div className="p-4 bg-background rounded-3xl shadow-xl border-4 border-white mb-6 flex items-center justify-center min-h-[212px]">
               {companionUrl ? (
                 <div className="animate-in zoom-in duration-500">
                   <QRCodeSVG value={companionUrl} size={180} />
@@ -135,14 +135,14 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                   <span className="text-xs font-bold">Connection Lost - Scan to Reconnect</span>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 text-slate-500 bg-slate-100 px-4 py-3 rounded-xl">
+                <div className="flex items-center gap-2 text-muted-foreground bg-muted px-4 py-3 rounded-xl">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span className="text-xs font-bold">Waiting for connection...</span>
                 </div>
               )}
             </div>
 
-            <div className="mt-auto w-full pt-8 border-t border-slate-200 space-y-3">
+            <div className="mt-auto w-full pt-8 border-t border-border space-y-3">
               {/* Hidden file input for manual upload */}
               <input
                 ref={fileInputRef}
@@ -186,10 +186,10 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
           </div>
 
           {/* RIGHT: INSTRUCTIONS & LIVE SYNC GRID */}
-          <div className="flex-1 p-8 overflow-y-auto bg-white max-h-[90vh]">
+          <div className="flex-1 p-8 overflow-y-auto bg-background max-h-[90vh]">
             <div className="mb-6">
-              <h4 className="text-lg font-bold text-slate-900 mb-2">How to Use</h4>
-              <ol className="space-y-3 text-sm text-slate-600 mb-4">
+              <h4 className="text-lg font-bold text-foreground mb-2">How to Use</h4>
+              <ol className="space-y-3 text-sm text-foreground-secondary mb-4">
                 <li className="flex gap-3">
                   <span className="font-bold text-primary">1.</span>
                   <span>Open your iPhone camera app</span>
@@ -219,11 +219,11 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                 return (
                   <div key={view} className="flex flex-col gap-2">
                     <div className="flex items-center justify-between px-1">
-                      <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">{view}</span>
+                      <span className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">{view}</span>
                       {status === 'complete' && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
                       {status === 'error' && <AlertCircle className="h-3 w-3 text-red-500" />}
                     </div>
-                    <div className="aspect-[3/4] rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 overflow-hidden relative flex items-center justify-center">
+                    <div className="aspect-[3/4] rounded-2xl bg-muted/50 border-2 border-dashed border-border overflow-hidden relative flex items-center justify-center">
                       {imageUrl ? (
                           <img 
                             src={imageUrl} 
@@ -239,7 +239,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                             className="w-full h-full object-cover" 
                             alt={`${view} placeholder`}
                           />
-                          <Camera className="absolute h-6 w-6 text-slate-300" />
+                          <Camera className="absolute h-6 w-6 text-muted-foreground/60" />
                         </>
                       )}
                       
@@ -266,8 +266,8 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
 
                     {/* POSTURE SUMMARY - Simple per-view text (max 150 chars) */}
                     {session?.analysis[view]?.overall_assessment && (
-                      <div className="mt-2 bg-slate-50 p-2 rounded-lg border border-slate-100 animate-in fade-in slide-in-from-bottom-2">
-                        <p className="text-[10px] text-slate-600 leading-snug whitespace-normal break-words">
+                      <div className="mt-2 bg-muted/50 p-2 rounded-lg border border-border animate-in fade-in slide-in-from-bottom-2">
+                        <p className="text-[10px] text-foreground-secondary leading-snug whitespace-normal break-words">
                           {session.analysis[view].overall_assessment}
                         </p>
                       </div>
@@ -278,7 +278,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
             </div>
 
             {hasAllImages && (
-              <div className="absolute bottom-0 left-0 right-0 p-8 bg-white/80 backdrop-blur-md border-t border-slate-100 z-50 animate-in slide-in-from-bottom-4 duration-500">
+              <div className="absolute bottom-0 left-0 right-0 p-8 bg-background/80 backdrop-blur-md border-t border-border z-50 animate-in slide-in-from-bottom-4 duration-500">
                 <Button 
                   onClick={handleApply}
                   className="w-full h-14 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-bold text-xs gap-3 shadow-lg shadow-emerald-500/20"

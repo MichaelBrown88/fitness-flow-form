@@ -53,7 +53,9 @@ export const DashboardViewTabs: React.FC<DashboardViewTabsProps> = ({
 
   const tabClass = (tab: DashboardView, isActive: boolean) =>
     `flex-1 sm:flex-none px-3 sm:px-5 py-2 min-h-[44px] sm:min-h-0 text-xs sm:text-sm font-bold rounded-lg transition-all duration-200 touch-manipulation flex flex-row flex-nowrap items-center justify-center gap-1.5 whitespace-nowrap ${
-      isActive ? 'bg-white text-slate-900 scale-[1.02]' : 'text-slate-500 hover:text-slate-700'
+      isActive
+        ? 'scale-[1.02] bg-background text-foreground shadow-sm ring-1 ring-border dark:bg-card'
+        : 'text-muted-foreground hover:text-foreground'
     }`;
 
   const scheduleBadge =
@@ -70,7 +72,7 @@ export const DashboardViewTabs: React.FC<DashboardViewTabsProps> = ({
   return (
     <TooltipProvider delayDuration={300}>
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-4 sm:mb-6">
-        <div className="flex items-center gap-1 sm:gap-2 bg-slate-100 p-1 rounded-xl w-full sm:w-auto overflow-x-auto">
+        <div className="flex w-full items-center gap-1 overflow-x-auto rounded-xl bg-muted/80 p-1 dark:bg-background-secondary sm:w-auto sm:gap-2">
           {useRouterLinks ? (
             <>
               <NavLink
@@ -190,10 +192,10 @@ export const DashboardViewTabs: React.FC<DashboardViewTabsProps> = ({
             placeholder={view === 'team' ? 'Search coaches…' : 'Search clients…'}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-10 sm:h-11 w-full pl-4 pr-10 text-sm rounded-xl border-slate-200 focus:border-slate-900 transition-colors bg-white/50 backdrop-blur-sm"
+            className="h-10 w-full rounded-xl border-input bg-background pl-4 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-ring sm:h-11"
           />
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
+            <svg className="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>

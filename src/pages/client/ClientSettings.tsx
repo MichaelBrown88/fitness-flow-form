@@ -38,10 +38,10 @@ export default function ClientSettings() {
 
   return (
     <div className="space-y-8">
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-        <h2 className="text-lg font-bold text-slate-900">Profile & contact</h2>
+      <section className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
+        <h2 className="text-lg font-bold text-foreground">Profile & contact</h2>
         <div className="grid gap-2">
-          <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 flex items-center gap-2">
+          <label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground flex items-center gap-2">
             <UserCheck className="h-3.5 w-3.5" /> Client Name
           </label>
           <Input
@@ -52,7 +52,7 @@ export default function ClientSettings() {
           />
         </div>
         <div className="grid gap-2">
-          <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 flex items-center gap-2">
+          <label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground flex items-center gap-2">
             <Mail className="h-3.5 w-3.5" /> Email Address
           </label>
           <Input
@@ -63,7 +63,7 @@ export default function ClientSettings() {
           />
         </div>
         <div className="grid gap-2">
-          <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 flex items-center gap-2">
+          <label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground flex items-center gap-2">
             <Phone className="h-3.5 w-3.5" /> Phone Number
           </label>
           <Input
@@ -75,7 +75,7 @@ export default function ClientSettings() {
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="grid gap-2">
-            <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 flex items-center gap-2">
+            <label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground flex items-center gap-2">
               <Cake className="h-3.5 w-3.5" /> Date of Birth
             </label>
             <Input
@@ -86,7 +86,7 @@ export default function ClientSettings() {
             />
           </div>
           <div className="grid gap-2">
-            <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 flex items-center gap-2">
+            <label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground flex items-center gap-2">
               <CalendarClock className="h-3.5 w-3.5" /> Training Start
             </label>
             <Input
@@ -98,7 +98,7 @@ export default function ClientSettings() {
           </div>
         </div>
         <div className="grid gap-2">
-          <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500">Internal Coaching Notes</label>
+          <label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">Internal Coaching Notes</label>
           <Textarea
             value={editData.notes || ''}
             onChange={(e) => setEditData({ ...editData, notes: e.target.value })}
@@ -107,13 +107,13 @@ export default function ClientSettings() {
             className="rounded-xl resize-none"
           />
         </div>
-        <Button onClick={() => void handleSaveProfile()} className="w-full sm:w-auto bg-slate-900 text-white rounded-xl h-11 px-6 font-bold">
+        <Button onClick={() => void handleSaveProfile()} className="w-full sm:w-auto bg-foreground text-white rounded-xl h-11 px-6 font-bold">
           Save Profile
         </Button>
       </section>
 
       {authProfile?.organizationId && (
-        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
           <RetestScheduleCard
             profile={profile}
             clientName={clientName}

@@ -10,7 +10,7 @@ const cookiesSeo = requireSeoForPath(ROUTES.COOKIES);
 
 export default function Cookies() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
       <Seo
         pathname={ROUTES.COOKIES}
         title={cookiesSeo.title}

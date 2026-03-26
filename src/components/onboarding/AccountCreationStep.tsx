@@ -23,7 +23,7 @@ interface AccountCreationStepProps {
 const PASSWORD_MIN_LENGTH = 6;
 
 function getPasswordStrength(password: string): { label: string; percent: number; color: string } {
-  if (password.length === 0) return { label: '', percent: 0, color: 'bg-slate-200' };
+  if (password.length === 0) return { label: '', percent: 0, color: 'bg-muted' };
   if (password.length < PASSWORD_MIN_LENGTH) return { label: 'Too short', percent: 20, color: 'bg-red-400' };
 
   let score = 0;
@@ -84,9 +84,9 @@ export function AccountCreationStep({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-1">Create your account</h2>
-        <p className="text-sm text-slate-500">
-          Almost done! Secure your account for <span className="font-medium text-slate-700">{email}</span>
+        <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-1">Create your account</h2>
+        <p className="text-sm text-muted-foreground">
+          Almost done! Secure your account for <span className="font-medium text-foreground-secondary">{email}</span>
         </p>
       </div>
 
@@ -96,7 +96,7 @@ export function AccountCreationStep({
           type="button"
           onClick={() => handleSocialSignIn('google')}
           disabled={submitting}
-          className="w-full h-12 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors flex items-center justify-center gap-3 disabled:opacity-50"
+          className="w-full h-12 rounded-xl border border-border bg-background text-sm font-semibold text-foreground-secondary hover:bg-muted/50 transition-colors flex items-center justify-center gap-3 disabled:opacity-50"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
@@ -111,7 +111,7 @@ export function AccountCreationStep({
           type="button"
           onClick={() => handleSocialSignIn('apple')}
           disabled={submitting}
-          className="w-full h-12 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors flex items-center justify-center gap-3 disabled:opacity-50"
+          className="w-full h-12 rounded-xl border border-border bg-background text-sm font-semibold text-foreground-secondary hover:bg-muted/50 transition-colors flex items-center justify-center gap-3 disabled:opacity-50"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
             <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
@@ -122,14 +122,14 @@ export function AccountCreationStep({
 
       {/* Divider */}
       <div className="flex items-center gap-3">
-        <div className="flex-1 h-px bg-slate-200" />
-        <span className="text-xs font-medium text-slate-400">or use a password</span>
-        <div className="flex-1 h-px bg-slate-200" />
+        <div className="flex-1 h-px bg-muted" />
+        <span className="text-xs font-medium text-muted-foreground">or use a password</span>
+        <div className="flex-1 h-px bg-muted" />
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-xs font-bold text-slate-600 mb-1.5">Password</label>
+          <label className="block text-xs font-bold text-foreground-secondary mb-1.5">Password</label>
           <div className="relative">
             <OnboardingInput
               type={showPassword ? 'text' : 'password'}
@@ -142,24 +142,24 @@ export function AccountCreationStep({
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground-secondary transition-colors"
               tabIndex={-1}
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
-          <p className="mt-1.5 text-xs text-slate-400">Minimum 6 characters</p>
+          <p className="mt-1.5 text-xs text-muted-foreground">Minimum 6 characters</p>
 
           {/* Strength indicator */}
           {password.length > 0 && (
             <div className="mt-2 flex items-center gap-2">
-              <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-300 ${strength.color}`}
                   style={{ width: `${strength.percent}%` }}
                 />
               </div>
-              <span className="text-xs font-medium text-slate-500 w-16 text-right">{strength.label}</span>
+              <span className="text-xs font-medium text-muted-foreground w-16 text-right">{strength.label}</span>
             </div>
           )}
         </div>
@@ -171,15 +171,15 @@ export function AccountCreationStep({
             id="terms"
             checked={acceptedTerms}
             onChange={(e) => setAcceptedTerms(e.target.checked)}
-            className="mt-1 w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer"
+            className="mt-1 w-4 h-4 rounded border-border-medium text-foreground focus:ring-foreground cursor-pointer"
           />
-          <label htmlFor="terms" className="text-xs text-slate-500 leading-relaxed cursor-pointer">
+          <label htmlFor="terms" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
             I agree to the{' '}
-            <Link to="/terms" target="_blank" className="text-slate-900 underline hover:text-slate-700">
+            <Link to="/terms" target="_blank" className="text-foreground underline hover:text-foreground-secondary">
               Terms of Service
             </Link>{' '}
             and{' '}
-            <Link to="/privacy" target="_blank" className="text-slate-900 underline hover:text-slate-700">
+            <Link to="/privacy" target="_blank" className="text-foreground underline hover:text-foreground-secondary">
               Privacy Policy
             </Link>
           </label>
@@ -200,7 +200,7 @@ export function AccountCreationStep({
         <button
           type="submit"
           disabled={submitting}
-          className="w-full h-12 rounded-xl bg-slate-900 text-white font-bold text-sm hover:bg-slate-800 transition-colors disabled:opacity-50"
+          className="w-full h-12 rounded-xl bg-foreground text-white font-bold text-sm hover:bg-foreground/90 transition-colors disabled:opacity-50"
         >
           {submitting ? 'Creating account...' : 'Create Account'}
         </button>

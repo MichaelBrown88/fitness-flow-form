@@ -116,14 +116,14 @@ export function EngagementDepthCard({ populationData, dataCompleteness }: Props)
               <div className="flex-1 rounded-lg bg-indigo-600/10 border border-indigo-500/20 px-3 py-2.5 text-center">
                 <p className="text-lg font-bold text-indigo-400 tabular-nums">{fullPct}%</p>
                 <p className="text-[11px] text-admin-fg-muted">Full Assessment</p>
-                <p className="text-[10px] text-slate-500">{fullCount} sessions</p>
+                <p className="text-[10px] text-muted-foreground">{fullCount} sessions</p>
               </div>
             )}
             {partialPct !== null && (
               <div className="flex-1 rounded-lg bg-admin-card border border-admin-border px-3 py-2.5 text-center">
                 <p className="text-lg font-bold text-admin-fg tabular-nums">{partialPct}%</p>
                 <p className="text-[11px] text-admin-fg-muted">Pillar-Specific</p>
-                <p className="text-[10px] text-slate-500">{partialCount} sessions</p>
+                <p className="text-[10px] text-muted-foreground">{partialCount} sessions</p>
               </div>
             )}
           </div>

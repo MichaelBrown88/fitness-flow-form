@@ -46,14 +46,14 @@ export default function Subscribe() {
     <AppShell title="Choose your plan" hideTitle>
       <div className="mx-auto max-w-lg px-4 py-12 text-center space-y-6">
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-slate-900">Your trial has ended</h1>
-          <p className="text-sm text-slate-600">
+          <h1 className="text-2xl font-bold text-foreground">Your trial has ended</h1>
+          <p className="text-sm text-foreground-secondary">
             Continue with a paid plan to keep your team on One Assess. During trial you could have up to{' '}
             {GYM_TRIAL_CLIENT_CAP} active clients; choose a capacity tier that fits your gym.
           </p>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 text-left space-y-3 text-sm text-slate-600">
-          <p className="font-semibold text-slate-900">What you get</p>
+        <div className="rounded-2xl border border-border bg-background p-6 text-left space-y-3 text-sm text-foreground-secondary">
+          <p className="font-semibold text-foreground">What you get</p>
           <ul className="list-disc pl-5 space-y-1">
             <li>Capacity-based monthly billing (UK GBP)</li>
             <li>AI assessment credits included per tier</li>
@@ -74,7 +74,7 @@ export default function Subscribe() {
         <button
           type="button"
           onClick={() => navigate(ROUTES.DASHBOARD)}
-          className="text-xs text-slate-400 hover:text-slate-600"
+          className="text-xs text-muted-foreground hover:text-foreground-secondary"
         >
           Back to dashboard
         </button>

@@ -81,7 +81,7 @@ export function ScoreDistributionsCard({ distributions }: Props) {
       </div>
       <div className="flex items-center gap-3 mt-4 flex-wrap">
         {Object.entries(BUCKET_COLORS).map(([range, color]) => (
-          <span key={range} className="flex items-center gap-1 text-xs text-slate-400">
+          <span key={range} className="flex items-center gap-1 text-xs text-muted-foreground">
             <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ backgroundColor: color }} />
             {range}
           </span>

@@ -66,7 +66,7 @@ export function FieldControl({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {fieldOptions?.map((option, idx) => {
               const isSelected = value === option.value;
-              const colorClass = idx === 0 ? 'hover:border-slate-200 hover:bg-slate-50 text-slate-700 border-slate-100' : 'hover:border-primary/20 hover:bg-brand-light text-primary border-primary/10';
+              const colorClass = idx === 0 ? 'hover:border-border hover:bg-muted/50 text-foreground-secondary border-border' : 'hover:border-primary/20 hover:bg-brand-light text-primary border-primary/10';
               const inputId = `${field.id}-${option.value}`;
               
               return (
@@ -75,8 +75,8 @@ export function FieldControl({
                   htmlFor={inputId}
                   className={`flex h-11 cursor-pointer items-center gap-3 rounded-xl border-2 px-4 text-left transition-all ${
                     isSelected
-                      ? 'border-slate-900 bg-slate-900 text-white shadow-lg scale-[1.02]'
-                      : `bg-white text-slate-600 ${colorClass}`
+                      ? 'border-foreground bg-foreground text-white shadow-lg scale-[1.02]'
+                      : `bg-background text-foreground-secondary ${colorClass}`
                   }`}
                 >
                   <input 
@@ -89,7 +89,7 @@ export function FieldControl({
                     className="sr-only"
                   />
                   <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-                    isSelected ? 'bg-white/20 border-white/20 text-white' : 'border-slate-200 bg-white'
+                    isSelected ? 'bg-background/20 border-white/20 text-white' : 'border-border bg-background'
                   }`}>
                     {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
                   </div>
@@ -100,11 +100,11 @@ export function FieldControl({
           </div>
 
           <div className="p-8 bg-brand-light rounded-3xl border-2 border-dashed border-primary/20 flex flex-col items-center text-center space-y-6 animate-in fade-in zoom-in duration-500">
-            <div className="bg-white p-4 rounded-3xl shadow-sm">
+            <div className="bg-background p-4 rounded-3xl shadow-sm">
               <Smartphone className="h-10 w-10 text-primary" />
             </div>
             <div className="space-y-2">
-              <h4 className="text-xl font-bold text-slate-900">AI Posture Analysis</h4>
+              <h4 className="text-xl font-bold text-foreground">AI Posture Analysis</h4>
               <p className="text-primary/70 text-sm font-medium max-w-xs mx-auto">
                 {formData.postureAiResults 
                   ? "Scan complete! You can re-scan if needed or continue to the next step."
@@ -116,7 +116,7 @@ export function FieldControl({
               {isMobile ? (
                 <Button 
                   onClick={() => onShowCamera?.('posture')}
-                  className="flex-1 h-14 rounded-2xl bg-primary text-white font-bold text-xs gap-3 shadow-lg shadow-primary/20"
+                  className="flex-1 h-14 rounded-2xl bg-primary text-primary-foreground font-bold text-xs gap-3 shadow-lg shadow-primary/20"
                 >
                   <CameraIcon className="h-5 w-5" />
                   Start Posture Scan
@@ -124,7 +124,7 @@ export function FieldControl({
               ) : (
                 <Button 
                   onClick={onShowPostureCompanion}
-                  className="flex-1 h-14 rounded-2xl bg-primary text-white font-bold text-xs gap-3 shadow-lg shadow-primary/20"
+                  className="flex-1 h-14 rounded-2xl bg-primary text-primary-foreground font-bold text-xs gap-3 shadow-lg shadow-primary/20"
                 >
                   <Smartphone className="h-5 w-5" />
                   Open Remote Mode

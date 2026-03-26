@@ -43,7 +43,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         {overdueCount > 0 && (
           <>
             <span className="text-border">·</span>
-            <span className="text-score-amber-fg font-semibold">
+            <span className="font-semibold text-score-amber-fg dark:text-amber-400">
               {DASHBOARD_TASKS.HEADER_PAST_CADENCE(overdueCount)}
             </span>
           </>

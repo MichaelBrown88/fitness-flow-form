@@ -7,6 +7,7 @@ import React, { Suspense, lazy } from 'react';
 import { AuthProvider } from "./contexts/AuthContext";
 import { useAuth } from "@/hooks/useAuth";
 import { ThemeManager } from "./components/layout/ThemeManager";
+import { ThemeModeProvider } from "./contexts/ThemeModeContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ImpersonationBanner } from "./components/ImpersonationBanner";
 import { MaintenanceBanner } from "./components/MaintenanceBanner";
@@ -86,7 +87,7 @@ const RequireAuth = ({ children }: { children: JSX.Element }) => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-slate-600">
+      <div className="flex min-h-screen items-center justify-center text-sm text-foreground-secondary">
         Checking coach session…
       </div>
     );
@@ -107,6 +108,7 @@ const RequireAuth = ({ children }: { children: JSX.Element }) => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
+    <ThemeModeProvider>
     <TooltipProvider>
       <Toaster />
       <ReloadPrompt />
@@ -326,6 +328,7 @@ const App = () => (
             </ThemeManager>
           </AuthProvider>
     </TooltipProvider>
+    </ThemeModeProvider>
   </QueryClientProvider>
 );
 

@@ -219,27 +219,27 @@ const PlatformLogin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-slate-800 border border-slate-700 mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-foreground/90 border border-border mb-4">
             <Shield className="w-8 h-8 text-indigo-400" />
           </div>
           <h1 className="text-xl font-semibold text-white">Platform Administration</h1>
-          <p className="text-sm text-slate-400 mt-1">One Assess Internal Access</p>
+          <p className="text-sm text-muted-foreground mt-1">One Assess Internal Access</p>
         </div>
 
         {/* Card */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+        <div className="bg-foreground border border-border rounded-2xl p-6">
           
           {/* Step: Email Entry */}
           {step === 'email' && (
             <form onSubmit={handleEmailSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-slate-300">Admin Email</Label>
+                <Label htmlFor="email" className="text-muted-foreground/60">Admin Email</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     id="email"
                     type="email"
@@ -247,7 +247,7 @@ const PlatformLogin = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="admin@one-assess.com"
-                    className="pl-10 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
+                    className="pl-10 bg-foreground/90 border-border text-white placeholder:text-muted-foreground"
                     required
                   />
                 </div>
@@ -273,21 +273,21 @@ const PlatformLogin = () => {
           {step === 'password' && (
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="text-center mb-4">
-                <p className="text-slate-300">Welcome back, {adminName}</p>
-                <p className="text-xs text-slate-500">{email}</p>
+                <p className="text-muted-foreground/60">Welcome back, {adminName}</p>
+                <p className="text-xs text-muted-foreground">{email}</p>
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="password" className="text-slate-300">Password</Label>
+                <Label htmlFor="password" className="text-muted-foreground/60">Password</Label>
                 <div className="relative">
-                  <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     id="password"
                     type="password"
                     autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 bg-slate-800 border-slate-700 text-white"
+                    className="pl-10 bg-foreground/90 border-border text-white"
                     required
                   />
                 </div>
@@ -311,7 +311,7 @@ const PlatformLogin = () => {
                 <button
                   type="button"
                   onClick={() => setStep('email')}
-                  className="text-slate-400 hover:text-white transition-colors"
+                  className="text-muted-foreground hover:text-white transition-colors"
                 >
                   ← Different email
                 </button>
@@ -333,12 +333,12 @@ const PlatformLogin = () => {
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-indigo-600/20 mb-3">
                   <KeyRound className="w-6 h-6 text-indigo-400" />
                 </div>
-                <p className="text-slate-300">Welcome, {adminName}!</p>
-                <p className="text-xs text-slate-500">Set your password to continue</p>
+                <p className="text-muted-foreground/60">Welcome, {adminName}!</p>
+                <p className="text-xs text-muted-foreground">Set your password to continue</p>
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="new-password" className="text-slate-300">Create Password</Label>
+                <Label htmlFor="new-password" className="text-muted-foreground/60">Create Password</Label>
                 <Input
                   id="new-password"
                   type="password"
@@ -346,21 +346,21 @@ const PlatformLogin = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="At least 8 characters"
-                  className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
+                  className="bg-foreground/90 border-border text-white placeholder:text-muted-foreground"
                   required
                   minLength={8}
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="confirm-password" className="text-slate-300">Confirm Password</Label>
+                <Label htmlFor="confirm-password" className="text-muted-foreground/60">Confirm Password</Label>
                 <Input
                   id="confirm-password"
                   type="password"
                   autoComplete="new-password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="bg-slate-800 border-slate-700 text-white"
+                  className="bg-foreground/90 border-border text-white"
                   required
                 />
               </div>
@@ -382,7 +382,7 @@ const PlatformLogin = () => {
               <button
                 type="button"
                 onClick={() => setStep('email')}
-                className="w-full text-xs text-slate-400 hover:text-white transition-colors"
+                className="w-full text-xs text-muted-foreground hover:text-white transition-colors"
               >
                 ← Back to email
               </button>
@@ -396,13 +396,13 @@ const PlatformLogin = () => {
                 <Mail className="w-6 h-6 text-emerald-400" />
               </div>
               <div>
-                <p className="text-slate-300">Reset email sent!</p>
-                <p className="text-xs text-slate-500 mt-1">Check {email} for instructions</p>
+                <p className="text-muted-foreground/60">Reset email sent!</p>
+                <p className="text-xs text-muted-foreground mt-1">Check {email} for instructions</p>
               </div>
               <Button
                 onClick={() => setStep('password')}
                 variant="outline"
-                className="w-full border-slate-700 text-slate-300 hover:bg-slate-800"
+                className="w-full border-border text-muted-foreground/60 hover:bg-foreground/90"
               >
                 Back to login
               </Button>
@@ -414,7 +414,7 @@ const PlatformLogin = () => {
         <div className="mt-6 text-center">
           <Link 
             to="/" 
-            className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors"
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-muted-foreground/60 transition-colors"
           >
             <ArrowLeft className="w-3 h-3" />
             Back to One Assess

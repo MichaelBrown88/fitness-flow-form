@@ -2,7 +2,7 @@ import { Heart, Target, Lightbulb } from 'lucide-react';
 import GlassCard from '@/components/ui/GlassCard';
 import SectionHeader from '@/components/landing/SectionHeader';
 import StickyCardStack from '@/components/ui/StickyCardStack';
-import { LANDING_H2_ACCENT_LIGHT } from '@/constants/landingCopy';
+import { LANDING_H2_ACCENT_LIGHT_READABLE } from '@/constants/landingCopy';
 
 const values = [
   {
@@ -27,16 +27,18 @@ const values = [
 ];
 
 const colorClasses: Record<string, string> = {
-  slate: 'border-slate-200 bg-slate-50 text-slate-700',
-  volt: 'border-gradient-medium/50 bg-gradient-light/90 text-primary',
+  slate:
+    'border-border bg-muted text-foreground dark:border-border dark:bg-card-elevated dark:text-foreground',
+  volt:
+    'border-gradient-medium/50 bg-gradient-light/90 text-primary dark:border-primary/35 dark:bg-primary/15 dark:text-primary',
 };
 
 export function BuiltByExperts() {
   return (
-    <section className="py-24 sm:py-32 px-6 bg-white relative overflow-hidden">
+    <section className="relative overflow-hidden bg-background px-6 py-24 sm:py-32">
       {/* Background decoration */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute left-[-10%] top-[30%] h-96 w-96 rounded-full bg-slate-300/12 blur-3xl" />
+        <div className="absolute left-[-10%] top-[30%] h-96 w-96 rounded-full bg-muted/20 blur-3xl" />
         <div className="absolute bottom-[20%] right-[-10%] h-96 w-96 rounded-full bg-gradient-light/25 blur-3xl" />
       </div>
 
@@ -51,10 +53,11 @@ export function BuiltByExperts() {
               pill="Our Story"
               title={
                 <>
-                  Built by <span className={LANDING_H2_ACCENT_LIGHT}>Coaches</span>, for Coaches
+                  Built by <span className={LANDING_H2_ACCENT_LIGHT_READABLE}>Coaches</span>, for Coaches
                 </>
               }
               subtitle="One Assess was built to solve a real problem: my own. Now it helps coaches everywhere."
+              subtitleClassName="text-muted-foreground"
             />
           }
         >
@@ -65,8 +68,8 @@ export function BuiltByExperts() {
                 <div className={`w-16 h-16 rounded-2xl ${colorClasses[value.color]} border-2 flex items-center justify-center mb-6 shadow-sm`}>
                   <Icon size={28} />
                 </div>
-                <h3 className="text-balance text-xl font-bold text-slate-900 mb-3">{value.title}</h3>
-                <p className="text-balance text-slate-500 text-sm leading-relaxed flex-grow">
+                <h3 className="mb-3 text-balance text-xl font-bold text-foreground">{value.title}</h3>
+                <p className="flex-grow text-balance text-sm leading-relaxed text-muted-foreground">
                   {value.description}
                 </p>
               </GlassCard>
@@ -75,7 +78,7 @@ export function BuiltByExperts() {
         </StickyCardStack>
 
         <div className="mt-16 text-center">
-          <p className="text-balance text-slate-400 text-sm max-w-2xl mx-auto">
+          <p className="mx-auto max-w-2xl text-balance text-sm text-muted-foreground">
             Every feature in One Assess exists because a coach needed it.
             If you have an idea that would make your workflow better, we want to hear it.
           </p>

@@ -1,7 +1,7 @@
 import React from 'react';
 import SectionHeader from '@/components/landing/SectionHeader';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
-import { LANDING_COPY, LANDING_H2_ACCENT_LIGHT } from '@/constants/landingCopy';
+import { LANDING_COPY, LANDING_H2_ACCENT_LIGHT_READABLE } from '@/constants/landingCopy';
 
 interface TestimonialsSectionProps {
   children: React.ReactNode;
@@ -12,19 +12,20 @@ export function TestimonialsSection({ children }: TestimonialsSectionProps) {
   const gridRef = useScrollReveal({ staggerDelay: 150, staggerIndex: 1 });
 
   return (
-    <section className="py-24 px-6 bg-slate-50">
+    <section className="bg-muted px-6 py-24 dark:bg-background">
       <div className="max-w-7xl mx-auto">
         <div ref={headerRef}>
           <SectionHeader
             title={
               <>
                 {LANDING_COPY.testimonialsSectionTitleBefore}
-                <span className={LANDING_H2_ACCENT_LIGHT}>
+                <span className={LANDING_H2_ACCENT_LIGHT_READABLE}>
                   {LANDING_COPY.testimonialsSectionTitleAccent}
                 </span>
               </>
             }
             subtitle="Real results from fitness professionals who switched to One Assess."
+            subtitleClassName="text-muted-foreground"
           />
         </div>
         

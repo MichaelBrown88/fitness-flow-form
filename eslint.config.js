@@ -19,11 +19,29 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
-      // Optional: warn on raw slate/indigo/violet utilities — noisy until migration completes; enable when ready.
-      // "no-restricted-syntax": ["warn", { selector: "...", message: "Prefer design tokens (docs/DESIGN_SYSTEM.md)" }],
       "react-hooks/exhaustive-deps": "error",
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/no-unused-vars": "off",
+    },
+  },
+  {
+    files: ["src/components/**/*.{ts,tsx}", "src/pages/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-syntax": [
+        "warn",
+        {
+          selector:
+            "Literal[value=/\\b(bg-white|bg-slate-|text-slate-|border-slate-|ring-slate-|from-slate-|to-slate-|via-slate-|divide-slate-|placeholder-slate-|bg-zinc-|text-zinc-|border-zinc-|ring-zinc-|from-zinc-|to-zinc-)\\b/]",
+          message:
+            "Prefer semantic design tokens (bg-background, text-foreground, etc.). See docs/DESIGN_SYSTEM.md",
+        },
+        {
+          selector:
+            "TemplateElement[value.raw=/\\b(bg-white|bg-slate-|text-slate-|border-slate-|ring-slate-|from-slate-|to-slate-|via-slate-|divide-slate-|placeholder-slate-|bg-zinc-|text-zinc-|border-zinc-|ring-zinc-|from-zinc-|to-zinc-)\\b/]",
+          message:
+            "Prefer semantic design tokens (bg-background, text-foreground, etc.). See docs/DESIGN_SYSTEM.md",
+        },
+      ],
     },
   },
 );

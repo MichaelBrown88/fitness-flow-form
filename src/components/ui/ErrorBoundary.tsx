@@ -19,14 +19,14 @@ function ErrorFallback({ error, resetErrorBoundary }: ErrorFallbackProps) {
   }, [error]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-      <div className="max-w-md w-full rounded-2xl border border-slate-200 bg-white p-8 shadow-xl">
+    <div className="flex min-h-screen items-center justify-center bg-muted/50 p-4">
+      <div className="max-w-md w-full rounded-2xl border border-border bg-background p-8 shadow-xl">
         <div className="flex flex-col items-center text-center space-y-4">
           <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
             <AlertCircle className="w-8 h-8 text-red-600" />
           </div>
-          <h2 className="text-xl font-bold text-slate-900">Something went wrong</h2>
-          <p className="text-sm text-slate-600">
+          <h2 className="text-xl font-bold text-foreground">Something went wrong</h2>
+          <p className="text-sm text-foreground-secondary">
             We encountered an unexpected error. Please try again or return to the dashboard.
           </p>
           <div className="flex gap-3 w-full mt-6">

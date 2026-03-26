@@ -107,10 +107,10 @@ export default function SandboxTrial() {
           description={trySeo.description}
           noindex={trySeo.noindex}
         />
-        <p className="text-sm text-slate-500">{error}</p>
+        <p className="text-sm text-muted-foreground">{error}</p>
         <button
           onClick={() => window.location.reload()}
-          className="h-10 px-6 rounded-xl bg-slate-900 text-white text-sm font-bold"
+          className="h-10 px-6 rounded-xl bg-foreground text-white text-sm font-bold"
         >
           Try again
         </button>
@@ -119,15 +119,15 @@ export default function SandboxTrial() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-white">
+    <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-background">
       <Seo
         pathname={ROUTES.TRY}
         title={trySeo.title}
         description={trySeo.description}
         noindex={trySeo.noindex}
       />
-      <div className="h-12 w-12 rounded-full border-4 border-slate-200 border-t-primary animate-spin" />
-      <p className="text-sm font-medium text-slate-400">Setting up your trial…</p>
+      <div className="h-12 w-12 rounded-full border-4 border-border border-t-primary animate-spin" />
+      <p className="text-sm font-medium text-muted-foreground">Setting up your trial…</p>
     </div>
   );
 }

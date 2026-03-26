@@ -37,7 +37,7 @@ export const FieldLabel: React.FC<FieldLabelProps> = ({ field, orgSettings, form
               </TooltipTrigger>
               <TooltipContent 
                 side="right" 
-                className="z-[100] max-w-[300px] p-5 bg-slate-900 text-white rounded-2xl border-none shadow-xl animate-in fade-in zoom-in duration-200"
+                className="z-[100] max-w-[300px] p-5 bg-foreground text-white rounded-2xl border-none shadow-xl animate-in fade-in zoom-in duration-200"
               >
                 <div className="space-y-3 text-left">
                   {tooltipLines.map((line, i) => {
@@ -59,7 +59,7 @@ export const FieldLabel: React.FC<FieldLabelProps> = ({ field, orgSettings, form
                       return (
                         <div key={i} className="flex gap-3 text-xs leading-relaxed">
                           <span className="font-bold text-primary min-w-[12px]">{num}.</span>
-                          <span className="text-slate-200 font-medium">{rest.join('.').trim()}</span>
+                          <span className="text-muted-foreground font-medium">{rest.join('.').trim()}</span>
                         </div>
                       );
                     }
@@ -68,13 +68,13 @@ export const FieldLabel: React.FC<FieldLabelProps> = ({ field, orgSettings, form
                       return (
                         <div key={i} className="flex gap-3 text-xs leading-relaxed pl-1">
                           <span className="text-primary">•</span>
-                          <span className="text-slate-200 font-medium">{line.replace('•', '').trim()}</span>
+                          <span className="text-muted-foreground font-medium">{line.replace('•', '').trim()}</span>
                         </div>
                       );
                     }
 
                     return (
-                      <p key={i} className="text-xs leading-relaxed font-medium text-slate-300">
+                      <p key={i} className="text-xs leading-relaxed font-medium text-muted-foreground/60">
                         {line}
                       </p>
                     );

@@ -161,8 +161,8 @@ export function ClientReportLifestyle({ formData }: ClientReportLifestyleProps) 
 
   return (
     <section className="space-y-4">
-      <h2 className="text-2xl font-bold text-slate-900">Your lifestyle status</h2>
-      <p className="text-sm text-slate-600">
+      <h2 className="text-2xl font-bold text-foreground">Your lifestyle status</h2>
+      <p className="text-sm text-muted-foreground">
         Here's how you're doing across all lifestyle factors. These are the foundation for your training results:
       </p>
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">

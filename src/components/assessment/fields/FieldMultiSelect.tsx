@@ -44,27 +44,27 @@ export const FieldMultiSelect: React.FC<FieldMultiSelectProps> = ({
             onClick={() => toggle(opt.value)}
             className={`flex min-h-[64px] h-auto items-center gap-4 rounded-2xl border-2 px-5 py-3 text-left transition-all relative overflow-hidden ${
               isActive
-              ? 'border-slate-900 bg-slate-900 text-white shadow-lg scale-[1.02]'
-              : `bg-white text-slate-600 ${colorClass}`
+              ? 'border-foreground bg-foreground text-white shadow-lg scale-[1.02]'
+              : `bg-background text-foreground-secondary ${colorClass}`
             }`}
             aria-pressed={isActive}
             aria-label={opt.label}
           >
             {(opt.tag || selectionLabel) && (
               <div className={`absolute top-0 right-0 px-3 py-1 rounded-bl-xl text-[10px] font-black uppercase tracking-[0.15em] ${
-                isActive ? 'bg-white/20 text-white' : 'bg-slate-900 text-white'
+                isActive ? 'bg-background/20 text-white' : 'bg-foreground text-white'
               }`}>
                 {selectionLabel ?? opt.tag}
               </div>
             )}
 
             <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border-2 transition-colors ${
-              isActive ? 'bg-white/20 border-white/20 text-white' : 'border-slate-200 bg-white'
+              isActive ? 'bg-background/20 border-white/20 text-white' : 'border-border bg-background'
             }`}>
               {isActive ? (
                 <Check className="h-4 w-4 stroke-[4]" />
               ) : (
-                <div className="h-2 w-2 rounded-sm bg-slate-100 opacity-0 group-hover:opacity-100" />
+                <div className="h-2 w-2 rounded-sm bg-muted opacity-0 group-hover:opacity-100" />
               )}
             </div>
 
@@ -72,7 +72,7 @@ export const FieldMultiSelect: React.FC<FieldMultiSelectProps> = ({
               <span className="font-bold text-sm leading-tight mb-0.5">{opt.label}</span>
               {opt.subtitle && (
                 <span className={`text-[10px] font-medium leading-relaxed ${
-                  isActive ? 'text-white/70' : 'text-slate-500'
+                  isActive ? 'text-white/70' : 'text-muted-foreground'
                 }`}>
                   {opt.subtitle}
                 </span>

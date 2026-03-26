@@ -15,9 +15,9 @@ function TrendIcon({ trend }: { trend: CountdownTrend }) {
     case 'near-goal':
       return <Sparkles className="w-3.5 h-3.5 text-emerald-500" />;
     case 'first-assessment':
-      return <Minus className="w-3.5 h-3.5 text-zinc-400" />;
+      return <Minus className="w-3.5 h-3.5 text-muted-foreground" />;
     default:
-      return <ArrowRight className="w-3.5 h-3.5 text-zinc-500" />;
+      return <ArrowRight className="w-3.5 h-3.5 text-muted-foreground" />;
   }
 }
 
@@ -37,16 +37,16 @@ function PillarCard({ data }: { data: PillarCountdown }) {
   const accent = PILLAR_ACCENT[data.pillarId as ScoringPillarId] ?? PILLAR_ACCENT.bodyComp;
 
   return (
-    <div className="rounded-xl bg-white border border-zinc-100 p-3 sm:p-4 flex flex-col gap-2.5 sm:gap-3">
+    <div className="rounded-xl bg-card border border-border p-3 sm:p-4 flex flex-col gap-2.5 sm:gap-3">
       {/* Header row: dot + label + trend badge */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <span className={`h-2 w-2 rounded-full shrink-0 ${accent.dot}`} />
-          <span className="text-xs sm:text-sm font-bold text-zinc-900 truncate">{data.label}</span>
+          <span className="text-xs sm:text-sm font-bold text-foreground truncate">{data.label}</span>
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <TrendIcon trend={data.trend} />
-          <span className="text-[10px] sm:text-xs font-semibold text-zinc-500">{trendLabel(data.trend)}</span>
+          <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground">{trendLabel(data.trend)}</span>
         </div>
       </div>
 
@@ -55,11 +55,11 @@ function PillarCard({ data }: { data: PillarCountdown }) {
         <span className={`text-2xl sm:text-3xl font-bold tracking-tight ${accent.text}`}>
           {data.weeksToGoal}
         </span>
-        <span className="text-xs font-semibold text-zinc-400">weeks to goal</span>
+        <span className="text-xs font-semibold text-muted-foreground">weeks to goal</span>
       </div>
 
       {/* Progress bar */}
-      <div className="w-full h-1.5 rounded-full bg-zinc-100 overflow-hidden">
+      <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-500 ${accent.bar}`}
           style={{ width: `${data.progressPct}%` }}
@@ -67,7 +67,7 @@ function PillarCard({ data }: { data: PillarCountdown }) {
       </div>
 
       {/* Coaching text */}
-      <p className="text-xs sm:text-xs text-zinc-500 leading-relaxed">
+      <p className="text-xs sm:text-xs text-muted-foreground leading-relaxed">
         {data.coachingText}
       </p>
     </div>
@@ -89,10 +89,10 @@ function FrequencyStrip({ data }: { data: GoalCountdownData }) {
 function FreqBox({ label, weeks, highlight }: { label: string; weeks: number; highlight?: boolean }) {
   return (
     <div className={`rounded-xl p-2 sm:p-3 text-center ${
-      highlight ? 'bg-gradient-light ring-1 ring-gradient-medium' : 'bg-zinc-50'
+      highlight ? 'bg-gradient-light ring-1 ring-gradient-medium' : 'bg-muted/50'
     }`}>
-      <div className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.15em]">{label}</div>
-      <div className={`text-sm sm:text-lg font-bold ${highlight ? 'text-zinc-900' : 'text-zinc-600'}`}>
+      <div className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.15em]">{label}</div>
+      <div className={`text-sm sm:text-lg font-bold ${highlight ? 'text-foreground' : 'text-foreground-secondary'}`}>
         ~{weeks} wks
       </div>
     </div>

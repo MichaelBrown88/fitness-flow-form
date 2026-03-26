@@ -39,7 +39,7 @@ export const BlueprintSection: React.FC<BlueprintSectionProps> = ({ blueprintPil
         </CardInfoDrawer>
         <div className={isDesktop ? "p-4 sm:p-5 md:p-6 lg:p-8 flex-1" : "p-4 sm:p-5 md:p-6 lg:p-8 flex-1"}>
           <div className="flex justify-between items-start mb-6">
-            <Badge className="glass-button-active text-white border-transparent">
+            <Badge className="glass-button-active border-transparent">
               {pillar.weeks}
             </Badge>
             {isBlue && <Lock className={`w-5 h-5 ${iconColor}`} />}
@@ -47,23 +47,23 @@ export const BlueprintSection: React.FC<BlueprintSectionProps> = ({ blueprintPil
             {!isBlue && !isRed && <Trophy className={`w-5 h-5 ${iconColor}`} />}
           </div>
 
-          <h4 className="text-sm font-bold text-zinc-900 mb-2">{pillar.title}</h4>
+          <h4 className="text-sm font-bold text-foreground mb-2">{pillar.title}</h4>
           <div className="text-xs font-semibold text-gradient-dark mb-4">{pillar.headline}</div>
           
-          <p className="text-xs sm:text-sm text-zinc-600 leading-relaxed mb-6">
+          <p className="text-xs sm:text-sm text-foreground-secondary leading-relaxed mb-6">
             {pillar.description}
           </p>
 
           <div className="glass-subtle rounded-xl p-5">
-            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-zinc-200">
-              <Play className="w-3 h-3 text-zinc-400 fill-current" />
-              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.15em]">Sample Protocol</span>
+            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border">
+              <Play className="w-3 h-3 text-muted-foreground fill-current" />
+              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.15em]">Sample Protocol</span>
             </div>
             <div className="space-y-3">
               {pillar.protocol.map((row: { name: string; setsReps: string }, rIdx: number) => (
                 <div key={rIdx} className="flex justify-between items-center text-xs">
-                  <span className="font-bold text-zinc-700">{row.name}</span>
-                  <span className="text-zinc-500 glass-label px-2.5 py-1 rounded">{row.setsReps}</span>
+                  <span className="font-bold text-foreground-secondary">{row.name}</span>
+                  <span className="text-muted-foreground glass-label px-2.5 py-1 rounded">{row.setsReps}</span>
                 </div>
               ))}
             </div>
@@ -78,13 +78,13 @@ export const BlueprintSection: React.FC<BlueprintSectionProps> = ({ blueprintPil
       <div className="mb-3 sm:mb-4 md:mb-5 lg:mb-6">
         {!hideHeader && (
           <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 mb-2 sm:mb-3">
-            <div className="p-1 sm:p-1.5 md:p-2 bg-gradient-light text-zinc-900 rounded-lg">
+            <div className="p-1 sm:p-1.5 md:p-2 bg-gradient-light text-foreground rounded-lg">
               <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
             </div>
-            <h3 className="text-xs md:text-sm lg:text-base font-semibold text-zinc-900">The Blueprint</h3>
+            <h3 className="text-xs md:text-sm lg:text-base font-semibold text-foreground">The Blueprint</h3>
           </div>
         )}
-        <p className="text-xs md:text-sm text-zinc-500 ml-0 sm:ml-8 md:ml-12">
+        <p className="text-xs md:text-sm text-muted-foreground ml-0 sm:ml-8 md:ml-12">
           3 Strategic Pillars designed to bridge the gap from where you are to where you want to be.
         </p>
         {previousPhase && blueprintPillars[0]?.title && previousPhase !== blueprintPillars[0].title && (

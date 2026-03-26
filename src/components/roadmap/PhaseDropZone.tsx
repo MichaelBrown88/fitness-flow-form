@@ -31,17 +31,17 @@ export function PhaseDropZone({ phase, items, phaseIndex, isLast, onDelete, onEd
   return (
     <div className="relative">
       <div className="flex items-center gap-2 mb-3">
-        <div className="h-px flex-1 bg-slate-200" />
-        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-50 border border-slate-200">
+        <div className="h-px flex-1 bg-muted" />
+        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-muted/50 border border-border">
           <div className={`h-2 w-2 rounded-full ${PHASE_DOT[phase]}`} />
-          <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
+          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
             Phase {phaseIndex + 1}: {title}
           </span>
           {onShowPhaseFocus && (
             <Button
               variant="ghost"
               size="icon"
-              className="h-5 w-5 rounded-full text-slate-400 hover:text-slate-600"
+              className="h-5 w-5 rounded-full text-muted-foreground hover:text-foreground-secondary"
               onClick={() => onShowPhaseFocus(phase)}
               aria-label={`What to focus on in ${title}`}
             >
@@ -49,13 +49,13 @@ export function PhaseDropZone({ phase, items, phaseIndex, isLast, onDelete, onEd
             </Button>
           )}
         </div>
-        <div className="h-px flex-1 bg-slate-200" />
+        <div className="h-px flex-1 bg-muted" />
       </div>
 
       <div
         ref={setNodeRef}
         className={`rounded-xl border-2 border-dashed transition-colors min-h-[60px] p-2 space-y-2 mb-4 ${
-          isOver ? 'border-indigo-400 bg-indigo-50/30' : 'border-slate-200 bg-slate-50/30'
+          isOver ? 'border-indigo-400 bg-indigo-50/30' : 'border-border bg-muted/50/30'
         }`}
       >
         <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
@@ -65,7 +65,7 @@ export function PhaseDropZone({ phase, items, phaseIndex, isLast, onDelete, onEd
         </SortableContext>
 
         {items.length === 0 && (
-          <p className="text-[11px] text-slate-400 text-center py-4">
+          <p className="text-[11px] text-muted-foreground text-center py-4">
             Drop blocks here for the {title.toLowerCase()} phase
           </p>
         )}

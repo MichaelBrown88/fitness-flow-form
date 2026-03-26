@@ -14,15 +14,15 @@ interface ScheduleInsightsProps {
 }
 
 export const ScheduleInsights: React.FC<ScheduleInsightsProps> = ({ summary }) => (
-  <p className="text-sm text-slate-500 flex items-center gap-2 flex-wrap">
+  <p className="text-sm text-muted-foreground flex items-center gap-2 flex-wrap">
     {summary.overdue > 0 && (
       <span className={`font-semibold ${SCORE_COLORS.red.text}`}>{summary.overdue} overdue</span>
     )}
-    {summary.overdue > 0 && summary.dueSoon > 0 && <span className="text-slate-300">·</span>}
+    {summary.overdue > 0 && summary.dueSoon > 0 && <span className="text-muted-foreground/60">·</span>}
     {summary.dueSoon > 0 && (
       <span className={`font-semibold ${SCORE_COLORS.amber.text}`}>{summary.dueSoon} due soon</span>
     )}
-    {(summary.overdue > 0 || summary.dueSoon > 0) && summary.upToDate > 0 && <span className="text-slate-300">·</span>}
+    {(summary.overdue > 0 || summary.dueSoon > 0) && summary.upToDate > 0 && <span className="text-muted-foreground/60">·</span>}
     {summary.upToDate > 0 && (
       <span className={`font-semibold ${SCORE_COLORS.green.text}`}>{summary.upToDate} on track</span>
     )}

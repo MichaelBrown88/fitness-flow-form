@@ -23,7 +23,7 @@ const VersionSelectorBar: React.FC<VersionSelectorBarProps> = ({
   if (!current) return null;
 
   return (
-    <div className="inline-flex items-center gap-1 rounded-xl bg-slate-100 px-1 py-0.5">
+    <div className="inline-flex items-center gap-1 rounded-xl bg-muted px-1 py-0.5">
       <Button
         variant="ghost"
         size="sm"

@@ -96,21 +96,21 @@ export function CsvClientImport({ organizationId, coachUid }: CsvClientImportPro
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+        <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
           <FileText className="h-4 w-4 text-primary" />
           CSV Client Import
         </h3>
-        <p className="text-xs text-slate-500 mt-0.5">
+        <p className="text-xs text-muted-foreground mt-0.5">
           Upload a CSV with at minimum a <code className="font-mono">name</code> column. Optionally add <code className="font-mono">email</code>.
         </p>
       </div>
 
       <div
         onClick={() => fileRef.current?.click()}
-        className="cursor-pointer border-2 border-dashed border-slate-200 rounded-xl p-6 flex flex-col items-center gap-2 hover:border-primary/30 hover:bg-brand-light transition-colors"
+        className="cursor-pointer border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center gap-2 hover:border-primary/30 hover:bg-brand-light transition-colors"
       >
-        <Upload className="h-6 w-6 text-slate-400" />
-        <p className="text-sm font-medium text-slate-500">Click to upload CSV</p>
+        <Upload className="h-6 w-6 text-muted-foreground" />
+        <p className="text-sm font-medium text-muted-foreground">Click to upload CSV</p>
         <input ref={fileRef} type="file" accept=".csv,text/csv" className="sr-only" onChange={handleFile} />
       </div>
 
@@ -123,22 +123,22 @@ export function CsvClientImport({ organizationId, coachUid }: CsvClientImportPro
 
       {rows.length > 0 && !done && (
         <div className="space-y-2">
-          <div className="max-h-48 overflow-y-auto space-y-1.5 rounded-xl border border-slate-100 p-3">
+          <div className="max-h-48 overflow-y-auto space-y-1.5 rounded-xl border border-border p-3">
             {rows.map((row, i) => (
-              <div key={i} className={`flex items-center gap-2 text-xs py-1 px-2 rounded-lg ${row.valid ? 'text-slate-700' : 'text-red-400 bg-red-50'}`}>
+              <div key={i} className={`flex items-center gap-2 text-xs py-1 px-2 rounded-lg ${row.valid ? 'text-foreground-secondary' : 'text-red-400 bg-red-50'}`}>
                 {row.valid
                   ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
                   : <AlertCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />}
                 <span className="font-medium truncate">{row.name || '—'}</span>
-                {row.email && <span className="text-slate-400 truncate">{row.email}</span>}
+                {row.email && <span className="text-muted-foreground truncate">{row.email}</span>}
               </div>
             ))}
           </div>
           <div className="flex items-center justify-between">
-            <p className="text-xs text-slate-500">{validCount} valid row{validCount !== 1 ? 's' : ''}</p>
+            <p className="text-xs text-muted-foreground">{validCount} valid row{validCount !== 1 ? 's' : ''}</p>
             <Button
               size="sm"
-              className="rounded-xl font-bold text-xs bg-primary text-white"
+              className="rounded-xl font-bold text-xs bg-primary text-primary-foreground"
               onClick={handleImport}
               disabled={importing || validCount === 0}
             >

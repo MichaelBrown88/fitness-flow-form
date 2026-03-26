@@ -15,7 +15,7 @@ const ClientReport = lazy(() => import('@/components/reports/ClientReport'));
 
 export default function Demo() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
       <Seo
         pathname={ROUTES.DEMO}
         title={demoSeo.title}
@@ -34,7 +34,7 @@ export default function Demo() {
           </Button>
           <Link
             to="/onboarding"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-all group"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-foreground text-white text-sm font-semibold hover:bg-foreground/90 transition-all group"
           >
             Start Free Trial
             <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
@@ -48,20 +48,20 @@ export default function Demo() {
               Interactive Demo
             </span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-3">
+          <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
             Sample Client Report
           </h1>
-          <p className="text-slate-500 max-w-lg mx-auto">
+          <p className="text-muted-foreground max-w-lg mx-auto">
             This is what your clients see after an assessment. Scroll through
             to explore the full report experience.
           </p>
         </div>
 
-        <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-xl bg-white">
+        <div className="border border-border rounded-2xl overflow-hidden shadow-xl bg-background">
           <Suspense
             fallback={
               <div className="flex items-center justify-center py-32">
-                <Loader2 className="h-8 w-8 animate-spin text-slate-300" />
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground/60" />
               </div>
             }
           >
@@ -77,12 +77,12 @@ export default function Demo() {
         </div>
 
         <div className="text-center mt-12 mb-8">
-          <p className="text-sm text-slate-400 mb-4">
+          <p className="text-sm text-muted-foreground mb-4">
             Ready to create reports like this for your clients?
           </p>
           <Link
             to="/onboarding"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-all group"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-foreground text-white text-sm font-semibold hover:bg-foreground/90 transition-all group"
           >
             Start Free Trial
             <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />

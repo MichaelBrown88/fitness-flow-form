@@ -8,7 +8,7 @@ import { SEO_NOINDEX_BLOG } from '@/constants/seo';
 
 export default function Blog() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
       <Seo
         pathname={ROUTES.BLOG}
         title={SEO_NOINDEX_BLOG.title}
@@ -34,7 +34,7 @@ export default function Blog() {
             We're working on articles about fitness assessment best practices,
             client retention strategies, and product updates.
           </p>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-muted-foreground">
             Coming soon. In the meantime,{' '}
             <Link to="/onboarding" className="text-indigo-600 font-medium hover:underline">
               start your free trial

@@ -31,8 +31,8 @@ export function MilestoneProgress({ milestones }: MilestoneProgressProps) {
   return (
     <div className="space-y-3 sm:space-y-4">
       <div>
-        <h3 className="text-sm sm:text-base font-bold text-zinc-900">Score Milestones</h3>
-        <p className="text-xs sm:text-xs text-zinc-500">Track your overall score progress</p>
+        <h3 className="text-sm sm:text-base font-bold text-foreground">Score Milestones</h3>
+        <p className="text-xs sm:text-xs text-muted-foreground">Track your overall score progress</p>
       </div>
 
       <Card className="p-4 sm:p-5 md:p-6 space-y-4 sm:space-y-5">
@@ -45,29 +45,29 @@ export function MilestoneProgress({ milestones }: MilestoneProgressProps) {
             <div key={milestone.id} className={`flex items-center gap-3 ${isNew ? 'ring-1 ring-primary/20 rounded-lg p-2 -mx-2 bg-primary/5' : ''}`}>
               <div
                 className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center shrink-0 ${
-                  isUnlocked ? 'gradient-bg' : 'bg-zinc-100'
+                  isUnlocked ? 'gradient-bg' : 'bg-muted'
                 } ${isNew ? 'animate-pulse' : ''}`}
               >
                 {isUnlocked ? (
                   <CheckCircle2 className="w-4 h-4 text-white" />
                 ) : (
-                  <IconComponent className="w-4 h-4 text-zinc-400" />
+                  <IconComponent className="w-4 h-4 text-muted-foreground" />
                 )}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2 mb-1">
-                  <span className={`text-xs sm:text-sm font-bold ${isUnlocked ? 'text-zinc-900' : 'text-zinc-600'}`}>
+                  <span className={`text-xs sm:text-sm font-bold ${isUnlocked ? 'text-foreground' : 'text-foreground-secondary'}`}>
                     {milestone.title}
                     {isNew && <span className="ml-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-primary">New!</span>}
                   </span>
-                  <span className="text-[10px] sm:text-xs text-zinc-400 font-medium shrink-0">
+                  <span className="text-[10px] sm:text-xs text-muted-foreground font-medium shrink-0">
                     {milestone.currentValue}/{milestone.threshold}
                   </span>
                 </div>
-                <div className="h-2 bg-zinc-100 rounded-full overflow-hidden">
+                <div className="h-2 bg-muted rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all duration-700 ease-out ${
-                      isUnlocked ? 'gradient-bg' : 'bg-zinc-300'
+                      isUnlocked ? 'gradient-bg' : 'bg-muted-foreground/40'
                     }`}
                     style={{ width: `${milestone.progress}%` }}
                   />

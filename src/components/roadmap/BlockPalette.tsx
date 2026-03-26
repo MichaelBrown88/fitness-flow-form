@@ -35,8 +35,8 @@ export function BlockPalette({ blocks }: BlockPaletteProps) {
   return (
     <div className="space-y-4">
       <div className="space-y-0.5">
-        <h3 className="text-sm font-bold text-slate-800">Available metrics</h3>
-        <p className="text-[11px] text-slate-500">Drag items into the journey timeline to build the roadmap</p>
+        <h3 className="text-sm font-bold text-foreground">Available metrics</h3>
+        <p className="text-[11px] text-muted-foreground">Drag items into the journey timeline to build the roadmap</p>
       </div>
 
       <SortableContext items={allIds} strategy={verticalListSortingStrategy}>
@@ -46,10 +46,10 @@ export function BlockPalette({ blocks }: BlockPaletteProps) {
           return (
             <div key={category}>
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
                   {label}
                 </span>
-                <span className="text-[10px] text-slate-400">({items.length})</span>
+                <span className="text-[10px] text-muted-foreground">({items.length})</span>
               </div>
               <div className="space-y-1.5 mb-4">
                 {items.map((block) => (
@@ -62,7 +62,7 @@ export function BlockPalette({ blocks }: BlockPaletteProps) {
       </SortableContext>
 
       {blocks.length === 0 && (
-        <p className="text-xs text-slate-400 text-center py-6">
+        <p className="text-xs text-muted-foreground text-center py-6">
           No metrics to add. Complete an assessment first.
         </p>
       )}

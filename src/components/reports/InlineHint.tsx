@@ -39,8 +39,8 @@ const InlineHint = ({ id, title, description }: InlineHintProps) => {
     <div className="flex items-start gap-3 rounded-xl border border-gradient-medium/50 bg-gradient-light/70 px-4 py-3 text-sm">
       <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
       <div className="min-w-0 flex-1">
-        <p className="font-semibold text-slate-900">{title}</p>
-        <p className="mt-0.5 text-slate-700">{description}</p>
+        <p className="font-semibold text-foreground">{title}</p>
+        <p className="mt-0.5 text-foreground">{description}</p>
       </div>
       <button
         type="button"

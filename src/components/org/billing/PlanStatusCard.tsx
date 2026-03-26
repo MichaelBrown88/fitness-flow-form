@@ -55,9 +55,9 @@ export function PlanStatusCard({ plan, status, currency, monthlyAmountLocal, tri
       <CardContent className="p-4 sm:p-6 pt-0 space-y-3">
         <div className="flex items-end justify-between">
           <div>
-            <p className="text-2xl font-bold text-slate-900">{PLAN_LABELS[plan] ?? plan}</p>
+            <p className="text-2xl font-bold text-foreground">{PLAN_LABELS[plan] ?? plan}</p>
             {monthlyAmountLocal != null && monthlyAmountLocal > 0 && (
-              <p className="text-sm text-slate-500 mt-0.5">
+              <p className="text-sm text-muted-foreground mt-0.5">
                 {currency} {monthlyAmountLocal.toFixed(0)} / month
               </p>
             )}
@@ -72,7 +72,7 @@ export function PlanStatusCard({ plan, status, currency, monthlyAmountLocal, tri
           </p>
         )}
         {status === 'cancelled' && (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             Your subscription has been cancelled. Resubscribe to restore access.
           </p>
         )}

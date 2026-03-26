@@ -12,7 +12,7 @@ import {
   isDeviation,
   DeviationLabelConfig 
 } from '@/lib/utils/posture-label-positions';
-import { hasAnyDeviation } from './PostureReferenceLines';
+import { hasAnyDeviation } from '@/lib/posture/postureDeviationChecks';
 
 interface PostureImageLabelsProps {
   view: 'front' | 'back' | 'side-left' | 'side-right';

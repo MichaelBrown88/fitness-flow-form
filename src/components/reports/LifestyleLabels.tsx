@@ -61,7 +61,7 @@ export function LifestyleLabels({ formData }: LifestyleLabelsProps) {
   
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.15em]">Lifestyle Focus:</span>
+      <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.15em]">Lifestyle Focus:</span>
       {labels.map((label, idx) => (
         <span
           key={idx}

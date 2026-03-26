@@ -24,8 +24,8 @@ export function OnboardingSuccess({ businessName }: OnboardingSuccessProps) {
       </div>
 
       <div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">You're all set.</h2>
-        <p className="text-sm text-slate-500 max-w-sm">
+        <h2 className="text-2xl font-bold text-foreground mb-2">You're all set.</h2>
+        <p className="text-sm text-muted-foreground max-w-sm">
           <strong>{businessName}</strong> is configured and ready. The best way to see
           the platform in action is to run your first assessment.
         </p>
@@ -34,7 +34,7 @@ export function OnboardingSuccess({ businessName }: OnboardingSuccessProps) {
       {/* Primary CTA */}
       <Link
         to={ROUTES.ASSESSMENT}
-        className="w-full max-w-sm h-14 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 shadow-lg"
+        className="w-full max-w-sm h-14 bg-foreground text-white rounded-xl font-bold text-sm hover:bg-foreground/90 transition-colors flex items-center justify-center gap-2 shadow-lg"
       >
         <ClipboardList size={18} />
         Assess Your First Client
@@ -44,7 +44,7 @@ export function OnboardingSuccess({ businessName }: OnboardingSuccessProps) {
       {/* Secondary link */}
       <Link
         to="/dashboard"
-        className="text-xs font-medium text-slate-400 hover:text-slate-600 transition-colors"
+        className="text-xs font-medium text-muted-foreground hover:text-foreground-secondary transition-colors"
       >
         Skip to Dashboard
       </Link>

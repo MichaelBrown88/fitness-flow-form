@@ -24,7 +24,7 @@ export function OfflineBanner() {
       className={`fixed top-0 left-0 right-0 z-[200] flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold transition-all ${
         isOnline
           ? 'bg-amber-500 text-white'
-          : 'bg-slate-800 text-white'
+          : 'bg-foreground/90 text-white'
       }`}
     >
       {isOnline ? (

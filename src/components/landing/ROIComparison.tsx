@@ -8,11 +8,11 @@ import { landingTrialAriaLabel } from '@/constants/landingCopy';
 import { LANDING_GUEST_CHECKOUT_ENABLED } from '@/constants/platform';
 import SectionHeader from '@/components/landing/SectionHeader';
 import StickyCardStack from '@/components/ui/StickyCardStack';
-import { LANDING_H2_ACCENT_LIGHT } from '@/constants/landingCopy';
+import { LANDING_H2_ACCENT_LIGHT_READABLE } from '@/constants/landingCopy';
 
 export function ROIComparison() {
   return (
-    <section className="py-24 px-6 bg-slate-50 relative overflow-hidden">
+    <section className="relative overflow-hidden bg-muted px-6 py-24 dark:bg-background">
       <div className="max-w-7xl mx-auto">
         <StickyCardStack
           variant="crossfade-scale"
@@ -24,79 +24,80 @@ export function ROIComparison() {
               title={
                 <>
                   Reclaim Your{' '}
-                  <span className={LANDING_H2_ACCENT_LIGHT}>Evenings</span>
+                  <span className={LANDING_H2_ACCENT_LIGHT_READABLE}>Evenings</span>
                 </>
               }
               subtitle="Stop the admin night shift. One platform replaces your spreadsheet-photo-email patchwork."
+              subtitleClassName="text-muted-foreground"
               spacing="mb-16 sm:mb-20"
             />
           }
         >
           {/* The "Old Way" - Chaos */}
           <div className="relative group">
-            <div className="absolute inset-0 scale-[1.02] rotate-[-1.5deg] rounded-2xl bg-slate-200/25 transition-transform duration-300 group-hover:rotate-[-2deg]" />
-            <GlassCard className="relative overflow-hidden border-slate-200/90 bg-slate-50/70 p-8">
-              <div className="absolute right-0 top-0 p-4 opacity-[0.07]">
-                <Clock size={120} className="text-slate-900" />
+            <div className="absolute inset-0 scale-[1.02] rotate-[-1.5deg] rounded-2xl bg-border/25 transition-transform duration-300 group-hover:rotate-[-2deg]" />
+            <GlassCard className="relative overflow-hidden border-border/90 bg-muted/70 p-8 dark:border-border dark:bg-card/80">
+              <div className="absolute right-0 top-0 p-4 opacity-[0.07] dark:opacity-[0.12]">
+                <Clock size={120} className="text-foreground" />
               </div>
               
               <div className="relative z-10">
-                <div className="mb-6 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.15em] text-slate-600">
+                <div className="mb-6 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
                   <Moon size={14} /> 9:45 PM - The Admin Grind
                 </div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-2">The "Frankenstein" Stack</h3>
-                <p className="text-slate-500 text-sm mb-8">Disjointed tools that don't talk to each other.</p>
+                <h3 className="mb-2 text-2xl font-bold text-foreground">The &quot;Frankenstein&quot; Stack</h3>
+                <p className="mb-8 text-sm text-muted-foreground">Disjointed tools that don&apos;t talk to each other.</p>
 
                 <div className="space-y-3">
-                  <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between opacity-80 hover:opacity-100 transition-opacity">
+                  <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4 opacity-80 shadow-sm transition-opacity hover:opacity-100 dark:border-border dark:bg-background-secondary/90">
                     <div className="flex items-center gap-3">
-                      <div className="rounded-lg bg-slate-100 p-2 text-slate-600"><FileSpreadsheet size={18} /></div>
+                      <div className="rounded-lg bg-muted p-2 text-muted-foreground dark:bg-background-tertiary"><FileSpreadsheet size={18} /></div>
                       <div className="text-sm">
-                        <p className="font-bold text-slate-900">Google Sheets</p>
-                        <p className="text-xs text-slate-500">Manual data entry & formulas</p>
+                        <p className="font-bold text-foreground">Google Sheets</p>
+                        <p className="text-xs text-muted-foreground">Manual data entry & formulas</p>
                       </div>
                     </div>
-                    <span className="text-xs font-bold text-slate-400">Time Sink</span>
+                    <span className="text-xs font-bold text-foreground-tertiary">Time Sink</span>
                   </div>
 
-                  <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between opacity-80 hover:opacity-100 transition-opacity">
+                  <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4 opacity-80 shadow-sm transition-opacity hover:opacity-100 dark:border-border dark:bg-background-secondary/90">
                     <div className="flex items-center gap-3">
-                      <div className="rounded-lg bg-slate-100 p-2 text-slate-600"><FileText size={18} /></div>
+                      <div className="rounded-lg bg-muted p-2 text-muted-foreground dark:bg-background-tertiary"><FileText size={18} /></div>
                       <div className="text-sm">
-                        <p className="font-bold text-slate-900">Word Docs</p>
-                        <p className="text-xs text-slate-500">Copy-pasting reports</p>
+                        <p className="font-bold text-foreground">Word Docs</p>
+                        <p className="text-xs text-muted-foreground">Copy-pasting reports</p>
                       </div>
                     </div>
-                    <span className="text-xs font-bold text-slate-400">Manual</span>
+                    <span className="text-xs font-bold text-foreground-tertiary">Manual</span>
                   </div>
 
-                  <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between opacity-80 hover:opacity-100 transition-opacity">
+                  <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4 opacity-80 shadow-sm transition-opacity hover:opacity-100 dark:border-border dark:bg-background-secondary/90">
                     <div className="flex items-center gap-3">
-                      <div className="rounded-lg bg-slate-100 p-2 text-slate-600"><Smartphone size={18} /></div>
+                      <div className="rounded-lg bg-muted p-2 text-muted-foreground dark:bg-background-tertiary"><Smartphone size={18} /></div>
                       <div className="text-sm">
-                        <p className="font-bold text-slate-900">Posture App</p>
-                        <p className="text-xs text-slate-500">$29/mo separate sub</p>
+                        <p className="font-bold text-foreground">Posture App</p>
+                        <p className="text-xs text-muted-foreground">$29/mo separate sub</p>
                       </div>
                     </div>
-                    <span className="text-xs font-bold text-slate-400">Siloed</span>
+                    <span className="text-xs font-bold text-foreground-tertiary">Siloed</span>
                   </div>
 
-                  <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between opacity-80 hover:opacity-100 transition-opacity">
+                  <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4 opacity-80 shadow-sm transition-opacity hover:opacity-100 dark:border-border dark:bg-background-secondary/90">
                     <div className="flex items-center gap-3">
-                      <div className="rounded-lg bg-slate-100 p-2 text-slate-600"><Calculator size={18} /></div>
+                      <div className="rounded-lg bg-muted p-2 text-muted-foreground dark:bg-background-tertiary"><Calculator size={18} /></div>
                       <div className="text-sm">
-                        <p className="font-bold text-slate-900">1RM Calculator</p>
-                        <p className="text-xs text-slate-500">Another browser tab open</p>
+                        <p className="font-bold text-foreground">1RM Calculator</p>
+                        <p className="text-xs text-muted-foreground">Another browser tab open</p>
                       </div>
                     </div>
-                    <span className="text-xs font-bold text-slate-400">Distraction</span>
+                    <span className="text-xs font-bold text-foreground-tertiary">Distraction</span>
                   </div>
                 </div>
 
-                <div className="mt-8 border-t border-slate-200 pt-6">
-                  <div className="flex items-center justify-between text-slate-800">
-                    <span className="font-bold text-sm">Weekly Unpaid Admin</span>
-                    <span className="font-black text-xl">10+ Hours</span>
+                <div className="mt-8 border-t border-border pt-6 dark:border-border">
+                  <div className="flex items-center justify-between text-foreground">
+                    <span className="text-sm font-bold">Weekly Unpaid Admin</span>
+                    <span className="text-xl font-black">10+ Hours</span>
                   </div>
                 </div>
               </div>
@@ -106,8 +107,8 @@ export function ROIComparison() {
           {/* The New Way - Flow */}
           <div className="relative">
             <div className="absolute inset-0 rounded-2xl bg-primary/10 blur-xl" />
-            <GlassCard className="relative z-10 border-gradient-medium/50 bg-white p-8 shadow-md">
-              <div className="absolute right-0 top-0 p-4 opacity-[0.08]">
+            <GlassCard className="relative z-10 border-gradient-medium/50 bg-card p-8 shadow-md dark:border-primary/30 dark:bg-card/90">
+              <div className="absolute right-0 top-0 p-4 opacity-[0.08] dark:opacity-[0.15]">
                 <Sun size={120} className="text-primary" />
               </div>
 
@@ -115,47 +116,47 @@ export function ROIComparison() {
                 <div className="mb-6 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.15em] text-primary">
                   <Sun size={14} /> 5:00 PM - Done for the day
                 </div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-2">The All-in-One Flow</h3>
-                <p className="text-slate-500 text-sm mb-8">Assessment finished? Your work is done.</p>
+                <h3 className="mb-2 text-2xl font-bold text-foreground">The All-in-One Flow</h3>
+                <p className="mb-8 text-sm text-muted-foreground">Assessment finished? Your work is done.</p>
 
-                <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 mb-8 relative overflow-hidden">
+                <div className="relative mb-8 overflow-hidden rounded-2xl border border-border bg-muted p-6 dark:border-border dark:bg-background-secondary/90">
                   <div className="absolute left-0 top-0 h-full w-1 bg-primary" />
                   <div className="mb-4 flex items-center gap-4">
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
                       <Check size={20} strokeWidth={3} />
                     </div>
                     <div>
-                      <p className="font-bold text-slate-900">Session Complete</p>
-                      <p className="text-xs text-slate-500">Data auto-synced & processed</p>
+                      <p className="font-bold text-foreground">Session Complete</p>
+                      <p className="text-xs text-muted-foreground">Data auto-synced & processed</p>
                     </div>
                   </div>
                   
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <Check size={14} className="text-primary" />
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Check size={14} className="shrink-0 text-primary" />
                       <span>Posture analyzed automatically</span>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <Check size={14} className="text-primary" />
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Check size={14} className="shrink-0 text-primary" />
                       <span>1RM & Zones calculated</span>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <Check size={14} className="text-primary" />
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Check size={14} className="shrink-0 text-primary" />
                       <span>Report generated & sent to client</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-8 pt-6 border-t border-slate-100">
-                  <div className="flex items-center justify-between text-slate-900">
+                <div className="mt-8 border-t border-border pt-6 dark:border-border">
+                  <div className="flex items-center justify-between text-foreground">
                     <span className="text-sm font-bold">Weekly Unpaid Admin</span>
                     <span className="text-xl font-black">0 Hours</span>
                   </div>
-                  <p className="mt-2 text-xs font-medium text-primary">"Spend less time planning, more time coaching."</p>
+                  <p className="mt-2 text-xs font-medium text-primary">&ldquo;Spend less time planning, more time coaching.&rdquo;</p>
                 </div>
                 
                 <LandingTrialCtaLink
-                  className="inline-flex items-center justify-center gap-2 mt-6 px-6 py-3 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 transition-all shadow-lg hover:shadow-xl"
+                  className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-foreground px-6 py-3 text-sm font-bold text-background shadow-lg transition-all hover:bg-foreground/90 hover:shadow-xl"
                   ariaLabel={landingTrialAriaLabel('roi', LANDING_GUEST_CHECKOUT_ENABLED)}
                 >
                   Start Free Trial

@@ -193,8 +193,8 @@ export function RoadmapBuilder({ clientName, blocks, allPossibleBlocks = [], cli
           <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-gradient-from to-gradient-to text-primary-foreground">
             <Sparkles className="h-6 w-6 text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">{clientName}&apos;s Suggested Roadmap</h1>
-          <p className="text-sm text-slate-500 mt-1 max-w-md mx-auto">{summaryText}</p>
+          <h1 className="text-2xl font-bold text-foreground">{clientName}&apos;s Suggested Roadmap</h1>
+          <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">{summaryText}</p>
           {coachBrief && (
             <Button
               variant="outline"
@@ -214,10 +214,10 @@ export function RoadmapBuilder({ clientName, blocks, allPossibleBlocks = [], cli
           />
         </div>
         <div className="sticky bottom-4 z-10 max-w-3xl mx-auto">
-          <div className="rounded-2xl bg-white/90 backdrop-blur-sm border border-slate-200 shadow-lg p-4 flex items-center justify-between gap-3">
-            <div className="text-sm text-slate-600">
-              <span className="font-semibold text-slate-900">{allItems.length}</span> milestones
-              {totalWeeks > 0 && <span className="text-xs text-slate-400 ml-2">~{totalWeeks}w</span>}
+          <div className="rounded-2xl bg-background/90 backdrop-blur-sm border border-border shadow-lg p-4 flex items-center justify-between gap-3">
+            <div className="text-sm text-foreground-secondary">
+              <span className="font-semibold text-foreground">{allItems.length}</span> milestones
+              {totalWeeks > 0 && <span className="text-xs text-muted-foreground ml-2">~{totalWeeks}w</span>}
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => setCustomising(true)} className="gap-1.5">
@@ -249,8 +249,8 @@ export function RoadmapBuilder({ clientName, blocks, allPossibleBlocks = [], cli
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="space-y-6">
         <div className="text-center py-4">
-          <h1 className="text-2xl font-bold text-slate-900">Customise {clientName}&apos;s Roadmap</h1>
-          <p className="text-sm text-slate-500 mt-1 max-w-md mx-auto">Drag items between phases or remove items you don&apos;t want to include.</p>
+          <h1 className="text-2xl font-bold text-foreground">Customise {clientName}&apos;s Roadmap</h1>
+          <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">Drag items between phases or remove items you don&apos;t want to include.</p>
           {coachBrief && (
             <Button
               variant="outline"
@@ -275,10 +275,10 @@ export function RoadmapBuilder({ clientName, blocks, allPossibleBlocks = [], cli
           </div>
         </div>
         <div className="sticky bottom-4 z-10">
-          <div className="rounded-2xl bg-white/90 backdrop-blur-sm border border-slate-200 shadow-lg p-4 flex flex-wrap items-center justify-between gap-3">
-            <div className="text-sm text-slate-600">
-              <span className="font-semibold text-slate-900">{allItems.length}</span> milestones
-              {totalWeeks > 0 && <span className="text-xs text-slate-400 ml-2">~{totalWeeks}w</span>}
+          <div className="rounded-2xl bg-background/90 backdrop-blur-sm border border-border shadow-lg p-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="text-sm text-foreground-secondary">
+              <span className="font-semibold text-foreground">{allItems.length}</span> milestones
+              {totalWeeks > 0 && <span className="text-xs text-muted-foreground ml-2">~{totalWeeks}w</span>}
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={handleResetToSuggested} className="gap-1.5">

@@ -17,7 +17,7 @@ export function CTASection() {
   const ctaRef = useScrollReveal({ staggerDelay: 150, staggerIndex: 2 });
 
   return (
-    <section className="py-24 sm:py-32 bg-slate-900 relative overflow-hidden">
+    <section className="relative overflow-hidden bg-landing-contrast-bg py-24 sm:py-32">
       {/* Subtle gradient glow */}
       <div className="absolute inset-0 -z-0">
         <div className="absolute left-1/2 top-1/2 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/12 blur-[100px]" />
@@ -27,12 +27,12 @@ export function CTASection() {
         <div className="max-w-3xl mx-auto text-center">
           <h2
             ref={headingRef}
-            className="text-balance mb-6 text-3xl font-bold leading-tight text-white sm:text-4xl md:text-5xl"
+            className="text-balance mb-6 text-3xl font-bold leading-tight text-landing-contrast-fg sm:text-4xl md:text-5xl"
           >
             Assess Smarter.{' '}
             <span className={LANDING_H2_ACCENT_ON_DARK}>Retain Longer.</span>
           </h2>
-          <p ref={subtitleRef} className="text-balance text-lg text-slate-300 mb-10 max-w-2xl mx-auto">
+          <p ref={subtitleRef} className="mx-auto mb-10 max-w-2xl text-balance text-lg text-landing-contrast-subtle">
             {LANDING_COPY.ctaSectionSubtitle}
           </p>
           
@@ -40,7 +40,7 @@ export function CTASection() {
             {user ? (
               <Link 
                 to="/dashboard"
-                className="inline-flex items-center justify-center gap-2 bg-white text-slate-900 px-8 py-4 rounded-xl text-base font-bold shadow-lg shadow-white/10 hover:bg-slate-100 transition-colors"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-card px-8 py-4 text-base font-bold text-foreground shadow-lg shadow-black/10 transition-colors hover:bg-muted"
               >
                 Go to Dashboard
                 <ArrowRight className="h-5 w-5" />
@@ -48,13 +48,13 @@ export function CTASection() {
             ) : (
               <div className="flex flex-col items-center gap-4">
                 <LandingTrialCtaLink
-                  className="inline-flex items-center justify-center gap-2 bg-white text-slate-900 px-8 py-4 rounded-xl text-base font-bold shadow-lg shadow-white/10 hover:bg-slate-100 transition-colors"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-card px-8 py-4 text-base font-bold text-foreground shadow-lg shadow-black/10 transition-colors hover:bg-muted"
                   ariaLabel={landingTrialAriaLabel('cta', LANDING_GUEST_CHECKOUT_ENABLED)}
                 >
                   Start Free Trial
                   <ArrowRight className="h-5 w-5" />
                 </LandingTrialCtaLink>
-                <p className="text-slate-400 text-sm">{LANDING_COPY.ctaSectionMicrocopy}</p>
+                <p className="text-sm text-landing-contrast-muted">{LANDING_COPY.ctaSectionMicrocopy}</p>
               </div>
             )}
           </div>

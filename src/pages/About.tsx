@@ -31,7 +31,7 @@ const aboutSeo = requireSeoForPath(ROUTES.ABOUT);
 
 export default function About() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
       <Seo
         pathname={ROUTES.ABOUT}
         title={aboutSeo.title}
@@ -78,13 +78,13 @@ export default function About() {
               {values.map((v) => (
                 <div
                   key={v.title}
-                  className="p-6 rounded-2xl border border-slate-200 bg-slate-50/50"
+                  className="p-6 rounded-2xl border border-border bg-muted/50"
                 >
                   <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600 mb-4">
                     <v.icon className="w-5 h-5" />
                   </div>
-                  <h3 className="font-bold text-slate-900 mb-2">{v.title}</h3>
-                  <p className="text-sm text-slate-500 leading-relaxed">{v.description}</p>
+                  <h3 className="font-bold text-foreground mb-2">{v.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{v.description}</p>
                 </div>
               ))}
             </div>

@@ -25,42 +25,42 @@ const HERO_RADAR_PILLAR_META: Record<
   bodyComp: {
     Icon: Scale,
     value: "18.5% BF",
-    ring: "bg-primary/15 text-primary",
-    soft: "bg-white/95",
-    label: "text-slate-800",
-    border: "border-slate-200/90",
+    ring: "bg-primary/15 text-gradient-dark dark:bg-primary/25 dark:text-primary",
+    soft: "bg-card/95",
+    label: "text-foreground",
+    border: "border-border/90 dark:border-border",
   },
   cardio: {
     Icon: Heart,
     value: "72/100",
-    ring: "bg-primary/15 text-primary",
-    soft: "bg-white/95",
-    label: "text-slate-800",
-    border: "border-slate-200/90",
+    ring: "bg-primary/15 text-gradient-dark dark:bg-primary/25 dark:text-primary",
+    soft: "bg-card/95",
+    label: "text-foreground",
+    border: "border-border/90 dark:border-border",
   },
   strength: {
     Icon: Dumbbell,
     value: "80/100",
-    ring: "bg-primary/15 text-primary",
-    soft: "bg-white/95",
-    label: "text-slate-800",
-    border: "border-slate-200/90",
+    ring: "bg-primary/15 text-gradient-dark dark:bg-primary/25 dark:text-primary",
+    soft: "bg-card/95",
+    label: "text-foreground",
+    border: "border-border/90 dark:border-border",
   },
   movementQuality: {
     Icon: Zap,
     value: "85/100",
-    ring: "bg-primary/15 text-primary",
-    soft: "bg-white/95",
-    label: "text-slate-800",
-    border: "border-slate-200/90",
+    ring: "bg-primary/15 text-gradient-dark dark:bg-primary/25 dark:text-primary",
+    soft: "bg-card/95",
+    label: "text-foreground",
+    border: "border-border/90 dark:border-border",
   },
   lifestyle: {
     Icon: Moon,
     value: "76/100",
-    ring: "bg-primary/15 text-primary",
-    soft: "bg-white/95",
-    label: "text-slate-800",
-    border: "border-slate-200/90",
+    ring: "bg-primary/15 text-gradient-dark dark:bg-primary/25 dark:text-primary",
+    soft: "bg-card/95",
+    label: "text-foreground",
+    border: "border-border/90 dark:border-border",
   },
 };
 
@@ -141,7 +141,7 @@ export function HeroRadarPillarsAround() {
             >
               {getPillarLabel(id, "short")}
             </p>
-            <p className="text-[10px] font-bold tabular-nums text-slate-900 xl:text-xs">
+            <p className="text-[10px] font-bold tabular-nums text-foreground xl:text-xs">
               {meta.value}
             </p>
           </div>

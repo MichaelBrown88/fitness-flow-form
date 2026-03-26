@@ -111,14 +111,14 @@ export function ClientPostureCapture({ onComplete, onCancel }: ClientPostureCapt
   const currentCaptured = currentView ? !!images[currentView.id] : false;
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+    <div className="bg-background rounded-2xl border border-border/60 shadow-sm overflow-hidden">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900">Posture Photos</h3>
-          <p className="text-[10px] text-slate-400">{capturedCount}/{VIEWS.length} views captured</p>
+          <h3 className="text-sm font-semibold text-foreground">Posture Photos</h3>
+          <p className="text-[10px] text-muted-foreground">{capturedCount}/{VIEWS.length} views captured</p>
         </div>
-        <button onClick={onCancel} className="text-slate-400 hover:text-slate-600">
+        <button onClick={onCancel} className="text-muted-foreground hover:text-foreground-secondary">
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -135,7 +135,7 @@ export function ClientPostureCapture({ onComplete, onCancel }: ClientPostureCapt
                   ? 'bg-emerald-100 text-emerald-700'
                   : idx === viewIdx
                   ? 'bg-violet-100 text-violet-700 ring-2 ring-violet-300'
-                  : 'bg-slate-100 text-slate-400'
+                  : 'bg-muted text-muted-foreground'
               }`}
             >
               {images[view.id] ? <Check className="w-3 h-3" /> : idx + 1}
@@ -147,11 +147,11 @@ export function ClientPostureCapture({ onComplete, onCancel }: ClientPostureCapt
         {!allCaptured && currentView && (
           <>
             <div className="text-center mb-2">
-              <p className="text-sm font-medium text-slate-700">{currentView.label}</p>
-              <p className="text-xs text-slate-400">{currentView.instruction}</p>
+              <p className="text-sm font-medium text-foreground-secondary">{currentView.label}</p>
+              <p className="text-xs text-muted-foreground">{currentView.instruction}</p>
             </div>
 
-            <div className="relative aspect-[3/4] bg-slate-900 rounded-xl overflow-hidden">
+            <div className="relative aspect-[3/4] bg-foreground rounded-xl overflow-hidden">
               {currentCaptured ? (
                 <img
                   src={images[currentView.id]}
@@ -233,7 +233,7 @@ export function ClientPostureCapture({ onComplete, onCancel }: ClientPostureCapt
 
             <div className="grid grid-cols-2 gap-2">
               {VIEWS.map((view) => (
-                <div key={view.id} className="relative aspect-[3/4] rounded-lg overflow-hidden bg-slate-100">
+                <div key={view.id} className="relative aspect-[3/4] rounded-lg overflow-hidden bg-muted">
                   {images[view.id] && (
                     <img
                       src={images[view.id]}

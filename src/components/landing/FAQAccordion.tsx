@@ -36,6 +36,7 @@ export function FAQSection({ items }: FAQSectionProps) {
             </>
           }
           subtitle="Everything you need to know about getting started."
+          subtitleClassName="text-muted-foreground"
         />
       </div>
       <div ref={listRef}>
@@ -47,11 +48,11 @@ export function FAQSection({ items }: FAQSectionProps) {
               className="border-0 animate-fade-in-up"
               style={{ animationDelay: `${index * 50}ms` } satisfies CSSProperties}
             >
-              <GlassCard className="overflow-hidden bg-white/90 dark:bg-slate-900/80">
-                <AccordionTrigger className="text-balance px-6 py-5 text-left text-lg font-bold text-slate-800 hover:no-underline hover:text-primary data-[state=open]:text-primary [&[data-state=open]>svg]:rotate-90">
+              <GlassCard className="overflow-hidden">
+                <AccordionTrigger className="text-balance px-6 py-5 text-left text-lg font-bold text-foreground hover:no-underline hover:text-primary data-[state=open]:text-primary [&>svg]:text-muted-foreground data-[state=open]:[&>svg]:text-primary [&[data-state=open]>svg]:rotate-90">
                   {item.question}
                 </AccordionTrigger>
-                <AccordionContent className="text-balance text-base text-slate-600 leading-relaxed font-medium px-6 pb-6 pt-0">
+                <AccordionContent className="text-balance px-6 pb-6 pt-0 text-base font-medium leading-relaxed text-muted-foreground">
                   {item.answer}
                 </AccordionContent>
               </GlassCard>

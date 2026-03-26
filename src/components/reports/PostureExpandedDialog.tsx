@@ -115,7 +115,7 @@ export function PostureExpandedDialog({ views, postureResults, getImageUrl, expa
 
         {/* Close */}
         <button
-          className="absolute top-4 right-4 z-50 h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+          className="absolute top-4 right-4 z-50 h-9 w-9 rounded-full bg-card/10 hover:bg-card/20 flex items-center justify-center transition-colors"
           onClick={onClose}
         >
           <span className="text-white text-xl leading-none">&times;</span>
@@ -153,7 +153,7 @@ export function PostureExpandedDialog({ views, postureResults, getImageUrl, expa
               onClick={() => emblaApi?.scrollTo(i)}
               className={cn(
                 "h-1.5 rounded-full transition-all",
-                i === activeSlide ? "w-4 bg-white" : "w-1.5 bg-white/30",
+                i === activeSlide ? "w-4 bg-card" : "w-1.5 bg-card/30",
               )}
             />
           ))}

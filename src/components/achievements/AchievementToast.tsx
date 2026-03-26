@@ -41,7 +41,7 @@ export function AchievementToast({ achievement, onDismiss }: AchievementToastPro
         visible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'
       }`}
     >
-      <div className="flex items-center gap-3 bg-white rounded-2xl shadow-2xl border border-amber-200 px-5 py-4 min-w-[280px]">
+      <div className="flex items-center gap-3 bg-background rounded-2xl shadow-2xl border border-amber-200 px-5 py-4 min-w-[280px]">
         <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center text-2xl shrink-0 animate-bounce">
           {icon}
         </div>
@@ -49,8 +49,8 @@ export function AchievementToast({ achievement, onDismiss }: AchievementToastPro
           <p className="text-[10px] font-black uppercase tracking-[0.15em] text-amber-600 mb-0.5">
             Achievement Unlocked
           </p>
-          <p className="text-sm font-bold text-slate-900 truncate">{achievement.title}</p>
-          <p className="text-xs text-slate-500 truncate">{achievement.description}</p>
+          <p className="text-sm font-bold text-foreground truncate">{achievement.title}</p>
+          <p className="text-xs text-muted-foreground truncate">{achievement.description}</p>
         </div>
       </div>
     </div>

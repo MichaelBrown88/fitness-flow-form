@@ -9,10 +9,12 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-slate-900 text-white hover:bg-slate-800 shadow-sm",
+        default: "bg-foreground text-white hover:bg-foreground/90 shadow-sm",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-apple-sm",
-        outline: "glass-button hover:bg-white/80 text-foreground",
-        secondary: "glass-subtle text-foreground hover:bg-white/70",
+        outline:
+          "glass-button text-foreground hover:bg-background/80 dark:hover:bg-card/90",
+        secondary:
+          "glass-subtle text-foreground hover:bg-background/70 dark:hover:bg-card/80",
         ghost: "hover:bg-background-secondary hover:text-foreground",
         link: "text-gradient-dark underline-offset-4 hover:underline",
       },
@@ -44,4 +46,6 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 );
 Button.displayName = "Button";
 
+/* shadcn/ui: `buttonVariants` is consumed by other modules (same pattern as upstream). */
+// eslint-disable-next-line react-refresh/only-export-components -- variant helper co-located with Button
 export { Button, buttonVariants };

@@ -50,10 +50,10 @@ export default function ClientReportTab() {
 
   if (!assessmentId && !clientName) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-8 text-center">
-        <FileText className="h-10 w-10 text-slate-300 mx-auto mb-3" />
-        <p className="text-sm font-medium text-slate-600">No assessment yet</p>
-        <p className="text-xs text-slate-500 mt-1">Complete an assessment to see the client report here.</p>
+      <div className="rounded-2xl border border-border bg-muted p-8 text-center">
+        <FileText className="h-10 w-10 text-muted-foreground/60 mx-auto mb-3" />
+        <p className="text-sm font-medium text-foreground-secondary">No assessment yet</p>
+        <p className="text-xs text-muted-foreground mt-1">Complete an assessment to see the client report here.</p>
       </div>
     );
   }
@@ -62,15 +62,15 @@ export default function ClientReportTab() {
     return (
       <div className="flex flex-col items-center justify-center py-16">
         <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-        <p className="text-sm text-slate-500">Loading report…</p>
+        <p className="text-sm text-muted-foreground">Loading report…</p>
       </div>
     );
   }
 
   if (error || !formData || !scores) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center">
-        <p className="text-sm text-slate-600">{error ?? 'Report not available.'}</p>
+      <div className="rounded-2xl border border-border bg-card p-6 text-center">
+        <p className="text-sm text-foreground-secondary">{error ?? 'Report not available.'}</p>
       </div>
     );
   }
@@ -83,7 +83,7 @@ export default function ClientReportTab() {
         <Button
           type="button"
           size="sm"
-          className="h-9 rounded-lg bg-slate-900 text-white font-medium gap-1.5"
+          className="h-9 rounded-lg bg-foreground text-white font-medium gap-1.5"
           onClick={() => setShareModalOpen(true)}
           disabled={shareLoading}
         >
@@ -96,7 +96,7 @@ export default function ClientReportTab() {
         fallback={
           <div className="flex flex-col items-center justify-center py-16">
             <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-            <p className="text-sm text-slate-500">Generating report…</p>
+            <p className="text-sm text-muted-foreground">Generating report…</p>
           </div>
         }
       >

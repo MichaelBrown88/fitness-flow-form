@@ -1,5 +1,11 @@
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Radar, Tooltip } from 'recharts';
 import type { ScoreDetail } from '@/lib/scoring';
+import {
+  AXIS_TICK_SLATE_SUBSTITUTE,
+  CATEGORY_RADAR_COLOR_MAP,
+  CATEGORY_RADAR_FALLBACK,
+  CHART_HEX,
+} from '@/lib/design/chartColors';
 
 interface CategoryRadarChartProps {
   details: ScoreDetail[];
@@ -19,9 +25,9 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
   if (active && payload && payload.length > 0) {
     const data = payload[0].payload;
     return (
-      <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-lg">
-        <p className="font-semibold text-slate-900">{data.name}</p>
-        <p className="text-sm text-slate-600">Score: {data.value}/100</p>
+      <div className="rounded-lg border border-border bg-card p-3 shadow-lg">
+        <p className="font-semibold text-foreground">{data.name}</p>
+        <p className="text-sm text-muted-foreground">Score: {data.value}/100</p>
       </div>
     );
   }
@@ -46,7 +52,7 @@ function renderCustomAxisTick({ payload, x, y, textAnchor, index, color }: AxisT
         dy={y < 150 ? -10 : y > 250 ? 15 : 0}
         dx={textAnchor === 'start' ? 10 : textAnchor === 'end' ? -10 : 0}
         textAnchor={textAnchor}
-        fill={color || "#475569"}
+        fill={color || AXIS_TICK_SLATE_SUBSTITUTE}
         fontSize="11px"
         fontWeight="600"
       >
@@ -57,18 +63,9 @@ function renderCustomAxisTick({ payload, x, y, textAnchor, index, color }: AxisT
 }
 
 export default function CategoryRadarChart({ details, categoryName }: CategoryRadarChartProps) {
-  // Map each category tab to a distinct base colour
-const CATEGORY_COLORS: Record<string, string> = {
-  'Body Composition': '#10b981',        // emerald-500
-  'Functional Strength': 'var(--gradient-from-hex)',
-  'Metabolic Fitness': '#0ea5e9',          // sky-500
-  'Movement Quality': '#f59e0b',        // amber-500
-  'Lifestyle Factors': '#a855f7',               // purple-500
-};
-  const baseColor = CATEGORY_COLORS[categoryName] ?? '#3b82f6';
+  const baseColor =
+    CATEGORY_RADAR_COLOR_MAP[categoryName] ?? CATEGORY_RADAR_FALLBACK;
 
-  const CustomTick = (props: AxisTickProps) => renderCustomAxisTick({ ...props, color: baseColor });
-  
   // Filter out details with no score or invalid values
   // For Movement Quality, we want to show all 3 main points even if score is 0
   const validDetails = categoryName === 'Movement Quality' 
@@ -77,8 +74,8 @@ const CATEGORY_COLORS: Record<string, string> = {
   
   if (validDetails.length === 0) {
     return (
-      <div className="flex h-64 items-center justify-center rounded-lg border border-slate-200 bg-slate-50">
-        <p className="text-sm text-slate-500">No data available for {categoryName}</p>
+      <div className="flex h-64 items-center justify-center rounded-lg border border-border bg-muted">
+        <p className="text-sm text-muted-foreground">No data available for {categoryName}</p>
       </div>
     );
   }
@@ -96,8 +93,8 @@ const CATEGORY_COLORS: Record<string, string> = {
   // Movement Quality always has 3 points now
   if (radarData.length < 3) {
     return (
-      <div className="flex h-64 items-center justify-center rounded-lg border border-slate-200 bg-slate-50">
-        <p className="text-sm text-slate-500">Insufficient data for radar chart</p>
+      <div className="flex h-64 items-center justify-center rounded-lg border border-border bg-muted">
+        <p className="text-sm text-muted-foreground">Insufficient data for radar chart</p>
       </div>
     );
   }
@@ -113,7 +110,7 @@ const CATEGORY_COLORS: Record<string, string> = {
     <div className="w-full">
       <ResponsiveContainer width="100%" height={300}>
         <RadarChart data={radarData}>
-          <PolarGrid stroke="#e2e8f0" />
+          <PolarGrid stroke={CHART_HEX.gridLightAlt} />
           <PolarAngleAxis
             dataKey="name"
             tick={(props) => renderCustomAxisTick({ ...props, color: baseColor })}
@@ -123,7 +120,7 @@ const CATEGORY_COLORS: Record<string, string> = {
           <PolarRadiusAxis
             angle={90}
             domain={[0, 100]}
-            tick={{ fill: '#94a3b8', fontSize: 10 }}
+            tick={{ fill: CHART_HEX.tickMuted, fontSize: 10 }}
             tickCount={5}
           />
           <Radar

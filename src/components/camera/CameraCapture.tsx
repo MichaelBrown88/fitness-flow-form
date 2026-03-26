@@ -100,7 +100,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
               variant="ghost" 
               size="icon" 
               onClick={() => setFacingMode(prev => prev === 'user' ? 'environment' : 'user')} 
-              className="text-white hover:bg-white/20 h-12 w-12 rounded-full backdrop-blur-md border border-white/10"
+              className="text-white hover:bg-background/20 h-12 w-12 rounded-full backdrop-blur-md border border-white/10"
             >
               <RefreshCcw className="h-5 w-5" />
             </Button>
@@ -109,7 +109,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
             variant="ghost" 
             size="icon" 
             onClick={onClose} 
-            className="text-white hover:bg-white/20 h-12 w-12 rounded-full backdrop-blur-md border border-white/10"
+            className="text-white hover:bg-background/20 h-12 w-12 rounded-full backdrop-blur-md border border-white/10"
           >
             <X className="h-8 w-8" />
           </Button>
@@ -163,19 +163,19 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
         {isCameraReady && !error && mode === 'posture' && (
           <div className="absolute inset-0 z-20 pointer-events-none flex flex-col items-center">
             {/* Head Box */}
-            <div className="w-full h-[15%] border-b border-white/20 bg-white/5 flex items-center justify-center">
+            <div className="w-full h-[15%] border-b border-white/20 bg-background/5 flex items-center justify-center">
               <span className="text-[10px] font-black uppercase tracking-[0.15em] text-white/30">Head Area</span>
             </div>
             
             {/* Center Line */}
             <div className="flex-1 w-px border-l border-dashed border-white/40 relative">
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 border-2 border-white/20 rounded-full flex items-center justify-center">
-                <div className="w-1 h-1 bg-white/40 rounded-full" />
+                <div className="w-1 h-1 bg-background/40 rounded-full" />
               </div>
             </div>
 
             {/* Feet Box */}
-            <div className="w-full h-[15%] border-t border-white/20 bg-white/5 flex items-center justify-center">
+            <div className="w-full h-[15%] border-t border-white/20 bg-background/5 flex items-center justify-center">
               <span className="text-[10px] font-black uppercase tracking-[0.15em] text-white/30">Feet Area</span>
             </div>
 
@@ -205,16 +205,16 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
             }`}
           >
             <div className={`absolute inset-0 rounded-full transition-all duration-300 ${
-              isVertical ? 'bg-emerald-500/20 scale-110' : 'bg-white/10'
+              isVertical ? 'bg-emerald-500/20 scale-110' : 'bg-background/10'
             }`} />
             <div className={`absolute inset-0 rounded-full border-4 transition-colors ${
               isVertical ? 'border-emerald-500' : 'border-white/40'
             }`} />
             <div className={`h-16 w-16 rounded-full shadow-xl transition-colors ${
-              isVertical ? 'bg-emerald-500' : 'bg-white/40'
+              isVertical ? 'bg-emerald-500' : 'bg-background/40'
             }`} />
             <Camera className={`h-8 w-8 absolute transition-colors ${
-              isVertical ? 'text-white' : 'text-slate-900'
+              isVertical ? 'text-white' : 'text-foreground'
             }`} />
           </button>
           <p className="mt-6 text-white/60 text-[10px] font-black uppercase tracking-[0.15em]">

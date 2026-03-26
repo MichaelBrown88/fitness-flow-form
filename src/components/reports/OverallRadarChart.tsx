@@ -1,5 +1,6 @@
 import React from 'react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import { CHART_HEX, CHART_PILLAR_COLOR_ORDER } from '@/lib/design/chartColors';
 
 export interface RadarData {
   name: string;
@@ -32,50 +33,13 @@ const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Toolti
   if (active && payload && payload.length) {
     const data = payload[0].payload as RadarData;
     return (
-      <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-lg">
-        <p className="font-semibold text-slate-900">{data.fullLabel}</p>
-        <p className="text-sm text-slate-600">Score: {data.value}/100</p>
+      <div className="rounded-lg border border-border bg-card p-3 shadow-lg">
+        <p className="font-semibold text-foreground">{data.fullLabel}</p>
+        <p className="text-sm text-muted-foreground">Score: {data.value}/100</p>
       </div>
     );
   }
   return null;
-};
-
-interface AxisTickProps {
-  payload: { value: string };
-  x: number;
-  y: number;
-  textAnchor: "start" | "middle" | "end" | "inherit";
-  index: number;
-}
-
-const renderCustomAxisTick = ({ 
-  payload, 
-  x, 
-  y, 
-  textAnchor, 
-  index 
-}: AxisTickProps) => {
-  // Try to find the color from the data if available
-  const colors = ['#10b981', '#6366f1', '#0ea5e9', '#f59e0b', '#a855f7'];
-  const color = colors[index % colors.length];
-
-  return (
-    <g>
-      <text
-        x={x}
-        y={y}
-        dy={y < 150 ? -10 : y > 200 ? 15 : 0}
-        dx={textAnchor === 'start' ? 10 : textAnchor === 'end' ? -10 : 0}
-        textAnchor={textAnchor}
-        fill={color}
-        fontSize="11px"
-        fontWeight="700"
-      >
-        {payload.value}
-      </text>
-    </g>
-  );
 };
 
 export default function OverallRadarChart({ data, previousData, compact = false }: OverallRadarChartProps) {
@@ -101,20 +65,34 @@ export default function OverallRadarChart({ data, previousData, compact = false 
     <div className="w-full h-full">
       <ResponsiveContainer width="100%" height="100%">
         <RadarChart cx="50%" cy="50%" outerRadius={compact ? '62%' : '75%'} data={data}>
-          <PolarGrid stroke="#e4e4e7" strokeDasharray="3 3" />
+          <PolarGrid stroke={CHART_HEX.gridLight} strokeDasharray="3 3" />
           <PolarAngleAxis
             dataKey="name"
-            tick={({ payload, x, y, textAnchor }: { payload: { value: string }; x: number; y: number; textAnchor: "start" | "middle" | "end" | "inherit" }) => {
+            tick={({
+              payload,
+              x,
+              y,
+              textAnchor,
+              index,
+            }: {
+              payload: { value: string };
+              x: number;
+              y: number;
+              textAnchor: 'start' | 'middle' | 'end' | 'inherit';
+              index: number;
+            }) => {
               const raw = payload.value;
               const label = compact ? (COMPACT_LABELS[raw] ?? raw) : raw;
-              const fontSize = compact ? 9 : (label.length > 12 ? 10 : 12);
+              const fontSize = compact ? 9 : label.length > 12 ? 10 : 12;
+              const fill =
+                CHART_PILLAR_COLOR_ORDER[index % CHART_PILLAR_COLOR_ORDER.length];
               return (
                 <text
                   x={x}
                   y={y}
-                  dy={compact ? 3 : (label.length > 12 ? 8 : 4)}
+                  dy={compact ? 3 : label.length > 12 ? 8 : 4}
                   textAnchor={textAnchor}
-                  fill="#71717a"
+                  fill={fill}
                   fontSize={fontSize}
                   fontWeight={700}
                 >
@@ -137,9 +115,9 @@ export default function OverallRadarChart({ data, previousData, compact = false 
                 const prev = previousData.find(p => p.name === entry.name);
                 return prev ? prev.value : 0;
               }}
-              stroke="#d4d4d8"
+              stroke={CHART_HEX.neutralStroke}
               strokeWidth={2}
-              fill="#d4d4d8"
+              fill={CHART_HEX.neutralStroke}
               fillOpacity={0.25}
               isAnimationActive={false}
             />
@@ -162,9 +140,9 @@ export default function OverallRadarChart({ data, previousData, compact = false 
                 // This ensures green only appears where there's improvement
                 return prev.value;
               }}
-              stroke="#10b981"
+              stroke={CHART_HEX.scoreGreen}
               strokeWidth={2.5}
-              fill="#10b981"
+              fill={CHART_HEX.scoreGreen}
               fillOpacity={0.65}
               isAnimationActive={true}
             />
@@ -173,9 +151,9 @@ export default function OverallRadarChart({ data, previousData, compact = false 
           <Radar
             name="Current"
             dataKey="value"
-            stroke="#18181b"
+            stroke={CHART_HEX.neutralDark}
             strokeWidth={3}
-            fill="#18181b"
+            fill={CHART_HEX.neutralDark}
             fillOpacity={0.3}
           />
           {/* Show regressions in red overlay - the LOST area (shown on top to indicate what was lost) */}
@@ -193,9 +171,9 @@ export default function OverallRadarChart({ data, previousData, compact = false 
                 // For non-regressed areas: show current value so red doesn't extend
                 return entry.value;
               }}
-              stroke="#ef4444"
+              stroke={CHART_HEX.scoreRed}
               strokeWidth={2.5}
-              fill="#ef4444"
+              fill={CHART_HEX.scoreRed}
               fillOpacity={0.5}
               isAnimationActive={true}
             />

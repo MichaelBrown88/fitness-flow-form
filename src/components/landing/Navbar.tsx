@@ -6,6 +6,7 @@ import { LandingTrialCtaLink } from '@/components/landing/LandingTrialCtaLink';
 import { LANDING_GUEST_CHECKOUT_ENABLED } from '@/constants/platform';
 import { landingTrialAriaLabel } from '@/constants/landingCopy';
 import { ROUTES } from '@/constants/routes';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 
 const NAV_LINKS = [
   { label: 'Features', hash: 'features' as const },
@@ -137,35 +138,37 @@ export function Navbar() {
       {isMarketingPath ? (
         <a
           href="#main-content"
-          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-slate-900 focus:px-4 focus:py-2 focus:text-sm focus:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-foreground focus:px-4 focus:py-2 focus:text-sm focus:text-background focus:outline-none focus:ring-2 focus:ring-primary"
         >
           Skip to main content
         </a>
       ) : null}
       <div className="max-w-7xl mx-auto px-6">
         <div
-          className={`relative backdrop-blur-xl rounded-full px-6 py-3 flex items-center justify-between transition-all duration-200 ${
+          className={`relative flex items-center justify-between rounded-full px-6 py-3 backdrop-blur-xl transition-all duration-200 ${
             isScrolled
-              ? 'bg-white/80 border border-white/40 shadow-lg shadow-black/5'
-              : 'bg-white/50 border border-white/20'
+              ? 'border border-border/40 bg-card/85 shadow-lg shadow-black/5 dark:border-border dark:bg-background/90 dark:shadow-black/40'
+              : 'border border-border/30 bg-card/60 dark:border-border/60 dark:bg-background/75'
           }`}
         >
           <Link to={ROUTES.HOME} className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-tr from-gradient-from to-gradient-to text-sm font-bold text-primary-foreground shadow-md">
               OA
             </div>
-            <span className="text-lg font-bold tracking-tight text-slate-900">One Assess</span>
+            <span className="text-lg font-bold tracking-tight text-foreground">
+              One Assess
+            </span>
           </Link>
 
-          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
+          <div className="hidden gap-8 text-sm font-medium text-muted-foreground md:flex">
             {NAV_LINKS.map((link) => {
               const isActive = activeHash === link.hash;
               return (
                 <Link
                   key={link.label}
                   to={marketingSectionTo(link.hash)}
-                  className={`transition-colors hover:text-slate-900 ${
-                    isActive ? 'text-slate-900 font-semibold' : ''
+                  className={`transition-colors hover:text-foreground ${
+                    isActive ? 'font-semibold text-foreground' : ''
                   }`}
                   aria-current={isActive ? 'true' : undefined}
                 >
@@ -175,11 +178,12 @@ export function Navbar() {
             })}
           </div>
 
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden items-center gap-2 md:flex md:gap-3">
+            <ThemeToggle className="h-9 w-9 text-foreground" />
             {user ? (
               <Link
                 to={ROUTES.DASHBOARD}
-                className="bg-slate-900 text-white px-5 py-2 rounded-full text-sm font-semibold hover:bg-slate-800 transition-all shadow-md hover:shadow-lg active:scale-95"
+                className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-md transition-all hover:opacity-90 active:scale-[0.98]"
               >
                 Dashboard
               </Link>
@@ -187,12 +191,12 @@ export function Navbar() {
               <>
                 <Link
                   to={ROUTES.LOGIN}
-                  className="text-sm font-medium text-slate-900 hover:text-slate-600 transition-colors"
+                  className="text-sm font-medium text-foreground transition-colors hover:text-muted-foreground dark:hover:text-foreground"
                 >
                   Log in
                 </Link>
                 <LandingTrialCtaLink
-                  className="bg-slate-900 text-white px-5 py-2 rounded-full text-sm font-semibold hover:bg-slate-800 transition-all shadow-md hover:shadow-lg active:scale-95"
+                  className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-md transition-all hover:opacity-90 active:scale-[0.98]"
                   ariaLabel={landingTrialAriaLabel('nav', goesToPricing)}
                 >
                   Start Free Trial
@@ -204,7 +208,7 @@ export function Navbar() {
           <button
             ref={menuButtonRef}
             type="button"
-            className="md:hidden text-slate-900"
+            className="text-foreground md:hidden"
             onClick={() => setIsMobileMenuOpen((o) => !o)}
             aria-label="Toggle menu"
             aria-expanded={isMobileMenuOpen}
@@ -222,24 +226,27 @@ export function Navbar() {
           role="dialog"
           aria-modal="true"
           aria-label="Mobile navigation"
-          className="animate-fade-in-up absolute left-4 right-4 top-24 rounded-2xl border border-slate-200/80 bg-white/92 p-6 shadow-lg backdrop-blur-xl md:hidden"
+          className="animate-fade-in-up absolute left-4 right-4 top-24 rounded-2xl border border-border bg-card/95 p-6 shadow-lg backdrop-blur-xl md:hidden"
         >
           <div className="flex flex-col gap-6 text-center">
+            <div className="flex justify-center">
+              <ThemeToggle className="h-10 w-10" />
+            </div>
             {NAV_LINKS.map((link) => (
               <Link
                 key={link.label}
                 to={marketingSectionTo(link.hash)}
-                className="text-slate-600 font-medium hover:text-slate-900"
+                className="font-medium text-muted-foreground hover:text-foreground"
                 onClick={closeMobileMenu}
               >
                 {link.label}
               </Link>
             ))}
-            <div className="h-px bg-slate-200 w-full" />
+            <div className="h-px w-full bg-border" />
             {user ? (
               <Link
                 to={ROUTES.DASHBOARD}
-                className="bg-slate-900 text-white py-3.5 rounded-xl font-semibold w-full shadow-lg"
+                className="w-full rounded-xl bg-primary py-3.5 font-semibold text-primary-foreground shadow-lg"
                 onClick={closeMobileMenu}
               >
                 Dashboard
@@ -248,13 +255,13 @@ export function Navbar() {
               <>
                 <Link
                   to={ROUTES.LOGIN}
-                  className="text-slate-900 font-semibold"
+                  className="font-semibold text-foreground"
                   onClick={closeMobileMenu}
                 >
                   Log in
                 </Link>
                 <LandingTrialCtaLink
-                  className="bg-slate-900 text-white py-3.5 rounded-xl font-semibold w-full shadow-lg"
+                  className="w-full rounded-xl bg-primary py-3.5 font-semibold text-primary-foreground shadow-lg"
                   onNavigate={closeMobileMenu}
                   ariaLabel={landingTrialAriaLabel('mobileNav', goesToPricing)}
                 >

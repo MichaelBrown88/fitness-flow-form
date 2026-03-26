@@ -28,8 +28,8 @@ export function ClientReportCategoryTabs({
 
   return (
     <section className="space-y-4">
-      <h2 className="text-2xl font-bold text-slate-900">Your fitness assessment</h2>
-      <p className="text-sm text-slate-600">
+      <h2 className="text-2xl font-bold text-foreground">Your fitness assessment</h2>
+      <p className="text-sm text-muted-foreground">
         Explore each area of your assessment. Each category shows a detailed breakdown of your performance:
       </p>
       <Tabs defaultValue={orderedCats[0].id} className="w-full">
@@ -61,20 +61,20 @@ export function ClientReportCategoryTabs({
             <TabsContent key={cat.id} value={cat.id} className="mt-4">
               <div className="space-y-4">
                 {/* Category header with score */}
-                <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <div className={`h-16 w-16 rounded-full border-4 ${circleColor(cat.score)} flex items-center justify-center`}>
                         <span className="text-xl font-bold">{cat.score}</span>
                       </div>
                       <div>
-                        <h3 className="text-xl font-semibold text-slate-900">{niceLabel(cat.id)}</h3>
-                        <p className="text-sm text-slate-600 mt-1">{jargon}</p>
+                        <h3 className="text-xl font-semibold text-foreground">{niceLabel(cat.id)}</h3>
+                        <p className="text-sm text-muted-foreground mt-1">{jargon}</p>
                       </div>
                     </div>
                   </div>
                   <div className="mb-3">
-                    <div className="h-3 w-full rounded-full bg-slate-100 overflow-hidden">
+                    <div className="h-3 w-full rounded-full bg-muted overflow-hidden">
                       <div
                         className={`h-full ${bgColor} transition-all`}
                         style={{ width: `${scorePercent}%` }}
@@ -85,8 +85,8 @@ export function ClientReportCategoryTabs({
 
                 {/* Radar chart & Posture Viewer */}
                 <div className="space-y-6">
-                  <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 mb-6 text-center">
+                  <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-foreground-tertiary mb-6 text-center">
                       Functional Mobility Breakdown
                     </h4>
                     <div className="flex justify-center">
@@ -100,7 +100,7 @@ export function ClientReportCategoryTabs({
 
                   {cat.id === 'movementQuality' && formData?.postureAiResults && (
                     <div className="space-y-4">
-                      <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 mb-2 px-1">
+                      <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-foreground-tertiary mb-2 px-1">
                         Posture scan results
                       </h4>
                       <PostureAnalysisViewer

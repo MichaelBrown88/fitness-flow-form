@@ -5,62 +5,18 @@
  */
 
 import React from 'react';
-import { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
+import type { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
+import { CHART_HEX } from '@/lib/design/chartColors';
+import {
+  isHeadPitchDeviation,
+  isHipLevelDeviation,
+  isPelvicTiltDeviation,
+  isShoulderDeviation,
+} from '@/lib/posture/postureDeviationChecks';
 
 interface PostureReferenceLinesProps {
   view: 'front' | 'back' | 'side-left' | 'side-right';
   analysis: PostureAnalysisResult;
-}
-
-// Thresholds for determining deviation
-const THRESHOLDS = {
-  headPitchDegrees: 10,      // ±10° for head pitch (ear-eye level)
-  hipPositionCm: 2,          // ±2cm for hip position from plumb
-  shoulderDiffCm: 1.0,       // 1.0cm shoulder height difference
-  hipDiffCm: 1.0,            // 1.0cm hip height difference
-};
-
-/**
- * Check if head pitch is a deviation (side views)
- */
-function isHeadPitchDeviation(analysis: PostureAnalysisResult): boolean {
-  const status = analysis.head_updown?.status;
-  return status === 'Looking Up' || status === 'Looking Down';
-}
-
-/**
- * Check if hip alignment is a deviation (side views - forward/behind plumb)
- */
-function isHipPositionDeviation(analysis: PostureAnalysisResult): boolean {
-  // For side views, AI may return 'Forward' / 'Behind' outside the strict union
-  const hipStatus = analysis.hip_alignment?.status as string | undefined;
-  return hipStatus === 'Forward' || hipStatus === 'Behind';
-}
-
-/**
- * Check if shoulder alignment is a deviation (front/back views)
- */
-function isShoulderDeviation(analysis: PostureAnalysisResult): boolean {
-  const status = analysis.shoulder_alignment?.status;
-  const diff = analysis.shoulder_alignment?.height_difference_cm || 0;
-  return status === 'Asymmetric' || status === 'Elevated' || status === 'Depressed' || diff >= THRESHOLDS.shoulderDiffCm;
-}
-
-/**
- * Check if hip alignment is a deviation (front/back views - level)
- */
-function isHipLevelDeviation(analysis: PostureAnalysisResult): boolean {
-  const status = analysis.hip_alignment?.status;
-  const diff = analysis.hip_alignment?.height_difference_cm || 0;
-  return status === 'Asymmetric' || diff >= THRESHOLDS.hipDiffCm;
-}
-
-/**
- * Check if pelvic tilt is a deviation (side views)
- */
-function isPelvicTiltDeviation(analysis: PostureAnalysisResult): boolean {
-  const status = analysis.pelvic_tilt?.status;
-  return status === 'Anterior Tilt' || status === 'Posterior Tilt';
 }
 
 /**
@@ -79,7 +35,7 @@ function ReferenceLine({
   showAngle?: boolean;
   angle?: number;
 }) {
-  const color = isDeviation ? '#ef4444' : '#22c55e'; // red-500 or green-500
+  const color = isDeviation ? CHART_HEX.scoreRed : CHART_HEX.scoreGreen;
   const rotation = showAngle && angle ? angle : 0;
   
   return (
@@ -127,7 +83,7 @@ function PlumbLine({ x }: { x: number }) {
       y1="5%"
       x2={`${x}%`}
       y2="95%"
-      stroke="#22c55e"
+      stroke={CHART_HEX.scoreGreen}
       strokeWidth="1.5"
       strokeDasharray="6,4"
       opacity="0.6"
@@ -207,33 +163,6 @@ export function PostureReferenceLines({ view, analysis }: PostureReferenceLinesP
       />
     </svg>
   );
-}
-
-/**
- * Export deviation check functions for use in labels component
- */
-export function hasAnyDeviation(view: string, analysis: PostureAnalysisResult): boolean {
-  const isSideView = view === 'side-left' || view === 'side-right';
-  
-  if (isSideView) {
-    return isHeadPitchDeviation(analysis) || 
-           isPelvicTiltDeviation(analysis) ||
-           analysis.forward_head?.status !== 'Neutral' ||
-           analysis.kyphosis?.status !== 'Normal' ||
-           analysis.lordosis?.status !== 'Normal' ||
-           analysis.hip_alignment?.status !== 'Neutral';
-  }
-  
-  // Front/Back views - check ALL potential deviations
-  return isShoulderDeviation(analysis) || 
-         isHipLevelDeviation(analysis) ||
-         analysis.hip_shift?.status !== 'Centered' ||
-         analysis.spinal_curvature?.status !== 'Normal' ||
-         // Leg alignment (valgus/varus)
-         analysis.left_leg_alignment?.status !== 'Straight' ||
-         analysis.right_leg_alignment?.status !== 'Straight' ||
-         // Head alignment
-         analysis.head_alignment?.status !== 'Neutral';
 }
 
 export default PostureReferenceLines;

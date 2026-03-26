@@ -54,7 +54,7 @@ function NotificationItem({
   return (
     <button
       onClick={() => onRead(notification.id, notification.actionUrl)}
-      className={`w-full text-left px-3 py-3 flex items-start gap-3 hover:bg-slate-50 transition-colors min-h-[44px] ${
+      className={`w-full text-left px-3 py-3 flex items-start gap-3 hover:bg-muted/50 transition-colors min-h-[44px] ${
         isUnread ? 'bg-violet-50/40' : ''
       }`}
     >
@@ -62,7 +62,7 @@ function NotificationItem({
         className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${
           isUnread
             ? 'bg-violet-100 text-violet-600'
-            : 'bg-slate-100 text-slate-400'
+            : 'bg-muted text-muted-foreground'
         }`}
       >
         <Icon className="w-4 h-4" />
@@ -70,18 +70,18 @@ function NotificationItem({
       <div className="flex-1 min-w-0">
         <p
           className={`text-sm leading-tight ${
-            isUnread ? 'font-semibold text-slate-900' : 'text-slate-600'
+            isUnread ? 'font-semibold text-foreground' : 'text-foreground-secondary'
           }`}
         >
           {notification.title}
         </p>
         {notification.body && (
-          <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">
+          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
             {notification.body}
           </p>
         )}
         {notification.createdAt && (
-          <p className="text-[10px] text-slate-300 mt-1">
+          <p className="text-[10px] text-muted-foreground/60 mt-1">
             {notification.createdAt.toDate?.().toLocaleDateString(undefined, {
               month: 'short',
               day: 'numeric',
@@ -132,7 +132,7 @@ export function NotificationBell({ shareToken }: NotificationBellProps) {
           className="relative h-10 w-10 sm:h-9 sm:w-9 rounded-full"
           aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
         >
-          <Bell className="w-4 h-4 text-slate-600" />
+          <Bell className="w-4 h-4 text-foreground-secondary" />
           {unreadCount > 0 && (
             <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-violet-600 px-1 text-[10px] font-bold text-white">
               {unreadCount > 9 ? '9+' : unreadCount}
@@ -143,11 +143,11 @@ export function NotificationBell({ shareToken }: NotificationBellProps) {
 
       <DropdownMenuContent
         align="end"
-        className="w-80 sm:w-96 p-0 rounded-xl shadow-xl border border-slate-200/60 max-h-[70vh] overflow-hidden"
+        className="w-80 sm:w-96 p-0 rounded-xl shadow-xl border border-border/60 max-h-[70vh] overflow-hidden"
       >
         {/* Header */}
-        <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-900">Notifications</h3>
+        <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-foreground">Notifications</h3>
           {unreadCount > 0 && (
             <button
               onClick={() => markAllAsRead()}
@@ -159,11 +159,11 @@ export function NotificationBell({ shareToken }: NotificationBellProps) {
         </div>
 
         {/* List */}
-        <div className="overflow-y-auto max-h-[50vh] divide-y divide-slate-100">
+        <div className="overflow-y-auto max-h-[50vh] divide-y divide-border">
           {notifications.length === 0 ? (
             <div className="py-10 text-center">
-              <Bell className="w-8 h-8 text-slate-200 mx-auto mb-2" />
-              <p className="text-sm text-slate-400">No notifications yet</p>
+              <Bell className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">No notifications yet</p>
             </div>
           ) : (
             notifications.map((n) => (

@@ -82,9 +82,9 @@ const AssessmentReport = () => {
   if (loading) {
     return (
       <AppShell title="Assessment report">
-        <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl">
+        <div className="flex flex-col items-center justify-center py-20 bg-background rounded-xl">
           <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-          <p className="text-sm font-medium text-slate-400">Loading Assessment...</p>
+          <p className="text-sm font-medium text-muted-foreground">Loading Assessment...</p>
         </div>
       </AppShell>
     );
@@ -93,7 +93,7 @@ const AssessmentReport = () => {
   if (!formData || !scores) {
     return (
       <AppShell title="Assessment report">
-        <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-700">
+        <div className="space-y-4 rounded-lg border border-border bg-background p-6 text-sm text-foreground-secondary">
           <p>{error ?? 'Assessment not available.'}</p>
           <Button onClick={() => {
             // CRITICAL: Clear all assessment modes to prevent data bleed
@@ -130,9 +130,9 @@ const AssessmentReport = () => {
   if (!plan) {
     return (
       <AppShell title="Assessment report">
-        <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl">
+        <div className="flex flex-col items-center justify-center py-20 bg-background rounded-xl">
           <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-          <p className="text-sm font-medium text-slate-400">Generating Report...</p>
+          <p className="text-sm font-medium text-muted-foreground">Generating Report...</p>
         </div>
       </AppShell>
     );
@@ -184,7 +184,7 @@ const AssessmentReport = () => {
             <Button
               variant="default"
               size="sm"
-              className="h-9 rounded-lg bg-slate-900 text-white font-medium gap-1.5"
+              className="h-9 rounded-lg bg-foreground text-white font-medium gap-1.5"
               onClick={() => setShareModalOpen(true)}
               disabled={shareLoading}
             >
@@ -221,12 +221,12 @@ const AssessmentReport = () => {
           { label: 'Report' },
         ]} />
         <div className="flex items-center justify-between">
-          <h1 className="text-base sm:text-lg font-bold text-slate-900 truncate">
+          <h1 className="text-base sm:text-lg font-bold text-foreground truncate">
             {formData.fullName || 'Assessment'}
           </h1>
           <button
             onClick={() => setPreviewingClientView((v) => !v)}
-            className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 transition-colors shrink-0 ml-3"
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground-secondary transition-colors shrink-0 ml-3"
           >
             <Eye className="h-3.5 w-3.5" />
             {previewingClientView ? 'Back to coach view' : 'Preview client view'}
@@ -248,7 +248,7 @@ const AssessmentReport = () => {
               <button
                 type="button"
                 onClick={() => setVersionSelectorExpanded(true)}
-                className="text-xs font-medium text-slate-500 hover:text-slate-700"
+                className="text-xs font-medium text-muted-foreground hover:text-foreground-secondary"
               >
                 Compare versions ({versionSelector.totalCount})
               </button>
@@ -273,9 +273,9 @@ const AssessmentReport = () => {
         )}
         <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-10 pb-8 sm:pb-12">
           <Suspense fallback={
-            <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl">
+            <div className="flex flex-col items-center justify-center py-20 bg-background rounded-xl">
               <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-              <p className="text-sm font-medium text-slate-400">Generating Report...</p>
+              <p className="text-sm font-medium text-muted-foreground">Generating Report...</p>
             </div>
           }>
             {previewingClientView ? (
