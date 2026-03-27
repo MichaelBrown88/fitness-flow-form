@@ -41,6 +41,13 @@ import { handleLogOnboardingStep } from './onboardingAnalytics';
 import { computeTeamMetrics } from './teamMetrics';
 import { assertRateLimit, buildRateLimitKey } from './rateLimit';
 import {
+  handleCreateRemoteAssessmentToken,
+  handleGetRemoteAssessmentSession,
+  handleGetRemotePostureUploadUrl,
+  handleSubmitRemoteAssessmentFields,
+  REMOTE_ASSESSMENT_MVP,
+} from './remoteAssessment';
+import {
   handleLifestyleCheckinCreated,
   handleClientSubmissionCreated,
   handleInviteAccepted,
@@ -591,6 +598,9 @@ export const exportClientData = onCall(
 export const getTeamMetrics = onCall(
   { enforceAppCheck: false, cors: CORS_ORIGINS, timeoutSeconds: 60 },
   async (request) => {
+    const db = admin.firestore();
+    const key = buildRateLimitKey('team_metrics', request.auth?.uid, request.rawRequest?.ip);
+    await assertRateLimit(db, key, { maxRequests: 40, windowSeconds: 60 });
     const { orgId } = (request.data ?? {}) as { orgId?: string };
     if (!orgId) throw new Error('orgId is required.');
     return computeTeamMetrics(request, { orgId });
@@ -1035,5 +1045,56 @@ export const repairClientProfiles = onCall(
     admin.firestore(); // ensure app is initialised
     console.info(`[repairClientProfiles] fixed=${fixed} skipped=${skipped}`);
     return { success: true, fixed, skipped, results };
+  },
+);
+
+export const createRemoteAssessmentToken = onCall({ enforceAppCheck: false }, async (request) => {
+  const db = admin.firestore();
+  const key = buildRateLimitKey('remoteMint', request.auth?.uid, request.rawRequest?.ip);
+  await assertRateLimit(db, key, { maxRequests: 10, windowSeconds: 60 });
+  return handleCreateRemoteAssessmentToken(request);
+});
+
+export const getRemoteAssessmentSession = onCall(
+  { enforceAppCheck: false, invoker: 'public' },
+  async (request) => {
+    const db = admin.firestore();
+    const key = buildRateLimitKey('remotePeek', undefined, request.rawRequest?.ip);
+    await assertRateLimit(db, key, { maxRequests: 40, windowSeconds: 60 });
+    return handleGetRemoteAssessmentSession(request);
+  },
+);
+
+export const submitRemoteAssessmentFields = onCall(
+  { enforceAppCheck: false, invoker: 'public' },
+  async (request) => {
+    if (!REMOTE_ASSESSMENT_MVP) {
+      throw new HttpsError('failed-precondition', 'Remote assessment MVP is not enabled.');
+    }
+    const db = admin.firestore();
+    const token =
+      request.data && typeof (request.data as { token?: string }).token === 'string'
+        ? (request.data as { token: string }).token.slice(0, 32)
+        : 'unknown';
+    const key = buildRateLimitKey('remoteSubmit', token, request.rawRequest?.ip);
+    await assertRateLimit(db, key, { maxRequests: 25, windowSeconds: 60 });
+    return handleSubmitRemoteAssessmentFields(request);
+  },
+);
+
+export const getRemotePostureUploadUrl = onCall(
+  { enforceAppCheck: false, invoker: 'public' },
+  async (request) => {
+    if (!REMOTE_ASSESSMENT_MVP) {
+      throw new HttpsError('failed-precondition', 'Remote assessment MVP is not enabled.');
+    }
+    const db = admin.firestore();
+    const token =
+      request.data && typeof (request.data as { token?: string }).token === 'string'
+        ? (request.data as { token: string }).token.trim().slice(0, 32)
+        : 'unknown';
+    const key = buildRateLimitKey('remotePostureUpload', token, request.rawRequest?.ip);
+    await assertRateLimit(db, key, { maxRequests: 30, windowSeconds: 60 });
+    return handleGetRemotePostureUploadUrl(request);
   },
 );

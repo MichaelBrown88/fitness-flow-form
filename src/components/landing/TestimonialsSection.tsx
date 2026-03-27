@@ -12,7 +12,7 @@ export function TestimonialsSection({ children }: TestimonialsSectionProps) {
   const gridRef = useScrollReveal({ staggerDelay: 150, staggerIndex: 1 });
 
   return (
-    <section className="bg-muted px-6 py-24 dark:bg-background">
+    <section className="bg-muted px-6 pt-16 pb-24 dark:bg-background sm:pt-20 sm:pb-28">
       <div className="max-w-7xl mx-auto">
         <div ref={headerRef}>
           <SectionHeader

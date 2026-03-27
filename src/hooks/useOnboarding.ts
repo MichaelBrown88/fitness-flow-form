@@ -43,6 +43,20 @@ const TOTAL_STEPS = 6;
 const DEFAULT_GRADIENT = 'volt';
 const DEFAULT_SEATS = 15;
 
+function formatOnboardingCompletionError(err: unknown): string {
+  const code =
+    err && typeof err === 'object' && 'code' in err
+      ? String((err as { code: unknown }).code)
+      : '';
+  if (code === 'permission-denied') {
+    return 'We could not save your setup (permissions). Please sign out and try again, or contact support.';
+  }
+  if (err instanceof Error && err.message) {
+    return err.message;
+  }
+  return 'Something went wrong while finishing setup. Please try again.';
+}
+
 export interface UseOnboardingResult {
   step: number;
   isComplete: boolean;
@@ -51,6 +65,7 @@ export interface UseOnboardingResult {
   loading: boolean;
   identityError: string | null;
   accountError: string | null;
+  planError: string | null;
   onboardingData: Partial<OnboardingData>;
 
   handleIdentityNext: (data: Pick<IdentityData, 'firstName' | 'lastName' | 'email'>) => void;
@@ -104,6 +119,7 @@ export function useOnboarding(): UseOnboardingResult {
   const [savingMessage, setSavingMessage] = useState('');
   const [identityError, setIdentityError] = useState<string | null>(null);
   const [accountError, setAccountError] = useState<string | null>(null);
+  const [planError, setPlanError] = useState<string | null>(null);
 
   const [onboardingData, setOnboardingData] = useState<Partial<OnboardingData>>(() => loadSession()?.data ?? {});
   const [inviteOrganizationId, setInviteOrganizationId] = useState<string | null>(null);
@@ -381,6 +397,7 @@ export function useOnboarding(): UseOnboardingResult {
 
     setSaving(true);
     setSavingMessage('Finalising your setup...');
+    setPlanError(null);
 
     try {
       const db = getDb();
@@ -518,7 +535,8 @@ export function useOnboarding(): UseOnboardingResult {
       setStep(TOTAL_STEPS);
     } catch (error) {
       logger.error('Failed to complete onboarding:', error);
-      setSavingMessage('Something went wrong. Please try again.');
+      setPlanError(formatOnboardingCompletionError(error));
+      setSavingMessage('');
     } finally {
       completingRef.current = false;
       setSaving(false);
@@ -527,6 +545,7 @@ export function useOnboarding(): UseOnboardingResult {
 
   const handlePlanNext = useCallback(
     (branding: Pick<BrandingConfig, 'clientSeats' | 'packageTrack' | 'gradientId'>) => {
+      setPlanError(null);
       setOnboardingData((prev) => {
         const finalBranding: BrandingConfig = {
           gradientId: branding.gradientId ?? prev.branding?.gradientId ?? DEFAULT_GRADIENT,
@@ -549,6 +568,7 @@ export function useOnboarding(): UseOnboardingResult {
     loading,
     identityError,
     accountError,
+    planError,
     onboardingData,
 
     handleIdentityNext,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useBlocker, Link, useSearchParams } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import AppShell from '@/components/layout/AppShell';
 import { useSettings } from '@/hooks/useSettings';
 import { Switch } from '@/components/ui/switch';
@@ -20,6 +20,9 @@ import { DefaultCadenceSettings } from '@/components/settings/DefaultCadenceSett
 import { NotificationSettings } from '@/components/settings/NotificationSettings';
 import { OrgSettingSwitch } from '@/components/settings/OrgSettingSwitch';
 import { ROUTES } from '@/constants/routes';
+import { STORAGE_KEYS } from '@/constants/storageKeys';
+import { ASSESSMENT_COPY } from '@/constants/assessmentCopy';
+import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -30,6 +33,15 @@ const Settings = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const gradients = getAllGradients();
+
+  const [coachGuidanceAssessment, setCoachGuidanceAssessment] = useState(true);
+  useEffect(() => {
+    try {
+      setCoachGuidanceAssessment(localStorage.getItem(STORAGE_KEYS.COACH_GUIDANCE_IN_ASSESSMENT) !== '0');
+    } catch {
+      setCoachGuidanceAssessment(true);
+    }
+  }, []);
 
   // Check if user is an organization admin (coaches have limited access)
   const isAdmin = profile?.role === 'org_admin';
@@ -62,15 +74,11 @@ const Settings = () => {
     return localOrgName !== orgSettings.name || localGradientId !== (orgSettings.gradientId || 'volt');
   }, [orgSettings, localOrgName, localGradientId]);
 
-  const blocker = useBlocker(brandingDirty);
-  useEffect(() => {
-    if (blocker.state !== 'blocked') return;
-    if (window.confirm('You have unsaved branding changes. Leave anyway?')) {
-      blocker.proceed();
-    } else {
-      blocker.reset();
-    }
-  }, [blocker]);
+  const { guardedNavigate } = useUnsavedChangesGuard(
+    brandingDirty,
+    navigate,
+    'You have unsaved branding changes. Leave anyway?',
+  );
 
   const handleSaveOrgInfo = async () => {
     if (!profile?.organizationId) return;
@@ -129,7 +137,7 @@ const Settings = () => {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => navigate(ROUTES.DASHBOARD)}
+          onClick={() => guardedNavigate(ROUTES.DASHBOARD)}
           className="h-9 w-9 sm:h-8 sm:w-8 p-0"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -235,6 +243,28 @@ const Settings = () => {
                     Contact your organization admin to update your profile or change organization settings.
                   </p>
                 )}
+              </div>
+            </section>
+
+            <section className="space-y-4">
+              <div className="rounded-2xl border border-border bg-card p-6 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="space-y-1">
+                  <Label className="text-sm font-bold text-foreground">{ASSESSMENT_COPY.COACH_GUIDANCE_TOGGLE}</Label>
+                  <p className="text-xs text-muted-foreground max-w-md">
+                    When off, the subtle guidance strip is hidden during assessments (this device only).
+                  </p>
+                </div>
+                <Switch
+                  checked={coachGuidanceAssessment}
+                  onCheckedChange={(checked) => {
+                    try {
+                      localStorage.setItem(STORAGE_KEYS.COACH_GUIDANCE_IN_ASSESSMENT, checked ? '1' : '0');
+                    } catch {
+                      // noop
+                    }
+                    setCoachGuidanceAssessment(checked);
+                  }}
+                />
               </div>
             </section>
 

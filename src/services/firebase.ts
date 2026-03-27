@@ -7,7 +7,7 @@ import {
   type Firestore 
 } from 'firebase/firestore';
 import { getAuth, GoogleAuthProvider, OAuthProvider, type Auth } from 'firebase/auth';
-import { getFunctions, type Functions } from 'firebase/functions';
+import { connectFunctionsEmulator, getFunctions, type Functions } from 'firebase/functions';
 import { getStorage as getFirebaseStorageInstance, type FirebaseStorage } from 'firebase/storage';
 import { initializeAppCheck, ReCaptchaV3Provider, type AppCheck } from 'firebase/app-check';
 import { CONFIG } from '@/config';
@@ -137,12 +137,27 @@ try {
 export { db };
 
 export const auth = getAuth(app);
-export const functions = getFunctions(app, CONFIG.FIREBASE.FUNCTIONS_REGION);
 export const storage = getFirebaseStorageInstance(app);
+
+let functionsInstance: Functions | null = null;
+
+export const getFirebaseFunctions = (): Functions => {
+  if (!functionsInstance) {
+    functionsInstance = getFunctions(app, CONFIG.FIREBASE.FUNCTIONS_REGION);
+    if (import.meta.env.DEV && import.meta.env.VITE_USE_FUNCTIONS_EMULATOR === 'true') {
+      const host =
+        (import.meta.env.VITE_FUNCTIONS_EMULATOR_HOST as string | undefined) ?? '127.0.0.1';
+      const port = Number(
+        (import.meta.env.VITE_FUNCTIONS_EMULATOR_PORT as string | undefined) ?? '5001',
+      );
+      connectFunctionsEmulator(functionsInstance, host, port);
+    }
+  }
+  return functionsInstance;
+};
 
 export const getDb = () => db;
 export const getFirebaseAuth = () => auth;
-export const getFirebaseFunctions = () => functions;
 export const getFirebaseStorage = () => storage;
 export const getStorage = () => storage; // Alias for compatibility
 

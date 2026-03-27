@@ -17,14 +17,13 @@ import {
   LandingPaidPlanCard,
   type PricingFeature,
 } from '@/components/landing/LandingPaidPlanCard';
+import { LANDING_COPY } from '@/constants/landingCopy';
 
 const PAID_TRACK_ORDER: PlanPackageTrack[] = ['solo', 'gym'];
 
 const FREE_FEATURES: PricingFeature[] = [
   { text: `${FREE_TIER_MONTHLY_AI_CREDITS} AI scans / month`, included: true },
   { text: 'Clinical Logic Engine & client reports', included: true },
-  { text: 'Custom branding add-on', included: false },
-  { text: 'Priority support', included: false },
 ];
 
 export function LandingPricingPlans() {
@@ -108,6 +107,9 @@ export function LandingPricingPlans() {
             Start free
           </Link>
           <FeatureList features={FREE_FEATURES} />
+          <p className="mt-5 text-xs font-medium leading-relaxed text-foreground-tertiary">
+            {LANDING_COPY.freeTierPaidAddOnsNote}
+          </p>
         </GlassCard>
 
         {PAID_TRACK_ORDER.map((track) => (

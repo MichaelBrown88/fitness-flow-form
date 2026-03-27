@@ -65,7 +65,7 @@ interface ErrorFallbackProps {
  */
 export function ErrorFallback({ error, onRetry, onGoHome }: ErrorFallbackProps) {
   return (
-    <div className="min-h-screen bg-muted/50 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-muted/50 flex items-center justify-center p-6" role="alert">
       <div className="max-w-md w-full bg-background rounded-3xl shadow-xl p-8 text-center">
         <div className="inline-flex items-center justify-center w-16 h-16 bg-rose-50 rounded-2xl mb-6">
           <AlertTriangle className="h-8 w-8 text-rose-500" />
@@ -76,7 +76,7 @@ export function ErrorFallback({ error, onRetry, onGoHome }: ErrorFallbackProps) 
           We encountered an unexpected error. This has been logged and we'll look into it.
         </p>
 
-        {error && process.env.NODE_ENV === 'development' && (
+        {error && import.meta.env.DEV && (
           <div className="mb-6 p-4 bg-muted/50 rounded-xl text-left overflow-auto">
             <p className="text-xs font-mono text-rose-600 break-words">{error.message}</p>
           </div>
@@ -84,13 +84,13 @@ export function ErrorFallback({ error, onRetry, onGoHome }: ErrorFallbackProps) 
 
         <div className="flex gap-3 justify-center">
           {onRetry && (
-            <Button onClick={onRetry} variant="outline" className="gap-2">
+            <Button type="button" onClick={onRetry} variant="outline" className="gap-2">
               <RefreshCw className="h-4 w-4" />
               Try Again
             </Button>
           )}
           {onGoHome && (
-            <Button onClick={onGoHome} className="gap-2">
+            <Button type="button" onClick={onGoHome} variant="default" className="gap-2">
               <Home className="h-4 w-4" />
               Go to Dashboard
             </Button>

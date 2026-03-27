@@ -111,6 +111,26 @@ export function generateClientSlug(clientName: string): string {
 }
 
 /**
+ * Resolve canonical `clientName` from the org client summary doc when the UI has a slug-like
+ * value (e.g. ?client= from the dashboard). Returns null if the doc does not exist.
+ */
+export async function resolveClientDisplayNameFromOrgClientDoc(
+  organizationId: string,
+  rawFromUrlOrSession: string,
+): Promise<string | null> {
+  const validOrgId = validateOrganizationId(organizationId, null);
+  const trimmed = normalizeClientName(rawFromUrlOrSession);
+  if (!trimmed) return null;
+  const slug = generateClientSlug(trimmed);
+  const ref = doc(getDb(), ORGANIZATION.clients.doc(validOrgId, slug));
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return null;
+  const data = snap.data() as { clientName?: string };
+  const cn = typeof data.clientName === 'string' ? normalizeClientName(data.clientName) : '';
+  return cn || null;
+}
+
+/**
  * Get a client document reference using organization path
  * Client ID is derived from client name via generateClientSlug
  */

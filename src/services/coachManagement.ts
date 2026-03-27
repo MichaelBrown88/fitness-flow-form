@@ -17,6 +17,46 @@ import type { UserProfile } from '@/types/auth';
 import { COLLECTIONS } from '@/constants/collections';
 import { ORG_COACHES_SUBCOLLECTION_LIMIT } from '@/constants/firestoreQueryLimits';
 
+/** Roles that should have a row under organizations/{orgId}/coaches/{uid}. */
+function shouldSyncCoachRosterRole(role: string | undefined): boolean {
+  return role === 'org_admin' || role === 'coach' || role === 'owner' || role === 'admin';
+}
+
+function coachesSubcollectionRole(profileRole: string): string {
+  if (profileRole === 'org_admin') return 'org_admin';
+  if (profileRole === 'owner') return 'owner';
+  if (profileRole === 'admin') return 'admin';
+  return 'coach';
+}
+
+/**
+ * Keep organizations/{orgId}/coaches/{uid} displayName/email aligned with userProfiles
+ * so Team metrics and Firestore rules stay consistent.
+ */
+export async function syncCoachRosterFromProfile(params: {
+  organizationId: string;
+  uid: string;
+  displayName: string;
+  email: string | null | undefined;
+  profileRole: string;
+}): Promise<void> {
+  const { organizationId, uid, displayName, email, profileRole } = params;
+  const db = getDb();
+  const ref = doc(db, `organizations/${organizationId}/coaches/${uid}`);
+  await setDoc(
+    ref,
+    {
+      uid,
+      displayName: displayName.trim() || 'Coach',
+      email: email ?? null,
+      role: coachesSubcollectionRole(profileRole),
+    },
+    { merge: true },
+  );
+}
+
+export { shouldSyncCoachRosterRole };
+
 /**
  * Add a coach to an organization by email
  * Creates a user profile with role 'coach' if the user exists in Firebase Auth

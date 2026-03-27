@@ -24,6 +24,8 @@ import { GettingStartedChecklist } from '@/components/dashboard/GettingStartedCh
 import { generateTasks, type QueueEntry, type RoadmapNeededInfo, type ProfileGapInfo } from '@/lib/tasks/generateTasks';
 import type { CoachTask } from '@/lib/tasks/generateTasks';
 import { staffPreferredFirstName } from '@/lib/utils/staffDisplayName';
+import { Seo } from '@/components/seo/Seo';
+import { getDashboardSeoForPathname } from '@/constants/seo';
 
 export type DashboardOutletContext = ReturnType<typeof useDashboardData> & {
   tasks: CoachTask[];
@@ -173,15 +175,23 @@ export default function DashboardLayout() {
   }
 
   const coachFirstName = staffPreferredFirstName(profile, dataUser);
+  const dashboardSeo = getDashboardSeoForPathname(location.pathname);
 
   return (
     <ErrorBoundary>
+      <Seo
+        pathname={location.pathname}
+        title={dashboardSeo.title}
+        description={dashboardSeo.description}
+        noindex={dashboardSeo.noindex}
+      />
       <OfflineBanner />
       <AppShell
         title="Dashboard"
         hideTitle
         actions={
           <Button
+            type="button"
             onClick={handleGlobalNewAssessment}
             className="h-9 px-4 rounded-xl font-bold gap-2 text-xs"
           >

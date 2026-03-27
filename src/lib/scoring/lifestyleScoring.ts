@@ -21,6 +21,7 @@ export function scoreLifestyle(form: FormData, age: number, gender: string): Sco
       id: 'lifestyle',
       title: 'Lifestyle Factors',
       score: 0,
+      assessed: false,
       details: [],
       strengths: [],
       weaknesses: []
@@ -137,6 +138,7 @@ export function scoreLifestyle(form: FormData, age: number, gender: string): Sco
     id: 'lifestyle',
     title: 'Lifestyle Factors',
     score: overallScore,
+    assessed: true,
     details,
     strengths,
     weaknesses,

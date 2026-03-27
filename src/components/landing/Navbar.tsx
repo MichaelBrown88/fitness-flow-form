@@ -43,6 +43,19 @@ export function Navbar() {
   }, [location.hash]);
 
   useEffect(() => {
+    if (!isMarketingPath) return;
+    const hash = location.hash.replace(/^#/, '');
+    if (!hash) return;
+    const tryScroll = () => {
+      const el = document.getElementById(hash);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+    tryScroll();
+    const t = window.setTimeout(tryScroll, 150);
+    return () => window.clearTimeout(t);
+  }, [isMarketingPath, location.pathname, location.hash]);
+
+  useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
     };

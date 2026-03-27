@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { LANDING_COPY } from '@/constants/landingCopy';
+import { ROUTES } from '@/constants/routes';
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -124,13 +125,12 @@ export function Footer() {
             <p className="text-sm font-medium text-muted-foreground">
               © {currentYear} One Assess. All rights reserved.
             </p>
-            {/* Subtle platform admin link - barely noticeable */}
             <Link
-              to="/admin/login"
-              className="text-[10px] text-muted-foreground transition-colors hover:text-foreground"
-              aria-label={LANDING_COPY.footerAdminLinkAriaLabel}
+              to={ROUTES.ADMIN_LOGIN}
+              className="text-[10px] font-medium text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
+              aria-label={LANDING_COPY.footerStaffLoginAriaLabel}
             >
-              ·
+              {LANDING_COPY.footerStaffLoginLabel}
             </Link>
           </div>
           <div className="flex gap-6 mt-4 md:mt-0">

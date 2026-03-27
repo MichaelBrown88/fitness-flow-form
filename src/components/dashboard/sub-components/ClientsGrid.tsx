@@ -27,6 +27,8 @@ import type { ClientGroup } from '@/hooks/useDashboardData';
 import type { ReassessmentItem, ReassessmentType } from '@/hooks/useReassessmentQueue';
 import { getPillarLabel } from '@/constants/pillars';
 import { SCORE_COLORS } from '@/lib/scoring/scoreColor';
+import { ASSESSMENT_COPY } from '@/constants/assessmentCopy';
+import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
 
 interface ClientsGridProps {
   loadingData: boolean;
@@ -108,8 +110,13 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
                 <div className="flex items-start justify-between mb-3 sm:mb-4">
                 <div className="min-w-0 flex-1">
                   <h3 className="truncate text-base font-bold text-foreground sm:text-lg">
-                    {group.name}
+                    {formatClientDisplayName(group.name)}
                   </h3>
+                  {group.remoteIntakeAwaitingStudio ? (
+                    <Badge variant="secondary" className="mt-1 text-[10px] font-semibold">
+                      {ASSESSMENT_COPY.AWAITING_STUDIO_BADGE}
+                    </Badge>
+                  ) : null}
                   <p className="mt-1 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
                     {group.assessments.length} assessment{group.assessments.length !== 1 ? 's' : ''}
                   </p>

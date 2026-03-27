@@ -467,29 +467,41 @@ export function useAssessmentSave({
           const previousOverallScore =
             typeof summaryRaw?.previousScore === 'number' ? summaryRaw.previousScore : undefined;
 
-          let previousCategoryScores: Array<{ id: string; score: number }> | undefined;
+          let previousCategoryScores: Array<{ id: string; score: number; assessed: boolean }> | undefined;
+          let previousFullProfileScore: number | null | undefined;
           try {
             const { getSnapshots } = await import('@/services/assessmentHistory');
             const snapshots = await getSnapshots(user.uid, clientName, 2, profile.organizationId);
             if (snapshots.length >= 2 && snapshots[1].formData) {
               const { computeScores } = await import('@/lib/scoring');
               const prevScores = computeScores(snapshots[1].formData);
-              previousCategoryScores = prevScores.categories.map((c) => ({ id: c.id, score: c.score }));
+              previousFullProfileScore = prevScores.fullProfileScore;
+              previousCategoryScores = prevScores.categories.map((c) => ({
+                id: c.id,
+                score: c.score,
+                assessed: c.assessed,
+              }));
             }
           } catch (prevErr) {
             logger.debug('[Assessment] Could not fetch previous category scores (non-fatal):', prevErr);
           }
 
           const { evaluateAchievements } = await import('@/services/achievements');
-          const categoryScores = scores.categories.map((c) => ({ id: c.id, score: c.score }));
+          const categoryScores = scores.categories.map((c) => ({
+            id: c.id,
+            score: c.score,
+            assessed: c.assessed,
+          }));
 
           const unlocked = await evaluateAchievements({
             organizationId: profile.organizationId,
             clientId: resolvedClientId,
             shareToken,
             overallScore: scores.overall,
+            fullProfileScore: scores.fullProfileScore,
             categoryScores,
             previousOverallScore,
+            previousFullProfileScore,
             previousCategoryScores,
             assessmentCount: actualCount,
           });

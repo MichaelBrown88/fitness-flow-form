@@ -19,6 +19,7 @@ import type { PartialAssessmentCategory } from '@/types/client';
 import { getPillarLabel } from '@/constants/pillars';
 import { ROUTES } from '@/constants/routes';
 import { UI_DASHBOARD_CLIENTS } from '@/constants/ui';
+import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
 
 type SortKey = 'name' | 'lastAssessed' | 'score';
 type SortDir = 'asc' | 'desc';
@@ -93,7 +94,15 @@ function computeNextDue(
       ? orgInterval
       : BASE_CADENCE_INTERVALS[pillar];
 
-    const baseDate = client.pillarDates?.[pillar] ?? effectiveLatest;
+    const pillarSpecific = client.pillarDates?.[pillar];
+    let baseDate = pillarSpecific ?? effectiveLatest;
+    if (
+      pillarSpecific &&
+      effectiveLatest &&
+      pillarSpecific.getTime() < effectiveLatest.getTime()
+    ) {
+      baseDate = effectiveLatest;
+    }
     if (!baseDate) continue;
 
     const dueDate = new Date(baseDate.getTime() + interval * 24 * 60 * 60 * 1000);
@@ -134,7 +143,13 @@ const ScoreBadge: React.FC<{ score: number }> = ({ score }) => {
 };
 
 const TrendIndicator: React.FC<{ trend?: number }> = ({ trend }) => {
-  if (trend === undefined || trend === null) return null;
+  if (trend === undefined || trend === null) {
+    return (
+      <span className="text-[10px] font-medium text-muted-foreground tabular-nums" aria-label="No trend data yet">
+        —
+      </span>
+    );
+  }
   if (trend > 0) {
     return (
       <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
@@ -250,7 +265,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
   const colCount = (showCoachColumn ? 8 : 7);
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-4" aria-live="polite">
       {/* Status filter */}
       <div className="flex items-center gap-1">
         {STATUS_FILTER_OPTIONS.map(opt => (
@@ -359,7 +374,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                     </td>
                     <td className="px-3 py-4 text-xs font-semibold text-foreground sm:px-4 sm:text-sm md:px-6">
                       <span className="flex items-center gap-2">
-                        {client.name}
+                        {formatClientDisplayName(client.name)}
                         {isPaused && <span className="text-[10px] font-bold text-muted-foreground">Paused</span>}
                         {isArchived && <span className="text-[10px] font-bold text-muted-foreground">Archived</span>}
                       </span>
@@ -469,7 +484,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                       className="h-4 w-4 shrink-0 cursor-pointer rounded border-border text-primary focus:ring-ring"
                     />
                     <p className="truncate text-sm font-semibold text-foreground">
-                      {client.name}
+                      {formatClientDisplayName(client.name)}
                       {isPaused && <span className="ml-2 text-[10px] font-bold text-muted-foreground">Paused</span>}
                       {isArchived && <span className="ml-2 text-[10px] font-bold text-muted-foreground">Archived</span>}
                     </p>

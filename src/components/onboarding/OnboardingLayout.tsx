@@ -21,6 +21,8 @@ interface OnboardingLayoutProps {
   onBack?: () => void;
   /** Optional contextual content for the left panel (desktop only) */
   leftContent?: React.ReactNode;
+  /** Full-screen busy overlay over the form column — keeps step children mounted (e.g. account fields). */
+  blockingOverlay?: { message: string } | null;
 }
 
 export function OnboardingLayout({
@@ -29,6 +31,7 @@ export function OnboardingLayout({
   children,
   onBack,
   leftContent,
+  blockingOverlay = null,
 }: OnboardingLayoutProps) {
   const { user, signOut } = useAuth();
 
@@ -53,7 +56,9 @@ export function OnboardingLayout({
             <p className="text-sm text-muted-foreground">
               Step {activeProgressIndex + 1} of {progressSteps.length} —{' '}
               {progressSteps[activeProgressIndex]?.description}
-              <span className="block text-xs text-muted-foreground mt-1">~2 minutes total</span>
+              <span className="block text-xs text-muted-foreground mt-1">
+                {activeProgressIndex === 0 ? '~2 minutes total' : 'Just a few steps left'}
+              </span>
             </p>
           )}
         </div>
@@ -137,10 +142,25 @@ export function OnboardingLayout({
         )}
 
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="relative flex-1 min-h-0 overflow-y-auto">
           <div className="max-w-lg mx-auto px-4 sm:px-6 py-8 sm:py-12">
             {children}
           </div>
+          {blockingOverlay ? (
+            <div
+              className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/85 px-6 backdrop-blur-sm"
+              role="status"
+              aria-busy="true"
+              aria-live="polite"
+            >
+              <span className="sr-only">{blockingOverlay.message}</span>
+              <div
+                className="mb-4 h-10 w-10 rounded-full border-2 border-muted border-t-primary motion-safe:animate-spin"
+                aria-hidden
+              />
+              <p className="text-center text-sm text-muted-foreground">{blockingOverlay.message}</p>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

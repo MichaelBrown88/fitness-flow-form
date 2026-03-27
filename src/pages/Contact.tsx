@@ -116,7 +116,7 @@ export default function Contact() {
                     className="flex w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
                   />
                 </div>
-                <Button type="submit" className="w-full h-12 bg-foreground text-white hover:bg-foreground/90">
+                <Button type="submit" variant="default" className="w-full h-12 font-semibold">
                   Send Message
                 </Button>
               </form>

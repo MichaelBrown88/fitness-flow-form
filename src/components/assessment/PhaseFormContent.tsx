@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { phaseDefinitions, type PhaseField, type PhaseSection } from '@/lib/phaseConfig';
 import { computeScores, buildRoadmap } from '@/lib/scoring';
+import type { ScoreSummary } from '@/lib/scoring/types';
 import { generateCoachPlan, generateBodyCompInterpretation } from '@/lib/recommendations';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -25,6 +26,7 @@ import { logger } from '@/lib/utils/logger';
 import { UI_DRAFT } from '@/constants/ui';
 import { ROUTES } from '@/constants/routes';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
+import { ASSESSMENT_COPY } from '@/constants/assessmentCopy';
 import { ASSESSMENT_SUBMIT_LABELS } from '@/constants/assessment';
 import { isAssessmentComplete, type PartialCategory } from '@/lib/assessmentCompleteness';
 import { AssessmentSidebar } from './AssessmentSidebar';
@@ -43,6 +45,13 @@ type IntakeSection = {
 };
 
 type SectionType = PhaseSection | IntakeSection;
+
+const FALLBACK_SCORE_SUMMARY: ScoreSummary = {
+  overall: 0,
+  fullProfileScore: null,
+  categories: [],
+  synthesis: [],
+};
 
 export const PhaseFormContent = ({ 
   demoTrigger, 
@@ -71,6 +80,15 @@ export const PhaseFormContent = ({
   }, []);
 
   const activeClientName = clientNameFromStorage || formData.fullName || '';
+
+  const [coachGuidanceOn, setCoachGuidanceOn] = useState(true);
+  useEffect(() => {
+    try {
+      setCoachGuidanceOn(localStorage.getItem(STORAGE_KEYS.COACH_GUIDANCE_IN_ASSESSMENT) !== '0');
+    } catch {
+      setCoachGuidanceOn(true);
+    }
+  }, []);
   
   const flow = useAssessmentFlow({ formData, orgSettings });
   const {
@@ -190,12 +208,12 @@ export const PhaseFormContent = ({
     setSidebarOpen(false);
   };
   
-  const scores = useMemo(() => {
+  const scores = useMemo((): ScoreSummary => {
     try {
       return computeScores(formData);
     } catch (e) {
       logger.error('Error computing scores:', e);
-      return { overall: 0, categories: [], synthesis: [] };
+      return FALLBACK_SCORE_SUMMARY;
     }
   }, [formData]);
   
@@ -518,6 +536,12 @@ export const PhaseFormContent = ({
         <div className={`mx-auto ${activePhase?.id === 'P7' ? 'max-w-none' : 'max-w-3xl'} space-y-8`}>
 
           {/* Draft recovery banner */}
+          {coachGuidanceOn && !isPartialAssessment && activePhase.id !== 'P7' && (
+            <div className="rounded-lg border border-dashed border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+              {ASSESSMENT_COPY.COACH_GUIDANCE_TOGGLE}
+            </div>
+          )}
+
           {draftBanner && (
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-xl border border-border bg-background p-3 sm:p-4 shadow-sm animate-fade-in-up">
               <div className="flex-1 min-w-0">

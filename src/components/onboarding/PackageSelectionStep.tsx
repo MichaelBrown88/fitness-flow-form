@@ -48,6 +48,10 @@ interface PackageSelectionStepProps {
   region?: Region;
   onNext: (payload: Pick<BrandingConfig, 'clientSeats' | 'packageTrack' | 'gradientId'>) => void;
   onBack: () => void;
+  /** Shown when `completeOnboarding` fails (e.g. Firestore permissions). */
+  completionError?: string | null;
+  /** True while final org/profile writes are in flight. */
+  completingSetup?: boolean;
 }
 
 export type { PlanPackageTrack } from '@/lib/pricing/planPackageTracks';
@@ -74,6 +78,8 @@ export function PackageSelectionStep({
   businessType,
   onNext,
   onBack,
+  completionError = null,
+  completingSetup = false,
 }: PackageSelectionStepProps) {
   const clientCountFromData = data?.clientSeats ?? DEFAULT_PLAN_CLIENT_COUNT;
   const recommendedTrack = businessTypeToTrack(businessType);
@@ -136,6 +142,8 @@ export function PackageSelectionStep({
   };
 
   const handleContinue = async () => {
+    if (completingSetup) return;
+
     const useStripe =
       !isSoloFreeOnboarding &&
       isStripeEnabled &&
@@ -351,9 +359,9 @@ export function PackageSelectionStep({
             </div>
           </div>
 
-          {checkoutError && (
+          {(checkoutError || completionError) && (
             <div className="rounded-lg border border-score-red-muted bg-score-red-light px-3 py-2 text-sm text-score-red-fg">
-              {checkoutError}
+              {completionError || checkoutError}
             </div>
           )}
 
@@ -367,13 +375,18 @@ export function PackageSelectionStep({
             <button
               type="button"
               onClick={handleContinue}
-              disabled={checkoutLoading}
+              disabled={checkoutLoading || completingSetup}
               className="w-full h-12 rounded-xl bg-foreground text-primary-foreground font-bold text-sm hover:opacity-90 transition-apple disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {checkoutLoading ? (
                 <>
                   <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
                   Processing...
+                </>
+              ) : completingSetup ? (
+                <>
+                  <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                  Saving setup…
                 </>
               ) : isSoloFreeOnboarding ? (
                 'Continue on free plan'
@@ -389,7 +402,7 @@ export function PackageSelectionStep({
             <button
               type="button"
               onClick={onBack}
-              disabled={checkoutLoading}
+              disabled={checkoutLoading || completingSetup}
               className="w-full text-center text-xs font-medium text-foreground-tertiary hover:text-foreground-secondary transition-apple disabled:opacity-50"
             >
               Go back

@@ -72,11 +72,11 @@ export function IdentityStep({ data, onNext, error: externalError }: IdentitySte
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-foreground-secondary mb-1.5">Work Email</label>
+          <label className="block text-xs font-bold text-foreground-secondary mb-1.5">Email</label>
           <OnboardingInput
             type="email"
             required
-            placeholder="jane@company.com"
+            placeholder="you@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />

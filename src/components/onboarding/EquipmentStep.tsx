@@ -90,7 +90,7 @@ export function EquipmentStep({ data, onNext, onSkip, onBack }: EquipmentStepPro
           onToggle={() => setScanner(!scanner)}
           icon={Scale}
           title="BIA Scanner"
-          description="BIA analyser (e.g. InBody, Evolt, Tanita) or other connected scales."
+          description="BIA analyzer (e.g. InBody, Evolt, Tanita) or other connected scales."
           activeLabel="Digital integration active"
           inactiveLabel="Tape & skinfold UI enabled"
         />

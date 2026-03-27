@@ -63,16 +63,20 @@ export function CoachReportHeader({ clientName, goals, scores, formData }: Coach
             <div
               key={cat.id}
               className="flex-1 min-w-0 flex flex-col gap-0.5"
-              title={`${niceLabel(cat.id)}: ${cat.score}`}
+              title={
+                cat.assessed
+                  ? `${niceLabel(cat.id)}: ${cat.score}`
+                  : `${niceLabel(cat.id)}: not measured this session`
+              }
             >
               <div className="h-2 bg-muted rounded-full overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-primary transition-all"
-                  style={{ width: `${cat.score}%` }}
+                  className={`h-full rounded-full transition-all ${cat.assessed ? 'bg-primary' : 'bg-transparent'}`}
+                  style={{ width: cat.assessed ? `${cat.score}%` : '0%' }}
                 />
               </div>
               <span className="text-[10px] text-foreground-secondary truncate text-center">
-                {niceLabel(cat.id).split(' ')[0]}
+                {cat.assessed ? niceLabel(cat.id).split(' ')[0] : '—'}
               </span>
             </div>
           ))}

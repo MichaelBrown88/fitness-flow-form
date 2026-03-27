@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 import type { PhaseSection } from '@/lib/phaseConfig';
+import { ASSESSMENT_COPY } from '@/constants/assessmentCopy';
 
 interface AssessmentSidebarProps {
   sidebarOpen: boolean;
@@ -73,6 +74,12 @@ export const AssessmentSidebar = ({
   const activeSections = (activePhase?.sections || []) as PhaseSection[];
   const completedPhases = visiblePhases.filter((_, i) => isPhaseCompleted(i)).length;
   const totalPhases = visiblePhases.filter(p => p.id !== 'P7').length;
+  const phasesWithoutResults = visiblePhases
+    .map((p, i) => ({ p, i }))
+    .filter(({ p }) => p.id !== 'P7');
+  const sessionStepIndex = phasesWithoutResults.findIndex(({ i }) => i === activePhaseIdx);
+  const sessionStepNumber = sessionStepIndex >= 0 ? sessionStepIndex + 1 : 1;
+  const sessionStepTotal = Math.max(phasesWithoutResults.length, 1);
 
   return (
     <>
@@ -105,6 +112,9 @@ export const AssessmentSidebar = ({
           {timeEstimate && (
             <p className="text-[10px] text-muted-foreground mt-1.5 font-medium">{timeEstimate}</p>
           )}
+          <p className="text-[10px] text-muted-foreground mt-1.5 font-medium">
+            {ASSESSMENT_COPY.SESSION_PROGRESS(sessionStepNumber, sessionStepTotal)}
+          </p>
         </div>
 
         {/* Phase list (compact) */}

@@ -43,16 +43,27 @@ service cloud.firestore {
       return !exists(/databases/$(database)/documents/platform/active_impersonations/sessions/$(request.auth.uid));
     }
 
+    // Zero-friction /try flow: org id is `{uid}_sandbox` (see SandboxTrial.tsx)
+    function ownsSandboxOrgId(orgId) {
+      return isAuthenticated() && orgId == request.auth.uid + '_sandbox';
+    }
+
+    function sandboxOrgPayloadValid() {
+      let d = request.resource.data;
+      return d.get('metadata', {}).get('isSandbox', false) == true &&
+        d.get('subscription', {}).get('plan', '') == 'sandbox';
+    }
+
     // Coach belongs to the given org (checked against the coaches subcollection)
     function isOrgCoach(orgId) {
       return isAuthenticated() &&
         exists(/databases/$(database)/documents/organizations/$(orgId)/coaches/$(request.auth.uid));
     }
 
-    // Coach has admin or owner role in the given org
+    // Coach has admin or owner role in the given org (org_admin matches app userProfiles.role)
     function isOrgAdmin(orgId) {
       return isOrgCoach(orgId) &&
-        get(/databases/$(database)/documents/organizations/$(orgId)/coaches/$(request.auth.uid)).data.role in ['owner', 'admin'];
+        get(/databases/$(database)/documents/organizations/$(orgId)/coaches/$(request.auth.uid)).data.role in ['owner', 'admin', 'org_admin'];
     }
 
     // Platform admin has data access to org (owner's org is always comped)
@@ -125,8 +136,10 @@ service cloud.firestore {
     // =========================================================
 
     match /organizations/{orgId} {
-      allow read: if isPlatformAdmin() || isOrgCoach(orgId);
-      allow write: if isPlatformAdmin() || isOrgAdmin(orgId);
+      allow read: if isPlatformAdmin() || isOrgCoach(orgId) || ownsSandboxOrgId(orgId);
+      allow create, update: if isPlatformAdmin() || isOrgAdmin(orgId) ||
+        (ownsSandboxOrgId(orgId) && sandboxOrgPayloadValid());
+      allow delete: if isPlatformAdmin() || isOrgAdmin(orgId);
 
       // Coaches
       match /coaches/{coachId} {
@@ -186,6 +199,19 @@ service cloud.firestore {
         allow update: if isOrgAdmin(orgId) || (isPlatformAdmin() && hasDataAccess(orgId));
         allow delete: if false;
       }
+    }
+
+    // =========================================================
+    // ONBOARDING SESSIONS  (audit / resume — one doc per uid)
+    // =========================================================
+
+    match /onboarding_sessions/{sessionUid} {
+      allow read: if isAuthenticated() && request.auth.uid == sessionUid;
+      // Doc id must match auth uid; userId field prevents cross-user payloads.
+      allow create, update: if isAuthenticated() &&
+        request.auth.uid == sessionUid &&
+        request.resource.data.userId == request.auth.uid;
+      allow delete: if false;
     }
 
     // =========================================================
@@ -379,6 +405,14 @@ service cloud.firestore {
           isOrgCoach(resource.data.organizationId));
       allow create: if aiUsageLogCreateAllowed();
       allow update, delete: if false;
+    }
+
+    // =========================================================
+    // REMOTE ASSESSMENT TOKENS  (Admin SDK / Cloud Functions only)
+    // =========================================================
+
+    match /remoteAssessmentTokens/{tokenId} {
+      allow read, write: if false;
     }
 
     // =========================================================

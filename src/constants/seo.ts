@@ -112,3 +112,37 @@ export const SEO_NOINDEX_BLOG: SeoPageMeta = {
   description: 'Articles on fitness assessment best practices and product updates from One Assess.',
   noindex: true,
 };
+
+const DASHBOARD_SEO_DESCRIPTION =
+  'Coach dashboard: clients, assessments, schedules, and team tools.';
+
+/** Logged-in app shell: noindex + route-specific titles for tabs and bookmarks. */
+export function getDashboardSeoForPathname(pathname: string): SeoPageMeta {
+  const base: SeoPageMeta = {
+    title: 'Dashboard | One Assess',
+    description: DASHBOARD_SEO_DESCRIPTION,
+    noindex: true,
+  };
+  if (pathname.startsWith(ROUTES.DASHBOARD_SCHEDULE)) {
+    return {
+      title: 'Schedule | One Assess',
+      description: 'Reassessment queue and due dates for your clients.',
+      noindex: true,
+    };
+  }
+  if (pathname.startsWith(ROUTES.DASHBOARD_CALENDAR)) {
+    return {
+      title: 'Calendar | One Assess',
+      description: 'Assessment and follow-up calendar.',
+      noindex: true,
+    };
+  }
+  if (pathname.startsWith(ROUTES.DASHBOARD_TEAM)) {
+    return {
+      title: 'Team | One Assess',
+      description: 'Coach roster and team metrics.',
+      noindex: true,
+    };
+  }
+  return base;
+}

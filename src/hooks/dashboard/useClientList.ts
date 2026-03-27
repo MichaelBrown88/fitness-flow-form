@@ -83,6 +83,7 @@ export function useClientList(
         lastAssessmentDate: schedule?.lastAssessmentDate,
         notes: schedule?.notes,
         shareToken: schedule?.shareToken,
+        remoteIntakeAwaitingStudio: item.remoteIntakeAwaitingStudio === true,
       };
     });
 

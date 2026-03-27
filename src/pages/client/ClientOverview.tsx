@@ -19,6 +19,8 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { PostureComparisonCard } from '@/components/client/PostureComparisonCard';
+import { ClientCheckinStrip } from '@/components/client/ClientCheckinStrip';
+import { getClientCheckinHints } from '@/lib/clientCheckinHints';
 import type { ClientDetailOutletContext } from './ClientDetailLayout';
 import { computeScores } from '@/lib/scoring';
 import { generateCoachPlan, generateBodyCompInterpretation, type CoachPlan } from '@/lib/recommendations';
@@ -111,6 +113,8 @@ export default function ClientOverview() {
     snapshots,
   } = ctx;
 
+  const checkinHints = useMemo(() => getClientCheckinHints(profile), [profile]);
+
   const scores = useMemo(
     () => currentAssessment ? computeScores(currentAssessment.formData) : null,
     [currentAssessment],
@@ -137,6 +141,14 @@ export default function ClientOverview() {
 
   return (
     <div className="space-y-8">
+      {profile && checkinHints.length > 0 ? (
+        <ClientCheckinStrip
+          hints={checkinHints}
+          onRun={(id) => {
+            void handleNewAssessment(id === 'lifestyle' ? 'lifestyle' : 'posture');
+          }}
+        />
+      ) : null}
       <CollapsibleSection title="Overview" icon={<TrendingUp className="h-5 w-5 text-primary" />}>
         <div className="grid gap-2 sm:gap-3 grid-cols-2 md:grid-cols-4">
           <div className="rounded-xl bg-muted p-4">

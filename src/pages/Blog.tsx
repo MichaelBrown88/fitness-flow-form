@@ -36,8 +36,8 @@ export default function Blog() {
           </p>
           <p className="text-sm text-muted-foreground">
             Coming soon. In the meantime,{' '}
-            <Link to="/onboarding" className="text-indigo-600 font-medium hover:underline">
-              start your free trial
+            <Link to={ROUTES.SIGNUP} className="text-indigo-600 font-medium hover:underline">
+              create your account
             </Link>{' '}
             to experience One Assess firsthand.
           </p>

@@ -17,7 +17,7 @@ export function LandingCapabilitiesSection() {
   return (
     <section
       id="features"
-      className="relative overflow-hidden border-t border-border/80 bg-background px-6 py-24 dark:border-border dark:bg-background sm:py-32"
+      className="relative overflow-x-hidden border-t border-border/80 bg-background px-6 py-24 dark:border-border dark:bg-background sm:py-32"
     >
       <div
         className="pointer-events-none absolute inset-0 overflow-hidden"

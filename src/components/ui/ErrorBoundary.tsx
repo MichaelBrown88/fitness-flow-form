@@ -19,7 +19,7 @@ function ErrorFallback({ error, resetErrorBoundary }: ErrorFallbackProps) {
   }, [error]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/50 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-muted/50 p-4" role="alert">
       <div className="max-w-md w-full rounded-2xl border border-border bg-background p-8 shadow-xl">
         <div className="flex flex-col items-center text-center space-y-4">
           <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
@@ -31,6 +31,7 @@ function ErrorFallback({ error, resetErrorBoundary }: ErrorFallbackProps) {
           </p>
           <div className="flex gap-3 w-full mt-6">
             <Button
+              type="button"
               variant="outline"
               onClick={() => navigate('/dashboard')}
               className="flex-1"
@@ -38,10 +39,7 @@ function ErrorFallback({ error, resetErrorBoundary }: ErrorFallbackProps) {
               <Home className="w-4 h-4 mr-2" />
               Go to Dashboard
             </Button>
-            <Button
-              onClick={resetErrorBoundary}
-              className="flex-1"
-            >
+            <Button type="button" variant="default" onClick={resetErrorBoundary} className="flex-1">
               Try Again
             </Button>
           </div>

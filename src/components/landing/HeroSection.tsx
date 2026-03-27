@@ -71,7 +71,7 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
               </>
             ) : (
               <>
-                Assess Smarter.
+                Assess Smarter.{' '}
                 <br />
                 <span className={LANDING_H2_ACCENT_LIGHT_READABLE}>Retain Longer.</span>
               </>

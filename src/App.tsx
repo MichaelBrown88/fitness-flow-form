@@ -52,6 +52,7 @@ const Subscribe = lazy(() => import("./pages/Subscribe"));
 const ClientRoadmap = lazy(() => import("./pages/ClientRoadmap"));
 const PublicRoadmapViewer = lazy(() => import("./pages/PublicRoadmapViewer"));
 const PublicLifestyleCheckin = lazy(() => import("./pages/PublicLifestyleCheckin"));
+const PublicRemoteAssessment = lazy(() => import("./pages/PublicRemoteAssessment"));
 const PublicPreSessionCheckin = lazy(() => import("./pages/PublicPreSessionCheckin"));
 const RequestErasure = lazy(() => import("./pages/RequestErasure"));
 const SandboxTrial = lazy(() => import("./pages/SandboxTrial"));
@@ -185,6 +186,7 @@ const App = () => (
                       path="/r/:token/lifestyle"
                       element={<PublicLifestyleCheckin />}
                     />
+                    <Route path="/remote/:token" element={<PublicRemoteAssessment />} />
                     <Route
                       path="/r/:token/erasure"
                       element={<RequestErasure />}

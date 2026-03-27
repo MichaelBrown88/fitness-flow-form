@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import { getInitialFormDataFromSession } from '@/contexts/form/initialFormFromSession';
+import type { AssessmentPlan } from '@/lib/types/assessmentPlan';
 
 export interface FormData {
   /** Client Profile */
@@ -215,6 +216,17 @@ export interface FormData {
   /** Phase 6 — Assessment Complete */
   coachReport: string;
   clientReport: string;
+
+  /**
+   * Scoped phases for this run. When absent/undefined, navigation uses full legacy plan (all phases).
+   */
+  assessmentPlan?: AssessmentPlan | null;
+  /**
+   * How the coach intends to run the session (remote MVP uses this for copy + dashboard hints).
+   */
+  assessmentIntakeMode?: 'studio' | 'send_link_first' | null;
+  /** When true, show extra on-screen guidance during onboarding self-assessment */
+  coachGuidanceEnabled?: boolean;
 }
 
 interface FormContextType {
@@ -415,6 +427,9 @@ const initialFormData: FormData = {
   dynamometerForce: '',
   coachReport: '',
   clientReport: '',
+  assessmentPlan: undefined,
+  assessmentIntakeMode: null,
+  coachGuidanceEnabled: true,
   bodyCompMethod: 'analyzer',
   showAnalyzerFields: 'yes',
   showBodyMeasurements: 'no',
@@ -427,14 +442,13 @@ export const FormProvider = ({ children }: { children: ReactNode }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 5;
 
-  const updateFormData = (data: Partial<FormData>) => {
+  const updateFormData = useCallback((data: Partial<FormData>) => {
     setFormData((prev) => ({ ...prev, ...data }));
-  };
+  }, []);
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setFormData(initialFormData);
     setCurrentStep(1);
-    // Clear any session storage artifacts from partial/edit/draft modes
     try {
       sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
       sessionStorage.removeItem(STORAGE_KEYS.PREFILL_CLIENT);
@@ -443,7 +457,7 @@ export const FormProvider = ({ children }: { children: ReactNode }) => {
     } catch {
       // noop
     }
-  };
+  }, []);
 
   const contextValue = React.useMemo(() => ({
     formData,
@@ -452,7 +466,7 @@ export const FormProvider = ({ children }: { children: ReactNode }) => {
     currentStep,
     setCurrentStep,
     totalSteps
-  }), [formData, currentStep, totalSteps]);
+  }), [formData, updateFormData, resetForm, currentStep, totalSteps]);
 
   return (
     <FormContext.Provider value={contextValue}>

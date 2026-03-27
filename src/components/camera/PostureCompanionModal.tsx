@@ -192,7 +192,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
               <ol className="space-y-3 text-sm text-foreground-secondary mb-4">
                 <li className="flex gap-3">
                   <span className="font-bold text-primary">1.</span>
-                  <span>Open your iPhone camera app</span>
+                  <span>Open your phone&apos;s camera app</span>
                 </li>
                 <li className="flex gap-3">
                   <span className="font-bold text-primary">2.</span>

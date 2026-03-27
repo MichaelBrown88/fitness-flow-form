@@ -19,6 +19,8 @@ import { ROUTES } from '@/constants/routes';
 import { logger } from '@/lib/utils/logger';
 import { Seo } from '@/components/seo/Seo';
 import { requireSeoForPath } from '@/constants/seo';
+import { Button } from '@/components/ui/button';
+import { formatSandboxBootstrapError } from '@/lib/utils/sandboxTrialErrors';
 
 const trySeo = requireSeoForPath(ROUTES.TRY);
 
@@ -67,7 +69,8 @@ export default function SandboxTrial() {
           doc(db, 'userProfiles', uid),
           {
             organizationId: orgId,
-            role: 'owner',
+            role: 'org_admin',
+            displayName: 'Coach',
             onboardingCompleted: false,
             isAnonymous: true,
           },
@@ -77,7 +80,7 @@ export default function SandboxTrial() {
         // Coaches subcollection entry — required for isOrgCoach() Firestore rule
         await setDoc(
           doc(db, `organizations/${orgId}/coaches/${uid}`),
-          { role: 'owner', uid },
+          { role: 'org_admin', uid, displayName: 'Coach' },
           { merge: true }
         );
 
@@ -89,7 +92,7 @@ export default function SandboxTrial() {
       } catch (err) {
         logger.error('[SandboxTrial] Bootstrap failed', err);
         if (!cancelled) {
-          setError('Could not start your trial. Please try again.');
+          setError(formatSandboxBootstrapError(err));
         }
       }
     }
@@ -100,20 +103,22 @@ export default function SandboxTrial() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-8 text-center">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-8 text-center bg-background">
         <Seo
           pathname={ROUTES.TRY}
           title={trySeo.title}
           description={trySeo.description}
           noindex={trySeo.noindex}
         />
-        <p className="text-sm text-muted-foreground">{error}</p>
-        <button
-          onClick={() => window.location.reload()}
-          className="h-10 px-6 rounded-xl bg-foreground text-white text-sm font-bold"
+        <div
+          role="alert"
+          className="max-w-md rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-foreground"
         >
+          {error}
+        </div>
+        <Button type="button" variant="default" className="h-10 px-6 font-semibold" onClick={() => window.location.reload()}>
           Try again
-        </button>
+        </Button>
       </div>
     );
   }

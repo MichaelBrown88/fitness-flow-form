@@ -1522,7 +1522,11 @@ export async function backfillAchievements(): Promise<void> {
       overallScore?: number;
     };
     const scores = computeScores(formData);
-    const categoryScores = scores.categories.map(c => ({ id: c.id, score: c.score }));
+    const categoryScores = scores.categories.map((c) => ({
+      id: c.id,
+      score: c.score,
+      assessed: c.assessed,
+    }));
     const overallScore = latestSession.overallScore ?? scores.overall;
 
     const prevSession = sessions.length > 1
@@ -1531,16 +1535,28 @@ export async function backfillAchievements(): Promise<void> {
           overallScore?: number;
         })
       : null;
-    const prevCategoryScores = prevSession?.formData && Object.keys(prevSession.formData).length > 0
-      ? computeScores(prevSession.formData as import('@/contexts/FormContext').FormData).categories.map(c => ({ id: c.id, score: c.score }))
-      : undefined;
+    let prevCategoryScores:
+      | Array<{ id: string; score: number; assessed: boolean }>
+      | undefined;
+    let previousFullProfileScore: number | null | undefined;
+    if (prevSession?.formData && Object.keys(prevSession.formData).length > 0) {
+      const prevScores = computeScores(prevSession.formData as import('@/contexts/FormContext').FormData);
+      previousFullProfileScore = prevScores.fullProfileScore;
+      prevCategoryScores = prevScores.categories.map((c) => ({
+        id: c.id,
+        score: c.score,
+        assessed: c.assessed,
+      }));
+    }
 
     const unlocked = await evaluateAchievements({
       organizationId: orgId,
       clientId: slug,
       overallScore,
+      fullProfileScore: scores.fullProfileScore,
       categoryScores,
       previousOverallScore: prevSession?.overallScore ?? undefined,
+      previousFullProfileScore,
       previousCategoryScores: prevCategoryScores,
       assessmentCount: sessions.length,
     });

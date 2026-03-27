@@ -26,4 +26,7 @@ export const STORAGE_KEYS = {
 
   // Assessment phase (for back/refresh persistence)
   ASSESSMENT_PHASE: 'assessment_phase',
+
+  /** '1' = show extra coach guidance during assessments; '0' = hide */
+  COACH_GUIDANCE_IN_ASSESSMENT: 'coachGuidanceInAssessment',
 } as const;

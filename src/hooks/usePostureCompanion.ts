@@ -121,9 +121,23 @@ export function usePostureCompanion({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const heartbeatCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Create Session when modal opens
+  // New live session whenever the modal opens (avoids stale QR / companion state)
   useEffect(() => {
-    if (!isOpen || session) return;
+    if (!isOpen) {
+      setSession(null);
+      setIsOnline(false);
+      setConnectionState('offline');
+      setError(null);
+      setProcessingStatus({
+        front: 'idle',
+        back: 'idle',
+        'side-left': 'idle',
+        'side-right': 'idle',
+      });
+      setPreviewImage(null);
+      return;
+    }
+
     let cancelled = false;
     const init = async () => {
       try {
@@ -144,7 +158,7 @@ export function usePostureCompanion({
     return () => {
       cancelled = true;
     };
-  }, [isOpen, session, profile]);
+  }, [isOpen, profile]);
 
   // Pre-warm MediaPipe singleton when modal opens (while user scans QR code)
   // This initializes the singleton instance ONCE, keeping it alive for all detections

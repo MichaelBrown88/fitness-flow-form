@@ -5,7 +5,7 @@ import { logger } from '@/lib/utils/logger';
  * Hydrate assessment form state from sessionStorage (edit, draft, prefill).
  * Generic to avoid circular imports with FormContext.
  */
-export function getInitialFormDataFromSession<T extends Record<string, unknown>>(base: T): T {
+export function getInitialFormDataFromSession<T extends object>(base: T): T {
   try {
     const editData = sessionStorage.getItem(STORAGE_KEYS.EDIT_ASSESSMENT);
     if (editData) {
@@ -14,8 +14,10 @@ export function getInitialFormDataFromSession<T extends Record<string, unknown>>
         if (parsed.editType?.startsWith('partial-')) {
           const category = parsed.editType.replace('partial-', '');
           try {
+            // Session JSON is untyped; we only read known string keys for partial-assessment UX.
+            const patch = parsed.formData as Record<string, unknown>;
             const clientName =
-              typeof parsed.formData.fullName === 'string' ? parsed.formData.fullName : '';
+              typeof patch.fullName === 'string' ? patch.fullName : '';
             sessionStorage.setItem(
               STORAGE_KEYS.PARTIAL_ASSESSMENT,
               JSON.stringify({ category, clientName }),

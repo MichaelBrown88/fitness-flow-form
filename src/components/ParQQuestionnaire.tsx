@@ -109,10 +109,10 @@ const ParQQuestionnaire: React.FC<ParQQuestionnaireProps> = ({ onExitParQ, onCom
     .every(question => formData[question.id as keyof typeof formData] !== '');
 
   useEffect(() => {
-    if (allQuestionsAnswered) {
+    if (allQuestionsAnswered && formData.parqQuestionnaire !== 'completed') {
       updateFormData({ parqQuestionnaire: 'completed' });
     }
-  }, [allQuestionsAnswered, updateFormData]);
+  }, [allQuestionsAnswered, formData.parqQuestionnaire, updateFormData]);
 
   // Keep index in bounds when visibleQuestions length changes
   useEffect(() => {

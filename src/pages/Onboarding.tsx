@@ -34,6 +34,7 @@ export default function Onboarding() {
     loading,
     identityError,
     accountError,
+    planError,
     onboardingData,
     handleIdentityNext,
     handleBusinessNext,
@@ -95,25 +96,8 @@ export default function Onboarding() {
     );
   }
 
-  if (saving) {
-    return (
-      <>
-        {funnelSeo}
-        <OnboardingLayout progressSteps={progress.steps} activeProgressIndex={progress.activeIndex} onBack={undefined}>
-        <div
-          className="flex flex-col items-center justify-center py-16"
-          role="status"
-          aria-busy="true"
-          aria-live="polite"
-        >
-          <span className="sr-only">{savingMessage}</span>
-          <div className="w-10 h-10 border-2 border-muted border-t-primary rounded-full motion-safe:animate-spin mb-4" aria-hidden />
-          <p className="text-sm text-muted-foreground">{savingMessage}</p>
-        </div>
-      </OnboardingLayout>
-      </>
-    );
-  }
+  const blockingOverlay =
+    saving && savingMessage ? { message: savingMessage } : null;
 
   const renderStep = () => {
     switch (step) {
@@ -171,6 +155,8 @@ export default function Onboarding() {
             region={onboardingData.businessProfile?.region ?? 'GB'}
             onNext={handlePlanNext}
             onBack={handleBack}
+            completionError={planError}
+            completingSetup={saving}
           />
         );
       case 5:
@@ -181,6 +167,8 @@ export default function Onboarding() {
             region={onboardingData.businessProfile?.region ?? 'GB'}
             onNext={handlePlanNext}
             onBack={handleBack}
+            completionError={planError}
+            completingSetup={saving}
           />
         );
       default:
@@ -195,7 +183,8 @@ export default function Onboarding() {
         <OnboardingLayout
           progressSteps={progress.steps}
           activeProgressIndex={progress.activeIndex}
-          onBack={step > 0 ? handleBack : undefined}
+          onBack={step > 0 && !saving ? handleBack : undefined}
+          blockingOverlay={blockingOverlay}
         >
           {renderStep()}
         </OnboardingLayout>

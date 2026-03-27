@@ -16,25 +16,16 @@ import { logger } from '@/lib/utils/logger';
 
 const MAX_ACHIEVEMENTS = 50;
 
-/**
- * Get the org-scoped achievements collection for a client.
- * Path: organizations/{orgId}/clients/{clientId}/achievements
- *
- * Falls back to the legacy token-scoped path when clientId is unavailable.
- */
+const PILLAR_IDS = ['bodyComp', 'cardio', 'strength', 'movementQuality', 'lifestyle'] as const;
+
 function achievementsCollection(organizationId: string, clientId: string) {
   return collection(getDb(), ORGANIZATION.clientAchievements.collection(organizationId, clientId));
 }
 
-/**
- * Legacy: get the token-scoped achievements collection for backward compat reads.
- * Path: publicReports/{shareToken}/achievements
- */
 function legacyAchievementsCollection(shareToken: string) {
   return collection(getDb(), COLLECTIONS.PUBLIC_REPORTS, shareToken, COLLECTIONS.ACHIEVEMENTS);
 }
 
-/** Fetch all existing achievements for a client */
 async function getExistingAchievements(organizationId: string, clientId: string): Promise<Map<string, Achievement>> {
   const q = query(achievementsCollection(organizationId, clientId), limit(MAX_ACHIEVEMENTS));
   const snap = await getDocs(q);
@@ -45,33 +36,34 @@ async function getExistingAchievements(organizationId: string, clientId: string)
   return map;
 }
 
+export type CategoryScoreInput = {
+  id: string;
+  score: number;
+  assessed: boolean;
+};
+
 interface EvaluationInput {
   organizationId: string;
-  /** Stable client UUID — used as the Firestore path key for achievement storage */
   clientId: string;
-  /** Legacy share token — kept for compatibility with `populateClientData` and public views */
   shareToken?: string;
   overallScore: number;
-  categoryScores: Array<{ id: string; score: number }>;
+  /** Session mean; milestones and holistic trophies use fullProfileScore when set */
+  fullProfileScore: number | null;
+  categoryScores: CategoryScoreInput[];
   previousOverallScore?: number;
-  previousCategoryScores?: Array<{ id: string; score: number }>;
+  previousFullProfileScore?: number | null;
+  previousCategoryScores?: CategoryScoreInput[];
   assessmentCount: number;
 }
 
-/** IDs of achievements that were newly unlocked during this evaluation */
 export type UnlockedAchievement = { id: string; title: string; description: string };
 
-/**
- * Evaluate which achievements should be unlocked or updated for a client.
- * Called after each assessment save. Returns newly unlocked achievements.
- *
- * Storage: publicReports/{shareToken}/achievements/{achievementId}
- */
 export async function evaluateAchievements(input: EvaluationInput): Promise<UnlockedAchievement[]> {
   const {
     organizationId,
     clientId,
     overallScore,
+    fullProfileScore,
     categoryScores,
     previousOverallScore,
     previousCategoryScores,
@@ -86,8 +78,12 @@ export async function evaluateAchievements(input: EvaluationInput): Promise<Unlo
     let changesMade = false;
 
     const scoreMap = new Map(categoryScores.map((c) => [c.id, c.score]));
+    const assessedMap = new Map(categoryScores.map((c) => [c.id, c.assessed]));
     const prevScoreMap = previousCategoryScores
       ? new Map(previousCategoryScores.map((c) => [c.id, c.score]))
+      : null;
+    const prevAssessedMap = previousCategoryScores
+      ? new Map(previousCategoryScores.map((c) => [c.id, c.assessed]))
       : null;
 
     for (const def of ACHIEVEMENT_DEFINITIONS) {
@@ -99,31 +95,36 @@ export async function evaluateAchievements(input: EvaluationInput): Promise<Unlo
       let newProgress = current?.currentValue ?? 0;
       let shouldUnlock = false;
 
-      // Streaks (assessment count)
       if (def.type === 'streak') {
         newProgress = assessmentCount;
         shouldUnlock = assessmentCount >= def.threshold;
       }
 
-      // Milestones (overall score thresholds)
       if (def.type === 'milestone' && def.category === 'progress') {
-        newProgress = overallScore;
-        shouldUnlock = overallScore >= def.threshold;
+        if (fullProfileScore === null) {
+          newProgress = 0;
+          shouldUnlock = false;
+        } else {
+          newProgress = fullProfileScore;
+          shouldUnlock = fullProfileScore >= def.threshold;
+        }
       }
 
-      // Trophies
       if (def.id === 'trophy_first_assessment') {
         newProgress = assessmentCount;
         shouldUnlock = assessmentCount >= 1;
       }
 
-      if (def.id === 'trophy_all_improved' && prevScoreMap && prevScoreMap.size > 0) {
+      if (def.id === 'trophy_all_improved' && prevScoreMap && prevAssessedMap && prevScoreMap.size > 0) {
         const improved = categoryScores.filter((c) => {
+          if (!c.assessed) return false;
+          if (!prevAssessedMap.get(c.id)) return false;
           const prev = prevScoreMap.get(c.id);
           return prev !== undefined && c.score > prev;
         });
         newProgress = improved.length;
-        shouldUnlock = improved.length >= 5;
+        const allFiveAssessed = PILLAR_IDS.every((id) => assessedMap.get(id) === true);
+        shouldUnlock = allFiveAssessed && improved.length >= 5;
       }
 
       if (def.id === 'trophy_biggest_leap' && previousOverallScore !== undefined) {
@@ -133,36 +134,35 @@ export async function evaluateAchievements(input: EvaluationInput): Promise<Unlo
       }
 
       if (def.id === 'trophy_full_house') {
-        const above70 = categoryScores.filter((c) => c.score >= 70).length;
-        newProgress = above70;
-        shouldUnlock = above70 >= 5;
+        const assessedPillars = categoryScores.filter((c) => c.assessed);
+        const above70 = assessedPillars.filter((c) => c.score >= 70);
+        newProgress = above70.length;
+        shouldUnlock = assessedPillars.length >= 5 && above70.length >= 5;
       }
 
-      // Pillar-specific: per-pillar score >= 80
       const pillarScoreMatch = def.id.match(/^pillar_(\w+)_80$/);
       if (pillarScoreMatch) {
         const pillarId = pillarScoreMatch[1];
+        const assessed = assessedMap.get(pillarId) === true;
         const pillarScore = scoreMap.get(pillarId) ?? 0;
-        newProgress = pillarScore;
-        shouldUnlock = pillarScore >= def.threshold;
+        newProgress = assessed ? pillarScore : 0;
+        shouldUnlock = assessed && pillarScore >= def.threshold;
       }
 
-      // Pillar: weakest link (requires 2+ assessments)
       if (def.id === 'pillar_weakest_link') {
+        const assessedCount = categoryScores.filter((c) => c.assessed).length;
         newProgress = assessmentCount;
-        if (assessmentCount >= 2 && categoryScores.length > 0) {
-          shouldUnlock = true;
-        }
+        shouldUnlock = assessmentCount >= 2 && assessedCount >= 2 && categoryScores.length > 0;
       }
 
-      // Pillar: biggest single-pillar gain (15+ points)
-      if (def.id === 'pillar_biggest_gain' && prevScoreMap && prevScoreMap.size > 0) {
+      if (def.id === 'pillar_biggest_gain' && prevScoreMap && prevAssessedMap && prevScoreMap.size > 0) {
         let maxGain = 0;
         for (const cs of categoryScores) {
+          if (!cs.assessed) continue;
+          if (!prevAssessedMap.get(cs.id)) continue;
           const prev = prevScoreMap.get(cs.id);
-          if (prev !== undefined) {
-            maxGain = Math.max(maxGain, cs.score - prev);
-          }
+          if (prev === undefined) continue;
+          maxGain = Math.max(maxGain, cs.score - prev);
         }
         newProgress = Math.max(maxGain, current?.currentValue ?? 0);
         shouldUnlock = maxGain >= def.threshold;
@@ -209,22 +209,23 @@ export async function evaluateAchievements(input: EvaluationInput): Promise<Unlo
   return newlyUnlocked;
 }
 
-/**
- * Populate achievements + notifications for ALL public reports that have formData.
- * Dead simple: read every public report, compute scores, write achievements, write notifications.
- * Dev-only utility -- call from browser console: populateClientData()
- */
 export async function populateClientData(): Promise<number> {
   if (!import.meta.env.DEV) {
     logger.warn('[Populate] Called in production — skipping');
     return 0;
   }
 
-  const { collection: fbCollection, query: fbQuery, getDocs: fbGetDocs, limit: fbLimit, addDoc, serverTimestamp: fbTimestamp } = await import('firebase/firestore');
+  const {
+    collection: fbCollection,
+    query: fbQuery,
+    getDocs: fbGetDocs,
+    limit: fbLimit,
+    addDoc,
+    serverTimestamp: fbTimestamp,
+  } = await import('firebase/firestore');
   const { computeScores } = await import('@/lib/scoring');
   const db = getDb();
 
-  // Get ALL public reports (no filter — just grab them all)
   const reportsRef = fbCollection(db, COLLECTIONS.PUBLIC_REPORTS);
   const allQ = fbQuery(reportsRef, fbLimit(200));
   const snap = await fbGetDocs(allQ);
@@ -249,30 +250,30 @@ export async function populateClientData(): Promise<number> {
 
     try {
       const scores = computeScores(formData);
-      const categoryScores = scores.categories.map((c: { id: string; score: number }) => ({ id: c.id, score: c.score }));
+      const categoryScores = scores.categories.map((c) => ({
+        id: c.id,
+        score: c.score,
+        assessed: c.assessed,
+      }));
 
-      // Every client with a public report has done at least 1 assessment
       const assessmentCount = 1;
 
-      // Use shareToken as a fallback clientId for the populate utility (DEV only)
       const unlocked = await evaluateAchievements({
         organizationId: orgId,
         clientId: (data.assessmentId as string) || shareToken,
         shareToken,
         overallScore: scores.overall,
+        fullProfileScore: scores.fullProfileScore,
         categoryScores,
         assessmentCount,
       });
 
       totalUnlocked += unlocked.length;
 
-      // Write notifications for this client
       const notifRef = fbCollection(db, COLLECTIONS.PUBLIC_REPORTS, shareToken, COLLECTIONS.NOTIFICATIONS);
 
-      // Check if notifications already exist
       const existingNotifs = await fbGetDocs(fbQuery(notifRef, fbLimit(1)));
       if (existingNotifs.empty) {
-        // "Your report is ready" notification
         await addDoc(notifRef, {
           type: 'assessment_complete',
           title: 'Your assessment results are ready',
@@ -283,7 +284,6 @@ export async function populateClientData(): Promise<number> {
           shareToken,
         });
 
-        // Achievement unlock notifications for each unlocked achievement
         for (const ach of unlocked) {
           await addDoc(notifRef, {
             type: 'system',
@@ -296,9 +296,13 @@ export async function populateClientData(): Promise<number> {
           });
         }
 
-        logger.info(`[Populate] ${clientName} (${shareToken.substring(0, 8)}...): score=${scores.overall}, ${unlocked.length} achievements, notifications written`);
+        logger.info(
+          `[Populate] ${clientName} (${shareToken.substring(0, 8)}...): score=${scores.overall}, ${unlocked.length} achievements, notifications written`,
+        );
       } else {
-        logger.info(`[Populate] ${clientName} (${shareToken.substring(0, 8)}...): score=${scores.overall}, ${unlocked.length} achievements (notifications already exist)`);
+        logger.info(
+          `[Populate] ${clientName} (${shareToken.substring(0, 8)}...): score=${scores.overall}, ${unlocked.length} achievements (notifications already exist)`,
+        );
       }
 
       processed++;
@@ -311,7 +315,6 @@ export async function populateClientData(): Promise<number> {
   return totalUnlocked;
 }
 
-// Expose on window for dev console usage
 if (import.meta.env.DEV) {
   (window as unknown as Record<string, unknown>).populateClientData = populateClientData;
 }

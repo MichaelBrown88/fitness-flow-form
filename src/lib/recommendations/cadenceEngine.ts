@@ -100,6 +100,35 @@ export function generateCadenceRecommendations(
   // 4. Apply Finding-Based Overrides (Critical Path - highest priority)
   applyFindingOverrides(schedule, formData, scoreData, warnings);
 
+  // 5. Org default: de-emphasise pillars the org does not actively track
+  const tracked = orgDefaults?.activePillars;
+  if (tracked && tracked.length > 0) {
+    (Object.keys(schedule) as PartialAssessmentCategory[]).forEach((pillar) => {
+      if (!tracked.includes(pillar)) {
+        const current = schedule[pillar];
+        schedule[pillar] = {
+          ...current,
+          intervalDays: Math.max(current.intervalDays, 180),
+          priority: 'low',
+          reason: `${current.reason} (not in your org’s active pillar set)`,
+        };
+      }
+    });
+  }
+
+  // 6. Modular session: pillars not measured this visit get a quieter cadence nudge
+  for (const cat of scoreData.categories) {
+    if (cat.assessed) continue;
+    const pillar = SCORE_TO_PILLAR_MAP[cat.id];
+    if (!pillar || !schedule[pillar]) continue;
+    const current = schedule[pillar];
+    schedule[pillar] = {
+      ...current,
+      intervalDays: Math.max(current.intervalDays, 90),
+      reason: `${current.reason} (not measured this visit)`,
+    };
+  }
+
   return { schedule, warnings };
 }
 

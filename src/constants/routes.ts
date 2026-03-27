@@ -37,6 +37,8 @@ export const ROUTES = {
   /** Gym trial expired — full-page upgrade (Everfit-style entry to checkout). */
   SUBSCRIBE: '/subscribe',
   ONBOARDING: '/onboarding',
+  /** Marketing alias; same onboarding flow as `/onboarding`. */
+  SIGNUP: '/signup',
   TRY: '/try',
   CLIENT_ROADMAP: '/coach/clients/:name/roadmap',
 

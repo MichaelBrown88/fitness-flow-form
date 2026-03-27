@@ -296,10 +296,13 @@ export function scoreMovementQuality(form: FormData, age: number, gender: string
     }
   });
 
+  const assessed = allCategoryScores.length > 0;
+
   return {
     id: 'movementQuality',
     title: 'Movement Quality',
     score,
+    assessed,
     details,
     strengths,
     weaknesses,

@@ -2,6 +2,8 @@
  * Coach-visible marketing copy for the public landing. Single source for hero/CTA consistency.
  */
 
+import { FREE_TIER_CLIENT_LIMIT } from '@/constants/pricing';
+
 /** H2 keyword accent on light sections (uses product gradient tokens). */
 export const LANDING_H2_ACCENT_LIGHT =
   'text-transparent bg-clip-text bg-gradient-to-r from-gradient-from to-gradient-to';
@@ -64,7 +66,11 @@ export const LANDING_COPY = {
     'Professional assessments, secure client links, and progress between sessions. Solo is free without a card; gyms get a 14-day trial, then subscribe when you are ready.',
   ctaSectionMicrocopy: 'No card required to start on the solo free tier.',
   mobileStickyCta: 'Start free',
-  footerAdminLinkAriaLabel: 'Platform admin login',
+  /** Visible footer link to platform staff sign-in (not org admin). */
+  footerStaffLoginLabel: 'Staff login',
+  footerStaffLoginAriaLabel: 'Platform staff sign-in',
+  /** Shown under the free pricing tier feature list. */
+  freeTierPaidAddOnsNote: 'Custom branding and priority support are available on paid plans.',
 
   coachPositioningPill: 'Your Expertise',
   coachPositioningTitleBefore: "We Don't Replace Your ",
@@ -232,8 +238,7 @@ export const LANDING_FAQ_ITEMS: readonly LandingFaqItem[] = [
   },
   {
     question: 'Can I try it before committing?',
-    answer:
-      'Solo coaches can use the free plan forever for up to 2 clients, no card required. Gyms and studios get a 14-day trial with a generous client cap during the trial; subscribe when you are ready to continue.',
+    answer: `Solo coaches can use the free plan forever for up to ${FREE_TIER_CLIENT_LIMIT} clients, no card required. Gyms and studios get a 14-day trial with a generous client cap. When the trial ends, subscribe to keep full access.`,
   },
   {
     question: 'How do I invite my team members?',

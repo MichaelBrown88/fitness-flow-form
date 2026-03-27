@@ -7,6 +7,7 @@ import React from 'react';
 import OverallRadarChart from './OverallRadarChart';
 import { circleColor, niceLabel, CATEGORY_HEX } from './ClientReportConstants';
 import type { ScoreSummary } from '@/lib/scoring';
+import { ASSESSMENT_COPY } from '@/constants/assessmentCopy';
 
 interface ClientReportScoreOverviewProps {
   scores: ScoreSummary;
@@ -24,19 +25,29 @@ export function ClientReportScoreOverview({
   orderedCats,
   overallRadarData,
 }: ClientReportScoreOverviewProps) {
+  const headlineScore = scores.fullProfileScore ?? scores.overall;
+  const scoreLabel =
+    scores.fullProfileScore !== null ? ASSESSMENT_COPY.FULL_PROFILE_SCORE : ASSESSMENT_COPY.SESSION_RESULTS_TITLE;
+
   return (
     <section className="space-y-10 py-4">
       <div className="flex flex-col items-center text-center space-y-6">
         <div className="space-y-2">
           <h2 className="text-3xl font-extrabold tracking-tight text-foreground">Your Fitness Score</h2>
-          <p className="text-muted-foreground font-medium">A comprehensive snapshot of your current physical condition.</p>
+          <p className="text-muted-foreground font-medium">
+            {scores.fullProfileScore !== null
+              ? 'A comprehensive snapshot across all five health pillars.'
+              : ASSESSMENT_COPY.PROFILE_PREVIEW}
+          </p>
         </div>
         
         {/* Overall score centered and prominent */}
-        <div className={`flex h-40 w-40 items-center justify-center rounded-full border-8 bg-card shadow-xl ${circleColor(scores.overall)} transition-transform hover:scale-105 duration-300`}>
-          <div className="flex flex-col items-center">
-            <span className="text-5xl font-bold">{scores.overall}</span>
-            <span className="text-[10px] font-black uppercase tracking-[0.15em] opacity-70">Overall</span>
+        <div className={`flex h-40 w-40 items-center justify-center rounded-full border-8 bg-card shadow-xl ${circleColor(headlineScore)} transition-transform hover:scale-105 duration-300`}>
+          <div className="flex flex-col items-center px-2">
+            <span className="text-5xl font-bold">{headlineScore}</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.15em] opacity-70 text-center leading-tight">
+              {scoreLabel}
+            </span>
           </div>
         </div>
       </div>
