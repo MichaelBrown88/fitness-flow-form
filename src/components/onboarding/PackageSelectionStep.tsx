@@ -183,14 +183,14 @@ export function PackageSelectionStep({
                     isRecommended && 'ring-2 ring-primary/30 border-primary/40',
                   )}
                 >
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-on-brand-tint">
                     <Icon className="h-5 w-5" aria-hidden />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-bold text-foreground">{title}</span>
                       {isRecommended && (
-                        <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
+                        <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-on-brand-tint">
                           Suggested
                         </span>
                       )}

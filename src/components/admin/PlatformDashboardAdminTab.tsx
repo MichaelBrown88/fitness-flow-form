@@ -377,7 +377,7 @@ export function PlatformDashboardAdminTab({
                             setMaintenanceFeatures(checked ? [...new Set([...base, key])] : base.filter((k) => k !== key));
                           }}
                         />
-                        <span className="text-xs text-muted-foreground/60">{FEATURE_NAMES[key.toUpperCase()] || key}</span>
+                        <span className="text-xs text-muted-foreground">{FEATURE_NAMES[key.toUpperCase()] || key}</span>
                       </label>
                     );
                   })}
@@ -432,7 +432,7 @@ export function PlatformDashboardAdminTab({
                     <tr key={entry.id} className="border-b border-border/50 hover:bg-muted/20">
                       <td className="px-5 py-3 text-muted-foreground whitespace-nowrap">{entry.timestamp.toLocaleString()}</td>
                       <td className="px-5 py-3 text-white font-mono text-xs">{entry.action.replace(/_/g, ' ')}</td>
-                      <td className="px-5 py-3 text-muted-foreground/60">{entry.target ?? '—'}</td>
+                      <td className="px-5 py-3 text-muted-foreground">{entry.target ?? '—'}</td>
                       <td className="px-5 py-3 text-muted-foreground font-mono text-xs truncate max-w-[120px]" title={entry.adminUid}>
                         {entry.adminUid.slice(0, 8)}…
                       </td>
@@ -443,7 +443,7 @@ export function PlatformDashboardAdminTab({
             </div>
             {hasMoreAuditLogs && (
               <div className="px-5 py-4 flex justify-center border-t border-border">
-                <Button variant="outline" size="sm" onClick={loadMoreAuditLogs} className="border-border text-muted-foreground/60 hover:bg-foreground/90">
+                <Button variant="outline" size="sm" onClick={loadMoreAuditLogs} className="border-border text-muted-foreground hover:bg-foreground/90">
                   Load more
                 </Button>
               </div>

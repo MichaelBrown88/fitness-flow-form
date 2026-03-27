@@ -53,7 +53,7 @@ export function CoachPositioningSection() {
                 }`}
               >
                 <span
-                  className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary dark:bg-primary/20 dark:text-primary"
+                  className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-on-brand-tint dark:bg-primary/20"
                   aria-hidden
                 >
                   <Check className="size-4" strokeWidth={2.5} />

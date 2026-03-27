@@ -87,7 +87,7 @@ function Hero({
       {/* Efficacy proof sentence */}
       {efficacyPct !== null && (
         <div className="border-l-2 border-emerald-500 pl-4">
-          <p className="text-sm text-muted-foreground/60 leading-relaxed">
+          <p className="text-sm text-muted-foreground leading-relaxed">
             <span className="text-emerald-400 font-semibold text-base">{efficacyPct}%</span>
             {' '}of clients who return for a second assessment show a measurable improvement in overall score.
             No competitor captures all five health domains in one structured record.
@@ -137,7 +137,7 @@ function OutcomeProof({
               return (
                 <div key={row.key} className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground/60">{row.label}</span>
+                    <span className="text-muted-foreground">{row.label}</span>
                     <span className="tabular-nums text-muted-foreground">
                       {pct}% <span className="text-foreground-secondary">({row.n})</span>
                     </span>
@@ -276,7 +276,7 @@ function PopulationSnapshot({
           {avgScores.map(({ pillar, label, avg }) => (
             <div key={pillar} className="space-y-1">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground/60">{label}</span>
+                <span className="text-muted-foreground">{label}</span>
                 <span className="tabular-nums font-semibold text-muted-foreground">{avg}</span>
               </div>
               <div className="h-1.5 bg-admin-bg rounded-full overflow-hidden">
@@ -302,7 +302,7 @@ function PopulationSnapshot({
             {topGoals.map(g => {
               const pct = totalGoalVotes > 0 ? Math.round((g.value / totalGoalVotes) * 100) : 0;
               return (
-                <div key={g.name} className="flex items-center justify-between text-xs text-muted-foreground/60">
+                <div key={g.name} className="flex items-center justify-between text-xs text-muted-foreground">
                   <span className="truncate mr-3">{g.name}</span>
                   <span className="tabular-nums text-muted-foreground shrink-0">{pct}%</span>
                 </div>
@@ -317,7 +317,7 @@ function PopulationSnapshot({
               Clinical risk signals
             </p>
             {topPatterns.map(p => (
-              <div key={p.pattern} className="flex items-center justify-between text-xs text-muted-foreground/60">
+              <div key={p.pattern} className="flex items-center justify-between text-xs text-muted-foreground">
                 <span className="truncate mr-3">{p.pattern}</span>
                 <span className="tabular-nums text-muted-foreground shrink-0">{p.pct}%</span>
               </div>
@@ -454,7 +454,7 @@ function PillarGains({ improvements }: { improvements: Record<string, number> })
           const barPct = Math.round((Math.abs(i.delta) / maxAbs) * 100);
           return (
             <div key={i.key} className="flex items-center gap-3">
-              <p className="w-36 text-xs text-muted-foreground/60 shrink-0">{i.label}</p>
+              <p className="w-36 text-xs text-muted-foreground shrink-0">{i.label}</p>
               <div className="flex-1 bg-foreground/90 rounded-full h-1 overflow-hidden">
                 <div
                   className={`h-full rounded-full ${i.delta >= 0 ? 'bg-emerald-500' : 'bg-red-500'}`}
@@ -582,7 +582,7 @@ function CorrelationIntelligence({ findings }: { findings: CorrelationFinding[] 
             f.strength === 'strong'
               ? 'text-indigo-400'
               : f.strength === 'moderate'
-              ? 'text-muted-foreground/60'
+              ? 'text-muted-foreground'
               : 'text-muted-foreground';
           return (
             <div key={i} className="flex items-start gap-3">
@@ -823,7 +823,7 @@ export function PlatformDashboardDataIntelligenceTab() {
           size="sm"
           onClick={handleCompute}
           disabled={computing}
-          className="text-muted-foreground hover:text-muted-foreground/60 text-xs h-7 px-2"
+          className="text-muted-foreground hover:text-foreground-secondary text-xs h-7 px-2"
         >
           {computing
             ? <RefreshCw className="w-3 h-3 mr-1.5 animate-spin" />
@@ -884,7 +884,7 @@ export function PlatformDashboardDataIntelligenceTab() {
       <div className="space-y-5">
         <button
           type="button"
-          className="flex items-center gap-2 text-xs text-muted-foreground hover:text-muted-foreground/60 transition-colors"
+          className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground-secondary transition-colors"
           onClick={() => setShowFullAnalysis(v => !v)}
         >
           {showFullAnalysis

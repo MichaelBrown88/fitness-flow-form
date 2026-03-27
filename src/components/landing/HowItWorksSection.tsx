@@ -56,7 +56,7 @@ export function HowItWorksSection() {
                   <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
                     Movement Screen
                   </span>
-                  <span className="rounded-full bg-gradient-light px-2 py-1 text-[10px] font-bold text-gradient-dark dark:text-foreground">
+                  <span className="rounded-full bg-gradient-light px-2 py-1 text-[10px] font-bold text-on-brand-tint">
                     Step 4/12
                   </span>
                 </div>
@@ -94,7 +94,7 @@ export function HowItWorksSection() {
               {/* UI Mockup: Gap Analysis */}
               <div className="mb-6 rounded-2xl border border-border bg-card p-5 shadow-sm dark:border-border dark:bg-background-secondary/90">
                 <div className="mb-4 flex items-center gap-2">
-                  <div className="rounded-lg bg-primary/15 p-1.5 text-gradient-dark dark:text-primary">
+                  <div className="rounded-lg bg-primary/15 p-1.5 text-on-brand-tint">
                     <Heart size={14} />
                   </div>
                   <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
@@ -109,7 +109,7 @@ export function HowItWorksSection() {
                   </div>
                   <ArrowRight className="text-foreground-tertiary" size={16} />
                   <div className="text-center">
-                    <div className="text-xl font-black text-gradient-dark dark:text-primary">65</div>
+                    <div className="text-xl font-black text-on-brand-tint">65</div>
                     <div className="text-[10px] font-bold uppercase text-muted-foreground">Target</div>
                   </div>
                 </div>
@@ -152,7 +152,7 @@ export function HowItWorksSection() {
                     <span className="text-[10px] font-bold uppercase text-foreground">Body Comp Scan</span>
                   </div>
                   <div className="relative flex flex-col items-center gap-2 overflow-hidden rounded-lg border border-primary/35 bg-gradient-light/90 p-3 dark:bg-primary/25">
-                    <Activity size={16} className="text-gradient-dark dark:text-primary" />
+                    <Activity size={16} className="text-on-brand-tint" />
                     <span className="text-[10px] font-bold uppercase text-foreground">Log Fitness</span>
                     <div className="absolute right-0 top-0 h-2 w-2 rounded-full border border-white bg-primary dark:border-background" />
                   </div>

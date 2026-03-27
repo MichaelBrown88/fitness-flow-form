@@ -66,7 +66,7 @@ export function FieldControl({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {fieldOptions?.map((option, idx) => {
               const isSelected = value === option.value;
-              const colorClass = idx === 0 ? 'hover:border-border hover:bg-muted/50 text-foreground-secondary border-border' : 'hover:border-primary/20 hover:bg-brand-light text-primary border-primary/10';
+              const colorClass = idx === 0 ? 'hover:border-border hover:bg-muted/50 text-foreground-secondary border-border' : 'hover:border-primary/20 hover:bg-brand-light hover:text-on-brand-tint text-foreground-secondary border-primary/10';
               const inputId = `${field.id}-${option.value}`;
               
               return (
@@ -105,7 +105,7 @@ export function FieldControl({
             </div>
             <div className="space-y-2">
               <h4 className="text-xl font-bold text-foreground">AI Posture Analysis</h4>
-              <p className="text-primary/70 text-sm font-medium max-w-xs mx-auto">
+              <p className="text-foreground-secondary text-sm font-medium max-w-xs mx-auto">
                 {formData.postureAiResults 
                   ? "Scan complete! You can re-scan if needed or continue to the next step."
                   : "Connect your iPhone to perform a multi-view posture scan with real-time AI grading."}

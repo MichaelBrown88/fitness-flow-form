@@ -82,6 +82,15 @@ Prefer the shared classes and tokens so motion feels consistent:
 4. Motion: using shared classes or duration/easing tokens?
 5. Charts: using `chartColors` / `hsl(var(--…))` from `index.css`, not arbitrary hex?
 
+## Text on brand-tint surfaces (legibility)
+
+Pale brand washes (`bg-primary/5`–`/25`, `bg-brand-light`, `bg-gradient-light`) share a hue with `text-primary`, so saturated primary text on those surfaces often fails contrast.
+
+- **Do not** pair `text-primary` (or `text-primary/60`–`/70`) with those backgrounds for readable labels, chips, or icons.
+- **Do** use the component utility **`text-on-brand-tint`** defined in [`src/index.css`](../src/index.css) (`@layer components`): light mode uses `hsl(var(--gradient-dark))`; under `.dark` it uses `hsl(var(--foreground))` so copy stays legible across org gradients.
+- **Neutral surfaces** (`bg-card`, `bg-background`): keep using `text-primary` for accents; use `text-foreground-secondary` or `text-muted-foreground` for de-emphasised readable copy instead of stacking opacity on primary.
+- **Muted text:** prefer `text-muted-foreground` or `text-foreground-tertiary` for readable helper copy; reserve `text-muted-foreground/60` for purely decorative separators or icons where contrast requirements are relaxed.
+
 ## Token mapping (replace raw Tailwind greys / brand hues)
 
 | Intent | Prefer |
@@ -90,7 +99,8 @@ Prefer the shared classes and tokens so motion feels consistent:
 | Primary text | `text-foreground` |
 | Secondary / helper text | `text-muted-foreground` |
 | Cards / surfaces | `bg-card`, `border-border` |
-| Brand accent (light UI) | `text-primary`, `bg-primary/10`, `border-primary/30` |
+| Text on pale brand wash | `text-on-brand-tint` (with `bg-primary/*`, `bg-brand-light`, `bg-gradient-light`) |
+| Brand accent (light UI) | `text-primary` on **neutral** surfaces only; `bg-primary/10`, `border-primary/30` for chrome |
 | Score / traffic colours | `bg-score-green`, `text-score-amber-fg`, or `hsl(var(--score-red))` (see `index.css` and `chartColors.ts`) |
 | Admin distribution bars | `hsl(var(--chart-distribution-orange))`, `--chart-distribution-yellow`, score + `--gradient-from` |
 

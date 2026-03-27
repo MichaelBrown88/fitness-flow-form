@@ -23,7 +23,7 @@ export function CardInfoDrawer({ title, children }: CardInfoDrawerProps) {
           e.stopPropagation();
           setOpen(true);
         }}
-        className="absolute top-3 right-3 z-10 p-1 rounded-full text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+        className="absolute top-3 right-3 z-10 p-1 rounded-full text-muted-foreground hover:text-foreground-secondary transition-colors"
         aria-label={`More info about ${title}`}
       >
         <Info className="w-3.5 h-3.5" />

@@ -62,7 +62,7 @@ export default function ClientAchievementsTab() {
   if (!clientId) {
     return (
       <div className="rounded-2xl border border-border bg-muted p-8 text-center max-w-md mx-auto">
-        <Trophy className="h-10 w-10 text-muted-foreground/60 mx-auto mb-3" />
+        <Trophy className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
         <p className="text-sm font-medium text-foreground-secondary">Achievements pending migration</p>
         <p className="text-xs text-muted-foreground mt-1">
           Run <code className="bg-muted px-1 rounded">backfillClientIds()</code> then{' '}

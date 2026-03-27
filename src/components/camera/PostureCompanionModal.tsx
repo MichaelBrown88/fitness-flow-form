@@ -239,7 +239,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                             className="w-full h-full object-cover" 
                             alt={`${view} placeholder`}
                           />
-                          <Camera className="absolute h-6 w-6 text-muted-foreground/60" />
+                          <Camera className="absolute h-6 w-6 text-muted-foreground" />
                         </>
                       )}
                       

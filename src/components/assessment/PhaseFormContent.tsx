@@ -564,7 +564,7 @@ export const PhaseFormContent = ({
           <section className="space-y-2">
             <div className="flex items-center justify-between">
               {isPartialAssessment ? (
-                <span className="text-[10px] font-black uppercase tracking-[0.15em] bg-brand-light px-2 py-0.5 rounded text-primary">Quick Update: {partialCategory}</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.15em] bg-brand-light px-2 py-0.5 rounded text-on-brand-tint">Quick Update: {partialCategory}</span>
               ) : <span />}
               {activePhase.id !== 'P7' && (
                 <button
@@ -620,7 +620,7 @@ export const PhaseFormContent = ({
               </React.Suspense>
             )}
           </section>
-          <footer className="pt-12 pb-8 text-center text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/60">
+          <footer className="pt-12 pb-8 text-center text-[10px] font-black uppercase tracking-[0.15em] text-foreground-tertiary">
             {orgSettings?.name || 'One Assess'} Professional v2.1 • Confidential Client Data
           </footer>
         </div>

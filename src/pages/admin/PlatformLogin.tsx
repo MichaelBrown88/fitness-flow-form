@@ -237,7 +237,7 @@ const PlatformLogin = () => {
           {step === 'email' && (
             <form onSubmit={handleEmailSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-muted-foreground/60">Admin Email</Label>
+                <Label htmlFor="email" className="text-muted-foreground">Admin Email</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
@@ -273,12 +273,12 @@ const PlatformLogin = () => {
           {step === 'password' && (
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="text-center mb-4">
-                <p className="text-muted-foreground/60">Welcome back, {adminName}</p>
+                <p className="text-muted-foreground">Welcome back, {adminName}</p>
                 <p className="text-xs text-muted-foreground">{email}</p>
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="password" className="text-muted-foreground/60">Password</Label>
+                <Label htmlFor="password" className="text-muted-foreground">Password</Label>
                 <div className="relative">
                   <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
@@ -333,12 +333,12 @@ const PlatformLogin = () => {
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-indigo-600/20 mb-3">
                   <KeyRound className="w-6 h-6 text-indigo-400" />
                 </div>
-                <p className="text-muted-foreground/60">Welcome, {adminName}!</p>
+                <p className="text-muted-foreground">Welcome, {adminName}!</p>
                 <p className="text-xs text-muted-foreground">Set your password to continue</p>
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="new-password" className="text-muted-foreground/60">Create Password</Label>
+                <Label htmlFor="new-password" className="text-muted-foreground">Create Password</Label>
                 <Input
                   id="new-password"
                   type="password"
@@ -353,7 +353,7 @@ const PlatformLogin = () => {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="confirm-password" className="text-muted-foreground/60">Confirm Password</Label>
+                <Label htmlFor="confirm-password" className="text-muted-foreground">Confirm Password</Label>
                 <Input
                   id="confirm-password"
                   type="password"
@@ -396,13 +396,13 @@ const PlatformLogin = () => {
                 <Mail className="w-6 h-6 text-emerald-400" />
               </div>
               <div>
-                <p className="text-muted-foreground/60">Reset email sent!</p>
+                <p className="text-muted-foreground">Reset email sent!</p>
                 <p className="text-xs text-muted-foreground mt-1">Check {email} for instructions</p>
               </div>
               <Button
                 onClick={() => setStep('password')}
                 variant="outline"
-                className="w-full border-border text-muted-foreground/60 hover:bg-foreground/90"
+                className="w-full border-border text-muted-foreground hover:bg-foreground/90"
               >
                 Back to login
               </Button>
@@ -414,7 +414,7 @@ const PlatformLogin = () => {
         <div className="mt-6 text-center">
           <Link 
             to="/" 
-            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-muted-foreground/60 transition-colors"
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-muted-foreground transition-colors"
           >
             <ArrowLeft className="w-3 h-3" />
             Back to One Assess

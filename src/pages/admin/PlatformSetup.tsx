@@ -125,7 +125,7 @@ const PlatformSetup = () => {
               <Button
                 onClick={() => setStatus('ready')}
                 variant="outline"
-                className="mt-2 border-border text-muted-foreground/60"
+                className="mt-2 border-border text-muted-foreground"
               >
                 Try Again
               </Button>

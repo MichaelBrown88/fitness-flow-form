@@ -37,7 +37,7 @@ const InlineHint = ({ id, title, description }: InlineHintProps) => {
 
   return (
     <div className="flex items-start gap-3 rounded-xl border border-gradient-medium/50 bg-gradient-light/70 px-4 py-3 text-sm">
-      <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+      <Info className="mt-0.5 h-4 w-4 shrink-0 text-on-brand-tint" />
       <div className="min-w-0 flex-1">
         <p className="font-semibold text-foreground">{title}</p>
         <p className="mt-0.5 text-foreground">{description}</p>
@@ -45,7 +45,7 @@ const InlineHint = ({ id, title, description }: InlineHintProps) => {
       <button
         type="button"
         onClick={handleDismiss}
-        className="shrink-0 rounded-lg p-1 text-primary/70 transition-colors hover:bg-primary/10 hover:text-primary"
+        className="shrink-0 rounded-lg p-1 text-on-brand-tint transition-colors hover:bg-primary/10 hover:opacity-90"
         aria-label="Dismiss hint"
       >
         <X className="h-3.5 w-3.5" />

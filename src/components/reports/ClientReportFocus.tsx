@@ -50,13 +50,13 @@ export function ClientReportFocus({ clientScript }: ClientReportFocusProps) {
           <div className="relative z-10 space-y-6">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-2xl bg-card/10 flex items-center justify-center">
-                <AlertCircle className="h-5 w-5 text-primary/60" />
+                <AlertCircle className="h-5 w-5 text-primary" />
               </div>
               <h3 className="text-xl font-bold">2. Why This Matters</h3>
             </div>
             <div className="space-y-4">
               {clientScript.whyItMatters.map((stake: string, i: number) => (
-                <p key={i} className="text-white/80/90 leading-relaxed italic border-l-2 pl-4" style={{ borderLeftColor: 'hsl(var(--gradient-from))' }}>
+                <p key={i} className="text-white/90 leading-relaxed italic border-l-2 pl-4" style={{ borderLeftColor: 'hsl(var(--gradient-from))' }}>
                   {stake}
                 </p>
               ))}

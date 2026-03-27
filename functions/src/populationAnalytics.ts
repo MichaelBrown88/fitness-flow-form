@@ -27,6 +27,7 @@
 
 import * as admin from 'firebase-admin';
 import { logger } from 'firebase-functions';
+import { firestoreValueToDate } from './firestoreTimestamp';
 
 // ---------------------------------------------------------------------------
 // Internal types
@@ -549,8 +550,8 @@ export async function runPopulationAnalytics(): Promise<void> {
 
   // Sort ascending by timestamp so "first" snapshot per client is deterministic
   const sortedDocs = [...allSnapshotDocs].sort((a, b) => {
-    const aMs = (a.data().timestamp as admin.firestore.Timestamp | undefined)?.toMillis() ?? 0;
-    const bMs = (b.data().timestamp as admin.firestore.Timestamp | undefined)?.toMillis() ?? 0;
+    const aMs = firestoreValueToDate(a.data().timestamp)?.getTime() ?? 0;
+    const bMs = firestoreValueToDate(b.data().timestamp)?.getTime() ?? 0;
     return aMs !== bMs ? aMs - bMs : (a.id < b.id ? -1 : 1);
   });
 
@@ -561,8 +562,7 @@ export async function runPopulationAnalytics(): Promise<void> {
     const orgId  = parts[1];
     const slug   = parts[3]; // clients document ID = client slug
 
-    const ts = data.timestamp as admin.firestore.Timestamp | undefined;
-    const sessionDate = ts?.toDate ? ts.toDate() : null;
+    const sessionDate = firestoreValueToDate(data.timestamp);
     const sessionMs   = sessionDate ? sessionDate.getTime() : 0;
     const overallScore = typeof data.overallScore === 'number' ? data.overallScore : 0;
     const snapshotType = typeof data.type === 'string' ? data.type : '';
@@ -974,9 +974,9 @@ export async function runPopulationAnalytics(): Promise<void> {
   // Find the earliest session timestamp across all snapshot docs
   for (const docSnap of sortedDocs) {
     const data = docSnap.data() as Record<string, unknown>;
-    const ts = data.timestamp as admin.firestore.Timestamp | undefined;
-    if (ts?.toDate) {
-      const iso = ts.toDate().toISOString().slice(0, 10);
+    const d = firestoreValueToDate(data.timestamp);
+    if (d) {
+      const iso = d.toISOString().slice(0, 10);
       if (!earliestSessionDate || iso < earliestSessionDate) earliestSessionDate = iso;
     }
   }

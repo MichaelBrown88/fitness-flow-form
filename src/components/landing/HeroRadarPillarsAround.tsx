@@ -25,7 +25,7 @@ const HERO_RADAR_PILLAR_META: Record<
   bodyComp: {
     Icon: Scale,
     value: "18.5% BF",
-    ring: "bg-primary/15 text-gradient-dark dark:bg-primary/25 dark:text-primary",
+    ring: "bg-primary/15 text-on-brand-tint dark:bg-primary/25",
     soft: "bg-card/95",
     label: "text-foreground",
     border: "border-border/90 dark:border-border",
@@ -33,7 +33,7 @@ const HERO_RADAR_PILLAR_META: Record<
   cardio: {
     Icon: Heart,
     value: "72/100",
-    ring: "bg-primary/15 text-gradient-dark dark:bg-primary/25 dark:text-primary",
+    ring: "bg-primary/15 text-on-brand-tint dark:bg-primary/25",
     soft: "bg-card/95",
     label: "text-foreground",
     border: "border-border/90 dark:border-border",
@@ -41,7 +41,7 @@ const HERO_RADAR_PILLAR_META: Record<
   strength: {
     Icon: Dumbbell,
     value: "80/100",
-    ring: "bg-primary/15 text-gradient-dark dark:bg-primary/25 dark:text-primary",
+    ring: "bg-primary/15 text-on-brand-tint dark:bg-primary/25",
     soft: "bg-card/95",
     label: "text-foreground",
     border: "border-border/90 dark:border-border",
@@ -49,7 +49,7 @@ const HERO_RADAR_PILLAR_META: Record<
   movementQuality: {
     Icon: Zap,
     value: "85/100",
-    ring: "bg-primary/15 text-gradient-dark dark:bg-primary/25 dark:text-primary",
+    ring: "bg-primary/15 text-on-brand-tint dark:bg-primary/25",
     soft: "bg-card/95",
     label: "text-foreground",
     border: "border-border/90 dark:border-border",
@@ -57,7 +57,7 @@ const HERO_RADAR_PILLAR_META: Record<
   lifestyle: {
     Icon: Moon,
     value: "76/100",
-    ring: "bg-primary/15 text-gradient-dark dark:bg-primary/25 dark:text-primary",
+    ring: "bg-primary/15 text-on-brand-tint dark:bg-primary/25",
     soft: "bg-card/95",
     label: "text-foreground",
     border: "border-border/90 dark:border-border",

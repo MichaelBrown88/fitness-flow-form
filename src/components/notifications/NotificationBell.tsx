@@ -81,7 +81,7 @@ function NotificationItem({
           </p>
         )}
         {notification.createdAt && (
-          <p className="text-[10px] text-muted-foreground/60 mt-1">
+          <p className="text-[10px] text-muted-foreground mt-1">
             {notification.createdAt.toDate?.().toLocaleDateString(undefined, {
               month: 'short',
               day: 'numeric',

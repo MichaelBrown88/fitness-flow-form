@@ -102,7 +102,7 @@ export function BusinessInfoStep({ data, onNext, onBack }: BusinessInfoStepProps
           <div className="flex items-center justify-between mb-2">
             <label className="block text-xs font-bold text-foreground-secondary">Where are you based?</label>
             {isAutoDetected && (
-              <span className="flex items-center gap-1 text-[10px] font-bold text-primary/70 bg-brand-light px-2 py-0.5 rounded-full">
+              <span className="flex items-center gap-1 text-[10px] font-bold text-on-brand-tint bg-brand-light px-2 py-0.5 rounded-full">
                 <Sparkles className="w-3 h-3" />
                 Auto-detected
               </span>

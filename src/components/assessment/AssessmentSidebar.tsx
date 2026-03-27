@@ -132,7 +132,7 @@ export const AssessmentSidebar = ({
                     : isCompleted
                       ? 'text-foreground-secondary font-medium hover:bg-muted/50'
                       : isDisabled
-                        ? 'text-muted-foreground/60 cursor-not-allowed'
+                        ? 'text-foreground-tertiary cursor-not-allowed'
                         : 'text-muted-foreground font-medium hover:bg-muted/50'
                 }`}
               >

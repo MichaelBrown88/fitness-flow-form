@@ -101,7 +101,7 @@ function ClientAchievementsSummary({ shareToken }: { shareToken: string }) {
       <div className="py-6 text-center">
         <Trophy className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
         <p className="text-sm text-muted-foreground">No achievements yet</p>
-        <p className="text-xs text-muted-foreground/60 mt-1">Achievements will appear after assessments are evaluated</p>
+        <p className="text-xs text-muted-foreground mt-1">Achievements will appear after assessments are evaluated</p>
       </div>
     );
   }

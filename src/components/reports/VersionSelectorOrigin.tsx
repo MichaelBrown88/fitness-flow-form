@@ -29,7 +29,7 @@ const VersionSelectorOrigin: React.FC<VersionSelectorOriginProps> = ({
         <span className="text-xs font-semibold text-foreground leading-tight">Where You Started</span>
         <span className="text-[10px] text-foreground-tertiary leading-tight">{formatOriginDate(snapshot.date)}</span>
       </div>
-      <span className="ml-auto text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/60">
+      <span className="ml-auto text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
         Initial
       </span>
     </button>

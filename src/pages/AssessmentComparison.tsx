@@ -127,7 +127,7 @@ const AssessmentComparison = () => {
                             {diff > 0 ? '+' : ''}{diff}
                           </span>
                         ) : (
-                          <span className="text-xs text-muted-foreground/60">—</span>
+                          <span className="text-xs text-foreground-tertiary">—</span>
                         )}
                       </td>
                     </tr>

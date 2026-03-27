@@ -10,6 +10,7 @@ import { useMemo, useEffect, useState } from 'react';
 import type { CoachAssessmentSummary } from '@/services/coachAssessments';
 import type { ClientScheduleData } from '@/services/clientProfiles';
 import type { ClientGroup } from './types';
+import { safeFirestoreTimestampToDate } from '@/lib/utils/formatFirestoreTimestampDisplay';
 import { logger } from '@/lib/utils/logger';
 
 type ScheduleMap = Map<string, ClientScheduleData>;
@@ -51,8 +52,10 @@ export function useClientList(
       if (!existing) {
         byName.set(key, item);
       } else {
-        const existingTime = (existing.updatedAt ?? existing.createdAt)?.toDate()?.getTime() || 0;
-        const itemTime = (item.updatedAt ?? item.createdAt)?.toDate()?.getTime() || 0;
+        const existingTime =
+          safeFirestoreTimestampToDate(existing.updatedAt ?? existing.createdAt)?.getTime() ?? 0;
+        const itemTime =
+          safeFirestoreTimestampToDate(item.updatedAt ?? item.createdAt)?.getTime() ?? 0;
         if (itemTime > existingTime) {
           byName.set(key, item);
         }
@@ -69,7 +72,7 @@ export function useClientList(
         name: item.clientName,
         assessments: [item],
         latestScore: item.overallScore || 0,
-        latestDate: (item.updatedAt ?? item.createdAt)?.toDate() || null,
+        latestDate: safeFirestoreTimestampToDate(item.updatedAt ?? item.createdAt),
         scoreChange: item.trend,
         coachUid: item.coachUid,
         retestSchedule: schedule?.recommended || schedule?.custom

@@ -77,7 +77,7 @@ export const TimelineSection: React.FC<TimelineSectionProps> = ({
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-xs sm:text-sm font-bold text-white mb-1 sm:mb-1.5">{item.title}</div>
-                  <div className="text-xs sm:text-xs text-muted-foreground leading-relaxed group-hover:text-muted-foreground/60 break-words">{item.desc}</div>
+                  <div className="text-xs sm:text-xs text-muted-foreground leading-relaxed break-words">{item.desc}</div>
                 </div>
               </div>
             ))}

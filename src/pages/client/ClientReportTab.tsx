@@ -51,7 +51,7 @@ export default function ClientReportTab() {
   if (!assessmentId && !clientName) {
     return (
       <div className="rounded-2xl border border-border bg-muted p-8 text-center">
-        <FileText className="h-10 w-10 text-muted-foreground/60 mx-auto mb-3" />
+        <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
         <p className="text-sm font-medium text-foreground-secondary">No assessment yet</p>
         <p className="text-xs text-muted-foreground mt-1">Complete an assessment to see the client report here.</p>
       </div>

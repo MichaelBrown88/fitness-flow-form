@@ -33,7 +33,7 @@ function StepRowLink({
       <div
         className={cn(
           'mt-0.5 w-7 h-7 rounded-md flex items-center justify-center shrink-0',
-          step.done ? 'bg-score-green-light text-score-green-fg' : 'bg-primary/10 text-primary',
+          step.done ? 'bg-score-green-light text-score-green-fg' : 'bg-primary/10 text-on-brand-tint',
         )}
       >
         {step.done ? <Check className="h-3.5 w-3.5" /> : <step.icon className="h-3.5 w-3.5" />}

@@ -11,6 +11,7 @@
 
 import * as admin from 'firebase-admin';
 import { logger } from 'firebase-functions';
+import { firestoreValueToDate } from './firestoreTimestamp';
 import { sendInviteAcceptedEmail } from './transactionalEmails';
 
 const PHASE_NAMES: Record<string, string> = {
@@ -252,10 +253,9 @@ export async function sendReassessmentReminders(): Promise<void> {
         if (shareToken && dueDateOverrides) {
           const duePillars: string[] = [];
           for (const [pillar, ts] of Object.entries(dueDateOverrides)) {
-            const dueDate = ts.toDate();
-            if (dueDate >= todayStart && dueDate <= todayEnd) {
-              duePillars.push(pillar);
-            }
+            const dueDate = firestoreValueToDate(ts);
+            if (!dueDate || dueDate < todayStart || dueDate > todayEnd) continue;
+            duePillars.push(pillar);
           }
 
           if (duePillars.length > 0) {
@@ -284,13 +284,18 @@ export async function sendReassessmentReminders(): Promise<void> {
 
         if (coachUid && dueDateOverrides) {
           for (const ts of Object.values(dueDateOverrides)) {
-            const dueDate = ts.toDate();
-            if (dueDate >= sevenDayWindowStart && dueDate <= sevenDayWindowEnd) {
-              const list = upcomingByCoach.get(coachUid) ?? [];
-              if (!list.includes(clientName)) list.push(clientName);
-              upcomingByCoach.set(coachUid, list);
-              break;
+            const dueDate = firestoreValueToDate(ts);
+            if (
+              !dueDate ||
+              dueDate < sevenDayWindowStart ||
+              dueDate > sevenDayWindowEnd
+            ) {
+              continue;
             }
+            const list = upcomingByCoach.get(coachUid) ?? [];
+            if (!list.includes(clientName)) list.push(clientName);
+            upcomingByCoach.set(coachUid, list);
+            break;
           }
         }
       }
@@ -299,7 +304,7 @@ export async function sendReassessmentReminders(): Promise<void> {
       if (status === 'active') {
         const coachUid: string | undefined = data.assignedCoachUid;
         const dueDateOverrides = data.dueDateOverrides as Record<string, admin.firestore.Timestamp> | undefined;
-        const lastSessionAt = (data.lastSessionAt as admin.firestore.Timestamp | undefined)?.toDate();
+        const lastSessionAt = firestoreValueToDate(data.lastSessionAt);
         const clientName: string = data.clientName ?? 'A client';
 
         const hasNoDueDates = !dueDateOverrides || Object.keys(dueDateOverrides).length === 0;
@@ -314,7 +319,7 @@ export async function sendReassessmentReminders(): Promise<void> {
 
       // --- Paused client coach reminder (C3) ---
       if (status === 'paused') {
-        const pausedAt = (data.pausedAt as admin.firestore.Timestamp | undefined)?.toDate();
+        const pausedAt = firestoreValueToDate(data.pausedAt);
         const coachUid: string | undefined = data.assignedCoachUid;
         if (pausedAt && pausedAt <= fourteenDaysAgo && coachUid) {
           const clientName: string = data.clientName ?? 'A client';

@@ -447,6 +447,18 @@ All colors MUST be HSL.
     color: hsl(var(--gradient-dark));
   }
 
+  /**
+   * Readable ink on pale brand washes (bg-primary/*, bg-brand-light, bg-gradient-light).
+   * Dark mode uses foreground on tinted surfaces for legibility across org gradients.
+   */
+  .text-on-brand-tint {
+    color: hsl(var(--gradient-dark));
+  }
+
+  .dark .text-on-brand-tint {
+    color: hsl(var(--foreground));
+  }
+
   /* Apple-style shadows */
   .shadow-apple-sm {
     box-shadow: var(--shadow-sm);

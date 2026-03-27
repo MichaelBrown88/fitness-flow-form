@@ -36,7 +36,7 @@ const SectionHeader = ({
   const centered = align === "center";
 
   const pillColors = dark
-    ? "bg-primary/20 border-primary/30 text-primary"
+    ? "bg-primary/20 border-primary/30 text-on-brand-tint"
     : "bg-card border-border text-muted-foreground";
 
   const titleColor = dark ? "text-white" : "text-foreground";

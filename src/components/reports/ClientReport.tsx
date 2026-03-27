@@ -1,238 +1,28 @@
 /**
- * Simplified Client Report
- * Clean, focused report structure:
- * 1. Where you're at now (Scores, Archetype, Gap Analysis, Strengths/Focus, Lifestyle)
- * 2. Where you want to get to (Goals, Issue Resolution)
- * 3. How we'll help (Blueprint, Sample Workout, Timeline)
- *
- * Progressive disclosure: sections are collapsible, with "Starting Point"
- * expanded by default. An Expand/Collapse All toggle is in the header.
+ * Simplified Client Report — layout orchestration; section config and chrome live under ./client/.
  */
 
-import React, { useState, lazy, Suspense, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import type { FormData } from '@/contexts/FormContext';
 import type { ScoreSummary } from '@/lib/scoring';
 import type { CoachPlan } from '@/lib/recommendations';
-import {
-  Loader2, ChevronDown,
-  Activity, BarChart3, TrendingUp, Heart, Target, Map,
-} from 'lucide-react';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
 import { useIsMobile } from '@/hooks/use-mobile';
-
-import { LifestyleFactorsBar } from './LifestyleFactorsBar';
-import { MovementPostureMobility } from './MovementPostureMobility';
-const CoachReport = lazy(() => import('./CoachReport'));
-import { generateBodyCompInterpretation } from '@/lib/recommendations';
-
-// Sub-components
 import { ReportHeader } from './client/sub-components/ReportHeader';
 import { ClientInfoBar } from './client/sub-components/ClientInfoBar';
-import { StartingPointSection } from './client/sub-components/StartingPointSection';
-import { GapAnalysisSection } from './client/sub-components/GapAnalysisSection';
-import { StrengthsFocusSection } from './client/sub-components/StrengthsFocusSection';
-import { DestinationSection } from './client/sub-components/DestinationSection';
-
-// Hooks
 import { useClientReportData } from './client/useClientReportData';
 import { useScrollRevealSections } from '@/hooks/useScrollRevealSections';
-
-// ── Section config ────────────────────────────────────────────────────
-
-const SECTION_IDS = [
-  'starting-point',
-  'gap-analysis',
-  'strengths-focus',
-  'lifestyle',
-  'movement',
-  'destination',
-  'action-plan',
-] as const;
-
-type SectionId = (typeof SECTION_IDS)[number];
-
-// Icon component type for reuse at different sizes
-const SECTION_ICON_MAP: Record<SectionId, React.ElementType> = {
-  'starting-point': Activity,
-  'gap-analysis': BarChart3,
-  'strengths-focus': TrendingUp,
-  'lifestyle': Heart,
-  'movement': Activity,
-  'destination': Target,
-  'action-plan': Map,
-};
-
-const SECTION_META: Record<SectionId, {
-  title: string;
-  shortTitle: string;
-  summary: string;
-  icon: React.ReactNode;
-}> = {
-  'starting-point':  { title: 'Your Starting Point',           shortTitle: 'Start',      summary: 'Overall score, archetype, and radar chart',            icon: <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
-  'gap-analysis':    { title: 'Gap Analysis',                  shortTitle: 'Gaps',       summary: 'Current vs. target in each pillar',                    icon: <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
-  'strengths-focus': { title: 'Strengths & Focus Areas',       shortTitle: 'Strengths',  summary: 'What you\'re doing well and where to improve',         icon: <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
-  'lifestyle':       { title: 'Lifestyle Factors',             shortTitle: 'Lifestyle',  summary: 'Sleep, nutrition, stress, and activity habits',        icon: <Heart className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
-  'movement':        { title: 'Posture, Movement & Mobility',  shortTitle: 'Movement',   summary: 'Movement quality, posture, and flexibility analysis',  icon: <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
-  'destination':     { title: 'Your Destination',              shortTitle: 'Goals',      summary: 'Goals and what achieving them looks like',             icon: <Target className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
-  'action-plan':     { title: 'Your Action Plan',              shortTitle: 'Plan',       summary: 'Personalised roadmap to reach your goals',             icon: <Map className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" /> },
-};
-
-const DEFAULT_OPEN: SectionId[] = ['starting-point'];
-
-// ── Roadmap CTA (replaces Blueprint + Timeline in client reports) ────
-
-function ActionPlanCTA({ clientName, standalone }: { clientName: string; standalone: boolean }) {
-  if (standalone) {
-    return (
-      <div className="space-y-4 rounded-xl border border-gradient-medium/50 bg-gradient-to-br from-gradient-light via-white to-white p-8 text-center">
-        <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/15">
-          <Map className="h-6 w-6 text-primary" />
-        </div>
-        <h3 className="text-lg font-bold text-foreground">Your Personalised Plan</h3>
-        <p className="text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
-          Your coach is building a personalised roadmap based on your assessment results.
-          You&apos;ll be notified when it&apos;s ready to view.
-        </p>
-      </div>
-    );
-  }
-
-  const roadmapUrl = `/coach/clients/${encodeURIComponent(clientName)}/roadmap`;
-  return (
-    <div className="space-y-3 rounded-xl border border-gradient-medium/50 bg-gradient-to-br from-gradient-light via-white to-white p-6 text-center">
-      <Map className="mx-auto h-8 w-8 text-primary" />
-      <h3 className="text-lg font-bold text-foreground">Client Roadmap</h3>
-      <p className="text-sm text-muted-foreground max-w-md mx-auto">
-        Create or review this client&apos;s personalised action plan based on the assessment findings.
-      </p>
-      <a
-        href={roadmapUrl}
-        className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:opacity-90"
-      >
-        <Map className="h-4 w-4" />
-        View Roadmap
-      </a>
-    </div>
-  );
-}
-
-// ── Collapsible section wrapper ───────────────────────────────────────
-// Renders the section's icon + title as the trigger (matching existing
-// header style). When collapsed, also shows a summary line.
-// When expanded, the child section renders with hideHeader={true}.
-
-interface CollapsibleSectionProps {
-  id: SectionId;
-  open: boolean;
-  onToggle: (id: SectionId) => void;
-  sectionRef?: (el: HTMLElement | null) => void;
-  children: React.ReactNode;
-}
-
-const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
-  id, open, onToggle, sectionRef, children,
-}) => {
-  const meta = SECTION_META[id];
-  return (
-    <div ref={sectionRef} data-section-id={id}>
-      <Collapsible open={open} onOpenChange={() => onToggle(id)}>
-        <CollapsibleTrigger asChild>
-          <button
-            className="w-full flex items-center justify-between py-2 hover:opacity-80 transition-opacity group text-left"
-            aria-expanded={open}
-          >
-            <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 min-w-0">
-              <div className="sm:p-1.5 md:p-2 sm:bg-gradient-light text-muted-foreground sm:text-foreground sm:rounded-lg shrink-0">
-                {meta.icon}
-              </div>
-              <div className="min-w-0">
-                <h3 className="text-xs md:text-sm lg:text-base font-semibold text-foreground">
-                  {meta.title}
-                </h3>
-                {!open && (
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{meta.summary}</p>
-                )}
-              </div>
-            </div>
-            <ChevronDown
-              className={`h-4 w-4 text-muted-foreground shrink-0 ml-3 transition-transform duration-200 ${
-                open ? 'rotate-180' : ''
-              }`}
-            />
-          </button>
-        </CollapsibleTrigger>
-        <CollapsibleContent>{children}</CollapsibleContent>
-      </Collapsible>
-    </div>
-  );
-};
-
-// ── Mobile tab config (4 story-driven tabs) ──────────────────────────
-
-const MOBILE_TAB_IDS = ['overview', 'analysis', 'movement', 'plan'] as const;
-type MobileTabId = (typeof MOBILE_TAB_IDS)[number];
-
-const MOBILE_TAB_META: Record<MobileTabId, {
-  label: string;
-  icon: React.ElementType;
-}> = {
-  overview:  { label: 'Overview',  icon: Activity },
-  analysis:  { label: 'Analysis',  icon: BarChart3 },
-  movement:  { label: 'Movement',  icon: Heart },
-  plan:      { label: 'Your Plan', icon: Map },
-};
-
-// ── Mobile bottom tab bar ────────────────────────────────────────────
-
-interface MobileReportNavProps {
-  activeTab: MobileTabId;
-  onSelect: (id: MobileTabId) => void;
-}
-
-const MobileReportNav: React.FC<MobileReportNavProps> = ({ activeTab, onSelect }) => (
-  <nav className="fixed bottom-0 inset-x-0 z-50 bg-card border-t border-border shadow-[0_-2px_10px_rgba(0,0,0,0.06)] pb-2 safe-area-pb md:hidden">
-    <div className="flex items-stretch justify-around px-3">
-      {MOBILE_TAB_IDS.map(id => {
-        const { icon: Icon, label } = MOBILE_TAB_META[id];
-        const isActive = activeTab === id;
-        return (
-          <button
-            key={id}
-            onClick={() => onSelect(id)}
-            className={`relative flex-1 flex flex-col items-center gap-1 py-3 transition-colors touch-manipulation ${
-              isActive
-                ? 'text-primary'
-                : 'text-foreground-tertiary active:text-muted-foreground'
-            }`}
-          >
-            {isActive && (
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary rounded-full" />
-            )}
-            <Icon className={`h-[22px] w-[22px] ${isActive ? 'text-primary' : ''}`} />
-            <span className={`text-[10px] font-bold uppercase tracking-[0.15em] leading-tight ${
-              isActive ? 'text-primary' : 'text-foreground-tertiary'
-            }`}>
-              {label}
-            </span>
-          </button>
-        );
-      })}
-    </div>
-  </nav>
-);
-
-// ── Main report component ─────────────────────────────────────────────
+import { SECTION_IDS, DEFAULT_OPEN } from './client/clientReportSections';
+import { type ClientReportSectionContext } from './client/renderClientReportSection';
+import { ClientReportCoachPane } from './client/ClientReportCoachPane';
+import { ClientReportDesktopAccordion } from './client/ClientReportDesktopAccordion';
+import { ClientReportMobileLayout } from './client/ClientReportMobileLayout';
 
 export default function ClientReport({
   scores,
   goals,
   formData,
   plan,
-  bodyComp,
+  bodyComp: _bodyComp,
   previousScores,
   previousFormData,
   standalone = true,
@@ -248,7 +38,6 @@ export default function ClientReport({
 }) {
   const {
     safeScores,
-    orderedCats,
     archetype,
     strengths,
     areasForImprovement,
@@ -262,8 +51,6 @@ export default function ClientReport({
   } = useClientReportData({ scores, goals, formData, previousScores, previousFormData });
 
   const isMobile = useIsMobile();
-
-  // ── View toggle (client vs coach) ───────────────────────────────────
   const [activeView, setActiveView] = useState<'client' | 'coach'>(standalone ? 'client' : 'client');
 
   useEffect(() => {
@@ -272,13 +59,48 @@ export default function ClientReport({
     }
   }, [standalone, activeView]);
 
-  // ── Desktop: scroll-to-reveal sections ──────────────────────────────
-  const { isOpen: isSectionOpen, toggle: toggleSection, setRef: setSectionRef } = useScrollRevealSections(SECTION_IDS, DEFAULT_OPEN);
+  const { isOpen: isSectionOpen, toggle: toggleSection, setRef: setSectionRef } = useScrollRevealSections(
+    SECTION_IDS,
+    DEFAULT_OPEN,
+  );
 
-  // ── Mobile: single active tab (4 grouped tabs) ─────────────────────
-  const [mobileTab, setMobileTab] = useState<MobileTabId>('overview');
+  const sectionCtx: ClientReportSectionContext = useMemo(
+    () => ({
+      safeScores,
+      scores,
+      previousScores,
+      archetype,
+      strengths,
+      areasForImprovement,
+      overallRadarData,
+      previousRadarData,
+      gapAnalysisData,
+      previousGapAnalysisData,
+      goals,
+      formData,
+      previousFormData,
+      standalone,
+      clientName,
+    }),
+    [
+      safeScores,
+      scores,
+      previousScores,
+      archetype,
+      strengths,
+      areasForImprovement,
+      overallRadarData,
+      previousRadarData,
+      gapAnalysisData,
+      previousGapAnalysisData,
+      goals,
+      formData,
+      previousFormData,
+      standalone,
+      clientName,
+    ],
+  );
 
-  // ── Guard ───────────────────────────────────────────────────────────
   if (!scores || !scores.categories || scores.categories.length === 0 || !hasAnyData) {
     return (
       <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
@@ -296,54 +118,9 @@ export default function ClientReport({
     ? 'max-w-[1400px] mx-auto space-y-2 sm:space-y-3 md:space-y-4 lg:space-y-5 xl:space-y-6 w-full min-w-0'
     : 'space-y-2 sm:space-y-3 md:space-y-4 lg:space-y-5 xl:space-y-6 w-full min-w-0';
 
-  // Render a section's content by ID (shared by mobile + desktop)
-  const renderSection = (id: SectionId) => {
-    switch (id) {
-      case 'starting-point':
-        return (
-          <StartingPointSection
-            scores={safeScores}
-            previousOverallScore={previousScores?.overall ?? null}
-            archetype={archetype}
-            overallRadarData={overallRadarData}
-            previousRadarData={previousRadarData}
-            hideHeader
-          />
-        );
-      case 'gap-analysis':
-        return (
-          <GapAnalysisSection
-            gapAnalysisData={gapAnalysisData}
-            previousGapAnalysisData={previousGapAnalysisData}
-            goals={goals}
-            formData={formData}
-            hideHeader
-          />
-        );
-      case 'strengths-focus':
-        return (
-          <StrengthsFocusSection
-            strengths={strengths}
-            areasForImprovement={areasForImprovement}
-          />
-        );
-      case 'lifestyle':
-        return <LifestyleFactorsBar formData={formData} previousFormData={previousFormData} />;
-      case 'movement':
-        return <MovementPostureMobility formData={formData} scores={scores} standalone={standalone} hideHeader previousFormData={previousFormData} />;
-      case 'destination':
-        return <DestinationSection goals={goals} formData={formData} hideHeader />;
-      case 'action-plan':
-        return <ActionPlanCTA clientName={clientName} standalone={standalone} />;
-      default:
-        return null;
-    }
-  };
-
   return (
     <div className={containerClass}>
       <div className={`${contentClass} overflow-x-hidden`}>
-
         {standalone && (
           <>
             <ReportHeader
@@ -358,89 +135,26 @@ export default function ClientReport({
         )}
 
         {activeView === 'coach' ? (
-          <Suspense fallback={
-            <div className="flex flex-col items-center justify-center py-20 bg-card rounded-xl border border-border">
-              <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-              <p className="text-sm font-medium text-muted-foreground">Loading Coach Plan...</p>
-            </div>
-          }>
-            {plan ? (
-              <CoachReport
-                plan={plan}
-                scores={scores}
-                bodyComp={formData ? generateBodyCompInterpretation(formData) : undefined}
-                formData={formData}
-              />
-            ) : (
-              <div className="bg-card rounded-xl p-8 border border-border">
-                <h2 className="text-xl font-bold text-foreground mb-4">Coach Report</h2>
-                <p className="text-foreground-secondary">Generating coach plan...</p>
-              </div>
-            )}
-          </Suspense>
+          <ClientReportCoachPane plan={plan} scores={scores} formData={formData} />
         ) : isMobile ? (
-          /* ── Mobile: grouped tabs + bottom nav ── */
-          <>
-            {/* Tab title bar */}
-            <div className="flex items-center gap-2 py-1.5">
-              {(() => {
-                const { icon: TabIcon, label } = MOBILE_TAB_META[mobileTab];
-                return (
-                  <>
-                    <TabIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                    <h3 className="text-xs font-semibold text-foreground">
-                      {label}
-                    </h3>
-                  </>
-                );
-              })()}
-            </div>
-
-            {/* Active tab content -- each tab renders grouped sections */}
-            <div className="pb-16 space-y-4">
-              {mobileTab === 'overview' && (
-                <>
-                  {renderSection('starting-point')}
-                  <LifestyleFactorsBar formData={formData} previousFormData={previousFormData} />
-                </>
-              )}
-              {mobileTab === 'analysis' && (
-                <>
-                  {renderSection('gap-analysis')}
-                  <StrengthsFocusSection
-                    strengths={strengths}
-                    areasForImprovement={areasForImprovement}
-                  />
-                </>
-              )}
-              {mobileTab === 'movement' && (
-                <MovementPostureMobility formData={formData} scores={scores} standalone={standalone} hideHeader previousFormData={previousFormData} />
-              )}
-              {mobileTab === 'plan' && (
-                <>
-                  <DestinationSection goals={goals} formData={formData} hideHeader />
-                  <ActionPlanCTA clientName={clientName} standalone={standalone} />
-                </>
-              )}
-            </div>
-
-            <MobileReportNav activeTab={mobileTab} onSelect={setMobileTab} />
-          </>
+          <ClientReportMobileLayout
+            scores={scores}
+            formData={formData}
+            previousFormData={previousFormData}
+            standalone={standalone}
+            strengths={strengths}
+            areasForImprovement={areasForImprovement}
+            goals={goals}
+            clientName={clientName}
+            sectionCtx={sectionCtx}
+          />
         ) : (
-          /* ── Desktop: collapsible accordion ── */
-          <>
-            {SECTION_IDS.map(id => (
-              <CollapsibleSection
-                key={id}
-                id={id}
-                open={isSectionOpen(id)}
-                onToggle={toggleSection}
-                sectionRef={setSectionRef(id)}
-              >
-                {renderSection(id)}
-              </CollapsibleSection>
-            ))}
-          </>
+          <ClientReportDesktopAccordion
+            isSectionOpen={isSectionOpen}
+            toggleSection={toggleSection}
+            setSectionRef={setSectionRef}
+            sectionCtx={sectionCtx}
+          />
         )}
       </div>
     </div>

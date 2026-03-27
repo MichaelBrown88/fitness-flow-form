@@ -30,7 +30,7 @@ const colorClasses: Record<string, string> = {
   slate:
     'border-border bg-muted text-foreground dark:border-border dark:bg-card-elevated dark:text-foreground',
   volt:
-    'border-gradient-medium/50 bg-gradient-light/90 text-primary dark:border-primary/35 dark:bg-primary/15 dark:text-primary',
+    'border-gradient-medium/50 bg-gradient-light/90 text-on-brand-tint dark:border-primary/35 dark:bg-primary/15',
 };
 
 export function BuiltByExperts() {

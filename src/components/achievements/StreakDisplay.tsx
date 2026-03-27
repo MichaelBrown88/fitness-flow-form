@@ -40,7 +40,7 @@ export function StreakDisplay({ streaks, currentStreak }: StreakDisplayProps) {
                     : 'bg-muted border-2 border-dashed border-border'
                 }`}
               >
-                <span className={`text-xs sm:text-sm font-bold ${isUnlocked ? 'text-white' : 'text-muted-foreground/60'}`}>
+                <span className={`text-xs sm:text-sm font-bold ${isUnlocked ? 'text-white' : 'text-foreground-tertiary'}`}>
                   {streak.threshold}
                 </span>
               </div>

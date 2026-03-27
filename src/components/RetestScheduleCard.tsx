@@ -30,6 +30,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { safeFirestoreTimestampToDate } from '@/lib/utils/formatFirestoreTimestampDisplay';
 import type { ClientProfile } from '@/services/clientProfiles';
 import {
   updateCustomCadence,
@@ -125,7 +126,8 @@ export function RetestScheduleCard({
     [clientActivePillars],
   );
 
-  const lastAssessmentDate = profile?.lastAssessmentDate?.toDate();
+  const lastAssessmentDate =
+    safeFirestoreTimestampToDate(profile?.lastAssessmentDate) ?? undefined;
   const trainingStart = profile?.trainingStartDate ? new Date(profile.trainingStartDate) : undefined;
 
   // If training starts after assessment, use training start as the scheduling anchor
@@ -135,11 +137,11 @@ export function RetestScheduleCard({
 
   const pillarDateMap = useMemo(
     (): Record<string, Date | undefined> => ({
-      bodycomp: profile?.lastInBodyDate?.toDate(),
-      posture: profile?.lastPostureDate?.toDate(),
-      fitness: profile?.lastFitnessDate?.toDate(),
-      strength: profile?.lastStrengthDate?.toDate(),
-      lifestyle: profile?.lastLifestyleDate?.toDate(),
+      bodycomp: safeFirestoreTimestampToDate(profile?.lastInBodyDate) ?? undefined,
+      posture: safeFirestoreTimestampToDate(profile?.lastPostureDate) ?? undefined,
+      fitness: safeFirestoreTimestampToDate(profile?.lastFitnessDate) ?? undefined,
+      strength: safeFirestoreTimestampToDate(profile?.lastStrengthDate) ?? undefined,
+      lifestyle: safeFirestoreTimestampToDate(profile?.lastLifestyleDate) ?? undefined,
     }),
     [
       profile?.lastInBodyDate,
@@ -353,7 +355,7 @@ export function RetestScheduleCard({
 
             {!hasScheduleData && (
               <div className="py-6 text-center text-sm text-muted-foreground">
-                <Calendar className="h-10 w-10 mx-auto text-muted-foreground/60 mb-3" />
+                <Calendar className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
                 <p className="font-medium">No assessments yet</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Complete an assessment to start scheduling

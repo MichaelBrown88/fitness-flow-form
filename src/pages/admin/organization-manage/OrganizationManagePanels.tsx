@@ -155,7 +155,7 @@ export const OrganizationDetailsCard = ({ org, editing, saving, setOrg, setEditi
           variant="outline"
           size="sm"
           onClick={() => setEditing(true)}
-          className="border-border text-muted-foreground/60 hover:bg-muted"
+          className="border-border text-muted-foreground hover:bg-muted"
         >
           <Edit className="w-4 h-4 mr-2" />
           Edit
@@ -166,7 +166,7 @@ export const OrganizationDetailsCard = ({ org, editing, saving, setOrg, setEditi
             variant="outline"
             size="sm"
             onClick={() => setEditing(false)}
-            className="border-border text-muted-foreground/60 hover:bg-muted"
+            className="border-border text-muted-foreground hover:bg-muted"
           >
             Cancel
           </Button>
@@ -194,7 +194,7 @@ export const OrganizationDetailsCard = ({ org, editing, saving, setOrg, setEditi
               className="bg-foreground/90 border-border text-white"
             />
           ) : (
-            <p className="text-sm text-muted-foreground/60">{org.name || 'N/A'}</p>
+            <p className="text-sm text-muted-foreground">{org.name || 'N/A'}</p>
           )}
         </div>
         <div>
@@ -214,7 +214,7 @@ export const OrganizationDetailsCard = ({ org, editing, saving, setOrg, setEditi
               </SelectContent>
             </Select>
           ) : (
-            <p className="text-sm text-muted-foreground/60 capitalize">{(org.type || 'gym').replace('_', ' ')}</p>
+            <p className="text-sm text-muted-foreground capitalize">{(org.type || 'gym').replace('_', ' ')}</p>
           )}
         </div>
       </div>
@@ -259,7 +259,7 @@ export const OrganizationDetailsCard = ({ org, editing, saving, setOrg, setEditi
                 className="bg-foreground/90 border-border text-white"
               />
             ) : (
-              <p className="text-sm text-muted-foreground/60">
+              <p className="text-sm text-muted-foreground">
                 {org.website ? (
                   <a href={org.website} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline">
                     {org.website}
@@ -300,7 +300,7 @@ const ContactField = ({ icon, label, value, editing, type = 'text', onChange }: 
         className="bg-foreground/90 border-border text-white"
       />
     ) : (
-      <p className="text-sm text-muted-foreground/60">{value || 'N/A'}</p>
+      <p className="text-sm text-muted-foreground">{value || 'N/A'}</p>
     )}
   </div>
 );
@@ -366,12 +366,12 @@ export const SubscriptionCard = ({ org, editing, saving, setOrg }: SubscriptionC
             </SelectContent>
           </Select>
         ) : (
-          <p className="text-sm text-muted-foreground/60">{seatBlock} clients</p>
+          <p className="text-sm text-muted-foreground">{seatBlock} clients</p>
         )}
       </div>
       <div>
         <p className="text-xs text-muted-foreground mb-1">Monthly Fee</p>
-        <p className="text-sm text-muted-foreground/60">
+        <p className="text-sm text-muted-foreground">
           {org.isComped ? (
             <span className="text-violet-400 font-medium">Comped (Free)</span>
           ) : (
@@ -381,7 +381,7 @@ export const SubscriptionCard = ({ org, editing, saving, setOrg }: SubscriptionC
       </div>
       <div>
         <p className="text-xs text-muted-foreground mb-1">Custom branding</p>
-        <p className="text-sm text-muted-foreground/60">
+        <p className="text-sm text-muted-foreground">
           {org.customBrandingEnabled ? (
             <span className="text-emerald-400">Enabled{org.customBrandingPaidAt ? ` (${org.customBrandingPaidAt.toLocaleDateString()})` : ''}</span>
           ) : (
@@ -427,19 +427,19 @@ export const SubscriptionCard = ({ org, editing, saving, setOrg }: SubscriptionC
             {org.stripeCustomerId && (
               <div>
                 <span className="text-muted-foreground">Customer:</span>{' '}
-                <span className="text-muted-foreground/60 break-all">{org.stripeCustomerId}</span>
+                <span className="text-muted-foreground break-all">{org.stripeCustomerId}</span>
               </div>
             )}
             {org.stripeSubscriptionId && (
               <div>
                 <span className="text-muted-foreground">Subscription:</span>{' '}
-                <span className="text-muted-foreground/60 break-all">{org.stripeSubscriptionId}</span>
+                <span className="text-muted-foreground break-all">{org.stripeSubscriptionId}</span>
               </div>
             )}
             {org.stripePriceId && (
               <div>
                 <span className="text-muted-foreground">Price:</span>{' '}
-                <span className="text-muted-foreground/60">{org.stripePriceId}</span>
+                <span className="text-muted-foreground">{org.stripePriceId}</span>
               </div>
             )}
           </div>
@@ -466,7 +466,7 @@ export const SubscriptionCard = ({ org, editing, saving, setOrg }: SubscriptionC
       )}
       <div>
         <p className="text-xs text-muted-foreground mb-1">Created</p>
-        <p className="text-sm text-muted-foreground/60">{org.createdAt.toLocaleDateString()}</p>
+        <p className="text-sm text-muted-foreground">{org.createdAt.toLocaleDateString()}</p>
       </div>
     </div>
   </div>
@@ -657,7 +657,7 @@ export const ActionsCard = ({ org, onPause, onCancel, onReactivate, onDelete, on
           variant="outline"
           size="sm"
           onClick={onPause}
-          className="w-full border-border text-muted-foreground/60 hover:bg-muted"
+          className="w-full border-border text-muted-foreground hover:bg-muted"
         >
           <Pause className="w-4 h-4 mr-2" />
           Pause Subscription
@@ -668,7 +668,7 @@ export const ActionsCard = ({ org, onPause, onCancel, onReactivate, onDelete, on
           variant="outline"
           size="sm"
           onClick={onCancel}
-          className="w-full border-border text-muted-foreground/60 hover:bg-muted"
+          className="w-full border-border text-muted-foreground hover:bg-muted"
         >
           <XCircle className="w-4 h-4 mr-2" />
           Cancel Subscription
@@ -679,7 +679,7 @@ export const ActionsCard = ({ org, onPause, onCancel, onReactivate, onDelete, on
           variant="outline"
           size="sm"
           onClick={onReactivate}
-          className="w-full border-border text-muted-foreground/60 hover:bg-muted"
+          className="w-full border-border text-muted-foreground hover:bg-muted"
         >
           <Play className="w-4 h-4 mr-2" />
           Reactivate Subscription
@@ -744,7 +744,7 @@ export const GrantAccessDialog = ({ open, onOpenChange, accessReason, setAccessR
         <Button
           variant="outline"
           onClick={() => { onOpenChange(false); setAccessReason(''); }}
-          className="border-border text-muted-foreground/60 hover:bg-muted"
+          className="border-border text-muted-foreground hover:bg-muted"
         >
           Cancel
         </Button>
@@ -783,7 +783,7 @@ export const RevokeAccessDialog = ({ open, onOpenChange, onRevoke }: RevokeAcces
         <Button
           variant="outline"
           onClick={() => onOpenChange(false)}
-          className="border-border text-muted-foreground/60 hover:bg-muted"
+          className="border-border text-muted-foreground hover:bg-muted"
         >
           Cancel
         </Button>
@@ -831,7 +831,7 @@ export const DeleteDialog = ({ open, onOpenChange, orgName, confirmText, setConf
         <Button
           variant="outline"
           onClick={() => { onOpenChange(false); setConfirmText(''); }}
-          className="border-border text-muted-foreground/60 hover:bg-muted"
+          className="border-border text-muted-foreground hover:bg-muted"
         >
           Cancel
         </Button>
@@ -883,7 +883,7 @@ export const PermanentlyDeleteDialog = ({ open, onOpenChange, confirmText, setCo
         <Button
           variant="outline"
           onClick={() => { onOpenChange(false); setConfirmText(''); }}
-          className="border-border text-muted-foreground/60 hover:bg-muted"
+          className="border-border text-muted-foreground hover:bg-muted"
         >
           Cancel
         </Button>
@@ -920,7 +920,7 @@ export const PauseDialog = ({ open, onOpenChange, onPause }: PauseDialogProps) =
         <Button
           variant="outline"
           onClick={() => onOpenChange(false)}
-          className="border-border text-muted-foreground/60 hover:bg-muted"
+          className="border-border text-muted-foreground hover:bg-muted"
         >
           Cancel
         </Button>
@@ -987,7 +987,7 @@ export const ImpersonateDialog = ({ open, onOpenChange, orgName, reason, setReas
         <Button
           variant="outline"
           onClick={() => { onOpenChange(false); setReason(''); }}
-          className="border-border text-muted-foreground/60 hover:bg-muted"
+          className="border-border text-muted-foreground hover:bg-muted"
         >
           Cancel
         </Button>

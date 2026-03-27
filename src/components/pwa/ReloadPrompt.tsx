@@ -61,7 +61,7 @@ export function ReloadPrompt() {
         </div>
         <button
           onClick={() => setNeedRefresh(false)}
-          className="flex-shrink-0 text-muted-foreground hover:text-muted-foreground/60 transition-colors"
+          className="flex-shrink-0 text-muted-foreground hover:text-foreground-secondary transition-colors"
           aria-label="Dismiss"
         >
           <X className="w-4 h-4" />

@@ -29,7 +29,7 @@ export function ClientReportHeader({
           </div>
         )}
         {goalLabel && (
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-brand-light px-3 py-1.5 text-xs font-medium text-primary border border-primary/20">
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-brand-light px-3 py-1.5 text-xs font-medium text-on-brand-tint border border-primary/20">
             <span>🎯</span>
             <span>Primary goal: {goalLabel}</span>
           </div>

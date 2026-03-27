@@ -105,7 +105,7 @@ export function PlatformDashboardFinancialTab({
             <div className="space-y-3">
               {aiCostsByFeature.map((item) => (
                 <div key={item.feature} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                  <span className="text-sm text-muted-foreground/60">{formatFeatureName(item.feature)}</span>
+                  <span className="text-sm text-muted-foreground">{formatFeatureName(item.feature)}</span>
                   <div className="text-right">
                     <span className="text-sm font-semibold text-amber-400">{formatCurrency(item.costGbpPence, 'GBP')}</span>
                     <span className="text-xs text-muted-foreground ml-2">({formatNumber(item.count)} requests)</span>
@@ -127,7 +127,7 @@ export function PlatformDashboardFinancialTab({
             <div className="space-y-3">
               {aiCostsByFeatureAllTime.map((item) => (
                 <div key={item.feature} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                  <span className="text-sm text-muted-foreground/60">{formatFeatureName(item.feature)}</span>
+                  <span className="text-sm text-muted-foreground">{formatFeatureName(item.feature)}</span>
                   <div className="text-right">
                     <span className="text-sm font-semibold text-amber-400">{formatCurrency(item.costGbpPence, 'GBP')}</span>
                     <span className="text-xs text-muted-foreground ml-2">({formatNumber(item.count)} requests)</span>

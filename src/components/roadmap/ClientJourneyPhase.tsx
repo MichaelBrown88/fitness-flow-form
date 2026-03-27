@@ -9,7 +9,7 @@ const STATUS_CONFIG: Record<RoadmapItemStatus, { icon: typeof Circle; color: str
   not_started: { icon: Circle, color: 'text-foreground-secondary', bg: 'border-border' },
   in_progress: { icon: Clock, color: 'text-score-amber-fg', bg: 'border-score-amber-muted bg-score-amber-light' },
   achieved: { icon: CheckCircle2, color: 'text-score-green-fg', bg: 'border-score-green-muted bg-score-green-light' },
-  adjusted: { icon: ArrowRight, color: 'text-primary', bg: 'border-border bg-brand-light' },
+  adjusted: { icon: ArrowRight, color: 'text-on-brand-tint', bg: 'border-border bg-brand-light' },
 };
 
 const PHASE_DOT: Record<RoadmapPhase, string> = {

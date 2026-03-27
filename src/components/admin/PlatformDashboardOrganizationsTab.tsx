@@ -305,7 +305,7 @@ export function PlatformDashboardOrganizationsTab({
 
           {hasMoreOrganizations && (
             <div className="px-5 py-4 flex justify-center border-t border-border">
-              <Button variant="outline" size="sm" onClick={loadMoreOrganizations} className="border-border text-muted-foreground/60 hover:bg-foreground/90">
+              <Button variant="outline" size="sm" onClick={loadMoreOrganizations} className="border-border text-muted-foreground hover:bg-foreground/90">
                 Load more
               </Button>
             </div>
@@ -337,26 +337,26 @@ function OrgDetailContent({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <p className="text-xs text-muted-foreground mb-1">Organization ID</p>
-          <p className="text-sm text-muted-foreground/60 font-mono">{org.id}</p>
+          <p className="text-sm text-muted-foreground font-mono">{org.id}</p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground mb-1">Type</p>
-          <p className="text-sm text-muted-foreground/60 capitalize">{org.type.replace('_', ' ')}</p>
+          <p className="text-sm text-muted-foreground capitalize">{org.type.replace('_', ' ')}</p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground mb-1">Region</p>
-          <p className="text-sm text-muted-foreground/60">{org.region ?? '—'}</p>
+          <p className="text-sm text-muted-foreground">{org.region ?? '—'}</p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground mb-1">Plan</p>
-          <p className="text-sm text-muted-foreground/60 capitalize">{org.plan}</p>
+          <p className="text-sm text-muted-foreground capitalize">{org.plan}</p>
           {(org.seatBlock ?? org.clientSeats) != null && (org.seatBlock ?? org.clientSeats)! > 0 && (
             <p className="text-xs text-muted-foreground mt-1">{org.seatBlock ?? org.clientSeats} clients (plan)</p>
           )}
         </div>
         <div>
           <p className="text-xs text-muted-foreground mb-1">Monthly Fee</p>
-          <p className="text-sm text-muted-foreground/60">
+          <p className="text-sm text-muted-foreground">
             {org.isComped ? (
               <span className="text-violet-400 font-medium">Comped (Free)</span>
             ) : org.currency && org.monthlyAmountLocal != null ? (
@@ -368,7 +368,7 @@ function OrgDetailContent({
         </div>
         <div>
           <p className="text-xs text-muted-foreground mb-1">Custom branding</p>
-          <p className="text-sm text-muted-foreground/60">
+          <p className="text-sm text-muted-foreground">
             {org.customBrandingEnabled ? (
               <span className="text-emerald-400">
                 Enabled{org.customBrandingPaidAt ? ` (${org.customBrandingPaidAt.toLocaleDateString()})` : ''}
@@ -380,27 +380,27 @@ function OrgDetailContent({
         </div>
         <div>
           <p className="text-xs text-muted-foreground mb-1">Status</p>
-          <p className="text-sm text-muted-foreground/60 capitalize">{org.status}</p>
+          <p className="text-sm text-muted-foreground capitalize">{org.status}</p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground mb-1">Created</p>
-          <p className="text-sm text-muted-foreground/60">{org.createdAt.toLocaleDateString()}</p>
+          <p className="text-sm text-muted-foreground">{org.createdAt.toLocaleDateString()}</p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground mb-1">Trial Ends</p>
-          <p className="text-sm text-muted-foreground/60">{org.trialEndsAt?.toLocaleDateString() || 'N/A'}</p>
+          <p className="text-sm text-muted-foreground">{org.trialEndsAt?.toLocaleDateString() || 'N/A'}</p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground mb-1">Coaches</p>
-          <p className="text-sm text-muted-foreground/60">{org.coachCount}</p>
+          <p className="text-sm text-muted-foreground">{org.coachCount}</p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground mb-1">Clients</p>
-          <p className="text-sm text-muted-foreground/60">{org.clientCount}</p>
+          <p className="text-sm text-muted-foreground">{org.clientCount}</p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground mb-1">Assessments</p>
-          <p className="text-sm text-muted-foreground/60">{org.assessmentCount}</p>
+          <p className="text-sm text-muted-foreground">{org.assessmentCount}</p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground mb-1">AI Costs (MTD)</p>
@@ -410,12 +410,12 @@ function OrgDetailContent({
 
       {orgCoachesWithStats[org.id] && orgCoachesWithStats[org.id].length > 0 && (
         <div className="pt-4 border-t border-border">
-          <h4 className="text-sm font-medium text-muted-foreground/60 mb-3">Coaches & Activity</h4>
+          <h4 className="text-sm font-medium text-muted-foreground mb-3">Coaches & Activity</h4>
           <div className="space-y-2">
             {orgCoachesWithStats[org.id].map((coach) => (
               <div key={coach.uid} className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
                 <div className="flex-1">
-                  <p className="text-xs text-muted-foreground/60 font-medium">{coach.displayName}</p>
+                  <p className="text-xs text-muted-foreground font-medium">{coach.displayName}</p>
                   <p className="text-xs text-muted-foreground">
                     {coach.role === 'org_admin' ? 'Admin' : 'Coach'} • {coach.clientCount} client{coach.clientCount !== 1 ? 's' : ''}
                   </p>
@@ -442,12 +442,12 @@ function OrgDetailContent({
 
       {orgAiCostsByFeature[org.id] && orgAiCostsByFeature[org.id].length > 0 && (
         <div className="pt-4 border-t border-border">
-          <h4 className="text-sm font-medium text-muted-foreground/60 mb-3">AI Costs by Feature (MTD)</h4>
+          <h4 className="text-sm font-medium text-muted-foreground mb-3">AI Costs by Feature (MTD)</h4>
           <div className="space-y-2">
             {orgAiCostsByFeature[org.id].map((item) => (
               <div key={item.feature} className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
                 <div>
-                  <p className="text-xs text-muted-foreground/60 font-medium">{formatFeatureName(item.feature)}</p>
+                  <p className="text-xs text-muted-foreground font-medium">{formatFeatureName(item.feature)}</p>
                   <p className="text-xs text-muted-foreground">{item.count} requests</p>
                 </div>
                 <p className="text-xs text-amber-400 font-medium">{formatCurrency(item.costGbpPence, 'GBP')}</p>
@@ -458,7 +458,7 @@ function OrgDetailContent({
       )}
 
       <div className="flex gap-2 pt-4 border-t border-border">
-        <Button size="sm" variant="outline" className="text-xs border-border text-muted-foreground/60 hover:bg-muted" onClick={() => navigateToOrg(org.id)}>
+        <Button size="sm" variant="outline" className="text-xs border-border text-muted-foreground hover:bg-muted" onClick={() => navigateToOrg(org.id)}>
           <Settings className="w-3 h-3 mr-1" />
           Manage Subscription
         </Button>

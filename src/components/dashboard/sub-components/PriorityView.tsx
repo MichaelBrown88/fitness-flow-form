@@ -177,7 +177,7 @@ const AgendaSection: React.FC<AgendaSectionProps> = ({
         <span className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
           {group.label}
         </span>
-        <span className="text-[10px] font-bold text-muted-foreground/60">({group.items.length})</span>
+        <span className="text-[10px] font-bold text-foreground-tertiary">({group.items.length})</span>
         <ChevronRight className={`w-3 h-3 text-muted-foreground transition-transform ${expanded ? 'rotate-90' : ''}`} />
       </button>
       {expanded && (

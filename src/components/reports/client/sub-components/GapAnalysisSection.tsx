@@ -92,7 +92,7 @@ const GapMetricRow: React.FC<{
             {renderCurrent()}
             <DeltaIndicator delta={delta} />
           </span>
-          <ArrowRight className={`w-3 h-3 ${typeof current === 'number' || current !== '--' ? 'text-gradient-dark' : 'text-muted-foreground/60'} flex-shrink-0`} />
+          <ArrowRight className={`w-3 h-3 ${typeof current === 'number' || current !== '--' ? 'text-gradient-dark' : 'text-foreground-tertiary'} flex-shrink-0`} />
           <span className="text-sm font-bold text-gradient-dark text-right tabular-nums">{targetDisplay}</span>
         </div>
       </div>
@@ -106,7 +106,7 @@ const GapMetricRow: React.FC<{
         {renderCurrent()}
         <DeltaIndicator delta={delta} />
       </span>
-      <ArrowRight className={`w-3 h-3 ${typeof current === 'number' || current !== '--' ? 'text-gradient-dark' : 'text-muted-foreground/60'} justify-self-center`} />
+      <ArrowRight className={`w-3 h-3 ${typeof current === 'number' || current !== '--' ? 'text-gradient-dark' : 'text-foreground-tertiary'} justify-self-center`} />
       <span className="text-sm font-bold text-gradient-dark text-right tabular-nums">{targetDisplay}</span>
     </div>
   );

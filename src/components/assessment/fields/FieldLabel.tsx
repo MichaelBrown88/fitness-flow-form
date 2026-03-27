@@ -49,7 +49,7 @@ export const FieldLabel: React.FC<FieldLabelProps> = ({ field, orgSettings, form
                       return (
                         <div key={i} className="flex items-center gap-2 mb-1">
                           <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                          <span className="text-[10px] font-black uppercase tracking-[0.15em] text-primary/60">{line.replace(':', '')}</span>
+                          <span className="text-[10px] font-black uppercase tracking-[0.15em] text-primary">{line.replace(':', '')}</span>
                         </div>
                       );
                     }
@@ -74,7 +74,7 @@ export const FieldLabel: React.FC<FieldLabelProps> = ({ field, orgSettings, form
                     }
 
                     return (
-                      <p key={i} className="text-xs leading-relaxed font-medium text-muted-foreground/60">
+                      <p key={i} className="text-xs leading-relaxed font-medium text-white/80">
                         {line}
                       </p>
                     );

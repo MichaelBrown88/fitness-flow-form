@@ -90,7 +90,7 @@ export function OnboardingLayout({
                 key={step.id}
                 className={`flex items-center gap-3 text-sm ${
                   isCurrent ? 'text-foreground font-bold' :
-                  isComplete ? 'text-muted-foreground' : 'text-muted-foreground/60'
+                  isComplete ? 'text-muted-foreground' : 'text-foreground-tertiary'
                 }`}
               >
                 <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${

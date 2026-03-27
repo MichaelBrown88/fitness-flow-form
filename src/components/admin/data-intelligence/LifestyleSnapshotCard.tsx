@@ -236,7 +236,7 @@ export function LifestyleSnapshotCard({
       <div className="mt-5 pt-4 border-t border-admin-border space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-xs text-admin-fg-muted">Clients reporting movement pain</span>
-          <span className={`text-sm font-semibold ${painPct >= 30 ? 'text-amber-400' : 'text-muted-foreground/60'}`}>
+          <span className={`text-sm font-semibold ${painPct >= 30 ? 'text-amber-400' : 'text-muted-foreground'}`}>
             {painPct}%
             <span className="text-xs font-normal text-muted-foreground ml-1">({painReported} of {uniqueClientCount})</span>
           </span>

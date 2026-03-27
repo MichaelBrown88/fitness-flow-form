@@ -38,7 +38,7 @@ export const FieldAIPosture: React.FC<FieldAIPostureProps> = ({
         </div>
         <div className="space-y-2">
           <h4 className="text-xl font-bold text-foreground">AI Posture Analysis</h4>
-          <p className="text-primary/70 text-sm font-medium max-w-xs mx-auto">
+          <p className="text-on-brand-tint text-sm font-medium max-w-xs mx-auto">
             {hasResults 
               ? "Scan complete! You can re-scan if needed or continue to the next step."
               : "Connect your iPhone to perform a multi-view posture scan with real-time AI grading."}

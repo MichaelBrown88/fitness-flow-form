@@ -37,7 +37,7 @@ export default function ClientRoadmapTab() {
   if (assessments.length === 0) {
     return (
       <div className="rounded-2xl border border-border bg-muted p-8 text-center max-w-md mx-auto">
-        <Map className="h-10 w-10 text-muted-foreground/60 mx-auto mb-3" />
+        <Map className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
         <p className="text-sm font-medium text-foreground-secondary">Complete an assessment first</p>
         <p className="text-xs text-muted-foreground mt-1">Then you can create a roadmap for this client.</p>
       </div>
@@ -47,7 +47,7 @@ export default function ClientRoadmapTab() {
   if (needsCreation || items.length === 0) {
     return (
       <div className="rounded-2xl border border-border bg-muted p-8 text-center max-w-md mx-auto">
-        <Map className="h-10 w-10 text-muted-foreground/60 mx-auto mb-3" />
+        <Map className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
         <p className="text-sm font-medium text-foreground-secondary">No roadmap yet</p>
         <p className="text-xs text-muted-foreground mt-2 mb-4">Create and send a roadmap from the full roadmap page.</p>
         <Button size="sm" className="rounded-lg gap-1.5" asChild>

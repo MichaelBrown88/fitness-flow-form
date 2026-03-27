@@ -111,7 +111,7 @@ export function InstallPrompt() {
           </div>
           <button
             onClick={handleDismiss}
-            className="flex-shrink-0 text-muted-foreground hover:text-foreground-secondary dark:text-muted-foreground dark:hover:text-muted-foreground/60 transition-colors"
+            className="flex-shrink-0 text-muted-foreground hover:text-foreground-secondary dark:text-muted-foreground dark:hover:text-foreground-secondary transition-colors"
             aria-label="Dismiss"
           >
             <X className="w-4 h-4" />
@@ -145,7 +145,7 @@ export function InstallPrompt() {
           </div>
           <button
             onClick={handleDismiss}
-            className="flex-shrink-0 text-muted-foreground hover:text-foreground-secondary dark:text-muted-foreground dark:hover:text-muted-foreground/60 transition-colors"
+            className="flex-shrink-0 text-muted-foreground hover:text-foreground-secondary dark:text-muted-foreground dark:hover:text-foreground-secondary transition-colors"
             aria-label="Dismiss"
           >
             <X className="w-4 h-4" />

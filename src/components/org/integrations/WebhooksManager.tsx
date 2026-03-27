@@ -169,7 +169,7 @@ export function WebhooksManager({ organizationId }: WebhooksManagerProps) {
                   ? <ToggleRight className="h-5 w-5 text-primary" />
                   : <ToggleLeft className="h-5 w-5" />}
               </button>
-              <button onClick={() => handleDelete(webhook.id)} className="text-muted-foreground/60 hover:text-red-500">
+              <button onClick={() => handleDelete(webhook.id)} className="text-muted-foreground hover:text-red-500">
                 <Trash2 className="h-4 w-4" />
               </button>
             </div>

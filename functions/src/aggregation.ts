@@ -351,7 +351,8 @@ export async function handleAssessmentChange(
   const coachUid = afterData?.coachUid || afterData?.assignedCoachUid || beforeData?.coachUid || beforeData?.assignedCoachUid;
 
   if (isCreated) {
-    const createdAt = afterData?.createdAt?.toDate?.() || afterData?.timestamp?.toDate?.() || new Date();
+    const createdAt =
+      toDate(afterData?.createdAt) ?? toDate(afterData?.timestamp) ?? new Date();
     const now = new Date();
     const isCurrentMonth = createdAt.getFullYear() === now.getFullYear() && createdAt.getMonth() === now.getMonth();
 
@@ -369,7 +370,8 @@ export async function handleAssessmentChange(
     const afterCount = typeof afterData?.assessmentCount === 'number' ? afterData.assessmentCount : 0;
     const delta = afterCount - beforeCount;
 
-    const updatedAt = afterData?.updatedAt?.toDate?.() || afterData?.createdAt?.toDate?.() || new Date();
+    const updatedAt =
+      toDate(afterData?.updatedAt) ?? toDate(afterData?.createdAt) ?? new Date();
     const now = new Date();
     const isCurrentMonth =
       updatedAt.getFullYear() === now.getFullYear() && updatedAt.getMonth() === now.getMonth();
@@ -389,7 +391,8 @@ export async function handleAssessmentChange(
     await updateLastAssessmentDate(orgId);
   } else if (isDeleted) {
     const deletedCoachUid = beforeData?.coachUid || beforeData?.assignedCoachUid;
-    const deletedAt = beforeData?.createdAt?.toDate?.() || beforeData?.timestamp?.toDate?.() || new Date();
+    const deletedAt =
+      toDate(beforeData?.createdAt) ?? toDate(beforeData?.timestamp) ?? new Date();
     const now = new Date();
     const wasCurrentMonth = deletedAt.getFullYear() === now.getFullYear() && deletedAt.getMonth() === now.getMonth();
     // Decrement by the full assessmentCount (full + pillar sessions) not just -1

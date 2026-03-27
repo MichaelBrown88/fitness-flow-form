@@ -173,14 +173,14 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
 
         {movementPattern && (
           <div className="mb-6 flex items-center gap-2">
-            <span className="px-3 py-1 bg-brand-light text-primary rounded-full text-[10px] font-black uppercase tracking-[0.15em] border border-primary/10">
+            <span className="px-3 py-1 bg-brand-light text-on-brand-tint rounded-full text-[10px] font-black uppercase tracking-[0.15em] border border-primary/10">
               {movementPattern}
             </span>
             {sharedSide && (
               <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.15em] border ${
                 sharedSide === 'left'
                   ? 'bg-score-green-light text-score-green-fg border-score-green-muted'
-                  : 'bg-primary/10 text-primary border-primary/10'
+                  : 'bg-primary/10 text-on-brand-tint border-primary/10'
               }`}>
                 {sharedSide} Side
               </span>
