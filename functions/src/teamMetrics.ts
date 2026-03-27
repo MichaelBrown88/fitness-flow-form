@@ -7,6 +7,7 @@
  */
 
 import * as admin from 'firebase-admin';
+import { logger } from 'firebase-functions';
 import { HttpsError } from 'firebase-functions/v2/https';
 import { firestoreValueToDate } from './firestoreTimestamp';
 
@@ -43,6 +44,40 @@ const GENERIC_COACH_LABEL = 'Coach';
 const BATCH_GET_LIMIT = 10;
 /** Caps worst-case reads; team dashboard is roster-scale (typical orgs well under this). */
 const TEAM_METRICS_MAX_COACHES = 500;
+/**
+ * Upper bound on distinct UIDs passed to getAll (coaches + assessment coachUids).
+ * Uses batched document reads, not list queries — cap prevents pathological fan-out.
+ */
+const TEAM_METRICS_MAX_PROFILE_UID_LOOKUPS = 1000;
+/** Sequential auth.getUser calls are expensive; cap enrich pass for worst-case orgs. */
+const TEAM_METRICS_MAX_AUTH_ENRICH_UIDS = 200;
+
+function sleepMs(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+async function getAuthUserWithTransientRetry(
+  auth: admin.auth.Auth,
+  uid: string,
+): Promise<admin.auth.UserRecord | null> {
+  const retryableCodes = new Set(['auth/network-error', 'auth/internal-error']);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      return await auth.getUser(uid);
+    } catch (e: unknown) {
+      const code =
+        e && typeof e === 'object' && 'code' in e ? String((e as { code: unknown }).code) : '';
+      if (attempt === 0 && retryableCodes.has(code)) {
+        await sleepMs(280);
+        continue;
+      }
+      return null;
+    }
+  }
+  return null;
+}
 
 async function batchGetProfileDisplayNames(
   db: admin.firestore.Firestore,
@@ -50,7 +85,15 @@ async function batchGetProfileDisplayNames(
   uids: string[],
 ): Promise<Map<string, string>> {
   const out = new Map<string, string>();
-  const unique = [...new Set(uids.filter(Boolean))];
+  let unique = [...new Set(uids.filter(Boolean))];
+  if (unique.length > TEAM_METRICS_MAX_PROFILE_UID_LOOKUPS) {
+    logger.warn('[teamMetrics] profile uid lookup list truncated', {
+      orgId,
+      requested: unique.length,
+      cap: TEAM_METRICS_MAX_PROFILE_UID_LOOKUPS,
+    });
+    unique = unique.slice(0, TEAM_METRICS_MAX_PROFILE_UID_LOOKUPS);
+  }
   for (let i = 0; i < unique.length; i += BATCH_GET_LIMIT) {
     const chunk = unique.slice(i, i + BATCH_GET_LIMIT);
     const refs = chunk.map((uid) => db.doc(`userProfiles/${uid}`));
@@ -68,31 +111,38 @@ async function batchGetProfileDisplayNames(
 
 /** When userProfiles still says "Coach", fall back to Firebase Auth displayName or email local-part. */
 async function enrichDisplayNamesFromFirebaseAuth(
+  orgId: string,
   uids: string[],
   names: Map<string, string>,
 ): Promise<void> {
   const auth = admin.auth();
-  for (const uid of uids) {
+  let list = uids;
+  if (list.length > TEAM_METRICS_MAX_AUTH_ENRICH_UIDS) {
+    logger.warn('[teamMetrics] auth displayName enrich list truncated', {
+      orgId,
+      requested: list.length,
+      cap: TEAM_METRICS_MAX_AUTH_ENRICH_UIDS,
+    });
+    list = list.slice(0, TEAM_METRICS_MAX_AUTH_ENRICH_UIDS);
+  }
+  for (const uid of list) {
     const existing = names.get(uid);
     if (existing && existing !== GENERIC_COACH_LABEL) continue;
-    try {
-      const u = await auth.getUser(uid);
-      const fromAuth = (u.displayName || '').trim();
-      if (fromAuth && fromAuth !== GENERIC_COACH_LABEL) {
-        names.set(uid, fromAuth);
-        continue;
-      }
-      const local = u.email?.split('@')[0]?.replace(/[._-]+/g, ' ').trim();
-      if (local) {
-        const pretty = local
-          .split(/\s+/g)
-          .filter(Boolean)
-          .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-          .join(' ');
-        if (pretty) names.set(uid, pretty);
-      }
-    } catch {
-      /* user missing or permission — skip */
+    const u = await getAuthUserWithTransientRetry(auth, uid);
+    if (!u) continue;
+    const fromAuth = (u.displayName || '').trim();
+    if (fromAuth && fromAuth !== GENERIC_COACH_LABEL) {
+      names.set(uid, fromAuth);
+      continue;
+    }
+    const local = u.email?.split('@')[0]?.replace(/[._-]+/g, ' ').trim();
+    if (local) {
+      const pretty = local
+        .split(/\s+/g)
+        .filter(Boolean)
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+        .join(' ');
+      if (pretty) names.set(uid, pretty);
     }
   }
 }
@@ -155,7 +205,10 @@ export async function computeTeamMetrics(
   try {
     assessmentsSnap = await assessmentsCol.orderBy('createdAt', 'desc').limit(500).get();
   } catch (err) {
-    console.warn('[teamMetrics] ordered assessments query failed; using unordered limit:', err);
+    logger.warn('[teamMetrics] ordered assessments query failed; using unordered limit', {
+      orgId,
+      error: err instanceof Error ? err.message : String(err),
+    });
     assessmentsSnap = await assessmentsCol.limit(500).get();
   }
 
@@ -204,7 +257,7 @@ export async function computeTeamMetrics(
     const fromProfile = profileDisplayNames.get(uid);
     return !fromProfile || fromProfile === GENERIC_COACH_LABEL;
   });
-  await enrichDisplayNamesFromFirebaseAuth(needAuthEnrich, profileDisplayNames);
+  await enrichDisplayNamesFromFirebaseAuth(orgId, needAuthEnrich, profileDisplayNames);
 
   const coachesResolved: Coach[] = coaches.map((c) => {
     const fromProfile = profileDisplayNames.get(c.uid);

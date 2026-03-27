@@ -5,6 +5,7 @@ import { Trash2 } from 'lucide-react';
 import { formatGoal } from '../DashboardConstants';
 import type { CoachAssessmentSummary } from '@/services/coachAssessments';
 import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
+import { formatFirestoreTimestampLocale } from '@/lib/utils/formatFirestoreTimestampDisplay';
 
 export interface AssessmentsTableRowProps {
   item: CoachAssessmentSummary;
@@ -18,12 +19,12 @@ export const AssessmentsTableRow: React.FC<AssessmentsTableRowProps> = ({ item, 
         <div className="flex flex-col">
           <span>{formatClientDisplayName(item.clientName)}</span>
           <span className="mt-1 text-[10px] font-medium text-muted-foreground sm:hidden">
-            {item.createdAt ? item.createdAt.toDate().toLocaleDateString() : '—'}
+            {formatFirestoreTimestampLocale(item.createdAt)}
           </span>
         </div>
       </td>
       <td className="hidden px-3 py-4 text-xs font-medium text-muted-foreground sm:table-cell sm:px-4 sm:text-sm md:px-6">
-        {item.createdAt ? item.createdAt.toDate().toLocaleDateString() : '—'}
+        {formatFirestoreTimestampLocale(item.createdAt)}
       </td>
       <td className="px-3 sm:px-4 md:px-6 py-4">
         <span className="inline-flex items-center rounded-lg bg-foreground px-2.5 py-1 text-xs font-bold text-background transition-transform group-hover:scale-105">
