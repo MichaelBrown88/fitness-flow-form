@@ -138,6 +138,7 @@ const ClientDetail = () => {
   const { profile: authProfile, orgSettings } = useAuth();
   const {
     clientName,
+    displayClientName,
     user,
     loading,
     loadingSnapshots,
@@ -226,7 +227,7 @@ const ClientDetail = () => {
   if (loading) {
     return (
       <AppShell 
-        title={clientName}
+        title={displayClientName}
       >
         <div className="py-10 text-sm text-foreground-secondary">Loading client data…</div>
       </AppShell>
@@ -235,7 +236,7 @@ const ClientDetail = () => {
 
   return (
     <AppShell
-      title={clientName}
+      title={displayClientName}
       hideTitle
       actions={
         <div className="flex items-center gap-1">
@@ -284,7 +285,7 @@ const ClientDetail = () => {
     >
       <Breadcrumb items={[
         { label: 'Dashboard', href: ROUTES.DASHBOARD },
-        { label: clientName },
+        { label: displayClientName },
       ]} />
 
       {incompleteDraft && (
@@ -305,7 +306,7 @@ const ClientDetail = () => {
       {/* Custom header row: client name + Report button */}
       <div className="flex items-center justify-between gap-3 mb-6">
         <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-foreground truncate">
-          {clientName}
+          {displayClientName}
         </h1>
         {currentAssessment && assessments.length > 0 && (
           <Button
@@ -591,7 +592,7 @@ const ClientDetail = () => {
       <Dialog open={isEditing} onOpenChange={setIsEditing}>
         <DialogContent className="sm:max-w-[540px] max-h-[90vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Client Profile: {clientName}</DialogTitle>
+            <DialogTitle>Client Profile: {displayClientName}</DialogTitle>
             <DialogDescription>
               Contact info, scheduling, and coaching notes.
             </DialogDescription>

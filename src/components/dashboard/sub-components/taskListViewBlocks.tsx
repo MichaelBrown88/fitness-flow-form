@@ -21,6 +21,7 @@ import {
   urgencyHeading,
   type ClientCadenceGroup as ClientCadenceGroupModel,
 } from './taskListModel';
+import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
 
 export const TASK_ICONS: Record<string, React.ElementType> = {
   overdue_reassessment: Activity,
@@ -148,7 +149,9 @@ function ClientCadenceGroupCard({
           aria-hidden
         />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-foreground truncate">{group.clientName}</p>
+          <p className="text-sm font-semibold text-foreground truncate">
+            {formatClientDisplayName(group.clientName)}
+          </p>
           <p className="text-xs text-muted-foreground truncate">
             {sortedTasks.length} check-in{sortedTasks.length === 1 ? '' : 's'} · {truncated}
           </p>
@@ -234,7 +237,7 @@ export function TaskRow({ task, navigate }: TaskRowProps) {
         onClick={() => navigate(`/client/${encodeURIComponent(task.clientName)}`)}
         className="text-sm font-semibold text-foreground truncate hover:underline text-left min-w-0 shrink"
       >
-        {task.clientName}
+        {formatClientDisplayName(task.clientName)}
       </button>
       <span className="text-xs text-muted-foreground hidden sm:inline truncate">{task.title}</span>
       {due?.text ? (

@@ -107,16 +107,14 @@ export function useClientCapacity(): ClientCapacityState & {
     const status = typeof sub.status === 'string' ? sub.status : 'trial';
     const planKind = typeof sub.planKind === 'string' ? sub.planKind : undefined;
     const paidActive = status === 'active' || status === 'trialing' || status === 'trial';
-    const cap =
-      typeof sub.clientCap === 'number'
+    /** Seat cap from subscription — never use `sub.clientCount` here (often 0 / meaning differs from seats). */
+    const capFromSubscription =
+      typeof sub.clientCap === 'number' && sub.clientCap > 0
         ? sub.clientCap
-        : typeof sub.clientSeats === 'number'
+        : typeof sub.clientSeats === 'number' && sub.clientSeats > 0
           ? sub.clientSeats
-          : typeof sub.clientCount === 'number'
-            ? sub.clientCount
-            : paidActive
-              ? 10
-              : FREE_TIER_CLIENT_LIMIT;
+          : null;
+    const cap = capFromSubscription ?? (paidActive ? 10 : FREE_TIER_CLIENT_LIMIT);
 
     const tierIdRaw = sub.capacityTierId;
     const capacityTierId: PaidCapacityTierId | null =

@@ -6,6 +6,7 @@ import type { ScheduleStatus } from '@/hooks/useReassessmentQueue';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
+import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
 
 export interface DueEntry {
   name: string;
@@ -56,7 +57,8 @@ interface ClientPillProps {
 }
 
 export function ClientPill({ entry, dateKey, day, dayClients, onPillClick, isSelected }: ClientPillProps) {
-  const firstName = entry.name.split(' ')[0];
+  const displayName = formatClientDisplayName(entry.name);
+  const firstName = displayName.split(' ')[0] ?? displayName;
 
   const handleDragStart = (e: React.DragEvent) => {
     const payload: DragPayload = {
@@ -80,7 +82,7 @@ export function ClientPill({ entry, dateKey, day, dayClients, onPillClick, isSel
       className={`flex cursor-grab items-center gap-0.5 truncate rounded border px-1 py-0.5 text-[9px] font-semibold leading-tight active:cursor-grabbing sm:text-[10px] ${STATUS_COLORS[entry.status]} ${
         isSelected ? 'ring-2 ring-violet-500 ring-offset-1 ring-offset-background' : ''
       }`}
-      title={`${entry.name} — ${getPillarLabel(entry.pillar)} (Ctrl/Cmd+click to select multiple)`}
+      title={`${displayName} — ${getPillarLabel(entry.pillar)} (Ctrl/Cmd+click to select multiple)`}
     >
       <GripVertical className="h-2.5 w-2.5 shrink-0 opacity-40" />
       <span className="truncate">{firstName}</span>
@@ -122,6 +124,7 @@ export function DayDetailPanel({
         {selectedDay.clients.map((c, i) => {
           const popoverId = `${c.name}-${c.pillar}-${i}`;
           const canChangeDate = !!organizationId && !!onChangeDate && !saving;
+          const displayClient = formatClientDisplayName(c.name);
           return (
             <li key={popoverId} className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -130,7 +133,7 @@ export function DayDetailPanel({
                   c.status === 'due-soon' ? 'bg-amber-500' : 'bg-emerald-500'
                 }`} />
                 <span className="truncate text-sm text-foreground">
-                  <span className="font-semibold">{c.name}</span>
+                  <span className="font-semibold">{displayClient}</span>
                   <span className="ml-2 text-xs text-muted-foreground">{getPillarLabel(c.pillar)}</span>
                 </span>
               </div>

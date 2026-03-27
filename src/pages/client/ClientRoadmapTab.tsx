@@ -10,7 +10,8 @@ import { AlertTriangle, Loader2, Map, Plus } from 'lucide-react';
 import type { ClientDetailOutletContext } from './ClientDetailLayout';
 
 export default function ClientRoadmapTab() {
-  const { clientName, assessments, isRoadmapStale } = useOutletContext<ClientDetailOutletContext>();
+  const { clientName, displayClientName, assessments, isRoadmapStale } =
+    useOutletContext<ClientDetailOutletContext>();
   const effectiveName = clientName ?? '';
 
   const {
@@ -71,7 +72,7 @@ export default function ClientRoadmapTab() {
         </div>
       )}
       <RoadmapClientView
-        clientName={effectiveName}
+        clientName={displayClientName || effectiveName}
         summary={summary}
         items={items}
         clientGoals={clientGoals}

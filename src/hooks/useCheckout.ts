@@ -129,11 +129,11 @@ export function useCheckout() {
         });
         const { sessionUrl } = result.data;
 
-        if (!sessionUrl) {
+        if (!sessionUrl || !/^https?:\/\//i.test(sessionUrl)) {
           throw new Error('No checkout session URL returned from server.');
         }
 
-        window.location.href = sessionUrl;
+        window.location.assign(sessionUrl);
         return true;
       } catch (err: unknown) {
         const message =

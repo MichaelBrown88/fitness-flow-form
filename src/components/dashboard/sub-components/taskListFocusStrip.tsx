@@ -3,6 +3,7 @@ import type { NavigateFunction } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { DASHBOARD_TASKS } from '@/constants/dashboardTasksCopy';
 import type { FocusStripEntry } from './taskListModel';
+import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
 
 interface TaskListFocusStripProps {
   entries: FocusStripEntry[];
@@ -31,9 +32,9 @@ export function TaskListFocusStrip({ entries, navigate }: TaskListFocusStripProp
                   navigate(e.clientPath);
                 }}
                 className="text-sm font-semibold text-foreground hover:underline truncate block"
-                aria-label={`${DASHBOARD_TASKS.FOCUS_STRIP_CLIENT_LINK_ARIA}: ${e.clientName}`}
+                aria-label={`${DASHBOARD_TASKS.FOCUS_STRIP_CLIENT_LINK_ARIA}: ${formatClientDisplayName(e.clientName)}`}
               >
-                {e.clientName}
+                {formatClientDisplayName(e.clientName)}
               </a>
               <p className="text-xs text-muted-foreground truncate">{e.subtitle}</p>
             </div>

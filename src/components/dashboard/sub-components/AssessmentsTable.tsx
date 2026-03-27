@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
 import { formatGoal } from '../DashboardConstants';
 import type { CoachAssessmentSummary } from '@/services/coachAssessments';
+import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
 
 interface AssessmentsTableProps {
   loadingData: boolean;
@@ -72,7 +73,7 @@ export const AssessmentsTable: React.FC<AssessmentsTableProps> = ({
                 <tr key={item.id} className="group transition-colors hover:bg-muted/50">
                   <td className="px-3 py-4 text-xs font-semibold text-foreground sm:px-4 sm:text-sm md:px-6">
                     <div className="flex flex-col">
-                      <span>{item.clientName}</span>
+                      <span>{formatClientDisplayName(item.clientName)}</span>
                       <span className="mt-1 text-[10px] font-medium text-muted-foreground sm:hidden">
                         {item.createdAt
                           ? item.createdAt.toDate().toLocaleDateString()

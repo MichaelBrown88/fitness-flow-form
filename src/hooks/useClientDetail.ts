@@ -22,6 +22,7 @@ import {
 import { type FormData } from '@/contexts/FormContext';
 import { computeScores } from '@/lib/scoring';
 import { logger } from '@/lib/utils/logger';
+import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
 import { UI_TOASTS } from '@/constants/ui';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import { ROUTES } from '@/constants/routes';
@@ -48,7 +49,10 @@ export interface CurrentAssessmentData {
 }
 
 export interface UseClientDetailResult {
+  /** Canonical client key from the route (slug); use for Firestore paths and encodeURIComponent. */
   clientName: string;
+  /** Human-readable label for breadcrumbs and headings (from profile when available). */
+  displayClientName: string;
   user: ReturnType<typeof useAuth>['user'];
   
   loading: boolean;
@@ -98,7 +102,7 @@ export function useClientDetail(): UseClientDetailResult {
   const readOrgId = effectiveOrgId || userProfile?.organizationId;
   
   const clientName = encodedClientName ? decodeURIComponent(encodedClientName) : '';
-  
+
   // Core data state
   const [assessments, setAssessments] = useState<CoachAssessmentSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -114,6 +118,12 @@ export function useClientDetail(): UseClientDetailResult {
   const [deleteDialog, setDeleteDialog] = useState<DeleteDialogState | null>(null);
   const [deleteSnapshotDialog, setDeleteSnapshotDialog] = useState<{ snapshotId: string } | null>(null);
   const [incompleteDraft, setIncompleteDraft] = useState<{ formData: FormData; updatedAt: Timestamp | null } | null>(null);
+
+  const displayClientName = useMemo(() => {
+    const fromProfile = profile?.clientName?.trim();
+    if (fromProfile) return formatClientDisplayName(fromProfile);
+    return formatClientDisplayName(clientName);
+  }, [profile?.clientName, clientName]);
 
   // Calculate stats from snapshots (actual assessment history: full + partials). Fall back to assessments/summary when no snapshots yet.
   const stats = useMemo<ClientStats>(() => {
@@ -713,6 +723,7 @@ export function useClientDetail(): UseClientDetailResult {
 
   return {
     clientName,
+    displayClientName,
     user,
     
     loading,

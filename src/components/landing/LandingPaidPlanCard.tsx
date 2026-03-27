@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/constants/routes';
 import { Check } from 'lucide-react';
 import GlassCard from '@/components/ui/GlassCard';
@@ -84,6 +84,7 @@ export function LandingPaidPlanCard({
   billingPeriod,
   highlighted = false,
 }: LandingPaidPlanCardProps) {
+  const navigate = useNavigate();
   const {
     startLandingGuestCheckout,
     loading: checkoutLoading,
@@ -116,8 +117,11 @@ export function LandingPaidPlanCard({
   );
 
   const handleGuestGetStarted = useCallback(async () => {
-    await startLandingGuestCheckout(region, clientCount, billingPeriod, track);
-  }, [startLandingGuestCheckout, region, clientCount, billingPeriod, track]);
+    const redirected = await startLandingGuestCheckout(region, clientCount, billingPeriod, track);
+    if (!redirected) {
+      navigate(ROUTES.TRY, { replace: false });
+    }
+  }, [startLandingGuestCheckout, region, clientCount, billingPeriod, track, navigate]);
 
   const tierRow = getPaidTierByClientCount(clientCount, track);
   const displayPrice =
@@ -194,7 +198,7 @@ export function LandingPaidPlanCard({
             ) : null}
           </>
         ) : (
-          <Link to={ROUTES.ONBOARDING} className={primaryCtaClassName}>
+          <Link to={ROUTES.TRY} className={primaryCtaClassName}>
             {track === 'gym' ? 'Start gym trial' : 'Get started'}
           </Link>
         )}

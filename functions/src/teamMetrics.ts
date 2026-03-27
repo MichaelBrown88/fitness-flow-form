@@ -7,6 +7,7 @@
  */
 
 import * as admin from 'firebase-admin';
+import { HttpsError } from 'firebase-functions/v2/https';
 
 function getDb() {
   return admin.firestore();
@@ -108,10 +109,14 @@ export async function computeTeamMetrics(
   request: { auth?: { uid?: string } },
   data: { orgId: string },
 ): Promise<TeamMetricsResult> {
-  if (!request.auth?.uid) throw new Error('Authentication required.');
+  if (!request.auth?.uid) {
+    throw new HttpsError('unauthenticated', 'Authentication required.');
+  }
 
   const { orgId } = data;
-  if (!orgId || typeof orgId !== 'string') throw new Error('orgId is required.');
+  if (!orgId || typeof orgId !== 'string') {
+    throw new HttpsError('invalid-argument', 'orgId is required.');
+  }
 
   const db = getDb();
 
@@ -120,7 +125,10 @@ export async function computeTeamMetrics(
   const profileData = callerProfile.data();
   const isPlatformAdmin = (await db.doc(`platform_admins/${request.auth.uid}`).get()).exists;
   if (!isPlatformAdmin && profileData?.organizationId !== orgId) {
-    throw new Error('Access denied: caller is not a member of this organization.');
+    throw new HttpsError(
+      'permission-denied',
+      'Access denied: caller is not a member of this organization.',
+    );
   }
 
   // 1. Fetch coaches
@@ -149,11 +157,14 @@ export async function computeTeamMetrics(
   });
 
   // 2. Fetch assessments (up to 500, server-side)
-  const assessmentsSnap = await db
-    .collection(`organizations/${orgId}/assessments`)
-    .orderBy('createdAt', 'desc')
-    .limit(500)
-    .get();
+  const assessmentsCol = db.collection(`organizations/${orgId}/assessments`);
+  let assessmentsSnap;
+  try {
+    assessmentsSnap = await assessmentsCol.orderBy('createdAt', 'desc').limit(500).get();
+  } catch (err) {
+    console.warn('[teamMetrics] ordered assessments query failed; using unordered limit:', err);
+    assessmentsSnap = await assessmentsCol.limit(500).get();
+  }
 
   const now = new Date();
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);

@@ -18,6 +18,15 @@ const PHASE_NAMES: Record<string, string> = {
   performance: 'Performance',
 };
 
+/** Monday 00:00 UTC date key — at most one batched coach nudge per kind per calendar week. */
+function utcWeekBucketId(d: Date): string {
+  const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  const dow = x.getUTCDay();
+  const daysFromMonday = (dow + 6) % 7;
+  x.setUTCDate(x.getUTCDate() - daysFromMonday);
+  return x.toISOString().slice(0, 10);
+}
+
 /**
  * Notify the org admin when a coach accepts their invite.
  * Fires from an onDocumentWritten trigger on invitations/{token}.
@@ -309,11 +318,17 @@ export async function sendReassessmentReminders(): Promise<void> {
     }
   }
 
-  // Flush batched upcoming-due nudges (one notification per coach)
+  const weekId = utcWeekBucketId(now);
+
+  // Flush batched upcoming-due nudges (one notification per coach per week)
   for (const [coachUid, clientNames] of upcomingByCoach.entries()) {
+    const ref = db.doc(`notifications/${coachUid}/items/weekly_upcoming_7d_${weekId}`);
+    const existing = await ref.get();
+    if (existing.exists) continue;
+
     const count = clientNames.length;
     const preview = clientNames.slice(0, 2).join(', ') + (count > 2 ? ` and ${count - 2} more` : '');
-    await db.collection(`notifications/${coachUid}/items`).add({
+    await ref.set({
       type: 'schedule_review_upcoming',
       title: `${count} client${count > 1 ? 's' : ''} due for reassessment in 7 days`,
       body: `${preview} — book their sessions now to stay ahead of the schedule.`,
@@ -327,11 +342,15 @@ export async function sendReassessmentReminders(): Promise<void> {
     upcomingRemindersSent++;
   }
 
-  // Flush batched inactive (no schedule) nudges (one notification per coach)
+  // Flush batched inactive (no schedule) nudges (one per coach per week)
   for (const [coachUid, clientNames] of inactiveByCoach.entries()) {
+    const ref = db.doc(`notifications/${coachUid}/items/weekly_no_schedule_${weekId}`);
+    const existing = await ref.get();
+    if (existing.exists) continue;
+
     const count = clientNames.length;
     const preview = clientNames.slice(0, 2).join(', ') + (count > 2 ? ` and ${count - 2} more` : '');
-    await db.collection(`notifications/${coachUid}/items`).add({
+    await ref.set({
       type: 'schedule_review_upcoming',
       title: `${count} client${count > 1 ? 's' : ''} without a reassessment schedule`,
       body: `${preview} ${count > 1 ? 'have' : 'has'} not been reassessed in over 30 days and have no retest date set.`,

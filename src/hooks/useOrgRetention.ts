@@ -11,6 +11,7 @@ import { ORG_CLIENT_PROFILES_QUERY_LIMIT } from '@/constants/firestoreQueryLimit
 import { getDb } from '@/services/firebase';
 import { ORGANIZATION } from '@/lib/database/paths';
 import { logger } from '@/lib/utils/logger';
+import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
 
 /** Client with retention metrics */
 export interface ClientRetentionData {
@@ -126,9 +127,13 @@ export function useOrgRetention(
         // Calculate days since assessment
         const days = daysSince(lastAssessmentDate);
         
+        const rawLabel =
+          typeof data.clientName === 'string' && data.clientName.trim()
+            ? data.clientName.trim()
+            : doc.id;
         return {
           id: doc.id,
-          name: data.clientName || doc.id,
+          name: formatClientDisplayName(rawLabel),
           email: data.email,
           assignedCoachUid: data.assignedCoachUid,
           assignedCoachName: data.assignedCoachUid ? coachMap.get(data.assignedCoachUid) : undefined,

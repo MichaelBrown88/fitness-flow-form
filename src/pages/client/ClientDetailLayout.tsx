@@ -70,6 +70,7 @@ export default function ClientDetailLayout() {
 
   const {
     clientName,
+    displayClientName,
     user,
     loading,
     profile,
@@ -161,7 +162,7 @@ export default function ClientDetailLayout() {
 
   if (loading) {
     return (
-      <AppShell title={clientName}>
+      <AppShell title={displayClientName}>
         <div className="py-10 text-sm text-foreground-secondary">Loading client data…</div>
       </AppShell>
     );
@@ -169,7 +170,7 @@ export default function ClientDetailLayout() {
 
   return (
     <AppShell
-      title={clientName}
+      title={displayClientName}
       hideTitle
       actions={
         <div className="flex items-center gap-1">
@@ -216,7 +217,7 @@ export default function ClientDetailLayout() {
         </div>
       }
     >
-      <Breadcrumb items={[{ label: 'Dashboard', href: ROUTES.DASHBOARD }, { label: clientName }]} />
+      <Breadcrumb items={[{ label: 'Dashboard', href: ROUTES.DASHBOARD }, { label: displayClientName }]} />
 
       {incompleteDraft && (
         <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-center justify-between gap-3">
@@ -235,7 +236,7 @@ export default function ClientDetailLayout() {
 
       <div className="flex items-center justify-between gap-3 mb-6">
         <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-foreground truncate">
-          {clientName}
+          {displayClientName}
         </h1>
       </div>
 
@@ -361,14 +362,14 @@ export default function ClientDetailLayout() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600">
               <Trash2 className="h-5 w-5" />
-              Permanently Delete {clientName}?
+              Permanently Delete {displayClientName}?
             </DialogTitle>
             <DialogDescription className="pt-2 space-y-2">
               <span className="block">
-                This will permanently delete <strong>{clientName}</strong> and remove all their data — assessments, history, snapshots, and reports. This cannot be undone.
+                This will permanently delete <strong>{displayClientName}</strong> and remove all their data — assessments, history, snapshots, and reports. This cannot be undone.
               </span>
               <span className="block mt-2 font-medium text-foreground-secondary">
-                Type <strong>{clientName}</strong> to confirm:
+                Type <strong>{displayClientName}</strong> to confirm:
               </span>
             </DialogDescription>
           </DialogHeader>
@@ -377,7 +378,7 @@ export default function ClientDetailLayout() {
               ref={deleteInputRef}
               value={deleteConfirmName}
               onChange={(e) => setDeleteConfirmName(e.target.value)}
-              placeholder={clientName}
+              placeholder={displayClientName}
               className="rounded-xl"
               disabled={deleting}
               autoFocus
@@ -389,7 +390,7 @@ export default function ClientDetailLayout() {
             </Button>
             <Button
               variant="destructive"
-              disabled={deleteConfirmName !== clientName || deleting}
+              disabled={deleteConfirmName.trim() !== displayClientName.trim() || deleting}
               className="rounded-xl h-11 px-6 font-bold"
               onClick={async () => {
                 setDeleting(true);

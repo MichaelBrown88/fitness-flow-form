@@ -25,6 +25,7 @@ import {
   type ReassessmentType,
 } from '@/hooks/useReassessmentQueue';
 import type { PartialAssessmentCategory } from '@/types/client';
+import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
 
 // ── Pillar icon helper ───────────────────────────────────────────────
 
@@ -230,7 +231,7 @@ const AgendaRow: React.FC<AgendaRowProps> = ({
         onClick={() => navigate(`/client/${encodeURIComponent(item.clientName)}`)}
         className="min-w-0 flex-shrink truncate text-left text-sm font-semibold text-foreground hover:underline"
       >
-        {item.clientName}
+        {formatClientDisplayName(item.clientName)}
       </button>
       {showCoachName && item.coachUid && coachMap?.get(item.coachUid) && (
         <span className="text-xs text-muted-foreground truncate hidden sm:inline">
