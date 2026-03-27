@@ -186,6 +186,10 @@ export const updatePostureImage = async (
     
     const sessionData = sessionDoc.data() as LiveSession;
 
+    if (!sessionData.organizationId || typeof sessionData.organizationId !== 'string') {
+      throw new Error('Cannot update posture image: session has no organization.');
+    }
+
     const isPlainObject = (value: unknown): value is Record<string, unknown> =>
       !!value && typeof value === 'object' && !Array.isArray(value);
 

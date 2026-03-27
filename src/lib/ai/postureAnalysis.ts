@@ -1,12 +1,13 @@
 import { getAI, VertexAIBackend, getGenerativeModel } from "firebase/ai";
-import { getApp } from "firebase/app";
 import { CONFIG } from '@/config';
 import { calculateFrontViewMetrics, calculateSideViewMetrics } from '@/lib/utils/postureMath';
 import { buildPosturePrompt } from '@/lib/ai/prompts/posturePrompts';
 import { logAIUsage } from '@/services/aiUsage';
-import { getFirebaseFunctions, getStorage, auth } from '@/services/firebase';
+import { auth, getFirebaseApp } from '@/services/firebase';
 import { logger } from '@/lib/utils/logger';
 import { isFeatureEnabled } from '@/services/platform/platformConfig';
+import { validateOrganizationId } from '@/lib/utils/validateOrganizationId';
+import type { UserProfile } from '@/types/auth';
 
 /** Error thrown when a feature is disabled via kill switch */
 export class FeatureDisabledError extends Error {
@@ -14,6 +15,29 @@ export class FeatureDisabledError extends Error {
     super(`${featureName} is temporarily disabled for maintenance. Please try again later.`);
     this.name = 'FeatureDisabledError';
   }
+}
+
+/** Thrown when posture AI is called without a signed-in coach */
+export class PostureAnalysisAuthError extends Error {
+  constructor() {
+    super('You must be signed in to use AI posture analysis.');
+    this.name = 'PostureAnalysisAuthError';
+  }
+}
+
+/** Caller-supplied org context for billable posture AI (required for all Vertex paths) */
+export interface PostureAiContext {
+  organizationId: string;
+  profile?: UserProfile | null;
+}
+
+function requirePostureAiActor(ctx: PostureAiContext): { coachUid: string; organizationId: string } {
+  const coachUid = auth.currentUser?.uid;
+  if (!coachUid) {
+    throw new PostureAnalysisAuthError();
+  }
+  const organizationId = validateOrganizationId(ctx.organizationId, ctx.profile);
+  return { coachUid, organizationId };
 }
 
 export interface PostureAnalysisResult {
@@ -192,9 +216,10 @@ export interface PostureViewClassification {
  * Uses JSON mode with structured schema for reliable parsing
  */
 export async function classifyPostureView(
-  imageBase64: string
+  imageBase64: string,
+  ctx: PostureAiContext
 ): Promise<PostureViewClassification> {
-  const coachUid = auth.currentUser?.uid || 'anonymous';
+  requirePostureAiActor(ctx);
 
   // Check if posture analysis feature is enabled (kill switch check)
   const postureEnabled = await isFeatureEnabled('posture_enabled');
@@ -204,7 +229,7 @@ export async function classifyPostureView(
   }
 
   try {
-    const firebaseApp = getApp();
+    const firebaseApp = getFirebaseApp();
     const ai = getAI(firebaseApp, {
       backend: new VertexAIBackend()
     });
@@ -284,10 +309,11 @@ Return a JSON object with "view" (the classification) and "confidence" (0-1 scor
 export async function analyzePostureImage(
   imageUrl: string,
   view: 'front' | 'side-right' | 'side-left' | 'back',
+  aiContext: PostureAiContext,
   landmarks?: PostureAnalysisResult['landmarks']
 ): Promise<PostureAnalysisResult> {
-  const coachUid = auth.currentUser?.uid || 'anonymous';
-  
+  const { coachUid, organizationId } = requirePostureAiActor(aiContext);
+
   // Check if posture analysis feature is enabled (kill switch check)
   const postureEnabled = await isFeatureEnabled('posture_enabled');
   if (!postureEnabled) {
@@ -314,7 +340,7 @@ export async function analyzePostureImage(
     logger.debug(`Initializing Firebase AI for ${view}`, ctx);
     let firebaseApp;
     try {
-      firebaseApp = getApp();
+      firebaseApp = getFirebaseApp();
     } catch (appError) {
       logger.error('Failed to get Firebase app', ctx, appError);
       throw new Error(`Firebase app initialization failed: ${appError instanceof Error ? appError.message : 'Unknown error'}`);
@@ -518,19 +544,19 @@ export async function analyzePostureImage(
       }
       logger.debug(`Deviations: ${data.deviations?.join(', ')}`, ctx);
       
-      await logAIUsage(coachUid, 'posture_analysis', 'ai_success', 'gemini');
+      await logAIUsage(coachUid, 'posture_analysis', 'ai_success', 'gemini', organizationId);
       logger.debug(`Analysis complete for ${view}`, ctx);
       return data;
     } catch (parseError) {
       logger.error('JSON parsing error', ctx, parseError);
-      await logAIUsage(coachUid, 'posture_analysis', 'error', 'gemini');
+      await logAIUsage(coachUid, 'posture_analysis', 'error', 'gemini', organizationId);
       throw new Error(`Failed to parse AI response as JSON: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
     }
 
   } catch (err) {
     logger.error('Posture Analysis Error', 'POSTURE_AI', err);
     try {
-      await logAIUsage(coachUid, 'posture_analysis', 'error', 'gemini');
+      await logAIUsage(coachUid, 'posture_analysis', 'error', 'gemini', organizationId);
     } catch (logError) {
       logger.warn('Failed to log error', 'POSTURE_AI', logError);
     }

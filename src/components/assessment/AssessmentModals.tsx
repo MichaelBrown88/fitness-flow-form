@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CameraCapture } from '@/components/camera/CameraCapture';
+import { CameraCaptureErrorBoundary } from '@/components/camera/CameraCaptureErrorBoundary';
 import { PostureCompanionModal } from '@/components/camera/PostureCompanionModal';
 import { BodyCompCompanionModal } from '@/components/camera/BodyCompCompanionModal';
 import { OcrReviewDialog } from './OcrReviewDialog';
@@ -90,12 +91,18 @@ export const AssessmentModals = ({
     <>
       {/* Camera Capture Modal */}
       {showCamera && (
-        <CameraCapture 
-          mode={showCamera} 
-          onCapture={handleCapture}
-          onClose={() => setShowCamera(false)}
-          overlayText={showCamera === 'posture' ? `Capture ${['FRONT', 'RIGHT SIDE', 'LEFT SIDE', 'BACK'][postureStep]} View` : undefined}
-        />
+        <CameraCaptureErrorBoundary onDismiss={() => setShowCamera(false)}>
+          <CameraCapture
+            mode={showCamera}
+            onCapture={handleCapture}
+            onClose={() => setShowCamera(false)}
+            overlayText={
+              showCamera === 'posture'
+                ? `Capture ${['FRONT', 'RIGHT SIDE', 'LEFT SIDE', 'BACK'][postureStep]} View`
+                : undefined
+            }
+          />
+        </CameraCaptureErrorBoundary>
       )}
 
       {/* Posture Companion Modal */}

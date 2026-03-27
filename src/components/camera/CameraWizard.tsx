@@ -15,6 +15,7 @@ import {
   Dialog,
   DialogContent,
 } from '@/components/ui/dialog';
+import { CameraCaptureErrorBoundary } from '@/components/camera/CameraCaptureErrorBoundary';
 
 const CameraCapture = lazy(() =>
   import('./CameraCapture').then(m => ({ default: m.CameraCapture }))
@@ -144,16 +145,20 @@ export function CameraWizard({
 
           {step === 'capture' && (
             <div className="min-h-[300px]">
-              <Suspense fallback={
-                <div className="flex items-center justify-center py-20">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/60" />
-                </div>
-              }>
-                <CameraCapture
-                  onCapture={handleCapture}
-                  onClose={() => setStep('instructions')}
-                  mode={mode}
-                />
+              <Suspense
+                fallback={
+                  <div className="flex items-center justify-center py-20">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/60" />
+                  </div>
+                }
+              >
+                <CameraCaptureErrorBoundary onDismiss={() => setStep('instructions')}>
+                  <CameraCapture
+                    onCapture={handleCapture}
+                    onClose={() => setStep('instructions')}
+                    mode={mode}
+                  />
+                </CameraCaptureErrorBoundary>
               </Suspense>
             </div>
           )}
