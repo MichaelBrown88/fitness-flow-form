@@ -14,9 +14,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { doc, setDoc, getDoc, serverTimestamp, deleteField } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp, deleteField, writeBatch } from 'firebase/firestore';
 import { sendEmailVerification, EmailAuthProvider, linkWithCredential, GoogleAuthProvider, OAuthProvider, updateProfile } from 'firebase/auth';
-import { getDb, getFirebaseAuth } from '@/services/firebase';
+import { httpsCallable } from 'firebase/functions';
+import { getDb, getFirebaseAuth, getFirebaseFunctions } from '@/services/firebase';
 import { logOnboardingStep } from '@/services/platform/platformMetrics';
 import { getMonthlyPrice, getPriceInSmallestUnit } from '@/lib/pricing/config';
 import {
@@ -48,6 +49,14 @@ function formatOnboardingCompletionError(err: unknown): string {
     err && typeof err === 'object' && 'code' in err
       ? String((err as { code: unknown }).code)
       : '';
+  const message =
+    err && typeof err === 'object' && 'message' in err && typeof (err as { message: unknown }).message === 'string'
+      ? (err as { message: string }).message
+      : '';
+
+  if (code.startsWith('functions/')) {
+    return message || 'We could not complete your setup. Please try again or contact support.';
+  }
   if (code === 'permission-denied') {
     return 'We could not save your setup (permissions). Please sign out and try again, or contact support.';
   }
@@ -126,6 +135,7 @@ export function useOnboarding(): UseOnboardingResult {
 
   const resumedRef = useRef(false);
   const inviteCheckedRef = useRef(false);
+  const inviteTokenRef = useRef<string | null>(null);
   const completingRef = useRef(false);
 
   /* ---------- Resume from sessionStorage ---------- */
@@ -156,6 +166,7 @@ export function useOnboarding(): UseOnboardingResult {
       if (data.expiresAt?.toDate && data.expiresAt.toDate() < new Date()) return;
       if (data.expiresAt instanceof Date && data.expiresAt < new Date()) return;
 
+      inviteTokenRef.current = inviteToken;
       setInviteOrganizationId(data.organizationId);
       logger.info('Invite token accepted', { organizationId: data.organizationId });
     }).catch((err) => {
@@ -461,69 +472,94 @@ export function useOnboarding(): UseOnboardingResult {
       };
 
       setSavingMessage('Saving configuration...');
-      // Invited coaches join an existing org — do not merge subscription/DPA onto the
-      // personal shell org or the target org from the client (org writes require isOrgAdmin).
-      if (!inviteOrganizationId) {
-        await setDoc(doc(db, 'organizations', orgId), {
-          name: finalData.businessProfile?.name || '',
-          type: bizType,
-          region,
-          gradientId: finalData.branding?.gradientId || DEFAULT_GRADIENT,
-          equipmentConfig,
-          customBrandingEnabled: false,
-          coachRosterNotes: finalData.teamRoster?.trim() || deleteField(),
-          subscription: isSolo ? subscriptionSolo : subscriptionGym,
-          onboardingCompletedAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          dpa: {
-            accepted: true,
-            version: 1,
-            acceptedByUid: user.uid,
-            acceptedAt: serverTimestamp(),
-            note: 'Implicit acceptance of Data Processing Agreement at onboarding completion.',
-          },
-        }, { merge: true });
-      }
 
       const isActiveCoach = finalData.businessProfile?.type === 'solo_coach'
         ? true
         : (finalData.businessProfile?.isActiveCoach ?? true);
 
-      const profileUpdate: Record<string, unknown> = {
-        onboardingCompleted: true,
-        isActiveCoach,
-        displayName: finalData.identity
-          ? `${finalData.identity.firstName} ${finalData.identity.lastName}`
-          : profile.displayName,
-        email: finalData.identity?.email || user.email || null,
-        updatedAt: serverTimestamp(),
+      const displayNameForProfile = finalData.identity
+        ? `${finalData.identity.firstName} ${finalData.identity.lastName}`.trim()
+        : profile.displayName;
+
+      const profileEmail = finalData.identity?.email || user.email || null;
+
+      const onboardingSessionPayload = {
+        userId: user.uid,
+        organizationId: inviteOrganizationId ?? orgId,
+        data: finalData,
+        completedAt: serverTimestamp(),
       };
 
       if (inviteOrganizationId) {
-        profileUpdate.organizationId = inviteOrganizationId;
-        profileUpdate.role = 'coach';
-
-        const inviteToken = searchParams.get('invite');
-        if (inviteToken) {
-          await setDoc(doc(db, 'invitations', inviteToken), { status: 'accepted' }, { merge: true });
+        const inviteToken = inviteTokenRef.current ?? searchParams.get('invite');
+        if (!inviteToken) {
+          throw new Error('Invitation link is missing. Open the invite link from your email and try again.');
         }
-      }
 
-      await setDoc(doc(db, 'userProfiles', user.uid), profileUpdate, { merge: true });
+        const acceptInvite = httpsCallable<
+          { token: string; displayName: string; email: string | null; isActiveCoach: boolean },
+          { success: true; organizationId: string }
+        >(getFirebaseFunctions(), 'acceptCoachInvite');
 
-      try {
-        await setDoc(
-          doc(db, 'onboarding_sessions', user.uid),
+        await acceptInvite({
+          token: inviteToken,
+          displayName: displayNameForProfile || profile.displayName || 'Coach',
+          email: finalData.identity?.email?.trim().toLowerCase() ?? null,
+          isActiveCoach,
+        });
+
+        try {
+          await setDoc(
+            doc(db, 'onboarding_sessions', user.uid),
+            onboardingSessionPayload,
+            { merge: true },
+          );
+        } catch (auditErr) {
+          logger.warn('Audit record write failed (non-critical):', auditErr instanceof Error ? auditErr.message : String(auditErr));
+        }
+      } else {
+        const batch = writeBatch(db);
+        const orgRef = doc(db, 'organizations', orgId);
+        batch.set(
+          orgRef,
           {
-            userId: user.uid,
-            organizationId: inviteOrganizationId ?? orgId,
-            data: finalData,
-            completedAt: serverTimestamp(),
+            name: finalData.businessProfile?.name || '',
+            type: bizType,
+            region,
+            gradientId: finalData.branding?.gradientId || DEFAULT_GRADIENT,
+            equipmentConfig,
+            customBrandingEnabled: false,
+            coachRosterNotes: finalData.teamRoster?.trim() || deleteField(),
+            subscription: isSolo ? subscriptionSolo : subscriptionGym,
+            onboardingCompletedAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            dpa: {
+              accepted: true,
+              version: 1,
+              acceptedByUid: user.uid,
+              acceptedAt: serverTimestamp(),
+              note: 'Implicit acceptance of Data Processing Agreement at onboarding completion.',
+            },
           },
           { merge: true },
         );
-      } catch (auditErr) {
-        logger.warn('Audit record write failed (non-critical):', auditErr instanceof Error ? auditErr.message : String(auditErr));
+
+        const profileUpdate: Record<string, unknown> = {
+          onboardingCompleted: true,
+          isActiveCoach,
+          displayName: displayNameForProfile || profile.displayName,
+          email: profileEmail,
+          updatedAt: serverTimestamp(),
+        };
+
+        batch.set(doc(db, 'userProfiles', user.uid), profileUpdate, { merge: true });
+        batch.set(
+          doc(db, 'onboarding_sessions', user.uid),
+          onboardingSessionPayload,
+          { merge: true },
+        );
+
+        await batch.commit();
       }
 
       try { await refreshSettings(); } catch (err) {

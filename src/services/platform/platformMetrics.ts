@@ -30,6 +30,10 @@ import { getDb, getFirebaseFunctions } from '@/services/firebase';
 import { calculateMonthlyFee } from '@/lib/pricing';
 import { getMonthlyPrice, getPriceInSmallestUnit } from '@/lib/pricing/config';
 import { DEFAULT_REGION, REGION_TO_CURRENCY } from '@/constants/pricing';
+import {
+  ONBOARDING_FUNNEL_STEP_MAX,
+  ONBOARDING_FUNNEL_STEP_MIN,
+} from '@/constants/onboardingFunnel';
 import type { Region } from '@/constants/pricing';
 import type {
   PlatformMetrics,
@@ -670,7 +674,13 @@ export async function getOnboardingFunnel(): Promise<OnboardingFunnel> {
  * Log onboarding step for funnel analytics (fire-and-forget; no PII).
  */
 export function logOnboardingStep(step: number): void {
-  if (typeof step !== 'number' || step < 1 || step > 4) return;
+  if (
+    typeof step !== 'number' ||
+    step < ONBOARDING_FUNNEL_STEP_MIN ||
+    step > ONBOARDING_FUNNEL_STEP_MAX
+  ) {
+    return;
+  }
   const fn = httpsCallable<{ step: number }, { success: boolean }>(
     getFirebaseFunctions(),
     'logOnboardingStep',

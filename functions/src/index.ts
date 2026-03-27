@@ -15,6 +15,7 @@ import {
 } from './stripe';
 import { handleAssessmentCompletedTrigger } from './webhooks';
 import { handleSendCoachInvite } from './invites';
+import { handleAcceptCoachInvite } from './acceptCoachInvite';
 import {
   handleOrganizationChange,
   handleUserProfileChange,
@@ -140,6 +141,16 @@ export const sendCoachInvite = onCall({
   await assertRateLimit(db, key, { maxRequests: 10, windowSeconds: 300 });
   return handleSendCoachInvite(request);
 });
+
+export const acceptCoachInvite = onCall(
+  { enforceAppCheck: false },
+  async (request) => {
+    const db = admin.firestore();
+    const key = buildRateLimitKey('accept_invite', request.auth?.uid, request.rawRequest?.ip);
+    await assertRateLimit(db, key, { maxRequests: 20, windowSeconds: 300 });
+    return handleAcceptCoachInvite(request);
+  },
+);
 
 // Aggregation functions (write-time counters)
 export const aggregateOrganizationChanges = onDocumentWritten(
@@ -297,10 +308,16 @@ export const deleteOrganizationCallable = onCall(
   handleDeleteOrganization,
 );
 
-export const logOnboardingStep = onCall(
-  { enforceAppCheck: false },
-  handleLogOnboardingStep,
-);
+export const logOnboardingStep = onCall({ enforceAppCheck: false }, async (request) => {
+  const db = admin.firestore();
+  const key = buildRateLimitKey(
+    'onboarding_step',
+    request.auth?.uid,
+    request.rawRequest?.ip,
+  );
+  await assertRateLimit(db, key, { maxRequests: 60, windowSeconds: 60 });
+  return handleLogOnboardingStep(request);
+});
 
 export const cleanupAuditLogs = onSchedule(
   {
@@ -600,10 +617,26 @@ export const getTeamMetrics = onCall(
   async (request) => {
     const db = admin.firestore();
     const key = buildRateLimitKey('team_metrics', request.auth?.uid, request.rawRequest?.ip);
-    await assertRateLimit(db, key, { maxRequests: 40, windowSeconds: 60 });
+    try {
+      await assertRateLimit(db, key, { maxRequests: 40, windowSeconds: 60 });
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === 'RATE_LIMITED') {
+        throw new HttpsError('resource-exhausted', 'Too many requests. Try again shortly.');
+      }
+      throw e;
+    }
     const { orgId } = (request.data ?? {}) as { orgId?: string };
-    if (!orgId) throw new Error('orgId is required.');
-    return computeTeamMetrics(request, { orgId });
+    if (!orgId) throw new HttpsError('invalid-argument', 'orgId is required.');
+    try {
+      return await computeTeamMetrics(request, { orgId });
+    } catch (err) {
+      if (err instanceof HttpsError) throw err;
+      console.error('[getTeamMetrics] computeTeamMetrics failed:', err);
+      throw new HttpsError(
+        'internal',
+        err instanceof Error ? err.message : 'Team metrics could not be computed.',
+      );
+    }
   },
 );
 

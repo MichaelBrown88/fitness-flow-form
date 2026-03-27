@@ -8,6 +8,8 @@
  * Replaces the previous glassmorphism modal overlay.
  */
 
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, LogOut } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import type { OnboardingFlowStepMeta } from '@/types/onboarding';
@@ -34,11 +36,19 @@ export function OnboardingLayout({
   blockingOverlay = null,
 }: OnboardingLayoutProps) {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const [signingOut, setSigningOut] = useState(false);
 
   const handleSignOut = async () => {
-    await signOut();
-    sessionStorage.clear();
-    window.location.href = '/';
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await signOut();
+      sessionStorage.clear();
+      navigate('/', { replace: true });
+    } finally {
+      setSigningOut(false);
+    }
   };
 
   const isStepPhase = activeProgressIndex >= 0 && activeProgressIndex < progressSteps.length;
@@ -122,11 +132,13 @@ export function OnboardingLayout({
 
           {user && (
             <button
+              type="button"
               onClick={handleSignOut}
-              className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-red-500 transition-colors"
+              disabled={signingOut}
+              className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-red-500 transition-colors disabled:opacity-50"
             >
               <LogOut size={14} />
-              <span className="hidden sm:inline">Sign out</span>
+              <span className="hidden sm:inline">{signingOut ? 'Signing out…' : 'Sign out'}</span>
             </button>
           )}
         </div>

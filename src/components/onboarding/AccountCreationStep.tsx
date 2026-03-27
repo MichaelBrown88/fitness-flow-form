@@ -6,6 +6,8 @@
  */
 
 import { useState } from 'react';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { useOnboardingAccountSocial } from '@/hooks/useOnboardingAccountSocial';
 import { Link } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { OnboardingInput } from './SharedOnboardingComponents';
@@ -48,11 +50,19 @@ export function AccountCreationStep({
   submitting,
 }: AccountCreationStepProps) {
   const [password, setPassword] = useState('');
+  const debouncedPassword = useDebouncedValue(password, 160);
   const [showPassword, setShowPassword] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
-  const strength = getPasswordStrength(password);
+  const strength = getPasswordStrength(debouncedPassword);
+
+  const handleSocialSignIn = useOnboardingAccountSocial({
+    acceptedTerms,
+    setLocalError,
+    onCreateWithGoogle,
+    onCreateWithApple,
+  });
   const displayError = error || localError;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -69,16 +79,6 @@ export function AccountCreationStep({
     }
 
     onCreateWithPassword(password);
-  };
-
-  const handleSocialSignIn = (provider: 'google' | 'apple') => {
-    if (!acceptedTerms) {
-      setLocalError('Please accept the Terms of Service and Privacy Policy first.');
-      return;
-    }
-    setLocalError(null);
-    if (provider === 'google') onCreateWithGoogle();
-    else onCreateWithApple();
   };
 
   return (
@@ -151,7 +151,7 @@ export function AccountCreationStep({
           <p className="mt-1.5 text-xs text-muted-foreground">Minimum 6 characters</p>
 
           {/* Strength indicator */}
-          {password.length > 0 && (
+          {debouncedPassword.length > 0 && (
             <div className="mt-2 flex items-center gap-2">
               <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
                 <div

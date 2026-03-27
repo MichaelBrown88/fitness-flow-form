@@ -5,26 +5,22 @@
  * 2) Dropdown to pick exact client-seat tier (scoped to that line), then checkout
  */
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { CheckCircle, CreditCard, Building2, UserRound } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
   REGION_TO_CURRENCY,
   DEFAULT_REGION,
   CUSTOM_BRANDING_PRICE_GBP,
-  getPaidTierForPackageTrack,
   type Region,
   type BillingPeriod,
 } from '@/constants/pricing';
-import { getMonthlyPrice } from '@/lib/pricing/config';
-import { formatPrice, getLocaleForRegion } from '@/lib/utils/currency';
+import { formatPrice } from '@/lib/utils/currency';
 import type { BrandingConfig, BusinessType } from '@/types/onboarding';
 import {
   type PlanPackageTrack,
   PLAN_PACKAGE_TRACK_COPY,
   businessTypeToTrack,
-  buildSeatDropdownOptions,
-  clientCountFromPosition,
   defaultTierPosition,
   tierPositionForClientTarget,
   tierIndicesForTrack,
@@ -32,6 +28,7 @@ import {
 } from '@/lib/pricing/planPackageTracks';
 import { useCheckout } from '@/hooks/useCheckout';
 import { useAuth } from '@/hooks/useAuth';
+import { usePackageSelectionPricing } from '@/hooks/usePackageSelectionPricing';
 import {
   Select,
   SelectContent,
@@ -97,31 +94,26 @@ export function PackageSelectionStep({
     });
   }, [region, track]);
 
-  const clientCount = useMemo(
-    () => clientCountFromPosition(region, track, tierPosition),
-    [region, track, tierPosition],
-  );
-
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
 
   const { startCheckout, loading: checkoutLoading, error: checkoutError, isStripeEnabled } = useCheckout();
   const { profile } = useAuth();
 
-  const currency = REGION_TO_CURRENCY[region];
-  const locale = getLocaleForRegion(region);
-  const monthlyFee = getMonthlyPrice(region, clientCount);
-  const tierRow =
-    region === 'GB' ? getPaidTierForPackageTrack(clientCount, track) : null;
-  const isSoloFreeOnboarding = businessType === 'solo_coach';
-  const displayPrice =
-    region === 'GB' && tierRow && billingPeriod === 'annual'
-      ? tierRow.annualPriceGbp / 12
-      : monthlyFee;
-
-  const seatOptions = useMemo(
-    () => buildSeatDropdownOptions(region, track, billingPeriod),
-    [region, track, billingPeriod],
-  );
+  const {
+    clientCount,
+    currency,
+    locale,
+    tierRow,
+    displayPrice,
+    seatOptions,
+    isSoloFreeOnboarding,
+  } = usePackageSelectionPricing({
+    region,
+    track,
+    tierPosition,
+    businessType,
+    billingPeriod,
+  });
 
   const handleSelectTrack = (t: PlanPackageTrack) => {
     setTrack(t);

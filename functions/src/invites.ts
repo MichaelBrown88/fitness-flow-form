@@ -13,6 +13,7 @@ import type { CallableRequest } from 'firebase-functions/v2/https';
 import { Resend } from 'resend';
 import { APP_HOST, EMAIL_ASSETS_LOGO_URL, RESEND_API_KEY, RESEND_FROM } from './config';
 import { renderActivationEmail, sendResendHtmlText } from './email';
+import { canSendCoachInvites, isValidCoachInviteEmail, normalizeCoachInviteEmail } from './inviteShared';
 
 const resend = new Resend(RESEND_API_KEY);
 
@@ -45,10 +46,15 @@ export async function handleSendCoachInvite(
     throw new Error('Authentication required.');
   }
 
-  const { email, organizationId, organizationName, invitedBy } = request.data;
+  const { email: rawEmail, organizationId, organizationName, invitedBy } = request.data;
 
-  if (!email || !organizationId || !organizationName || !invitedBy) {
+  if (!rawEmail || !organizationId || !organizationName || !invitedBy) {
     throw new Error('Missing required fields: email, organizationId, organizationName, invitedBy.');
+  }
+
+  const email = normalizeCoachInviteEmail(rawEmail);
+  if (!isValidCoachInviteEmail(email)) {
+    throw new Error('Invalid email address.');
   }
 
   const db = admin.firestore();
@@ -58,8 +64,16 @@ export async function handleSendCoachInvite(
     throw new Error('Organization not found.');
   }
   const orgData = orgDoc.data();
-  if (orgData?.ownerId !== request.auth.uid) {
-    throw new Error('Only the organization owner can send invites.');
+  const coachSnap = await db.doc(`organizations/${organizationId}/coaches/${request.auth.uid}`).get();
+  const coachRole = coachSnap.exists ? (coachSnap.data() as { role?: string }).role : undefined;
+  if (
+    !canSendCoachInvites({
+      orgOwnerId: orgData?.ownerId as string | undefined,
+      coachRole,
+      authUid: request.auth.uid,
+    })
+  ) {
+    throw new Error('Only an organisation owner or admin can send coach invites.');
   }
 
   const token = crypto.randomBytes(32).toString('hex');

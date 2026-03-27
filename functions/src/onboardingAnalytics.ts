@@ -8,6 +8,10 @@
 import * as admin from 'firebase-admin';
 import type { CallableRequest } from 'firebase-functions/v2/https';
 import { FieldValue } from 'firebase-admin/firestore';
+import {
+  ONBOARDING_FUNNEL_STEP_MAX,
+  ONBOARDING_FUNNEL_STEP_MIN,
+} from './constants/onboardingFunnel';
 
 export interface LogOnboardingStepRequest {
   step: number; // Step reached (1, 2, 3, or 4)
@@ -22,7 +26,11 @@ export async function handleLogOnboardingStep(
 ): Promise<{ success: boolean }> {
   const { step } = request.data || {};
 
-  if (typeof step !== 'number' || step < 1 || step > 4) {
+  if (
+    typeof step !== 'number' ||
+    step < ONBOARDING_FUNNEL_STEP_MIN ||
+    step > ONBOARDING_FUNNEL_STEP_MAX
+  ) {
     return { success: false };
   }
 

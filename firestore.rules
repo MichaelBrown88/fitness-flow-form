@@ -146,8 +146,10 @@ service cloud.firestore {
         allow read: if canReadOrgData(orgId);
         allow write: if isOrgAdmin(orgId) ||
           (isPlatformAdmin() && hasDataAccess(orgId) && isNotImpersonating());
-        // First row (e.g. sandbox bootstrap, invite accept)
-        allow create: if isAuthenticated() && request.auth.uid == coachId;
+        // First row (bootstrap): profile.organizationId must match this org (invite roster is server-written).
+        allow create: if isAuthenticated() && request.auth.uid == coachId &&
+          exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.organizationId == orgId;
         // Coaches may update only their own roster row: displayName + email, no privilege escalation
         allow update: if isAuthenticated() && request.auth.uid == coachId &&
           exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
@@ -207,6 +209,18 @@ service cloud.firestore {
         allow update: if isOrgAdmin(orgId) || (isPlatformAdmin() && hasDataAccess(orgId));
         allow delete: if false;
       }
+    }
+
+    // =========================================================
+    // COACH INVITATIONS  (token is the capability; client writes denied)
+    // =========================================================
+
+    match /invitations/{token} {
+      allow get: if resource.data.status == 'pending' &&
+        resource.data.expiresAt is timestamp &&
+        resource.data.expiresAt > request.time;
+      allow list: if false;
+      allow create, update, delete: if false;
     }
 
     // =========================================================
