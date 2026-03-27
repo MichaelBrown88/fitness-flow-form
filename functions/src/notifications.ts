@@ -10,6 +10,7 @@
  */
 
 import * as admin from 'firebase-admin';
+import { logger } from 'firebase-functions';
 import { sendInviteAcceptedEmail } from './transactionalEmails';
 
 const PHASE_NAMES: Record<string, string> = {
@@ -44,16 +45,23 @@ export async function handleInviteAccepted(
   if (!invitedByUid) return;
 
   const db = admin.firestore();
-  await db.collection(`notifications/${invitedByUid}/items`).add({
-    type: 'coach_accepted',
-    title: `${coachEmail} joined ${organizationName}`,
-    body: `${coachEmail} has accepted the invite sent by ${invitedBy} and joined your team.`,
-    priority: 'low',
-    read: false,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    recipientUid: invitedByUid,
-    actionUrl: '/org/team',
-  });
+  try {
+    await db.collection(`notifications/${invitedByUid}/items`).add({
+      type: 'coach_accepted',
+      title: `${coachEmail} joined ${organizationName}`,
+      body: `${coachEmail} has accepted the invite sent by ${invitedBy} and joined your team.`,
+      priority: 'low',
+      read: false,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      recipientUid: invitedByUid,
+      actionUrl: '/org/team',
+    });
+  } catch (err) {
+    logger.error('[handleInviteAccepted] in-app notification write failed', {
+      invitedByUid,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 
   try {
     await sendInviteAcceptedEmail({
@@ -63,7 +71,7 @@ export async function handleInviteAccepted(
       organizationName,
     });
   } catch (err) {
-    console.error('[handleInviteAccepted] invite-accepted email failed', err);
+    logger.error('[handleInviteAccepted] invite-accepted email failed', err);
   }
 }
 
@@ -105,17 +113,25 @@ export async function handleClientSubmissionCreated(
 
   if (!coachUid) return;
 
-  await db.collection(`notifications/${coachUid}/items`).add({
-    type: 'client_submission',
-    title: `${clientName} submitted a ${typeLabel}`,
-    body: 'New client data is available for review.',
-    priority: 'medium',
-    read: false,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    recipientUid: coachUid,
-    actionUrl: `/client/${encodeURIComponent(clientName)}`,
-    meta: { submissionType, orgId, clientUid },
-  });
+  try {
+    await db.collection(`notifications/${coachUid}/items`).add({
+      type: 'client_submission',
+      title: `${clientName} submitted a ${typeLabel}`,
+      body: 'New client data is available for review.',
+      priority: 'medium',
+      read: false,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      recipientUid: coachUid,
+      actionUrl: `/client/${encodeURIComponent(clientName)}`,
+      meta: { submissionType, orgId, clientUid },
+    });
+  } catch (err) {
+    logger.error('[handleClientSubmissionCreated] notification write failed', {
+      orgId,
+      coachUid,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 }
 
 /** Translates a qualitative activity level into an estimated steps/day value. */
@@ -364,10 +380,12 @@ export async function sendReassessmentReminders(): Promise<void> {
     inactiveRemindersSent++;
   }
 
-  console.log(
-    `[DailyReminders] Due today: ${reassessmentSent}, Paused: ${pausedRemindersSent}, ` +
-    `Upcoming 7d: ${upcomingRemindersSent}, Inactive: ${inactiveRemindersSent}`
-  );
+  logger.info('[DailyReminders] summary', {
+    dueToday: reassessmentSent,
+    paused: pausedRemindersSent,
+    upcoming7d: upcomingRemindersSent,
+    inactive: inactiveRemindersSent,
+  });
 }
 
 /**
@@ -421,5 +439,5 @@ export async function sendDraftRecoveryNudges(): Promise<void> {
     nudgesSent++;
   }
 
-  console.log(`[DraftRecovery] Nudges sent: ${nudgesSent}`);
+  logger.info('[DraftRecovery] nudges sent', { count: nudgesSent });
 }

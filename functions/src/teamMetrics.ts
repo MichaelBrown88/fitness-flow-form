@@ -8,6 +8,7 @@
 
 import * as admin from 'firebase-admin';
 import { HttpsError } from 'firebase-functions/v2/https';
+import { firestoreValueToDate } from './firestoreTimestamp';
 
 function getDb() {
   return admin.firestore();
@@ -40,6 +41,8 @@ export interface TeamMetricsResult {
 
 const GENERIC_COACH_LABEL = 'Coach';
 const BATCH_GET_LIMIT = 10;
+/** Caps worst-case reads; team dashboard is roster-scale (typical orgs well under this). */
+const TEAM_METRICS_MAX_COACHES = 500;
 
 async function batchGetProfileDisplayNames(
   db: admin.firestore.Firestore,
@@ -94,17 +97,6 @@ async function enrichDisplayNamesFromFirebaseAuth(
   }
 }
 
-function toDate(ts: unknown): Date | null {
-  if (!ts) return null;
-  if (ts instanceof admin.firestore.Timestamp) return ts.toDate();
-  if (ts instanceof Date) return ts;
-  if (typeof ts === 'object' && ts !== null && 'seconds' in ts) {
-    const obj = ts as { seconds: number; nanoseconds?: number };
-    return new admin.firestore.Timestamp(obj.seconds, obj.nanoseconds ?? 0).toDate();
-  }
-  return null;
-}
-
 export async function computeTeamMetrics(
   request: { auth?: { uid?: string } },
   data: { orgId: string },
@@ -134,6 +126,7 @@ export async function computeTeamMetrics(
   // 1. Fetch coaches
   const coachesSnap = await db
     .collection(`organizations/${orgId}/coaches`)
+    .limit(TEAM_METRICS_MAX_COACHES)
     .get();
 
   interface Coach {
@@ -185,7 +178,7 @@ export async function computeTeamMetrics(
       clientName: dd.clientName || '',
       overallScore: typeof dd.overallScore === 'number' ? dd.overallScore : (dd.scores?.overall ?? 0),
       trend: typeof dd.trend === 'number' ? dd.trend : 0,
-      createdAt: toDate(dd.createdAt),
+      createdAt: firestoreValueToDate(dd.createdAt),
     };
   });
 

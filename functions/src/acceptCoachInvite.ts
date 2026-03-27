@@ -7,26 +7,13 @@ import * as admin from 'firebase-admin';
 import { HttpsError, type CallableRequest } from 'firebase-functions/v2/https';
 import { FieldValue } from 'firebase-admin/firestore';
 import { normalizeCoachInviteEmail } from './inviteShared';
+import { firestoreValueToDate } from './firestoreTimestamp';
 
 export interface AcceptCoachInviteRequest {
   token: string;
   displayName: string;
   email: string | null;
   isActiveCoach: boolean;
-}
-
-function toDate(value: unknown): Date | null {
-  if (value == null) return null;
-  if (value instanceof admin.firestore.Timestamp) return value.toDate();
-  if (value instanceof Date) return value;
-  if (typeof (value as { toDate?: () => Date }).toDate === 'function') {
-    try {
-      return (value as { toDate: () => Date }).toDate();
-    } catch {
-      return null;
-    }
-  }
-  return null;
 }
 
 export async function handleAcceptCoachInvite(
@@ -96,7 +83,7 @@ export async function handleAcceptCoachInvite(
     throw new HttpsError('failed-precondition', 'This invitation is no longer valid.');
   }
 
-  const expiresAt = toDate(inv.expiresAt);
+  const expiresAt = firestoreValueToDate(inv.expiresAt);
   if (!expiresAt || expiresAt.getTime() < Date.now()) {
     throw new HttpsError('failed-precondition', 'This invitation has expired.');
   }
@@ -172,6 +159,8 @@ export async function handleAcceptCoachInvite(
     batch.delete(shellCoachRef);
   }
 
+  // WriteBatch commits atomically (all writes succeed or none). A transaction is not required here
+  // because we do not need to re-read contended state between reads and writes.
   await batch.commit();
 
   return { success: true, organizationId };

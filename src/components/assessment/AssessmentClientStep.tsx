@@ -14,6 +14,7 @@ import { UserPlus, Users } from 'lucide-react';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import { ROUTES } from '@/constants/routes';
 import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
+import { logger } from '@/lib/utils/logger';
 
 export function AssessmentClientStep({
   onContinue,
@@ -44,8 +45,10 @@ export function AssessmentClientStep({
     updateFormData({ fullName: name });
     try {
       sessionStorage.setItem(STORAGE_KEYS.PREFILL_CLIENT, JSON.stringify({ fullName: name }));
-    } catch {
-      // non-fatal
+    } catch (err) {
+      logger.warn('prefill_client_storage_failed', {
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
     onContinue(false);
   };
