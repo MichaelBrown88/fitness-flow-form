@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { signInAnonymously } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { getFirebaseAuth, getDb } from '@/services/firebase';
@@ -20,7 +20,7 @@ import { logger } from '@/lib/utils/logger';
 import { Seo } from '@/components/seo/Seo';
 import { requireSeoForPath } from '@/constants/seo';
 import { Button } from '@/components/ui/button';
-import { formatSandboxBootstrapError } from '@/lib/utils/sandboxTrialErrors';
+import { formatSandboxBootstrapError, SANDBOX_TRY_COPY } from '@/lib/utils/sandboxTrialErrors';
 
 const trySeo = requireSeoForPath(ROUTES.TRY);
 
@@ -116,9 +116,14 @@ export default function SandboxTrial() {
         >
           {error}
         </div>
-        <Button type="button" variant="default" className="h-10 px-6 font-semibold" onClick={() => window.location.reload()}>
-          Try again
-        </Button>
+        <div className="flex flex-col items-center gap-3 sm:flex-row">
+          <Button type="button" variant="default" className="h-10 px-6 font-semibold" onClick={() => window.location.reload()}>
+            Try again
+          </Button>
+          <Button type="button" variant="outline" className="h-10 px-6 font-semibold" asChild>
+            <Link to={ROUTES.SIGNUP}>{SANDBOX_TRY_COPY.CTA_CREATE_ACCOUNT}</Link>
+          </Button>
+        </div>
       </div>
     );
   }

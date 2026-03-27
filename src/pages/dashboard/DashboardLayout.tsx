@@ -2,7 +2,7 @@
  * Dashboard layout: shared data, header, checklist, tabs (NavLinks), and Outlet for child routes.
  */
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { Timestamp } from 'firebase/firestore';
 import AppShell from '@/components/layout/AppShell';
@@ -16,12 +16,15 @@ import { clearDraft } from '@/hooks/useAssessmentDraft';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useAuth } from '@/hooks/useAuth';
 import { getRoadmapForClient } from '@/services/roadmaps';
-import { getClientProfile } from '@/services/clientProfiles';
+import { getClientProfile, resolveClientDisplayNameFromOrgClientDoc } from '@/services/clientProfiles';
+import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
+import { useToast } from '@/hooks/use-toast';
 import { DashboardHeader } from '@/components/dashboard/sub-components/DashboardHeader';
 import { DashboardViewTabs } from '@/components/dashboard/sub-components/DashboardViewTabs';
 import { DashboardDialogs } from '@/components/dashboard/sub-components/DashboardDialogs';
 import { GettingStartedChecklist } from '@/components/dashboard/GettingStartedChecklist';
 import { generateTasks, type QueueEntry, type RoadmapNeededInfo, type ProfileGapInfo } from '@/lib/tasks/generateTasks';
+import { DASHBOARD_TASKS } from '@/constants/dashboardTasksCopy';
 import type { CoachTask } from '@/lib/tasks/generateTasks';
 import { staffPreferredFirstName } from '@/lib/utils/staffDisplayName';
 import { Seo } from '@/components/seo/Seo';
@@ -46,7 +49,9 @@ export default function DashboardLayout() {
   const dashboardData = useDashboardData();
   const navigate = useNavigate();
   const location = useLocation();
+  const { toast } = useToast();
   const { user, effectiveOrgId, orgSettings, profile } = useAuth();
+  const dashboardClientQueryHandledRef = useRef<string>('');
 
   const {
     loading,
@@ -123,6 +128,46 @@ export default function DashboardLayout() {
     if (!trialEndedAt(sub.trialEndsAt)) return;
     navigate(ROUTES.SUBSCRIBE, { replace: true, state: { from: path } });
   }, [orgSettings, profile?.onboardingCompleted, location.pathname, navigate]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const raw = params.get('client');
+    if (!raw?.trim() || !effectiveOrgId) return;
+    const dedupeKey = `${effectiveOrgId}|${location.pathname}|${raw}`;
+    if (dashboardClientQueryHandledRef.current === dedupeKey) return;
+    dashboardClientQueryHandledRef.current = dedupeKey;
+    let cancelled = false;
+    void (async () => {
+      const decoded = decodeURIComponent(raw.trim());
+      let fullName = await resolveClientDisplayNameFromOrgClientDoc(effectiveOrgId, decoded);
+      if (cancelled) return;
+      if (!fullName) {
+        fullName = formatClientDisplayName(decoded);
+      }
+      try {
+        sessionStorage.setItem(STORAGE_KEYS.PREFILL_CLIENT, JSON.stringify({ fullName }));
+      } catch {
+        /* sessionStorage unavailable */
+      }
+      params.delete('client');
+      const nextSearch = params.toString();
+      navigate(
+        {
+          pathname: location.pathname,
+          search: nextSearch ? `?${nextSearch}` : '',
+          hash: location.hash,
+        },
+        { replace: true },
+      );
+      toast({
+        title: DASHBOARD_TASKS.CLIENT_QUERY_TOAST_TITLE,
+        description: DASHBOARD_TASKS.CLIENT_QUERY_TOAST_DESC(fullName),
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveOrgId, location.pathname, location.search, location.hash, navigate, toast]);
 
   const tasks = useMemo(() => {
     if (!reassessmentQueue) return [];

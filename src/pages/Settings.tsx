@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { updateProfile } from 'firebase/auth';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import AppShell from '@/components/layout/AppShell';
 import { useSettings } from '@/hooks/useSettings';
@@ -22,11 +23,14 @@ import { OrgSettingSwitch } from '@/components/settings/OrgSettingSwitch';
 import { ROUTES } from '@/constants/routes';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import { ASSESSMENT_COPY } from '@/constants/assessmentCopy';
+import { SETTINGS_COPY } from '@/constants/settingsCopy';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 
 const Settings = () => {
   const navigate = useNavigate();
   const { user, profile, orgSettings, refreshSettings } = useAuth();
+  const [localDisplayName, setLocalDisplayName] = useState(profile?.displayName ?? '');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const { toast } = useToast();
   const [localOrgName, setLocalOrgName] = useState(orgSettings?.name || '');
   const [localGradientId, setLocalGradientId] = useState<GradientId>((orgSettings?.gradientId as GradientId) || 'volt');
@@ -69,16 +73,47 @@ const Settings = () => {
     }
   }, [orgSettings]);
 
+  useEffect(() => {
+    setLocalDisplayName(profile?.displayName ?? '');
+  }, [profile?.displayName]);
+
   const brandingDirty = useMemo(() => {
     if (!orgSettings) return false;
     return localOrgName !== orgSettings.name || localGradientId !== (orgSettings.gradientId || 'volt');
   }, [orgSettings, localOrgName, localGradientId]);
 
+  const profileDirty = useMemo(() => {
+    const saved = (profile?.displayName ?? '').trim();
+    return localDisplayName.trim() !== saved;
+  }, [profile?.displayName, localDisplayName]);
+
+  const anyUnsaved = brandingDirty || profileDirty;
+
   const { guardedNavigate } = useUnsavedChangesGuard(
-    brandingDirty,
+    anyUnsaved,
     navigate,
-    'You have unsaved branding changes. Leave anyway?',
+    'You have unsaved changes. Leave anyway?',
   );
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    setIsSavingProfile(true);
+    try {
+      const next = localDisplayName.trim();
+      await updateProfile(user, { displayName: next });
+      await setDoc(
+        doc(getDb(), 'userProfiles', user.uid),
+        { displayName: next, updatedAt: new Date() },
+        { merge: true },
+      );
+      toast({ title: SETTINGS_COPY.PROFILE_SAVED });
+    } catch (err) {
+      logger.error('Profile save error:', err);
+      toast({ title: SETTINGS_COPY.PROFILE_SAVE_ERROR, variant: 'destructive' });
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
 
   const handleSaveOrgInfo = async () => {
     if (!profile?.organizationId) return;
@@ -135,6 +170,7 @@ const Settings = () => {
       title="Settings"
       actions={
         <Button
+          type="button"
           variant="ghost"
           size="sm"
           onClick={() => guardedNavigate(ROUTES.DASHBOARD)}
@@ -215,32 +251,63 @@ const Settings = () => {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">Email</Label>
-                    <Input 
-                      value={user?.email || ''} 
+                    <Input
+                      value={user?.email || ''}
                       disabled
+                      readOnly
                       className="rounded-xl border-border h-11 bg-muted"
                     />
+                    <p className="text-xs text-muted-foreground">{SETTINGS_COPY.PROFILE_EMAIL_MANAGED}</p>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">Display Name</Label>
-                    <Input 
-                      value={profile?.displayName || ''} 
-                      disabled
-                      className="rounded-xl border-border h-11 bg-muted"
+                    <Input
+                      value={localDisplayName}
+                      onChange={(e) => setLocalDisplayName(e.target.value)}
+                      className="rounded-xl border-border h-11"
+                      autoComplete="name"
+                      maxLength={120}
                     />
+                    <p className="text-xs text-muted-foreground">{SETTINGS_COPY.PROFILE_DISPLAY_NAME_HELP}</p>
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">Organization</Label>
-                  <Input 
-                    value={orgSettings?.name || 'Not assigned'} 
+                  <Input
+                    value={orgSettings?.name || 'Not assigned'}
                     disabled
+                    readOnly
                     className="rounded-xl border-border h-11 bg-muted"
                   />
+                  {isAdmin ? (
+                    <Button type="button" variant="link" className="h-auto p-0 text-sm" asChild>
+                      <Link to={`${ROUTES.SETTINGS}?tab=organization&orgTab=branding`}>
+                        {SETTINGS_COPY.PROFILE_ORG_LINK}
+                      </Link>
+                    </Button>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">{SETTINGS_COPY.PROFILE_ORG_READONLY_COACH}</p>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-3 pt-2">
+                  <Button
+                    type="button"
+                    onClick={handleSaveProfile}
+                    disabled={!profileDirty || isSavingProfile}
+                  >
+                    {isSavingProfile ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin shrink-0" aria-hidden />
+                        Saving…
+                      </>
+                    ) : (
+                      SETTINGS_COPY.PROFILE_SAVE
+                    )}
+                  </Button>
                 </div>
                 {!isAdmin && (
                   <p className="text-xs text-muted-foreground mt-2">
-                    Contact your organization admin to update your profile or change organization settings.
+                    Contact your organization admin to change organisation-wide settings.
                   </p>
                 )}
               </div>

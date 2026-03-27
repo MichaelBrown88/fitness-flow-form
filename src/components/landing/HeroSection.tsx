@@ -19,6 +19,7 @@ import {
   FileCheck,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { ROUTES } from "@/constants/routes";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 import { HeroRadarPillarsAround } from "@/components/landing/HeroRadarPillarsAround";
 
@@ -91,14 +92,30 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
             className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 mb-4 sm:mb-5 motion-safe:animate-fade-in-up"
             style={{ animationDelay: "0.25s" }}
           >
-            {user ? (
+            {user && !user.isAnonymous ? (
               <Link
-                to="/dashboard"
+                to={ROUTES.DASHBOARD}
                 className="group inline-flex items-center gap-2 rounded-xl bg-primary px-8 py-3.5 text-base font-semibold text-primary-foreground shadow-md transition-all hover:opacity-90 active:scale-[0.99]"
               >
-                Go to Dashboard
+                {LANDING_COPY.heroLoggedInDashboardCta}
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
               </Link>
+            ) : user?.isAnonymous ? (
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <Link
+                  to={ROUTES.ASSESSMENT}
+                  className="group inline-flex items-center gap-2 rounded-xl bg-primary px-8 py-3.5 text-base font-semibold text-primary-foreground shadow-md transition-all hover:opacity-90 active:scale-[0.99]"
+                >
+                  {LANDING_COPY.heroAnonymousContinueTrial}
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                </Link>
+                <Link
+                  to={ROUTES.SIGNUP}
+                  className="inline-flex items-center gap-2 rounded-xl border border-border/90 bg-card/90 px-5 py-3 text-base font-semibold text-foreground shadow-sm backdrop-blur-sm transition-colors hover:border-border-medium hover:bg-card dark:border-border dark:bg-card/90"
+                >
+                  {LANDING_COPY.heroAnonymousCreateAccount}
+                </Link>
+              </div>
             ) : (
               <>
                 <LandingTrialCtaLink

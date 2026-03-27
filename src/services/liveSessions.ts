@@ -12,6 +12,7 @@ import { compressImageForDisplay } from '@/lib/utils/imageCompression';
 import { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
 import { sanitizeForFirestore } from '@/lib/utils/firebaseUtils';
 import { LandmarkResult } from '@/lib/ai/postureLandmarks';
+import type { PostureFramingMetadata } from '@/lib/utils/postureFramingMetadata';
 import { logger } from '@/lib/utils/logger';
 import { validateOrganizationId } from '@/lib/utils/validateOrganizationId';
 import type { UserProfile } from '@/types/auth';
@@ -167,7 +168,8 @@ export const updatePostureImage = async (
   providedLandmarks?: LandmarkResult,
   source: 'manual' | 'iphone' | 'this-device' = 'manual',
   organizationId?: string,
-  profile?: UserProfile | null
+  profile?: UserProfile | null,
+  framingMetadata?: PostureFramingMetadata | null
 ) => {
   try {
     // Validate image data first
@@ -275,6 +277,10 @@ export const updatePostureImage = async (
     // Store landmarks for future reference
     if (processed.landmarks) {
       updatePayload[`landmarks_${view}`] = sanitizeForFirestore(processed.landmarks) as Record<string, unknown>;
+    }
+
+    if (framingMetadata) {
+      updatePayload[`postureFraming_${view}`] = sanitizeForFirestore(framingMetadata) as Record<string, unknown>;
     }
     
     await updateDocWithRetry(sessionRef, updatePayload, 3, `final image update for ${view}`);

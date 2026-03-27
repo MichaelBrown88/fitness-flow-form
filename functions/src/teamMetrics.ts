@@ -62,6 +62,37 @@ async function batchGetProfileDisplayNames(
   return out;
 }
 
+/** When userProfiles still says "Coach", fall back to Firebase Auth displayName or email local-part. */
+async function enrichDisplayNamesFromFirebaseAuth(
+  uids: string[],
+  names: Map<string, string>,
+): Promise<void> {
+  const auth = admin.auth();
+  for (const uid of uids) {
+    const existing = names.get(uid);
+    if (existing && existing !== GENERIC_COACH_LABEL) continue;
+    try {
+      const u = await auth.getUser(uid);
+      const fromAuth = (u.displayName || '').trim();
+      if (fromAuth && fromAuth !== GENERIC_COACH_LABEL) {
+        names.set(uid, fromAuth);
+        continue;
+      }
+      const local = u.email?.split('@')[0]?.replace(/[._-]+/g, ' ').trim();
+      if (local) {
+        const pretty = local
+          .split(/\s+/g)
+          .filter(Boolean)
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+          .join(' ');
+        if (pretty) names.set(uid, pretty);
+      }
+    } catch {
+      /* user missing or permission — skip */
+    }
+  }
+}
+
 function toDate(ts: unknown): Date | null {
   if (!ts) return null;
   if (ts instanceof admin.firestore.Timestamp) return ts.toDate();
@@ -165,6 +196,11 @@ export async function computeTeamMetrics(
     if (!coaches.some((c) => c.uid === uid)) uidsForProfileLookup.add(uid);
   }
   const profileDisplayNames = await batchGetProfileDisplayNames(db, orgId, [...uidsForProfileLookup]);
+  const needAuthEnrich = [...uidsForProfileLookup].filter((uid) => {
+    const fromProfile = profileDisplayNames.get(uid);
+    return !fromProfile || fromProfile === GENERIC_COACH_LABEL;
+  });
+  await enrichDisplayNamesFromFirebaseAuth(needAuthEnrich, profileDisplayNames);
 
   const coachesResolved: Coach[] = coaches.map((c) => {
     const fromProfile = profileDisplayNames.get(c.uid);

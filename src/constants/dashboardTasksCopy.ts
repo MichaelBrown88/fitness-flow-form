@@ -38,6 +38,12 @@ export const DASHBOARD_TASKS = {
   HEADER_PAST_CADENCE: (n: number) =>
     n === 1 ? '1 past cadence' : `${n} past cadence`,
 
+  HEADER_PAST_CADENCE_LINK_TITLE: 'View schedule — follow-ups past cadence',
+
+  CLIENT_QUERY_TOAST_TITLE: 'Client selected',
+  CLIENT_QUERY_TOAST_DESC: (fullName: string) =>
+    `The next new assessment will use ${fullName}.`,
+
   BULK_PAUSE_TITLE: (n: number) => `Pause ${n} client${n === 1 ? '' : 's'}?`,
   BULK_PAUSE_DESCRIPTION:
     'Selected clients will be paused and reassessment timers frozen until you unpause them.',

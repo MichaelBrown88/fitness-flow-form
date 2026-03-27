@@ -49,6 +49,10 @@ interface CompanionUIProps {
   isProcessingOcr: boolean;
   flowState?: 'permissions' | 'waiting_level' | 'waiting_pose' | 'ready' | 'capturing' | 'complete';
   guideBoxState?: { color: 'red' | 'amber' | 'green'; message: string };
+  /** Posture + Gemini Live: show status when connecting or after errors. */
+  geminiConnectionStatus?: 'idle' | 'connecting' | 'open' | 'error';
+  geminiConnectionError?: string | null;
+  onGeminiRetry?: () => void;
 }
 
 export function CompanionUI({
@@ -75,6 +79,9 @@ export function CompanionUI({
   isProcessingOcr,
   flowState = 'permissions',
   guideBoxState,
+  geminiConnectionStatus,
+  geminiConnectionError,
+  onGeminiRetry,
 }: CompanionUIProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -229,6 +236,40 @@ export function CompanionUI({
         {/* Right spacer for centering */}
         <div className="w-10" />
       </div>
+
+      {mode === 'posture' &&
+        geminiConnectionStatus &&
+        (geminiConnectionStatus === 'connecting' || geminiConnectionStatus === 'error') && (
+          <div className="absolute top-14 left-0 right-0 z-20 flex justify-center px-4 pointer-events-auto">
+            <div className="flex flex-col sm:flex-row items-center gap-2 max-w-md rounded-xl bg-black/75 backdrop-blur-sm border border-white/15 px-4 py-2 text-center">
+              {geminiConnectionStatus === 'connecting' && (
+                <span className="text-[11px] font-semibold text-white/90 flex items-center gap-2">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+                  Connecting voice guide…
+                </span>
+              )}
+              {geminiConnectionStatus === 'error' && (
+                <>
+                  <span className="text-[11px] text-red-200/95">
+                    {geminiConnectionError || 'Voice guide unavailable'}
+                  </span>
+                  {onGeminiRetry ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="h-8 text-xs shrink-0 bg-background/20 text-foreground border-white/20 hover:bg-background/30"
+                      onClick={onGeminiRetry}
+                    >
+                      <RefreshCcw className="h-3.5 w-3.5 mr-1.5" />
+                      Retry
+                    </Button>
+                  ) : null}
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
       {/* Guide Box - Almost full height for maximum client visibility */}
       {mode !== 'bodycomp' && (

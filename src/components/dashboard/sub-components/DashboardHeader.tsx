@@ -1,7 +1,9 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { CreditBalance } from '@/components/org/billing/CreditBalance';
 import { useAuth } from '@/hooks/useAuth';
 import { DASHBOARD_TASKS } from '@/constants/dashboardTasksCopy';
+import { ROUTES } from '@/constants/routes';
 
 interface DashboardHeaderProps {
   coachFirstName: string;
@@ -43,9 +45,13 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         {overdueCount > 0 && (
           <>
             <span className="text-border">·</span>
-            <span className="font-semibold text-score-amber-fg dark:text-amber-400">
+            <Link
+              to={ROUTES.DASHBOARD_SCHEDULE}
+              className="font-semibold text-score-amber-fg underline-offset-2 transition-colors hover:underline dark:text-amber-400"
+              title={DASHBOARD_TASKS.HEADER_PAST_CADENCE_LINK_TITLE}
+            >
               {DASHBOARD_TASKS.HEADER_PAST_CADENCE(overdueCount)}
-            </span>
+            </Link>
           </>
         )}
       </p>

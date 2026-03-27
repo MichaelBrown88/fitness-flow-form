@@ -146,8 +146,16 @@ service cloud.firestore {
         allow read: if canReadOrgData(orgId);
         allow write: if isOrgAdmin(orgId) ||
           (isPlatformAdmin() && hasDataAccess(orgId) && isNotImpersonating());
-        // Allow self-write on invite accept
+        // First row (e.g. sandbox bootstrap, invite accept)
         allow create: if isAuthenticated() && request.auth.uid == coachId;
+        // Coaches may update only their own roster row: displayName + email, no privilege escalation
+        allow update: if isAuthenticated() && request.auth.uid == coachId &&
+          exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.organizationId == orgId &&
+          request.resource.data.uid == request.auth.uid &&
+          (!resource.data.keys().hasAny(['uid']) || resource.data.uid == request.auth.uid) &&
+          request.resource.data.role == resource.data.role &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'email']);
       }
 
       // Clients + all subcollections (current, sessions, roadmap, achievements, drafts)

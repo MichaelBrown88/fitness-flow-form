@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useRef, useCallback } from 'react';
-import type { NavigateFunction } from 'react-router-dom';
+import type { NavigateFunction, NavigateOptions, To } from 'react-router-dom';
 
 const DEFAULT_MESSAGE = 'You have unsaved changes. Leave anyway?';
 
@@ -61,11 +61,11 @@ export function useUnsavedChangesGuard(
     return () => document.removeEventListener('click', onClickCapture, true);
   }, [active, message]);
 
-  const guardedNavigate = useCallback<NavigateFunction>(
-    (to, options) => {
+  const guardedNavigate = useCallback(
+    ((to: To, options?: NavigateOptions) => {
       if (active && !window.confirm(message)) return;
       navigateRef.current(to, options);
-    },
+    }) as NavigateFunction,
     [active, message],
   );
 

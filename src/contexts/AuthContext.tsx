@@ -46,6 +46,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Track if sign out was manual (to avoid clearing storage on manual sign out)
   const manualSignOutRef = useRef(false);
   const previousUserIdRef = useRef<string | null>(null);
+  /** Avoid hammering Firestore when roster self-sync hits permission-denied (e.g. rules not deployed). */
+  const coachRosterPermissionDeniedUntilRef = useRef(0);
+  /** Skip redundant roster writes when profile snapshot fires with unchanged coach fields. */
+  const lastSuccessfulCoachRosterSyncSigRef = useRef('');
   
   // Restore impersonation session on mount
   useEffect(() => {
@@ -223,13 +227,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           firebaseUser
         ) {
           const displayName = staffPreferredFullDisplayName(currentProfile, firebaseUser);
-          void syncCoachRosterFromProfile({
-            organizationId: currentProfile.organizationId,
-            uid: firebaseUser.uid,
-            displayName,
-            email: firebaseUser.email,
-            profileRole: currentProfile.role,
-          }).catch((e) => logger.debug('[AUTH] Coach roster sync skipped:', e));
+          const coachSyncSig = `${currentProfile.organizationId}|${firebaseUser.uid}|${displayName}|${firebaseUser.email ?? ''}|${currentProfile.role}`;
+          if (Date.now() < coachRosterPermissionDeniedUntilRef.current) {
+            /* cooldown after permission-denied */
+          } else if (coachSyncSig === lastSuccessfulCoachRosterSyncSigRef.current) {
+            /* already synced this payload */
+          } else {
+            void syncCoachRosterFromProfile({
+              organizationId: currentProfile.organizationId,
+              uid: firebaseUser.uid,
+              displayName,
+              email: firebaseUser.email,
+              profileRole: currentProfile.role,
+            })
+              .then(() => {
+                lastSuccessfulCoachRosterSyncSigRef.current = coachSyncSig;
+              })
+              .catch((e: unknown) => {
+                const code =
+                  e && typeof e === 'object' && 'code' in e
+                    ? String((e as { code: unknown }).code)
+                    : '';
+                if (code === 'permission-denied') {
+                  coachRosterPermissionDeniedUntilRef.current = Date.now() + 5 * 60 * 1000;
+                }
+                logger.debug('[AUTH] Coach roster sync skipped:', e);
+              });
+          }
         }
 
         // 4. Subscribe to Org Settings

@@ -31,6 +31,10 @@ export const LANDING_COPY = {
   /** Hero + pricing section subcopy on `/pricing` (also used under the pricing table). */
   heroPricingSubtitle:
     'Solo is free with no card, and gyms get a 14-day trial. Choose Solo or Gym and your seats. Prices match what you see at checkout.',
+  heroLoggedInDashboardCta: 'Go to Dashboard',
+  /** Anonymous `/try` session on marketing home */
+  heroAnonymousContinueTrial: 'Continue trial',
+  heroAnonymousCreateAccount: 'Create free account',
 
   howItWorksPill: 'The Workflow',
   howItWorksTitleBefore: 'A Connected ',

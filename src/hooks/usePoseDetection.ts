@@ -1,11 +1,11 @@
 /**
- * Hook for MediaPipe pose detection and validation
- * Extracted from Companion.tsx to improve maintainability
+ * Hook for MediaPipe pose detection and validation (Tasks Vision PoseLandmarker).
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { CONFIG } from '@/config';
 import { LandmarkResult } from '@/lib/ai/postureLandmarks';
+import { detectPoseFromImageSource, getPoseInstance } from '@/lib/ai/mediapipeSingleton';
 import { logger } from '@/lib/utils/logger';
 
 interface PoseValidation {
@@ -19,15 +19,6 @@ interface PoseValidation {
     missingParts: string[];
     outOfFrame?: boolean;
   };
-}
-
-interface PoseResults {
-  poseLandmarks: Array<{
-    x: number;
-    y: number;
-    z: number;
-    visibility?: number;
-  }>;
 }
 
 interface UsePoseDetectionResult {
@@ -45,6 +36,10 @@ interface UsePoseDetectionOptions {
   onAudioFeedback?: (message: string) => void;
   views: ReadonlyArray<{ readonly id: string; readonly label: string }>;
   webcamVideo: HTMLVideoElement | null;
+  /** When true, skip TTS pose hints (e.g. Companion posture — Gemini speaks). */
+  suppressAudioFeedback?: boolean;
+  /** Skip pose pipeline entirely (static empty validation). */
+  disablePosePipeline?: boolean;
 }
 
 export function usePoseDetection({
@@ -55,6 +50,8 @@ export function usePoseDetection({
   onAudioFeedback,
   views,
   webcamVideo,
+  suppressAudioFeedback = false,
+  disablePosePipeline = false,
 }: UsePoseDetectionOptions): UsePoseDetectionResult {
   const [poseValidation, setPoseValidation] = useState<PoseValidation>({
     isReady: false,
@@ -66,17 +63,18 @@ export function usePoseDetection({
   const [isPoseReady, setIsPoseReady] = useState(false);
   const [currentLandmarks, setCurrentLandmarks] = useState<LandmarkResult | null>(null);
   const currentLandmarksRef = useRef<LandmarkResult | null>(null);
-  const poseRef = useRef<import('@mediapipe/pose').Pose | null>(null);
   const viewIdxRef = useRef(0);
   const lastAudioFeedbackRef = useRef(0);
+  const lastInferMsRef = useRef(0);
+  const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
     viewIdxRef.current = viewIdx;
   }, [viewIdx]);
 
-      const onPoseResults = useCallback(
-    (results: PoseResults) => {
-      if (!results.poseLandmarks || results.poseLandmarks.length === 0) {
+  const onPoseResults = useCallback(
+    (poseLandmarks: Array<{ x: number; y: number; z: number; visibility?: number }>) => {
+      if (!poseLandmarks || poseLandmarks.length === 0) {
         setPoseValidation({
           isReady: false,
           message: 'Step into the frame',
@@ -86,19 +84,17 @@ export function usePoseDetection({
         setIsPoseReady(false);
         setCurrentLandmarks(null);
         currentLandmarksRef.current = null;
-        // Log when no pose detected (throttled)
         if (Math.random() < 0.05) {
           logger.debug('[POSE] No landmarks detected');
         }
         return;
       }
-      
-      // Log when pose detected (throttled)
+
       if (Math.random() < 0.01) {
-        logger.debug('[POSE] Landmarks detected:', results.poseLandmarks.length, 'points');
+        logger.debug('[POSE] Landmarks detected:', poseLandmarks.length, 'points');
       }
 
-      const landmarks = results.poseLandmarks;
+      const landmarks = poseLandmarks;
       const shoulderL = landmarks[11];
       const shoulderR = landmarks[12];
       const hipL = landmarks[23];
@@ -124,7 +120,7 @@ export function usePoseDetection({
         shoulder_y_percent: shoulderCenterY * 100,
         hip_y_percent: hipCenterY * 100,
         head_y_percent: headY * 100,
-        raw: results.poseLandmarks,
+        raw: poseLandmarks as LandmarkResult['raw'],
       };
 
       if (view === 'front' || view === 'back') {
@@ -191,7 +187,6 @@ export function usePoseDetection({
       });
       setIsPoseReady(isReady);
 
-      // Log pose validation state (throttled)
       if (Math.random() < 0.02) {
         logger.debug('[POSE] Validation:', {
           isReady,
@@ -201,11 +196,12 @@ export function usePoseDetection({
           notCentered,
           missingParts: missingParts.length,
           outOfFrame,
-          isWaitingForPosition
+          isWaitingForPosition,
         });
       }
 
       if (
+        !suppressAudioFeedback &&
         isWaitingForPosition &&
         !isReady &&
         Date.now() - lastAudioFeedbackRef.current > CONFIG.COMPANION.AUDIO.FEEDBACK_INTERVAL_MS &&
@@ -215,88 +211,72 @@ export function usePoseDetection({
         lastAudioFeedbackRef.current = Date.now();
       }
     },
-    [isWaitingForPosition, onAudioFeedback, views]
+    [isWaitingForPosition, onAudioFeedback, suppressAudioFeedback, views]
   );
 
-  // Use ref for callback to avoid re-initializing MediaPipe when callback changes
   const onPoseResultsRef = useRef(onPoseResults);
   useEffect(() => {
     onPoseResultsRef.current = onPoseResults;
   }, [onPoseResults]);
 
-  const initPoseDetection = useCallback(async () => {
-    if (poseRef.current) return; // Already initialized
-    
-    try {
-      setIsPoseLoading(true);
-      const { Pose } = await import('@mediapipe/pose');
-
-      const pose = new Pose({
-        locateFile: (file) => `${CONFIG.AI.MEDIAPIPE.POSE_CDN}/${file}`,
-      });
-
-      pose.setOptions({
-        modelComplexity: CONFIG.AI.MEDIAPIPE.MODEL_COMPLEXITY,
-        smoothLandmarks: true,
-        minDetectionConfidence: CONFIG.AI.MEDIAPIPE.MIN_DETECTION_CONFIDENCE,
-        minTrackingConfidence: CONFIG.AI.MEDIAPIPE.MIN_TRACKING_CONFIDENCE,
-      });
-
-      // Use wrapper function that always calls latest callback via ref
-      pose.onResults((results) => onPoseResultsRef.current(results));
-      poseRef.current = pose;
-    } catch (e) {
-      logger.error('[POSE] Initialization failed:', e);
-    } finally {
-      setIsPoseLoading(false);
-    }
-  }, []); // No dependencies - only initialize once
+  const minIntervalMs = 1000 / CONFIG.AI.MEDIAPIPE.LIVE_POSE_TARGET_FPS;
 
   useEffect(() => {
-    if (mode === 'posture') {
-      initPoseDetection();
-    }
-
-    return () => {
-      if (poseRef.current) {
-        poseRef.current.close();
-        poseRef.current = null;
+    if (mode !== 'posture' || !isAuthorized || disablePosePipeline || !webcamVideo) {
+      if (rafRef.current != null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
       }
-    };
-  }, [mode, initPoseDetection]);
+      return;
+    }
 
-  useEffect(() => {
-    let requestRef: number;
-    let frameCount = 0;
-    const update = async () => {
-      if (poseRef.current && webcamVideo) {
-        try {
-          await poseRef.current.send({ image: webcamVideo });
-          frameCount++;
-          // Log every 30 frames (~1 second at 30fps) for debugging
-          if (frameCount % 30 === 0) {
-            logger.debug('[POSE] Processing frame', frameCount, 'video:', webcamVideo.videoWidth, 'x', webcamVideo.videoHeight);
+    let cancelled = false;
+
+    const run = async () => {
+      try {
+        setIsPoseLoading(true);
+        await getPoseInstance();
+        if (cancelled) return;
+        logger.debug('[POSE] PoseLandmarker ready — starting preview loop');
+      } catch (e) {
+        logger.error('[POSE] Initialization failed:', e);
+        return;
+      } finally {
+        if (!cancelled) setIsPoseLoading(false);
+      }
+
+      const tick = () => {
+        if (cancelled) return;
+        const now = performance.now();
+        if (now - lastInferMsRef.current >= minIntervalMs) {
+          lastInferMsRef.current = now;
+          try {
+            const raw = detectPoseFromImageSource(webcamVideo, now);
+            if (raw?.length) {
+              onPoseResultsRef.current(raw);
+            } else {
+              onPoseResultsRef.current([]);
+            }
+          } catch (e) {
+            logger.error('[POSE] detectForVideo error:', e);
           }
-        } catch (e) {
-          logger.error('[POSE] Error sending frame:', e);
         }
-      } else {
-        if (frameCount === 0) {
-          logger.warn('[POSE] Not processing - poseRef:', !!poseRef.current, 'webcamVideo:', !!webcamVideo, 'mode:', mode, 'isAuthorized:', isAuthorized);
-        }
-      }
-      requestRef = requestAnimationFrame(update);
+        rafRef.current = requestAnimationFrame(tick);
+      };
+
+      rafRef.current = requestAnimationFrame(tick);
     };
 
-    if (mode === 'posture' && isAuthorized) {
-      logger.debug('[POSE] Starting pose detection loop');
-      requestRef = requestAnimationFrame(update);
-    }
+    void run();
 
     return () => {
-      if (requestRef) cancelAnimationFrame(requestRef);
+      cancelled = true;
+      if (rafRef.current != null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
     };
-  }, [mode, isAuthorized, webcamVideo]);
+  }, [mode, isAuthorized, webcamVideo, disablePosePipeline, minIntervalMs]);
 
   return {
     poseValidation,
@@ -305,4 +285,3 @@ export function usePoseDetection({
     isPoseReady,
   };
 }
-
