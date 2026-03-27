@@ -30,3 +30,18 @@ export function canSendCoachInvites(params: {
   if (coachRole && ORG_ADMIN_ROLES.has(coachRole)) return true;
   return false;
 }
+
+/**
+ * When allowedDomains is non-empty, the invitee must use an address at one of these hostnames
+ * (lowercase, no @ prefix). Empty allowlist = any valid domain (default).
+ */
+export function isCoachInviteEmailDomainAllowed(
+  normalizedEmail: string,
+  allowedDomains: readonly string[],
+): boolean {
+  if (allowedDomains.length === 0) return true;
+  const at = normalizedEmail.lastIndexOf('@');
+  if (at < 1 || at === normalizedEmail.length - 1) return false;
+  const domain = normalizedEmail.slice(at + 1);
+  return allowedDomains.includes(domain);
+}

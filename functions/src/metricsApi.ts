@@ -10,6 +10,7 @@ import * as admin from 'firebase-admin';
 import { logger } from 'firebase-functions';
 import { filsToGbpPence } from './currency.js';
 import { getLogCostFils as getLogCostFilsShared } from './aiPricing.js';
+import { firestoreValueToDate as toDate } from './firestoreTimestamp.js';
 
 function getDb() {
   return admin.firestore();
@@ -95,25 +96,6 @@ type AssessmentEvent = {
   organizationId: string;
   timestamp: Date;
 };
-
-function toDate(value: unknown): Date | null {
-  if (!value) return null;
-  if (value instanceof Date) return value;
-  if (value instanceof admin.firestore.Timestamp) return value.toDate();
-  if (
-    typeof value === 'object' &&
-    value !== null &&
-    'toDate' in value &&
-    typeof (value as { toDate?: () => Date }).toDate === 'function'
-  ) {
-    return (value as { toDate: () => Date }).toDate();
-  }
-  if (typeof value === 'string' || typeof value === 'number') {
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-  return null;
-}
 
 function startOfDay(date: Date): Date {
   const clone = new Date(date);

@@ -68,6 +68,22 @@ export const EMAIL_ASSETS_LOGO_URL = (process.env.EMAIL_ASSETS_LOGO_URL || '').t
 
 export const SIGNED_URL_TTL_HOURS = Number(process.env.SIGNED_URL_TTL_HOURS || 24);
 
+function parseCommaSeparatedDomains(raw: string | undefined): string[] {
+  if (!raw?.trim()) return [];
+  return raw
+    .split(',')
+    .map((s) => s.trim().toLowerCase().replace(/^@+/u, ''))
+    .filter((d) => d.length > 0 && !d.includes(' '));
+}
+
+/**
+ * When non-empty, coach invite emails must be at one of these domains (exact hostname match).
+ * Comma-separated, e.g. `one-assess.com,partner.org`. Unset = no domain restriction.
+ */
+export const COACH_INVITE_ALLOWED_EMAIL_DOMAINS = parseCommaSeparatedDomains(
+  process.env.COACH_INVITE_ALLOWED_EMAIL_DOMAINS,
+);
+
 
 
 

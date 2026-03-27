@@ -30,5 +30,10 @@ export function firestoreValueToDate(value: unknown): Date | null {
     }
   }
 
+  if (typeof value === 'string' || typeof value === 'number') {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
   return null;
 }

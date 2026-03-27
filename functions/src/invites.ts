@@ -11,9 +11,20 @@ import * as admin from 'firebase-admin';
 import * as crypto from 'crypto';
 import type { CallableRequest } from 'firebase-functions/v2/https';
 import { Resend } from 'resend';
-import { APP_HOST, EMAIL_ASSETS_LOGO_URL, RESEND_API_KEY, RESEND_FROM } from './config';
+import {
+  APP_HOST,
+  COACH_INVITE_ALLOWED_EMAIL_DOMAINS,
+  EMAIL_ASSETS_LOGO_URL,
+  RESEND_API_KEY,
+  RESEND_FROM,
+} from './config';
 import { renderActivationEmail, sendResendHtmlText } from './email';
-import { canSendCoachInvites, isValidCoachInviteEmail, normalizeCoachInviteEmail } from './inviteShared';
+import {
+  canSendCoachInvites,
+  isCoachInviteEmailDomainAllowed,
+  isValidCoachInviteEmail,
+  normalizeCoachInviteEmail,
+} from './inviteShared';
 
 const resend = new Resend(RESEND_API_KEY);
 
@@ -55,6 +66,9 @@ export async function handleSendCoachInvite(
   const email = normalizeCoachInviteEmail(rawEmail);
   if (!isValidCoachInviteEmail(email)) {
     throw new Error('Invalid email address.');
+  }
+  if (!isCoachInviteEmailDomainAllowed(email, COACH_INVITE_ALLOWED_EMAIL_DOMAINS)) {
+    throw new Error('This email domain is not permitted for coach invitations.');
   }
 
   const db = admin.firestore();
