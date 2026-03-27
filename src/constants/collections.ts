@@ -23,6 +23,8 @@ export const COLLECTIONS = {
 
   // Public / shared
   PUBLIC_REPORTS: 'publicReports',
+  /** Token-keyed mirror of roadmap fields for anonymous /r/:token/roadmap (see roadmaps.ts) */
+  PUBLIC_ROADMAPS: 'publicRoadmaps',
   LIVE_SESSIONS: 'live_sessions',
 
   // Public report subcollections

@@ -271,7 +271,7 @@ export function useClientDetail(): UseClientDetailResult {
     }
     
     navigate('/assessment');
-  }, [user, clientName, assessments, navigate]);
+  }, [user, clientName, assessments, navigate, readOrgId, userProfile]);
 
   // Delete assessment
   const handleDeleteAssessment = useCallback(async (id: string) => {
@@ -293,7 +293,7 @@ export function useClientDetail(): UseClientDetailResult {
         variant: "destructive",
       });
     }
-  }, [user, toast]);
+  }, [user, toast, userProfile]);
 
   const handleEditSnapshot = useCallback((snapshot: AssessmentSnapshot) => {
     const summaryId = assessments[0]?.id;
@@ -462,20 +462,27 @@ export function useClientDetail(): UseClientDetailResult {
     return () => {
       unsubscribeProfile();
     };
-  }, [user, clientName, userProfile?.organizationId]);
+  }, [user, clientName, userProfile]);
 
   // Check for incomplete draft (Save for Later) so we can show "Finish assessment" CTA
   useEffect(() => {
     if (!clientName || !readOrgId) return;
+    let cancelled = false;
     getDraftAssessment(clientName, readOrgId)
       .then((draft) => {
+        if (cancelled) return;
         if (draft?.formData && Object.keys(draft.formData).length > 0) {
           setIncompleteDraft(draft);
         } else {
           setIncompleteDraft(null);
         }
       })
-      .catch(() => setIncompleteDraft(null));
+      .catch(() => {
+        if (!cancelled) setIncompleteDraft(null);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [clientName, readOrgId]);
 
   const handleFinishAssessment = useCallback(() => {
@@ -502,39 +509,42 @@ export function useClientDetail(): UseClientDetailResult {
   // Load category scores for current assessment
   useEffect(() => {
     if (!user || !clientName) return;
-    
+
+    let cancelled = false;
+
     (async () => {
       const currentBreakdown: Record<string, number> = {};
-      
+
       if (currentAssessment) {
         const scores = computeScores(currentAssessment.formData);
         scores.categories.forEach(cat => {
           currentBreakdown[cat.id] = cat.score;
         });
-        setCategoryBreakdown(currentBreakdown);
+        if (!cancelled) setCategoryBreakdown(currentBreakdown);
       } else if (assessments.length > 0 && assessments[0].scoresSummary) {
         assessments[0].scoresSummary.categories.forEach(cat => {
           currentBreakdown[cat.id] = cat.score;
         });
-        setCategoryBreakdown(currentBreakdown);
+        if (!cancelled) setCategoryBreakdown(currentBreakdown);
       } else if (assessments.length > 0) {
-        // Fallback to old system (uses readOrgId for impersonation support)
         const latest = await getCoachAssessment(user.uid, assessments[0].id, undefined, readOrgId, userProfile);
+        if (cancelled) return;
         if (latest?.formData) {
           setCurrentAssessment({ formData: latest.formData, overallScore: latest.overallScore });
           const scores = computeScores(latest.formData);
           scores.categories.forEach(cat => {
             currentBreakdown[cat.id] = cat.score;
           });
-          setCategoryBreakdown(currentBreakdown);
+          if (!cancelled) setCategoryBreakdown(currentBreakdown);
         }
       }
 
-      // Calculate changes from previous snapshot
+      if (cancelled) return;
+
       if (Object.keys(currentBreakdown).length > 0 && snapshots.length > 0) {
         const latestSnapshot = snapshots.find(s => {
           const diff = Date.now() - s.timestamp.toDate().getTime();
-          return diff > 5 * 60 * 1000; // More than 5 minutes ago
+          return diff > 5 * 60 * 1000;
         }) || snapshots[1];
 
         if (latestSnapshot) {
@@ -544,11 +554,15 @@ export function useClientDetail(): UseClientDetailResult {
             const currentScore = currentBreakdown[cat.id] || 0;
             changes[cat.id] = currentScore - cat.score;
           });
-          setCategoryChanges(changes);
+          if (!cancelled) setCategoryChanges(changes);
         }
       }
     })();
-  }, [user, clientName, assessments, snapshots, currentAssessment, userProfile?.organizationId]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, clientName, assessments, snapshots, currentAssessment, readOrgId, userProfile]);
 
   // Handle client transfer (Phase E)
   const handleTransferClient = useCallback(async (toCoachUid: string) => {
@@ -599,7 +613,7 @@ export function useClientDetail(): UseClientDetailResult {
         });
       } catch { /* non-fatal */ }
     }
-  }, [userProfile, clientName, user, toast, profile?.firebaseUid]);
+  }, [readOrgId, userProfile, clientName, user, toast, profile?.firebaseUid]);
 
   // Unpause client account
   const handleUnpauseClient = useCallback(async (mode: 'resume' | 'reset') => {
@@ -629,7 +643,7 @@ export function useClientDetail(): UseClientDetailResult {
         });
       } catch { /* non-fatal */ }
     }
-  }, [userProfile, clientName, toast]);
+  }, [readOrgId, userProfile, clientName, toast, profile?.firebaseUid]);
 
   const handleArchiveClient = useCallback(async (reason?: string) => {
     const orgId = readOrgId;
@@ -695,7 +709,7 @@ export function useClientDetail(): UseClientDetailResult {
       toast({ title: 'Delete failed', description: err instanceof Error ? err.message : 'Please try again.', variant: 'destructive' });
       throw err;
     }
-  }, [readOrgId, clientName, assessments, navigate, toast]);
+  }, [readOrgId, clientName, assessments, toast]);
 
   return {
     clientName,

@@ -13,7 +13,7 @@ export function RequireStaffAuth({ children }: { children: JSX.Element }) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-slate-600">
+      <div className="flex min-h-screen items-center justify-center text-sm text-foreground-secondary">
         Checking coach session...
       </div>
     );

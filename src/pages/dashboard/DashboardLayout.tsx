@@ -2,7 +2,7 @@
  * Dashboard layout: shared data, header, checklist, tabs (NavLinks), and Outlet for child routes.
  */
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { Timestamp } from 'firebase/firestore';
 import AppShell from '@/components/layout/AppShell';
@@ -16,13 +16,19 @@ import { clearDraft } from '@/hooks/useAssessmentDraft';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useAuth } from '@/hooks/useAuth';
 import { getRoadmapForClient } from '@/services/roadmaps';
-import { getClientProfile } from '@/services/clientProfiles';
+import { getClientProfile, resolveClientDisplayNameFromOrgClientDoc } from '@/services/clientProfiles';
+import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
+import { useToast } from '@/hooks/use-toast';
 import { DashboardHeader } from '@/components/dashboard/sub-components/DashboardHeader';
 import { DashboardViewTabs } from '@/components/dashboard/sub-components/DashboardViewTabs';
 import { DashboardDialogs } from '@/components/dashboard/sub-components/DashboardDialogs';
 import { GettingStartedChecklist } from '@/components/dashboard/GettingStartedChecklist';
 import { generateTasks, type QueueEntry, type RoadmapNeededInfo, type ProfileGapInfo } from '@/lib/tasks/generateTasks';
+import { DASHBOARD_TASKS } from '@/constants/dashboardTasksCopy';
 import type { CoachTask } from '@/lib/tasks/generateTasks';
+import { staffPreferredFirstName } from '@/lib/utils/staffDisplayName';
+import { Seo } from '@/components/seo/Seo';
+import { getDashboardSeoForPathname } from '@/constants/seo';
 
 export type DashboardOutletContext = ReturnType<typeof useDashboardData> & {
   tasks: CoachTask[];
@@ -43,13 +49,16 @@ export default function DashboardLayout() {
   const dashboardData = useDashboardData();
   const navigate = useNavigate();
   const location = useLocation();
+  const { toast } = useToast();
   const { user, effectiveOrgId, orgSettings, profile } = useAuth();
+  const dashboardClientQueryHandledRef = useRef<string>('');
 
   const {
     loading,
     user: dataUser,
     analytics,
     filteredClients,
+    hasSharedReport,
     reassessmentQueue,
   } = dashboardData;
 
@@ -120,6 +129,46 @@ export default function DashboardLayout() {
     navigate(ROUTES.SUBSCRIBE, { replace: true, state: { from: path } });
   }, [orgSettings, profile?.onboardingCompleted, location.pathname, navigate]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const raw = params.get('client');
+    if (!raw?.trim() || !effectiveOrgId) return;
+    const dedupeKey = `${effectiveOrgId}|${location.pathname}|${raw}`;
+    if (dashboardClientQueryHandledRef.current === dedupeKey) return;
+    dashboardClientQueryHandledRef.current = dedupeKey;
+    let cancelled = false;
+    void (async () => {
+      const decoded = decodeURIComponent(raw.trim());
+      let fullName = await resolveClientDisplayNameFromOrgClientDoc(effectiveOrgId, decoded);
+      if (cancelled) return;
+      if (!fullName) {
+        fullName = formatClientDisplayName(decoded);
+      }
+      try {
+        sessionStorage.setItem(STORAGE_KEYS.PREFILL_CLIENT, JSON.stringify({ fullName }));
+      } catch {
+        /* sessionStorage unavailable */
+      }
+      params.delete('client');
+      const nextSearch = params.toString();
+      navigate(
+        {
+          pathname: location.pathname,
+          search: nextSearch ? `?${nextSearch}` : '',
+          hash: location.hash,
+        },
+        { replace: true },
+      );
+      toast({
+        title: DASHBOARD_TASKS.CLIENT_QUERY_TOAST_TITLE,
+        description: DASHBOARD_TASKS.CLIENT_QUERY_TOAST_DESC(fullName),
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveOrgId, location.pathname, location.search, location.hash, navigate, toast]);
+
   const tasks = useMemo(() => {
     if (!reassessmentQueue) return [];
     const queueEntries: QueueEntry[] = reassessmentQueue.queue.flatMap((client) =>
@@ -155,27 +204,41 @@ export default function DashboardLayout() {
 
   if (loading || !dataUser) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-slate-400 font-medium">
+      <div
+        className="flex min-h-screen items-center justify-center text-sm text-muted-foreground font-medium"
+        aria-busy="true"
+        aria-live="polite"
+        role="status"
+      >
         <div className="flex flex-col items-center gap-4">
-          <div className="w-8 h-8 border-4 border-slate-900 border-t-transparent rounded-full animate-spin" />
-          <span>Loading your dashboard…</span>
+          <span className="sr-only">Loading your dashboard</span>
+          <div className="w-8 h-8 border-4 border-muted-foreground/25 border-t-primary rounded-full motion-safe:animate-spin" />
+          <span aria-hidden>Loading your dashboard…</span>
         </div>
       </div>
     );
   }
 
-  const coachFirstName = dataUser?.displayName ? dataUser.displayName.split(' ')[0] : 'Coach';
+  const coachFirstName = staffPreferredFirstName(profile, dataUser);
+  const dashboardSeo = getDashboardSeoForPathname(location.pathname);
 
   return (
     <ErrorBoundary>
+      <Seo
+        pathname={location.pathname}
+        title={dashboardSeo.title}
+        description={dashboardSeo.description}
+        noindex={dashboardSeo.noindex}
+      />
       <OfflineBanner />
       <AppShell
         title="Dashboard"
         hideTitle
         actions={
           <Button
+            type="button"
             onClick={handleGlobalNewAssessment}
-            className="h-9 px-4 rounded-xl bg-slate-900 text-white font-bold hover:bg-slate-800 gap-2 text-xs"
+            className="h-9 px-4 rounded-xl font-bold gap-2 text-xs"
           >
             <Plus className="h-4 w-4" />
             <span className="hidden sm:inline">New Assessment</span>
@@ -187,18 +250,10 @@ export default function DashboardLayout() {
             coachFirstName={coachFirstName}
             totalClients={analytics?.totalClients ?? 0}
             totalAssessments={analytics?.totalAssessments ?? 0}
+            overdueCount={reassessmentQueue?.summary?.overdue ?? 0}
           />
 
-          <GettingStartedChecklist
-            hasClients={(analytics?.totalClients ?? 0) > 0}
-            hasAssessments={(analytics?.totalAssessments ?? 0) > 0}
-            hasSharedReport={false}
-            businessProfileComplete={Boolean(orgSettings?.name?.trim() && orgSettings?.region)}
-            showTrialSubscribeNudge={orgSettings?.subscription?.planKind === 'gym_trial'}
-            showBrandingNudge={orgSettings?.customBrandingEnabled === false}
-          />
-
-          <div className="bg-white rounded-2xl p-3 sm:p-4 md:p-6 lg:p-8 overflow-hidden">
+          <div className="bg-card text-card-foreground rounded-2xl border border-border p-3 sm:p-4 md:p-6 lg:p-8 overflow-hidden">
             <DashboardViewTabs
               search={dashboardData.search}
               setSearch={dashboardData.setSearch}
@@ -210,6 +265,23 @@ export default function DashboardLayout() {
             <Outlet context={{ ...dashboardData, tasks } satisfies DashboardOutletContext} />
           </div>
         </div>
+
+        <GettingStartedChecklist
+          hasClients={(analytics?.totalClients ?? 0) > 0}
+          hasAssessments={(analytics?.totalAssessments ?? 0) > 0}
+          hasSharedReport={hasSharedReport}
+          primaryAssessmentIdForShare={
+            filteredClients.find((c) => c.assessments.length > 0)?.assessments[0]?.id ?? null
+          }
+          primaryClientNameForShare={
+            filteredClients.find((c) => c.assessments.length > 0)?.name ?? null
+          }
+          businessProfileComplete={Boolean(orgSettings?.name?.trim() && orgSettings?.region)}
+          equipmentDetailsDone={Boolean(orgSettings?.onboardingCompletedAt)}
+          isOrgAdmin={profile?.role === 'org_admin'}
+          showTrialSubscribeNudge={orgSettings?.subscription?.planKind === 'gym_trial'}
+          showBrandingNudge={orgSettings?.customBrandingEnabled === false}
+        />
 
         <DashboardDialogs
           deleteDialog={dashboardData.deleteDialog}

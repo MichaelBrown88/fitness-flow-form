@@ -118,11 +118,11 @@ export function ClientBodyCompScan({ onComplete, onCancel }: ClientBodyCompScanP
   }, [user, profile, imagePreview, extractedData, confidence, toast, onComplete]);
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+    <div className="bg-background rounded-2xl border border-border/60 shadow-sm overflow-hidden">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-900">Scan Body Composition Report</h3>
-        <button onClick={onCancel} className="text-slate-400 hover:text-slate-600">
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-foreground">Scan Body Composition Report</h3>
+        <button onClick={onCancel} className="text-muted-foreground hover:text-foreground-secondary">
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -134,10 +134,10 @@ export function ClientBodyCompScan({ onComplete, onCancel }: ClientBodyCompScanP
             <div className="w-16 h-16 rounded-2xl bg-violet-50 flex items-center justify-center mx-auto mb-4">
               <Camera className="w-7 h-7 text-violet-500" />
             </div>
-            <p className="text-sm text-slate-700 font-medium mb-1">
+            <p className="text-sm text-foreground-secondary font-medium mb-1">
               Take a photo of your body composition report
             </p>
-            <p className="text-xs text-slate-400 mb-6 max-w-xs mx-auto">
+            <p className="text-xs text-muted-foreground mb-6 max-w-xs mx-auto">
               Our AI will extract the data automatically. Make sure the text is clear and well-lit.
             </p>
 
@@ -175,8 +175,8 @@ export function ClientBodyCompScan({ onComplete, onCancel }: ClientBodyCompScanP
         {step === 'processing' && (
           <div className="text-center py-12">
             <Loader2 className="w-8 h-8 text-violet-500 animate-spin mx-auto mb-4" />
-            <p className="text-sm font-medium text-slate-700">Analyzing your report...</p>
-            <p className="text-xs text-slate-400 mt-1">This usually takes a few seconds.</p>
+            <p className="text-sm font-medium text-foreground-secondary">Analyzing your report...</p>
+            <p className="text-xs text-muted-foreground mt-1">This usually takes a few seconds.</p>
           </div>
         )}
 
@@ -199,7 +199,7 @@ export function ClientBodyCompScan({ onComplete, onCancel }: ClientBodyCompScanP
                 if (value === undefined || value === null) return null;
                 return (
                   <div key={fieldId} className="flex items-center gap-3">
-                    <label className="text-xs text-slate-500 w-36 flex-shrink-0 text-right">
+                    <label className="text-xs text-muted-foreground w-36 flex-shrink-0 text-right">
                       {label}
                     </label>
                     <Input
@@ -240,7 +240,7 @@ export function ClientBodyCompScan({ onComplete, onCancel }: ClientBodyCompScanP
         {step === 'saving' && (
           <div className="text-center py-12">
             <Loader2 className="w-8 h-8 text-violet-500 animate-spin mx-auto mb-4" />
-            <p className="text-sm font-medium text-slate-700">Saving your submission...</p>
+            <p className="text-sm font-medium text-foreground-secondary">Saving your submission...</p>
           </div>
         )}
       </div>

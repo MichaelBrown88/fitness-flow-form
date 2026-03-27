@@ -135,8 +135,8 @@ export function DefaultCadenceSettings({
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 space-y-5 shadow-sm">
-      <p className="text-xs text-slate-500 leading-relaxed">
+    <div className="rounded-2xl border border-border bg-background p-4 sm:p-6 space-y-5 shadow-sm">
+      <p className="text-xs text-muted-foreground leading-relaxed">
         Set which assessments to track and how often. These apply to all new clients
         unless overridden individually.
       </p>
@@ -153,7 +153,7 @@ export function DefaultCadenceSettings({
             <div
               key={pillar}
               className={`flex items-center gap-3 p-3 rounded-xl transition-colors ${
-                isActive ? 'bg-slate-50/50' : 'opacity-50'
+                isActive ? 'bg-muted/50' : 'opacity-50'
               } ${!isValid ? 'bg-score-red-light/50' : ''}`}
             >
               <Switch
@@ -165,7 +165,7 @@ export function DefaultCadenceSettings({
               <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                 <Icon className="h-4 w-4 text-primary" />
               </div>
-              <span className="text-sm font-bold text-slate-900 flex-1 min-w-0">
+              <span className="text-sm font-bold text-foreground flex-1 min-w-0">
                 {config.label}
               </span>
               {isActive && (
@@ -179,11 +179,11 @@ export function DefaultCadenceSettings({
                     className={`h-9 w-16 text-center text-sm ${!isValid ? 'border-score-red' : ''}`}
                     disabled={isSaving}
                   />
-                  <span className="text-xs text-slate-400">wk</span>
+                  <span className="text-xs text-muted-foreground">wk</span>
                 </div>
               )}
               {!isActive && (
-                <span className="text-xs text-slate-400">Off</span>
+                <span className="text-xs text-muted-foreground">Off</span>
               )}
             </div>
           );
@@ -193,13 +193,13 @@ export function DefaultCadenceSettings({
       <Button
         onClick={handleSave}
         disabled={isSaving}
-        className="w-full rounded-xl bg-slate-900 text-white font-bold h-11 hover:bg-slate-800 transition-colors"
+        className="w-full rounded-xl bg-foreground text-white font-bold h-11 hover:bg-foreground/90 transition-colors"
       >
         {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         Save Defaults
       </Button>
 
-      <p className="text-[10px] text-slate-400 pt-2 border-t border-slate-100">
+      <p className="text-[10px] text-muted-foreground pt-2 border-t border-border">
         Active pillars and intervals apply to new clients. Existing client schedules
         are not affected. Valid range: 1-26 weeks.
       </p>

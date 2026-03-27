@@ -28,27 +28,27 @@ export default function ClientRoadmapTab() {
     return (
       <div className="flex flex-col items-center justify-center py-16">
         <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-        <p className="text-sm text-slate-500">Loading roadmap…</p>
+        <p className="text-sm text-muted-foreground">Loading roadmap…</p>
       </div>
     );
   }
 
   if (assessments.length === 0) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-8 text-center max-w-md mx-auto">
-        <Map className="h-10 w-10 text-slate-300 mx-auto mb-3" />
-        <p className="text-sm font-medium text-slate-600">Complete an assessment first</p>
-        <p className="text-xs text-slate-500 mt-1">Then you can create a roadmap for this client.</p>
+      <div className="rounded-2xl border border-border bg-muted p-8 text-center max-w-md mx-auto">
+        <Map className="h-10 w-10 text-muted-foreground/60 mx-auto mb-3" />
+        <p className="text-sm font-medium text-foreground-secondary">Complete an assessment first</p>
+        <p className="text-xs text-muted-foreground mt-1">Then you can create a roadmap for this client.</p>
       </div>
     );
   }
 
   if (needsCreation || items.length === 0) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-8 text-center max-w-md mx-auto">
-        <Map className="h-10 w-10 text-slate-300 mx-auto mb-3" />
-        <p className="text-sm font-medium text-slate-600">No roadmap yet</p>
-        <p className="text-xs text-slate-500 mt-2 mb-4">Create and send a roadmap from the full roadmap page.</p>
+      <div className="rounded-2xl border border-border bg-muted p-8 text-center max-w-md mx-auto">
+        <Map className="h-10 w-10 text-muted-foreground/60 mx-auto mb-3" />
+        <p className="text-sm font-medium text-foreground-secondary">No roadmap yet</p>
+        <p className="text-xs text-muted-foreground mt-2 mb-4">Create and send a roadmap from the full roadmap page.</p>
         <Button size="sm" className="rounded-lg gap-1.5" asChild>
           <Link to={roadmapPath}>
             <Plus className="h-4 w-4" />

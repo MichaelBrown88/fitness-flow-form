@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useBlocker, Link } from 'react-router-dom';
+import { updateProfile } from 'firebase/auth';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import AppShell from '@/components/layout/AppShell';
 import { useSettings } from '@/hooks/useSettings';
 import { Switch } from '@/components/ui/switch';
@@ -20,41 +21,99 @@ import { DefaultCadenceSettings } from '@/components/settings/DefaultCadenceSett
 import { NotificationSettings } from '@/components/settings/NotificationSettings';
 import { OrgSettingSwitch } from '@/components/settings/OrgSettingSwitch';
 import { ROUTES } from '@/constants/routes';
+import { STORAGE_KEYS } from '@/constants/storageKeys';
+import { ASSESSMENT_COPY } from '@/constants/assessmentCopy';
+import { SETTINGS_COPY } from '@/constants/settingsCopy';
+import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 
 const Settings = () => {
   const navigate = useNavigate();
   const { user, profile, orgSettings, refreshSettings } = useAuth();
+  const [localDisplayName, setLocalDisplayName] = useState(profile?.displayName ?? '');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const { toast } = useToast();
   const [localOrgName, setLocalOrgName] = useState(orgSettings?.name || '');
-  const [localGradientId, setLocalGradientId] = useState<GradientId>((orgSettings?.gradientId as GradientId) || 'purple-indigo');
+  const [localGradientId, setLocalGradientId] = useState<GradientId>((orgSettings?.gradientId as GradientId) || 'volt');
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const gradients = getAllGradients();
 
+  const [coachGuidanceAssessment, setCoachGuidanceAssessment] = useState(true);
+  useEffect(() => {
+    try {
+      setCoachGuidanceAssessment(localStorage.getItem(STORAGE_KEYS.COACH_GUIDANCE_IN_ASSESSMENT) !== '0');
+    } catch {
+      setCoachGuidanceAssessment(true);
+    }
+  }, []);
+
   // Check if user is an organization admin (coaches have limited access)
   const isAdmin = profile?.role === 'org_admin';
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const orgTabParam = searchParams.get('orgTab');
+
+  const mainTab = useMemo(() => {
+    if (tabParam === 'notifications') return 'notifications';
+    if (tabParam === 'organization' && isAdmin) return 'organization';
+    return 'profile';
+  }, [tabParam, isAdmin]);
+
+  const orgTab = useMemo(() => {
+    const t = orgTabParam ?? 'branding';
+    if (t === 'modules' || t === 'equipment' || t === 'schedule' || t === 'branding') return t;
+    return 'branding';
+  }, [orgTabParam]);
 
   useEffect(() => {
     if (orgSettings) {
       setLocalOrgName(orgSettings.name);
-      setLocalGradientId((orgSettings.gradientId as GradientId) || 'purple-indigo');
+      setLocalGradientId((orgSettings.gradientId as GradientId) || 'volt');
     }
   }, [orgSettings]);
 
+  useEffect(() => {
+    setLocalDisplayName(profile?.displayName ?? '');
+  }, [profile?.displayName]);
+
   const brandingDirty = useMemo(() => {
     if (!orgSettings) return false;
-    return localOrgName !== orgSettings.name || localGradientId !== (orgSettings.gradientId || 'purple-indigo');
+    return localOrgName !== orgSettings.name || localGradientId !== (orgSettings.gradientId || 'volt');
   }, [orgSettings, localOrgName, localGradientId]);
 
-  const blocker = useBlocker(brandingDirty);
-  useEffect(() => {
-    if (blocker.state !== 'blocked') return;
-    if (window.confirm('You have unsaved branding changes. Leave anyway?')) {
-      blocker.proceed();
-    } else {
-      blocker.reset();
+  const profileDirty = useMemo(() => {
+    const saved = (profile?.displayName ?? '').trim();
+    return localDisplayName.trim() !== saved;
+  }, [profile?.displayName, localDisplayName]);
+
+  const anyUnsaved = brandingDirty || profileDirty;
+
+  const { guardedNavigate } = useUnsavedChangesGuard(
+    anyUnsaved,
+    navigate,
+    'You have unsaved changes. Leave anyway?',
+  );
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    setIsSavingProfile(true);
+    try {
+      const next = localDisplayName.trim();
+      await updateProfile(user, { displayName: next });
+      await setDoc(
+        doc(getDb(), 'userProfiles', user.uid),
+        { displayName: next, updatedAt: new Date() },
+        { merge: true },
+      );
+      toast({ title: SETTINGS_COPY.PROFILE_SAVED });
+    } catch (err) {
+      logger.error('Profile save error:', err);
+      toast({ title: SETTINGS_COPY.PROFILE_SAVE_ERROR, variant: 'destructive' });
+    } finally {
+      setIsSavingProfile(false);
     }
-  }, [blocker]);
+  };
 
   const handleSaveOrgInfo = async () => {
     if (!profile?.organizationId) return;
@@ -111,9 +170,10 @@ const Settings = () => {
       title="Settings"
       actions={
         <Button
+          type="button"
           variant="ghost"
           size="sm"
-          onClick={() => navigate(ROUTES.DASHBOARD)}
+          onClick={() => guardedNavigate(ROUTES.DASHBOARD)}
           className="h-9 w-9 sm:h-8 sm:w-8 p-0"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -122,11 +182,27 @@ const Settings = () => {
     >
       <div className="max-w-4xl pb-20">
         {/* Tab Navigation */}
-        <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="w-full mb-6 p-1 h-auto bg-zinc-100 rounded-xl grid grid-cols-3 gap-1">
+        <Tabs
+          value={mainTab}
+          onValueChange={(v) => {
+            setSearchParams(
+              (prev) => {
+                const p = new URLSearchParams(prev);
+                p.set('tab', v);
+                if (v !== 'organization') {
+                  p.delete('orgTab');
+                }
+                return p;
+              },
+              { replace: true },
+            );
+          }}
+          className="w-full"
+        >
+          <TabsList className="w-full mb-6 p-1 h-auto bg-muted rounded-xl grid grid-cols-3 gap-1">
             <TabsTrigger
               value="profile"
-              className="flex items-center gap-2 py-2.5 px-4 rounded-lg text-sm font-semibold data-[state=active]:bg-white"
+              className="flex items-center gap-2 py-2.5 px-4 rounded-lg text-sm font-semibold data-[state=active]:bg-card"
             >
               <User className="h-4 w-4" />
               Profile
@@ -134,7 +210,7 @@ const Settings = () => {
             {isAdmin && (
               <TabsTrigger
                 value="organization"
-                className="flex items-center gap-2 py-2.5 px-4 rounded-lg text-sm font-semibold data-[state=active]:bg-white"
+                className="flex items-center gap-2 py-2.5 px-4 rounded-lg text-sm font-semibold data-[state=active]:bg-card"
               >
                 <Building2 className="h-4 w-4" />
                 Organization
@@ -142,7 +218,7 @@ const Settings = () => {
             )}
             <TabsTrigger
               value="notifications"
-              className="flex items-center gap-2 py-2.5 px-4 rounded-lg text-sm font-semibold data-[state=active]:bg-white"
+              className="flex items-center gap-2 py-2.5 px-4 rounded-lg text-sm font-semibold data-[state=active]:bg-card"
             >
               <Bell className="h-4 w-4" />
               Notifications
@@ -152,14 +228,14 @@ const Settings = () => {
           {/* Profile Tab */}
           <TabsContent value="profile" className="space-y-8 mt-0">
             {/* User Info & Role */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 px-4 sm:px-6 py-4 rounded-2xl bg-zinc-900 text-white shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 px-4 sm:px-6 py-4 rounded-2xl bg-foreground text-background shadow-xl">
               <div className="min-w-0">
                 <p className="text-[10px] font-black uppercase tracking-[0.15em] text-primary mb-1 opacity-80">Current Account</p>
                 <h2 className="text-base sm:text-lg font-bold leading-none truncate">{profile?.displayName || user?.email}</h2>
               </div>
               <div className="sm:text-right flex flex-col sm:items-end gap-1 shrink-0">
                 <p className="text-[10px] font-black uppercase tracking-[0.15em] text-primary opacity-80">Access Level</p>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary text-white w-fit">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary text-primary-foreground w-fit">
                   {isAdmin ? 'Organization Admin' : 'Coach'}
                 </span>
               </div>
@@ -167,57 +243,110 @@ const Settings = () => {
 
             {/* Profile Information */}
             <section className="space-y-4">
-              <div className="flex items-center gap-2 text-slate-900 mb-2">
+              <div className="flex items-center gap-2 text-foreground mb-2">
                 <ShieldCheck className="h-5 w-5 text-primary" />
                 <h2 className="text-lg font-bold">{isAdmin ? 'Admin Profile' : 'Coach Profile'}</h2>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+              <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">Email</Label>
-                    <Input 
-                      value={user?.email || ''} 
+                    <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">Email</Label>
+                    <Input
+                      value={user?.email || ''}
                       disabled
-                      className="rounded-xl border-slate-200 h-11 bg-slate-50"
+                      readOnly
+                      className="rounded-xl border-border h-11 bg-muted"
                     />
+                    <p className="text-xs text-muted-foreground">{SETTINGS_COPY.PROFILE_EMAIL_MANAGED}</p>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">Display Name</Label>
-                    <Input 
-                      value={profile?.displayName || ''} 
-                      disabled
-                      className="rounded-xl border-slate-200 h-11 bg-slate-50"
+                    <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">Display Name</Label>
+                    <Input
+                      value={localDisplayName}
+                      onChange={(e) => setLocalDisplayName(e.target.value)}
+                      className="rounded-xl border-border h-11"
+                      autoComplete="name"
+                      maxLength={120}
                     />
+                    <p className="text-xs text-muted-foreground">{SETTINGS_COPY.PROFILE_DISPLAY_NAME_HELP}</p>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">Organization</Label>
-                  <Input 
-                    value={orgSettings?.name || 'Not assigned'} 
+                  <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">Organization</Label>
+                  <Input
+                    value={orgSettings?.name || 'Not assigned'}
                     disabled
-                    className="rounded-xl border-slate-200 h-11 bg-slate-50"
+                    readOnly
+                    className="rounded-xl border-border h-11 bg-muted"
                   />
+                  {isAdmin ? (
+                    <Button type="button" variant="link" className="h-auto p-0 text-sm" asChild>
+                      <Link to={`${ROUTES.SETTINGS}?tab=organization&orgTab=branding`}>
+                        {SETTINGS_COPY.PROFILE_ORG_LINK}
+                      </Link>
+                    </Button>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">{SETTINGS_COPY.PROFILE_ORG_READONLY_COACH}</p>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-3 pt-2">
+                  <Button
+                    type="button"
+                    onClick={handleSaveProfile}
+                    disabled={!profileDirty || isSavingProfile}
+                  >
+                    {isSavingProfile ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin shrink-0" aria-hidden />
+                        Saving…
+                      </>
+                    ) : (
+                      SETTINGS_COPY.PROFILE_SAVE
+                    )}
+                  </Button>
                 </div>
                 {!isAdmin && (
-                  <p className="text-xs text-slate-500 mt-2">
-                    Contact your organization admin to update your profile or change organization settings.
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Contact your organization admin to change organisation-wide settings.
                   </p>
                 )}
+              </div>
+            </section>
+
+            <section className="space-y-4">
+              <div className="rounded-2xl border border-border bg-card p-6 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="space-y-1">
+                  <Label className="text-sm font-bold text-foreground">{ASSESSMENT_COPY.COACH_GUIDANCE_TOGGLE}</Label>
+                  <p className="text-xs text-muted-foreground max-w-md">
+                    When off, the subtle guidance strip is hidden during assessments (this device only).
+                  </p>
+                </div>
+                <Switch
+                  checked={coachGuidanceAssessment}
+                  onCheckedChange={(checked) => {
+                    try {
+                      localStorage.setItem(STORAGE_KEYS.COACH_GUIDANCE_IN_ASSESSMENT, checked ? '1' : '0');
+                    } catch {
+                      // noop
+                    }
+                    setCoachGuidanceAssessment(checked);
+                  }}
+                />
               </div>
             </section>
 
             {/* Active Coach Toggle (Admin Only, non-solo) */}
             {isAdmin && orgSettings?.type !== 'solo_coach' && (
               <section className="space-y-4">
-                <div className="flex items-center gap-2 text-slate-900 mb-2">
+                <div className="flex items-center gap-2 text-foreground mb-2">
                   <User className="h-5 w-5 text-primary" />
                   <h2 className="text-lg font-bold">Coaching Role</h2>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
                   <div className="flex items-center justify-between gap-4">
                     <div className="space-y-1">
-                      <Label className="text-sm font-bold text-slate-800">I also coach clients myself</Label>
-                      <p className="text-xs text-slate-500 leading-relaxed max-w-md">
+                      <Label className="text-sm font-bold text-foreground">I also coach clients myself</Label>
+                      <p className="text-xs text-muted-foreground leading-relaxed max-w-md">
                         {profile?.isActiveCoach
                           ? 'You see your own client list alongside team management tools.'
                           : 'You manage your coaching team without a personal client list.'}
@@ -256,34 +385,48 @@ const Settings = () => {
           {/* Organization Tab (Admin Only) */}
           {isAdmin && (
             <TabsContent value="organization" className="mt-0">
-            <Tabs defaultValue="branding" className="w-full">
-              <TabsList className="w-full mb-6 p-1 h-auto bg-slate-100 rounded-xl grid grid-cols-4 gap-1">
-                <TabsTrigger value="branding" className="py-2.5 px-3 rounded-lg text-xs sm:text-sm font-semibold data-[state=active]:bg-white">Branding</TabsTrigger>
-                <TabsTrigger value="modules" className="py-2.5 px-3 rounded-lg text-xs sm:text-sm font-semibold data-[state=active]:bg-white">Modules</TabsTrigger>
-                <TabsTrigger value="equipment" className="py-2.5 px-3 rounded-lg text-xs sm:text-sm font-semibold data-[state=active]:bg-white">Equipment</TabsTrigger>
-                <TabsTrigger value="schedule" className="py-2.5 px-3 rounded-lg text-xs sm:text-sm font-semibold data-[state=active]:bg-white">Schedule</TabsTrigger>
+            <Tabs
+              value={orgTab}
+              onValueChange={(v) => {
+                setSearchParams(
+                  (prev) => {
+                    const p = new URLSearchParams(prev);
+                    p.set('tab', 'organization');
+                    p.set('orgTab', v);
+                    return p;
+                  },
+                  { replace: true },
+                );
+              }}
+              className="w-full"
+            >
+              <TabsList className="w-full mb-6 p-1 h-auto bg-muted rounded-xl grid grid-cols-4 gap-1">
+                <TabsTrigger value="branding" className="py-2.5 px-3 rounded-lg text-xs sm:text-sm font-semibold data-[state=active]:bg-card">Branding</TabsTrigger>
+                <TabsTrigger value="modules" className="py-2.5 px-3 rounded-lg text-xs sm:text-sm font-semibold data-[state=active]:bg-card">Modules</TabsTrigger>
+                <TabsTrigger value="equipment" className="py-2.5 px-3 rounded-lg text-xs sm:text-sm font-semibold data-[state=active]:bg-card">Equipment</TabsTrigger>
+                <TabsTrigger value="schedule" className="py-2.5 px-3 rounded-lg text-xs sm:text-sm font-semibold data-[state=active]:bg-card">Schedule</TabsTrigger>
               </TabsList>
               <TabsContent value="branding" className="space-y-8 mt-0">
             {orgSettings?.customBrandingEnabled === false ? (
-            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-              <div className="flex items-center gap-2 text-slate-900 mb-2">
+            <section className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
+              <div className="flex items-center gap-2 text-foreground mb-2">
                 <Palette className="h-5 w-5 text-primary" />
                 <h2 className="text-lg font-bold">Custom Branding</h2>
               </div>
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-foreground-secondary">
                 Custom branding (your logo and brand colours on reports and in the app) is a paid add-on. All reports show &ldquo;Powered by One Assess&rdquo; so clients know the assessment platform behind your brand.
               </p>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-muted-foreground">
                 To add custom branding to your organization, contact us to enable this feature.
               </p>
               <Button
                 variant="outline"
-                className="rounded-xl border-slate-200"
+                className="rounded-xl border-border"
                 onClick={() => window.open('mailto:support@one-assess.com?subject=Custom branding add-on', '_blank')}
               >
                 Contact us to add custom branding
               </Button>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 Or{' '}
                 <Link to={`${ROUTES.CONTACT}?interest=custom-branding`} className="font-semibold text-primary underline-offset-4 hover:underline">
                   request via the contact form
@@ -291,29 +434,29 @@ const Settings = () => {
                 .
               </p>
 
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 p-6 space-y-4 mt-6">
-                <h3 className="text-sm font-bold text-slate-900">Preview branding (optional)</h3>
-                <p className="text-xs text-slate-500">
+              <div className="rounded-2xl border border-dashed border-border bg-muted/80 p-6 space-y-4 mt-6">
+                <h3 className="text-sm font-bold text-foreground">Preview branding (optional)</h3>
+                <p className="text-xs text-muted-foreground">
                   Save a name and gradient for when you purchase. Clients and navigation still show One Assess
                   branding until the add-on is active.
                 </p>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+                  <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
                     Organization name
                   </Label>
                   <Input
                     value={localOrgName}
                     onChange={(e) => setLocalOrgName(e.target.value)}
                     placeholder="Organization name"
-                    className="rounded-xl border-slate-200 h-11"
+                    className="rounded-xl border-border h-11"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+                  <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
                     Brand gradient
                   </Label>
                   <Select value={localGradientId} onValueChange={(value) => setLocalGradientId(value as GradientId)}>
-                    <SelectTrigger className="w-full rounded-xl border-slate-200 h-11">
+                    <SelectTrigger className="w-full rounded-xl border-border h-11">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -337,27 +480,27 @@ const Settings = () => {
             </section>
             ) : (
             <section className="space-y-4">
-              <div className="flex items-center gap-2 text-slate-900 mb-2">
+              <div className="flex items-center gap-2 text-foreground mb-2">
                 <Palette className="h-5 w-5 text-primary" />
                 <h2 className="text-lg font-bold">Organization Branding</h2>
               </div>
               
               <div className="grid gap-6 md:grid-cols-2">
                 {/* Name and Gradient */}
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">Organization Name</Label>
+                    <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">Organization Name</Label>
                     <Input 
                       value={localOrgName} 
                       onChange={(e) => setLocalOrgName(e.target.value)}
                       placeholder="Organization Name"
-                      className="rounded-xl border-slate-200 h-11"
+                      className="rounded-xl border-border h-11"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">Brand Gradient</Label>
+                    <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">Brand Gradient</Label>
                     <Select value={localGradientId} onValueChange={(value) => setLocalGradientId(value as GradientId)}>
-                      <SelectTrigger className="w-full rounded-xl border-slate-200 h-11">
+                      <SelectTrigger className="w-full rounded-xl border-border h-11">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -385,7 +528,7 @@ const Settings = () => {
                           className={`relative h-12 rounded-xl border-2 transition-all ${
                             localGradientId === gradient.id
                               ? 'border-foreground shadow-md scale-105'
-                              : 'border-slate-200 hover:border-slate-300'
+                              : 'border-border hover:border-muted-foreground/40'
                           }`}
                           style={{
                             background: `linear-gradient(to right, ${gradient.fromHex}, ${gradient.toHex})`
@@ -394,7 +537,7 @@ const Settings = () => {
                         >
                           {localGradientId === gradient.id && (
                             <div className="absolute inset-0 flex items-center justify-center">
-                              <div className="w-5 h-5 rounded-full bg-white/90 flex items-center justify-center">
+                              <div className="w-5 h-5 rounded-full bg-card/90 flex items-center justify-center">
                                 <svg className="w-3 h-3 text-foreground" fill="currentColor" viewBox="0 0 20 20">
                                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                 </svg>
@@ -408,7 +551,7 @@ const Settings = () => {
                   <Button 
                     onClick={handleSaveOrgInfo} 
                     disabled={isSaving}
-                    className="w-full rounded-xl bg-slate-900 text-white font-bold h-11 shadow-lg shadow-slate-200 hover:bg-black transition-all"
+                    className="w-full rounded-xl bg-foreground text-background font-bold h-11 shadow-lg transition-all hover:bg-foreground/90"
                   >
                     {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Save Branding
@@ -416,13 +559,13 @@ const Settings = () => {
                 </div>
 
                 {/* Logo Upload */}
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col items-center justify-center text-center space-y-4">
-                  <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 self-start">Organization Logo</Label>
-                  <div className="h-28 w-full flex items-center justify-center rounded-xl bg-slate-50">
+                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm flex flex-col items-center justify-center text-center space-y-4">
+                  <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground self-start">Organization Logo</Label>
+                  <div className="h-28 w-full flex items-center justify-center rounded-xl bg-muted">
                     {orgSettings?.logoUrl ? (
                       <img src={orgSettings.logoUrl} alt="Org Logo" className="h-20 w-auto object-contain" />
                     ) : (
-                      <div className="flex flex-col items-center gap-1 text-slate-300">
+                      <div className="flex flex-col items-center gap-1 text-muted-foreground/50">
                         <Upload className="h-6 w-6 opacity-20" />
                         <span className="text-[10px] font-black uppercase tracking-[0.15em]">No Logo</span>
                       </div>
@@ -436,7 +579,7 @@ const Settings = () => {
                       className="absolute inset-0 opacity-0 cursor-pointer z-10"
                       disabled={isUploading}
                     />
-                    <Button variant="outline" className="w-full rounded-xl font-bold h-11 gap-2 border-slate-200 bg-white hover:bg-slate-50">
+                    <Button variant="outline" className="w-full rounded-xl font-bold h-11 gap-2 border-border bg-card hover:bg-muted">
                       {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                       {orgSettings?.logoUrl ? 'Change Logo' : 'Upload New Logo'}
                     </Button>
@@ -449,12 +592,12 @@ const Settings = () => {
               <TabsContent value="modules" className="mt-0">
             {/* Assessment Modules */}
             <section className="space-y-4">
-              <div className="flex items-center gap-2 text-slate-900 mb-2">
+              <div className="flex items-center gap-2 text-foreground mb-2">
                 <Box className="h-5 w-5 text-primary" />
                 <h2 className="text-lg font-bold">Assessment Modules</h2>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
-                <div className="divide-y divide-slate-100">
+              <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
+                <div className="divide-y divide-border">
                   {Object.entries(orgSettings?.modules || {}).map(([moduleId, enabled]) => {
                     const assessmentLabels: Record<string, { label: string; description: string }> = {
                       parq: { label: 'PAR-Q', description: 'Health screening questionnaire required before physical testing.' },
@@ -470,10 +613,10 @@ const Settings = () => {
                     };
                     const info = assessmentLabels[moduleId] || { label: moduleId, description: '' };
                     return (
-                      <div key={moduleId} className="flex items-center justify-between gap-4 p-4 sm:p-5 hover:bg-zinc-50/50 transition-colors">
+                      <div key={moduleId} className="flex items-center justify-between gap-4 p-4 sm:p-5 hover:bg-muted/50 transition-colors">
                         <div className="space-y-1">
-                          <Label className="text-sm font-bold text-slate-800">{info.label}</Label>
-                          <p className="text-xs text-slate-500 font-medium leading-relaxed max-w-md">
+                          <Label className="text-sm font-bold text-foreground">{info.label}</Label>
+                          <p className="text-xs text-muted-foreground font-medium leading-relaxed max-w-md">
                             {info.description}
                           </p>
                         </div>
@@ -491,17 +634,17 @@ const Settings = () => {
               <TabsContent value="equipment" className="mt-0">
             {/* Equipment Configuration */}
             <section className="space-y-4">
-              <div className="flex items-center gap-2 text-slate-900 mb-2">
+              <div className="flex items-center gap-2 text-foreground mb-2">
                 <SettingsIcon className="h-5 w-5 text-primary" />
                 <h2 className="text-lg font-bold">Equipment Configuration</h2>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-8 shadow-sm">
-                <p className="text-xs text-slate-500 leading-relaxed">
+              <div className="rounded-2xl border border-border bg-card p-6 space-y-8 shadow-sm">
+                <p className="text-xs text-muted-foreground leading-relaxed">
                   Configure the equipment available at your facility. Enable equipment to unlock advanced assessment protocols. You can add equipment at any time.
                 </p>
 
                 {/* 1. Body Composition Analyser */}
-                <div className="space-y-4 pb-6 border-b border-slate-100">
+                <div className="space-y-4 pb-6 border-b border-border">
                   <OrgSettingSwitch
                     label="Body Composition Analyser"
                     description={orgSettings?.equipmentConfig?.bodyComposition?.enabled
@@ -529,11 +672,11 @@ const Settings = () => {
                 </div>
 
                 {/* 2. Dynamometer / Grip Strength */}
-                <div className="space-y-4 pb-6 border-b border-slate-100">
+                <div className="space-y-4 pb-6 border-b border-border">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <Label className="text-sm font-bold text-slate-800">Dynamometer / Grip Strength Equipment</Label>
-                      <p className="text-xs text-slate-500 mt-1">
+                      <Label className="text-sm font-bold text-foreground">Dynamometer / Grip Strength Equipment</Label>
+                      <p className="text-xs text-muted-foreground mt-1">
                         {orgSettings?.equipmentConfig?.gripStrength?.enabled 
                           ? 'Enabled: Assessments will use dynamometer'
                           : 'Disabled: Assessments will use deadhang + pinch test options (equipment-free)'}
@@ -570,11 +713,11 @@ const Settings = () => {
                 </div>
 
                 {/* 3. Heart Rate Sensor */}
-                <div className="space-y-4 pb-6 border-b border-slate-100">
+                <div className="space-y-4 pb-6 border-b border-border">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <Label className="text-sm font-bold text-slate-800">Heart Rate Sensor</Label>
-                      <p className="text-xs text-slate-500 mt-1">
+                      <Label className="text-sm font-bold text-foreground">Heart Rate Sensor</Label>
+                      <p className="text-xs text-muted-foreground mt-1">
                         {orgSettings?.equipmentConfig?.heartRateSensor?.enabled 
                           ? 'Enabled: Assessments will use HR sensor integration'
                           : 'Disabled: Assessments will use manual pulse counting (equipment-free)'}
@@ -614,8 +757,8 @@ const Settings = () => {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <Label className="text-sm font-bold text-slate-800">Cardio Equipment</Label>
-                      <p className="text-xs text-slate-500 mt-1">
+                      <Label className="text-sm font-bold text-foreground">Cardio Equipment</Label>
+                      <p className="text-xs text-muted-foreground mt-1">
                         {orgSettings?.equipmentConfig?.cardioEquipment?.enabled
                           ? 'Enabled: Assessments will use treadmill/bike/rower protocols'
                           : 'Disabled: Assessments will use step test (equipment-free)'}
@@ -656,7 +799,7 @@ const Settings = () => {
               <TabsContent value="schedule" className="mt-0">
             {/* Default Retest Schedule */}
             <section className="space-y-4">
-              <div className="flex items-center gap-2 text-slate-900 mb-2">
+              <div className="flex items-center gap-2 text-foreground mb-2">
                 <Calendar className="h-5 w-5 text-primary" />
                 <h2 className="text-lg font-bold">Default Retest Schedule</h2>
               </div>

@@ -9,11 +9,11 @@ All colors MUST be HSL.
 @layer base {
   :root {
     /* Apple Design Language - Neutral Colors (Fixed) */
-    --background: 0 0% 100%;           /* Pure white */
-    --background-secondary: 0 0% 96%;  /* #f5f5f7 */
-    --background-tertiary: 0 0% 90%;  /* #e5e5e7 */
+    --background: 220 14% 99%;         /* Cool off-white */
+    --background-secondary: 220 12% 96%;
+    --background-tertiary: 220 10% 92%;
     
-    --foreground: 0 0% 11%;            /* #1d1d1f - Primary text */
+    --foreground: 220 18% 11%;       /* Charcoal primary text */
     --foreground-secondary: 0 0% 45%;  /* #6e6e73 - Secondary text */
     --foreground-tertiary: 0 0% 53%;   /* #86868b - Tertiary text */
     --foreground-quaternary: 0 0% 65%; /* #a1a1a6 - Disabled text */
@@ -26,21 +26,21 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 11%;
 
-    /* Gradient System - Default: Purple Indigo */
-    --gradient-from: 258 90% 66%;      /* indigo-500 #6366f1 */
-    --gradient-to: 271 81% 56%;        /* purple-500 #a855f7 */
-    --gradient-from-hex: #6366f1;
-    --gradient-to-hex: #a855f7;
-    --gradient-light: 258 90% 97%;     /* indigo-50 */
-    --gradient-medium: 258 90% 94%;    /* indigo-100 */
-    --gradient-dark: 258 90% 51%;      /* indigo-600 */
+    /* Gradient System - Default: Volt (chartreuse accent, charcoal-friendly) */
+    --gradient-from: 68 100% 50%;      /* ~#dfff00 */
+    --gradient-to: 72 100% 40%;        /* ~#9fcc00 */
+    --gradient-from-hex: #dfff00;
+    --gradient-to-hex: #9fcc00;
+    --gradient-light: 68 100% 96%;
+    --gradient-medium: 68 90% 88%;
+    --gradient-dark: 72 100% 32%;
     
-    /* Primary uses gradient colors */
+    /* Primary uses gradient-from; foreground switches via ThemeManager (dark on volt) */
     --primary: var(--gradient-from);
-    --primary-foreground: 0 0% 100%;
+    --primary-foreground: 220 20% 8%;
     
     --brand-primary: var(--gradient-from-hex);
-    --brand-primary-transparent: rgba(99, 102, 241, 0.1);
+    --brand-primary-transparent: hsl(68 100% 50% / 0.12);
 
     --secondary: 0 0% 96%;
     --secondary-foreground: 0 0% 11%;
@@ -72,6 +72,10 @@ All colors MUST be HSL.
     --score-red-light: 0 86% 97%;        /* red-50 */
     --score-red-muted: 0 93% 94%;        /* red-100 */
     --score-red-bold: 0 63% 31%;         /* red-900 */
+
+    /* Admin chart buckets (pillar distribution bars) */
+    --chart-distribution-orange: 25 95% 53%;
+    --chart-distribution-yellow: 45 93% 47%;
 
     --border: 0 0% 82%;                 /* #d2d2d7 */
     --border-medium: 0 0% 78%;         /* #c7c7cc */
@@ -131,12 +135,83 @@ All colors MUST be HSL.
     --admin-fg: 0 0% 100%;
     --admin-fg-muted: 215 20% 45%;  /* slate-500 */
 
+    /* Marketing: contrast band (e.g. Under the hood) — paired in .dark */
+    --landing-contrast-bg: 222 47% 11%;
+    --landing-contrast-fg: 0 0% 100%;
+    --landing-contrast-muted: 215 16% 55%;
+    --landing-contrast-subtle: 215 14% 70%;
+    --landing-contrast-border: 222 30% 24%;
+    --landing-contrast-surface: 222 38% 16%;
+    --landing-contrast-surface-elevated: 222 35% 20%;
+
     /* Apple-style shadows */
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    --shadow-colored: 0 10px 15px -3px rgba(99, 102, 241, 0.1), 0 4px 6px -2px rgba(99, 102, 241, 0.05);
+    --shadow-colored: 0 10px 24px -4px hsl(220 18% 11% / 0.08);
+  }
+
+  /**
+   * Dark mode — deep blue-black base, off-white type, same volt primary (set on :root + ThemeManager).
+   * Slightly darker / more saturated navy than default slate-950 for a performance-tech feel.
+   */
+  .dark {
+    --background: 222 54% 4.5%;
+    --background-secondary: 222 48% 7%;
+    --background-tertiary: 222 42% 10%;
+
+    --foreground: 210 25% 98%;
+    --foreground-secondary: 215 14% 72%;
+    --foreground-tertiary: 215 12% 58%;
+    --foreground-quaternary: 215 10% 48%;
+
+    --card: 222 44% 7%;
+    --card-foreground: 210 25% 98%;
+    --card-elevated: 222 40% 9%;
+    --card-subtle: 222 46% 6%;
+
+    --popover: 222 44% 7%;
+    --popover-foreground: 210 25% 98%;
+
+    --secondary: 222 38% 12%;
+    --secondary-foreground: 210 25% 96%;
+
+    --muted: 222 36% 12%;
+    --muted-foreground: 215 14% 58%;
+
+    --accent: 222 38% 14%;
+    --accent-foreground: 210 25% 98%;
+
+    --border: 222 32% 15%;
+    --border-medium: 222 28% 20%;
+    --border-dark: 222 24% 28%;
+    --input: 222 32% 16%;
+
+    --sidebar-background: 222 52% 4%;
+    --sidebar-foreground: 210 25% 98%;
+    --sidebar-accent: 222 40% 11%;
+    --sidebar-accent-foreground: 210 25% 96%;
+    --sidebar-border: 222 30% 14%;
+
+    /* Dark UI: subtle volt-tinted surfaces (overridden per org by ThemeManager when active) */
+    --gradient-light: 68 28% 12%;
+    --gradient-medium: 68 32% 18%;
+    --gradient-dark: 68 96% 58%;
+
+    --shadow-sm: 0 1px 2px 0 hsl(222 50% 2% / 0.5);
+    --shadow-md: 0 4px 12px -2px hsl(222 50% 2% / 0.55);
+    --shadow-lg: 0 12px 28px -4px hsl(222 50% 2% / 0.6);
+    --shadow-xl: 0 22px 40px -8px hsl(222 50% 2% / 0.65);
+    --shadow-colored: 0 12px 32px -6px hsl(68 100% 50% / 0.12);
+
+    --landing-contrast-bg: 222 42% 9%;
+    --landing-contrast-fg: 210 25% 98%;
+    --landing-contrast-muted: 215 14% 58%;
+    --landing-contrast-subtle: 215 12% 72%;
+    --landing-contrast-border: 222 28% 18%;
+    --landing-contrast-surface: 222 36% 12%;
+    --landing-contrast-surface-elevated: 222 34% 15%;
   }
 }
 
@@ -155,9 +230,20 @@ All colors MUST be HSL.
     text-rendering: optimizeLegibility;
   }
   
-  /* Landing page specific background */
+  /* Landing uses the same page background token as the rest of the app */
   .landing-page {
-    background-color: #F5F5F7;
+    background-color: hsl(var(--background));
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html:has(.landing-page) {
+      scroll-behavior: smooth;
+    }
+  }
+
+  /* Fixed pill nav: anchor targets clear the bar */
+  .landing-page main > section[id] {
+    scroll-margin-top: 6.5rem;
   }
 }
 
@@ -207,6 +293,68 @@ All colors MUST be HSL.
       background: rgba(255, 255, 255, 0.95);
     }
   }
+
+  /* Dark mode: glass utilities must follow card/border tokens (light frosted panels wash out text). */
+  .dark .glass-card {
+    background: hsl(var(--card) / 0.88);
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 1px 2px hsl(222 50% 2% / 0.35), 0 0 0 1px hsl(var(--border) / 0.5),
+      0 2px 20px hsl(222 50% 2% / 0.45);
+  }
+
+  .dark .glass {
+    background: hsl(var(--card) / 0.72);
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 4px 20px hsl(222 50% 2% / 0.45);
+  }
+
+  .dark .glass-subtle {
+    background: hsl(var(--card) / 0.55);
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 2px 10px hsl(222 50% 2% / 0.35);
+  }
+
+  .dark .glass-button {
+    background: hsl(var(--card) / 0.65);
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 2px 10px hsl(222 50% 2% / 0.4);
+    color: hsl(var(--foreground));
+  }
+
+  .dark .glass-button:hover {
+    background: hsl(var(--card) / 0.8);
+    box-shadow: 0 4px 15px hsl(222 50% 2% / 0.5);
+  }
+
+  .dark .glass-label {
+    background: hsl(var(--card) / 0.78);
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 1px 5px hsl(222 50% 2% / 0.35);
+    color: hsl(var(--foreground));
+  }
+
+  @supports not (backdrop-filter: blur(20px)) {
+    .dark .glass-card {
+      background: hsl(var(--card));
+    }
+  }
+
+  @supports not (backdrop-filter: blur(10px)) {
+    .dark .glass-label {
+      background: hsl(var(--card));
+    }
+  }
+
+  .dark .glass-card-new {
+    background: hsl(var(--card) / 0.72);
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 4px 20px hsl(222 50% 2% / 0.4);
+  }
+
+  .dark .glass-card-new:hover {
+    background: hsl(var(--card) / 0.85);
+    box-shadow: 0 6px 25px hsl(222 50% 2% / 0.5);
+  }
   
   .glass-button {
     background: rgba(255, 255, 255, 0.7);
@@ -223,9 +371,9 @@ All colors MUST be HSL.
   
   .glass-button-active {
     background: linear-gradient(to right, hsl(var(--gradient-from)), hsl(var(--gradient-to)));
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 0 2px 10px rgba(99, 102, 241, 0.25);
+    color: hsl(var(--primary-foreground));
+    border: 1px solid hsl(220 18% 11% / 0.12);
+    box-shadow: 0 2px 12px hsl(68 100% 50% / 0.22);
   }
   
   .glass-label {

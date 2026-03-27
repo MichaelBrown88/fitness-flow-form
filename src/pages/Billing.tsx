@@ -41,7 +41,7 @@ function PlanBadge({ status }: { status: string }) {
     past_due: 'bg-amber-50 text-amber-700 border-amber-200',
     cancelled: 'bg-red-50 text-red-700 border-red-200',
   };
-  const classes = colorMap[status] ?? 'bg-slate-50 text-slate-700 border-slate-200';
+  const classes = colorMap[status] ?? 'bg-muted/50 text-foreground-secondary border-border';
   return (
     <span className={`text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${classes}`}>
       {status.replace('_', ' ')}
@@ -115,10 +115,10 @@ function BillingPage() {
 
   if (profile && profile.role !== 'org_admin') {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+      <div className="flex min-h-screen items-center justify-center bg-muted/50 p-4">
         <div className="text-center space-y-3">
-          <h2 className="text-xl font-bold text-slate-900">Access Restricted</h2>
-          <p className="text-sm text-slate-500">Only organization admins can view billing.</p>
+          <h2 className="text-xl font-bold text-foreground">Access Restricted</h2>
+          <p className="text-sm text-muted-foreground">Only organization admins can view billing.</p>
           <button
             onClick={() => navigate(ROUTES.DASHBOARD)}
             className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
@@ -132,8 +132,8 @@ function BillingPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="h-10 w-10 rounded-full border-4 border-slate-200 border-t-slate-900 animate-spin" />
+      <div className="flex min-h-screen items-center justify-center bg-muted/50">
+        <div className="h-10 w-10 rounded-full border-4 border-border border-t-foreground animate-spin" />
       </div>
     );
   }
@@ -145,25 +145,25 @@ function BillingPage() {
   const locale = getLocaleForRegion(region);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-muted/50">
       <div className="max-w-3xl mx-auto px-4 py-10 sm:py-16">
         <button
           onClick={() => navigate(ROUTES.SETTINGS)}
-          className="flex items-center gap-1.5 text-sm font-medium text-slate-400 hover:text-slate-600 transition-colors mb-8"
+          className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground-secondary transition-colors mb-8"
         >
           <ArrowLeft size={16} />
           Settings
         </button>
 
-        <h1 className="text-2xl font-bold text-slate-900 mb-8">Billing & Subscription</h1>
+        <h1 className="text-2xl font-bold text-foreground mb-8">Billing & Subscription</h1>
 
         <div className="space-y-6">
-          <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Current Plan</h2>
+          <div className="bg-background rounded-xl border border-border p-6">
+            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-4">Current Plan</h2>
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xl font-bold text-slate-900 capitalize">{orgData?.subscription.plan}</p>
-                <p className="text-sm text-slate-500 mt-1">
+                <p className="text-xl font-bold text-foreground capitalize">{orgData?.subscription.plan}</p>
+                <p className="text-sm text-muted-foreground mt-1">
                   {monthlyAmount > 0 ? `${formatPrice(monthlyAmount, currency, locale)}/month` : 'Free trial'}
                 </p>
               </div>
@@ -171,14 +171,14 @@ function BillingPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Client capacity</h2>
+          <div className="bg-background rounded-xl border border-border p-6">
+            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-4">Client capacity</h2>
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-slate-100 flex items-center justify-center">
-                <Users size={18} className="text-slate-600" />
+              <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
+                <Users size={18} className="text-foreground-secondary" />
               </div>
               <div>
-                <p className="text-sm font-bold text-slate-900">
+                <p className="text-sm font-bold text-foreground">
                   {orgData?.statsClientCount ?? 0} /{' '}
                   {orgData?.subscription.clientCap ??
                     orgData?.subscription.clientCount ??
@@ -186,10 +186,10 @@ function BillingPage() {
                     2}{' '}
                   clients
                 </p>
-                <p className="text-xs text-slate-400">Active (non-archived) clients vs plan limit</p>
+                <p className="text-xs text-muted-foreground">Active (non-archived) clients vs plan limit</p>
               </div>
             </div>
-            <div className="mt-4 h-2 rounded-full bg-slate-100 overflow-hidden">
+            <div className="mt-4 h-2 rounded-full bg-muted overflow-hidden">
               <div
                 className="h-full rounded-full bg-indigo-500 transition-all"
                 style={{
@@ -209,25 +209,25 @@ function BillingPage() {
               />
             </div>
             {orgData?.subscription.monthlyAiCredits != null && (
-              <div className="mt-6 pt-6 border-t border-slate-100">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">AI credits</p>
-                <p className="text-sm font-bold text-slate-900">
+              <div className="mt-6 pt-6 border-t border-border">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">AI credits</p>
+                <p className="text-sm font-bold text-foreground">
                   {orgData.assessmentCredits ?? '—'} / {orgData.subscription.monthlyAiCredits} remaining this cycle
                 </p>
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Each AI body-comp import or posture analysis uses one credit. Resets on subscription renewal.
                 </p>
               </div>
             )}
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Payment</h2>
+          <div className="bg-background rounded-xl border border-border p-6">
+            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-4">Payment</h2>
             {orgData?.stripeCustomerId ? (
               <button
                 onClick={handleManagePayment}
                 disabled={portalLoading}
-                className="flex items-center gap-2 px-5 py-3 rounded-xl bg-slate-900 text-white font-bold text-sm hover:bg-slate-800 transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-5 py-3 rounded-xl bg-foreground text-white font-bold text-sm hover:bg-foreground/90 transition-colors disabled:opacity-50"
               >
                 {portalLoading ? (
                   <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
@@ -238,10 +238,10 @@ function BillingPage() {
               </button>
             ) : (
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-slate-100 flex items-center justify-center">
-                  <CreditCard size={18} className="text-slate-400" />
+                <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
+                  <CreditCard size={18} className="text-muted-foreground" />
                 </div>
-                <p className="text-sm text-slate-500">No payment method on file. Subscribe to add one.</p>
+                <p className="text-sm text-muted-foreground">No payment method on file. Subscribe to add one.</p>
               </div>
             )}
           </div>

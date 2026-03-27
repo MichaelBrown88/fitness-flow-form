@@ -9,7 +9,6 @@ import { clearDraft } from '@/hooks/useAssessmentDraft';
 
 import { useMemo, useState, useEffect } from 'react';
 import { useDashboardData } from '@/hooks/useDashboardData';
-import { useAuth } from '@/hooks/useAuth';
 import { getRoadmapForClient } from '@/services/roadmaps';
 import { getClientProfile } from '@/services/clientProfiles';
 
@@ -22,6 +21,7 @@ import { CalendarView } from '@/components/dashboard/sub-components/CalendarView
 import { TeamView } from '@/components/dashboard/sub-components/TeamView';
 import { GettingStartedChecklist } from '@/components/dashboard/GettingStartedChecklist';
 import { generateTasks, type QueueEntry, type RoadmapNeededInfo, type ProfileGapInfo } from '@/lib/tasks/generateTasks';
+import { staffPreferredFirstName } from '@/lib/utils/staffDisplayName';
 
 const Dashboard = () => {
   const {
@@ -55,10 +55,11 @@ const Dashboard = () => {
     showCoachColumn,
     coachMap,
     orgSettings,
+    effectiveOrgId,
+    hasSharedReport,
   } = useDashboardData();
 
   const navigate = useNavigate();
-  const { effectiveOrgId, orgSettings } = useAuth();
   const overdueCount = reassessmentQueue?.summary?.overdue || 0;
 
   const [roadmapsNeeded, setRoadmapsNeeded] = useState<RoadmapNeededInfo[]>([]);
@@ -137,16 +138,22 @@ const Dashboard = () => {
 
   if (loading || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-slate-400 font-medium">
+      <div
+        className="flex min-h-screen items-center justify-center text-sm text-muted-foreground font-medium"
+        aria-busy="true"
+        aria-live="polite"
+        role="status"
+      >
         <div className="flex flex-col items-center gap-4">
-          <div className="w-8 h-8 border-4 border-slate-900 border-t-transparent rounded-full animate-spin" />
-          <span>Loading your dashboard…</span>
+          <span className="sr-only">Loading your dashboard</span>
+          <div className="w-8 h-8 border-4 border-muted-foreground/25 border-t-primary rounded-full motion-safe:animate-spin" />
+          <span aria-hidden>Loading your dashboard…</span>
         </div>
       </div>
     );
   }
 
-  const coachFirstName = user?.displayName ? user.displayName.split(' ')[0] : 'Coach';
+  const coachFirstName = staffPreferredFirstName(profile, user);
 
   return (
     <ErrorBoundary>
@@ -156,7 +163,7 @@ const Dashboard = () => {
         actions={
           <Button
             onClick={handleGlobalNewAssessment}
-            className="h-9 px-4 rounded-xl bg-slate-900 text-white font-bold hover:bg-slate-800 gap-2 text-xs"
+            className="h-9 px-4 rounded-xl font-bold gap-2 text-xs"
           >
             <Plus className="h-4 w-4" />
             <span className="hidden sm:inline">New Assessment</span>
@@ -172,17 +179,8 @@ const Dashboard = () => {
             overdueCount={overdueCount}
           />
 
-          <GettingStartedChecklist
-            hasClients={(analytics?.totalClients ?? 0) > 0}
-            hasAssessments={(analytics?.totalAssessments ?? 0) > 0}
-            hasSharedReport={false}
-            businessProfileComplete={Boolean(orgSettings?.name?.trim() && orgSettings?.region)}
-            showTrialSubscribeNudge={orgSettings?.subscription?.planKind === 'gym_trial'}
-            showBrandingNudge={orgSettings?.customBrandingEnabled === false}
-          />
-
           {/* Main Content */}
-          <div className="bg-white rounded-2xl p-3 sm:p-4 md:p-6 lg:p-8 overflow-hidden">
+          <div className="bg-card text-card-foreground rounded-2xl border border-border p-3 sm:p-4 md:p-6 lg:p-8 overflow-hidden">
             <DashboardViewTabs 
               view={view}
               setView={setView}
@@ -203,6 +201,10 @@ const Dashboard = () => {
                 orgDefaultIntervals={orgSettings?.defaultCadence?.intervals}
                 orgDefaultActivePillars={orgSettings?.defaultCadence?.activePillars}
                 onViewHistory={handleViewHistory}
+                writeOrganizationId={profile?.organizationId}
+                coachUid={user?.uid}
+                profile={profile}
+                onBulkComplete={refreshSchedules}
               />
             )}
 
@@ -227,6 +229,23 @@ const Dashboard = () => {
             )}
           </div>
         </div>
+
+        <GettingStartedChecklist
+          hasClients={(analytics?.totalClients ?? 0) > 0}
+          hasAssessments={(analytics?.totalAssessments ?? 0) > 0}
+          hasSharedReport={hasSharedReport}
+          primaryAssessmentIdForShare={
+            filteredClients.find((c) => c.assessments.length > 0)?.assessments[0]?.id ?? null
+          }
+          primaryClientNameForShare={
+            filteredClients.find((c) => c.assessments.length > 0)?.name ?? null
+          }
+          businessProfileComplete={Boolean(orgSettings?.name?.trim() && orgSettings?.region)}
+          equipmentDetailsDone={Boolean(orgSettings?.onboardingCompletedAt)}
+          isOrgAdmin={profile?.role === 'org_admin'}
+          showTrialSubscribeNudge={orgSettings?.subscription?.planKind === 'gym_trial'}
+          showBrandingNudge={orgSettings?.customBrandingEnabled === false}
+        />
 
         <DashboardDialogs
           deleteDialog={deleteDialog}

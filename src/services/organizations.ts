@@ -79,7 +79,7 @@ export interface OrgSettings {
   region?: string;
   logoUrl?: string;
   brandColor?: string; // hex (deprecated - use gradientId instead)
-  gradientId?: string; // Gradient ID from gradient system (e.g., 'purple-indigo', 'blue-cyan')
+  gradientId?: string; // Gradient ID from gradient system (e.g., 'volt', 'purple-indigo', 'blue-cyan')
   modules: {
     parq: boolean; // P0 - PAR-Q health screening
     bodycomp: boolean; // P2 - Body composition scan (section: 'body-comp')
@@ -139,7 +139,7 @@ export const DEFAULT_EQUIPMENT_CONFIG: EquipmentConfig = {
 const DEFAULT_SETTINGS: OrgSettings = {
   name: 'New Organization',
   brandColor: '#03dee2', // Deprecated - kept for backward compatibility
-  gradientId: 'purple-indigo', // Default gradient
+  gradientId: 'volt', // Default gradient (One Assess product default)
   modules: {
     parq: true,
     bodycomp: true,

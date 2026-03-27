@@ -21,23 +21,40 @@ export const CONFIG = {
     STORAGE_BUCKET: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
     MESSAGING_SENDER_ID: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
     APP_ID: import.meta.env.VITE_FIREBASE_APP_ID,
+    /**
+     * Callable HTTPS region (must match deployed `syncPublicRoadmapMirror` etc.).
+     * Override with `VITE_FIREBASE_FUNCTIONS_REGION` if functions are not in `us-central1`.
+     */
+    FUNCTIONS_REGION: (() => {
+      const r = import.meta.env.VITE_FIREBASE_FUNCTIONS_REGION;
+      return typeof r === 'string' && r.trim() !== '' ? r.trim() : 'us-central1';
+    })(),
   },
 
   // --- AI & MACHINE LEARNING ---
   AI: {
-    // MediaPipe Settings - Using local assets for reliability and CSP compliance
     MEDIAPIPE: {
-      POSE_CDN: "/mediapipe", // Local path - assets stored in public/mediapipe/
-      POSE_CDN_FALLBACK: "https://cdn.jsdelivr.net/npm/@mediapipe/pose", // CDN fallback
+      /** Pin to installed `@mediapipe/tasks-vision` — update TASKS_WASM_BASE when bumping the package. */
+      TASKS_VISION_PACKAGE_VERSION: '0.10.34',
+      TASKS_WASM_BASE:
+        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.34/wasm',
+      POSE_LANDMARKER_MODEL_URL:
+        'https://storage.googleapis.com/mediapipe-models/pose_landmarker/full.pose_landmarker/float16/latest/full.pose_landmarker.task',
       TIMEOUT_MS: 15000,
-      MODEL_COMPLEXITY: 1, // 0=light, 1=full, 2=heavy
-      MIN_DETECTION_CONFIDENCE: 0.5,
+      LIVE_POSE_TARGET_FPS: 7,
+      MIN_POSE_DETECTION_CONFIDENCE: 0.5,
+      MIN_POSE_PRESENCE_CONFIDENCE: 0.5,
       MIN_TRACKING_CONFIDENCE: 0.5,
     },
-    // Gemini AI Settings
     GEMINI: {
       MODEL_NAME: "gemini-2.5-flash", // Stable Gemini 2.5 Flash (gemini-3-flash-preview requires special access - use gemini-2.5-flash for production)
       BACKEND: "VertexAIBackend", // Internal Firebase AI backend
+      // Use VITE_GEMINI_LIVE_MODEL=gemini-3.1-flash-live-preview (or the final stable ID once available) for local testing.
+      LIVE_MODEL_NAME: (() => {
+        const v = import.meta.env.VITE_GEMINI_LIVE_MODEL;
+        return typeof v === 'string' && v.trim() !== '' ? v.trim() : 'gemini-3.1-flash-live-preview';
+      })(),
+      LIVE_FRAME_INTERVAL_MS: 1000,
     },
     // Firebase Cloud Functions
     FUNCTIONS: {
@@ -69,6 +86,8 @@ export const CONFIG = {
       TOO_CLOSE: 0.85, // Body height as % of frame
       TOO_FAR: 0.4,    // Body height as % of frame
       NOT_CENTERED: 0.15, // Max X deviation from center
+      /** Landmark visibility gate for Companion capture retries & processing quality. */
+      minConfidence: 0.6,
     },
     ORIENTATION: {
       MAX_DEVIATION_DEG: 4, // Max degrees from vertical
@@ -76,6 +95,8 @@ export const CONFIG = {
     CAPTURE: {
       COUNTDOWN_SEC: 5,
       SAFETY_TIMEOUT_MS: 30000,
+      /** Delay after each posture Gemini capture before arming the next view (matches bodycomp turn spacing). */
+      POSTURE_GEMINI_NEXT_VIEW_MS: 3000,
       VIDEO_CONSTRAINTS: {
         width: { ideal: 1280 },
         height: { ideal: 720 },

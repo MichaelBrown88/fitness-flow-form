@@ -1,6 +1,5 @@
 export { HeroSection } from './HeroSection';
-export { FeatureCard } from './FeatureCard';
-export { FeaturesSection } from './FeaturesSection';
+export { LandingCapabilitiesSection } from './LandingCapabilitiesSection';
 export { TestimonialCard } from './TestimonialCard';
 export { TestimonialsSection } from './TestimonialsSection';
 export { ROIComparison } from './ROIComparison';
@@ -8,11 +7,13 @@ export { BuiltByExperts } from './BuiltByExperts';
 export { PricingCard } from './PricingCard';
 export { LandingPricingPlans } from './LandingPricingPlans';
 export { PricingSection } from './PricingSection';
-export { FAQAccordion, FAQSection } from './FAQAccordion';
+export { FAQSection, type FAQItem } from './FAQAccordion';
 export { CTASection } from './CTASection';
 export { Footer } from './Footer';
 export { Navbar } from './Navbar';
+export { LandingTrialCtaLink } from './LandingTrialCtaLink';
+export { LandingBackToTop } from './LandingBackToTop';
 export { HowItWorksSection } from './HowItWorksSection';
-export { ScannerShowcase } from './ScannerShowcase';
 export { UnderTheHood } from './UnderTheHood';
+export { CoachPositioningSection } from './CoachPositioningSection';
 

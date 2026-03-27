@@ -96,5 +96,15 @@ export function scoreCardio(form: FormData, age: number, gender: string): ScoreC
     weaknesses.push('Abnormal Heart Rate Recovery (<12bpm drop) - Consult physician if recovery consistently remains below 12bpm');
   }
 
-  return { id: 'cardio', title: 'Metabolic Fitness', score: Math.round(fitnessScore), details, strengths, weaknesses };
+  const assessed = hasRhr || hasHr60 || hasHrr;
+
+  return {
+    id: 'cardio',
+    title: 'Metabolic Fitness',
+    score: Math.round(fitnessScore),
+    assessed,
+    details,
+    strengths,
+    weaknesses,
+  };
 }

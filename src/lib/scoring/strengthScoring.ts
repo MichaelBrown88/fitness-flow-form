@@ -104,5 +104,7 @@ export function scoreStrength(form: FormData, age: number, gender: string): Scor
 
   if (score >= 75 && subScores.length >= 2) strengths.push('Balanced muscular development across tests');
 
-  return { id: 'strength', title: 'Functional Strength', score, details, strengths, weaknesses };
+  const assessed = hasPushups || hasSquats || hasPlank || hasGrip;
+
+  return { id: 'strength', title: 'Functional Strength', score, assessed, details, strengths, weaknesses };
 }

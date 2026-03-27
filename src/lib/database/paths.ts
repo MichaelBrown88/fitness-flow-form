@@ -38,7 +38,11 @@ export const PLATFORM = {
     collection: () => 'platform_admins' as const,
     doc: (uid: string) => `platform_admins/${uid}` as const,
     lookupCollection: () => 'platform_admin_lookup' as const,
-    lookupKey: (email: string) => email.toLowerCase().replace(/[.@]/g, '_'),
+    /** Canonical lookup doc id — must match `request.auth.token.email` in Firestore rules. */
+    lookupKey: (email: string) => email.trim().toLowerCase(),
+    /** Legacy id (dots/@ → underscores). Kept for existing data and dual-write during migration. */
+    legacyLookupKey: (email: string) =>
+      email.trim().toLowerCase().replace(/[.@]/g, '_'),
   },
 
   auditLogs: {
@@ -177,6 +181,11 @@ export const PUBLIC = {
   reports: {
     collection: () => 'publicReports' as const,
     doc: (token: string) => `publicReports/${token}` as const,
+  },
+
+  /** Token-keyed roadmap mirror for anonymous client viewer (see roadmaps.ts). */
+  roadmaps: {
+    doc: (token: string) => `publicRoadmaps/${token}` as const,
   },
 
   liveSessions: {

@@ -119,6 +119,15 @@ export function monthlyAiCreditsForClientLimit(clientLimit: number): number {
 /** Sentinel value for unlimited credits */
 export const UNLIMITED_CREDITS = -1;
 
+/** Legacy / admin: very high balance treated as unlimited (matches Stripe webhook comped tiers). */
+const UNLIMITED_CREDITS_SENTINEL_MIN = 9999;
+
+/** True when balance should bypass AI credit consumption (explicit unlimited or legacy high balance). */
+export function isUnlimitedAiCredits(credits: number | null | undefined): boolean {
+  if (credits == null) return false;
+  return credits === UNLIMITED_CREDITS || credits >= UNLIMITED_CREDITS_SENTINEL_MIN;
+}
+
 export const CREDIT_TOPUP_PRICE: Record<Region, number> = {
   GB: 9,
   US: 12,

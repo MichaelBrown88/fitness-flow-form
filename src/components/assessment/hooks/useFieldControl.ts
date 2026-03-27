@@ -37,54 +37,61 @@ export function useFieldControl({ field }: UseFieldControlProps) {
 
   // Load org coaches for assignedCoach field
   useEffect(() => {
-    if (field.id === 'assignedCoach' && profile?.organizationId) {
-      setLoadingCoaches(true);
-      getOrgCoaches(profile.organizationId)
-        .then((coaches) => {
-          const adminInList = coaches.some(c => c.uid === user?.uid);
-          let coachesList = coaches;
-          
-          if (!adminInList && user && profile.role === 'org_admin') {
-            coachesList = [{
-              uid: user.uid,
-              displayName: profile.displayName || user.displayName || user.email || 'Admin',
-              email: user.email || undefined,
-              role: 'org_admin',
-              clientCount: 0,
-              assessmentCount: 0,
-            }, ...coaches];
+    if (field.id !== 'assignedCoach' || !profile?.organizationId) return;
+
+    let cancelled = false;
+    setLoadingCoaches(true);
+    getOrgCoaches(profile.organizationId)
+      .then((coaches) => {
+        if (cancelled) return;
+        const adminInList = coaches.some(c => c.uid === user?.uid);
+        let coachesList = coaches;
+
+        if (!adminInList && user && profile.role === 'org_admin') {
+          coachesList = [{
+            uid: user.uid,
+            displayName: profile.displayName || user.displayName || user.email || 'Admin',
+            email: user.email || undefined,
+            role: 'org_admin',
+            clientCount: 0,
+            assessmentCount: 0,
+          }, ...coaches];
+        }
+
+        setOrgCoaches(coachesList);
+
+        if (!formData.assignedCoach && coachesList.length > 0) {
+          const adminCoach = coachesList.find(c => c.role === 'org_admin') || coachesList[0];
+          updateFormData({ assignedCoach: adminCoach.uid });
+          setLocalValue(adminCoach.uid);
+        }
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        logger.error('Error loading coaches:', error);
+        if (user && profile?.role === 'org_admin') {
+          const adminCoach = {
+            uid: user.uid,
+            displayName: profile.displayName || user.displayName || user.email || 'Admin',
+            email: user.email || undefined,
+            role: 'org_admin',
+            clientCount: 0,
+            assessmentCount: 0,
+          };
+          setOrgCoaches([adminCoach]);
+          if (!formData.assignedCoach) {
+            updateFormData({ assignedCoach: user.uid });
+            setLocalValue(user.uid);
           }
-          
-          setOrgCoaches(coachesList);
-          
-          if (!formData.assignedCoach && coachesList.length > 0) {
-            const adminCoach = coachesList.find(c => c.role === 'org_admin') || coachesList[0];
-            updateFormData({ assignedCoach: adminCoach.uid });
-            setLocalValue(adminCoach.uid);
-          }
-        })
-        .catch((error) => {
-          logger.error('Error loading coaches:', error);
-          if (user && profile?.role === 'org_admin') {
-            const adminCoach = {
-              uid: user.uid,
-              displayName: profile.displayName || user.displayName || user.email || 'Admin',
-              email: user.email || undefined,
-              role: 'org_admin',
-              clientCount: 0,
-              assessmentCount: 0,
-            };
-            setOrgCoaches([adminCoach]);
-            if (!formData.assignedCoach) {
-              updateFormData({ assignedCoach: user.uid });
-              setLocalValue(user.uid);
-            }
-          }
-        })
-        .finally(() => {
-          setLoadingCoaches(false);
-        });
-    }
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingCoaches(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [field.id, profile?.organizationId, user, profile?.role, profile?.displayName, formData.assignedCoach, updateFormData]);
 
   // Auto-select cardio test based on equipment

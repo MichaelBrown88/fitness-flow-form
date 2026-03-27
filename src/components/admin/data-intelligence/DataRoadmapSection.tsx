@@ -40,7 +40,7 @@ function CapabilityCard({
               ? 'bg-emerald-600/20 text-emerald-400'
               : isNext
               ? 'bg-amber-500/20 text-amber-400'
-              : 'bg-admin-border text-slate-600'
+              : 'bg-admin-border text-foreground-secondary'
           }`}
         >
           {isUnlocked
@@ -54,12 +54,12 @@ function CapabilityCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <p className={`text-sm font-semibold ${
-              isUnlocked ? 'text-emerald-300' : isNext ? 'text-amber-300' : 'text-slate-500'
+              isUnlocked ? 'text-emerald-300' : isNext ? 'text-amber-300' : 'text-muted-foreground'
             }`}>
               {tier.label}
             </p>
             {tier.threshold > 0 && !isUnlocked && (
-              <span className="text-[10px] text-slate-500 tabular-nums">
+              <span className="text-[10px] text-muted-foreground tabular-nums">
                 {isNext ? `${remaining} sessions to go` : `${tier.threshold} sessions`}
               </span>
             )}

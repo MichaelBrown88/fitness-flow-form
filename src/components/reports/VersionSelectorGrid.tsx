@@ -48,7 +48,7 @@ const VersionSelectorGrid: React.FC<VersionSelectorGridProps> = ({
           >
             <ChevronLeft className="h-3.5 w-3.5" />
           </Button>
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-foreground-tertiary">
             Page {currentPage + 1} of {totalPages}
           </span>
           <Button
@@ -76,14 +76,14 @@ const VersionSelectorGrid: React.FC<VersionSelectorGridProps> = ({
               key={snap.id}
               onClick={() => onSelect(globalIndex)}
               className={`flex flex-col items-center gap-1 py-2 px-1 rounded-xl transition-colors duration-150 ${
-                isSelected ? 'bg-slate-100' : 'hover:bg-slate-50'
+                isSelected ? 'bg-muted' : 'hover:bg-muted'
               }`}
             >
-              <span className="text-[10px] text-slate-400 leading-tight">
+              <span className="text-[10px] text-foreground-tertiary leading-tight">
                 {formatGridDate(snap.date)}
               </span>
               <ScoreBadge score={snap.score} trend={trend} size="md" />
-              <span className="text-[10px] font-semibold tracking-wide text-slate-400 leading-tight truncate max-w-full">
+              <span className="text-[10px] font-semibold tracking-wide text-foreground-tertiary leading-tight truncate max-w-full">
                 {formatSnapshotTypeLabel(snap.type)}
               </span>
             </button>
@@ -98,7 +98,7 @@ const VersionSelectorGrid: React.FC<VersionSelectorGridProps> = ({
             <span
               key={i}
               className={`inline-block h-1.5 w-1.5 rounded-full transition-colors ${
-                i === currentPage ? 'bg-slate-700' : 'bg-slate-200'
+                i === currentPage ? 'bg-foreground' : 'bg-border'
               }`}
             />
           ))}

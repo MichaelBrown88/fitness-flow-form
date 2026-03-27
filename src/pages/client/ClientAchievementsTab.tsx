@@ -61,12 +61,12 @@ export default function ClientAchievementsTab() {
 
   if (!clientId) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-8 text-center max-w-md mx-auto">
-        <Trophy className="h-10 w-10 text-slate-300 mx-auto mb-3" />
-        <p className="text-sm font-medium text-slate-600">Achievements pending migration</p>
-        <p className="text-xs text-slate-500 mt-1">
-          Run <code className="bg-slate-100 px-1 rounded">backfillClientIds()</code> then{' '}
-          <code className="bg-slate-100 px-1 rounded">migrateAchievements()</code> from the browser
+      <div className="rounded-2xl border border-border bg-muted p-8 text-center max-w-md mx-auto">
+        <Trophy className="h-10 w-10 text-muted-foreground/60 mx-auto mb-3" />
+        <p className="text-sm font-medium text-foreground-secondary">Achievements pending migration</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Run <code className="bg-muted px-1 rounded">backfillClientIds()</code> then{' '}
+          <code className="bg-muted px-1 rounded">migrateAchievements()</code> from the browser
           console to load this client's achievements.
         </p>
       </div>
@@ -90,7 +90,7 @@ function ClientAchievementsContent({
     return (
       <div className="flex flex-col items-center justify-center py-16">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-sm text-slate-500 mt-3">Loading achievements…</p>
+        <p className="text-sm text-muted-foreground mt-3">Loading achievements…</p>
       </div>
     );
   }
@@ -102,8 +102,8 @@ function ClientAchievementsContent({
           <Trophy className="w-5 h-5 text-white" />
         </div>
         <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-bold text-zinc-900">Achievements</h1>
-          <p className="text-xs sm:text-sm text-zinc-500">
+          <h1 className="text-lg sm:text-xl font-bold text-foreground">Achievements</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">
             {data.unlockedCount} of {ACHIEVEMENT_DEFINITIONS.length} unlocked
           </p>
         </div>

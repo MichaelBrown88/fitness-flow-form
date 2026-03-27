@@ -21,6 +21,8 @@ interface OnboardingLayoutProps {
   onBack?: () => void;
   /** Optional contextual content for the left panel (desktop only) */
   leftContent?: React.ReactNode;
+  /** Full-screen busy overlay over the form column — keeps step children mounted (e.g. account fields). */
+  blockingOverlay?: { message: string } | null;
 }
 
 export function OnboardingLayout({
@@ -29,6 +31,7 @@ export function OnboardingLayout({
   children,
   onBack,
   leftContent,
+  blockingOverlay = null,
 }: OnboardingLayoutProps) {
   const { user, signOut } = useAuth();
 
@@ -42,18 +45,20 @@ export function OnboardingLayout({
   const progress = isStepPhase ? ((activeProgressIndex + 1) / progressSteps.length) * 100 : 100;
 
   return (
-    <div className="fixed inset-0 z-[100] flex bg-white">
+    <div className="fixed inset-0 z-[100] flex bg-background">
       {/* Left Panel (desktop only) */}
-      <div className="hidden lg:flex lg:w-[40%] bg-slate-50 border-r border-slate-200 flex-col justify-between p-10">
+      <div className="hidden lg:flex lg:w-[40%] bg-muted/50 border-r border-border flex-col justify-between p-10">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight mb-2">
+          <h1 className="text-2xl font-bold text-foreground tracking-tight mb-2">
             Set up your account
           </h1>
           {isStepPhase && (
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-muted-foreground">
               Step {activeProgressIndex + 1} of {progressSteps.length} —{' '}
               {progressSteps[activeProgressIndex]?.description}
-              <span className="block text-xs text-slate-400 mt-1">~2 minutes total</span>
+              <span className="block text-xs text-muted-foreground mt-1">
+                {activeProgressIndex === 0 ? '~2 minutes total' : 'Just a few steps left'}
+              </span>
             </p>
           )}
         </div>
@@ -74,13 +79,13 @@ export function OnboardingLayout({
               <div
                 key={step.id}
                 className={`flex items-center gap-3 text-sm ${
-                  isCurrent ? 'text-slate-900 font-bold' :
-                  isComplete ? 'text-slate-400' : 'text-slate-300'
+                  isCurrent ? 'text-foreground font-bold' :
+                  isComplete ? 'text-muted-foreground' : 'text-muted-foreground/60'
                 }`}
               >
                 <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                  isCurrent ? 'bg-slate-900 text-white' :
-                  isComplete ? 'bg-slate-300 text-white' : 'bg-slate-200 text-slate-400'
+                  isCurrent ? 'bg-foreground text-white' :
+                  isComplete ? 'bg-muted-foreground/50 text-background' : 'bg-muted text-muted-foreground'
                 }`}>
                   {isComplete ? '✓' : index + 1}
                 </div>
@@ -94,12 +99,12 @@ export function OnboardingLayout({
       {/* Right Panel (form area) */}
       <div className="flex-1 flex flex-col min-h-0">
         {/* Top bar */}
-        <div className="shrink-0 px-4 sm:px-6 lg:px-10 py-4 flex items-center justify-between border-b border-slate-100">
+        <div className="shrink-0 px-4 sm:px-6 lg:px-10 py-4 flex items-center justify-between border-b border-border">
           <div className="flex items-center gap-3">
             {onBack ? (
               <button
                 onClick={onBack}
-                className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 text-slate-500 transition-colors"
+                className="w-9 h-9 rounded-full bg-muted flex items-center justify-center hover:bg-muted text-muted-foreground transition-colors"
               >
                 <ArrowLeft size={16} />
               </button>
@@ -109,7 +114,7 @@ export function OnboardingLayout({
 
             {/* Mobile: step label */}
             {isStepPhase && (
-              <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 lg:hidden">
+              <span className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground lg:hidden">
                 Step {activeProgressIndex + 1} / {progressSteps.length}
               </span>
             )}
@@ -118,7 +123,7 @@ export function OnboardingLayout({
           {user && (
             <button
               onClick={handleSignOut}
-              className="flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-red-500 transition-colors"
+              className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-red-500 transition-colors"
             >
               <LogOut size={14} />
               <span className="hidden sm:inline">Sign out</span>
@@ -128,19 +133,34 @@ export function OnboardingLayout({
 
         {/* Segmented progress bar */}
         {isStepPhase && (
-          <div className="shrink-0 h-1 bg-slate-100">
+          <div className="shrink-0 h-1 bg-muted">
             <div
-              className="h-full bg-slate-900 transition-all duration-500 ease-out"
+              className="h-full bg-foreground transition-all duration-500 ease-out"
               style={{ width: `${progress}%` }}
             />
           </div>
         )}
 
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="relative flex-1 min-h-0 overflow-y-auto">
           <div className="max-w-lg mx-auto px-4 sm:px-6 py-8 sm:py-12">
             {children}
           </div>
+          {blockingOverlay ? (
+            <div
+              className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/85 px-6 backdrop-blur-sm"
+              role="status"
+              aria-busy="true"
+              aria-live="polite"
+            >
+              <span className="sr-only">{blockingOverlay.message}</span>
+              <div
+                className="mb-4 h-10 w-10 rounded-full border-2 border-muted border-t-primary motion-safe:animate-spin"
+                aria-hidden
+              />
+              <p className="text-center text-sm text-muted-foreground">{blockingOverlay.message}</p>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

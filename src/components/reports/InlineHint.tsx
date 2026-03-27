@@ -36,16 +36,16 @@ const InlineHint = ({ id, title, description }: InlineHintProps) => {
   };
 
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-indigo-100 bg-indigo-50/60 px-4 py-3 text-sm">
-      <Info className="mt-0.5 h-4 w-4 shrink-0 text-indigo-500" />
-      <div className="flex-1 min-w-0">
-        <p className="font-semibold text-indigo-900">{title}</p>
-        <p className="mt-0.5 text-indigo-700/80">{description}</p>
+    <div className="flex items-start gap-3 rounded-xl border border-gradient-medium/50 bg-gradient-light/70 px-4 py-3 text-sm">
+      <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold text-foreground">{title}</p>
+        <p className="mt-0.5 text-foreground">{description}</p>
       </div>
       <button
         type="button"
         onClick={handleDismiss}
-        className="shrink-0 rounded-lg p-1 text-indigo-400 transition-colors hover:bg-indigo-100 hover:text-indigo-600"
+        className="shrink-0 rounded-lg p-1 text-primary/70 transition-colors hover:bg-primary/10 hover:text-primary"
         aria-label="Dismiss hint"
       >
         <X className="h-3.5 w-3.5" />

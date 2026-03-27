@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 import type { PhaseSection } from '@/lib/phaseConfig';
+import { ASSESSMENT_COPY } from '@/constants/assessmentCopy';
 
 interface AssessmentSidebarProps {
   sidebarOpen: boolean;
@@ -73,38 +74,47 @@ export const AssessmentSidebar = ({
   const activeSections = (activePhase?.sections || []) as PhaseSection[];
   const completedPhases = visiblePhases.filter((_, i) => isPhaseCompleted(i)).length;
   const totalPhases = visiblePhases.filter(p => p.id !== 'P7').length;
+  const phasesWithoutResults = visiblePhases
+    .map((p, i) => ({ p, i }))
+    .filter(({ p }) => p.id !== 'P7');
+  const sessionStepIndex = phasesWithoutResults.findIndex(({ i }) => i === activePhaseIdx);
+  const sessionStepNumber = sessionStepIndex >= 0 ? sessionStepIndex + 1 : 1;
+  const sessionStepTotal = Math.max(phasesWithoutResults.length, 1);
 
   return (
     <>
       {/* Desktop sidebar — compact progress bar layout */}
-      <aside className={`w-full lg:w-64 border-b lg:border-b-0 lg:border-r border-slate-200 bg-white p-5 shrink-0 lg:sticky top-[64px] z-30 overflow-y-auto max-h-[calc(100vh-64px)] ${sidebarOpen ? 'block fixed inset-0 z-50 pt-20' : 'hidden lg:block'}`}>
+      <aside className={`w-full lg:w-64 border-b lg:border-b-0 lg:border-r border-border bg-background p-5 shrink-0 lg:sticky top-[64px] z-30 overflow-y-auto max-h-[calc(100vh-64px)] ${sidebarOpen ? 'block fixed inset-0 z-50 pt-20' : 'hidden lg:block'}`}>
         {/* Mobile close button */}
         <div className="flex items-center justify-between lg:hidden mb-4">
-          <h3 className="text-lg font-bold text-slate-900">Navigation</h3>
-          <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)} className="h-9 w-9 rounded-full bg-slate-100">
-            <X className="h-4 w-4 text-slate-600" />
+          <h3 className="text-lg font-bold text-foreground">Navigation</h3>
+          <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)} className="h-9 w-9 rounded-full bg-muted">
+            <X className="h-4 w-4 text-foreground-secondary" />
           </Button>
         </div>
 
         {/* Progress bar + label */}
         <div className="mb-5">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+            <span className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
               Progress
             </span>
-            <span className="text-xs font-bold text-slate-600">
+            <span className="text-xs font-bold text-foreground-secondary">
               {Math.round(progressValue)}%
             </span>
           </div>
-          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+          <div className="h-2 bg-muted rounded-full overflow-hidden">
             <div
               className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
               style={{ width: `${progressValue}%` }}
             />
           </div>
           {timeEstimate && (
-            <p className="text-[10px] text-slate-400 mt-1.5 font-medium">{timeEstimate}</p>
+            <p className="text-[10px] text-muted-foreground mt-1.5 font-medium">{timeEstimate}</p>
           )}
+          <p className="text-[10px] text-muted-foreground mt-1.5 font-medium">
+            {ASSESSMENT_COPY.SESSION_PROGRESS(sessionStepNumber, sessionStepTotal)}
+          </p>
         </div>
 
         {/* Phase list (compact) */}
@@ -118,12 +128,12 @@ export const AssessmentSidebar = ({
                 disabled={isDisabled}
                 className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-colors ${
                   isActive
-                    ? 'bg-primary/10 text-slate-900 font-bold'
+                    ? 'bg-primary/10 text-foreground font-bold'
                     : isCompleted
-                      ? 'text-slate-600 font-medium hover:bg-slate-50'
+                      ? 'text-foreground-secondary font-medium hover:bg-muted/50'
                       : isDisabled
-                        ? 'text-slate-300 cursor-not-allowed'
-                        : 'text-slate-500 font-medium hover:bg-slate-50'
+                        ? 'text-muted-foreground/60 cursor-not-allowed'
+                        : 'text-muted-foreground font-medium hover:bg-muted/50'
                 }`}
               >
                 <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
@@ -131,7 +141,7 @@ export const AssessmentSidebar = ({
                     ? 'bg-primary text-primary-foreground'
                     : isActive
                       ? 'bg-primary text-primary-foreground'
-                      : 'bg-slate-100 text-slate-400'
+                      : 'bg-muted text-muted-foreground'
                 }`}>
                   {isCompleted ? '✓' : idx + 1}
                 </span>
@@ -143,8 +153,8 @@ export const AssessmentSidebar = ({
 
         {/* Active phase sections */}
         {activeSections.length > 0 && (
-          <div className="border-t border-slate-100 pt-3">
-            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 mb-2">
+          <div className="border-t border-border pt-3">
+            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground mb-2">
               {activePhase.title}
             </p>
             <div className="space-y-0.5">
@@ -157,14 +167,14 @@ export const AssessmentSidebar = ({
                     onClick={() => toggleSection(sec.id)}
                     className={`flex w-full items-center py-1.5 px-2 rounded text-xs transition-colors ${
                       isExpanded
-                        ? 'text-slate-900 font-semibold bg-slate-50'
+                        ? 'text-foreground font-semibold bg-muted/50'
                         : isSecComp
-                          ? 'text-slate-500'
-                          : 'text-slate-400'
-                    } hover:text-slate-900 hover:bg-slate-50`}
+                          ? 'text-muted-foreground'
+                          : 'text-muted-foreground'
+                    } hover:text-foreground hover:bg-muted/50`}
                   >
                     <span className={`w-1.5 h-1.5 rounded-full mr-2 shrink-0 ${
-                      isExpanded ? 'bg-primary' : isSecComp ? 'bg-primary/40' : 'bg-slate-200'
+                      isExpanded ? 'bg-primary' : isSecComp ? 'bg-primary/40' : 'bg-muted'
                     }`} />
                     <span className="truncate">{sec.title}</span>
                   </button>
@@ -225,9 +235,9 @@ const MobilePhaseStrip: React.FC<MobilePhaseStripProps> = ({
   const activePhase = visiblePhases[activePhaseIdx];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-white border-t border-slate-200 safe-area-bottom">
+    <div className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-background border-t border-border safe-area-bottom">
       {/* Progress bar at top */}
-      <div className="h-1 bg-slate-100">
+      <div className="h-1 bg-muted">
         <div
           className="h-full bg-primary transition-all duration-300"
           style={{ width: `${progressValue}%` }}
@@ -236,10 +246,10 @@ const MobilePhaseStrip: React.FC<MobilePhaseStripProps> = ({
 
       {/* Phase name + progress */}
       <div className="flex items-center justify-between px-4 py-1">
-        <span className="text-xs font-bold text-slate-900 truncate">
+        <span className="text-xs font-bold text-foreground truncate">
           {activePhase?.title}
         </span>
-        <span className="text-[10px] font-bold text-slate-400">
+        <span className="text-[10px] font-bold text-muted-foreground">
           {Math.round(progressValue)}%
         </span>
       </div>
@@ -257,7 +267,7 @@ const MobilePhaseStrip: React.FC<MobilePhaseStripProps> = ({
               className={`h-2 rounded-full transition-all duration-300 ${
                 isActive ? 'w-6 bg-primary' :
                 isCompleted ? 'w-2 bg-primary/60' :
-                'w-2 bg-slate-200'
+                'w-2 bg-muted'
               }`}
             />
           );

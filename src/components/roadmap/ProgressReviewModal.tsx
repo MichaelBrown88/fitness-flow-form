@@ -46,16 +46,16 @@ export const ProgressReviewModal: React.FC<ProgressReviewModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full mx-4 overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+      <div className="bg-background rounded-2xl shadow-xl max-w-lg w-full mx-4 overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div>
-            <h2 className="text-lg font-bold text-slate-900">Roadmap Progress Review</h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <h2 className="text-lg font-bold text-foreground">Roadmap Progress Review</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
               New assessment data detected — review suggested updates
             </p>
           </div>
-          <button onClick={onDismiss} className="p-1 rounded-lg hover:bg-slate-100">
-            <X className="h-4 w-4 text-slate-400" />
+          <button onClick={onDismiss} className="p-1 rounded-lg hover:bg-muted">
+            <X className="h-4 w-4 text-muted-foreground" />
           </button>
         </div>
 
@@ -79,7 +79,7 @@ export const ProgressReviewModal: React.FC<ProgressReviewModalProps> = ({
           ))}
         </div>
 
-        <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-slate-100 bg-slate-50/50">
+        <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-border bg-muted/50">
           <Button variant="ghost" size="sm" onClick={onDismiss}>
             Skip
           </Button>
@@ -110,27 +110,27 @@ function SuggestionCard({
       type="button"
       onClick={() => onToggle(s.itemId)}
       className={`w-full text-left rounded-xl border p-3 transition-all ${
-        accepted ? 'border-indigo-200 bg-indigo-50/50' : 'border-slate-200 bg-white opacity-60'
+        accepted ? 'border-indigo-200 bg-indigo-50/50' : 'border-border bg-background opacity-60'
       }`}
     >
       <div className="flex items-start gap-3">
         <div className={`mt-0.5 h-4 w-4 rounded border-2 flex items-center justify-center shrink-0 ${
-          accepted ? 'border-indigo-500 bg-indigo-500' : 'border-slate-300'
+          accepted ? 'border-indigo-500 bg-indigo-500' : 'border-border-medium'
         }`}>
           {accepted && <CheckCircle2 className="h-3 w-3 text-white" />}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-slate-800 truncate">{s.itemTitle}</p>
-          <div className="flex items-center gap-1.5 mt-1 text-xs text-slate-500">
+          <p className="text-sm font-semibold text-foreground truncate">{s.itemTitle}</p>
+          <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
             <span>{STATUS_LABEL[s.currentStatus]}</span>
             <ArrowRight className="h-3 w-3" />
-            <span className="font-semibold text-slate-700">{STATUS_LABEL[s.suggestedStatus]}</span>
+            <span className="font-semibold text-foreground-secondary">{STATUS_LABEL[s.suggestedStatus]}</span>
             <DeltaIcon className={`h-3 w-3 ml-1 ${deltaColor}`} />
             <span className={deltaColor}>
               {s.scoreDelta > 0 ? '+' : ''}{s.scoreDelta}
             </span>
           </div>
-          <p className="text-xs text-slate-400 mt-1">{s.reason}</p>
+          <p className="text-xs text-muted-foreground mt-1">{s.reason}</p>
         </div>
       </div>
     </button>

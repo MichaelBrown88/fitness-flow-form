@@ -12,7 +12,7 @@ import { Zap, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCheckout } from '@/hooks/useCheckout';
 import { useAuth } from '@/hooks/useAuth';
-import { UNLIMITED_CREDITS } from '@/constants/pricing';
+import { isUnlimitedAiCredits } from '@/constants/pricing';
 
 interface CreditBalanceProps {
   credits: number | undefined;
@@ -26,7 +26,7 @@ export function CreditBalance({ credits, className }: CreditBalanceProps) {
   const { purchaseCreditTopup, loading } = useCheckout();
 
   if (credits === undefined || credits === null) return null;
-  const isUnlimited = credits === UNLIMITED_CREDITS || credits >= 9999;
+  const isUnlimited = isUnlimitedAiCredits(credits);
   const isLow = !isUnlimited && credits <= LOW_CREDITS_THRESHOLD;
 
   const handleTopup = async () => {

@@ -15,7 +15,7 @@ import type { CorrelationFinding } from '@/types/analytics';
 const STRENGTH_COLORS = {
   strong:   { badge: 'bg-indigo-500/15 text-indigo-300 border border-indigo-500/30', dot: 'bg-indigo-400' },
   moderate: { badge: 'bg-amber-500/15  text-amber-300  border border-amber-500/30',  dot: 'bg-amber-400'  },
-  weak:     { badge: 'bg-slate-500/15  text-slate-400  border border-slate-500/30',  dot: 'bg-slate-500'  },
+  weak:     { badge: 'bg-muted/500/15  text-muted-foreground  border border-border/600/30',  dot: 'bg-muted/500'  },
 };
 
 function buildInsight(f: CorrelationFinding): string {

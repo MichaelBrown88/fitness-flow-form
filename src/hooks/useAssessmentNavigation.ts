@@ -144,6 +144,13 @@ export function useAssessmentNavigation({ formData, orgSettings }: UseAssessment
       }).filter((p): p is NonNullable<typeof p> => p !== null);
     }
 
+    // Modular plan: restrict to included phases (legacy = no plan → all phases)
+    const planIds = formData.assessmentPlan?.includedPhaseIds;
+    if (planIds?.length && (!isPartialAssessment || !partialCategory)) {
+      const allowed = new Set(planIds);
+      phases = phases.filter((p) => allowed.has(p.id));
+    }
+
     // Filter further if in partial assessment mode
     if (!isPartialAssessment || !partialCategory) {
       return phases;
@@ -202,7 +209,7 @@ export function useAssessmentNavigation({ formData, orgSettings }: UseAssessment
         };
       })
       .filter((p): p is NonNullable<typeof p> => p !== null);
-  }, [isPartialAssessment, partialCategory, orgSettings?.modules]);
+  }, [formData.assessmentPlan, isPartialAssessment, partialCategory, orgSettings?.modules]);
 
   const isFieldVisible = useCallback((field: { id?: string; conditional?: { showWhen?: Record<string, unknown> } }, customData?: FormData) => {
     const data = customData || formData;
@@ -278,9 +285,15 @@ export function useAssessmentNavigation({ formData, orgSettings }: UseAssessment
 
   const progressValue = useMemo(() => {
     if (isPartialAssessment) return 0;
-    const completed = visiblePhases.filter((_, i) => isPhaseCompleted(i)).length;
-    return (completed / (totalPhases - 1)) * 100;
-  }, [visiblePhases, totalPhases, isPhaseCompleted, isPartialAssessment]);
+    // Exclude P7 (results): counting it as "completed" with denominator (totalPhases - 1) produced >100%.
+    const workIndices = visiblePhases
+      .map((p, i) => ({ p, i }))
+      .filter(({ p }) => p.id !== 'P7')
+      .map(({ i }) => i);
+    if (workIndices.length === 0) return 0;
+    const completedWork = workIndices.filter((i) => isPhaseCompleted(i)).length;
+    return (completedWork / workIndices.length) * 100;
+  }, [visiblePhases, isPhaseCompleted, isPartialAssessment]);
 
   return {
     activePhaseIdx,

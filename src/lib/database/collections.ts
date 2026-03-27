@@ -8,8 +8,11 @@
 import {
   collection,
   doc,
+  getDoc,
+  setDoc,
   CollectionReference,
   DocumentReference,
+  type DocumentData,
 } from 'firebase/firestore';
 import { getDb } from '@/services/firebase';
 import {
@@ -185,6 +188,37 @@ export const getPlatformAdminLookupDoc = (email: string): DocumentReference =>
     PLATFORM.admins.lookupCollection(),
     PLATFORM.admins.lookupKey(email),
   );
+
+export const getPlatformAdminLegacyLookupDoc = (email: string): DocumentReference =>
+  doc(
+    getDb(),
+    PLATFORM.admins.lookupCollection(),
+    PLATFORM.admins.legacyLookupKey(email),
+  );
+
+/** True if a lookup row exists under canonical or legacy document id. */
+export async function platformAdminLookupExistsForEmail(email: string): Promise<boolean> {
+  const [canonical, legacy] = await Promise.all([
+    getDoc(getPlatformAdminLookupDoc(email)),
+    getDoc(getPlatformAdminLegacyLookupDoc(email)),
+  ]);
+  return canonical.exists() || legacy.exists();
+}
+
+/** Writes the same payload to canonical (email) and legacy lookup docs when ids differ. */
+export async function mirrorPlatformAdminLookupWrite(
+  email: string,
+  data: DocumentData,
+  options?: { merge?: boolean },
+): Promise<void> {
+  const canonicalRef = getPlatformAdminLookupDoc(email);
+  const legacyRef = getPlatformAdminLegacyLookupDoc(email);
+  const merge = options?.merge ?? false;
+  await setDoc(canonicalRef, data, { merge });
+  if (legacyRef.path !== canonicalRef.path) {
+    await setDoc(legacyRef, data, { merge });
+  }
+}
 
 export const getPlatformConfigDoc = (): DocumentReference =>
   doc(getDb(), PLATFORM.config());

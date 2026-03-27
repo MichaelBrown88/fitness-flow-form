@@ -97,19 +97,19 @@ export function CameraWizard({
       <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
         {/* Step indicator */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3">
-          <h3 className="text-sm font-bold text-slate-900">{title}</h3>
+          <h3 className="text-sm font-bold text-foreground">{title}</h3>
           <div className="flex items-center gap-1.5">
             {STEPS.map((s, i) => (
               <div key={s} className="flex items-center gap-1.5">
                 <div className={`h-1.5 rounded-full transition-all ${
-                  i <= currentStepIdx ? 'w-5 bg-primary' : 'w-1.5 bg-slate-200'
+                  i <= currentStepIdx ? 'w-5 bg-primary' : 'w-1.5 bg-muted'
                 }`} />
               </div>
             ))}
           </div>
         </div>
 
-        <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 px-5 pb-3">
+        <p className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground px-5 pb-3">
           {STEP_LABELS[step]}
         </p>
 
@@ -124,8 +124,8 @@ export function CameraWizard({
               </div>
               <ul className="space-y-3">
                 {displayInstructions.map((instruction, i) => (
-                  <li key={i} className="flex items-start gap-3 text-sm text-slate-600">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold text-slate-500">
+                  <li key={i} className="flex items-start gap-3 text-sm text-foreground-secondary">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-muted-foreground">
                       {i + 1}
                     </span>
                     {instruction}
@@ -134,7 +134,7 @@ export function CameraWizard({
               </ul>
               <Button
                 onClick={() => setStep('capture')}
-                className="w-full h-12 bg-slate-900 text-white hover:bg-slate-800 mt-4"
+                className="w-full h-12 bg-foreground text-white hover:bg-foreground/90 mt-4"
               >
                 Open Camera
                 <ArrowRight className="w-4 h-4 ml-2" />
@@ -146,7 +146,7 @@ export function CameraWizard({
             <div className="min-h-[300px]">
               <Suspense fallback={
                 <div className="flex items-center justify-center py-20">
-                  <Loader2 className="h-6 w-6 animate-spin text-slate-300" />
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/60" />
                 </div>
               }>
                 <CameraCapture
@@ -160,14 +160,14 @@ export function CameraWizard({
 
           {step === 'review' && capturedImage && (
             <div className="space-y-4">
-              <div className="rounded-xl overflow-hidden border border-slate-200">
+              <div className="rounded-xl overflow-hidden border border-border">
                 <img
                   src={capturedImage}
                   alt="Captured"
-                  className="w-full h-auto max-h-[400px] object-contain bg-slate-50"
+                  className="w-full h-auto max-h-[400px] object-contain bg-muted/50"
                 />
               </div>
-              <p className="text-sm text-slate-500 text-center">
+              <p className="text-sm text-muted-foreground text-center">
                 Does this look good? You can retake if needed.
               </p>
               <div className="flex gap-3">
@@ -181,7 +181,7 @@ export function CameraWizard({
                 </Button>
                 <Button
                   onClick={handleConfirm}
-                  className="flex-1 h-11 bg-slate-900 text-white hover:bg-slate-800"
+                  className="flex-1 h-11 bg-foreground text-white hover:bg-foreground/90"
                 >
                   <Check className="w-4 h-4 mr-2" />
                   Confirm

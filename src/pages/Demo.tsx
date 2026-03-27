@@ -4,13 +4,24 @@ import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Navbar, Footer } from '@/components/landing';
 import { DEMO_SCORES, DEMO_GOALS, DEMO_PLAN, DEMO_FORM_DATA } from '@/constants/demoData';
+import { Seo } from '@/components/seo/Seo';
+import { ROUTES } from '@/constants/routes';
+import { requireSeoForPath } from '@/constants/seo';
+
+const demoSeo = requireSeoForPath(ROUTES.DEMO);
 import type { FormData } from '@/contexts/FormContext';
 
 const ClientReport = lazy(() => import('@/components/reports/ClientReport'));
 
 export default function Demo() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
+      <Seo
+        pathname={ROUTES.DEMO}
+        title={demoSeo.title}
+        description={demoSeo.description}
+        noindex={demoSeo.noindex}
+      />
       <Navbar />
 
       <main className="max-w-5xl mx-auto px-4 py-16">
@@ -23,7 +34,7 @@ export default function Demo() {
           </Button>
           <Link
             to="/onboarding"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-all group"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-foreground text-white text-sm font-semibold hover:bg-foreground/90 transition-all group"
           >
             Start Free Trial
             <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
@@ -31,26 +42,26 @@ export default function Demo() {
         </div>
 
         <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-50 border border-indigo-100 mb-4">
-            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
-            <span className="text-xs font-bold text-indigo-700 uppercase tracking-[0.1em]">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-gradient-medium/50 bg-gradient-light/80 px-4 py-1.5">
+            <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+            <span className="text-xs font-bold uppercase tracking-[0.1em] text-gradient-dark">
               Interactive Demo
             </span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-3">
+          <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
             Sample Client Report
           </h1>
-          <p className="text-slate-500 max-w-lg mx-auto">
+          <p className="text-muted-foreground max-w-lg mx-auto">
             This is what your clients see after an assessment. Scroll through
             to explore the full report experience.
           </p>
         </div>
 
-        <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-xl bg-white">
+        <div className="border border-border rounded-2xl overflow-hidden shadow-xl bg-background">
           <Suspense
             fallback={
               <div className="flex items-center justify-center py-32">
-                <Loader2 className="h-8 w-8 animate-spin text-slate-300" />
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground/60" />
               </div>
             }
           >
@@ -66,12 +77,12 @@ export default function Demo() {
         </div>
 
         <div className="text-center mt-12 mb-8">
-          <p className="text-sm text-slate-400 mb-4">
+          <p className="text-sm text-muted-foreground mb-4">
             Ready to create reports like this for your clients?
           </p>
           <Link
             to="/onboarding"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-all group"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-foreground text-white text-sm font-semibold hover:bg-foreground/90 transition-all group"
           >
             Start Free Trial
             <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />

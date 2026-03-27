@@ -45,4 +45,8 @@ export type ClientGroup = {
   lastAssessmentDate?: Date;
   /** Internal coaching note pinned to the client card */
   notes?: string;
+  /** Set when client profile has an active public report link */
+  shareToken?: string;
+  /** Remote lifestyle (etc.) done; coach-only phases may remain */
+  remoteIntakeAwaitingStudio?: boolean;
 };

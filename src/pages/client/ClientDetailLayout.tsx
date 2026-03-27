@@ -153,7 +153,7 @@ export default function ClientDetailLayout() {
 
   if (!user) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-slate-600">
+      <div className="flex min-h-screen items-center justify-center text-sm text-foreground-secondary">
         Loading…
       </div>
     );
@@ -162,7 +162,7 @@ export default function ClientDetailLayout() {
   if (loading) {
     return (
       <AppShell title={clientName}>
-        <div className="py-10 text-sm text-slate-600">Loading client data…</div>
+        <div className="py-10 text-sm text-foreground-secondary">Loading client data…</div>
       </AppShell>
     );
   }
@@ -234,17 +234,17 @@ export default function ClientDetailLayout() {
       )}
 
       <div className="flex items-center justify-between gap-3 mb-6">
-        <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-slate-900 truncate">
+        <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-foreground truncate">
           {clientName}
         </h1>
       </div>
 
-      <nav className="flex flex-wrap items-center gap-1 mb-6 p-1 bg-slate-100 rounded-xl w-fit">
+      <nav className="flex flex-wrap items-center gap-1 mb-6 p-1 bg-muted rounded-xl w-fit">
         <NavLink
           to={buildClientPath(clientName)}
           end
           className={({ isActive }) =>
-            `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-white text-slate-900' : 'text-slate-500 hover:text-slate-700'}`
+            `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground-secondary'}`
           }
         >
           Overview
@@ -252,7 +252,7 @@ export default function ClientDetailLayout() {
         <NavLink
           to={buildClientPath(clientName, 'report')}
           className={({ isActive }) =>
-            `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-white text-slate-900' : 'text-slate-500 hover:text-slate-700'}`
+            `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground-secondary'}`
           }
         >
           Client Report
@@ -260,7 +260,7 @@ export default function ClientDetailLayout() {
         <NavLink
           to={buildClientPath(clientName, 'roadmap')}
           className={({ isActive }) =>
-            `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-white text-slate-900' : 'text-slate-500 hover:text-slate-700'}`
+            `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground-secondary'}`
           }
         >
           Roadmap
@@ -268,7 +268,7 @@ export default function ClientDetailLayout() {
         <NavLink
           to={buildClientPath(clientName, 'achievements')}
           className={({ isActive }) =>
-            `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-white text-slate-900' : 'text-slate-500 hover:text-slate-700'}`
+            `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground-secondary'}`
           }
         >
           Achievements
@@ -276,7 +276,7 @@ export default function ClientDetailLayout() {
         <NavLink
           to={buildClientPath(clientName, 'history')}
           className={({ isActive }) =>
-            `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-white text-slate-900' : 'text-slate-500 hover:text-slate-700'}`
+            `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground-secondary'}`
           }
         >
           History
@@ -284,7 +284,7 @@ export default function ClientDetailLayout() {
         <NavLink
           to={buildClientPath(clientName, 'settings')}
           className={({ isActive }) =>
-            `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-white text-slate-900' : 'text-slate-500 hover:text-slate-700'}`
+            `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground-secondary'}`
           }
         >
           Settings
@@ -314,7 +314,7 @@ export default function ClientDetailLayout() {
         <DialogContent className="rounded-2xl max-w-[90vw] sm:max-w-[425px]">
           <DialogHeader className="text-left">
             <DialogTitle className="text-xl font-bold tracking-tight">Remove snapshot</DialogTitle>
-            <DialogDescription className="text-sm font-medium text-slate-500 pt-2">
+            <DialogDescription className="text-sm font-medium text-muted-foreground pt-2">
               Remove this assessment snapshot from history? If it was the latest, current will be restored from the previous snapshot.
             </DialogDescription>
           </DialogHeader>
@@ -367,7 +367,7 @@ export default function ClientDetailLayout() {
               <span className="block">
                 This will permanently delete <strong>{clientName}</strong> and remove all their data — assessments, history, snapshots, and reports. This cannot be undone.
               </span>
-              <span className="block mt-2 font-medium text-slate-700">
+              <span className="block mt-2 font-medium text-foreground-secondary">
                 Type <strong>{clientName}</strong> to confirm:
               </span>
             </DialogDescription>

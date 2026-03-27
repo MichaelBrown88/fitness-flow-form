@@ -15,6 +15,7 @@
  * Zero AI cost -- all analysis is local.
  */
 
+import { CONFIG } from '@/config';
 import { LandmarkResult, detectPostureLandmarks } from '@/lib/ai/postureLandmarks';
 import { drawLandmarkWireframe } from '@/lib/utils/postureOverlay';
 import { buildPostureResult } from '@/lib/ai/postureTemplates';
@@ -36,9 +37,17 @@ export interface PostureProcessingResult {
   landmarkConfidence: LandmarkConfidence; // Visibility-based quality signal
 }
 
-// Indices of the structural landmarks whose visibility most affects analysis quality
-const STRUCTURAL_LANDMARK_INDICES = [11, 12, 23, 24, 27, 28]; // shoulders, hips, ankles
-const MIN_LANDMARK_CONFIDENCE = 0.6;
+/** Indices of structural landmarks for visibility / Companion retry averaging. */
+export const POSTURE_STRUCTURAL_LANDMARK_INDICES = [11, 12, 23, 24, 27, 28] as const;
+
+export function averageStructuralLandmarkVisibility(
+  raw: import('@/lib/types/mediapipe').MediaPipeLandmark[] | undefined
+): number {
+  if (!raw?.length) return 0;
+  const structural = POSTURE_STRUCTURAL_LANDMARK_INDICES.map((i) => raw[i]).filter(Boolean);
+  if (structural.length === 0) return 0;
+  return structural.reduce((sum, l) => sum + (l.visibility ?? 0), 0) / structural.length;
+}
 
 function assessLandmarkConfidence(
   raw: import('@/lib/types/mediapipe').MediaPipeLandmark[] | undefined
@@ -46,12 +55,12 @@ function assessLandmarkConfidence(
   if (!raw || raw.length === 0) {
     return { confident: false, avgVisibility: 0, retakeReason: 'No landmarks detected — ensure full body is visible' };
   }
-  const structural = STRUCTURAL_LANDMARK_INDICES.map(i => raw[i]).filter(Boolean);
+  const structural = POSTURE_STRUCTURAL_LANDMARK_INDICES.map((i) => raw[i]).filter(Boolean);
   if (structural.length === 0) {
     return { confident: false, avgVisibility: 0, retakeReason: 'Key body points not detected — step back so full body is in frame' };
   }
   const avgVisibility = structural.reduce((sum, l) => sum + (l.visibility ?? 0), 0) / structural.length;
-  if (avgVisibility < MIN_LANDMARK_CONFIDENCE) {
+  if (avgVisibility < CONFIG.COMPANION.POSE_THRESHOLDS.minConfidence) {
     return {
       confident: false,
       avgVisibility,

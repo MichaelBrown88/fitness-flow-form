@@ -38,6 +38,8 @@ export interface UseOrgManagementResult {
   deleteConfirmText: string;
   showGrantAccessDialog: boolean;
   showRevokeAccessDialog: boolean;
+  showPermanentlyDeleteDialog: boolean;
+  permanentlyDeleteConfirmText: string;
   accessReason: string;
   hasDataAccess: boolean;
 

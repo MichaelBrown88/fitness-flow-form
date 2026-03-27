@@ -110,8 +110,8 @@ export default function PublicPreSessionCheckin() {
                     onClick={() => setEnergyLevel(isSelected ? null : value)}
                     className={`flex-1 py-2 rounded-xl text-xs font-semibold border transition-all ${
                       isSelected
-                        ? 'bg-slate-900 text-white border-slate-900'
-                        : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+                        ? 'bg-foreground text-white border-foreground'
+                        : 'bg-background text-foreground-secondary border-border hover:border-muted-foreground/50'
                     }`}
                     title={label}
                   >
@@ -121,7 +121,7 @@ export default function PublicPreSessionCheckin() {
               })}
             </div>
             {energyLevel !== null && (
-              <p className="text-xs text-slate-500 text-center">{ENERGY_LABELS[energyLevel - 1]}</p>
+              <p className="text-xs text-muted-foreground text-center">{ENERGY_LABELS[energyLevel - 1]}</p>
             )}
           </div>
 
@@ -142,7 +142,7 @@ export default function PublicPreSessionCheckin() {
                         ? option === 'Yes'
                           ? 'bg-red-50 text-red-700 border-red-300'
                           : 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                        : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+                        : 'bg-background text-foreground-secondary border-border hover:border-muted-foreground/50'
                     }`}
                   >
                     {option}
@@ -163,7 +163,7 @@ export default function PublicPreSessionCheckin() {
 
           {/* Focus area */}
           <div className="space-y-2">
-            <p className="text-sm font-medium text-foreground">Anything you want to focus on today? <span className="text-slate-400 font-normal">(optional)</span></p>
+            <p className="text-sm font-medium text-foreground">Anything you want to focus on today? <span className="text-muted-foreground font-normal">(optional)</span></p>
             <Textarea
               placeholder="e.g. upper body, mobility work, cardio..."
               value={focusArea}

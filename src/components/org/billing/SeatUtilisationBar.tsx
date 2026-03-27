@@ -18,12 +18,12 @@ export function SeatUtilisationBar({ coachCount, seatBlock }: SeatUtilisationBar
       <Card>
         <CardHeader className="p-4 sm:p-6 pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Users className="w-4 h-4 text-slate-500" />
+            <Users className="w-4 h-4 text-muted-foreground" />
             Team Seats
           </CardTitle>
         </CardHeader>
         <CardContent className="p-4 sm:p-6 pt-0">
-          <p className="text-sm text-slate-500">{coachCount} {coachCount === 1 ? 'coach' : 'coaches'} — unlimited seats</p>
+          <p className="text-sm text-muted-foreground">{coachCount} {coachCount === 1 ? 'coach' : 'coaches'} — unlimited seats</p>
         </CardContent>
       </Card>
     );
@@ -36,18 +36,18 @@ export function SeatUtilisationBar({ coachCount, seatBlock }: SeatUtilisationBar
     <Card>
       <CardHeader className="p-4 sm:p-6 pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
-          <Users className="w-4 h-4 text-slate-500" />
+          <Users className="w-4 h-4 text-muted-foreground" />
           Team Seats
         </CardTitle>
       </CardHeader>
       <CardContent className="p-4 sm:p-6 pt-0 space-y-3">
         <div className="flex items-center justify-between text-sm">
-          <span className="font-medium text-slate-900">{coachCount} of {seatBlock} seats used</span>
+          <span className="font-medium text-foreground">{coachCount} of {seatBlock} seats used</span>
           <span className={`font-semibold ${ratio >= 1 ? 'text-red-600' : ratio >= 0.8 ? 'text-amber-600' : 'text-emerald-600'}`}>
             {pct}%
           </span>
         </div>
-        <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+        <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
           <div
             className={`h-full rounded-full transition-all duration-500 ${utilisationColor(ratio)}`}
             style={{ width: `${pct}%` }}

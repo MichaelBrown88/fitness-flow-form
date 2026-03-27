@@ -18,8 +18,17 @@ import type { UserProfile } from '@/types/auth';
 import { isStaffRole } from '@/types/auth';
 import { AuthContext } from '@/hooks/useAuth';
 import { logger } from '@/lib/utils/logger';
-import { isTestEmail } from '@/lib/utils/testAccountHelper';
-import { GYM_TRIAL_CLIENT_CAP } from '@/constants/pricing';
+import {
+  deriveInitialStaffDisplayName,
+  GENERIC_STAFF_DISPLAY_PLACEHOLDER,
+  staffPreferredFullDisplayName,
+} from '@/lib/utils/staffDisplayName';
+import { provisionStaffShellOrg } from '@/lib/auth/provisionStaffShellOrg';
+import {
+  syncCoachRosterFromProfile,
+  shouldSyncCoachRosterRole,
+} from '@/services/coachManagement';
+import { CLIENT_EMAIL_LOOKUP_LIMIT } from '@/constants/firestoreQueryLimits';
 import { 
   startImpersonation as startImpersonationService, 
   endImpersonation as endImpersonationService,
@@ -37,6 +46,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Track if sign out was manual (to avoid clearing storage on manual sign out)
   const manualSignOutRef = useRef(false);
   const previousUserIdRef = useRef<string | null>(null);
+  /** Avoid hammering Firestore when roster self-sync hits permission-denied (e.g. rules not deployed). */
+  const coachRosterPermissionDeniedUntilRef = useRef(0);
+  /** Skip redundant roster writes when profile snapshot fires with unchanged coach fields. */
+  const lastSuccessfulCoachRosterSyncSigRef = useRef('');
   
   // Restore impersonation session on mount
   useEffect(() => {
@@ -131,6 +144,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           currentProfile = profileSnap.data() as UserProfile;
           // Apply safety defaults
           if (!currentProfile.role) currentProfile.role = 'org_admin';
+
+          if (
+            currentProfile.displayName === GENERIC_STAFF_DISPLAY_PLACEHOLDER &&
+            firebaseUser.email
+          ) {
+            const suggested = deriveInitialStaffDisplayName(
+              firebaseUser.email,
+              firebaseUser.displayName,
+            );
+            if (suggested !== GENERIC_STAFF_DISPLAY_PLACEHOLDER) {
+              void updateDoc(profileRef, {
+                displayName: suggested,
+                updatedAt: serverTimestamp(),
+              }).catch((e) => logger.warn('[AUTH] displayName heal skipped:', e));
+              currentProfile = { ...currentProfile, displayName: suggested };
+            }
+          }
           
           // Auto-heal: If onboarding not complete but org has assessments, mark onboarding complete
           if (
@@ -178,7 +208,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               uid: firebaseUser.uid,
               organizationId: `org-${firebaseUser.uid}`,
               role: 'org_admin',
-              displayName: firebaseUser.displayName || 'Coach',
+              displayName: deriveInitialStaffDisplayName(
+                firebaseUser.email,
+                firebaseUser.displayName,
+              ),
               onboardingCompleted: false
             };
           }
@@ -187,6 +220,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         setProfile(currentProfile);
+
+        if (
+          currentProfile.organizationId &&
+          shouldSyncCoachRosterRole(currentProfile.role) &&
+          firebaseUser
+        ) {
+          const displayName = staffPreferredFullDisplayName(currentProfile, firebaseUser);
+          const coachSyncSig = `${currentProfile.organizationId}|${firebaseUser.uid}|${displayName}|${firebaseUser.email ?? ''}|${currentProfile.role}`;
+          if (Date.now() < coachRosterPermissionDeniedUntilRef.current) {
+            /* cooldown after permission-denied */
+          } else if (coachSyncSig === lastSuccessfulCoachRosterSyncSigRef.current) {
+            /* already synced this payload */
+          } else {
+            void syncCoachRosterFromProfile({
+              organizationId: currentProfile.organizationId,
+              uid: firebaseUser.uid,
+              displayName,
+              email: firebaseUser.email,
+              profileRole: currentProfile.role,
+            })
+              .then(() => {
+                lastSuccessfulCoachRosterSyncSigRef.current = coachSyncSig;
+              })
+              .catch((e: unknown) => {
+                const code =
+                  e && typeof e === 'object' && 'code' in e
+                    ? String((e as { code: unknown }).code)
+                    : '';
+                if (code === 'permission-denied') {
+                  coachRosterPermissionDeniedUntilRef.current = Date.now() + 5 * 60 * 1000;
+                }
+                logger.debug('[AUTH] Coach roster sync skipped:', e);
+              });
+          }
+        }
 
         // 4. Subscribe to Org Settings
         if (currentProfile.organizationId) {
@@ -200,7 +268,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 type: orgData.type,
                 region: orgData.region,
                 brandColor: orgData.brandColor || '#03dee2',
-                gradientId: orgData.gradientId || 'purple-indigo',
+                gradientId: orgData.gradientId || 'volt',
                 logoUrl: orgData.logoUrl,
                 customBrandingEnabled: orgData.customBrandingEnabled,
                 subscription: orgData.subscription,
@@ -264,45 +332,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = async (email: string, password: string, displayName: string) => {
     const auth = getFirebaseAuth();
     const db = getDb();
-    
-    // Create Firebase Auth user
+
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const newUser = userCredential.user;
-    
-    // Update display name
+
     await updateProfile(newUser, { displayName });
-    
-    // Create user profile document
-    const userProfile: UserProfile = {
+
+    await provisionStaffShellOrg(db, {
       uid: newUser.uid,
-      organizationId: `org-${newUser.uid}`, // Initial org tied to user
-      role: 'org_admin',
+      email,
       displayName,
-      onboardingCompleted: false, // Explicitly set to false for new users
-    };
-    
-    await setDoc(doc(db, 'userProfiles', newUser.uid), userProfile);
-    
-    // Create initial organization document (minimal, will be populated during onboarding)
-    await setDoc(doc(db, 'organizations', `org-${newUser.uid}`), {
-      name: '',
-      ownerId: newUser.uid,
-      customBrandingEnabled: false,
-      subscription: {
-        plan: 'starter',
-        planKind: 'pending_onboarding',
-        status: 'trial',
-        trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-        billingEmail: email,
-        clientSeats: GYM_TRIAL_CLIENT_CAP,
-        clientCap: GYM_TRIAL_CLIENT_CAP,
-        trialClientCap: GYM_TRIAL_CLIENT_CAP,
-      },
-      createdAt: serverTimestamp(),
-      ...(isTestEmail(email) && { metadata: { isTest: true } }),
     });
-    
-    // State will be updated by onAuthStateChanged listener
   };
 
   const signInWithGoogle = async () => {
@@ -314,30 +354,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const profileRef = doc(db, 'userProfiles', newUser.uid);
     const profileSnap = await getDoc(profileRef);
     if (!profileSnap.exists()) {
-      const userProfile: UserProfile = {
+      await provisionStaffShellOrg(db, {
         uid: newUser.uid,
-        organizationId: `org-${newUser.uid}`,
-        role: 'org_admin',
-        displayName: newUser.displayName || 'Coach',
-        onboardingCompleted: false,
-      };
-      await setDoc(profileRef, userProfile);
-      await setDoc(doc(db, 'organizations', `org-${newUser.uid}`), {
-        name: '',
-        ownerId: newUser.uid,
-        customBrandingEnabled: false,
-        subscription: {
-          plan: 'starter',
-          planKind: 'pending_onboarding',
-          status: 'trial',
-          trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-          billingEmail: newUser.email || '',
-          clientSeats: GYM_TRIAL_CLIENT_CAP,
-          clientCap: GYM_TRIAL_CLIENT_CAP,
-          trialClientCap: GYM_TRIAL_CLIENT_CAP,
-        },
-        createdAt: serverTimestamp(),
-        ...(isTestEmail(newUser.email || '') && { metadata: { isTest: true } }),
+        email: newUser.email || '',
+        displayName: deriveInitialStaffDisplayName(newUser.email, newUser.displayName),
       });
     }
   };
@@ -351,30 +371,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const profileRef = doc(db, 'userProfiles', newUser.uid);
     const profileSnap = await getDoc(profileRef);
     if (!profileSnap.exists()) {
-      const userProfile: UserProfile = {
+      await provisionStaffShellOrg(db, {
         uid: newUser.uid,
-        organizationId: `org-${newUser.uid}`,
-        role: 'org_admin',
-        displayName: newUser.displayName || 'Coach',
-        onboardingCompleted: false,
-      };
-      await setDoc(profileRef, userProfile);
-      await setDoc(doc(db, 'organizations', `org-${newUser.uid}`), {
-        name: '',
-        ownerId: newUser.uid,
-        customBrandingEnabled: false,
-        subscription: {
-          plan: 'starter',
-          planKind: 'pending_onboarding',
-          status: 'trial',
-          trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-          billingEmail: newUser.email || '',
-          clientSeats: GYM_TRIAL_CLIENT_CAP,
-          clientCap: GYM_TRIAL_CLIENT_CAP,
-          trialClientCap: GYM_TRIAL_CLIENT_CAP,
-        },
-        createdAt: serverTimestamp(),
-        ...(isTestEmail(newUser.email || '') && { metadata: { isTest: true } }),
+        email: newUser.email || '',
+        displayName: deriveInitialStaffDisplayName(newUser.email, newUser.displayName),
       });
     }
   };
@@ -415,10 +415,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               const db = getDb();
 
               // Find the client profile doc by email across all orgs
-              const { collectionGroup, where: fbWhere, getDocs: fbGetDocs, query: fbQuery, updateDoc: fbUpdate } = await import('firebase/firestore');
+              const {
+                collectionGroup,
+                where: fbWhere,
+                getDocs: fbGetDocs,
+                query: fbQuery,
+                updateDoc: fbUpdate,
+                limit: fbLimit,
+              } = await import('firebase/firestore');
               const clientQ = fbQuery(
                 collectionGroup(db, 'clients'),
                 fbWhere('email', '==', clientEmail),
+                fbLimit(CLIENT_EMAIL_LOOKUP_LIMIT),
               );
               const clientSnap = await fbGetDocs(clientQ);
               for (const clientDoc of clientSnap.docs) {

@@ -48,23 +48,23 @@ const PlatformSetup = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="w-full max-w-md text-center">
         {/* Logo */}
         <div className="mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-slate-800 border border-slate-700 mb-4">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-foreground/90 border border-border mb-4">
             <Shield className="w-10 h-10 text-indigo-400" />
           </div>
           <h1 className="text-2xl font-bold text-white">Platform Setup</h1>
-          <p className="text-sm text-slate-400 mt-2">One-time initialization</p>
+          <p className="text-sm text-muted-foreground mt-2">One-time initialization</p>
         </div>
 
         {/* Card */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8">
+        <div className="bg-foreground border border-border rounded-2xl p-8">
           {status === 'checking' && (
             <div className="flex flex-col items-center gap-4">
               <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
-              <p className="text-slate-400">Checking setup status...</p>
+              <p className="text-muted-foreground">Checking setup status...</p>
             </div>
           )}
 
@@ -72,14 +72,14 @@ const PlatformSetup = () => {
             <div className="space-y-6">
               <div className="text-left space-y-4">
                 <h2 className="text-lg font-semibold text-white">Initialize Platform</h2>
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-muted-foreground">
                   This will create the platform administrator account for:
                 </p>
-                <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+                <div className="bg-muted/40 rounded-lg p-4 border border-border">
                   <p className="text-white font-medium">michael@one-assess.com</p>
-                  <p className="text-xs text-slate-500 mt-1">Michael Brown - Platform Owner</p>
+                  <p className="text-xs text-muted-foreground mt-1">Michael Brown - Platform Owner</p>
                 </div>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   After setup, you'll be prompted to set your password on first login.
                 </p>
               </div>
@@ -108,7 +108,7 @@ const PlatformSetup = () => {
               </div>
               <div>
                 <p className="text-white font-medium">Setup Complete!</p>
-                <p className="text-sm text-slate-400 mt-1">{message}</p>
+                <p className="text-sm text-muted-foreground mt-1">{message}</p>
               </div>
             </div>
           )}
@@ -125,7 +125,7 @@ const PlatformSetup = () => {
               <Button
                 onClick={() => setStatus('ready')}
                 variant="outline"
-                className="mt-2 border-slate-700 text-slate-300"
+                className="mt-2 border-border text-muted-foreground/60"
               >
                 Try Again
               </Button>

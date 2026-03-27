@@ -11,14 +11,47 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Custom claim set via Admin SDK (optional; speeds up access before platform_admins/{uid} exists)
+    function isPlatformAdminToken() {
+      return request.auth != null &&
+        request.auth.token.platformAdmin == true;
+    }
+
     function isPlatformAdmin() {
       return isAuthenticated() &&
-        exists(/databases/$(database)/documents/platform_admins/$(request.auth.uid));
+        (exists(/databases/$(database)/documents/platform_admins/$(request.auth.uid)) ||
+          isPlatformAdminToken());
+    }
+
+    // First-time bootstrap: lookup row lists this auth uid, or pending_* before migration
+    function platformAdminLookupForAuth() {
+      return get(/databases/$(database)/documents/platform_admin_lookup/$(request.auth.token.email));
+    }
+
+    function canBootstrapPlatformAdminDoc(adminId) {
+      return isAuthenticated() &&
+        request.auth.uid == adminId &&
+        request.auth.token.email is string &&
+        request.auth.token.email.size() > 0 &&
+        exists(/databases/$(database)/documents/platform_admin_lookup/$(request.auth.token.email)) &&
+        (platformAdminLookupForAuth().data.uid == adminId ||
+          platformAdminLookupForAuth().data.uid.matches('pending_.+'));
     }
 
     // Platform admin is not currently impersonating an org (blocks writes during impersonation)
     function isNotImpersonating() {
       return !exists(/databases/$(database)/documents/platform/active_impersonations/sessions/$(request.auth.uid));
+    }
+
+    // Zero-friction /try flow: org id is `{uid}_sandbox` (see SandboxTrial.tsx)
+    function ownsSandboxOrgId(orgId) {
+      return isAuthenticated() && orgId == request.auth.uid + '_sandbox';
+    }
+
+    function sandboxOrgPayloadValid() {
+      let d = request.resource.data;
+      return d.get('metadata', {}).get('isSandbox', false) == true &&
+        d.get('subscription', {}).get('plan', '') == 'sandbox';
     }
 
     // Coach belongs to the given org (checked against the coaches subcollection)
@@ -27,10 +60,10 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/organizations/$(orgId)/coaches/$(request.auth.uid));
     }
 
-    // Coach has admin or owner role in the given org
+    // Coach has admin or owner role in the given org (org_admin matches app userProfiles.role)
     function isOrgAdmin(orgId) {
       return isOrgCoach(orgId) &&
-        get(/databases/$(database)/documents/organizations/$(orgId)/coaches/$(request.auth.uid)).data.role in ['owner', 'admin'];
+        get(/databases/$(database)/documents/organizations/$(orgId)/coaches/$(request.auth.uid)).data.role in ['owner', 'admin', 'org_admin'];
     }
 
     // Platform admin has data access to org (owner's org is always comped)
@@ -50,26 +83,52 @@ service cloud.firestore {
         (isPlatformAdmin() && hasDataAccess(orgId) && isNotImpersonating());
     }
 
-    /** Max active (non-archived) clients for billing — subscription.clientCap, legacy clientSeats, or free tier 2 */
+    // Max active (non-archived) clients for billing - subscription.clientCap, legacy clientSeats, or free tier 2
     function effectiveClientCap(orgId) {
       let org = get(/databases/$(database)/documents/organizations/$(orgId)).data;
       let sub = org.get('subscription', {});
       let cap = sub.get('clientCap', null);
-      if (cap != null) {
-        return int(cap);
-      }
       let seats = sub.get('clientSeats', null);
-      if (seats != null) {
-        return int(seats);
-      }
-      return 2;
+      return cap != null ? int(cap) : (seats != null ? int(seats) : 2);
     }
 
-    /** Denormalized active client count (maintained by Cloud Function aggregation) */
+    // Denormalized active client count (maintained by Cloud Function aggregation)
     function statsClientCount(orgId) {
       let org = get(/databases/$(database)/documents/organizations/$(orgId)).data;
       let stats = org.get('stats', {});
       return int(stats.get('clientCount', 0));
+    }
+
+    // Owning coach UID on a public report doc (for subcollection writes).
+    function publicReportCoachUid(token) {
+      return get(/databases/$(database)/documents/publicReports/$(token)).data.coachUid;
+    }
+
+    // AI usage log create — coaches append-only for their own UID and org (no update/delete from client)
+    function aiUsageLogCreateKeysValid() {
+      return request.resource.data.keys().hasOnly([
+        'timestamp', 'type', 'status', 'provider', 'coachUid',
+        'organizationId', 'costEstimate', 'costFils', 'tokensUsed', 'metadata'
+      ]);
+    }
+
+    function aiUsageLogCreateAllowed() {
+      let d = request.resource.data;
+      return aiUsageLogCreateKeysValid() &&
+        isAuthenticated() &&
+        isNotImpersonating() &&
+        d.coachUid == request.auth.uid &&
+        d.organizationId is string &&
+        d.organizationId.size() > 0 &&
+        isOrgCoach(d.organizationId) &&
+        d.type in ['ocr_inbody', 'posture_analysis', 'exercise_recommendation', 'comparison_narrative'] &&
+        d.status in ['local_success', 'ai_fallback', 'ai_success', 'error'] &&
+        d.provider in ['local', 'gemini', 'mediapipe', 'pattern'] &&
+        d.costEstimate is number &&
+        d.costFils is number &&
+        d.tokensUsed is number &&
+        d.metadata is map &&
+        d.timestamp == request.time;
     }
 
     // =========================================================
@@ -77,16 +136,26 @@ service cloud.firestore {
     // =========================================================
 
     match /organizations/{orgId} {
-      allow read: if isPlatformAdmin() || isOrgCoach(orgId);
-      allow write: if isPlatformAdmin() || isOrgAdmin(orgId);
+      allow read: if isPlatformAdmin() || isOrgCoach(orgId) || ownsSandboxOrgId(orgId);
+      allow create, update: if isPlatformAdmin() || isOrgAdmin(orgId) ||
+        (ownsSandboxOrgId(orgId) && sandboxOrgPayloadValid());
+      allow delete: if isPlatformAdmin() || isOrgAdmin(orgId);
 
       // Coaches
       match /coaches/{coachId} {
         allow read: if canReadOrgData(orgId);
         allow write: if isOrgAdmin(orgId) ||
           (isPlatformAdmin() && hasDataAccess(orgId) && isNotImpersonating());
-        // Allow self-write on invite accept
+        // First row (e.g. sandbox bootstrap, invite accept)
         allow create: if isAuthenticated() && request.auth.uid == coachId;
+        // Coaches may update only their own roster row: displayName + email, no privilege escalation
+        allow update: if isAuthenticated() && request.auth.uid == coachId &&
+          exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.organizationId == orgId &&
+          request.resource.data.uid == request.auth.uid &&
+          (!resource.data.keys().hasAny(['uid']) || resource.data.uid == request.auth.uid) &&
+          request.resource.data.role == resource.data.role &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'email']);
       }
 
       // Clients + all subcollections (current, sessions, roadmap, achievements, drafts)
@@ -141,6 +210,19 @@ service cloud.firestore {
     }
 
     // =========================================================
+    // ONBOARDING SESSIONS  (audit / resume — one doc per uid)
+    // =========================================================
+
+    match /onboarding_sessions/{sessionUid} {
+      allow read: if isAuthenticated() && request.auth.uid == sessionUid;
+      // Doc id must match auth uid; userId field prevents cross-user payloads.
+      allow create, update: if isAuthenticated() &&
+        request.auth.uid == sessionUid &&
+        request.resource.data.userId == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // =========================================================
     // USER PROFILES  (one per Firebase Auth user — coaches)
     // =========================================================
 
@@ -160,9 +242,53 @@ service cloud.firestore {
     // =========================================================
 
     match /publicReports/{token} {
-      allow read: if true; // Token is the credential — anyone with the URL can read
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated();
+      allow read: if true; // Token is the credential - anyone with the URL can read
+      allow create: if isAuthenticated() && request.resource.data.coachUid == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.coachUid == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.coachUid == request.auth.uid;
+    }
+
+    // Token-scoped subcollections (snapshots, achievements, notifications, client check-ins)
+    match /publicReports/{token}/snapshots/{snapshotId} {
+      allow read: if true;
+      allow write: if isAuthenticated() && publicReportCoachUid(token) == request.auth.uid;
+    }
+
+    match /publicReports/{token}/achievements/{achievementId} {
+      allow read: if true;
+      allow write: if isAuthenticated() && publicReportCoachUid(token) == request.auth.uid;
+    }
+
+    match /publicReports/{token}/notifications/{notificationId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && publicReportCoachUid(token) == request.auth.uid;
+      allow update: if
+        (isAuthenticated() && publicReportCoachUid(token) == request.auth.uid) ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if isAuthenticated() && publicReportCoachUid(token) == request.auth.uid;
+    }
+
+    match /publicReports/{token}/lifestyleCheckins/{checkinId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    match /publicReports/{token}/preSessionCheckins/{checkinId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    // =========================================================
+    // PUBLIC ROADMAPS  (token mirror for client roadmap viewer)
+    // Written when coach sets roadmap shareToken; doc ID = that token.
+    // =========================================================
+
+    match /publicRoadmaps/{token} {
+      allow read: if true;
+      allow create: if isAuthenticated() && request.resource.data.coachUid == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.coachUid == request.auth.uid;
       allow delete: if isAuthenticated() && resource.data.coachUid == request.auth.uid;
     }
 
@@ -171,9 +297,23 @@ service cloud.firestore {
     // =========================================================
 
     match /live_sessions/{sessionId} {
-      allow read: if true;
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated();
+      // Single-doc fetch: sessionId + companionToken are unguessable; companion listens without auth.
+      allow get: if true;
+      // Org-scoped listing for coach dashboards (matches client queries that filter organizationId).
+      allow list: if isAuthenticated() &&
+        resource.data.organizationId != null &&
+        (isOrgCoach(resource.data.organizationId) ||
+          (isPlatformAdmin() && hasDataAccess(resource.data.organizationId)));
+
+      allow create: if isAuthenticated() &&
+        request.resource.data.organizationId != null &&
+        request.resource.data.clientId != null &&
+        isOrgCoach(request.resource.data.organizationId);
+
+      allow update: if isAuthenticated() &&
+        resource.data.organizationId != null &&
+        isOrgCoach(resource.data.organizationId);
+
       // Unauthenticated companion (client mobile) may only update capture fields
       allow update: if !isAuthenticated() &&
         exists(/databases/$(database)/documents/live_sessions/$(sessionId)) &&
@@ -238,12 +378,16 @@ service cloud.firestore {
 
     match /platform_admins/{adminId} {
       allow read: if isAuthenticated();
-      allow write: if isPlatformAdmin();
+      allow create, update: if isPlatformAdmin() || canBootstrapPlatformAdminDoc(adminId);
+      allow delete: if isPlatformAdmin();
     }
 
+    // Canonical lookup id must equal lowercased auth email (see PLATFORM.admins.lookupKey).
+    // get: unauthenticated platform login checks email against lookup; ids are guessable only if email is known.
     match /platform_admin_lookup/{lookupId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
+      allow get: if true;
+      allow list: if false;
+      allow create, update, delete: if false;
     }
 
     // =========================================================
@@ -256,10 +400,10 @@ service cloud.firestore {
     }
 
     // =========================================================
-    // AI USAGE LOGS  (root-level, written by Cloud Functions)
+    // AI USAGE LOGS  (root-level)
     // Platform admins can read all logs.
-    // Org coaches can read logs scoped to their organisation.
-    // Writes are Cloud Function only (no client write path).
+    // Org coaches can read logs for their organisation (organizationId set on doc).
+    // Coaches may create append-only logs for self + org (validated). Updates/deletes: Admin SDK / platform only.
     // =========================================================
 
     match /ai_usage_logs/{logId} {
@@ -267,7 +411,16 @@ service cloud.firestore {
         (isAuthenticated() &&
           resource.data.organizationId != null &&
           isOrgCoach(resource.data.organizationId));
-      allow write: if false;
+      allow create: if aiUsageLogCreateAllowed();
+      allow update, delete: if false;
+    }
+
+    // =========================================================
+    // REMOTE ASSESSMENT TOKENS  (Admin SDK / Cloud Functions only)
+    // =========================================================
+
+    match /remoteAssessmentTokens/{tokenId} {
+      allow read, write: if false;
     }
 
     // =========================================================

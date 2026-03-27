@@ -31,7 +31,7 @@ export const FieldAssignedCoach: React.FC<FieldAssignedCoachProps> = ({
   const selectedCoachUid = (value as string) || '';
 
   if (loading) {
-    return <div className="text-sm text-slate-500 mt-2">Loading coaches...</div>;
+    return <div className="text-sm text-muted-foreground mt-2">Loading coaches...</div>;
   }
 
   if (coaches.length === 0) {
@@ -58,12 +58,12 @@ export const FieldAssignedCoach: React.FC<FieldAssignedCoachProps> = ({
               onClick={() => handleChange(coach.uid)}
               className={`flex min-h-[64px] h-auto w-full items-center gap-4 rounded-2xl border-2 px-5 py-3 text-left transition-all ${
                 isSelected
-                  ? 'border-slate-900 bg-slate-900 text-white shadow-lg scale-[1.02]'
-                  : `bg-white text-slate-600 ${colorClass}`
+                  ? 'border-foreground bg-foreground text-white shadow-lg scale-[1.02]'
+                  : `bg-background text-foreground-secondary ${colorClass}`
               }`}
             >
               <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-                isSelected ? 'bg-white/20 border-white/20 text-white' : 'border-slate-200 bg-white'
+                isSelected ? 'bg-background/20 border-white/20 text-white' : 'border-border bg-background'
               }`}>
                 {isSelected && <Check className="h-4 w-4 stroke-[3]" />}
               </div>
@@ -74,7 +74,7 @@ export const FieldAssignedCoach: React.FC<FieldAssignedCoachProps> = ({
                 </span>
                 {coach.email && (
                   <span className={`text-[10px] font-medium leading-relaxed ${
-                    isSelected ? 'text-white/70' : 'text-slate-500'
+                    isSelected ? 'text-white/70' : 'text-muted-foreground'
                   }`}>
                     {coach.email}
                   </span>
@@ -93,7 +93,7 @@ export const FieldAssignedCoach: React.FC<FieldAssignedCoachProps> = ({
         value={selectedCoachUid}
         onValueChange={(val) => handleChange(val)}
       >
-        <SelectTrigger className="h-14 rounded-2xl border-2 border-slate-200 bg-white text-slate-900 font-bold">
+        <SelectTrigger className="h-14 rounded-2xl border-2 border-border bg-background text-foreground font-bold">
           <SelectValue placeholder="Select a coach" />
         </SelectTrigger>
         <SelectContent className="rounded-2xl">
@@ -104,7 +104,7 @@ export const FieldAssignedCoach: React.FC<FieldAssignedCoachProps> = ({
                   {coach.displayName}
                 </span>
                 {coach.email && (
-                  <span className="text-xs text-slate-500">{coach.email}</span>
+                  <span className="text-xs text-muted-foreground">{coach.email}</span>
                 )}
               </div>
             </SelectItem>

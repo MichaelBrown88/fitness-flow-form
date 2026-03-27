@@ -49,6 +49,10 @@ interface CompanionUIProps {
   isProcessingOcr: boolean;
   flowState?: 'permissions' | 'waiting_level' | 'waiting_pose' | 'ready' | 'capturing' | 'complete';
   guideBoxState?: { color: 'red' | 'amber' | 'green'; message: string };
+  /** Posture + Gemini Live: show status when connecting or after errors. */
+  geminiConnectionStatus?: 'idle' | 'connecting' | 'open' | 'error';
+  geminiConnectionError?: string | null;
+  onGeminiRetry?: () => void;
 }
 
 export function CompanionUI({
@@ -75,6 +79,9 @@ export function CompanionUI({
   isProcessingOcr,
   flowState = 'permissions',
   guideBoxState,
+  geminiConnectionStatus,
+  geminiConnectionError,
+  onGeminiRetry,
 }: CompanionUIProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -146,14 +153,14 @@ export function CompanionUI({
           </div>
           <button
             onClick={() => setOcrReviewData(null)}
-            className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center"
+            className="h-8 w-8 rounded-full bg-background/10 flex items-center justify-center"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
         <div className="flex-1 overflow-y-auto space-y-3 mb-6">
           {Object.entries(ocrReviewData).map(([key, value]) => (
-            <div key={key} className="bg-white/5 rounded-xl p-4 border border-white/10">
+            <div key={key} className="bg-background/5 rounded-xl p-4 border border-white/10">
               <label className="text-[10px] font-black uppercase tracking-[0.15em] text-primary mb-2 block">
                 {fieldLabels[key] || key}
               </label>
@@ -164,7 +171,7 @@ export function CompanionUI({
                   onChange={(e) =>
                     setOcrReviewData((prev) => (prev ? { ...prev, [key]: e.target.value } : null))
                   }
-                  className="bg-white/10 border-white/20 text-white text-lg font-bold h-10 flex-1"
+                  className="bg-background/10 border-white/20 text-white text-lg font-bold h-10 flex-1"
                 />
               </div>
             </div>
@@ -174,11 +181,15 @@ export function CompanionUI({
           <Button
             variant="outline"
             onClick={() => setOcrReviewData(null)}
-            className="flex-1 bg-white/10 text-white"
+            className="flex-1 bg-background/10 text-white"
           >
             Cancel
           </Button>
-          <Button onClick={onApplyOcr} disabled={isUploading > 0} className="flex-1 bg-primary">
+          <Button
+            onClick={onApplyOcr}
+            disabled={isUploading > 0}
+            className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+          >
             Apply
           </Button>
         </div>
@@ -226,6 +237,40 @@ export function CompanionUI({
         <div className="w-10" />
       </div>
 
+      {mode === 'posture' &&
+        geminiConnectionStatus &&
+        (geminiConnectionStatus === 'connecting' || geminiConnectionStatus === 'error') && (
+          <div className="absolute top-14 left-0 right-0 z-20 flex justify-center px-4 pointer-events-auto">
+            <div className="flex flex-col sm:flex-row items-center gap-2 max-w-md rounded-xl bg-black/75 backdrop-blur-sm border border-white/15 px-4 py-2 text-center">
+              {geminiConnectionStatus === 'connecting' && (
+                <span className="text-[11px] font-semibold text-white/90 flex items-center gap-2">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+                  Connecting voice guide…
+                </span>
+              )}
+              {geminiConnectionStatus === 'error' && (
+                <>
+                  <span className="text-[11px] text-red-200/95">
+                    {geminiConnectionError || 'Voice guide unavailable'}
+                  </span>
+                  {onGeminiRetry ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="h-8 text-xs shrink-0 bg-background/20 text-foreground border-white/20 hover:bg-background/30"
+                      onClick={onGeminiRetry}
+                    >
+                      <RefreshCcw className="h-3.5 w-3.5 mr-1.5" />
+                      Retry
+                    </Button>
+                  ) : null}
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
       {/* Guide Box - Almost full height for maximum client visibility */}
       {mode !== 'bodycomp' && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 pt-12">
@@ -272,7 +317,7 @@ export function CompanionUI({
           {mode === 'bodycomp' ? (
             <button
               onClick={onCapture}
-              className="h-16 w-16 rounded-full border-4 border-white bg-white/20 flex items-center justify-center"
+              className="h-16 w-16 rounded-full border-4 border-white bg-background/20 flex items-center justify-center"
             >
               <Camera className="h-6 w-6 text-white" />
             </button>
@@ -281,7 +326,7 @@ export function CompanionUI({
             <div className="flex flex-col items-center gap-3 w-full max-w-xs">
               <Button
                 onClick={requestPermission}
-                className="bg-primary h-14 px-8 rounded-xl text-sm font-semibold shadow-lg w-full"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 h-14 px-8 rounded-xl text-sm font-semibold shadow-lg w-full"
               >
                 Enable Camera & Motion
               </Button>
@@ -289,7 +334,7 @@ export function CompanionUI({
                 <Button
                   variant="outline"
                   onClick={() => fileInputRef.current?.click()}
-                  className="h-12 px-6 rounded-xl text-xs font-bold bg-white/10 border-white/30 text-white hover:bg-white/20 w-full flex items-center justify-center gap-2"
+                  className="h-12 px-6 rounded-xl text-xs font-bold bg-background/10 border-white/30 text-white hover:bg-background/20 w-full flex items-center justify-center gap-2"
                 >
                   <ImagePlus className="h-4 w-4" />
                   Upload from Photos
@@ -315,7 +360,7 @@ export function CompanionUI({
                 <Button
                   variant="outline"
                   onClick={() => fileInputRef.current?.click()}
-                  className="h-10 px-4 rounded-xl text-xs font-bold bg-white/10 border-white/30 text-white hover:bg-white/20 flex items-center justify-center gap-2"
+                  className="h-10 px-4 rounded-xl text-xs font-bold bg-background/10 border-white/30 text-white hover:bg-background/20 flex items-center justify-center gap-2"
                 >
                   <ImagePlus className="h-3 w-3" />
                   Upload from Photos
@@ -327,7 +372,7 @@ export function CompanionUI({
             <Button
               variant="outline"
               onClick={() => fileInputRef.current?.click()}
-              className="h-12 px-6 rounded-xl text-xs font-bold bg-white/10 border-white/30 text-white hover:bg-white/20 flex items-center justify-center gap-2"
+              className="h-12 px-6 rounded-xl text-xs font-bold bg-background/10 border-white/30 text-white hover:bg-background/20 flex items-center justify-center gap-2"
             >
               <ImagePlus className="h-4 w-4" />
               Upload from Photos

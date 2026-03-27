@@ -1,4 +1,5 @@
 import React from 'react';
+import { CHART_HEX } from '@/lib/design/chartColors';
 
 type Trend = 'up' | 'down' | 'neutral';
 
@@ -11,13 +12,13 @@ interface MiniScoreRingProps {
 const STROKE_COLORS: Record<Trend, string> = {
   up: 'hsl(var(--score-green-fg))',
   down: 'hsl(var(--score-red-fg))',
-  neutral: '#cbd5e1', // slate-300
+  neutral: CHART_HEX.neutralTrend,
 };
 
 const TEXT_COLORS: Record<Trend, string> = {
   up: 'text-score-green-fg',
   down: 'text-score-red-fg',
-  neutral: 'text-slate-700',
+  neutral: 'text-muted-foreground',
 };
 
 const MiniScoreRing: React.FC<MiniScoreRingProps> = ({ score, trend, size = 48 }) => {
@@ -36,7 +37,7 @@ const MiniScoreRing: React.FC<MiniScoreRingProps> = ({ score, trend, size = 48 }
           cy={center}
           r={radius}
           fill="transparent"
-          stroke="#f1f5f9"
+          stroke={CHART_HEX.ringTrackLight}
           strokeWidth={strokeWidth}
         />
         <circle

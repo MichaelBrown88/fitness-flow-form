@@ -8,6 +8,8 @@
  * they don't expose sensitive system information.
  */
 
+import { logger } from '@/lib/utils/logger';
+
 /**
  * Sanitizes error messages for client display
  * Prevents leaking sensitive system information, stack traces, or implementation details
@@ -18,9 +20,9 @@
 export function getSafeErrorMessage(error: unknown, context?: string): string {
   // Log full error details server-side (not exposed to client)
   if (context) {
-    console.error(`[${context}]`, error);
+    logger.error(`[${context}]`, error);
   } else {
-    console.error('Error:', error);
+    logger.error('Error:', error);
   }
   
   // Return generic error messages to prevent information leakage

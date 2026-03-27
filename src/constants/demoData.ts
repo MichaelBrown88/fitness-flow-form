@@ -3,11 +3,13 @@ import type { CoachPlan } from '@/lib/recommendations/types';
 
 export const DEMO_SCORES: ScoreSummary = {
   overall: 72,
+  fullProfileScore: 72,
   categories: [
     {
       id: 'bodyComp',
       title: 'Body Composition',
       score: 78,
+      assessed: true,
       details: [
         { id: 'bodyFat', label: 'Body Fat', value: 18.5, unit: '%', score: 80 },
         { id: 'bmi', label: 'BMI', value: 24.2, unit: 'kg/m²', score: 82 },
@@ -20,6 +22,7 @@ export const DEMO_SCORES: ScoreSummary = {
       id: 'cardio',
       title: 'Cardiovascular Fitness',
       score: 65,
+      assessed: true,
       details: [
         { id: 'restingHR', label: 'Resting Heart Rate', value: 72, unit: 'bpm', score: 62 },
         { id: 'recoveryHR', label: 'Recovery Heart Rate', value: 28, unit: 'bpm drop', score: 68 },
@@ -31,6 +34,7 @@ export const DEMO_SCORES: ScoreSummary = {
       id: 'strength',
       title: 'Strength & Power',
       score: 70,
+      assessed: true,
       details: [
         { id: 'pushUps', label: 'Push-Ups', value: 28, unit: 'reps', score: 72 },
         { id: 'plank', label: 'Plank Hold', value: 65, unit: 'sec', score: 60 },
@@ -43,6 +47,7 @@ export const DEMO_SCORES: ScoreSummary = {
       id: 'movementQuality',
       title: 'Movement Quality',
       score: 68,
+      assessed: true,
       details: [
         { id: 'shoulderMob', label: 'Shoulder Mobility', value: 'Limited', score: 55 },
         { id: 'hipMob', label: 'Hip Mobility', value: 'Adequate', score: 72 },
@@ -57,6 +62,7 @@ export const DEMO_SCORES: ScoreSummary = {
       id: 'lifestyle',
       title: 'Lifestyle Factors',
       score: 74,
+      assessed: true,
       details: [
         { id: 'sleep', label: 'Sleep Quality', value: 'Good', score: 78 },
         { id: 'stress', label: 'Stress Level', value: 'Moderate', score: 60 },
@@ -164,6 +170,7 @@ export const DEMO_PLAN: CoachPlan = {
 
 export const DEMO_FORM_DATA = {
   clientName: 'Alex Thompson',
+  fullName: 'Alex Thompson',
   age: '32',
   gender: 'male',
   height: '178',

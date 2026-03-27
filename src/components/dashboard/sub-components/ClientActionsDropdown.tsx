@@ -83,58 +83,58 @@ export const ClientActionsDropdown: React.FC<ClientActionsDropdownProps> = ({
         <Button
           variant="ghost"
           size="sm"
-          className="h-9 w-9 sm:h-8 sm:w-8 p-0 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100"
+          className="h-9 w-9 rounded-lg p-0 text-muted-foreground hover:bg-muted hover:text-foreground sm:h-8 sm:w-8"
         >
           <MoreHorizontal className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-xl border-slate-200 p-1">
+      <DropdownMenuContent align="end" className="w-56 rounded-xl border-border p-1 shadow-xl">
         {/* View Section */}
-        <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 px-2 py-1.5">
+        <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground px-2 py-1.5">
           View
         </DropdownMenuLabel>
         <DropdownMenuItem
           onClick={() => navigate(`/client/${encodedName}`)}
-          className="rounded-lg text-xs font-bold px-2 py-2 cursor-pointer focus:bg-slate-50 gap-2"
+          className="rounded-lg text-xs font-bold px-2 py-2 cursor-pointer focus:bg-muted gap-2"
         >
-          <Eye className="h-3.5 w-3.5 text-slate-500" />
+          <Eye className="h-3.5 w-3.5 text-muted-foreground" />
           Client Dashboard
         </DropdownMenuItem>
         {onViewHistory && (
           <DropdownMenuItem
             onClick={() => onViewHistory(clientName)}
-            className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-slate-50 text-slate-600 gap-2"
+            className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-muted text-foreground-secondary gap-2"
           >
-            <History className="h-3.5 w-3.5 text-slate-400" />
+            <History className="h-3.5 w-3.5 text-muted-foreground" />
             View History
           </DropdownMenuItem>
         )}
         {latestAssessmentId && (
           <DropdownMenuItem
             onClick={() => navigate(`/coach/assessments/${latestAssessmentId}?clientName=${encodedName}`)}
-            className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-slate-50 text-slate-600 gap-2"
+            className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-muted text-foreground-secondary gap-2"
           >
-            <GitCompare className="h-3.5 w-3.5 text-slate-400" />
+            <GitCompare className="h-3.5 w-3.5 text-muted-foreground" />
             View Full Report
           </DropdownMenuItem>
         )}
         <DropdownMenuItem
           onClick={() => navigate(`/coach/clients/${encodedName}/roadmap`)}
-          className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-slate-50 text-slate-600 gap-2"
+          className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-muted text-foreground-secondary gap-2"
         >
-          <Map className="h-3.5 w-3.5 text-slate-400" />
+          <Map className="h-3.5 w-3.5 text-muted-foreground" />
           View Roadmap
         </DropdownMenuItem>
         {latestAssessmentId && (
           <DropdownMenuItem
             onClick={handleCopyReportLink}
             disabled={linkState === 'loading'}
-            className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-slate-50 text-slate-600 gap-2"
+            className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-muted text-foreground-secondary gap-2"
           >
             {linkState === 'copied' ? (
               <Check className="h-3.5 w-3.5 text-emerald-500" />
             ) : (
-              <Link2 className="h-3.5 w-3.5 text-slate-400" />
+              <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
             )}
             {linkState === 'copied'
               ? 'Copied!'
@@ -146,30 +146,30 @@ export const ClientActionsDropdown: React.FC<ClientActionsDropdownProps> = ({
           </DropdownMenuItem>
         )}
 
-        <DropdownMenuSeparator className="bg-slate-100" />
+        <DropdownMenuSeparator className="bg-muted" />
 
         {/* Manage Section */}
-        <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 px-2 py-1.5">
+        <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground px-2 py-1.5">
           Manage
         </DropdownMenuLabel>
         <DropdownMenuItem
           onClick={() => navigate(`/client/${encodedName}?edit=true`)}
-          className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-slate-50 text-slate-600 gap-2"
+          className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-muted text-foreground-secondary gap-2"
         >
-          <UserCog className="h-3.5 w-3.5 text-slate-400" />
+          <UserCog className="h-3.5 w-3.5 text-muted-foreground" />
           Edit Profile
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => navigate(`/client/${encodedName}?transfer=true`)}
-          className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-slate-50 text-slate-600 gap-2"
+          className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-muted text-foreground-secondary gap-2"
         >
-          <ArrowRightLeft className="h-3.5 w-3.5 text-slate-400" />
+          <ArrowRightLeft className="h-3.5 w-3.5 text-muted-foreground" />
           Transfer Client
         </DropdownMenuItem>
         {onPauseToggle && (
           <DropdownMenuItem
             onClick={onPauseToggle}
-            className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-slate-50 text-slate-600 gap-2"
+            className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-muted text-foreground-secondary gap-2"
           >
             {clientStatus === 'paused' ? (
               <>

@@ -65,7 +65,7 @@ export function GoalAndTrainingCard({ goalData, trainingHistory }: Props) {
               const pct = maxGoalCount > 0 ? Math.round((entry.value / maxGoalCount) * 100) : 0;
               return (
                 <div key={entry.name} className="flex items-center gap-3">
-                  <span className="text-xs text-slate-400 w-32 shrink-0 truncate" title={entry.name}>
+                  <span className="text-xs text-muted-foreground w-32 shrink-0 truncate" title={entry.name}>
                     {entry.name}
                   </span>
                   <div className="flex-1 bg-admin-bg rounded-full h-2.5 overflow-hidden">
@@ -74,7 +74,7 @@ export function GoalAndTrainingCard({ goalData, trainingHistory }: Props) {
                       style={{ width: `${pct}%`, backgroundColor: GOAL_COLORS[i % GOAL_COLORS.length] }}
                     />
                   </div>
-                  <span className="text-xs text-slate-500 w-8 text-right shrink-0">{entry.value}</span>
+                  <span className="text-xs text-muted-foreground w-8 text-right shrink-0">{entry.value}</span>
                 </div>
               );
             })}

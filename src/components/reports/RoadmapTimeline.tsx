@@ -5,28 +5,28 @@ export default function RoadmapTimeline({ phases }: { phases: RoadmapPhase[] }) 
   const totalWeeks = phases.reduce((acc, p) => acc + p.weeks, 0) || 1;
   return (
     <div className="space-y-4">
-      <div className="relative w-full rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="relative w-full rounded-lg border border-border bg-card p-4 shadow-sm">
         <div className="flex items-stretch gap-2">
           {phases.map((p, idx) => {
             const widthPct = (p.weeks / totalWeeks) * 100;
             return (
               <div
                 key={idx}
-                className="rounded-md border border-slate-200 bg-slate-50 p-3"
+                className="rounded-md border border-border bg-muted p-3"
                 style={{ width: `${widthPct}%` }}
               >
                 <div className="flex items-center justify-between">
-                  <h5 className="text-sm font-semibold text-slate-900 truncate pr-2">{p.title}</h5>
-                  <span className="text-xs text-slate-500 whitespace-nowrap">{p.weeks} wk</span>
+                  <h5 className="text-sm font-semibold text-foreground truncate pr-2">{p.title}</h5>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">{p.weeks} wk</span>
                 </div>
-                <div className="mt-2 h-2 w-full rounded-full bg-slate-200">
+                <div className="mt-2 h-2 w-full rounded-full bg-muted">
                   <div
                     className="h-2 rounded-full gradient-bg"
                     style={{ width: `${Math.min(100, p.expectedDelta)}%` }}
                     title={`Expected improvement ~${p.expectedDelta}%`}
                   />
                 </div>
-                <div className="mt-2 text-xs text-slate-600 line-clamp-2">{p.rationale}</div>
+                <div className="mt-2 text-xs text-muted-foreground line-clamp-2">{p.rationale}</div>
               </div>
             );
           })}
@@ -34,12 +34,12 @@ export default function RoadmapTimeline({ phases }: { phases: RoadmapPhase[] }) 
       </div>
       <div className="grid gap-3 md:grid-cols-2">
         {phases.map((p, idx) => (
-          <div key={`focus-${idx}`} className="rounded-lg border border-slate-200 bg-white p-3">
+          <div key={`focus-${idx}`} className="rounded-lg border border-border bg-card p-3">
             <div className="flex items-center justify-between">
-              <h6 className="font-semibold text-slate-900">{p.title}</h6>
+              <h6 className="font-semibold text-foreground">{p.title}</h6>
               <span className="text-xs text-gradient-dark">~+{p.expectedDelta}%</span>
             </div>
-            <ul className="mt-2 list-disc pl-5 text-sm text-slate-700">
+            <ul className="mt-2 list-disc pl-5 text-sm text-foreground">
               {p.focus.slice(0, 4).map((f, i) => <li key={i}>{f}</li>)}
             </ul>
           </div>

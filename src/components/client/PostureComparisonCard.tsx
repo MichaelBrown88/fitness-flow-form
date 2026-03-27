@@ -60,19 +60,6 @@ export function PostureComparisonCard({ snapshots }: PostureComparisonCardProps)
   const [rightIdx, setRightIdx] = useState(1);
   const [activeView, setActiveView] = useState<PostureView>('front');
 
-  if (sessionsWithImages.length < 2) {
-    return (
-      <div className="rounded-xl bg-slate-50 px-5 py-8 text-center space-y-1">
-        <p className="text-sm font-semibold text-slate-600">Posture comparison available after 2 sessions</p>
-        <p className="text-xs text-slate-400">
-          {sessionsWithImages.length === 0
-            ? 'No posture photos captured yet. Use Companion Mode during an assessment.'
-            : 'One session captured. Complete another assessment with posture to compare.'}
-        </p>
-      </div>
-    );
-  }
-
   const leftSession = sessionsWithImages[leftIdx];
   const rightSession = sessionsWithImages[rightIdx];
 
@@ -80,6 +67,19 @@ export function PostureComparisonCard({ snapshots }: PostureComparisonCardProps)
     const views: PostureView[] = ['front', 'side-left', 'back', 'side-right'];
     return views.filter((v) => leftSession?.images[v] || rightSession?.images[v]);
   }, [leftSession, rightSession]);
+
+  if (sessionsWithImages.length < 2) {
+    return (
+      <div className="rounded-xl bg-muted/50 px-5 py-8 text-center space-y-1">
+        <p className="text-sm font-semibold text-foreground-secondary">Posture comparison available after 2 sessions</p>
+        <p className="text-xs text-muted-foreground">
+          {sessionsWithImages.length === 0
+            ? 'No posture photos captured yet. Use Companion Mode during an assessment.'
+            : 'One session captured. Complete another assessment with posture to compare.'}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -93,8 +93,8 @@ export function PostureComparisonCard({ snapshots }: PostureComparisonCardProps)
               onClick={() => setActiveView(view)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                 activeView === view
-                  ? 'bg-slate-900 text-white'
-                  : 'text-slate-500 hover:bg-slate-100'
+                  ? 'bg-foreground text-white'
+                  : 'text-muted-foreground hover:bg-muted'
               }`}
             >
               {VIEW_LABELS[view]}
@@ -122,7 +122,7 @@ export function PostureComparisonCard({ snapshots }: PostureComparisonCardProps)
                   if (newIdx === otherIdx) return;
                   setIdx(newIdx);
                 }}
-                className="w-full text-xs font-medium border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                className="w-full text-xs font-medium border border-border rounded-lg px-2 py-1.5 bg-background text-foreground-secondary focus:outline-none focus:ring-1 focus:ring-muted-foreground"
               >
                 {sessionsWithImages.map((s, sIdx) => (
                   <option key={s.snapshotId} value={sIdx} disabled={sIdx === otherIdx}>
@@ -132,7 +132,7 @@ export function PostureComparisonCard({ snapshots }: PostureComparisonCardProps)
               </select>
 
               {/* Image */}
-              <div className="relative rounded-xl overflow-hidden bg-slate-100 aspect-[3/4]">
+              <div className="relative rounded-xl overflow-hidden bg-muted aspect-[3/4]">
                 {imageUrl ? (
                   <img
                     src={imageUrl}
@@ -141,17 +141,17 @@ export function PostureComparisonCard({ snapshots }: PostureComparisonCardProps)
                   />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <p className="text-xs text-slate-400 text-center px-3">No {VIEW_LABELS[activeView].toLowerCase()} photo for this session</p>
+                    <p className="text-xs text-muted-foreground text-center px-3">No {VIEW_LABELS[activeView].toLowerCase()} photo for this session</p>
                   </div>
                 )}
               </div>
 
               {/* Score badge */}
               <div className="flex items-center justify-between px-1">
-                <span className="text-xs text-slate-500 font-medium">
+                <span className="text-xs text-muted-foreground font-medium">
                   {session.date.toLocaleDateString()}
                 </span>
-                <span className="text-xs font-bold text-slate-900">
+                <span className="text-xs font-bold text-foreground">
                   {session.overallScore}
                 </span>
               </div>
@@ -161,7 +161,7 @@ export function PostureComparisonCard({ snapshots }: PostureComparisonCardProps)
       </div>
 
       {sessionsWithImages.length > 2 && (
-        <p className="text-[10px] text-slate-400 text-center">
+        <p className="text-[10px] text-muted-foreground text-center">
           {sessionsWithImages.length} sessions with posture photos available — use selectors above to compare any two.
         </p>
       )}

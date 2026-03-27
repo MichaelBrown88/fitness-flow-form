@@ -8,6 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { logger } from '@/lib/utils/logger';
+import { mapFirebaseAuthError } from '@/lib/utils/mapFirebaseAuthError';
+import { ROUTES } from '@/constants/routes';
+import { Seo } from '@/components/seo/Seo';
+import { SEO_NOINDEX_FUNNEL } from '@/constants/seo';
 
 const Login = () => {
   const { signIn, signInWithGoogle, signInWithApple, loading, user, profile } = useAuth();
@@ -20,12 +24,12 @@ const Login = () => {
   const [submitting, setSubmitting] = useState(false);
   const [resetSent, setResetSent] = useState(false);
 
-  const from = (location.state as { from?: string } | null)?.from || '/dashboard';
+  const from = (location.state as { from?: string } | null)?.from || ROUTES.DASHBOARD;
 
   useEffect(() => {
     if (!loading && user && profile) {
       if (!profile.onboardingCompleted) {
-        navigate('/onboarding', { replace: true });
+        navigate(ROUTES.ONBOARDING, { replace: true });
         return;
       }
       navigate(from, { replace: true });
@@ -41,11 +45,7 @@ const Login = () => {
       await signIn(email.trim(), password);
       logger.info('Login successful');
     } catch (err: unknown) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : 'Unable to sign in. Please check your details and try again.';
-      setError(message);
+      setError(mapFirebaseAuthError(err, 'Unable to sign in. Please check your details and try again.'));
       logger.error('Login failed:', err instanceof Error ? err.message : String(err));
     } finally {
       setSubmitting(false);
@@ -79,7 +79,9 @@ const Login = () => {
       else await signInWithApple();
       logger.info(`${provider} sign-in successful`);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : `${provider} sign-in failed.`);
+      setError(
+        mapFirebaseAuthError(err, `${provider === 'google' ? 'Google' : 'Apple'} sign-in failed. Try again.`),
+      );
       logger.error(`${provider} sign-in failed:`, err instanceof Error ? err.message : String(err));
     } finally {
       setSubmitting(false);
@@ -87,12 +89,18 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex">
+    <div className="min-h-screen bg-gradient-to-b from-muted/50 to-background flex">
+      <Seo
+        pathname={ROUTES.LOGIN}
+        title={SEO_NOINDEX_FUNNEL.title}
+        description={SEO_NOINDEX_FUNNEL.description}
+        noindex
+      />
       {/* Left side */}
       <div className="hidden lg:flex flex-1 gradient-bg p-12 flex-col justify-center">
         <div className="max-w-md">
           <div className="flex items-center gap-2 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-background/20 flex items-center justify-center">
               <span className="text-white font-bold">OA</span>
             </div>
             <span className="text-white text-xl font-semibold">One Assess</span>
@@ -106,7 +114,15 @@ const Login = () => {
 
       {/* Right side - Form */}
       <div className="flex-1 flex items-center justify-center p-8">
-        <div className="w-full max-w-md">
+          <div className="w-full max-w-md">
+          <p className="mb-4 text-center lg:text-left">
+            <Link
+              to={ROUTES.HOME}
+              className="text-sm font-medium text-foreground-secondary hover:text-foreground underline-offset-4 hover:underline"
+            >
+              ← Back to website
+            </Link>
+          </p>
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2 mb-8 justify-center">
             <div className="w-10 h-10 rounded-xl gradient-bg flex items-center justify-center">
@@ -115,9 +131,9 @@ const Login = () => {
             <span className="text-xl font-semibold">One Assess</span>
           </div>
 
-          <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">Sign in</h2>
-            <p className="text-sm text-slate-600 mb-6">
+          <div className="w-full max-w-md rounded-xl border border-border bg-background p-6 shadow-sm">
+            <h2 className="text-2xl font-bold text-foreground mb-2">Sign in</h2>
+            <p className="text-sm text-foreground-secondary mb-6">
               Sign in to your account to access your dashboard.
             </p>
 
@@ -127,7 +143,7 @@ const Login = () => {
                 type="button"
                 onClick={() => handleSocialSignIn('google')}
                 disabled={submitting}
-                className="w-full h-11 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors flex items-center justify-center gap-3 disabled:opacity-50"
+                className="w-full h-11 rounded-xl border border-border bg-background text-sm font-semibold text-foreground-secondary hover:bg-muted/50 transition-colors flex items-center justify-center gap-3 disabled:opacity-50"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
@@ -142,7 +158,7 @@ const Login = () => {
                 type="button"
                 onClick={() => handleSocialSignIn('apple')}
                 disabled={submitting}
-                className="w-full h-11 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors flex items-center justify-center gap-3 disabled:opacity-50"
+                className="w-full h-11 rounded-xl border border-border bg-background text-sm font-semibold text-foreground-secondary hover:bg-muted/50 transition-colors flex items-center justify-center gap-3 disabled:opacity-50"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                   <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
@@ -153,9 +169,9 @@ const Login = () => {
 
             {/* Divider */}
             <div className="flex items-center gap-3 mb-5">
-              <div className="flex-1 h-px bg-slate-200" />
-              <span className="text-xs font-medium text-slate-400">or</span>
-              <div className="flex-1 h-px bg-slate-200" />
+              <div className="flex-1 h-px bg-muted" />
+              <span className="text-xs font-medium text-muted-foreground">or</span>
+              <div className="flex-1 h-px bg-muted" />
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -185,7 +201,7 @@ const Login = () => {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground-secondary transition-colors"
                     tabIndex={-1}
                   >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -196,7 +212,7 @@ const Login = () => {
                 <button
                   type="button"
                   onClick={handleForgotPassword}
-                  className="text-xs text-indigo-600 hover:text-indigo-800 transition-colors"
+                  className="text-xs text-primary transition-colors hover:opacity-80"
                   disabled={submitting}
                 >
                   Forgot password?
@@ -214,22 +230,17 @@ const Login = () => {
               )}
               <Button
                 type="submit"
-                className="w-full h-12 bg-slate-900 text-white hover:bg-slate-800"
+                className="w-full h-12 bg-foreground text-white hover:bg-foreground/90"
                 disabled={submitting || loading}
               >
                 {submitting ? 'Signing in\u2026' : 'Sign in'}
               </Button>
             </form>
 
-            <p className="mt-6 text-center text-sm text-slate-600">
+            <p className="mt-6 text-center text-sm text-foreground-secondary">
               Don't have an account?{' '}
-              <Link to="/onboarding" className="text-indigo-600 font-medium hover:underline">
+              <Link to={ROUTES.ONBOARDING} className="font-medium text-primary hover:underline">
                 Start your free trial
-              </Link>
-            </p>
-            <p className="mt-2 text-center text-xs text-slate-500">
-              <Link to="/" className="text-slate-400 hover:text-slate-600">
-                Back to home
               </Link>
             </p>
           </div>

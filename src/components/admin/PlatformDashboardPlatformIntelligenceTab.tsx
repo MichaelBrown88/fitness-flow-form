@@ -29,7 +29,7 @@ export function PlatformDashboardPlatformIntelligenceTab(props: Props) {
             <BarChart3 className="w-5 h-5 text-indigo-400" />
             Platform Intelligence
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-muted-foreground mt-0.5">
             Business metrics for acquisition due diligence — derived from live platform data
           </p>
         </div>

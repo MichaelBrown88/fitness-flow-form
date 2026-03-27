@@ -19,6 +19,7 @@ import {
   limit as firestoreLimit,
   serverTimestamp,
   type DocumentData,
+  type DocumentSnapshot,
 } from 'firebase/firestore';
 import type { PlatformAdmin, PlatformPermission } from '@/types/platform';
 import { logger } from '@/lib/utils/logger';
@@ -26,20 +27,29 @@ import {
   getPlatformAdminsCollection,
   getPlatformAdminDoc,
   getPlatformAdminLookupDoc,
+  getPlatformAdminLegacyLookupDoc,
+  mirrorPlatformAdminLookupWrite,
 } from '@/lib/database/collections';
 
 const PLATFORM_ADMIN_QUERY_LIMIT = 1;
+
+async function getPlatformAdminLookupSnapshot(
+  email: string,
+): Promise<DocumentSnapshot | null> {
+  const canonicalSnap = await getDoc(getPlatformAdminLookupDoc(email));
+  if (canonicalSnap.exists()) return canonicalSnap;
+  const legacySnap = await getDoc(getPlatformAdminLegacyLookupDoc(email));
+  if (legacySnap.exists()) return legacySnap;
+  return null;
+}
 
 /**
  * Check if a user is a platform admin by email
  */
 export async function isPlatformAdmin(email: string): Promise<boolean> {
   try {
-    // First check lookup collection (fast)
-    const lookupRef = getPlatformAdminLookupDoc(email);
-    const lookupSnap = await getDoc(lookupRef);
-
-    if (lookupSnap.exists()) return true;
+    const lookupSnap = await getPlatformAdminLookupSnapshot(email);
+    if (lookupSnap) return true;
 
     // Fallback to query (for backwards compatibility)
     const adminQuery = query(
@@ -65,13 +75,15 @@ export async function isPlatformAdmin(email: string): Promise<boolean> {
  */
 export async function getPlatformAdminByEmail(email: string): Promise<PlatformAdmin | null> {
   try {
-    // First check lookup collection to get UID
-    const lookupRef = getPlatformAdminLookupDoc(email);
-    const lookupSnap = await getDoc(lookupRef);
+    const lookupSnap = await getPlatformAdminLookupSnapshot(email);
 
-    if (lookupSnap.exists()) {
+    if (lookupSnap) {
       const lookupData = lookupSnap.data();
-      const adminRef = getPlatformAdminDoc(lookupData.uid);
+      const linkedUid = lookupData?.uid;
+      if (typeof linkedUid !== 'string' || linkedUid.length === 0) {
+        return null;
+      }
+      const adminRef = getPlatformAdminDoc(linkedUid);
       const adminSnap = await getDoc(adminRef);
 
       if (adminSnap.exists()) {
@@ -143,12 +155,21 @@ export async function createPlatformAdmin(
 
     await setDoc(getPlatformAdminDoc(uid), admin);
 
-    // Update lookup to point to new UID
-    await setDoc(getPlatformAdminLookupDoc(normalizedEmail), {
-      uid: uid,
-      email: normalizedEmail,
-      updatedAt: serverTimestamp(),
-    }, { merge: true });
+    await mirrorPlatformAdminLookupWrite(
+      normalizedEmail,
+      {
+        uid,
+        email: normalizedEmail,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+
+    try {
+      await deleteDoc(getPlatformAdminDoc(existingAdmin.uid));
+    } catch (cleanupErr) {
+      logger.warn('Could not remove pending platform admin doc (non-critical)', cleanupErr);
+    }
 
     logger.info('Platform admin migrated from pending to real UID:', email);
     return;
@@ -165,9 +186,8 @@ export async function createPlatformAdmin(
 
   await setDoc(getPlatformAdminDoc(uid), admin);
 
-  // Create lookup entry
-  await setDoc(getPlatformAdminLookupDoc(normalizedEmail), {
-    uid: uid,
+  await mirrorPlatformAdminLookupWrite(normalizedEmail, {
+    uid,
     email: normalizedEmail,
     createdAt: serverTimestamp(),
   });

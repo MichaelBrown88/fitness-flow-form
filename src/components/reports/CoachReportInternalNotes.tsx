@@ -83,7 +83,7 @@ export function CoachReportInternalNotes({ plan }: CoachReportInternalNotesProps
           icon={ArrowRight}
           title="Action Items"
           items={plan.clientScript.actionPlan}
-          borderClass="border-l-4 border-l-slate-400"
+          borderClass="border-l-4 border-l-border-medium"
         />
         {plan.clientScript.threeMonthOutlook.length > 0 && (
           <div className="rounded-xl border border-border border-l-4 border-l-primary bg-card p-4 shadow-sm">

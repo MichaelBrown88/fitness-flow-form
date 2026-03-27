@@ -66,18 +66,19 @@ export function useAssessmentList({
   useEffect(() => {
     if (loading || !user || !readOrgId) return;
 
-    const assessmentsRef = collection(getDb(), ORGANIZATION.clients.collection(readOrgId));
+    // Client profile docs (one per client); not a separate "assessments" collection.
+    const orgClientsColRef = collection(getDb(), ORGANIZATION.clients.collection(readOrgId));
 
-    // When resolvedCoachFilter is null, fetch ALL org assessments (admin view)
+    // When resolvedCoachFilter is null, fetch ALL org clients' profile rows (admin view)
     const q = resolvedCoachFilter
       ? query(
-          assessmentsRef,
+          orgClientsColRef,
           where('coachUid', '==', resolvedCoachFilter),
           orderBy('createdAt', 'desc'),
           limit(20)
         )
       : query(
-          assessmentsRef,
+          orgClientsColRef,
           orderBy('createdAt', 'desc'),
           limit(20)
         );
@@ -107,6 +108,7 @@ export function useAssessmentList({
             previousScore: docData.previousScore,
             trend: docData.trend,
             assessmentCount: docData.assessmentCount,
+            remoteIntakeAwaitingStudio: docData.remoteIntakeAwaitingStudio === true,
           });
           lastDocument = docSnap;
         });
@@ -125,7 +127,7 @@ export function useAssessmentList({
           unsubscribeRef.current();
           unsubscribeRef.current = null;
         }
-        const fallbackQuery = query(assessmentsRef, orderBy('createdAt', 'desc'), limit(50));
+        const fallbackQuery = query(orgClientsColRef, orderBy('createdAt', 'desc'), limit(50));
         const fallbackUnsubscribe = onSnapshot(fallbackQuery, async (snapshot) => {
           try {
             if (isInitialLoadRef.current) {
@@ -155,6 +157,7 @@ export function useAssessmentList({
                 previousScore: docData.previousScore,
                 trend: docData.trend,
                 assessmentCount: docData.assessmentCount,
+                remoteIntakeAwaitingStudio: docData.remoteIntakeAwaitingStudio === true,
               });
               lastDocument = docSnap;
             });
@@ -188,17 +191,17 @@ export function useAssessmentList({
     if (hasMore && lastDoc && user && readOrgId) {
       setLoadingMore(true);
       try {
-        const assessmentsRef = collection(getDb(), ORGANIZATION.clients.collection(readOrgId));
+        const orgClientsColRef = collection(getDb(), ORGANIZATION.clients.collection(readOrgId));
         const nextQuery = resolvedCoachFilter
           ? query(
-              assessmentsRef,
+              orgClientsColRef,
               where('coachUid', '==', resolvedCoachFilter),
               orderBy('createdAt', 'desc'),
               startAfter(lastDoc),
               limit(20)
             )
           : query(
-              assessmentsRef,
+              orgClientsColRef,
               orderBy('createdAt', 'desc'),
               startAfter(lastDoc),
               limit(20)
@@ -226,6 +229,7 @@ export function useAssessmentList({
             previousScore: docData.previousScore as number | undefined,
             trend: docData.trend as number | undefined,
             assessmentCount: docData.assessmentCount as number | undefined,
+            remoteIntakeAwaitingStudio: docData.remoteIntakeAwaitingStudio === true,
           });
           newLastDoc = docSnap;
         });

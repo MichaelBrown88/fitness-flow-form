@@ -57,8 +57,8 @@ export function Blueprint({ scores, formData, plan }: BlueprintProps) {
   const getColorClasses = (color: string) => {
     // All cards now use the same styling for uniformity
     return {
-      header: 'gradient-bg text-white',
-      badge: 'glass-button-active text-white',
+      header: 'gradient-bg text-primary-foreground',
+      badge: 'glass-button-active',
       playIcon: 'text-gradient-dark'
     };
   };
@@ -66,8 +66,8 @@ export function Blueprint({ scores, formData, plan }: BlueprintProps) {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold text-slate-700">The Blueprint</h2>
-        <p className="text-xs text-slate-600 mt-1">3 Strategic Pillars to bridge the gap.</p>
+        <h2 className="text-lg font-semibold text-foreground">The Blueprint</h2>
+        <p className="text-xs text-muted-foreground mt-1">3 Strategic Pillars to bridge the gap.</p>
       </div>
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
@@ -90,26 +90,26 @@ export function Blueprint({ scores, formData, plan }: BlueprintProps) {
                   <p className={`text-[10px] font-black uppercase tracking-[0.15em] ${colors.playIcon} mb-2`}>
                     {pillar.focus}
                   </p>
-                  <p className="text-sm text-slate-700 leading-relaxed">
+                  <p className="text-sm text-foreground leading-relaxed">
                     {pillar.description}
                   </p>
                 </div>
                 
-                <div className="border-t border-slate-200 pt-4">
+                <div className="border-t border-border pt-4">
                   <div className="flex items-center gap-2 mb-2">
                     <span className={`${colors.playIcon} text-sm`}>▶</span>
-                    <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-600">
+                    <span className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
                       {pillar.sampleProtocol.title}
                     </span>
                   </div>
-                  <p className="text-xs font-semibold text-slate-500 mb-3">
+                  <p className="text-xs font-semibold text-muted-foreground mb-3">
                     {pillar.sampleProtocol.subtitle}
                   </p>
                   <div className="space-y-2">
                     {pillar.sampleProtocol.exercises.map((ex, exIdx) => (
                       <div key={exIdx} className="flex justify-between items-center text-sm">
-                        <span className="text-slate-700">{ex.name}</span>
-                        <span className="text-slate-500 font-medium">{ex.setsReps}</span>
+                        <span className="text-foreground">{ex.name}</span>
+                        <span className="text-muted-foreground font-medium">{ex.setsReps}</span>
                       </div>
                     ))}
                   </div>

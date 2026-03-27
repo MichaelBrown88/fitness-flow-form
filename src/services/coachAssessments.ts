@@ -42,11 +42,15 @@ export type CoachAssessmentSummary = {
   assessmentCount?: number;
   /** UID of the coach who owns this client (used in team/admin views) */
   coachUid?: string | null;
+  /** Client finished remote-friendly steps; coach-only phases may remain */
+  remoteIntakeAwaitingStudio?: boolean;
   scoresSummary?: {
     overall: number;
+    fullProfileScore: number | null;
     categories: {
       id: string;
       score: number;
+      assessed: boolean;
       weaknesses: string[];
     }[];
   };
@@ -241,6 +245,7 @@ export async function saveCoachAssessment(
       isPartial: false,
       assessmentType: 'full' as const,
       category: 'all',
+      remoteIntakeAwaitingStudio: false,
       ...(isGuestAssessment ? { assignedCoachUid: effectiveCoachUid, performedByUid: coachUid } : {}),
     });
 
@@ -286,6 +291,7 @@ export async function saveCoachAssessment(
     isPartial: false,
     assessmentType: 'full' as const,
     category: 'all',
+    remoteIntakeAwaitingStudio: false,
     ...(isGuestAssessment ? { assignedCoachUid: effectiveCoachUid, performedByUid: coachUid } : {}),
   });
   const docRef = { id: slug };
@@ -609,6 +615,7 @@ export async function savePartialAssessment(
       isPartial: true,
       assessmentType: 'pillar' as const,
       pillar: category,
+      remoteIntakeAwaitingStudio: false,
       ...(isGuestAssessment ? { assignedCoachUid: effectiveCoachUid, performedByUid: coachUid } : {}),
     });
 
@@ -652,6 +659,7 @@ export async function savePartialAssessment(
     isPartial: true,
     assessmentType: 'pillar' as const,
     pillar: category,
+    remoteIntakeAwaitingStudio: false,
     ...(isGuestAssessment ? { assignedCoachUid: effectiveCoachUid, performedByUid: coachUid } : {}),
   });
   const docRef = { id: slug };

@@ -1,10 +1,10 @@
 {
   "meta": {
     "product": "One Assess",
-    "lastUpdated": "2026-03-20",
-    "updatedBy": "Chief of Staff — APEX OS",
-    "launchReadiness": 52,
-    "currentFocus": "Stripe integration — #1 revenue blocker",
+    "lastUpdated": "2026-03-24",
+    "updatedBy": "Michael",
+    "launchReadiness": 58,
+    "currentFocus": "ONE ASSESS LTD incorporated. Revolut business bank account in progress (not open yet). Stripe: checkout tested in sandbox/test mode only — no live keys in app, no webhooks to prod, no payout bank linked. Then live Stripe verification + dashboard completion.",
     "northStar": "Eliminate assessment admin burden for coaches. First paying customer is the only metric.",
     "northStarMetric": "Days to first paying customer",
     "postLaunchMetric": "Monthly Recurring Revenue (MRR)",
@@ -16,43 +16,44 @@
     {
       "id": "stripe-001",
       "title": "Stripe end-to-end payment flow",
-      "description": "Full subscription billing — coaches can pay, plans are enforced, failures are handled",
+      "description": "Capacity-based subscriptions — Functions implement checkout, webhooks, plan enforcement, failed-payment handling. Sandbox/test-mode payment path exercised; live publishable/secret keys, dashboard webhooks, and payout bank still not wired",
       "status": "in_progress",
       "priority": "P0",
       "agent": "CFO + CTO",
       "productionReady": false,
       "blocksLaunch": true,
       "tasks": [
-        { "id": "stripe-001-a", "title": "Set up Stripe account under one-assess.com business identity", "status": "todo" },
-        { "id": "stripe-001-b", "title": "Create pricing tables in Stripe dashboard (solo £49/mo, studio £129/mo)", "status": "todo" },
+        { "id": "stripe-001-a", "title": "Stripe Business account (one-assess.com) — live verification and payouts blocked until business bank exists; use ONE ASSESS LTD docs when completing", "status": "in_progress" },
+        { "id": "stripe-001-b", "title": "Stripe Dashboard: products and prices matching capacity / package tiers", "status": "in_progress" },
+        { "id": "stripe-001-m", "title": "Functions: checkout, webhooks, auth on billing endpoints, rate limiting, payment-failure handling — implemented", "status": "done" },
         { "id": "stripe-001-c", "title": "Add live Stripe secret key to Firebase Functions environment", "status": "todo" },
         { "id": "stripe-001-d", "title": "Add live Stripe publishable key to frontend .env", "status": "todo" },
         { "id": "stripe-001-e", "title": "Register Stripe webhook endpoint in Stripe dashboard", "status": "todo" },
         { "id": "stripe-001-f", "title": "Add Stripe webhook secret to Firebase Functions environment", "status": "todo" },
-        { "id": "stripe-001-g", "title": "Test checkout session end-to-end with test card", "status": "todo" },
+        { "id": "stripe-001-g", "title": "Stripe sandbox / test mode — successful checkout payment with test card", "status": "done" },
         { "id": "stripe-001-h", "title": "Test subscription creation webhook fires and updates Firestore", "status": "todo" },
         { "id": "stripe-001-i", "title": "Test failed payment handling (card declined flow)", "status": "todo" },
         { "id": "stripe-001-j", "title": "Test subscription cancellation flow", "status": "todo" },
-        { "id": "stripe-001-k", "title": "Verify FeatureGate component enforces plan limits correctly", "status": "todo" },
+        { "id": "stripe-001-k", "title": "Verify FeatureGate and paywalls enforce capacity / plan limits correctly", "status": "in_progress" },
         { "id": "stripe-001-l", "title": "Deploy updated functions and smoke test in production", "status": "todo" }
       ]
     },
 
     {
       "id": "pricing-002",
-      "title": "Pricing decision and page",
-      "description": "Finalise tier pricing, update landing page, wire to Stripe products",
-      "status": "todo",
+      "title": "Pricing decision, landing, and Stripe alignment",
+      "description": "Capacity-based GB/US/KW pricing in app and landing; final commercial numbers and Stripe catalog alignment",
+      "status": "in_progress",
       "priority": "P0",
       "agent": "CFO",
       "productionReady": false,
       "blocksLaunch": true,
       "tasks": [
-        { "id": "pricing-002-a", "title": "Finalise pricing: Solo £49/mo, Studio £129/mo, annual 20% discount", "status": "todo" },
-        { "id": "pricing-002-b", "title": "Define feature matrix per tier (what's included/excluded)", "status": "todo" },
-        { "id": "pricing-002-c", "title": "Update PricingSection.tsx with real prices and features", "status": "todo" },
-        { "id": "pricing-002-d", "title": "Create Stripe products and prices matching the tiers", "status": "todo" },
-        { "id": "pricing-002-e", "title": "Wire Stripe price IDs into constants/pricing.ts", "status": "todo" },
+        { "id": "pricing-002-a", "title": "Finalise commercial pricing (capacity packages, annual discount policy)", "status": "in_progress" },
+        { "id": "pricing-002-b", "title": "Define feature matrix per tier (included / excluded)", "status": "in_progress" },
+        { "id": "pricing-002-c", "title": "Landing pricing UI — LandingPricingPlans, PricingSection, ROI comparison", "status": "done" },
+        { "id": "pricing-002-d", "title": "Create Stripe products and prices matching live capacity tiers", "status": "todo" },
+        { "id": "pricing-002-e", "title": "Wire Stripe price IDs into constants/pricing.ts and shared billing module", "status": "done" },
         { "id": "pricing-002-f", "title": "Test upgrade flow from free trial to paid", "status": "todo" }
       ]
     },
@@ -196,19 +197,45 @@
 
     {
       "id": "business-registration-010",
-      "title": "Business registration and banking",
-      "description": "Complete UK business setup to enable Stripe and proper billing",
-      "status": "todo",
+      "title": "UK LTD — business banking (Revolut) and Stripe live / payouts",
+      "description": "ONE ASSESS LTD incorporated only — no business bank account yet. Revolut business account application in progress. Stripe has been used in sandbox/test mode; live keys, webhooks, full business verification, and payout bank linkage are still outstanding. Formation Company charges on michael@one-assess.com Payment History: £141.99 (21/03/2026) + £119.99 RA yearly (24/03/2026).",
+      "status": "in_progress",
       "priority": "P0",
       "agent": "CFO + CEO",
       "productionReady": false,
       "blocksLaunch": true,
       "tasks": [
-        { "id": "biz-010-a", "title": "Register UK limited company or sole trader", "status": "todo" },
-        { "id": "biz-010-b", "title": "Set up business bank account", "status": "todo" },
-        { "id": "biz-010-c", "title": "Set up digital business address if needed", "status": "todo" },
-        { "id": "biz-010-d", "title": "Complete Stripe business verification with UK entity", "status": "todo" },
-        { "id": "biz-010-e", "title": "Link bank account to Stripe for payouts", "status": "todo" }
+        { "id": "biz-010-a", "title": "Formation Company — Privacy Package + 1yr registered agent £141.99 paid 21/03/2026 (visa, Payment History)", "status": "done" },
+        { "id": "biz-010-b", "title": "Complete and submit company and director information in Formation Company portal", "status": "done" },
+        { "id": "biz-010-c", "title": "Companies House personal identity verification (Gov.uk — Director/PSC Personal Verification Code)", "status": "done" },
+        { "id": "biz-010-d", "title": "UK incorporation — ONE ASSESS LTD registered (AML / formation path complete)", "status": "done" },
+        { "id": "biz-010-e", "title": "Registered office, directors service address, digital mail forwarding (1 year — included in package)", "status": "done" },
+        { "id": "biz-010-f", "title": "Open ONE ASSESS LTD business bank account — Revolut application in progress (not yet open)", "status": "in_progress" },
+        { "id": "biz-010-g", "title": "Complete Stripe live business verification for ONE ASSESS LTD (after bank and live setup)", "status": "todo" },
+        { "id": "biz-010-h", "title": "Link business bank account to Stripe for payouts (blocked until Revolut account open)", "status": "todo" },
+        { "id": "biz-010-i", "title": "Formation Company — Registered Agent subscription (yearly) £119.99 paid 24/03/2026 for ONE ASSESS LTD (visa, Payment History)", "status": "done" }
+      ]
+    },
+
+    {
+      "id": "coach-social-win-011",
+      "title": "Coach social win posts (parked — later cycle)",
+      "description": "Detect client highlights (e.g. overall score 63→74 in 30 days), generate templated social copy + branded image assets (Instagram-friendly sizes), email coach with download links and captions. Template placeholders only for MVP (no LLM required for copy). Privacy: opt-in / anonymisation. Design and template iteration should use the official Figma MCP server (Cursor) to automate creating/updating layout templates, components, and variables — then a fixed spec (layer names / placeholders) drives code-side image generation or export. Parked until after launch priorities — growth/visibility feature, not blocking revenue.",
+      "status": "todo",
+      "priority": "P3",
+      "agent": "CTO + CMO",
+      "productionReady": false,
+      "blocksLaunch": false,
+      "parked": true,
+      "tasks": [
+        { "id": "social-win-011-a", "title": "Define win rules (score delta, time window, dedupe) and data sources from assessments/sessions", "status": "todo" },
+        { "id": "social-win-011-b", "title": "Figma: set up social template file — feed (e.g. 1080×1080), story (e.g. 1080×1350), brand components, text styles aligned to design system", "status": "todo" },
+        { "id": "social-win-011-c", "title": "Figma MCP: use official Figma MCP + project figma-use / generate skills to build or revise template frames, components, and variables (automate repeatable template work)", "status": "todo" },
+        { "id": "social-win-011-d", "title": "Template contract: document placeholder layer/variable names and map each to app fields (scores, delta, period, anonymised client label, org name)", "status": "todo" },
+        { "id": "social-win-011-e", "title": "Image pipeline: implement generation from template spec (e.g. server render or export path), upload to Storage, issue short-lived signed download URLs", "status": "todo" },
+        { "id": "social-win-011-f", "title": "Resend: transactional email to coach with caption text + links to download assets per platform size", "status": "todo" },
+        { "id": "social-win-011-g", "title": "Coach consent / anonymisation settings for client-identifying marketing assets", "status": "todo" },
+        { "id": "social-win-011-h", "title": "Optional MVP: in-app preview and/or manual ‘generate post’ before email send", "status": "todo" }
       ]
     }
   ],
@@ -251,10 +278,26 @@
       "title": "North Star document and Cursor rules",
       "completedDate": "2026-03-20",
       "notes": "NORTH_STAR.md and upgraded .cursorrules committed to repo root"
+    },
+    {
+      "id": "infra-done-007",
+      "title": "ONE ASSESS LTD — UK company incorporation",
+      "completedDate": "2026-03-24",
+      "notes": "Registered UK limited company confirmed by The Formation Company; digital company documents on portal Documents tab; registered agent and My Mail where applicable. Formation spend logged on michael@one-assess.com: £141.99 21/03/2026 (Privacy Package + 1yr RA) + £119.99 24/03/2026 (RA yearly, ONE ASSESS LTD). Does not include business banking or Stripe live/payout setup — those still in progress."
     }
   ],
 
   "decisions": [
+    {
+      "date": "2026-03-24",
+      "decision": "Formation Company payments recorded in PROJECT_STATE: £141.99 Privacy Package + 1yr registered agent (21/03/2026); £119.99 Registered Agent yearly subscription for ONE ASSESS LTD (24/03/2026). Source: michael@one-assess.com billing Payment History (visa).",
+      "madeBy": "Michael"
+    },
+    {
+      "date": "2026-03-24",
+      "decision": "ONE ASSESS LTD incorporated — UK limited company registered. Formation Company: digital documents on Documents tab; registered office mail via My Mail where applicable.",
+      "madeBy": "Michael"
+    },
     {
       "date": "2026-03-24",
       "decision": "APEX OS restructured as project-agnostic system. Project context now loaded from this file and project CLAUDE.md.",
@@ -279,7 +322,7 @@
 
   "guardian": {
     "instructions": "When a commit lands, scan the commit message for task IDs matching the pattern below. If found and the message contains a completion keyword, set that task status to done and record the commit SHA in a commitRef field on the task. Then recalculate meta.launchReadiness as (done tasks / total tasks) * 100 rounded to nearest 5. Update meta.lastUpdated to today and meta.updatedBy to guardian.",
-    "taskIdPattern": "stripe-001-[a-z]|pricing-002-[a-z]|social-proof-003-[a-z]|trial-funnel-004-[a-z]|beta-outreach-005-[a-z]|email-006-[a-z]|code-007-[a-z]|seo-008-[a-z]|gdpr-009-[a-z]|biz-010-[a-z]",
+    "taskIdPattern": "stripe-001-[a-z]|pricing-002-[a-z]|social-proof-003-[a-z]|trial-funnel-004-[a-z]|beta-outreach-005-[a-z]|email-006-[a-z]|code-007-[a-z]|seo-008-[a-z]|gdpr-009-[a-z]|biz-010-[a-z]|social-win-011-[a-z]",
     "completionKeywords": ["fix", "complete", "done", "finish", "resolve", "implement", "add", "build", "close"]
   }
 }

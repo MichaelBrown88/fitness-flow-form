@@ -66,12 +66,12 @@ export default function SignUp() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex">
+    <div className="min-h-screen bg-gradient-to-b from-muted/50 to-background flex">
       {/* Left side - Benefits */}
       <div className="hidden lg:flex flex-1 gradient-bg p-12 flex-col justify-center">
         <div className="max-w-md">
           <div className="flex items-center gap-2 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-background/20 flex items-center justify-center">
               <span className="text-white font-bold">OA</span>
             </div>
             <span className="text-white text-xl font-semibold">One Assess</span>
@@ -87,7 +87,7 @@ export default function SignUp() {
           <div className="space-y-4">
             {benefits.map((benefit) => (
               <div key={benefit} className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
+                <div className="w-6 h-6 rounded-full bg-background/20 flex items-center justify-center">
                   <Check className="w-4 h-4 text-white" />
                 </div>
                 <span className="text-white">{benefit}</span>
@@ -183,11 +183,11 @@ export default function SignUp() {
               />
               <label htmlFor="terms" className="text-sm text-foreground-secondary leading-relaxed">
                 I agree to the{' '}
-                <Link to="/terms" className="text-indigo-600 hover:underline">
+                <Link to="/terms" className="text-primary hover:underline">
                   Terms of Service
                 </Link>{' '}
                 and{' '}
-                <Link to="/privacy" className="text-indigo-600 hover:underline">
+                <Link to="/privacy" className="text-primary hover:underline">
                   Privacy Policy
                 </Link>
               </label>
@@ -201,7 +201,7 @@ export default function SignUp() {
 
             <Button
               type="submit"
-              className="w-full h-12 bg-slate-900 text-white hover:bg-slate-800"
+              className="w-full h-12 bg-foreground text-white hover:bg-foreground/90"
               disabled={submitting || loading}
             >
               {submitting ? (
@@ -220,7 +220,7 @@ export default function SignUp() {
 
           <p className="mt-6 text-center text-sm text-foreground-secondary">
             Already have an account?{' '}
-            <Link to="/login" className="text-indigo-600 font-medium hover:underline">
+            <Link to="/login" className="font-medium text-primary hover:underline">
               Log in
             </Link>
           </p>

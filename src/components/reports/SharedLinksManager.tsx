@@ -60,14 +60,14 @@ const SharedLinksManager = ({ coachUid, assessmentId }: SharedLinksManagerProps)
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+        <Loader2 className="h-5 w-5 animate-spin text-foreground-tertiary" />
       </div>
     );
   }
 
   if (tokens.length === 0) {
     return (
-      <p className="py-4 text-center text-sm text-slate-500">
+      <p className="py-4 text-center text-sm text-muted-foreground">
         No shared links for this assessment.
       </p>
     );
@@ -75,8 +75,8 @@ const SharedLinksManager = ({ coachUid, assessmentId }: SharedLinksManagerProps)
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-bold text-slate-900">Shared Links</h3>
-      <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
+      <h3 className="text-sm font-bold text-foreground">Shared Links</h3>
+      <ul className="divide-y divide-border rounded-xl border border-border bg-card">
         {tokens.map((t) => (
           <li
             key={t.token}
@@ -84,7 +84,7 @@ const SharedLinksManager = ({ coachUid, assessmentId }: SharedLinksManagerProps)
           >
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="truncate text-sm font-medium text-slate-700">
+                <span className="truncate text-sm font-medium text-foreground">
                   {t.clientName}
                 </span>
                 {t.revoked && (
@@ -93,7 +93,7 @@ const SharedLinksManager = ({ coachUid, assessmentId }: SharedLinksManagerProps)
                   </span>
                 )}
               </div>
-              <p className="mt-0.5 text-xs text-slate-400">
+              <p className="mt-0.5 text-xs text-foreground-tertiary">
                 Created {formatDate(t.createdAt)}
                 {t.lastAccessed && ` · Last viewed ${formatDate(t.lastAccessed)}`}
               </p>
@@ -106,7 +106,7 @@ const SharedLinksManager = ({ coachUid, assessmentId }: SharedLinksManagerProps)
                     href={`${CONFIG.APP.HOST}/r/${t.token}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-foreground-tertiary transition-colors hover:bg-muted hover:text-muted-foreground"
                     aria-label="Open shared link"
                   >
                     <ExternalLink className="h-4 w-4" />
@@ -114,7 +114,7 @@ const SharedLinksManager = ({ coachUid, assessmentId }: SharedLinksManagerProps)
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 w-8 p-0 text-slate-400 hover:text-red-600"
+                    className="h-8 w-8 p-0 text-foreground-tertiary hover:text-red-600"
                     disabled={revokingToken === t.token}
                     onClick={() => handleRevoke(t.token)}
                     aria-label="Revoke shared link"

@@ -9,10 +9,11 @@ import {
   DialogFooter 
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { 
-  createLiveSession, 
-  subscribeToLiveSession, 
-  type LiveSession 
+import {
+  createLiveSession,
+  LIVE_SESSION_PLACEHOLDER_CLIENT_ID,
+  subscribeToLiveSession,
+  type LiveSession,
 } from '@/services/liveSessions';
 import { 
   Smartphone, 
@@ -51,19 +52,28 @@ export const BodyCompCompanionModal: React.FC<BodyCompCompanionModalProps> = ({
 
   // 1. Create Session (same pattern as PostureCompanionModal)
   useEffect(() => {
-    if (isOpen && !session) {
-      const init = async () => {
-        try {
-          const newSession = await createLiveSession('current-client', profile?.organizationId, profile);
+    if (!isOpen || session) return;
+    let cancelled = false;
+    const init = async () => {
+      try {
+        const newSession = await createLiveSession(
+          LIVE_SESSION_PLACEHOLDER_CLIENT_ID,
+          profile?.organizationId,
+          profile,
+        );
+        if (!cancelled) {
           setSession(newSession);
           setError(null);
-        } catch (err) {
-          setError("Connection failed. Please check your internet.");
         }
-      };
-      init();
-    }
-  }, [isOpen, session, profile?.organizationId]);
+      } catch {
+        if (!cancelled) setError("Connection failed. Please check your internet.");
+      }
+    };
+    void init();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, session, profile]);
 
   // 1.5 Pre-warm Firebase AI when modal opens (while user scans QR code)
   // This initializes the Gemini model so OCR starts faster when image arrives
@@ -162,7 +172,7 @@ export const BodyCompCompanionModal: React.FC<BodyCompCompanionModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden rounded-3xl p-0 border-none bg-white text-left">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden rounded-3xl p-0 border-none bg-background text-left">
         <VisuallyHidden>
           <DialogTitle>Phone Camera</DialogTitle>
           <DialogDescription>Use your phone to photograph the body comp report.</DialogDescription>
@@ -170,16 +180,16 @@ export const BodyCompCompanionModal: React.FC<BodyCompCompanionModalProps> = ({
         <div className="flex flex-col lg:flex-row h-full">
           
           {/* LEFT: CONNECTION STATUS & QR */}
-          <div className="w-full lg:w-1/2 bg-slate-50 p-8 border-r border-slate-100 flex flex-col items-center">
+          <div className="w-full lg:w-1/2 bg-muted/50 p-8 border-r border-border flex flex-col items-center">
             <div className="flex flex-col items-center text-center mb-8">
-              <div className="bg-white p-4 rounded-3xl shadow-sm mb-4">
+              <div className="bg-background p-4 rounded-3xl shadow-sm mb-4">
                 <Smartphone className="h-10 w-10 text-primary" />
               </div>
-              <h3 className="text-xl font-bold text-slate-900">Use Your Phone</h3>
-              <p className="text-slate-500 text-xs mt-2">Connect your phone to take a photo</p>
+              <h3 className="text-xl font-bold text-foreground">Use Your Phone</h3>
+              <p className="text-muted-foreground text-xs mt-2">Connect your phone to take a photo</p>
             </div>
 
-            <div className="p-4 bg-white rounded-3xl shadow-xl border-4 border-white mb-6 flex items-center justify-center min-h-[212px]">
+            <div className="p-4 bg-background rounded-3xl shadow-xl border-4 border-white mb-6 flex items-center justify-center min-h-[212px]">
               {companionUrl && (
                 <div className="animate-in zoom-in duration-500">
                   <QRCodeSVG value={companionUrl} size={180} />
@@ -197,7 +207,7 @@ export const BodyCompCompanionModal: React.FC<BodyCompCompanionModalProps> = ({
                   <span className="text-xs font-bold">Phone Connected</span>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 text-slate-500 bg-slate-100 px-4 py-3 rounded-xl">
+                <div className="flex items-center gap-2 text-muted-foreground bg-muted px-4 py-3 rounded-xl">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span className="text-xs font-bold">Waiting for connection...</span>
                 </div>
@@ -223,8 +233,8 @@ export const BodyCompCompanionModal: React.FC<BodyCompCompanionModalProps> = ({
           <div className="w-full lg:w-1/2 p-8 flex flex-col justify-center">
             <div className="space-y-6">
               <div>
-                <h4 className="text-lg font-bold text-slate-900 mb-2">How to Use</h4>
-                <ol className="space-y-3 text-sm text-slate-600">
+                <h4 className="text-lg font-bold text-foreground mb-2">How to Use</h4>
+                <ol className="space-y-3 text-sm text-foreground-secondary">
                   <li className="flex gap-3">
                     <span className="font-bold text-primary">1.</span>
                     <span>Open the camera app on your phone</span>
@@ -245,7 +255,7 @@ export const BodyCompCompanionModal: React.FC<BodyCompCompanionModalProps> = ({
               </div>
 
               {onStartDirectScan && (
-                <div className="pt-4 border-t border-slate-200">
+                <div className="pt-4 border-t border-border">
                   <Button
                     onClick={onStartDirectScan}
                     variant="outline"
@@ -259,7 +269,7 @@ export const BodyCompCompanionModal: React.FC<BodyCompCompanionModalProps> = ({
           </div>
         </div>
 
-        <DialogFooter className="p-4 border-t border-slate-100">
+        <DialogFooter className="p-4 border-t border-border">
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>

@@ -1,225 +1,65 @@
-import { useState, useMemo, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ROUTES } from '@/constants/routes';
-import { Check } from 'lucide-react';
+import { LANDING_GUEST_CHECKOUT_ENABLED } from '@/constants/platform';
 import GlassCard from '@/components/ui/GlassCard';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
 import {
   FREE_TIER_CLIENT_LIMIT,
   FREE_TIER_MONTHLY_AI_CREDITS,
-  DEFAULT_REGION,
   DEFAULT_CURRENCY,
-  CUSTOM_BRANDING_PRICE_GBP,
-  getPaidTierByClientCount,
   type BillingPeriod,
 } from '@/constants/pricing';
 import { formatPrice } from '@/lib/utils/currency';
-import {
-  type PlanPackageTrack,
-  PLAN_PACKAGE_TRACK_COPY,
-  buildSeatDropdownOptions,
-  clientCountFromPosition,
-  defaultTierPosition,
-  tierIndicesForTrack,
-  minDisplayMonthlyInTrack,
-} from '@/lib/pricing/planPackageTracks';
+import { type PlanPackageTrack } from '@/lib/pricing/planPackageTracks';
 import { cn } from '@/lib/utils';
+import {
+  FeatureList,
+  LandingPaidPlanCard,
+  type PricingFeature,
+} from '@/components/landing/LandingPaidPlanCard';
+import { LANDING_COPY } from '@/constants/landingCopy';
 
 const PAID_TRACK_ORDER: PlanPackageTrack[] = ['solo', 'gym'];
 
-interface PricingFeature {
-  text: string;
-  included: boolean;
-}
-
 const FREE_FEATURES: PricingFeature[] = [
-  { text: `${FREE_TIER_MONTHLY_AI_CREDITS} AI scans per month`, included: true },
-  { text: 'Clinical Logic Engine', included: true },
-  { text: 'Client assessments & reports', included: true },
-  { text: 'Upgrade when you need more clients', included: true },
-  { text: 'Custom branding add-on', included: false },
-  { text: 'Priority support', included: false },
+  { text: `${FREE_TIER_MONTHLY_AI_CREDITS} AI scans / month`, included: true },
+  { text: 'Clinical Logic Engine & client reports', included: true },
 ];
-
-const TRACK_FEATURES: Record<PlanPackageTrack, PricingFeature[]> = {
-  solo: [
-    { text: 'Independent coach — pick seats below', included: true },
-    { text: 'Clinical Logic Engine & professional reports', included: true },
-    { text: 'AI scan credits scale with your tier', included: true },
-    { text: 'Free forever for up to 2 clients — no card', included: true },
-    { text: 'Annual billing ~20% off at checkout on paid tiers', included: true },
-    { text: `Custom branding add-on from £${CUSTOM_BRANDING_PRICE_GBP} one-time`, included: false },
-  ],
-  gym: [
-    { text: 'Studios, multi-coach teams & gym chains', included: true },
-    { text: 'Seat options up to 250 clients; above that — contact sales', included: true },
-    { text: 'Everything in Solo, scaled for more clients', included: true },
-    { text: '14-day gym trial · soft cap 100 clients during trial', included: true },
-    { text: 'Credit top-ups in app', included: true },
-    { text: `Custom branding add-on from £${CUSTOM_BRANDING_PRICE_GBP} one-time`, included: false },
-  ],
-};
-
-function FeatureList({ features }: { features: PricingFeature[] }) {
-  return (
-    <ul className="space-y-4 text-sm text-foreground-secondary font-medium">
-      {features.map((feature, i) => (
-        <li key={i} className="flex items-center gap-3">
-          {feature.included ? (
-            <>
-              <Check size={18} className="text-primary shrink-0" />
-              <span>{feature.text}</span>
-            </>
-          ) : (
-            <>
-              <div className="w-[18px] h-[18px] rounded-full bg-muted flex shrink-0 items-center justify-center">
-                <div className="w-1.5 h-1.5 rounded-full bg-border" />
-              </div>
-              <span className="text-foreground-tertiary line-through">{feature.text}</span>
-            </>
-          )}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-interface PaidPlanCardProps {
-  track: PlanPackageTrack;
-  billingPeriod: BillingPeriod;
-  highlighted?: boolean;
-}
-
-function PaidPlanCard({ track, billingPeriod, highlighted = false }: PaidPlanCardProps) {
-  const region = DEFAULT_REGION;
-  const currency = DEFAULT_CURRENCY;
-  const locale = 'en-GB';
-  const { title, subtitle } = PLAN_PACKAGE_TRACK_COPY[track];
-
-  const [tierPosition, setTierPosition] = useState(() => defaultTierPosition(region, track));
-
-  useEffect(() => {
-    setTierPosition((p) => {
-      const max = Math.max(0, tierIndicesForTrack(region, track).length - 1);
-      return Math.min(Math.max(0, p), max);
-    });
-  }, [region, track]);
-
-  const seatOptions = useMemo(
-    () => buildSeatDropdownOptions(region, track, billingPeriod),
-    [region, track, billingPeriod],
-  );
-
-  const clientCount = useMemo(
-    () => clientCountFromPosition(region, track, tierPosition),
-    [region, track, tierPosition],
-  );
-
-  const tierRow = getPaidTierByClientCount(clientCount, track);
-  const displayPrice =
-    billingPeriod === 'annual' ? tierRow.annualPriceGbp / 12 : tierRow.monthlyPriceGbp;
-
-  const startsAtPrice = minDisplayMonthlyInTrack(region, track, billingPeriod);
-  const startsAtLabel = formatPrice(startsAtPrice, currency, locale);
-
-  const cardBody = (
-    <>
-      <p className="text-xs font-semibold uppercase tracking-wide text-foreground-tertiary mb-1">
-        From {startsAtLabel}/mo
-      </p>
-      <h3 className="text-xl font-bold mb-2 text-foreground">{title}</h3>
-      <p className="text-sm text-foreground-secondary mb-6 font-medium">{subtitle}</p>
-
-      <div className="flex items-baseline gap-1 mb-4">
-        <span className="text-5xl font-bold text-foreground">
-          {formatPrice(displayPrice, currency, locale)}
-        </span>
-        <span className="text-foreground-tertiary font-medium">/month</span>
-      </div>
-      {billingPeriod === 'annual' && (
-        <p className="text-[11px] text-foreground-tertiary mb-4">
-          {formatPrice(tierRow.annualPriceGbp, currency, locale)} billed yearly (~20% vs monthly)
-        </p>
-      )}
-
-      <div className="space-y-2 mb-6">
-        <Label
-          htmlFor={`landing-seats-${track}`}
-          className="text-xs font-bold text-foreground-secondary uppercase tracking-wider"
-        >
-          Client seats
-        </Label>
-        <Select value={String(tierPosition)} onValueChange={(v) => setTierPosition(Number(v))}>
-          <SelectTrigger
-            id={`landing-seats-${track}`}
-            className="h-11 rounded-xl border-border bg-background text-left text-sm font-medium"
-          >
-            <SelectValue placeholder="Select seat count" />
-          </SelectTrigger>
-          <SelectContent className="rounded-xl border-border max-h-[min(60vh,20rem)]">
-            {seatOptions.map((opt) => (
-              <SelectItem key={opt.position} value={String(opt.position)} className="rounded-lg">
-                <span className="font-medium">
-                  {formatPrice(opt.displayMonthly, currency, locale)}/mo — up to {opt.clients} clients (
-                  {formatPrice(opt.perClient, currency, locale)} / client)
-                </span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <p className="text-xs text-foreground-secondary mb-6">
-        Up to {tierRow.clientLimit} clients · {tierRow.monthlyAiCredits} AI scans/mo · {tierRow.label}
-      </p>
-
-      <Link
-        to={ROUTES.ONBOARDING}
-        className={cn(
-          'w-full py-4 rounded-xl font-bold mb-8 shadow-xl block text-center transition-apple',
-          highlighted
-            ? 'bg-foreground text-primary-foreground hover:opacity-90'
-            : 'bg-background border border-border text-foreground hover:bg-secondary shadow-sm',
-        )}
-      >
-        {track === 'gym' ? 'Start gym trial' : 'Get started'}
-      </Link>
-
-      <FeatureList features={TRACK_FEATURES[track]} />
-    </>
-  );
-
-  if (highlighted) {
-    return (
-      <div className="relative transform md:-translate-y-4">
-        <div className="absolute inset-0 bg-gradient-to-b from-gradient-from to-gradient-to rounded-3xl blur-sm opacity-20" />
-        <GlassCard className="p-10 relative bg-card border border-brand-medium shadow-2xl">
-          <div className="absolute top-0 right-0 bg-gradient-to-l from-gradient-from to-gradient-to text-primary-foreground text-[10px] font-bold uppercase tracking-[0.15em] px-4 py-2 rounded-bl-2xl rounded-tr-2xl">
-            Most Popular
-          </div>
-          {cardBody}
-        </GlassCard>
-      </div>
-    );
-  }
-
-  return <GlassCard className="p-10 bg-card/70 hover:shadow-xl transition-apple">{cardBody}</GlassCard>;
-}
 
 export function LandingPricingPlans() {
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
+  const [searchParams] = useSearchParams();
+  const guestCheckoutSuccess = searchParams.get('guest_checkout') === 'success';
+  const guestCheckoutCancel = searchParams.get('guest_checkout') === 'cancel';
 
   return (
-    <div className="w-full max-w-7xl mx-auto space-y-10">
-      <div className="flex flex-col items-center gap-3">
-        <p className="text-sm font-semibold text-foreground-secondary">UK pricing (GBP)</p>
+    <div className="w-full max-w-7xl mx-auto space-y-8">
+      {guestCheckoutSuccess ? (
+        <div
+          role="status"
+          className="mx-auto max-w-2xl rounded-xl border border-emerald-600/35 bg-emerald-500/10 px-4 py-3 text-sm text-foreground dark:border-emerald-500/40"
+        >
+          <p className="font-semibold text-emerald-950 dark:text-emerald-100">Checkout complete</p>
+          <p className="mt-1 text-foreground-secondary">
+            Finish setting up your account to use One Assess.{' '}
+            <Link to={ROUTES.ONBOARDING} className="font-semibold text-primary underline-offset-4 hover:underline">
+              Continue to sign-up
+            </Link>
+            .
+          </p>
+        </div>
+      ) : null}
+      {guestCheckoutCancel ? (
+        <div
+          role="status"
+          className="mx-auto max-w-2xl rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-foreground"
+        >
+          <p className="font-semibold">Checkout cancelled</p>
+          <p className="mt-1 text-foreground-secondary">Adjust seats or billing and try again.</p>
+        </div>
+      ) : null}
+
+      <div className="flex justify-center">
         <div className="inline-flex rounded-xl border border-border bg-muted/40 p-1">
           <button
             type="button"
@@ -231,7 +71,7 @@ export function LandingPricingPlans() {
                 : 'text-foreground-secondary hover:text-foreground',
             )}
           >
-            Bill monthly
+            Monthly
           </button>
           <button
             type="button"
@@ -243,16 +83,16 @@ export function LandingPricingPlans() {
                 : 'text-foreground-secondary hover:text-foreground',
             )}
           >
-            Bill annually (~20% off)
+            Annual <span className="font-semibold text-foreground-tertiary">~20% off</span>
           </button>
         </div>
       </div>
 
-      <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-8 items-start">
-        <GlassCard className="p-10 bg-card/70 hover:shadow-xl transition-apple">
+      <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8 items-start">
+        <GlassCard className="p-8 sm:p-10 bg-card/70 hover:shadow-xl transition-apple">
           <h3 className="text-xl font-bold mb-2 text-foreground">Free</h3>
           <p className="text-sm text-foreground-secondary mb-8 font-medium">
-            Up to {FREE_TIER_CLIENT_LIMIT} clients — no card
+            Up to {FREE_TIER_CLIENT_LIMIT} clients, no card
           </p>
           <div className="flex items-baseline gap-1 mb-8">
             <span className="text-5xl font-bold text-foreground">
@@ -267,15 +107,35 @@ export function LandingPricingPlans() {
             Start free
           </Link>
           <FeatureList features={FREE_FEATURES} />
+          <p className="mt-5 text-xs font-medium leading-relaxed text-foreground-tertiary">
+            {LANDING_COPY.freeTierPaidAddOnsNote}
+          </p>
         </GlassCard>
 
         {PAID_TRACK_ORDER.map((track) => (
-          <PaidPlanCard key={track} track={track} billingPeriod={billingPeriod} highlighted={track === 'solo'} />
+          <LandingPaidPlanCard
+            key={track}
+            track={track}
+            billingPeriod={billingPeriod}
+            highlighted={track === 'solo'}
+          />
         ))}
       </div>
 
+      {LANDING_GUEST_CHECKOUT_ENABLED ? (
+        <p className="text-center text-sm text-foreground-secondary">
+          <Link
+            to={ROUTES.ONBOARDING}
+            className="font-medium text-primary underline-offset-4 hover:underline"
+          >
+            Create your account first
+          </Link>
+          {', no payment required.'}
+        </p>
+      ) : null}
+
       <p className="text-center text-sm text-foreground-secondary max-w-xl mx-auto">
-        Need more than 100 clients on Solo or more than 250 on Gym?{' '}
+        Need more than 100 clients (Solo) or 250 (Gym)?{' '}
         <Link to={ROUTES.CONTACT} className="font-semibold text-primary underline-offset-4 hover:underline">
           Contact sales
         </Link>

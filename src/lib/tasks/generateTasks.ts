@@ -1,3 +1,6 @@
+import { getPillarLabel } from '@/constants/pillars';
+import { taskReassessmentDescription, taskReassessmentTitle } from '@/constants/dashboardTasksCopy';
+
 export type TaskType =
   | 'overdue_reassessment'
   | 'upcoming_reassessment'
@@ -81,6 +84,7 @@ export function generateTasks(params: {
   for (const entry of params.reassessmentQueue) {
     const isOverdue = entry.status === 'overdue';
     const urgency = isOverdue ? 'overdue' as const : urgencyFromDate(entry.dueDate);
+    const pillarLabel = getPillarLabel(entry.pillar);
 
     tasks.push({
       id: `reassess-${entry.clientName}-${entry.pillar}`,
@@ -88,10 +92,8 @@ export function generateTasks(params: {
       urgency,
       clientName: entry.clientName,
       pillar: entry.pillar,
-      title: `${entry.pillar} reassessment ${isOverdue ? 'overdue' : 'due'}`,
-      description: isOverdue
-        ? `${entry.clientName}'s ${entry.pillar} reassessment is past due.`
-        : `${entry.clientName}'s ${entry.pillar} reassessment is coming up.`,
+      title: taskReassessmentTitle(pillarLabel, isOverdue),
+      description: taskReassessmentDescription(entry.clientName, pillarLabel, isOverdue),
       actionLabel: 'Start Assessment',
       actionRoute: `/assessment?client=${encodeURIComponent(entry.clientName)}&pillar=${encodeURIComponent(entry.pillar)}`,
       dueDate: entry.dueDate,

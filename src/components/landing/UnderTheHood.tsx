@@ -1,6 +1,7 @@
 import { Activity } from 'lucide-react';
 import SectionHeader from '@/components/landing/SectionHeader';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
+import { LANDING_H2_ACCENT_ON_DARK } from '@/constants/landingCopy';
 
 export function UnderTheHood() {
   // Apple-style stagger: header → text → visual
@@ -9,78 +10,96 @@ export function UnderTheHood() {
   const visualRef = useScrollReveal({ staggerDelay: 150, staggerIndex: 2 });
 
   return (
-    <section className="py-24 sm:py-32 px-6 bg-slate-900 text-white relative overflow-hidden">
-      <div className="absolute top-0 left-0 w-full h-full bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
-      <div className="max-w-7xl mx-auto relative z-10">
+    <section className="relative overflow-hidden bg-landing-contrast-bg px-6 py-24 text-landing-contrast-fg sm:py-32">
+      <div className="absolute left-0 top-0 h-full w-full bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20" />
+      <div className="relative z-10 mx-auto max-w-7xl">
         {/* Centered header — Apple style */}
         <div ref={headerRef}>
           <SectionHeader
             pill="Clinical Logic Engine"
             pillIcon={<Activity size={12} />}
-            title={<>Data, not just <span className="text-indigo-400">pretty pictures.</span></>}
+            title={
+              <>
+                Data, Not Just{' '}
+                <span className={LANDING_H2_ACCENT_ON_DARK}>Pretty Pictures.</span>
+              </>
+            }
             subtitle="360+ data points analyzed against 5,000+ clinical benchmarks to generate actionable insights."
             dark
           />
         </div>
 
-        <div className="grid md:grid-cols-2 gap-16 items-center">
+        <div className="grid items-center gap-16 md:grid-cols-2">
           {/* Left: Numbered list (appears second) */}
           <div ref={contentRef} className="space-y-6">
             {[
-              { title: "Normative Comparison", desc: "Compare client metrics against age/gender matched population averages." },
-              { title: "Risk Stratification", desc: "Identify musculoskeletal risks before they become injuries." },
-              { title: "Trend Analysis", desc: "Detect micro-improvements that standard scales miss." }
+              {
+                title: 'Normative Comparison',
+                desc: 'Compare client metrics against age/gender matched population averages.',
+              },
+              {
+                title: 'Risk Stratification',
+                desc: 'Identify musculoskeletal risks before they become injuries.',
+              },
+              {
+                title: 'Trend Analysis',
+                desc: 'Detect micro-improvements that standard scales miss.',
+              },
             ].map((item, i) => (
-              <div key={i} className="flex gap-4">
-                <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0 text-indigo-400 font-bold">
+              <div key={item.title} className="flex gap-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-landing-contrast-border bg-landing-contrast-surface font-bold text-primary">
                   {i + 1}
                 </div>
                 <div>
-                  <h4 className="font-bold text-white mb-1">{item.title}</h4>
-                  <p className="text-sm text-slate-500">{item.desc}</p>
+                  <h4 className="mb-1 text-balance font-bold text-landing-contrast-fg">{item.title}</h4>
+                  <p className="text-balance text-sm text-landing-contrast-muted">{item.desc}</p>
                 </div>
               </div>
             ))}
           </div>
-          
+
           {/* Right: Terminal visual (appears last) */}
           <div ref={visualRef} className="relative">
-            <div className="absolute inset-0 bg-indigo-600/20 blur-[100px] rounded-full"></div>
-            <div className="relative bg-slate-800/50 backdrop-blur-xl border border-slate-700 rounded-3xl p-8">
-              <div className="flex items-center justify-between mb-8 border-b border-slate-700 pb-4">
-                <span className="text-sm font-mono text-slate-400">PROCESSING_job_ID_8829</span>
-                <span className="flex items-center gap-2 text-xs font-bold text-emerald-400">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <div className="absolute inset-0 rounded-full bg-primary/15 blur-[100px]" />
+            <div className="relative rounded-2xl border border-landing-contrast-border bg-landing-contrast-surface/50 p-8 backdrop-blur-lg">
+              <div className="mb-8 flex items-center justify-between border-b border-landing-contrast-border pb-4">
+                <span className="font-mono text-sm text-landing-contrast-subtle">PROCESSING_job_ID_8829</span>
+                <span className="flex items-center gap-2 text-xs font-bold text-score-green">
+                  <span className="size-2 animate-pulse rounded-full bg-score-green" />
                   LIVE
                 </span>
               </div>
-              
+
               <div className="space-y-4 font-mono text-sm">
-                <div className="flex items-center gap-3 text-slate-300">
-                  <span className="text-indigo-400">➜</span>
+                <div className="flex items-center gap-3 text-landing-contrast-subtle">
+                  <span className="text-primary">➜</span>
                   <span>Ingesting image data...</span>
-                  <span className="ml-auto text-slate-500">Done</span>
+                  <span className="ml-auto text-landing-contrast-muted">Done</span>
                 </div>
-                <div className="flex items-center gap-3 text-slate-300">
-                  <span className="text-indigo-400">➜</span>
+                <div className="flex items-center gap-3 text-landing-contrast-subtle">
+                  <span className="text-primary">➜</span>
                   <span>Extracting landmarks...</span>
-                  <span className="ml-auto text-slate-500">32pts</span>
+                  <span className="ml-auto text-landing-contrast-muted">32pts</span>
                 </div>
-                <div className="flex items-center gap-3 text-slate-300">
-                  <span className="text-indigo-400">➜</span>
+                <div className="flex items-center gap-3 text-landing-contrast-subtle">
+                  <span className="text-primary">➜</span>
                   <span>Calculating craniovertebral angle...</span>
-                  <span className="ml-auto text-amber-400">42° (Low)</span>
+                  <span className="ml-auto text-score-amber">42° (Low)</span>
                 </div>
-                <div className="flex items-center gap-3 text-slate-300">
-                  <span className="text-indigo-400">➜</span>
+                <div className="flex items-center gap-3 text-landing-contrast-subtle">
+                  <span className="text-primary">➜</span>
                   <span>Generating recommendations...</span>
-                  <span className="ml-auto text-slate-500">3 items</span>
+                  <span className="ml-auto text-landing-contrast-muted">3 items</span>
                 </div>
               </div>
 
-              <div className="mt-8 p-4 bg-indigo-900/30 border border-indigo-500/30 rounded-xl">
-                 <p className="text-[10px] text-indigo-300 uppercase font-black tracking-[0.15em] mb-2">Insight Generated</p>
-                 <p className="text-white font-medium">"Forward head posture detected. Recommend chin tucks and thoracic extension exercises."</p>
+              <div className="mt-8 rounded-xl border border-primary/35 bg-landing-contrast-surface-elevated/80 p-4">
+                <p className="mb-2 text-[10px] font-black uppercase tracking-[0.15em] text-primary">
+                  Insight Generated
+                </p>
+                <p className="text-balance font-medium text-landing-contrast-fg">
+                  &quot;Forward head posture detected. Recommend chin tucks and thoracic extension exercises.&quot;
+                </p>
               </div>
             </div>
           </div>

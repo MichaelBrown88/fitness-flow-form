@@ -80,7 +80,7 @@ export function useReportShare({ assessmentId: id, formData, user, profile, over
 
       return artifacts;
     },
-    [id, shareCache, user, formData, profile?.organizationId, overallScore, scoreDelta, currentScores, previousScores],
+    [id, shareCache, user, formData, profile, overallScore, scoreDelta, currentScores, previousScores],
   );
 
   const handleCopyLink = useCallback(async () => {
@@ -103,7 +103,7 @@ export function useReportShare({ assessmentId: id, formData, user, profile, over
     } finally {
       setShareLoading(false);
     }
-  }, [id, formData, user, profile?.organizationId, toast]);
+  }, [id, formData, user, profile, toast]);
 
   const handleEmailLink = useCallback(async () => {
     if (!formData || !id) return;
@@ -178,7 +178,7 @@ export function useReportShare({ assessmentId: id, formData, user, profile, over
     } finally {
       setShareLoading(false);
     }
-  }, [id, formData, user, profile?.organizationId, toast, handleCopyLink]);
+  }, [id, formData, user, profile, toast, handleCopyLink]);
 
   const handleWhatsAppShare = useCallback(async () => {
     if (!id || !formData || !user || typeof window === 'undefined') return;
@@ -206,7 +206,7 @@ export function useReportShare({ assessmentId: id, formData, user, profile, over
     } finally {
       setShareLoading(false);
     }
-  }, [id, formData, user, profile?.organizationId, overallScore, scoreDelta, toast]);
+  }, [id, formData, user, profile, overallScore, scoreDelta, toast]);
 
   const handleCopyMessage = useCallback(async () => {
     if (!id || !formData || !user) return;
@@ -230,7 +230,7 @@ export function useReportShare({ assessmentId: id, formData, user, profile, over
     } finally {
       setShareLoading(false);
     }
-  }, [id, formData, user, profile?.organizationId, overallScore, scoreDelta, toast]);
+  }, [id, formData, user, profile, overallScore, scoreDelta, toast]);
 
   return {
     ensureShareArtifacts,

@@ -28,40 +28,40 @@ export const AssessmentsTable: React.FC<AssessmentsTableProps> = ({
 }) => {
   return (
     <section className="space-y-4">
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm -mx-4 sm:mx-0">
-        <table className="min-w-full divide-y divide-slate-200 text-xs sm:text-sm">
-          <thead className="bg-slate-50/50">
+      <div className="-mx-4 overflow-x-auto rounded-xl border border-border bg-card shadow-sm sm:mx-0">
+        <table className="min-w-full divide-y divide-border text-xs sm:text-sm">
+          <thead className="bg-muted/40">
             <tr>
-              <th className="px-3 sm:px-4 md:px-6 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+              <th className="px-3 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground sm:px-4 md:px-6">
                 Client
               </th>
-              <th className="px-3 sm:px-4 md:px-6 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 hidden sm:table-cell">
+              <th className="hidden px-3 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground sm:table-cell sm:px-4 md:px-6">
                 Date
               </th>
-              <th className="px-3 sm:px-4 md:px-6 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+              <th className="px-3 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground sm:px-4 md:px-6">
                 Overall
               </th>
-              <th className="px-3 sm:px-4 md:px-6 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 hidden md:table-cell">
+              <th className="hidden px-3 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground sm:px-4 md:table-cell md:px-6">
                 Goals
               </th>
-              <th className="px-3 sm:px-4 md:px-6 py-3 text-right text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+              <th className="px-3 py-3 text-right text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground sm:px-4 md:px-6">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-border">
             {loadingData ? (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-sm text-slate-400 font-medium">
+                <td colSpan={5} className="px-6 py-12 text-center text-sm font-medium text-muted-foreground">
                   <div className="flex flex-col items-center gap-3">
-                    <div className="w-6 h-6 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
+                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-foreground border-t-transparent" />
                     <span>Loading assessments...</span>
                   </div>
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-sm text-slate-400 font-medium">
+                <td colSpan={5} className="px-6 py-12 text-center text-sm font-medium text-muted-foreground">
                   {search
                     ? 'No assessments match that name.'
                     : 'No assessments saved yet. Run an assessment to see it here.'}
@@ -69,35 +69,35 @@ export const AssessmentsTable: React.FC<AssessmentsTableProps> = ({
               </tr>
             ) : (
               filtered.slice(0, visibleCount).map((item) => (
-                <tr key={item.id} className="hover:bg-slate-50/80 transition-colors group">
-                  <td className="px-3 sm:px-4 md:px-6 py-4 text-xs sm:text-sm text-slate-900 font-semibold">
+                <tr key={item.id} className="group transition-colors hover:bg-muted/50">
+                  <td className="px-3 py-4 text-xs font-semibold text-foreground sm:px-4 sm:text-sm md:px-6">
                     <div className="flex flex-col">
                       <span>{item.clientName}</span>
-                      <span className="text-[10px] sm:hidden text-slate-400 font-medium mt-1">
+                      <span className="mt-1 text-[10px] font-medium text-muted-foreground sm:hidden">
                         {item.createdAt
                           ? item.createdAt.toDate().toLocaleDateString()
                           : '—'}
                       </span>
                     </div>
                   </td>
-                  <td className="px-3 sm:px-4 md:px-6 py-4 text-xs sm:text-sm text-slate-500 font-medium hidden sm:table-cell">
+                  <td className="hidden px-3 py-4 text-xs font-medium text-muted-foreground sm:table-cell sm:px-4 sm:text-sm md:px-6">
                     {item.createdAt
                       ? item.createdAt.toDate().toLocaleDateString()
                       : '—'}
                   </td>
                   <td className="px-3 sm:px-4 md:px-6 py-4">
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-900 text-white text-xs font-bold group-hover:scale-105 transition-transform">
+                    <span className="inline-flex items-center rounded-lg bg-foreground px-2.5 py-1 text-xs font-bold text-background transition-transform group-hover:scale-105">
                       {item.overallScore || '—'}
                     </span>
                   </td>
-                  <td className="px-3 sm:px-4 md:px-6 py-4 text-[10px] sm:text-xs text-slate-500 font-medium hidden md:table-cell italic">
+                  <td className="hidden px-3 py-4 text-[10px] font-medium italic text-muted-foreground sm:px-4 sm:text-xs md:table-cell md:px-6">
                     {item.goals && item.goals.length
                       ? item.goals.map(formatGoal).slice(0, 2).join(', ')
                       : '—'}
                   </td>
                   <td className="px-3 sm:px-4 md:px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-1 sm:gap-3">
-                      <Button variant="outline" size="sm" asChild className="h-9 sm:h-8 px-3 sm:px-4 rounded-lg text-xs font-bold border-slate-200 hover:border-slate-900 hover:bg-slate-900 hover:text-white transition-all">
+                      <Button variant="outline" size="sm" asChild className="h-9 rounded-lg border-border px-3 text-xs font-bold transition-all hover:border-foreground hover:bg-foreground hover:text-background sm:h-8 sm:px-4">
                         <Link to={`/coach/assessments/${item.id}`}>
                           <span className="hidden sm:inline">Open Report</span>
                           <span className="sm:hidden">Open</span>
@@ -107,7 +107,7 @@ export const AssessmentsTable: React.FC<AssessmentsTableProps> = ({
                         variant="ghost"
                         size="sm"
                         onClick={() => onDelete(item.id, item.clientName)}
-                        className="text-red-400 hover:text-red-600 hover:bg-red-50 h-9 w-9 sm:h-8 sm:w-8 p-0 rounded-lg group-hover:opacity-100 transition-opacity"
+                        className="h-9 w-9 rounded-lg p-0 text-red-400 transition-opacity hover:bg-red-500/10 hover:text-red-600 group-hover:opacity-100 sm:h-8 sm:w-8 dark:hover:bg-red-950/40"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -126,7 +126,7 @@ export const AssessmentsTable: React.FC<AssessmentsTableProps> = ({
             variant="outline" 
             onClick={onLoadMore}
             disabled={loadingMore}
-            className="text-slate-500 font-semibold text-xs px-8 rounded-xl border-slate-200 hover:border-slate-900 hover:text-slate-900 transition-all"
+            className="rounded-xl border-border px-8 text-xs font-semibold text-muted-foreground transition-all hover:border-foreground hover:text-foreground"
           >
             {loadingMore ? 'Loading...' : hasMore ? 'Load More from Database' : 'Show More Assessments'}
           </Button>

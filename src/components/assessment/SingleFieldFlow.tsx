@@ -162,14 +162,14 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
     <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
       {/* Progress within section */}
       <div className="space-y-2">
-        <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+        <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
           <span>{section.title} Progress</span>
           <span>{activeFieldIdx + 1} of {steps.length}</span>
         </div>
         <Progress value={((activeFieldIdx + 1) / steps.length) * 100} className="h-1" />
       </div>
 
-      <div className="bg-white rounded-3xl p-8 lg:p-10 shadow-xl shadow-primary/10 border border-primary/5 min-h-[400px] flex flex-col justify-center relative">
+      <div className="bg-background rounded-3xl p-8 lg:p-10 shadow-xl shadow-primary/10 border border-primary/5 min-h-[400px] flex flex-col justify-center relative">
 
         {movementPattern && (
           <div className="mb-6 flex items-center gap-2">
@@ -193,12 +193,12 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
           <div className="mb-6 flex flex-wrap items-center gap-2">
             <Button
               onClick={handleSnapPhoto}
-              className="h-10 px-5 rounded-xl bg-primary text-white font-semibold gap-2 text-sm hover:brightness-110"
+              className="h-10 px-5 rounded-xl bg-primary text-primary-foreground font-semibold gap-2 text-sm hover:brightness-110"
             >
               <Camera className="h-4 w-4" />
               Snap a Photo
             </Button>
-            <span className="text-xs text-slate-400">Take a photo of the report and we'll fill in the numbers</span>
+            <span className="text-xs text-muted-foreground">Take a photo of the report and we'll fill in the numbers</span>
           </div>
         )}
 
@@ -227,29 +227,29 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
 
         {/* Body comp: optional "Add Body Measurements" toggle at bottom */}
         {isBodyCompSection && isLastField && (
-          <div className="mt-6 pt-4 border-t border-slate-100">
+          <div className="mt-6 pt-4 border-t border-border">
             {formData.showBodyMeasurements !== 'yes' ? (
               <Button
                 variant="ghost"
                 onClick={() => updateFormData({ showBodyMeasurements: 'yes' })}
-                className="h-9 px-4 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-600 gap-2"
+                className="h-9 px-4 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground-secondary gap-2"
               >
                 <Ruler className="h-3.5 w-3.5" />
                 Add Body Measurements (optional)
               </Button>
             ) : (
-              <p className="text-[10px] text-slate-400 font-medium">Body measurements are included below.</p>
+              <p className="text-[10px] text-muted-foreground font-medium">Body measurements are included below.</p>
             )}
           </div>
         )}
 
         {/* Navigation */}
-        <div className="flex items-center justify-between mt-12 pt-8 border-t border-slate-50">
+        <div className="flex items-center justify-between mt-12 pt-8 border-t border-border/60">
           <Button
             variant="ghost"
             onClick={handleBack}
             disabled={activeFieldIdx === 0 && !onGoToPreviousSection}
-            className="h-12 px-6 rounded-xl font-bold text-slate-400 hover:text-slate-900"
+            className="h-12 px-6 rounded-xl font-bold text-muted-foreground hover:text-foreground"
           >
             <ChevronLeft className="mr-2 h-5 w-5" />
             Back
@@ -260,8 +260,8 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
             disabled={!hasValue && currentStep.some(f => f.required)}
             className={`h-12 px-8 rounded-xl font-bold transition-all ${
               hasValue || !currentStep.some(f => f.required)
-                ? 'bg-slate-900 text-white hover:bg-slate-800'
-                : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                ? 'bg-foreground text-white hover:bg-foreground/90'
+                : 'bg-muted text-muted-foreground cursor-not-allowed'
             }`}
           >
             {isLastField ? 'Section Complete' : 'Next Step'}

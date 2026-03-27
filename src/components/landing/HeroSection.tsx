@@ -1,4 +1,11 @@
 import { Link } from "react-router-dom";
+import { LandingTrialCtaLink } from "@/components/landing/LandingTrialCtaLink";
+import {
+  LANDING_COPY,
+  LANDING_H2_ACCENT_LIGHT_READABLE,
+  landingTrialAriaLabel,
+} from "@/constants/landingCopy";
+import { LANDING_GUEST_CHECKOUT_ENABLED } from "@/constants/platform";
 import {
   ArrowRight,
   Play,
@@ -8,190 +15,237 @@ import {
   Check,
   ScanLine,
   AlertCircle,
+  Sparkles,
+  FileCheck,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useScrollProgress } from "@/hooks/useScrollProgress";
+import { ROUTES } from "@/constants/routes";
+import { useScrollReveal } from "@/hooks/useScrollReveal";
+import { HeroRadarPillarsAround } from "@/components/landing/HeroRadarPillarsAround";
 
-export function HeroSection() {
+export type HeroSectionVariant = "home" | "pricing";
+
+export type HeroSectionProps = {
+  /** `/` uses brand H1 + heroSubtitle; `/pricing` uses pricing H1 + heroPricingSubtitle. */
+  variant?: HeroSectionVariant;
+};
+
+export function HeroSection({ variant = "home" }: HeroSectionProps) {
   const { user } = useAuth();
-  const { ref: visualRef, progress } = useScrollProgress<HTMLDivElement>();
-
-  // Scroll-driven transforms for the product visual
-  const visualOpacity = Math.min(1, progress * 2.5);
-  const visualScale = 0.92 + Math.min(0.08, progress * 0.2);
-  const visualY = 40 * (1 - Math.min(1, progress * 2));
+  const isPricing = variant === "pricing";
+  /** Fixed-duration entrance after headline CSS stagger — not tied to scroll position. */
+  const visualRevealRef = useScrollReveal<HTMLDivElement>({
+    staggerIndex: 1,
+    staggerDelay: 420,
+    distance: 48,
+    duration: 1100,
+    threshold: 0.04,
+  });
 
   return (
-    <section className="relative pt-24 sm:pt-32 lg:pt-36 pb-4 px-5 sm:px-6 overflow-hidden">
-      {/* Soft Pastel Background Elements */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[1000px] bg-blue-100/40 rounded-full blur-[120px] -z-10 animate-blob mix-blend-multiply" />
-      <div className="absolute top-1/2 left-0 w-[800px] h-[800px] bg-indigo-100/40 rounded-full blur-[120px] -z-10 animate-blob animation-delay-2000 mix-blend-multiply" />
-      <div className="absolute bottom-0 right-0 w-[800px] h-[800px] bg-rose-100/40 rounded-full blur-[120px] -z-10 animate-blob animation-delay-4000 mix-blend-multiply" />
+    <section className="relative pt-24 sm:pt-32 lg:pt-36 pb-16 sm:pb-20 lg:pb-24 px-5 sm:px-6">
+      {/* Blobs only: overflow hidden here so card shadows / floaters are not clipped */}
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
+        aria-hidden
+      >
+        <div className="absolute left-1/2 top-0 h-[880px] w-[880px] -translate-x-1/2 rounded-full bg-muted/20 blur-[100px] motion-safe:animate-blob dark:bg-primary/8" />
+        <div className="absolute left-0 top-1/2 h-[720px] w-[720px] rounded-full bg-gradient-light/30 blur-[100px] motion-safe:animate-blob animation-delay-2000 dark:bg-gradient-light/15" />
+        <div className="absolute bottom-0 right-0 h-[640px] w-[640px] rounded-full bg-foreground/6 blur-[100px] motion-safe:animate-blob animation-delay-4000 dark:bg-background-tertiary/40" />
+      </div>
 
-      <div className="max-w-5xl mx-auto w-full relative z-10">
-        {/* ── Text Block — tight, compact, high hierarchy ── */}
-        <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-12 lg:mb-16">
-          {/* Headline — visually dominant, first thing the eye hits */}
+      <div className="max-w-6xl mx-auto w-full relative z-10">
+        {/* ── Text Block — larger type, clear hierarchy ── */}
+        <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-14 lg:mb-16">
+          {/* Headline */}
           <h1
-            className="text-[2.5rem] leading-[1.08] sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-4 sm:mb-5 text-slate-900 animate-fade-in-up"
+            className="text-balance mb-5 text-[3rem] font-bold leading-[1.06] tracking-tight text-foreground motion-safe:animate-fade-in-up sm:mb-6 sm:text-6xl md:text-7xl lg:text-8xl"
             style={{ animationDelay: "0.05s" }}
           >
-            Assess Smarter.
-            <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-indigo-600">
-              Retain Longer.
-            </span>
+            {isPricing ? (
+              <>
+                {LANDING_COPY.heroPricingTitleLine1}
+                <br />
+                <span className={LANDING_H2_ACCENT_LIGHT_READABLE}>
+                  {LANDING_COPY.heroPricingTitleAccent}
+                </span>
+              </>
+            ) : (
+              <>
+                Assess Smarter.{' '}
+                <br />
+                <span className={LANDING_H2_ACCENT_LIGHT_READABLE}>Retain Longer.</span>
+              </>
+            )}
           </h1>
 
-          {/* Subtitle — secondary, tight proximity to headline */}
+          {/* Subtitle — one block under H1 (copy blends SEO terms into the product line). */}
           <p
-            className="text-base sm:text-lg text-slate-500 max-w-md mx-auto mb-6 sm:mb-8 leading-relaxed animate-fade-in-up"
+            className="text-balance mx-auto mb-7 max-w-xl text-lg leading-snug text-muted-foreground motion-safe:animate-fade-in-up sm:mb-10 sm:text-xl sm:leading-relaxed md:max-w-2xl md:text-2xl"
             style={{ animationDelay: "0.15s" }}
           >
-            One platform for every assessment. Clients love the reports. You
-            love the retention.
+            {isPricing ? LANDING_COPY.heroPricingSubtitle : LANDING_COPY.heroSubtitle}
           </p>
 
           {/* CTA cluster — compact inline, clear primary/secondary distinction */}
           <div
-            className="flex items-center justify-center gap-3 sm:gap-4 mb-4 sm:mb-5 animate-fade-in-up"
+            className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 mb-4 sm:mb-5 motion-safe:animate-fade-in-up"
             style={{ animationDelay: "0.25s" }}
           >
-            {user ? (
+            {user && !user.isAnonymous ? (
               <Link
-                to="/dashboard"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-slate-900/20 group"
+                to={ROUTES.DASHBOARD}
+                className="group inline-flex items-center gap-2 rounded-xl bg-primary px-8 py-3.5 text-base font-semibold text-primary-foreground shadow-md transition-all hover:opacity-90 active:scale-[0.99]"
               >
-                Go to Dashboard
-                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                {LANDING_COPY.heroLoggedInDashboardCta}
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
               </Link>
+            ) : user?.isAnonymous ? (
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <Link
+                  to={ROUTES.ASSESSMENT}
+                  className="group inline-flex items-center gap-2 rounded-xl bg-primary px-8 py-3.5 text-base font-semibold text-primary-foreground shadow-md transition-all hover:opacity-90 active:scale-[0.99]"
+                >
+                  {LANDING_COPY.heroAnonymousContinueTrial}
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                </Link>
+                <Link
+                  to={ROUTES.SIGNUP}
+                  className="inline-flex items-center gap-2 rounded-xl border border-border/90 bg-card/90 px-5 py-3 text-base font-semibold text-foreground shadow-sm backdrop-blur-sm transition-colors hover:border-border-medium hover:bg-card dark:border-border dark:bg-card/90"
+                >
+                  {LANDING_COPY.heroAnonymousCreateAccount}
+                </Link>
+              </div>
             ) : (
               <>
-                {/* Primary — solid, compact */}
-                <Link
-                  to="/onboarding"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-slate-900/20 group"
+                <LandingTrialCtaLink
+                  className="group inline-flex items-center gap-2 rounded-xl bg-primary px-8 py-3.5 text-base font-semibold text-primary-foreground shadow-md transition-all hover:opacity-90 active:scale-[0.99]"
+                  ariaLabel={landingTrialAriaLabel(
+                    "hero",
+                    LANDING_GUEST_CHECKOUT_ENABLED,
+                  )}
                 >
                   Start Free Trial
-                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                </Link>
-                {/* Secondary — links to interactive demo */}
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                </LandingTrialCtaLink>
                 <Link
                   to="/demo"
-                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors"
+                  className="inline-flex items-center gap-2 rounded-xl border border-border/90 bg-card/90 px-5 py-3 text-base font-semibold text-foreground shadow-sm backdrop-blur-sm transition-colors hover:border-border-medium hover:bg-card dark:border-border dark:bg-card/90"
                 >
-                  <Play className="w-3.5 h-3.5 fill-slate-600" />
+                  <Play className="h-4 w-4 shrink-0 fill-muted-foreground" aria-hidden />
                   See Demo
                 </Link>
               </>
             )}
           </div>
 
-          {/* Trust badges — tight proximity to CTA, reduces friction at decision point */}
-          <div
-            className="flex items-center justify-center gap-3 text-xs sm:text-sm font-medium text-slate-400 animate-fade-in-up"
+          <p
+            className="flex flex-wrap items-center justify-center gap-x-2 text-sm font-medium text-muted-foreground motion-safe:animate-fade-in-up sm:text-base"
             style={{ animationDelay: "0.3s" }}
           >
-            <div className="flex items-center gap-1">
-              <Check className="w-3.5 h-3.5 text-emerald-500" />
-              <span>5,000+ assessments</span>
-            </div>
-            <span className="text-slate-300">·</span>
-            <span>14-day free trial</span>
-          </div>
+            <Check
+              className="h-4 w-4 shrink-0 text-primary"
+              aria-hidden
+            />
+            <span className="text-center text-balance">{LANDING_COPY.heroTrustMicro}</span>
+          </p>
         </div>
 
-        {/* ── Product Visual — scroll-driven reveal, peeks above fold ── */}
-        <div ref={visualRef} className="relative max-w-2xl lg:max-w-3xl mx-auto">
-          <div
-            className="will-change-transform"
-            style={{
-              opacity: visualOpacity,
-              transform: `translateY(${visualY}px) scale(${visualScale})`,
-            }}
-          >
-            {/* Main Report Card */}
-            <div className="relative bg-white/60 backdrop-blur-xl border border-white/60 rounded-3xl shadow-2xl p-5 sm:p-8">
+        {/* ── Product Visual — intersection-triggered reveal (pace independent of scroll speed) ── */}
+        <div
+          ref={visualRevealRef}
+          className="relative mx-auto max-w-3xl lg:max-w-4xl xl:max-w-5xl pb-6 md:pb-12 motion-safe:will-change-transform"
+          aria-hidden
+        >
+          <div className="relative">
+            {/* Main Report Card (decorative preview — parent has aria-hidden) */}
+            <div className="relative rounded-2xl border border-border/80 bg-card/90 p-6 shadow-lg backdrop-blur-md dark:border-border dark:bg-card/95 dark:shadow-xl dark:shadow-black/40 sm:p-10">
               {/* Header */}
-              <div className="flex justify-between items-start mb-5 sm:mb-8">
-                <div>
-                  <h3 className="text-lg sm:text-2xl font-bold text-slate-900">
+              <div className="mb-6 flex items-start justify-between gap-3 sm:mb-10">
+                <div className="min-w-0">
+                  <p className="text-xl font-bold text-foreground sm:text-3xl">
                     Fitness Score
-                  </h3>
-                  <p className="text-slate-500 text-xs sm:text-sm">
+                  </p>
+                  <p className="text-sm text-muted-foreground sm:text-base">
                     Comprehensive Athlete Profile
                   </p>
                 </div>
-                <div className="flex items-center gap-1.5 bg-white px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full shadow-sm">
-                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-500" />
-                  <span className="text-[10px] font-bold text-slate-700 uppercase tracking-[0.15em]">
+                <div className="flex shrink-0 items-center gap-2 rounded-full bg-card px-3 py-1.5 shadow-sm dark:bg-background-secondary sm:px-4 sm:py-2">
+                  <div className="h-2 w-2 rounded-full bg-primary sm:h-2.5 sm:w-2.5" />
+                  <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-foreground sm:text-xs">
                     Active
                   </span>
                 </div>
               </div>
 
-              {/* Radar Chart Visual */}
-              <div className="relative h-44 sm:h-64 w-full flex items-center justify-center mb-5 sm:mb-8">
-                {/* Background Circles */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-44 sm:w-64 h-44 sm:h-64 rounded-full border border-slate-200" />
-                  <div className="w-32 sm:w-48 h-32 sm:h-48 rounded-full border border-slate-200 absolute" />
-                  <div className="w-20 sm:w-32 h-20 sm:h-32 rounded-full border border-slate-200 absolute" />
-                </div>
+              {/* Radar chart: inset graphic on lg+ so pillar cards sit in the outer margin (not on the polygon) */}
+              <div className="relative mb-6 flex w-full justify-center overflow-visible sm:mb-10 lg:mb-12">
+                <div className="relative aspect-square h-52 w-52 shrink-0 overflow-visible sm:h-72 sm:w-72 lg:h-[22rem] lg:w-[22rem] xl:h-[23rem] xl:w-[23rem]">
+                  {/* Background Circles + SVG + score — inset on large screens */}
+                  <div className="absolute inset-0 lg:inset-[12%]">
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="h-full w-full rounded-full border border-border dark:border-border/70" />
+                      <div className="absolute h-[77%] w-[77%] rounded-full border border-border dark:border-border/70" />
+                      <div className="absolute h-[54%] w-[54%] rounded-full border border-border dark:border-border/70" />
+                    </div>
 
-                {/* The Radar Shape */}
-                <svg
-                  viewBox="0 0 100 100"
-                  className="w-full h-full absolute drop-shadow-xl"
-                >
-                  <polygon
-                    points="50,15 85,35 75,80 25,80 15,35"
-                    fill="rgba(99, 102, 241, 0.2)"
-                    stroke="#6366f1"
-                    strokeWidth="2"
-                  />
-                  <circle cx="50" cy="15" r="3" fill="#6366f1" />
-                  <circle cx="85" cy="35" r="3" fill="#6366f1" />
-                  <circle cx="75" cy="80" r="3" fill="#6366f1" />
-                  <circle cx="25" cy="80" r="3" fill="#6366f1" />
-                  <circle cx="15" cy="35" r="3" fill="#6366f1" />
-                </svg>
+                    <svg
+                      viewBox="0 0 100 100"
+                      className="absolute h-full w-full drop-shadow-xl dark:opacity-90"
+                      aria-hidden
+                    >
+                      <polygon
+                        points="50,15 85,35 75,80 25,80 15,35"
+                        fill="color-mix(in srgb, var(--gradient-from-hex) 22%, transparent)"
+                        stroke="var(--gradient-from-hex)"
+                        strokeWidth="2"
+                      />
+                      <circle cx="50" cy="15" r="3" fill="var(--gradient-from-hex)" />
+                      <circle cx="85" cy="35" r="3" fill="var(--gradient-from-hex)" />
+                      <circle cx="75" cy="80" r="3" fill="var(--gradient-from-hex)" />
+                      <circle cx="25" cy="80" r="3" fill="var(--gradient-from-hex)" />
+                      <circle cx="15" cy="35" r="3" fill="var(--gradient-from-hex)" />
+                    </svg>
 
-                {/* Center Score */}
-                <div className="absolute flex flex-col items-center justify-center bg-white rounded-full w-16 h-16 sm:w-24 sm:h-24 shadow-lg border-4 border-slate-50">
-                  <span className="text-xl sm:text-3xl font-black text-slate-900">
-                    82
-                  </span>
-                  <span className="text-[10px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">
-                    Overall
-                  </span>
+                    <div className="absolute left-1/2 top-1/2 z-30 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full border-4 border-background bg-card shadow-lg dark:border-border dark:bg-background-secondary sm:h-28 sm:w-28">
+                      <span className="text-2xl font-black text-foreground sm:text-4xl">
+                        82
+                      </span>
+                      <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground sm:text-xs">
+                        Overall
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Desktop: pillar cards in outer ring (full box); chart lives in inset above */}
+                  <HeroRadarPillarsAround />
                 </div>
               </div>
 
-              {/* Metrics Pills */}
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                <div className="bg-emerald-50 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-emerald-100 flex items-center gap-2 sm:gap-3">
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
-                    <Scale className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              {/* Metrics: two wide pills below lg only */}
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:hidden">
+                <div className="flex items-center gap-3 rounded-xl border border-gradient-medium/40 bg-gradient-light/50 p-3 dark:border-primary/25 dark:bg-primary/10 sm:gap-4 sm:p-4">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-gradient-dark dark:bg-primary/25 dark:text-primary sm:h-11 sm:w-11">
+                    <Scale className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-emerald-800 uppercase">
+                    <p className="text-[11px] font-bold uppercase text-foreground sm:text-xs">
                       Body Comp
                     </p>
-                    <p className="text-xs sm:text-sm font-bold text-slate-900">
+                    <p className="text-sm font-bold text-foreground sm:text-base">
                       18.5% BF
                     </p>
                   </div>
                 </div>
-                <div className="bg-amber-50 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-amber-100 flex items-center gap-2 sm:gap-3">
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">
-                    <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <div className="flex items-center gap-3 rounded-xl border border-border/90 bg-muted/80 p-3 dark:border-border dark:bg-background-tertiary/80 sm:gap-4 sm:p-4">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-gradient-dark dark:bg-primary/25 dark:text-primary sm:h-11 sm:w-11">
+                    <Zap className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-amber-800 uppercase">
+                    <p className="text-[11px] font-bold uppercase text-foreground sm:text-xs">
                       Movement
                     </p>
-                    <p className="text-xs sm:text-sm font-bold text-slate-900">
+                    <p className="text-sm font-bold text-foreground sm:text-base">
                       85/100
                     </p>
                   </div>
@@ -199,41 +253,86 @@ export function HeroSection() {
               </div>
             </div>
 
-            {/* Floating Elements — desktop only, add visual interest */}
-            <div className="absolute -right-4 sm:-right-8 top-8 sm:top-12 bg-white p-3 sm:p-4 rounded-2xl shadow-xl border border-slate-100 animate-float hidden md:block">
+            {/* Floating Elements — md+ only */}
+            <div
+              className="absolute -left-8 bottom-64 z-10 hidden rounded-xl border border-border/90 bg-card/95 p-3 shadow-md motion-safe:animate-float dark:border-border dark:bg-card/95 dark:shadow-lg dark:shadow-black/30 sm:-left-10 sm:bottom-72 sm:p-4 lg:-left-12 lg:bottom-80 md:block"
+              style={{ animationDelay: "0.4s" }}
+            >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600">
-                  <ScanLine size={20} />
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/12 text-gradient-dark dark:bg-primary/20 dark:text-primary sm:h-12 sm:w-12">
+                  <Sparkles className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden />
+                </div>
+                <div className="text-left">
+                  <p className="text-xs font-semibold text-muted-foreground sm:text-sm">
+                    Milestone
+                  </p>
+                  <p className="text-sm font-bold text-foreground sm:text-base">
+                    Unlocked
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="absolute -right-8 top-[5.25rem] hidden rounded-xl border border-border/90 bg-card/95 p-3 shadow-md motion-safe:animate-float dark:border-border dark:bg-card/95 dark:shadow-lg dark:shadow-black/30 sm:-right-12 sm:top-[6.75rem] sm:p-4 lg:-right-14 md:block">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary/12 text-gradient-dark dark:bg-primary/20 dark:text-primary sm:h-12 sm:w-12">
+                  <ScanLine className="h-5 w-5 sm:h-6 sm:w-6" />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-slate-500">
+                  <p className="text-xs font-semibold text-muted-foreground sm:text-sm">
                     Body Comp Scan
                   </p>
-                  <p className="text-sm font-bold text-slate-900">Imported</p>
+                  <p className="text-sm font-bold text-foreground sm:text-base">
+                    Imported
+                  </p>
                 </div>
                 <Check
-                  className="text-emerald-500 ml-2"
-                  size={16}
+                  className="ml-1 shrink-0 text-gradient-dark dark:text-primary sm:ml-2"
+                  size={18}
                   strokeWidth={3}
                 />
               </div>
             </div>
 
             <div
-              className="absolute -left-4 sm:-left-6 bottom-16 sm:bottom-24 bg-white p-3 sm:p-4 rounded-2xl shadow-xl border border-slate-100 animate-float hidden md:block"
+              className="absolute -left-8 bottom-28 hidden rounded-xl border border-border/90 bg-card/95 p-3 shadow-md motion-safe:animate-float dark:border-border dark:bg-card/95 dark:shadow-lg dark:shadow-black/30 sm:-left-10 sm:bottom-36 lg:-left-12 lg:bottom-44 sm:p-4 md:block"
               style={{ animationDelay: "1s" }}
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-rose-100 rounded-xl flex items-center justify-center text-rose-600">
-                  <Activity size={20} />
+                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-muted text-muted-foreground dark:bg-background-tertiary sm:h-12 sm:w-12">
+                  <Activity className="h-5 w-5 sm:h-6 sm:w-6" />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-slate-500">
+                  <p className="text-xs font-semibold text-muted-foreground sm:text-sm">
                     Forward Head
                   </p>
-                  <p className="text-sm font-bold text-slate-900">Detected</p>
+                  <p className="text-sm font-bold text-foreground sm:text-base">
+                    Detected
+                  </p>
                 </div>
-                <AlertCircle className="text-amber-500 ml-2" size={16} />
+                <AlertCircle
+                  className="ml-1 shrink-0 text-score-amber sm:ml-2"
+                  size={18}
+                />
+              </div>
+            </div>
+
+            <div
+              className="absolute -right-8 bottom-16 z-10 hidden rounded-xl border border-border/90 bg-card/95 p-3 shadow-md motion-safe:animate-float dark:border-border dark:bg-card/95 dark:shadow-lg dark:shadow-black/30 sm:-right-12 sm:bottom-20 sm:p-4 lg:-right-14 lg:bottom-24 md:block"
+              style={{ animationDelay: "1.4s" }}
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/12 text-gradient-dark dark:bg-primary/20 dark:text-primary sm:h-11 sm:w-11">
+                  <FileCheck className="h-5 w-5 sm:h-[22px] sm:w-[22px]" aria-hidden />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground sm:text-sm">
+                    Report
+                  </p>
+                  <p className="text-sm font-bold text-foreground sm:text-base">
+                    Ready to share
+                  </p>
+                </div>
               </div>
             </div>
           </div>

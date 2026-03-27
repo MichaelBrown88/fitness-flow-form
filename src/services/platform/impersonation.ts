@@ -13,7 +13,7 @@
 
 import { doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { getDb } from '@/services/firebase';
-import { isPlatformAdmin } from './platformAdmin';
+import { getPlatformAdmin } from './platformAdmin';
 import { logAdminAction } from './auditLog';
 import { logger } from '@/lib/utils/logger';
 import { PLATFORM } from '@/lib/database/paths';
@@ -68,9 +68,8 @@ export async function startImpersonation(
   targetOrgName: string,
   reason?: string
 ): Promise<ImpersonationSession> {
-  // Verify platform admin status
-  const isAdmin = await isPlatformAdmin(adminUid);
-  if (!isAdmin) {
+  const adminRecord = await getPlatformAdmin(adminUid);
+  if (!adminRecord) {
     logger.error('[Impersonation] Non-admin attempted impersonation', { adminUid });
     throw new Error('Only platform administrators can use impersonation mode');
   }

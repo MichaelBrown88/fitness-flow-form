@@ -2,10 +2,19 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, Rss } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Navbar, Footer } from '@/components/landing';
+import { Seo } from '@/components/seo/Seo';
+import { ROUTES } from '@/constants/routes';
+import { SEO_NOINDEX_BLOG } from '@/constants/seo';
 
 export default function Blog() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
+      <Seo
+        pathname={ROUTES.BLOG}
+        title={SEO_NOINDEX_BLOG.title}
+        description={SEO_NOINDEX_BLOG.description}
+        noindex
+      />
       <Navbar />
 
       <main className="max-w-4xl mx-auto px-4 py-16">
@@ -25,10 +34,10 @@ export default function Blog() {
             We're working on articles about fitness assessment best practices,
             client retention strategies, and product updates.
           </p>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-muted-foreground">
             Coming soon. In the meantime,{' '}
-            <Link to="/onboarding" className="text-indigo-600 font-medium hover:underline">
-              start your free trial
+            <Link to={ROUTES.SIGNUP} className="text-indigo-600 font-medium hover:underline">
+              create your account
             </Link>{' '}
             to experience One Assess firsthand.
           </p>

@@ -41,17 +41,17 @@ export function CoachReportLifestyleContext({ formData }: { formData: FormData }
         <div className="bg-indigo-600 p-2 rounded-lg">
           <Moon className="h-5 w-5 text-white" />
         </div>
-        <h3 className="text-xl font-bold text-slate-900">Lifestyle & Recovery Context</h3>
+        <h3 className="text-xl font-bold text-foreground">Lifestyle & Recovery Context</h3>
       </div>
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
         <div className="space-y-4">
           {rows.map((r, i) => (
             <div key={i} className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-4">
               <div className="flex gap-2 sm:min-w-[180px]">
-                <span className="font-semibold text-slate-700">{r.label}:</span>
-                <span className="text-slate-600">{r.val}</span>
+                <span className="font-semibold text-foreground">{r.label}:</span>
+                <span className="text-muted-foreground">{r.val}</span>
               </div>
-              <p className="text-sm text-slate-600 italic">{r.note}</p>
+              <p className="text-sm text-muted-foreground italic">{r.note}</p>
             </div>
           ))}
         </div>

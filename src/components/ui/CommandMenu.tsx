@@ -85,18 +85,18 @@ export function CommandMenu() {
       />
       <div className="relative mx-auto mt-[15vh] w-full max-w-lg px-4">
         <Command
-          className="rounded-xl border border-slate-200 bg-white shadow-2xl overflow-hidden"
+          className="rounded-xl border border-border bg-background shadow-2xl overflow-hidden"
           shouldFilter={false}
         >
-          <div className="flex items-center gap-2 border-b border-slate-200 px-4">
-            <Search className="h-4 w-4 text-slate-400 shrink-0" />
+          <div className="flex items-center gap-2 border-b border-border px-4">
+            <Search className="h-4 w-4 text-muted-foreground shrink-0" />
             <Command.Input
               value={input}
               onValueChange={setInput}
               placeholder="Search clients, pages…"
-              className="flex-1 h-12 bg-transparent text-sm text-slate-900 placeholder:text-slate-400 outline-none"
+              className="flex-1 h-12 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
             />
-            <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-slate-600">
+            <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground-secondary">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -104,11 +104,11 @@ export function CommandMenu() {
           <Command.List className="max-h-72 overflow-y-auto p-2">
             {searching && (
               <Command.Loading>
-                <p className="px-3 py-4 text-xs text-slate-400 text-center">Searching…</p>
+                <p className="px-3 py-4 text-xs text-muted-foreground text-center">Searching…</p>
               </Command.Loading>
             )}
 
-            <Command.Empty className="px-3 py-6 text-center text-xs text-slate-400">
+            <Command.Empty className="px-3 py-6 text-center text-xs text-muted-foreground">
               No results found.
             </Command.Empty>
 
@@ -119,9 +119,9 @@ export function CommandMenu() {
                     key={c.id}
                     value={c.name}
                     onSelect={() => go(`/client/${encodeURIComponent(c.name)}`)}
-                    className="flex items-center gap-3 px-3 py-2.5 text-sm text-slate-700 rounded-lg cursor-pointer data-[selected=true]:bg-slate-100"
+                    className="flex items-center gap-3 px-3 py-2.5 text-sm text-foreground-secondary rounded-lg cursor-pointer data-[selected=true]:bg-muted"
                   >
-                    <User className="h-4 w-4 text-slate-400" />
+                    <User className="h-4 w-4 text-muted-foreground" />
                     {c.name}
                   </Command.Item>
                 ))}
@@ -131,25 +131,25 @@ export function CommandMenu() {
             <Command.Group heading="Pages">
               <Command.Item
                 onSelect={() => go(ROUTES.DASHBOARD)}
-                className="flex items-center gap-3 px-3 py-2.5 text-sm text-slate-700 rounded-lg cursor-pointer data-[selected=true]:bg-slate-100"
+                className="flex items-center gap-3 px-3 py-2.5 text-sm text-foreground-secondary rounded-lg cursor-pointer data-[selected=true]:bg-muted"
               >
-                <LayoutDashboard className="h-4 w-4 text-slate-400" />
+                <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
                 Dashboard
               </Command.Item>
               <Command.Item
                 onSelect={() => go(ROUTES.SETTINGS)}
-                className="flex items-center gap-3 px-3 py-2.5 text-sm text-slate-700 rounded-lg cursor-pointer data-[selected=true]:bg-slate-100"
+                className="flex items-center gap-3 px-3 py-2.5 text-sm text-foreground-secondary rounded-lg cursor-pointer data-[selected=true]:bg-muted"
               >
-                <Settings className="h-4 w-4 text-slate-400" />
+                <Settings className="h-4 w-4 text-muted-foreground" />
                 Settings
               </Command.Item>
             </Command.Group>
           </Command.List>
 
-          <div className="border-t border-slate-100 px-4 py-2 text-[10px] text-slate-400 flex items-center gap-3">
-            <span><kbd className="px-1.5 py-0.5 rounded bg-slate-100 font-mono text-[10px]">↑↓</kbd> navigate</span>
-            <span><kbd className="px-1.5 py-0.5 rounded bg-slate-100 font-mono text-[10px]">⏎</kbd> select</span>
-            <span><kbd className="px-1.5 py-0.5 rounded bg-slate-100 font-mono text-[10px]">esc</kbd> close</span>
+          <div className="border-t border-border px-4 py-2 text-[10px] text-muted-foreground flex items-center gap-3">
+            <span><kbd className="px-1.5 py-0.5 rounded bg-muted font-mono text-[10px]">↑↓</kbd> navigate</span>
+            <span><kbd className="px-1.5 py-0.5 rounded bg-muted font-mono text-[10px]">⏎</kbd> select</span>
+            <span><kbd className="px-1.5 py-0.5 rounded bg-muted font-mono text-[10px]">esc</kbd> close</span>
           </div>
         </Command>
       </div>

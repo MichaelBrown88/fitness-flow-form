@@ -171,7 +171,7 @@ export function ClientReportGoals({
 
   return (
     <section className="space-y-4">
-      <h2 className="text-2xl font-bold text-slate-900">Your goals</h2>
+      <h2 className="text-2xl font-bold text-foreground">Your goals</h2>
 
       <div className="rounded-xl border border-border bg-muted/30 p-4 text-sm text-foreground">
         <p className="font-medium text-foreground mb-2">
@@ -201,10 +201,10 @@ export function ClientReportGoals({
               <TabsContent key={goal} value={goal} className="mt-4">
                 <div className="space-y-4">
                   <div className="rounded-lg border border-primary/20 bg-brand-light p-5 shadow-sm">
-                    <p className="text-sm text-slate-900 mb-3">{explanation}</p>
+                    <p className="text-sm text-foreground mb-3">{explanation}</p>
                     <div className="space-y-2">
                       <p className="text-[10px] font-black text-primary uppercase tracking-[0.15em]">What this entails:</p>
-                      <ul className="list-disc pl-5 text-sm text-slate-900 space-y-1">
+                      <ul className="list-disc pl-5 text-sm text-foreground space-y-1">
                         {whatItEntails.map((item, j) => (
                           <li key={j}>{item}</li>
                         ))}
@@ -215,7 +215,7 @@ export function ClientReportGoals({
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="rounded-lg border border-primary/20 bg-brand-light p-4 shadow-sm">
                       <h3 className="text-base font-semibold text-primary mb-3">What we'll do first</h3>
-                      <ul className="space-y-2 text-sm text-slate-900">
+                      <ul className="space-y-2 text-sm text-foreground">
                         {goalActions.map((action, j) => (
                           <li key={j} className="flex items-start gap-2">
                             <span className="text-primary mt-1">•</span>
@@ -226,7 +226,7 @@ export function ClientReportGoals({
                     </div>
                     <div className="rounded-lg border border-primary/20 bg-brand-light p-4 shadow-sm">
                       <h3 className="text-base font-semibold text-primary mb-3">What we'll do next</h3>
-                      <ul className="space-y-2 text-sm text-slate-900">
+                      <ul className="space-y-2 text-sm text-foreground">
                         {secondaryActions.map((action, j) => (
                           <li key={j} className="flex items-start gap-2">
                             <span className="text-primary mt-1">•</span>
@@ -251,14 +251,14 @@ export function ClientReportGoals({
               <div key={i} className="space-y-4">
                 <div className="rounded-lg border border-primary/20 bg-brand-light p-5 shadow-sm">
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="inline-flex items-center rounded-full bg-primary px-3 py-1 text-sm font-medium text-white">
+                    <span className="inline-flex items-center rounded-full bg-primary px-3 py-1 text-sm font-medium text-primary-foreground">
                       {goalLabel(goal)}
                     </span>
                   </div>
-                  <p className="text-sm text-slate-900 mb-3">{explanation}</p>
+                  <p className="text-sm text-foreground mb-3">{explanation}</p>
                   <div className="space-y-2">
                     <p className="text-[10px] font-black text-primary uppercase tracking-[0.15em]">What this entails:</p>
-                    <ul className="list-disc pl-5 text-sm text-slate-900 space-y-1">
+                    <ul className="list-disc pl-5 text-sm text-foreground space-y-1">
                       {whatItEntails.map((item, j) => (
                         <li key={j}>{item}</li>
                       ))}
@@ -269,7 +269,7 @@ export function ClientReportGoals({
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="rounded-lg border border-primary/20 bg-brand-light p-4 shadow-sm">
                     <h3 className="text-base font-semibold text-primary mb-3">What we'll do first</h3>
-                    <ul className="space-y-2 text-sm text-slate-900">
+                    <ul className="space-y-2 text-sm text-foreground">
                       {goalActions.map((action, j) => (
                         <li key={j} className="flex items-start gap-2">
                           <span className="text-primary mt-1">•</span>
@@ -280,7 +280,7 @@ export function ClientReportGoals({
                   </div>
                   <div className="rounded-lg border border-primary/20 bg-brand-light p-4 shadow-sm">
                     <h3 className="text-base font-semibold text-primary mb-3">What we'll do next</h3>
-                    <ul className="space-y-2 text-sm text-slate-900">
+                    <ul className="space-y-2 text-sm text-foreground">
                       {secondaryActions.map((action, j) => (
                         <li key={j} className="flex items-start gap-2">
                           <span className="text-primary mt-1">•</span>

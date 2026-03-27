@@ -33,7 +33,7 @@ export const PROGRAM_PHASES = [
   {
     key: 'foundation',
     title: 'Building the Foundation',
-    color: 'bg-slate-800',
+    color: 'bg-foreground/90',
     text: 'Movement quality, posture, breathing, and consistency. Install habits that make progress inevitable.',
   },
   {

@@ -8,6 +8,8 @@ import { scoreMovementQuality } from './movementQualityScoring';
 import { scoreLifestyle } from './lifestyleScoring';
 import { generateSynthesis } from './synthesisGenerator';
 
+const PILLAR_IDS = ['bodyComp', 'cardio', 'strength', 'movementQuality', 'lifestyle'] as const;
+
 export function computeScores(form: FormData): ScoreSummary {
   const age = calculateAge(form.dateOfBirth);
   const gender = (form.gender || 'any').toLowerCase();
@@ -19,17 +21,21 @@ export function computeScores(form: FormData): ScoreSummary {
     scoreMovementQuality(form, age, gender),
     scoreLifestyle(form, age, gender),
   ];
-  const filledCategories = categories.filter(c => c.score > 0);
+
+  const assessedCategories = categories.filter((c) => c.assessed);
   const overall =
-    filledCategories.length > 0
+    assessedCategories.length > 0
       ? Math.round(
-          filledCategories.reduce((acc, c) => acc + c.score, 0) / filledCategories.length
+          assessedCategories.reduce((acc, c) => acc + c.score, 0) / assessedCategories.length,
         )
       : 0;
 
+  const allFiveAssessed = PILLAR_IDS.every((id) => categories.find((c) => c.id === id)?.assessed);
+  const fullProfileScore = allFiveAssessed ? overall : null;
+
   const synthesis = generateSynthesis(categories, form);
 
-  return { overall, categories, synthesis };
+  return { overall, fullProfileScore, categories, synthesis };
 }
 
 /**
@@ -40,10 +46,12 @@ export function summarizeScores(form: FormData) {
   const scores = computeScores(form);
   return {
     overall: scores.overall,
-    categories: scores.categories.map(c => ({
+    fullProfileScore: scores.fullProfileScore,
+    categories: scores.categories.map((c) => ({
       id: c.id,
       score: c.score,
-      weaknesses: c.weaknesses
-    }))
+      assessed: c.assessed,
+      weaknesses: c.weaknesses,
+    })),
   };
 }

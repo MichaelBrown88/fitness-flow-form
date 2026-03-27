@@ -1,6 +1,10 @@
 /**
  * Centralized logging utility
  * Replaces console.log/warn/error with a structured logging system
+ *
+ * Behaviour:
+ * - Development: debug/info/warn/error mirror to console.
+ * - Production: warn/error mirror to console; debug/info are in-memory only (no console noise).
  */
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
@@ -29,12 +33,13 @@ class Logger {
       this.logs.shift();
     }
 
-    // In development, still use console for immediate feedback
     if (import.meta.env.DEV) {
       switch (level) {
         case 'debug':
+          console.debug(message, ...args);
+          break;
         case 'info':
-          // Only log in development
+          console.info(message, ...args);
           break;
         case 'warn':
           console.warn(message, ...args);
@@ -43,6 +48,13 @@ class Logger {
           console.error(message, ...args);
           break;
       }
+      return;
+    }
+
+    if (level === 'warn') {
+      console.warn(message, ...args);
+    } else if (level === 'error') {
+      console.error(message, ...args);
     }
   }
 
@@ -64,7 +76,7 @@ class Logger {
 
   getLogs(level?: LogLevel): LogEntry[] {
     if (level) {
-      return this.logs.filter(log => log.level === level);
+      return this.logs.filter((log) => log.level === level);
     }
     return [...this.logs];
   }
@@ -75,4 +87,3 @@ class Logger {
 }
 
 export const logger = new Logger();
-

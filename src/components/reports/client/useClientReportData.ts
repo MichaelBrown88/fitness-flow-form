@@ -27,12 +27,26 @@ export function useClientReportData({
 }: UseClientReportDataProps) {
   const safeScores = useMemo(() => {
     if (scores && scores.categories) return scores;
-    return { overall: 0, categories: [], grade: 'N/A', percentile: 0 } as unknown as ScoreSummary;
+    return {
+      overall: 0,
+      fullProfileScore: null,
+      categories: [],
+      synthesis: [],
+    } as unknown as ScoreSummary;
   }, [scores]);
 
   const orderedCats = useMemo(
-    () => safeScores.categories ? CATEGORY_ORDER.map(id => safeScores.categories.find(c => c.id === (id as 'bodyComp' | 'strength' | 'cardio' | 'movementQuality' | 'lifestyle'))).filter(Boolean) as ScoreSummary['categories'] : [],
-    [safeScores.categories]
+    () =>
+      safeScores.categories
+        ? (CATEGORY_ORDER.map((id) =>
+            safeScores.categories.find(
+              (c) =>
+                c.id === (id as 'bodyComp' | 'strength' | 'cardio' | 'movementQuality' | 'lifestyle') &&
+                c.assessed,
+            ),
+          ).filter(Boolean) as ScoreSummary['categories'])
+        : [],
+    [safeScores.categories],
   );
   
   const archetype = useMemo(() => determineArchetype(safeScores, formData), [safeScores, formData]);
@@ -172,7 +186,7 @@ export function useClientReportData({
       map[cat.id] = base;
     }
     return map;
-  }, [orderedCats, formData, isBodyRecomp, safeScores.categories]);
+  }, [orderedCats, formData, isBodyRecomp, safeScores.categories, goals]);
   
   const maxWeeks = useMemo(() => Math.max(...orderedCats.map(c => weeksByCategory[c.id] ?? 0), 0), [orderedCats, weeksByCategory]);
   
@@ -206,8 +220,11 @@ export function useClientReportData({
   
   const previousRadarData = useMemo(() => {
     if (!previousScores || !previousScores.categories) return undefined;
-    const prevOrderedCats = CATEGORY_ORDER.map(id => 
-      previousScores.categories.find(c => c.id === (id as 'bodyComp' | 'strength' | 'cardio' | 'movementQuality' | 'lifestyle'))
+    const prevOrderedCats = CATEGORY_ORDER.map((id) =>
+      previousScores.categories.find(
+        (c) =>
+          c.id === (id as 'bodyComp' | 'strength' | 'cardio' | 'movementQuality' | 'lifestyle') && c.assessed,
+      ),
     ).filter(Boolean) as ScoreSummary['categories'];
     
     return prevOrderedCats.map(cat => ({

@@ -239,7 +239,7 @@ const CarouselDots: React.FC<{ count: number; className?: string }> = ({ count, 
           onClick={() => api?.scrollTo(i)}
           className={cn(
             "h-1.5 rounded-full transition-all",
-            i === active ? "w-4 bg-zinc-900" : "w-1.5 bg-zinc-300",
+            i === active ? "w-4 bg-foreground" : "w-1.5 bg-muted-foreground/40",
           )}
         />
       ))}

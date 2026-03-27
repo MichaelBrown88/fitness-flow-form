@@ -1,8 +1,8 @@
 /**
- * Pricing Configuration
- * 
- * Defines subscription plans, seat-based pricing, and monthly fee calculations.
- * All prices are in KWD (Kuwaiti Dinar).
+ * Legacy KWD plan-tier pricing (Kuwaiti Dinar).
+ *
+ * UK-first capacity pricing lives in `@/lib/pricing/config` (`getMonthlyPrice`).
+ * Use this module only for KW / `calculateMonthlyFee` fallbacks — not new GB features.
  */
 
 export type SubscriptionPlan = 'starter' | 'professional' | 'enterprise' | 'free' | 'none';

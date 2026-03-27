@@ -6,7 +6,7 @@
  * and use "Push 1 Week" for the most common scheduling action.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   Calendar,
   Scan,
@@ -94,9 +94,9 @@ function formatDueLabel(daysRemaining: number): { text: string; color: string } 
     };
   }
   if (daysRemaining <= 7) return { text: 'Do this next session', color: 'text-score-amber-fg' };
-  if (daysRemaining <= 13) return { text: 'Next week', color: 'text-slate-600' };
+  if (daysRemaining <= 13) return { text: 'Next week', color: 'text-foreground-secondary' };
   const weeks = Math.ceil(daysRemaining / 7);
-  return { text: `In ${weeks} weeks`, color: 'text-slate-500' };
+  return { text: `In ${weeks} weeks`, color: 'text-muted-foreground' };
 }
 
 function daysToWeeks(days: number): number {
@@ -120,7 +120,10 @@ export function RetestScheduleCard({
   const clientActivePillars = profile?.activePillars
     ?? orgDefaultActivePillars
     ?? ALL_PILLARS;
-  const activePillarSet = new Set(clientActivePillars);
+  const activePillarSet = useMemo(
+    () => new Set(clientActivePillars),
+    [clientActivePillars],
+  );
 
   const lastAssessmentDate = profile?.lastAssessmentDate?.toDate();
   const trainingStart = profile?.trainingStartDate ? new Date(profile.trainingStartDate) : undefined;
@@ -130,13 +133,22 @@ export function RetestScheduleCard({
     ? (trainingStart && trainingStart > lastAssessmentDate ? trainingStart : lastAssessmentDate)
     : undefined;
 
-  const pillarDateMap: Record<string, Date | undefined> = {
-    bodycomp: profile?.lastInBodyDate?.toDate(),
-    posture: profile?.lastPostureDate?.toDate(),
-    fitness: profile?.lastFitnessDate?.toDate(),
-    strength: profile?.lastStrengthDate?.toDate(),
-    lifestyle: profile?.lastLifestyleDate?.toDate(),
-  };
+  const pillarDateMap = useMemo(
+    (): Record<string, Date | undefined> => ({
+      bodycomp: profile?.lastInBodyDate?.toDate(),
+      posture: profile?.lastPostureDate?.toDate(),
+      fitness: profile?.lastFitnessDate?.toDate(),
+      strength: profile?.lastStrengthDate?.toDate(),
+      lifestyle: profile?.lastLifestyleDate?.toDate(),
+    }),
+    [
+      profile?.lastInBodyDate,
+      profile?.lastPostureDate,
+      profile?.lastFitnessDate,
+      profile?.lastStrengthDate,
+      profile?.lastLifestyleDate,
+    ],
+  );
 
   const handleTogglePillar = useCallback(async (pillar: PartialAssessmentCategory) => {
     const newSet = new Set(activePillarSet);
@@ -202,19 +214,19 @@ export function RetestScheduleCard({
     <div className="overflow-hidden">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger asChild>
-          <div className="py-3 flex items-center justify-between gap-3 cursor-pointer hover:bg-slate-50/50 transition-colors rounded-lg">
+          <div className="py-3 flex items-center justify-between gap-3 cursor-pointer hover:bg-muted/50 transition-colors rounded-lg">
             <div className="flex items-center gap-2 min-w-0 flex-1">
               <Calendar className="h-4 w-4 text-primary shrink-0" />
-              <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500">
+              <span className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
                 Assessment Schedule
               </span>
-              <span className="text-[10px] text-slate-400">
+              <span className="text-[10px] text-muted-foreground">
                 {activePillarSet.size}/{ALL_PILLARS.length} active
               </span>
             </div>
             {isOpen
-              ? <ChevronUp className="h-4 w-4 text-slate-400 shrink-0" />
-              : <ChevronDown className="h-4 w-4 text-slate-400 shrink-0" />
+              ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
+              : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
             }
           </div>
         </CollapsibleTrigger>
@@ -237,7 +249,7 @@ export function RetestScheduleCard({
                 <div
                   key={pillar}
                   className={`flex items-center gap-3 p-3 rounded-xl transition-colors ${
-                    isActive ? 'hover:bg-slate-50' : 'opacity-50'
+                    isActive ? 'hover:bg-muted/50' : 'opacity-50'
                   }`}
                 >
                   <Switch
@@ -252,19 +264,19 @@ export function RetestScheduleCard({
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-bold text-slate-900">{config.label}</span>
+                      <span className="text-sm font-bold text-foreground">{config.label}</span>
                       {isCustom && (
                         <span className="text-[10px] text-primary font-bold">Custom</span>
                       )}
                     </div>
                     {isActive && !isEditing && (
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs text-slate-400">
+                        <span className="text-xs text-muted-foreground">
                           Every {daysToWeeks(interval)} wk
                         </span>
                         {dueLabel && (
                           <>
-                            <span className="text-slate-300">·</span>
+                            <span className="text-muted-foreground/60">·</span>
                             <span className={`text-xs font-semibold ${dueLabel.color}`}>
                               {dueLabel.text}
                             </span>
@@ -282,7 +294,7 @@ export function RetestScheduleCard({
                           size="sm"
                           onClick={() => handlePushOneWeek(pillar)}
                           disabled={!!saving}
-                          className="h-8 px-2 text-xs text-slate-500"
+                          className="h-8 px-2 text-xs text-muted-foreground"
                         >
                           {isBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Push 1 wk'}
                         </Button>
@@ -294,7 +306,7 @@ export function RetestScheduleCard({
                           setEditingPillar(pillar);
                           setEditValue(daysToWeeks(interval).toString());
                         }}
-                        className="h-8 w-8 p-0 text-slate-400"
+                        className="h-8 w-8 p-0 text-muted-foreground"
                       >
                         <Settings2 className="h-3.5 w-3.5" />
                       </Button>
@@ -312,7 +324,7 @@ export function RetestScheduleCard({
                         className="h-8 w-14 text-center text-sm"
                         autoFocus
                       />
-                      <span className="text-xs text-slate-400">wk</span>
+                      <span className="text-xs text-muted-foreground">wk</span>
                       <Button
                         size="sm"
                         onClick={() => handleSaveCustomInterval(pillar)}
@@ -333,17 +345,17 @@ export function RetestScheduleCard({
                   )}
 
                   {!isActive && (
-                    <ChevronRight className="h-4 w-4 text-slate-300 shrink-0" />
+                    <ChevronRight className="h-4 w-4 text-muted-foreground/60 shrink-0" />
                   )}
                 </div>
               );
             })}
 
             {!hasScheduleData && (
-              <div className="py-6 text-center text-sm text-slate-500">
-                <Calendar className="h-10 w-10 mx-auto text-slate-300 mb-3" />
+              <div className="py-6 text-center text-sm text-muted-foreground">
+                <Calendar className="h-10 w-10 mx-auto text-muted-foreground/60 mb-3" />
                 <p className="font-medium">No assessments yet</p>
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Complete an assessment to start scheduling
                 </p>
               </div>

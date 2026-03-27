@@ -1,119 +1,93 @@
 /**
- * MediaPipe Pose Singleton
- * 
- * CRITICAL: MediaPipe WASM has global state and heavy WebGL context requirements.
- * Creating/destroying instances for every image causes:
- *   1. WebGL context thrashing (browser hangs)
- *   2. Memory leaks from unreleased WASM resources
- *   3. Race conditions in initialization
- * 
- * This singleton initializes MediaPipe ONCE and reuses it for all detections.
- * A request queue ensures only one detection runs at a time (MediaPipe limitation).
+ * MediaPipe PoseLandmarker (Tasks Vision) singleton.
+ *
+ * One WASM/WebGL instance, serialized through queueDetection — same constraints as the legacy Pose stack.
  */
 
+import { FilesetResolver, PoseLandmarker, type PoseLandmarker as PoseLandmarkerType } from '@mediapipe/tasks-vision';
 import { CONFIG } from '@/config';
+import type { MediaPipeLandmark } from '@/lib/types/mediapipe';
 import { logger } from '@/lib/utils/logger';
 
-// MediaPipe Pose instance types
-type PoseInstance = {
-  setOptions: (options: Record<string, unknown>) => void;
-  onResults: (callback: (results: PoseResults) => void) => void;
-  initialize: () => Promise<void>;
-  send: (input: { image: HTMLImageElement }) => Promise<void>;
-  close: () => void;
-};
-
-type PoseResults = {
-  poseLandmarks?: Array<{ x: number; y: number; z: number; visibility?: number }>;
-};
-
-// Singleton state
-let poseInstance: PoseInstance | null = null;
+let poseLandmarker: PoseLandmarkerType | null = null;
 let isInitializing = false;
-let initPromise: Promise<PoseInstance> | null = null;
+let initPromise: Promise<PoseLandmarkerType> | null = null;
 let initFailed = false;
 
-// Request queue to serialize detections (MediaPipe can't handle concurrent sends)
-type QueuedRequest = {
-  execute: () => void;
-};
+type QueuedRequest = { execute: () => void };
 const requestQueue: QueuedRequest[] = [];
 let isProcessingQueue = false;
 
-/**
- * Get or create the singleton MediaPipe Pose instance
- * Thread-safe initialization with promise deduplication
- */
-export async function getPoseInstance(): Promise<PoseInstance> {
-  // Already initialized - return immediately
-  if (poseInstance) {
-    return poseInstance;
-  }
+export type PoseLandmarkerInstance = PoseLandmarkerType;
 
-  // Previous init failed — don't retry endlessly (WASM files missing, etc.)
+export function mapNormalizedLandmarksToMediaPipe(
+  landmarks: ReadonlyArray<{ x: number; y: number; z: number; visibility?: number }>
+): MediaPipeLandmark[] {
+  return landmarks.map((l) => ({
+    x: l.x,
+    y: l.y,
+    z: l.z,
+    visibility: l.visibility,
+  }));
+}
+
+export function detectPoseFromImageSource(
+  source: HTMLVideoElement | HTMLImageElement,
+  timestampMs: number
+): MediaPipeLandmark[] | undefined {
+  if (!poseLandmarker) {
+    throw new Error('MediaPipe PoseLandmarker not initialized');
+  }
+  const result = poseLandmarker.detectForVideo(source, timestampMs);
+  const first = result.landmarks[0];
+  if (!first?.length) return undefined;
+  return mapNormalizedLandmarksToMediaPipe(first);
+}
+
+async function createLandmarker(): Promise<PoseLandmarkerType> {
+  const wasm = await FilesetResolver.forVisionTasks(CONFIG.AI.MEDIAPIPE.TASKS_WASM_BASE);
+  const baseOptions = {
+    modelAssetPath: CONFIG.AI.MEDIAPIPE.POSE_LANDMARKER_MODEL_URL,
+  } as const;
+  const common = {
+    runningMode: 'VIDEO' as const,
+    numPoses: 1,
+    minPoseDetectionConfidence: CONFIG.AI.MEDIAPIPE.MIN_POSE_DETECTION_CONFIDENCE,
+    minPosePresenceConfidence: CONFIG.AI.MEDIAPIPE.MIN_POSE_PRESENCE_CONFIDENCE,
+    minTrackingConfidence: CONFIG.AI.MEDIAPIPE.MIN_TRACKING_CONFIDENCE,
+  };
+  try {
+    return await PoseLandmarker.createFromOptions(wasm, {
+      baseOptions: { ...baseOptions, delegate: 'GPU' },
+      ...common,
+    });
+  } catch (gpuErr) {
+    logger.warn('[SINGLETON] GPU delegate failed, falling back to CPU', 'MEDIAPIPE', gpuErr);
+    return PoseLandmarker.createFromOptions(wasm, {
+      baseOptions: { ...baseOptions, delegate: 'CPU' },
+      ...common,
+    });
+  }
+}
+
+export async function getPoseInstance(): Promise<PoseLandmarkerType> {
+  if (poseLandmarker) return poseLandmarker;
   if (initFailed) {
     throw new Error('MediaPipe initialization previously failed. Reload the page to retry.');
   }
-  
-  // Initialization in progress - wait for it
-  if (isInitializing && initPromise) {
-    return initPromise;
-  }
-  
-  // Start initialization
+  if (isInitializing && initPromise) return initPromise;
+
   isInitializing = true;
-  logger.debug('[SINGLETON] Starting MediaPipe Pose initialization...', 'MEDIAPIPE');
-  
+  logger.debug('[SINGLETON] Starting MediaPipe PoseLandmarker initialization...', 'MEDIAPIPE');
+
   initPromise = (async () => {
     try {
-      // Dynamic import - follows "Lazy Load Large Assets" rule
-      const mpPose = await import('@mediapipe/pose');
-      
-      // Handle different import structures (ESM vs CommonJS)
-      type MediaPipePoseModule = {
-        Pose?: new (options: { locateFile: (file: string) => string }) => PoseInstance;
-        default?: { Pose?: new (options: { locateFile: (file: string) => string }) => PoseInstance };
-      };
-      type WindowWithPose = Window & { 
-        Pose?: new (options: { locateFile: (file: string) => string }) => PoseInstance 
-      };
-      
-      const Pose = (mpPose as MediaPipePoseModule).Pose || 
-                   (mpPose as MediaPipePoseModule).default?.Pose || 
-                   (window as WindowWithPose).Pose;
-      
-      if (!Pose) {
-        throw new Error('MediaPipe Pose constructor not found');
-      }
-      
-      // Create instance with local assets (primary) or CDN fallback
-      const instance = new Pose({
-        locateFile: (file: string) => {
-          const url = `${CONFIG.AI.MEDIAPIPE.POSE_CDN}/${file}`;
-          logger.debug(`[SINGLETON] Loading: ${file}`, 'MEDIAPIPE');
-          return url;
-        }
-      });
-      
-      // Configure for pose detection
-      instance.setOptions({
-        modelComplexity: CONFIG.AI.MEDIAPIPE.MODEL_COMPLEXITY,
-        smoothLandmarks: true,
-        enableSegmentation: false,
-        minDetectionConfidence: CONFIG.AI.MEDIAPIPE.MIN_DETECTION_CONFIDENCE,
-        minTrackingConfidence: CONFIG.AI.MEDIAPIPE.MIN_TRACKING_CONFIDENCE
-      });
-      
-      // Initialize loads WASM and model files
-      await instance.initialize();
-      
-      poseInstance = instance;
-      logger.info('[SINGLETON] MediaPipe Pose initialized successfully', 'MEDIAPIPE');
-      
-      return instance;
+      poseLandmarker = await createLandmarker();
+      logger.info('[SINGLETON] MediaPipe PoseLandmarker initialized successfully', 'MEDIAPIPE');
+      return poseLandmarker;
     } catch (error) {
       logger.error('[SINGLETON] Failed to initialize MediaPipe', 'MEDIAPIPE', error);
-      poseInstance = null;
+      poseLandmarker = null;
       initFailed = true;
       throw error;
     } finally {
@@ -121,31 +95,19 @@ export async function getPoseInstance(): Promise<PoseInstance> {
       initPromise = null;
     }
   })();
-  
+
   return initPromise;
 }
 
-/**
- * Process the request queue one at a time
- * MediaPipe cannot handle concurrent `send()` calls - onResults gets overwritten
- */
 function processQueue(): void {
-  if (isProcessingQueue || requestQueue.length === 0) {
-    return;
-  }
-  
+  if (isProcessingQueue || requestQueue.length === 0) return;
   isProcessingQueue = true;
   const request = requestQueue.shift();
-  
   if (request) {
     request.execute();
   }
 }
 
-/**
- * Queue a detection request
- * Ensures sequential execution while allowing parallel queuing
- */
 export function queueDetection<T>(fn: () => Promise<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     const execute = async () => {
@@ -155,59 +117,40 @@ export function queueDetection<T>(fn: () => Promise<T>): Promise<T> {
       } catch (error) {
         reject(error);
       } finally {
-        // CRITICAL: Always release the queue, even on error
         isProcessingQueue = false;
-        // Small delay to let browser breathe between detections
         setTimeout(() => processQueue(), 50);
       }
     };
-    
     requestQueue.push({ execute });
-    
-    // Start processing if not already running
     if (!isProcessingQueue) {
       processQueue();
     }
   });
 }
 
-/**
- * Check if MediaPipe is ready for detections
- */
 export function isPoseReady(): boolean {
-  return poseInstance !== null;
+  return poseLandmarker !== null;
 }
 
-/**
- * Pre-warm MediaPipe (call early to cache WASM files)
- * Unlike the old approach, this KEEPS the instance alive
- */
 export async function prewarmMediaPipe(): Promise<void> {
   try {
     await getPoseInstance();
     logger.debug('[SINGLETON] MediaPipe pre-warmed and ready', 'MEDIAPIPE');
-  } catch (error) {
-    // Non-critical - detection will retry initialization
+  } catch {
     logger.warn('[SINGLETON] Pre-warm failed (non-critical)', 'MEDIAPIPE');
   }
 }
 
-/**
- * Cleanup singleton (only call when completely done with pose detection)
- * NOTE: In most cases, you should NOT call this - keep the singleton alive
- */
 export function destroyPoseInstance(): void {
-  if (poseInstance) {
+  if (poseLandmarker) {
     try {
-      poseInstance.close();
-      logger.debug('[SINGLETON] MediaPipe Pose closed', 'MEDIAPIPE');
-    } catch (error) {
+      poseLandmarker.close();
+      logger.debug('[SINGLETON] MediaPipe PoseLandmarker closed', 'MEDIAPIPE');
+    } catch {
       logger.warn('[SINGLETON] Error closing MediaPipe', 'MEDIAPIPE');
     }
-    poseInstance = null;
+    poseLandmarker = null;
   }
-  
-  // Clear any pending requests and reset failure state
   requestQueue.length = 0;
   isProcessingQueue = false;
   initFailed = false;

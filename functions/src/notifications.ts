@@ -10,6 +10,7 @@
  */
 
 import * as admin from 'firebase-admin';
+import { sendInviteAcceptedEmail } from './transactionalEmails';
 
 const PHASE_NAMES: Record<string, string> = {
   foundation: 'Foundation',
@@ -44,6 +45,17 @@ export async function handleInviteAccepted(
     recipientUid: invitedByUid,
     actionUrl: '/org/team',
   });
+
+  try {
+    await sendInviteAcceptedEmail({
+      inviterUid: invitedByUid,
+      joinerEmail: coachEmail,
+      invitedByDisplayName: invitedBy,
+      organizationName,
+    });
+  } catch (err) {
+    console.error('[handleInviteAccepted] invite-accepted email failed', err);
+  }
 }
 
 const SUBMISSION_TYPE_LABELS: Record<string, string> = {

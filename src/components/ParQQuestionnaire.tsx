@@ -109,10 +109,10 @@ const ParQQuestionnaire: React.FC<ParQQuestionnaireProps> = ({ onExitParQ, onCom
     .every(question => formData[question.id as keyof typeof formData] !== '');
 
   useEffect(() => {
-    if (allQuestionsAnswered) {
+    if (allQuestionsAnswered && formData.parqQuestionnaire !== 'completed') {
       updateFormData({ parqQuestionnaire: 'completed' });
     }
-  }, [allQuestionsAnswered, updateFormData]);
+  }, [allQuestionsAnswered, formData.parqQuestionnaire, updateFormData]);
 
   // Keep index in bounds when visibleQuestions length changes
   useEffect(() => {
@@ -168,7 +168,7 @@ const ParQQuestionnaire: React.FC<ParQQuestionnaireProps> = ({ onExitParQ, onCom
 
       {/* Progress — identical to SingleFieldFlow */}
       <div className="space-y-2">
-        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">
+        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
           <span>Health Screening Progress</span>
           <span>{validQuestionIndex + 1} of {visibleQuestions.length}</span>
         </div>
@@ -176,13 +176,13 @@ const ParQQuestionnaire: React.FC<ParQQuestionnaireProps> = ({ onExitParQ, onCom
       </div>
 
       {/* Question card — identical to SingleFieldFlow card */}
-      <div className="bg-white rounded-3xl p-8 lg:p-10 shadow-xl shadow-primary/10 border border-primary/5 min-h-[400px] flex flex-col justify-center">
-        <h3 className="text-xl font-bold tracking-tight text-slate-900 mb-6 leading-tight">
+      <div className="bg-background rounded-3xl p-8 lg:p-10 shadow-xl shadow-primary/10 border border-primary/5 min-h-[400px] flex flex-col justify-center">
+        <h3 className="text-xl font-bold tracking-tight text-foreground mb-6 leading-tight">
           {currentQuestion.question}
         </h3>
 
         {currentQuestion.tooltip && (
-          <p className="text-sm text-slate-400 mb-8 font-medium leading-relaxed italic border-l-2 border-slate-100 pl-4">
+          <p className="text-sm text-muted-foreground mb-8 font-medium leading-relaxed italic border-l-2 border-border pl-4">
             Note: {currentQuestion.tooltip}
           </p>
         )}
@@ -194,7 +194,7 @@ const ParQQuestionnaire: React.FC<ParQQuestionnaireProps> = ({ onExitParQ, onCom
             value={(currentAnswer as string) || ''}
             onChange={(e) => handleAnswer(e.target.value)}
             rows={4}
-            className="w-full p-5 border border-slate-200 rounded-2xl resize-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all font-medium text-slate-700"
+            className="w-full p-5 border border-border rounded-2xl resize-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all font-medium text-foreground-secondary"
           />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -203,12 +203,12 @@ const ParQQuestionnaire: React.FC<ParQQuestionnaireProps> = ({ onExitParQ, onCom
               className={`flex h-20 items-center justify-between px-8 rounded-2xl border-2 transition-all ${
                 currentAnswer === 'no'
                   ? 'border-primary bg-brand-light text-primary shadow-md ring-1 ring-primary'
-                  : 'border-slate-100 bg-slate-50/50 hover:border-slate-200 hover:bg-white text-slate-500'
+                  : 'border-border bg-muted/50 hover:border-border hover:bg-background text-muted-foreground'
               }`}
             >
               <span className="text-base font-bold">No</span>
               <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${
-                currentAnswer === 'no' ? 'bg-primary border-primary text-white' : 'border-slate-200'
+                currentAnswer === 'no' ? 'bg-primary border-primary text-primary-foreground' : 'border-border'
               }`}>
                 {currentAnswer === 'no' && <Check className="h-5 w-5 stroke-[3]" />}
               </div>
@@ -219,12 +219,12 @@ const ParQQuestionnaire: React.FC<ParQQuestionnaireProps> = ({ onExitParQ, onCom
               className={`flex h-20 items-center justify-between px-8 rounded-2xl border-2 transition-all ${
                 currentAnswer === 'yes'
                   ? 'border-rose-500 bg-rose-50 text-rose-700 shadow-md ring-1 ring-rose-500'
-                  : 'border-slate-100 bg-slate-50/50 hover:border-slate-200 hover:bg-white text-slate-500'
+                  : 'border-border bg-muted/50 hover:border-border hover:bg-background text-muted-foreground'
               }`}
             >
               <span className="text-base font-bold">Yes</span>
               <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${
-                currentAnswer === 'yes' ? 'bg-rose-500 border-rose-500 text-white' : 'border-slate-200'
+                currentAnswer === 'yes' ? 'bg-rose-500 border-rose-500 text-white' : 'border-border'
               }`}>
                 {currentAnswer === 'yes' && <Check className="h-5 w-5 stroke-[3]" />}
               </div>
@@ -233,12 +233,12 @@ const ParQQuestionnaire: React.FC<ParQQuestionnaireProps> = ({ onExitParQ, onCom
         )}
 
         {/* Navigation — inside card, identical to SingleFieldFlow */}
-        <div className="flex items-center justify-between mt-12 pt-8 border-t border-slate-50">
+        <div className="flex items-center justify-between mt-12 pt-8 border-t border-border/60">
           <Button
             variant="ghost"
             onClick={goToPrevious}
             disabled={validQuestionIndex === 0 && !onExitParQ}
-            className="h-12 px-6 rounded-xl font-bold text-slate-400 hover:text-slate-900"
+            className="h-12 px-6 rounded-xl font-bold text-muted-foreground hover:text-foreground"
           >
             <ChevronLeft className="mr-2 h-5 w-5" />
             Back
@@ -249,8 +249,8 @@ const ParQQuestionnaire: React.FC<ParQQuestionnaireProps> = ({ onExitParQ, onCom
             disabled={!hasAnswer}
             className={`h-12 px-8 rounded-xl font-bold transition-all ${
               hasAnswer
-                ? 'bg-slate-900 text-white hover:bg-slate-800'
-                : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                ? 'bg-foreground text-white hover:bg-foreground/90'
+                : 'bg-muted text-muted-foreground cursor-not-allowed'
             }`}
           >
             {isLastQuestion ? 'Section Complete' : 'Next Step'}

@@ -21,14 +21,14 @@ function DistributionBar({ label, count, total, color }: DistributionBarProps) {
   const pct = total > 0 ? Math.round((count / total) * 100) : 0;
   return (
     <div className="flex items-center gap-3">
-      <span className="text-xs text-slate-400 w-28 shrink-0 truncate">{label}</span>
+      <span className="text-xs text-muted-foreground w-28 shrink-0 truncate">{label}</span>
       <div className="flex-1 bg-admin-bg rounded-full h-2 overflow-hidden">
         <div
           className="h-full rounded-full transition-all duration-500"
           style={{ width: `${pct}%`, backgroundColor: color }}
         />
       </div>
-      <span className="text-xs text-slate-500 w-10 text-right shrink-0">{pct}%</span>
+      <span className="text-xs text-muted-foreground w-10 text-right shrink-0">{pct}%</span>
     </div>
   );
 }
@@ -139,7 +139,7 @@ export function LifestyleSnapshotCard({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
         {/* Sleep */}
         <div className="space-y-2">
-          <SectionTitle>Sleep Quality <span className="text-zinc-600">({sleepTotal})</span></SectionTitle>
+          <SectionTitle>Sleep Quality <span className="text-foreground-secondary">({sleepTotal})</span></SectionTitle>
           {QUALITY_KEYS.map(key => (
             <DistributionBar
               key={key}
@@ -153,7 +153,7 @@ export function LifestyleSnapshotCard({
 
         {/* Stress */}
         <div className="space-y-2">
-          <SectionTitle>Stress Level <span className="text-zinc-600">({stressTotal})</span></SectionTitle>
+          <SectionTitle>Stress Level <span className="text-foreground-secondary">({stressTotal})</span></SectionTitle>
           {(['very-low', 'low', 'moderate', 'high'] as const).map(key => (
             <DistributionBar
               key={key}
@@ -168,7 +168,7 @@ export function LifestyleSnapshotCard({
         {/* Nutrition */}
         {hasNutrition && (
           <div className="space-y-2">
-            <SectionTitle>Nutrition Quality <span className="text-zinc-600">({nutrTotal})</span></SectionTitle>
+            <SectionTitle>Nutrition Quality <span className="text-foreground-secondary">({nutrTotal})</span></SectionTitle>
             {QUALITY_KEYS.map(key => (
               <DistributionBar
                 key={key}
@@ -184,7 +184,7 @@ export function LifestyleSnapshotCard({
         {/* Hydration */}
         {hasHydration && (
           <div className="space-y-2">
-            <SectionTitle>Hydration Quality <span className="text-zinc-600">({hydrTotal})</span></SectionTitle>
+            <SectionTitle>Hydration Quality <span className="text-foreground-secondary">({hydrTotal})</span></SectionTitle>
             {QUALITY_KEYS.map(key => (
               <DistributionBar
                 key={key}
@@ -200,7 +200,7 @@ export function LifestyleSnapshotCard({
         {/* Alcohol */}
         {hasAlcohol && (
           <div className="space-y-2">
-            <SectionTitle>Alcohol Frequency <span className="text-zinc-600">({alcTotal})</span></SectionTitle>
+            <SectionTitle>Alcohol Frequency <span className="text-foreground-secondary">({alcTotal})</span></SectionTitle>
             {(['never', 'occasionally', 'weekly', 'daily'] as const).map(key => (
               <DistributionBar
                 key={key}
@@ -216,7 +216,7 @@ export function LifestyleSnapshotCard({
         {/* Activity Level */}
         {hasActivity && (
           <div className="space-y-2 md:col-span-2">
-            <SectionTitle>Activity Level <span className="text-zinc-600">({actTotal})</span></SectionTitle>
+            <SectionTitle>Activity Level <span className="text-foreground-secondary">({actTotal})</span></SectionTitle>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {Object.keys(ACTIVITY_LABELS).map(key => (
                 <DistributionBar
@@ -236,9 +236,9 @@ export function LifestyleSnapshotCard({
       <div className="mt-5 pt-4 border-t border-admin-border space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-xs text-admin-fg-muted">Clients reporting movement pain</span>
-          <span className={`text-sm font-semibold ${painPct >= 30 ? 'text-amber-400' : 'text-slate-300'}`}>
+          <span className={`text-sm font-semibold ${painPct >= 30 ? 'text-amber-400' : 'text-muted-foreground/60'}`}>
             {painPct}%
-            <span className="text-xs font-normal text-slate-500 ml-1">({painReported} of {uniqueClientCount})</span>
+            <span className="text-xs font-normal text-muted-foreground ml-1">({painReported} of {uniqueClientCount})</span>
           </span>
         </div>
 
@@ -252,10 +252,10 @@ export function LifestyleSnapshotCard({
               const count = painByMovement![key];
               const pct   = uniqueClientCount > 0 ? Math.round((count / uniqueClientCount) * 100) : 0;
               return (
-                <div key={key} className="rounded-lg bg-zinc-800/50 border border-zinc-700 px-3 py-2 text-center">
+                <div key={key} className="rounded-lg bg-muted/80 border border-border px-3 py-2 text-center">
                   <p className="text-sm font-semibold text-amber-400/90">{pct}%</p>
-                  <p className="text-[10px] text-zinc-500 mt-0.5">{label}</p>
-                  <p className="text-[10px] text-zinc-600">{count} client{count !== 1 ? 's' : ''}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{label}</p>
+                  <p className="text-[10px] text-foreground-secondary">{count} client{count !== 1 ? 's' : ''}</p>
                 </div>
               );
             })}

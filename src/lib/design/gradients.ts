@@ -4,8 +4,9 @@
  * All gradients are designed to work cohesively with Apple's neutral color palette
  */
 
-export type GradientId = 
-  | 'purple-indigo'    // Default: indigo-500 to purple-500
+export type GradientId =
+  | 'volt' // Default: Nike-style chartreuse accent (charcoal-friendly)
+  | 'purple-indigo'    // indigo-500 to purple-500
   | 'blue-cyan'        // Blue to cyan
   | 'emerald-teal'     // Green to teal
   | 'rose-pink'        // Rose to pink
@@ -31,6 +32,17 @@ export interface GradientDefinition {
  * Each gradient is carefully chosen to work with Apple's neutral palette
  */
 export const GRADIENT_PALETTE: Record<GradientId, GradientDefinition> = {
+  volt: {
+    id: 'volt',
+    name: 'Volt',
+    from: 'lime-400',
+    to: 'lime-500',
+    fromHex: '#dfff00',
+    toHex: '#9fcc00',
+    light: 'lime-50',
+    medium: 'lime-100',
+    dark: 'lime-600',
+  },
   'purple-indigo': {
     id: 'purple-indigo',
     name: 'Purple Indigo',
@@ -124,8 +136,8 @@ export const GRADIENT_PALETTE: Record<GradientId, GradientDefinition> = {
 /**
  * Get gradient definition by ID
  */
-export function getGradient(id: GradientId = 'purple-indigo'): GradientDefinition {
-  return GRADIENT_PALETTE[id] || GRADIENT_PALETTE['purple-indigo'];
+export function getGradient(id: GradientId = 'volt'): GradientDefinition {
+  return GRADIENT_PALETTE[id] || GRADIENT_PALETTE.volt;
 }
 
 /**

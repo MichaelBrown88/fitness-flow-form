@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Package, Users, FileText, Trash2, Check } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import type { OrgAdminOutletContext } from './OrgAdminLayout';
+import { formatPrice, getLocaleForRegion } from '@/lib/utils/currency';
+import { DEFAULT_REGION, type Region } from '@/constants/pricing';
 
 interface ErasureRequest {
   id: string;
@@ -75,7 +77,7 @@ export default function OrgOverview() {
                     ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                     : orgDetails.status === 'trial'
                       ? 'bg-amber-50 text-amber-700 border-amber-200'
-                      : 'bg-slate-100 text-slate-600 border-slate-300'
+                      : 'bg-muted text-foreground-secondary border-border-medium'
                 }`}
               >
                 {orgDetails.status || 'none'}
@@ -85,21 +87,25 @@ export default function OrgOverview() {
         </CardHeader>
         <CardContent className="p-4 sm:p-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-            <div className="bg-slate-50 rounded-lg p-3 sm:p-4">
+            <div className="bg-muted/50 rounded-lg p-3 sm:p-4">
               <p className="text-[10px] sm:text-xs text-foreground-secondary mb-1 font-medium">Plan</p>
               <p className="text-lg sm:text-xl font-semibold text-foreground capitalize">{orgDetails.plan || 'free'}</p>
             </div>
-            <div className="bg-slate-50 rounded-lg p-3 sm:p-4">
+            <div className="bg-muted/50 rounded-lg p-3 sm:p-4">
               <p className="text-[10px] sm:text-xs text-foreground-secondary mb-1 font-medium">Monthly Fee</p>
               <p className="text-lg sm:text-xl font-semibold text-foreground">
                 {orgDetails.isComped ? (
                   <span className="text-gradient-dark">Free</span>
                 ) : (
-                  new Intl.NumberFormat('en-KW', { style: 'currency', currency: 'KWD', minimumFractionDigits: 2 }).format(monthlyFee)
+                  formatPrice(
+                    monthlyFee,
+                    orgDetails.currency || 'GBP',
+                    getLocaleForRegion((orgDetails.region ?? DEFAULT_REGION) as Region),
+                  )
                 )}
               </p>
             </div>
-            <div className="bg-slate-50 rounded-lg p-3 sm:p-4 border border-slate-200 sm:col-span-2 md:col-span-1">
+            <div className="bg-muted/50 rounded-lg p-3 sm:p-4 border border-border sm:col-span-2 md:col-span-1">
               <p className="text-[10px] sm:text-xs text-foreground-secondary mb-1 font-medium">Client Seats</p>
               <p className="text-lg sm:text-xl font-semibold text-foreground">
                 {maxSeats > 0 ? `${totalClientSeats} / ${maxSeats}` : totalClientSeats}
@@ -174,16 +180,16 @@ export default function OrgOverview() {
           </CardHeader>
           <CardContent className="p-4 sm:p-6 pt-0 space-y-3">
             {erasureRequests.map((req) => (
-              <div key={req.id} className="flex items-start justify-between gap-4 rounded-lg border border-rose-100 bg-white px-4 py-3">
+              <div key={req.id} className="flex items-start justify-between gap-4 rounded-lg border border-rose-100 bg-background px-4 py-3">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-medium text-slate-800">
+                  <p className="truncate text-xs font-medium text-foreground">
                     Token: <span className="font-mono">{req.shareToken.slice(0, 12)}…</span>
                   </p>
                   {req.reason && (
-                    <p className="mt-0.5 text-xs text-slate-500 line-clamp-2">{req.reason}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{req.reason}</p>
                   )}
                   {req.requestedAt?.toDate && (
-                    <p className="mt-0.5 text-[10px] text-slate-400">
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">
                       {req.requestedAt.toDate().toLocaleDateString()}
                     </p>
                   )}

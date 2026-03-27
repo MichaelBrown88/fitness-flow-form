@@ -43,10 +43,10 @@ export function ClientReportHeader({
       </section>
 
       <section className="space-y-1">
-        <h2 className="text-xl font-semibold text-slate-900">
+        <h2 className="text-xl font-semibold text-foreground">
           {clientName ? `${clientName}, your report is ready` : 'Your report is ready'}
         </h2>
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-muted-foreground">
           Here's a clear overview of where you are now, what we'll focus on first, and how we'll move you toward your goals.
         </p>
       </section>

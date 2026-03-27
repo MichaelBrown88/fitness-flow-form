@@ -63,7 +63,7 @@ export function BlockCard({ block, variant = 'palette', onDelete }: BlockCardPro
                   {score}/100
                 </span>
               )}
-              <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold ${meta.dot.replace('bg-', 'bg-opacity-15 text-').replace('bg-opacity-15 text-slate-400', 'bg-muted text-foreground-secondary')}`}>
+              <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold ${meta.dot.replace('bg-', 'bg-opacity-15 text-').replace('bg-opacity-15 text-muted-foreground', 'bg-muted text-foreground-secondary')}`}>
                 {meta.label}
               </span>
             </div>

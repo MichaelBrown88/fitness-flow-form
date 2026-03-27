@@ -60,6 +60,8 @@ export const UI_TOASTS = {
     REPORT_EMAILED: 'Report emailed',
     LINK_COPIED: 'Live Link Copied',
     LINK_COPIED_DESC: 'Anyone with this link can view the interactive report.',
+    DIAGNOSTICS_COPIED: 'Diagnostics copied',
+    DIAGNOSTICS_COPIED_DESC: 'Paste into your support chat or email.',
     SHARED_SUCCESSFULLY: 'Shared successfully',
     SHARED_DESC: 'The report link has been shared.',
     SCAN_COMPLETE: 'Scan complete! You can re-scan if needed or continue to the next step.',
@@ -202,6 +204,14 @@ export const UI_TABS = {
   TEAM: 'Team',
 } as const;
 
+/** Clients tab empty states */
+export const UI_DASHBOARD_CLIENTS = {
+  EMPTY_TITLE: 'No clients yet',
+  EMPTY_BODY: 'Run a new assessment to add your first client and see them here.',
+  EMPTY_CTA: 'New assessment',
+  SEARCH_NO_MATCH: 'No clients match that name.',
+} as const;
+
 // Schedule Tab Labels
 export const UI_SCHEDULE = {
   OVERDUE: 'Overdue',
@@ -220,4 +230,12 @@ export const UI_DRAFT = {
   START_FRESH: 'Start Fresh',
   DRAFT_SAVED: 'Draft saved',
   SAVING: 'Saving...',
+} as const;
+
+/** Public client roadmap viewer — support / diagnostics (paired with `PUBLIC_CLIENT_URL_QUERY.ROADMAP_DEBUG`). */
+export const UI_PUBLIC_ROADMAP_SUPPORT = {
+  DEBUG_HINT_BEFORE: 'Still stuck? Add ',
+  DEBUG_HINT_AFTER:
+    ' to this page’s URL, reload, then share the diagnostics text with your coach or support.',
+  COPY_DIAGNOSTICS: 'Copy diagnostics',
 } as const;

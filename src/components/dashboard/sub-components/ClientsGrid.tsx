@@ -27,6 +27,8 @@ import type { ClientGroup } from '@/hooks/useDashboardData';
 import type { ReassessmentItem, ReassessmentType } from '@/hooks/useReassessmentQueue';
 import { getPillarLabel } from '@/constants/pillars';
 import { SCORE_COLORS } from '@/lib/scoring/scoreColor';
+import { ASSESSMENT_COPY } from '@/constants/assessmentCopy';
+import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
 
 interface ClientsGridProps {
   loadingData: boolean;
@@ -79,14 +81,14 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
     <section className="space-y-4">
       <div className="grid gap-3 sm:gap-4 md:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {loadingData ? (
-          <div className="col-span-full text-center text-xs sm:text-sm text-slate-400 font-medium py-12">
+          <div className="col-span-full py-12 text-center text-xs font-medium text-muted-foreground sm:text-sm">
              <div className="flex flex-col items-center gap-3">
-                <div className="w-6 h-6 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-foreground border-t-transparent" />
                 <span>Loading clients...</span>
               </div>
           </div>
         ) : filteredClients.length === 0 ? (
-          <div className="col-span-full text-center text-xs sm:text-sm text-slate-400 font-medium py-12">
+          <div className="col-span-full py-12 text-center text-xs font-medium text-muted-foreground sm:text-sm">
             {search ? 'No clients match that name.' : 'No clients found.'}
           </div>
         ) : (
@@ -97,26 +99,31 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
             return (
             <div
               key={group.id}
-              className={`group rounded-xl border bg-white p-4 sm:p-5 shadow-sm hover:shadow-xl transition-all duration-300 ${
+              className={`group rounded-xl border bg-card p-4 shadow-sm transition-all duration-300 hover:shadow-xl sm:p-5 ${
                 reassessmentData?.status === 'overdue' 
-                  ? 'border-red-200 hover:border-red-300' 
+                  ? 'border-red-300/60 hover:border-red-400 dark:border-red-800/60' 
                   : reassessmentData?.status === 'due-soon'
-                  ? 'border-amber-200 hover:border-amber-300'
-                  : 'border-slate-200 hover:border-slate-300'
+                  ? 'border-amber-300/60 hover:border-amber-400 dark:border-amber-800/50'
+                  : 'border-border hover:border-border'
               }`}
             >
                 <div className="flex items-start justify-between mb-3 sm:mb-4">
                 <div className="min-w-0 flex-1">
-                  <h3 className="text-base sm:text-lg font-bold text-slate-900 truncate">
-                    {group.name}
+                  <h3 className="truncate text-base font-bold text-foreground sm:text-lg">
+                    {formatClientDisplayName(group.name)}
                   </h3>
-                  <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.15em] mt-1">
+                  {group.remoteIntakeAwaitingStudio ? (
+                    <Badge variant="secondary" className="mt-1 text-[10px] font-semibold">
+                      {ASSESSMENT_COPY.AWAITING_STUDIO_BADGE}
+                    </Badge>
+                  ) : null}
+                  <p className="mt-1 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
                     {group.assessments.length} assessment{group.assessments.length !== 1 ? 's' : ''}
                   </p>
                   {group.notes && (
                     <span className="flex items-center gap-1 mt-1">
                       <Pin className="h-2.5 w-2.5 text-amber-400 shrink-0" />
-                      <span className="text-[10px] text-slate-400 font-normal truncate max-w-[160px]">
+                      <span className="max-w-[160px] truncate text-[10px] font-normal text-muted-foreground">
                         {group.notes.length > 60 ? `${group.notes.slice(0, 60)}…` : group.notes}
                       </span>
                     </span>
@@ -157,14 +164,14 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
               )}
               
               <div className="space-y-2 mb-5 sm:mb-6">
-                <div className="flex items-center justify-between text-xs sm:text-sm p-2 bg-slate-50 rounded-lg group-hover:bg-white transition-colors border border-transparent group-hover:border-slate-100">
-                  <span className="text-slate-500 font-medium">Latest Score</span>
-                  <span className="font-bold text-slate-900">{group.latestScore}</span>
+                <div className="flex items-center justify-between rounded-lg border border-transparent bg-muted/50 p-2 text-xs transition-colors group-hover:border-border group-hover:bg-muted sm:text-sm">
+                  <span className="font-medium text-muted-foreground">Latest Score</span>
+                  <span className="font-bold text-foreground">{group.latestScore}</span>
                 </div>
                 {group.latestDate && (
-                  <div className="flex items-center justify-between text-xs sm:text-xs px-2">
-                    <span className="text-slate-400 font-medium">Last Assessment</span>
-                    <span className="text-slate-500 font-bold uppercase tracking-[0.15em]">
+                  <div className="flex items-center justify-between px-2 text-xs sm:text-xs">
+                    <span className="font-medium text-muted-foreground">Last Assessment</span>
+                    <span className="font-bold uppercase tracking-[0.15em] text-muted-foreground">
                       {group.latestDate.toLocaleDateString()}
                     </span>
                   </div>
@@ -176,7 +183,7 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
                   variant="outline"
                   size="sm"
                   onClick={() => navigate(`/client/${encodeURIComponent(group.name)}`)}
-                  className="flex-1 text-xs font-bold h-9 sm:h-10 rounded-xl border-slate-200 hover:border-slate-900 transition-all"
+                  className="h-9 flex-1 rounded-xl border-border text-xs font-bold transition-all hover:border-foreground sm:h-10"
                 >
                   <History className="h-3.5 w-3.5 mr-2" />
                   <span className="hidden sm:inline">View History</span>
@@ -186,33 +193,33 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
                   <DropdownMenuTrigger asChild>
                     <Button
                       size="sm"
-                      className="flex-1 bg-slate-900 text-white hover:bg-slate-800 text-xs font-bold h-9 sm:h-10 rounded-xl shadow-sm hover:shadow-md transition-all"
+                      className="h-9 flex-1 rounded-xl bg-foreground text-xs font-bold text-background shadow-sm transition-all hover:opacity-90 sm:h-10 hover:shadow-md"
                     >
                       <UserPlus className="h-3.5 w-3.5 mr-2" />
                       <span>Assess</span>
                       <ChevronDown className="h-3.5 w-3.5 ml-1" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-xl border-slate-200 p-1">
-                    <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 px-2 py-1.5">Assessment Type</DropdownMenuLabel>
-                    <DropdownMenuSeparator className="bg-slate-100" />
-                    <DropdownMenuItem onClick={() => onNewAssessment(group.name)} className="rounded-lg text-xs font-bold px-2 py-2 cursor-pointer focus:bg-slate-50">
+                  <DropdownMenuContent align="end" className="w-56 rounded-xl border-border p-1 shadow-xl">
+                    <DropdownMenuLabel className="px-2 py-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">Assessment Type</DropdownMenuLabel>
+                    <DropdownMenuSeparator className="bg-border" />
+                    <DropdownMenuItem onClick={() => onNewAssessment(group.name)} className="cursor-pointer rounded-lg px-2 py-2 text-xs font-bold focus:bg-muted">
                       Full Assessment
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-slate-100" />
-                    <DropdownMenuItem onClick={() => onNewAssessment(group.name, 'bodycomp')} className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-slate-50 text-slate-600">
+                    <DropdownMenuSeparator className="bg-border" />
+                    <DropdownMenuItem onClick={() => onNewAssessment(group.name, 'bodycomp')} className="cursor-pointer rounded-lg px-2 py-2 text-xs font-medium text-muted-foreground focus:bg-muted">
                       {getPillarLabel('bodycomp')} Only
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onNewAssessment(group.name, 'posture')} className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-slate-50 text-slate-600">
+                    <DropdownMenuItem onClick={() => onNewAssessment(group.name, 'posture')} className="cursor-pointer rounded-lg px-2 py-2 text-xs font-medium text-muted-foreground focus:bg-muted">
                       {getPillarLabel('posture')} Only
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onNewAssessment(group.name, 'fitness')} className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-slate-50 text-slate-600">
+                    <DropdownMenuItem onClick={() => onNewAssessment(group.name, 'fitness')} className="cursor-pointer rounded-lg px-2 py-2 text-xs font-medium text-muted-foreground focus:bg-muted">
                       {getPillarLabel('fitness')} Only
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onNewAssessment(group.name, 'strength')} className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-slate-50 text-slate-600">
+                    <DropdownMenuItem onClick={() => onNewAssessment(group.name, 'strength')} className="cursor-pointer rounded-lg px-2 py-2 text-xs font-medium text-muted-foreground focus:bg-muted">
                       {getPillarLabel('strength')} Only
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onNewAssessment(group.name, 'lifestyle')} className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-slate-50 text-slate-600">
+                    <DropdownMenuItem onClick={() => onNewAssessment(group.name, 'lifestyle')} className="cursor-pointer rounded-lg px-2 py-2 text-xs font-medium text-muted-foreground focus:bg-muted">
                       {getPillarLabel('lifestyle')} Only
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -229,7 +236,7 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
           <Button 
             variant="outline" 
             onClick={() => setVisibleCount(prev => prev + 12)}
-            className="text-slate-500 font-semibold text-xs px-8 rounded-xl border-slate-200 hover:border-slate-900 hover:text-slate-900 transition-all"
+            className="rounded-xl border-border px-8 text-xs font-semibold text-muted-foreground transition-all hover:border-foreground hover:text-foreground"
           >
             Show More Clients
           </Button>

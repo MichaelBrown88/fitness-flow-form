@@ -1,10 +1,13 @@
+import './init-env';
+import { randomUUID } from 'node:crypto';
 import * as admin from 'firebase-admin';
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
-import { onCall, onRequest } from 'firebase-functions/v2/https';
+import { HttpsError, onCall, onRequest } from 'firebase-functions/v2/https';
 import { requestShareLinks, sendReportEmail } from './share';
 import {
   handleCreateCheckoutSession,
+  handleCreateLandingGuestCheckoutSession,
   handleStripeWebhook,
   handleCreateCustomerPortalSession,
   handleCreateBrandingCheckoutSession,
@@ -32,10 +35,18 @@ import {
   deleteLegacyCollectionsCallable,
   seedAIConfigCallable,
 } from './metricsApi';
+import { handleSyncPublicRoadmapMirror } from './syncPublicRoadmapMirrorCallable';
 import { handleDeleteOrganization } from './deleteOrganization';
 import { handleLogOnboardingStep } from './onboardingAnalytics';
 import { computeTeamMetrics } from './teamMetrics';
 import { assertRateLimit, buildRateLimitKey } from './rateLimit';
+import {
+  handleCreateRemoteAssessmentToken,
+  handleGetRemoteAssessmentSession,
+  handleGetRemotePostureUploadUrl,
+  handleSubmitRemoteAssessmentFields,
+  REMOTE_ASSESSMENT_MVP,
+} from './remoteAssessment';
 import {
   handleLifestyleCheckinCreated,
   handleClientSubmissionCreated,
@@ -74,6 +85,17 @@ export const createCheckoutSession = onCall({
   await assertRateLimit(db, key, { maxRequests: 10, windowSeconds: 60 });
   return handleCreateCheckoutSession(request);
 });
+
+/** Unauthenticated: landing-page “Get started” → Stripe Checkout (STRIPE_MODE=test + ENABLE_LANDING_GUEST_CHECKOUT only). */
+export const createLandingGuestCheckoutSession = onCall(
+  {
+    enforceAppCheck: false,
+    invoker: 'public',
+  },
+  async (request) => {
+    return handleCreateLandingGuestCheckoutSession(request);
+  },
+);
 
 export const stripeWebhook = onRequest(
   { cors: false },
@@ -390,8 +412,6 @@ export const backfillClientIds = onCall(
     const adminDoc = await db.doc(`platform_admins/${request.auth.uid}`).get();
     if (!adminDoc.exists) throw new Error('Platform admin access required.');
 
-    const { randomUUID } = require('crypto') as { randomUUID: () => string };
-
     const orgsSnap = await db.collection('organizations').get();
     let migrated = 0;
     let skipped = 0;
@@ -481,6 +501,35 @@ export const getClientAchievements = onCall(
 );
 
 /**
+ * Anonymous / first-hit: ensure publicRoadmaps/{token} exists for legacy roadmap share links.
+ * Rate-limited. Accepts roadmap hex token (24 chars) or public report UUID (`/r/{reportId}/roadmap`).
+ * cors: true so Firebase Hosting / custom domains work (CORS_ORIGINS is localhost-only).
+ */
+export const syncPublicRoadmapMirror = onCall(
+  { enforceAppCheck: false, cors: true, invoker: 'public', timeoutSeconds: 30 },
+  async (request) => {
+    const db = admin.firestore();
+    const key = buildRateLimitKey(
+      'pubRoadmapSync',
+      request.auth?.uid,
+      request.rawRequest?.ip,
+    );
+    try {
+      await assertRateLimit(db, key, { maxRequests: 30, windowSeconds: 60 });
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === 'RATE_LIMITED') {
+        throw new HttpsError(
+          'resource-exhausted',
+          'Too many roadmap sync requests. Try again shortly.',
+        );
+      }
+      throw e;
+    }
+    return handleSyncPublicRoadmapMirror(request);
+  },
+);
+
+/**
  * GDPR Article 20 — Data portability.
  * Returns all data we hold for a client identified by their public share token.
  * No authentication required — the share token itself is the secret.
@@ -549,6 +598,9 @@ export const exportClientData = onCall(
 export const getTeamMetrics = onCall(
   { enforceAppCheck: false, cors: CORS_ORIGINS, timeoutSeconds: 60 },
   async (request) => {
+    const db = admin.firestore();
+    const key = buildRateLimitKey('team_metrics', request.auth?.uid, request.rawRequest?.ip);
+    await assertRateLimit(db, key, { maxRequests: 40, windowSeconds: 60 });
     const { orgId } = (request.data ?? {}) as { orgId?: string };
     if (!orgId) throw new Error('orgId is required.');
     return computeTeamMetrics(request, { orgId });
@@ -993,5 +1045,56 @@ export const repairClientProfiles = onCall(
     admin.firestore(); // ensure app is initialised
     console.info(`[repairClientProfiles] fixed=${fixed} skipped=${skipped}`);
     return { success: true, fixed, skipped, results };
+  },
+);
+
+export const createRemoteAssessmentToken = onCall({ enforceAppCheck: false }, async (request) => {
+  const db = admin.firestore();
+  const key = buildRateLimitKey('remoteMint', request.auth?.uid, request.rawRequest?.ip);
+  await assertRateLimit(db, key, { maxRequests: 10, windowSeconds: 60 });
+  return handleCreateRemoteAssessmentToken(request);
+});
+
+export const getRemoteAssessmentSession = onCall(
+  { enforceAppCheck: false, invoker: 'public' },
+  async (request) => {
+    const db = admin.firestore();
+    const key = buildRateLimitKey('remotePeek', undefined, request.rawRequest?.ip);
+    await assertRateLimit(db, key, { maxRequests: 40, windowSeconds: 60 });
+    return handleGetRemoteAssessmentSession(request);
+  },
+);
+
+export const submitRemoteAssessmentFields = onCall(
+  { enforceAppCheck: false, invoker: 'public' },
+  async (request) => {
+    if (!REMOTE_ASSESSMENT_MVP) {
+      throw new HttpsError('failed-precondition', 'Remote assessment MVP is not enabled.');
+    }
+    const db = admin.firestore();
+    const token =
+      request.data && typeof (request.data as { token?: string }).token === 'string'
+        ? (request.data as { token: string }).token.slice(0, 32)
+        : 'unknown';
+    const key = buildRateLimitKey('remoteSubmit', token, request.rawRequest?.ip);
+    await assertRateLimit(db, key, { maxRequests: 25, windowSeconds: 60 });
+    return handleSubmitRemoteAssessmentFields(request);
+  },
+);
+
+export const getRemotePostureUploadUrl = onCall(
+  { enforceAppCheck: false, invoker: 'public' },
+  async (request) => {
+    if (!REMOTE_ASSESSMENT_MVP) {
+      throw new HttpsError('failed-precondition', 'Remote assessment MVP is not enabled.');
+    }
+    const db = admin.firestore();
+    const token =
+      request.data && typeof (request.data as { token?: string }).token === 'string'
+        ? (request.data as { token: string }).token.trim().slice(0, 32)
+        : 'unknown';
+    const key = buildRateLimitKey('remotePostureUpload', token, request.rawRequest?.ip);
+    await assertRateLimit(db, key, { maxRequests: 30, windowSeconds: 60 });
+    return handleGetRemotePostureUploadUrl(request);
   },
 );

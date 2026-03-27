@@ -86,13 +86,13 @@ const GapMetricRow: React.FC<{
   if (!isDesktop) {
     return (
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-medium text-zinc-700 text-left whitespace-nowrap flex-shrink-0">{label}</span>
+        <span className="text-sm font-medium text-foreground-secondary text-left whitespace-nowrap flex-shrink-0">{label}</span>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-zinc-600 text-right tabular-nums inline-flex items-center gap-0.5">
+          <span className="text-sm text-foreground-secondary text-right tabular-nums inline-flex items-center gap-0.5">
             {renderCurrent()}
             <DeltaIndicator delta={delta} />
           </span>
-          <ArrowRight className={`w-3 h-3 ${typeof current === 'number' || current !== '--' ? 'text-gradient-dark' : 'text-zinc-300'} flex-shrink-0`} />
+          <ArrowRight className={`w-3 h-3 ${typeof current === 'number' || current !== '--' ? 'text-gradient-dark' : 'text-muted-foreground/60'} flex-shrink-0`} />
           <span className="text-sm font-bold text-gradient-dark text-right tabular-nums">{targetDisplay}</span>
         </div>
       </div>
@@ -101,12 +101,12 @@ const GapMetricRow: React.FC<{
 
   return (
     <div className="grid items-center gap-3 grid-cols-[minmax(0,1fr)_auto_16px_auto]">
-      <span className="min-w-0 text-sm font-medium text-zinc-700 text-left truncate">{label}</span>
-      <span className="text-sm text-zinc-600 text-right tabular-nums inline-flex items-center gap-0.5">
+      <span className="min-w-0 text-sm font-medium text-foreground-secondary text-left truncate">{label}</span>
+      <span className="text-sm text-foreground-secondary text-right tabular-nums inline-flex items-center gap-0.5">
         {renderCurrent()}
         <DeltaIndicator delta={delta} />
       </span>
-      <ArrowRight className={`w-3 h-3 ${typeof current === 'number' || current !== '--' ? 'text-gradient-dark' : 'text-zinc-300'} justify-self-center`} />
+      <ArrowRight className={`w-3 h-3 ${typeof current === 'number' || current !== '--' ? 'text-gradient-dark' : 'text-muted-foreground/60'} justify-self-center`} />
       <span className="text-sm font-bold text-gradient-dark text-right tabular-nums">{targetDisplay}</span>
     </div>
   );
@@ -137,12 +137,12 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
         </CardInfoDrawer>
         <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6 h-[44px]">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-light text-zinc-900 rounded-lg">
+          <div className="p-2 bg-gradient-light text-foreground rounded-lg">
             <Scale className="w-5 h-5" />
           </div>
-          <h4 className="text-sm font-bold text-zinc-900">Body Composition</h4>
+          <h4 className="text-sm font-bold text-foreground">Body Composition</h4>
         </div>
-        <Badge className="glass-button-active text-white border-transparent whitespace-nowrap mr-5">
+        <Badge className="glass-button-active border-transparent whitespace-nowrap mr-5">
           {bodyComp?.status === 'red' ? 'Priority Focus' : 'Optimize'}
         </Badge>
       </div>
@@ -151,8 +151,8 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
         {isDesktop ? (
           <>
             <div className="grid items-center gap-3 grid-cols-[minmax(0,1fr)_auto_16px_auto] mb-3">
-              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.15em] text-right col-start-2">Current</span>
-              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.15em] text-right col-start-4">Target</span>
+              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.15em] text-right col-start-2">Current</span>
+              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.15em] text-right col-start-4">Target</span>
             </div>
             <GapMetricRow
               label="Body Weight (kg)"
@@ -212,10 +212,10 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
         )}
       </div>
       
-      <div className="pt-3 sm:pt-4 border-t border-zinc-100 mt-auto">
+      <div className="pt-3 sm:pt-4 border-t border-border mt-auto">
         <div className="flex items-start gap-1.5 sm:gap-2">
           <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-score-amber mt-0.5 flex-shrink-0" />
-          <p className="text-xs text-zinc-600 leading-relaxed">{truncateInsight(bodyComp?.insight || '')}</p>
+          <p className="text-xs text-foreground-secondary leading-relaxed">{truncateInsight(bodyComp?.insight || '')}</p>
         </div>
       </div>
       </Card>
@@ -252,12 +252,12 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
         </CardInfoDrawer>
         <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6 h-[44px]">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-light text-zinc-900 rounded-lg">
+            <div className="p-2 bg-gradient-light text-foreground rounded-lg">
               <Dumbbell className="w-5 h-5" />
             </div>
-            <h4 className="text-sm font-bold text-zinc-900">Functional Strength</h4>
+            <h4 className="text-sm font-bold text-foreground">Functional Strength</h4>
           </div>
-          <Badge className="glass-button-active text-white border-transparent whitespace-nowrap mr-5">
+          <Badge className="glass-button-active border-transparent whitespace-nowrap mr-5">
             {functional?.status === 'red' ? 'Priority Focus' : 'Optimize'}
           </Badge>
         </div>
@@ -266,8 +266,8 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
           {isDesktop ? (
             <>
               <div className="grid items-center gap-3 grid-cols-[minmax(0,1fr)_auto_16px_auto] mb-3">
-                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.15em] text-right col-start-2">Current</span>
-                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.15em] text-right col-start-4">Target</span>
+                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.15em] text-right col-start-2">Current</span>
+                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.15em] text-right col-start-4">Target</span>
               </div>
               <GapMetricRow 
                 label="Muscular Endurance (reps)" 
@@ -319,10 +319,10 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
           )}
         </div>
         
-        <div className="pt-3 sm:pt-4 border-t border-zinc-100 mt-auto">
+        <div className="pt-3 sm:pt-4 border-t border-border mt-auto">
           <div className="flex items-start gap-1.5 sm:gap-2">
             <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-score-amber mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-zinc-600 leading-relaxed">{truncateInsight(functional?.insight || '')}</p>
+            <p className="text-xs text-foreground-secondary leading-relaxed">{truncateInsight(functional?.insight || '')}</p>
           </div>
         </div>
       </Card>
@@ -338,12 +338,12 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
         </CardInfoDrawer>
         <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6 h-[44px]">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-light text-zinc-900 rounded-lg">
+          <div className="p-2 bg-gradient-light text-foreground rounded-lg">
             <Heart className="w-5 h-5" />
           </div>
-          <h4 className="text-sm font-bold text-zinc-900">Metabolic Fitness</h4>
+          <h4 className="text-sm font-bold text-foreground">Metabolic Fitness</h4>
         </div>
-        <Badge className="glass-button-active text-white border-transparent whitespace-nowrap mr-5">
+        <Badge className="glass-button-active border-transparent whitespace-nowrap mr-5">
           {metabolic?.status === 'red' ? 'Priority Focus' : (metabolic?.status === 'yellow' || (goals || []).includes('improve-fitness')) ? 'Optimize' : 'Maintain'}
         </Badge>
       </div>
@@ -352,8 +352,8 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
         {isDesktop ? (
           <>
             <div className="grid items-center gap-3 grid-cols-[minmax(0,1fr)_auto_16px_auto] mb-3">
-              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.15em] text-right col-start-2">Current</span>
-              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.15em] text-right col-start-4">Target</span>
+              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.15em] text-right col-start-2">Current</span>
+              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.15em] text-right col-start-4">Target</span>
             </div>
             <GapMetricRow 
               label="Resting HR (bpm)" 
@@ -411,10 +411,10 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
         )}
       </div>
       
-      <div className="pt-3 sm:pt-4 border-t border-zinc-100 mt-auto">
+      <div className="pt-3 sm:pt-4 border-t border-border mt-auto">
         <div className="flex items-start gap-1.5 sm:gap-2">
           <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-score-amber mt-0.5 flex-shrink-0" />
-          <p className="text-xs text-zinc-600 leading-relaxed">{truncateInsight(metabolic?.insight || '')}</p>
+          <p className="text-xs text-foreground-secondary leading-relaxed">{truncateInsight(metabolic?.insight || '')}</p>
         </div>
       </div>
       </Card>
@@ -425,13 +425,13 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
     <section className="w-full min-w-0 overflow-x-hidden">
       {!hideHeader && (
         <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 mb-2 sm:mb-3 md:mb-4 lg:mb-5 xl:mb-6">
-          <div className="p-1 sm:p-1.5 md:p-2 bg-gradient-light text-zinc-900 rounded-lg">
+          <div className="p-1 sm:p-1.5 md:p-2 bg-gradient-light text-foreground rounded-lg">
             <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
           </div>
-          <h3 className="text-xs md:text-sm lg:text-base font-semibold text-zinc-900">Gap Analysis</h3>
+          <h3 className="text-xs md:text-sm lg:text-base font-semibold text-foreground">Gap Analysis</h3>
         </div>
       )}
-      <p className="text-xs md:text-sm text-zinc-500 mb-3 sm:mb-4 md:mb-5 lg:mb-6">Current metrics vs. optimal performance targets.</p>
+      <p className="text-xs md:text-sm text-muted-foreground mb-3 sm:mb-4 md:mb-5 lg:mb-6">Current metrics vs. optimal performance targets.</p>
 
       {gapAnalysisData.some((g) => g.projectionMessage) && (
         <div className="rounded-xl border border-border bg-muted/30 p-4 mb-4 sm:mb-5 text-sm text-foreground">

@@ -15,6 +15,8 @@ interface SectionHeaderProps {
   dark?: boolean;
   /** Bottom margin override. Default: "mb-16 sm:mb-20" */
   spacing?: string;
+  /** Merged with subtitle layout; use for stronger body copy contrast (e.g. landing stripes). */
+  subtitleClassName?: string;
 }
 
 /**
@@ -29,15 +31,16 @@ const SectionHeader = ({
   align = "center",
   dark = false,
   spacing = "mb-16 sm:mb-20",
+  subtitleClassName,
 }: SectionHeaderProps) => {
   const centered = align === "center";
 
   const pillColors = dark
-    ? "bg-indigo-500/20 border-indigo-500/30 text-indigo-300"
-    : "bg-white border-slate-200 text-slate-600";
+    ? "bg-primary/20 border-primary/30 text-primary"
+    : "bg-card border-border text-muted-foreground";
 
-  const titleColor = dark ? "text-white" : "text-slate-900";
-  const subtitleColor = dark ? "text-slate-400" : "text-slate-500";
+  const titleColor = dark ? "text-white" : "text-foreground";
+  const subtitleColor = dark ? "text-muted-foreground" : "text-muted-foreground";
 
   return (
     <div className={`${centered ? "text-center" : ""} ${spacing}`}>
@@ -51,16 +54,16 @@ const SectionHeader = ({
       )}
 
       <h2
-        className={`text-3xl sm:text-4xl md:text-5xl font-bold ${titleColor} mb-6 leading-tight`}
+        className={`text-balance text-3xl sm:text-4xl md:text-5xl font-bold ${titleColor} mb-6 leading-tight`}
       >
         {title}
       </h2>
 
       {subtitle && (
         <p
-          className={`text-lg ${subtitleColor} leading-relaxed ${
-            centered ? "max-w-2xl mx-auto" : "max-w-2xl"
-          }`}
+          className={`text-balance text-lg leading-relaxed ${
+            subtitleClassName ?? subtitleColor
+          } ${centered ? "max-w-2xl mx-auto" : "max-w-2xl"}`}
         >
           {subtitle}
         </p>

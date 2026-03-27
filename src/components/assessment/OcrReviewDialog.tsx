@@ -32,7 +32,7 @@ export const OcrReviewDialog = ({
             </DialogTitle>
           </DialogHeader>
           <div className="py-4 space-y-4">
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-muted-foreground">
               Here's what we found. Double-check the numbers look right.
             </p>
             <div className="grid grid-cols-2 gap-4 max-h-[400px] overflow-y-auto p-2">
@@ -55,7 +55,7 @@ export const OcrReviewDialog = ({
               ].map(key => {
                 const value = ocrReviewData[key as keyof typeof ocrReviewData] ?? '';
                 return (
-                  <div key={key} className={`bg-slate-50 p-4 rounded-2xl border transition-all flex flex-col justify-between ${!value ? 'border-amber-200 bg-amber-50/30' : 'border-slate-100'}`}>
+                  <div key={key} className={`bg-muted/50 p-4 rounded-2xl border transition-all flex flex-col justify-between ${!value ? 'border-amber-200 bg-amber-50/30' : 'border-border'}`}>
                     <span className="text-[10px] font-black uppercase tracking-[0.15em] text-primary/70 mb-2">
                       {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
                     </span>
@@ -70,9 +70,9 @@ export const OcrReviewDialog = ({
                             [key]: e.target.value
                           }) : null);
                         }}
-                        className="h-8 text-xl font-bold text-slate-900 border-none bg-transparent p-0 focus-visible:ring-0 shadow-none w-full placeholder:text-slate-300"
+                        className="h-8 text-xl font-bold text-foreground border-none bg-transparent p-0 focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground/60"
                       />
-                      <span className="text-[10px] font-bold text-slate-400">
+                      <span className="text-[10px] font-bold text-muted-foreground">
                         {key.toLowerCase().includes('kg') ? 'kg' : key.toLowerCase().includes('pct') ? '%' : key.toLowerCase().includes('water') ? 'L' : ''}
                       </span>
                     </div>
@@ -85,7 +85,7 @@ export const OcrReviewDialog = ({
             <Button variant="outline" onClick={() => setOcrReviewData(null)} className="rounded-xl font-bold">
               Cancel
             </Button>
-            <Button onClick={applyOcrData} className="rounded-xl bg-slate-900 font-bold gap-2 text-white hover:bg-slate-800 transition-colors">
+            <Button onClick={applyOcrData} className="rounded-xl bg-foreground font-bold gap-2 text-white hover:bg-foreground/90 transition-colors">
               <CheckCircle2 className="h-4 w-4" />
               Apply to Form
             </Button>

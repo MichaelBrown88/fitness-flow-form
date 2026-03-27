@@ -1,19 +1,18 @@
 /**
  * Coach Invite Cloud Functions
  *
- * Generates a signed invite token, stores it in Firestore, and sends
- * an email via SendGrid so a new coach can join an organization.
+ * Generates a signed invite token, stores it in Firestore, and emails
+ * the invitee via Resend so a new coach can join an organization.
  *
- * Environment variables required:
- *   SENDGRID_API_KEY — SendGrid API key (shared with share.ts)
- *   SENDGRID_FROM    — Sender email address
+ * Environment: RESEND_API_KEY, RESEND_FROM (see functions/env.example).
  */
 
 import * as admin from 'firebase-admin';
 import * as crypto from 'crypto';
 import type { CallableRequest } from 'firebase-functions/v2/https';
 import { Resend } from 'resend';
-import { APP_HOST, RESEND_API_KEY, RESEND_FROM } from './config';
+import { APP_HOST, EMAIL_ASSETS_LOGO_URL, RESEND_API_KEY, RESEND_FROM } from './config';
+import { renderActivationEmail, sendResendHtmlText } from './email';
 
 const resend = new Resend(RESEND_API_KEY);
 
@@ -29,12 +28,15 @@ interface InvitationDoc {
   organizationId: string;
   organizationName: string;
   invitedBy: string;
+  /** Owner / sender Firebase Auth UID — used for invite-accepted notification + email */
+  invitedByUid: string;
   createdAt: admin.firestore.FieldValue;
   expiresAt: Date;
   status: 'pending' | 'accepted' | 'expired';
 }
 
 const INVITE_TTL_DAYS = 7;
+const APP_NAME = 'One Assess';
 
 export async function handleSendCoachInvite(
   request: CallableRequest<CoachInviteRequest>,
@@ -68,6 +70,7 @@ export async function handleSendCoachInvite(
     organizationId,
     organizationName,
     invitedBy,
+    invitedByUid: request.auth.uid,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     expiresAt,
     status: 'pending',
@@ -78,25 +81,27 @@ export async function handleSendCoachInvite(
   const inviteLink = `${APP_HOST}/onboarding?invite=${token}`;
 
   if (RESEND_API_KEY) {
-    await resend.emails.send({
+    const subject = `You've been invited to join ${organizationName}`;
+    const { html, text } = renderActivationEmail({
+      subject,
+      preheader: `${invitedBy} invited you to ${organizationName} on ${APP_NAME}.`,
+      appName: APP_NAME,
+      logoUrl: EMAIL_ASSETS_LOGO_URL || undefined,
+      headline: "You're invited!",
+      paragraphs: [
+        `${invitedBy} has invited you to join ${organizationName} as a coach.`,
+        `This invite expires in ${INVITE_TTL_DAYS} days. If you didn't expect this email, you can ignore it.`,
+      ],
+      primaryCta: { label: 'Accept invite', href: inviteLink },
+      footerVariant: 'transactional',
+    });
+
+    await sendResendHtmlText(resend, {
       to: email,
       from: RESEND_FROM,
-      subject: `You've been invited to join ${organizationName}`,
-      html: `
-        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-          <h2>You're invited!</h2>
-          <p><strong>${invitedBy}</strong> has invited you to join
-             <strong>${organizationName}</strong> as a coach.</p>
-          <a href="${inviteLink}"
-             style="display:inline-block;padding:12px 24px;background:#0f172a;color:#fff;
-                    border-radius:8px;text-decoration:none;font-weight:bold;margin:16px 0;">
-            Accept Invite
-          </a>
-          <p style="font-size:12px;color:#94a3b8;">
-            This invite expires in ${INVITE_TTL_DAYS} days. If you didn't expect this email, you can ignore it.
-          </p>
-        </div>
-      `,
+      subject,
+      html,
+      text,
     });
   }
 

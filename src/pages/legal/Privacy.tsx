@@ -10,10 +10,20 @@ import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Navbar } from '@/components/landing';
 import { Footer } from '@/components/landing';
+import { Seo } from '@/components/seo/Seo';
+import { requireSeoForPath, SEO_PATH } from '@/constants/seo';
+
+const privacySeo = requireSeoForPath(SEO_PATH.PRIVACY);
 
 export default function Privacy() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
+      <Seo
+        pathname={SEO_PATH.PRIVACY}
+        title={privacySeo.title}
+        description={privacySeo.description}
+        noindex={privacySeo.noindex}
+      />
       <Navbar />
       
       <main className="max-w-4xl mx-auto px-4 py-16">

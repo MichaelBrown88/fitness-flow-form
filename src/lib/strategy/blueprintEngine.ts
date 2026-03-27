@@ -9,6 +9,7 @@
  */
 
 import type { FormData } from '@/contexts/FormContext';
+import type { PhaseId } from '@/lib/phases/types';
 import type { ScoreSummary, RoadmapPhase } from '@/lib/scoring';
 import { buildRoadmap } from '@/lib/scoring';
 import { MOVEMENT_LOGIC_DB } from '@/lib/clinical-data';
@@ -23,6 +24,22 @@ export interface StrategicPillar {
   color: 'blue' | 'red' | 'green';
   protocol: Array<{ name: string; setsReps: string }>;
   category: 'movementQuality' | 'bodyComp' | 'strength' | 'cardio' | 'lifestyle';
+}
+
+const BLUEPRINT_CATEGORY_PHASE: Record<StrategicPillar['category'], PhaseId> = {
+  movementQuality: 'P4',
+  bodyComp: 'P2',
+  strength: 'P5',
+  cardio: 'P3',
+  lifestyle: 'P1',
+};
+
+function blueprintPillarInScope(formData: FormData, scores: ScoreSummary, category: StrategicPillar['category']): boolean {
+  const planIds = formData.assessmentPlan?.includedPhaseIds;
+  if (planIds?.length && !planIds.includes(BLUEPRINT_CATEGORY_PHASE[category])) {
+    return false;
+  }
+  return scores.categories.find((c) => c.id === category)?.assessed === true;
 }
 
 /**
@@ -461,8 +478,10 @@ export function generateBlueprint(
     }
   }
 
-  // Sort by priority (lower = higher priority) and return top 3
-  return candidates
+  const scoped = candidates.filter((c) => blueprintPillarInScope(formData, scores, c.category));
+  const pool = scoped.length > 0 ? scoped : candidates;
+
+  return pool
     .sort((a, b) => a.priority - b.priority)
     .slice(0, 3);
 }

@@ -1,5 +1,7 @@
 /// <reference types="vitest" />
-import { defineConfig } from "vite";
+import fs from "node:fs";
+import type { IncomingMessage, ServerResponse } from "node:http";
+import { defineConfig, type ViteDevServer } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
@@ -15,6 +17,37 @@ export default defineConfig(({ mode }) => ({
     }
   },
   plugins: [
+    mode === "development" && {
+      name: "debug-roadmap-ndjson",
+      enforce: "pre" as const,
+      configureServer(server: ViteDevServer) {
+        server.middlewares.use((req: IncomingMessage, res: ServerResponse, next: () => void) => {
+          const url = req.url?.split("?")[0] ?? "";
+          if (url !== "/__debug_ndjson" || req.method !== "POST") {
+            next();
+            return;
+          }
+          const chunks: Buffer[] = [];
+          req.on("data", (chunk: Buffer) => {
+            chunks.push(chunk);
+          });
+          req.on("end", () => {
+            try {
+              const body = Buffer.concat(chunks).toString("utf8").trim();
+              if (body) {
+                const logPath = path.resolve(__dirname, ".cursor/debug-523b0c.log");
+                fs.mkdirSync(path.dirname(logPath), { recursive: true });
+                fs.appendFileSync(logPath, `${body}\n`, "utf8");
+              }
+            } catch (err) {
+              console.error("[debug-roadmap-ndjson] append failed:", err);
+            }
+            res.statusCode = 204;
+            res.end();
+          });
+        });
+      },
+    },
     // Serve client.html (client PWA manifest/icons) for /r/* routes in dev
     {
       name: 'client-html-fallback',
@@ -31,7 +64,7 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'robots.txt', 'og-image.png'],
+      includeAssets: ['favicon.svg', 'robots.txt', 'og-image.png', 'sitemap.xml'],
       manifest: {
         name: 'OA Coach',
         short_name: 'OA Coach',
@@ -74,6 +107,16 @@ export default defineConfig(({ mode }) => ({
           {
             // Same for Firebase Auth (securetoken)
             urlPattern: /^https:\/\/securetoken\.google\.com\//,
+            handler: 'NetworkOnly',
+          },
+          {
+            // Callable HTTPS (e.g. syncPublicRoadmapMirror) — never cache or run through chunk strategies.
+            urlPattern: /^https:\/\/([a-z0-9-]+\.)?cloudfunctions\.net\//,
+            handler: 'NetworkOnly',
+          },
+          {
+            // Gen2 / Cloud Run function endpoints
+            urlPattern: /^https:\/\/.*\.run\.app\//,
             handler: 'NetworkOnly',
           },
           {

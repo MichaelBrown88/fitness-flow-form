@@ -37,6 +37,62 @@ export interface TeamMetricsResult {
   coaches: CoachMetrics[];
 }
 
+const GENERIC_COACH_LABEL = 'Coach';
+const BATCH_GET_LIMIT = 10;
+
+async function batchGetProfileDisplayNames(
+  db: admin.firestore.Firestore,
+  orgId: string,
+  uids: string[],
+): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  const unique = [...new Set(uids.filter(Boolean))];
+  for (let i = 0; i < unique.length; i += BATCH_GET_LIMIT) {
+    const chunk = unique.slice(i, i + BATCH_GET_LIMIT);
+    const refs = chunk.map((uid) => db.doc(`userProfiles/${uid}`));
+    const snaps = await db.getAll(...refs);
+    for (const snap of snaps) {
+      if (!snap.exists) continue;
+      const d = snap.data() as { organizationId?: unknown; displayName?: unknown };
+      if (d.organizationId !== orgId) continue;
+      const n = typeof d.displayName === 'string' ? d.displayName.trim() : '';
+      if (n && n !== GENERIC_COACH_LABEL) out.set(snap.id, n);
+    }
+  }
+  return out;
+}
+
+/** When userProfiles still says "Coach", fall back to Firebase Auth displayName or email local-part. */
+async function enrichDisplayNamesFromFirebaseAuth(
+  uids: string[],
+  names: Map<string, string>,
+): Promise<void> {
+  const auth = admin.auth();
+  for (const uid of uids) {
+    const existing = names.get(uid);
+    if (existing && existing !== GENERIC_COACH_LABEL) continue;
+    try {
+      const u = await auth.getUser(uid);
+      const fromAuth = (u.displayName || '').trim();
+      if (fromAuth && fromAuth !== GENERIC_COACH_LABEL) {
+        names.set(uid, fromAuth);
+        continue;
+      }
+      const local = u.email?.split('@')[0]?.replace(/[._-]+/g, ' ').trim();
+      if (local) {
+        const pretty = local
+          .split(/\s+/g)
+          .filter(Boolean)
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+          .join(' ');
+        if (pretty) names.set(uid, pretty);
+      }
+    } catch {
+      /* user missing or permission — skip */
+    }
+  }
+}
+
 function toDate(ts: unknown): Date | null {
   if (!ts) return null;
   if (ts instanceof admin.firestore.Timestamp) return ts.toDate();
@@ -78,12 +134,19 @@ export async function computeTeamMetrics(
     email?: string;
     role: string;
   }
-  const coaches: Coach[] = coachesSnap.docs.map((d) => ({
-    uid: d.id,
-    displayName: d.data().displayName || d.data().name || 'Coach',
-    email: d.data().email,
-    role: d.data().role || 'coach',
-  }));
+  const coaches: Coach[] = coachesSnap.docs.map((d) => {
+    const raw = d.data();
+    const fromDoc =
+      (typeof raw.displayName === 'string' && raw.displayName.trim()) ||
+      (typeof raw.name === 'string' && raw.name.trim()) ||
+      GENERIC_COACH_LABEL;
+    return {
+      uid: d.id,
+      displayName: fromDoc,
+      email: typeof raw.email === 'string' ? raw.email : undefined,
+      role: (typeof raw.role === 'string' && raw.role) || 'coach',
+    };
+  });
 
   // 2. Fetch assessments (up to 500, server-side)
   const assessmentsSnap = await db
@@ -124,6 +187,29 @@ export async function computeTeamMetrics(
     coachMap.set(a.coachUid, list);
   }
 
+  const uidsForProfileLookup = new Set<string>();
+  for (const c of coaches) {
+    const t = c.displayName.trim();
+    if (!t || t === GENERIC_COACH_LABEL) uidsForProfileLookup.add(c.uid);
+  }
+  for (const uid of coachMap.keys()) {
+    if (!coaches.some((c) => c.uid === uid)) uidsForProfileLookup.add(uid);
+  }
+  const profileDisplayNames = await batchGetProfileDisplayNames(db, orgId, [...uidsForProfileLookup]);
+  const needAuthEnrich = [...uidsForProfileLookup].filter((uid) => {
+    const fromProfile = profileDisplayNames.get(uid);
+    return !fromProfile || fromProfile === GENERIC_COACH_LABEL;
+  });
+  await enrichDisplayNamesFromFirebaseAuth(needAuthEnrich, profileDisplayNames);
+
+  const coachesResolved: Coach[] = coaches.map((c) => {
+    const fromProfile = profileDisplayNames.get(c.uid);
+    if (fromProfile) return { ...c, displayName: fromProfile };
+    const t = c.displayName.trim();
+    if (!t || t === GENERIC_COACH_LABEL) return { ...c, displayName: GENERIC_COACH_LABEL };
+    return c;
+  });
+
   function buildCoachMetrics(uid: string, displayName: string, email: string | undefined, role: string): CoachMetrics {
     const records = coachMap.get(uid) ?? [];
     const uniqueClients = new Set(records.map((r) => r.clientName));
@@ -149,14 +235,15 @@ export async function computeTeamMetrics(
     };
   }
 
-  const coachMetrics: CoachMetrics[] = coaches.map((c) =>
+  const coachMetrics: CoachMetrics[] = coachesResolved.map((c) =>
     buildCoachMetrics(c.uid, c.displayName, c.email, c.role),
   );
 
   // Include coaches with assessments but not in coaches collection
   for (const [uid] of coachMap) {
     if (coachMetrics.some((c) => c.uid === uid)) continue;
-    coachMetrics.push(buildCoachMetrics(uid, 'Unknown Coach', undefined, 'coach'));
+    const resolved = profileDisplayNames.get(uid) || 'Unknown Coach';
+    coachMetrics.push(buildCoachMetrics(uid, resolved, undefined, 'coach'));
   }
 
   coachMetrics.sort((a, b) => b.assessments30d - a.assessments30d);

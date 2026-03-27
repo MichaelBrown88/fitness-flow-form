@@ -11,6 +11,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { getOrganizationDetails, getOrgCoachesWithStats } from '@/services/platformAdmin';
 import { getOrgCoaches, addCoachToOrganization, removeCoachFromOrganization, sendCoachInviteEmail } from '@/services/coachManagement';
 import { calculateMonthlyFee } from '@/lib/pricing';
+import { getMonthlyPrice } from '@/lib/pricing/config';
+import { DEFAULT_REGION, type Region } from '@/constants/pricing';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/utils/logger';
 import AppShell from '@/components/layout/AppShell';
@@ -127,8 +129,17 @@ export default function OrgAdminLayout() {
   }, [readOrgId]);
 
   const monthlyFee =
-    orgDetails?.monthlyFeeKwd ??
-    (orgDetails ? calculateMonthlyFee(orgDetails.plan || 'free', orgDetails.clientSeats || 0) : 0);
+    orgDetails == null || orgDetails.isComped
+      ? 0
+      : orgDetails.monthlyAmountLocal != null
+        ? orgDetails.monthlyAmountLocal
+        : (() => {
+            const r = (orgDetails.region ?? DEFAULT_REGION) as Region;
+            const seats = orgDetails.seatBlock ?? orgDetails.clientSeats ?? 0;
+            return r === 'KW'
+              ? calculateMonthlyFee(orgDetails.plan || 'free', seats)
+              : getMonthlyPrice(r, seats);
+          })();
   const totalClientSeats = coaches.reduce((sum, coach) => sum + coach.clientCount, 0);
   const maxSeats = orgDetails?.clientSeats || 0;
   const seatsUsedPercentage = maxSeats > 0 ? (totalClientSeats / maxSeats) * 100 : 0;
@@ -214,7 +225,7 @@ export default function OrgAdminLayout() {
     return (
       <AppShell title="Organization" subtitle="Loading...">
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-slate-400 flex items-center gap-2">
+          <div className="text-muted-foreground flex items-center gap-2">
             <Building2 className="w-4 h-4 animate-pulse" />
             Loading organization details...
           </div>
@@ -228,7 +239,7 @@ export default function OrgAdminLayout() {
       <AppShell title="Organization" subtitle="Organization not found">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center space-y-4">
-            <p className="text-slate-400">Organization details not found</p>
+            <p className="text-muted-foreground">Organization details not found</p>
             <Button onClick={() => navigate(ROUTES.DASHBOARD)} variant="outline">
               Back to Dashboard
             </Button>
@@ -259,7 +270,7 @@ export default function OrgAdminLayout() {
   };
 
   const tabClass = ({ isActive }: { isActive: boolean }) =>
-    `px-4 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-white text-slate-900' : 'text-slate-500 hover:text-slate-700'}`;
+    `px-4 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-background text-foreground' : 'text-muted-foreground hover:text-foreground-secondary'}`;
 
   return (
     <AppShell
@@ -271,7 +282,7 @@ export default function OrgAdminLayout() {
         </Button>
       }
     >
-      <nav className="flex gap-1 p-1 rounded-xl bg-slate-100 mb-6">
+      <nav className="flex gap-1 p-1 rounded-xl bg-muted mb-6">
         <NavLink to={ROUTES.ORG_DASHBOARD} end className={tabClass}>
           <span className="flex items-center gap-2">
             Overview
@@ -338,7 +349,7 @@ export default function OrgAdminLayout() {
             <Button
               onClick={handleAddCoach}
               disabled={addingCoach || !newCoachEmail.trim()}
-              className="gradient-bg text-white hover:opacity-90"
+              className="gradient-bg text-primary-foreground hover:opacity-90"
             >
               {addingCoach ? (
                 <>

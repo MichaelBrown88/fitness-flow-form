@@ -7,11 +7,12 @@
  */
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { 
-  createLiveSession, 
-  subscribeToLiveSession, 
+import {
+  createLiveSession,
+  LIVE_SESSION_PLACEHOLDER_CLIENT_ID,
+  subscribeToLiveSession,
   updatePostureImage,
-  type LiveSession 
+  type LiveSession,
 } from '@/services/liveSessions';
 import { loadImagesFromFiles } from '@/lib/test/postureTestImages';
 import { generatePlaceholderWithGreenLines } from '@/lib/utils/postureOverlay';
@@ -120,21 +121,44 @@ export function usePostureCompanion({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const heartbeatCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Create Session when modal opens
+  // New live session whenever the modal opens (avoids stale QR / companion state)
   useEffect(() => {
-    if (isOpen && !session) {
-      const init = async () => {
-        try {
-          const newSession = await createLiveSession('current-client', profile?.organizationId, profile);
+    if (!isOpen) {
+      setSession(null);
+      setIsOnline(false);
+      setConnectionState('offline');
+      setError(null);
+      setProcessingStatus({
+        front: 'idle',
+        back: 'idle',
+        'side-left': 'idle',
+        'side-right': 'idle',
+      });
+      setPreviewImage(null);
+      return;
+    }
+
+    let cancelled = false;
+    const init = async () => {
+      try {
+        const newSession = await createLiveSession(
+          LIVE_SESSION_PLACEHOLDER_CLIENT_ID,
+          profile?.organizationId,
+          profile,
+        );
+        if (!cancelled) {
           setSession(newSession);
           setError(null);
-        } catch (err) {
-          setError("Connection failed. Please check your internet.");
         }
-      };
-      init();
-    }
-  }, [isOpen, session, profile?.organizationId]);
+      } catch {
+        if (!cancelled) setError("Connection failed. Please check your internet.");
+      }
+    };
+    void init();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, profile]);
 
   // Pre-warm MediaPipe singleton when modal opens (while user scans QR code)
   // This initializes the singleton instance ONCE, keeping it alive for all detections
@@ -448,7 +472,7 @@ export function usePostureCompanion({
         fileInputRef.current.value = '';
       }
     }
-  }, [session?.id, toast, profile?.organizationId, profile, updateProcessingStatus]);
+  }, [session?.id, toast, profile, updateProcessingStatus]);
 
   // Handler: Apply analysis results
   const handleApply = useCallback(() => {

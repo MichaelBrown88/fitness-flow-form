@@ -74,7 +74,7 @@ export function NotificationSettings() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-5 w-5 animate-spin text-slate-300" />
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground/60" />
       </div>
     );
   }
@@ -82,16 +82,16 @@ export function NotificationSettings() {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-base font-bold text-slate-900 mb-1">Notification Preferences</h3>
-        <p className="text-sm text-slate-500">Control which notifications you receive.</p>
+        <h3 className="text-base font-bold text-foreground mb-1">Notification Preferences</h3>
+        <p className="text-sm text-muted-foreground">Control which notifications you receive.</p>
       </div>
 
       <div className="space-y-1">
         {DEFAULT_PREFERENCES.map((pref) => (
-          <div key={pref.type} className="flex items-center justify-between py-3 border-b border-slate-100 last:border-0">
+          <div key={pref.type} className="flex items-center justify-between py-3 border-b border-border last:border-0">
             <div>
-              <Label className="text-sm font-semibold text-slate-900">{pref.label}</Label>
-              <p className="text-xs text-slate-400 mt-0.5">{pref.description}</p>
+              <Label className="text-sm font-semibold text-foreground">{pref.label}</Label>
+              <p className="text-xs text-muted-foreground mt-0.5">{pref.description}</p>
             </div>
             <Switch
               checked={preferences[pref.type] ?? true}

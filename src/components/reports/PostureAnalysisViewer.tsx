@@ -487,12 +487,12 @@ export function PostureViewCard({
 
   return (
     <div 
-      className="group relative cursor-pointer overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all hover:shadow-md active:scale-[0.98]"
+      className="group relative cursor-pointer overflow-hidden rounded-2xl border border-border bg-card transition-all hover:shadow-md active:scale-[0.98]"
       onClick={onClick}
     >
       {/* View Label */}
       <div className="absolute top-2 left-2 z-10">
-        <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm text-[10px] font-black uppercase tracking-[0.15em] text-slate-600 border-none h-5">
+        <Badge variant="secondary" className="bg-card/90 backdrop-blur-sm text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground border-none h-5">
           {view.replace('-', ' ')}
         </Badge>
       </div>
@@ -520,9 +520,9 @@ export function PostureViewCard({
       )}
 
       {/* Image */}
-      <div className="aspect-[4/5] w-full overflow-hidden bg-slate-50">
+      <div className="aspect-[4/5] w-full overflow-hidden bg-muted">
         {imgError || !imageUrl ? (
-          <div className="h-full w-full flex flex-col items-center justify-center text-slate-300 gap-2">
+          <div className="h-full w-full flex flex-col items-center justify-center text-muted-foreground/60 gap-2">
             <ImageOff className="h-8 w-8" />
             <span className="text-[10px] uppercase tracking-wider font-medium">Image unavailable</span>
           </div>
@@ -553,7 +553,7 @@ export function PostureViewCard({
 
       {/* Hover Action Overlay */}
       <div className="absolute inset-0 flex items-center justify-center bg-primary/10 opacity-0 transition-opacity group-hover:opacity-100">
-        <div className="rounded-full bg-white/90 p-2 shadow-lg scale-75 group-hover:scale-100 transition-transform">
+        <div className="rounded-full bg-card/90 p-2 shadow-lg scale-75 group-hover:scale-100 transition-transform">
           <Maximize2 className="h-4 w-4 text-primary" />
         </div>
       </div>

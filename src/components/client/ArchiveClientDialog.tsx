@@ -77,7 +77,7 @@ export function ArchiveClientDialog({
           </AlertDialogHeader>
 
           <div className="py-4 space-y-3">
-            <label className="flex items-start gap-3 rounded-xl p-3 cursor-pointer hover:bg-slate-50 transition-colors">
+            <label className="flex items-start gap-3 rounded-xl p-3 cursor-pointer hover:bg-muted/50 transition-colors">
               <input
                 type="radio"
                 name="reactivate-mode"
@@ -87,13 +87,13 @@ export function ArchiveClientDialog({
                 className="mt-0.5 accent-emerald-600"
               />
               <div>
-                <div className="text-sm font-bold text-slate-900">Start fresh from today</div>
-                <div className="text-xs text-slate-500 mt-0.5">
+                <div className="text-sm font-bold text-foreground">Start fresh from today</div>
+                <div className="text-xs text-muted-foreground mt-0.5">
                   All countdowns restart from today. Best for long absences.
                 </div>
               </div>
             </label>
-            <label className="flex items-start gap-3 rounded-xl p-3 cursor-pointer hover:bg-slate-50 transition-colors">
+            <label className="flex items-start gap-3 rounded-xl p-3 cursor-pointer hover:bg-muted/50 transition-colors">
               <input
                 type="radio"
                 name="reactivate-mode"
@@ -103,8 +103,8 @@ export function ArchiveClientDialog({
                 className="mt-0.5 accent-emerald-600"
               />
               <div>
-                <div className="text-sm font-bold text-slate-900">Resume remaining time</div>
-                <div className="text-xs text-slate-500 mt-0.5">
+                <div className="text-sm font-bold text-foreground">Resume remaining time</div>
+                <div className="text-xs text-muted-foreground mt-0.5">
                   Countdowns pick up where they left off.
                 </div>
               </div>
@@ -143,7 +143,7 @@ export function ArchiveClientDialog({
         </AlertDialogHeader>
 
         <div className="py-4">
-          <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 block mb-2">
+          <label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground block mb-2">
             Reason (optional)
           </label>
           <Textarea

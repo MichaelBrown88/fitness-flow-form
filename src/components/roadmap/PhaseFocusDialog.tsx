@@ -28,12 +28,12 @@ export function PhaseFocusDialog({
         </DialogHeader>
         <p className="text-sm text-muted-foreground -mt-2">{content.subtitle}</p>
         <div className="pt-3">
-          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
             Focus for this phase
           </h4>
           <ul className="space-y-2">
             {content.focusPoints.map((point, i) => (
-              <li key={i} className="flex gap-2 text-sm text-slate-700">
+              <li key={i} className="flex gap-2 text-sm text-foreground-secondary">
                 <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
                 <span>{point}</span>
               </li>

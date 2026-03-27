@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
-import { logger } from '@/lib/utils/logger';
+import { getInitialFormDataFromSession } from '@/contexts/form/initialFormFromSession';
+import type { AssessmentPlan } from '@/lib/types/assessmentPlan';
 
 export interface FormData {
   /** Client Profile */
@@ -215,6 +216,17 @@ export interface FormData {
   /** Phase 6 — Assessment Complete */
   coachReport: string;
   clientReport: string;
+
+  /**
+   * Scoped phases for this run. When absent/undefined, navigation uses full legacy plan (all phases).
+   */
+  assessmentPlan?: AssessmentPlan | null;
+  /**
+   * How the coach intends to run the session (remote MVP uses this for copy + dashboard hints).
+   */
+  assessmentIntakeMode?: 'studio' | 'send_link_first' | null;
+  /** When true, show extra on-screen guidance during onboarding self-assessment */
+  coachGuidanceEnabled?: boolean;
 }
 
 interface FormContextType {
@@ -415,69 +427,28 @@ const initialFormData: FormData = {
   dynamometerForce: '',
   coachReport: '',
   clientReport: '',
+  assessmentPlan: undefined,
+  assessmentIntakeMode: null,
+  coachGuidanceEnabled: true,
   bodyCompMethod: 'analyzer',
   showAnalyzerFields: 'yes',
   showBodyMeasurements: 'no',
 };
 
 export const FormProvider = ({ children }: { children: ReactNode }) => {
-  // Check for pre-filled client data from dashboard or edit mode
-  const getInitialData = (): FormData => {
-    try {
-      // Check for edit assessment data first (has priority)
-      const editData = sessionStorage.getItem(STORAGE_KEYS.EDIT_ASSESSMENT);
-      if (editData) {
-        const parsed = JSON.parse(editData) as { formData?: FormData; editType?: string };
-        if (parsed.formData) {
-          if (parsed.editType?.startsWith('partial-')) {
-            const category = parsed.editType.replace('partial-', '');
-            try {
-              sessionStorage.setItem(STORAGE_KEYS.PARTIAL_ASSESSMENT, JSON.stringify({
-                category,
-                clientName: parsed.formData?.fullName ?? '',
-              }));
-            } catch {
-              // non-fatal
-            }
-          }
-          return { ...initialFormData, ...parsed.formData };
-        }
-      }
-      
-      // Check for saved draft (Save for Later / Finish assessment)
-      const draftData = sessionStorage.getItem(STORAGE_KEYS.DRAFT_ASSESSMENT);
-      if (draftData) {
-        const parsed = JSON.parse(draftData);
-        if (parsed.formData && typeof parsed.formData === 'object') {
-          return { ...initialFormData, ...parsed.formData };
-        }
-      }
-
-      // Check for pre-filled client data from dashboard
-      const prefillData = sessionStorage.getItem(STORAGE_KEYS.PREFILL_CLIENT);
-      if (prefillData) {
-        const data = JSON.parse(prefillData);
-        sessionStorage.removeItem(STORAGE_KEYS.PREFILL_CLIENT);
-        return { ...initialFormData, ...data };
-      }
-    } catch (e) {
-      logger.warn('Failed to parse prefill/edit data:', e);
-    }
-    return initialFormData;
-  };
-
-  const [formData, setFormData] = useState<FormData>(getInitialData());
+  const [formData, setFormData] = useState<FormData>(() =>
+    getInitialFormDataFromSession<FormData>(initialFormData),
+  );
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 5;
 
-  const updateFormData = (data: Partial<FormData>) => {
+  const updateFormData = useCallback((data: Partial<FormData>) => {
     setFormData((prev) => ({ ...prev, ...data }));
-  };
+  }, []);
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setFormData(initialFormData);
     setCurrentStep(1);
-    // Clear any session storage artifacts from partial/edit/draft modes
     try {
       sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
       sessionStorage.removeItem(STORAGE_KEYS.PREFILL_CLIENT);
@@ -486,7 +457,7 @@ export const FormProvider = ({ children }: { children: ReactNode }) => {
     } catch {
       // noop
     }
-  };
+  }, []);
 
   const contextValue = React.useMemo(() => ({
     formData,
@@ -495,7 +466,7 @@ export const FormProvider = ({ children }: { children: ReactNode }) => {
     currentStep,
     setCurrentStep,
     totalSteps
-  }), [formData, currentStep, totalSteps]);
+  }), [formData, updateFormData, resetForm, currentStep, totalSteps]);
 
   return (
     <FormContext.Provider value={contextValue}>

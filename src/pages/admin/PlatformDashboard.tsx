@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Shield, LogOut, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -27,7 +28,14 @@ const FEATURE_KEYS: (keyof PlatformFeatureFlags)[] = ['posture_enabled', 'ocr_en
 const PlatformDashboard = () => {
   const [maintenanceMessage, setMaintenanceMessage] = useState('');
   const [maintenanceFeatures, setMaintenanceFeatures] = useState<(keyof PlatformFeatureFlags)[]>([]);
-  const [hasUnseenMilestone, setHasUnseenMilestone] = useState(false);
+
+  const { data: serverMilestoneUnseen = false } = useQuery({
+    queryKey: ['platformMilestoneBadge'],
+    queryFn: fetchMilestoneBadgeState,
+    staleTime: 60_000,
+  });
+  const [milestoneBadgeDismissed, setMilestoneBadgeDismissed] = useState(false);
+  const hasUnseenMilestone = serverMilestoneUnseen && !milestoneBadgeDismissed;
 
   const dashboard = usePlatformDashboard();
 
@@ -97,17 +105,18 @@ const PlatformDashboard = () => {
         setMaintenanceFeatures(platformConfig.maintenance.affected_features);
       }
     }
-  }, [platformConfig.maintenance.is_maintenance_mode, platformConfig.maintenance.message, platformConfig.maintenance.affected_features]);
-
-  // Check for unseen milestone unlocks to show badge on the Data Intelligence tab
-  useEffect(() => {
-    fetchMilestoneBadgeState().then(setHasUnseenMilestone).catch(() => {});
-  }, []);
+  }, [
+    platformConfig.maintenance.is_maintenance_mode,
+    platformConfig.maintenance.message,
+    platformConfig.maintenance.affected_features,
+    maintenanceMessage,
+    maintenanceFeatures.length,
+  ]);
 
   if (loading) {
     return (
       <div className="min-h-screen bg-admin-bg flex items-center justify-center">
-        <div className="text-slate-400 flex items-center gap-2">
+        <div className="text-muted-foreground flex items-center gap-2">
           <RefreshCw className="w-4 h-4 animate-spin" />
           Loading dashboard...
         </div>
@@ -125,14 +134,14 @@ const PlatformDashboard = () => {
             </div>
             <div>
               <h1 className="text-white font-semibold">Platform Dashboard</h1>
-              <p className="text-xs text-slate-500">{admin?.email}</p>
+              <p className="text-xs text-muted-foreground">{admin?.email}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={handleRefresh} disabled={refreshing} className="text-slate-400 hover:text-white">
+            <Button variant="ghost" size="sm" onClick={handleRefresh} disabled={refreshing} className="text-muted-foreground hover:text-white">
               <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
             </Button>
-            <Button variant="ghost" size="sm" onClick={handleSignOut} className="text-slate-400 hover:text-white">
+            <Button variant="ghost" size="sm" onClick={handleSignOut} className="text-muted-foreground hover:text-white">
               <LogOut className="w-4 h-4" />
             </Button>
           </div>
@@ -169,7 +178,7 @@ const PlatformDashboard = () => {
             <TabsTrigger
               value={PLATFORM_DASHBOARD_TABS.DATA_INTELLIGENCE}
               className="data-[state=active]:bg-admin-border data-[state=active]:text-admin-fg text-admin-fg-muted relative"
-              onClick={() => setHasUnseenMilestone(false)}
+              onClick={() => setMilestoneBadgeDismissed(true)}
             >
               Data Intelligence
               {hasUnseenMilestone && (

@@ -9,11 +9,16 @@
  */
 
 import { useState, useCallback } from 'react';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { STRIPE_CONFIG } from '@/constants/platform';
+import { httpsCallable } from 'firebase/functions';
+import { getFirebaseFunctions } from '@/services/firebase';
+import { LANDING_GUEST_CHECKOUT_ENABLED, STRIPE_CONFIG } from '@/constants/platform';
 import { logger } from '@/lib/utils/logger';
 import type { Region, BillingPeriod, PackageTrack } from '@/constants/pricing';
-import type { CreateCheckoutRequest, CreateCheckoutResponse } from '@/types/platform';
+import type {
+  CreateCheckoutRequest,
+  CreateCheckoutResponse,
+  CreateLandingGuestCheckoutRequest,
+} from '@/types/platform';
 
 export function useCheckout() {
   const [loading, setLoading] = useState(false);
@@ -45,7 +50,7 @@ export function useCheckout() {
 
       try {
         // 1. Call Cloud Function to create a Checkout Session
-        const functions = getFunctions();
+        const functions = getFirebaseFunctions();
         const createSession = httpsCallable<CreateCheckoutRequest, CreateCheckoutResponse>(
           functions,
           'createCheckoutSession'
@@ -90,6 +95,61 @@ export function useCheckout() {
     []
   );
 
+  /**
+   * Logged-out landing flow: hosted Checkout with the same GB capacity price as seat selection.
+   * Server must have STRIPE_MODE=test and ENABLE_LANDING_GUEST_CHECKOUT=true.
+   */
+  const startLandingGuestCheckout = useCallback(
+    async (
+      region: Region,
+      clientCount: number,
+      billingPeriod: BillingPeriod,
+      packageTrack: PackageTrack,
+    ): Promise<boolean> => {
+      if (!LANDING_GUEST_CHECKOUT_ENABLED) {
+        logger.info('[Checkout] Landing guest checkout disabled (env)');
+        return false;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const functions = getFirebaseFunctions();
+        const createGuest = httpsCallable<
+          CreateLandingGuestCheckoutRequest,
+          CreateCheckoutResponse
+        >(functions, 'createLandingGuestCheckoutSession');
+
+        const result = await createGuest({
+          region,
+          clientCount,
+          billingPeriod,
+          packageTrack,
+        });
+        const { sessionUrl } = result.data;
+
+        if (!sessionUrl) {
+          throw new Error('No checkout session URL returned from server.');
+        }
+
+        window.location.href = sessionUrl;
+        return true;
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error
+            ? err.message
+            : 'Unable to start checkout. Please try again.';
+        setError(message);
+        logger.error('[Checkout] Landing guest checkout failed:', message);
+        return false;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
+
   const purchaseCreditTopup = useCallback(
     async (organizationId: string): Promise<boolean> => {
       if (!STRIPE_CONFIG.isEnabled) {
@@ -101,7 +161,7 @@ export function useCheckout() {
       setError(null);
 
       try {
-        const functions = getFunctions();
+        const functions = getFirebaseFunctions();
         const createSession = httpsCallable<{ organizationId: string }, { sessionUrl: string }>(
           functions,
           'createCreditTopupSession'
@@ -128,6 +188,7 @@ export function useCheckout() {
 
   return {
     startCheckout,
+    startLandingGuestCheckout,
     purchaseCreditTopup,
     loading,
     error,

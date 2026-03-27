@@ -12,6 +12,7 @@ import { compressImageForDisplay } from '@/lib/utils/imageCompression';
 import { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
 import { sanitizeForFirestore } from '@/lib/utils/firebaseUtils';
 import { LandmarkResult } from '@/lib/ai/postureLandmarks';
+import type { PostureFramingMetadata } from '@/lib/utils/postureFramingMetadata';
 import { logger } from '@/lib/utils/logger';
 import { validateOrganizationId } from '@/lib/utils/validateOrganizationId';
 import type { UserProfile } from '@/types/auth';
@@ -35,6 +36,12 @@ export interface LiveSession {
 }
 
 const SESSIONS_COLLECTION = 'live_sessions';
+
+/**
+ * `createLiveSession` uses this clientId until sessions are keyed by real client slug.
+ * Queries for posture merge / reanalyze must use the same value.
+ */
+export const LIVE_SESSION_PLACEHOLDER_CLIENT_ID = 'current-client' as const;
 
 /** Generate a short cryptographically secure ID (URL-safe, no special chars). */
 function generateSecureId(length: number): string {
@@ -161,7 +168,8 @@ export const updatePostureImage = async (
   providedLandmarks?: LandmarkResult,
   source: 'manual' | 'iphone' | 'this-device' = 'manual',
   organizationId?: string,
-  profile?: UserProfile | null
+  profile?: UserProfile | null,
+  framingMetadata?: PostureFramingMetadata | null
 ) => {
   try {
     // Validate image data first
@@ -270,6 +278,10 @@ export const updatePostureImage = async (
     if (processed.landmarks) {
       updatePayload[`landmarks_${view}`] = sanitizeForFirestore(processed.landmarks) as Record<string, unknown>;
     }
+
+    if (framingMetadata) {
+      updatePayload[`postureFraming_${view}`] = sanitizeForFirestore(framingMetadata) as Record<string, unknown>;
+    }
     
     await updateDocWithRetry(sessionRef, updatePayload, 3, `final image update for ${view}`);
 
@@ -367,28 +379,21 @@ export const updateBodyCompImage = async (
  * Get sessions for a specific client (for comparison features)
  * Limited to most recent sessions to prevent unbounded queries
  */
-export const getClientSessions = async (clientId: string, organizationId?: string, maxResults = 20): Promise<LiveSession[]> => {
+export const getClientSessions = async (
+  clientId: string,
+  organizationId: string,
+  maxResults = 20,
+): Promise<LiveSession[]> => {
   const { collection, query, where, getDocs, limit } = await import('firebase/firestore');
   const sessionsRef = collection(db, SESSIONS_COLLECTION);
-  
-  let q;
-  if (organizationId) {
-    // Query without orderBy to avoid index requirement - we'll sort in memory
-    q = query(
-      sessionsRef,
-      where('clientId', '==', clientId),
-      where('organizationId', '==', organizationId),
-      limit(maxResults)
-    );
-  } else {
-    // Query without orderBy to avoid index requirement - we'll sort in memory
-    q = query(
-      sessionsRef,
-      where('clientId', '==', clientId),
-      limit(maxResults)
-    );
-  }
-  
+
+  const q = query(
+    sessionsRef,
+    where('clientId', '==', clientId),
+    where('organizationId', '==', organizationId),
+    limit(maxResults),
+  );
+
   const snapshot = await getDocs(q);
   const sessions = snapshot.docs.map(doc => doc.data() as LiveSession);
   
@@ -412,7 +417,10 @@ export interface ClientSessionSummary {
   analysis: Record<string, PostureAnalysisResult>; // view -> analysis
 }
 
-export const getClientPostureImages = async (clientId: string, organizationId?: string): Promise<Record<string, ClientSessionSummary>> => {
+export const getClientPostureImages = async (
+  clientId: string,
+  organizationId: string,
+): Promise<Record<string, ClientSessionSummary>> => {
   const sessions = await getClientSessions(clientId, organizationId);
   const result: Record<string, ClientSessionSummary> = {};
   

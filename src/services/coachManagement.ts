@@ -7,13 +7,55 @@
  * - Track coach activity and seats
  */
 
-import { doc, setDoc, updateDoc, deleteDoc, getDoc, getDocs, query, where, collection, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, deleteDoc, getDoc, getDocs, query, where, collection, serverTimestamp, limit } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getDb } from '@/services/firebase';
 import { getUserProfilesCollection, getOrgCoachesCollection } from '@/lib/database/collections';
+import { resolveStaffRosterDisplayName } from '@/lib/utils/staffDisplayName';
 import { logger } from '@/lib/utils/logger';
 import type { UserProfile } from '@/types/auth';
 import { COLLECTIONS } from '@/constants/collections';
+import { ORG_COACHES_SUBCOLLECTION_LIMIT } from '@/constants/firestoreQueryLimits';
+
+/** Roles that should have a row under organizations/{orgId}/coaches/{uid}. */
+function shouldSyncCoachRosterRole(role: string | undefined): boolean {
+  return role === 'org_admin' || role === 'coach' || role === 'owner' || role === 'admin';
+}
+
+function coachesSubcollectionRole(profileRole: string): string {
+  if (profileRole === 'org_admin') return 'org_admin';
+  if (profileRole === 'owner') return 'owner';
+  if (profileRole === 'admin') return 'admin';
+  return 'coach';
+}
+
+/**
+ * Keep organizations/{orgId}/coaches/{uid} displayName/email aligned with userProfiles
+ * so Team metrics and Firestore rules stay consistent.
+ */
+export async function syncCoachRosterFromProfile(params: {
+  organizationId: string;
+  uid: string;
+  displayName: string;
+  email: string | null | undefined;
+  profileRole: string;
+}): Promise<void> {
+  const { organizationId, uid, displayName, email, profileRole } = params;
+  const db = getDb();
+  const ref = doc(db, `organizations/${organizationId}/coaches/${uid}`);
+  await setDoc(
+    ref,
+    {
+      uid,
+      displayName: displayName.trim() || 'Coach',
+      email: email ?? null,
+      role: coachesSubcollectionRole(profileRole),
+    },
+    { merge: true },
+  );
+}
+
+export { shouldSyncCoachRosterRole };
 
 /**
  * Add a coach to an organization by email
@@ -32,7 +74,11 @@ export async function addCoachToOrganization(
     
     // Check if a user profile already exists with this email
     const userProfilesRef = getUserProfilesCollection();
-    const emailQuery = query(userProfilesRef, where('email', '==', coachEmail.toLowerCase()));
+    const emailQuery = query(
+      userProfilesRef,
+      where('email', '==', coachEmail.toLowerCase()),
+      limit(5),
+    );
     const emailSnapshot = await getDocs(emailQuery);
     
     if (!emailSnapshot.empty) {
@@ -198,7 +244,9 @@ export async function getOrgCoaches(orgId: string): Promise<Array<{
   try {
     // First, get coaches from the organization's coaches collection (with stats)
     const orgCoachesRef = getOrgCoachesCollection(orgId);
-    const orgCoachesSnapshot = await getDocs(orgCoachesRef);
+    const orgCoachesSnapshot = await getDocs(
+      query(orgCoachesRef, limit(ORG_COACHES_SUBCOLLECTION_LIMIT)),
+    );
 
     const coachesFromOrg: Array<{
       uid: string;
@@ -213,7 +261,7 @@ export async function getOrgCoaches(orgId: string): Promise<Array<{
       const data = docSnap.data();
       coachesFromOrg.push({
         uid: docSnap.id,
-        displayName: data.displayName || data.email || 'Unknown',
+        displayName: resolveStaffRosterDisplayName(data.displayName, data.email),
         email: data.email,
         role: data.role || 'coach',
         clientCount: data.stats?.clientCount || 0,
@@ -228,7 +276,11 @@ export async function getOrgCoaches(orgId: string): Promise<Array<{
 
     // Fallback: query userProfiles for coaches in this org
     const userProfilesRef = getUserProfilesCollection();
-    const orgQuery = query(userProfilesRef, where('organizationId', '==', orgId));
+    const orgQuery = query(
+      userProfilesRef,
+      where('organizationId', '==', orgId),
+      limit(ORG_COACHES_SUBCOLLECTION_LIMIT),
+    );
     const snapshot = await getDocs(orgQuery);
 
     const coaches: Array<{
@@ -245,7 +297,7 @@ export async function getOrgCoaches(orgId: string): Promise<Array<{
       if (data.role === 'coach' || data.role === 'org_admin') {
         coaches.push({
           uid: docSnap.id,
-          displayName: data.displayName || data.email || 'Unknown',
+          displayName: resolveStaffRosterDisplayName(data.displayName, data.email as string | undefined),
           email: data.email,
           role: data.role,
           clientCount: 0,

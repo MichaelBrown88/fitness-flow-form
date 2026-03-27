@@ -15,6 +15,7 @@
 
 import * as admin from 'firebase-admin';
 import * as crypto from 'crypto';
+import { maybeSendFirstAssessmentCelebrationEmail } from './transactionalEmails';
 
 export type WebhookEvent =
   | 'assessment.completed'
@@ -68,6 +69,9 @@ async function deliver(
   }
 }
 
+/** Max active webhook endpoints processed per fan-out (cursorrules: bounded list queries). */
+const WEBHOOK_FANOUT_LIMIT = 20;
+
 /**
  * Fan out a webhook event to all active, subscribed endpoints for an org.
  * Called from Firestore triggers.
@@ -82,6 +86,7 @@ export async function fanOutWebhookEvent(
   const webhooksSnap = await db
     .collection(`organizations/${orgId}/webhooks`)
     .where('active', '==', true)
+    .limit(WEBHOOK_FANOUT_LIMIT)
     .get();
 
   if (webhooksSnap.empty) return;
@@ -135,4 +140,10 @@ export async function handleAssessmentCompletedTrigger(
     overallScore: sessionData.overallScore ?? null,
     assessedAt: sessionData.createdAt ?? null,
   });
+
+  try {
+    await maybeSendFirstAssessmentCelebrationEmail(orgId, clientSlug, sessionData);
+  } catch (err) {
+    console.error('[handleAssessmentCompletedTrigger] first-assessment email failed', err);
+  }
 }

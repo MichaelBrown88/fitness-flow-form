@@ -15,7 +15,14 @@
 
 import * as admin from 'firebase-admin';
 import Stripe from 'stripe';
-import type { CallableRequest } from 'firebase-functions/v2/https';
+import { assertRateLimit, buildRateLimitKey } from './rateLimit';
+import {
+  parseMetadataInt,
+  METADATA_MAX_CLIENT_CAP,
+  METADATA_MAX_MONTHLY_AI_CREDITS,
+  METADATA_MAX_CREDIT_TOPUP_QTY,
+} from './metadataInts';
+import { HttpsError, type CallableRequest } from 'firebase-functions/v2/https';
 import {
   capacityPriceEnvKey,
   brandingPriceEnvKey,
@@ -80,7 +87,10 @@ function getStripe(): Stripe {
         'Stripe secret key not configured. Set STRIPE_SECRET_KEY or STRIPE_SECRET_KEY_TEST / STRIPE_SECRET_KEY_LIVE.',
       );
     }
-    stripeInstance = new Stripe(key, { apiVersion: '2026-01-28.clover' });
+    // GA API version (Dashboard). stripe@20 types may pin a newer literal; cast keeps runtime aligned with CFO review.
+    stripeInstance = new Stripe(key, {
+      apiVersion: '2024-11-20.acacia' as Stripe.StripeConfig['apiVersion'],
+    });
   }
   return stripeInstance;
 }
@@ -96,6 +106,26 @@ function getPriceIdForTier(region: Region, clientCount: number): string | undefi
 function regionToCurrency(region: string): string {
   const map: Record<string, string> = { GB: 'GBP', US: 'USD', KW: 'KWD' };
   return map[region] || 'GBP';
+}
+
+async function enforceBillingCallableRateLimit(
+  db: admin.firestore.Firestore,
+  namespace: string,
+  uid: string,
+  rawIp: string | undefined,
+): Promise<void> {
+  try {
+    await assertRateLimit(
+      db,
+      buildRateLimitKey(namespace, uid, rawIp),
+      { maxRequests: 15, windowSeconds: 60 },
+    );
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === 'RATE_LIMITED') {
+      throw new HttpsError('resource-exhausted', 'Too many requests. Try again shortly.');
+    }
+    throw e;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -126,6 +156,14 @@ export async function handleCreateCheckoutSession(
   if (!request.auth?.uid) {
     throw new Error('Authentication required.');
   }
+
+  const db = admin.firestore();
+  await enforceBillingCallableRateLimit(
+    db,
+    'stripe_checkout',
+    request.auth.uid,
+    request.rawRequest?.ip,
+  );
 
   const { organizationId, region, clientCount, plan, seats, tierId, billingPeriod, packageTrack } =
     request.data;
@@ -194,7 +232,6 @@ export async function handleCreateCheckoutSession(
   }
 
   const stripe = getStripe();
-  const db = admin.firestore();
 
   const orgDoc = await db.doc(`organizations/${organizationId}`).get();
   if (!orgDoc.exists) {
@@ -243,6 +280,7 @@ export async function handleCreateCheckoutSession(
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     mode: 'subscription',
+    payment_method_types: ['card'],
     line_items: [
       {
         price: priceId,
@@ -251,6 +289,110 @@ export async function handleCreateCheckoutSession(
     ],
     success_url: `${baseUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${baseUrl}/billing`,
+    metadata: meta,
+    subscription_data: {
+      metadata: { ...meta },
+    },
+  });
+
+  return {
+    sessionUrl: session.url,
+    sessionId: session.id,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// createLandingGuestCheckoutSession — unauthenticated callable (test mode only)
+// ---------------------------------------------------------------------------
+export interface LandingGuestCheckoutRequest {
+  region: Region;
+  clientCount: number;
+  billingPeriod: BillingPeriod;
+  packageTrack: PackageTrack;
+}
+
+/**
+ * Public marketing flow: same Stripe prices as logged-in checkout, no Firebase org.
+ * Gated by ENABLE_LANDING_GUEST_CHECKOUT + STRIPE_MODE=test. Rate-limited by IP.
+ */
+export async function handleCreateLandingGuestCheckoutSession(
+  request: CallableRequest<LandingGuestCheckoutRequest>,
+): Promise<{ sessionUrl: string | null; sessionId: string }> {
+  if (process.env.ENABLE_LANDING_GUEST_CHECKOUT !== 'true') {
+    throw new HttpsError(
+      'permission-denied',
+      'Landing guest checkout is off: set ENABLE_LANDING_GUEST_CHECKOUT=true in functions/.env (or Cloud Run env), then redeploy createLandingGuestCheckoutSession.',
+    );
+  }
+  const stripeMode = (process.env.STRIPE_MODE || 'test').toLowerCase();
+  if (stripeMode !== 'test') {
+    throw new HttpsError(
+      'failed-precondition',
+      'Landing guest checkout is only allowed when STRIPE_MODE=test.',
+    );
+  }
+
+  const db = admin.firestore();
+  try {
+    await assertRateLimit(
+      db,
+      buildRateLimitKey('landing_guest_checkout', undefined, request.rawRequest?.ip),
+      { maxRequests: 8, windowSeconds: 60 },
+    );
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === 'RATE_LIMITED') {
+      throw new HttpsError('resource-exhausted', 'Too many checkout attempts. Try again shortly.');
+    }
+    throw e;
+  }
+
+  const { region, clientCount, billingPeriod, packageTrack } = request.data || ({} as LandingGuestCheckoutRequest);
+
+  if (region !== 'GB') {
+    throw new HttpsError('invalid-argument', 'Only GB region is supported.');
+  }
+  if (typeof clientCount !== 'number' || !Number.isFinite(clientCount) || clientCount < 1 || clientCount > 300) {
+    throw new HttpsError('invalid-argument', 'Invalid client count.');
+  }
+  if (billingPeriod !== 'monthly' && billingPeriod !== 'annual') {
+    throw new HttpsError('invalid-argument', 'Invalid billing period.');
+  }
+  if (packageTrack !== 'solo' && packageTrack !== 'gym') {
+    throw new HttpsError('invalid-argument', 'Invalid package track.');
+  }
+
+  const track: PackageTrack = packageTrack === 'gym' ? 'gym' : 'solo';
+  const row = getPaidTierForPackageTrack(clientCount, track);
+  const bp: BillingPeriod = billingPeriod === 'annual' ? 'annual' : 'monthly';
+  const modeSuffix = stripeModeSuffix();
+  const envKey = capacityPriceEnvKey(row.id, bp, modeSuffix);
+  const priceId = process.env[envKey];
+  if (!priceId) {
+    throw new HttpsError(
+      'failed-precondition',
+      `Stripe price not configured for ${envKey}. Set capacity env vars in functions/.env.`,
+    );
+  }
+
+  const stripe = getStripe();
+  const baseUrl = (process.env.APP_URL || 'https://one-assess.com').replace(/\/$/, '');
+
+  const meta: Record<string, string> = {
+    landingGuestPreview: 'true',
+    region: 'GB',
+    clientCount: String(row.clientLimit),
+    tierId: row.id,
+    billingPeriod: bp,
+    clientLimit: String(row.clientLimit),
+    monthlyAiCredits: String(row.monthlyAiCredits),
+  };
+
+  const session = await stripe.checkout.sessions.create({
+    mode: 'subscription',
+    payment_method_types: ['card'],
+    line_items: [{ price: priceId, quantity: 1 }],
+    success_url: `${baseUrl}/pricing?guest_checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${baseUrl}/pricing?guest_checkout=cancel`,
     metadata: meta,
     subscription_data: {
       metadata: { ...meta },
@@ -283,6 +425,12 @@ export async function handleCreateCustomerPortalSession(
   }
 
   const db = admin.firestore();
+  await enforceBillingCallableRateLimit(
+    db,
+    'stripe_portal',
+    request.auth.uid,
+    request.rawRequest?.ip,
+  );
 
   const orgDoc = await db.doc(`organizations/${organizationId}`).get();
   if (!orgDoc.exists) {
@@ -342,6 +490,13 @@ export async function handleCreateBrandingCheckoutSession(
   }
 
   const db = admin.firestore();
+  await enforceBillingCallableRateLimit(
+    db,
+    'stripe_branding_checkout',
+    request.auth.uid,
+    request.rawRequest?.ip,
+  );
+
   const orgDoc = await db.doc(`organizations/${organizationId}`).get();
   if (!orgDoc.exists) {
     throw new Error('Organization not found.');
@@ -429,9 +584,19 @@ export async function handleStripeWebhook(req: Request, res: Response) {
   switch (event.type) {
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session;
+      if (session.metadata?.landingGuestPreview === 'true') {
+        console.log(
+          '[Stripe Webhook] checkout.session.completed — landing guest preview (no organization write)',
+        );
+        break;
+      }
       const orgId = session.metadata?.organizationId;
       const region = (session.metadata?.region as string) || 'GB';
-      const legacyClientCount = parseInt(session.metadata?.clientCount || session.metadata?.seats || '10', 10);
+      const legacyClientCount = parseMetadataInt(
+        session.metadata?.clientCount || session.metadata?.seats || undefined,
+        10,
+        METADATA_MAX_CLIENT_CAP,
+      );
       const currency = regionToCurrency(region);
 
       if (orgId && session.subscription) {
@@ -455,8 +620,16 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         const tierRow = capacityTierId ? getPaidTierById(capacityTierId) : undefined;
         const clientLimit =
           tierRow?.clientLimit ??
-          parseInt(session.metadata?.clientLimit || String(legacyClientCount), 10);
-        const fromMetaCredits = parseInt(session.metadata?.monthlyAiCredits || '0', 10);
+          parseMetadataInt(
+            session.metadata?.clientLimit,
+            legacyClientCount,
+            METADATA_MAX_CLIENT_CAP,
+          );
+        const fromMetaCredits = parseMetadataInt(
+          session.metadata?.monthlyAiCredits,
+          0,
+          METADATA_MAX_MONTHLY_AI_CREDITS,
+        );
         const monthlyAiCredits =
           tierRow?.monthlyAiCredits ??
           (fromMetaCredits > 0 ? fromMetaCredits : getPaidTierByClientCount(legacyClientCount).monthlyAiCredits);
@@ -494,7 +667,11 @@ export async function handleStripeWebhook(req: Request, res: Response) {
 
       // Credit top-up: add the purchased credits to the org's balance
       if (orgId && session.payment_status === 'paid' && session.metadata?.type === 'credit_topup') {
-        const qty = parseInt(session.metadata?.creditQuantity || '20', 10);
+        const qty = parseMetadataInt(
+          session.metadata?.creditQuantity,
+          20,
+          METADATA_MAX_CREDIT_TOPUP_QTY,
+        );
         await db.doc(`organizations/${orgId}`).update({
           assessmentCredits: admin.firestore.FieldValue.increment(qty),
           lastCreditTopupAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -602,6 +779,52 @@ export async function handleStripeWebhook(req: Request, res: Response) {
       break;
     }
 
+    case 'invoice.payment_failed': {
+      const invoice = event.data.object as Stripe.Invoice & {
+        subscription?: string | Stripe.Subscription | null;
+      };
+      const subRef = invoice.subscription;
+      const subId =
+        typeof subRef === 'string' ? subRef : subRef && typeof subRef === 'object' ? subRef.id : null;
+      if (!subId) {
+        console.log(`[Stripe Webhook] invoice.payment_failed — no subscription on invoice ${invoice.id}`);
+        break;
+      }
+
+      let orgId: string | undefined;
+      try {
+        const sub = await stripe.subscriptions.retrieve(subId);
+        orgId = sub.metadata?.organizationId;
+      } catch (e) {
+        console.error('[Stripe Webhook] invoice.payment_failed — failed to load subscription', e);
+        break;
+      }
+      if (!orgId) {
+        console.log(
+          `[Stripe Webhook] invoice.payment_failed — invoice ${invoice.id} subscription ${subId} missing organizationId metadata`,
+        );
+        break;
+      }
+
+      console.log(`[Stripe Webhook] invoice.payment_failed — org ${orgId} invoice ${invoice.id}`);
+
+      const orgSnap = await db.doc(`organizations/${orgId}`).get();
+      const ownerId: string | undefined = orgSnap.data()?.ownerId;
+      if (ownerId) {
+        await db.collection(`notifications/${ownerId}/items`).add({
+          type: 'invoice_payment_failed',
+          title: 'Payment failed — update your card',
+          body: 'We could not charge your subscription. Please update your payment method in billing to keep your plan active.',
+          priority: 'high',
+          read: false,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          recipientUid: ownerId,
+          actionUrl: '/billing',
+        });
+      }
+      break;
+    }
+
     case 'invoice.payment_succeeded': {
       // Replenish monthly AI credits when a subscription renews
       const invoice = event.data.object as Stripe.Invoice & {
@@ -684,17 +907,39 @@ export interface CreditTopupRequest {
 export async function handleCreateCreditTopupSession(
   request: CallableRequest<CreditTopupRequest>
 ) {
-  if (!request.auth?.uid) throw new Error('Authentication required.');
+  if (!request.auth?.uid) {
+    throw new HttpsError('unauthenticated', 'Authentication required.');
+  }
   const { organizationId } = request.data;
-  if (!organizationId) throw new Error('Missing required field: organizationId.');
+  if (!organizationId) {
+    throw new HttpsError('invalid-argument', 'Missing organizationId.');
+  }
 
   const db = admin.firestore();
+  try {
+    await assertRateLimit(
+      db,
+      buildRateLimitKey('credit_topup', request.auth.uid, request.rawRequest?.ip),
+      { maxRequests: 10, windowSeconds: 60 },
+    );
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === 'RATE_LIMITED') {
+      throw new HttpsError('resource-exhausted', 'Too many credit purchase attempts. Try again shortly.');
+    }
+    throw e;
+  }
+
   const stripe = getStripe();
   const baseUrl = process.env.APP_URL || 'https://one-assess.com';
 
   const orgDoc = await db.doc(`organizations/${organizationId}`).get();
-  if (!orgDoc.exists) throw new Error('Organization not found.');
+  if (!orgDoc.exists) {
+    throw new HttpsError('not-found', 'Organization not found.');
+  }
   const orgData = orgDoc.data()!;
+  if (orgData.ownerId !== request.auth.uid) {
+    throw new HttpsError('permission-denied', 'Only the organization owner can purchase credits.');
+  }
 
   const region: string = orgData.subscription?.region || orgData.region || 'GB';
   const { amount, currency } = creditTopupAmountForRegion(region);

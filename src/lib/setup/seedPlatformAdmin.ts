@@ -8,12 +8,13 @@
  * or create a temporary button during development.
  */
 
-import { setDoc, getDoc } from 'firebase/firestore';
+import { setDoc } from 'firebase/firestore';
 import { logger } from '@/lib/utils/logger';
 import type { PlatformAdmin, PlatformPermission } from '@/types/platform';
-import { 
-  getPlatformAdminDoc, 
-  getPlatformAdminLookupDoc 
+import {
+  getPlatformAdminDoc,
+  mirrorPlatformAdminLookupWrite,
+  platformAdminLookupExistsForEmail,
 } from '@/lib/database/collections';
 
 // Platform owner configuration
@@ -35,11 +36,7 @@ const PLATFORM_OWNER = {
  */
 export async function seedPlatformAdminOnce(): Promise<{ success: boolean; message: string }> {
   try {
-    // Check the dedicated lookup document
-    const lookupRef = getPlatformAdminLookupDoc(PLATFORM_OWNER.email);
-    const lookupSnap = await getDoc(lookupRef);
-    
-    if (lookupSnap.exists()) {
+    if (await platformAdminLookupExistsForEmail(PLATFORM_OWNER.email)) {
       logger.info('Platform admin already seeded:', PLATFORM_OWNER.email);
       return { 
         success: true, 
@@ -60,8 +57,7 @@ export async function seedPlatformAdminOnce(): Promise<{ success: boolean; messa
     // Store the admin record
     await setDoc(getPlatformAdminDoc(pendingUid), adminRecord);
     
-    // Create lookup document for quick email-based queries
-    await setDoc(lookupRef, {
+    await mirrorPlatformAdminLookupWrite(PLATFORM_OWNER.email, {
       uid: pendingUid,
       email: PLATFORM_OWNER.email.toLowerCase(),
       createdAt: new Date(),
@@ -87,9 +83,7 @@ export async function seedPlatformAdminOnce(): Promise<{ success: boolean; messa
  */
 export async function isPlatformAdminSeeded(): Promise<boolean> {
   try {
-    const lookupRef = getPlatformAdminLookupDoc(PLATFORM_OWNER.email);
-    const lookupSnap = await getDoc(lookupRef);
-    return lookupSnap.exists();
+    return await platformAdminLookupExistsForEmail(PLATFORM_OWNER.email);
   } catch {
     return false;
   }

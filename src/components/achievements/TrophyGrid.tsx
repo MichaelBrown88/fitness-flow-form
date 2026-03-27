@@ -52,8 +52,8 @@ export function TrophyGrid({ trophies }: TrophyGridProps) {
   return (
     <div className="space-y-3 sm:space-y-4">
       <div>
-        <h3 className="text-sm sm:text-base font-bold text-zinc-900">Trophies</h3>
-        <p className="text-xs sm:text-xs text-zinc-500">Special achievements for outstanding performance</p>
+        <h3 className="text-sm sm:text-base font-bold text-foreground">Trophies</h3>
+        <p className="text-xs sm:text-xs text-muted-foreground">Special achievements for outstanding performance</p>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
@@ -67,33 +67,33 @@ export function TrophyGrid({ trophies }: TrophyGridProps) {
               key={trophy.id}
               className={`p-3 sm:p-4 flex flex-col items-center text-center transition-all ${
                 isUnlocked
-                  ? 'bg-white ring-1 ring-gradient-medium shadow-sm'
-                  : 'bg-zinc-50 opacity-60'
+                  ? 'bg-background ring-1 ring-gradient-medium shadow-sm'
+                  : 'bg-muted/50 opacity-60'
               } ${isNew ? 'ring-2 ring-primary/40 shadow-md shadow-primary/10' : ''}`}
             >
               <div
                 className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center mb-2 sm:mb-3 ${
-                  isUnlocked ? 'gradient-bg' : 'bg-zinc-200'
+                  isUnlocked ? 'gradient-bg' : 'bg-muted'
                 } ${isNew ? 'animate-pulse' : ''}`}
               >
-                <IconComponent className={`w-5 h-5 sm:w-6 sm:h-6 ${isUnlocked ? 'text-white' : 'text-zinc-400'}`} />
+                <IconComponent className={`w-5 h-5 sm:w-6 sm:h-6 ${isUnlocked ? 'text-white' : 'text-muted-foreground'}`} />
               </div>
               {isNew && (
                 <span className="text-[10px] font-black uppercase tracking-[0.15em] text-primary mb-1">New!</span>
               )}
-              <span className="text-xs sm:text-sm font-bold text-zinc-900 mb-0.5">{trophy.title}</span>
-              <span className="text-[10px] sm:text-xs text-zinc-500 leading-tight">{trophy.description}</span>
+              <span className="text-xs sm:text-sm font-bold text-foreground mb-0.5">{trophy.title}</span>
+              <span className="text-[10px] sm:text-xs text-muted-foreground leading-tight">{trophy.description}</span>
 
               {/* Progress bar for locked trophies */}
               {!isUnlocked && (
                 <div className="w-full mt-2 sm:mt-3">
-                  <div className="h-1.5 bg-zinc-200 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                     <div
                       className="h-full gradient-bg rounded-full transition-all duration-500"
                       style={{ width: `${trophy.progress}%` }}
                     />
                   </div>
-                  <span className="text-[10px] text-zinc-400 font-medium mt-0.5 block">{trophy.progress}%</span>
+                  <span className="text-[10px] text-muted-foreground font-medium mt-0.5 block">{trophy.progress}%</span>
                 </div>
               )}
             </Card>

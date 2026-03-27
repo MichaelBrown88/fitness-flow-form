@@ -8,13 +8,18 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, TrendingDown, Minus, Pause, Archive, ArrowRightLeft, X, Pin } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Pin } from 'lucide-react';
 import { ClientActionsDropdown } from './ClientActionsDropdown';
+import { ClientTableBulkActions } from './unifiedClientTableBulk';
 import type { ClientGroup } from '@/hooks/dashboard/types';
+import type { UserProfile } from '@/types/auth';
 import { scoreGrade, SCORE_COLORS } from '@/lib/scoring/scoreColor';
 import { BASE_CADENCE_INTERVALS } from '@/types/client';
 import type { PartialAssessmentCategory } from '@/types/client';
 import { getPillarLabel } from '@/constants/pillars';
+import { ROUTES } from '@/constants/routes';
+import { UI_DASHBOARD_CLIENTS } from '@/constants/ui';
+import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
 
 type SortKey = 'name' | 'lastAssessed' | 'score';
 type SortDir = 'asc' | 'desc';
@@ -29,6 +34,11 @@ interface UnifiedClientTableProps {
   orgDefaultIntervals?: Record<string, number>;
   orgDefaultActivePillars?: PartialAssessmentCategory[];
   onViewHistory?: (clientName: string) => void;
+  /** Bulk pause/archive writes (real org id, not impersonation read scope) */
+  writeOrganizationId?: string;
+  coachUid?: string;
+  profile?: UserProfile | null;
+  onBulkComplete?: () => void;
 }
 
 const ALL_PILLARS: PartialAssessmentCategory[] = ['bodycomp', 'posture', 'fitness', 'strength', 'lifestyle'];
@@ -63,7 +73,7 @@ function computeNextDue(
     return {
       pillar: pillars[0],
       label: `Starts in ${weeks} wk`,
-      color: 'text-slate-400',
+      color: 'text-muted-foreground',
       daysFromDue: -daysUntil,
     };
   }
@@ -84,7 +94,15 @@ function computeNextDue(
       ? orgInterval
       : BASE_CADENCE_INTERVALS[pillar];
 
-    const baseDate = client.pillarDates?.[pillar] ?? effectiveLatest;
+    const pillarSpecific = client.pillarDates?.[pillar];
+    let baseDate = pillarSpecific ?? effectiveLatest;
+    if (
+      pillarSpecific &&
+      effectiveLatest &&
+      pillarSpecific.getTime() < effectiveLatest.getTime()
+    ) {
+      baseDate = effectiveLatest;
+    }
     if (!baseDate) continue;
 
     const dueDate = new Date(baseDate.getTime() + interval * 24 * 60 * 60 * 1000);
@@ -105,7 +123,7 @@ function computeNextDue(
       } else {
         const weeks = Math.ceil(Math.abs(daysFromDue) / 7);
         label = `${getPillarLabel(pillar)} — in ${weeks} wk`;
-        color = 'text-slate-500';
+        color = 'text-muted-foreground';
       }
 
       nearest = { pillar, label, color, daysFromDue };
@@ -125,23 +143,29 @@ const ScoreBadge: React.FC<{ score: number }> = ({ score }) => {
 };
 
 const TrendIndicator: React.FC<{ trend?: number }> = ({ trend }) => {
-  if (trend === undefined || trend === null) return null;
+  if (trend === undefined || trend === null) {
+    return (
+      <span className="text-[10px] font-medium text-muted-foreground tabular-nums" aria-label="No trend data yet">
+        —
+      </span>
+    );
+  }
   if (trend > 0) {
     return (
-      <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
+      <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
         <TrendingUp className="h-3 w-3" />+{trend}
       </span>
     );
   }
   if (trend < 0) {
     return (
-      <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full">
+      <span className="inline-flex items-center gap-0.5 rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-700 dark:bg-red-950/50 dark:text-red-300">
         <TrendingDown className="h-3 w-3" />{trend}
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded-full">
+    <span className="inline-flex items-center gap-0.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
       <Minus className="h-3 w-3" />0
     </span>
   );
@@ -163,6 +187,10 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
   orgDefaultIntervals,
   orgDefaultActivePillars,
   onViewHistory,
+  writeOrganizationId,
+  coachUid,
+  profile,
+  onBulkComplete,
 }) => {
   const navigate = useNavigate();
   const [sortKey, setSortKey] = useState<SortKey>('lastAssessed');
@@ -233,21 +261,21 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
   };
 
   const thClass =
-    'px-3 sm:px-4 md:px-6 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 cursor-pointer select-none hover:text-slate-600 transition-colors';
+    'px-3 sm:px-4 md:px-6 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors';
   const colCount = (showCoachColumn ? 8 : 7);
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-4" aria-live="polite">
       {/* Status filter */}
       <div className="flex items-center gap-1">
         {STATUS_FILTER_OPTIONS.map(opt => (
           <button
             key={opt.value}
             onClick={() => setStatusFilter(opt.value)}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
               statusFilter === opt.value
-                ? 'bg-slate-900 text-white'
-                : 'text-slate-500 hover:bg-slate-100'
+                ? 'bg-foreground text-background'
+                : 'text-muted-foreground hover:bg-muted'
             }`}
           >
             {opt.label}
@@ -256,16 +284,16 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
       </div>
 
       {/* Desktop / Tablet table */}
-      <div className="hidden sm:block overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-        <table className="min-w-full divide-y divide-slate-200 text-xs sm:text-sm">
-          <thead className="bg-slate-50/50">
+      <div className="hidden overflow-x-auto rounded-xl border border-border bg-card shadow-sm sm:block">
+        <table className="min-w-full divide-y divide-border text-xs sm:text-sm">
+          <thead className="bg-muted/40">
             <tr>
               <th className="px-2 sm:px-3 py-3 w-10" onClick={(e) => e.stopPropagation()}>
                 <input
                   type="checkbox"
                   checked={sorted.slice(0, visibleCount).length > 0 && selected.size === sorted.slice(0, visibleCount).length}
                   onChange={toggleSelectAll}
-                  className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500 cursor-pointer"
+                  className="h-4 w-4 cursor-pointer rounded border-border text-primary focus:ring-ring"
                 />
               </th>
               <th className={thClass} onClick={() => toggleSort('name')}>
@@ -280,31 +308,47 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
               <th className={thClass} onClick={() => toggleSort('score')}>
                 Score{sortIcon('score')}
               </th>
-              <th className="px-3 sm:px-4 md:px-6 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 hidden lg:table-cell">
+              <th className="hidden px-3 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground sm:px-4 md:px-6 lg:table-cell">
                 Trend
               </th>
-              <th className="px-3 sm:px-4 md:px-6 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 hidden md:table-cell">
+              <th className="hidden px-3 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground sm:px-4 md:table-cell md:px-6">
                 Next Due
               </th>
-              <th className="px-3 sm:px-4 md:px-6 py-3 text-right text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+              <th className="px-3 py-3 text-right text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground sm:px-4 md:px-6">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-border">
             {loadingData ? (
               <tr>
-                <td colSpan={colCount} className="px-6 py-12 text-center text-sm text-slate-400 font-medium">
+                <td colSpan={colCount} className="px-6 py-12 text-center text-sm font-medium text-muted-foreground">
                   <div className="flex flex-col items-center gap-3">
-                    <div className="w-6 h-6 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
+                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-foreground border-t-transparent" />
                     <span>Loading clients...</span>
                   </div>
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={colCount} className="px-6 py-12 text-center text-sm text-slate-400 font-medium">
-                  {search ? 'No clients match that name.' : 'No clients found.'}
+                <td colSpan={colCount} className="px-6 py-12 text-center">
+                  {search ? (
+                    <p className="text-sm text-muted-foreground font-medium">
+                      {UI_DASHBOARD_CLIENTS.SEARCH_NO_MATCH}
+                    </p>
+                  ) : (
+                    <div className="flex flex-col items-center gap-4 max-w-sm mx-auto">
+                      <p className="text-sm font-semibold text-foreground">{UI_DASHBOARD_CLIENTS.EMPTY_TITLE}</p>
+                      <p className="text-sm text-muted-foreground">{UI_DASHBOARD_CLIENTS.EMPTY_BODY}</p>
+                      <Button
+                        type="button"
+                        className="rounded-xl font-bold"
+                        onClick={() => navigate(ROUTES.ASSESSMENT)}
+                      >
+                        {UI_DASHBOARD_CLIENTS.EMPTY_CTA}
+                      </Button>
+                    </div>
+                  )}
                 </td>
               </tr>
             ) : (
@@ -317,7 +361,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                 return (
                   <tr
                     key={client.id}
-                    className={`hover:bg-slate-50/80 transition-colors group cursor-pointer ${dimClass} ${selected.has(client.id) ? 'bg-violet-50/50' : ''}`}
+                    className={`group cursor-pointer transition-colors hover:bg-muted/60 ${dimClass} ${selected.has(client.id) ? 'bg-primary/10 dark:bg-primary/20' : ''}`}
                     onClick={() => navigate(`/client/${encodeURIComponent(client.name)}`)}
                   >
                     <td className="px-2 sm:px-3 py-4 w-10" onClick={(e) => e.stopPropagation()}>
@@ -325,30 +369,30 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                         type="checkbox"
                         checked={selected.has(client.id)}
                         onChange={() => toggleSelect(client.id)}
-                        className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500 cursor-pointer"
+                        className="h-4 w-4 cursor-pointer rounded border-border text-primary focus:ring-ring"
                       />
                     </td>
-                    <td className="px-3 sm:px-4 md:px-6 py-4 text-xs sm:text-sm text-slate-900 font-semibold">
+                    <td className="px-3 py-4 text-xs font-semibold text-foreground sm:px-4 sm:text-sm md:px-6">
                       <span className="flex items-center gap-2">
-                        {client.name}
-                        {isPaused && <span className="text-[10px] text-slate-400 font-bold">Paused</span>}
-                        {isArchived && <span className="text-[10px] text-slate-400 font-bold">Archived</span>}
+                        {formatClientDisplayName(client.name)}
+                        {isPaused && <span className="text-[10px] font-bold text-muted-foreground">Paused</span>}
+                        {isArchived && <span className="text-[10px] font-bold text-muted-foreground">Archived</span>}
                       </span>
                       {client.notes && (
-                        <span className="flex items-center gap-1 mt-0.5">
-                          <Pin className="h-2.5 w-2.5 text-amber-400 shrink-0" />
-                          <span className="text-[10px] text-slate-400 font-normal truncate max-w-[200px]">
+                        <span className="mt-0.5 flex items-center gap-1">
+                          <Pin className="h-2.5 w-2.5 shrink-0 text-amber-400" />
+                          <span className="max-w-[200px] truncate text-[10px] font-normal text-muted-foreground">
                             {client.notes.length > 80 ? `${client.notes.slice(0, 80)}…` : client.notes}
                           </span>
                         </span>
                       )}
                     </td>
                     {showCoachColumn && (
-                      <td className="px-3 sm:px-4 md:px-6 py-4 text-xs text-slate-500 font-medium hidden md:table-cell">
+                      <td className="hidden px-3 py-4 text-xs font-medium text-muted-foreground sm:px-4 md:table-cell md:px-6">
                         {client.coachUid && coachMap?.get(client.coachUid) ? coachMap.get(client.coachUid) : '—'}
                       </td>
                     )}
-                    <td className="px-3 sm:px-4 md:px-6 py-4 text-xs sm:text-sm text-slate-500 font-medium">
+                    <td className="px-3 py-4 text-xs font-medium text-muted-foreground sm:px-4 sm:text-sm md:px-6">
                       {client.latestDate ? client.latestDate.toLocaleDateString() : '—'}
                     </td>
                     <td className="px-3 sm:px-4 md:px-6 py-4">
@@ -361,7 +405,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                       {nextDue ? (
                         <span className={`text-xs font-semibold ${nextDue.color}`}>{nextDue.label}</span>
                       ) : (
-                        <span className="text-xs text-slate-300">—</span>
+                        <span className="text-xs text-muted-foreground">—</span>
                       )}
                     </td>
                     <td className="px-3 sm:px-4 md:px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
@@ -382,15 +426,31 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
       {/* Mobile card layout */}
       <div className="sm:hidden space-y-2">
         {loadingData ? (
-          <div className="rounded-xl border border-slate-200 bg-white p-6">
+          <div className="rounded-xl border border-border bg-card p-6">
             <div className="flex flex-col items-center gap-3">
-              <div className="w-6 h-6 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
-              <span className="text-sm text-slate-400 font-medium">Loading clients...</span>
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-foreground border-t-transparent" />
+              <span className="text-sm font-medium text-muted-foreground">Loading clients...</span>
             </div>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-400 font-medium">
-            {search ? 'No clients match that name.' : 'No clients found.'}
+          <div className="rounded-xl border border-border bg-card p-6 text-center">
+            {search ? (
+              <p className="text-sm text-muted-foreground font-medium">
+                {UI_DASHBOARD_CLIENTS.SEARCH_NO_MATCH}
+              </p>
+            ) : (
+              <div className="flex flex-col items-center gap-4 max-w-sm mx-auto">
+                <p className="text-sm font-semibold text-foreground">{UI_DASHBOARD_CLIENTS.EMPTY_TITLE}</p>
+                <p className="text-sm text-muted-foreground">{UI_DASHBOARD_CLIENTS.EMPTY_BODY}</p>
+                <Button
+                  type="button"
+                  className="rounded-xl font-bold w-full sm:w-auto"
+                  onClick={() => navigate(ROUTES.ASSESSMENT)}
+                >
+                  {UI_DASHBOARD_CLIENTS.EMPTY_CTA}
+                </Button>
+              </div>
+            )}
           </div>
         ) : (
           sorted.slice(0, visibleCount).map((client) => {
@@ -404,7 +464,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                 key={client.id}
                 role="button"
                 tabIndex={0}
-                className={`rounded-xl border border-slate-200 bg-white p-4 shadow-sm active:bg-slate-50 transition-colors cursor-pointer ${dimClass}`}
+                className={`cursor-pointer rounded-xl border border-border bg-card p-4 shadow-sm transition-colors active:bg-muted/50 ${dimClass}`}
                 style={{ minHeight: 44 }}
                 onClick={() => navigate(`/client/${encodeURIComponent(client.name)}`)}
                 onKeyDown={(e) => {
@@ -421,12 +481,12 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                       type="checkbox"
                       checked={selected.has(client.id)}
                       onChange={() => toggleSelect(client.id)}
-                      className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500 cursor-pointer shrink-0"
+                      className="h-4 w-4 shrink-0 cursor-pointer rounded border-border text-primary focus:ring-ring"
                     />
-                    <p className="text-sm font-semibold text-slate-900 truncate">
-                      {client.name}
-                      {isPaused && <span className="text-[10px] text-slate-400 font-bold ml-2">Paused</span>}
-                      {isArchived && <span className="text-[10px] text-slate-400 font-bold ml-2">Archived</span>}
+                    <p className="truncate text-sm font-semibold text-foreground">
+                      {formatClientDisplayName(client.name)}
+                      {isPaused && <span className="ml-2 text-[10px] font-bold text-muted-foreground">Paused</span>}
+                      {isArchived && <span className="ml-2 text-[10px] font-bold text-muted-foreground">Archived</span>}
                     </p>
                   </div>
                   <div className="shrink-0" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
@@ -441,7 +501,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                 {client.notes && (
                   <div className="flex items-center gap-1 mt-1.5">
                     <Pin className="h-2.5 w-2.5 text-amber-400 shrink-0" />
-                    <span className="text-[10px] text-slate-400 truncate">
+                    <span className="truncate text-[10px] text-muted-foreground">
                       {client.notes.length > 80 ? `${client.notes.slice(0, 80)}…` : client.notes}
                     </span>
                   </div>
@@ -452,7 +512,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                   <ScoreBadge score={client.latestScore} />
                   <TrendIndicator trend={client.scoreChange} />
                   {showCoachColumn && client.coachUid && coachMap?.get(client.coachUid) && (
-                    <span className="text-[10px] font-medium text-slate-400 truncate max-w-[80px]">
+                    <span className="max-w-[80px] truncate text-[10px] font-medium text-muted-foreground">
                       {coachMap.get(client.coachUid)}
                     </span>
                   )}
@@ -461,7 +521,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                       {nextDue.label}
                     </span>
                   )}
-                  <span className="ml-auto text-[10px] text-slate-400 font-medium shrink-0">
+                  <span className="ml-auto shrink-0 text-[10px] font-medium text-muted-foreground">
                     {client.latestDate ? client.latestDate.toLocaleDateString() : 'Not assessed'}
                   </span>
                 </div>
@@ -476,50 +536,23 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
           <Button
             variant="outline"
             onClick={() => setVisibleCount((prev) => prev + 20)}
-            className="text-slate-500 font-semibold text-xs px-8 rounded-xl border-slate-200 hover:border-slate-900 hover:text-slate-900 transition-all"
+            className="rounded-xl border-border px-8 text-xs font-semibold text-muted-foreground transition-all hover:border-foreground hover:text-foreground"
           >
             Show More Clients
           </Button>
         </div>
       )}
 
-      {/* Floating Bulk Action Bar */}
-      {selected.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white rounded-xl shadow-2xl px-5 py-3 flex items-center gap-4 animate-in slide-in-from-bottom-4 duration-200">
-          <span className="text-xs font-bold whitespace-nowrap">
-            {selected.size} selected
-          </span>
-          <div className="h-4 w-px bg-slate-700" />
-          <button
-            onClick={() => setSelected(new Set())}
-            className="flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-white transition-colors"
-          >
-            <Pause className="h-3.5 w-3.5" />
-            Pause
-          </button>
-          <button
-            onClick={() => setSelected(new Set())}
-            className="flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-white transition-colors"
-          >
-            <Archive className="h-3.5 w-3.5" />
-            Archive
-          </button>
-          <button
-            onClick={() => setSelected(new Set())}
-            className="flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-white transition-colors"
-          >
-            <ArrowRightLeft className="h-3.5 w-3.5" />
-            Transfer
-          </button>
-          <div className="h-4 w-px bg-slate-700" />
-          <button
-            onClick={() => setSelected(new Set())}
-            className="text-slate-400 hover:text-white transition-colors"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      )}
+      <ClientTableBulkActions
+        selected={selected}
+        clients={clients}
+        onClearSelection={() => setSelected(new Set())}
+        writeOrganizationId={writeOrganizationId}
+        coachUid={coachUid}
+        profile={profile}
+        onBulkComplete={onBulkComplete}
+        navigate={navigate}
+      />
     </section>
   );
 };

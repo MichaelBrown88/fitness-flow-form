@@ -7,6 +7,7 @@ import React, { Suspense, lazy } from 'react';
 import { AuthProvider } from "./contexts/AuthContext";
 import { useAuth } from "@/hooks/useAuth";
 import { ThemeManager } from "./components/layout/ThemeManager";
+import { ThemeModeProvider } from "./contexts/ThemeModeContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ImpersonationBanner } from "./components/ImpersonationBanner";
 import { MaintenanceBanner } from "./components/MaintenanceBanner";
@@ -15,7 +16,6 @@ const InstallPrompt = lazy(() => import("./components/pwa/InstallPrompt").then(m
 
 // Lazy load heavy page components
 const Landing = lazy(() => import("./pages/Landing"));
-const SignUp = lazy(() => import("./pages/SignUp"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const Index = lazy(() => import("./pages/Index"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -52,6 +52,7 @@ const Subscribe = lazy(() => import("./pages/Subscribe"));
 const ClientRoadmap = lazy(() => import("./pages/ClientRoadmap"));
 const PublicRoadmapViewer = lazy(() => import("./pages/PublicRoadmapViewer"));
 const PublicLifestyleCheckin = lazy(() => import("./pages/PublicLifestyleCheckin"));
+const PublicRemoteAssessment = lazy(() => import("./pages/PublicRemoteAssessment"));
 const PublicPreSessionCheckin = lazy(() => import("./pages/PublicPreSessionCheckin"));
 const RequestErasure = lazy(() => import("./pages/RequestErasure"));
 const SandboxTrial = lazy(() => import("./pages/SandboxTrial"));
@@ -81,21 +82,13 @@ const queryClient = new QueryClient({
   },
 });
 
-/** Redirect authenticated users straight to /dashboard; show Landing to visitors */
-const AuthAwareLanding = () => {
-  const { user, loading } = useAuth();
-  if (loading) return null;
-  if (user) return <Navigate to="/dashboard" replace />;
-  return <Landing />;
-};
-
 const RequireAuth = ({ children }: { children: JSX.Element }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-slate-600">
+      <div className="flex min-h-screen items-center justify-center text-sm text-foreground-secondary">
         Checking coach session…
       </div>
     );
@@ -116,10 +109,17 @@ const RequireAuth = ({ children }: { children: JSX.Element }) => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
+    <ThemeModeProvider>
     <TooltipProvider>
       <Toaster />
       <ReloadPrompt />
-      <Suspense fallback={null}><InstallPrompt /></Suspense>
+      <Suspense
+        fallback={
+          <div className="min-h-0 shrink-0" aria-hidden />
+        }
+      >
+        <InstallPrompt />
+      </Suspense>
           <AuthProvider>
             <ThemeManager>
               <BrowserRouter
@@ -131,17 +131,29 @@ const App = () => (
               <ErrorBoundary>
               <MaintenanceBanner />
               <ImpersonationBanner />
-              <Suspense fallback={
-                <div className="flex min-h-screen items-center justify-center bg-slate-50">
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="h-12 w-12 rounded-full border-4 border-slate-200 border-t-primary animate-spin" />
-                    <p className="text-xs font-medium text-slate-400">Loading experience...</p>
+              <Suspense
+                fallback={
+                  <div
+                    className="flex min-h-screen items-center justify-center bg-background"
+                    aria-busy="true"
+                    aria-live="polite"
+                    role="status"
+                  >
+                    <div className="flex flex-col items-center gap-4">
+                      <span className="sr-only">Loading One Assess</span>
+                      <div className="h-12 w-12 rounded-full border-4 border-muted border-t-primary motion-safe:animate-spin" />
+                      <p className="text-xs font-medium text-muted-foreground" aria-hidden>
+                        Loading One Assess…
+                      </p>
+                    </div>
                   </div>
-                </div>
-              }>
+                }
+              >
                   <Routes>
-                    {/* Root: landing for visitors, dashboard redirect for authenticated */}
-                    <Route path="/" element={<AuthAwareLanding />} />
+                    {/* Root: marketing landing for everyone; signed-in users use Navbar → Dashboard */}
+                    <Route path="/" element={<Landing />} />
+                    {/* Pricing: same marketing plans as landing #pricing */}
+                    <Route path={ROUTES.PRICING} element={<Landing />} />
                     <Route path="/signup" element={<Onboarding />} /> {/* Redirect signup to onboarding */}
                     <Route path="/login" element={<Login />} />
                     <Route path="/signout" element={<SignOut />} /> {/* Force sign out route */}
@@ -174,6 +186,7 @@ const App = () => (
                       path="/r/:token/lifestyle"
                       element={<PublicLifestyleCheckin />}
                     />
+                    <Route path="/remote/:token" element={<PublicRemoteAssessment />} />
                     <Route
                       path="/r/:token/erasure"
                       element={<RequestErasure />}
@@ -317,6 +330,7 @@ const App = () => (
             </ThemeManager>
           </AuthProvider>
     </TooltipProvider>
+    </ThemeModeProvider>
   </QueryClientProvider>
 );
 

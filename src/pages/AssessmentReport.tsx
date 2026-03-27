@@ -1,5 +1,5 @@
-import { useState, lazy, Suspense } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useState, lazy, Suspense, useEffect } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAssessmentLogic } from '@/hooks/useAssessmentLogic';
 import { useVersionSelector } from '@/hooks/useVersionSelector';
 import { useReportShare } from '@/hooks/useReportShare';
@@ -9,7 +9,7 @@ import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { generateBodyCompInterpretation } from '@/lib/recommendations';
-import { Loader2, Share2, Link as LinkIcon, Mail, MessageCircle, MoreVertical, ArrowLeft, Edit2, Plus, Eye } from 'lucide-react';
+import { Loader2, Share2, MoreVertical, ArrowLeft, Edit2, Plus, Eye } from 'lucide-react';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import {
   DropdownMenu,
@@ -17,24 +17,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { ShareWithClientReportDialog } from '@/components/reports/ShareWithClientReportDialog';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 
 const ClientReport = lazy(() => import('@/components/reports/ClientReport'));
 const CoachReport = lazy(() => import('@/components/reports/CoachReport'));
 
-import { ROUTES } from '@/constants/routes';
+import { ROUTES, COACH_ASSESSMENT_QUERY } from '@/constants/routes';
 
 const AssessmentReport = () => {
   const { id } = useParams();
   const { user, profile } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const {
     formData,
@@ -62,7 +57,6 @@ const AssessmentReport = () => {
     handleEmailLink,
     handleSystemShare,
     handleWhatsAppShare,
-    handleCopyMessage,
     shareLoading,
   } = useReportShare({
     assessmentId: id,
@@ -73,12 +67,24 @@ const AssessmentReport = () => {
     scoreDelta,
   });
 
+  useEffect(() => {
+    const wantsShare =
+      searchParams.get(COACH_ASSESSMENT_QUERY.OPEN_SHARE_MODAL) ===
+      COACH_ASSESSMENT_QUERY.OPEN_SHARE_VALUE;
+    if (!wantsShare) return;
+    if (loading || !formData || !scores || !plan) return;
+    setShareModalOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete(COACH_ASSESSMENT_QUERY.OPEN_SHARE_MODAL);
+    setSearchParams(next, { replace: true });
+  }, [loading, formData, scores, plan, searchParams, setSearchParams]);
+
   if (loading) {
     return (
       <AppShell title="Assessment report">
-        <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl">
+        <div className="flex flex-col items-center justify-center py-20 bg-background rounded-xl">
           <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-          <p className="text-sm font-medium text-slate-400">Loading Assessment...</p>
+          <p className="text-sm font-medium text-muted-foreground">Loading Assessment...</p>
         </div>
       </AppShell>
     );
@@ -87,7 +93,7 @@ const AssessmentReport = () => {
   if (!formData || !scores) {
     return (
       <AppShell title="Assessment report">
-        <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-700">
+        <div className="space-y-4 rounded-lg border border-border bg-background p-6 text-sm text-foreground-secondary">
           <p>{error ?? 'Assessment not available.'}</p>
           <Button onClick={() => {
             // CRITICAL: Clear all assessment modes to prevent data bleed
@@ -124,9 +130,9 @@ const AssessmentReport = () => {
   if (!plan) {
     return (
       <AppShell title="Assessment report">
-        <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl">
+        <div className="flex flex-col items-center justify-center py-20 bg-background rounded-xl">
           <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-          <p className="text-sm font-medium text-slate-400">Generating Report...</p>
+          <p className="text-sm font-medium text-muted-foreground">Generating Report...</p>
         </div>
       </AppShell>
     );
@@ -178,7 +184,7 @@ const AssessmentReport = () => {
             <Button
               variant="default"
               size="sm"
-              className="h-9 rounded-lg bg-slate-900 text-white font-medium gap-1.5"
+              className="h-9 rounded-lg bg-foreground text-white font-medium gap-1.5"
               onClick={() => setShareModalOpen(true)}
               disabled={shareLoading}
             >
@@ -215,12 +221,12 @@ const AssessmentReport = () => {
           { label: 'Report' },
         ]} />
         <div className="flex items-center justify-between">
-          <h1 className="text-base sm:text-lg font-bold text-slate-900 truncate">
+          <h1 className="text-base sm:text-lg font-bold text-foreground truncate">
             {formData.fullName || 'Assessment'}
           </h1>
           <button
             onClick={() => setPreviewingClientView((v) => !v)}
-            className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 transition-colors shrink-0 ml-3"
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground-secondary transition-colors shrink-0 ml-3"
           >
             <Eye className="h-3.5 w-3.5" />
             {previewingClientView ? 'Back to coach view' : 'Preview client view'}
@@ -242,7 +248,7 @@ const AssessmentReport = () => {
               <button
                 type="button"
                 onClick={() => setVersionSelectorExpanded(true)}
-                className="text-xs font-medium text-slate-500 hover:text-slate-700"
+                className="text-xs font-medium text-muted-foreground hover:text-foreground-secondary"
               >
                 Compare versions ({versionSelector.totalCount})
               </button>
@@ -267,9 +273,9 @@ const AssessmentReport = () => {
         )}
         <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-10 pb-8 sm:pb-12">
           <Suspense fallback={
-            <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl">
+            <div className="flex flex-col items-center justify-center py-20 bg-background rounded-xl">
               <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-              <p className="text-sm font-medium text-slate-400">Generating Report...</p>
+              <p className="text-sm font-medium text-muted-foreground">Generating Report...</p>
             </div>
           }>
             {previewingClientView ? (
@@ -295,34 +301,15 @@ const AssessmentReport = () => {
         </div>
       </div>
 
-      <Dialog open={shareModalOpen} onOpenChange={setShareModalOpen}>
-        <DialogContent className="sm:max-w-md rounded-2xl">
-          <DialogHeader>
-            <DialogTitle>Share with client</DialogTitle>
-            <DialogDescription>
-              Copy the report link, send by email, or open in WhatsApp.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-2 pt-2">
-            <Button variant="outline" className="justify-start gap-2 h-11" onClick={() => { void handleCopyLink(); setShareModalOpen(false); }} disabled={shareLoading}>
-              <LinkIcon className="h-4 w-4" />
-              Copy link
-            </Button>
-            <Button variant="outline" className="justify-start gap-2 h-11" onClick={() => { void handleEmailLink(); setShareModalOpen(false); }} disabled={shareLoading}>
-              <Mail className="h-4 w-4" />
-              Email report
-            </Button>
-            <Button variant="outline" className="justify-start gap-2 h-11" onClick={() => { void handleSystemShare(); setShareModalOpen(false); }} disabled={shareLoading}>
-              <Share2 className="h-4 w-4" />
-              Share (device)
-            </Button>
-            <Button variant="outline" className="justify-start gap-2 h-11" onClick={() => { void handleWhatsAppShare(); setShareModalOpen(false); }} disabled={shareLoading}>
-              <MessageCircle className="h-4 w-4" />
-              WhatsApp
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ShareWithClientReportDialog
+        open={shareModalOpen}
+        onOpenChange={setShareModalOpen}
+        shareLoading={shareLoading}
+        onCopyLink={handleCopyLink}
+        onEmailLink={handleEmailLink}
+        onSystemShare={handleSystemShare}
+        onWhatsAppShare={handleWhatsAppShare}
+      />
     </AppShell>
     </ErrorBoundary>
   );

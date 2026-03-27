@@ -7,6 +7,7 @@
 
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { Button } from '@/components/ui/button';
+import { logger } from '@/lib/utils/logger';
 import { RefreshCw, X } from 'lucide-react';
 
 export function ReloadPrompt() {
@@ -23,7 +24,7 @@ export function ReloadPrompt() {
       }
     },
     onRegisterError(error) {
-      console.error('SW registration error:', error);
+      logger.error('SW registration error:', error);
     },
   });
 
@@ -31,13 +32,13 @@ export function ReloadPrompt() {
 
   return (
     <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-[360px] z-[100] animate-in slide-in-from-bottom-4 fade-in duration-300">
-      <div className="bg-slate-900 text-white rounded-xl shadow-xl p-4 flex items-start gap-3 border border-slate-700/50">
+      <div className="bg-foreground text-white rounded-xl shadow-xl p-4 flex items-start gap-3 border border-border/50">
         <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-violet-500/20 flex items-center justify-center">
           <RefreshCw className="w-4 h-4 text-violet-400" />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold">Update available</p>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-muted-foreground mt-0.5">
             A new version of One Assess is ready.
           </p>
           <div className="flex gap-2 mt-3">
@@ -52,7 +53,7 @@ export function ReloadPrompt() {
               size="sm"
               variant="ghost"
               onClick={() => setNeedRefresh(false)}
-              className="h-9 sm:h-8 px-3 text-xs text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg"
+              className="h-9 sm:h-8 px-3 text-xs text-muted-foreground hover:text-white hover:bg-foreground/90 rounded-lg"
             >
               Later
             </Button>
@@ -60,7 +61,7 @@ export function ReloadPrompt() {
         </div>
         <button
           onClick={() => setNeedRefresh(false)}
-          className="flex-shrink-0 text-slate-500 hover:text-slate-300 transition-colors"
+          className="flex-shrink-0 text-muted-foreground hover:text-muted-foreground/60 transition-colors"
           aria-label="Dismiss"
         >
           <X className="w-4 h-4" />

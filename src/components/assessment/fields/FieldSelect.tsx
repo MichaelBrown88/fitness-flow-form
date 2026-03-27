@@ -29,21 +29,21 @@ export const FieldSelect: React.FC<FieldSelectProps> = ({
               onClick={() => handleChange(option.value)}
               className={`flex min-h-[64px] h-auto w-full items-center gap-4 rounded-2xl border-2 px-5 py-3 text-left transition-all relative overflow-hidden ${
                 isSelected
-                  ? 'border-slate-900 bg-slate-900 text-white shadow-lg scale-[1.02]'
-                  : `bg-white text-slate-600 ${colorClass}`
+                  ? 'border-foreground bg-foreground text-white shadow-lg scale-[1.02]'
+                  : `bg-background text-foreground-secondary ${colorClass}`
               }`}
               aria-label={option.label}
             >
               {option.tag && (
                 <div className={`absolute top-0 right-0 px-3 py-1 rounded-bl-xl text-[10px] font-black uppercase tracking-[0.15em] ${
-                  isSelected ? 'bg-white/20 text-white' : 'bg-slate-900 text-white'
+                  isSelected ? 'bg-background/20 text-white' : 'bg-foreground text-white'
                 }`}>
                   {option.tag}
                 </div>
               )}
               
               <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-                isSelected ? 'bg-white/20 border-white/20 text-white' : 'border-slate-200 bg-white'
+                isSelected ? 'bg-background/20 border-white/20 text-white' : 'border-border bg-background'
               }`}>
                 {isSelected && <Check className="h-4 w-4 stroke-[3]" />}
               </div>
@@ -52,7 +52,7 @@ export const FieldSelect: React.FC<FieldSelectProps> = ({
                 <span className="font-bold text-sm leading-tight mb-0.5">{option.label}</span>
                 {option.subtitle && (
                   <span className={`text-[10px] font-medium leading-relaxed ${
-                    isSelected ? 'text-white/70' : 'text-slate-500'
+                    isSelected ? 'text-white/70' : 'text-muted-foreground'
                   }`}>
                     {option.subtitle}
                   </span>

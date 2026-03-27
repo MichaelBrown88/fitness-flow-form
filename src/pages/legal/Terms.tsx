@@ -10,10 +10,20 @@ import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Navbar } from '@/components/landing';
 import { Footer } from '@/components/landing';
+import { Seo } from '@/components/seo/Seo';
+import { requireSeoForPath, SEO_PATH } from '@/constants/seo';
+
+const termsSeo = requireSeoForPath(SEO_PATH.TERMS);
 
 export default function Terms() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
+      <Seo
+        pathname={SEO_PATH.TERMS}
+        title={termsSeo.title}
+        description={termsSeo.description}
+        noindex={termsSeo.noindex}
+      />
       <Navbar />
       
       <main className="max-w-4xl mx-auto px-4 py-16">

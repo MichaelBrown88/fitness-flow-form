@@ -21,6 +21,7 @@ import {
   orderBy,
   startAfter,
   limit as firestoreLimit,
+  documentId,
   serverTimestamp,
   QueryDocumentSnapshot,
   DocumentData,
@@ -28,7 +29,7 @@ import {
 import { getDb, getFirebaseFunctions } from '@/services/firebase';
 import { calculateMonthlyFee } from '@/lib/pricing';
 import { getMonthlyPrice, getPriceInSmallestUnit } from '@/lib/pricing/config';
-import { REGION_TO_CURRENCY } from '@/constants/pricing';
+import { DEFAULT_REGION, REGION_TO_CURRENCY } from '@/constants/pricing';
 import type { Region } from '@/constants/pricing';
 import type {
   PlatformMetrics,
@@ -50,11 +51,35 @@ import {
 } from '@/lib/database/collections';
 import { filsToGbpPence, usdCentsToGbpPence } from '@/lib/utils/currency';
 import { logAdminAction } from './auditLog';
+import { ORGANIZATIONS_LIST_PAGE_SIZE, ORG_COACHES_SUBCOLLECTION_LIMIT } from '@/constants/firestoreQueryLimits';
 
 const PLATFORM_ADMIN_QUERY_LIMIT = 1;
 const COACH_PROFILE_LIMIT = 500;
 const ORG_LIST_LIMIT_MAX = 200;
 const ORG_FILTER_BUFFER_MULTIPLIER = 3;
+
+/** Paginated full scan of organizations root collection (each chunk has limit). */
+async function getAllOrganizationDocSnapshots(): Promise<QueryDocumentSnapshot<DocumentData>[]> {
+  const orgCol = getOrganizationsCollection();
+  const out: QueryDocumentSnapshot<DocumentData>[] = [];
+  let cursor: QueryDocumentSnapshot<DocumentData> | undefined;
+  while (true) {
+    const q = cursor
+      ? query(
+          orgCol,
+          orderBy(documentId()),
+          firestoreLimit(ORGANIZATIONS_LIST_PAGE_SIZE),
+          startAfter(cursor),
+        )
+      : query(orgCol, orderBy(documentId()), firestoreLimit(ORGANIZATIONS_LIST_PAGE_SIZE));
+    const snap = await getDocs(q);
+    if (snap.empty) break;
+    out.push(...snap.docs);
+    if (snap.size < ORGANIZATIONS_LIST_PAGE_SIZE) break;
+    cursor = snap.docs[snap.docs.length - 1];
+  }
+  return out;
+}
 
 export interface RevenueByRegionResult {
   byRegion: {
@@ -71,10 +96,10 @@ export interface RevenueByRegionResult {
 export async function getRevenueByRegion(): Promise<RevenueByRegionResult> {
   const result: RevenueByRegionResult = { byRegion: {}, totalGbpPence: 0 };
   try {
-    const orgsSnap = await getDocs(getOrganizationsCollection());
+    const orgDocs = await getAllOrganizationDocSnapshots();
     const regionTotals = new Map<string, { amountLocal: number; currency: 'GBP' | 'USD' | 'KWD' }>();
 
-    orgsSnap.docs.forEach((orgDoc) => {
+    orgDocs.forEach((orgDoc) => {
       const data = orgDoc.data();
       const status = data.subscription?.status;
       const isComped = data.subscription?.isComped === true;
@@ -120,7 +145,7 @@ export async function getRevenueByRegion(): Promise<RevenueByRegionResult> {
 export async function getLiveMetrics(): Promise<PlatformMetrics> {
   try {
     const systemStatsRef = getSystemStatsDoc();
-    let systemStatsSnap = await getDocFromServer(systemStatsRef).catch(() => getDoc(systemStatsRef));
+    const systemStatsSnap = await getDocFromServer(systemStatsRef).catch(() => getDoc(systemStatsRef));
 
     if (!systemStatsSnap.exists()) {
       logger.warn('system_stats/global_metrics does not exist yet. Returning defaults. Cloud Functions will populate it on next write.');
@@ -230,7 +255,9 @@ export async function getOrgCoachesWithStats(orgId: string): Promise<Array<{
 
     // Read from organization's coaches collection (with pre-aggregated stats)
     const orgCoachesRef = getOrgCoachesCollection(orgId);
-    const orgCoachesSnapshot = await getDocs(orgCoachesRef);
+    const orgCoachesSnapshot = await getDocs(
+      query(orgCoachesRef, firestoreLimit(ORG_COACHES_SUBCOLLECTION_LIMIT)),
+    );
 
     const coachesWithStats: Array<{
       uid: string;
@@ -357,12 +384,21 @@ export async function getOrganizations(
         const clientSeats = data.subscription?.clientSeats || 0;
         const isComped = data.subscription?.isComped === true;
         const region = (data.subscription?.region ?? data.region) as Region | undefined;
-        const currency = data.subscription?.currency ?? (region ? REGION_TO_CURRENCY[region] : undefined);
+        const effectiveRegion = region ?? DEFAULT_REGION;
+        const currency =
+          data.subscription?.currency ?? REGION_TO_CURRENCY[effectiveRegion];
         const seatBlock = data.subscription?.clientCount ?? clientSeats;
         const amountCents = data.subscription?.amountCents ?? data.subscription?.amountFils;
-        const monthlyAmountLocal = isComped ? 0 : (amountCents != null && currency
-          ? (currency === 'KWD' ? (amountCents as number) / 1000 : (amountCents as number) / 100)
-          : calculateMonthlyFee(plan, clientSeats)); // Legacy: KWD
+        const seatsForPrice = seatBlock || clientSeats;
+        const monthlyAmountLocal = isComped
+          ? 0
+          : amountCents != null && currency
+            ? (currency === 'KWD'
+              ? (amountCents as number) / 1000
+              : (amountCents as number) / 100)
+            : effectiveRegion === 'KW'
+              ? calculateMonthlyFee(plan, clientSeats)
+              : getMonthlyPrice(effectiveRegion, seatsForPrice);
 
         return {
           id: orgId,
@@ -373,7 +409,7 @@ export async function getOrganizations(
           isComped: isComped,
           clientSeats: clientSeats,
           monthlyFeeKwd: currency === 'KWD' ? monthlyAmountLocal : undefined,
-          region,
+          region: effectiveRegion,
           currency,
           seatBlock: seatBlock || clientSeats,
           monthlyAmountLocal: currency ? monthlyAmountLocal : undefined,
@@ -430,13 +466,23 @@ export async function getOrganizationDetails(orgId: string): Promise<Organizatio
     const clientSeats = data.subscription?.clientSeats || 0;
     const isComped = data.subscription?.isComped === true;
     const region = (data.subscription?.region ?? data.region) as Region | undefined;
-    const currency = data.subscription?.currency ?? (region ? REGION_TO_CURRENCY[region] : undefined);
+    const effectiveRegion = region ?? DEFAULT_REGION;
+    const currency = data.subscription?.currency ?? REGION_TO_CURRENCY[effectiveRegion];
     const seatBlock = data.subscription?.clientCount ?? clientSeats;
     const amountCents = data.subscription?.amountCents ?? data.subscription?.amountFils;
-    const monthlyAmountLocal = isComped ? 0 : (amountCents != null && currency
-      ? (currency === 'KWD' ? (amountCents as number) / 1000 : (amountCents as number) / 100)
-      : (data.subscription?.amountFils != null ? data.subscription.amountFils / 1000 : calculateMonthlyFee(plan, clientSeats)));
-    const monthlyFeeKwd = currency === 'KWD' ? monthlyAmountLocal : (region ? getMonthlyPrice(region, seatBlock || clientSeats) : 0);
+    const seatsForPrice = seatBlock || clientSeats;
+    const monthlyAmountLocal = isComped
+      ? 0
+      : amountCents != null && currency
+        ? (currency === 'KWD'
+          ? (amountCents as number) / 1000
+          : (amountCents as number) / 100)
+        : effectiveRegion === 'KW'
+          ? (data.subscription?.amountFils != null
+            ? Number(data.subscription.amountFils) / 1000
+            : calculateMonthlyFee(plan, clientSeats))
+          : getMonthlyPrice(effectiveRegion, seatsForPrice);
+    const monthlyFeeKwd = currency === 'KWD' ? monthlyAmountLocal : undefined;
 
     return {
       id: orgSnap.id,
@@ -447,7 +493,7 @@ export async function getOrganizationDetails(orgId: string): Promise<Organizatio
       isComped,
       clientSeats,
       monthlyFeeKwd,
-      region,
+      region: effectiveRegion,
       currency,
       seatBlock: seatBlock || clientSeats,
       monthlyAmountLocal: currency ? monthlyAmountLocal : undefined,

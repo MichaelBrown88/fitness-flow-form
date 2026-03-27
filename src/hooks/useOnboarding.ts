@@ -40,8 +40,22 @@ import type {
 
 /** Form steps use 0–5; step 6 is success. */
 const TOTAL_STEPS = 6;
-const DEFAULT_GRADIENT = 'purple-indigo';
+const DEFAULT_GRADIENT = 'volt';
 const DEFAULT_SEATS = 15;
+
+function formatOnboardingCompletionError(err: unknown): string {
+  const code =
+    err && typeof err === 'object' && 'code' in err
+      ? String((err as { code: unknown }).code)
+      : '';
+  if (code === 'permission-denied') {
+    return 'We could not save your setup (permissions). Please sign out and try again, or contact support.';
+  }
+  if (err instanceof Error && err.message) {
+    return err.message;
+  }
+  return 'Something went wrong while finishing setup. Please try again.';
+}
 
 export interface UseOnboardingResult {
   step: number;
@@ -51,6 +65,7 @@ export interface UseOnboardingResult {
   loading: boolean;
   identityError: string | null;
   accountError: string | null;
+  planError: string | null;
   onboardingData: Partial<OnboardingData>;
 
   handleIdentityNext: (data: Pick<IdentityData, 'firstName' | 'lastName' | 'email'>) => void;
@@ -104,6 +119,7 @@ export function useOnboarding(): UseOnboardingResult {
   const [savingMessage, setSavingMessage] = useState('');
   const [identityError, setIdentityError] = useState<string | null>(null);
   const [accountError, setAccountError] = useState<string | null>(null);
+  const [planError, setPlanError] = useState<string | null>(null);
 
   const [onboardingData, setOnboardingData] = useState<Partial<OnboardingData>>(() => loadSession()?.data ?? {});
   const [inviteOrganizationId, setInviteOrganizationId] = useState<string | null>(null);
@@ -131,9 +147,10 @@ export function useOnboarding(): UseOnboardingResult {
     if (!inviteToken) return;
     inviteCheckedRef.current = true;
 
+    let cancelled = false;
     const db = getDb();
     getDoc(doc(db, 'invitations', inviteToken)).then((snap) => {
-      if (!snap.exists()) return;
+      if (cancelled || !snap.exists()) return;
       const data = snap.data();
       if (data.status !== 'pending') return;
       if (data.expiresAt?.toDate && data.expiresAt.toDate() < new Date()) return;
@@ -142,8 +159,13 @@ export function useOnboarding(): UseOnboardingResult {
       setInviteOrganizationId(data.organizationId);
       logger.info('Invite token accepted', { organizationId: data.organizationId });
     }).catch((err) => {
-      logger.warn('Failed to validate invite token:', err instanceof Error ? err.message : String(err));
+      if (!cancelled) {
+        logger.warn('Failed to validate invite token:', err instanceof Error ? err.message : String(err));
+      }
     });
+    return () => {
+      cancelled = true;
+    };
   }, [searchParams]);
 
   /* ---------- Persist session ---------- */
@@ -232,7 +254,6 @@ export function useOnboarding(): UseOnboardingResult {
   const advanceAfterAccountCreation = useCallback(() => {
     setStep(3); // → Equipment step
     logOnboardingStep(3);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleAccountCreateWithPassword = useCallback(async (password: string) => {
@@ -376,6 +397,7 @@ export function useOnboarding(): UseOnboardingResult {
 
     setSaving(true);
     setSavingMessage('Finalising your setup...');
+    setPlanError(null);
 
     try {
       const db = getDb();
@@ -439,25 +461,29 @@ export function useOnboarding(): UseOnboardingResult {
       };
 
       setSavingMessage('Saving configuration...');
-      await setDoc(doc(db, 'organizations', orgId), {
-        name: finalData.businessProfile?.name || '',
-        type: bizType,
-        region,
-        gradientId: finalData.branding?.gradientId || DEFAULT_GRADIENT,
-        equipmentConfig,
-        customBrandingEnabled: false,
-        coachRosterNotes: finalData.teamRoster?.trim() || deleteField(),
-        subscription: isSolo ? subscriptionSolo : subscriptionGym,
-        onboardingCompletedAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        dpa: {
-          accepted: true,
-          version: 1,
-          acceptedByUid: user.uid,
-          acceptedAt: serverTimestamp(),
-          note: 'Implicit acceptance of Data Processing Agreement at onboarding completion.',
-        },
-      }, { merge: true });
+      // Invited coaches join an existing org — do not merge subscription/DPA onto the
+      // personal shell org or the target org from the client (org writes require isOrgAdmin).
+      if (!inviteOrganizationId) {
+        await setDoc(doc(db, 'organizations', orgId), {
+          name: finalData.businessProfile?.name || '',
+          type: bizType,
+          region,
+          gradientId: finalData.branding?.gradientId || DEFAULT_GRADIENT,
+          equipmentConfig,
+          customBrandingEnabled: false,
+          coachRosterNotes: finalData.teamRoster?.trim() || deleteField(),
+          subscription: isSolo ? subscriptionSolo : subscriptionGym,
+          onboardingCompletedAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          dpa: {
+            accepted: true,
+            version: 1,
+            acceptedByUid: user.uid,
+            acceptedAt: serverTimestamp(),
+            note: 'Implicit acceptance of Data Processing Agreement at onboarding completion.',
+          },
+        }, { merge: true });
+      }
 
       const isActiveCoach = finalData.businessProfile?.type === 'solo_coach'
         ? true
@@ -488,7 +514,12 @@ export function useOnboarding(): UseOnboardingResult {
       try {
         await setDoc(
           doc(db, 'onboarding_sessions', user.uid),
-          { userId: user.uid, organizationId: orgId, data: finalData, completedAt: serverTimestamp() },
+          {
+            userId: user.uid,
+            organizationId: inviteOrganizationId ?? orgId,
+            data: finalData,
+            completedAt: serverTimestamp(),
+          },
           { merge: true },
         );
       } catch (auditErr) {
@@ -504,7 +535,8 @@ export function useOnboarding(): UseOnboardingResult {
       setStep(TOTAL_STEPS);
     } catch (error) {
       logger.error('Failed to complete onboarding:', error);
-      setSavingMessage('Something went wrong. Please try again.');
+      setPlanError(formatOnboardingCompletionError(error));
+      setSavingMessage('');
     } finally {
       completingRef.current = false;
       setSaving(false);
@@ -513,6 +545,7 @@ export function useOnboarding(): UseOnboardingResult {
 
   const handlePlanNext = useCallback(
     (branding: Pick<BrandingConfig, 'clientSeats' | 'packageTrack' | 'gradientId'>) => {
+      setPlanError(null);
       setOnboardingData((prev) => {
         const finalBranding: BrandingConfig = {
           gradientId: branding.gradientId ?? prev.branding?.gradientId ?? DEFAULT_GRADIENT,
@@ -535,6 +568,7 @@ export function useOnboarding(): UseOnboardingResult {
     loading,
     identityError,
     accountError,
+    planError,
     onboardingData,
 
     handleIdentityNext,

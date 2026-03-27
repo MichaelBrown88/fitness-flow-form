@@ -2,10 +2,13 @@ import * as admin from 'firebase-admin';
 import type { CallableRequest } from 'firebase-functions/v2/https';
 import { Resend } from 'resend';
 import { APP_HOST, RESEND_API_KEY, RESEND_FROM } from './config';
+import { renderNotificationEmail, sendResendHtmlText } from './email';
 import { ensureReportArtifacts } from './artifacts';
 import type { PublicReportDoc } from './types';
 
 const resend = new Resend(RESEND_API_KEY);
+
+const APP_NAME = 'One Assess';
 
 // Lazy initialization to ensure admin.initializeApp() is called first
 function getDb() {
@@ -115,7 +118,7 @@ export async function requestShareLinks(request: CallableRequest<SharePayload>) 
       ? `${APP_HOST}/r/${token}`
       : (report.shareUrl || `${APP_HOST}/share/${coachUid}/${assessmentId}`);
 
-    const whatsappText = `Here is your One Fitness assessment report:\n${shareUrl}`;
+    const whatsappText = `Here is your One Assess assessment report:\n${shareUrl}`;
 
     return {
       shareUrl,
@@ -159,14 +162,29 @@ export async function sendReportEmail(request: CallableRequest<EmailPayload>) {
   const subject =
     view === 'coach'
       ? 'Coach report ready'
-      : `${data.clientName || 'Your'} One Fitness assessment report`;
-  const text = `Here is the latest One Fitness assessment report:\n${shareUrl}`;
+      : `${data.clientName || 'Your'} One Assess assessment report`;
+  const clientLabel = data.clientName?.trim() || 'Your';
+  const summary =
+    view === 'coach'
+      ? 'Your coach assessment report is ready to view.'
+      : `${clientLabel} assessment report is ready to view.`;
 
-  await resend.emails.send({
+  const { html, text } = renderNotificationEmail({
+    subject,
+    preheader: summary,
+    appName: APP_NAME,
+    summary,
+    linkHref: shareUrl,
+    linkLabel: 'View report',
+    footerVariant: 'transactional',
+  });
+
+  await sendResendHtmlText(resend, {
     to: recipient,
     from: RESEND_FROM,
     subject,
-    html: `<p>${text.replace(/\n/g, '<br/>')}</p>`,
+    html,
+    text,
   });
 
   return { ok: true, coachUid };

@@ -24,6 +24,8 @@ export const ROUTES = {
   PUBLIC_REPORT_PRE_SESSION: '/r/:token/pre-session',
   ASSESSMENT_REPORT: '/coach/assessments/:id',
   ASSESSMENT_REPORT_CLIENT: '/coach/assessments/:id/client',
+  /** Marketing pricing — same page as landing pricing section; always reachable when signed in. */
+  PRICING: '/pricing',
   ABOUT: '/about',
   CONTACT: '/contact',
   BLOG: '/blog',
@@ -35,6 +37,8 @@ export const ROUTES = {
   /** Gym trial expired — full-page upgrade (Everfit-style entry to checkout). */
   SUBSCRIBE: '/subscribe',
   ONBOARDING: '/onboarding',
+  /** Marketing alias; same onboarding flow as `/onboarding`. */
+  SIGNUP: '/signup',
   TRY: '/try',
   CLIENT_ROADMAP: '/coach/clients/:name/roadmap',
 
@@ -44,4 +48,35 @@ export const ROUTES = {
   ADMIN_SETUP: '/admin/setup',
   ADMIN_ORGANIZATIONS: '/admin/organizations',
   ADMIN_ORGANIZATION: (orgId: string) => `/admin/organizations/${orgId}` as const,
+} as const;
+
+/**
+ * Deep links into Settings main + Organization sub-tabs (synced in Settings.tsx via search params).
+ */
+export const SETTINGS_URL = {
+  ORG_BRANDING: `${ROUTES.SETTINGS}?tab=organization&orgTab=branding`,
+  ORG_EQUIPMENT: `${ROUTES.SETTINGS}?tab=organization&orgTab=equipment`,
+} as const;
+
+/** Coach assessment report URL builder (path segments encoded). */
+export function coachAssessmentReportPath(
+  assessmentId: string,
+  query?: Record<string, string>,
+): string {
+  const base = `/coach/assessments/${encodeURIComponent(assessmentId)}`;
+  if (!query || Object.keys(query).length === 0) return base;
+  return `${base}?${new URLSearchParams(query).toString()}`;
+}
+
+/** Query params for `/coach/assessments/:id` deep links. */
+export const COACH_ASSESSMENT_QUERY = {
+  /** When set to `OPEN_SHARE_VALUE`, AssessmentReport opens the share dialog once loaded. */
+  OPEN_SHARE_MODAL: 'share',
+  OPEN_SHARE_VALUE: '1',
+} as const;
+
+/** Query keys for public client routes (support diagnostics). */
+export const PUBLIC_CLIENT_URL_QUERY = {
+  /** `?roadmapDebug=1` on `/r/:token/roadmap` shows roadmap load diagnostics. */
+  ROADMAP_DEBUG: 'roadmapDebug',
 } as const;

@@ -1,22 +1,36 @@
 /**
  * Onboarding Success / First Assessment Bridge (Step 5)
  *
- * Redesigned with a single dominant CTA ("Assess Your First Client")
- * and a subtle secondary link ("Skip to Dashboard").
+ * Primary CTA runs the coach through their own assessment (PAR-Q required),
+ * matching the client experience.
  */
 
 import { Link } from 'react-router-dom';
 import { ArrowRight, ClipboardList } from 'lucide-react';
 import { ROUTES } from '@/constants/routes';
+import { useAuth } from '@/hooks/useAuth';
+import { STORAGE_KEYS } from '@/constants/storageKeys';
+import { ASSESSMENT_COPY } from '@/constants/assessmentCopy';
 
 interface OnboardingSuccessProps {
   businessName: string;
 }
 
 export function OnboardingSuccess({ businessName }: OnboardingSuccessProps) {
+  const { user, profile } = useAuth();
+  const selfName = (profile?.displayName || user?.displayName || 'Me').trim() || 'Me';
+
+  const handleSelfFirstAssessment = () => {
+    try {
+      sessionStorage.setItem(STORAGE_KEYS.PREFILL_CLIENT, JSON.stringify({ fullName: selfName }));
+    } catch {
+      // non-fatal
+    }
+    window.location.assign(ROUTES.ASSESSMENT);
+  };
+
   return (
     <div className="flex flex-col items-center text-center space-y-8 py-4">
-      {/* Success icon */}
       <div className="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg shadow-emerald-200">
         <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -24,27 +38,25 @@ export function OnboardingSuccess({ businessName }: OnboardingSuccessProps) {
       </div>
 
       <div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">You're all set.</h2>
-        <p className="text-sm text-slate-500 max-w-sm">
-          <strong>{businessName}</strong> is configured and ready. The best way to see
-          the platform in action is to run your first assessment.
+        <h2 className="text-2xl font-bold text-foreground mb-2">You&apos;re all set.</h2>
+        <p className="text-sm text-muted-foreground max-w-sm">
+          <strong>{businessName}</strong> is configured and ready. {ASSESSMENT_COPY.FIRST_CLIENT_SELF_DESC}
         </p>
       </div>
 
-      {/* Primary CTA */}
-      <Link
-        to={ROUTES.ASSESSMENT}
-        className="w-full max-w-sm h-14 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 shadow-lg"
+      <button
+        type="button"
+        onClick={handleSelfFirstAssessment}
+        className="w-full max-w-sm h-14 bg-foreground text-background rounded-xl font-bold text-sm hover:bg-foreground/90 transition-colors flex items-center justify-center gap-2 shadow-lg"
       >
         <ClipboardList size={18} />
-        Assess Your First Client
+        {ASSESSMENT_COPY.FIRST_CLIENT_SELF_TITLE}
         <ArrowRight size={16} />
-      </Link>
+      </button>
 
-      {/* Secondary link */}
       <Link
         to="/dashboard"
-        className="text-xs font-medium text-slate-400 hover:text-slate-600 transition-colors"
+        className="text-xs font-medium text-muted-foreground hover:text-foreground-secondary transition-colors"
       >
         Skip to Dashboard
       </Link>

@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useClientCapacity } from '@/hooks/useClientCapacity';
 import { ROUTES } from '@/constants/routes';
+import { isUnlimitedAiCredits } from '@/constants/pricing';
 
 export interface AICreditsGuardProps {
   children: ReactNode;
@@ -24,7 +25,7 @@ export interface AICreditsGuardProps {
 export function AICreditsGuard({ children, active = true }: AICreditsGuardProps) {
   const { loading, aiCredits, aiCreditLimit } = useClientCapacity();
 
-  if (!active || loading || aiCredits === null || aiCredits > 0 || aiCredits >= 9999) {
+  if (!active || loading || aiCredits === null || aiCredits > 0 || isUnlimitedAiCredits(aiCredits)) {
     return <>{children}</>;
   }
 

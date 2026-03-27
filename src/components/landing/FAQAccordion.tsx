@@ -1,5 +1,4 @@
-import React from 'react';
-import { ChevronRight } from 'lucide-react';
+import type { CSSProperties } from 'react';
 import {
   Accordion,
   AccordionContent,
@@ -9,45 +8,18 @@ import {
 import GlassCard from '@/components/ui/GlassCard';
 import SectionHeader from '@/components/landing/SectionHeader';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
+import { LANDING_COPY, LANDING_H2_ACCENT_LIGHT } from '@/constants/landingCopy';
 
-interface FAQItem {
+export interface FAQItem {
   question: string;
   answer: string;
 }
 
-interface FAQAccordionProps {
-  items: FAQItem[];
-}
-
-export function FAQAccordion({ items }: FAQAccordionProps) {
-  return (
-    <Accordion type="single" collapsible className="w-full">
-      {items.map((item, index) => (
-        <AccordionItem 
-          key={index} 
-          value={`item-${index}`}
-          className="border-b border-border/50 animate-fade-in-up"
-          style={{ animationDelay: `${index * 50}ms` } as React.CSSProperties}
-        >
-          <AccordionTrigger className="text-left font-semibold text-foreground hover:text-indigo-600 py-5">
-            {item.question}
-          </AccordionTrigger>
-          <AccordionContent className="text-foreground-secondary pb-5 leading-relaxed">
-            {item.answer}
-          </AccordionContent>
-        </AccordionItem>
-      ))}
-    </Accordion>
-  );
-}
-
-// FAQ Section wrapper
 interface FAQSectionProps {
   items: FAQItem[];
 }
 
 export function FAQSection({ items }: FAQSectionProps) {
-  const [openIndex, setOpenIndex] = React.useState<number | null>(null);
   const headerRef = useScrollReveal({ staggerDelay: 150, staggerIndex: 0 });
   const listRef = useScrollReveal({ staggerDelay: 150, staggerIndex: 1 });
 
@@ -55,29 +27,39 @@ export function FAQSection({ items }: FAQSectionProps) {
     <section id="faq" className="py-24 sm:py-32 px-6 max-w-3xl mx-auto">
       <div ref={headerRef}>
         <SectionHeader
-          title="Frequently Asked Questions"
+          title={
+            <>
+              {LANDING_COPY.faqSectionTitleBefore}
+              <span className={LANDING_H2_ACCENT_LIGHT}>
+                {LANDING_COPY.faqSectionTitleAccent}
+              </span>
+            </>
+          }
           subtitle="Everything you need to know about getting started."
+          subtitleClassName="text-muted-foreground"
         />
       </div>
-      <div ref={listRef} className="space-y-4">
-        {items.map((faq, i) => (
-          <GlassCard key={i} className="overflow-hidden bg-white/60">
-            <button 
-              onClick={() => setOpenIndex(openIndex === i ? null : i)}
-              className="w-full flex justify-between items-center p-6 text-left"
+      <div ref={listRef}>
+        <Accordion type="single" collapsible className="w-full space-y-4">
+          {items.map((item, index) => (
+            <AccordionItem
+              key={index}
+              value={`faq-${index}`}
+              className="border-0 animate-fade-in-up"
+              style={{ animationDelay: `${index * 50}ms` } satisfies CSSProperties}
             >
-              <span className="font-bold text-lg text-slate-800">{faq.question}</span>
-              <ChevronRight className={`transition-transform duration-300 ${openIndex === i ? 'rotate-90 text-indigo-600' : 'text-slate-400'}`} />
-            </button>
-            <div className={`transition-all duration-300 ease-in-out overflow-hidden ${openIndex === i ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}>
-              <p className="px-6 pb-6 text-slate-600 leading-relaxed font-medium">
-                {faq.answer}
-              </p>
-            </div>
-          </GlassCard>
-        ))}
+              <GlassCard className="overflow-hidden">
+                <AccordionTrigger className="text-balance px-6 py-5 text-left text-lg font-bold text-foreground hover:no-underline hover:text-primary data-[state=open]:text-primary [&>svg]:text-muted-foreground data-[state=open]:[&>svg]:text-primary [&[data-state=open]>svg]:rotate-90">
+                  {item.question}
+                </AccordionTrigger>
+                <AccordionContent className="text-balance px-6 pb-6 pt-0 text-base font-medium leading-relaxed text-muted-foreground">
+                  {item.answer}
+                </AccordionContent>
+              </GlassCard>
+            </AccordionItem>
+          ))}
+        </Accordion>
       </div>
     </section>
   );
 }
-

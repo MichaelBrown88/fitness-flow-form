@@ -9,18 +9,18 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 import type { PillarDistributionChartData } from '@/types/analytics';
 
 const BUCKET_COLORS: Record<string, string> = {
-  '0-20': '#ef4444',
-  '20-40': '#f97316',
-  '40-60': '#eab308',
-  '60-80': '#22c55e',
-  '80-100': '#6366f1',
+  '0-20': 'hsl(var(--score-red))',
+  '20-40': 'hsl(var(--chart-distribution-orange))',
+  '40-60': 'hsl(var(--chart-distribution-yellow))',
+  '60-80': 'hsl(var(--score-green))',
+  '80-100': 'hsl(var(--gradient-from))',
 };
 
 const TOOLTIP_STYLE = {
-  backgroundColor: '#1e293b',
-  border: '1px solid #334155',
+  backgroundColor: 'hsl(var(--card))',
+  border: '1px solid hsl(var(--border))',
   borderRadius: '8px',
-  color: '#fff',
+  color: 'hsl(var(--card-foreground))',
   fontSize: 12,
 };
 
@@ -30,13 +30,13 @@ function PillarChart({ pillar }: { pillar: PillarDistributionChartData }) {
     <div className="bg-admin-bg/40 rounded-xl p-3 space-y-2">
       <div className="flex items-center justify-between">
         <span className="text-xs text-admin-fg-muted font-medium">{pillar.label}</span>
-        <span className="text-xs text-slate-500">{total} {total === 1 ? 'client' : 'clients'}</span>
+        <span className="text-xs text-muted-foreground">{total} {total === 1 ? 'client' : 'clients'}</span>
       </div>
       <ResponsiveContainer width="100%" height={80}>
         <BarChart data={pillar.buckets} barSize={18} margin={{ top: 4, right: 0, left: -28, bottom: 0 }}>
           <XAxis
             dataKey="range"
-            tick={{ fontSize: 9, fill: '#64748b' }}
+            tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }}
             axisLine={false}
             tickLine={false}
           />
@@ -51,7 +51,10 @@ function PillarChart({ pillar }: { pillar: PillarDistributionChartData }) {
           />
           <Bar dataKey="count" radius={[3, 3, 0, 0]}>
             {pillar.buckets.map(bucket => (
-              <Cell key={bucket.range} fill={BUCKET_COLORS[bucket.range] ?? '#6366f1'} />
+              <Cell
+                key={bucket.range}
+                fill={BUCKET_COLORS[bucket.range] ?? 'hsl(var(--gradient-from))'}
+              />
             ))}
           </Bar>
         </BarChart>
@@ -78,7 +81,7 @@ export function ScoreDistributionsCard({ distributions }: Props) {
       </div>
       <div className="flex items-center gap-3 mt-4 flex-wrap">
         {Object.entries(BUCKET_COLORS).map(([range, color]) => (
-          <span key={range} className="flex items-center gap-1 text-xs text-slate-400">
+          <span key={range} className="flex items-center gap-1 text-xs text-muted-foreground">
             <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ backgroundColor: color }} />
             {range}
           </span>

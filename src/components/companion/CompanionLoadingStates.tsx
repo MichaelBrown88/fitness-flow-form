@@ -40,7 +40,7 @@ export function CompanionLoadingStates({
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8 text-white text-center font-bold">
         <h1 className="text-2xl mb-2">Session Invalid</h1>
         <p className="mt-2 text-xs text-white/40">{errorMsg || 'Unable to connect'}</p>
-        <Button onClick={onRetry} className="mt-6 bg-primary hover:brightness-110">
+        <Button onClick={onRetry} className="mt-6 bg-primary text-primary-foreground hover:brightness-110">
           Retry
         </Button>
       </div>

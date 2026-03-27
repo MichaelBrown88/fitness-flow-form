@@ -11,12 +11,18 @@
  */
 
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { signInAnonymously } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { getFirebaseAuth, getDb } from '@/services/firebase';
 import { ROUTES } from '@/constants/routes';
 import { logger } from '@/lib/utils/logger';
+import { Seo } from '@/components/seo/Seo';
+import { requireSeoForPath } from '@/constants/seo';
+import { Button } from '@/components/ui/button';
+import { formatSandboxBootstrapError, SANDBOX_TRY_COPY } from '@/lib/utils/sandboxTrialErrors';
+
+const trySeo = requireSeoForPath(ROUTES.TRY);
 
 export const SANDBOX_ASSESSMENTS_LIMIT = 3;
 
@@ -63,7 +69,8 @@ export default function SandboxTrial() {
           doc(db, 'userProfiles', uid),
           {
             organizationId: orgId,
-            role: 'owner',
+            role: 'org_admin',
+            displayName: 'Coach',
             onboardingCompleted: false,
             isAnonymous: true,
           },
@@ -73,7 +80,7 @@ export default function SandboxTrial() {
         // Coaches subcollection entry — required for isOrgCoach() Firestore rule
         await setDoc(
           doc(db, `organizations/${orgId}/coaches/${uid}`),
-          { role: 'owner', uid },
+          { role: 'org_admin', uid, displayName: 'Coach' },
           { merge: true }
         );
 
@@ -85,7 +92,7 @@ export default function SandboxTrial() {
       } catch (err) {
         logger.error('[SandboxTrial] Bootstrap failed', err);
         if (!cancelled) {
-          setError('Could not start your trial. Please try again.');
+          setError(formatSandboxBootstrapError(err));
         }
       }
     }
@@ -96,22 +103,41 @@ export default function SandboxTrial() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-8 text-center">
-        <p className="text-sm text-slate-500">{error}</p>
-        <button
-          onClick={() => window.location.reload()}
-          className="h-10 px-6 rounded-xl bg-slate-900 text-white text-sm font-bold"
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-8 text-center bg-background">
+        <Seo
+          pathname={ROUTES.TRY}
+          title={trySeo.title}
+          description={trySeo.description}
+          noindex={trySeo.noindex}
+        />
+        <div
+          role="alert"
+          className="max-w-md rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-foreground"
         >
-          Try again
-        </button>
+          {error}
+        </div>
+        <div className="flex flex-col items-center gap-3 sm:flex-row">
+          <Button type="button" variant="default" className="h-10 px-6 font-semibold" onClick={() => window.location.reload()}>
+            Try again
+          </Button>
+          <Button type="button" variant="outline" className="h-10 px-6 font-semibold" asChild>
+            <Link to={ROUTES.SIGNUP}>{SANDBOX_TRY_COPY.CTA_CREATE_ACCOUNT}</Link>
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-white">
-      <div className="h-12 w-12 rounded-full border-4 border-slate-200 border-t-primary animate-spin" />
-      <p className="text-sm font-medium text-slate-400">Setting up your trial…</p>
+    <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-background">
+      <Seo
+        pathname={ROUTES.TRY}
+        title={trySeo.title}
+        description={trySeo.description}
+        noindex={trySeo.noindex}
+      />
+      <div className="h-12 w-12 rounded-full border-4 border-border border-t-primary animate-spin" />
+      <p className="text-sm font-medium text-muted-foreground">Setting up your trial…</p>
     </div>
   );
 }

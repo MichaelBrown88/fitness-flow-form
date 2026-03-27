@@ -24,11 +24,11 @@ export const PLAN_PACKAGE_TRACK_COPY: Record<
 > = {
   solo: {
     title: 'Solo Coach',
-    subtitle: 'Independent coach — up to 100 clients on paid tiers; contact us beyond that',
+    subtitle: 'Independent coaches · up to 100 clients',
   },
   gym: {
     title: 'Gym / Studio',
-    subtitle: 'Teams & member volume — 50 to 250 clients; contact us for more',
+    subtitle: 'Teams · 50–250 clients',
   },
 };
 

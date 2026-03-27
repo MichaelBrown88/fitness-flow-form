@@ -110,6 +110,7 @@ export function scoreBodyComp(form: FormData, age: number, gender: string): Scor
   const score = subScores.length > 0
     ? Math.round(subScores.reduce((a, b) => a + b, 0) / subScores.length)
     : 0;
+  const assessed = subScores.length > 0 || hasAnalyzerData;
 
   const strengths: string[] = [];
   const weaknesses: string[] = [];
@@ -135,5 +136,5 @@ export function scoreBodyComp(form: FormData, age: number, gender: string): Scor
     }
   });
 
-  return { id: 'bodyComp', title: 'Body Composition', score, details, strengths, weaknesses };
+  return { id: 'bodyComp', title: 'Body Composition', score, assessed, details, strengths, weaknesses };
 }

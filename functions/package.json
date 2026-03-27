@@ -10,12 +10,15 @@
     "build": "tsc -b",
     "clean": "rimraf lib",
     "deploy": "npm run build && firebase deploy --only functions",
+    "deploy:remote-mvp": "npm run build && firebase deploy --only functions:createRemoteAssessmentToken,functions:getRemoteAssessmentSession,functions:submitRemoteAssessmentFields,functions:getRemotePostureUploadUrl",
     "lint": "eslint \"src/**/*.{ts,js}\"",
     "stripe:catalog": "npx ts-node --transpile-only src/scripts/createStripeCatalog.ts",
+    "email:preview": "npx ts-node --transpile-only src/scripts/sendEmailPreview.ts",
     "serve": "npm run build && firebase emulators:start --only functions",
     "start": "ts-node -r tsconfig-paths/register src/index.ts"
   },
   "dependencies": {
+    "dotenv": "^16.4.7",
     "@google/generative-ai": "^0.24.1",
     "resend": "^6.9.4",
     "firebase-admin": "^13.7.0",

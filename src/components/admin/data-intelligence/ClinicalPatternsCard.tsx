@@ -35,7 +35,7 @@ export function ClinicalPatternsCard({ patterns, totalClients }: Props) {
     return (
       <div className="bg-admin-card/50 border border-admin-border rounded-2xl p-5">
         <h3 className="text-sm font-semibold text-admin-fg mb-1">Clinical Pattern Prevalence</h3>
-        <p className="text-xs text-slate-500 mt-6 text-center py-8">
+        <p className="text-xs text-muted-foreground mt-6 text-center py-8">
           No synthesis patterns detected yet.
         </p>
       </div>
@@ -49,7 +49,7 @@ export function ClinicalPatternsCard({ patterns, totalClients }: Props) {
     <div className="bg-admin-card/50 border border-admin-border rounded-2xl p-5">
       <div className="flex items-start justify-between mb-1">
         <h3 className="text-sm font-semibold text-admin-fg">Clinical Pattern Prevalence</h3>
-        <span className="text-xs text-slate-500">n = {totalClients}</span>
+        <span className="text-xs text-muted-foreground">n = {totalClients}</span>
       </div>
       <p className="text-xs text-admin-fg-muted mb-4">
         % of assessed clients triggering each finding

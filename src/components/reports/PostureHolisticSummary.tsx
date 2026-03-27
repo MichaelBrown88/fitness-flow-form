@@ -45,7 +45,7 @@ export function PostureHolisticSummary({ results }: PostureHolisticSummaryProps)
         
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <p className={`text-xs sm:text-sm text-slate-800 leading-snug ${
+          <p className={`text-xs sm:text-sm text-foreground leading-snug ${
             !expanded ? 'line-clamp-4 sm:line-clamp-none' : ''
           }`}>
             {summary.narrative}
@@ -53,7 +53,7 @@ export function PostureHolisticSummary({ results }: PostureHolisticSummaryProps)
           {summary.narrative.length > 180 && (
             <button
               onClick={() => setExpanded(v => !v)}
-              className="text-xs font-medium text-slate-500 hover:text-slate-700 mt-1 sm:hidden"
+              className="text-xs font-medium text-muted-foreground hover:text-foreground mt-1 sm:hidden"
             >
               {expanded ? 'Show less' : 'Read more'}
             </button>

@@ -57,18 +57,18 @@ const CollapsibleSection = ({ title, icon, badge, children, defaultOpen = true }
 }) => {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="rounded-2xl bg-white overflow-hidden">
+    <div className="rounded-2xl bg-card overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between gap-2 p-4 sm:p-6 hover:bg-slate-50/50 transition-colors"
+        className="w-full flex items-center justify-between gap-2 p-4 sm:p-6 hover:bg-muted/50 transition-colors"
       >
-        <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2 min-w-0 truncate">
+        <h3 className="text-base sm:text-lg font-bold text-foreground flex items-center gap-2 min-w-0 truncate">
           <span className="shrink-0">{icon}</span>
           <span className="truncate">{title}</span>
         </h3>
         <div className="flex items-center gap-2 shrink-0">
           {badge}
-          <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
         </div>
       </button>
       {open && <div className="px-4 sm:px-6 pb-4 sm:pb-6">{children}</div>}
@@ -93,15 +93,15 @@ function ClientAchievementsSummary({ shareToken }: { shareToken: string }) {
   const { achievements, unlockedCount, isLoading } = useTokenAchievements(shareToken);
   
   if (isLoading) {
-    return <p className="text-sm text-slate-400 py-4 text-center">Loading achievements...</p>;
+    return <p className="text-sm text-muted-foreground py-4 text-center">Loading achievements...</p>;
   }
   
   if (achievements.length === 0) {
     return (
       <div className="py-6 text-center">
-        <Trophy className="h-8 w-8 text-slate-200 mx-auto mb-2" />
-        <p className="text-sm text-slate-400">No achievements yet</p>
-        <p className="text-xs text-slate-300 mt-1">Achievements will appear after assessments are evaluated</p>
+        <Trophy className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+        <p className="text-sm text-muted-foreground">No achievements yet</p>
+        <p className="text-xs text-muted-foreground/60 mt-1">Achievements will appear after assessments are evaluated</p>
       </div>
     );
   }
@@ -111,8 +111,8 @@ function ClientAchievementsSummary({ shareToken }: { shareToken: string }) {
   
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2 text-xs text-slate-500">
-        <span className="font-semibold text-slate-700">{unlockedCount}</span> of {totalDefs} unlocked
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <span className="font-semibold text-foreground-secondary">{unlockedCount}</span> of {totalDefs} unlocked
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         {unlocked.map(a => (
@@ -126,7 +126,7 @@ function ClientAchievementsSummary({ shareToken }: { shareToken: string }) {
         ))}
       </div>
       {achievements.filter(a => !a.unlockedAt).length > 0 && (
-        <p className="text-[10px] text-slate-400 pt-1">
+        <p className="text-[10px] text-muted-foreground pt-1">
           {achievements.filter(a => !a.unlockedAt).length} more achievements in progress
         </p>
       )}
@@ -217,7 +217,7 @@ const ClientDetail = () => {
 
   if (!user) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-slate-600">
+      <div className="flex min-h-screen items-center justify-center text-sm text-foreground-secondary">
         Loading…
       </div>
     );
@@ -228,7 +228,7 @@ const ClientDetail = () => {
       <AppShell 
         title={clientName}
       >
-        <div className="py-10 text-sm text-slate-600">Loading client data…</div>
+        <div className="py-10 text-sm text-foreground-secondary">Loading client data…</div>
       </AppShell>
     );
   }
@@ -304,13 +304,13 @@ const ClientDetail = () => {
 
       {/* Custom header row: client name + Report button */}
       <div className="flex items-center justify-between gap-3 mb-6">
-        <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-slate-900 truncate">
+        <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-foreground truncate">
           {clientName}
         </h1>
         {currentAssessment && assessments.length > 0 && (
           <Button
             size="sm"
-            className="h-8 px-3 rounded-lg bg-slate-900 text-white font-bold hover:bg-slate-800 gap-1.5 text-xs shrink-0"
+            className="h-8 px-3 rounded-lg bg-foreground text-white font-bold hover:bg-foreground/90 gap-1.5 text-xs shrink-0"
             asChild
           >
             <Link to={`/coach/assessments/${assessments[0].id}?clientName=${encodeURIComponent(clientName)}`}>
@@ -329,14 +329,14 @@ const ClientDetail = () => {
           icon={<TrendingUp className="h-5 w-5 text-primary" />}
         >
           <div className="grid gap-2 sm:gap-3 grid-cols-2 md:grid-cols-4">
-            <div className="rounded-xl bg-slate-50 p-4">
-              <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 mb-2">Total</div>
-              <div className="text-2xl font-bold text-slate-900">{stats.totalAssessments}</div>
+            <div className="rounded-xl bg-muted p-4">
+              <div className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground mb-2">Total</div>
+              <div className="text-2xl font-bold text-foreground">{stats.totalAssessments}</div>
             </div>
-            <div className="rounded-xl bg-slate-50 p-4">
-              <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 mb-2">Latest</div>
+            <div className="rounded-xl bg-muted p-4">
+              <div className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground mb-2">Latest</div>
               <div className="flex items-end justify-between">
-                <div className="text-2xl font-bold text-slate-900">{stats.latestScore}</div>
+                <div className="text-2xl font-bold text-foreground">{stats.latestScore}</div>
                 {stats.trend !== 'neutral' && (
                   <div className={`flex items-center mb-0.5 ${stats.trend === 'up' ? 'text-score-green' : 'text-score-red'}`}>
                     {stats.trend === 'up' ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
@@ -344,14 +344,14 @@ const ClientDetail = () => {
                 )}
               </div>
             </div>
-            <div className="rounded-xl bg-slate-50 p-4">
-              <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 mb-2">Average</div>
-              <div className="text-2xl font-bold text-slate-900">{stats.averageScore}</div>
+            <div className="rounded-xl bg-muted p-4">
+              <div className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground mb-2">Average</div>
+              <div className="text-2xl font-bold text-foreground">{stats.averageScore}</div>
             </div>
-            <div className="rounded-xl bg-slate-50 p-4">
-              <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 mb-2">Change</div>
+            <div className="rounded-xl bg-muted p-4">
+              <div className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground mb-2">Change</div>
               <div className={`text-2xl font-bold ${
-                stats.scoreChange > 0 ? 'text-score-green-fg' : stats.scoreChange < 0 ? 'text-score-red-fg' : 'text-slate-900'
+                stats.scoreChange > 0 ? 'text-score-green-fg' : stats.scoreChange < 0 ? 'text-score-red-fg' : 'text-foreground'
               }`}>
                 {stats.scoreChange > 0 ? '+' : ''}{stats.scoreChange}
               </div>
@@ -365,9 +365,9 @@ const ClientDetail = () => {
           icon={<Activity className="h-5 w-5 text-primary" />}
         >
           {!currentAssessment ? (
-            <div className="py-12 text-center bg-slate-50 rounded-xl">
-              <p className="text-sm text-slate-500 mb-6">No assessment data found for this client.</p>
-              <Button onClick={() => handleNewAssessment()} className="bg-slate-900 text-white rounded-xl h-12 px-8">
+            <div className="py-12 text-center bg-muted rounded-xl">
+              <p className="text-sm text-muted-foreground mb-6">No assessment data found for this client.</p>
+              <Button onClick={() => handleNewAssessment()} className="bg-foreground text-white rounded-xl h-12 px-8">
                 <UserPlus className="h-4 w-4 mr-2" />
                 Start First Assessment
               </Button>
@@ -381,16 +381,16 @@ const ClientDetail = () => {
                 { id: 'strength', label: 'Functional Strength', color: 'text-primary', bg: 'bg-primary', icon: Dumbbell },
                 { id: 'cardio', label: 'Metabolic Fitness', color: 'text-primary', bg: 'bg-primary', icon: Heart },
               ].map((cat, idx, arr) => (
-                <div key={cat.id} className={`text-center p-4 sm:p-5 rounded-xl bg-slate-50 transition-all hover:bg-slate-100 ${
+                <div key={cat.id} className={`text-center p-4 sm:p-5 rounded-xl bg-muted transition-all hover:bg-muted ${
                   idx === arr.length - 1 && arr.length % 2 !== 0 ? 'col-span-2 sm:col-span-1' : ''
                 }`}>
                   <div className="flex justify-center mb-3">
                     <cat.icon className={`h-6 w-6 ${cat.color} opacity-80`} />
                   </div>
-                  <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 mb-2">
+                  <div className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground mb-2">
                     {cat.label}
                   </div>
-                  <div className="text-3xl font-bold text-slate-900 mb-1">
+                  <div className="text-3xl font-bold text-foreground mb-1">
                     {categoryBreakdown[cat.id] || 0}
                   </div>
                   {categoryChanges[cat.id] !== undefined && categoryChanges[cat.id] !== 0 && (
@@ -400,7 +400,7 @@ const ClientDetail = () => {
                     </div>
                   )}
                   {(!categoryChanges[cat.id] || categoryChanges[cat.id] === 0) && <div className="h-4 mb-2" />}
-                  <div className="h-2 w-full bg-slate-200/60 rounded-full overflow-hidden">
+                  <div className="h-2 w-full bg-muted/60 rounded-full overflow-hidden">
                     <div
                       className={`h-full ${cat.bg} transition-all duration-1000`}
                       style={{ width: `${categoryBreakdown[cat.id] || 0}%` }}
@@ -429,12 +429,12 @@ const ClientDetail = () => {
                 key={action.id}
                 variant="outline"
                 onClick={() => handleNewAssessment(action.id as 'lifestyle' | 'bodycomp' | 'posture' | 'strength' | 'fitness')}
-                className="flex flex-col items-center gap-2 h-auto py-3 sm:py-4 rounded-xl border-slate-100 hover:border-primary/20 hover:bg-brand-light transition-all group"
+                className="flex flex-col items-center gap-2 h-auto py-3 sm:py-4 rounded-xl border-border hover:border-primary/20 hover:bg-brand-light transition-all group"
               >
                 <div className={`h-9 w-9 sm:h-10 sm:w-10 rounded-lg ${action.bg} flex items-center justify-center group-hover:scale-105 transition-transform`}>
                   <action.icon className={`h-4 w-4 sm:h-5 sm:w-5 ${action.color}`} />
                 </div>
-                <span className="text-[10px] font-bold text-slate-600 uppercase tracking-[0.15em] leading-tight text-center">{action.label}</span>
+                <span className="text-[10px] font-bold text-foreground-secondary uppercase tracking-[0.15em] leading-tight text-center">{action.label}</span>
               </Button>
             ))}
           </div>
@@ -447,13 +447,13 @@ const ClientDetail = () => {
           defaultOpen={false}
         >
           {assessments.length === 0 ? (
-            <p className="text-sm text-slate-400 py-4 text-center">Complete an assessment to see coach findings.</p>
+            <p className="text-sm text-muted-foreground py-4 text-center">Complete an assessment to see coach findings.</p>
           ) : (
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-slate-800">Latest score: {stats.latestScore}/100</p>
+                <p className="text-sm font-semibold text-foreground">Latest score: {stats.latestScore}/100</p>
                 {currentAssessment?.formData && (
-                  <p className="text-xs text-slate-500 mt-0.5 truncate">
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
                     {Object.entries(categoryBreakdown).filter(([, v]) => v > 0 && v < 60).map(([k]) => {
                       const labels: Record<string, string> = { bodyComp: 'Body Comp', movementQuality: 'Movement', strength: 'Strength', cardio: 'Cardio', lifestyle: 'Lifestyle' };
                       return labels[k] || k;
@@ -480,32 +480,32 @@ const ClientDetail = () => {
         >
           {loadingSnapshots ? (
             <div className="py-8 flex justify-center">
-              <div className="w-6 h-6 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
+              <div className="w-6 h-6 border-2 border-foreground border-t-transparent rounded-full animate-spin" />
             </div>
           ) : snapshots.length === 0 ? (
-            <p className="text-sm text-slate-400 py-4 text-center">No assessment history yet. Complete an assessment to see past snapshots here.</p>
+            <p className="text-sm text-muted-foreground py-4 text-center">No assessment history yet. Complete an assessment to see past snapshots here.</p>
           ) : (
             <ul className="space-y-2">
               {snapshots.map((snapshot) => (
                 <li
                   key={snapshot.id ?? snapshot.timestamp.toMillis()}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-3"
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-muted/50 px-4 py-3"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <span className="text-sm font-medium text-slate-900">
+                    <span className="text-sm font-medium text-foreground">
                       {snapshot.timestamp?.toDate?.()?.toLocaleDateString?.() ?? '—'}
                     </span>
-                    <span className="text-xs text-slate-500 font-medium tracking-wide">
+                    <span className="text-xs text-muted-foreground font-medium tracking-wide">
                       {formatSnapshotTypeLabel(snapshot.type)}
                     </span>
-                    <span className="text-sm font-semibold text-slate-700">{snapshot.overallScore}/100</span>
+                    <span className="text-sm font-semibold text-foreground-secondary">{snapshot.overallScore}/100</span>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     {assessments[0]?.id && (
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-8 px-2 text-xs text-slate-600"
+                        className="h-8 px-2 text-xs text-foreground-secondary"
                         asChild
                       >
                         <Link to={`/coach/assessments/${assessments[0].id}?clientName=${encodeURIComponent(clientName)}`}>
@@ -517,7 +517,7 @@ const ClientDetail = () => {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-8 px-2 text-xs text-slate-600"
+                      className="h-8 px-2 text-xs text-foreground-secondary"
                       onClick={() => handleEditSnapshot(snapshot)}
                     >
                       <Pencil className="h-3.5 w-3.5 mr-1" />
@@ -548,26 +548,26 @@ const ClientDetail = () => {
             : undefined}
         >
           {assessments.length === 0 ? (
-            <p className="text-sm text-slate-400 py-4 text-center">Complete an assessment first.</p>
+            <p className="text-sm text-muted-foreground py-4 text-center">Complete an assessment first.</p>
           ) : roadmapStatus === 'loading' ? (
-            <p className="text-sm text-slate-400 py-4 text-center">Checking roadmap status...</p>
+            <p className="text-sm text-muted-foreground py-4 text-center">Checking roadmap status...</p>
           ) : roadmapStatus === 'none' ? (
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm text-slate-500">Roadmap not yet created for this client.</p>
-              <Button size="sm" className="rounded-lg text-xs shrink-0 bg-slate-900 text-white" asChild>
+              <p className="text-sm text-muted-foreground">Roadmap not yet created for this client.</p>
+              <Button size="sm" className="rounded-lg text-xs shrink-0 bg-foreground text-white" asChild>
                 <Link to={`/coach/clients/${encodeURIComponent(clientName)}/roadmap`}>Create Roadmap</Link>
               </Button>
             </div>
           ) : roadmapStatus === 'draft' ? (
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm text-slate-500">Roadmap created but not sent to client.</p>
+              <p className="text-sm text-muted-foreground">Roadmap created but not sent to client.</p>
               <Button size="sm" variant="outline" className="rounded-lg text-xs shrink-0" asChild>
                 <Link to={`/coach/clients/${encodeURIComponent(clientName)}/roadmap`}>Review & Send</Link>
               </Button>
             </div>
           ) : (
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm text-slate-500">Roadmap has been shared with client.</p>
+              <p className="text-sm text-muted-foreground">Roadmap has been shared with client.</p>
               <Button size="sm" variant="outline" className="rounded-lg text-xs shrink-0" asChild>
                 <Link to={`/coach/clients/${encodeURIComponent(clientName)}/roadmap`}>View / Edit</Link>
               </Button>
@@ -599,7 +599,7 @@ const ClientDetail = () => {
 
           <div className="space-y-4 py-4 overflow-y-auto flex-1 -mx-6 px-6">
             <div className="grid gap-2">
-              <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 flex items-center gap-2">
+              <label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground flex items-center gap-2">
                 <UserCheck className="h-3.5 w-3.5" /> Client Name
               </label>
               <Input
@@ -611,7 +611,7 @@ const ClientDetail = () => {
             </div>
 
             <div className="grid gap-2">
-              <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 flex items-center gap-2">
+              <label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground flex items-center gap-2">
                 <Mail className="h-3.5 w-3.5" /> Email Address
               </label>
               <Input
@@ -623,7 +623,7 @@ const ClientDetail = () => {
             </div>
 
             <div className="grid gap-2">
-              <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 flex items-center gap-2">
+              <label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground flex items-center gap-2">
                 <Phone className="h-3.5 w-3.5" /> Phone Number
               </label>
               <Input
@@ -636,7 +636,7 @@ const ClientDetail = () => {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-2">
-                <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 flex items-center gap-2">
+                <label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground flex items-center gap-2">
                   <Cake className="h-3.5 w-3.5" /> Date of Birth
                 </label>
                 <Input
@@ -647,7 +647,7 @@ const ClientDetail = () => {
                 />
               </div>
               <div className="grid gap-2">
-                <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 flex items-center gap-2">
+                <label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground flex items-center gap-2">
                   <CalendarClock className="h-3.5 w-3.5" /> Training Start
                 </label>
                 <Input
@@ -660,7 +660,7 @@ const ClientDetail = () => {
             </div>
 
             <div className="grid gap-2">
-              <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500">Internal Coaching Notes</label>
+              <label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">Internal Coaching Notes</label>
               <Textarea
                 value={editData.notes || ''}
                 onChange={(e) => setEditData({ ...editData, notes: e.target.value })}
@@ -672,7 +672,7 @@ const ClientDetail = () => {
 
             {/* Assessment Schedule Settings */}
             {authProfile?.organizationId && (
-              <div className="pt-2 border-t border-slate-100">
+              <div className="pt-2 border-t border-border">
                 <RetestScheduleCard
                   profile={profile}
                   clientName={clientName}
@@ -688,7 +688,7 @@ const ClientDetail = () => {
             <Button variant="outline" onClick={() => setIsEditing(false)} className="rounded-xl h-11 px-6 font-bold">
               Discard
             </Button>
-            <Button onClick={handleSaveProfile} className="bg-slate-900 text-white rounded-xl h-11 px-6 font-bold">
+            <Button onClick={handleSaveProfile} className="bg-foreground text-white rounded-xl h-11 px-6 font-bold">
               Save Profile
             </Button>
           </DialogFooter>
@@ -723,7 +723,7 @@ const ClientDetail = () => {
         <DialogContent className="rounded-2xl max-w-[90vw] sm:max-w-[425px]">
           <DialogHeader className="text-left">
             <DialogTitle className="text-xl font-bold tracking-tight">Remove snapshot</DialogTitle>
-            <DialogDescription className="text-sm font-medium text-slate-500 pt-2">
+            <DialogDescription className="text-sm font-medium text-muted-foreground pt-2">
               Remove this assessment snapshot from history? If it was the latest, current will be restored from the previous snapshot.
             </DialogDescription>
           </DialogHeader>

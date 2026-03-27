@@ -65,32 +65,32 @@ interface ErrorFallbackProps {
  */
 export function ErrorFallback({ error, onRetry, onGoHome }: ErrorFallbackProps) {
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-      <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 text-center">
+    <div className="min-h-screen bg-muted/50 flex items-center justify-center p-6" role="alert">
+      <div className="max-w-md w-full bg-background rounded-3xl shadow-xl p-8 text-center">
         <div className="inline-flex items-center justify-center w-16 h-16 bg-rose-50 rounded-2xl mb-6">
           <AlertTriangle className="h-8 w-8 text-rose-500" />
         </div>
 
-        <h1 className="text-2xl font-bold text-slate-900 mb-2">Something went wrong</h1>
-        <p className="text-slate-500 mb-6">
+        <h1 className="text-2xl font-bold text-foreground mb-2">Something went wrong</h1>
+        <p className="text-muted-foreground mb-6">
           We encountered an unexpected error. This has been logged and we'll look into it.
         </p>
 
-        {error && process.env.NODE_ENV === 'development' && (
-          <div className="mb-6 p-4 bg-slate-50 rounded-xl text-left overflow-auto">
+        {error && import.meta.env.DEV && (
+          <div className="mb-6 p-4 bg-muted/50 rounded-xl text-left overflow-auto">
             <p className="text-xs font-mono text-rose-600 break-words">{error.message}</p>
           </div>
         )}
 
         <div className="flex gap-3 justify-center">
           {onRetry && (
-            <Button onClick={onRetry} variant="outline" className="gap-2">
+            <Button type="button" onClick={onRetry} variant="outline" className="gap-2">
               <RefreshCw className="h-4 w-4" />
               Try Again
             </Button>
           )}
           {onGoHome && (
-            <Button onClick={onGoHome} className="gap-2">
+            <Button type="button" onClick={onGoHome} variant="default" className="gap-2">
               <Home className="h-4 w-4" />
               Go to Dashboard
             </Button>

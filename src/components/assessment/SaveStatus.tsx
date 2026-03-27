@@ -13,7 +13,7 @@ export function SaveStatus({ state }: SaveStatusProps) {
     saving: {
       icon: <Loader2 className="h-3 w-3 animate-spin" />,
       text: 'Saving...',
-      className: 'text-slate-400',
+      className: 'text-muted-foreground',
     },
     saved: {
       icon: <Check className="h-3 w-3" />,

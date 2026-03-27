@@ -13,6 +13,14 @@ import {
 import { useTeamDashboard } from '@/hooks/dashboard/useTeamDashboard';
 import type { CoachMetrics } from '@/services/teamMetrics';
 import { SCORE_COLORS } from '@/lib/scoring/scoreColor';
+import { Button } from '@/components/ui/button';
+
+/** Cloud Function returns ISO strings; normalize for sorting and display. */
+function parseCoachLastActive(iso: string | null): Date | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -31,13 +39,13 @@ const StatCard: React.FC<{
   icon: React.ReactNode;
   detail?: string;
 }> = ({ label, value, icon, detail }) => (
-  <div className="rounded-xl bg-slate-50 p-4 space-y-1">
-    <div className="flex items-center gap-2 text-slate-400">
+  <div className="space-y-1 rounded-xl border border-border/60 bg-muted/50 p-4 dark:bg-card dark:shadow-sm">
+    <div className="flex items-center gap-2 text-muted-foreground">
       {icon}
       <span className="text-[10px] font-black uppercase tracking-[0.15em]">{label}</span>
     </div>
-    <p className="text-2xl font-bold text-slate-900">{value}</p>
-    {detail && <p className="text-xs text-slate-500">{detail}</p>}
+    <p className="text-2xl font-bold text-foreground">{value}</p>
+    {detail && <p className="text-xs text-muted-foreground">{detail}</p>}
   </div>
 );
 
@@ -59,7 +67,7 @@ const TrendBadge: React.FC<{ value: number }> = ({ value }) => {
     );
   }
   return (
-    <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded-full">
+    <span className="inline-flex items-center gap-0.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
       <Minus className="h-3 w-3" />0
     </span>
   );
@@ -76,7 +84,7 @@ const SortHeader: React.FC<{
   className?: string;
 }> = ({ label, sortKey, currentKey, currentDir, onSort, className }) => (
   <th
-    className={`px-3 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 cursor-pointer hover:text-slate-600 transition-colors ${className || ''}`}
+    className={`cursor-pointer px-3 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground transition-colors hover:text-foreground ${className || ''}`}
     onClick={() => onSort(sortKey)}
   >
     <span className="inline-flex items-center gap-1">
@@ -93,7 +101,7 @@ const SortHeader: React.FC<{
 // ── Main Component ───────────────────────────────────────────────────
 
 export const TeamView: React.FC<TeamViewProps> = ({ search }) => {
-  const { loading, summary, coaches } = useTeamDashboard();
+  const { loading, error, missingOrganization, summary, coaches, refresh } = useTeamDashboard();
   const [sortKey, setSortKey] = useState<SortKey>('assessments30d');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
 
@@ -125,7 +133,13 @@ export const TeamView: React.FC<TeamViewProps> = ({ search }) => {
         case 'overdueCount': aVal = a.overdueCount; bVal = b.overdueCount; break;
         case 'avgScore': aVal = a.avgScore; bVal = b.avgScore; break;
         case 'avgTrend': aVal = a.avgTrend; bVal = b.avgTrend; break;
-        case 'lastActive': aVal = a.lastActive?.getTime() ?? 0; bVal = b.lastActive?.getTime() ?? 0; break;
+        case 'lastActive': {
+          const ad = parseCoachLastActive(a.lastActive);
+          const bd = parseCoachLastActive(b.lastActive);
+          aVal = ad?.getTime() ?? 0;
+          bVal = bd?.getTime() ?? 0;
+          break;
+        }
         default: aVal = 0; bVal = 0;
       }
       if (typeof aVal === 'string' && typeof bVal === 'string') {
@@ -137,9 +151,33 @@ export const TeamView: React.FC<TeamViewProps> = ({ search }) => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20 text-sm text-slate-400 font-medium">
+      <div className="flex items-center justify-center py-20 text-sm font-medium text-muted-foreground">
         <Loader2 className="w-5 h-5 animate-spin mr-2" />
         Loading team data…
+      </div>
+    );
+  }
+
+  if (missingOrganization) {
+    return (
+      <div className="text-center py-20 space-y-3 max-w-md mx-auto">
+        <AlertCircle className="w-10 h-10 text-score-amber mx-auto" />
+        <p className="text-sm font-semibold text-foreground">Organization not available</p>
+        <p className="text-xs text-muted-foreground">
+          Team metrics need an organization context. Try signing out and back in, or contact support if this persists.
+        </p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-20 space-y-4 max-w-md mx-auto">
+        <AlertCircle className="w-10 h-10 text-score-red mx-auto" />
+        <p className="text-sm font-semibold text-foreground">{error}</p>
+        <Button type="button" variant="outline" className="rounded-xl" onClick={() => void refresh()}>
+          Try again
+        </Button>
       </div>
     );
   }
@@ -147,9 +185,9 @@ export const TeamView: React.FC<TeamViewProps> = ({ search }) => {
   if (coaches.length === 0) {
     return (
       <div className="text-center py-20 space-y-3">
-        <Users className="w-10 h-10 text-slate-300 mx-auto" />
-        <p className="text-sm font-semibold text-slate-500">No coaches in your organization yet</p>
-        <p className="text-xs text-slate-400">Invite coaches from the Settings page to see team performance here.</p>
+        <Users className="mx-auto h-10 w-10 text-muted-foreground" />
+        <p className="text-sm font-semibold text-foreground">No coaches in your organization yet</p>
+        <p className="text-xs text-muted-foreground">Invite coaches from the Settings page to see team performance here.</p>
       </div>
     );
   }
@@ -199,7 +237,7 @@ export const TeamView: React.FC<TeamViewProps> = ({ search }) => {
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-slate-100">
+            <tr className="border-b border-border">
               <SortHeader label="Coach" sortKey="displayName" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="pl-4" />
               <SortHeader label="Clients" sortKey="clientCount" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
               <SortHeader label="30d Assessments" sortKey="assessments30d" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
@@ -211,7 +249,7 @@ export const TeamView: React.FC<TeamViewProps> = ({ search }) => {
           <tbody>
             {filteredCoaches.length === 0 ? (
               <tr>
-                <td colSpan={6} className="text-center py-12 text-sm text-slate-400 font-medium">
+                <td colSpan={6} className="py-12 text-center text-sm font-medium text-muted-foreground">
                   No coaches match your search.
                 </td>
               </tr>
@@ -233,39 +271,41 @@ const CoachRow: React.FC<{
   coach: CoachMetrics;
   daysSince: (d: Date | null) => string;
 }> = ({ coach, daysSince }) => {
-  const lastActiveLabel = daysSince(coach.lastActive);
-  const isInactive = !coach.lastActive || (Date.now() - coach.lastActive.getTime()) > 14 * 24 * 60 * 60 * 1000;
+  const lastActiveDate = parseCoachLastActive(coach.lastActive);
+  const lastActiveLabel = daysSince(lastActiveDate);
+  const isInactive =
+    !lastActiveDate || Date.now() - lastActiveDate.getTime() > 14 * 24 * 60 * 60 * 1000;
 
   return (
-    <tr className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+    <tr className="border-b border-border transition-colors hover:bg-muted/40">
       <td className="px-4 py-4">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
             {coach.displayName.charAt(0).toUpperCase()}
           </div>
           <div>
-            <p className="text-sm font-semibold text-slate-900 leading-tight">
+            <p className="text-sm font-semibold leading-tight text-foreground">
               {coach.displayName}
               {coach.role === 'org_admin' && (
-                <Crown className="w-3 h-3 text-primary inline ml-1.5 -mt-0.5" />
+                <Crown className="-mt-0.5 ml-1.5 inline h-3 w-3 text-primary" />
               )}
             </p>
             {coach.email && (
-              <p className="text-[10px] text-slate-400 font-medium">{coach.email}</p>
+              <p className="text-[10px] font-medium text-muted-foreground">{coach.email}</p>
             )}
           </div>
         </div>
       </td>
       <td className="px-3 py-4">
-        <span className="text-sm font-semibold text-slate-700">{coach.clientCount}</span>
+        <span className="text-sm font-semibold text-foreground">{coach.clientCount}</span>
       </td>
       <td className="px-3 py-4">
-        <span className={`text-sm font-semibold ${coach.assessments30d === 0 ? 'text-slate-300' : 'text-slate-700'}`}>
+        <span className={`text-sm font-semibold ${coach.assessments30d === 0 ? 'text-muted-foreground' : 'text-foreground'}`}>
           {coach.assessments30d}
         </span>
       </td>
       <td className="px-3 py-4">
-        <span className={`text-sm font-semibold ${coach.avgScore === 0 ? 'text-slate-300' : 'text-slate-700'}`}>
+        <span className={`text-sm font-semibold ${coach.avgScore === 0 ? 'text-muted-foreground' : 'text-foreground'}`}>
           {coach.avgScore || '—'}
         </span>
       </td>
@@ -273,7 +313,7 @@ const CoachRow: React.FC<{
         <TrendBadge value={coach.avgTrend} />
       </td>
       <td className="px-3 py-4">
-        <span className={`text-xs font-semibold ${isInactive ? 'text-score-amber-fg' : 'text-slate-500'}`}>
+        <span className={`text-xs font-semibold ${isInactive ? 'text-score-amber-fg dark:text-amber-400' : 'text-muted-foreground'}`}>
           {lastActiveLabel}
           {isInactive && lastActiveLabel !== 'Never' && (
             <AlertCircle className="w-3 h-3 inline ml-1 -mt-0.5 text-score-amber" />

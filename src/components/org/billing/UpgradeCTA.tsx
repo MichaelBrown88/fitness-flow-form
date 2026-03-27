@@ -56,7 +56,7 @@ export function UpgradeCTA({ plan, status, seatRatio }: UpgradeCTAProps) {
   return (
     <Card className="border-dashed">
       <CardContent className="p-4 sm:p-6">
-        <p className="text-sm text-slate-600 mb-4">{ctaConfig.description}</p>
+        <p className="text-sm text-foreground-secondary mb-4">{ctaConfig.description}</p>
         <Button
           variant={ctaConfig.variant}
           className="w-full"

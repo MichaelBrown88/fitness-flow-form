@@ -591,7 +591,7 @@ export function usePlatformDashboard(): UsePlatformDashboardResult {
       case 'trial': return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
       case 'cancelled': return 'bg-red-500/20 text-red-400 border-red-500/30';
       case 'past_due': return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
-      default: return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
+      default: return 'bg-muted-foreground/20 text-muted-foreground border-muted-foreground/30';
     }
   }, []);
 
