@@ -1,0 +1,60 @@
+# Manual audit: typecheck, ESLint JSON, Haiku LLM chunks → audit-results/ + Supabase tasks.
+name: Automated audit
+
+on:
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: 'Root directory to scan for .ts / .tsx (LLM audit)'
+        required: false
+        default: 'src/'
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare audit output directory
+        run: mkdir -p audit-results
+
+      - name: Typecheck (first 50 lines of output)
+        run: |
+          set +e
+          npx tsc --noEmit 2>&1 | head -50 > audit-results/typecheck.txt
+          exit 0
+
+      - name: ESLint (JSON)
+        run: |
+          set +e
+          npx eslint src/ --format json > audit-results/eslint.json 2>&1
+          exit 0
+
+      - name: LLM audit + Supabase tasks
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          AUDIT_SCOPE: ${{ github.event.inputs.scope }}
+          PROJECT_SLUG: ${{ secrets.PROJECT_SLUG }}
+        run: node scripts/llm-audit.js
+
+      - name: Upload audit-results artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-results
+          path: audit-results/
+          retention-days: 14
