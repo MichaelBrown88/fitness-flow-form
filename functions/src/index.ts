@@ -25,6 +25,7 @@ import {
 import { snapshotPlatformMetrics, resetAssessmentsThisMonth } from './metricsHistory';
 import { checkPlatformHealth } from './platformHealth';
 import { runPopulationAnalytics } from './populationAnalytics';
+import { pushApexProductMetricsFromFirestore } from './pushApexProductMetrics';
 import {
   getAssessmentChartDataCallable,
   getAssessmentsThisMonthCallable,
@@ -233,6 +234,18 @@ export const snapshotMetricsHistory = onSchedule(
 );
 
 /**
+ * Daily push of aggregate platform metrics to APEX OS (os.one-assess.com → Supabase).
+ * Runs 01:15 UTC — after snapshotMetricsHistory (01:00) so history + APEX see same day’s rollups.
+ * Requires APEX_PRODUCT_ANALYTICS_SECRET in functions env (see docs/INTEGRATION_APEX_OS.md).
+ */
+export const pushApexProductMetricsScheduled = onSchedule(
+  { schedule: 'every day 01:15', timeZone: 'UTC', timeoutSeconds: 120 },
+  async () => {
+    await pushApexProductMetricsFromFirestore();
+  },
+);
+
+/**
  * Weekly reconciliation — runs every Sunday at 02:00 UTC.
  * Re-computes system_stats/global_metrics from canonical sources as a
  * safety net against trigger drift.
@@ -412,6 +425,20 @@ export const computePopulationAnalyticsNow = onCall(
     if (!adminDoc.exists) throw new Error('Platform admin access required.');
     await runPopulationAnalytics();
     return { success: true };
+  },
+);
+
+/**
+ * Manual trigger: push global_metrics aggregates to APEX OS (platform admin only).
+ */
+export const pushApexProductMetricsNow = onCall(
+  { enforceAppCheck: false, cors: CORS_ORIGINS, timeoutSeconds: 60 },
+  async (request) => {
+    if (!request.auth?.uid) throw new Error('Authentication required.');
+    const db = admin.firestore();
+    const adminDoc = await db.doc(`platform_admins/${request.auth.uid}`).get();
+    if (!adminDoc.exists) throw new Error('Platform admin access required.');
+    return pushApexProductMetricsFromFirestore();
   },
 );
 
