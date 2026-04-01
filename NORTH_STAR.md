@@ -92,19 +92,38 @@ Every coach who uses One Assess gets back 2-3 hours per client assessment. They 
 ### Model
 Subscription SaaS — monthly or annual billing via Stripe.
 
-### Pricing
-| Tier | Price | Includes |
-|---|---|---|
-| Free | £0 | Limited trial |
-| Solo Coach | £39/mo | 1 coach, unlimited clients, all features |
-| Gym / Studio | £149/mo | Multiple coaches, org management, team analytics |
+### Pricing — capacity-based (client seats)
 
-Annual discount: 20% (improves cash flow, reduces churn)
-Custom branding: £79 one-time add-on
+**Free tier:** Up to 2 clients, 5 AI scans/month, no card required.
+
+**Solo Coach (1 coach, up to 100 clients):**
+
+| Clients | Monthly | Annual (~20% off) | AI scans/mo |
+|---|---|---|---|
+| 10 | £39 | £374 | 30 |
+| 20 | £69 | £662 | 45 |
+| 35 | £94 | £902 | 65 |
+| 50 | £114 | £1,094 | 85 |
+| 75 | £129 | £1,238 | 110 |
+| 100 | £139 | £1,334 | 130 |
+
+**Gym / Studio (multi-coach teams, 50–250 clients, 14-day trial):**
+
+| Clients | Monthly | Annual (~20% off) | AI scans/mo |
+|---|---|---|---|
+| 50 | £149 | £1,430 | 150 |
+| 100 | £199 | £1,910 | 200 |
+| 150 | £239 | £2,294 | 260 |
+| 200 | £269 | £2,582 | 300 |
+| 250 | £289 | £2,774 | 350 |
+
+Custom branding: £79 one-time add-on.
+AI credit top-up: £9 for 20 credits (GB).
+250+ clients: contact sales.
 
 ### Unit Economics (targets)
 - CAC target: under £50
-- LTV target (solo): £39 × 18 months = £702
+- LTV target (solo 10): £39 × 18 months = £702
 - Payback period: under 2 months
 - Target MRR at 6 months: £5,000
 - Target MRR at 12 months: £10,000+
