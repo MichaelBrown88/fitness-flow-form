@@ -1,6 +1,6 @@
 # ONE ASSESS — NORTH STAR DOCUMENT
 *The single source of truth for every decision, every agent, every line of code.*
-*Version 1.0 — March 2026*
+*Version 2.0 — April 2026*
 
 ---
 
@@ -9,6 +9,15 @@
 **Eliminate the assessment admin burden for fitness coaches forever.**
 
 Every coach who uses One Assess gets back 2-3 hours per client assessment. They deliver more professional, clinical-grade results. Their clients see better outcomes. Their business grows. This is the mission.
+
+---
+
+## THE NORTH STAR METRIC
+
+**Before launch:** Days to first paying customer.
+**After launch:** Monthly Recurring Revenue (MRR).
+**Target:** £10,000 MRR.
+**Always:** Does this decision get us closer to a coach paying for One Assess?
 
 ---
 
@@ -80,28 +89,29 @@ Every coach who uses One Assess gets back 2-3 hours per client assessment. They 
 
 ## THE BUSINESS
 
-### Stage
-Pre-launch. Product ~87% complete. Infrastructure complete. No paying customers yet.
-
 ### Model
 Subscription SaaS — monthly or annual billing via Stripe.
 
-### Pricing (to be finalised — recommended)
+### Pricing
 | Tier | Price | Includes |
 |---|---|---|
-| Solo Coach | £49/mo | 1 coach, unlimited clients, all features |
-| Studio | £129/mo | Up to 5 coaches, org management, team analytics |
-| Enterprise | Custom | 5+ coaches, white label, API access |
+| Free | £0 | Limited trial |
+| Solo Coach | £39/mo | 1 coach, unlimited clients, all features |
+| Gym / Studio | £149/mo | Multiple coaches, org management, team analytics |
 
 Annual discount: 20% (improves cash flow, reduces churn)
-Free trial: 14 days, no card required
+Custom branding: £79 one-time add-on
 
 ### Unit Economics (targets)
 - CAC target: under £50
-- LTV target (solo): £49 × 18 months = £882
+- LTV target (solo): £39 × 18 months = £702
 - Payback period: under 2 months
-- Target MRR at 6 months: £5,000 (≈100 solo coaches)
-- Target MRR at 12 months: £25,000
+- Target MRR at 6 months: £5,000
+- Target MRR at 12 months: £10,000+
+
+### Banking & Payments
+- **Wise** — business banking (set up and live)
+- **Stripe** — payment processing (configured, live keys pending)
 
 ---
 
@@ -117,7 +127,7 @@ Free trial: 14 days, no card required
 ### Backend
 - Firebase Firestore (database)
 - Firebase Auth (authentication)
-- Firebase Cloud Functions (TypeScript) — 48 functions deployed
+- Firebase Cloud Functions (TypeScript)
 - Firebase Hosting
 
 ### AI & Analysis
@@ -126,7 +136,7 @@ Free trial: 14 days, no card required
 - OCR engine for data extraction
 
 ### Payments
-- Stripe (configured, needs live key testing)
+- Stripe
 
 ### Email
 - Resend (configured, domain verified, live)
@@ -154,39 +164,6 @@ These are non-negotiable. Every line of code must respect them.
 
 ---
 
-## THE LAUNCH CHECKLIST
-
-### Blockers (must be done before charging anyone)
-- [ ] Stripe live keys configured and tested end-to-end
-- [ ] Stripe webhooks verified (subscription created, payment failed, cancelled)
-- [ ] Pricing decision finalised
-- [ ] Pricing page updated with real prices
-
-### High priority (week of launch)
-- [ ] Replace placeholder testimonials with real assessment screenshots
-- [ ] SandboxTrial page linked from landing page CTA
-- [ ] 10 coaches reached out to for beta access
-- [ ] Blog: first 3 SEO posts published
-
-### Done ✓
-- [x] Firebase admin migrated to michael@one-assess.com
-- [x] Email infrastructure: Resend live, domain verified, noreply@one-assess.com
-- [x] All 48 Cloud Functions deployed
-- [x] Google Workspace live at one-assess.com
-- [x] Slack HQ configured with GitHub integration
-- [x] APEX OS live at os.one-assess.com
-- [x] Codebase cleaned of personal/studio references
-
----
-
-## THE NORTH STAR METRIC
-
-**Before launch:** Days to first paying customer.
-**After launch:** Monthly Recurring Revenue (MRR).
-**Always:** Does this decision get us closer to a coach paying for One Assess?
-
----
-
 ## AGENT OPERATING PRINCIPLES
 
 Every APEX OS agent must apply these when responding:
@@ -195,7 +172,7 @@ Every APEX OS agent must apply these when responding:
 2. **Solo founder reality** — Michael has limited time. Prioritise ruthlessly.
 3. **Coaches trust coaches** — the founder story is the marketing. Use it.
 4. **Build in public** — real assessments, real results, real studio = social proof
-5. **Ship then improve** — a working product at £49/mo beats a perfect product at £0
+5. **Ship then improve** — a working product at £39/mo beats a perfect product at £0
 6. **UK market focus** — language, pricing in £, GDPR compliance, UK PT culture
 
 ---
