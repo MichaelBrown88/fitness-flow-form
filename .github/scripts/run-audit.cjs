@@ -75,7 +75,7 @@ const AUDIT_FILES = {
     'functions/src/onboardingAnalytics.ts',
   ],
   dashboard: [
-    'src/pages/Dashboard.tsx',
+    'src/pages/dashboard/DashboardLayout.tsx',
     'src/hooks/dashboard/useDashboardDataOrchestrator.ts',
     'src/hooks/dashboard/useClientList.ts',
     'src/hooks/dashboard/useAssessmentList.ts',

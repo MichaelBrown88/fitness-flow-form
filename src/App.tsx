@@ -31,7 +31,6 @@ const PublicReportViewer = lazy(() => import("./pages/PublicReportViewer"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Achievements = lazy(() => import("./pages/Achievements"));
 const Companion = lazy(() => import("./pages/Companion"));
-const ClientDetail = lazy(() => import("./pages/ClientDetail"));
 const ClientDetailLayout = lazy(() => import("./pages/client/ClientDetailLayout"));
 const ClientOverview = lazy(() => import("./pages/client/ClientOverview"));
 const ClientHistory = lazy(() => import("./pages/client/ClientHistory"));

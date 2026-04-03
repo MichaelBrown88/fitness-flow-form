@@ -1,7 +1,7 @@
 /**
  * useClientDetail Hook
  * 
- * Extracted from ClientDetail.tsx to separate logic from UI.
+ * Client detail data for `ClientDetailLayout` and tab routes.
  * Handles all state management, data fetching, and handlers for the
  * client detail page.
  */
