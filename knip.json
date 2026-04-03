@@ -1,0 +1,13 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "ignore": [
+    "functions/**",
+    "public/mediapipe/**",
+    "fix-admin-lookup.js",
+    "migrate-admin.js",
+    "scripts/codemods/**",
+    "scripts/mirror-platform-admin-lookup-canonical.mjs",
+    "**/*.{test,spec}.{ts,tsx}"
+  ],
+  "ignoreBinaries": ["firebase", "gsutil", "tsc", "rimraf"]
+}
