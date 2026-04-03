@@ -84,9 +84,11 @@ const ACTIVITY_LABELS: Record<string, string> = {
 };
 
 const ALCOHOL_LABELS: Record<string, string> = {
-  never: 'Never',
-  occasionally: 'Occasionally',
-  weekly: 'Weekly',
+  never: 'Rarely or never',
+  occasionally: 'Occasionally (few times a month)',
+  weekly: 'About once a week',
+  'multiple-weekly': 'Several times a week',
+  frequent: 'Most days',
   daily: 'Daily',
 };
 

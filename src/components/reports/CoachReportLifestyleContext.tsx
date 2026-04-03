@@ -5,12 +5,17 @@
 import React from 'react';
 import { Moon } from 'lucide-react';
 import type { FormData } from '@/contexts/FormContext';
+import { ASSESSMENT_OPTIONS } from '@/constants/assessment';
 
 const SLEEP_DUR_LABELS: Record<string, string> = {
   'less-than-7': 'Less than 7 hours',
   '7-9': '7–9 hours',
   'more-than-9': 'More than 9 hours',
 };
+
+const ALCOHOL_VALUE_LABELS: Record<string, string> = Object.fromEntries(
+  ASSESSMENT_OPTIONS.alcoholFrequency.map((o) => [o.value, o.label]),
+);
 
 const FACTORS: Array<{ key: keyof FormData; label: string; getNote: (v: string) => string }> = [
   { key: 'sleepQuality', label: 'Sleep quality', getNote: (v) => ['poor', 'fair'].includes(v) ? 'Poor sleep may impact recovery – consider adjusted volume' : 'Sleep quality supports recovery.' },
@@ -23,6 +28,7 @@ const FACTORS: Array<{ key: keyof FormData; label: string; getNote: (v: string) 
 
 function formatVal(key: string, raw: string): string {
   if (key === 'sleepDuration' && raw) return SLEEP_DUR_LABELS[raw] ?? raw;
+  if (key === 'alcoholFrequency' && raw) return ALCOHOL_VALUE_LABELS[raw] ?? raw;
   if (!raw) return raw;
   return raw.replace(/-/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
 }

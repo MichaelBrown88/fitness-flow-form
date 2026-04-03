@@ -24,10 +24,10 @@ const SENTINEL_KEYS: (keyof FormData)[] = [
   'fullName',
   'email',
   'inbodyWeightKg',
-  'restingHeartRate',
+  'cardioRestingHr',
   'ohsKneeAlignment',
   'cardioTestSelected',
-  'pushupMaxReps',
+  'pushupsOneMinuteReps',
 ];
 
 function hasAnyData(formData: FormData): boolean {

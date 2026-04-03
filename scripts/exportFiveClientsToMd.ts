@@ -47,11 +47,82 @@ const P4_AI_STORAGE_FIELDS: { key: string; label: string }[] = [
   { key: 'postureAiResults', label: 'Posture AI analysis (structured)' },
 ];
 
-function mergeLayoutWithP4AiRows(): FormDataExportRow[] {
-  const base = buildFormDataExportLayout();
+/** Matches `ParQQuestionnaire` visible questions (parq8–11 are legacy schema only). */
+const PARQ_YES_NO: NonNullable<PhaseField['options']> = [
+  { value: 'yes', label: 'Yes' },
+  { value: 'no', label: 'No' },
+];
+
+const PARQ_DETAIL_SPEC: { key: string; label: string; conditional?: PhaseField['conditional'] }[] = [
+  { key: 'parq1', label: 'PAR-Q — Heart condition / doctor activity restriction' },
+  { key: 'parq2', label: 'PAR-Q — Chest pain during activity' },
+  { key: 'parq3', label: 'PAR-Q — Chest pain at rest (past month)' },
+  { key: 'parq4', label: 'PAR-Q — Balance / dizziness / loss of consciousness' },
+  { key: 'parq5', label: 'PAR-Q — Bone or joint problem worsened by activity' },
+  { key: 'parq6', label: 'PAR-Q — BP/heart medication prescribed' },
+  { key: 'parq7', label: 'PAR-Q — Any other reason to avoid activity' },
+  {
+    key: 'parq12',
+    label: 'PAR-Q — Currently pregnant',
+    conditional: { showWhen: { field: 'gender', value: 'female' } },
+  },
+  {
+    key: 'parq13',
+    label: 'PAR-Q — Gave birth in last 6 months',
+    conditional: { showWhen: { field: 'gender', value: 'female' } },
+  },
+];
+
+function conditionalDisplayNote(field: PhaseField): string | null {
+  const c = field.conditional?.showWhen;
+  if (!c || !c.field) return null;
+  if (c.value !== undefined) {
+    return `_Shown only when **${c.field}** is \`${c.value}\`._`;
+  }
+  if (c.exists && c.notValue !== undefined) {
+    return `_Shown only when **${c.field}** is set and not \`${c.notValue}\`._`;
+  }
+  if (c.exists) {
+    return `_Shown only when **${c.field}** has a value._`;
+  }
+  if (c.notValue !== undefined) {
+    return `_Shown only when **${c.field}** is not \`${c.notValue}\`._`;
+  }
+  if (c.includes !== undefined) {
+    return `_Shown only when **${c.field}** includes \`${c.includes}\`._`;
+  }
+  return null;
+}
+
+function mergeExportLayout(): FormDataExportRow[] {
+  let rows = buildFormDataExportLayout();
+  const p0 = phaseDefinitions.find((p) => p.id === 'P0');
+  const p0Title = p0?.title ?? 'Basic Client Info';
+
+  const parqRows: FormDataExportRow[] = PARQ_DETAIL_SPEC.map(({ key, label, conditional }) => ({
+    phaseId: 'P0',
+    phaseTitle: p0Title,
+    sectionTitle: 'PAR-Q (questionnaire answers)',
+    fieldKey: key,
+    label,
+    field: {
+      id: key as never,
+      type: 'select',
+      label,
+      options: PARQ_YES_NO,
+      ...(conditional ? { conditional } : {}),
+    } as PhaseField,
+  }));
+
+  const parqMetaIdx = rows.findIndex((r) => r.fieldKey === 'parqQuestionnaire');
+  if (parqMetaIdx !== -1) {
+    rows = [...rows.slice(0, parqMetaIdx + 1), ...parqRows, ...rows.slice(parqMetaIdx + 1)];
+  } else {
+    rows = [...parqRows, ...rows];
+  }
+
   const p4 = phaseDefinitions.find((p) => p.id === 'P4');
   const p4Title = p4?.title ?? 'Movement & Posture';
-
   const extras: FormDataExportRow[] = P4_AI_STORAGE_FIELDS.map(({ key, label }) => ({
     phaseId: 'P4',
     phaseTitle: p4Title,
@@ -61,14 +132,14 @@ function mergeLayoutWithP4AiRows(): FormDataExportRow[] {
     field: { id: key as never, type: 'textarea', label } as PhaseField,
   }));
 
-  const idx = base.findIndex((r) => r.fieldKey === INSERT_P4_AI_AFTER_FIELD);
+  const idx = rows.findIndex((r) => r.fieldKey === INSERT_P4_AI_AFTER_FIELD);
   if (idx === -1) {
-    return [...base, ...extras];
+    return [...rows, ...extras];
   }
-  return [...base.slice(0, idx + 1), ...extras, ...base.slice(idx + 1)];
+  return [...rows.slice(0, idx + 1), ...extras, ...rows.slice(idx + 1)];
 }
 
-const EXPORT_LAYOUT = mergeLayoutWithP4AiRows();
+const EXPORT_LAYOUT = mergeExportLayout();
 const LAYOUT_KEY_SET = new Set(EXPORT_LAYOUT.map((r) => r.fieldKey));
 
 function firstTokenLower(name: string): string {
@@ -251,7 +322,7 @@ function renderAssessmentMarkdown(formData: Record<string, unknown>): string[] {
   const lines: string[] = [
     '## Assessment inputs',
     '',
-    '_Same order as the coach assessment (phases P0–P7). Only fields with a saved value are listed. Option values show the app label where the form defines choices._',
+    '_Same order as the coach assessment (phases P0–P7). Only fields with a saved value are listed. Select/multiselect values use the app label. Italic lines under a field describe **conditional visibility** (when the coach would see that input). PAR-Q per-question rows mirror the live questionnaire (including items shown only for **female**)._',
     '',
   ];
 
@@ -273,11 +344,16 @@ function renderAssessmentMarkdown(formData: Record<string, unknown>): string[] {
     }
 
     const formatted = formatFieldValue(row.fieldKey, raw, row.field);
+    const cond = conditionalDisplayNote(row.field);
     const lead = `- **${row.label}** (\`${row.fieldKey}\`):`;
     if (formatted.startsWith('\n')) {
-      lines.push(lead, formatted, '');
+      lines.push(lead);
+      if (cond) lines.push(`  ${cond}`);
+      lines.push(formatted, '');
     } else {
-      lines.push(`${lead} ${formatted}`, '');
+      lines.push(`${lead} ${formatted}`);
+      if (cond) lines.push(`  ${cond}`);
+      lines.push('');
     }
   }
 

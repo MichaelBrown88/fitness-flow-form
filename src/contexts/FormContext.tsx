@@ -48,6 +48,7 @@ export interface FormData {
   /** Phase 1 — Foundational Health & Body Comp */
   parqQuestionnaire: string;
   /** Phase 2 — Health Screening Vitals/Medications */
+  /** @deprecated Use `cardioRestingHr` (P3 Metabolic Fitness). Kept for legacy Firestore rows. */
   restingHeartRate: string;
   restingBPSystolic: string;
   restingBPDiastolic: string;

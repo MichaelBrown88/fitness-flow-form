@@ -34,6 +34,27 @@ export const phaseP1: PhaseDefinition = {
         { id: 'hydrationHabits' as keyof FormData, type: 'select' as FieldType, label: ASSESSMENT_LABELS.P1.hydrationHabits, tooltip: ASSESSMENT_TOOLTIPS.P1.hydrationHabits, options: ASSESSMENT_OPTIONS.hydrationHabits },
         { id: 'caffeineCupsPerDay' as keyof FormData, type: 'number' as FieldType, label: ASSESSMENT_LABELS.P1.caffeineCupsPerDay, placeholder: ASSESSMENT_PLACEHOLDERS.P1.caffeineCupsPerDay, tooltip: ASSESSMENT_TOOLTIPS.P1.caffeineCupsPerDay },
         { id: 'lastCaffeineIntake' as keyof FormData, type: 'time' as FieldType, label: ASSESSMENT_LABELS.P1.lastCaffeineIntake, tooltip: ASSESSMENT_TOOLTIPS.P1.lastCaffeineIntake, conditional: { showWhen: { field: 'caffeineCupsPerDay', exists: true, notValue: '0' } } },
+        {
+          id: 'alcoholFrequency' as keyof FormData,
+          type: 'select' as FieldType,
+          label: ASSESSMENT_LABELS.P1.alcoholFrequency,
+          tooltip: ASSESSMENT_TOOLTIPS.P1.alcoholFrequency,
+          options: ASSESSMENT_OPTIONS.alcoholFrequency,
+        },
+        {
+          id: 'medicationsFlag' as keyof FormData,
+          type: 'select' as FieldType,
+          label: ASSESSMENT_LABELS.P1.medicationsFlag,
+          tooltip: ASSESSMENT_TOOLTIPS.P1.medicationsFlag,
+          options: ASSESSMENT_OPTIONS.medicationsFlag,
+        },
+        {
+          id: 'medicationsNotes' as keyof FormData,
+          type: 'textarea' as FieldType,
+          label: ASSESSMENT_LABELS.P1.medicationsNotes,
+          tooltip: ASSESSMENT_TOOLTIPS.P1.medicationsNotes,
+          conditional: { showWhen: { field: 'medicationsFlag', value: 'yes' } },
+        },
       ],
     }
   ],

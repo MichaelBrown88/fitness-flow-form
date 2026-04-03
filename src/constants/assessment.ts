@@ -77,6 +77,9 @@ export const ASSESSMENT_LABELS = {
     hydrationHabits: 'Hydration habits',
     caffeineCupsPerDay: 'Caffeine intake (cups per day)',
     lastCaffeineIntake: 'Time of last caffeine intake',
+    alcoholFrequency: 'Alcohol',
+    medicationsFlag: 'Regular medications',
+    medicationsNotes: 'Medication details',
   },
   P2: {
     heightCm: 'Height (cm)',
@@ -193,6 +196,9 @@ export const ASSESSMENT_TOOLTIPS = {
     hydrationHabits: 'Typical daily water/fluid intake and consistency.',
     caffeineCupsPerDay: 'Average number of caffeinated drinks per day (coffee, tea, energy drinks).',
     lastCaffeineIntake: 'Time of your most recent caffeine serving (helps with sleep timing).',
+    alcoholFrequency: 'Typical alcohol pattern over the last few months (affects recovery and body composition).',
+    medicationsFlag: 'Whether the client takes regular prescription or over-the-counter medications that may affect exercise.',
+    medicationsNotes: 'List medications and relevant notes (dose timing, conditions). Optional but recommended when medications are reported.',
   },
   P2: {
     heightCm: 'Required for BMI and body composition calculations.',
@@ -452,6 +458,18 @@ export const ASSESSMENT_OPTIONS = {
     { value: 'good', label: 'I try to stay hydrated but often forget' },
     { value: 'fair', label: 'My water intake varies – sometimes good, sometimes poor' },
     { value: 'poor', label: 'I rarely drink enough water' },
+  ],
+  alcoholFrequency: [
+    { value: 'never', label: 'Rarely or never' },
+    { value: 'occasionally', label: 'Occasionally (few times a month)' },
+    { value: 'weekly', label: 'About once a week' },
+    { value: 'multiple-weekly', label: 'Several times a week' },
+    { value: 'frequent', label: 'Most days' },
+    { value: 'daily', label: 'Daily' },
+  ],
+  medicationsFlag: [
+    { value: 'no', label: 'No regular medications' },
+    { value: 'yes', label: 'Yes — takes medication(s)' },
   ],
   // P3 Options
   cardioTestSelected: [
