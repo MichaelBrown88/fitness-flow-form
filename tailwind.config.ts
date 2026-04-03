@@ -75,6 +75,7 @@ export default {
         admin: {
           bg: "hsl(var(--admin-bg))",
           card: "hsl(var(--admin-card))",
+          "surface-inset": "hsl(var(--admin-surface-inset))",
           border: "hsl(var(--admin-border))",
           fg: "hsl(var(--admin-fg))",
           "fg-muted": "hsl(var(--admin-fg-muted))",

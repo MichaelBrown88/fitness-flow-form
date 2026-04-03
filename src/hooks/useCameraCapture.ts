@@ -12,6 +12,7 @@ import { processBodyCompScan } from '@/lib/ai/ocrEngine';
 import { LandmarkResult } from '@/lib/ai/postureLandmarks';
 import type Webcam from 'react-webcam';
 import { logger } from '@/lib/utils/logger';
+import { playCompanionShutterClick } from '@/lib/utils/companionShutterClick';
 
 interface UseCameraCaptureOptions {
   sessionId: string | undefined;
@@ -20,7 +21,6 @@ interface UseCameraCaptureOptions {
   onAudioFeedback?: (text: string) => void;
   onSequenceComplete?: () => void;
   onNextView?: (nextIdx: number) => void;
-  shutterAudio: React.RefObject<HTMLAudioElement | null>;
 }
 
 // Helper to log to Firestore
@@ -52,7 +52,6 @@ export function useCameraCapture({
   onAudioFeedback,
   onSequenceComplete,
   onNextView,
-  shutterAudio,
 }: UseCameraCaptureOptions): UseCameraCaptureResult {
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(0);
@@ -94,11 +93,8 @@ export function useCameraCapture({
 
       // Initiating sync for view
 
-      // Shutter sound
       try {
-        if (shutterAudio.current) {
-          void shutterAudio.current.play().catch((e) => logger.warn('[AUDIO] Shutter failed:', e));
-        }
+        playCompanionShutterClick();
       } catch (e) {
         logger.warn('[AUDIO] Shutter error:', e);
       }
@@ -194,7 +190,7 @@ export function useCameraCapture({
         isCapturingRef.current = false;
       }
     },
-    [sessionId, mode, views, onAudioFeedback, onSequenceComplete, toast, shutterAudio]
+    [sessionId, mode, views, onAudioFeedback, onSequenceComplete, toast]
   );
 
   const handleApplyOcr = useCallback(async () => {

@@ -66,7 +66,14 @@ export function usePoseDetection({
   const viewIdxRef = useRef(0);
   const lastAudioFeedbackRef = useRef(0);
   const lastInferMsRef = useRef(0);
+  const lastBrightnessCheckRef = useRef(0);
+  const lastBrightnessWarningRef = useRef(0);
+  const brightnessCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const rafRef = useRef<number | null>(null);
+  const BRIGHTNESS_CHECK_INTERVAL_MS = 3000;
+  const BRIGHTNESS_WARNING_COOLDOWN_MS = 15000;
+  const MIN_BRIGHTNESS = 50;
+  const MAX_BRIGHTNESS = 220;
 
   useEffect(() => {
     viewIdxRef.current = viewIdx;
@@ -155,27 +162,36 @@ export function usePoseDetection({
 
       let message = 'Perfect, hold still';
       let shortMessage = 'READY';
+      let audioMessage = 'Looking good. Hold still for me.';
       let isReady = missingParts.length === 0 && !tooClose && !tooFar && !notCentered && !outOfFrame;
 
       if (outOfFrame) {
         message = 'Please stay inside the box';
         shortMessage = 'OUT OF FRAME';
+        audioMessage = 'I need you inside the green frame. Just shuffle back into the box for me.';
         isReady = false;
       } else if (missingParts.length > 0) {
         message = `Full body must be visible (Missing: ${missingParts.join(', ')})`;
         shortMessage = 'INCOMPLETE';
+        audioMessage = missingParts.length === 1
+          ? `I can't quite see your ${missingParts[0]}. Can you step back a little so I can see your whole body?`
+          : "I can't see your full body just yet. Take a small step back so everything's in frame.";
         isReady = false;
       } else if (tooClose) {
         message = "You're too close, step back";
         shortMessage = 'TOO CLOSE';
+        audioMessage = "You're a bit close. Take a step back for me.";
         isReady = false;
       } else if (tooFar) {
         message = "You're too far, step forward";
         shortMessage = 'TOO FAR';
+        audioMessage = "You're a little far away. Step forward just a touch.";
         isReady = false;
       } else if (notCentered) {
-        message = bodyCenter < 0.5 ? 'Move to your right' : 'Move to your left';
+        const direction = bodyCenter < 0.5 ? 'right' : 'left';
+        message = `Move to your ${direction}`;
         shortMessage = 'CENTER BODY';
+        audioMessage = `Almost there. Just shuffle a little to your ${direction}.`;
         isReady = false;
       }
 
@@ -207,7 +223,7 @@ export function usePoseDetection({
         Date.now() - lastAudioFeedbackRef.current > CONFIG.COMPANION.AUDIO.FEEDBACK_INTERVAL_MS &&
         onAudioFeedback
       ) {
-        onAudioFeedback(message);
+        onAudioFeedback(audioMessage);
         lastAudioFeedbackRef.current = Date.now();
       }
     },
@@ -219,10 +235,19 @@ export function usePoseDetection({
     onPoseResultsRef.current = onPoseResults;
   }, [onPoseResults]);
 
+  const onAudioFeedbackRef = useRef(onAudioFeedback);
+  const suppressAudioFeedbackRef = useRef(suppressAudioFeedback);
+  const isWaitingForPositionRef = useRef(isWaitingForPosition);
+  useEffect(() => { onAudioFeedbackRef.current = onAudioFeedback; }, [onAudioFeedback]);
+  useEffect(() => { suppressAudioFeedbackRef.current = suppressAudioFeedback; }, [suppressAudioFeedback]);
+  useEffect(() => { isWaitingForPositionRef.current = isWaitingForPosition; }, [isWaitingForPosition]);
+
   const minIntervalMs = 1000 / CONFIG.AI.MEDIAPIPE.LIVE_POSE_TARGET_FPS;
 
   useEffect(() => {
-    if (mode !== 'posture' || !isAuthorized || disablePosePipeline || !webcamVideo) {
+    const skipPose =
+      !isAuthorized || !webcamVideo || (mode === 'posture' && disablePosePipeline);
+    if (skipPose) {
       if (rafRef.current != null) {
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
@@ -261,6 +286,54 @@ export function usePoseDetection({
             logger.error('[POSE] detectForVideo error:', e);
           }
         }
+
+        const wallNow = Date.now();
+        if (
+          wallNow - lastBrightnessCheckRef.current >= BRIGHTNESS_CHECK_INTERVAL_MS &&
+          webcamVideo.readyState >= 2
+        ) {
+          lastBrightnessCheckRef.current = wallNow;
+          try {
+            if (!brightnessCanvasRef.current) {
+              brightnessCanvasRef.current = document.createElement('canvas');
+            }
+            const c = brightnessCanvasRef.current;
+            const sampleW = 64;
+            const sampleH = 48;
+            c.width = sampleW;
+            c.height = sampleH;
+            const ctx = c.getContext('2d', { willReadFrequently: true });
+            if (ctx) {
+              ctx.drawImage(webcamVideo, 0, 0, sampleW, sampleH);
+              const imgData = ctx.getImageData(0, 0, sampleW, sampleH);
+              const px = imgData.data;
+              let totalLum = 0;
+              const pixelCount = sampleW * sampleH;
+              for (let i = 0; i < px.length; i += 4) {
+                totalLum += 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+              }
+              const avgBrightness = totalLum / pixelCount;
+
+              if (
+                wallNow - lastBrightnessWarningRef.current >= BRIGHTNESS_WARNING_COOLDOWN_MS &&
+                onAudioFeedbackRef.current &&
+                !suppressAudioFeedbackRef.current &&
+                isWaitingForPositionRef.current
+              ) {
+                if (avgBrightness < MIN_BRIGHTNESS) {
+                  lastBrightnessWarningRef.current = wallNow;
+                  onAudioFeedbackRef.current("It's a bit dark in here. Can you turn on a light or move somewhere brighter?");
+                } else if (avgBrightness > MAX_BRIGHTNESS) {
+                  lastBrightnessWarningRef.current = wallNow;
+                  onAudioFeedbackRef.current("The lighting is very bright. Try to avoid direct sunlight or move to a spot with even lighting.");
+                }
+              }
+            }
+          } catch {
+            /* brightness check is best-effort */
+          }
+        }
+
         rafRef.current = requestAnimationFrame(tick);
       };
 

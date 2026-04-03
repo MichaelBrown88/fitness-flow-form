@@ -9,7 +9,8 @@ import { computeScores, type ScoreSummary } from '@/lib/scoring';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { PostureAnalysisViewer } from './PostureAnalysisViewer';
+import { PostureClientPostureSection } from './posture/PostureClientPostureSection';
+import { PostureTrainerPostureSection } from './posture/PostureTrainerPostureSection';
 import { Activity, AlertCircle, CheckCircle2, TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -439,36 +440,31 @@ export function MovementPostureMobility({ formData, scores, standalone = false, 
               <Card className="p-4 sm:p-5 md:p-6 border-none bg-card ring-1 ring-border">
                 <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6">
                   <h4 className="text-xs sm:text-sm font-bold text-foreground">Posture Analysis</h4>
-                  {/* Only show interactive buttons if not in standalone/public mode */}
-                  {!standalone && (
-                    <div className="flex items-center gap-2">
-                      <Badge className="glass-button-active text-xs">
-                        {Object.keys(formData.postureAiResults || {}).length} Views
-                      </Badge>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleReanalyze}
-                        disabled={isReanalyzing}
-                        className="text-xs h-9 sm:h-8"
-                      >
-                        <RefreshCw className={`w-3 h-3 mr-1 sm:mr-1.5 ${isReanalyzing ? 'animate-spin' : ''}`} />
-                        {isReanalyzing ? 'Re-analyzing...' : 'Re-analyze'}
-                      </Button>
-                    </div>
-                  )}
-                  {/* Show view count badge in standalone mode */}
-                  {standalone && (
-                    <Badge className="glass-button-active text-xs">
-                      {Object.keys(formData.postureAiResults || {}).length} Views
-                    </Badge>
+                  {!standalone ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleReanalyze}
+                      disabled={isReanalyzing}
+                      className="text-xs h-9 sm:h-8"
+                    >
+                      <RefreshCw className={`w-3 h-3 mr-1 sm:mr-1.5 ${isReanalyzing ? 'animate-spin' : ''}`} />
+                      {isReanalyzing ? 'Re-analyzing...' : 'Re-analyze'}
+                    </Button>
+                  ) : (
+                    <span className="w-4 shrink-0" aria-hidden />
                   )}
                 </div>
-                <PostureAnalysisViewer 
+                <PostureClientPostureSection
                   postureResults={formData.postureAiResults || {}}
                   postureImages={postureImages}
-                  previousPostureResults={previousFormData?.postureAiResults}
                 />
+                {!standalone && (
+                  <PostureTrainerPostureSection
+                    postureResults={formData.postureAiResults || {}}
+                    postureImages={postureImages}
+                  />
+                )}
               </Card>
             )}
       

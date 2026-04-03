@@ -391,8 +391,8 @@ export async function handleCreateLandingGuestCheckoutSession(
     mode: 'subscription',
     payment_method_types: ['card'],
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${baseUrl}/pricing?guest_checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${baseUrl}/pricing?guest_checkout=cancel`,
+    success_url: `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${baseUrl}/checkout/cancel`,
     metadata: meta,
     subscription_data: {
       metadata: { ...meta },
@@ -555,6 +555,13 @@ export async function handleCreateBrandingCheckoutSession(
 // stripeWebhook — HTTP function handler
 // ---------------------------------------------------------------------------
 import type { Request, Response } from 'express';
+import {
+  alertNewSubscription,
+  alertSubscriptionCancelled,
+  alertPaymentFailed,
+  alertTrialEnding,
+} from './slackBillingAlerts';
+import { sendTrialEndingSoonEmail } from './trialNudges';
 
 export async function handleStripeWebhook(req: Request, res: Response) {
   const webhookSecret = resolveWebhookSecret();
@@ -655,6 +662,14 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         }
         await db.doc(`organizations/${orgId}`).update(updateData);
         console.log(`[Stripe Webhook] checkout.session.completed — org ${orgId} activated`);
+
+        const orgSnap = await db.doc(`organizations/${orgId}`).get();
+        const orgName = orgSnap.data()?.name as string | undefined;
+        const tierLabel = capacityTierId || 'plan';
+        const amtDisplay = amountCents > 0
+          ? new Intl.NumberFormat('en-GB', { style: 'currency', currency, maximumFractionDigits: 2 }).format(amountCents / (currency === 'KWD' ? 1000 : 100)) + '/mo'
+          : undefined;
+        alertNewSubscription({ orgId, orgName, tierName: tierLabel, amountDisplay: amtDisplay });
       }
 
       if (orgId && session.payment_status === 'paid' && !session.subscription && session.metadata?.customBranding === 'true') {
@@ -760,9 +775,9 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         });
         console.log(`[Stripe Webhook] subscription.deleted — org ${orgId} cancelled`);
 
-        // Notify the org owner that the subscription has been cancelled
         const orgSnap = await db.doc(`organizations/${orgId}`).get();
-        const ownerId: string | undefined = orgSnap.data()?.ownerId;
+        const orgData = orgSnap.data();
+        const ownerId: string | undefined = orgData?.ownerId;
         if (ownerId) {
           await db.collection(`notifications/${ownerId}/items`).add({
             type: 'subscription_cancelled',
@@ -775,6 +790,10 @@ export async function handleStripeWebhook(req: Request, res: Response) {
             actionUrl: '/billing',
           });
         }
+
+        const cancelDetails = (subscription as unknown as { cancellation_details?: { reason?: string; comment?: string } }).cancellation_details;
+        const reason = cancelDetails?.comment || cancelDetails?.reason || undefined;
+        alertSubscriptionCancelled({ orgId, orgName: orgData?.name as string | undefined, reason });
       }
       break;
     }
@@ -809,7 +828,8 @@ export async function handleStripeWebhook(req: Request, res: Response) {
       console.log(`[Stripe Webhook] invoice.payment_failed — org ${orgId} invoice ${invoice.id}`);
 
       const orgSnap = await db.doc(`organizations/${orgId}`).get();
-      const ownerId: string | undefined = orgSnap.data()?.ownerId;
+      const orgData = orgSnap.data();
+      const ownerId: string | undefined = orgData?.ownerId;
       if (ownerId) {
         await db.collection(`notifications/${ownerId}/items`).add({
           type: 'invoice_payment_failed',
@@ -822,6 +842,19 @@ export async function handleStripeWebhook(req: Request, res: Response) {
           actionUrl: '/billing',
         });
       }
+
+      const attemptCount = (invoice as unknown as { attempt_count?: number }).attempt_count;
+      const nextAttempt = (invoice as unknown as { next_payment_attempt?: number }).next_payment_attempt;
+      const nextRetryStr = nextAttempt
+        ? new Date(nextAttempt * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+        : undefined;
+      alertPaymentFailed({
+        orgId,
+        orgName: orgData?.name as string | undefined,
+        invoiceId: invoice.id,
+        attemptCount: attemptCount ?? undefined,
+        nextRetry: nextRetryStr,
+      });
       break;
     }
 
@@ -876,8 +909,29 @@ export async function handleStripeWebhook(req: Request, res: Response) {
       break;
     }
 
+    case 'customer.subscription.trial_will_end': {
+      const subscription = event.data.object as Stripe.Subscription;
+      const orgId = subscription.metadata?.organizationId;
+      if (orgId) {
+        const trialEnd = subscription.trial_end
+          ? new Date(subscription.trial_end * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+          : 'in 3 days';
+        const orgSnap = await db.doc(`organizations/${orgId}`).get();
+        const orgData = orgSnap.data();
+        alertTrialEnding({ orgId, orgName: orgData?.name as string | undefined, trialEnd });
+
+        try {
+          await sendTrialEndingSoonEmail(orgId, 3);
+        } catch (err) {
+          console.error(`[Stripe Webhook] trial_will_end email failed for org ${orgId}:`, err);
+        }
+
+        console.log(`[Stripe Webhook] trial_will_end — org ${orgId}, ends ${trialEnd}`);
+      }
+      break;
+    }
+
     default:
-      // Unhandled event type — log but don't error
       console.log(`[Stripe Webhook] Unhandled event type: ${event.type}`);
   }
 

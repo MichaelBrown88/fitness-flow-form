@@ -233,10 +233,10 @@ export function PlatformDashboardAdminTab({
             {Object.entries(dependencies.packages).map(([name, pkg]) => (
               <div
                 key={name}
-                className={`flex items-center justify-between p-3 rounded-xl border text-xs ${
+                className={`flex items-center justify-between rounded-xl border p-3 text-xs ${
                   pkg.needsUpdate
-                    ? 'bg-amber-500/10 border-amber-500/30'
-                    : 'bg-muted/30 border-border/50'
+                    ? 'border-amber-500/30 bg-amber-500/10'
+                    : 'border-admin-border/70 bg-admin-surface-inset'
                 }`}
               >
                 <span className="font-mono text-admin-fg">{name}</span>
@@ -266,15 +266,15 @@ export function PlatformDashboardAdminTab({
       </div>
 
       {/* Feature Kill Switches */}
-      <div className="bg-foreground/50 border border-border rounded-2xl p-6">
-        <div className="flex items-center justify-between mb-6">
+      <div className="rounded-2xl border border-admin-border bg-admin-card/80 p-6">
+        <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-red-600/20 flex items-center justify-center">
-              <Power className="w-5 h-5 text-red-400" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-600/20">
+              <Power className="h-5 w-5 text-red-400" />
             </div>
             <div>
-              <h3 className="text-white font-semibold">Feature Kill Switches</h3>
-              <p className="text-xs text-muted-foreground">Toggle AI services globally</p>
+              <h3 className="font-semibold text-white">Feature Kill Switches</h3>
+              <p className="text-xs text-admin-fg-muted">Toggle AI services globally</p>
             </div>
           </div>
           {platformConfig.maintenance.is_maintenance_mode && (
@@ -321,8 +321,8 @@ export function PlatformDashboardAdminTab({
       </div>
 
       {/* Maintenance Mode Controls */}
-      <div className="bg-foreground/50 border border-border rounded-2xl p-6">
-        <div className="mb-6 p-4 rounded-xl border border-border bg-muted/30">
+      <div className="rounded-2xl border border-admin-border bg-admin-card/80 p-6">
+        <div className="mb-6 rounded-xl border border-admin-border/80 bg-admin-surface-inset p-4">
           <div className="flex items-center justify-between gap-4 mb-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-amber-600/20 flex items-center justify-center">
@@ -330,7 +330,7 @@ export function PlatformDashboardAdminTab({
               </div>
               <div>
                 <h4 className="text-sm font-medium text-white">Maintenance Mode</h4>
-                <p className="text-xs text-muted-foreground">Toggle maintenance and set a message for end users</p>
+                <p className="text-xs text-admin-fg-muted">Toggle maintenance and set a message for end users</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -359,7 +359,7 @@ export function PlatformDashboardAdminTab({
                   value={maintenanceMessage || platformConfig.maintenance.message || ''}
                   onChange={(e) => setMaintenanceMessage(e.target.value)}
                   placeholder="We are performing scheduled maintenance..."
-                  className="mt-1 bg-foreground border-border text-white"
+                  className="mt-1 border-admin-border bg-admin-surface-inset text-white"
                 />
               </div>
               <div>
@@ -408,10 +408,10 @@ export function PlatformDashboardAdminTab({
       </div>
 
       {/* Admin Audit Log */}
-      <div className="bg-foreground/50 border border-border rounded-2xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-border">
-          <h3 className="text-white font-semibold">Admin Audit Log</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">Security and platform administration events</p>
+      <div className="overflow-hidden rounded-2xl border border-admin-border bg-admin-card/80">
+        <div className="border-b border-admin-border px-5 py-4">
+          <h3 className="font-semibold text-white">Admin Audit Log</h3>
+          <p className="mt-0.5 text-xs text-admin-fg-muted">Security and platform administration events</p>
         </div>
         {auditLogEntries.length === 0 ? (
           <div className="px-5 py-12 text-center text-muted-foreground text-sm">No audit entries yet</div>
@@ -443,7 +443,12 @@ export function PlatformDashboardAdminTab({
             </div>
             {hasMoreAuditLogs && (
               <div className="px-5 py-4 flex justify-center border-t border-border">
-                <Button variant="outline" size="sm" onClick={loadMoreAuditLogs} className="border-border text-muted-foreground hover:bg-foreground/90">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={loadMoreAuditLogs}
+                  className="border-admin-border text-admin-fg-muted hover:bg-admin-surface-inset hover:text-white"
+                >
                   Load more
                 </Button>
               </div>
@@ -454,9 +459,9 @@ export function PlatformDashboardAdminTab({
 
       {/* Platform Admins (manage_admins only) */}
       {admin?.permissions?.includes('manage_admins') && (
-        <div className="bg-foreground/50 border border-border rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-white font-semibold">Platform Admins</h3>
+        <div className="rounded-2xl border border-admin-border bg-admin-card/80 p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="font-semibold text-white">Platform Admins</h3>
             <Button size="sm" onClick={() => setShowAddDialog(true)} className="bg-indigo-600 hover:bg-indigo-700">
               <UserPlus className="w-4 h-4 mr-2" />
               Add Admin
@@ -464,10 +469,13 @@ export function PlatformDashboardAdminTab({
           </div>
           <div className="space-y-3">
             {platformAdmins.map((a) => (
-              <div key={a.uid} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border">
+              <div
+                key={a.uid}
+                className="flex items-center justify-between rounded-lg border border-admin-border/70 bg-admin-surface-inset p-3"
+              >
                 <div>
                   <p className="text-sm font-medium text-white">{a.displayName || a.email}</p>
-                  <p className="text-xs text-muted-foreground font-mono">{a.email}</p>
+                  <p className="font-mono text-xs text-slate-300">{a.email}</p>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {PLATFORM_PERMISSIONS.map((perm) => (
                       <label key={perm} className="flex items-center gap-1.5 cursor-pointer">
@@ -478,7 +486,7 @@ export function PlatformDashboardAdminTab({
                             handleUpdatePlatformAdminPermissions(a.uid, next);
                           }}
                         />
-                        <span className="text-xs text-muted-foreground">{PERMISSION_LABELS[perm]}</span>
+                        <span className="text-xs text-slate-300">{PERMISSION_LABELS[perm]}</span>
                       </label>
                     ))}
                   </div>
@@ -497,7 +505,7 @@ export function PlatformDashboardAdminTab({
           </div>
 
           <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-            <DialogContent className="bg-foreground border-border text-white max-w-md">
+            <DialogContent className="max-w-md border-admin-border bg-admin-card text-white">
               <DialogHeader>
                 <DialogTitle>Add Platform Admin</DialogTitle>
               </DialogHeader>
@@ -508,7 +516,7 @@ export function PlatformDashboardAdminTab({
                     value={addEmail}
                     onChange={(e) => setAddEmail(e.target.value)}
                     placeholder="admin@example.com"
-                    className="mt-1 bg-foreground/90 border-border text-white"
+                    className="mt-1 border-admin-border bg-admin-surface-inset text-white"
                   />
                 </div>
                 <div>
@@ -517,7 +525,7 @@ export function PlatformDashboardAdminTab({
                     value={addDisplayName}
                     onChange={(e) => setAddDisplayName(e.target.value)}
                     placeholder="Platform Admin"
-                    className="mt-1 bg-foreground/90 border-border text-white"
+                    className="mt-1 border-admin-border bg-admin-surface-inset text-white"
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">They will need to visit /admin/login to set their password.</p>

@@ -1,8 +1,6 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Check, Camera as CameraIcon, Smartphone, CheckCircle2 } from 'lucide-react';
-import { isMobile } from 'react-device-detect';
-
+import { Check, Smartphone, CheckCircle2 } from 'lucide-react';
 import type { FieldValue } from '../hooks/useFieldControl';
 
 interface FieldAIPostureProps {
@@ -11,7 +9,6 @@ interface FieldAIPostureProps {
   options?: Array<{ value: string; label: string }>;
   hasResults: boolean;
   handleChange: (val: FieldValue) => void;
-  onShowCamera?: (mode: 'ocr' | 'posture') => void;
   onShowPostureCompanion?: () => void;
 }
 
@@ -21,7 +18,6 @@ export const FieldAIPosture: React.FC<FieldAIPostureProps> = ({
   options,
   hasResults,
   handleChange,
-  onShowCamera,
   onShowPostureCompanion,
 }) => {
   if (value !== 'ai') {
@@ -41,28 +37,18 @@ export const FieldAIPosture: React.FC<FieldAIPostureProps> = ({
           <p className="text-on-brand-tint text-sm font-medium max-w-xs mx-auto">
             {hasResults 
               ? "Scan complete! You can re-scan if needed or continue to the next step."
-              : "Connect your iPhone to perform a multi-view posture scan with real-time AI grading."}
+              : "Open guided capture: film on this device (Gemini Live + analysis) or use a second device via QR."}
           </p>
         </div>
         
         <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm">
-          {isMobile ? (
-            <Button 
-              onClick={() => onShowCamera?.('posture')}
-              className="flex-1 h-14 rounded-2xl bg-primary text-primary-foreground font-bold text-xs gap-3 shadow-lg shadow-primary/20"
-            >
-              <CameraIcon className="h-5 w-5" />
-              Start Posture Scan
-            </Button>
-          ) : (
-            <Button 
-              onClick={onShowPostureCompanion}
-              className="flex-1 h-14 rounded-2xl bg-primary text-primary-foreground font-bold text-xs gap-3 shadow-lg shadow-primary/20"
-            >
-              <Smartphone className="h-5 w-5" />
-              Open Remote Mode
-            </Button>
-          )}
+          <Button 
+            onClick={onShowPostureCompanion}
+            className="flex-1 h-14 rounded-2xl bg-primary text-primary-foreground font-bold text-xs gap-3 shadow-lg shadow-primary/20"
+          >
+            <Smartphone className="h-5 w-5" />
+            Start posture scan
+          </Button>
         </div>
 
         {hasResults && (

@@ -5,7 +5,6 @@ import {
   type LiveSession,
 } from '@/services/liveSessions';
 import { generatePlaceholderWithGreenLines } from '@/lib/utils/postureOverlay';
-import { prewarmMediaPipe } from '@/lib/ai/mediapipeSingleton';
 import type { UserProfile } from '@/types/auth';
 import { VIEWS } from './types';
 
@@ -59,11 +58,6 @@ export function usePostureCompanionSession({
       cancelled = true;
     };
   }, [isOpen, profile]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    prewarmMediaPipe();
-  }, [isOpen]);
 
   const companionUrl = session
     ? `${window.location.origin}/companion/${session.id}?token=${session.companionToken}`

@@ -6,10 +6,16 @@ import { CreditCard, Users, ArrowLeft, ExternalLink } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { getDb } from '@/services/firebase';
 import { formatPrice, getLocaleForRegion } from '@/lib/utils/currency';
-import { REGION_TO_CURRENCY, DEFAULT_REGION, DEFAULT_CURRENCY } from '@/constants/pricing';
+import {
+  REGION_TO_CURRENCY,
+  DEFAULT_REGION,
+  DEFAULT_CURRENCY,
+  FREE_TIER_CLIENT_LIMIT,
+} from '@/constants/pricing';
 import type { Region } from '@/constants/pricing';
 import { logger } from '@/lib/utils/logger';
 import { ROUTES } from '@/constants/routes';
+import { BillingStripeSubscribeCard } from '@/components/org/billing/BillingStripeSubscribeCard';
 
 interface SubscriptionInfo {
   plan: string;
@@ -29,9 +35,23 @@ interface OrgBillingData {
   name: string;
   subscription: SubscriptionInfo;
   stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  orgType?: string;
+  packageTrack?: string;
   coachCount: number;
   statsClientCount: number;
   assessmentCredits?: number;
+}
+
+/** Minimum desired clients for capacity tier when starting solo checkout (e.g. third client on free tier). */
+function checkoutClientTargetForStripe(org: OrgBillingData): number {
+  const cap = org.subscription.clientCap ?? FREE_TIER_CLIENT_LIMIT;
+  const stats = org.statsClientCount;
+  const isSolo = org.orgType === 'solo_coach' || org.packageTrack === 'solo';
+  if (isSolo) {
+    return Math.min(300, Math.max(cap, stats + 1, FREE_TIER_CLIENT_LIMIT + 1));
+  }
+  return Math.max(1, cap);
 }
 
 function PlanBadge({ status }: { status: string }) {
@@ -64,10 +84,30 @@ function BillingPage() {
       if (!snap.exists()) return;
       const data = snap.data();
       const sub = data.subscription ?? {};
+      const rootOrgType = typeof data.type === 'string' ? data.type : undefined;
+      const subType = typeof sub.type === 'string' ? sub.type : undefined;
+      const packageTrackExplicit = typeof sub.packageTrack === 'string' ? sub.packageTrack : undefined;
+      /** Many org docs set gym/solo only on subscription.type; subscribe UI reads organizations.type or subscription.packageTrack. */
+      const packageTrack =
+        packageTrackExplicit ??
+        (subType === 'gym' ? 'gym' : subType === 'solo' ? 'solo' : undefined);
+      const orgType =
+        rootOrgType ??
+        (subType === 'gym_chain' ? 'gym_chain' : subType === 'solo_coach' ? 'solo_coach' : undefined);
       const region = (sub.region as Region) ?? DEFAULT_REGION;
       const currency = sub.currency ?? REGION_TO_CURRENCY[region];
       const amountCents = sub.amountCents ?? sub.amountFils;
       const clientCap = sub.clientCap ?? sub.clientSeats ?? sub.clientCount ?? 2;
+      const stripeRaw = data.stripe;
+      // organizations.stripe is an untyped map from Firestore; narrow fields without trusting shape.
+      const stripeObj =
+        stripeRaw && typeof stripeRaw === 'object'
+          ? (stripeRaw as Record<string, unknown>)
+          : undefined;
+      const stripeCustomerId =
+        typeof stripeObj?.stripeCustomerId === 'string' ? stripeObj.stripeCustomerId : undefined;
+      const stripeSubscriptionId =
+        typeof stripeObj?.stripeSubscriptionId === 'string' ? stripeObj.stripeSubscriptionId : undefined;
       setOrgData({
         name: data.name ?? '',
         subscription: {
@@ -83,7 +123,10 @@ function BillingPage() {
           amountCents: amountCents ?? 0,
           amountFils: sub.amountFils ?? 0,
         },
-        stripeCustomerId: data.stripe?.stripeCustomerId,
+        stripeCustomerId,
+        stripeSubscriptionId,
+        orgType,
+        packageTrack,
         coachCount: data._counts?.coaches ?? 1,
         statsClientCount: typeof data.stats?.clientCount === 'number' ? data.stats.clientCount : 0,
         assessmentCredits: typeof data.assessmentCredits === 'number' ? data.assessmentCredits : undefined,
@@ -158,6 +201,17 @@ function BillingPage() {
         <h1 className="text-2xl font-bold text-foreground mb-8">Billing & Subscription</h1>
 
         <div className="space-y-6">
+          {profile?.organizationId && orgData ? (
+            <BillingStripeSubscribeCard
+              organizationId={profile.organizationId}
+              region={region}
+              clientTarget={checkoutClientTargetForStripe(orgData)}
+              subscriptionStatus={orgData.subscription.status}
+              stripeSubscriptionId={orgData.stripeSubscriptionId}
+              orgType={orgData.orgType}
+              packageTrack={orgData.packageTrack}
+            />
+          ) : null}
           <div className="bg-background rounded-xl border border-border p-6">
             <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-4">Current Plan</h2>
             <div className="flex items-start justify-between">

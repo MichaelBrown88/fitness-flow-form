@@ -31,17 +31,14 @@ export function useCameraHandler({
   onPhaseChange,
 }: UseCameraHandlerProps) {
   const { toast } = useToast();
-
   // Camera state
-  const [showCamera, setShowCamera] = useState<false | 'ocr' | 'posture'>(false);
+  const [showCamera, setShowCamera] = useState<false | 'ocr'>(false);
   const [showPostureCompanion, setShowPostureCompanion] = useState(false);
   const [showBodyCompCompanion, setShowBodyCompCompanion] = useState(false);
   const [ocrReviewData, setOcrReviewData] = useState<Partial<FormData> | null>(null);
   const [isProcessingOcr, setIsProcessingOcr] = useState(false);
   const [processingMode, setProcessingMode] = useState<'ocr' | 'posture' | null>(null);
   const [postureRetakeWarning, setPostureRetakeWarning] = useState<string | null>(null);
-  const [postureStep, setPostureStep] = useState<number>(0);
-
   const clearPostureRetakeWarning = useCallback(() => setPostureRetakeWarning(null), []);
 
   const handleCapture = useCallback(async (imageSrc: string) => {
@@ -73,53 +70,8 @@ export function useCameraHandler({
         setIsProcessingOcr(false);
         setProcessingMode(null);
       }
-    } else if (showCamera === 'posture') {
-      const views: ('front' | 'side-right' | 'side-left' | 'back')[] = ['front', 'side-right', 'side-left', 'back'];
-      const currentView = views[postureStep] || 'front';
-      
-      toast({ title: `${currentView.toUpperCase()} captured`, description: "Processing image alignment..." });
-      
-      try {
-        setProcessingMode('posture');
-        setIsProcessingOcr(true);
-        
-        toast({ title: "Processing posture...", description: "Aligning, calculating, and analyzing..." });
-        const { processPostureImage } = await import('@/services/postureProcessing');
-        const processed = await processPostureImage(imageSrc, currentView, undefined, 'this-device');
-        
-        const compressed = await compressImageForDisplay(processed.imageWithDeviations, 800, 0.8);
-        const analysis = processed.analysis;
-        
-        const suggestions: Partial<FormData> = {};
-        
-        const imageField = `postureImage${currentView.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('')}` as keyof FormData;
-        (suggestions as Record<string, unknown>)[imageField] = compressed.compressed;
-
-        if (currentView === 'side-right' || currentView === 'side-left') {
-          suggestions.postureHeadOverall = [analysis.forward_head.status.toLowerCase().includes('neutral') ? 'neutral' : 'forward-head'];
-          suggestions.postureBackOverall = [analysis.kyphosis.status.toLowerCase().includes('severe') ? 'increased-kyphosis' : 'neutral'];
-        } else if (currentView === 'front') {
-          suggestions.postureShouldersOverall = [analysis.shoulder_alignment.status.toLowerCase().includes('neutral') ? 'neutral' : 'rounded'];
-        }
-
-        updateFormData(suggestions);
-
-        if (postureStep < views.length - 1) {
-          setPostureStep(prev => prev + 1);
-        } else {
-          setShowCamera(false);
-          toast({ title: "Posture analysis complete", description: "Aligned images and findings have been applied." });
-        }
-      } catch (err) {
-        logger.error('Local posture analysis error:', err);
-        toast({ title: "Analysis failed", description: "Could not analyze posture image.", variant: "destructive" });
-        setShowCamera(false);
-      } finally {
-        setIsProcessingOcr(false);
-        setProcessingMode(null);
-      }
     }
-  }, [showCamera, postureStep, toast, updateFormData]);
+  }, [showCamera, toast, updateFormData]);
 
   const applyOcrData = useCallback(() => {
     if (ocrReviewData) {
@@ -168,8 +120,6 @@ export function useCameraHandler({
     processingMode,
     postureRetakeWarning,
     clearPostureRetakeWarning,
-    postureStep,
-    setPostureStep,
     // Handlers
     handleCapture,
     applyOcrData,

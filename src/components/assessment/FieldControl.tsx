@@ -1,12 +1,11 @@
 import React from 'react';
 import ParQQuestionnaire from '@/components/ParQQuestionnaire';
-import { Check, Smartphone, Camera as CameraIcon, CheckCircle2 } from 'lucide-react';
+import { Check, Smartphone, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   RadioGroup,
   RadioGroupItem,
 } from '@/components/ui/radio-group';
-import { useIsMobile } from '@/hooks/use-mobile';
 
 // Hook
 import { useFieldControl } from './hooks/useFieldControl';
@@ -23,7 +22,7 @@ import type { PhaseField } from '@/lib/phaseConfig';
 
 interface FieldControlProps {
   field: PhaseField;
-  onShowCamera?: (mode: 'ocr' | 'posture') => void;
+  onShowCamera?: (mode: 'ocr') => void;
   onShowPostureCompanion?: () => void;
   onShowBodyCompCompanion?: () => void;
   onExitParQ?: () => void;
@@ -38,7 +37,6 @@ export function FieldControl({
   onExitParQ,
   onParQComplete,
 }: FieldControlProps) {
-  const isMobile = useIsMobile();
   const {
     localValue,
     setLocalValue,
@@ -108,28 +106,18 @@ export function FieldControl({
               <p className="text-foreground-secondary text-sm font-medium max-w-xs mx-auto">
                 {formData.postureAiResults 
                   ? "Scan complete! You can re-scan if needed or continue to the next step."
-                  : "Connect your iPhone to perform a multi-view posture scan with real-time AI grading."}
+                  : "Guided capture on this device or a second phone via QR — Gemini Live framing plus full analysis."}
               </p>
             </div>
             
             <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm">
-              {isMobile ? (
-                <Button 
-                  onClick={() => onShowCamera?.('posture')}
-                  className="flex-1 h-14 rounded-2xl bg-primary text-primary-foreground font-bold text-xs gap-3 shadow-lg shadow-primary/20"
-                >
-                  <CameraIcon className="h-5 w-5" />
-                  Start Posture Scan
-                </Button>
-              ) : (
-                <Button 
-                  onClick={onShowPostureCompanion}
-                  className="flex-1 h-14 rounded-2xl bg-primary text-primary-foreground font-bold text-xs gap-3 shadow-lg shadow-primary/20"
-                >
-                  <Smartphone className="h-5 w-5" />
-                  Open Remote Mode
-                </Button>
-              )}
+              <Button 
+                onClick={onShowPostureCompanion}
+                className="flex-1 h-14 rounded-2xl bg-primary text-primary-foreground font-bold text-xs gap-3 shadow-lg shadow-primary/20"
+              >
+                <Smartphone className="h-5 w-5" />
+                Start posture scan
+              </Button>
             </div>
 
             {formData.postureAiResults && (

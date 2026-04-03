@@ -88,17 +88,17 @@ export function LongitudinalInsightsCard({ insights }: Props) {
           <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-4 py-3 text-center">
             <p className="text-lg font-bold text-emerald-400">{improvedPct}%</p>
             <p className="text-xs text-admin-fg-muted mt-0.5">Improved</p>
-            <p className="text-[10px] text-muted-foreground">{clientsImproved} client{clientsImproved !== 1 ? 's' : ''}</p>
+            <p className="text-[10px] text-admin-fg-muted">{clientsImproved} client{clientsImproved !== 1 ? 's' : ''}</p>
           </div>
           <div className="rounded-lg bg-admin-card border border-admin-border px-4 py-3 text-center">
             <p className="text-lg font-bold text-admin-fg">{stablePct}%</p>
             <p className="text-xs text-admin-fg-muted mt-0.5">Stable</p>
-            <p className="text-[10px] text-muted-foreground">{clientsStable} client{clientsStable !== 1 ? 's' : ''}</p>
+            <p className="text-[10px] text-admin-fg-muted">{clientsStable} client{clientsStable !== 1 ? 's' : ''}</p>
           </div>
           <div className="rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-3 text-center">
             <p className="text-lg font-bold text-red-400">{declinedPct}%</p>
             <p className="text-xs text-admin-fg-muted mt-0.5">Declined</p>
-            <p className="text-[10px] text-muted-foreground">{clientsDeclined} client{clientsDeclined !== 1 ? 's' : ''}</p>
+            <p className="text-[10px] text-admin-fg-muted">{clientsDeclined} client{clientsDeclined !== 1 ? 's' : ''}</p>
           </div>
         </div>
       </div>

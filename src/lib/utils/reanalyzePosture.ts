@@ -10,6 +10,8 @@ import {
 } from '@/services/liveSessions';
 import { updatePostureAnalysis } from '@/services/assessmentHistory';
 import { auth, storage } from '@/services/firebase';
+import { validateOrganizationId } from '@/lib/utils/validateOrganizationId';
+import type { PostureAiContext } from '@/lib/ai/postureAnalysis';
 import { ref, getDownloadURL, getBytes } from 'firebase/storage';
 import { logger } from '@/lib/utils/logger';
 
@@ -90,7 +92,18 @@ export async function reanalyzeClientPosture(
                 imageDataUrl = imageUrl;
               }
               
-              const processed = await processPostureImage(imageDataUrl, view);
+              const postureAiContext: PostureAiContext | undefined =
+                user && organizationId
+                  ? { organizationId: validateOrganizationId(organizationId, undefined) }
+                  : undefined;
+              const processed = await processPostureImage(
+                imageDataUrl,
+                view,
+                undefined,
+                'manual',
+                undefined,
+                postureAiContext
+              );
               const analysis = processed.analysis;
               
               // Update the assessment document with new analysis

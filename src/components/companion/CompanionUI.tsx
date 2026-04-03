@@ -7,8 +7,9 @@ import React, { useRef } from 'react';
 import Webcam from 'react-webcam';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Camera, Loader2, RefreshCcw, Scan, X, ImagePlus } from 'lucide-react';
+import { Camera, Loader2, Scan, X, ImagePlus } from 'lucide-react';
 import { CONFIG } from '@/config';
+import { cn } from '@/lib/utils';
 
 const VIEWS = CONFIG.POSTURE_VIEWS;
 
@@ -41,25 +42,36 @@ interface CompanionUIProps {
   webcamRef: React.RefObject<Webcam>;
   onCapture: () => void;
   onStartSequence: () => void;
-  onCancelSequence?: () => void; // Cancel button handler
-  onFileUpload?: (file: File) => void; // Camera roll upload handler
+  onCancelSequence?: () => void;
+  onFileUpload?: (file: File) => void;
   ocrReviewData: Record<string, string> | null;
   setOcrReviewData: React.Dispatch<React.SetStateAction<Record<string, string> | null>>;
   onApplyOcr: () => Promise<void>;
   isProcessingOcr: boolean;
-  flowState?: 'permissions' | 'waiting_level' | 'waiting_pose' | 'ready' | 'capturing' | 'complete';
+  flowState?:
+    | 'permissions'
+    | 'waiting_level'
+    | 'waiting_pose'
+    | 'ready'
+    | 'capturing'
+    | 'processing'
+    | 'complete';
+  /** Posture: require phone vertical before Start Capture. */
+  blockStartCaptureUntilVertical?: boolean;
   guideBoxState?: { color: 'red' | 'amber' | 'green'; message: string };
-  /** Posture + Gemini Live: show status when connecting or after errors. */
   geminiConnectionStatus?: 'idle' | 'connecting' | 'open' | 'error';
   geminiConnectionError?: string | null;
-  onGeminiRetry?: () => void;
+  /** Call from a button tap; hook runs unlock + reconnect. */
+  onRetryGemini?: () => void;
+  /** After first Gemini audio chunk — hides pre-voice instruction line. */
+  voiceGuideStarted?: boolean;
 }
 
 export function CompanionUI({
   mode,
   viewIdx,
   facingMode,
-  setFacingMode,
+  setFacingMode: _setFacingMode,
   isVertical,
   hasPermission,
   requestPermission,
@@ -78,10 +90,12 @@ export function CompanionUI({
   onApplyOcr,
   isProcessingOcr,
   flowState = 'permissions',
+  blockStartCaptureUntilVertical = false,
   guideBoxState,
   geminiConnectionStatus,
-  geminiConnectionError,
-  onGeminiRetry,
+  geminiConnectionError = null,
+  onRetryGemini,
+  voiceGuideStarted = false,
 }: CompanionUIProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -90,7 +104,6 @@ export function CompanionUI({
     if (file && onFileUpload) {
       onFileUpload(file);
     }
-    // Reset input so the same file can be selected again
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -113,14 +126,12 @@ export function CompanionUI({
     segmentalLegRightKg: 'Right Leg (kg)',
   };
 
-  // Determine guide box color from flow state
   const getGuideBoxColor = () => {
     if (guideBoxState) {
       if (guideBoxState.color === 'green') return 'border-emerald-500 shadow-[0_0_30px_#10b98166]';
       if (guideBoxState.color === 'red') return 'border-red-500 shadow-[0_0_30px_#ef444466]';
       return 'border-amber-500 shadow-[0_0_30px_#f59e0b66]';
     }
-    // Fallback
     if (!isVertical) return 'border-red-500 shadow-[0_0_30px_#ef444466]';
     if (poseValidation.details?.outOfFrame) return 'border-red-500 shadow-[0_0_30px_#ef444466]';
     if (poseValidation.isReady) return 'border-emerald-500 shadow-[0_0_30px_#10b98166]';
@@ -198,7 +209,7 @@ export function CompanionUI({
   }
 
   return (
-    <div className="fixed inset-0 bg-black flex flex-col items-center justify-center overflow-hidden">
+    <div className="fixed inset-0 flex flex-col items-center justify-center overflow-hidden bg-black pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] min-h-[100dvh]">
       <Webcam
         audio={false}
         ref={webcamRef}
@@ -212,9 +223,7 @@ export function CompanionUI({
         className="h-full w-full object-contain z-0"
       />
 
-      {/* Minimal Header - view name + cancel button during sequence */}
-      <div className="absolute top-3 left-0 right-0 flex justify-between items-center z-20 px-4">
-        {/* Cancel button - only visible during capture sequence */}
+      <div className="absolute left-0 right-0 top-[max(0.75rem,env(safe-area-inset-top,0px))] flex items-center justify-between z-20 px-4">
         {isSequenceActive && onCancelSequence ? (
           <button
             onClick={onCancelSequence}
@@ -223,73 +232,101 @@ export function CompanionUI({
             <X className="h-5 w-5 text-white" />
           </button>
         ) : (
-          <div className="w-10" /> // Spacer for centering
+          <div className="w-10" aria-hidden />
         )}
-        
-        {/* View label */}
+
         <div className="px-4 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
           <span className="text-[10px] font-black text-white uppercase tracking-[0.15em]">
             {mode === 'bodycomp' ? 'BODY COMP REPORT' : VIEWS[viewIdx]?.label || 'Ready'}
           </span>
         </div>
-        
-        {/* Right spacer for centering */}
+
         <div className="w-10" />
       </div>
 
       {mode === 'posture' &&
+        hasPermission &&
+        !isSequenceActive &&
         geminiConnectionStatus &&
-        (geminiConnectionStatus === 'connecting' || geminiConnectionStatus === 'error') && (
-          <div className="absolute top-14 left-0 right-0 z-20 flex justify-center px-4 pointer-events-auto">
-            <div className="flex flex-col sm:flex-row items-center gap-2 max-w-md rounded-xl bg-black/75 backdrop-blur-sm border border-white/15 px-4 py-2 text-center">
-              {geminiConnectionStatus === 'connecting' && (
-                <span className="text-[11px] font-semibold text-white/90 flex items-center gap-2">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
-                  Connecting voice guide…
-                </span>
-              )}
-              {geminiConnectionStatus === 'error' && (
-                <>
-                  <span className="text-[11px] text-red-200/95">
-                    {geminiConnectionError || 'Voice guide unavailable'}
-                  </span>
-                  {onGeminiRetry ? (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      className="h-8 text-xs shrink-0 bg-background/20 text-foreground border-white/20 hover:bg-background/30"
-                      onClick={onGeminiRetry}
-                    >
-                      <RefreshCcw className="h-3.5 w-3.5 mr-1.5" />
-                      Retry
-                    </Button>
-                  ) : null}
-                </>
-              )}
+        geminiConnectionStatus !== 'open' &&
+        geminiConnectionStatus !== 'error' &&
+        flowState !== 'permissions' &&
+        (geminiConnectionStatus === 'connecting' || geminiConnectionStatus === 'idle') && (
+          <div className="absolute left-0 right-0 top-[calc(max(0.75rem,env(safe-area-inset-top,0px))+2.75rem)] z-20 flex justify-center px-4 pointer-events-none">
+            <div className="flex items-center gap-2 rounded-xl bg-black/75 backdrop-blur-sm border border-white/15 px-4 py-2">
+              <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0 text-white" />
+              <span className="text-[11px] font-semibold text-white/90">
+                {CONFIG.COMPANION.VOICE_GUIDE.CONNECTING_VOICE_GUIDE}
+              </span>
             </div>
           </div>
         )}
 
-      {/* Guide Box - Almost full height for maximum client visibility */}
+      {mode === 'posture' &&
+        hasPermission &&
+        !isSequenceActive &&
+        geminiConnectionStatus === 'error' &&
+        onRetryGemini && (
+          <div className="absolute left-4 right-4 z-[45] flex justify-center px-2" style={{ top: 'calc(max(0.75rem, env(safe-area-inset-top, 0px)) + 2.75rem)' }}>
+            <div className="w-full max-w-sm rounded-xl border border-red-500/40 bg-black/85 backdrop-blur-sm px-4 py-3 shadow-lg">
+              <p className="text-center text-[12px] font-medium leading-snug text-white/95">
+                Voice guide could not connect
+                {geminiConnectionError ? (
+                  <span className="mt-1 block text-[11px] font-normal text-white/70">{geminiConnectionError}</span>
+                ) : null}
+              </p>
+              <Button
+                type="button"
+                onClick={onRetryGemini}
+                className="mt-3 h-11 w-full rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90"
+              >
+                Try again
+              </Button>
+            </div>
+          </div>
+        )}
+
       {mode !== 'bodycomp' && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 pt-12">
-          {/* Guide box - wide and tall, almost full screen height */}
+        <div
+          className="pointer-events-none absolute left-0 right-0 z-10 flex justify-center"
+          style={{
+            top: 'calc(16px + env(safe-area-inset-top, 0px))',
+            bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
+          }}
+        >
           <div
-            className={`w-[85%] max-w-md border-[4px] rounded-3xl transition-all duration-300 ${getGuideBoxColor()}`}
-            style={{ height: 'calc(100vh - 60px)' }}
+            className={cn(
+              'h-full w-[58%] max-w-[min(58vw,320px)] rounded-3xl border-[4px] transition-all duration-300',
+              getGuideBoxColor()
+            )}
           />
         </div>
       )}
 
-      {/* Countdown Overlay */}
+      {mode === 'posture' &&
+        hasPermission &&
+        (flowState === 'waiting_level' || flowState === 'waiting_pose') && (
+          <div
+            className={cn(
+              'absolute left-4 right-4 z-[35] rounded-xl bg-black/60 px-3 py-2 text-center backdrop-blur-sm pointer-events-none transition-opacity duration-700',
+              voiceGuideStarted ? 'opacity-0' : 'opacity-100'
+            )}
+            style={{
+              bottom: 'calc(max(5.5rem, env(safe-area-inset-bottom, 0px) + 4.25rem))',
+            }}
+          >
+            <p className="text-[13px] font-medium leading-snug text-white/95">
+              Follow the voice guide — framing hints show in the border around the video.
+            </p>
+          </div>
+        )}
+
       {countdown !== null && mode !== 'bodycomp' && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/30 z-30 pointer-events-none">
           <span className="text-[200px] font-bold text-white drop-shadow-2xl">{countdown}</span>
         </div>
       )}
 
-      {/* Loading indicator */}
       {isPoseLoading && (
         <div className="absolute top-16 left-0 right-0 flex justify-center z-20 pointer-events-none">
           <div className="px-3 py-1 rounded-full bg-black/60 flex items-center gap-2">
@@ -299,7 +336,6 @@ export function CompanionUI({
         </div>
       )}
 
-      {/* Hidden file input for camera roll upload */}
       {mode === 'posture' && onFileUpload && (
         <input
           ref={fileInputRef}
@@ -310,10 +346,11 @@ export function CompanionUI({
         />
       )}
 
-      {/* Footer Controls - Only 2 buttons: Permission and Start Sequence */}
-      {/* Hide all buttons during sequence - only guide box colors and audio cues guide the client */}
       {!isSequenceActive && (
-        <div className="absolute bottom-6 left-0 right-0 flex flex-col items-center gap-3 z-40 px-6">
+        <div
+          className="absolute left-0 right-0 z-40 flex flex-col items-center gap-3 px-6"
+          style={{ bottom: 'max(1.25rem, env(safe-area-inset-bottom, 0px))' }}
+        >
           {mode === 'bodycomp' ? (
             <button
               onClick={onCapture}
@@ -322,7 +359,6 @@ export function CompanionUI({
               <Camera className="h-6 w-6 text-white" />
             </button>
           ) : !hasPermission ? (
-            // Permission buttons + upload option
             <div className="flex flex-col items-center gap-3 w-full max-w-xs">
               <Button
                 onClick={requestPermission}
@@ -342,8 +378,28 @@ export function CompanionUI({
               )}
             </div>
           ) : flowState === 'ready' ? (
-            // Ready state: Start Sequence button + upload option
             <div className="flex flex-col items-center gap-3 w-full max-w-xs">
+              {mode === 'posture' && geminiConnectionStatus && geminiConnectionStatus === 'error' && onRetryGemini ? (
+                <button
+                  type="button"
+                  onClick={onRetryGemini}
+                  className="text-[11px] font-medium text-primary underline underline-offset-2"
+                >
+                  Retry voice guide
+                </button>
+              ) : mode === 'posture' && geminiConnectionStatus && geminiConnectionStatus !== 'open' ? (
+                <div className="flex items-center gap-1.5 text-white/70">
+                  <Loader2 className="h-3 w-3 shrink-0 animate-spin" aria-hidden />
+                  <span className="text-[11px] font-medium">Voice guide connecting…</span>
+                </div>
+              ) : mode === 'posture' && geminiConnectionStatus === 'open' ? (
+                <span className="text-[11px] font-medium text-emerald-400">Voice guide connected</span>
+              ) : null}
+              {blockStartCaptureUntilVertical && !isVertical ? (
+                <p className="text-center text-[12px] font-medium text-amber-200/95 px-2">
+                  Level the phone to enable Start Capture.
+                </p>
+              ) : null}
               <Button
                 onClick={(e) => {
                   e.preventDefault();
@@ -352,7 +408,8 @@ export function CompanionUI({
                     onStartSequence();
                   }
                 }}
-                className="bg-emerald-500 hover:bg-emerald-600 h-16 px-10 rounded-xl text-base font-semibold shadow-lg text-white w-full"
+                disabled={blockStartCaptureUntilVertical && !isVertical}
+                className="bg-emerald-500 hover:bg-emerald-600 h-16 px-10 rounded-xl text-base font-semibold shadow-lg text-white w-full disabled:opacity-40 disabled:pointer-events-none"
               >
                 Start Capture
               </Button>
@@ -367,16 +424,25 @@ export function CompanionUI({
                 </Button>
               )}
             </div>
-          ) : onFileUpload ? (
-            // Other states: just show upload option
-            <Button
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-              className="h-12 px-6 rounded-xl text-xs font-bold bg-background/10 border-white/30 text-white hover:bg-background/20 flex items-center justify-center gap-2"
-            >
-              <ImagePlus className="h-4 w-4" />
-              Upload from Photos
-            </Button>
+          ) : (mode === 'posture' && flowState === 'waiting_pose') || onFileUpload ? (
+            <div className="flex w-full max-w-xs flex-col items-center gap-3">
+              {mode === 'posture' && flowState === 'waiting_pose' ? (
+                <p className="px-2 text-center text-[11px] font-medium leading-snug text-white/85">
+                  Listen for framing tips. The scan usually starts on its own once the voice guide finishes; if
+                  not, tap Start Capture when it appears.
+                </p>
+              ) : null}
+              {onFileUpload ? (
+                <Button
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex h-12 items-center justify-center gap-2 rounded-xl bg-background/10 px-6 text-xs font-bold text-white hover:bg-background/20 border-white/30"
+                >
+                  <ImagePlus className="h-4 w-4" />
+                  Upload from Photos
+                </Button>
+              ) : null}
+            </div>
           ) : null}
         </div>
       )}

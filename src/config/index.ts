@@ -38,8 +38,9 @@ export const CONFIG = {
       TASKS_VISION_PACKAGE_VERSION: '0.10.34',
       TASKS_WASM_BASE:
         'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.34/wasm',
+      /** Full model; legacy `full.pose_landmarker/.../latest/...` path 404s as of 2026 — use current bucket layout. */
       POSE_LANDMARKER_MODEL_URL:
-        'https://storage.googleapis.com/mediapipe-models/pose_landmarker/full.pose_landmarker/float16/latest/full.pose_landmarker.task',
+        'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task',
       TIMEOUT_MS: 15000,
       LIVE_POSE_TARGET_FPS: 7,
       MIN_POSE_DETECTION_CONFIDENCE: 0.5,
@@ -47,14 +48,24 @@ export const CONFIG = {
       MIN_TRACKING_CONFIDENCE: 0.5,
     },
     GEMINI: {
-      MODEL_NAME: "gemini-2.5-flash", // Stable Gemini 2.5 Flash (gemini-3-flash-preview requires special access - use gemini-2.5-flash for production)
+      MODEL_NAME: "gemini-2.5-flash", // General Vertex text (classification, etc.)
       BACKEND: "VertexAIBackend", // Internal Firebase AI backend
-      // Use VITE_GEMINI_LIVE_MODEL=gemini-3.1-flash-live-preview (or the final stable ID once available) for local testing.
+      /** Posture narrative after MediaPipe metrics — 3.x-class default; override with VITE_GEMINI_POSTURE_FEEDBACK_MODEL if your project uses a different ID. */
+      POSTURE_FEEDBACK_MODEL_NAME: (() => {
+        const v = import.meta.env.VITE_GEMINI_POSTURE_FEEDBACK_MODEL;
+        return typeof v === 'string' && v.trim() !== '' ? v.trim() : 'gemini-3-flash-preview';
+      })(),
+      // Use VITE_GEMINI_LIVE_MODEL to override framing guide (Gemini Live).
       LIVE_MODEL_NAME: (() => {
         const v = import.meta.env.VITE_GEMINI_LIVE_MODEL;
-        return typeof v === 'string' && v.trim() !== '' ? v.trim() : 'gemini-3.1-flash-live-preview';
+        return typeof v === 'string' && v.trim() !== '' ? v.trim() : 'gemini-2.5-flash-native-audio-preview-12-2025';
       })(),
       LIVE_FRAME_INTERVAL_MS: 1000,
+      /**
+       * Safety net: if the model neither calls capture_now nor speaks the transcription trigger,
+       * fire capture after this many ms while a view is armed (logged). 0 = disabled.
+       */
+      LIVE_CAPTURE_FALLBACK_MS: 0,
     },
     // Firebase Cloud Functions
     FUNCTIONS: {
@@ -64,23 +75,19 @@ export const CONFIG = {
   },
 
   // --- POSTURE VIEWS ---
-  // Capture order: Front → 1/4 turn right → 1/4 turn right → 1/4 turn right
-  // Capture sequence: [0: front, 1: side-right, 2: back, 3: side-left]
-  // Display order: [front, side-left, back, side-right]
-  // Mapping: capture[0]→front, capture[1]→side-right, capture[2]→back, capture[3]→side-left
+  // Enforced sequence (all entry points): Front → Back → Side Left → Side Right
   POSTURE_VIEWS: [
-    { id: 'front', label: 'FRONT', instr: 'Face the camera', captureOrder: 0 },
-    { id: 'side-right', label: 'RIGHT SIDE', instr: 'Turn 1/4 to your right', captureOrder: 1 },
-    { id: 'back', label: 'BACK', instr: 'Turn 1/4 more to your right', captureOrder: 2 },
-    { id: 'side-left', label: 'LEFT SIDE', instr: 'Turn 1/4 more to your right', captureOrder: 3 }
+    { id: 'front', label: 'FRONT', instr: 'Face the camera squarely, full body in frame', captureOrder: 0 },
+    { id: 'back', label: 'BACK', instr: 'Turn so your back faces the camera, full body visible', captureOrder: 1 },
+    { id: 'side-left', label: 'LEFT SIDE', instr: 'Turn so your left side faces the camera', captureOrder: 2 },
+    { id: 'side-right', label: 'RIGHT SIDE', instr: 'Turn so your right side faces the camera', captureOrder: 3 },
   ] as const,
 
   // --- COMPANION APP SETTINGS ---
   COMPANION: {
     AUDIO: {
-      SHUTTER_URL: "https://www.soundjay.com/mechanical/camera-shutter-click-08.mp3",
-      FEEDBACK_INTERVAL_MS: 3000,
-      SPEECH_RATE: 1.1,
+      FEEDBACK_INTERVAL_MS: 4000,
+      SPEECH_RATE: 0.92,
     },
     POSE_THRESHOLDS: {
       TOO_CLOSE: 0.85, // Body height as % of frame
@@ -91,6 +98,26 @@ export const CONFIG = {
     },
     ORIENTATION: {
       MAX_DEVIATION_DEG: 4, // Max degrees from vertical
+      /**
+       * Posture QR companion + guided panel: do not block Gemini / capture on gyro “upright”.
+       * Gyro is noisy on some devices; framing is still guided by voice + MediaPipe.
+       */
+      POSTURE_RELAX_UPRIGHT: true,
+      /** When POSTURE_RELAX_UPRIGHT is false, portrait stability time (ms). */
+      STABLE_VERTICAL_MS_POSTURE: 400,
+      STABLE_VERTICAL_MS_BODYCOMP: 450,
+    },
+    /** Posture companion / guided capture — user-visible strings (i18n later). */
+    VOICE_GUIDE: {
+      START_BUTTON: 'Start voice guide',
+      READY_HINT:
+        'Camera and motion are on. Tap below to connect the AI guide — this avoids iOS interrupting the live session during permission dialogs.',
+      NOT_CONNECTED_BEFORE_SCAN:
+        'Voice guide is not connected. Please tap Try again before starting the scan.',
+      CONNECTING_VOICE_GUIDE: 'Connecting voice guide…',
+      NOT_CONNECTED_USE_TRY_AGAIN: 'Voice guide is not connected. Tap Try again above before starting the scan.',
+      LANDMARK_REJECT_SPEAK:
+        "I couldn't quite see your full body that time. Step back a little so I can see you head to toe, then hold still and we'll try again.",
     },
     CAPTURE: {
       COUNTDOWN_SEC: 5,

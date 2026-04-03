@@ -56,10 +56,12 @@ export function useAssessmentSave({
   });
   // Guard against double-save race condition (React batching edge case)
   const saveInitiatedRef = useRef(false);
+  const hasFiredAutoSaveRef = useRef(false);
 
   const handleSaveToDashboard = useCallback(async () => {
     if (!user || saving || savingId || saveInitiatedRef.current) return;
     saveInitiatedRef.current = true;
+    let saveSucceeded = false;
 
     // Sandbox trial gate — block save when trial limit is exhausted
     if (orgSettings?.subscription?.plan === 'sandbox') {
@@ -149,16 +151,31 @@ export function useAssessmentSave({
       let category: string | null = null;
       let publicReportSynced = true;
       
-      try {
         // Check for edit mode first
         const editData = sessionStorage.getItem(STORAGE_KEYS.EDIT_ASSESSMENT);
+        let parsedEdit: {
+          assessmentId?: string;
+          formData?: FormData;
+          snapshotId?: string;
+          editType?: string;
+        } | null = null;
         if (editData) {
-          const parsed = JSON.parse(editData) as { assessmentId?: string; formData?: FormData; snapshotId?: string; editType?: string };
-          if (parsed.assessmentId && profile?.organizationId) {
-            if (parsed.snapshotId) {
+          try {
+            parsedEdit = JSON.parse(editData) as {
+              assessmentId?: string;
+              formData?: FormData;
+              snapshotId?: string;
+              editType?: string;
+            };
+          } catch {
+            // Non-fatal: malformed sessionStorage, fall through to full save
+          }
+        }
+        if (parsedEdit?.assessmentId && profile?.organizationId) {
+            if (parsedEdit.snapshotId) {
               // Edit existing snapshot in place with cascade; for partial, merge with current so we don't wipe other pillars
               const { getCurrentAssessment, updateSnapshotWithCascade } = await import('@/services/assessmentHistory');
-              const isPartialEdit = parsed.editType?.startsWith('partial-');
+              const isPartialEdit = parsedEdit.editType?.startsWith('partial-');
               let dataToSave = formData;
               if (isPartialEdit) {
                 const current = await getCurrentAssessment(user.uid, clientName, profile.organizationId);
@@ -169,7 +186,7 @@ export function useAssessmentSave({
               const result = await updateSnapshotWithCascade(
                 user.uid,
                 clientName,
-                parsed.snapshotId,
+                parsedEdit.snapshotId,
                 dataToSave,
                 profile.organizationId
               );
@@ -182,7 +199,7 @@ export function useAssessmentSave({
                   const { publishPublicReport } = await import('@/services/publicReports');
                   await publishPublicReport({
                     coachUid: user.uid,
-                    assessmentId: parsed.assessmentId,
+                    assessmentId: parsedEdit.assessmentId,
                     formData: dataToSave,
                     organizationId: profile.organizationId,
                   });
@@ -193,7 +210,8 @@ export function useAssessmentSave({
                   title: UI_TOASTS.SUCCESS.ASSESSMENT_UPDATED,
                   description: result.message,
                 });
-                setSavingId(parsed.assessmentId);
+                saveSucceeded = true;
+                setSavingId(parsedEdit.assessmentId);
                 setSaving(false);
                 return;
               }
@@ -201,13 +219,13 @@ export function useAssessmentSave({
             // No snapshotId or update failed: fall back to full doc update (creates new snapshot)
             await updateCoachAssessment(
               user.uid,
-              parsed.assessmentId,
+              parsedEdit.assessmentId,
               formData,
               scores.overall,
               profile?.organizationId,
               profile
             );
-            assessmentId = parsed.assessmentId;
+            assessmentId = parsedEdit.assessmentId;
             sessionStorage.removeItem(STORAGE_KEYS.EDIT_ASSESSMENT);
             clearDraft();
             setIsEditMode(true);
@@ -215,15 +233,24 @@ export function useAssessmentSave({
               title: UI_TOASTS.SUCCESS.ASSESSMENT_UPDATED,
               description: `Assessment for ${clientName} has been updated without changing the original date.`
             });
+            saveSucceeded = true;
             setSavingId(assessmentId);
             setSaving(false);
             return;
+        }
+
+        const partialData = sessionStorage.getItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
+        let parsedPartial: { category?: string; clientName?: string } | null = null;
+        if (partialData) {
+          try {
+            parsedPartial = JSON.parse(partialData) as { category?: string; clientName?: string };
+          } catch {
+            // Non-fatal: malformed sessionStorage, fall through to full save
           }
         }
-        
-        const partialData = sessionStorage.getItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
-        if (partialData) {
-          const { category: cat, clientName: storedName } = JSON.parse(partialData);
+        if (parsedPartial?.category) {
+          const cat = parsedPartial.category;
+          const storedName = parsedPartial.clientName;
           category = cat;
 
           const mode = 'partial';
@@ -249,13 +276,13 @@ export function useAssessmentSave({
             saveInitiatedRef.current = false;
             return;
           }
-          
+
           const { savePartialAssessment } = await import('@/services/coachAssessments');
           const result = await savePartialAssessment(
-            user.uid, 
-            user.email, 
-            formData, 
-            scores.overall, 
+            user.uid,
+            user.email,
+            formData,
+            scores.overall,
             storedName || clientName,
             category as 'bodycomp' | 'posture' | 'fitness' | 'strength' | 'lifestyle',
             profile?.organizationId,
@@ -270,18 +297,18 @@ export function useAssessmentSave({
           const updateData: Record<string, unknown> = {
             lastAssessmentDate: now,
           };
-          
+
           if (category === 'bodycomp') updateData.lastInBodyDate = now;
           else if (category === 'posture') updateData.lastPostureDate = now;
           else if (category === 'fitness') updateData.lastFitnessDate = now;
           else if (category === 'strength') updateData.lastStrengthDate = now;
           else if (category === 'lifestyle') updateData.lastLifestyleDate = now;
-          
+
           // Store shareToken on client profile for coach-side lookups
           if (shareToken) updateData.shareToken = shareToken;
-          
+
           await createOrUpdateClientProfile(user.uid, storedName || clientName, updateData, profile?.organizationId, profile);
-          
+
           setHighlightCategory(category);
           sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
           if (profile?.organizationId) await clearDraftAssessment(storedName || clientName, profile.organizationId);
@@ -368,24 +395,8 @@ export function useAssessmentSave({
             }
           }
         }
-      } catch (parseErr) {
-        try {
-          const result = await saveCoachAssessment(user.uid, user.email, formData, scores.overall, profile?.organizationId, profile);
-          assessmentId = result.assessmentId;
-          shareToken = result.shareToken;
-          publicReportSynced = result.publicReportSynced;
-        } catch (saveErr) {
-          logger.error('Failed to save assessment:', saveErr);
-          toast({
-            title: UI_TOASTS.ERROR.FAILED_TO_SAVE,
-            description: UI_TOASTS.ERROR.FAILED_TO_SAVE_DESC,
-            variant: 'destructive'
-          });
-          setSaving(false);
-          return;
-        }
-      }
-      
+
+      saveSucceeded = true;
       setSavingId(assessmentId);
       clearDraft();
       toast({ 
@@ -652,16 +663,30 @@ export function useAssessmentSave({
       }
     } finally {
       setSaving(false);
-      // Only reset the ref on failure - successful saves keep it true (savingId guards future calls)
-      if (!savingId) {
+      if (!saveSucceeded) {
         saveInitiatedRef.current = false;
       }
     }
   }, [user, saving, savingId, formData, scores, profile, orgSettings, toast, isDemoAssessment]);
 
+  // Allow auto-save again when leaving results (e.g. coach navigates back then completes again)
+  useEffect(() => {
+    if (!isResultsPhase) {
+      hasFiredAutoSaveRef.current = false;
+    }
+  }, [isResultsPhase]);
+
   // Auto-save when results phase is reached
   useEffect(() => {
-    if (isResultsPhase && user && !savingId && !saving && !isDemoAssessment) {
+    if (
+      isResultsPhase &&
+      user &&
+      !savingId &&
+      !saving &&
+      !isDemoAssessment &&
+      !hasFiredAutoSaveRef.current
+    ) {
+      hasFiredAutoSaveRef.current = true;
       void handleSaveToDashboard();
     }
   }, [isResultsPhase, user, savingId, saving, isDemoAssessment, handleSaveToDashboard]);

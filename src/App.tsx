@@ -73,6 +73,8 @@ const About = lazy(() => import("./pages/About"));
 const Contact = lazy(() => import("./pages/Contact"));
 const Blog = lazy(() => import("./pages/Blog"));
 const Demo = lazy(() => import("./pages/Demo"));
+const CheckoutGuestSuccess = lazy(() => import("./pages/CheckoutGuestSuccess"));
+const CheckoutGuestCancel = lazy(() => import("./pages/CheckoutGuestCancel"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -164,6 +166,8 @@ const App = () => (
                     <Route path="/contact" element={<Contact />} />
                     <Route path="/blog" element={<Blog />} />
                     <Route path="/demo" element={<Demo />} />
+                    <Route path={ROUTES.CHECKOUT_SUCCESS} element={<CheckoutGuestSuccess />} />
+                    <Route path={ROUTES.CHECKOUT_CANCEL} element={<CheckoutGuestCancel />} />
                     {/* Onboarding - allows unauthenticated access (will create account at step 1) */}
                     <Route path="/onboarding" element={<Onboarding />} />
                     {/* Zero-friction sandbox trial — no sign-up required */}

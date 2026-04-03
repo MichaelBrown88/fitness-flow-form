@@ -28,8 +28,8 @@ const POSTURE_TIPS = [
 ];
 
 interface AssessmentModalsProps {
-  showCamera: false | 'ocr' | 'posture';
-  setShowCamera: (mode: false | 'ocr' | 'posture') => void;
+  showCamera: false | 'ocr';
+  setShowCamera: (mode: false | 'ocr') => void;
   handleCapture: (imageSrc: string) => Promise<void>;
   
   showPostureCompanion: boolean;
@@ -39,9 +39,6 @@ interface AssessmentModalsProps {
   showBodyCompCompanion: boolean;
   setShowBodyCompCompanion: (show: boolean) => void;
   handleBodyCompCompanionComplete: (data: Partial<FormData>) => void;
-  
-  postureStep: number;
-  setPostureStep: React.Dispatch<React.SetStateAction<number>>;
   
   isProcessingOcr: boolean;
   processingMode: 'ocr' | 'posture' | null;
@@ -63,8 +60,6 @@ export const AssessmentModals = ({
   showBodyCompCompanion,
   setShowBodyCompCompanion,
   handleBodyCompCompanionComplete,
-  postureStep,
-  setPostureStep,
   isProcessingOcr,
   processingMode,
   postureRetakeWarning,
@@ -96,11 +91,6 @@ export const AssessmentModals = ({
             mode={showCamera}
             onCapture={handleCapture}
             onClose={() => setShowCamera(false)}
-            overlayText={
-              showCamera === 'posture'
-                ? `Capture ${['FRONT', 'RIGHT SIDE', 'LEFT SIDE', 'BACK'][postureStep]} View`
-                : undefined
-            }
           />
         </CameraCaptureErrorBoundary>
       )}
@@ -109,10 +99,6 @@ export const AssessmentModals = ({
       <PostureCompanionModal 
         isOpen={showPostureCompanion}
         onClose={() => setShowPostureCompanion(false)}
-        onStartDirectScan={() => {
-          setShowCamera('posture');
-          setPostureStep(0);
-        }}
         onComplete={handlePostureCompanionComplete}
       />
 
@@ -178,7 +164,7 @@ export const AssessmentModals = ({
                 className="h-7 rounded-lg border-amber-300 text-amber-700 text-xs font-bold hover:bg-amber-100 gap-1"
                 onClick={() => {
                   clearPostureRetakeWarning();
-                  setShowCamera('posture');
+                  setShowPostureCompanion(true);
                 }}
               >
                 <RefreshCw className="h-3 w-3" />

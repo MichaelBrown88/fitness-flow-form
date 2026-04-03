@@ -263,23 +263,23 @@ export function PlatformDashboardOverviewTab({
           Platform Overview
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          <div className="flex flex-col p-3 bg-muted/30 rounded-lg">
+          <div className="flex flex-col p-3 rounded-lg border border-admin-border/80 bg-admin-surface-inset">
             <span className="text-xs text-admin-fg-muted">Users</span>
             <span className="text-lg font-semibold text-admin-fg">{formatNumber(metrics?.totalUsers ?? 0)}</span>
           </div>
-          <div className="flex flex-col p-3 bg-muted/30 rounded-lg">
+          <div className="flex flex-col p-3 rounded-lg border border-admin-border/80 bg-admin-surface-inset">
             <span className="text-xs text-admin-fg-muted">Coaches</span>
             <span className="text-lg font-semibold text-admin-fg">{formatNumber(metrics?.totalCoaches ?? 0)}</span>
           </div>
-          <div className="flex flex-col p-3 bg-muted/30 rounded-lg">
+          <div className="flex flex-col p-3 rounded-lg border border-admin-border/80 bg-admin-surface-inset">
             <span className="text-xs text-admin-fg-muted">Clients</span>
             <span className="text-lg font-semibold text-admin-fg">{formatNumber(metrics?.totalClients ?? 0)}</span>
           </div>
-          <div className="flex flex-col p-3 bg-muted/30 rounded-lg">
+          <div className="flex flex-col p-3 rounded-lg border border-admin-border/80 bg-admin-surface-inset">
             <span className="text-xs text-admin-fg-muted">Assessments</span>
             <span className="text-lg font-semibold text-admin-fg">{formatNumber(metrics?.totalAssessments ?? 0)}</span>
           </div>
-          <div className="flex flex-col p-3 bg-muted/30 rounded-lg">
+          <div className="flex flex-col p-3 rounded-lg border border-admin-border/80 bg-admin-surface-inset">
             <span className="text-xs text-admin-fg-muted">This Month</span>
             <span className="text-lg font-semibold text-admin-fg">{formatNumber(metrics?.assessmentsThisMonth ?? 0)}</span>
           </div>

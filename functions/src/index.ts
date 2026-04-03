@@ -57,6 +57,7 @@ import {
   sendDraftRecoveryNudges,
 } from './notifications';
 import { handleOnboardingCompleted } from './transactionalEmails';
+import { sendTrialExpiryNudges } from './trialNudges';
 
 admin.initializeApp();
 
@@ -889,6 +890,16 @@ export const onInviteAccepted = onDocumentWritten(
 export const dailyDraftRecoveryNudges = onSchedule(
   { schedule: 'every day 09:00', timeZone: 'UTC' },
   async () => { await sendDraftRecoveryNudges(); },
+);
+
+/**
+ * Daily trial expiry nudge — runs every day at 08:30 UTC.
+ * Sends "last day" email to gym trial orgs whose trial ends tomorrow.
+ * The 3-day nudge is handled by the Stripe trial_will_end webhook event.
+ */
+export const dailyTrialExpiryNudges = onSchedule(
+  { schedule: 'every day 08:30', timeZone: 'UTC' },
+  async () => { await sendTrialExpiryNudges(); },
 );
 
 /**

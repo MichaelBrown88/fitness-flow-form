@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/constants/routes';
 import { LANDING_GUEST_CHECKOUT_ENABLED } from '@/constants/platform';
 import GlassCard from '@/components/ui/GlassCard';
@@ -29,36 +29,19 @@ const FREE_FEATURES: PricingFeature[] = [
 export function LandingPricingPlans() {
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
   const [searchParams] = useSearchParams();
-  const guestCheckoutSuccess = searchParams.get('guest_checkout') === 'success';
-  const guestCheckoutCancel = searchParams.get('guest_checkout') === 'cancel';
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const guest = searchParams.get('guest_checkout');
+    if (guest !== 'success' && guest !== 'cancel') return;
+    const sessionId = searchParams.get('session_id');
+    const path = guest === 'success' ? ROUTES.CHECKOUT_SUCCESS : ROUTES.CHECKOUT_CANCEL;
+    const qs = sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : '';
+    navigate(`${path}${qs}`, { replace: true });
+  }, [searchParams, navigate]);
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-8">
-      {guestCheckoutSuccess ? (
-        <div
-          role="status"
-          className="mx-auto max-w-2xl rounded-xl border border-emerald-600/35 bg-emerald-500/10 px-4 py-3 text-sm text-foreground dark:border-emerald-500/40"
-        >
-          <p className="font-semibold text-emerald-950 dark:text-emerald-100">Checkout complete</p>
-          <p className="mt-1 text-foreground-secondary">
-            Finish setting up your account to use One Assess.{' '}
-            <Link to={ROUTES.ONBOARDING} className="font-semibold text-primary underline-offset-4 hover:underline">
-              Continue to sign-up
-            </Link>
-            .
-          </p>
-        </div>
-      ) : null}
-      {guestCheckoutCancel ? (
-        <div
-          role="status"
-          className="mx-auto max-w-2xl rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-foreground"
-        >
-          <p className="font-semibold">Checkout cancelled</p>
-          <p className="mt-1 text-foreground-secondary">Adjust seats or billing and try again.</p>
-        </div>
-      ) : null}
-
       <div className="flex justify-center">
         <div className="inline-flex rounded-xl border border-border bg-muted/40 p-1">
           <button

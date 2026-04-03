@@ -5,7 +5,7 @@
  * real-time image sync, and AI analysis display.
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { 
   Dialog, 
@@ -16,6 +16,8 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { usePostureCompanion } from '@/hooks/usePostureCompanion';
+import { useAuth } from '@/hooks/useAuth';
+import { PostureGuidedCapturePanel } from '@/components/camera/PostureGuidedCapturePanel';
 import type { PostureCompanionData } from '@/lib/types/companion';
 import { 
   Smartphone, 
@@ -33,15 +35,16 @@ interface PostureCompanionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onComplete: (data: PostureCompanionData) => void;
-  onStartDirectScan?: () => void;
 }
 
 export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
   isOpen,
   onClose,
   onComplete,
-  onStartDirectScan
 }) => {
+  const { profile } = useAuth();
+  const [deviceCaptureOpen, setDeviceCaptureOpen] = useState(false);
+
   const {
     session,
     companionUrl,
@@ -62,7 +65,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
     isOpen,
     onComplete,
     onClose,
-    onStartDirectScan
+    onRequestDeviceCapture: () => setDeviceCaptureOpen(true),
   });
 
   // Helper to get processing status label with user-friendly copy
@@ -173,15 +176,14 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                 )}
               </Button>
               
-              {onStartDirectScan && (
-                <Button
-                  onClick={handleDirectScan}
-                  variant="outline"
-                  className="w-full"
-                >
-                  Use This Device Instead
-                </Button>
-              )}
+              <Button
+                onClick={handleDirectScan}
+                disabled={!session?.id || !profile?.organizationId}
+                variant="outline"
+                className="w-full"
+              >
+                Film on this device
+              </Button>
             </div>
           </div>
 
@@ -294,6 +296,23 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
       </DialogContent>
       
       {/* Image Preview Modal */}
+      <Dialog open={deviceCaptureOpen} onOpenChange={(open) => !open && setDeviceCaptureOpen(false)}>
+        <DialogContent className="h-[100dvh] max-h-none w-full max-w-none gap-0 overflow-hidden rounded-none border-0 p-0">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Guided posture capture</DialogTitle>
+            <DialogDescription>Gemini Live guides framing; analysis syncs to this session.</DialogDescription>
+          </DialogHeader>
+          {deviceCaptureOpen && session?.id && profile?.organizationId ? (
+            <PostureGuidedCapturePanel
+              sessionId={session.id}
+              organizationId={profile.organizationId}
+              profile={profile}
+              onClose={() => setDeviceCaptureOpen(false)}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
       {previewImage && (
         <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
           <DialogContent className="max-w-4xl max-h-[90vh] p-0 border-none bg-black/95">

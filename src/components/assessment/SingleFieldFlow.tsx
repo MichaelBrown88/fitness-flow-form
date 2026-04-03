@@ -22,7 +22,7 @@ interface SingleFieldFlowProps {
   activeFieldIdx: number;
   setActiveFieldIdx: (idx: number | ((prev: number) => number)) => void;
   onComplete: () => void;
-  onShowCamera?: (mode: 'ocr' | 'posture') => void;
+  onShowCamera?: (mode: 'ocr') => void;
   onShowPostureCompanion?: () => void;
   onShowBodyCompCompanion?: () => void;
   onGoToPreviousSection?: () => void;

@@ -64,6 +64,8 @@ This project is built with:
 
 Simply open [Lovable](https://lovable.dev/projects/729a98ce-6777-4dbf-9bc6-c9429af84ff7) and click on Share -> Publish.
 
+For Firebase Hosting (custom scan subdomain, `firebase.json` constraints), see [DEPLOYMENT.md](./DEPLOYMENT.md).
+
 ## Can I connect a custom domain to my Lovable project?
 
 Yes, you can!

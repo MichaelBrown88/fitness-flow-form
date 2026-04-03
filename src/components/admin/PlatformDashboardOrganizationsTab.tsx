@@ -86,31 +86,31 @@ export function PlatformDashboardOrganizationsTab({
   return (
     <div className="space-y-8">
       {/* Org Lifecycle */}
-      <div className="bg-foreground/50 border border-border rounded-2xl p-6">
+      <div className="rounded-2xl border border-admin-border bg-admin-card/80 p-6">
         <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
           <GitBranch className="w-4 h-4 text-indigo-400" />
           Org Lifecycle
         </h3>
-        <p className="text-xs text-muted-foreground mb-4">
+        <p className="text-xs text-admin-fg-muted mb-4">
           Pipeline (in trial), Active (paying), Churned (cancelled, lifetime total).
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-muted/40 border border-border rounded-xl p-4">
-            <p className="text-xs text-muted-foreground mb-1">Pipeline (Trial)</p>
+          <div className="rounded-xl border border-admin-border/80 bg-admin-surface-inset p-4">
+            <p className="text-xs text-admin-fg-muted mb-1">Pipeline (Trial)</p>
             <p className="text-xl font-bold text-amber-400">{formatNumber(metrics?.trialOrganizations ?? 0)}</p>
           </div>
-          <div className="bg-muted/40 border border-border rounded-xl p-4">
-            <p className="text-xs text-muted-foreground mb-1">Active</p>
+          <div className="rounded-xl border border-admin-border/80 bg-admin-surface-inset p-4">
+            <p className="text-xs text-admin-fg-muted mb-1">Active</p>
             <p className="text-xl font-bold text-emerald-400">{formatNumber(metrics?.activeOrganizations ?? 0)}</p>
           </div>
-          <div className="bg-muted/40 border border-border rounded-xl p-4">
-            <p className="text-xs text-muted-foreground mb-1">Churned (total)</p>
+          <div className="rounded-xl border border-admin-border/80 bg-admin-surface-inset p-4">
+            <p className="text-xs text-admin-fg-muted mb-1">Churned (total)</p>
             <p className="text-xl font-bold text-red-400">{formatNumber(metrics?.churnsLifetime ?? 0)}</p>
           </div>
         </div>
       </div>
 
-      <div className="bg-foreground/50 border border-border rounded-2xl overflow-hidden">
+      <div className="rounded-2xl border border-admin-border bg-admin-card/80 overflow-hidden">
       <div className="px-5 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <h2 className="text-white font-semibold">Organizations</h2>
         <div className="flex flex-wrap items-center gap-3">
@@ -120,11 +120,11 @@ export function PlatformDashboardOrganizationsTab({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search orgs..."
-              className="pl-8 h-9 bg-foreground/90 border-border text-white w-full sm:w-44"
+              className="pl-8 h-9 w-full border-admin-border bg-admin-surface-inset text-white placeholder:text-admin-fg-muted sm:w-44"
             />
           </div>
           <Select value={filterStatus || 'all'} onValueChange={(v) => setFilterStatus(v === 'all' ? '' : v)}>
-            <SelectTrigger className="h-9 w-28 bg-foreground/90 border-border text-white">
+            <SelectTrigger className="h-9 w-28 border-admin-border bg-admin-surface-inset text-white">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -137,7 +137,7 @@ export function PlatformDashboardOrganizationsTab({
             </SelectContent>
           </Select>
           <Select value={filterRegion || 'all'} onValueChange={(v) => setFilterRegion(v === 'all' ? '' : v)}>
-            <SelectTrigger className="h-9 w-28 bg-foreground/90 border-border text-white">
+            <SelectTrigger className="h-9 w-28 border-admin-border bg-admin-surface-inset text-white">
               <SelectValue placeholder="Region" />
             </SelectTrigger>
             <SelectContent>
@@ -214,7 +214,7 @@ export function PlatformDashboardOrganizationsTab({
                 <div key={org.id} className="px-5 py-4 hover:bg-muted/30 transition-colors">
                   <div className="grid grid-cols-12 gap-4 items-center">
                     <div className="col-span-2 flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-foreground/90 flex items-center justify-center">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-admin-border/60 bg-admin-surface-inset">
                         <Building2 className="w-4 h-4 text-muted-foreground" />
                       </div>
                       <div>
@@ -280,7 +280,7 @@ export function PlatformDashboardOrganizationsTab({
                             <Eye className="w-4 h-4" />
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="bg-foreground border-border text-white max-w-2xl">
+                        <DialogContent className="max-w-2xl border-admin-border bg-admin-card text-white">
                           <DialogHeader>
                             <DialogTitle className="text-white">{org.name} - Details</DialogTitle>
                           </DialogHeader>
@@ -305,7 +305,12 @@ export function PlatformDashboardOrganizationsTab({
 
           {hasMoreOrganizations && (
             <div className="px-5 py-4 flex justify-center border-t border-border">
-              <Button variant="outline" size="sm" onClick={loadMoreOrganizations} className="border-border text-muted-foreground hover:bg-foreground/90">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadMoreOrganizations}
+                className="border-admin-border text-admin-fg-muted hover:bg-admin-surface-inset hover:text-white"
+              >
                 Load more
               </Button>
             </div>

@@ -97,6 +97,11 @@ export default defineConfig(({ mode }) => ({
         navigateFallbackDenylist: [/^\/api/, /^\/companion\//, /^\/r\//],
         runtimeCaching: [
           {
+            // Some Storage URLs use storage.googleapis.com (not only *.googleapis.com subdomain shape).
+            urlPattern: /^https:\/\/storage\.googleapis\.com\//,
+            handler: 'NetworkOnly',
+          },
+          {
             // Never intercept ANY googleapis.com request -- Firestore streaming,
             // Auth tokens, and Storage uploads must bypass the service worker entirely.
             // The Cache.put() NetworkError on mobile is caused by Workbox attempting

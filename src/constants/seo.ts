@@ -107,6 +107,13 @@ export const SEO_NOINDEX_ONBOARDING: SeoPageMeta = {
   noindex: true,
 };
 
+/** Public post-Stripe pages (guest checkout); thin funnel — do not index. */
+export const SEO_NOINDEX_CHECKOUT_RESULT: SeoPageMeta = {
+  title: 'Checkout | One Assess',
+  description: 'Continue after payment or return to pricing.',
+  noindex: true,
+};
+
 export const SEO_NOINDEX_BLOG: SeoPageMeta = {
   title: 'Blog | One Assess',
   description: 'Articles on fitness assessment best practices and product updates from One Assess.',

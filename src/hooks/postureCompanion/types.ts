@@ -30,7 +30,8 @@ export interface UsePostureCompanionOptions {
   isOpen: boolean;
   onComplete: (data: PostureCompanionData) => void;
   onClose: () => void;
-  onStartDirectScan?: () => void;
+  /** Open guided capture on the coach’s device (Gemini Live + same session sync). */
+  onRequestDeviceCapture?: () => void;
 }
 
 export interface UsePostureCompanionResult {

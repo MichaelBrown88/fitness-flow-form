@@ -10,16 +10,16 @@
  * 1. Detect landmarks with MediaPipe (or use provided)
  * 2. Draw wireframe overlay
  * 3. Calculate deviations using trigonometry (postureMath.ts)
- * 4. Generate descriptions via deterministic templates (postureTemplates.ts)
- * 
- * Zero AI cost -- all analysis is local.
+ * 4. Deterministic template + structured feedback library (no Gemini narrative call).
  */
 
 import { CONFIG } from '@/config';
 import { LandmarkResult, detectPostureLandmarks } from '@/lib/ai/postureLandmarks';
 import { drawLandmarkWireframe } from '@/lib/utils/postureOverlay';
 import { buildPostureResult } from '@/lib/ai/postureTemplates';
-import { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
+import type { PostureAiContext, PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
+import { buildStructuredPostureFindings } from '@/lib/posture/buildStructuredPostureFindings';
+import type { PostureFindingViewId } from '@/lib/types/postureFindings';
 import { logger } from '@/lib/utils/logger';
 
 export interface LandmarkConfidence {
@@ -39,6 +39,24 @@ export interface PostureProcessingResult {
 
 /** Indices of structural landmarks for visibility / Companion retry averaging. */
 export const POSTURE_STRUCTURAL_LANDMARK_INDICES = [11, 12, 23, 24, 27, 28] as const;
+
+export type PostureStillCaptureViewId = (typeof CONFIG.POSTURE_VIEWS)[number]['id'];
+
+/**
+ * Single-frame gate for Companion / guided capture before accepting a screenshot.
+ */
+export async function evaluateCompanionStillCaptureLandmarks(
+  imageData: string,
+  view: PostureStillCaptureViewId
+): Promise<{ ok: true; avgVisibility: number } | { ok: false; avgVisibility: number }> {
+  const landmarks = await detectPostureLandmarks(imageData, view);
+  const avgVisibility = averageStructuralLandmarkVisibility(landmarks.raw);
+  const min = CONFIG.COMPANION.POSE_THRESHOLDS.minConfidence;
+  if (avgVisibility < min) {
+    return { ok: false, avgVisibility };
+  }
+  return { ok: true, avgVisibility };
+}
 
 export function averageStructuralLandmarkVisibility(
   raw: import('@/lib/types/mediapipe').MediaPipeLandmark[] | undefined
@@ -94,10 +112,12 @@ export async function processPostureImage(
   view: 'front' | 'side-right' | 'side-left' | 'back',
   providedLandmarks?: LandmarkResult,
   source: 'manual' | 'iphone' | 'this-device' = 'manual',
-  onProgress?: OnProgressCallback
+  onProgress?: OnProgressCallback,
+  aiContext?: PostureAiContext
 ): Promise<PostureProcessingResult> {
   const ctx = 'POSTURE_PROCESSING';
-  
+  void aiContext;
+
   try {
     logger.debug(`Starting processing for ${view} (source: ${source})`, ctx);
     
@@ -151,9 +171,16 @@ export async function processPostureImage(
     // Emit analyzing stage
     onProgress?.({ stage: 'analyzing', view });
     
-    // STEP 4: Build analysis from deterministic templates (no AI, no network)
-    const analysis: PostureAnalysisResult = buildPostureResult(landmarks, view);
-    logger.debug(`Template analysis complete for ${view}`, ctx);
+    // STEP 4: Deterministic templates + structured feedback library (no second-pass AI)
+    const templateBase = buildPostureResult(landmarks, view);
+    const viewKey = view as PostureFindingViewId;
+    const structuredFindings = buildStructuredPostureFindings(viewKey, templateBase);
+    const analysis: PostureAnalysisResult = {
+      ...templateBase,
+      structuredFindings,
+      overall_assessment: '',
+    };
+    logger.debug(`Template + structured findings complete for ${view}`, ctx);
 
     logger.debug(`Complete processing for ${view}`, ctx);
     

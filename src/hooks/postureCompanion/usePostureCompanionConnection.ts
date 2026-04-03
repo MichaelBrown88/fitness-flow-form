@@ -46,9 +46,10 @@ export function usePostureCompanionConnection({
         const newLogs = updatedSession.companionLogs.slice(-5);
         newLogs.forEach(
           (log: { timestamp: unknown; message: string; level: 'info' | 'warn' | 'error' }) => {
-            const logMethod =
-              log.level === 'error' ? logger.error : log.level === 'warn' ? logger.warn : logger.info;
-            logMethod(`[MOBILE ${session.id}] ${log.message}`);
+            const line = `[MOBILE ${session.id}] ${log.message}`;
+            if (log.level === 'error') logger.error(line);
+            else if (log.level === 'warn') logger.warn(line);
+            else logger.info(line);
           },
         );
       }

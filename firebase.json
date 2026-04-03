@@ -258,7 +258,7 @@
         "headers": [
           {
             "key": "Content-Security-Policy",
-            "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.firebaseapp.com https://*.googleapis.com https://apis.google.com https://cdn.jsdelivr.net https://unpkg.com; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.googleusercontent.com https://*.firebase.com https://firebasestorage.googleapis.com https://storage.googleapis.com https://*.googleapis.com https://ui-avatars.com https://grainy-gradients.vercel.app; connect-src 'self' https://*.googleapis.com https://apis.google.com https://*.firebaseio.com wss://*.firebaseio.com https://firebasestorage.googleapis.com https://storage.googleapis.com https://cdn.jsdelivr.net https://unpkg.com https://*.cloudfunctions.net https://*.run.app; frame-src 'self' https://*.firebaseapp.com;"
+            "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.firebaseapp.com https://*.googleapis.com https://apis.google.com https://cdn.jsdelivr.net https://unpkg.com; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.googleusercontent.com https://*.firebase.com https://firebasestorage.googleapis.com https://storage.googleapis.com https://*.googleapis.com https://ui-avatars.com https://grainy-gradients.vercel.app; connect-src 'self' https://*.googleapis.com wss://*.googleapis.com https://apis.google.com https://*.firebaseio.com wss://*.firebaseio.com https://firebasestorage.googleapis.com https://storage.googleapis.com https://cdn.jsdelivr.net https://unpkg.com https://*.cloudfunctions.net https://*.run.app; frame-src 'self' https://*.firebaseapp.com;"
           },
           {
             "key": "X-Frame-Options",
@@ -274,7 +274,7 @@
           },
           {
             "key": "Permissions-Policy",
-            "value": "camera=*, microphone=(), geolocation=()"
+            "value": "camera=*, microphone=(self), geolocation=()"
           }
         ]
       }

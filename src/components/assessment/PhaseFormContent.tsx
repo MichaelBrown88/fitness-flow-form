@@ -259,8 +259,6 @@ export const PhaseFormContent = ({
     processingMode,
     postureRetakeWarning,
     clearPostureRetakeWarning,
-    postureStep,
-    setPostureStep,
     handleCapture,
     applyOcrData,
     handlePostureCompanionComplete,
@@ -483,7 +481,6 @@ export const PhaseFormContent = ({
         setActiveFieldIdx={setActiveFieldIdx}
         onShowCamera={(mode) => {
           setShowCamera(mode);
-          if (mode === 'posture') setPostureStep(0);
         }}
         onShowPostureCompanion={() => setShowPostureCompanion(true)}
         onShowBodyCompCompanion={() => setShowBodyCompCompanion(true)}
@@ -637,8 +634,6 @@ export const PhaseFormContent = ({
         showBodyCompCompanion={showBodyCompCompanion}
         setShowBodyCompCompanion={setShowBodyCompCompanion}
         handleBodyCompCompanionComplete={handleBodyCompCompanionComplete}
-        postureStep={postureStep}
-        setPostureStep={setPostureStep}
         isProcessingOcr={isProcessingOcr}
         processingMode={processingMode}
         postureRetakeWarning={postureRetakeWarning}

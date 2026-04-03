@@ -7,7 +7,7 @@ import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import CategoryRadarChart from './CategoryRadarChart';
-import { PostureAnalysisViewer } from './PostureAnalysisViewer';
+import { PostureClientPostureSection } from './posture/PostureClientPostureSection';
 import { circleColor, niceLabel, CATEGORY_EXPLANATIONS } from './ClientReportConstants';
 import { scoreGrade, SCORE_COLORS } from '@/lib/scoring/scoreColor';
 import type { ScoreSummary } from '@/lib/scoring';
@@ -103,7 +103,7 @@ export function ClientReportCategoryTabs({
                       <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-foreground-tertiary mb-2 px-1">
                         Posture scan results
                       </h4>
-                      <PostureAnalysisViewer
+                      <PostureClientPostureSection
                         postureResults={formData.postureAiResults}
                         postureImages={(formData.postureImagesStorage || formData.postureImages || {}) as Record<string, string>}
                       />

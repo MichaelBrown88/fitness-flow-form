@@ -221,6 +221,12 @@ When the CTO agent (in APEX OS) provides feedback:
 
 ---
 
+## 🔗 PREVIEW LINK (user preference)
+
+After completing **substantive** app changes (anything that should be exercised on a real URL — not docs-only or trivial local-only tweaks), run `npm run deploy:preview` from the project root (requires Firebase CLI and network). In the **final reply to the user**, paste the **Hosting channel URL** from the CLI output (the `…--preview-…web.app` link), not only the default `*.web.app` site URL. Skip if the user asked not to deploy or the change cannot be hosted (e.g. functions-only with no hosting impact and they only want emulator).
+
+---
+
 ## 📋 PRE-COMMIT CHECKLIST
 
 Before every commit verify:

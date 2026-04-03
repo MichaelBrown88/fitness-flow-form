@@ -1,0 +1,23 @@
+[
+  {
+    "origin": [
+      "https://assessment-engine-8f633.web.app",
+      "https://assessment-engine-8f633.firebaseapp.com",
+      "https://one-assess.com",
+      "http://localhost:8080",
+      "http://127.0.0.1:8080"
+    ],
+    "method": ["GET", "HEAD"],
+    "maxAgeSeconds": 3600,
+    "responseHeader": [
+      "Content-Type",
+      "Content-Length",
+      "Content-Disposition",
+      "ETag",
+      "x-goog-hash",
+      "x-goog-generation",
+      "x-goog-metageneration",
+      "x-goog-storage-class"
+    ]
+  }
+]

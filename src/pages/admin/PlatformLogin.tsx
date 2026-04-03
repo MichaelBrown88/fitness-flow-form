@@ -104,11 +104,15 @@ const PlatformLogin = () => {
     try {
       const auth = getFirebaseAuth();
       const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
-      
-      // Update last login (non-blocking - don't fail login if this fails)
-      // Note: This may fail due to Firestore rules that restrict client-side writes
-      updateLastLogin(userCredential.user.uid).catch((updateErr) => {
-        logger.warn('Failed to update last login (non-critical)', 'PLATFORM_LOGIN', updateErr);
+
+      // Reconcile Firestore (migrates stale UID, merges same UID, cleans orphan docs). Non-blocking.
+      // Pass empty displayName so we do not overwrite an existing displayName on merge.
+      Promise.all([
+        createPlatformAdmin(userCredential.user.uid, email.trim(), ''),
+        markPasswordSet(userCredential.user.uid),
+        updateLastLogin(userCredential.user.uid),
+      ]).catch((updateErr) => {
+        logger.warn('Failed to reconcile platform admin record (non-critical)', 'PLATFORM_LOGIN', updateErr);
       });
       
       logger.info('Platform admin logged in', 'PLATFORM_LOGIN', { email });

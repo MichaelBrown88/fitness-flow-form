@@ -9,7 +9,14 @@
  */
 
 import { useState } from 'react';
-import { RefreshCw, ChevronDown, ChevronUp, Database, AlertTriangle } from 'lucide-react';
+import {
+  RefreshCw,
+  ChevronDown,
+  ChevronUp,
+  Database,
+  AlertTriangle,
+  CloudUpload,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePlatformDataIntelligence } from '@/hooks/usePlatformDataIntelligence';
 import {
@@ -129,22 +136,22 @@ function OutcomeProof({
             {(
               [
                 { key: 'improved', label: 'Improved', color: 'bg-emerald-500', n: overall.improved },
-                { key: 'stable',   label: 'Stable',   color: 'bg-muted-foreground',   n: overall.stable   },
-                { key: 'declined', label: 'Declined', color: 'bg-red-500/70',  n: overall.declined },
+                { key: 'stable', label: 'Stable', color: 'bg-slate-500', n: overall.stable },
+                { key: 'declined', label: 'Declined', color: 'bg-red-500', n: overall.declined },
               ] as const
-            ).map(row => {
+            ).map((row) => {
               const pct = Math.round((row.n / overall.total) * 100);
               return (
                 <div key={row.key} className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">{row.label}</span>
-                    <span className="tabular-nums text-muted-foreground">
-                      {pct}% <span className="text-foreground-secondary">({row.n})</span>
+                    <span className="text-slate-300">{row.label}</span>
+                    <span className="tabular-nums text-slate-400">
+                      {pct}% <span className="text-slate-500">({row.n})</span>
                     </span>
                   </div>
-                  <div className="h-2 bg-admin-bg rounded-full overflow-hidden">
+                  <div className="h-2 overflow-hidden rounded-full bg-slate-700/90">
                     <div
-                      className={`h-full ${row.color} rounded-full transition-all duration-700`}
+                      className={`h-full rounded-full transition-all duration-700 ${row.color}`}
                       style={{ width: `${pct}%` }}
                     />
                   </div>
@@ -166,12 +173,13 @@ function OutcomeProof({
                   const b = outcomeFunnel.byEngagement[key];
                   if (b.total === 0) return null;
                   const pct = Math.round((b.improved / b.total) * 100);
+                  const pctClass = pct > 0 ? 'text-emerald-400' : 'text-slate-400';
                   return (
-                    <div key={key} className="flex items-center justify-between text-xs text-muted-foreground">
+                    <div key={key} className="flex items-center justify-between text-xs text-slate-300">
                       <span>{label}</span>
                       <span className="tabular-nums">
-                        <span className="text-emerald-400">{pct}%</span> improved
-                        <span className="text-foreground-secondary ml-1">n={b.total}</span>
+                        <span className={pctClass}>{pct}%</span> improved
+                        <span className="ml-1 text-slate-500">n={b.total}</span>
                       </span>
                     </div>
                   );
@@ -398,7 +406,7 @@ function EngagementLadder({ cohorts }: { cohorts: EngagementCohort[] }) {
         {sorted.map(c => (
           <div key={c.bracket} className="flex items-center gap-3">
             <p className="w-16 text-xs text-muted-foreground shrink-0">{c.label}</p>
-            <div className="flex-1 bg-foreground/90 rounded-full h-1.5 overflow-hidden">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-700/85">
               <div
                 className="h-full rounded-full bg-indigo-500"
                 style={{ width: `${Math.min(100, c.avgScore)}%` }}
@@ -455,7 +463,7 @@ function PillarGains({ improvements }: { improvements: Record<string, number> })
           return (
             <div key={i.key} className="flex items-center gap-3">
               <p className="w-36 text-xs text-muted-foreground shrink-0">{i.label}</p>
-              <div className="flex-1 bg-foreground/90 rounded-full h-1 overflow-hidden">
+              <div className="h-1 flex-1 overflow-hidden rounded-full bg-slate-700/85">
                 <div
                   className={`h-full rounded-full ${i.delta >= 0 ? 'bg-emerald-500' : 'bg-red-500'}`}
                   style={{ width: `${barPct}%` }}
@@ -648,7 +656,7 @@ function AnalyticsCapabilities({ milestoneProgress }: { milestoneProgress: Miles
                 </p>
                 {progress !== null && (
                   <div className="mt-1.5 flex items-center gap-2">
-                    <div className="flex-1 bg-foreground/90 rounded-full h-0.5">
+                    <div className="h-0.5 flex-1 overflow-hidden rounded-full bg-slate-700/85">
                       <div
                         className="h-full rounded-full bg-indigo-600"
                         style={{ width: `${progress}%` }}
@@ -736,6 +744,25 @@ function FullAnalysis({
   );
 }
 
+function apexSkippedUserMessage(reason?: string): string {
+  if (reason === 'http_401') {
+    return (
+      'APEX OS: skipped (401). Cloud Functions secret must exactly match Vercel ' +
+      'PRODUCT_ANALYTICS_INGEST_SECRET for production (os.one-assess.com). Update functions/.env, then firebase deploy --only functions.'
+    );
+  }
+  if (reason === 'secret_placeholder') {
+    return 'APEX OS: skipped — replace the placeholder in APEX_PRODUCT_ANALYTICS_SECRET and redeploy functions.';
+  }
+  if (reason === 'no_secret') {
+    return 'APEX OS: skipped — set APEX_PRODUCT_ANALYTICS_SECRET in functions/.env and redeploy functions.';
+  }
+  if (reason === 'no_global_metrics') {
+    return 'APEX OS: skipped — Firestore system_stats/global_metrics does not exist yet.';
+  }
+  return `APEX OS: skipped${reason ? ` (${reason})` : ''}. Check functions env secret and global_metrics.`;
+}
+
 // ---------------------------------------------------------------------------
 // Main tab
 // ---------------------------------------------------------------------------
@@ -754,10 +781,14 @@ export function PlatformDashboardDataIntelligenceTab() {
     dataCompleteness,
     efficacyPct,
     triggerCompute,
+    triggerPushApexProductMetrics,
+    pushingApexProductMetrics,
     lastComputedLabel,
   } = usePlatformDataIntelligence();
 
   const [computeError, setComputeError] = useState<string | null>(null);
+  const [apexPushError, setApexPushError] = useState<string | null>(null);
+  const [apexPushMessage, setApexPushMessage] = useState<string | null>(null);
   const [showFullAnalysis, setShowFullAnalysis] = useState(false);
 
   async function handleCompute() {
@@ -776,6 +807,30 @@ export function PlatformDashboardDataIntelligenceTab() {
     }
   }
 
+  async function handlePushApexProductMetrics() {
+    setApexPushError(null);
+    setApexPushMessage(null);
+    try {
+      const data = await triggerPushApexProductMetrics();
+      if (data.pushed) {
+        setApexPushMessage(
+          `APEX OS: sent ${data.metricsCount ?? 0} metrics (HTTP ${data.status ?? '—'}).`,
+        );
+      } else {
+        setApexPushMessage(apexSkippedUserMessage(data.reason));
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const isCors =
+        msg.toLowerCase().includes('cors') || msg.toLowerCase().includes('failed to fetch');
+      setApexPushError(
+        isCors
+          ? 'Function not reachable. Run: firebase deploy --only functions:pushApexProductMetricsNow'
+          : `APEX push failed: ${msg}`,
+      );
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24 text-muted-foreground gap-2">
@@ -789,8 +844,8 @@ export function PlatformDashboardDataIntelligenceTab() {
   if (!populationData) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-5 text-center">
-        <div className="w-14 h-14 rounded-2xl bg-foreground/90 border border-border flex items-center justify-center">
-          <Database className="w-7 h-7 text-muted-foreground" />
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-admin-border bg-admin-surface-inset">
+          <Database className="h-7 w-7 text-admin-fg-muted" />
         </div>
         <div className="max-w-sm space-y-1.5">
           <h3 className="text-white font-semibold">No data yet</h3>
@@ -798,14 +853,35 @@ export function PlatformDashboardDataIntelligenceTab() {
             The nightly job runs at 02:00 UTC. Click below to compute now.
           </p>
         </div>
-        <Button
-          onClick={handleCompute}
-          disabled={computing}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white"
-        >
-          {computing && <RefreshCw className="w-4 h-4 mr-2 animate-spin" />}
-          {computing ? 'Computing…' : 'Compute Now'}
-        </Button>
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <Button
+            onClick={handleCompute}
+            disabled={computing}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+          >
+            {computing && <RefreshCw className="w-4 h-4 mr-2 animate-spin" />}
+            {computing ? 'Computing…' : 'Compute Now'}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handlePushApexProductMetrics}
+            disabled={pushingApexProductMetrics || computing}
+          >
+            {pushingApexProductMetrics && (
+              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+            )}
+            {!pushingApexProductMetrics && (
+              <CloudUpload className="w-4 h-4 mr-2" />
+            )}
+            {pushingApexProductMetrics ? 'Pushing…' : 'Push to APEX'}
+          </Button>
+        </div>
+        {apexPushError && (
+          <p className="text-xs text-red-400 max-w-sm">{apexPushError}</p>
+        )}
+        {apexPushMessage && !apexPushError && (
+          <p className="text-xs text-muted-foreground max-w-sm">{apexPushMessage}</p>
+        )}
       </div>
     );
   }
@@ -818,24 +894,51 @@ export function PlatformDashboardDataIntelligenceTab() {
         <p className="text-xs text-foreground-secondary">
           {lastComputedLabel ? `Last computed ${lastComputedLabel}` : 'Data Intelligence'}
         </p>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleCompute}
-          disabled={computing}
-          className="text-muted-foreground hover:text-foreground-secondary text-xs h-7 px-2"
-        >
-          {computing
-            ? <RefreshCw className="w-3 h-3 mr-1.5 animate-spin" />
-            : <RefreshCw className="w-3 h-3 mr-1.5" />}
-          Recompute
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleCompute}
+            disabled={computing}
+            className="text-muted-foreground hover:text-foreground-secondary text-xs h-7 px-2"
+          >
+            {computing
+              ? <RefreshCw className="w-3 h-3 mr-1.5 animate-spin" />
+              : <RefreshCw className="w-3 h-3 mr-1.5" />}
+            Recompute
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handlePushApexProductMetrics}
+            disabled={pushingApexProductMetrics || computing}
+            className="text-muted-foreground hover:text-foreground-secondary text-xs h-7 px-2"
+          >
+            {pushingApexProductMetrics
+              ? <RefreshCw className="w-3 h-3 mr-1.5 animate-spin" />
+              : <CloudUpload className="w-3 h-3 mr-1.5" />}
+            Push to APEX
+          </Button>
+        </div>
       </div>
 
       {computeError && (
         <div className="flex items-start gap-2 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-xs text-red-400">
           <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
           {computeError}
+        </div>
+      )}
+
+      {apexPushError && (
+        <div className="flex items-start gap-2 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-xs text-red-400">
+          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+          {apexPushError}
+        </div>
+      )}
+
+      {apexPushMessage && !apexPushError && (
+        <div className="rounded-xl border border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
+          {apexPushMessage}
         </div>
       )}
 

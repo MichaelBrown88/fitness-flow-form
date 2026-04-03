@@ -11,7 +11,7 @@ export function usePostureCompanion({
   isOpen,
   onComplete,
   onClose,
-  onStartDirectScan,
+  onRequestDeviceCapture,
 }: UsePostureCompanionOptions): UsePostureCompanionResult {
   const { profile } = useAuth();
 
@@ -76,9 +76,8 @@ export function usePostureCompanion({
   }, [session, onComplete, onClose]);
 
   const handleDirectScan = useCallback(() => {
-    onClose();
-    onStartDirectScan?.();
-  }, [onClose, onStartDirectScan]);
+    onRequestDeviceCapture?.();
+  }, [onRequestDeviceCapture]);
 
   return {
     session,

@@ -8,6 +8,7 @@ import { logger } from '@/lib/utils/logger';
 import { isFeatureEnabled } from '@/services/platform/platformConfig';
 import { validateOrganizationId } from '@/lib/utils/validateOrganizationId';
 import type { UserProfile } from '@/types/auth';
+import type { PostureFindingRecord } from '@/lib/types/postureFindings';
 
 /** Error thrown when a feature is disabled via kill switch */
 export class FeatureDisabledError extends Error {
@@ -201,6 +202,9 @@ export interface PostureAnalysisResult {
     lordosisSeverity?: 'good' | 'mild' | 'moderate' | 'severe';
     spineSeverity?: 'good' | 'mild' | 'moderate' | 'severe';
   };
+
+  /** Deterministic library-backed findings for reports (per view). */
+  structuredFindings?: PostureFindingRecord[];
 }
 
 /**
@@ -357,12 +361,12 @@ export async function analyzePostureImage(
     let model;
     try {
       model = getGenerativeModel(ai, { 
-        model: CONFIG.AI.GEMINI.MODEL_NAME,
+        model: CONFIG.AI.GEMINI.POSTURE_FEEDBACK_MODEL_NAME,
         generationConfig: {
           responseMimeType: "application/json",
         }
       });
-      logger.debug(`Model initialized: ${CONFIG.AI.GEMINI.MODEL_NAME}`, ctx);
+      logger.debug(`Model initialized: ${CONFIG.AI.GEMINI.POSTURE_FEEDBACK_MODEL_NAME}`, ctx);
     } catch (modelError) {
       logger.error('Failed to get generative model', ctx, modelError);
       throw new Error(`Model initialization failed: ${modelError instanceof Error ? modelError.message : 'Unknown error'}`);

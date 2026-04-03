@@ -12,7 +12,7 @@
 
 import type { PlatformMetrics, PlatformMetricsHistoryEntry, OrganizationSummary } from '@/types/platform';
 import type { ChartDataPoint } from '@/hooks/usePlatformDashboard';
-import { TrendingUp, TrendingDown, Minus, Users, Activity, Target, BarChart3 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Users, Activity, Target } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -101,14 +101,6 @@ export function PlatformIntelligenceSection({ metrics, revenueByRegion, metricsH
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-base font-semibold text-admin-fg flex items-center gap-2">
-          <BarChart3 className="w-4 h-4 text-indigo-400" />
-          Platform Intelligence
-        </h2>
-        <p className="text-xs text-admin-fg-muted mt-0.5">Business metrics for acquisition due diligence — derived from live platform data</p>
-      </div>
-
       {/* Row 1: KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard label="Monthly Recurring Revenue" value={formatCurrency(mrrPence)} sub={mrrDelta !== 0 ? `${mrrDelta > 0 ? '+' : ''}${mrrDelta}% vs 30d ago` : 'No prior period'} icon={TrendingUp} accent />
@@ -145,7 +137,9 @@ export function PlatformIntelligenceSection({ metrics, revenueByRegion, metricsH
               <p className="text-xs text-admin-fg-muted">{matureActive.length}/{matureOrgs.length} mature orgs active in last 90d</p>
             </>
           ) : (
-            <p className="text-sm text-admin-fg-muted pt-1">Not enough data yet — needs orgs older than 90 days</p>
+            <p className="text-sm text-slate-300 pt-1 leading-snug">
+              Not enough data yet — needs orgs older than 90 days
+            </p>
           )}
         </div>
 
@@ -155,14 +149,20 @@ export function PlatformIntelligenceSection({ metrics, revenueByRegion, metricsH
           {concentration !== null ? (
             <>
               <div className="flex items-end gap-2">
-                <span className={`text-xl font-semibold ${concentrationRisk ? 'text-amber-400' : 'text-emerald-400'}`}>{concentration}%</span>
+                <span
+                  className={`text-xl font-semibold ${
+                    concentrationRisk ? 'text-amber-400' : 'text-slate-200'
+                  }`}
+                >
+                  {concentration}%
+                </span>
               </div>
               <p className="text-xs text-admin-fg-muted">
                 {concentrationRisk ? 'Top 3 orgs drive most volume — concentration risk' : 'Top 3 orgs — healthy distribution'}
               </p>
             </>
           ) : (
-            <p className="text-sm text-admin-fg-muted pt-1">No assessment data yet</p>
+            <p className="text-sm text-slate-300 pt-1">No assessment data yet</p>
           )}
         </div>
       </div>

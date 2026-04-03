@@ -132,8 +132,10 @@ All colors MUST be HSL.
     --admin-bg: 222 47% 4%;         /* slate-950 */
     --admin-card: 222 47% 8%;       /* slate-900/50 */
     --admin-border: 222 47% 14%;    /* slate-800 */
+    --admin-surface-inset: 222 38% 11%; /* nested stat rows — dark, not light gray */
     --admin-fg: 0 0% 100%;
-    --admin-fg-muted: 215 20% 45%;  /* slate-500 */
+    /* Brighter than before: labels must read on admin-surface-inset / admin-card */
+    --admin-fg-muted: 215 14% 62%;
 
     /* Marketing: contrast band (e.g. Under the hood) — paired in .dark */
     --landing-contrast-bg: 222 47% 11%;

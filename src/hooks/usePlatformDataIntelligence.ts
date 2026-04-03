@@ -136,8 +136,19 @@ export interface PlatformDataIntelligenceResult {
   milestoneProgress: MilestoneProgress | null;
 
   triggerCompute: () => Promise<void>;
+  /** Callable `pushApexProductMetricsNow` — platform admin only. */
+  triggerPushApexProductMetrics: () => Promise<PushApexProductMetricsNowResponse>;
+  pushingApexProductMetrics: boolean;
   lastComputedLabel: string | null;
 }
+
+/** Matches Cloud Function return from `pushApexProductMetricsFromFirestore`. */
+export type PushApexProductMetricsNowResponse = {
+  pushed: boolean;
+  reason?: string;
+  metricsCount?: number;
+  status?: number;
+};
 
 // ---------------------------------------------------------------------------
 // Hook
@@ -146,6 +157,7 @@ export interface PlatformDataIntelligenceResult {
 export function usePlatformDataIntelligence(): PlatformDataIntelligenceResult {
   const [loading, setLoading] = useState(true);
   const [computing, setComputing] = useState(false);
+  const [pushingApexProductMetrics, setPushingApexProductMetrics] = useState(false);
   const [populationData, setPopulationData] = useState<PopulationAnalytics | null>(null);
   const [milestonesData, setMilestonesData] = useState<MilestonesDoc | null>(null);
 
@@ -221,6 +233,23 @@ export function usePlatformDataIntelligence(): PlatformDataIntelligenceResult {
       setComputing(false);
     }
   }, [fetchData]);
+
+  const triggerPushApexProductMetrics = useCallback(async () => {
+    setPushingApexProductMetrics(true);
+    try {
+      const fn = httpsCallable<void, PushApexProductMetricsNowResponse>(
+        getFirebaseFunctions(),
+        'pushApexProductMetricsNow',
+      );
+      const res = await fn();
+      return res.data;
+    } catch (err) {
+      logger.error('usePlatformDataIntelligence: push APEX product metrics failed', err);
+      throw err;
+    } finally {
+      setPushingApexProductMetrics(false);
+    }
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Derive chart data
@@ -347,6 +376,8 @@ export function usePlatformDataIntelligence(): PlatformDataIntelligenceResult {
     patternChartData,
     milestoneProgress,
     triggerCompute,
+    triggerPushApexProductMetrics,
+    pushingApexProductMetrics,
     lastComputedLabel,
   };
 }

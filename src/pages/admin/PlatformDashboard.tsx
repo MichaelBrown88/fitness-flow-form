@@ -134,7 +134,7 @@ const PlatformDashboard = () => {
             </div>
             <div>
               <h1 className="text-white font-semibold">Platform Dashboard</h1>
-              <p className="text-xs text-muted-foreground">{admin?.email}</p>
+              <p className="text-xs text-admin-fg-muted">{admin?.email}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">

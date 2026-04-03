@@ -1,4 +1,4 @@
-import { db } from '@/services/firebase';
+import { auth, db } from '@/services/firebase';
 import { 
   doc, 
   setDoc, 
@@ -9,7 +9,7 @@ import {
   DocumentReference
 } from 'firebase/firestore';
 import { compressImageForDisplay } from '@/lib/utils/imageCompression';
-import { PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
+import { PostureAnalysisResult, type PostureAiContext } from '@/lib/ai/postureAnalysis';
 import { sanitizeForFirestore } from '@/lib/utils/firebaseUtils';
 import { LandmarkResult } from '@/lib/ai/postureLandmarks';
 import type { PostureFramingMetadata } from '@/lib/utils/postureFramingMetadata';
@@ -211,6 +211,11 @@ export const updatePostureImage = async (
     }
     
     logger.debug(`Starting processing for ${view} (source: ${source})`, 'LIVE_SESSIONS');
+
+    const postureAiContext: PostureAiContext | undefined =
+      auth.currentUser && organizationId && profile
+        ? { organizationId: validateOrganizationId(organizationId, profile), profile }
+        : undefined;
     
     // Use unified processing system (ONE FLOW FOR ALL SOURCES)
     const { processPostureImage } = await import('@/services/postureProcessing');
@@ -248,7 +253,8 @@ export const updatePostureImage = async (
             // Non-critical - don't fail the whole process
             logger.warn(`Failed to update progress for ${view}`, 'LIVE_SESSIONS', progressError);
           }
-        }
+        },
+        postureAiContext
       );
       logger.debug(`Successfully processed ${view} image`, 'LIVE_SESSIONS');
     } catch (processError) {
@@ -506,8 +512,10 @@ export const logCompanionMessage = async (
       companionLogs: updatedLogs
     });
     
-    const logMethod = level === 'error' ? logger.error : level === 'warn' ? logger.warn : logger.info;
-    logMethod(`[COMPANION ${sessionId}] ${message}`);
+    const line = `[COMPANION ${sessionId}] ${message}`;
+    if (level === 'error') logger.error(line);
+    else if (level === 'warn') logger.warn(line);
+    else logger.info(line);
   } catch (err) {
     logger.error('[COMPANION LOG] Failed to log message:', err);
   }
@@ -562,13 +570,21 @@ export const reanalyzePostureImage = async (
       imageData = imageUrl;
     }
     
+    const coachUid = auth.currentUser?.uid;
+    const postureAiContext: PostureAiContext | undefined =
+      coachUid && organizationId
+        ? { organizationId: validateOrganizationId(organizationId, undefined) }
+        : undefined;
+
     // Re-process the image with updated logic
     const { processPostureImage } = await import('@/services/postureProcessing');
     const processed = await processPostureImage(
       imageData,
       view,
       storedLandmarks,
-      'manual'
+      'manual',
+      undefined,
+      postureAiContext
     );
     
     // Update the session with new analysis

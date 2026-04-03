@@ -11,7 +11,14 @@ export function UnderTheHood() {
 
   return (
     <section className="relative overflow-hidden bg-landing-contrast-bg px-6 py-24 text-landing-contrast-fg sm:py-32">
-      <div className="absolute left-0 top-0 h-full w-full bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20" />
+      {/* Local noise texture — avoids 403 from third-party CDN in production */}
+      <div
+        className="pointer-events-none absolute left-0 top-0 h-full w-full opacity-[0.18]"
+        aria-hidden
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cfilter id='a'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23a)'/%3E%3C/svg%3E")`,
+        }}
+      />
       <div className="relative z-10 mx-auto max-w-7xl">
         {/* Centered header — Apple style */}
         <div ref={headerRef}>

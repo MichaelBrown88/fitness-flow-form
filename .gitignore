@@ -6,6 +6,9 @@ node_modules/
 # Firebase service account (never commit)
 service-account.json
 
+# Local client assessment exports (PII — regenerate with npm run export:clients-md)
+docs/client-exports/
+
 # Environment variables
 .env
 functions/.env
