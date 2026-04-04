@@ -28,6 +28,7 @@ import {
 } from 'firebase/firestore';
 import { getDb, getFirebaseFunctions } from '@/services/firebase';
 import { calculateMonthlyFee } from '@/lib/pricing';
+import { resolveSubscriptionClientLimit } from '@/lib/pricing/resolveSubscriptionClientLimit';
 import { getMonthlyPrice, getPriceInSmallestUnit } from '@/lib/pricing/config';
 import { DEFAULT_REGION, REGION_TO_CURRENCY } from '@/constants/pricing';
 import {
@@ -40,11 +41,18 @@ import type {
   PlatformMetricsHistoryEntry,
   OrganizationSummary,
   OrganizationDetails,
+  RevenueByRegionSnapshot,
 } from '@/types/platform';
 import { logger } from '@/lib/utils/logger';
 import { ORGANIZATION, PLATFORM } from '@/lib/database/paths';
 import {
+  currencyRatesFromFirestoreDoc,
+  subscriptionSmallestUnitToGbpPence,
+} from '@shared/reportingFx';
+import { filsToGbpPence } from '@/lib/utils/currency';
+import {
   getPlatformAdminsCollection,
+  getPlatformConfigDoc,
   getOrganizationsCollection,
   getOrganizationDoc,
   getUserProfilesCollection,
@@ -53,7 +61,6 @@ import {
   getOrgAssessmentsCollection,
   getOrgClientsCollection,
 } from '@/lib/database/collections';
-import { filsToGbpPence, usdCentsToGbpPence } from '@/lib/utils/currency';
 import { logAdminAction } from './auditLog';
 import { ORGANIZATIONS_LIST_PAGE_SIZE, ORG_COACHES_SUBCOLLECTION_LIMIT } from '@/constants/firestoreQueryLimits';
 
@@ -85,53 +92,75 @@ async function getAllOrganizationDocSnapshots(): Promise<QueryDocumentSnapshot<D
   return out;
 }
 
-export interface RevenueByRegionResult {
-  byRegion: {
-    GB?: { amountLocal: number; currency: 'GBP'; gbpPence: number };
-    US?: { amountLocal: number; currency: 'USD'; gbpPence: number };
-    KW?: { amountLocal: number; currency: 'KWD'; gbpPence: number };
-  };
-  totalGbpPence: number;
-}
-
 /**
- * Get revenue grouped by region (UK £, US $, KW KWD, Total £).
+ * Sum active subscription amounts by billing region.
+ * Local amounts match Stripe smallest units; GBP column uses `platform/config.currencyRates` (see `reportingFx` defaults).
  */
-export async function getRevenueByRegion(): Promise<RevenueByRegionResult> {
-  const result: RevenueByRegionResult = { byRegion: {}, totalGbpPence: 0 };
+export async function getRevenueByRegion(): Promise<RevenueByRegionSnapshot> {
+  const result: RevenueByRegionSnapshot = { byRegion: {}, totalGbpPence: 0 };
   try {
+    const configSnap = await getDoc(getPlatformConfigDoc());
+    const rates = currencyRatesFromFirestoreDoc(configSnap.data() as Record<string, unknown> | undefined);
+
     const orgDocs = await getAllOrganizationDocSnapshots();
-    const regionTotals = new Map<string, { amountLocal: number; currency: 'GBP' | 'USD' | 'KWD' }>();
+    const regionTotals = new Map<
+      string,
+      { amountLocal: number; currency: string; activePayingOrgCount: number }
+    >();
 
     orgDocs.forEach((orgDoc) => {
       const data = orgDoc.data();
       const status = data.subscription?.status;
-      const isComped = data.subscription?.isComped === true;
-      if (status !== 'active' || isComped) return;
+      if (status !== 'active') return;
 
-      const region = (data.subscription?.region ?? data.region) as Region | undefined;
-      const currency = data.subscription?.currency ?? (region ? REGION_TO_CURRENCY[region] : undefined);
-      if (!region || !currency) return;
+      const regionRaw = data.subscription?.region ?? data.region;
+      const region = typeof regionRaw === 'string' && regionRaw.trim() ? regionRaw.trim() : '';
+      const regionKey = region || 'UNKNOWN';
 
-      const amountCents = data.subscription?.amountCents ?? data.subscription?.amountFils;
-      if (amountCents == null || amountCents <= 0) return;
+      const currencyRaw =
+        data.subscription?.currency ??
+        (region && region in REGION_TO_CURRENCY
+          ? REGION_TO_CURRENCY[region as Region]
+          : undefined);
+      const currency = typeof currencyRaw === 'string' && currencyRaw.trim() ? currencyRaw.trim().toUpperCase() : '';
+      if (!currency) return;
 
-      const existing = regionTotals.get(region) ?? { amountLocal: 0, currency };
-      if (currency === 'GBP') existing.amountLocal += amountCents;
-      else if (currency === 'USD') existing.amountLocal += amountCents;
-      else existing.amountLocal += amountCents;
-      regionTotals.set(region, existing);
+      const amountSmallest = data.subscription?.amountCents ?? data.subscription?.amountFils;
+      if (amountSmallest == null || typeof amountSmallest !== 'number' || amountSmallest <= 0) return;
+
+      const existing = regionTotals.get(regionKey) ?? {
+        amountLocal: 0,
+        currency,
+        activePayingOrgCount: 0,
+      };
+      if (existing.currency !== currency) {
+        logger.warn('[getRevenueByRegion] Mixed currencies for same region key', {
+          region: regionKey,
+          existingCurrency: existing.currency,
+          newCurrency: currency,
+        });
+      }
+      existing.amountLocal += amountSmallest;
+      existing.activePayingOrgCount += 1;
+      regionTotals.set(regionKey, existing);
     });
 
     let totalGbpPence = 0;
-    regionTotals.forEach((v, region) => {
-      let gbpPence = 0;
-      const key = region as 'GB' | 'US' | 'KW';
-      if (v.currency === 'GBP') gbpPence = v.amountLocal;
-      else if (v.currency === 'USD') gbpPence = usdCentsToGbpPence(v.amountLocal);
-      else gbpPence = filsToGbpPence(v.amountLocal);
-      const entry = { amountLocal: v.amountLocal, currency: v.currency, gbpPence };
-      (result.byRegion as Record<string, typeof entry>)[key] = entry;
+    regionTotals.forEach((v, regionKey) => {
+      const gbpPence = subscriptionSmallestUnitToGbpPence(v.amountLocal, v.currency, rates);
+      if (gbpPence === 0 && v.amountLocal > 0 && !['GBP', 'USD', 'EUR', 'KWD'].includes(v.currency)) {
+        logger.warn('[getRevenueByRegion] Unsupported currency for GBP normalization', {
+          region: regionKey,
+          currency: v.currency,
+        });
+      }
+      const entry = {
+        amountLocal: v.amountLocal,
+        currency: v.currency,
+        gbpPence,
+        activePayingOrgCount: v.activePayingOrgCount,
+      };
+      result.byRegion[regionKey] = entry;
       totalGbpPence += gbpPence;
     });
     result.totalGbpPence = totalGbpPence;
@@ -215,7 +244,6 @@ export async function getAssessmentChartData(): Promise<Array<{ date: string; as
 
 /**
  * Check if platform admin has data access permission for an organization
- * Comped organizations (like One Fitness - owner's company) automatically have access
  */
 async function hasDataAccessPermission(orgId: string): Promise<boolean> {
   try {
@@ -224,11 +252,6 @@ async function hasDataAccessPermission(orgId: string): Promise<boolean> {
     if (!orgSnap.exists()) return false;
 
     const data = orgSnap.data();
-    // Comped organizations get automatic access (owner's company for testing)
-    if (data.subscription?.isComped === true) {
-      return true;
-    }
-    // Check explicit permission
     return data.dataAccessPermission?.platformAdminAccess === true;
   } catch (error) {
     logger.error(`Error checking data access permission for org ${orgId}:`, error);
@@ -238,7 +261,7 @@ async function hasDataAccessPermission(orgId: string): Promise<boolean> {
 
 /**
  * Get coaches with their assessment counts for an organization
- * GDPR/HIPAA: Only works if platform admin has explicit permission OR org is platform owner
+ * GDPR/HIPAA: Only works if platform admin has explicit permission
  * Reads from organizations/{orgId}/coaches/{uid} for pre-aggregated stats
  */
 export async function getOrgCoachesWithStats(orgId: string): Promise<Array<{
@@ -386,17 +409,29 @@ export async function getOrganizations(
         // Extract subscription details
         const plan = data.subscription?.plan || 'free';
         const clientSeats = data.subscription?.clientSeats || 0;
-        const isComped = data.subscription?.isComped === true;
         const region = (data.subscription?.region ?? data.region) as Region | undefined;
         const effectiveRegion = region ?? DEFAULT_REGION;
         const currency =
           data.subscription?.currency ?? REGION_TO_CURRENCY[effectiveRegion];
-        const seatBlock = data.subscription?.clientCount ?? clientSeats;
+        const subscriptionStatus =
+          typeof data.subscription?.status === 'string' ? data.subscription.status : undefined;
+        const seatBlock = resolveSubscriptionClientLimit({
+          capacityTierId:
+            typeof data.subscription?.capacityTierId === 'string'
+              ? data.subscription.capacityTierId
+              : undefined,
+          clientCap:
+            typeof data.subscription?.clientCap === 'number' ? data.subscription.clientCap : undefined,
+          clientCount:
+            typeof data.subscription?.clientCount === 'number' ? data.subscription.clientCount : undefined,
+          clientSeats: typeof data.subscription?.clientSeats === 'number' ? data.subscription.clientSeats : undefined,
+          plan: typeof plan === 'string' ? plan : undefined,
+          subscriptionStatus,
+        });
         const amountCents = data.subscription?.amountCents ?? data.subscription?.amountFils;
         const seatsForPrice = seatBlock || clientSeats;
-        const monthlyAmountLocal = isComped
-          ? 0
-          : amountCents != null && currency
+        const monthlyAmountLocal =
+          amountCents != null && currency
             ? (currency === 'KWD'
               ? (amountCents as number) / 1000
               : (amountCents as number) / 100)
@@ -410,14 +445,18 @@ export async function getOrganizations(
           type: data.type || 'solo_coach',
           plan: plan,
           status: data.subscription?.status || 'none',
-          isComped: isComped,
           clientSeats: clientSeats,
           monthlyFeeKwd: currency === 'KWD' ? monthlyAmountLocal : undefined,
           region: effectiveRegion,
           currency,
           seatBlock: seatBlock || clientSeats,
           monthlyAmountLocal: currency ? monthlyAmountLocal : undefined,
-          customBrandingEnabled: data.customBrandingEnabled === true,
+          customBrandingEnabled:
+            data.customBrandingEnabled === true
+              ? true
+              : data.customBrandingEnabled === false
+                ? false
+                : undefined,
           customBrandingPaidAt: data.customBrandingPaidAt?.toDate?.(),
           coachCount: stats.coachCount || 0,
           clientCount: stats.clientCount || 0,
@@ -433,10 +472,10 @@ export async function getOrganizations(
       })
       .filter((org): org is OrganizationSummary & { lastActiveDate?: Date; onboardingCompletedAt?: Date; isTest?: boolean } => {
         if (!org) return false;
-        // Keep orgs with data, comped, or test/incomplete (so admins can see and remove them)
+        // Keep orgs with data, or test/incomplete (so admins can see and remove them)
         const hasData = org.coachCount > 0 || org.clientCount > 0 || org.assessmentCount > 0;
         const isIncomplete = !org.onboardingCompletedAt && (!org.name || org.name === 'Unnamed Organization');
-        return hasData || org.isComped || org.isTest === true || isIncomplete;
+        return hasData || org.isTest === true || isIncomplete;
       }) as OrganizationSummary[];
 
     // Sort by createdAt descending
@@ -468,16 +507,25 @@ export async function getOrganizationDetails(orgId: string): Promise<Organizatio
 
     const plan = data.subscription?.plan || 'free';
     const clientSeats = data.subscription?.clientSeats || 0;
-    const isComped = data.subscription?.isComped === true;
     const region = (data.subscription?.region ?? data.region) as Region | undefined;
     const effectiveRegion = region ?? DEFAULT_REGION;
     const currency = data.subscription?.currency ?? REGION_TO_CURRENCY[effectiveRegion];
-    const seatBlock = data.subscription?.clientCount ?? clientSeats;
+    const subscriptionStatus =
+      typeof data.subscription?.status === 'string' ? data.subscription.status : undefined;
+    const seatBlock = resolveSubscriptionClientLimit({
+      capacityTierId:
+        typeof data.subscription?.capacityTierId === 'string' ? data.subscription.capacityTierId : undefined,
+      clientCap: typeof data.subscription?.clientCap === 'number' ? data.subscription.clientCap : undefined,
+      clientCount:
+        typeof data.subscription?.clientCount === 'number' ? data.subscription.clientCount : undefined,
+      clientSeats: typeof data.subscription?.clientSeats === 'number' ? data.subscription.clientSeats : undefined,
+      plan: typeof plan === 'string' ? plan : undefined,
+      subscriptionStatus,
+    });
     const amountCents = data.subscription?.amountCents ?? data.subscription?.amountFils;
     const seatsForPrice = seatBlock || clientSeats;
-    const monthlyAmountLocal = isComped
-      ? 0
-      : amountCents != null && currency
+    const monthlyAmountLocal =
+      amountCents != null && currency
         ? (currency === 'KWD'
           ? (amountCents as number) / 1000
           : (amountCents as number) / 100)
@@ -494,14 +542,18 @@ export async function getOrganizationDetails(orgId: string): Promise<Organizatio
       type: data.type || 'solo_coach',
       plan,
       status: data.subscription?.status || 'none',
-      isComped,
       clientSeats,
       monthlyFeeKwd,
       region: effectiveRegion,
       currency,
       seatBlock: seatBlock || clientSeats,
       monthlyAmountLocal: currency ? monthlyAmountLocal : undefined,
-      customBrandingEnabled: data.customBrandingEnabled === true,
+      customBrandingEnabled:
+        data.customBrandingEnabled === true
+          ? true
+          : data.customBrandingEnabled === false
+            ? false
+            : undefined,
       customBrandingPaidAt: data.customBrandingPaidAt?.toDate?.(),
       coachCount: stats.coachCount || 0,
       clientCount: stats.clientCount || 0,
@@ -533,6 +585,14 @@ export async function getOrganizationDetails(orgId: string): Promise<Organizatio
       stripeCustomerId: data.stripe?.stripeCustomerId,
       stripeSubscriptionId: data.stripe?.stripeSubscriptionId,
       stripePriceId: data.stripe?.stripePriceId,
+      capacityTierId:
+        typeof data.subscription?.capacityTierId === 'string'
+          ? data.subscription.capacityTierId
+          : undefined,
+      packageTrack:
+        data.subscription?.packageTrack === 'gym' || data.subscription?.packageTrack === 'solo'
+          ? data.subscription.packageTrack
+          : undefined,
     } as OrganizationDetails;
   } catch (error) {
     logger.error('Error fetching organization details:', error);
@@ -577,9 +637,9 @@ export async function updateOrganizationDetails(
       updateData.dataAccessPermission = updates.dataAccessPermission;
     }
 
-    // Handle subscription updates (region, seatBlock, plan, status, isComped, clientSeats)
+    // Handle subscription updates (region, seatBlock, plan, status, clientSeats)
     const subFields = updates.region !== undefined || updates.seatBlock !== undefined || updates.plan !== undefined
-      || updates.status !== undefined || updates.isComped !== undefined || updates.clientSeats !== undefined;
+      || updates.status !== undefined || updates.clientSeats !== undefined;
     if (subFields) {
       const orgSnap = await getDoc(orgRef);
       const currentData = orgSnap.data();
@@ -591,7 +651,6 @@ export async function updateOrganizationDetails(
         ...currentSubscription,
         ...(updates.plan !== undefined && { plan: updates.plan }),
         ...(updates.status !== undefined && { status: updates.status }),
-        ...(updates.isComped !== undefined && { isComped: updates.isComped }),
         ...(updates.clientSeats !== undefined && { clientSeats: updates.clientSeats }),
         ...(updates.region !== undefined && { region: updates.region }),
         ...(updates.seatBlock !== undefined && { clientCount: updates.seatBlock, clientSeats: updates.seatBlock }),
@@ -599,9 +658,8 @@ export async function updateOrganizationDetails(
 
       if (region && (updates.region !== undefined || updates.seatBlock !== undefined || updates.clientSeats !== undefined)) {
         const currency = REGION_TO_CURRENCY[region];
-        const isComped = updates.isComped !== undefined ? updates.isComped : currentSubscription.isComped === true;
-        const monthlyAmount = isComped ? 0 : getMonthlyPrice(region, seatBlock);
-        const amountCents = isComped ? 0 : getPriceInSmallestUnit(monthlyAmount, currency);
+        const monthlyAmount = getMonthlyPrice(region, seatBlock);
+        const amountCents = getPriceInSmallestUnit(monthlyAmount, currency);
         subscriptionUpdate.currency = currency;
         subscriptionUpdate.clientCount = seatBlock;
         subscriptionUpdate.amountCents = amountCents;
@@ -609,8 +667,7 @@ export async function updateOrganizationDetails(
       } else if (updates.plan !== undefined || updates.clientSeats !== undefined) {
         const plan = updates.plan || currentSubscription.plan || 'free';
         const seats = updates.clientSeats ?? seatBlock;
-        const isComped = updates.isComped !== undefined ? updates.isComped : currentSubscription.isComped === true;
-        const monthlyFeeKwd = isComped ? 0 : calculateMonthlyFee(plan, seats);
+        const monthlyFeeKwd = calculateMonthlyFee(plan, seats);
         subscriptionUpdate.amountFils = monthlyFeeKwd * 1000;
       }
 

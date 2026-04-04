@@ -34,10 +34,10 @@ export interface PlatformDashboardOrganizationsTabProps {
   sortField: SortField;
   sortDirection: 'asc' | 'desc';
   setSelectedOrg: (org: OrganizationSummary | null) => void;
-  formatCurrency: (amountInSmallestUnit: number, currency?: 'GBP' | 'USD' | 'KWD') => string;
+  formatCurrency: (amountInSmallestUnit: number, currency?: string) => string;
   formatFeatureName: (feature: string) => string;
-  getStatusColor: (status: string, isComped?: boolean) => string;
-  getStatusLabel: (status: string, isComped?: boolean) => string;
+  getStatusColor: (status: string) => string;
+  getStatusLabel: (status: string) => string;
   getActivityColor: (daysSince: number) => string;
   getDaysSince: (date?: Date) => number;
   loadMoreOrganizations: () => Promise<void>;
@@ -132,7 +132,7 @@ export function PlatformDashboardOrganizationsTab({
               <SelectItem value="trial">Trial</SelectItem>
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="cancelled">Cancelled</SelectItem>
-              <SelectItem value="comped">Comped</SelectItem>
+              <SelectItem value="past_due">Past due</SelectItem>
               <SelectItem value="none">None</SelectItem>
             </SelectContent>
           </Select>
@@ -229,11 +229,9 @@ export function PlatformDashboardOrganizationsTab({
                       <span className="text-xs text-muted-foreground">{org.seatBlock != null ? `${org.seatBlock} clients` : (org.plan ?? '—')}</span>
                     </div>
                     <div className="col-span-1">
-                      {org.isComped ? (
-                        <span className="text-violet-400 text-xs">Comped</span>
-                      ) : org.currency && org.monthlyAmountLocal != null ? (
+                      {org.currency && org.monthlyAmountLocal != null ? (
                         <span className="text-sm text-white">
-                          {formatCurrency(org.monthlyAmountLocal * (org.currency === 'KWD' ? 1000 : 100), org.currency as 'GBP' | 'USD' | 'KWD')}
+                          {formatCurrency(org.monthlyAmountLocal * (org.currency === 'KWD' ? 1000 : 100), org.currency)}
                         </span>
                       ) : (
                         <span className="text-sm text-white">{formatCurrency((org.monthlyFeeKwd ?? 0) * 1000, 'KWD')}</span>
@@ -264,8 +262,8 @@ export function PlatformDashboardOrganizationsTab({
                       )}
                     </div>
                     <div className="col-span-1">
-                      <span className={`px-2 py-1 rounded-full text-xs border ${getStatusColor(org.status, org.isComped)}`}>
-                        {getStatusLabel(org.status, org.isComped)}
+                      <span className={`px-2 py-1 rounded-full text-xs border ${getStatusColor(org.status)}`}>
+                        {getStatusLabel(org.status)}
                       </span>
                     </div>
                     <div className="col-span-1 flex items-center justify-end gap-2">
@@ -331,7 +329,7 @@ function OrgDetailContent({
   navigateToOrg,
 }: {
   org: OrganizationSummary;
-  formatCurrency: (amountInSmallestUnit: number, currency?: 'GBP' | 'USD' | 'KWD') => string;
+  formatCurrency: (amountInSmallestUnit: number, currency?: string) => string;
   formatFeatureName: (feature: string) => string;
   orgCoachesWithStats: Record<string, CoachStats[]>;
   orgAiCostsByFeature: Record<string, FeatureCost[]>;
@@ -362,10 +360,8 @@ function OrgDetailContent({
         <div>
           <p className="text-xs text-muted-foreground mb-1">Monthly Fee</p>
           <p className="text-sm text-muted-foreground">
-            {org.isComped ? (
-              <span className="text-violet-400 font-medium">Comped (Free)</span>
-            ) : org.currency && org.monthlyAmountLocal != null ? (
-              formatCurrency(org.monthlyAmountLocal * (org.currency === 'KWD' ? 1000 : 100), org.currency as 'GBP' | 'USD' | 'KWD')
+            {org.currency && org.monthlyAmountLocal != null ? (
+              formatCurrency(org.monthlyAmountLocal * (org.currency === 'KWD' ? 1000 : 100), org.currency)
             ) : (
               org.monthlyFeeKwd != null ? formatCurrency((org.monthlyFeeKwd as number) * 1000, 'KWD') : '—'
             )}
@@ -436,7 +432,6 @@ function OrgDetailContent({
       )}
 
       {org.dataAccessPermission?.platformAdminAccess !== true &&
-        org.isComped !== true &&
         (!orgCoachesWithStats[org.id] || orgCoachesWithStats[org.id].length === 0) && (
           <div className="pt-4 border-t border-border">
             <div className="p-3 bg-muted/30 rounded-lg border border-amber-500/30">

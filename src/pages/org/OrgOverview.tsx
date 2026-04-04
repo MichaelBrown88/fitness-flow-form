@@ -9,7 +9,6 @@ import { useAuth } from '@/hooks/useAuth';
 import type { OrgAdminOutletContext } from './OrgAdminLayout';
 import { formatPrice, getLocaleForRegion } from '@/lib/utils/currency';
 import { DEFAULT_REGION, type Region } from '@/constants/pricing';
-
 interface ErasureRequest {
   id: string;
   shareToken: string;
@@ -43,6 +42,9 @@ export default function OrgOverview() {
     }).catch(() => {});
   }, [orgId, pendingErasureCount]);
 
+  const planLabel = orgDetails?.plan;
+  const statusLabel = orgDetails?.status;
+
   async function markActioned(requestId: string) {
     if (!orgId) return;
     const ref = doc(getDb(), `organizations/${orgId}/erasureRequests/${requestId}`);
@@ -66,42 +68,32 @@ export default function OrgOverview() {
                 Your current package and usage
               </CardDescription>
             </div>
-            {orgDetails.isComped ? (
-              <span className="px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-medium bg-gradient-light text-gradient-dark border border-border-medium">
-                Comped
-              </span>
-            ) : (
-              <span
-                className={`px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-medium border ${
-                  orgDetails.status === 'active'
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                    : orgDetails.status === 'trial'
-                      ? 'bg-amber-50 text-amber-700 border-amber-200'
-                      : 'bg-muted text-foreground-secondary border-border-medium'
-                }`}
-              >
-                {orgDetails.status || 'none'}
-              </span>
-            )}
+            <span
+              className={`px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-medium border ${
+                statusLabel === 'active'
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : statusLabel === 'trial'
+                    ? 'bg-amber-50 text-amber-700 border-amber-200'
+                    : 'bg-muted text-foreground-secondary border-border-medium'
+              }`}
+            >
+              {statusLabel || 'none'}
+            </span>
           </div>
         </CardHeader>
         <CardContent className="p-4 sm:p-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
             <div className="bg-muted/50 rounded-lg p-3 sm:p-4">
               <p className="text-[10px] sm:text-xs text-foreground-secondary mb-1 font-medium">Plan</p>
-              <p className="text-lg sm:text-xl font-semibold text-foreground capitalize">{orgDetails.plan || 'free'}</p>
+              <p className="text-lg sm:text-xl font-semibold text-foreground capitalize">{planLabel || 'free'}</p>
             </div>
             <div className="bg-muted/50 rounded-lg p-3 sm:p-4">
               <p className="text-[10px] sm:text-xs text-foreground-secondary mb-1 font-medium">Monthly Fee</p>
               <p className="text-lg sm:text-xl font-semibold text-foreground">
-                {orgDetails.isComped ? (
-                  <span className="text-gradient-dark">Free</span>
-                ) : (
-                  formatPrice(
-                    monthlyFee,
-                    orgDetails.currency || 'GBP',
-                    getLocaleForRegion((orgDetails.region ?? DEFAULT_REGION) as Region),
-                  )
+                {formatPrice(
+                  monthlyFee,
+                  orgDetails.currency || 'GBP',
+                  getLocaleForRegion((orgDetails.region ?? DEFAULT_REGION) as Region),
                 )}
               </p>
             </div>

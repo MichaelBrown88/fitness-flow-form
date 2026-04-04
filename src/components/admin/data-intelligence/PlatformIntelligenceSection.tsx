@@ -10,7 +10,12 @@
  *                    engagement concentration risk
  */
 
-import type { PlatformMetrics, PlatformMetricsHistoryEntry, OrganizationSummary } from '@/types/platform';
+import type {
+  PlatformMetrics,
+  PlatformMetricsHistoryEntry,
+  OrganizationSummary,
+  RevenueByRegionSnapshot,
+} from '@/types/platform';
 import type { ChartDataPoint } from '@/hooks/usePlatformDashboard';
 import { TrendingUp, TrendingDown, Minus, Users, Activity, Target } from 'lucide-react';
 
@@ -20,7 +25,7 @@ import { TrendingUp, TrendingDown, Minus, Users, Activity, Target } from 'lucide
 
 interface Props {
   metrics: PlatformMetrics | null;
-  revenueByRegion: { byRegion: Record<string, { amountLocal: number; currency: string; gbpPence: number }>; totalGbpPence: number } | null;
+  revenueByRegion: RevenueByRegionSnapshot | null;
   metricsHistory: PlatformMetricsHistoryEntry[];
   sortedOrganizations: OrganizationSummary[];
   silentOrgs: OrganizationSummary[];

@@ -12,6 +12,7 @@ import { getDb } from '@/services/firebase';
 import { ORGANIZATION } from '@/lib/database/paths';
 import { logger } from '@/lib/utils/logger';
 import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
+import { readLastBodyCompTimestamp } from '@/lib/utils/clientProfileBodyCompDate';
 
 /** Client with retention metrics */
 export interface ClientRetentionData {
@@ -21,7 +22,7 @@ export interface ClientRetentionData {
   assignedCoachName?: string;
   assignedCoachUid?: string;
   lastAssessmentDate: Date | null;
-  lastInBodyDate: Date | null;
+  lastBodyCompDate: Date | null;
   lastPostureDate: Date | null;
   daysSinceAssessment: number;
   churnRisk: 'low' | 'medium' | 'high' | 'critical';
@@ -121,7 +122,7 @@ export function useOrgRetention(
         
         // Parse dates
         const lastAssessmentDate = data.lastAssessmentDate?.toDate?.() || null;
-        const lastInBodyDate = data.lastInBodyDate?.toDate?.() || null;
+        const lastBodyCompDate = readLastBodyCompTimestamp(data)?.toDate?.() || null;
         const lastPostureDate = data.lastPostureDate?.toDate?.() || null;
         
         // Calculate days since assessment
@@ -138,7 +139,7 @@ export function useOrgRetention(
           assignedCoachUid: data.assignedCoachUid,
           assignedCoachName: data.assignedCoachUid ? coachMap.get(data.assignedCoachUid) : undefined,
           lastAssessmentDate,
-          lastInBodyDate,
+          lastBodyCompDate,
           lastPostureDate,
           daysSinceAssessment: days,
           churnRisk: calculateChurnRisk(days),

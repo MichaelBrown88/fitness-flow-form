@@ -6,7 +6,7 @@ Single source of truth for colours, typography, spacing, motion, and branding so
 
 - **Design language:** Apple-inspired neutrals plus a **volt / chartreuse gradient accent** by default (see `src/index.css`). Neutrals are token-driven; the accent is driven by design tokens and, when the org has the add-on, by organization branding via `ThemeManager`.
 - **Tokens:** Defined in `src/index.css` (CSS variables) and extended in `tailwind.config.ts`. `ThemeManager` applies the org gradient only when `customBrandingEnabled === true`; otherwise the default One Assess gradient is used.
-- **Reference files:** `src/lib/design/appleNeutrals.ts`, `src/lib/design/gradients.ts` document the palette and gradient set.
+- **Reference files:** `src/lib/design/gradients.ts` documents the gradient set (palette tokens live in CSS variables / Tailwind theme).
 
 ## Sources of truth (theming architecture)
 
@@ -71,7 +71,7 @@ Prefer the shared classes and tokens so motion feels consistent:
 - **Tailwind mapping:** `tailwind.config.ts` (`theme.extend`).
 - **Browser chrome hex (must match `--background` light/dark):** `src/constants/themeChrome.ts`.
 - **Chart colour helpers (mirror CSS tokens):** `src/lib/design/chartColors.ts`.
-- **Reference only:** `src/lib/design/appleNeutrals.ts`, `src/lib/design/gradients.ts`.
+- **Reference only:** `src/lib/design/gradients.ts`.
 - **New tokens:** Add to `index.css` (both modes), extend Tailwind if needed, update this doc.
 
 ## Checklist for New or Modified UI

@@ -182,9 +182,9 @@ async function runGeminiOcr(imageSrc: string): Promise<OcrResult & { layoutSigna
     You are an expert medical data extractor specialized in body composition analysis reports.
     Analyze the provided image and extract all relevant data points into a JSON object.
     
-    FIELD GUIDANCE:
+    FIELD GUIDANCE (use these exact JSON keys — they match our assessment form):
     - heightCm: Height in CM
-    - inbodyScore: Total Body Comp Score (0-100)
+    - inbodyScore: Total body composition score from the report (0-100)
     - inbodyWeightKg: Weight in KG
     - skeletalMuscleMassKg: SMM in KG
     - bodyFatMassKg: BFM in KG
@@ -244,7 +244,7 @@ async function runGeminiOcr(imageSrc: string): Promise<OcrResult & { layoutSigna
   const rawLayout: string = typeof data._layout === 'string' ? data._layout : '';
   const layoutSignature = rawLayout.replace(/\d+/g, '').replace(/\s+/g, ' ').trim().substring(0, 300);
 
-  await logAIUsage(coachUid, 'ocr_inbody', 'ai_success', 'gemini');
+  await logAIUsage(coachUid, 'ocr_body_comp', 'ai_success', 'gemini');
 
   return {
     fields: cleanFields,
@@ -286,7 +286,7 @@ export async function processBodyCompScan(imageSrc: string): Promise<OcrResult> 
     const cachedFields = await checkLearnedPatterns(imageSignature);
     if (cachedFields && Object.keys(cachedFields).length > 0) {
       logger.debug('[OCR] Cache hit — returning learned pattern (Gemini skipped)');
-      await logAIUsage(coachUid, 'ocr_inbody', 'ai_success', 'pattern');
+      await logAIUsage(coachUid, 'ocr_body_comp', 'ai_success', 'pattern');
       return { fields: cachedFields, rawText: '', confidence: 0.9, provider: 'pattern' };
     }
 
@@ -304,7 +304,7 @@ export async function processBodyCompScan(imageSrc: string): Promise<OcrResult> 
     
   } catch (err: unknown) {
     logger.error('[OCR] Gemini failed:', 'OCR', err);
-    await logAIUsage(coachUid, 'ocr_inbody', 'error', 'gemini');
+    await logAIUsage(coachUid, 'ocr_body_comp', 'error', 'gemini');
     return { fields: {}, rawText: '', confidence: 0, provider: 'gemini' };
   }
 }

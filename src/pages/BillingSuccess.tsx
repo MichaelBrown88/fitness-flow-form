@@ -12,9 +12,9 @@ export default function BillingSuccessPage() {
 
   return (
     <div className="min-h-screen bg-muted/50 flex items-center justify-center p-6">
-      <div className="max-w-md w-full bg-background rounded-2xl border border-border p-8 text-center shadow-sm">
+      <div className="max-w-md w-full bg-card rounded-2xl border border-border p-8 text-center shadow-md ring-1 ring-border/40">
         <div className="flex justify-center mb-4">
-          <CheckCircle className="h-14 w-14 text-emerald-500" aria-hidden />
+          <CheckCircle className="h-14 w-14 text-score-green" aria-hidden />
         </div>
         <h1 className="text-xl font-bold text-foreground mb-2">{CHECKOUT_FLOW_COPY.billingSuccessTitle}</h1>
         <p className="text-sm text-foreground-secondary mb-6 text-left leading-relaxed">
@@ -32,13 +32,13 @@ export default function BillingSuccessPage() {
         </ul>
         <Link
           to={ROUTES.DASHBOARD}
-          className="inline-flex items-center justify-center w-full h-11 rounded-xl bg-foreground text-white font-bold text-sm hover:bg-foreground/90 transition-colors"
+          className="inline-flex items-center justify-center w-full h-11 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 transition-apple"
         >
           {CHECKOUT_FLOW_COPY.billingSuccessCtaDashboard}
         </Link>
         <Link
           to={ROUTES.BILLING}
-          className="block mt-3 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+          className="block mt-3 text-sm font-medium text-primary hover:underline"
         >
           {CHECKOUT_FLOW_COPY.billingSuccessCtaBilling}
         </Link>

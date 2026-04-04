@@ -297,7 +297,7 @@ function buildSynthesisBlocks(synthesis: ScoreSummary['synthesis'], goals: strin
           ? 'This is a high-priority finding that affects your safety and ability to train effectively.'
           : 'This finding should be addressed early to avoid becoming a barrier to progress.',
         action: 'A targeted intervention strategy will be built around this finding as part of your programme design.',
-        contraindications: [],
+        contraindications: [] as string[],
         score: 0,
         icon: s.severity === 'high' ? 'AlertTriangle' : 'Info',
       };

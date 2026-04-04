@@ -164,7 +164,8 @@ function aggregateLogsToCostsByFeature(
   docs.forEach((logDoc) => {
     const logData = logDoc.data();
     if (filter && !filter(logData)) return;
-    const feature = effectiveType(logData);
+    const rawFeature = effectiveType(logData);
+    const feature = rawFeature === 'ocr_inbody' ? 'ocr_body_comp' : rawFeature;
     const costFils = getLogCostFils(logData);
     const current = costsByFeature.get(feature) || { count: 0, costFils: 0 };
     costsByFeature.set(feature, {

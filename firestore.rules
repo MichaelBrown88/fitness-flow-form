@@ -66,11 +66,10 @@ service cloud.firestore {
         get(/databases/$(database)/documents/organizations/$(orgId)/coaches/$(request.auth.uid)).data.role in ['owner', 'admin', 'org_admin'];
     }
 
-    // Platform admin has data access to org (owner's org is always comped)
+    // Platform admin has data access when explicitly granted on the org document
     function hasDataAccess(orgId) {
       let orgData = get(/databases/$(database)/documents/organizations/$(orgId)).data;
-      return (orgData.get('subscription', {}).get('isComped', false) == true) ||
-             (orgData.get('dataAccessPermission', {}).get('platformAdminAccess', false) == true);
+      return orgData.get('dataAccessPermission', {}).get('platformAdminAccess', false) == true;
     }
 
     // Org coach or platform admin with data access
@@ -121,7 +120,7 @@ service cloud.firestore {
         d.organizationId is string &&
         d.organizationId.size() > 0 &&
         isOrgCoach(d.organizationId) &&
-        d.type in ['ocr_inbody', 'posture_analysis', 'exercise_recommendation', 'comparison_narrative'] &&
+        d.type in ['ocr_body_comp', 'ocr_inbody', 'posture_analysis', 'exercise_recommendation', 'comparison_narrative'] &&
         d.status in ['local_success', 'ai_fallback', 'ai_success', 'error'] &&
         d.provider in ['local', 'gemini', 'mediapipe', 'pattern'] &&
         d.costEstimate is number &&

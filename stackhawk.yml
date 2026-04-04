@@ -1,11 +1,30 @@
-# StackHawk configuration for fitness-flow-form
+# StackHawk / HawkScan — One Assess (Vite dev server)
+#
+# Prerequisites:
+#   1. Active StackHawk org + API key: https://app.stackhawk.com/
+#   2. Export API_KEY before scanning (see .env.example — never commit the key):
+#        export API_KEY=hawk.xxxxxxxx
+#   3. Run the app locally: npm run dev  →  http://localhost:8080 (vite.config.ts)
+#
+# applicationId must match an Application in your StackHawk workspace. If you get
+# 401 / "no valid subscription", fix billing/plan + API key in the StackHawk UI,
+# then create a new app there and paste its UUID below.
+#
+# Cursor MCP (`user-stackhawk-oneassess`) uses the same API_KEY — set it in Cursor
+# MCP server environment if you want setup/scan tools to authenticate.
+
 app:
   applicationId: "374698f8-8278-4676-be0d-bc0248b6b76f"
   env: "Development"
   host: "http://localhost:8080"
+
 hawk:
   spider:
-    ajax: true # Optimized for React Single Page Apps
+    # SPA (React + client routing): Ajax spider discovers routes after JS runs.
+    ajax: true
     ajaxBrowser: CHROME_HEADLESS
+    # Explicit entry so discovery always starts at the boot URL.
+    seedPaths:
+      - "/"
   scan:
-    maxDurationMinutes: 10  
+    maxDurationMinutes: 10

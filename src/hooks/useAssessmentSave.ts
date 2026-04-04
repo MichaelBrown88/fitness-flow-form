@@ -20,6 +20,7 @@ import { generateCadenceRecommendations } from '@/lib/recommendations/cadenceEng
 import { updateRetestSchedule } from '@/services/clientProfiles';
 import type { UserProfile } from '@/types/auth';
 import type { OrgSettings } from '@/services/organizations';
+import { CLIENT_PROFILE_LAST_BODY_COMP_AT } from '@/lib/utils/clientProfileBodyCompDate';
 
 interface UseAssessmentSaveProps {
   user: { uid: string; email: string | null | undefined } | null;
@@ -298,7 +299,7 @@ export function useAssessmentSave({
             lastAssessmentDate: now,
           };
 
-          if (category === 'bodycomp') updateData.lastInBodyDate = now;
+          if (category === 'bodycomp') updateData[CLIENT_PROFILE_LAST_BODY_COMP_AT] = now;
           else if (category === 'posture') updateData.lastPostureDate = now;
           else if (category === 'fitness') updateData.lastFitnessDate = now;
           else if (category === 'strength') updateData.lastStrengthDate = now;
@@ -348,7 +349,7 @@ export function useAssessmentSave({
               const now = Timestamp.now();
               const profileUpdate: Record<string, unknown> = {
                 lastAssessmentDate: now,
-                lastInBodyDate: now,
+                [CLIENT_PROFILE_LAST_BODY_COMP_AT]: now,
                 lastPostureDate: now,
                 lastFitnessDate: now,
                 lastStrengthDate: now,

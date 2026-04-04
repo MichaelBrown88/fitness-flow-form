@@ -43,14 +43,6 @@ interface UnifiedClientTableProps {
 
 const ALL_PILLARS: PartialAssessmentCategory[] = ['bodycomp', 'posture', 'fitness', 'strength', 'lifestyle'];
 
-const PILLAR_DATE_MAP: Record<string, string> = {
-  bodycomp: 'lastInBodyDate',
-  posture: 'lastPostureDate',
-  fitness: 'lastFitnessDate',
-  strength: 'lastStrengthDate',
-  lifestyle: 'lastLifestyleDate',
-};
-
 interface NextDueInfo {
   pillar: string;
   label: string;

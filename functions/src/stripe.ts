@@ -128,6 +128,27 @@ async function enforceBillingCallableRateLimit(
   }
 }
 
+/** Owner or org_admin of this org — matches in-app Billing (org_admin) access. */
+async function assertOrgBillingCallableAccess(
+  db: admin.firestore.Firestore,
+  uid: string,
+  organizationId: string,
+  orgData: FirebaseFirestore.DocumentData | undefined,
+): Promise<void> {
+  if (!orgData) {
+    throw new Error('Organization not found.');
+  }
+  if (orgData.ownerId === uid) {
+    return;
+  }
+  const profileSnap = await db.doc(`userProfiles/${uid}`).get();
+  const p = profileSnap.data();
+  if (p?.organizationId === organizationId && p?.role === 'org_admin') {
+    return;
+  }
+  throw new Error('Not authorized for this organization.');
+}
+
 // ---------------------------------------------------------------------------
 // createCheckoutSession — callable function handler
 // ---------------------------------------------------------------------------
@@ -139,6 +160,8 @@ export interface CheckoutRequest {
   billingPeriod?: BillingPeriod;
   /** GB capacity ladder: solo vs gym (same client count → different Stripe price). */
   packageTrack?: PackageTrack;
+  /** Include one-time custom branding price on the same Checkout session as the subscription. */
+  includeCustomBranding?: boolean;
   /** Legacy seat-based checkout */
   region?: Region;
   clientCount?: number;
@@ -165,8 +188,17 @@ export async function handleCreateCheckoutSession(
     request.rawRequest?.ip,
   );
 
-  const { organizationId, region, clientCount, plan, seats, tierId, billingPeriod, packageTrack } =
-    request.data;
+  const {
+    organizationId,
+    region,
+    clientCount,
+    plan,
+    seats,
+    tierId,
+    billingPeriod,
+    packageTrack,
+    includeCustomBranding,
+  } = request.data;
 
   if (!organizationId) {
     throw new Error('Missing required field: organizationId.');
@@ -238,8 +270,18 @@ export async function handleCreateCheckoutSession(
     throw new Error('Organization not found.');
   }
   const orgData = orgDoc.data();
-  if (orgData?.ownerId !== request.auth.uid) {
-    throw new Error('Not authorized for this organization.');
+  await assertOrgBillingCallableAccess(db, request.auth.uid, organizationId, orgData);
+
+  /** Only explicit `false` (not purchased) — matches client upsell; legacy `undefined` keeps prior behaviour without a surprise charge. */
+  const wantsBranding =
+    includeCustomBranding === true && orgData?.customBrandingEnabled === false;
+  const orgRegion = (orgData?.subscription?.region ?? orgData?.region) as string | undefined;
+  const brandingCurrency = regionToCurrency(orgRegion || 'GB');
+  const brandingPriceId = wantsBranding ? brandingPriceIdForCurrency(brandingCurrency) : undefined;
+  if (wantsBranding && !brandingPriceId) {
+    throw new Error(
+      `Custom branding price is not configured for currency ${brandingCurrency}. Set STRIPE_CUSTOM_BRANDING_${stripeModeSuffix()} or STRIPE_PRICE_BRANDING_* .`,
+    );
   }
 
   let customerId = orgData?.stripe?.stripeCustomerId;
@@ -276,17 +318,20 @@ export async function handleCreateCheckoutSession(
     meta.clientLimit = String(tierRow.clientLimit);
     meta.monthlyAiCredits = String(tierRow.monthlyAiCredits);
   }
+  if (wantsBranding) {
+    meta.customBranding = 'true';
+  }
+
+  const lineItems: { price: string; quantity: number }[] = [{ price: priceId, quantity: 1 }];
+  if (brandingPriceId) {
+    lineItems.push({ price: brandingPriceId, quantity: 1 });
+  }
 
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     mode: 'subscription',
     payment_method_types: ['card'],
-    line_items: [
-      {
-        price: priceId,
-        quantity: 1,
-      },
-    ],
+    line_items: lineItems,
     success_url: `${baseUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${baseUrl}/billing`,
     metadata: meta,
@@ -408,6 +453,53 @@ export async function handleCreateLandingGuestCheckoutSession(
 // ---------------------------------------------------------------------------
 // createCustomerPortalSession — callable function handler
 // ---------------------------------------------------------------------------
+
+/** Solo vs gym for which Stripe portal configuration to open. */
+function packageTrackForPortal(
+  orgData: FirebaseFirestore.DocumentData | undefined,
+): PackageTrack {
+  const sub = orgData?.subscription as Record<string, unknown> | undefined;
+  const explicit = typeof sub?.packageTrack === 'string' ? sub.packageTrack : undefined;
+  if (explicit === 'gym') return 'gym';
+  if (explicit === 'solo') return 'solo';
+  const t = typeof sub?.type === 'string' ? sub.type : undefined;
+  if (t === 'gym' || t === 'gym_chain') return 'gym';
+  if (t === 'solo_coach') return 'solo';
+  const rootType = typeof orgData?.type === 'string' ? orgData.type : undefined;
+  if (rootType === 'gym' || rootType === 'gym_chain') return 'gym';
+  return 'solo';
+}
+
+/**
+ * Customer portal configuration (bpc_...). Track-specific env vars isolate solo vs gym plan lists.
+ * STRIPE_BILLING_PORTAL_CONFIGURATION_ID_SOLO_TEST | _SOLO_LIVE | _GYM_TEST | _GYM_LIVE, or legacy _TEST/_LIVE.
+ */
+function resolveBillingPortalConfigurationId(
+  orgData: FirebaseFirestore.DocumentData | undefined,
+): string | undefined {
+  const mode = (process.env.STRIPE_MODE || 'test').toLowerCase();
+  const isLive = mode === 'live';
+  const track = packageTrackForPortal(orgData);
+
+  const soloId = isLive
+    ? process.env.STRIPE_BILLING_PORTAL_CONFIGURATION_ID_SOLO_LIVE?.trim()
+    : process.env.STRIPE_BILLING_PORTAL_CONFIGURATION_ID_SOLO_TEST?.trim();
+  const gymId = isLive
+    ? process.env.STRIPE_BILLING_PORTAL_CONFIGURATION_ID_GYM_LIVE?.trim()
+    : process.env.STRIPE_BILLING_PORTAL_CONFIGURATION_ID_GYM_TEST?.trim();
+
+  const trackSpecific = track === 'gym' ? gymId : soloId;
+  if (trackSpecific) return trackSpecific;
+
+  const testId = process.env.STRIPE_BILLING_PORTAL_CONFIGURATION_ID_TEST?.trim();
+  const liveId = process.env.STRIPE_BILLING_PORTAL_CONFIGURATION_ID_LIVE?.trim();
+  const fallbackId = process.env.STRIPE_BILLING_PORTAL_CONFIGURATION_ID?.trim();
+  if (isLive) {
+    return liveId || fallbackId;
+  }
+  return testId || fallbackId;
+}
+
 export interface PortalSessionRequest {
   organizationId: string;
 }
@@ -437,9 +529,7 @@ export async function handleCreateCustomerPortalSession(
     throw new Error('Organization not found.');
   }
   const orgData = orgDoc.data();
-  if (orgData?.ownerId !== request.auth.uid) {
-    throw new Error('Not authorized for this organization.');
-  }
+  await assertOrgBillingCallableAccess(db, request.auth.uid, organizationId, orgData);
 
   const customerId = orgData?.stripe?.stripeCustomerId;
   if (!customerId) {
@@ -449,12 +539,153 @@ export async function handleCreateCustomerPortalSession(
   const stripe = getStripe();
   const baseUrl = process.env.APP_URL || 'https://one-assess.com';
 
-  const session = await stripe.billingPortal.sessions.create({
+  const portalConfigurationId = resolveBillingPortalConfigurationId(orgData);
+  const sessionParams: Stripe.BillingPortal.SessionCreateParams = {
     customer: customerId,
     return_url: `${baseUrl}/billing`,
+  };
+  if (portalConfigurationId) {
+    sessionParams.configuration = portalConfigurationId;
+  }
+
+  const [session, subsForCustomer] = await Promise.all([
+    stripe.billingPortal.sessions.create(sessionParams),
+    stripe.subscriptions.list({ customer: customerId, status: 'all', limit: 20 }),
+  ]);
+  const hasStripeSubscriptions = subsForCustomer.data.length > 0;
+
+  return { url: session.url, hasStripeSubscriptions };
+}
+
+// ---------------------------------------------------------------------------
+// updateSubscriptionPlan — in-app capacity change (GB), no Customer Portal
+// ---------------------------------------------------------------------------
+
+export interface UpdateSubscriptionPlanRequest {
+  organizationId: string;
+  region: Region;
+  clientCount: number;
+  billingPeriod: BillingPeriod;
+  packageTrack?: PackageTrack;
+}
+
+export interface UpdateSubscriptionPlanResponse {
+  ok: true;
+  unchanged?: boolean;
+}
+
+/**
+ * Updates the org's Stripe subscription to a new capacity price (same billing interval only).
+ * Monthly ↔ annual requires a different Stripe flow; we surface a clear error.
+ */
+export async function handleUpdateSubscriptionPlan(
+  request: CallableRequest<UpdateSubscriptionPlanRequest>,
+): Promise<UpdateSubscriptionPlanResponse> {
+  if (!request.auth?.uid) {
+    throw new HttpsError('unauthenticated', 'Authentication required.');
+  }
+
+  const { organizationId, region, clientCount, billingPeriod, packageTrack } = request.data;
+
+  if (!organizationId) {
+    throw new HttpsError('invalid-argument', 'Missing required field: organizationId.');
+  }
+  if (region !== 'GB') {
+    throw new HttpsError(
+      'failed-precondition',
+      'In-app plan changes are only available for UK (GB) organisations. Contact support for other regions.',
+    );
+  }
+  if (clientCount == null || clientCount < 1) {
+    throw new HttpsError('invalid-argument', 'Invalid client count.');
+  }
+  if (billingPeriod !== 'monthly' && billingPeriod !== 'annual') {
+    throw new HttpsError('invalid-argument', 'billingPeriod must be monthly or annual.');
+  }
+
+  const db = admin.firestore();
+  await enforceBillingCallableRateLimit(
+    db,
+    'stripe_plan_update',
+    request.auth.uid,
+    request.rawRequest?.ip,
+  );
+
+  const orgDoc = await db.doc(`organizations/${organizationId}`).get();
+  if (!orgDoc.exists) {
+    throw new HttpsError('not-found', 'Organization not found.');
+  }
+  const orgData = orgDoc.data();
+  await assertOrgBillingCallableAccess(db, request.auth.uid, organizationId, orgData);
+
+  const subId =
+    typeof orgData?.stripe?.stripeSubscriptionId === 'string'
+      ? orgData.stripe.stripeSubscriptionId.trim()
+      : '';
+  if (!subId) {
+    throw new HttpsError(
+      'failed-precondition',
+      'No subscription ID on file. Use checkout below to subscribe first, or contact support.',
+    );
+  }
+
+  const track: PackageTrack = packageTrack === 'gym' ? 'gym' : 'solo';
+  const row = getPaidTierForPackageTrack(clientCount, track);
+  const bp: BillingPeriod = billingPeriod === 'annual' ? 'annual' : 'monthly';
+  const mode = stripeModeSuffix();
+  const envKey = capacityPriceEnvKey(row.id, bp, mode);
+  const priceId = process.env[envKey];
+  if (!priceId) {
+    throw new HttpsError(
+      'failed-precondition',
+      `Stripe price not configured for ${envKey}. Set the env var in Cloud Functions.`,
+    );
+  }
+
+  const stripe = getStripe();
+  const sub = await stripe.subscriptions.retrieve(subId, { expand: ['items.data.price'] });
+  const item = sub.items?.data?.[0];
+  if (!item?.id) {
+    throw new HttpsError('failed-precondition', 'Subscription has no line items to update.');
+  }
+
+  const priceObj = item.price;
+  const expanded =
+    priceObj && typeof priceObj === 'object' && 'recurring' in priceObj
+      ? (priceObj as Stripe.Price)
+      : null;
+  const currentInterval = expanded?.recurring?.interval;
+  const targetInterval: Stripe.Price.Recurring.Interval = bp === 'annual' ? 'year' : 'month';
+  if (currentInterval && currentInterval !== targetInterval) {
+    throw new HttpsError(
+      'failed-precondition',
+      'Switching between monthly and annual billing is not available in-app yet. Use Card & invoices (Stripe) or contact support.',
+    );
+  }
+
+  const currentPriceId = typeof priceObj === 'string' ? priceObj : priceObj?.id;
+  if (currentPriceId === priceId) {
+    return { ok: true, unchanged: true };
+  }
+
+  const meta: Stripe.MetadataParam = {
+    ...(sub.metadata as Stripe.Metadata),
+    organizationId,
+    tierId: row.id,
+    billingPeriod: bp,
+    clientLimit: String(row.clientLimit),
+    monthlyAiCredits: String(row.monthlyAiCredits),
+    region: 'GB',
+    clientCount: String(row.clientLimit),
+  };
+
+  await stripe.subscriptions.update(subId, {
+    items: [{ id: item.id, price: priceId }],
+    proration_behavior: 'create_prorations',
+    metadata: meta,
   });
 
-  return { url: session.url };
+  return { ok: true };
 }
 
 // ---------------------------------------------------------------------------
@@ -462,6 +693,8 @@ export async function handleCreateCustomerPortalSession(
 // ---------------------------------------------------------------------------
 export interface BrandingCheckoutRequest {
   organizationId: string;
+  /** Return URL after successful payment (default billing). */
+  returnTarget?: 'billing' | 'settings';
 }
 
 function brandingPriceIdForCurrency(currency: string): string | undefined {
@@ -502,9 +735,7 @@ export async function handleCreateBrandingCheckoutSession(
     throw new Error('Organization not found.');
   }
   const orgData = orgDoc.data();
-  if (orgData?.ownerId !== request.auth.uid) {
-    throw new Error('Not authorized for this organization.');
-  }
+  await assertOrgBillingCallableAccess(db, request.auth.uid, organizationId, orgData);
   if (orgData?.customBrandingEnabled === true) {
     throw new Error('Custom branding is already enabled for this organization.');
   }
@@ -535,13 +766,22 @@ export async function handleCreateBrandingCheckoutSession(
 
   const stripe = getStripe();
   const baseUrl = process.env.APP_URL || 'https://one-assess.com';
+  const returnTarget = request.data.returnTarget === 'settings' ? 'settings' : 'billing';
+  const successUrl =
+    returnTarget === 'settings'
+      ? `${baseUrl}/settings?tab=organization&orgTab=branding&branding_purchase=success`
+      : `${baseUrl}/billing?branding=success`;
+  const cancelUrl =
+    returnTarget === 'settings'
+      ? `${baseUrl}/settings?tab=organization&orgTab=branding`
+      : `${baseUrl}/billing`;
 
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     mode: 'payment',
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${baseUrl}/billing?branding=success`,
-    cancel_url: `${baseUrl}/billing`,
+    success_url: successUrl,
+    cancel_url: cancelUrl,
     metadata: {
       organizationId,
       customBranding: 'true',
@@ -662,6 +902,14 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         }
         await db.doc(`organizations/${orgId}`).update(updateData);
         console.log(`[Stripe Webhook] checkout.session.completed — org ${orgId} activated`);
+
+        if (session.metadata?.customBranding === 'true') {
+          await db.doc(`organizations/${orgId}`).update({
+            customBrandingEnabled: true,
+            customBrandingPaidAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          console.log(`[Stripe Webhook] checkout.session.completed — org ${orgId} custom branding enabled (with subscription)`);
+        }
 
         const orgSnap = await db.doc(`organizations/${orgId}`).get();
         const orgName = orgSnap.data()?.name as string | undefined;

@@ -133,8 +133,7 @@ export function useOrgManagement(orgId: string | undefined): UseOrgManagementRes
   }, [navigate, orgId, loadOrganizationDetails]);
 
   // Computed: Check if org has data access permission
-  const hasDataAccess = org?.dataAccessPermission?.platformAdminAccess === true ||
-                       org?.isComped === true;
+  const hasDataAccess = org?.dataAccessPermission?.platformAdminAccess === true;
 
   // Handlers
   const handleSignOut = useCallback(async () => {

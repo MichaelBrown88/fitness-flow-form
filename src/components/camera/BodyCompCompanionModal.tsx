@@ -128,9 +128,11 @@ export const BodyCompCompanionModal: React.FC<BodyCompCompanionModalProps> = ({
 
       // Optimistic UI: Show "Processing..." as soon as body comp image is detected
       // Don't wait for ocrDataReady - this gives immediate feedback
-      const hasBodyCompImage = !!(updatedSession.inbodyImage || 
-                               updatedSession.inbodyImageStorage || 
-                               updatedSession.inbodyImageFull);
+      const hasBodyCompImage = !!(
+        updatedSession.bodyCompScanImage ||
+        updatedSession.bodyCompScanImageStorage ||
+        updatedSession.bodyCompScanImageFull
+      );
       
       if (hasBodyCompImage && !isProcessing && processedRef.current !== 'processing') {
         logger.debug('[BODYCOMP] Image detected - showing processing state');
@@ -154,7 +156,10 @@ export const BodyCompCompanionModal: React.FC<BodyCompCompanionModalProps> = ({
         // Pass the data directly (onComplete expects the OCR data structure)
         const formattedData = {
           ...(typeof ocrData === 'object' ? ocrData : {}),
-          inbodyImage: (updatedSession.inbodyImageStorage as string) || (updatedSession.inbodyImageFull as string) || updatedSession.inbodyImage
+          bodyCompReportImageUrl:
+            (updatedSession.bodyCompScanImageStorage as string) ||
+            (updatedSession.bodyCompScanImageFull as string) ||
+            updatedSession.bodyCompScanImage,
         };
         
         // Calling onComplete with formatted data

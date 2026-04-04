@@ -160,12 +160,14 @@ export default defineConfig(({ mode }) => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
       "@shared/billing": path.resolve(__dirname, "./functions/src/shared/billing"),
+      "@shared/reportingFx": path.resolve(__dirname, "./functions/src/shared/reportingFx.ts"),
     },
   },
   test: {
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
+    passWithNoTests: true,
   },
   build: {
     rollupOptions: {

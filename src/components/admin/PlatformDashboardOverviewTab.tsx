@@ -17,7 +17,7 @@ export interface PlatformDashboardOverviewTabProps {
   silentOrgs: OrganizationSummary[];
   activationFunnel: { newOrgs: number; activated: number; rate: number };
   aiErrorRate: AIErrorRate;
-  formatCurrency: (amountInSmallestUnit: number, currency?: 'GBP' | 'USD' | 'KWD') => string;
+  formatCurrency: (amountInSmallestUnit: number, currency?: string) => string;
   formatNumber: (num: number) => string;
 }
 

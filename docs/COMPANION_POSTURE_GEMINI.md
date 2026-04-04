@@ -25,9 +25,9 @@ This document describes the **posture** Companion upgrade (Gemini 3.1 Flash Live
 
 ## What did **not** change (OCR / body-comp)
 
-- **`src/lib/ai/ocrEngine.ts`** and body-comp OCR in **`src/hooks/useCameraCapture.ts`** — same behavior.
+- **`src/lib/ai/ocrEngine.ts`** and body-comp OCR in **`src/hooks/useCameraHandler.ts`** (assessment flows) — unchanged relative to this posture migration.
 - **Body-comp Companion path** — still uses **5 s countdown** and existing capture/upload flow.
-- **`CompanionUI`** OCR screens (“Reading your report…”, “Check the Numbers”) remain; **`Companion.tsx`** currently passes stubs for OCR props on the simplified page (OCR is wired where `useCameraCapture` supplies state).
+- **`CompanionUI`** OCR screens (“Reading your report…”, “Check the Numbers”) remain; **`Companion.tsx`** may pass stubs for OCR props where the simplified page does not wire full OCR state.
 
 ## How to test
 

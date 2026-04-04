@@ -7,7 +7,6 @@ import { CATEGORY_ORDER, niceLabel } from '../ClientReportConstants';
 import { useGapAnalysisData } from '../useGapAnalysisData';
 import { calculateAge } from '@/lib/scoring';
 import { calculateBodyRecomposition, getTargetBodyFatFromLevel, getBodyFatRange } from '@/lib/utils/bodyRecomposition';
-import { generateBlueprint } from '@/lib/strategy/blueprintEngine';
 import { getEffectiveGoalLevels } from '@/lib/goals/achievableLandmarks';
 
 export interface UseClientReportDataProps {
@@ -257,23 +256,6 @@ export function useClientReportData({
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   }, []);
 
-  const blueprintPillars = useMemo(() => {
-    if (!formData || !safeScores) return [];
-    
-    const pillars = generateBlueprint(formData, safeScores);
-    
-    return pillars.map((pillar, idx) => ({
-      title: pillar.title,
-      weeks: pillar.timeframe,
-      color: pillar.color,
-      headline: pillar.focus,
-      description: pillar.description,
-      protocol: pillar.protocol,
-      order: idx + 1,
-      category: pillar.category
-    }));
-  }, [safeScores, formData]);
-
   return {
     safeScores,
     orderedCats,
@@ -292,6 +274,5 @@ export function useClientReportData({
     gapAnalysisData,
     previousGapAnalysisData: previousFormData ? previousGapAnalysisData : undefined,
     reportDate,
-    blueprintPillars,
   };
 }

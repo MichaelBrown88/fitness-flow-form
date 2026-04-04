@@ -31,6 +31,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { safeFirestoreTimestampToDate } from '@/lib/utils/formatFirestoreTimestampDisplay';
+import { readLastBodyCompTimestamp } from '@/lib/utils/clientProfileBodyCompDate';
 import type { ClientProfile } from '@/services/clientProfiles';
 import {
   updateCustomCadence,
@@ -135,20 +136,34 @@ export function RetestScheduleCard({
     ? (trainingStart && trainingStart > lastAssessmentDate ? trainingStart : lastAssessmentDate)
     : undefined;
 
+  const lastBodyCompTs = profile?.lastBodyCompDate;
+  const lastInBodyTs = profile?.lastInBodyDate;
+  const lastPostureTs = profile?.lastPostureDate;
+  const lastFitnessTs = profile?.lastFitnessDate;
+  const lastStrengthTs = profile?.lastStrengthDate;
+  const lastLifestyleTs = profile?.lastLifestyleDate;
+
   const pillarDateMap = useMemo(
     (): Record<string, Date | undefined> => ({
-      bodycomp: safeFirestoreTimestampToDate(profile?.lastInBodyDate) ?? undefined,
-      posture: safeFirestoreTimestampToDate(profile?.lastPostureDate) ?? undefined,
-      fitness: safeFirestoreTimestampToDate(profile?.lastFitnessDate) ?? undefined,
-      strength: safeFirestoreTimestampToDate(profile?.lastStrengthDate) ?? undefined,
-      lifestyle: safeFirestoreTimestampToDate(profile?.lastLifestyleDate) ?? undefined,
+      bodycomp:
+        safeFirestoreTimestampToDate(
+          readLastBodyCompTimestamp({
+            lastBodyCompDate: lastBodyCompTs,
+            lastInBodyDate: lastInBodyTs,
+          }),
+        ) ?? undefined,
+      posture: safeFirestoreTimestampToDate(lastPostureTs) ?? undefined,
+      fitness: safeFirestoreTimestampToDate(lastFitnessTs) ?? undefined,
+      strength: safeFirestoreTimestampToDate(lastStrengthTs) ?? undefined,
+      lifestyle: safeFirestoreTimestampToDate(lastLifestyleTs) ?? undefined,
     }),
     [
-      profile?.lastInBodyDate,
-      profile?.lastPostureDate,
-      profile?.lastFitnessDate,
-      profile?.lastStrengthDate,
-      profile?.lastLifestyleDate,
+      lastBodyCompTs,
+      lastInBodyTs,
+      lastPostureTs,
+      lastFitnessTs,
+      lastStrengthTs,
+      lastLifestyleTs,
     ],
   );
 

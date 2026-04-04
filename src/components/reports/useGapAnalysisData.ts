@@ -320,10 +320,12 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData, pr
       }
       
       let descriptiveTargetLabel = '';
+      let parsedTargetBF: number | null = null;
       if (targetValue === 'N/A') {
         descriptiveTargetLabel = 'Assessment Needed';
       } else {
         const targetBF = parseFloat(targetValue.replace('%', ''));
+        parsedTargetBF = Number.isNaN(targetBF) ? null : targetBF;
         if ((gender === 'male' && targetBF <= 12) || (gender === 'female' && targetBF <= 18)) {
           descriptiveTargetLabel = 'Elite Target';
         } else if ((gender === 'male' && targetBF <= 15) || (gender === 'female' && targetBF <= 22)) {
@@ -347,8 +349,15 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData, pr
       // Projection: at current rate, weeks to reach target (assume 12 weeks between assessments)
       const ASSESSMENT_INTERVAL_WEEKS = 12;
       let projectionMessage: string | undefined;
-      if (previousFormData && bf > 0 && fatDelta !== undefined && fatDelta > 0 && bf > targetBF) {
-        const gapPct = bf - targetBF;
+      if (
+        previousFormData &&
+        bf > 0 &&
+        fatDelta !== undefined &&
+        fatDelta > 0 &&
+        parsedTargetBF !== null &&
+        bf > parsedTargetBF
+      ) {
+        const gapPct = bf - parsedTargetBF;
         const ratePerWeek = fatDelta / ASSESSMENT_INTERVAL_WEEKS;
         if (ratePerWeek > 0) {
           const weeksToTarget = Math.round((gapPct / ratePerWeek));

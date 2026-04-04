@@ -14,6 +14,7 @@ import {
   type BillingPeriod,
   type CapacityTierId,
 } from '@shared/billing/capacityTiers';
+import { DEFAULT_CURRENCY_RATES, REPORTING_CURRENCY } from '@shared/reportingFx';
 
 export {
   CAPACITY_TIERS,
@@ -39,6 +40,9 @@ export {
   type CapacityTierId,
   type PackageTrack,
 } from '@shared/billing/capacityTiers';
+
+export { REPORTING_CURRENCY };
+export const KWD_TO_GBP = DEFAULT_CURRENCY_RATES.KWD_TO_GBP;
 
 export const REGIONS = ['GB', 'US', 'KW'] as const;
 export type Region = (typeof REGIONS)[number];
@@ -72,8 +76,6 @@ export const REGION_LABELS: Record<Region, string> = {
 
 export const DEFAULT_REGION: Region = 'GB';
 export const DEFAULT_CURRENCY: Currency = 'GBP';
-
-export const KWD_TO_GBP = 2.6;
 
 const LEGACY_MONTHLY_CREDITS: Record<number, number> = {
   5: 15,
@@ -119,7 +121,7 @@ export function monthlyAiCreditsForClientLimit(clientLimit: number): number {
 /** Sentinel value for unlimited credits */
 export const UNLIMITED_CREDITS = -1;
 
-/** Legacy / admin: very high balance treated as unlimited (matches Stripe webhook comped tiers). */
+/** Legacy / admin: very high balance treated as unlimited (matches Stripe webhook unlimited-credit handling). */
 const UNLIMITED_CREDITS_SENTINEL_MIN = 9999;
 
 /** True when balance should bypass AI credit consumption (explicit unlimited or legacy high balance). */

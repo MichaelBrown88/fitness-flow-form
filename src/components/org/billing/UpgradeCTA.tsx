@@ -7,15 +7,16 @@ import { ROUTES } from '@/constants/routes';
 interface UpgradeCTAProps {
   plan: string;
   status: string;
-  seatRatio: number;
+  /** Active clients ÷ plan client limit (0–1+). */
+  clientCapacityRatio: number;
 }
 
-export function UpgradeCTA({ plan, status, seatRatio }: UpgradeCTAProps) {
+export function UpgradeCTA({ plan, status, clientCapacityRatio }: UpgradeCTAProps) {
   const navigate = useNavigate();
 
   const isPastDue = status === 'past_due';
   const isCancelled = status === 'cancelled';
-  const isAtCapacity = seatRatio >= 1;
+  const isAtCapacity = clientCapacityRatio >= 1;
   const isEnterprise = plan === 'enterprise';
 
   if (isEnterprise && !isPastDue && !isCancelled) return null;
@@ -36,17 +37,18 @@ export function UpgradeCTA({ plan, status, seatRatio }: UpgradeCTAProps) {
       variant: 'default' as const,
     };
     if (isAtCapacity) return {
-      label: 'Upgrade to add seats',
+      label: 'Upgrade client capacity',
       icon: TrendingUp,
       route: ROUTES.BILLING,
-      description: 'Your team is at capacity. Upgrade your plan to invite more coaches.',
+      description:
+        'You are at your plan’s client limit. Upgrade on billing to add more active clients (and higher tiers when you need them).',
       variant: 'default' as const,
     };
     return {
       label: 'View available plans',
       icon: TrendingUp,
       route: ROUTES.BILLING,
-      description: 'Unlock more seats, advanced analytics, and custom branding.',
+      description: 'See capacity tiers, billing options, and add-ons like custom branding.',
       variant: 'outline' as const,
     };
   })();

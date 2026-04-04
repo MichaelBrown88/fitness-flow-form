@@ -2,8 +2,9 @@ import { useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { sendEmailVerification } from 'firebase/auth';
 import { useAuth } from '@/hooks/useAuth';
+import { useOrgAdminNavVisibility } from '@/hooks/useOrgAdminNavVisibility';
 import { Button } from '@/components/ui/button';
-import { Sparkles, ChevronDown, Menu, Building2, LayoutDashboard, Settings, LogOut, Mail, X, Globe } from 'lucide-react';
+import { Sparkles, ChevronDown, Menu, Building2, LayoutDashboard, Settings, LogOut, Mail, X, Globe, CreditCard } from 'lucide-react';
 import { ROUTES } from '@/constants/routes';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -61,6 +62,7 @@ export default function AppShell({
   hideTitle?: boolean;
 }) {
   const { user, loading, signOut, orgSettings, profile } = useAuth();
+  const showOrgAdminNav = useOrgAdminNavVisibility();
   const initials =
     user?.displayName?.split(' ').map((n) => n[0]).join('').toUpperCase() ||
     (user?.email ? user.email[0]?.toUpperCase() : 'C');
@@ -202,17 +204,6 @@ export default function AppShell({
             <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
               {actions ? <div className="flex gap-1 sm:gap-2">{actions}</div> : null}
 
-              {user && profile?.role === 'org_admin' && (
-                <Button variant="ghost" size="icon" asChild className="h-8 w-8 sm:h-9 sm:w-9 text-muted-foreground hover:text-foreground hidden sm:flex" title="Organization">
-                  <Link to="/org/dashboard"><Building2 className="h-4 w-4" /></Link>
-                </Button>
-              )}
-              {user && (
-                <Button variant="ghost" size="icon" asChild className="h-8 w-8 sm:h-9 sm:w-9 text-muted-foreground hover:text-foreground hidden sm:flex" title="Settings">
-                  <Link to={ROUTES.SETTINGS}><Settings className="h-4 w-4" /></Link>
-                </Button>
-              )}
-
               {user && <NotificationBell />}
               {!loading && (
                 user ? (
@@ -230,7 +221,7 @@ export default function AppShell({
                         <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground mr-0.5 sm:mr-1" />
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-52">
+                    <DropdownMenuContent align="end" className="w-56">
                       <DropdownMenuLabel className="font-normal">
                         <div className="flex flex-col space-y-1">
                           <p className="text-sm font-medium leading-none">{user.displayName || 'Coach Account'}</p>
@@ -244,11 +235,19 @@ export default function AppShell({
                           Dashboard
                         </Link>
                       </DropdownMenuItem>
-                      {profile?.role === 'org_admin' && (
+                      {showOrgAdminNav && (
                         <DropdownMenuItem asChild>
-                          <Link to="/org/dashboard" className="flex items-center gap-2">
+                          <Link to={ROUTES.ORG_DASHBOARD} className="flex items-center gap-2">
                             <Building2 className="h-4 w-4" />
-                            Organization
+                            Org admin
+                          </Link>
+                        </DropdownMenuItem>
+                      )}
+                      {showOrgAdminNav && (
+                        <DropdownMenuItem asChild>
+                          <Link to={ROUTES.BILLING} className="flex items-center gap-2">
+                            <CreditCard className="h-4 w-4" />
+                            Billing & plans
                           </Link>
                         </DropdownMenuItem>
                       )}

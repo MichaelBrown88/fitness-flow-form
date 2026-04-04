@@ -24,6 +24,20 @@ export interface PlatformAdmin {
   lastLoginAt?: Date;
 }
 
+/** One row in the platform admin “revenue by region” scan (Stripe billable currency + GBP normalization). */
+export interface RevenueByRegionRow {
+  amountLocal: number;
+  currency: string;
+  gbpPence: number;
+  activePayingOrgCount: number;
+}
+
+export interface RevenueByRegionSnapshot {
+  byRegion: Record<string, RevenueByRegionRow>;
+  /** Sum of regional `gbpPence` (scan-based; compare to system_stats MRR for drift checks). */
+  totalGbpPence: number;
+}
+
 // Platform metrics - current snapshot
 export interface PlatformMetrics {
   // Organization metrics
@@ -108,7 +122,6 @@ export interface OrganizationSummary {
   type: 'solo_coach' | 'gym' | 'gym_chain';
   plan: 'starter' | 'professional' | 'enterprise' | 'free' | 'none';
   status: 'trial' | 'active' | 'cancelled' | 'past_due' | 'none';
-  isComped?: boolean; // True if free/complimentary subscription (excluded from MRR)
   clientSeats?: number; // Number of client seats in subscription (legacy)
   monthlyFeeKwd?: number; // Monthly subscription fee in KWD (legacy/fallback)
   /** Billing region (GB, US, KW) */
@@ -165,6 +178,10 @@ export interface OrganizationDetails extends OrganizationSummary {
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
   stripePriceId?: string;
+  /** CFO capacity tier (S10, G50, …) when synced from Stripe */
+  capacityTierId?: string;
+  /** Solo vs gym package track from subscription */
+  packageTrack?: PackageTrack;
 }
 
 // AI cost breakdown per organization
@@ -275,6 +292,8 @@ export interface CreateCheckoutRequest {
   billingPeriod?: BillingPeriod;
   /** GB: solo vs gym price ladder */
   packageTrack?: PackageTrack;
+  /** Add one-time custom branding to the same Stripe Checkout session as the subscription. */
+  includeCustomBranding?: boolean;
   /** Legacy / US / KW seat checkout */
   region?: Region;
   clientCount?: number;
@@ -289,6 +308,20 @@ export interface CreateCheckoutResponse {
   sessionUrl: string;
   /** Stripe Session ID for client-side confirmation */
   sessionId: string;
+}
+
+/** In-app subscription capacity / price change (GB), server calls Stripe subscriptions.update */
+export interface UpdateSubscriptionPlanRequest {
+  organizationId: string;
+  region: Region;
+  clientCount: number;
+  billingPeriod: BillingPeriod;
+  packageTrack?: PackageTrack;
+}
+
+export interface UpdateSubscriptionPlanResponse {
+  ok: true;
+  unchanged?: boolean;
 }
 
 /** Logged-out landing flow — same GB capacity prices, no organizationId (test mode only on server). */

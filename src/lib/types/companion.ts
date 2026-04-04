@@ -22,6 +22,7 @@ export interface PostureCompanionData {
  * Data structure returned by BodyCompCompanionModal.onComplete
  */
 export interface BodyCompCompanionData extends Partial<FormData> {
-  inbodyImage?: string;
+  /** Data or storage URL for the uploaded body-composition report image (OCR source). */
+  bodyCompReportImageUrl?: string;
 }
 

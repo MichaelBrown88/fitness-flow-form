@@ -63,7 +63,7 @@ interface CorrRow {
   alcohol?: number;
   /** Age in years */
   age?: number;
-  /** BMI from InBody scan */
+  /** BMI from body composition data (analyser or manual entry) */
   bmi?: number;
 }
 
@@ -235,7 +235,7 @@ const CORR_PAIRS: [CorrKey, CorrKey][] = [
   ['age', 'bodyComp'],
   ['age', 'cardio'],
   ['age', 'strength'],
-  // BMI vs body comp (InBody clients)
+  // BMI vs body comp (clients with analyser / body-comp data)
   ['bmi', 'bodyComp'],
   ['bmi', 'overall'],
   // Pillar cross-correlations

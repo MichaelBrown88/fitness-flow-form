@@ -236,7 +236,7 @@ export const ASSESSMENT_TOOLTIPS = {
     cardioPost1MinHr: 'Instructions:\n1. Stop the test at exactly 3:00.\n2. Have client sit down immediately.\n3. Wait exactly 60 seconds.\n4. Record heart rate at the 1-minute mark.\n\nBoth tests use the same recovery measurement.',
   },
   P4: {
-    postureInputMode: 'Instructions:\n1. Choose "AI Posture Scan" for automated landmark detection using an iPhone.\n2. Choose "Manual" to record observations directly.',
+    postureInputMode: 'Instructions:\n1. Choose "AI Posture Scan" for automated landmark detection using the camera (e.g. phone or tablet as a companion device).\n2. Choose "Manual" to record observations directly.',
     postureHeadOverall: 'Instructions:\n1. Observe client from the side view.\n2. Note if the ear is positioned directly over the shoulder (Neutral).\n3. If the head sits forward of the shoulder line, mark as Forward Head.',
     postureShouldersOverall: 'Instructions:\n1. View from the side for rounded positions.\n2. View from the back for height symmetry or winged blades.\n3. Note any persistent elevation on one side.',
     postureBackOverall: 'Instructions:\n1. Observe spinal curves from the side view.\n2. Note excessive upper back rounding (Kyphosis) or lower back arch (Lordosis).\n3. Check for side-to-side curvature (Scoliosis) from the back.',
@@ -479,7 +479,7 @@ export const ASSESSMENT_OPTIONS = {
   // P4 Options
   postureInputMode: [
     { value: 'manual', label: 'Manual Observation' },
-    { value: 'ai', label: 'AI Posture Scan (iPhone)' },
+    { value: 'ai', label: 'AI Posture Scan (camera / companion)' },
   ],
   postureHeadOverall: [
     { value: 'neutral', label: 'Neutral' },

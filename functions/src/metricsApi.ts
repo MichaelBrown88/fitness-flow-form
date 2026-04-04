@@ -114,7 +114,7 @@ function getLogDate(log: Record<string, unknown>): Date | null {
 }
 
 function getMrrGbpPence(subscription: Record<string, unknown> | undefined): number {
-  if (!subscription || subscription.status !== 'active' || subscription.isComped === true) return 0;
+  if (!subscription || subscription.status !== 'active') return 0;
   const currency = typeof subscription.currency === 'string' ? subscription.currency : 'KWD';
   const amount = Number(subscription.amountCents ?? subscription.amountFils ?? 0);
   if (!amount) return 0;
@@ -575,7 +575,7 @@ export async function seedAIConfigCallable(
 
   // Ensure platform/config has currencyRates (used by aggregation functions for MRR)
   await db.doc('platform/config').set(
-    { currencyRates: { KWD_TO_GBP: 2.6, USD_TO_GBP: 0.79 } },
+    { currencyRates: { KWD_TO_GBP: 2.6, USD_TO_GBP: 0.79, EUR_TO_GBP: 0.86 } },
     { merge: true }
   );
   logger.info('[seedAIConfig] platform/config currencyRates ensured');

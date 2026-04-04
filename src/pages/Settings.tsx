@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { updateProfile } from 'firebase/auth';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import AppShell from '@/components/layout/AppShell';
@@ -12,11 +12,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { updateOrgSettings, uploadOrgLogo, type OrgSettings, DEFAULT_EQUIPMENT_CONFIG } from '@/services/organizations';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Upload, Palette, ShieldCheck, Box, Settings as SettingsIcon, User, Building2, Calendar, ArrowLeft, Bell } from 'lucide-react';
+import { Loader2, Upload, Palette, ShieldCheck, Box, Settings as SettingsIcon, User, Building2, Calendar, ArrowLeft, Bell, CreditCard } from 'lucide-react';
 import { getAllGradients, type GradientId } from '@/lib/design/gradients';
 import { doc, setDoc } from 'firebase/firestore';
 import { getDb } from '@/services/firebase';
 import { logger } from '@/lib/utils/logger';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { STRIPE_CONFIG } from '@/constants/platform';
+import { DEFAULT_REGION, REGION_TO_CURRENCY, type Region } from '@/constants/pricing';
+import { formatPrice, getLocaleForRegion } from '@/lib/utils/currency';
+import { getCustomBrandingPrice } from '@/lib/pricing/config';
 import { DefaultCadenceSettings } from '@/components/settings/DefaultCadenceSettings';
 import { NotificationSettings } from '@/components/settings/NotificationSettings';
 import { OrgSettingSwitch } from '@/components/settings/OrgSettingSwitch';
@@ -36,6 +41,8 @@ const Settings = () => {
   const [localGradientId, setLocalGradientId] = useState<GradientId>((orgSettings?.gradientId as GradientId) || 'volt');
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [brandingCheckoutLoading, setBrandingCheckoutLoading] = useState(false);
+  const brandingPurchaseSuccessHandled = useRef(false);
   const gradients = getAllGradients();
 
   const [coachGuidanceAssessment, setCoachGuidanceAssessment] = useState(true);
@@ -77,6 +84,24 @@ const Settings = () => {
     setLocalDisplayName(profile?.displayName ?? '');
   }, [profile?.displayName]);
 
+  useEffect(() => {
+    if (searchParams.get('branding_purchase') !== 'success') return;
+    if (brandingPurchaseSuccessHandled.current) return;
+    brandingPurchaseSuccessHandled.current = true;
+    toast({
+      title: SETTINGS_COPY.BRANDING_PURCHASE_SUCCESS,
+      description: SETTINGS_COPY.BRANDING_PURCHASE_SUCCESS_DETAIL,
+    });
+    setSearchParams(
+      (prev) => {
+        const p = new URLSearchParams(prev);
+        p.delete('branding_purchase');
+        return p;
+      },
+      { replace: true },
+    );
+  }, [searchParams, setSearchParams, toast]);
+
   const brandingDirty = useMemo(() => {
     if (!orgSettings) return false;
     return localOrgName !== orgSettings.name || localGradientId !== (orgSettings.gradientId || 'volt');
@@ -89,11 +114,47 @@ const Settings = () => {
 
   const anyUnsaved = brandingDirty || profileDirty;
 
+  const brandingPriceFormatted = useMemo(() => {
+    const r = (orgSettings?.subscription?.region ?? orgSettings?.region ?? DEFAULT_REGION) as Region;
+    const currency = REGION_TO_CURRENCY[r] ?? 'GBP';
+    return formatPrice(getCustomBrandingPrice(r), currency, getLocaleForRegion(r));
+  }, [orgSettings?.subscription?.region, orgSettings?.region]);
+
   const { guardedNavigate } = useUnsavedChangesGuard(
     anyUnsaved,
     navigate,
     'You have unsaved changes. Leave anyway?',
   );
+
+  const handlePurchaseCustomBranding = async () => {
+    if (!profile?.organizationId) return;
+    if (!STRIPE_CONFIG.isEnabled) {
+      toast({ title: SETTINGS_COPY.BRANDING_STRIPE_DISABLED, variant: 'destructive' });
+      return;
+    }
+    setBrandingCheckoutLoading(true);
+    try {
+      const fn = getFunctions();
+      const createBranding = httpsCallable<
+        { organizationId: string; returnTarget?: 'billing' | 'settings' },
+        { sessionUrl: string | null }
+      >(fn, 'createBrandingCheckoutSession');
+      const result = await createBranding({
+        organizationId: profile.organizationId,
+        returnTarget: 'settings',
+      });
+      const sessionUrl = result.data.sessionUrl;
+      if (!sessionUrl || !/^https?:\/\//i.test(sessionUrl)) {
+        throw new Error('No checkout URL returned.');
+      }
+      window.location.assign(sessionUrl);
+    } catch (err) {
+      logger.error('Branding checkout failed:', err);
+      const message = err instanceof Error ? err.message : SETTINGS_COPY.BRANDING_PURCHASE_ERROR;
+      toast({ title: SETTINGS_COPY.BRANDING_PURCHASE_ERROR, description: message, variant: 'destructive' });
+      setBrandingCheckoutLoading(false);
+    }
+  };
 
   const handleSaveProfile = async () => {
     if (!user) return;
@@ -313,6 +374,23 @@ const Settings = () => {
               </div>
             </section>
 
+            {isAdmin && (
+              <section className="space-y-4">
+                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="space-y-2 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="h-5 w-5 text-primary shrink-0" aria-hidden />
+                      <h2 className="text-lg font-bold text-foreground">{SETTINGS_COPY.BILLING_CARD_TITLE}</h2>
+                    </div>
+                    <p className="text-sm text-muted-foreground max-w-lg">{SETTINGS_COPY.BILLING_CARD_DESCRIPTION}</p>
+                  </div>
+                  <Button type="button" variant="default" className="shrink-0" asChild>
+                    <Link to={ROUTES.BILLING}>{SETTINGS_COPY.BILLING_CARD_CTA}</Link>
+                  </Button>
+                </div>
+              </section>
+            )}
+
             <section className="space-y-4">
               <div className="rounded-2xl border border-border bg-card p-6 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="space-y-1">
@@ -417,19 +495,28 @@ const Settings = () => {
                 Custom branding (your logo and brand colours on reports and in the app) is a paid add-on. All reports show &ldquo;Powered by One Assess&rdquo; so clients know the assessment platform behind your brand.
               </p>
               <p className="text-sm text-muted-foreground">
-                To add custom branding to your organization, contact us to enable this feature.
+                <span className="font-semibold text-foreground">{brandingPriceFormatted}</span> one-time —{' '}
+                {SETTINGS_COPY.BRANDING_PURCHASE_HELP}
               </p>
               <Button
-                variant="outline"
-                className="rounded-xl border-border"
-                onClick={() => window.open('mailto:support@one-assess.com?subject=Custom branding add-on', '_blank')}
+                type="button"
+                className="rounded-xl font-semibold"
+                disabled={brandingCheckoutLoading}
+                onClick={() => void handlePurchaseCustomBranding()}
               >
-                Contact us to add custom branding
+                {brandingCheckoutLoading ? SETTINGS_COPY.BRANDING_PURCHASE_LOADING : SETTINGS_COPY.BRANDING_PURCHASE_CTA}
               </Button>
               <p className="text-xs text-muted-foreground">
-                Or{' '}
+                Questions?{' '}
+                <a
+                  href="mailto:support@one-assess.com?subject=Custom%20branding%20add-on"
+                  className="font-semibold text-primary underline-offset-4 hover:underline"
+                >
+                  Email support
+                </a>{' '}
+                or{' '}
                 <Link to={`${ROUTES.CONTACT}?interest=custom-branding`} className="font-semibold text-primary underline-offset-4 hover:underline">
-                  request via the contact form
+                  contact form
                 </Link>
                 .
               </p>
@@ -648,7 +735,7 @@ const Settings = () => {
                   <OrgSettingSwitch
                     label="Body Composition Analyser"
                     description={orgSettings?.equipmentConfig?.bodyComposition?.enabled
-                      ? 'Enabled: Assessments will use body composition analyser (e.g. InBody, DEXA)'
+                      ? 'Enabled: Assessments will use a professional body composition analyser (BIA, DEXA, etc.)'
                       : 'Disabled: Assessments will use body measurements + skinfold test (clients can still bring their own reports)'}
                     checked={orgSettings?.equipmentConfig?.bodyComposition?.enabled ?? false}
                     onToggle={async (enabled) => {

@@ -26,7 +26,6 @@ export {
   getLiveMetrics,
   getDefaultMetrics,
   getRevenueByRegion,
-  type RevenueByRegionResult,
   getMetricsHistory,
   getOnboardingFunnel,
   getAssessmentChartData,
@@ -42,6 +41,8 @@ export {
   grantDataAccess,
   revokeDataAccess,
 } from './platform/platformMetrics';
+
+export type { RevenueByRegionSnapshot, RevenueByRegionRow } from '@/types/platform';
 
 // AI Usage Tracking
 export {

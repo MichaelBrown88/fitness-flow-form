@@ -3,6 +3,14 @@ description:
 alwaysApply: true
 ---
 
+## AI workflow guardrails
+
+- **No placeholder stubs**: Never use placeholders like `// ...rest of the code...` or `/* implementation here */`. Write complete, fully functional implementations.
+- **Evidence-based coding**: Before modifying or calling existing functions, read the relevant files. Do not invent function signatures, imports, or APIs.
+- **Chain of thought**: Give a brief plan and reasoning grounded in what you read in the codebase before making file edits.
+- **Test-driven awareness**: When adding new features, write or update tests first when practical. Ensure linting, typecheck, and tests pass before treating a task as done.
+- **Library and API questions**: Prefer the documentation MCP (e.g. Context7) over guessing at APIs or framework behavior.
+
 # One Assess — Elite Coding Standards
 # Stack: React 18 + Vite + TypeScript + Tailwind + shadcn/ui + Firebase + MediaPipe
 # Mission: Eliminate assessment admin burden for fitness coaches. Every line of code serves this.
@@ -191,7 +199,7 @@ These rules prevent permanent technical debt:
 
 ### Stripe Integration
 - Subscription status MUST be verified server-side before granting feature access
-- Use `FeatureGate` component for any premium feature
+- Gate premium features with server-verified subscription status and explicit org/feature checks in UI where implemented
 - Webhook events are the source of truth — not client-side state
 - Always handle: `payment_failed`, `subscription_cancelled`, `subscription_past_due`
 

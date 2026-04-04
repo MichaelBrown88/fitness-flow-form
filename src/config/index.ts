@@ -111,7 +111,7 @@ export const CONFIG = {
     VOICE_GUIDE: {
       START_BUTTON: 'Start voice guide',
       READY_HINT:
-        'Camera and motion are on. Tap below to connect the AI guide — this avoids iOS interrupting the live session during permission dialogs.',
+        'Camera and motion are on. Tap below to connect the AI guide first — on some mobile browsers this keeps the live session stable while system permission dialogs appear.',
       NOT_CONNECTED_BEFORE_SCAN:
         'Voice guide is not connected. Please tap Try again before starting the scan.',
       CONNECTING_VOICE_GUIDE: 'Connecting voice guide…',

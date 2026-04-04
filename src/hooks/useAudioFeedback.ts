@@ -90,7 +90,7 @@ export function useAudioFeedback(): UseAudioFeedbackResult {
       logger.warn('[COMPANION_PERM] useAudioFeedback chime/speak failed', e);
     }
     // SpeechSynthesis is unlocked by this user-initiated call. Do NOT use DeviceOrientationEvent here —
-    // that belongs in `useOrientationDetection` only; mixing the two broke iOS flows (wrong prompt, never
+    // that belongs in `useOrientationDetection` only; mixing the two broke some mobile Safari flows (wrong prompt, never
     // reaching `hasAudioPermission && hasOrientationPermission`).
     setHasPermission(true);
     logger.warn('[COMPANION_PERM] useAudioFeedback.requestPermission: hasAudioPermission -> true');

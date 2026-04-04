@@ -68,8 +68,10 @@ interface Props {
 
 export function RoadmapBuilder({ clientName, blocks, allPossibleBlocks = [], clientGoals, coachBrief, onCreate, onAcceptAndSend, saving }: Props) {
   const [customising, setCustomising] = useState(false);
-  const [timeline, setTimeline] = useState(() => {
-    const m = new Map<RoadmapPhase, RoadmapItem[]>(PHASES.map((p) => [p, []]));
+  const [timeline, setTimeline] = useState<Map<RoadmapPhase, RoadmapItem[]>>(() => {
+    const m = new Map<RoadmapPhase, RoadmapItem[]>(
+      PHASES.map((p): [RoadmapPhase, RoadmapItem[]] => [p, []]),
+    );
     for (const block of blocks) m.get(block.phase)!.push(blockToItem(block, block.phase));
     PHASES.forEach((p) => {
       const list = m.get(p) ?? [];
@@ -178,7 +180,9 @@ export function RoadmapBuilder({ clientName, blocks, allPossibleBlocks = [], cli
 
   const handleResetToSuggested = useCallback(() => {
     setTimeline(() => {
-      const m = new Map<RoadmapPhase, RoadmapItem[]>(PHASES.map((p) => [p, []]));
+      const m = new Map<RoadmapPhase, RoadmapItem[]>(
+        PHASES.map((p): [RoadmapPhase, RoadmapItem[]] => [p, []]),
+      );
       for (const block of blocks) m.get(block.phase)!.push(blockToItem(block, block.phase));
       return m;
     });

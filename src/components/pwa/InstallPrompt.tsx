@@ -1,10 +1,9 @@
 /**
  * PWA Install Prompt
- * 
+ *
  * Detects if the app can be installed and shows a subtle install banner.
- * Handles both:
- * - Chrome/Android: Uses beforeinstallprompt event
- * - iOS Safari: Shows manual instructions
+ * - Chromium-based browsers: `beforeinstallprompt`
+ * - Browsers without that event: manual “Add to Home Screen” instructions
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -24,7 +23,8 @@ function isStandalone(): boolean {
     || ('standalone' in window.navigator && (navigator as unknown as { standalone: boolean }).standalone);
 }
 
-function isIOS(): boolean {
+/** True when the browser is likely Apple mobile Safari (no install prompt API). */
+function isAppleMobileWebKitWithoutInstallPrompt(): boolean {
   return /iPad|iPhone|iPod/.test(navigator.userAgent) && !('MSStream' in window);
 }
 
@@ -36,13 +36,13 @@ function wasDismissedRecently(): boolean {
 
 export function InstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [showIOSPrompt, setShowIOSPrompt] = useState(false);
+  const [showManualHomeScreenPrompt, setShowManualHomeScreenPrompt] = useState(false);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     if (isStandalone() || wasDismissedRecently()) return;
 
-    // Chrome/Android install prompt
+    // Chromium-style install prompt
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
@@ -50,9 +50,8 @@ export function InstallPrompt() {
     };
     window.addEventListener('beforeinstallprompt', handler);
 
-    // iOS Safari - show after a brief delay if not installed
-    if (isIOS() && !isStandalone()) {
-      const timer = setTimeout(() => setShowIOSPrompt(true), 3000);
+    if (isAppleMobileWebKitWithoutInstallPrompt() && !isStandalone()) {
+      const timer = setTimeout(() => setShowManualHomeScreenPrompt(true), 3000);
       return () => {
         clearTimeout(timer);
         window.removeEventListener('beforeinstallprompt', handler);
@@ -74,11 +73,11 @@ export function InstallPrompt() {
 
   const handleDismiss = useCallback(() => {
     setVisible(false);
-    setShowIOSPrompt(false);
+    setShowManualHomeScreenPrompt(false);
     localStorage.setItem(DISMISSED_KEY, Date.now().toString());
   }, []);
 
-  // Chrome/Android prompt
+  // Install prompt (Chromium family)
   if (visible && deferredPrompt) {
     return (
       <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-[360px] z-[99] animate-in slide-in-from-bottom-4 fade-in duration-300">
@@ -121,8 +120,7 @@ export function InstallPrompt() {
     );
   }
 
-  // iOS Safari prompt
-  if (showIOSPrompt) {
+  if (showManualHomeScreenPrompt) {
     return (
       <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-[360px] z-[99] animate-in slide-in-from-bottom-4 fade-in duration-300">
         <div className="bg-background dark:bg-foreground rounded-xl shadow-xl p-4 flex items-start gap-3 border border-border dark:border-border/50">

@@ -41,6 +41,17 @@ export const PLATFORM_DASHBOARD_TABS = {
 
 export type PlatformDashboardTab = (typeof PLATFORM_DASHBOARD_TABS)[keyof typeof PLATFORM_DASHBOARD_TABS];
 
+/** Platform admin → Financial tab copy (reporting vs Stripe billable currency). */
+export const PLATFORM_FINANCIAL_REPORTING = {
+  REPORTING_LABEL: 'Internal reporting (GBP)',
+  STRIPE_LOCAL_LABEL: 'Billable by region (Stripe currency)',
+  FOOTNOTE:
+    'Coaches are charged in their subscription currency (what Stripe collects). Totals in GBP use rates from Firestore platform/config.currencyRates (USD_TO_GBP, EUR_TO_GBP, KWD_TO_GBP); defaults match Cloud Function MRR aggregation.',
+  MRR_CARD_HINT: 'From system_stats write-time aggregation (GBP pence).',
+  REGION_SCAN_HINT:
+    'Live scan of active orgs: local sum matches Stripe smallest units per region; ≈ GBP uses the same FX as MRR.',
+} as const;
+
 /**
  * Stripe & billing (client). Keys come from env; see `.env.example`.
  */

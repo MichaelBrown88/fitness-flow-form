@@ -1,8 +1,9 @@
 /**
  * useCheckout — client-side hook for Stripe Checkout integration
  *
- * Lazy-loads @stripe/stripe-js per .cursorrules:
- * "Heavy libraries MUST use Dynamic Imports inside the function that needs them."
+ * Hosted Checkout only needs the session URL from the Cloud Function; we redirect
+ * with `window.location.assign` (no Stripe.js). That avoids CSP `script-src` needing
+ * `js.stripe.com` and matches the landing guest checkout path.
  *
  * If VITE_STRIPE_PUBLISHABLE_KEY is not set, all operations gracefully no-op
  * and the onboarding flow falls back to free trial mode.
@@ -18,10 +19,13 @@ import type {
   CreateCheckoutRequest,
   CreateCheckoutResponse,
   CreateLandingGuestCheckoutRequest,
+  UpdateSubscriptionPlanRequest,
+  UpdateSubscriptionPlanResponse,
 } from '@/types/platform';
 
 export function useCheckout() {
   const [loading, setLoading] = useState(false);
+  const [planUpdateLoading, setPlanUpdateLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   /**
@@ -38,6 +42,7 @@ export function useCheckout() {
       clientCount: number,
       billingPeriod: BillingPeriod = 'monthly',
       packageTrack?: PackageTrack,
+      includeCustomBranding?: boolean,
     ): Promise<boolean> => {
       // If Stripe is not configured, skip payment entirely
       if (!STRIPE_CONFIG.isEnabled) {
@@ -62,23 +67,15 @@ export function useCheckout() {
           clientCount,
           billingPeriod,
           ...(region === 'GB' && packageTrack ? { packageTrack } : {}),
+          ...(includeCustomBranding === true ? { includeCustomBranding: true } : {}),
         });
         const { sessionUrl } = result.data;
 
-        if (!sessionUrl) {
+        if (!sessionUrl || !/^https?:\/\//i.test(sessionUrl)) {
           throw new Error('No checkout session URL returned from server.');
         }
 
-        // 2. Lazy-load Stripe.js and redirect to Checkout
-        const { loadStripe } = await import('@stripe/stripe-js');
-        const stripe = await loadStripe(STRIPE_CONFIG.publishableKey);
-
-        if (!stripe) {
-          throw new Error('Failed to load Stripe. Please check your internet connection.');
-        }
-
-        // Redirect to Stripe Checkout
-        window.location.href = sessionUrl;
+        window.location.assign(sessionUrl);
         return true;
       } catch (err: unknown) {
         const message =
@@ -186,11 +183,57 @@ export function useCheckout() {
     []
   );
 
+  /**
+   * GB orgs with an existing subscription: change capacity in Stripe (subscriptions.update).
+   * Monthly ↔ annual is blocked server-side; use Stripe Customer Portal for that edge case.
+   */
+  const updateSubscriptionPlan = useCallback(
+    async (
+      organizationId: string,
+      region: Region,
+      clientCount: number,
+      billingPeriod: BillingPeriod,
+      packageTrack?: PackageTrack,
+    ): Promise<UpdateSubscriptionPlanResponse> => {
+      if (!STRIPE_CONFIG.isEnabled) {
+        throw new Error('Stripe is not configured.');
+      }
+      setPlanUpdateLoading(true);
+      setError(null);
+      try {
+        const functions = getFirebaseFunctions();
+        const fn = httpsCallable<UpdateSubscriptionPlanRequest, UpdateSubscriptionPlanResponse>(
+          functions,
+          'updateSubscriptionPlan',
+        );
+        const result = await fn({
+          organizationId,
+          region,
+          clientCount,
+          billingPeriod,
+          ...(region === 'GB' && packageTrack ? { packageTrack } : {}),
+        });
+        return result.data;
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error ? err.message : 'Unable to update your plan. Please try again.';
+        setError(message);
+        logger.error('[Checkout] updateSubscriptionPlan failed:', message);
+        throw err;
+      } finally {
+        setPlanUpdateLoading(false);
+      }
+    },
+    [],
+  );
+
   return {
     startCheckout,
     startLandingGuestCheckout,
     purchaseCreditTopup,
+    updateSubscriptionPlan,
     loading,
+    planUpdateLoading,
     error,
     /** Whether Stripe payment is available (env key is set) */
     isStripeEnabled: STRIPE_CONFIG.isEnabled,

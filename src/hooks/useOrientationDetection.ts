@@ -89,13 +89,14 @@ export function useOrientationDetection(
     const DeviceOrientationEventAny = DeviceOrientationEvent as unknown as {
       requestPermission?: () => Promise<'granted' | 'denied'>;
     };
-    const hasIosStylePrompt = typeof DeviceOrientationEventAny.requestPermission === 'function';
+    const requiresExplicitOrientationPermission =
+      typeof DeviceOrientationEventAny.requestPermission === 'function';
     logger.warn('[COMPANION_PERM] useOrientationDetection.requestPermission: enter', {
-      hasIosStylePrompt,
+      requiresExplicitOrientationPermission,
       mode,
     });
     try {
-      if (hasIosStylePrompt) {
+      if (requiresExplicitOrientationPermission) {
         const state = await DeviceOrientationEventAny.requestPermission();
         logger.warn('[COMPANION_PERM] DeviceOrientationEvent.requestPermission result', { state });
         if (state === 'granted') {

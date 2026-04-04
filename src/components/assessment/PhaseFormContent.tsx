@@ -28,6 +28,7 @@ import { ROUTES } from '@/constants/routes';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import { ASSESSMENT_COPY } from '@/constants/assessmentCopy';
 import { ASSESSMENT_SUBMIT_LABELS } from '@/constants/assessment';
+import { isBodyCompositionPhaseFieldId } from '@/lib/utils/partialAssessmentBodyCompFieldKeys';
 import { isAssessmentComplete, type PartialCategory } from '@/lib/assessmentCompleteness';
 import { AssessmentSidebar } from './AssessmentSidebar';
 import { AssessmentModals } from './AssessmentModals';
@@ -134,13 +135,12 @@ export const PhaseFormContent = ({
           let fieldsToSkip: string[] = [];
           if (isPartialAssessment && partialCategory) {
             const categoryConfig: Record<string, string[]> = {
-              'bodycomp': ['inbody', 'segmental', 'bmr', 'visceral', 'waistHip'],
               'posture': ['posture', 'ohs', 'hinge', 'lunge', 'mobility'],
               'fitness': ['cardio', 'ymca', 'treadmill'],
               'strength': ['pushup', 'squat', 'plank', 'grip', 'chairStand', 'dynamometer'],
               'lifestyle': ['activityLevel', 'stepsPerDay', 'sedentaryHours', 'workHours', 'sleep', 'stress', 'nutrition', 'hydration', 'caffeine'],
             };
-            fieldsToSkip = categoryConfig[partialCategory] || [];
+            fieldsToSkip = partialCategory === 'bodycomp' ? [] : categoryConfig[partialCategory] || [];
           }
 
           const updates: Partial<FormData> = {};
@@ -148,7 +148,10 @@ export const PhaseFormContent = ({
             const formKey = key as keyof FormData;
             const value = current.formData[formKey];
             if (value !== undefined && value !== null) {
-              const shouldSkip = fieldsToSkip.some(prefix => key.toLowerCase().includes(prefix.toLowerCase()));
+              const shouldSkip =
+                partialCategory === 'bodycomp' && isBodyCompositionPhaseFieldId(key)
+                  ? true
+                  : fieldsToSkip.some((prefix) => key.toLowerCase().includes(prefix.toLowerCase()));
               if (!isPartialAssessment || !shouldSkip) {
                 (updates as Record<string, unknown>)[formKey] = value;
               }

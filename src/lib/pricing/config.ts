@@ -7,6 +7,7 @@
 
 import type { Region } from '@/constants/pricing';
 import { getPaidTierByClientCount, CUSTOM_BRANDING_PRICE_GBP } from '@shared/billing/capacityTiers';
+import { getCurrencyMinorUnitMultiplier } from '@/lib/utils/currencyMinorUnits';
 
 /** Subscription monthly price by region and client count (main unit: GBP, USD, KWD) */
 export const PRICING_SUBSCRIPTION: Record<Region, Record<number, number>> = {
@@ -88,18 +89,10 @@ export function getCustomBrandingPrice(region: Region): number {
   return CUSTOM_BRANDING[region] ?? 0;
 }
 
-/** Convert main-unit amount to smallest unit (pence/cents/fils) */
+/** Convert main-unit amount to smallest unit (pence/cents/fils, etc.) */
 export function getPriceInSmallestUnit(amount: number, currency: string): number {
   const n = Number(amount);
   if (Number.isNaN(n)) return 0;
-  switch (currency) {
-    case 'GBP':
-      return Math.round(n * 100); // pence
-    case 'USD':
-      return Math.round(n * 100); // cents
-    case 'KWD':
-      return Math.round(n * 1000); // fils
-    default:
-      return Math.round(n * 100);
-  }
+  const mult = getCurrencyMinorUnitMultiplier(currency);
+  return Math.round(n * mult);
 }

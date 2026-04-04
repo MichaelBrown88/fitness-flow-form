@@ -24,7 +24,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@shared/billing/*": ["./functions/src/shared/billing/*"]
+      "@shared/billing/*": ["./functions/src/shared/billing/*"],
+      "@shared/reportingFx": ["./functions/src/shared/reportingFx.ts"]
     }
   },
   "include": ["src", "functions/src/shared/billing/**/*.ts"]

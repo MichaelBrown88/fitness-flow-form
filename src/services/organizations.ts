@@ -11,7 +11,7 @@ import { logger } from '@/lib/utils/logger';
  * When disabled, assessments automatically show ALL equipment-free alternative methods.
  * 
  * Equipment Structure (ALL equipment types use ONLY enabled: boolean):
- * - bodyComposition.enabled: true = analyser (e.g. InBody, DEXA, etc.), false = body measurements + skinfold test (clients can still bring reports)
+ * - bodyComposition.enabled: true = professional analyser (BIA, DEXA, etc.), false = body measurements + skinfold test (clients can still bring reports)
  * - gripStrength.enabled: true = dynamometer, false = deadhang + pinch test options
  * - cardioEquipment.enabled: true = treadmill/bike/rower, false = step test
  * - heartRateSensor.enabled: true = HR sensor integration, false = manual pulse check
@@ -64,11 +64,15 @@ export interface OrgSubscriptionSnapshot {
   status?: string;
   trialEndsAt?: Timestamp | Date;
   clientCap?: number;
+  /** Soft cap during gym trial (and similar). */
   trialClientCap?: number;
   clientSeats?: number;
   monthlyAiCredits?: number;
   packageTrack?: string;
   billingEmail?: string;
+  /** Billing region (GB, US, KW) — synced from Stripe / checkout */
+  region?: string;
+  currency?: string;
 }
 
 export interface OrgSettings {
@@ -248,7 +252,7 @@ export async function getOrgSettings(orgId: string): Promise<OrgSettings> {
     logoUrl: data.logoUrl,
     modules: (() => {
       const raw = { ...DEFAULT_SETTINGS.modules, ...(data.modules || {}) } as Record<string, boolean>;
-      // Migrate legacy 'inbody' key → 'bodycomp' for existing Firestore docs
+      // Migrate legacy body-comp module flag key → 'bodycomp' for existing Firestore docs
       if ('inbody' in raw && !('bodycomp' in (data.modules || {}))) {
         raw.bodycomp = raw.inbody as boolean;
       }

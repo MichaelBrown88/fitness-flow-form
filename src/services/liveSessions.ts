@@ -17,6 +17,10 @@ import { logger } from '@/lib/utils/logger';
 import { validateOrganizationId } from '@/lib/utils/validateOrganizationId';
 import type { UserProfile } from '@/types/auth';
 import { updateDocWithRetry, uploadBodyCompScanFullSize, uploadPostureImageFullSize } from '@/services/backgroundUpload';
+import {
+  BODY_COMP_SCAN_FIRESTORE,
+  normalizeLiveSessionFromFirestore,
+} from '@/lib/utils/liveSessionBodyComp';
 
 export interface LiveSession {
   id: string;
@@ -26,7 +30,11 @@ export interface LiveSession {
   status: 'active' | 'completed';
   companionJoined: boolean;
   postureImages: Record<string, string>;
-  inbodyImage?: string; // For body comp scan
+  /** Compressed body-comp scan preview (Firestore + real-time UI). */
+  bodyCompScanImage?: string;
+  bodyCompScanImageUpdated?: Timestamp;
+  bodyCompScanImageFull?: string;
+  bodyCompScanImageStorage?: string;
   analysis: Record<string, PostureAnalysisResult>;
   createdAt: Timestamp;
   lastHeartbeat?: Timestamp; // Updated every 5s by mobile companion for connection monitoring
@@ -136,9 +144,9 @@ export const updateHeartbeat = async (sessionId: string): Promise<void> => {
 };
 
 export const subscribeToLiveSession = (sessionId: string, callback: (session: LiveSession) => void) => {
-  return onSnapshot(doc(db, SESSIONS_COLLECTION, sessionId), (doc) => {
-    if (doc.exists()) {
-      callback(doc.data() as LiveSession);
+  return onSnapshot(doc(db, SESSIONS_COLLECTION, sessionId), (docSnap) => {
+    if (docSnap.exists()) {
+      callback(normalizeLiveSessionFromFirestore(docSnap.data() as Record<string, unknown>));
     }
   });
 };
@@ -150,8 +158,8 @@ export const subscribeToLiveSession = (sessionId: string, callback: (session: Li
  * 
  * This function processes posture images from ANY source:
  * 1. Manual file upload
- * 2. iPhone Companion App handoff (with real-time MediaPipe landmarks)
- * 3. This Device (iPad/Direct camera)
+ * 2. Mobile companion handoff (with real-time MediaPipe landmarks)
+ * 3. This device (tablet / desktop camera)
  * 
  * Unified Flow:
  * 1. Detect landmarks with MediaPipe (or use provided)
@@ -166,7 +174,7 @@ export const updatePostureImage = async (
   view: string, 
   imageData: string, 
   providedLandmarks?: LandmarkResult,
-  source: 'manual' | 'iphone' | 'this-device' = 'manual',
+  source: 'manual' | 'companion' | 'this-device' = 'manual',
   organizationId?: string,
   profile?: UserProfile | null,
   framingMetadata?: PostureFramingMetadata | null
@@ -358,10 +366,14 @@ export const updateBodyCompImage = async (
     }
 
     // Store compressed version in Firestore (for fast real-time display)
-    await setDoc(sessionRef, {
-      inbodyImage: compressedImage,
-      inbodyImageUpdated: Timestamp.now() // Add timestamp to trigger updates
-    }, { merge: true });
+    await setDoc(
+      sessionRef,
+      {
+        [BODY_COMP_SCAN_FIRESTORE.image]: compressedImage,
+        [BODY_COMP_SCAN_FIRESTORE.imageUpdated]: Timestamp.now(),
+      },
+      { merge: true },
+    );
 
     // Upload FULL-SIZE version to Storage (for OCR analysis)
     // sessionData already fetched above
@@ -405,7 +417,9 @@ export const getClientSessions = async (
   );
 
   const snapshot = await getDocs(q);
-  const sessions = snapshot.docs.map(doc => doc.data() as LiveSession);
+  const sessions = snapshot.docs.map((d) =>
+    normalizeLiveSessionFromFirestore(d.data() as Record<string, unknown>),
+  );
   
   // Sort in memory by createdAt (descending - most recent first)
   sessions.sort((a, b) => {

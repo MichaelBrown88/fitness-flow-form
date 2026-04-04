@@ -10,6 +10,7 @@ import {
   handleCreateLandingGuestCheckoutSession,
   handleStripeWebhook,
   handleCreateCustomerPortalSession,
+  handleUpdateSubscriptionPlan,
   handleCreateBrandingCheckoutSession,
   handleCreateCreditTopupSession,
 } from './stripe';
@@ -108,6 +109,18 @@ export const stripeWebhook = onRequest(
 export const createCustomerPortalSession = onCall({
   enforceAppCheck: false,
 }, handleCreateCustomerPortalSession);
+
+export const updateSubscriptionPlan = onCall(
+  {
+    enforceAppCheck: false,
+  },
+  async (request) => {
+    const db = admin.firestore();
+    const key = buildRateLimitKey('plan_update', request.auth?.uid, request.rawRequest?.ip);
+    await assertRateLimit(db, key, { maxRequests: 12, windowSeconds: 60 });
+    return handleUpdateSubscriptionPlan(request);
+  },
+);
 
 export const createBrandingCheckoutSession = onCall({
   enforceAppCheck: false,

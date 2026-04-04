@@ -76,7 +76,7 @@ export function getFirebaseApp(): FirebaseApp {
 }
 
 // Modern Firestore initialization with persistent cache (v10+)
-// Safari/iPad can have issues with IndexedDB, so we detect and handle gracefully
+// Some WebKit browsers have IndexedDB quirks; detect and fall back to memory cache.
 const app = getFirebaseApp();
 
 // Check if IndexedDB is available (required for persistent cache)
@@ -88,15 +88,15 @@ const isIndexedDBAvailable = (): boolean => {
   }
 };
 
-// Detect Safari/iPad - these browsers sometimes have IndexedDB issues
-// Note: This check runs at module load time, so we need to handle browser detection safely
-const detectSafariOrIPad = (): boolean => {
+// Safari / iPadOS desktop UA / touch Mac — IndexedDB persistent cache can be unreliable
+const detectWebKitFamilyIndexedDBQuirks = (): boolean => {
   if (typeof navigator === 'undefined') return false;
   try {
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-    const isIPad = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-                   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    return isSafari || isIPad;
+    const isAppleTouchEnvironment =
+      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    return isSafari || isAppleTouchEnvironment;
   } catch {
     return false;
   }
@@ -105,21 +105,17 @@ const detectSafariOrIPad = (): boolean => {
 // Initialize Firestore with appropriate cache strategy
 let db: Firestore;
 try {
-  const isSafariOrIPad = detectSafariOrIPad();
-  
-  // Use persistent cache if IndexedDB is available and not Safari/iPad
-  // Safari/iPad can have IndexedDB issues, so we use a simpler approach
-  if (isIndexedDBAvailable() && !isSafariOrIPad) {
+  const useMemoryCacheForWebKitQuirks = detectWebKitFamilyIndexedDBQuirks();
+
+  if (isIndexedDBAvailable() && !useMemoryCacheForWebKitQuirks) {
     db = initializeFirestore(app, {
       localCache: persistentLocalCache({
         tabManager: persistentMultipleTabManager()
       })
     });
   } else {
-    // For Safari/iPad or if IndexedDB unavailable, use memory cache
-    // This is more reliable on these platforms
-    if (isSafariOrIPad) {
-      console.info('[FIREBASE] Using memory cache for Safari/iPad compatibility');
+    if (useMemoryCacheForWebKitQuirks) {
+      console.info('[FIREBASE] Using memory cache (WebKit / touch Safari compatibility)');
     }
     db = getFirestore(app);
   }

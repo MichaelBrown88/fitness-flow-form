@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Command } from 'cmdk';
-import { Search, User, Settings, LayoutDashboard, X } from 'lucide-react';
+import { Search, User, Settings, LayoutDashboard, X, Building2, CreditCard } from 'lucide-react';
 import { ROUTES } from '@/constants/routes';
 import { useAuth } from '@/hooks/useAuth';
+import { useOrgAdminNavVisibility } from '@/hooks/useOrgAdminNavVisibility';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { db } from '@/services/firebase';
 
@@ -20,6 +21,7 @@ export function CommandMenu() {
   const [searching, setSearching] = useState(false);
   const navigate = useNavigate();
   const { user, profile } = useAuth();
+  const showOrgAdminNav = useOrgAdminNavVisibility();
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
@@ -136,6 +138,24 @@ export function CommandMenu() {
                 <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
                 Dashboard
               </Command.Item>
+              {showOrgAdminNav && (
+                <Command.Item
+                  onSelect={() => go(ROUTES.ORG_DASHBOARD)}
+                  className="flex items-center gap-3 px-3 py-2.5 text-sm text-foreground-secondary rounded-lg cursor-pointer data-[selected=true]:bg-muted"
+                >
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  Org admin
+                </Command.Item>
+              )}
+              {showOrgAdminNav && (
+                <Command.Item
+                  onSelect={() => go(ROUTES.BILLING)}
+                  className="flex items-center gap-3 px-3 py-2.5 text-sm text-foreground-secondary rounded-lg cursor-pointer data-[selected=true]:bg-muted"
+                >
+                  <CreditCard className="h-4 w-4 text-muted-foreground" />
+                  Billing & plans
+                </Command.Item>
+              )}
               <Command.Item
                 onSelect={() => go(ROUTES.SETTINGS)}
                 className="flex items-center gap-3 px-3 py-2.5 text-sm text-foreground-secondary rounded-lg cursor-pointer data-[selected=true]:bg-muted"

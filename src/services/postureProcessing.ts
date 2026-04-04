@@ -3,8 +3,8 @@
  * 
  * Single entry point for ALL image sources:
  * - Manual file upload
- * - iPhone Companion App handoff
- * - This Device (iPad/Direct camera)
+ * - Mobile companion handoff
+ * - This device (camera on tablet or desktop)
  * 
  * Flow:
  * 1. Detect landmarks with MediaPipe (or use provided)
@@ -111,7 +111,7 @@ export async function processPostureImage(
   imageData: string,
   view: 'front' | 'side-right' | 'side-left' | 'back',
   providedLandmarks?: LandmarkResult,
-  source: 'manual' | 'iphone' | 'this-device' = 'manual',
+  source: 'manual' | 'companion' | 'this-device' = 'manual',
   onProgress?: OnProgressCallback,
   aiContext?: PostureAiContext
 ): Promise<PostureProcessingResult> {

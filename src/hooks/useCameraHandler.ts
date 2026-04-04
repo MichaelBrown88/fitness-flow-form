@@ -71,7 +71,7 @@ export function useCameraHandler({
         setProcessingMode(null);
       }
     }
-  }, [showCamera, toast, updateFormData]);
+  }, [showCamera, toast]);
 
   const applyOcrData = useCallback(() => {
     if (ocrReviewData) {

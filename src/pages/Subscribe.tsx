@@ -4,7 +4,8 @@ import AppShell from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { ROUTES } from '@/constants/routes';
-import { GYM_TRIAL_CLIENT_CAP } from '@/constants/pricing';
+import { FREE_TIER_CLIENT_LIMIT, GYM_TRIAL_CLIENT_CAP } from '@/constants/pricing';
+import { SUBSCRIBE_COPY } from '@/constants/subscribeCopy';
 import { Timestamp } from 'firebase/firestore';
 
 function trialEndDate(value: unknown): Date | null {
@@ -20,6 +21,16 @@ export default function Subscribe() {
   const navigate = useNavigate();
   const { orgSettings, profile, loading } = useAuth();
   const sub = orgSettings?.subscription;
+  const orgType = orgSettings?.type;
+  const isGymOrg = orgType === 'gym' || orgType === 'gym_chain';
+  const trialCapFromSub =
+    sub && typeof sub.trialClientCap === 'number' && sub.trialClientCap > 0
+      ? sub.trialClientCap
+      : null;
+  const trialClientCap = trialCapFromSub ?? (isGymOrg ? GYM_TRIAL_CLIENT_CAP : FREE_TIER_CLIENT_LIMIT);
+  const subscribeLead = isGymOrg
+    ? SUBSCRIBE_COPY.leadGym(trialClientCap)
+    : SUBSCRIBE_COPY.leadSolo(trialClientCap);
 
   useEffect(() => {
     if (loading) return;
@@ -46,18 +57,15 @@ export default function Subscribe() {
     <AppShell title="Choose your plan" hideTitle>
       <div className="mx-auto max-w-lg px-4 py-12 text-center space-y-6">
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-foreground">Your trial has ended</h1>
-          <p className="text-sm text-foreground-secondary">
-            Continue with a paid plan to keep your team on One Assess. During trial you could have up to{' '}
-            {GYM_TRIAL_CLIENT_CAP} active clients; choose a capacity tier that fits your gym.
-          </p>
+          <h1 className="text-2xl font-bold text-foreground">{SUBSCRIBE_COPY.title}</h1>
+          <p className="text-sm text-foreground-secondary">{subscribeLead}</p>
         </div>
         <div className="rounded-2xl border border-border bg-background p-6 text-left space-y-3 text-sm text-foreground-secondary">
-          <p className="font-semibold text-foreground">What you get</p>
+          <p className="font-semibold text-foreground">{SUBSCRIBE_COPY.bulletsTitle}</p>
           <ul className="list-disc pl-5 space-y-1">
-            <li>Capacity-based monthly billing (UK GBP)</li>
-            <li>AI assessment credits included per tier</li>
-            <li>Optional custom branding add-on at checkout</li>
+            <li>{SUBSCRIBE_COPY.bulletCapacity}</li>
+            <li>{SUBSCRIBE_COPY.bulletAi}</li>
+            <li>{SUBSCRIBE_COPY.bulletBranding}</li>
           </ul>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">

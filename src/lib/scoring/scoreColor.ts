@@ -69,7 +69,7 @@ export const SCORE_COLORS: Record<
 
 /**
  * Maps a schedule status to its equivalent ScoreGrade.
- * Useful for PriorityView / ScheduleInsights where statuses
+ * Useful for dashboard task / schedule surfaces where statuses
  * use the same traffic light palette as scores.
  */
 export type ScheduleStatus = 'overdue' | 'due-soon' | 'up-to-date';

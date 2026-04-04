@@ -11,6 +11,7 @@ import { useAudioFeedback } from '@/hooks/useAudioFeedback';
 import { useOrientationDetection } from '@/hooks/useOrientationDetection';
 import { usePoseDetection } from '@/hooks/usePoseDetection';
 import { useGeminiFramingGuide } from '@/hooks/useGeminiFramingGuide';
+import { COMPANION_QUERY_MODE_BODYCOMP_LEGACY } from '@/constants/companionUrl';
 import { updatePostureImage, updateHeartbeat, logCompanionMessage } from '@/services/liveSessions';
 import { evaluateCompanionStillCaptureLandmarks } from '@/services/postureProcessing';
 import { CompanionUI } from '@/components/companion/CompanionUI';
@@ -36,7 +37,9 @@ const Companion = () => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
   const rawMode = searchParams.get('mode') || 'posture';
-  const mode = (rawMode === 'inbody' ? 'bodycomp' : rawMode) as 'posture' | 'bodycomp';
+  const mode = (rawMode === COMPANION_QUERY_MODE_BODYCOMP_LEGACY ? 'bodycomp' : rawMode) as
+    | 'posture'
+    | 'bodycomp';
   const [facingMode] = useState<'user' | 'environment'>(mode === 'bodycomp' ? 'environment' : 'user');
 
   const webcamRef = useRef<Webcam>(null);
@@ -304,7 +307,7 @@ const Companion = () => {
       setIsUploading(true);
       try {
         await logCompanionMessage(sessionId, 'Capturing ' + viewData.label, 'info');
-        await updatePostureImage(sessionId, viewData.id, imageSrc, undefined, 'iphone');
+        await updatePostureImage(sessionId, viewData.id, imageSrc, undefined, 'companion');
         await logCompanionMessage(sessionId, viewData.label + ' captured successfully', 'info');
       } catch (err) {
         await logCompanionMessage(

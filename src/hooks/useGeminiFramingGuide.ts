@@ -222,7 +222,7 @@ export function useGeminiFramingGuide({
       });
   }, [mayUseLiveSession, flowState, connectionStatus]);
 
-  /** If the model never sends turnComplete, still allow Start Capture (iOS / network edge cases). */
+  /** If the model never sends turnComplete, still allow Start Capture (mobile WebKit / network edge cases). */
   useEffect(() => {
     if (!mayUseLiveSession || flowState !== 'waiting_pose') return;
     const t = window.setTimeout(() => {
@@ -572,7 +572,7 @@ export function useGeminiFramingGuide({
   }, [shutdown]);
 
   /**
-   * iOS Safari: AudioContext.resume() must be invoked in the same synchronous turn as a user tap.
+   * Safari (incl. mobile): AudioContext.resume() must run in the same synchronous turn as a user gesture.
    * Call this as the first line inside onClick before any await (Enable camera, Retry, etc.).
    */
   const unlockWebAudioOnUserGesture = useCallback(() => {

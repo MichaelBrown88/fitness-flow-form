@@ -212,7 +212,7 @@ function getOrgLifecycleForDay(data: Record<string, unknown>, day: Date): {
 }
 
 function getMrrGbpPence(subscription: Record<string, unknown> | undefined): number {
-  if (!subscription || subscription.status !== 'active' || subscription.isComped === true) return 0;
+  if (!subscription || subscription.status !== 'active') return 0;
   const currency = typeof subscription.currency === 'string' ? subscription.currency : 'KWD';
   const amount = Number(subscription.amountCents ?? subscription.amountFils ?? 0);
   if (!amount) return 0;

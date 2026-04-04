@@ -9,6 +9,12 @@ import * as admin from 'firebase-admin';
 import { logger } from 'firebase-functions';
 import type { Change } from 'firebase-functions';
 import { filsToGbpPence } from './currency';
+import {
+  currencyRatesFromFirestoreDoc,
+  DEFAULT_CURRENCY_RATES,
+  subscriptionSmallestUnitToGbpPence,
+  type CurrencyRatesForReporting,
+} from './shared/reportingFx';
 import { getLogCostFils } from './aiPricing';
 import { firestoreValueToDate as toDate } from './firestoreTimestamp';
 
@@ -77,40 +83,28 @@ async function updateSystemStats(
   }
 }
 
-/** Fallback rates — used when platform/config has not yet been seeded */
-const CURRENCY_RATE_FALLBACKS = {
-  KWD_TO_GBP: 2.6,
-  USD_TO_GBP: 0.79,
-};
-
 /** Currency rate cache — refreshed once per function instance cold-start */
-let cachedRates: typeof CURRENCY_RATE_FALLBACKS | null = null;
+let cachedRates: CurrencyRatesForReporting | null = null;
 
-async function getCurrencyRates(): Promise<typeof CURRENCY_RATE_FALLBACKS> {
+async function getCurrencyRates(): Promise<CurrencyRatesForReporting> {
   if (cachedRates) return cachedRates;
   try {
     const configSnap = await getDb().doc('platform/config').get();
-    const rates = configSnap.data()?.currencyRates;
-    if (rates && typeof rates.KWD_TO_GBP === 'number' && typeof rates.USD_TO_GBP === 'number') {
-      cachedRates = { KWD_TO_GBP: rates.KWD_TO_GBP, USD_TO_GBP: rates.USD_TO_GBP };
-      return cachedRates;
-    }
+    cachedRates = currencyRatesFromFirestoreDoc(configSnap.data() as Record<string, unknown> | undefined);
+    return cachedRates;
   } catch {
-    // Fallback below
+    cachedRates = DEFAULT_CURRENCY_RATES;
+    return cachedRates;
   }
-  return CURRENCY_RATE_FALLBACKS;
 }
 
 /** Convert org subscription amount to GBP pence for MRR aggregation */
 async function subscriptionAmountToGbpPence(sub: { amountCents?: number; amountFils?: number; currency?: string } | undefined): Promise<number> {
   if (!sub) return 0;
-  const amountCents = sub.amountCents ?? sub.amountFils ?? 0;
+  const amountSmallest = sub.amountCents ?? sub.amountFils ?? 0;
   const currency = sub.currency || 'KWD';
-  if (currency === 'GBP') return amountCents;
   const rates = await getCurrencyRates();
-  if (currency === 'USD') return Math.round(amountCents * rates.USD_TO_GBP);
-  if (currency === 'KWD') return Math.round((sub.amountFils ?? amountCents) / 1000 * rates.KWD_TO_GBP * 100);
-  return Math.round(amountCents * rates.USD_TO_GBP);
+  return subscriptionSmallestUnitToGbpPence(amountSmallest, currency, rates);
 }
 
 /**
@@ -191,10 +185,9 @@ export async function handleOrganizationChange(
       await updateSystemStats({ activeOrgs: 1 });
     }
 
-    // Update MRR if subscription amount exists AND not comped (store in GBP pence)
+    // Update MRR if subscription amount exists (store in GBP pence)
     const gbpPence = await subscriptionAmountToGbpPence(afterData?.subscription);
-    const isComped = afterData?.subscription?.isComped === true;
-    if (gbpPence > 0 && afterData?.subscription?.status === 'active' && !isComped) {
+    if (gbpPence > 0 && afterData?.subscription?.status === 'active') {
       await updateSystemStats({ monthlyRecurringRevenueGbpPence: gbpPence });
     }
 
@@ -209,8 +202,7 @@ export async function handleOrganizationChange(
     }
 
     const gbpPence = await subscriptionAmountToGbpPence(beforeData?.subscription);
-    const isComped = beforeData?.subscription?.isComped === true;
-    if (gbpPence > 0 && beforeData?.subscription?.status === 'active' && !isComped) {
+    if (gbpPence > 0 && beforeData?.subscription?.status === 'active') {
       await updateSystemStats({ monthlyRecurringRevenueGbpPence: -gbpPence });
     }
   } else if (isUpdated) {
@@ -239,40 +231,24 @@ export async function handleOrganizationChange(
         ...(churnIncrement > 0 && { churnsThisMonth: churnIncrement, churnsLifetime: churnIncrement }),
       });
       const gbpPence = await subscriptionAmountToGbpPence(beforeData?.subscription);
-      const wasComped = beforeData?.subscription?.isComped === true;
-      if (gbpPence > 0 && !wasComped) {
+      if (gbpPence > 0) {
         await updateSystemStats({ monthlyRecurringRevenueGbpPence: -gbpPence });
       }
     } else if (beforeStatus !== 'active' && afterStatus === 'active') {
       await updateSystemStats({ activeOrgs: 1 });
       const gbpPence = await subscriptionAmountToGbpPence(afterData?.subscription);
-      const isComped = afterData?.subscription?.isComped === true;
-      if (gbpPence > 0 && !isComped) {
+      if (gbpPence > 0) {
         await updateSystemStats({ monthlyRecurringRevenueGbpPence: gbpPence });
       }
     }
 
-    // Handle subscription amount changes (for active subscriptions, excluding comped)
+    // Handle subscription amount changes (for active subscriptions)
     if (afterStatus === 'active') {
-      const isComped = afterData?.subscription?.isComped === true;
-      if (!isComped) {
-        const beforeGbp = await subscriptionAmountToGbpPence(beforeData?.subscription);
-        const afterGbp = await subscriptionAmountToGbpPence(afterData?.subscription);
-        const diff = afterGbp - beforeGbp;
-        if (diff !== 0) {
-          await updateSystemStats({ monthlyRecurringRevenueGbpPence: diff });
-        }
-      }
-    }
-
-    // Handle comped status changes (need to adjust MRR when org becomes comped/uncomped)
-    const beforeComped = beforeData?.subscription?.isComped === true;
-    const afterComped = afterData?.subscription?.isComped === true;
-    if (beforeComped !== afterComped && afterStatus === 'active') {
-      const gbpPence = await subscriptionAmountToGbpPence(afterData?.subscription);
-      if (gbpPence > 0) {
-        const mrrdiff = afterComped ? -gbpPence : gbpPence;
-        await updateSystemStats({ monthlyRecurringRevenueGbpPence: mrrdiff });
+      const beforeGbp = await subscriptionAmountToGbpPence(beforeData?.subscription);
+      const afterGbp = await subscriptionAmountToGbpPence(afterData?.subscription);
+      const diff = afterGbp - beforeGbp;
+      if (diff !== 0) {
+        await updateSystemStats({ monthlyRecurringRevenueGbpPence: diff });
       }
     }
   }

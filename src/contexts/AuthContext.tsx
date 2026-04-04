@@ -181,7 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   onboardingCompleted: true,
                   updatedAt: serverTimestamp(),
                 });
-                return;
+                currentProfile = { ...currentProfile, onboardingCompleted: true };
               }
             } catch (err) {
               logger.debug('[AUTH] Onboarding check skipped:', err);
@@ -292,7 +292,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     lifestyle: true,
                     ...(orgData.modules || {})
                   } as Record<string, boolean>;
-                  // Migrate legacy 'inbody' key → 'bodycomp'
+                  // Migrate legacy body-comp module flag → 'bodycomp'
                   if ('inbody' in raw && !('bodycomp' in (orgData.modules || {}))) {
                     raw.bodycomp = raw.inbody as boolean;
                   }

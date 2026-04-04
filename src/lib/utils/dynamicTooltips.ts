@@ -6,6 +6,7 @@
 import type { EquipmentConfig } from '@/services/organizations';
 import type { PhaseField } from '@/lib/phaseConfig';
 import type { FormData } from '@/contexts/FormContext';
+import { isBodyCompositionPhaseFieldId } from '@/lib/utils/partialAssessmentBodyCompFieldKeys';
 
 /**
  * Generate equipment-aware tooltip for a field
@@ -72,7 +73,25 @@ export function getDynamicTooltip(
   // ========================================
   // BODY COMPOSITION INSTRUCTIONS
   // ========================================
-  if (fieldId === 'inbodyBodyFatPct' || fieldId === 'skeletalMuscleMassKg' || fieldId.startsWith('inbody') || fieldId.startsWith('bodyComp') || fieldId.startsWith('segmental')) {
+  const tapeMeasureOnlyFields = new Set([
+    'shouldersCm',
+    'chestCm',
+    'armLeftCm',
+    'armRightCm',
+    'waistCm',
+    'neckCm',
+    'hipsCm',
+    'thighLeftCm',
+    'thighRightCm',
+    'calfLeftCm',
+    'calfRightCm',
+  ]);
+  const isAnalyserOrSegmentalBodyCompField =
+    isBodyCompositionPhaseFieldId(fieldId) &&
+    fieldId !== 'heightCm' &&
+    !tapeMeasureOnlyFields.has(fieldId);
+
+  if (isAnalyserOrSegmentalBodyCompField) {
     const hasBodyCompEquipment = equipmentConfig.bodyComposition?.enabled === true;
     if (hasBodyCompEquipment) {
       tooltip += '\n\n📊 Equipment: Use your body composition analyser (DEXA, BIA, etc.). Ensure the client follows pre-test guidelines (fasted, hydrated, no exercise).';

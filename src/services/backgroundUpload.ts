@@ -2,6 +2,7 @@ import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { updateDoc, DocumentReference } from 'firebase/firestore';
 import { storage } from '@/services/firebase';
 import { logger } from '@/lib/utils/logger';
+import { BODY_COMP_SCAN_FIRESTORE } from '@/lib/utils/liveSessionBodyComp';
 
 /**
  * Retry a Firestore update with exponential backoff
@@ -93,7 +94,7 @@ export const uploadBodyCompScanFullSize = async ({
   clientId: string;
   organizationId: string;
 }): Promise<void> => {
-  const storagePath = `organizations/${organizationId}/clients/${clientId}/sessions/${sessionId}/inbody_scan.jpg`;
+  const storagePath = `organizations/${organizationId}/clients/${clientId}/sessions/${sessionId}/body_comp_scan.jpg`;
   const storageRef = ref(storage, storagePath);
   const fullSizeBase64 = fullSizeImage.split(',')[1] || fullSizeImage;
 
@@ -102,8 +103,8 @@ export const uploadBodyCompScanFullSize = async ({
     const downloadUrl = await getDownloadURL(snapshot.ref);
 
     await updateDocWithRetry(sessionRef, {
-      inbodyImageFull: downloadUrl,
-      inbodyImageStorage: downloadUrl
+      [BODY_COMP_SCAN_FIRESTORE.imageFull]: downloadUrl,
+      [BODY_COMP_SCAN_FIRESTORE.imageStorage]: downloadUrl,
     });
   } catch (storageError) {
     logger.error('Failed to upload body comp scan to Storage', 'LIVE_SESSIONS', storageError);

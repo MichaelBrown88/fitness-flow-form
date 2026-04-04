@@ -16,7 +16,12 @@ import { AI_USAGE_STATS_QUERY_LIMIT } from '@/constants/firestoreQueryLimits';
 import { estimateCostFils, PROVIDER_COST_USD, TOKENS_PER_REQUEST } from '@/lib/ai/aiPricing';
 import { logger } from '@/lib/utils/logger';
 
-export type AIUsageType = 'ocr_inbody' | 'posture_analysis' | 'exercise_recommendation' | 'comparison_narrative';
+export type AIUsageType =
+  | 'ocr_body_comp'
+  | 'ocr_inbody'
+  | 'posture_analysis'
+  | 'exercise_recommendation'
+  | 'comparison_narrative';
 export type AIUsageStatus = 'local_success' | 'ai_fallback' | 'ai_success' | 'error';
 
 export interface AIUsageLog {
@@ -34,6 +39,7 @@ export interface AIUsageLog {
 }
 
 const AI_USAGE_TYPES = new Set<AIUsageType>([
+  'ocr_body_comp',
   'ocr_inbody',
   'posture_analysis',
   'exercise_recommendation',

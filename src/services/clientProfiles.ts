@@ -1,10 +1,34 @@
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, serverTimestamp, onSnapshot, Timestamp, collection, query, where, getDocs, limit, writeBatch, addDoc, increment } from 'firebase/firestore';
+import {
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  serverTimestamp,
+  onSnapshot,
+  Timestamp,
+  collection,
+  query,
+  where,
+  getDocs,
+  limit,
+  writeBatch,
+  addDoc,
+  increment,
+  type UpdateData,
+  type DocumentData,
+} from 'firebase/firestore';
 import {
   ORG_CLIENT_PROFILES_QUERY_LIMIT,
   PUBLIC_REPORTS_BY_CLIENT_DELETE_LIMIT,
 } from '@/constants/firestoreQueryLimits';
 import { getDb } from '@/services/firebase';
 import { validateOrganizationId } from '@/lib/utils/validateOrganizationId';
+import {
+  CLIENT_PROFILE_LAST_BODY_COMP_AT,
+  clientProfileBodyCompDateFieldKeys,
+  readLastBodyCompTimestamp,
+} from '@/lib/utils/clientProfileBodyCompDate';
 import type { UserProfile } from '@/types/auth';
 import { ORGANIZATION } from '@/lib/database/paths';
 import type { PillarCadence } from '@/types/client';
@@ -72,6 +96,8 @@ export type ClientProfile = {
   createdAt: Timestamp;
   updatedAt: Timestamp;
   lastAssessmentDate?: Timestamp;
+  lastBodyCompDate?: Timestamp;
+  /** @deprecated Legacy Firestore field; prefer lastBodyCompDate. */
   lastInBodyDate?: Timestamp;
   lastPostureDate?: Timestamp;
   lastFitnessDate?: Timestamp;
@@ -270,13 +296,16 @@ export async function listClientSchedules(
     }
 
     const pillarDateFields: Record<string, keyof ClientProfile> = {
-      bodycomp: 'lastInBodyDate',
       posture: 'lastPostureDate',
       fitness: 'lastFitnessDate',
       strength: 'lastStrengthDate',
       lifestyle: 'lastLifestyleDate',
     };
     const pillarDates: Record<string, Date> = {};
+    const bodyCompTs = readLastBodyCompTimestamp(data);
+    if (bodyCompTs && typeof bodyCompTs.toDate === 'function') {
+      pillarDates.bodycomp = bodyCompTs.toDate();
+    }
     for (const [pillar, field] of Object.entries(pillarDateFields)) {
       const ts = data[field];
       if (ts && typeof (ts as Timestamp).toDate === 'function') {
@@ -764,8 +793,8 @@ export async function batchPauseClients(params: {
   const validOrgId = validateOrganizationId(params.organizationId, profile);
   const db = getDb();
   const pauseApproved = pausedBy !== 'client-request';
-  const payload = {
-    status: 'paused' as const,
+  const payload: UpdateData<DocumentData> = {
+    status: 'paused',
     pausedAt: serverTimestamp(),
     pausedBy,
     pauseReason: null,
@@ -821,7 +850,6 @@ export async function unpauseClient(params: {
     const pausedMs = now.getTime() - pausedAt.getTime();
     const dateFields = [
       'lastAssessmentDate',
-      'lastInBodyDate',
       'lastPostureDate',
       'lastFitnessDate',
       'lastStrengthDate',
@@ -832,6 +860,15 @@ export async function unpauseClient(params: {
       const ts = data[field];
       if (ts) {
         const shifted = new Date(ts.toDate().getTime() + pausedMs);
+        updates[field] = Timestamp.fromDate(shifted);
+      }
+    }
+
+    const profileRow = data as Record<string, unknown>;
+    for (const field of clientProfileBodyCompDateFieldKeys()) {
+      const ts = profileRow[field];
+      if (ts && typeof (ts as Timestamp).toDate === 'function') {
+        const shifted = new Date((ts as Timestamp).toDate().getTime() + pausedMs);
         updates[field] = Timestamp.fromDate(shifted);
       }
     }
@@ -848,7 +885,7 @@ export async function unpauseClient(params: {
     // Reset all pillar dates to now (fresh countdown cycle)
     const nowTs = Timestamp.fromDate(now);
     updates.lastAssessmentDate = nowTs;
-    updates.lastInBodyDate = nowTs;
+    updates[CLIENT_PROFILE_LAST_BODY_COMP_AT] = nowTs;
     updates.lastPostureDate = nowTs;
     updates.lastFitnessDate = nowTs;
     updates.lastStrengthDate = nowTs;
@@ -936,8 +973,8 @@ export async function batchArchiveClients(params: {
   const { clientSlugs, archivedBy, profile } = params;
   const validOrgId = validateOrganizationId(params.organizationId, profile);
   const db = getDb();
-  const payload = {
-    status: 'archived' as const,
+  const payload: UpdateData<DocumentData> = {
+    status: 'archived',
     archivedAt: serverTimestamp(),
     archivedBy,
     archiveReason: null,
@@ -994,7 +1031,6 @@ export async function reactivateClient(params: {
     const archivedMs = now.getTime() - archivedAt.getTime();
     const dateFields = [
       'lastAssessmentDate',
-      'lastInBodyDate',
       'lastPostureDate',
       'lastFitnessDate',
       'lastStrengthDate',
@@ -1009,6 +1045,15 @@ export async function reactivateClient(params: {
       }
     }
 
+    const profileRow = data as Record<string, unknown>;
+    for (const field of clientProfileBodyCompDateFieldKeys()) {
+      const ts = profileRow[field];
+      if (ts && typeof (ts as Timestamp).toDate === 'function') {
+        const shifted = new Date((ts as Timestamp).toDate().getTime() + archivedMs);
+        updates[field] = Timestamp.fromDate(shifted);
+      }
+    }
+
     if (data.dueDateOverrides) {
       const shiftedOverrides: Record<string, Timestamp> = {};
       for (const [key, ts] of Object.entries(data.dueDateOverrides)) {
@@ -1019,7 +1064,7 @@ export async function reactivateClient(params: {
   } else if (mode === 'reset') {
     const nowTs = Timestamp.fromDate(now);
     updates.lastAssessmentDate = nowTs;
-    updates.lastInBodyDate = nowTs;
+    updates[CLIENT_PROFILE_LAST_BODY_COMP_AT] = nowTs;
     updates.lastPostureDate = nowTs;
     updates.lastFitnessDate = nowTs;
     updates.lastStrengthDate = nowTs;

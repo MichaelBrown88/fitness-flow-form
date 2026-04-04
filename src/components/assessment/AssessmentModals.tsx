@@ -15,7 +15,7 @@ const OCR_TIPS = [
   'Parsing visceral fat score…',
   'Calculating BMR and hydration…',
   'Verifying segmental lean mass…',
-  'Cross-checking InBody score…',
+  'Cross-checking body composition score…',
 ];
 
 const POSTURE_TIPS = [

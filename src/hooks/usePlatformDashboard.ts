@@ -43,9 +43,11 @@ import type {
   PlatformFeatureFlags,
   PlatformPermission,
   PlatformMetricsHistoryEntry,
+  RevenueByRegionSnapshot,
 } from '@/types/platform';
 import { DEFAULT_PLATFORM_CONFIG } from '@/types/platform';
 import { logger } from '@/lib/utils/logger';
+import { formatAmountFromSmallestUnits } from '@/lib/utils/currency';
 
 // Types
 export type SortField = 'name' | 'assessments' | 'aiCost' | 'lastActive';
@@ -92,7 +94,7 @@ export interface UsePlatformDashboardResult {
   filteredOrganizations: OrganizationSummary[];
   hasMoreOrganizations: boolean;
   assessmentChartData: ChartDataPoint[];
-  revenueByRegion: { byRegion: Record<string, { amountLocal: number; currency: string; gbpPence: number }>; totalGbpPence: number } | null;
+  revenueByRegion: RevenueByRegionSnapshot | null;
   aiCostsByFeature: FeatureCost[];
   aiCostsByFeatureAllTime: FeatureCost[];
   orgAiCostsByFeature: Record<string, FeatureCost[]>;
@@ -146,11 +148,11 @@ export interface UsePlatformDashboardResult {
   loadMoreAuditLogs: () => Promise<void>;
   
   // Utility functions
-  formatCurrency: (amountInSmallestUnit: number, currency?: 'GBP' | 'USD' | 'KWD') => string;
+  formatCurrency: (amountInSmallestUnit: number, currency?: string) => string;
   formatNumber: (num: number) => string;
   formatFeatureName: (feature: string) => string;
-  getStatusColor: (status: string, isComped?: boolean) => string;
-  getStatusLabel: (status: string, isComped?: boolean) => string;
+  getStatusColor: (status: string) => string;
+  getStatusLabel: (status: string) => string;
   getActivityColor: (daysSince: number) => string;
   getDaysSince: (date?: Date) => number;
 }
@@ -172,7 +174,7 @@ export function usePlatformDashboard(): UsePlatformDashboardResult {
   const [organizationsCursor, setOrganizationsCursor] = useState<QueryDocumentSnapshot<DocumentData> | undefined>(undefined);
   const [hasMoreOrganizations, setHasMoreOrganizations] = useState(false);
   const [assessmentChartData, setAssessmentChartData] = useState<ChartDataPoint[]>([]);
-  const [revenueByRegion, setRevenueByRegion] = useState<{ byRegion: Record<string, { amountLocal: number; currency: string; gbpPence: number }>; totalGbpPence: number } | null>(null);
+  const [revenueByRegion, setRevenueByRegion] = useState<RevenueByRegionSnapshot | null>(null);
   const [aiCostsByFeature, setAiCostsByFeature] = useState<FeatureCost[]>([]);
   const [aiCostsByFeatureAllTime, setAiCostsByFeatureAllTime] = useState<FeatureCost[]>([]);
   const [orgAiCostsByFeature, setOrgAiCostsByFeature] = useState<Record<string, FeatureCost[]>>({});
@@ -230,7 +232,7 @@ export function usePlatformDashboard(): UsePlatformDashboardResult {
         try {
           const [costs, coaches] = await Promise.all([
             getOrgAICostsByFeature(org.id).catch((): FeatureCost[] => []),
-            (org.dataAccessPermission?.platformAdminAccess === true || org.isComped === true
+            (org.dataAccessPermission?.platformAdminAccess === true
               ? getOrgCoachesWithStats(org.id).catch((): CoachStats[] => [])
               : Promise.resolve([] as CoachStats[]))
           ]);
@@ -410,11 +412,7 @@ export function usePlatformDashboard(): UsePlatformDashboardResult {
       );
     }
     if (filterStatus) {
-      if (filterStatus === 'comped') {
-        filtered = filtered.filter((org) => org.isComped === true);
-      } else {
-        filtered = filtered.filter((org) => org.status === filterStatus);
-      }
+      filtered = filtered.filter((org) => org.status === filterStatus);
     }
     if (filterRegion) {
       filtered = filtered.filter((org) => org.region === filterRegion);
@@ -547,30 +545,8 @@ export function usePlatformDashboard(): UsePlatformDashboardResult {
     }
   }, [admin, toast, loadPlatformAdmins]);
 
-  // Utility: format amount in smallest unit (pence/cents/fils) to display string
-  const formatCurrency = useCallback((amountInSmallestUnit: number, currency: 'GBP' | 'USD' | 'KWD' = 'GBP') => {
-    const n = Number(amountInSmallestUnit);
-    if (Number.isNaN(n)) return '—';
-    if (currency === 'GBP') {
-      const showPence = Math.abs(n) < 100 || n % 100 !== 0;
-      return new Intl.NumberFormat('en-GB', {
-        style: 'currency',
-        currency: 'GBP',
-        minimumFractionDigits: showPence ? 2 : 0,
-        maximumFractionDigits: 2,
-      }).format(n / 100);
-    }
-    if (currency === 'USD') {
-      const showCents = Math.abs(n) < 100 || n % 100 !== 0;
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: showCents ? 2 : 0,
-        maximumFractionDigits: 2,
-      }).format(n / 100);
-    }
-    const kwd = n / 1000;
-    return new Intl.NumberFormat('en-KW', { style: 'currency', currency: 'KWD', minimumFractionDigits: 2, maximumFractionDigits: 3 }).format(kwd);
+  const formatCurrency = useCallback((amountInSmallestUnit: number, currency = 'GBP') => {
+    return formatAmountFromSmallestUnits(amountInSmallestUnit, currency);
   }, []);
 
   const formatNumber = useCallback((num: number) => {
@@ -584,8 +560,7 @@ export function usePlatformDashboard(): UsePlatformDashboardResult {
       .join(' ');
   }, []);
 
-  const getStatusColor = useCallback((status: string, isComped?: boolean) => {
-    if (isComped) return 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30';
+  const getStatusColor = useCallback((status: string) => {
     switch (status) {
       case 'active': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
       case 'trial': return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
@@ -595,10 +570,7 @@ export function usePlatformDashboard(): UsePlatformDashboardResult {
     }
   }, []);
 
-  const getStatusLabel = useCallback((status: string, isComped?: boolean) => {
-    if (isComped) return 'Comped';
-    return status;
-  }, []);
+  const getStatusLabel = useCallback((status: string) => status, []);
 
   const getActivityColor = useCallback((daysSince: number) => {
     if (daysSince < 2) return 'text-emerald-400';
@@ -617,7 +589,7 @@ export function usePlatformDashboard(): UsePlatformDashboardResult {
   // Churn risk signal — active orgs with no activity for 14+ days
   const silentOrgs = useMemo<OrganizationSummary[]>(() => {
     return organizations.filter((org) => {
-      if (org.status !== 'active' && org.isComped !== true) return false;
+      if (org.status !== 'active') return false;
       return getDaysSince(org.lastActiveDate) > 14;
     });
   }, [organizations, getDaysSince]);

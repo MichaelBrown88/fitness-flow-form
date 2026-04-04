@@ -2,7 +2,7 @@
  * Organization admin layout: auth, data loading, tabs (Overview | Team | Retention | Billing), Outlet, Add Coach dialog.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Outlet, NavLink } from 'react-router-dom';
 import { getFirebaseAuth, getDb } from '@/services/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -128,20 +128,23 @@ export default function OrgAdminLayout() {
       .catch(() => {});
   }, [readOrgId]);
 
-  const monthlyFee =
-    orgDetails == null || orgDetails.isComped
-      ? 0
-      : orgDetails.monthlyAmountLocal != null
-        ? orgDetails.monthlyAmountLocal
-        : (() => {
-            const r = (orgDetails.region ?? DEFAULT_REGION) as Region;
-            const seats = orgDetails.seatBlock ?? orgDetails.clientSeats ?? 0;
-            return r === 'KW'
-              ? calculateMonthlyFee(orgDetails.plan || 'free', seats)
-              : getMonthlyPrice(r, seats);
-          })();
+  const monthlyFee = useMemo(() => {
+    if (orgDetails == null) return 0;
+    if (orgDetails.monthlyAmountLocal != null) {
+      return orgDetails.monthlyAmountLocal;
+    }
+    const r = (orgDetails.region ?? DEFAULT_REGION) as Region;
+    const seats = orgDetails.seatBlock ?? orgDetails.clientSeats ?? 0;
+    return r === 'KW'
+      ? calculateMonthlyFee(orgDetails.plan || 'free', seats)
+      : getMonthlyPrice(r, seats);
+  }, [orgDetails]);
+
   const totalClientSeats = coaches.reduce((sum, coach) => sum + coach.clientCount, 0);
-  const maxSeats = orgDetails?.clientSeats || 0;
+  const maxSeats = useMemo(() => {
+    if (orgDetails == null) return 0;
+    return orgDetails.seatBlock ?? orgDetails.clientSeats ?? 0;
+  }, [orgDetails]);
   const seatsUsedPercentage = maxSeats > 0 ? (totalClientSeats / maxSeats) * 100 : 0;
 
   const handleAddCoach = async () => {

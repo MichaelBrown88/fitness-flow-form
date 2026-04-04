@@ -23,8 +23,7 @@ export default function ClientSettings() {
   useEffect(() => {
     if (profile && !hasSynced.current) {
       hasSynced.current = true;
-      const trainingStart = profile.trainingStartDate;
-      const dateStr = typeof trainingStart === 'string' ? trainingStart : trainingStart instanceof Date ? trainingStart.toISOString().slice(0, 10) : '';
+      const dateStr = profile.trainingStartDate ?? '';
       setEditData({
         clientName: profile.clientName ?? clientName,
         email: profile.email ?? '',

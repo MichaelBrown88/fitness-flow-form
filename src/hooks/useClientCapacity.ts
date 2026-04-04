@@ -16,6 +16,7 @@ import {
   type PaidCapacityTierId,
   type PackageTrack,
 } from '@/constants/pricing';
+import { resolveSubscriptionClientLimit } from '@/lib/pricing/resolveSubscriptionClientLimit';
 
 export interface ClientCapacityState {
   loading: boolean;
@@ -107,14 +108,14 @@ export function useClientCapacity(): ClientCapacityState & {
     const status = typeof sub.status === 'string' ? sub.status : 'trial';
     const planKind = typeof sub.planKind === 'string' ? sub.planKind : undefined;
     const paidActive = status === 'active' || status === 'trialing' || status === 'trial';
-    /** Seat cap from subscription — never use `sub.clientCount` here (often 0 / meaning differs from seats). */
-    const capFromSubscription =
-      typeof sub.clientCap === 'number' && sub.clientCap > 0
-        ? sub.clientCap
-        : typeof sub.clientSeats === 'number' && sub.clientSeats > 0
-          ? sub.clientSeats
-          : null;
-    const cap = capFromSubscription ?? (paidActive ? 10 : FREE_TIER_CLIENT_LIMIT);
+    const cap = resolveSubscriptionClientLimit({
+      capacityTierId: typeof sub.capacityTierId === 'string' ? sub.capacityTierId : undefined,
+      clientCap: typeof sub.clientCap === 'number' ? sub.clientCap : undefined,
+      clientCount: typeof sub.clientCount === 'number' ? sub.clientCount : undefined,
+      clientSeats: typeof sub.clientSeats === 'number' ? sub.clientSeats : undefined,
+      plan: typeof sub.plan === 'string' ? sub.plan : undefined,
+      subscriptionStatus: status,
+    });
 
     const tierIdRaw = sub.capacityTierId;
     const capacityTierId: PaidCapacityTierId | null =

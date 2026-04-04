@@ -372,11 +372,7 @@ export const SubscriptionCard = ({ org, editing, saving, setOrg }: SubscriptionC
       <div>
         <p className="text-xs text-muted-foreground mb-1">Monthly Fee</p>
         <p className="text-sm text-muted-foreground">
-          {org.isComped ? (
-            <span className="text-violet-400 font-medium">Comped (Free)</span>
-          ) : (
-            currency ? formatPrice(monthlyAmount, currency, locale) : '—'
-          )}
+          {currency ? formatPrice(monthlyAmount, currency, locale) : '—'}
         </p>
       </div>
       <div>
@@ -412,10 +408,9 @@ export const SubscriptionCard = ({ org, editing, saving, setOrg }: SubscriptionC
             org.status === 'active' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
             org.status === 'trial' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
             org.status === 'cancelled' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
-            org.isComped ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' :
             'bg-muted/500/20 text-muted-foreground border-border/600/30'
           }`}>
-            {org.isComped ? 'Comped' : org.status || 'none'}
+            {org.status || 'none'}
           </span>
         )}
       </div>
@@ -446,24 +441,6 @@ export const SubscriptionCard = ({ org, editing, saving, setOrg }: SubscriptionC
         </div>
       )}
 
-      {editing && (
-        <div className="pt-2 border-t border-border">
-          <Label className="flex items-center gap-2 text-xs text-muted-foreground">
-            <input
-              type="checkbox"
-              checked={org.isComped || false}
-              onChange={(e) => setOrg({ ...org, isComped: e.target.checked })}
-              className="rounded border-border bg-foreground/90"
-            />
-            Comped Subscription (Free Access)
-          </Label>
-        </div>
-      )}
-      {!editing && org.isComped && (
-        <div className="pt-2 border-t border-border">
-          <p className="text-xs text-indigo-400">This organization has complimentary access</p>
-        </div>
-      )}
       <div>
         <p className="text-xs text-muted-foreground mb-1">Created</p>
         <p className="text-sm text-muted-foreground">{org.createdAt.toLocaleDateString()}</p>
@@ -519,22 +496,15 @@ export const DataAccessCard = ({ org, hasDataAccess, onGrantAccess, onRevokeAcce
                 <span className="block mt-1">Reason: {org.dataAccessPermission.reason}</span>
               )}
             </p>
-            {org.isComped !== true && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={onRevokeAccess}
-                className="border-emerald-700 text-emerald-300 hover:bg-emerald-900/20"
-              >
-                <Lock className="w-4 h-4 mr-2" />
-                Revoke Access
-              </Button>
-            )}
-            {org.isComped === true && (
-              <p className="text-xs text-muted-foreground mt-2">
-                Comped organizations have permanent access (owner's company)
-              </p>
-            )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onRevokeAccess}
+              className="border-emerald-700 text-emerald-300 hover:bg-emerald-900/20"
+            >
+              <Lock className="w-4 h-4 mr-2" />
+              Revoke Access
+            </Button>
           </div>
         </div>
       </div>
@@ -652,7 +622,7 @@ export const ActionsCard = ({ org, onPause, onCancel, onReactivate, onDelete, on
         {isImpersonating ? 'Currently Viewing' : 'View as Organization'}
       </Button>
       
-      {org.status === 'active' && !org.isComped && (
+      {org.status === 'active' && (
         <Button
           variant="outline"
           size="sm"
