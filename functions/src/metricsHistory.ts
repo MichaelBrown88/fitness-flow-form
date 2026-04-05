@@ -6,7 +6,6 @@
  */
 
 import * as admin from 'firebase-admin';
-import { logger } from 'firebase-functions';
 
 export async function snapshotPlatformMetrics(): Promise<void> {
   const db = admin.firestore();
@@ -15,7 +14,7 @@ export async function snapshotPlatformMetrics(): Promise<void> {
   const statsSnap = await statsRef.get();
 
   if (!statsSnap.exists) {
-    logger.info('[MetricsHistory] system_stats/global_metrics does not exist, skipping snapshot');
+    console.log('[MetricsHistory] system_stats/global_metrics does not exist, skipping snapshot');
     return;
   }
 
@@ -40,7 +39,7 @@ export async function snapshotPlatformMetrics(): Promise<void> {
   };
 
   await db.doc(`platform/metrics/history/${dateKey}`).set(historyDoc, { merge: true });
-  logger.info(`[MetricsHistory] Snapshot written for ${dateKey}`);
+  console.log(`[MetricsHistory] Snapshot written for ${dateKey}`);
 }
 
 /**
@@ -53,26 +52,33 @@ export async function resetAssessmentsThisMonth(): Promise<void> {
   const db = admin.firestore();
 
   const orgsSnap = await db.collection('organizations').get();
-  const batch = db.batch();
+  let batch = db.batch();
   let orgCount = 0;
+  let batchCount = 0;
 
   for (const orgDoc of orgsSnap.docs) {
     const orgData = orgDoc.data() as Record<string, unknown>;
     if ((orgData.metadata as Record<string, unknown> | undefined)?.isDeleted === true) continue;
     batch.set(orgDoc.ref, { stats: { assessmentsThisMonth: 0 } }, { merge: true });
     orgCount += 1;
+    batchCount += 1;
 
-    if (orgCount % 499 === 0) {
+    if (batchCount >= 499) {
       await batch.commit();
+      batch = db.batch();
+      batchCount = 0;
     }
   }
 
-  await batch.commit();
+  // Commit any remaining writes in the final batch
+  if (batchCount > 0) {
+    await batch.commit();
+  }
 
   await db.doc('system_stats/global_metrics').set(
     { assessments_this_month: 0 },
     { merge: true },
   );
 
-  logger.info(`[MetricsHistory] assessmentsThisMonth reset to 0 for ${orgCount} orgs`);
+  console.log(`[MetricsHistory] assessmentsThisMonth reset to 0 for ${orgCount} orgs`);
 }

@@ -3,19 +3,15 @@ import { randomUUID } from 'node:crypto';
 import * as admin from 'firebase-admin';
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
-import { logger } from 'firebase-functions';
 import { HttpsError, onCall, onRequest } from 'firebase-functions/v2/https';
-import { handleGeneratePublicReportSocialShareArtifacts } from './generatePublicReportSocialShareArtifacts';
 import { requestShareLinks, sendReportEmail } from './share';
 import {
   handleCreateCheckoutSession,
   handleCreateLandingGuestCheckoutSession,
   handleStripeWebhook,
   handleCreateCustomerPortalSession,
-  handleUpdateSubscriptionPlan,
   handleCreateBrandingCheckoutSession,
   handleCreateCreditTopupSession,
-  handleSyncCheckoutSession,
 } from './stripe';
 import { handleAssessmentCompletedTrigger } from './webhooks';
 import { handleSendCoachInvite } from './invites';
@@ -61,8 +57,6 @@ import {
   sendDraftRecoveryNudges,
 } from './notifications';
 import { handleOnboardingCompleted } from './transactionalEmails';
-import { sendTrialExpiryNudges } from './trialNudges';
-import { handleSubmitPublicErasureRequest } from './publicErasureRequest';
 
 admin.initializeApp();
 
@@ -84,42 +78,6 @@ export const emailReport = onCall({
   return sendReportEmail(request);
 });
 
-export const generatePublicReportSocialShareArtifacts = onCall(
-  {
-    enforceAppCheck: false,
-  },
-  async (request) => {
-    const db = admin.firestore();
-    const key = buildRateLimitKey('social_share', request.auth?.uid, request.rawRequest?.ip);
-    try {
-      await assertRateLimit(db, key, { maxRequests: 12, windowSeconds: 60 });
-    } catch (e) {
-      if ((e as NodeJS.ErrnoException).code === 'RATE_LIMITED') {
-        throw new HttpsError('resource-exhausted', 'Too many requests. Try again shortly.');
-      }
-      throw e;
-    }
-    try {
-      return await handleGeneratePublicReportSocialShareArtifacts(request);
-    } catch (err) {
-      if (err instanceof HttpsError) throw err;
-      logger.error('[generatePublicReportSocialShareArtifacts]', err);
-      throw new HttpsError('internal', 'Failed to generate share images.');
-    }
-  },
-);
-
-/** Unauthenticated: GDPR erasure request from /r/:token/erasure (validates token → org via Admin SDK). */
-export const submitPublicErasureRequest = onCall(
-  {
-    enforceAppCheck: false,
-    invoker: 'public',
-  },
-  async (request) => {
-    return handleSubmitPublicErasureRequest(request);
-  },
-);
-
 // Stripe payment functions
 export const createCheckoutSession = onCall({
   enforceAppCheck: false,
@@ -137,9 +95,6 @@ export const createLandingGuestCheckoutSession = onCall(
     invoker: 'public',
   },
   async (request) => {
-    const db = admin.firestore();
-    const key = buildRateLimitKey('landing_guest_checkout', undefined, request.rawRequest?.ip);
-    await assertRateLimit(db, key, { maxRequests: 15, windowSeconds: 3600 });
     return handleCreateLandingGuestCheckoutSession(request);
   },
 );
@@ -153,46 +108,13 @@ export const createCustomerPortalSession = onCall({
   enforceAppCheck: false,
 }, handleCreateCustomerPortalSession);
 
-export const updateSubscriptionPlan = onCall(
-  {
-    enforceAppCheck: false,
-  },
-  async (request) => {
-    const db = admin.firestore();
-    const key = buildRateLimitKey('plan_update', request.auth?.uid, request.rawRequest?.ip);
-    await assertRateLimit(db, key, { maxRequests: 12, windowSeconds: 60 });
-    return handleUpdateSubscriptionPlan(request);
-  },
-);
-
 export const createBrandingCheckoutSession = onCall({
   enforceAppCheck: false,
 }, handleCreateBrandingCheckoutSession);
 
 export const createCreditTopupSession = onCall({
   enforceAppCheck: false,
-}, async (request) => {
-  const db = admin.firestore();
-  const key = buildRateLimitKey('credit_topup', request.auth?.uid, request.rawRequest?.ip);
-  await assertRateLimit(db, key, { maxRequests: 15, windowSeconds: 3600 });
-  return handleCreateCreditTopupSession(request);
-});
-
-/** Idempotent: applies subscription/branding from Stripe Checkout when webhooks are delayed (success page recovery). */
-export const syncCheckoutSession = onCall(
-  {
-    enforceAppCheck: false,
-  },
-  async (request) => {
-    try {
-      return await handleSyncCheckoutSession(request);
-    } catch (err) {
-      if (err instanceof HttpsError) throw err;
-      logger.error('[syncCheckoutSession]', err);
-      throw new HttpsError('internal', 'Could not sync checkout session.');
-    }
-  },
-);
+}, handleCreateCreditTopupSession);
 
 // ---------------------------------------------------------------------------
 // Webhook fan-out: fires when a session (assessment) doc is created
@@ -350,7 +272,12 @@ export const getAssessmentChartData = onCall(
 
 export const getAssessmentsThisMonth = onCall(
   { enforceAppCheck: false },
-  async () => getAssessmentsThisMonthCallable(),
+  async (request) => {
+    if (!request.auth?.uid) {
+      throw new HttpsError('unauthenticated', 'Authentication required.');
+    }
+    return getAssessmentsThisMonthCallable();
+  },
 );
 
 export const getMetricsHistory = onCall(
@@ -430,7 +357,7 @@ export const cleanupAuditLogs = onSchedule(
     const snapshot = await staleLogsQuery.get();
     
     if (snapshot.empty) {
-      logger.info('[AuditCleanup] No stale audit logs to delete');
+      console.log('[AuditCleanup] No stale audit logs to delete');
       return;
     }
 
@@ -441,7 +368,7 @@ export const cleanupAuditLogs = onSchedule(
     });
     await batch.commit();
 
-    logger.info(`[AuditCleanup] Deleted ${snapshot.size} audit logs older than 90 days`);
+    console.log(`[AuditCleanup] Deleted ${snapshot.size} audit logs older than 90 days`);
 
     // Also clean up expired impersonation markers
     const expiredMarkersQuery = db
@@ -458,7 +385,7 @@ export const cleanupAuditLogs = onSchedule(
         markerBatch.delete(doc.ref);
       });
       await markerBatch.commit();
-      logger.info(`[AuditCleanup] Cleaned up ${markerSnapshot.size} expired impersonation markers`);
+      console.log(`[AuditCleanup] Cleaned up ${markerSnapshot.size} expired impersonation markers`);
     }
   },
 );
@@ -736,7 +663,7 @@ export const getTeamMetrics = onCall(
       return await computeTeamMetrics(request, { orgId });
     } catch (err) {
       if (err instanceof HttpsError) throw err;
-      logger.error('[getTeamMetrics] computeTeamMetrics failed', err);
+      console.error('[getTeamMetrics] computeTeamMetrics failed:', err);
       throw new HttpsError(
         'internal',
         err instanceof Error ? err.message : 'Team metrics could not be computed.',
@@ -897,7 +824,7 @@ export const cleanupLegacyAchievements = onCall(
       }
     }
 
-    logger.info(`[CleanupLegacyAchievements] Deleted: ${deleted}, Reports with no legacy achievements: ${skipped}`);
+    console.log(`[CleanupLegacyAchievements] Deleted: ${deleted}, Reports with no legacy achievements: ${skipped}`);
     return { success: true, deleted, reportsScanned: reportsSnap.size };
   },
 );
@@ -967,16 +894,6 @@ export const onInviteAccepted = onDocumentWritten(
 export const dailyDraftRecoveryNudges = onSchedule(
   { schedule: 'every day 09:00', timeZone: 'UTC' },
   async () => { await sendDraftRecoveryNudges(); },
-);
-
-/**
- * Daily trial expiry nudge — runs every day at 08:30 UTC.
- * Sends "last day" email to gym trial orgs whose trial ends tomorrow.
- * The 3-day nudge is handled by the Stripe trial_will_end webhook event.
- */
-export const dailyTrialExpiryNudges = onSchedule(
-  { schedule: 'every day 08:30', timeZone: 'UTC' },
-  async () => { await sendTrialExpiryNudges(); },
 );
 
 /**
@@ -1191,7 +1108,7 @@ export const repairClientProfiles = onCall(
     }
 
     admin.firestore(); // ensure app is initialised
-    logger.info(`[repairClientProfiles] fixed=${fixed} skipped=${skipped}`);
+    console.info(`[repairClientProfiles] fixed=${fixed} skipped=${skipped}`);
     return { success: true, fixed, skipped, results };
   },
 );

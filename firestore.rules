@@ -66,10 +66,11 @@ service cloud.firestore {
         get(/databases/$(database)/documents/organizations/$(orgId)/coaches/$(request.auth.uid)).data.role in ['owner', 'admin', 'org_admin'];
     }
 
-    // Platform admin has data access when explicitly granted on the org document
+    // Platform admin has data access to org (owner's org is always comped)
     function hasDataAccess(orgId) {
       let orgData = get(/databases/$(database)/documents/organizations/$(orgId)).data;
-      return orgData.get('dataAccessPermission', {}).get('platformAdminAccess', false) == true;
+      return (orgData.get('subscription', {}).get('isComped', false) == true) ||
+             (orgData.get('dataAccessPermission', {}).get('platformAdminAccess', false) == true);
     }
 
     // Org coach or platform admin with data access
@@ -120,7 +121,7 @@ service cloud.firestore {
         d.organizationId is string &&
         d.organizationId.size() > 0 &&
         isOrgCoach(d.organizationId) &&
-        d.type in ['ocr_body_comp', 'ocr_inbody', 'posture_analysis', 'exercise_recommendation', 'comparison_narrative', 'coach_assistant_wording'] &&
+        d.type in ['ocr_inbody', 'posture_analysis', 'exercise_recommendation', 'comparison_narrative'] &&
         d.status in ['local_success', 'ai_fallback', 'ai_success', 'error'] &&
         d.provider in ['local', 'gemini', 'mediapipe', 'pattern'] &&
         d.costEstimate is number &&
@@ -128,53 +129,6 @@ service cloud.firestore {
         d.tokensUsed is number &&
         d.metadata is map &&
         d.timestamp == request.time;
-    }
-
-    // Coach inbox (notifications/{recipientUid}/items) — who may create for recipientUid
-    function coachInboxNotificationRecipientOrgId(recipientUid) {
-      return get(/databases/$(database)/documents/userProfiles/$(recipientUid)).data.organizationId;
-    }
-
-    function coachInboxNotificationCreateAllowed(recipientUid) {
-      return isAuthenticated() && (
-        request.auth.uid == recipientUid ||
-        (
-          exists(/databases/$(database)/documents/userProfiles/$(recipientUid)) &&
-          exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
-          coachInboxNotificationRecipientOrgId(recipientUid) is string &&
-          coachInboxNotificationRecipientOrgId(recipientUid).size() > 0 &&
-          coachInboxNotificationRecipientOrgId(recipientUid) == coachInboxNotificationRecipientOrgId(request.auth.uid)
-        ) ||
-        (
-          isPlatformAdmin() &&
-          exists(/databases/$(database)/documents/userProfiles/$(recipientUid)) &&
-          coachInboxNotificationRecipientOrgId(recipientUid) is string &&
-          coachInboxNotificationRecipientOrgId(recipientUid).size() > 0 &&
-          hasDataAccess(coachInboxNotificationRecipientOrgId(recipientUid))
-        )
-      );
-    }
-
-    // Align with src/services/notificationWriter.ts (UID path); serverTimestamp() => createdAt == request.time
-    function coachInboxNotificationPayloadValid(recipientUid) {
-      let d = request.resource.data;
-      return d.keys().hasOnly([
-        'type', 'title', 'body', 'priority', 'read', 'createdAt', 'actionUrl', 'meta', 'recipientUid'
-      ]) &&
-        d.read == false &&
-        d.recipientUid == recipientUid &&
-        d.title is string &&
-        d.body is string &&
-        (d.actionUrl == null || d.actionUrl is string) &&
-        (d.meta == null || d.meta is map) &&
-        d.type in [
-          'assessment_complete', 'report_shared', 'roadmap_ready', 'phase_complete', 'reassessment_due',
-          'lifestyle_reminder', 'new_client', 'client_submission', 'lifestyle_checkin', 'pause_request',
-          'pause_approved', 'pause_denied', 'account_paused', 'account_unpaused', 'schedule_review',
-          'score_drop', 'coach_accepted', 'subscription_past_due', 'subscription_cancelled', 'system'
-        ] &&
-        d.priority in ['low', 'medium', 'high'] &&
-        d.createdAt == request.time;
     }
 
     // =========================================================
@@ -248,22 +202,10 @@ service cloud.firestore {
         }
       }
 
-      // Slug → stable client UUID (coach app reads/writes on profile create; migrations use Admin SDK)
-      match /clientLookup/{slug} {
-        allow read: if canReadOrgData(orgId);
-        allow write: if canWriteOrgData(orgId);
-      }
-
-      // Client self-service uploads — written by Admin/callables today; coaches read only
-      match /clientSubmissions/{clientUid}/items/{submissionId} {
-        allow read: if canReadOrgData(orgId);
-        allow create, update, delete: if false;
-      }
-
-      // GDPR erasure requests (creates via submitPublicErasureRequest callable — Admin SDK only)
+      // GDPR erasure requests
       match /erasureRequests/{requestId} {
         allow read: if isOrgAdmin(orgId) || (isPlatformAdmin() && hasDataAccess(orgId));
-        allow create: if false;
+        allow create: if true; // Anyone can submit an erasure request
         allow update: if isOrgAdmin(orgId) || (isPlatformAdmin() && hasDataAccess(orgId));
         allow delete: if false;
       }
@@ -304,7 +246,16 @@ service cloud.firestore {
         (isAuthenticated() &&
           resource.data.organizationId ==
           get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.organizationId);
-      allow write: if request.auth.uid == uid || isPlatformAdmin();
+      // Self-writes restricted to safe fields (no role escalation); platform admins can write anything
+      allow write: if isPlatformAdmin();
+      allow update: if request.auth.uid == uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'displayName', 'email', 'photoURL', 'preferences', 'settings',
+          'onboardingComplete', 'equipmentList', 'defaultCadence',
+          'completedChecklist', 'dismissedChecklist', 'theme'
+        ]);
+      // Allow initial profile creation (onboarding sets role + organizationId)
+      allow create: if request.auth.uid == uid;
     }
 
     // =========================================================
@@ -314,7 +265,9 @@ service cloud.firestore {
     // =========================================================
 
     match /publicReports/{token} {
-      allow read: if true; // Token is the credential - anyone with the URL can read
+      // Token IS the credential — allow single-doc fetch only; block list to prevent enumeration
+      allow get: if true;
+      allow list: if false;
       allow create: if isAuthenticated() && request.resource.data.coachUid == request.auth.uid;
       allow update: if isAuthenticated() && resource.data.coachUid == request.auth.uid;
       allow delete: if isAuthenticated() && resource.data.coachUid == request.auth.uid;
@@ -322,17 +275,20 @@ service cloud.firestore {
 
     // Token-scoped subcollections (snapshots, achievements, notifications, client check-ins)
     match /publicReports/{token}/snapshots/{snapshotId} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if false;
       allow write: if isAuthenticated() && publicReportCoachUid(token) == request.auth.uid;
     }
 
     match /publicReports/{token}/achievements/{achievementId} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if false;
       allow write: if isAuthenticated() && publicReportCoachUid(token) == request.auth.uid;
     }
 
     match /publicReports/{token}/notifications/{notificationId} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if false;
       allow create: if isAuthenticated() && publicReportCoachUid(token) == request.auth.uid;
       allow update: if
         (isAuthenticated() && publicReportCoachUid(token) == request.auth.uid) ||
@@ -341,13 +297,15 @@ service cloud.firestore {
     }
 
     match /publicReports/{token}/lifestyleCheckins/{checkinId} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if false;
       allow create: if true;
       allow update, delete: if false;
     }
 
     match /publicReports/{token}/preSessionCheckins/{checkinId} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if false;
       allow create: if true;
       allow update, delete: if false;
     }
@@ -358,7 +316,8 @@ service cloud.firestore {
     // =========================================================
 
     match /publicRoadmaps/{token} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if false;
       allow create: if isAuthenticated() && request.resource.data.coachUid == request.auth.uid;
       allow update: if isAuthenticated() && resource.data.coachUid == request.auth.uid;
       allow delete: if isAuthenticated() && resource.data.coachUid == request.auth.uid;
@@ -384,15 +343,11 @@ service cloud.firestore {
 
       allow update: if isAuthenticated() &&
         resource.data.organizationId != null &&
-        isOrgCoach(resource.data.organizationId) &&
-        request.resource.data.organizationId == resource.data.organizationId &&
-        request.resource.data.clientId == resource.data.clientId;
+        isOrgCoach(resource.data.organizationId);
 
       // Unauthenticated companion (client mobile) may only update capture fields
       allow update: if !isAuthenticated() &&
         exists(/databases/$(database)/documents/live_sessions/$(sessionId)) &&
-        request.resource.data.organizationId == resource.data.organizationId &&
-        request.resource.data.clientId == resource.data.clientId &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'companionJoined', 'lastHeartbeat', 'postureImages',
           'analysis', 'companionLogs',
@@ -407,7 +362,7 @@ service cloud.firestore {
 
     match /notifications/{uid}/items/{notificationId} {
       allow read: if isAuthenticated() && request.auth.uid == uid;
-      allow create: if coachInboxNotificationCreateAllowed(uid) && coachInboxNotificationPayloadValid(uid);
+      allow create: if isAuthenticated();
       allow update: if isAuthenticated() && request.auth.uid == uid;
       allow delete: if isAuthenticated() && request.auth.uid == uid;
     }
@@ -453,7 +408,7 @@ service cloud.firestore {
     // =========================================================
 
     match /platform_admins/{adminId} {
-      allow read: if (isAuthenticated() && request.auth.uid == adminId) || isPlatformAdmin();
+      allow read: if isAuthenticated();
       allow create, update: if isPlatformAdmin() || canBootstrapPlatformAdminDoc(adminId);
       allow delete: if isPlatformAdmin();
     }
@@ -504,18 +459,6 @@ service cloud.firestore {
     // =========================================================
 
     match /_rateLimits/{key} {
-      allow read, write: if false;
-    }
-
-    // =========================================================
-    // STRIPE WEBHOOK IDEMPOTENCY (Admin SDK / Cloud Functions only)
-    // =========================================================
-
-    match /stripeInboundEvents/{eventId} {
-      allow read, write: if false;
-    }
-
-    match /stripeFulfilledCheckoutSessions/{sessionId} {
       allow read, write: if false;
     }
   }

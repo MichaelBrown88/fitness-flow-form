@@ -146,7 +146,7 @@ async function assertOrgBillingCallableAccess(
   orgData: FirebaseFirestore.DocumentData | undefined,
 ): Promise<void> {
   if (!orgData) {
-    throw new Error('Organization not found.');
+    throw new HttpsError('not-found', 'Organization not found.');
   }
   if (orgData.ownerId === uid) {
     return;
@@ -156,7 +156,7 @@ async function assertOrgBillingCallableAccess(
   if (p?.organizationId === organizationId && p?.role === 'org_admin') {
     return;
   }
-  throw new Error('Not authorized for this organization.');
+  throw new HttpsError('permission-denied', 'Not authorized for this organization.');
 }
 
 /** Purchased credit packs that survive monthly renewal replenishment (incremented on top-up checkout). */
@@ -337,7 +337,7 @@ export async function handleCreateCheckoutSession(
   request: CallableRequest<CheckoutRequest>
 ) {
   if (!request.auth?.uid) {
-    throw new Error('Authentication required.');
+    throw new HttpsError('unauthenticated', 'Authentication required.');
   }
 
   const db = admin.firestore();
@@ -361,7 +361,7 @@ export async function handleCreateCheckoutSession(
   } = request.data;
 
   if (!organizationId) {
-    throw new Error('Missing required field: organizationId.');
+    throw new HttpsError('invalid-argument', 'Missing required field: organizationId.');
   }
 
   let priceId: string | undefined;
@@ -427,7 +427,7 @@ export async function handleCreateCheckoutSession(
 
   const orgDoc = await db.doc(`organizations/${organizationId}`).get();
   if (!orgDoc.exists) {
-    throw new Error('Organization not found.');
+    throw new HttpsError('not-found', 'Organization not found.');
   }
   const orgData = orgDoc.data();
   await assertOrgBillingCallableAccess(db, request.auth.uid, organizationId, orgData);
@@ -668,12 +668,12 @@ export async function handleCreateCustomerPortalSession(
   request: CallableRequest<PortalSessionRequest>,
 ) {
   if (!request.auth?.uid) {
-    throw new Error('Authentication required.');
+    throw new HttpsError('unauthenticated', 'Authentication required.');
   }
 
   const { organizationId } = request.data;
   if (!organizationId) {
-    throw new Error('Missing required field: organizationId.');
+    throw new HttpsError('invalid-argument', 'Missing required field: organizationId.');
   }
 
   const db = admin.firestore();
@@ -686,14 +686,14 @@ export async function handleCreateCustomerPortalSession(
 
   const orgDoc = await db.doc(`organizations/${organizationId}`).get();
   if (!orgDoc.exists) {
-    throw new Error('Organization not found.');
+    throw new HttpsError('not-found', 'Organization not found.');
   }
   const orgData = orgDoc.data();
   await assertOrgBillingCallableAccess(db, request.auth.uid, organizationId, orgData);
 
   const customerId = orgData?.stripe?.stripeCustomerId;
   if (!customerId) {
-    throw new Error('No Stripe customer found for this organization. Please subscribe first.');
+    throw new HttpsError('failed-precondition', 'No Stripe customer found for this organization. Please subscribe first.');
   }
 
   const stripe = getStripe();
@@ -874,12 +874,12 @@ export async function handleCreateBrandingCheckoutSession(
   request: CallableRequest<BrandingCheckoutRequest>,
 ) {
   if (!request.auth?.uid) {
-    throw new Error('Authentication required.');
+    throw new HttpsError('unauthenticated', 'Authentication required.');
   }
 
   const { organizationId } = request.data;
   if (!organizationId) {
-    throw new Error('Missing required field: organizationId.');
+    throw new HttpsError('invalid-argument', 'Missing required field: organizationId.');
   }
 
   const db = admin.firestore();
@@ -892,12 +892,12 @@ export async function handleCreateBrandingCheckoutSession(
 
   const orgDoc = await db.doc(`organizations/${organizationId}`).get();
   if (!orgDoc.exists) {
-    throw new Error('Organization not found.');
+    throw new HttpsError('not-found', 'Organization not found.');
   }
   const orgData = orgDoc.data();
   await assertOrgBillingCallableAccess(db, request.auth.uid, organizationId, orgData);
   if (orgData?.customBrandingEnabled === true) {
-    throw new Error('Custom branding is already enabled for this organization.');
+    throw new HttpsError('already-exists', 'Custom branding is already enabled for this organization.');
   }
 
   const region = (orgData?.subscription?.region ?? orgData?.region) as string || 'GB';

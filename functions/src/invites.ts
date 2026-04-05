@@ -10,6 +10,7 @@
 import * as admin from 'firebase-admin';
 import * as crypto from 'crypto';
 import type { CallableRequest } from 'firebase-functions/v2/https';
+import { HttpsError } from 'firebase-functions/v2/https';
 import { Resend } from 'resend';
 import {
   APP_HOST,
@@ -54,28 +55,28 @@ export async function handleSendCoachInvite(
   request: CallableRequest<CoachInviteRequest>,
 ) {
   if (!request.auth?.uid) {
-    throw new Error('Authentication required.');
+    throw new HttpsError('unauthenticated', 'Authentication required.');
   }
 
   const { email: rawEmail, organizationId, organizationName, invitedBy } = request.data;
 
   if (!rawEmail || !organizationId || !organizationName || !invitedBy) {
-    throw new Error('Missing required fields: email, organizationId, organizationName, invitedBy.');
+    throw new HttpsError('invalid-argument', 'Missing required fields: email, organizationId, organizationName, invitedBy.');
   }
 
   const email = normalizeCoachInviteEmail(rawEmail);
   if (!isValidCoachInviteEmail(email)) {
-    throw new Error('Invalid email address.');
+    throw new HttpsError('invalid-argument', 'Invalid email address.');
   }
   if (!isCoachInviteEmailDomainAllowed(email, COACH_INVITE_ALLOWED_EMAIL_DOMAINS)) {
-    throw new Error('This email domain is not permitted for coach invitations.');
+    throw new HttpsError('permission-denied', 'This email domain is not permitted for coach invitations.');
   }
 
   const db = admin.firestore();
 
   const orgDoc = await db.doc(`organizations/${organizationId}`).get();
   if (!orgDoc.exists) {
-    throw new Error('Organization not found.');
+    throw new HttpsError('not-found', 'Organization not found.');
   }
   const orgData = orgDoc.data();
   const coachSnap = await db.doc(`organizations/${organizationId}/coaches/${request.auth.uid}`).get();
@@ -87,7 +88,7 @@ export async function handleSendCoachInvite(
       authUid: request.auth.uid,
     })
   ) {
-    throw new Error('Only an organisation owner or admin can send coach invites.');
+    throw new HttpsError('permission-denied', 'Only an organisation owner or admin can send coach invites.');
   }
 
   const token = crypto.randomBytes(32).toString('hex');
