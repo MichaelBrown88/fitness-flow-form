@@ -6,6 +6,7 @@
  */
 
 import * as admin from 'firebase-admin';
+import { logger } from 'firebase-functions';
 import type { CallableRequest } from 'firebase-functions/v2/https';
 
 export interface DeleteOrganizationRequest {
@@ -147,7 +148,7 @@ export async function handleDeleteOrganization(
     try {
       await admin.auth().deleteUser(uid);
     } catch (err) {
-      console.warn(`Failed to delete Auth user ${uid}:`, err);
+      logger.warn(`Failed to delete Auth user ${uid}`, err);
       // Continue - profile and org data are already removed
     }
   }

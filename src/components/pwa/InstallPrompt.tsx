@@ -9,6 +9,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, X, Share } from 'lucide-react';
+import { PWA_UI_COPY } from '@/constants/pwaUiCopy';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -82,21 +83,21 @@ export function InstallPrompt() {
     return (
       <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-[360px] z-[99] animate-in slide-in-from-bottom-4 fade-in duration-300">
         <div className="bg-background dark:bg-foreground rounded-xl shadow-xl p-4 flex items-start gap-3 border border-border dark:border-border/50">
-          <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-violet-100 dark:bg-violet-500/20 flex items-center justify-center">
-            <Download className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+          <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-primary/15 dark:bg-primary/25 flex items-center justify-center">
+            <Download className="w-4 h-4 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-foreground dark:text-white">Install One Assess</p>
+            <p className="text-sm font-semibold text-foreground dark:text-white">{PWA_UI_COPY.installTitle}</p>
             <p className="text-xs text-muted-foreground dark:text-muted-foreground mt-0.5">
-              Add to your home screen for the best experience.
+              {PWA_UI_COPY.installBody}
             </p>
             <div className="flex gap-2 mt-3">
               <Button
                 size="sm"
                 onClick={handleInstall}
-                className="h-9 sm:h-8 px-3 text-xs bg-violet-600 hover:bg-violet-500 text-white rounded-lg"
+                className="h-9 sm:h-8 px-3 text-xs rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
               >
-                Install
+                {PWA_UI_COPY.installCta}
               </Button>
               <Button
                 size="sm"
@@ -104,7 +105,7 @@ export function InstallPrompt() {
                 onClick={handleDismiss}
                 className="h-9 sm:h-8 px-3 text-xs text-muted-foreground hover:text-foreground-secondary dark:text-muted-foreground dark:hover:text-white rounded-lg"
               >
-                Not now
+                {PWA_UI_COPY.installDismiss}
               </Button>
             </div>
           </div>
@@ -124,13 +125,15 @@ export function InstallPrompt() {
     return (
       <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-[360px] z-[99] animate-in slide-in-from-bottom-4 fade-in duration-300">
         <div className="bg-background dark:bg-foreground rounded-xl shadow-xl p-4 flex items-start gap-3 border border-border dark:border-border/50">
-          <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center">
-            <Share className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+          <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-primary/15 dark:bg-primary/25 flex items-center justify-center">
+            <Share className="w-4 h-4 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-foreground dark:text-white">Install One Assess</p>
+            <p className="text-sm font-semibold text-foreground dark:text-white">{PWA_UI_COPY.iosTitle}</p>
             <p className="text-xs text-muted-foreground dark:text-muted-foreground mt-1 leading-relaxed">
-              Tap <Share className="w-3 h-3 inline -mt-0.5" /> then <strong>&quot;Add to Home Screen&quot;</strong> for the full app experience.
+              {PWA_UI_COPY.iosBodyBeforeStrong}{' '}
+              <Share className="w-3 h-3 inline -mt-0.5" /> then{' '}
+              <strong>&quot;{PWA_UI_COPY.iosBodyStrong}&quot;</strong> {PWA_UI_COPY.iosBodyAfterStrong}
             </p>
             <Button
               size="sm"
@@ -138,7 +141,7 @@ export function InstallPrompt() {
               onClick={handleDismiss}
               className="h-9 sm:h-8 px-3 text-xs text-muted-foreground mt-2 rounded-lg"
             >
-              Got it
+              {PWA_UI_COPY.iosGotIt}
             </Button>
           </div>
           <button

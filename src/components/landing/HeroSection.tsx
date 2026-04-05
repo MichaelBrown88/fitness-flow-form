@@ -159,7 +159,7 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
         >
           <div className="relative">
             {/* Main Report Card (decorative preview — parent has aria-hidden) */}
-            <div className="relative rounded-2xl border border-border/80 bg-card/90 p-6 shadow-lg backdrop-blur-md dark:border-border dark:bg-card/95 dark:shadow-xl dark:shadow-black/40 sm:p-10">
+            <div className="relative rounded-lg border border-border/80 bg-card/90 p-6 shadow-md backdrop-blur-md dark:border-border dark:bg-card/95 dark:shadow-lg dark:shadow-black/35 sm:p-10">
               {/* Header */}
               <div className="mb-6 flex items-start justify-between gap-3 sm:mb-10">
                 <div className="min-w-0">

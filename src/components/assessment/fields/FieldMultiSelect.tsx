@@ -42,9 +42,9 @@ export const FieldMultiSelect: React.FC<FieldMultiSelectProps> = ({
             key={opt.value}
             type="button"
             onClick={() => toggle(opt.value)}
-            className={`flex min-h-[64px] h-auto items-center gap-4 rounded-2xl border-2 px-5 py-3 text-left transition-all relative overflow-hidden ${
+            className={`relative flex h-auto min-h-[64px] items-center gap-4 overflow-hidden rounded-lg border-2 px-5 py-3 text-left transition-all ${
               isActive
-              ? 'border-foreground bg-foreground text-white shadow-lg scale-[1.02]'
+              ? 'border-foreground bg-foreground text-white shadow-sm'
               : `bg-background text-foreground-secondary ${colorClass}`
             }`}
             aria-pressed={isActive}

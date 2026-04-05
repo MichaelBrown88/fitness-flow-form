@@ -137,7 +137,7 @@ export function BillingStripeSubscribeCard({
     return (
       <section
         id="billing-checkout-prep"
-        className="scroll-mt-24 rounded-2xl border border-dashed border-border/90 bg-muted/20 p-6 sm:p-8 space-y-4"
+        className="scroll-mt-24 rounded-lg border border-dashed border-border/70 bg-muted/15 p-6 sm:p-8 space-y-4"
       >
         <p className="text-xs font-semibold uppercase tracking-wider text-primary">
           {CHECKOUT_FLOW_COPY.billingSubscribeSectionLabel}
@@ -149,11 +149,11 @@ export function BillingStripeSubscribeCard({
           </p>
         </div>
         {checkoutLocked ? (
-          <p className="text-sm text-muted-foreground border border-border rounded-xl p-4 bg-card/80">
+          <p className="text-sm text-muted-foreground border border-border/70 rounded-lg p-4 bg-background">
             {CHECKOUT_FLOW_COPY.billingNonGbActiveSubHint}
           </p>
         ) : null}
-        <Button type="button" className="rounded-xl font-semibold" asChild>
+        <Button type="button" className="rounded-lg font-semibold" asChild>
           <Link to={ROUTES.CONTACT}>{CHECKOUT_FLOW_COPY.billingNonGbContactCta}</Link>
         </Button>
       </section>
@@ -170,8 +170,8 @@ export function BillingStripeSubscribeCard({
 
   const brandingPriceGbp = region === 'GB' ? getCustomBrandingPrice(region) : 0;
 
-  const handleSubscribe = () => {
-    void startCheckout(
+  const handleSubscribe = async () => {
+    const { redirected, errorMessage } = await startCheckout(
       organizationId,
       region,
       selectedClientLimit,
@@ -179,6 +179,13 @@ export function BillingStripeSubscribeCard({
       packageTrackCheckout,
       offerBrandingAddOn && !checkoutLocked && includeBrandingAddOn ? true : undefined,
     );
+    if (!redirected && errorMessage) {
+      toast({
+        variant: 'destructive',
+        title: CHECKOUT_FLOW_COPY.checkoutCallableFailedToastTitle,
+        description: errorMessage,
+      });
+    }
   };
 
   const handleConfirmPlanChange = () => {
@@ -245,7 +252,7 @@ export function BillingStripeSubscribeCard({
               <button
                 key={p}
                 type="button"
-                disabled={loading}
+                disabled={loading || planUpdateLoading}
                 onClick={() => setBillingPeriod(p)}
                 aria-pressed={active}
                 className={cn(
@@ -267,7 +274,7 @@ export function BillingStripeSubscribeCard({
         ) : null}
       </div>
 
-      <div className="rounded-xl border border-border/80 bg-muted/20 p-4 space-y-4">
+      <div className="rounded-lg border border-border/70 bg-muted/15 p-4 space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Label htmlFor="capacity-select" className="text-sm font-medium text-foreground shrink-0">
             {CHECKOUT_FLOW_COPY.billingSubscribeCapacityLabel}
@@ -275,7 +282,7 @@ export function BillingStripeSubscribeCard({
           <Select
             value={String(selectedClientLimit)}
             onValueChange={(v) => setSelectedClientLimit(Number(v))}
-            disabled={loading || tiers.length === 0}
+            disabled={loading || planUpdateLoading || tiers.length === 0}
           >
             <SelectTrigger id="capacity-select" className="h-9 w-full sm:w-[min(100%,320px)] rounded-lg">
               <SelectValue />
@@ -298,7 +305,7 @@ export function BillingStripeSubscribeCard({
             max={Math.max(0, tiers.length - 1)}
             step={1}
             value={tierSliderIndex}
-            disabled={loading || tiers.length === 0}
+            disabled={loading || planUpdateLoading || tiers.length === 0}
             onChange={(e) => {
               const i = Number(e.target.value);
               const t = tiers[i];
@@ -375,7 +382,7 @@ export function BillingStripeSubscribeCard({
   return (
     <section
       id="billing-checkout-prep"
-      className="scroll-mt-24 rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-sm"
+      className="scroll-mt-24 rounded-lg border border-border/70 bg-background p-5 sm:p-6 shadow-none"
     >
       <div className="space-y-1">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -390,11 +397,9 @@ export function BillingStripeSubscribeCard({
         ) : null}
       </div>
 
-      <div className="mt-6 lg:hidden">{summaryPanel}</div>
-
-      <div className="mt-6 grid gap-6 lg:grid-cols-12 lg:gap-8">
-        <div className="lg:col-span-7 xl:col-span-8">{tierPicker}</div>
-        <div className="hidden lg:block lg:col-span-5 xl:col-span-4">{summaryPanel}</div>
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8">
+        <div className="order-2 min-w-0 lg:order-1 lg:col-span-7 xl:col-span-8">{tierPicker}</div>
+        <div className="order-1 min-w-0 lg:order-2 lg:col-span-5 xl:col-span-4">{summaryPanel}</div>
       </div>
     </section>
   );

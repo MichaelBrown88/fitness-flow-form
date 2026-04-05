@@ -126,20 +126,41 @@ const DASHBOARD_SEO_DESCRIPTION =
 /** Logged-in app shell: noindex + route-specific titles for tabs and bookmarks. */
 export function getDashboardSeoForPathname(pathname: string): SeoPageMeta {
   const base: SeoPageMeta = {
-    title: 'Dashboard | One Assess',
+    title: 'Coach workspace | One Assess',
     description: DASHBOARD_SEO_DESCRIPTION,
     noindex: true,
   };
+  if (pathname === ROUTES.DASHBOARD) {
+    return {
+      title: 'Assistant | One Assess',
+      description: 'Coach assistant, tasks, and client snapshot queries.',
+      noindex: true,
+    };
+  }
+  if (pathname.startsWith(ROUTES.DASHBOARD_CLIENTS)) {
+    return {
+      title: 'Clients | One Assess',
+      description: 'Client roster and assessments.',
+      noindex: true,
+    };
+  }
+  if (pathname.startsWith(ROUTES.DASHBOARD_WORK)) {
+    return {
+      title: 'Work | One Assess',
+      description: 'Reassessment tasks and follow-up calendar.',
+      noindex: true,
+    };
+  }
   if (pathname.startsWith(ROUTES.DASHBOARD_SCHEDULE)) {
     return {
-      title: 'Schedule | One Assess',
+      title: 'Work | One Assess',
       description: 'Reassessment queue and due dates for your clients.',
       noindex: true,
     };
   }
   if (pathname.startsWith(ROUTES.DASHBOARD_CALENDAR)) {
     return {
-      title: 'Calendar | One Assess',
+      title: 'Work | One Assess',
       description: 'Assessment and follow-up calendar.',
       noindex: true,
     };
@@ -151,5 +172,84 @@ export function getDashboardSeoForPathname(pathname: string): SeoPageMeta {
       noindex: true,
     };
   }
+  if (pathname.startsWith(ROUTES.DASHBOARD_ARTIFACTS)) {
+    return {
+      title: 'Artifacts | One Assess',
+      description: 'Public report, roadmap, and achievements links for clients and social posts.',
+      noindex: true,
+    };
+  }
+  return base;
+}
+
+const APP_SHELL_SEO_DESCRIPTION =
+  'Signed-in coach and organization tools on One Assess.';
+
+export type AppShellSeoOptions = {
+  /** Client profile tab routes (`/client/:name/...`) */
+  clientDisplayName?: string;
+};
+
+/**
+ * Document title + description for layouts that use AppShell without DashboardLayout’s Seo.
+ * Always noindex. Pass `clientDisplayName` on client detail routes for a useful tab title.
+ */
+export function getAppShellSeoForPathname(
+  pathname: string,
+  options?: AppShellSeoOptions,
+): SeoPageMeta {
+  const path = pathname.split('?')[0] ?? pathname;
+  const base: SeoPageMeta = {
+    title: 'One Assess',
+    description: APP_SHELL_SEO_DESCRIPTION,
+    noindex: true,
+  };
+
+  if (path.startsWith('/client/') && options?.clientDisplayName?.trim()) {
+    return {
+      ...base,
+      title: `${options.clientDisplayName.trim()} | One Assess`,
+      description: 'Client profile, reports, roadmap, and history.',
+    };
+  }
+
+  if (path === ROUTES.SETTINGS) {
+    return { ...base, title: 'Settings | One Assess', description: 'Account, organization, and notification preferences.' };
+  }
+
+  if (path === ROUTES.BILLING) {
+    return {
+      ...base,
+      title: 'Billing & subscription | One Assess',
+      description: 'Plan, capacity, Stripe portal, and invoices.',
+    };
+  }
+  if (path === ROUTES.BILLING_SUCCESS) {
+    return {
+      ...base,
+      title: 'Billing · Success | One Assess',
+      description: 'Subscription or checkout completed.',
+    };
+  }
+
+  if (path === ROUTES.ORG_DASHBOARD || path === `${ROUTES.ORG_DASHBOARD}/`) {
+    return { ...base, title: 'Organization · Overview | One Assess', description: 'Org subscription, coaches, and clients summary.' };
+  }
+  if (path.startsWith(`${ROUTES.ORG_DASHBOARD}/team`)) {
+    return { ...base, title: 'Organization · Team | One Assess', description: 'Coaches and seats in your organization.' };
+  }
+  if (path.startsWith(`${ROUTES.ORG_DASHBOARD}/retention`)) {
+    return { ...base, title: 'Organization · Retention | One Assess', description: 'Client retention signals and follow-ups.' };
+  }
+  if (path.startsWith(`${ROUTES.ORG_DASHBOARD}/billing`)) {
+    return { ...base, title: 'Organization · Billing | One Assess', description: 'Organization billing summary for admins.' };
+  }
+  if (path.startsWith(`${ROUTES.ORG_DASHBOARD}/integrations`)) {
+    return { ...base, title: 'Organization · Integrations | One Assess', description: 'Connected services for your organization.' };
+  }
+  if (path.startsWith(ROUTES.ORG_DASHBOARD)) {
+    return { ...base, title: 'Organization | One Assess', description: 'Organization admin dashboard.' };
+  }
+
   return base;
 }

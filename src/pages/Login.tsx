@@ -10,8 +10,10 @@ import { Label } from '@/components/ui/label';
 import { logger } from '@/lib/utils/logger';
 import { mapFirebaseAuthError } from '@/lib/utils/mapFirebaseAuthError';
 import { ROUTES } from '@/constants/routes';
+import { LOGIN_PAGE_COPY } from '@/constants/loginPageCopy';
 import { Seo } from '@/components/seo/Seo';
 import { SEO_NOINDEX_FUNNEL } from '@/constants/seo';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 
 const Login = () => {
   const { signIn, signInWithGoogle, signInWithApple, loading, user, profile } = useAuth();
@@ -89,6 +91,7 @@ const Login = () => {
   };
 
   return (
+    <ErrorBoundary>
     <div className="min-h-screen bg-gradient-to-b from-muted/50 to-background flex">
       <Seo
         pathname={ROUTES.LOGIN}
@@ -202,7 +205,7 @@ const Login = () => {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground-secondary transition-colors"
-                    tabIndex={-1}
+                    aria-label={showPassword ? LOGIN_PAGE_COPY.PASSWORD_HIDE_ARIA : LOGIN_PAGE_COPY.PASSWORD_SHOW_ARIA}
                   >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -247,6 +250,7 @@ const Login = () => {
         </div>
       </div>
     </div>
+    </ErrorBoundary>
   );
 };
 

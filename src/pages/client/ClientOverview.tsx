@@ -22,6 +22,7 @@ import { PostureComparisonCard } from '@/components/client/PostureComparisonCard
 import { ClientCheckinStrip } from '@/components/client/ClientCheckinStrip';
 import { getClientCheckinHints } from '@/lib/clientCheckinHints';
 import type { ClientDetailOutletContext } from './ClientDetailLayout';
+import { UI_CLIENT_DETAIL } from '@/constants/ui';
 import { computeScores } from '@/lib/scoring';
 import { generateCoachPlan, generateBodyCompInterpretation, type CoachPlan } from '@/lib/recommendations';
 import { getLatestPreSessionCheckin, type PreSessionCheckinPayload } from '@/services/publicReports';
@@ -45,7 +46,7 @@ function CollapsibleSection({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="rounded-2xl bg-card overflow-hidden">
+    <div className="overflow-hidden rounded-lg border border-border/70 bg-background">
       <button
         type="button"
         onClick={() => setOpen(!open)}
@@ -153,7 +154,10 @@ export default function ClientOverview() {
           }}
         />
       ) : null}
-      <CollapsibleSection title="Overview" icon={<TrendingUp className="h-5 w-5 text-primary" />}>
+      <CollapsibleSection
+        title={UI_CLIENT_DETAIL.OVERVIEW_SECTION_TITLE}
+        icon={<TrendingUp className="h-5 w-5 text-primary" />}
+      >
         <div className="grid gap-2 sm:gap-3 grid-cols-2 md:grid-cols-4">
           <div className="rounded-xl bg-muted p-4">
             <div className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground mb-2">Total</div>
@@ -222,7 +226,7 @@ export default function ClientOverview() {
       </CollapsibleSection>
 
       {preSessionCheckin && !checkinDismissed && (
-        <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 sm:p-5">
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 sm:p-5">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2 shrink-0">
               <Zap className="h-4 w-4 text-amber-500" />

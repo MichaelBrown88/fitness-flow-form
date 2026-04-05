@@ -65,7 +65,7 @@ export function BuiltByExperts() {
             const Icon = value.icon;
             return (
               <GlassCard key={index} className="p-8 h-full flex flex-col">
-                <div className={`w-16 h-16 rounded-2xl ${colorClasses[value.color]} border-2 flex items-center justify-center mb-6 shadow-sm`}>
+                <div className={`w-16 h-16 rounded-lg ${colorClasses[value.color]} border-2 flex items-center justify-center mb-6 shadow-sm`}>
                   <Icon size={28} />
                 </div>
                 <h3 className="mb-3 text-balance text-xl font-bold text-foreground">{value.title}</h3>

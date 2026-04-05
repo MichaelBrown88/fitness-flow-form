@@ -51,6 +51,31 @@ Use these instead of hardcoded values. Tailwind theme extends them so utilities 
 - Use `brand-muted`: it is not defined in the theme. Use `brand-medium` or add the token if needed.
 - Introduce one-off spacing or radius values that are not on the scale without documenting them.
 
+## Workspace chrome (coach product)
+
+Layout language for the signed-in coach workspace (and aligned account surfaces): **flat main canvas**, **hairline structure**, **minimal nested cards**. Colours and fonts stay on tokens above; this section is about **surfaces and hierarchy**.
+
+**Surfaces**
+
+- **Page / main column:** Prefer `bg-background` for the primary scroll area. Use `bg-card` for **one** clear elevated surface (modals, dropdown panels, a single primary panel when necessary)—not for wrapping an entire route inside another bordered card.
+- **Lists and tables:** The table or list **is** the content surface. Avoid `rounded-xl border bg-card` around a table that already has row borders—use a **single** top or bottom `border-border` on the section if separation from the header is needed.
+- **Sidebars:** `border-r border-border` plus optional `bg-muted/20` (light) / `bg-muted/15` (dark) for separation from the main column; prefer **hover wash** (`hover:bg-muted/50`) on rows over nested mini-cards.
+
+**Borders vs shadows**
+
+- Prefer **`border-border`** (hairline) for shell chrome, section splits, and sidebar separation.
+- Reserve **`shadow-sm` / `shadow-md`** for floating elements (composer, popovers, sticky CTAs)—not for every dashboard panel.
+
+**Radius tiering**
+
+- **Default controls** (`Button`, `Input`, segmented tabs): `rounded-md` or `rounded-lg` from the token scale.
+- **`rounded-full`:** Avatars, badge dots, and true circular icon targets only—not default rectangular buttons or search fields.
+- **Large radii (`rounded-2xl`+):** Intentional exceptions only (e.g. assistant composer shell, marketing hero focal UI)—document in the component if non-obvious.
+
+**Nested cards**
+
+- Prefer **section title + `border-t`** or **`bg-muted/20` bands** between groups over `Card` inside `Card`. One bordered container per logical viewport region is enough.
+
 ## Motion
 
 Prefer the shared classes and tokens so motion feels consistent:

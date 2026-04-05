@@ -3,7 +3,9 @@ import { randomUUID } from 'node:crypto';
 import * as admin from 'firebase-admin';
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
+import { logger } from 'firebase-functions';
 import { HttpsError, onCall, onRequest } from 'firebase-functions/v2/https';
+import { handleGeneratePublicReportSocialShareArtifacts } from './generatePublicReportSocialShareArtifacts';
 import { requestShareLinks, sendReportEmail } from './share';
 import {
   handleCreateCheckoutSession,
@@ -13,6 +15,7 @@ import {
   handleUpdateSubscriptionPlan,
   handleCreateBrandingCheckoutSession,
   handleCreateCreditTopupSession,
+  handleSyncCheckoutSession,
 } from './stripe';
 import { handleAssessmentCompletedTrigger } from './webhooks';
 import { handleSendCoachInvite } from './invites';
@@ -59,6 +62,7 @@ import {
 } from './notifications';
 import { handleOnboardingCompleted } from './transactionalEmails';
 import { sendTrialExpiryNudges } from './trialNudges';
+import { handleSubmitPublicErasureRequest } from './publicErasureRequest';
 
 admin.initializeApp();
 
@@ -80,6 +84,42 @@ export const emailReport = onCall({
   return sendReportEmail(request);
 });
 
+export const generatePublicReportSocialShareArtifacts = onCall(
+  {
+    enforceAppCheck: false,
+  },
+  async (request) => {
+    const db = admin.firestore();
+    const key = buildRateLimitKey('social_share', request.auth?.uid, request.rawRequest?.ip);
+    try {
+      await assertRateLimit(db, key, { maxRequests: 12, windowSeconds: 60 });
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === 'RATE_LIMITED') {
+        throw new HttpsError('resource-exhausted', 'Too many requests. Try again shortly.');
+      }
+      throw e;
+    }
+    try {
+      return await handleGeneratePublicReportSocialShareArtifacts(request);
+    } catch (err) {
+      if (err instanceof HttpsError) throw err;
+      logger.error('[generatePublicReportSocialShareArtifacts]', err);
+      throw new HttpsError('internal', 'Failed to generate share images.');
+    }
+  },
+);
+
+/** Unauthenticated: GDPR erasure request from /r/:token/erasure (validates token → org via Admin SDK). */
+export const submitPublicErasureRequest = onCall(
+  {
+    enforceAppCheck: false,
+    invoker: 'public',
+  },
+  async (request) => {
+    return handleSubmitPublicErasureRequest(request);
+  },
+);
+
 // Stripe payment functions
 export const createCheckoutSession = onCall({
   enforceAppCheck: false,
@@ -97,6 +137,9 @@ export const createLandingGuestCheckoutSession = onCall(
     invoker: 'public',
   },
   async (request) => {
+    const db = admin.firestore();
+    const key = buildRateLimitKey('landing_guest_checkout', undefined, request.rawRequest?.ip);
+    await assertRateLimit(db, key, { maxRequests: 15, windowSeconds: 3600 });
     return handleCreateLandingGuestCheckoutSession(request);
   },
 );
@@ -128,7 +171,28 @@ export const createBrandingCheckoutSession = onCall({
 
 export const createCreditTopupSession = onCall({
   enforceAppCheck: false,
-}, handleCreateCreditTopupSession);
+}, async (request) => {
+  const db = admin.firestore();
+  const key = buildRateLimitKey('credit_topup', request.auth?.uid, request.rawRequest?.ip);
+  await assertRateLimit(db, key, { maxRequests: 15, windowSeconds: 3600 });
+  return handleCreateCreditTopupSession(request);
+});
+
+/** Idempotent: applies subscription/branding from Stripe Checkout when webhooks are delayed (success page recovery). */
+export const syncCheckoutSession = onCall(
+  {
+    enforceAppCheck: false,
+  },
+  async (request) => {
+    try {
+      return await handleSyncCheckoutSession(request);
+    } catch (err) {
+      if (err instanceof HttpsError) throw err;
+      logger.error('[syncCheckoutSession]', err);
+      throw new HttpsError('internal', 'Could not sync checkout session.');
+    }
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Webhook fan-out: fires when a session (assessment) doc is created
@@ -366,7 +430,7 @@ export const cleanupAuditLogs = onSchedule(
     const snapshot = await staleLogsQuery.get();
     
     if (snapshot.empty) {
-      console.log('[AuditCleanup] No stale audit logs to delete');
+      logger.info('[AuditCleanup] No stale audit logs to delete');
       return;
     }
 
@@ -377,7 +441,7 @@ export const cleanupAuditLogs = onSchedule(
     });
     await batch.commit();
 
-    console.log(`[AuditCleanup] Deleted ${snapshot.size} audit logs older than 90 days`);
+    logger.info(`[AuditCleanup] Deleted ${snapshot.size} audit logs older than 90 days`);
 
     // Also clean up expired impersonation markers
     const expiredMarkersQuery = db
@@ -394,7 +458,7 @@ export const cleanupAuditLogs = onSchedule(
         markerBatch.delete(doc.ref);
       });
       await markerBatch.commit();
-      console.log(`[AuditCleanup] Cleaned up ${markerSnapshot.size} expired impersonation markers`);
+      logger.info(`[AuditCleanup] Cleaned up ${markerSnapshot.size} expired impersonation markers`);
     }
   },
 );
@@ -672,7 +736,7 @@ export const getTeamMetrics = onCall(
       return await computeTeamMetrics(request, { orgId });
     } catch (err) {
       if (err instanceof HttpsError) throw err;
-      console.error('[getTeamMetrics] computeTeamMetrics failed:', err);
+      logger.error('[getTeamMetrics] computeTeamMetrics failed', err);
       throw new HttpsError(
         'internal',
         err instanceof Error ? err.message : 'Team metrics could not be computed.',
@@ -833,7 +897,7 @@ export const cleanupLegacyAchievements = onCall(
       }
     }
 
-    console.log(`[CleanupLegacyAchievements] Deleted: ${deleted}, Reports with no legacy achievements: ${skipped}`);
+    logger.info(`[CleanupLegacyAchievements] Deleted: ${deleted}, Reports with no legacy achievements: ${skipped}`);
     return { success: true, deleted, reportsScanned: reportsSnap.size };
   },
 );
@@ -1127,7 +1191,7 @@ export const repairClientProfiles = onCall(
     }
 
     admin.firestore(); // ensure app is initialised
-    console.info(`[repairClientProfiles] fixed=${fixed} skipped=${skipped}`);
+    logger.info(`[repairClientProfiles] fixed=${fixed} skipped=${skipped}`);
     return { success: true, fixed, skipped, results };
   },
 );

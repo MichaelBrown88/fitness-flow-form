@@ -1,4 +1,6 @@
+import { randomUUID } from 'node:crypto';
 import * as admin from 'firebase-admin';
+import { logger } from 'firebase-functions';
 import type { CallableRequest } from 'firebase-functions/v2/https';
 import { Resend } from 'resend';
 import { APP_HOST, RESEND_API_KEY, RESEND_FROM } from './config';
@@ -33,11 +35,45 @@ function cleanEmail(value: unknown) {
 }
 
 /**
- * Get public report by token (preferred) or by coachUid/assessmentId (legacy)
- * Returns the token if found, or null if not found
+ * Move `publicReports/{coachUid}__{assessmentId}` → `publicReports/{uuid}` so share links never embed coach UIDs.
  */
+async function promoteLegacyPublicReportDoc(
+  coachUid: string,
+  assessmentId: string,
+): Promise<string | null> {
+  const db = getDb();
+  const legacyId = `${coachUid}__${assessmentId}`;
+  if (legacyId.length > 1500) {
+    return null;
+  }
+  const legacyRef = db.doc(`publicReports/${legacyId}`);
+  const legacySnap = await legacyRef.get();
+  if (!legacySnap.exists) {
+    return null;
+  }
+
+  const newToken = randomUUID();
+  const newRef = db.doc(`publicReports/${newToken}`);
+  const data = legacySnap.data() ?? {};
+  const batch = db.batch();
+  batch.set(
+    newRef,
+    {
+      ...data,
+      shareToken: newToken,
+      shareUrl: `${APP_HOST}/r/${newToken}`,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    },
+    { merge: false },
+  );
+  batch.delete(legacyRef);
+  await batch.commit();
+  logger.info('[share] promoted legacy publicReport to token doc', { legacyId, newToken });
+  return newToken;
+}
+
+/** Resolve share token document id for this coach + assessment (promotes legacy doc id if needed). */
 async function getPublicReportToken(coachUid: string, assessmentId: string): Promise<string | null> {
-  // Try to find existing token-based report
   const query = getDb()
     .collection('publicReports')
     .where('coachUid', '==', coachUid)
@@ -47,26 +83,19 @@ async function getPublicReportToken(coachUid: string, assessmentId: string): Pro
 
   const snapshot = await query.get();
   if (!snapshot.empty) {
-    // Found token-based report
-    return snapshot.docs[0].id; // Document ID is the token
+    return snapshot.docs[0].id;
   }
 
-  // Fallback to legacy ID-based lookup
-  const legacyRef = getDb().doc(`publicReports/${coachUid}__${assessmentId}`);
-  const legacySnap = await legacyRef.get();
-  if (legacySnap.exists) {
-    // Legacy report exists but doesn't have a token yet
-    // The client will generate one on next share
-    return null;
+  const promoted = await promoteLegacyPublicReportDoc(coachUid, assessmentId);
+  if (promoted) {
+    return promoted;
   }
 
   return null;
 }
 
 async function ensurePublicReport(coachUid: string, assessmentId: string) {
-  // Try token-based first
-  const token = await getPublicReportToken(coachUid, assessmentId);
-
+  let token = await getPublicReportToken(coachUid, assessmentId);
   if (token) {
     const ref = getDb().doc(`publicReports/${token}`);
     const snap = await ref.get();
@@ -75,21 +104,20 @@ async function ensurePublicReport(coachUid: string, assessmentId: string) {
     }
   }
 
-  // Fallback to legacy ID-based
-  const legacyRef = getDb().doc(`publicReports/${coachUid}__${assessmentId}`);
-  const snap = await legacyRef.get();
-  if (!snap.exists) {
-    const profileSnap = await getDb().doc(`userProfiles/${coachUid}`).get();
-    const organizationId = profileSnap.exists
-      ? (profileSnap.data() as { organizationId?: string })?.organizationId
-      : undefined;
-    if (!organizationId) {
-      throw new Error('User profile missing organizationId; cannot create report artifacts.');
-    }
-    await ensureReportArtifacts({ coachUid, assessmentId, organizationId });
-    return (await legacyRef.get()).data() as PublicReportDoc | undefined;
+  const profileSnap = await getDb().doc(`userProfiles/${coachUid}`).get();
+  const organizationId = profileSnap.exists
+    ? (profileSnap.data() as { organizationId?: string })?.organizationId
+    : undefined;
+  if (!organizationId) {
+    throw new Error('User profile missing organizationId; cannot create report artifacts.');
   }
-  return snap.data() as PublicReportDoc;
+  await ensureReportArtifacts({ coachUid, assessmentId, organizationId });
+  token = await getPublicReportToken(coachUid, assessmentId);
+  if (!token) {
+    return undefined;
+  }
+  const snap = await getDb().doc(`publicReports/${token}`).get();
+  return snap.data() as PublicReportDoc | undefined;
 }
 
 type SharePayload = {
@@ -112,11 +140,14 @@ export async function requestShareLinks(request: CallableRequest<SharePayload>) 
       throw new Error('failed-precondition');
     }
 
-    // Try to get token-based URL, fallback to legacy
-    const token = await getPublicReportToken(coachUid, assessmentId);
-    const shareUrl = token
-      ? `${APP_HOST}/r/${token}`
-      : (report.shareUrl || `${APP_HOST}/share/${coachUid}/${assessmentId}`);
+    const token =
+      typeof report.shareToken === 'string' && report.shareToken.length > 0
+        ? report.shareToken
+        : await getPublicReportToken(coachUid, assessmentId);
+    if (!token) {
+      throw new Error('failed-precondition');
+    }
+    const shareUrl = `${APP_HOST}/r/${token}`;
 
     const whatsappText = `Here is your One Assess assessment report:\n${shareUrl}`;
 
@@ -125,7 +156,7 @@ export async function requestShareLinks(request: CallableRequest<SharePayload>) 
       whatsappText,
     };
   } catch (err) {
-    console.error('[requestShareLinks] error', err);
+    logger.error('[requestShareLinks] error', err);
     throw err instanceof Error ? err : new Error(String(err));
   }
 }
@@ -154,11 +185,14 @@ export async function sendReportEmail(request: CallableRequest<EmailPayload>) {
     throw new Error('failed-precondition');
   }
 
-  // Try to get token-based URL, fallback to legacy
-  const token = await getPublicReportToken(coachUid, data.assessmentId);
-  const shareUrl = token
-    ? `${APP_HOST}/r/${token}`
-    : (report.shareUrl || `${APP_HOST}/share/${coachUid}/${data.assessmentId}`);
+  const token =
+    typeof report.shareToken === 'string' && report.shareToken.length > 0
+      ? report.shareToken
+      : await getPublicReportToken(coachUid, data.assessmentId);
+  if (!token) {
+    throw new Error('failed-precondition');
+  }
+  const shareUrl = `${APP_HOST}/r/${token}`;
   const subject =
     view === 'coach'
       ? 'Coach report ready'

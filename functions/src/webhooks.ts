@@ -14,6 +14,7 @@
  */
 
 import * as admin from 'firebase-admin';
+import { logger } from 'firebase-functions';
 import * as crypto from 'crypto';
 import { maybeSendFirstAssessmentCelebrationEmail } from './transactionalEmails';
 
@@ -118,7 +119,7 @@ export async function fanOutWebhookEvent(
       });
 
       if (!ok) {
-        console.warn(`[Webhook] Delivery failed to ${url} for event ${event}`);
+        logger.warn(`[Webhook] Delivery failed to ${url} for event ${event}`);
       }
     });
 
@@ -144,6 +145,6 @@ export async function handleAssessmentCompletedTrigger(
   try {
     await maybeSendFirstAssessmentCelebrationEmail(orgId, clientSlug, sessionData);
   } catch (err) {
-    console.error('[handleAssessmentCompletedTrigger] first-assessment email failed', err);
+    logger.error('[handleAssessmentCompletedTrigger] first-assessment email failed', err);
   }
 }

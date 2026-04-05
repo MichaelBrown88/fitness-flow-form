@@ -27,9 +27,9 @@ export const FieldSelect: React.FC<FieldSelectProps> = ({
             <button
               type="button"
               onClick={() => handleChange(option.value)}
-              className={`flex min-h-[64px] h-auto w-full items-center gap-4 rounded-2xl border-2 px-5 py-3 text-left transition-all relative overflow-hidden ${
+              className={`relative flex h-auto min-h-[64px] w-full items-center gap-4 overflow-hidden rounded-lg border-2 px-5 py-3 text-left transition-all ${
                 isSelected
-                  ? 'border-foreground bg-foreground text-white shadow-lg scale-[1.02]'
+                  ? 'border-foreground bg-foreground text-white shadow-sm'
                   : `bg-background text-foreground-secondary ${colorClass}`
               }`}
               aria-label={option.label}

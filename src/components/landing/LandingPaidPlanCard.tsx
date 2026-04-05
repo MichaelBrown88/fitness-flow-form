@@ -117,7 +117,7 @@ export function LandingPaidPlanCard({
   );
 
   const handleGuestGetStarted = useCallback(async () => {
-    const redirected = await startLandingGuestCheckout(region, clientCount, billingPeriod, track);
+    const { redirected } = await startLandingGuestCheckout(region, clientCount, billingPeriod, track);
     if (!redirected) {
       navigate(ROUTES.TRY, { replace: false });
     }
@@ -128,7 +128,7 @@ export function LandingPaidPlanCard({
     billingPeriod === 'annual' ? tierRow.annualPriceGbp / 12 : tierRow.monthlyPriceGbp;
 
   const primaryCtaClassName = cn(
-    'w-full py-4 rounded-xl font-bold shadow-xl block text-center transition-apple',
+    'block w-full rounded-lg py-4 text-center font-bold shadow-sm transition-apple',
     highlighted
       ? 'bg-foreground text-primary-foreground hover:opacity-90'
       : 'bg-background border border-border text-foreground hover:bg-secondary shadow-sm',
@@ -166,11 +166,11 @@ export function LandingPaidPlanCard({
         <Select value={String(tierPosition)} onValueChange={(v) => setTierPosition(Number(v))}>
           <SelectTrigger
             id={`landing-seats-${track}`}
-            className="h-11 rounded-xl border-border bg-background text-left text-sm font-medium"
+            className="h-11 rounded-lg border-border bg-background text-left text-sm font-medium"
           >
             <SelectValue placeholder="Select seats" />
           </SelectTrigger>
-          <SelectContent className="rounded-xl border-border max-h-[min(60vh,20rem)]">
+          <SelectContent className="max-h-[min(60vh,20rem)] rounded-lg border-border">
             {seatOptions.map((opt) => (
               <SelectItem key={opt.position} value={String(opt.position)} className="rounded-lg">
                 <span className="font-medium">
@@ -211,9 +211,9 @@ export function LandingPaidPlanCard({
   if (highlighted) {
     return (
       <div className="relative transform md:-translate-y-4">
-        <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gradient-from to-gradient-to opacity-20 blur-sm" />
-        <GlassCard className="p-8 sm:p-10 relative bg-card border border-brand-medium shadow-2xl">
-          <div className="absolute top-0 right-0 bg-gradient-to-l from-gradient-from to-gradient-to text-primary-foreground text-[10px] font-bold uppercase tracking-[0.15em] px-4 py-2 rounded-bl-2xl rounded-tr-2xl">
+        <div className="absolute inset-0 rounded-lg bg-gradient-to-b from-gradient-from to-gradient-to opacity-20 blur-sm" />
+        <GlassCard className="relative border border-brand-medium bg-card p-8 shadow-md sm:p-10">
+          <div className="absolute right-0 top-0 rounded-bl-lg rounded-tr-lg bg-gradient-to-l from-gradient-from to-gradient-to px-4 py-2 text-[10px] font-bold uppercase tracking-[0.15em] text-primary-foreground">
             Most Popular
           </div>
           {cardBody}
@@ -222,5 +222,7 @@ export function LandingPaidPlanCard({
     );
   }
 
-  return <GlassCard className="p-8 sm:p-10 bg-card/70 hover:shadow-xl transition-apple">{cardBody}</GlassCard>;
+  return (
+    <GlassCard className="bg-card/70 p-8 transition-apple hover:shadow-md sm:p-10">{cardBody}</GlassCard>
+  );
 }

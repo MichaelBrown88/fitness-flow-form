@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import * as admin from 'firebase-admin';
 import { APP_HOST } from './config';
 import type { AssessmentDoc, PublicReportDoc } from './types';
@@ -9,8 +10,6 @@ function getDb() {
   }
   return admin.firestore();
 }
-
-const getPublicReportId = (coachUid: string, assessmentId: string) => `${coachUid}__${assessmentId}`;
 
 /**
  * Get assessment document from org-scoped path (legacy paths removed).
@@ -45,20 +44,22 @@ export async function ensureReportArtifacts(params: {
     throw new Error('Assessment payload missing; cannot create report artifacts.');
   }
 
+  const shareToken = randomUUID();
   const publicReport: Partial<PublicReportDoc> = {
     coachUid,
     assessmentId,
+    shareToken,
     clientName: assessment.clientName || 'Unnamed client',
     clientNameLower: (assessment.clientName || 'Unnamed client').toLowerCase(),
     goals: Array.isArray(assessment.goals) ? assessment.goals : [],
     overallScore: typeof assessment.overallScore === 'number' ? assessment.overallScore : 0,
     visibility: 'public',
-    shareUrl: `${APP_HOST}/share/${coachUid}/${assessmentId}`,
+    shareUrl: `${APP_HOST}/r/${shareToken}`,
     organizationId: organizationId || assessment.organizationId,
   };
 
   await getDb()
-    .doc(`publicReports/${getPublicReportId(coachUid, assessmentId)}`)
+    .doc(`publicReports/${shareToken}`)
     .set(
       {
         ...publicReport,
@@ -67,5 +68,5 @@ export async function ensureReportArtifacts(params: {
       { merge: true },
     );
 
-  return {};
+  return { shareToken };
 }

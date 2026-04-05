@@ -5,8 +5,8 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { saveDraftAssessment } from '@/services/coachAssessments';
-import { STORAGE_KEYS } from '@/constants/storageKeys';
 import { hasAssessmentDraftableData } from '@/hooks/useAssessmentDraft';
+import { hasEditAssessmentInSession } from '@/lib/assessment/assessmentSessionStorage';
 import { logger } from '@/lib/utils/logger';
 import type { FormData } from '@/contexts/FormContext';
 
@@ -18,9 +18,7 @@ export function useAssessmentFirestoreDraftSync(
   organizationId: string | undefined,
   activePhaseIdx: number,
 ): void {
-  const isEditModeRef = useRef(
-    !!sessionStorage.getItem(STORAGE_KEYS.EDIT_ASSESSMENT),
-  );
+  const isEditModeRef = useRef(hasEditAssessmentInSession());
   const formRef = useRef(formData);
   const phaseRef = useRef(activePhaseIdx);
   formRef.current = formData;

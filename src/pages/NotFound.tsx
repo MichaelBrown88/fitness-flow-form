@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ROUTES } from '@/constants/routes';
+import { UI_COMMAND_MENU } from '@/constants/ui';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -18,7 +19,7 @@ const NotFound = () => {
           <Button asChild className="h-11 px-6 rounded-xl font-bold">
             <Link to={ROUTES.DASHBOARD}>
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Dashboard
+              Back to {UI_COMMAND_MENU.HOME}
             </Link>
           </Button>
           <Button asChild variant="outline" className="h-11 px-6 rounded-xl font-bold">

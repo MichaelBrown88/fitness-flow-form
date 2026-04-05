@@ -43,6 +43,13 @@ service firebase.storage {
       allow read, write: if false;
     }
 
+    // Public report share images: path includes unguessable share token (same secret as /r/:token).
+    // Writes only via Admin SDK (Functions); clients and crawlers read for OG / downloads.
+    match /publicReportShare/{token}/{allPaths=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // No catch-all rule = everything else is DENIED by default
   }
 }

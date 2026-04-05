@@ -11,6 +11,7 @@
  */
 
 import * as admin from 'firebase-admin';
+import { logger } from 'firebase-functions';
 import { Resend } from 'resend';
 import { RESEND_API_KEY, RESEND_FROM, APP_HOST, EMAIL_ASSETS_LOGO_URL } from './config';
 import { renderActivationEmail, sendResendHtmlText } from './email';
@@ -82,7 +83,7 @@ export async function sendTrialEndingSoonEmail(
     [`emailMilestones.trialNudgeSentDays`]: admin.firestore.FieldValue.arrayUnion(daysLeft),
   });
 
-  console.log(`[TrialNudge] Sent ${daysLeft}-day nudge to ${toEmail} for org ${orgId}`);
+  logger.info(`[TrialNudge] Sent ${daysLeft}-day nudge to ${toEmail} for org ${orgId}`);
 }
 
 /**
@@ -91,7 +92,7 @@ export async function sendTrialEndingSoonEmail(
  */
 export async function sendTrialExpiryNudges(): Promise<void> {
   if (!RESEND_API_KEY) {
-    console.log('[TrialNudge] RESEND_API_KEY not set, skipping');
+    logger.info('[TrialNudge] RESEND_API_KEY not set, skipping');
     return;
   }
 
@@ -108,13 +109,13 @@ export async function sendTrialExpiryNudges(): Promise<void> {
     .limit(200)
     .get();
 
-  console.log(`[TrialNudge] Found ${orgsSnap.size} orgs with trial ending tomorrow`);
+  logger.info(`[TrialNudge] Found ${orgsSnap.size} orgs with trial ending tomorrow`);
 
   for (const doc of orgsSnap.docs) {
     try {
       await sendTrialEndingSoonEmail(doc.id, 1);
     } catch (err) {
-      console.error(`[TrialNudge] Failed for org ${doc.id}:`, err);
+      logger.error(`[TrialNudge] Failed for org ${doc.id}`, err);
     }
   }
 }

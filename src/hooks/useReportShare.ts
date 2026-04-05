@@ -3,15 +3,23 @@
  * Used by AssessmentReport and ShareReportModal.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { Timestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { requestShareArtifacts, sendReportEmail, type ShareArtifacts } from '@/services/share';
+import { generatePublicReportSocialShareArtifacts } from '@/services/socialShareArtifacts';
+import { SOCIAL_SHARE_ARTIFACTS_COPY } from '@/constants/socialShareArtifactsCopy';
+import type { SocialShareArtifacts } from '@/constants/socialShareArtifacts';
 import { UI_TOASTS } from '@/constants/ui';
 import { logger } from '@/lib/utils/logger';
 import { copyTextToClipboard } from '@/lib/utils/clipboard';
 import type { FormData } from '@/contexts/FormContext';
 import type { UserProfile } from '@/types/auth';
 import type { ScoreSummary } from '@/lib/scoring/types';
+
+function isFirebaseFunctionsError(e: unknown): e is { code: string; message?: string } {
+  return typeof e === 'object' && e !== null && 'code' in e && typeof (e as { code: unknown }).code === 'string';
+}
 
 export interface UseReportShareParams {
   assessmentId: string | undefined;
@@ -31,6 +39,12 @@ export function useReportShare({ assessmentId: id, formData, user, profile, over
     coach: null,
   });
   const [shareLoading, setShareLoading] = useState(false);
+  const [socialShareArtifacts, setSocialShareArtifacts] = useState<SocialShareArtifacts | null>(null);
+  const [socialShareGenerating, setSocialShareGenerating] = useState(false);
+
+  useEffect(() => {
+    setSocialShareArtifacts(null);
+  }, [id]);
 
   const ensureShareArtifacts = useCallback(
     async (view: 'client' | 'coach' = 'client') => {
@@ -208,6 +222,39 @@ export function useReportShare({ assessmentId: id, formData, user, profile, over
     }
   }, [id, formData, user, profile, overallScore, scoreDelta, toast]);
 
+  const handleGenerateSocialShareArtifacts = useCallback(async () => {
+    if (!user || !id) return;
+    setSocialShareGenerating(true);
+    try {
+      const out = await generatePublicReportSocialShareArtifacts({ assessmentId: id });
+      setSocialShareArtifacts({
+        ...out.socialShareArtifacts,
+        generatedAt: Timestamp.now(),
+      });
+      toast({
+        title: SOCIAL_SHARE_ARTIFACTS_COPY.SUCCESS_TITLE,
+        description: SOCIAL_SHARE_ARTIFACTS_COPY.SUCCESS_DESC,
+      });
+    } catch (e) {
+      logger.error('Social share generation failed', e);
+      if (isFirebaseFunctionsError(e) && e.code === 'functions/resource-exhausted') {
+        toast({
+          title: SOCIAL_SHARE_ARTIFACTS_COPY.ERROR_TITLE,
+          description: SOCIAL_SHARE_ARTIFACTS_COPY.RATE_LIMIT_DESC,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: SOCIAL_SHARE_ARTIFACTS_COPY.ERROR_TITLE,
+          description: SOCIAL_SHARE_ARTIFACTS_COPY.ERROR_DESC,
+          variant: 'destructive',
+        });
+      }
+    } finally {
+      setSocialShareGenerating(false);
+    }
+  }, [id, user, toast]);
+
   const handleCopyMessage = useCallback(async () => {
     if (!id || !formData || !user) return;
     try {
@@ -239,6 +286,9 @@ export function useReportShare({ assessmentId: id, formData, user, profile, over
     handleSystemShare,
     handleWhatsAppShare,
     handleCopyMessage,
+    handleGenerateSocialShareArtifacts,
+    socialShareArtifacts,
+    socialShareGenerating,
     shareLoading,
   };
 }

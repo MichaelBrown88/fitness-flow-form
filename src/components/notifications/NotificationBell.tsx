@@ -55,13 +55,13 @@ function NotificationItem({
     <button
       onClick={() => onRead(notification.id, notification.actionUrl)}
       className={`w-full text-left px-3 py-3 flex items-start gap-3 hover:bg-muted/50 transition-colors min-h-[44px] ${
-        isUnread ? 'bg-violet-50/40' : ''
+        isUnread ? 'bg-primary/5 dark:bg-primary/10' : ''
       }`}
     >
       <div
         className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${
           isUnread
-            ? 'bg-violet-100 text-violet-600'
+            ? 'bg-primary/12 text-on-brand-tint dark:bg-primary/20 dark:text-on-brand-tint'
             : 'bg-muted text-muted-foreground'
         }`}
       >
@@ -92,7 +92,7 @@ function NotificationItem({
         )}
       </div>
       {isUnread && (
-        <div className="flex-shrink-0 w-2 h-2 rounded-full bg-violet-500 mt-1.5" />
+        <div className="flex-shrink-0 w-2 h-2 rounded-full bg-primary mt-1.5" />
       )}
     </button>
   );
@@ -134,7 +134,7 @@ export function NotificationBell({ shareToken }: NotificationBellProps) {
         >
           <Bell className="w-4 h-4 text-foreground-secondary" />
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-violet-600 px-1 text-[10px] font-bold text-white">
+            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
@@ -151,7 +151,7 @@ export function NotificationBell({ shareToken }: NotificationBellProps) {
           {unreadCount > 0 && (
             <button
               onClick={() => markAllAsRead()}
-              className="text-xs text-violet-600 hover:text-violet-700 font-medium"
+              className="text-xs text-primary font-medium hover:opacity-80"
             >
               Mark all read
             </button>

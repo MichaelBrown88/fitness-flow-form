@@ -1,5 +1,8 @@
 /**
  * Coach-visible copy for the floating Getting Started checklist on the dashboard.
+ * Completion is derived from dashboard props (clients, assessments, share, settings).
+ * Onboarding funnel analytics use `logOnboardingStep` in useOnboarding (steps 1–5) — keep new checklist
+ * milestones aligned with product events if you add server-logged steps.
  */
 
 export const GETTING_STARTED = {

@@ -6,7 +6,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import type { PhaseSection } from '@/lib/phaseConfig';
 import { useAssessmentNavigation } from '@/hooks/useAssessmentNavigation';
-import { STORAGE_KEYS } from '@/constants/storageKeys';
+import { writeAssessmentPhaseIndex } from '@/lib/assessment/assessmentSessionStorage';
 import type { FormData } from '@/contexts/FormContext';
 import type { OrgSettings } from '@/services/organizations';
 
@@ -43,11 +43,7 @@ export function useAssessmentFlow({ formData, orgSettings }: UseAssessmentFlowPr
     (value: number | ((prev: number) => number)) => {
       setActivePhaseIdx((prev) => {
         const next = typeof value === 'function' ? value(prev) : value;
-        try {
-          sessionStorage.setItem(STORAGE_KEYS.ASSESSMENT_PHASE, String(next));
-        } catch {
-          // non-fatal
-        }
+        writeAssessmentPhaseIndex(next);
         return next;
       });
     },

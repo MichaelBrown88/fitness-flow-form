@@ -10,7 +10,7 @@
  *       current/state                 ← live composite assessment state (one per client)
  *       sessions/{sessionId}          ← immutable assessment events (append-only)
  *       roadmap/plan                  ← phases + metrics
- *       achievements/record           ← milestones, status badges, streaks
+ *       achievements/{achievementId}  ← per-definition docs (see ORGANIZATION.clientAchievements)
  *       assessmentDrafts/draft        ← save-for-later partial draft
  *
  *   publicReports/{shareToken}        ← client PWA credential + current report snapshot
@@ -117,12 +117,6 @@ export const ORGANIZATION = {
      */
     roadmap: (orgId: string, clientSlug: string) =>
       `organizations/${orgId}/clients/${clientSlug}/roadmap/plan` as const,
-
-    /**
-     * @deprecated Use ORGANIZATION.clientAchievements instead.
-     */
-    achievements: (orgId: string, clientSlug: string) =>
-      `organizations/${orgId}/clients/${clientSlug}/achievements/record` as const,
 
     /**
      * Assessment draft (Save for Later). One document per client, always ID = 'draft'.

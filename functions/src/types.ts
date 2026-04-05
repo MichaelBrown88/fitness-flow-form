@@ -21,6 +21,8 @@ export type ReportArtifacts = {
 export type PublicReportDoc = {
   coachUid: string;
   assessmentId: string;
+  /** Same as Firestore document id when using token-based public reports. */
+  shareToken?: string;
   clientName: string;
   clientNameLower: string;
   visibility: 'public' | 'private';

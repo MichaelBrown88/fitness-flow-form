@@ -6,6 +6,7 @@ import { LandingTrialCtaLink } from '@/components/landing/LandingTrialCtaLink';
 import { LANDING_GUEST_CHECKOUT_ENABLED } from '@/constants/platform';
 import { landingTrialAriaLabel } from '@/constants/landingCopy';
 import { ROUTES } from '@/constants/routes';
+import { UI_COMMAND_MENU } from '@/constants/ui';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 
 const NAV_LINKS = [
@@ -158,10 +159,10 @@ export function Navbar() {
       ) : null}
       <div className="max-w-7xl mx-auto px-6">
         <div
-          className={`relative flex items-center justify-between rounded-full px-6 py-3 backdrop-blur-xl transition-all duration-200 ${
+          className={`relative flex items-center justify-between rounded-xl px-5 py-2.5 backdrop-blur-xl transition-all duration-200 ${
             isScrolled
-              ? 'border border-border/40 bg-card/85 shadow-lg shadow-black/5 dark:border-border dark:bg-background/90 dark:shadow-black/40'
-              : 'border border-border/30 bg-card/60 dark:border-border/60 dark:bg-background/75'
+              ? 'border border-border/50 bg-card/90 shadow-sm shadow-black/5 dark:border-border dark:bg-background/90 dark:shadow-black/30'
+              : 'border border-border/40 bg-card/70 dark:border-border/60 dark:bg-background/75'
           }`}
         >
           <Link to={ROUTES.HOME} className="flex items-center gap-2">
@@ -196,9 +197,9 @@ export function Navbar() {
             {user ? (
               <Link
                 to={ROUTES.DASHBOARD}
-                className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-md transition-all hover:opacity-90 active:scale-[0.98]"
+                className="rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:opacity-90"
               >
-                Dashboard
+                {UI_COMMAND_MENU.HOME}
               </Link>
             ) : (
               <>
@@ -209,7 +210,7 @@ export function Navbar() {
                   Log in
                 </Link>
                 <LandingTrialCtaLink
-                  className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-md transition-all hover:opacity-90 active:scale-[0.98]"
+                  className="rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:opacity-90"
                   ariaLabel={landingTrialAriaLabel('nav', goesToPricing)}
                 >
                   Start Free Trial
@@ -239,7 +240,7 @@ export function Navbar() {
           role="dialog"
           aria-modal="true"
           aria-label="Mobile navigation"
-          className="animate-fade-in-up absolute left-4 right-4 top-24 rounded-2xl border border-border bg-card/95 p-6 shadow-lg backdrop-blur-xl md:hidden"
+          className="animate-fade-in-up absolute left-4 right-4 top-24 rounded-xl border border-border/80 bg-card/95 p-6 shadow-md backdrop-blur-xl md:hidden"
         >
           <div className="flex flex-col gap-6 text-center">
             <div className="flex justify-center">
@@ -259,10 +260,10 @@ export function Navbar() {
             {user ? (
               <Link
                 to={ROUTES.DASHBOARD}
-                className="w-full rounded-xl bg-primary py-3.5 font-semibold text-primary-foreground shadow-lg"
+                className="w-full rounded-lg bg-primary py-3.5 font-semibold text-primary-foreground shadow-sm"
                 onClick={closeMobileMenu}
               >
-                Dashboard
+                {UI_COMMAND_MENU.HOME}
               </Link>
             ) : (
               <>
@@ -274,7 +275,7 @@ export function Navbar() {
                   Log in
                 </Link>
                 <LandingTrialCtaLink
-                  className="w-full rounded-xl bg-primary py-3.5 font-semibold text-primary-foreground shadow-lg"
+                  className="w-full rounded-lg bg-primary py-3.5 font-semibold text-primary-foreground shadow-sm"
                   onNavigate={closeMobileMenu}
                   ariaLabel={landingTrialAriaLabel('mobileNav', goesToPricing)}
                 >

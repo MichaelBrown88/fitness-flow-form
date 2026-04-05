@@ -8,6 +8,7 @@ import { logger } from '@/lib/utils/logger';
 import { validateOrganizationId } from '@/lib/utils/validateOrganizationId';
 import type { UserProfile } from '@/types/auth';
 import { computeScores } from '@/lib/scoring';
+import type { SocialShareArtifacts } from '@/constants/socialShareArtifacts';
 
 export interface SnapshotSummary {
   id: string;
@@ -16,6 +17,12 @@ export interface SnapshotSummary {
   type: string;
 }
 
+/**
+ * Root document at `publicReports/{shareToken}` with `allow read: if true` in Firestore rules.
+ * Anyone with the URL can read these fields — keep coach-only ops data out of the client UI.
+ * `formData` is sanitized before publish (see `sanitizeFormDataForPublic`); `coachUid` is for
+ * rule enforcement (coach writes) and must not be shown on public report pages.
+ */
 export type PublicReportDoc = {
   shareToken: string;
   coachUid: string;
@@ -33,6 +40,10 @@ export type PublicReportDoc = {
   snapshotSummaries?: SnapshotSummary[];
   /** AI-generated 2-sentence progress summary — written after coach first shares the report */
   changeNarrative?: string;
+  /** Denormalized at publish for server-side share graphics (no scoring port to Functions). */
+  latestOverallScore?: number;
+  /** Server-generated PNG URLs (signed); see generatePublicReportSocialShareArtifacts. */
+  socialShareArtifacts?: SocialShareArtifacts;
 };
 
 /**
@@ -127,6 +138,7 @@ export async function publishPublicReport(params: {
   const snapshot = await getDoc(ref);
 
   const safeFormData = sanitizeFormDataForPublic(formData);
+  const latestOverallScore = computeScores(safeFormData).overall;
 
   // Capture previous formData for score change animations on the client viewer
   let previousFormData: FormData | undefined;
@@ -145,6 +157,7 @@ export async function publishPublicReport(params: {
     clientNameLower: (safeFormData.fullName || 'Unnamed client').toLowerCase(),
     visibility,
     formData: sanitizeForFirestore(safeFormData) as FormData,
+    latestOverallScore,
     updatedAt: serverTimestamp(),
     expiresAt: null, // No expiry by default
     ...(previousFormData ? { previousFormData: sanitizeForFirestore(previousFormData) as FormData } : {}),
@@ -160,7 +173,7 @@ export async function publishPublicReport(params: {
   const currentUser = getFirebaseAuth().currentUser;
   if (currentUser) {
     try {
-      const overallScore = computeScores(safeFormData).overall;
+      const overallScore = latestOverallScore;
       const snapshotId = `${assessmentId}_${Date.now()}`;
       const snapshotRef = doc(getDb(), COLLECTIONS.PUBLIC_REPORTS, shareToken, COLLECTIONS.PUBLIC_REPORT_SNAPSHOTS, snapshotId);
       await setDoc(snapshotRef, sanitizeForFirestore({

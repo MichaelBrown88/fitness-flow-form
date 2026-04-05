@@ -151,7 +151,7 @@ export const AssessmentModals = ({
       {/* Low-confidence retake warning */}
       {postureRetakeWarning && (
         <div className="fixed bottom-6 left-1/2 z-[160] -translate-x-1/2 w-full max-w-sm px-4 animate-in slide-in-from-bottom-4 duration-300">
-          <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 shadow-xl flex items-start gap-3">
+          <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 shadow-sm">
             <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
             <div className="flex-1 space-y-1">
               <p className="text-sm font-bold text-amber-900">Retake Recommended</p>

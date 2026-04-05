@@ -62,7 +62,7 @@ export function BillingCheckoutSummaryPanel({
   const showAnnualCompare = Boolean(annualComparison && billingPeriod === 'annual');
 
   return (
-    <Card className="h-fit border-border/80 bg-card shadow-sm lg:sticky lg:top-20">
+    <Card className="h-fit rounded-lg border border-border/70 bg-background shadow-none lg:sticky lg:top-20">
       <CardHeader className="space-y-0.5 pb-3 pt-4 px-4 sm:px-5">
         <CardTitle className="text-base font-semibold text-foreground tracking-tight">
           {CHECKOUT_FLOW_COPY.checkoutPlanSummaryTitle}
@@ -196,6 +196,17 @@ export function BillingCheckoutSummaryPanel({
         ) : (
           <p className="text-sm text-muted-foreground">{CHECKOUT_FLOW_COPY.checkoutSummaryNoTier}</p>
         )}
+        {error ? (
+          <div
+            role="alert"
+            className="rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
+          >
+            <p className="font-medium text-foreground">{error}</p>
+            <p className="mt-1 text-xs text-muted-foreground leading-snug">
+              {CHECKOUT_FLOW_COPY.checkoutErrorAlertHint}
+            </p>
+          </div>
+        ) : null}
         <Button
           type="button"
           className={cn('w-full rounded-xl font-semibold h-10 text-sm')}
@@ -223,7 +234,6 @@ export function BillingCheckoutSummaryPanel({
         <p className="text-[10px] text-center text-muted-foreground">
           {CHECKOUT_FLOW_COPY.checkoutAllPricesGbpNote} · {CHECKOUT_FLOW_COPY.checkoutPoweredByStripeNote}
         </p>
-        {error ? <p className="text-sm text-destructive text-center">{error}</p> : null}
       </CardContent>
     </Card>
   );

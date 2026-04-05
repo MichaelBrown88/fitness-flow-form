@@ -17,7 +17,7 @@ export function LandingCapabilitiesSection() {
   return (
     <section
       id="features"
-      className="relative overflow-x-hidden border-t border-border/80 bg-background px-6 py-24 dark:border-border dark:bg-background sm:py-32"
+      className="relative overflow-x-hidden border-t border-border/80 bg-background px-6 py-28 dark:border-border dark:bg-background sm:py-36"
     >
       <div
         className="pointer-events-none absolute inset-0 overflow-hidden"
@@ -45,21 +45,21 @@ export function LandingCapabilitiesSection() {
           />
         </div>
 
-        <div className="flex flex-col gap-12 lg:gap-16">
+        <div className="flex flex-col gap-14 lg:gap-20">
           {LANDING_CAPABILITY_ROWS.map((row, i) => (
             <LandingCapabilityRow key={row.title} ref={rowRefs[i]} row={row} />
           ))}
         </div>
 
         <div
-          className="mt-14 rounded-2xl border border-border/90 bg-card/80 px-6 py-8 shadow-sm backdrop-blur-sm dark:border-border dark:bg-card/45 sm:mt-20 sm:px-8 sm:py-10"
+          className="mt-14 rounded-lg border border-border/90 bg-card/80 px-6 py-8 shadow-sm backdrop-blur-sm dark:border-border dark:bg-card/45 sm:mt-20 sm:px-8 sm:py-10"
           aria-label={LANDING_COPY.capabilitiesComplianceAriaLabel}
         >
           <p className="mb-5 text-[10px] font-black uppercase tracking-[0.15em] text-foreground-tertiary">
             {LANDING_COPY.capabilitiesComplianceHeading}
           </p>
           <div className="flex flex-wrap gap-3">
-            <div className="flex min-h-11 min-w-[44px] items-center gap-3 rounded-2xl border border-border/90 bg-card/90 px-3.5 py-2 shadow-sm dark:border-border dark:bg-card/50">
+            <div className="flex min-h-11 min-w-[44px] items-center gap-3 rounded-lg border border-border/90 bg-card/90 px-3.5 py-2 shadow-sm dark:border-border dark:bg-card/50">
               <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-gradient-from to-gradient-to text-[10px] font-bold text-primary-foreground">
                 {LANDING_COPY.capabilitiesHipaaBadgeAbbrev}
               </div>
@@ -67,7 +67,7 @@ export function LandingCapabilitiesSection() {
                 {LANDING_COPY.capabilitiesCompliantLabel}
               </span>
             </div>
-            <div className="flex min-h-11 min-w-[44px] items-center gap-3 rounded-2xl border border-border/90 bg-card/90 px-3.5 py-2 shadow-sm dark:border-border dark:bg-card/50">
+            <div className="flex min-h-11 min-w-[44px] items-center gap-3 rounded-lg border border-border/90 bg-card/90 px-3.5 py-2 shadow-sm dark:border-border dark:bg-card/50">
               <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-foreground text-[10px] font-bold text-background dark:bg-foreground dark:text-background">
                 {LANDING_COPY.capabilitiesGdprBadgeAbbrev}
               </div>

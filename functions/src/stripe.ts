@@ -11,6 +11,9 @@
  *   STRIPE_WEBHOOK_SECRET (+ _TEST / _LIVE optional)
  *   STRIPE_PACKAGE_<S10|…|G250|A|…|F>_<MONTHLY|ANNUAL>_<TEST|LIVE> — capacity prices (GBP)
  *   Legacy: STRIPE_PRICE_<REGION>_<TIER>, STRIPE_PRICE_STARTER|PRO|ENTERPRISE
+ *
+ * Billing source of truth: Stripe webhooks (`handleStripeWebhook`) update org subscription fields in Firestore.
+ * Client UI and callables should treat those org fields as authoritative after sync (not client-only flags).
  */
 
 import * as admin from 'firebase-admin';
@@ -154,6 +157,156 @@ async function assertOrgBillingCallableAccess(
     return;
   }
   throw new Error('Not authorized for this organization.');
+}
+
+/** Purchased credit packs that survive monthly renewal replenishment (incremented on top-up checkout). */
+const ASSESSMENT_CREDITS_TOPUP_BALANCE = 'assessmentCreditsTopupBalance';
+
+function isCheckoutPaymentCompleteForSubscription(session: Stripe.Checkout.Session): boolean {
+  const ps = session.payment_status;
+  return ps === 'paid' || ps === 'no_payment_required';
+}
+
+/** Total spendable AI credits: monthly allowance plus persistent top-up balance, capped at 9999. */
+function computeAssessmentCreditsWithTopup(monthlyCredits: number, topupBalance: number): number {
+  if (monthlyCredits < 0 || monthlyCredits >= 9999) {
+    return 9999;
+  }
+  const topup = typeof topupBalance === 'number' && topupBalance > 0 ? topupBalance : 0;
+  return Math.min(9999, monthlyCredits + topup);
+}
+
+export type ApplySubscriptionCheckoutResult =
+  | { applied: true }
+  | { applied: false; reason: 'payment_not_complete' | 'missing_subscription' };
+
+/**
+ * Idempotently writes org subscription fields from a completed Checkout session (subscription mode).
+ * Used by the Stripe webhook and by syncCheckoutSession when webhooks are delayed or missed.
+ */
+export async function applySubscriptionCheckoutToOrganization(
+  db: admin.firestore.Firestore,
+  stripe: Stripe,
+  params: {
+    orgId: string;
+    session: Stripe.Checkout.Session;
+    /** When false, skips Slack new-subscription alert (e.g. manual sync from success page). */
+    sendSubscriptionAlert?: boolean;
+  },
+): Promise<ApplySubscriptionCheckoutResult> {
+  const { orgId, session, sendSubscriptionAlert = true } = params;
+
+  const subRef = session.subscription;
+  const subId =
+    typeof subRef === 'string'
+      ? subRef
+      : subRef && typeof subRef === 'object' && 'id' in subRef
+        ? (subRef as Stripe.Subscription).id
+        : '';
+  if (!subId) {
+    return { applied: false, reason: 'missing_subscription' };
+  }
+
+  if (!isCheckoutPaymentCompleteForSubscription(session)) {
+    logger.info('applySubscriptionCheckoutToOrganization — skipped (payment not complete)', {
+      orgId,
+      sessionId: session.id,
+      payment_status: session.payment_status,
+    });
+    return { applied: false, reason: 'payment_not_complete' };
+  }
+
+  const sub = await stripe.subscriptions.retrieve(subId);
+  const item = sub.items?.data?.[0];
+  const priceObj = item?.price;
+  const stripePriceId = typeof priceObj === 'string' ? priceObj : priceObj?.id;
+  let amountCents = 0;
+  const unitAmount = (priceObj as { unit_amount?: number } | undefined)?.unit_amount;
+  if (unitAmount != null) {
+    amountCents = unitAmount;
+  }
+
+  const region = (session.metadata?.region as string) || 'GB';
+  const currency = regionToCurrency(region);
+  const legacyClientCount = parseMetadataInt(
+    session.metadata?.clientCount || session.metadata?.seats || undefined,
+    10,
+    METADATA_MAX_CLIENT_CAP,
+  );
+
+  const tierFromPrice = paidTierFromPriceId(stripePriceId);
+  const metaTier = session.metadata?.tierId;
+  const capacityTierId: PaidCapacityTierId | undefined = isPaidTierId(metaTier)
+    ? metaTier
+    : tierFromPrice;
+  const tierRow = capacityTierId ? getPaidTierById(capacityTierId) : undefined;
+  const clientLimit =
+    tierRow?.clientLimit ??
+    parseMetadataInt(session.metadata?.clientLimit, legacyClientCount, METADATA_MAX_CLIENT_CAP);
+  const fromMetaCredits = parseMetadataInt(
+    session.metadata?.monthlyAiCredits,
+    0,
+    METADATA_MAX_MONTHLY_AI_CREDITS,
+  );
+  const monthlyAiCredits =
+    tierRow?.monthlyAiCredits ??
+    (fromMetaCredits > 0 ? fromMetaCredits : getPaidTierByClientCount(legacyClientCount).monthlyAiCredits);
+
+  const orgSnap = await db.doc(`organizations/${orgId}`).get();
+  const orgData = orgSnap.data();
+  const rawTopup = orgData?.[ASSESSMENT_CREDITS_TOPUP_BALANCE];
+  const existingTopup = typeof rawTopup === 'number' && rawTopup > 0 ? rawTopup : 0;
+  const baseMonthly = monthlyAiCredits > 0 ? monthlyAiCredits : FREE_TIER_MONTHLY_AI_CREDITS;
+
+  const updateData: Record<string, unknown> = {
+    'subscription.status': 'active',
+    'stripe.stripeSubscriptionId': subId,
+    'stripe.stripeCustomerId': session.customer,
+    'stripe.stripePriceId': stripePriceId || session.metadata?.plan || session.metadata?.clientCount || '',
+    'subscription.plan': capacityTierId ? `package_${capacityTierId.toLowerCase()}` : 'starter',
+    'subscription.clientSeats': clientLimit,
+    'subscription.region': region,
+    'subscription.currency': currency,
+    'subscription.clientCount': clientLimit,
+    'subscription.amountCents': amountCents,
+    'subscription.capacityTierId': capacityTierId ?? null,
+    'subscription.clientCap': clientLimit,
+    'subscription.monthlyAiCredits': monthlyAiCredits,
+    assessmentCredits: computeAssessmentCreditsWithTopup(baseMonthly, existingTopup),
+  };
+  if (currency === 'KWD') {
+    updateData['subscription.amountFils'] = amountCents;
+  }
+
+  await db.doc(`organizations/${orgId}`).update(updateData);
+  logger.info('applySubscriptionCheckoutToOrganization — org activated', { orgId, sessionId: session.id });
+
+  if (session.metadata?.customBranding === 'true') {
+    await db.doc(`organizations/${orgId}`).update({
+      customBrandingEnabled: true,
+      customBrandingPaidAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    logger.info('applySubscriptionCheckoutToOrganization — custom branding with subscription', {
+      orgId,
+      sessionId: session.id,
+    });
+  }
+
+  if (sendSubscriptionAlert) {
+    const orgName = (await db.doc(`organizations/${orgId}`).get()).data()?.name as string | undefined;
+    const tierLabel = capacityTierId || 'plan';
+    const amtDisplay =
+      amountCents > 0
+        ? new Intl.NumberFormat('en-GB', {
+            style: 'currency',
+            currency,
+            maximumFractionDigits: 2,
+          }).format(amountCents / (currency === 'KWD' ? 1000 : 100)) + '/mo'
+        : undefined;
+    alertNewSubscription({ orgId, orgName, tierName: tierLabel, amountDisplay: amtDisplay });
+  }
+
+  return { applied: true };
 }
 
 // ---------------------------------------------------------------------------
@@ -799,6 +952,90 @@ export async function handleCreateBrandingCheckoutSession(
 }
 
 // ---------------------------------------------------------------------------
+// syncCheckoutSession — idempotent org sync when Stripe webhooks are delayed/missed
+// ---------------------------------------------------------------------------
+
+export interface SyncCheckoutSessionRequest {
+  sessionId: string;
+}
+
+export type SyncCheckoutSessionResponse = {
+  ok: true;
+  appliedSubscription: boolean;
+  detail?: string;
+};
+
+export async function handleSyncCheckoutSession(
+  request: CallableRequest<SyncCheckoutSessionRequest>,
+): Promise<SyncCheckoutSessionResponse> {
+  if (!request.auth?.uid) {
+    throw new HttpsError('unauthenticated', 'Authentication required.');
+  }
+  const sessionId =
+    typeof request.data?.sessionId === 'string' ? request.data.sessionId.trim() : '';
+  if (!sessionId) {
+    throw new HttpsError('invalid-argument', 'sessionId is required.');
+  }
+
+  const db = admin.firestore();
+  await enforceBillingCallableRateLimit(
+    db,
+    'stripe_sync_checkout',
+    request.auth.uid,
+    request.rawRequest?.ip,
+  );
+
+  const stripe = getStripe();
+  const session = await stripe.checkout.sessions.retrieve(sessionId, {
+    expand: ['subscription'],
+  });
+
+  if (session.metadata?.landingGuestPreview === 'true') {
+    return { ok: true, appliedSubscription: false, detail: 'guest_preview' };
+  }
+
+  const orgId = session.metadata?.organizationId;
+  if (!orgId) {
+    throw new HttpsError(
+      'failed-precondition',
+      'This checkout session is not linked to an organisation.',
+    );
+  }
+
+  const orgDoc = await db.doc(`organizations/${orgId}`).get();
+  if (!orgDoc.exists) {
+    throw new HttpsError('not-found', 'Organisation not found.');
+  }
+  await assertOrgBillingCallableAccess(db, request.auth.uid, orgId, orgDoc.data());
+
+  if (session.subscription) {
+    const result = await applySubscriptionCheckoutToOrganization(db, stripe, {
+      orgId,
+      session,
+      sendSubscriptionAlert: false,
+    });
+    if (result.applied) {
+      return { ok: true, appliedSubscription: true };
+    }
+    return {
+      ok: true,
+      appliedSubscription: false,
+      detail: result.reason,
+    };
+  }
+
+  if (session.payment_status === 'paid' && session.metadata?.customBranding === 'true') {
+    await db.doc(`organizations/${orgId}`).update({
+      customBrandingEnabled: true,
+      customBrandingPaidAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    return { ok: true, appliedSubscription: false, detail: 'branding_only' };
+  }
+
+  return { ok: true, appliedSubscription: false, detail: 'not_subscription_checkout' };
+}
+
+// ---------------------------------------------------------------------------
 // stripeWebhook — HTTP function handler
 // ---------------------------------------------------------------------------
 import type { Request, Response } from 'express';
@@ -875,89 +1112,20 @@ async function runStripeWebhookHandlers(
         break;
       }
       const orgId = session.metadata?.organizationId;
-      const region = (session.metadata?.region as string) || 'GB';
-      const legacyClientCount = parseMetadataInt(
-        session.metadata?.clientCount || session.metadata?.seats || undefined,
-        10,
-        METADATA_MAX_CLIENT_CAP,
-      );
-      const currency = regionToCurrency(region);
 
       if (orgId && session.subscription) {
-        const subId =
-          typeof session.subscription === 'string' ? session.subscription : session.subscription.id;
-        const sub = await stripe.subscriptions.retrieve(subId);
-        const item = sub.items?.data?.[0];
-        const priceObj = item?.price;
-        const stripePriceId = typeof priceObj === 'string' ? priceObj : priceObj?.id;
-        let amountCents = 0;
-        const unitAmount = (priceObj as { unit_amount?: number } | undefined)?.unit_amount;
-        if (unitAmount != null) {
-          amountCents = unitAmount;
-        }
-
-        const tierFromPrice = paidTierFromPriceId(stripePriceId);
-        const metaTier = session.metadata?.tierId;
-        const capacityTierId: PaidCapacityTierId | undefined = isPaidTierId(metaTier)
-          ? metaTier
-          : tierFromPrice;
-        const tierRow = capacityTierId ? getPaidTierById(capacityTierId) : undefined;
-        const clientLimit =
-          tierRow?.clientLimit ??
-          parseMetadataInt(
-            session.metadata?.clientLimit,
-            legacyClientCount,
-            METADATA_MAX_CLIENT_CAP,
-          );
-        const fromMetaCredits = parseMetadataInt(
-          session.metadata?.monthlyAiCredits,
-          0,
-          METADATA_MAX_MONTHLY_AI_CREDITS,
-        );
-        const monthlyAiCredits =
-          tierRow?.monthlyAiCredits ??
-          (fromMetaCredits > 0 ? fromMetaCredits : getPaidTierByClientCount(legacyClientCount).monthlyAiCredits);
-
-        const updateData: Record<string, unknown> = {
-          'subscription.status': 'active',
-          'stripe.stripeSubscriptionId': subId,
-          'stripe.stripeCustomerId': session.customer,
-          'stripe.stripePriceId': stripePriceId || session.metadata?.plan || session.metadata?.clientCount || '',
-          'subscription.plan': capacityTierId ? `package_${capacityTierId.toLowerCase()}` : 'starter',
-          'subscription.clientSeats': clientLimit,
-          'subscription.region': region,
-          'subscription.currency': currency,
-          'subscription.clientCount': clientLimit,
-          'subscription.amountCents': amountCents,
-          'subscription.capacityTierId': capacityTierId ?? null,
-          'subscription.clientCap': clientLimit,
-          'subscription.monthlyAiCredits': monthlyAiCredits,
-          assessmentCredits: monthlyAiCredits > 0 ? monthlyAiCredits : FREE_TIER_MONTHLY_AI_CREDITS,
-        };
-        if (currency === 'KWD') {
-          updateData['subscription.amountFils'] = amountCents;
-        }
-        await db.doc(`organizations/${orgId}`).update(updateData);
-        logger.info('checkout.session.completed — org activated', { eventId: event.id, orgId });
-
-        if (session.metadata?.customBranding === 'true') {
-          await db.doc(`organizations/${orgId}`).update({
-            customBrandingEnabled: true,
-            customBrandingPaidAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-          logger.info('checkout.session.completed — custom branding with subscription', {
+        const applied = await applySubscriptionCheckoutToOrganization(db, stripe, {
+          orgId,
+          session,
+          sendSubscriptionAlert: true,
+        });
+        if (!applied.applied && applied.reason === 'payment_not_complete') {
+          logger.info('checkout.session.completed — subscription checkout skipped until payment completes', {
             eventId: event.id,
             orgId,
+            payment_status: session.payment_status,
           });
         }
-
-        const orgSnap = await db.doc(`organizations/${orgId}`).get();
-        const orgName = orgSnap.data()?.name as string | undefined;
-        const tierLabel = capacityTierId || 'plan';
-        const amtDisplay = amountCents > 0
-          ? new Intl.NumberFormat('en-GB', { style: 'currency', currency, maximumFractionDigits: 2 }).format(amountCents / (currency === 'KWD' ? 1000 : 100)) + '/mo'
-          : undefined;
-        alertNewSubscription({ orgId, orgName, tierName: tierLabel, amountDisplay: amtDisplay });
       }
 
       if (orgId && session.payment_status === 'paid' && !session.subscription && session.metadata?.customBranding === 'true') {
@@ -990,6 +1158,7 @@ async function runStripeWebhookHandlers(
         }
         await db.doc(`organizations/${orgId}`).update({
           assessmentCredits: admin.firestore.FieldValue.increment(qty),
+          [ASSESSMENT_CREDITS_TOPUP_BALANCE]: admin.firestore.FieldValue.increment(qty),
           lastCreditTopupAt: admin.firestore.FieldValue.serverTimestamp(),
         });
         logger.info('credit_topup applied', { eventId: event.id, orgId, qty, sessionId: session.id });
@@ -1186,9 +1355,12 @@ async function runStripeWebhookHandlers(
       if (!orgId) break;
 
       const orgSnap = await db.doc(`organizations/${orgId}`).get();
-      const orgSub = orgSnap.data()?.subscription as Record<string, unknown> | undefined;
+      const orgData = orgSnap.data();
+      const orgSub = orgData?.subscription as Record<string, unknown> | undefined;
       const capacityTierId = orgSub?.capacityTierId as string | undefined;
       const clientSeats: number = (orgSub?.clientSeats as number) ?? (orgSub?.clientCap as number) ?? 5;
+      const rawTopupBal = orgData?.[ASSESSMENT_CREDITS_TOPUP_BALANCE];
+      const topupBalance = typeof rawTopupBal === 'number' && rawTopupBal > 0 ? rawTopupBal : 0;
 
       const item0 = sub.items?.data?.[0];
       const priceObj = item0?.price;
@@ -1204,21 +1376,17 @@ async function runStripeWebhookHandlers(
         monthlyCredits = getPaidTierByClientCount(clientSeats).monthlyAiCredits;
       }
 
-      if (monthlyCredits < 0 || monthlyCredits >= 9999) {
-        await db.doc(`organizations/${orgId}`).update({
-          assessmentCredits: 9999,
-          creditsReplenishedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-      } else {
-        await db.doc(`organizations/${orgId}`).update({
-          assessmentCredits: monthlyCredits,
-          creditsReplenishedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-      }
+      const totalCredits = computeAssessmentCreditsWithTopup(monthlyCredits, topupBalance);
+      await db.doc(`organizations/${orgId}`).update({
+        assessmentCredits: totalCredits,
+        creditsReplenishedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
       logger.info('invoice.payment_succeeded — credits replenished', {
         eventId: event.id,
         orgId,
         monthlyCredits,
+        topupBalance,
+        assessmentCredits: totalCredits,
       });
       break;
     }

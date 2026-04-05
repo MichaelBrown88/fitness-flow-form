@@ -11,7 +11,18 @@ import {
   signInWithEmailLink,
   type User,
 } from 'firebase/auth';
-import { doc, getDoc, onSnapshot, setDoc, collection, query, limit, getDocs, updateDoc, serverTimestamp } from 'firebase/firestore';
+import {
+  doc,
+  getDoc,
+  onSnapshot,
+  setDoc,
+  collection,
+  query,
+  limit,
+  getDocs,
+  updateDoc,
+  serverTimestamp,
+} from 'firebase/firestore';
 import { getFirebaseAuth, getDb, googleProvider, appleProvider } from '@/services/firebase';
 import { getOrgSettings, type OrgSettings } from '@/services/organizations';
 import type { UserProfile } from '@/types/auth';
@@ -36,12 +47,24 @@ import {
   type ImpersonationSession 
 } from '@/services/platform/impersonation';
 
+function firestoreListenErrorLabel(err: unknown): string {
+  if (err && typeof err === 'object' && 'code' in err) {
+    const code = String((err as { code: unknown }).code);
+    if (code === 'permission-denied') return 'permission-denied';
+    if (code === 'unavailable') return 'unavailable';
+  }
+  return 'failed';
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [orgSettings, setOrgSettings] = useState<OrgSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [impersonation, setImpersonation] = useState<ImpersonationSession | null>(null);
+  const [firestoreProfileSyncError, setFirestoreProfileSyncError] = useState<string | null>(null);
+  const [firestoreOrgSyncError, setFirestoreOrgSyncError] = useState<string | null>(null);
+  const [firestoreListenerEpoch, setFirestoreListenerEpoch] = useState(0);
   
   // Track if sign out was manual (to avoid clearing storage on manual sign out)
   const manualSignOutRef = useRef(false);
@@ -65,15 +88,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const settings = await getOrgSettings(profile.organizationId);
         setOrgSettings(settings);
+        setFirestoreOrgSyncError(null);
       } catch (err) {
         // Log error but don't throw - settings will load on next navigation
         // Using logger for consistency with project rules
         const { logger } = await import('@/lib/utils/logger');
         logger.error('Failed to fetch org settings:', err instanceof Error ? err.message : String(err));
-        // Settings will use defaults on next page load
+        setFirestoreOrgSyncError(firestoreListenErrorLabel(err));
       }
     }
   };
+
+  const retryFirestoreSync = useCallback(() => {
+    setFirestoreProfileSyncError(null);
+    setFirestoreOrgSyncError(null);
+    setFirestoreListenerEpoch((e) => e + 1);
+  }, []);
 
   // Clear all local auth storage (helper function)
   const clearLocalAuthStorage = () => {
@@ -128,6 +158,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!firebaseUser) {
         setProfile(null);
         setOrgSettings(null);
+        setFirestoreProfileSyncError(null);
+        setFirestoreOrgSyncError(null);
         setLoading(false);
         previousUserIdRef.current = null;
         return;
@@ -138,6 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // 3. Subscribe to User Profile
       const profileRef = doc(db, 'userProfiles', firebaseUser.uid);
       unsubProfile = onSnapshot(profileRef, async (profileSnap) => {
+        setFirestoreProfileSyncError(null);
         let currentProfile: UserProfile;
 
         if (profileSnap.exists()) {
@@ -261,6 +294,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (unsubSettings) unsubSettings();
           const orgRef = doc(db, 'organizations', currentProfile.organizationId);
           unsubSettings = onSnapshot(orgRef, (orgSnap) => {
+            setFirestoreOrgSyncError(null);
             if (orgSnap.exists()) {
               const orgData = orgSnap.data();
               setOrgSettings({
@@ -306,6 +340,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setLoading(false);
           }, (err) => {
             logger.error('Settings snapshot error:', err.message);
+            setFirestoreOrgSyncError(firestoreListenErrorLabel(err));
             setLoading(false);
           });
         } else {
@@ -313,6 +348,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }, (err) => {
         logger.error('Profile snapshot error:', err.message);
+        setFirestoreProfileSyncError(firestoreListenErrorLabel(err));
         setLoading(false);
       });
     });
@@ -322,7 +358,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (unsubProfile) unsubProfile();
       if (unsubSettings) unsubSettings();
     };
-  }, []);
+  }, [firestoreListenerEpoch]);
 
   const signIn = async (email: string, password: string) => {
     const auth = getFirebaseAuth();
@@ -429,11 +465,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 fbLimit(CLIENT_EMAIL_LOOKUP_LIMIT),
               );
               const clientSnap = await fbGetDocs(clientQ);
-              for (const clientDoc of clientSnap.docs) {
+              if (clientSnap.size === 1) {
+                const clientDoc = clientSnap.docs[0]!;
                 if (!clientDoc.data().firebaseUid) {
                   await fbUpdate(clientDoc.ref, { firebaseUid: clientUid });
                   logger.info('[Auth] Linked firebaseUid to client profile', { docPath: clientDoc.ref.path });
                 }
+              } else if (clientSnap.size > 1) {
+                logger.warn(
+                  '[Auth] Multiple client profiles match magic-link email; skipping auto-link (ambiguous org)',
+                  { count: clientSnap.size },
+                );
               }
             } catch (linkErr) {
               logger.warn('[Auth] Failed to link firebaseUid to client profile (non-fatal):', linkErr);
@@ -508,6 +550,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       startImpersonation: handleStartImpersonation,
       endImpersonation: handleEndImpersonation,
       effectiveOrgId,
+      firestoreProfileSyncError,
+      firestoreOrgSyncError,
+      retryFirestoreSync,
     }}>
       {children}
     </AuthContext.Provider>

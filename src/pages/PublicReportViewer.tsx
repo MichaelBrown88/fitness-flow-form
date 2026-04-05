@@ -16,8 +16,88 @@ import { Button } from '@/components/ui/button';
 import { PostureComparisonCard } from '@/components/client/PostureComparisonCard';
 import type { AssessmentSnapshot } from '@/services/assessmentHistory';
 import { logger } from '@/lib/utils/logger';
+import { Helmet } from 'react-helmet-async';
+import {
+  publicReportCanonicalUrl,
+  publicReportOpenGraphDescription,
+  publicReportOpenGraphTitle,
+  publicReportOgImageUrl,
+} from '@/constants/publicReportShare';
+import { SEO_SITE_ORIGIN } from '@/constants/seo';
+import { PRODUCT_DISPLAY_NAME } from '@/constants/productBranding';
 
 const ClientReport = lazy(() => import('@/components/reports/ClientReport'));
+
+interface PublicReportHelmetProps {
+  token: string | undefined;
+  loading: boolean;
+  hasReport: boolean;
+  clientName: string;
+  orgName: string | null;
+  overallScore: number | null;
+  error: string | null;
+  /** Server-generated Open Graph image URL when present. */
+  ogImageOverride: string | null;
+}
+
+/**
+ * Open Graph / Twitter meta for link previews (Facebook, Instagram DMs, iMessage, etc.).
+ * Crawlers that execute JS will see these after hydration.
+ */
+function PublicReportHelmet({
+  token,
+  loading,
+  hasReport,
+  clientName,
+  orgName,
+  overallScore,
+  error,
+  ogImageOverride,
+}: PublicReportHelmetProps) {
+  const canonical = token ? publicReportCanonicalUrl(token) : SEO_SITE_ORIGIN;
+  const trimmedOverride = ogImageOverride?.trim() ?? '';
+  const ogImage = trimmedOverride.length > 0 ? trimmedOverride : publicReportOgImageUrl();
+  let title = `Fitness report | ${PRODUCT_DISPLAY_NAME}`;
+  let desc = publicReportOpenGraphDescription(null);
+
+  if (token && hasReport && clientName) {
+    title = publicReportOpenGraphTitle(clientName, orgName);
+    desc = publicReportOpenGraphDescription(overallScore);
+  } else if (token && !loading && !hasReport) {
+    title = `Report unavailable | ${PRODUCT_DISPLAY_NAME}`;
+    desc =
+      error && error.length > 0
+        ? error.slice(0, 160)
+        : 'This assessment link is invalid or is no longer available.';
+  }
+
+  const imageAlt = hasReport && clientName ? `${clientName} fitness report preview` : PRODUCT_DISPLAY_NAME;
+
+  return (
+    <Helmet prioritizeSeoTags>
+      <title>{title}</title>
+      <meta name="description" content={desc} />
+      <meta name="robots" content="noindex,nofollow" />
+      <link rel="canonical" href={canonical} />
+
+      <meta property="og:title" content={title} />
+      <meta property="og:description" content={desc} />
+      <meta property="og:type" content="website" />
+      <meta property="og:url" content={canonical} />
+      <meta property="og:image" content={ogImage} />
+      <meta property="og:image:width" content="1200" />
+      <meta property="og:image:height" content="630" />
+      <meta property="og:image:alt" content={imageAlt} />
+      <meta property="og:site_name" content={PRODUCT_DISPLAY_NAME} />
+
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:site" content="@oneassess" />
+      <meta name="twitter:title" content={title} />
+      <meta name="twitter:description" content={desc} />
+      <meta name="twitter:image" content={ogImage} />
+    </Helmet>
+  );
+}
 
 /**
  * Public report page accessible via secure token
@@ -41,6 +121,7 @@ const PublicReportViewer = () => {
     loading,
     clientName,
     changeNarrative,
+    socialShareArtifacts,
   } = usePublicReport(token);
 
   const [selectedVersionIndex, setSelectedVersionIndex] = useState(0);
@@ -233,9 +314,24 @@ const PublicReportViewer = () => {
     snapshotSummaries,
   ]);
 
+  const helmet = (
+    <PublicReportHelmet
+      token={token}
+      loading={loading}
+      hasReport={Boolean(formData && scores && !error)}
+      clientName={clientName}
+      orgName={orgDetails?.name ?? null}
+      overallScore={scores?.overall ?? null}
+      error={error}
+      ogImageOverride={socialShareArtifacts?.og1200x630Url ?? null}
+    />
+  );
+
   if (loading) {
     return (
-      <AppShell title="Your fitness report" mode="public">
+      <>
+        {helmet}
+        <AppShell title="Your fitness report" mode="public">
         <div
           className="flex flex-col items-center justify-center py-20 px-4"
           aria-busy="true"
@@ -246,13 +342,16 @@ const PublicReportViewer = () => {
           <p className="text-sm text-muted-foreground">Loading your report…</p>
         </div>
       </AppShell>
+      </>
     );
   }
 
   if (!formData || !scores) {
     const isEmptyToken = !token || error === 'Invalid report link.';
     return (
-      <AppShell title="Your fitness report" mode="public" showClientNav={!!token} shareToken={token ?? undefined} clientName={clientName}>
+      <>
+        {helmet}
+        <AppShell title="Your fitness report" mode="public" showClientNav={!!token} shareToken={token ?? undefined} clientName={clientName}>
         <div className="max-w-md mx-auto rounded-xl border border-border bg-card text-card-foreground p-6 sm:p-8 text-center space-y-4">
           {isEmptyToken ? (
             <>
@@ -268,6 +367,7 @@ const PublicReportViewer = () => {
           )}
         </div>
       </AppShell>
+      </>
     );
   }
 
@@ -275,7 +375,9 @@ const PublicReportViewer = () => {
 
   if (!plan) {
     return (
-      <AppShell
+      <>
+        {helmet}
+        <AppShell
         title={`${clientName}'s Report`}
         mode="public"
         publicLogoUrl={orgDetails?.logoUrl}
@@ -294,6 +396,7 @@ const PublicReportViewer = () => {
           <p className="text-sm font-medium text-muted-foreground">Generating report…</p>
         </div>
       </AppShell>
+      </>
     );
   }
 
@@ -303,7 +406,9 @@ const PublicReportViewer = () => {
   const displayPrevScores = activePreviousScores ?? previousScores;
 
   return (
-    <AppShell
+    <>
+      {helmet}
+      <AppShell
       title={`${clientName}'s Report`}
       mode="public"
       publicLogoUrl={orgDetails?.logoUrl}
@@ -426,6 +531,7 @@ const PublicReportViewer = () => {
         </div>
       )}
     </AppShell>
+    </>
   );
 };
 

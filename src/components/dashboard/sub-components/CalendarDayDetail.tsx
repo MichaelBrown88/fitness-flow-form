@@ -80,7 +80,7 @@ export function ClientPill({ entry, dateKey, day, dayClients, onPillClick, isSel
       onDragStart={handleDragStart}
       onClick={handleClick}
       className={`flex cursor-grab items-center gap-0.5 truncate rounded border px-1 py-0.5 text-[9px] font-semibold leading-tight active:cursor-grabbing sm:text-[10px] ${STATUS_COLORS[entry.status]} ${
-        isSelected ? 'ring-2 ring-violet-500 ring-offset-1 ring-offset-background' : ''
+        isSelected ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : ''
       }`}
       title={`${displayName} — ${getPillarLabel(entry.pillar)} (Ctrl/Cmd+click to select multiple)`}
     >
@@ -168,7 +168,7 @@ export function DayDetailPanel({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 gap-1 text-[10px] font-bold uppercase tracking-wide text-violet-600 hover:bg-violet-500/10 hover:text-violet-700 dark:text-violet-400 dark:hover:bg-violet-950/50 dark:hover:text-violet-300"
+                  className="h-7 gap-1 text-[10px] font-bold uppercase tracking-wide text-primary hover:bg-primary/10 hover:text-primary dark:hover:bg-primary/15"
                   onClick={() => onStartAssessment(c.name, c.pillar)}
                 >
                   <Play className="h-3 w-3" />

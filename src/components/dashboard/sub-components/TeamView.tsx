@@ -39,7 +39,7 @@ const StatCard: React.FC<{
   icon: React.ReactNode;
   detail?: string;
 }> = ({ label, value, icon, detail }) => (
-  <div className="space-y-1 rounded-xl border border-border/60 bg-muted/50 p-4 dark:bg-card dark:shadow-sm">
+  <div className="space-y-1 rounded-lg border border-border/60 bg-muted/40 p-4 dark:bg-muted/20">
     <div className="flex items-center gap-2 text-muted-foreground">
       {icon}
       <span className="text-[10px] font-black uppercase tracking-[0.15em]">{label}</span>
@@ -175,7 +175,7 @@ export const TeamView: React.FC<TeamViewProps> = ({ search }) => {
       <div className="text-center py-20 space-y-4 max-w-md mx-auto">
         <AlertCircle className="w-10 h-10 text-score-red mx-auto" />
         <p className="text-sm font-semibold text-foreground">{error}</p>
-        <Button type="button" variant="outline" className="rounded-xl" onClick={() => void refresh()}>
+        <Button type="button" variant="outline" className="rounded-lg" onClick={() => void refresh()}>
           Try again
         </Button>
       </div>
@@ -236,6 +236,7 @@ export const TeamView: React.FC<TeamViewProps> = ({ search }) => {
       {/* Coach Performance Table */}
       <div className="overflow-x-auto">
         <table className="w-full">
+          <caption className="sr-only">Coach performance — sort columns to compare clients, assessments, and activity</caption>
           <thead>
             <tr className="border-b border-border">
               <SortHeader label="Coach" sortKey="displayName" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="pl-4" />

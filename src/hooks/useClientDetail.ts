@@ -24,7 +24,15 @@ import { computeScores } from '@/lib/scoring';
 import { logger } from '@/lib/utils/logger';
 import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
 import { UI_TOASTS } from '@/constants/ui';
-import { STORAGE_KEYS } from '@/constants/storageKeys';
+import {
+  clearClientNavAssessmentBleedKeys,
+  writeAssessmentPhaseIndex,
+  writeEditAssessmentPayload,
+  writePartialAssessment,
+  removePartialAssessment,
+  writePrefillClientPayload,
+  writeSessionDraftAssessmentBundle,
+} from '@/lib/assessment/assessmentSessionStorage';
 import { ROUTES } from '@/constants/routes';
 import type { Timestamp } from 'firebase/firestore';
 
@@ -258,30 +266,24 @@ export function useClientDetail(): UseClientDetailResult {
     
     // Set partial assessment mode immediately if category specified
     if (category) {
-      sessionStorage.setItem(STORAGE_KEYS.PARTIAL_ASSESSMENT, JSON.stringify({
-        category,
-        clientName,
-      }));
+      writePartialAssessment({ category, clientName });
     } else {
-      sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
+      removePartialAssessment();
     }
-    
-    // CRITICAL: Clear all previous assessment modes to prevent data bleed
-    sessionStorage.removeItem(STORAGE_KEYS.IS_DEMO);
-    sessionStorage.removeItem(STORAGE_KEYS.PREFILL_CLIENT);
-    sessionStorage.removeItem(STORAGE_KEYS.EDIT_ASSESSMENT);
+
+    clearClientNavAssessmentBleedKeys();
 
     // Get latest assessment to pre-fill
     if (assessments.length > 0) {
       try {
         const latest = await getCoachAssessment(user.uid, assessments[0].id, undefined, readOrgId, userProfile);
         if (latest?.formData) {
-          sessionStorage.setItem(STORAGE_KEYS.PREFILL_CLIENT, JSON.stringify({
+          writePrefillClientPayload({
             clientName: latest.formData.fullName,
             dateOfBirth: latest.formData.dateOfBirth,
             email: latest.formData.email,
             phone: latest.formData.phone,
-          }));
+          });
         }
       } catch (e) {
         logger.warn('Failed to pre-fill data', 'CLIENT_DETAIL', e);
@@ -330,13 +332,13 @@ export function useClientDetail(): UseClientDetailResult {
         snapshotId: snapshot.id ?? undefined,
         editType,
       };
-      sessionStorage.setItem(STORAGE_KEYS.EDIT_ASSESSMENT, JSON.stringify(editPayload));
+      writeEditAssessmentPayload(editPayload);
       if (editType.startsWith('partial-')) {
         const category = editType.replace('partial-', '');
-        sessionStorage.setItem(STORAGE_KEYS.PARTIAL_ASSESSMENT, JSON.stringify({
+        writePartialAssessment({
           category,
           clientName: snapshot.formData?.fullName || clientName,
-        }));
+        });
       }
     } catch (e) {
       logger.warn('Failed to set EDIT_ASSESSMENT', 'CLIENT_DETAIL', e);
@@ -387,7 +389,7 @@ export function useClientDetail(): UseClientDetailResult {
 
   // Navigate back
   const navigateBack = useCallback(() => {
-    navigate('/');
+    navigate(ROUTES.DASHBOARD_CLIENTS);
   }, [navigate]);
 
   // Load snapshots
@@ -506,26 +508,13 @@ export function useClientDetail(): UseClientDetailResult {
   const handleFinishAssessment = useCallback(() => {
     if (!incompleteDraft) return;
     try {
-      sessionStorage.setItem(
-        STORAGE_KEYS.DRAFT_ASSESSMENT,
-        JSON.stringify({
-          formData: incompleteDraft.formData,
-          timestamp: Date.now(),
-          clientName,
-        })
-      );
-      sessionStorage.setItem(
-        STORAGE_KEYS.PREFILL_CLIENT,
-        JSON.stringify({ clientName }),
-      );
+      writeSessionDraftAssessmentBundle(incompleteDraft.formData, clientName);
+      writePrefillClientPayload({ clientName });
       if (
         typeof incompleteDraft.activePhaseIdx === 'number' &&
         incompleteDraft.activePhaseIdx >= 0
       ) {
-        sessionStorage.setItem(
-          STORAGE_KEYS.ASSESSMENT_PHASE,
-          String(incompleteDraft.activePhaseIdx),
-        );
+        writeAssessmentPhaseIndex(incompleteDraft.activePhaseIdx);
       }
     } catch {
       // non-fatal

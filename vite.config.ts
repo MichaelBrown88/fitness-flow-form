@@ -1,11 +1,35 @@
 /// <reference types="vitest" />
 import fs from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { defineConfig, type ViteDevServer } from "vite";
+import { defineConfig, type Plugin, type ViteDevServer } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
+import { vitePwaCoachManifest } from "./src/constants/productBranding";
+
+/**
+ * VitePWA injects the coach `manifest.webmanifest` link into every HTML entry.
+ * Patch `client.html` on disk after build so `/r/*` keeps only `manifest-client.webmanifest`.
+ */
+function stripCoachManifestFromClientHtml(): Plugin {
+  let outDir = "dist";
+  return {
+    name: "strip-coach-manifest-from-client-html",
+    apply: "build",
+    configResolved(cfg) {
+      outDir = cfg.build.outDir;
+    },
+    closeBundle() {
+      const clientPath = path.join(outDir, "client.html");
+      if (!fs.existsSync(clientPath)) return;
+      const html = fs.readFileSync(clientPath, "utf8");
+      if (!html.includes("manifest-client.webmanifest")) return;
+      const next = html.replace(/\s*<link rel="manifest" href="\/manifest\.webmanifest"[^>]*>\s*/gi, "\n");
+      if (next !== html) fs.writeFileSync(clientPath, next);
+    },
+  };
+}
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -65,23 +89,7 @@ export default defineConfig(({ mode }) => ({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'robots.txt', 'og-image.png', 'sitemap.xml'],
-      manifest: {
-        name: 'OA Coach',
-        short_name: 'OA Coach',
-        description: 'AI-powered fitness assessment platform for coaches',
-        theme_color: '#0f172a',
-        background_color: '#f8fafc',
-        display: 'standalone',
-        orientation: 'any',
-        start_url: '/dashboard',
-        scope: '/',
-        categories: ['health', 'fitness', 'lifestyle'],
-        icons: [
-          { src: 'pwa-192x192.svg', sizes: '192x192', type: 'image/svg+xml' },
-          { src: 'pwa-512x512.svg', sizes: '512x512', type: 'image/svg+xml' },
-          { src: 'pwa-512x512.svg', sizes: '512x512', type: 'image/svg+xml', purpose: 'maskable' },
-        ],
-      },
+      manifest: vitePwaCoachManifest(),
       workbox: {
         // Immediately activate new service workers to prevent stale chunk references
         // (old SW serving old index.html that references non-existent JS filenames)
@@ -143,6 +151,7 @@ export default defineConfig(({ mode }) => ({
         ],
       },
     }),
+    stripCoachManifestFromClientHtml(),
   ].filter(Boolean),
   optimizeDeps: {
     force: true,
@@ -160,6 +169,7 @@ export default defineConfig(({ mode }) => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
       "@shared/billing": path.resolve(__dirname, "./functions/src/shared/billing"),
+      "@shared/metadataInts": path.resolve(__dirname, "./functions/src/metadataInts.ts"),
       "@shared/reportingFx": path.resolve(__dirname, "./functions/src/shared/reportingFx.ts"),
     },
   },
@@ -167,7 +177,7 @@ export default defineConfig(({ mode }) => ({
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
-    passWithNoTests: true,
+    passWithNoTests: false,
   },
   build: {
     rollupOptions: {

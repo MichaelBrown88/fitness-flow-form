@@ -4,6 +4,7 @@ import { ArrowLeft, Check, Loader2, Send, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { ROUTES } from '@/constants/routes';
+import { UI_COMMAND_MENU } from '@/constants/ui';
 import AppShell from '@/components/layout/AppShell';
 import RoadmapClientView from '@/components/roadmap/RoadmapClientView';
 import { RoadmapEditor } from '@/components/roadmap/RoadmapEditor';
@@ -66,7 +67,7 @@ export default function ClientRoadmap() {
       >
         <div className="max-w-6xl mx-auto px-4 py-8">
           <Breadcrumb items={[
-            { label: 'Dashboard', href: ROUTES.DASHBOARD },
+            { label: UI_COMMAND_MENU.HOME, href: ROUTES.DASHBOARD },
             { label: clientName, href: clientPath },
             { label: 'Create Roadmap' },
           ]} />
@@ -116,7 +117,7 @@ export default function ClientRoadmap() {
     >
     <div className="max-w-3xl mx-auto px-4 py-8">
       <Breadcrumb items={[
-        { label: 'Dashboard', href: ROUTES.DASHBOARD },
+        { label: UI_COMMAND_MENU.HOME, href: ROUTES.DASHBOARD },
         { label: clientName, href: clientPath },
         { label: 'Roadmap' },
       ]} />

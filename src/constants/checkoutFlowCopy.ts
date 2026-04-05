@@ -103,4 +103,9 @@ export const CHECKOUT_FLOW_COPY = {
   billingNonGbActiveSubHint:
     'You already have an active subscription — open the billing portal from the Payment & account section on this page to manage invoices and plan changes in Stripe.',
   billingNonGbContactCta: 'Contact us to change region or subscribe',
+
+  /** Shown under checkout callable errors in the plan summary panel */
+  checkoutErrorAlertHint: 'Try again with the button below, or refresh the page if this continues.',
+
+  checkoutCallableFailedToastTitle: 'Could not start checkout',
 } as const;

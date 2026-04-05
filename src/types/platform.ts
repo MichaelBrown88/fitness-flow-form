@@ -120,7 +120,8 @@ export interface OrganizationSummary {
   id: string;
   name: string;
   type: 'solo_coach' | 'gym' | 'gym_chain';
-  plan: 'starter' | 'professional' | 'enterprise' | 'free' | 'none';
+  /** Display may use subscriptionPlanDisplayHeadline; Firestore can store Stripe-oriented keys (e.g. package_g100). */
+  plan: string;
   status: 'trial' | 'active' | 'cancelled' | 'past_due' | 'none';
   clientSeats?: number; // Number of client seats in subscription (legacy)
   monthlyFeeKwd?: number; // Monthly subscription fee in KWD (legacy/fallback)

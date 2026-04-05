@@ -2,6 +2,8 @@ import React, { Component, type ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { logger } from '@/lib/utils/logger';
+import { ROUTES } from '@/constants/routes';
+import { UI_COMMAND_MENU } from '@/constants/ui';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -15,8 +17,8 @@ interface ErrorBoundaryState {
 }
 
 /**
- * Error Boundary component that catches React errors and displays a fallback UI.
- * Prevents full page crashes and allows users to recover gracefully.
+ * Class-based error boundary with optional **ReactNode** `fallback` (e.g. camera modal).
+ * For app routes and layouts, prefer `@/components/ui/ErrorBoundary` (react-error-boundary + router).
  */
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
@@ -38,7 +40,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   };
 
   handleGoHome = () => {
-    window.location.href = '/dashboard';
+    window.location.href = ROUTES.DASHBOARD;
   };
 
   render() {
@@ -92,7 +94,7 @@ export function ErrorFallback({ error, onRetry, onGoHome }: ErrorFallbackProps) 
           {onGoHome && (
             <Button type="button" onClick={onGoHome} variant="default" className="gap-2">
               <Home className="h-4 w-4" />
-              Go to Dashboard
+              Go to {UI_COMMAND_MENU.HOME}
             </Button>
           )}
         </div>

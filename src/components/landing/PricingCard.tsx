@@ -33,9 +33,9 @@ export function PricingCard({
   if (highlighted) {
     return (
       <div className="relative transform md:-translate-y-4">
-        <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gradient-from to-gradient-to opacity-20 blur-sm" />
-        <GlassCard className="p-10 relative bg-card border border-brand-medium shadow-2xl">
-          <div className="absolute top-0 right-0 bg-gradient-to-l from-gradient-from to-gradient-to text-primary-foreground text-[10px] font-bold uppercase tracking-[0.15em] px-4 py-2 rounded-bl-2xl rounded-tr-2xl">
+        <div className="absolute inset-0 rounded-lg bg-gradient-to-b from-gradient-from to-gradient-to opacity-20 blur-sm" />
+        <GlassCard className="relative border border-brand-medium bg-card p-10 shadow-md">
+          <div className="absolute right-0 top-0 rounded-bl-lg rounded-tr-lg bg-gradient-to-l from-gradient-from to-gradient-to px-4 py-2 text-[10px] font-bold uppercase tracking-[0.15em] text-primary-foreground">
             Most Popular
           </div>
           <h3 className="text-xl font-bold mb-2 text-foreground">{name}</h3>
@@ -48,7 +48,7 @@ export function PricingCard({
           </div>
           <Link 
             to="/onboarding"
-            className="w-full py-4 rounded-xl bg-foreground text-primary-foreground hover:opacity-90 transition-apple font-bold mb-8 shadow-xl block text-center"
+            className="mb-8 block w-full rounded-lg bg-foreground py-4 text-center font-bold text-primary-foreground shadow-sm transition-apple hover:opacity-90"
           >
             Start Free Trial
           </Link>
@@ -76,7 +76,7 @@ export function PricingCard({
   }
 
   return (
-    <GlassCard className="p-10 bg-card/70 hover:shadow-xl transition-apple">
+    <GlassCard className="bg-card/70 p-10 transition-apple hover:shadow-md">
       <h3 className="text-xl font-bold mb-2 text-foreground">{name}</h3>
       <p className="text-sm text-foreground-secondary mb-8 font-medium">{description}</p>
       <div className="flex items-baseline gap-1 mb-8">
@@ -87,7 +87,7 @@ export function PricingCard({
       </div>
       <Link 
         to={ctaText === 'Contact Sales' ? '/contact' : '/onboarding'}
-        className="w-full py-4 rounded-xl bg-background border border-border text-foreground font-bold hover:bg-secondary transition-apple mb-8 shadow-sm block text-center"
+        className="mb-8 block w-full rounded-lg border border-border bg-background py-4 text-center font-bold text-foreground shadow-sm transition-apple hover:bg-secondary"
       >
         {ctaText}
       </Link>

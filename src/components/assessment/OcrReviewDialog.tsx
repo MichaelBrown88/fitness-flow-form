@@ -24,7 +24,7 @@ export const OcrReviewDialog = ({
 }: OcrReviewDialogProps) => {
   return (
     <Dialog open={!!ocrReviewData} onOpenChange={() => setOcrReviewData(null)}>
-        <DialogContent className="max-w-md rounded-2xl">
+        <DialogContent className="max-w-md rounded-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Scan className="h-5 w-5 text-primary" />
@@ -55,7 +55,7 @@ export const OcrReviewDialog = ({
               ].map(key => {
                 const value = ocrReviewData[key as keyof typeof ocrReviewData] ?? '';
                 return (
-                  <div key={key} className={`bg-muted/50 p-4 rounded-2xl border transition-all flex flex-col justify-between ${!value ? 'border-amber-200 bg-amber-50/30' : 'border-border'}`}>
+                  <div key={key} className={`flex flex-col justify-between rounded-lg border bg-muted/50 p-4 transition-all ${!value ? 'border-amber-200 bg-amber-50/30' : 'border-border'}`}>
                     <span className="text-[10px] font-black uppercase tracking-[0.15em] text-foreground-secondary mb-2">
                       {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
                     </span>
@@ -82,10 +82,10 @@ export const OcrReviewDialog = ({
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setOcrReviewData(null)} className="rounded-xl font-bold">
+            <Button variant="outline" onClick={() => setOcrReviewData(null)} className="rounded-lg font-bold">
               Cancel
             </Button>
-            <Button onClick={applyOcrData} className="rounded-xl bg-foreground font-bold gap-2 text-white hover:bg-foreground/90 transition-colors">
+            <Button onClick={applyOcrData} className="gap-2 rounded-lg bg-foreground font-bold text-white transition-colors hover:bg-foreground/90">
               <CheckCircle2 className="h-4 w-4" />
               Apply to Form
             </Button>

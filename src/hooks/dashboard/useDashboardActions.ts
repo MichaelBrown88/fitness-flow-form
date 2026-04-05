@@ -16,7 +16,14 @@ import {
 } from '@/services/coachAssessments';
 import { getClientAssessmentHistory, deleteSnapshot } from '@/services/assessmentHistory';
 import type { AssessmentSnapshot } from '@/services/assessmentHistory';
-import { STORAGE_KEYS } from '@/constants/storageKeys';
+import {
+  clearAssessmentEntryBleedKeys,
+  removeAssessmentSetupConfirmed,
+  removePartialAssessment,
+  writeEditAssessmentPayload,
+  writePartialAssessment,
+  writePrefillClientPayload,
+} from '@/lib/assessment/assessmentSessionStorage';
 import { ROUTES } from '@/constants/routes';
 import { UI_TOASTS } from '@/constants/ui';
 import { clearDraft } from '@/hooks/useAssessmentDraft';
@@ -97,13 +104,14 @@ export function useDashboardActions(
         snapshotId: snapshot.id ?? undefined,
         editType,
       };
-      sessionStorage.setItem(STORAGE_KEYS.EDIT_ASSESSMENT, JSON.stringify(editPayload));
+      writeEditAssessmentPayload(editPayload);
+      removeAssessmentSetupConfirmed();
       if (editType.startsWith('partial-')) {
         const category = editType.replace('partial-', '');
-        sessionStorage.setItem(STORAGE_KEYS.PARTIAL_ASSESSMENT, JSON.stringify({
+        writePartialAssessment({
           category,
           clientName: snapshot.formData?.fullName || clientHistoryDialog,
-        }));
+        });
       }
     } catch (e) {
       logger.warn('Failed to set EDIT_ASSESSMENT', e);
@@ -144,26 +152,23 @@ export function useDashboardActions(
   const handleNewAssessmentForClient = async (clientName: string, category?: string) => {
     if (!user) return;
     if (category) {
-      sessionStorage.setItem(STORAGE_KEYS.PARTIAL_ASSESSMENT, JSON.stringify({ category, clientName }));
+      writePartialAssessment({ category, clientName });
     } else {
-      sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
+      removePartialAssessment();
     }
-    // CRITICAL: Clear all previous assessment modes + draft to prevent data bleed
-    sessionStorage.removeItem(STORAGE_KEYS.IS_DEMO);
-    sessionStorage.removeItem(STORAGE_KEYS.PREFILL_CLIENT);
-    sessionStorage.removeItem(STORAGE_KEYS.EDIT_ASSESSMENT);
+    clearAssessmentEntryBleedKeys();
     clearDraft();
     try {
       const history = await getClientAssessments(user.uid, clientName, readOrgId);
       if (history.length > 0) {
         const latest = await getCoachAssessment(user.uid, history[0].id, undefined, readOrgId, profile);
         if (latest?.formData) {
-          sessionStorage.setItem(STORAGE_KEYS.PREFILL_CLIENT, JSON.stringify({
+          writePrefillClientPayload({
             clientName: latest.formData.fullName,
             dateOfBirth: latest.formData.dateOfBirth,
             email: latest.formData.email,
             phone: latest.formData.phone,
-          }));
+          });
         }
       }
     } catch (e) {

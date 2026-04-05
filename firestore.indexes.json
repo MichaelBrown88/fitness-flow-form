@@ -105,6 +105,15 @@
         { "fieldPath": "organizationId", "order": "ASCENDING" },
         { "fieldPath": "clientSlug", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "publicReports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "coachUid", "order": "ASCENDING" },
+        { "fieldPath": "assessmentId", "order": "ASCENDING" },
+        { "fieldPath": "visibility", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

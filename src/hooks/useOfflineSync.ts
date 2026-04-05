@@ -82,14 +82,25 @@ export function useOfflineSync() {
     }
   }, [toast, refreshCount]);
 
-  // Load initial count and set up online listener
+  // Load initial count; drain when connectivity returns or tab regains focus (queued after flaky "online" saves)
   useEffect(() => {
     void refreshCount();
     const handleOnline = (): void => {
       void drainQueue();
     };
+    const handleMaybeDrain = (): void => {
+      if (document.visibilityState === 'visible' && navigator.onLine) {
+        void drainQueue();
+      }
+    };
     window.addEventListener('online', handleOnline);
-    return () => window.removeEventListener('online', handleOnline);
+    document.addEventListener('visibilitychange', handleMaybeDrain);
+    window.addEventListener('focus', handleMaybeDrain);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      document.removeEventListener('visibilitychange', handleMaybeDrain);
+      window.removeEventListener('focus', handleMaybeDrain);
+    };
   }, [drainQueue, refreshCount]);
 
   return { pendingCount, isSyncing };

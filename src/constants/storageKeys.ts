@@ -27,6 +27,16 @@ export const STORAGE_KEYS = {
   // Assessment phase (for back/refresh persistence)
   ASSESSMENT_PHASE: 'assessment_phase',
 
+  /** Session flag: coach confirmed AssessmentSetupStep (draft + client); suppress capture-phase draft banners */
+  ASSESSMENT_SETUP_CONFIRMED: 'assessmentSetupConfirmed',
+
   /** '1' = show extra coach guidance during assessments; '0' = hide */
   COACH_GUIDANCE_IN_ASSESSMENT: 'coachGuidanceInAssessment',
+
+  /** Coach workspace assistant: JSON array of thread metadata + messages (scoped in code by uid/org). */
+  COACH_ASSISTANT_THREADS: 'coachAssistantThreads',
+  /** `data` | `assist` — persisted per device. */
+  COACH_ASSISTANT_INTERACTION_MODE: 'coachAssistantInteractionMode',
+  /** `1` = assistant workspace sidebar collapsed on large screens. */
+  COACH_ASSISTANT_SIDEBAR_COLLAPSED: 'coachAssistantSidebarCollapsed',
 } as const;

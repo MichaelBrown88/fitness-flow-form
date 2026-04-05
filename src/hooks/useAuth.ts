@@ -26,6 +26,12 @@ export interface AuthContextValue {
   endImpersonation: () => Promise<void>;
   /** Get the effective organization ID (impersonated or real) */
   effectiveOrgId: string | null;
+  /** Live listener failed for `userProfiles/{uid}` — stale profile risk */
+  firestoreProfileSyncError: string | null;
+  /** Live listener failed for `organizations/{id}` — stale org settings risk */
+  firestoreOrgSyncError: string | null;
+  /** Tear down and re-subscribe Firestore listeners (e.g. after a transient network error) */
+  retryFirestoreSync: () => void;
 }
 
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined);

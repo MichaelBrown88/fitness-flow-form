@@ -4,7 +4,7 @@ export function CaptureCapabilityGraphic() {
   const c = LANDING_CAPABILITY_VISUAL_COPY.capture;
   return (
     <div className="mx-auto flex max-w-md flex-col items-center justify-center gap-4 sm:flex-row sm:items-end sm:gap-5">
-      <div className="relative w-[9.75rem] shrink-0 rounded-[1.65rem] border-[3px] border-landing-contrast-border bg-landing-contrast-bg shadow-xl">
+      <div className="relative w-[9.75rem] shrink-0 rounded-lg border-[3px] border-landing-contrast-border bg-landing-contrast-bg shadow-md">
         <div className="relative aspect-[9/16] overflow-hidden rounded-[1.35rem]">
           <div className="absolute inset-0 bg-gradient-to-b from-landing-contrast-surface to-landing-contrast-bg" />
           <div className="pointer-events-none absolute inset-3 rounded-lg border border-white/25" />
@@ -31,7 +31,7 @@ export function CaptureCapabilityGraphic() {
         </div>
       </div>
 
-      <div className="w-full max-w-[11rem] space-y-2 rounded-2xl border border-border bg-card p-3.5 shadow-md dark:border-border dark:bg-card sm:mb-1">
+      <div className="w-full max-w-[11rem] space-y-2 rounded-lg border border-border bg-card p-3.5 shadow-md dark:border-border dark:bg-card sm:mb-1">
         <p className="text-[10px] font-bold uppercase tracking-wide text-foreground-tertiary">
           {c.bodyCompTitle}
         </p>

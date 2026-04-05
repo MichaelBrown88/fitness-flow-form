@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { updateProfile } from 'firebase/auth';
-import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams, useLocation } from 'react-router-dom';
 import AppShell from '@/components/layout/AppShell';
+import { Seo } from '@/components/seo/Seo';
 import { useSettings } from '@/hooks/useSettings';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -26,6 +27,7 @@ import { DefaultCadenceSettings } from '@/components/settings/DefaultCadenceSett
 import { NotificationSettings } from '@/components/settings/NotificationSettings';
 import { OrgSettingSwitch } from '@/components/settings/OrgSettingSwitch';
 import { ROUTES } from '@/constants/routes';
+import { getAppShellSeoForPathname } from '@/constants/seo';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import { ASSESSMENT_COPY } from '@/constants/assessmentCopy';
 import { SETTINGS_COPY } from '@/constants/settingsCopy';
@@ -33,6 +35,7 @@ import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 
 const Settings = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, profile, orgSettings, refreshSettings } = useAuth();
   const [localDisplayName, setLocalDisplayName] = useState(profile?.displayName ?? '');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -226,7 +229,17 @@ const Settings = () => {
     }
   };
 
+  const settingsSeo = getAppShellSeoForPathname(location.pathname);
+  const settingsSeoPath = location.pathname.split('?')[0];
+
   return (
+    <>
+      <Seo
+        pathname={settingsSeoPath}
+        title={settingsSeo.title}
+        description={settingsSeo.description}
+        noindex={settingsSeo.noindex}
+      />
     <AppShell
       title="Settings"
       actions={
@@ -260,7 +273,7 @@ const Settings = () => {
           }}
           className="w-full"
         >
-          <TabsList className="w-full mb-6 p-1 h-auto bg-muted rounded-xl grid grid-cols-3 gap-1">
+          <TabsList className="w-full mb-6 p-1 h-auto bg-muted rounded-lg grid grid-cols-3 gap-1">
             <TabsTrigger
               value="profile"
               className="flex items-center gap-2 py-2.5 px-4 rounded-lg text-sm font-semibold data-[state=active]:bg-card"
@@ -289,7 +302,7 @@ const Settings = () => {
           {/* Profile Tab */}
           <TabsContent value="profile" className="space-y-8 mt-0">
             {/* User Info & Role */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 px-4 sm:px-6 py-4 rounded-2xl bg-foreground text-background shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 px-4 sm:px-6 py-4 rounded-lg bg-foreground text-background shadow-lg">
               <div className="min-w-0">
                 <p className="text-[10px] font-black uppercase tracking-[0.15em] text-primary mb-1 opacity-80">Current Account</p>
                 <h2 className="text-base sm:text-lg font-bold leading-none truncate">{profile?.displayName || user?.email}</h2>
@@ -308,15 +321,21 @@ const Settings = () => {
                 <ShieldCheck className="h-5 w-5 text-primary" />
                 <h2 className="text-lg font-bold">{isAdmin ? 'Admin Profile' : 'Coach Profile'}</h2>
               </div>
-              <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
+              <div className="rounded-lg border border-border/70 bg-background p-6 space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">Email</Label>
+                    <Label
+                      htmlFor="settings-profile-email"
+                      className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground"
+                    >
+                      Email
+                    </Label>
                     <Input
+                      id="settings-profile-email"
                       value={user?.email || ''}
                       disabled
                       readOnly
-                      className="rounded-xl border-border h-11 bg-muted"
+                      className="rounded-lg border-border h-11 bg-muted"
                     />
                     <p className="text-xs text-muted-foreground">{SETTINGS_COPY.PROFILE_EMAIL_MANAGED}</p>
                   </div>
@@ -325,7 +344,7 @@ const Settings = () => {
                     <Input
                       value={localDisplayName}
                       onChange={(e) => setLocalDisplayName(e.target.value)}
-                      className="rounded-xl border-border h-11"
+                      className="rounded-lg border-border h-11"
                       autoComplete="name"
                       maxLength={120}
                     />
@@ -338,7 +357,7 @@ const Settings = () => {
                     value={orgSettings?.name || 'Not assigned'}
                     disabled
                     readOnly
-                    className="rounded-xl border-border h-11 bg-muted"
+                    className="rounded-lg border-border h-11 bg-muted"
                   />
                   {isAdmin ? (
                     <Button type="button" variant="link" className="h-auto p-0 text-sm" asChild>
@@ -376,7 +395,7 @@ const Settings = () => {
 
             {isAdmin && (
               <section className="space-y-4">
-                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="rounded-lg border border-border/70 bg-background p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div className="space-y-2 min-w-0">
                     <div className="flex items-center gap-2">
                       <CreditCard className="h-5 w-5 text-primary shrink-0" aria-hidden />
@@ -392,14 +411,17 @@ const Settings = () => {
             )}
 
             <section className="space-y-4">
-              <div className="rounded-2xl border border-border bg-card p-6 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="rounded-lg border border-border/70 bg-background p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="space-y-1">
-                  <Label className="text-sm font-bold text-foreground">{ASSESSMENT_COPY.COACH_GUIDANCE_TOGGLE}</Label>
+                  <Label htmlFor="settings-coach-guidance-switch" className="text-sm font-bold text-foreground">
+                    {ASSESSMENT_COPY.COACH_GUIDANCE_TOGGLE}
+                  </Label>
                   <p className="text-xs text-muted-foreground max-w-md">
                     When off, the subtle guidance strip is hidden during assessments (this device only).
                   </p>
                 </div>
                 <Switch
+                  id="settings-coach-guidance-switch"
                   checked={coachGuidanceAssessment}
                   onCheckedChange={(checked) => {
                     try {
@@ -420,10 +442,12 @@ const Settings = () => {
                   <User className="h-5 w-5 text-primary" />
                   <h2 className="text-lg font-bold">Coaching Role</h2>
                 </div>
-                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+                <div className="rounded-lg border border-border/70 bg-background p-6">
                   <div className="flex items-center justify-between gap-4">
                     <div className="space-y-1">
-                      <Label className="text-sm font-bold text-foreground">I also coach clients myself</Label>
+                      <Label htmlFor="settings-coaching-role-switch" className="text-sm font-bold text-foreground">
+                        I also coach clients myself
+                      </Label>
                       <p className="text-xs text-muted-foreground leading-relaxed max-w-md">
                         {profile?.isActiveCoach
                           ? 'You see your own client list alongside team management tools.'
@@ -431,6 +455,7 @@ const Settings = () => {
                       </p>
                     </div>
                     <Switch
+                      id="settings-coaching-role-switch"
                       checked={profile?.isActiveCoach ?? true}
                       onCheckedChange={async (checked) => {
                         if (!user) return;
@@ -478,7 +503,7 @@ const Settings = () => {
               }}
               className="w-full"
             >
-              <TabsList className="w-full mb-6 p-1 h-auto bg-muted rounded-xl grid grid-cols-4 gap-1">
+              <TabsList className="w-full mb-6 p-1 h-auto bg-muted rounded-lg grid grid-cols-4 gap-1">
                 <TabsTrigger value="branding" className="py-2.5 px-3 rounded-lg text-xs sm:text-sm font-semibold data-[state=active]:bg-card">Branding</TabsTrigger>
                 <TabsTrigger value="modules" className="py-2.5 px-3 rounded-lg text-xs sm:text-sm font-semibold data-[state=active]:bg-card">Modules</TabsTrigger>
                 <TabsTrigger value="equipment" className="py-2.5 px-3 rounded-lg text-xs sm:text-sm font-semibold data-[state=active]:bg-card">Equipment</TabsTrigger>
@@ -486,7 +511,7 @@ const Settings = () => {
               </TabsList>
               <TabsContent value="branding" className="space-y-8 mt-0">
             {orgSettings?.customBrandingEnabled === false ? (
-            <section className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
+            <section className="rounded-lg border border-border/70 bg-background p-6 space-y-4">
               <div className="flex items-center gap-2 text-foreground mb-2">
                 <Palette className="h-5 w-5 text-primary" />
                 <h2 className="text-lg font-bold">Custom Branding</h2>
@@ -500,7 +525,7 @@ const Settings = () => {
               </p>
               <Button
                 type="button"
-                className="rounded-xl font-semibold"
+                className="rounded-lg font-semibold"
                 disabled={brandingCheckoutLoading}
                 onClick={() => void handlePurchaseCustomBranding()}
               >
@@ -521,7 +546,7 @@ const Settings = () => {
                 .
               </p>
 
-              <div className="rounded-2xl border border-dashed border-border bg-muted/80 p-6 space-y-4 mt-6">
+              <div className="rounded-lg border border-dashed border-border/70 bg-muted/50 p-6 space-y-4 mt-6">
                 <h3 className="text-sm font-bold text-foreground">Preview branding (optional)</h3>
                 <p className="text-xs text-muted-foreground">
                   Save a name and gradient for when you purchase. Clients and navigation still show One Assess
@@ -535,7 +560,7 @@ const Settings = () => {
                     value={localOrgName}
                     onChange={(e) => setLocalOrgName(e.target.value)}
                     placeholder="Organization name"
-                    className="rounded-xl border-border h-11"
+                    className="rounded-lg border-border h-11"
                   />
                 </div>
                 <div className="space-y-2">
@@ -543,7 +568,7 @@ const Settings = () => {
                     Brand gradient
                   </Label>
                   <Select value={localGradientId} onValueChange={(value) => setLocalGradientId(value as GradientId)}>
-                    <SelectTrigger className="w-full rounded-xl border-border h-11">
+                    <SelectTrigger className="w-full rounded-lg border-border h-11">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -557,7 +582,7 @@ const Settings = () => {
                 </div>
                 <Button
                   type="button"
-                  className="rounded-xl"
+                  className="rounded-lg"
                   disabled={isSaving || !brandingDirty}
                   onClick={() => void handleSaveOrgInfo()}
                 >
@@ -574,20 +599,20 @@ const Settings = () => {
               
               <div className="grid gap-6 md:grid-cols-2">
                 {/* Name and Gradient */}
-                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
+                <div className="rounded-lg border border-border/70 bg-background p-6 space-y-4">
                   <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">Organization Name</Label>
                     <Input 
                       value={localOrgName} 
                       onChange={(e) => setLocalOrgName(e.target.value)}
                       placeholder="Organization Name"
-                      className="rounded-xl border-border h-11"
+                      className="rounded-lg border-border h-11"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">Brand Gradient</Label>
                     <Select value={localGradientId} onValueChange={(value) => setLocalGradientId(value as GradientId)}>
-                      <SelectTrigger className="w-full rounded-xl border-border h-11">
+                      <SelectTrigger className="w-full rounded-lg border-border h-11">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -612,7 +637,7 @@ const Settings = () => {
                           key={gradient.id}
                           type="button"
                           onClick={() => setLocalGradientId(gradient.id)}
-                          className={`relative h-12 rounded-xl border-2 transition-all ${
+                          className={`relative h-12 rounded-lg border-2 transition-all ${
                             localGradientId === gradient.id
                               ? 'border-foreground shadow-md scale-105'
                               : 'border-border hover:border-muted-foreground/40'
@@ -638,7 +663,7 @@ const Settings = () => {
                   <Button 
                     onClick={handleSaveOrgInfo} 
                     disabled={isSaving}
-                    className="w-full rounded-xl bg-foreground text-background font-bold h-11 shadow-lg transition-all hover:bg-foreground/90"
+                    className="w-full rounded-lg bg-foreground text-background font-bold h-11 shadow-lg transition-all hover:bg-foreground/90"
                   >
                     {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Save Branding
@@ -646,9 +671,9 @@ const Settings = () => {
                 </div>
 
                 {/* Logo Upload */}
-                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm flex flex-col items-center justify-center text-center space-y-4">
+                <div className="rounded-lg border border-border/70 bg-background p-6 flex flex-col items-center justify-center text-center space-y-4">
                   <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground self-start">Organization Logo</Label>
-                  <div className="h-28 w-full flex items-center justify-center rounded-xl bg-muted">
+                  <div className="h-28 w-full flex items-center justify-center rounded-lg bg-muted">
                     {orgSettings?.logoUrl ? (
                       <img src={orgSettings.logoUrl} alt="Org Logo" className="h-20 w-auto object-contain" />
                     ) : (
@@ -666,7 +691,7 @@ const Settings = () => {
                       className="absolute inset-0 opacity-0 cursor-pointer z-10"
                       disabled={isUploading}
                     />
-                    <Button variant="outline" className="w-full rounded-xl font-bold h-11 gap-2 border-border bg-card hover:bg-muted">
+                    <Button variant="outline" className="w-full rounded-lg font-bold h-11 gap-2 border-border bg-card hover:bg-muted">
                       {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                       {orgSettings?.logoUrl ? 'Change Logo' : 'Upload New Logo'}
                     </Button>
@@ -683,7 +708,7 @@ const Settings = () => {
                 <Box className="h-5 w-5 text-primary" />
                 <h2 className="text-lg font-bold">Assessment Modules</h2>
               </div>
-              <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
+              <div className="rounded-lg border border-border/70 bg-background overflow-hidden">
                 <div className="divide-y divide-border">
                   {Object.entries(orgSettings?.modules || {}).map(([moduleId, enabled]) => {
                     const assessmentLabels: Record<string, { label: string; description: string }> = {
@@ -725,7 +750,7 @@ const Settings = () => {
                 <SettingsIcon className="h-5 w-5 text-primary" />
                 <h2 className="text-lg font-bold">Equipment Configuration</h2>
               </div>
-              <div className="rounded-2xl border border-border bg-card p-6 space-y-8 shadow-sm">
+              <div className="rounded-lg border border-border/70 bg-background p-6 space-y-8">
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   Configure the equipment available at your facility. Enable equipment to unlock advanced assessment protocols. You can add equipment at any time.
                 </p>
@@ -907,6 +932,7 @@ const Settings = () => {
         </Tabs>
       </div>
     </AppShell>
+    </>
   );
 };
 

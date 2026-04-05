@@ -35,7 +35,7 @@ export function ROIComparison() {
         >
           {/* The "Old Way" - Chaos */}
           <div className="relative group">
-            <div className="absolute inset-0 scale-[1.02] rotate-[-1.5deg] rounded-2xl bg-border/25 transition-transform duration-300 group-hover:rotate-[-2deg]" />
+            <div className="absolute inset-0 scale-[1.02] rotate-[-1.5deg] rounded-lg bg-border/25 transition-transform duration-300 group-hover:rotate-[-2deg]" />
             <GlassCard className="relative overflow-hidden border-border/90 bg-muted/70 p-8 dark:border-border dark:bg-card/80">
               <div className="absolute right-0 top-0 p-4 opacity-[0.07] dark:opacity-[0.12]">
                 <Clock size={120} className="text-foreground" />
@@ -106,7 +106,7 @@ export function ROIComparison() {
 
           {/* The New Way - Flow */}
           <div className="relative">
-            <div className="absolute inset-0 rounded-2xl bg-primary/10 blur-xl" />
+            <div className="absolute inset-0 rounded-lg bg-primary/10 blur-xl" />
             <GlassCard className="relative z-10 border-gradient-medium/50 bg-card p-8 shadow-md dark:border-primary/30 dark:bg-card/90">
               <div className="absolute right-0 top-0 p-4 opacity-[0.08] dark:opacity-[0.15]">
                 <Sun size={120} className="text-primary" />
@@ -119,7 +119,7 @@ export function ROIComparison() {
                 <h3 className="mb-2 text-2xl font-bold text-foreground">The All-in-One Flow</h3>
                 <p className="mb-8 text-sm text-muted-foreground">Assessment finished? Your work is done.</p>
 
-                <div className="relative mb-8 overflow-hidden rounded-2xl border border-border bg-muted p-6 dark:border-border dark:bg-background-secondary/90">
+                <div className="relative mb-8 overflow-hidden rounded-lg border border-border bg-muted p-6 dark:border-border dark:bg-background-secondary/90">
                   <div className="absolute left-0 top-0 h-full w-1 bg-primary" />
                   <div className="mb-4 flex items-center gap-4">
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
@@ -156,7 +156,7 @@ export function ROIComparison() {
                 </div>
                 
                 <LandingTrialCtaLink
-                  className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-foreground px-6 py-3 text-sm font-bold text-background shadow-lg transition-all hover:bg-foreground/90 hover:shadow-xl"
+                  className="mt-6 inline-flex items-center justify-center gap-2 rounded-lg bg-foreground px-6 py-3 text-sm font-bold text-background shadow-sm transition-all hover:bg-foreground/90 hover:shadow-md"
                   ariaLabel={landingTrialAriaLabel('roi', LANDING_GUEST_CHECKOUT_ENABLED)}
                 >
                   Start Free Trial

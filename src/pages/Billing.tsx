@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { httpsCallable } from 'firebase/functions';
 import { doc, getDoc } from 'firebase/firestore';
 import { Users, ArrowLeft, ExternalLink, UserCircle } from 'lucide-react';
@@ -11,15 +11,19 @@ import { checkoutClientTargetForStripe } from '@/lib/pricing/orgCheckoutTarget';
 import type { Region, PackageTrack } from '@/constants/pricing';
 import { logger } from '@/lib/utils/logger';
 import { ROUTES } from '@/constants/routes';
+import { getAppShellSeoForPathname } from '@/constants/seo';
+import { Seo } from '@/components/seo/Seo';
 import { STRIPE_CONFIG } from '@/constants/platform';
 import { subscriptionPlanDisplayHeadline } from '@/lib/pricing/subscriptionPlanDisplay';
 import { resolveSubscriptionClientLimit } from '@/lib/pricing/resolveSubscriptionClientLimit';
 import { ORG_BILLING_COPY } from '@/constants/orgBilling';
+import { BILLING_NAV_COPY } from '@/constants/billingNavCopy';
 import { BillingStripeSubscribeCard } from '@/components/org/billing/BillingStripeSubscribeCard';
 import { useToast } from '@/hooks/use-toast';
 import AppShell from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 
 interface SubscriptionInfo {
   plan: string;
@@ -71,6 +75,17 @@ function PlanBadge({ status }: { status: string }) {
 function BillingPage() {
   const { user, profile, loading: authLoading, effectiveOrgId } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const billingSeoPath = location.pathname.split('?')[0];
+  const billingSeoMeta = getAppShellSeoForPathname(location.pathname);
+  const billingSeo = (
+    <Seo
+      pathname={billingSeoPath}
+      title={billingSeoMeta.title}
+      description={billingSeoMeta.description}
+      noindex={billingSeoMeta.noindex}
+    />
+  );
   const { toast } = useToast();
   const [orgData, setOrgData] = useState<OrgBillingData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -229,6 +244,8 @@ function BillingPage() {
 
   if (profile && profile.role !== 'org_admin') {
     return (
+      <>
+        {billingSeo}
       <AppShell
         title="Billing"
         actions={
@@ -251,11 +268,14 @@ function BillingPage() {
           </Button>
         </div>
       </AppShell>
+      </>
     );
   }
 
   if (authLoading || loading) {
     return (
+      <>
+        {billingSeo}
       <AppShell title="Billing & subscription" hideTitle>
         <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3">
           <div
@@ -265,11 +285,14 @@ function BillingPage() {
           <p className="text-sm text-muted-foreground">Loading billing…</p>
         </div>
       </AppShell>
+      </>
     );
   }
 
   if (loadProblem === 'no_org') {
     return (
+      <>
+        {billingSeo}
       <AppShell
         title="Billing & subscription"
         actions={
@@ -287,16 +310,19 @@ function BillingPage() {
         <div className="max-w-md mx-auto text-center space-y-4 py-16 px-4">
           <h2 className="text-xl font-semibold text-foreground">{ORG_BILLING_COPY.billingPageMissingOrgTitle}</h2>
           <p className="text-sm text-muted-foreground leading-relaxed">{ORG_BILLING_COPY.billingPageMissingOrgBody}</p>
-          <Button type="button" className="rounded-xl font-semibold" onClick={() => navigate(ROUTES.ONBOARDING)}>
+          <Button type="button" className="rounded-lg font-semibold" onClick={() => navigate(ROUTES.ONBOARDING)}>
             Continue setup
           </Button>
         </div>
       </AppShell>
+      </>
     );
   }
 
   if (loadProblem === 'missing_doc') {
     return (
+      <>
+        {billingSeo}
       <AppShell
         title="Billing & subscription"
         actions={
@@ -314,16 +340,19 @@ function BillingPage() {
         <div className="max-w-md mx-auto text-center space-y-4 py-16 px-4">
           <h2 className="text-xl font-semibold text-foreground">{ORG_BILLING_COPY.billingPageOrgDocMissingTitle}</h2>
           <p className="text-sm text-muted-foreground leading-relaxed">{ORG_BILLING_COPY.billingPageOrgDocMissingBody}</p>
-          <Button type="button" variant="outline" className="rounded-xl" onClick={() => navigate(ROUTES.DASHBOARD)}>
+          <Button type="button" variant="outline" className="rounded-lg" onClick={() => navigate(ROUTES.DASHBOARD)}>
             Back to dashboard
           </Button>
         </div>
       </AppShell>
+      </>
     );
   }
 
   if (loadProblem === 'error' || !orgData) {
     return (
+      <>
+        {billingSeo}
       <AppShell
         title="Billing & subscription"
         actions={
@@ -341,11 +370,12 @@ function BillingPage() {
         <div className="max-w-md mx-auto text-center space-y-4 py-16 px-4">
           <h2 className="text-xl font-semibold text-foreground">{ORG_BILLING_COPY.billingPageLoadFailedTitle}</h2>
           <p className="text-sm text-muted-foreground leading-relaxed">{ORG_BILLING_COPY.billingPageLoadFailedBody}</p>
-          <Button type="button" className="rounded-xl font-semibold" onClick={() => window.location.reload()}>
+          <Button type="button" className="rounded-lg font-semibold" onClick={() => window.location.reload()}>
             Retry
           </Button>
         </div>
       </AppShell>
+      </>
     );
   }
 
@@ -397,6 +427,8 @@ function BillingPage() {
   const showChoosePackageLink = Boolean(canShowCapacityCatalog);
 
   return (
+    <>
+      {billingSeo}
     <AppShell
       title="Billing & subscription"
       subtitle={orgData.name || undefined}
@@ -412,18 +444,22 @@ function BillingPage() {
         </Button>
       }
     >
+      <ErrorBoundary>
       <div className="mx-auto max-w-5xl space-y-12 sm:space-y-14 pb-20 sm:pb-28 px-1 sm:px-0">
+        <p className="text-xs text-muted-foreground leading-relaxed border border-border/60 rounded-lg bg-muted/20 px-3 py-2">
+          {BILLING_NAV_COPY.COACH_PAGE_CONTEXT}
+        </p>
         <p className="text-sm text-muted-foreground leading-relaxed animate-fade-in-up">
           {checkoutLocked ? ORG_BILLING_COPY.billingPageIntroActiveLocked : ORG_BILLING_COPY.billingPageIntroShort}
         </p>
 
         <section aria-labelledby="billing-plan-heading">
-          <h2 id="billing-plan-heading" className="sr-only">
-            {ORG_BILLING_COPY.billingPageYourPlanEyebrow}
-          </h2>
-          <Card className="overflow-hidden rounded-2xl border-border/80 bg-card shadow-md ring-1 ring-border/40">
+          <Card className="overflow-hidden rounded-lg border border-border/70 bg-background shadow-none">
             <div className="border-b border-border/60 bg-gradient-to-br from-primary/[0.08] via-primary/[0.02] to-transparent px-6 py-7 sm:px-8 sm:py-8">
-              <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-3">
+              <p
+                id="billing-plan-heading"
+                className="text-xs font-semibold uppercase tracking-wider text-primary mb-3"
+              >
                 {ORG_BILLING_COPY.billingPageYourPlanEyebrow}
               </p>
               <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
@@ -447,7 +483,7 @@ function BillingPage() {
                   {hasStripeCustomer ? (
                     <Button
                       type="button"
-                      className="rounded-xl font-semibold w-full"
+                      className="rounded-lg font-semibold w-full"
                       onClick={() => void handleManagePayment()}
                       disabled={portalLoading}
                     >
@@ -470,7 +506,7 @@ function BillingPage() {
                     </Button>
                   ) : null}
                   {showChoosePackageLink ? (
-                    <Button type="button" variant="outline" className="rounded-xl w-full" asChild>
+                    <Button type="button" variant="outline" className="rounded-lg w-full" asChild>
                       <a href="#billing-checkout-prep">{ORG_BILLING_COPY.billingSubscriptionScrollToPackages}</a>
                     </Button>
                   ) : null}
@@ -485,7 +521,7 @@ function BillingPage() {
               ) : null}
 
               <div className="flex items-start gap-4">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-muted">
                   <Users className="h-5 w-5 text-foreground-secondary" aria-hidden />
                 </div>
                 <div className="min-w-0 flex-1 space-y-3">
@@ -513,18 +549,18 @@ function BillingPage() {
               </div>
 
               {hasStripeCustomer && !orgData.stripeSubscriptionId?.trim() ? (
-                <p className="text-xs text-muted-foreground border border-border rounded-xl p-4 bg-muted/30 leading-relaxed">
+                <p className="text-xs text-muted-foreground border border-border/70 rounded-lg p-4 bg-muted/30 leading-relaxed">
                   {ORG_BILLING_COPY.billingPagePortalHintNoSubId}
                 </p>
               ) : null}
               {hasStripeCustomer && orgData.stripeSubscriptionId?.trim() ? (
-                <p className="text-xs text-muted-foreground border border-border rounded-xl p-4 bg-muted/20 leading-relaxed">
+                <p className="text-xs text-muted-foreground border border-border/70 rounded-lg p-4 bg-muted/20 leading-relaxed">
                   {ORG_BILLING_COPY.billingPagePortalHintDashboard}
                 </p>
               ) : null}
 
               {orgData.subscription.monthlyAiCredits != null ? (
-                <div className="rounded-xl border border-border/80 bg-muted/30 px-4 py-4 space-y-1">
+                <div className="rounded-lg border border-border/70 bg-muted/25 px-4 py-4 space-y-1">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">AI credits</p>
                   <p className="text-sm font-semibold text-foreground">
                     {orgData.assessmentCredits ?? '—'} / {orgData.subscription.monthlyAiCredits} remaining this cycle
@@ -560,7 +596,7 @@ function BillingPage() {
         ) : null}
 
         <section
-          className="rounded-2xl border border-dashed border-border/80 bg-muted/20 px-6 py-7 sm:px-8 sm:py-8"
+          className="rounded-lg border border-dashed border-border/70 bg-muted/15 px-6 py-7 sm:px-8 sm:py-8"
           aria-labelledby="billing-contact-heading"
         >
           <h2
@@ -573,7 +609,7 @@ function BillingPage() {
             {ORG_BILLING_COPY.billingPageAccountStripLead}
           </p>
           <div className="mt-5 flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
               <UserCircle className="h-5 w-5 text-muted-foreground" aria-hidden />
             </div>
             <div className="min-w-0 space-y-1">
@@ -585,7 +621,9 @@ function BillingPage() {
           </div>
         </section>
       </div>
+      </ErrorBoundary>
     </AppShell>
+    </>
   );
 }
 

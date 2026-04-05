@@ -11,7 +11,7 @@ import { useAssessmentList } from '@/hooks/dashboard/useAssessmentList';
 import { useClientCapacity } from '@/hooks/useClientCapacity';
 import { Button } from '@/components/ui/button';
 import { UserPlus, Users } from 'lucide-react';
-import { STORAGE_KEYS } from '@/constants/storageKeys';
+import { writePrefillClientPayload } from '@/lib/assessment/assessmentSessionStorage';
 import { ROUTES } from '@/constants/routes';
 import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
 import { logger } from '@/lib/utils/logger';
@@ -44,7 +44,7 @@ export function AssessmentClientStep({
   const handleSelectClient = (name: string) => {
     updateFormData({ fullName: name });
     try {
-      sessionStorage.setItem(STORAGE_KEYS.PREFILL_CLIENT, JSON.stringify({ fullName: name }));
+      writePrefillClientPayload({ fullName: name });
     } catch (err) {
       logger.warn('prefill_client_storage_failed', {
         error: err instanceof Error ? err.message : String(err),
@@ -85,7 +85,7 @@ export function AssessmentClientStep({
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Existing clients
           </p>
-          <ul className="rounded-xl border border-border bg-background divide-y divide-border max-h-[280px] overflow-y-auto">
+          <ul className="max-h-[280px] divide-y divide-border overflow-y-auto rounded-lg border border-border/70 bg-background">
             {clientNames.map((name) => (
               <li key={name}>
                 <button
@@ -108,7 +108,7 @@ export function AssessmentClientStep({
           onClick={handleNewClient}
           variant="outline"
           disabled={capLoading || !canAddClient}
-          className="w-full sm:w-auto h-12 px-6 rounded-xl font-bold gap-2 border-border"
+          className="h-12 w-full gap-2 rounded-lg border-border px-6 font-bold sm:w-auto"
         >
           <UserPlus className="h-4 w-4" />
           New client (enter details in form)

@@ -1,8 +1,20 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Command } from 'cmdk';
-import { Search, User, Settings, LayoutDashboard, X, Building2, CreditCard } from 'lucide-react';
+import {
+  Search,
+  User,
+  Settings,
+  LayoutDashboard,
+  LayoutGrid,
+  X,
+  Building2,
+  CreditCard,
+  CalendarRange,
+} from 'lucide-react';
 import { ROUTES } from '@/constants/routes';
+import { UI_COMMAND_MENU } from '@/constants/ui';
+import { UI_EVENTS } from '@/constants/uiEvents';
 import { useAuth } from '@/hooks/useAuth';
 import { useOrgAdminNavVisibility } from '@/hooks/useOrgAdminNavVisibility';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
@@ -33,6 +45,12 @@ export function CommandMenu() {
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
+  }, []);
+
+  useEffect(() => {
+    const openFromSidebar = () => setOpen(true);
+    window.addEventListener(UI_EVENTS.OPEN_COMMAND_MENU, openFromSidebar);
+    return () => window.removeEventListener(UI_EVENTS.OPEN_COMMAND_MENU, openFromSidebar);
   }, []);
 
   useEffect(() => {
@@ -136,7 +154,28 @@ export function CommandMenu() {
                 className="flex items-center gap-3 px-3 py-2.5 text-sm text-foreground-secondary rounded-lg cursor-pointer data-[selected=true]:bg-muted"
               >
                 <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
-                Dashboard
+                {UI_COMMAND_MENU.HOME}
+              </Command.Item>
+              <Command.Item
+                onSelect={() => go(ROUTES.DASHBOARD_CLIENTS)}
+                className="flex items-center gap-3 px-3 py-2.5 text-sm text-foreground-secondary rounded-lg cursor-pointer data-[selected=true]:bg-muted"
+              >
+                <User className="h-4 w-4 text-muted-foreground" />
+                {UI_COMMAND_MENU.CLIENTS}
+              </Command.Item>
+              <Command.Item
+                onSelect={() => go(ROUTES.DASHBOARD_WORK)}
+                className="flex items-center gap-3 px-3 py-2.5 text-sm text-foreground-secondary rounded-lg cursor-pointer data-[selected=true]:bg-muted"
+              >
+                <CalendarRange className="h-4 w-4 text-muted-foreground" />
+                {UI_COMMAND_MENU.WORK}
+              </Command.Item>
+              <Command.Item
+                onSelect={() => go(ROUTES.DASHBOARD_ARTIFACTS)}
+                className="flex items-center gap-3 px-3 py-2.5 text-sm text-foreground-secondary rounded-lg cursor-pointer data-[selected=true]:bg-muted"
+              >
+                <LayoutGrid className="h-4 w-4 text-muted-foreground" />
+                {UI_COMMAND_MENU.ARTIFACTS}
               </Command.Item>
               {showOrgAdminNav && (
                 <Command.Item

@@ -83,13 +83,13 @@ All colors MUST be HSL.
     --input: 0 0% 82%;
     --ring: var(--gradient-from);
 
-    /* Apple Design Tokens */
-    --radius: 0.75rem;        /* 12px - Apple's standard corner radius */
-    --radius-sm: 0.5rem;      /* 8px - Small radius */
-    --radius-lg: 1rem;        /* 16px - Large radius */
-    --radius-xl: 1.5rem;      /* 24px - Extra large radius */
-    --radius-2xl: 1.75rem;    /* 28px - 2XL radius */
-    --radius-3xl: 2rem;      /* 32px - 3XL radius */
+    /* Corner radius — slightly squarer default for workspace chrome; composer/hero may use larger fixed Tailwind radii */
+    --radius: 0.625rem;       /* 10px — default md */
+    --radius-sm: 0.5rem;      /* 8px */
+    --radius-lg: 0.75rem;     /* 12px */
+    --radius-xl: 1.25rem;    /* 20px */
+    --radius-2xl: 1.5rem;    /* 24px */
+    --radius-3xl: 1.75rem;   /* 28px */
     --radius-full: 9999px;    /* Full rounded */
     
     /* Apple Typography Scale */

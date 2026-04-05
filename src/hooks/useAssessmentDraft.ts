@@ -7,7 +7,12 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { STORAGE_KEYS } from '@/constants/storageKeys';
+import {
+  readDraftAssessmentRaw,
+  removeDraftAssessment,
+  hasEditAssessmentInSession,
+  writeSessionDraftAssessmentJson,
+} from '@/lib/assessment/assessmentSessionStorage';
 import { logger } from '@/lib/utils/logger';
 import type { FormData } from '@/contexts/FormContext';
 
@@ -48,7 +53,7 @@ export function hasAssessmentDraftableData(formData: FormData): boolean {
 /** Read a saved draft (or null). */
 export function getDraft(): DraftData | null {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEYS.DRAFT_ASSESSMENT);
+    const raw = readDraftAssessmentRaw();
     if (!raw) return null;
     return JSON.parse(raw) as DraftData;
   } catch {
@@ -58,11 +63,7 @@ export function getDraft(): DraftData | null {
 
 /** Remove the saved draft. */
 export function clearDraft(): void {
-  try {
-    sessionStorage.removeItem(STORAGE_KEYS.DRAFT_ASSESSMENT);
-  } catch {
-    // noop
-  }
+  removeDraftAssessment();
 }
 
 // ── Hook ─────────────────────────────────────────────────────────
@@ -81,9 +82,7 @@ export function useAssessmentDraft(
   isResultsPhase: boolean,
 ) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isEditMode = useRef(
-    !!sessionStorage.getItem(STORAGE_KEYS.EDIT_ASSESSMENT),
-  );
+  const isEditMode = useRef(hasEditAssessmentInSession());
 
   useEffect(() => {
     if (isEditMode.current || isResultsPhase) return;
@@ -98,10 +97,7 @@ export function useAssessmentDraft(
           timestamp: Date.now(),
           clientName: formData.fullName || 'Unnamed',
         };
-        sessionStorage.setItem(
-          STORAGE_KEYS.DRAFT_ASSESSMENT,
-          JSON.stringify(draft),
-        );
+        writeSessionDraftAssessmentJson(JSON.stringify(draft));
       } catch (e) {
         logger.warn('[Draft] Failed to persist draft:', e);
       }

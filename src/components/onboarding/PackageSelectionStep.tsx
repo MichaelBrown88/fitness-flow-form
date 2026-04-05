@@ -143,7 +143,7 @@ export function PackageSelectionStep({
       (businessType === 'gym' || businessType === 'gym_chain');
 
     if (useStripe) {
-      const redirected = await startCheckout(
+      const { redirected } = await startCheckout(
         profile.organizationId,
         region,
         clientCount,

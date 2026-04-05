@@ -68,7 +68,7 @@ export function UnderTheHood() {
           {/* Right: Terminal visual (appears last) */}
           <div ref={visualRef} className="relative">
             <div className="absolute inset-0 rounded-full bg-primary/15 blur-[100px]" />
-            <div className="relative rounded-2xl border border-landing-contrast-border bg-landing-contrast-surface/50 p-8 backdrop-blur-lg">
+            <div className="relative rounded-lg border border-landing-contrast-border bg-landing-contrast-surface/50 p-8 backdrop-blur-lg">
               <div className="mb-8 flex items-center justify-between border-b border-landing-contrast-border pb-4">
                 <span className="font-mono text-sm text-landing-contrast-subtle">PROCESSING_job_ID_8829</span>
                 <span className="flex items-center gap-2 text-xs font-bold text-score-green">

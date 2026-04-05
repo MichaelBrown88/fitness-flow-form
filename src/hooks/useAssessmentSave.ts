@@ -13,7 +13,13 @@ import { requestShareArtifacts, type ShareArtifacts } from '@/services/share';
 import type { FormData } from '@/contexts/FormContext';
 import type { ScoreSummary } from '@/lib/scoring';
 import { logger } from '@/lib/utils/logger';
-import { STORAGE_KEYS } from '@/constants/storageKeys';
+import {
+  readPartialAssessmentRecord,
+  parseEditAssessmentPayload,
+  removeEditAssessment,
+  removePartialAssessment,
+  writeSessionDraftAssessmentBundle,
+} from '@/lib/assessment/assessmentSessionStorage';
 import { UI_TOASTS } from '@/constants/ui';
 import { clearDraft } from '@/hooks/useAssessmentDraft';
 import { generateCadenceRecommendations } from '@/lib/recommendations/cadenceEngine';
@@ -22,6 +28,8 @@ import type { UserProfile } from '@/types/auth';
 import type { OrgSettings } from '@/services/organizations';
 import { CLIENT_PROFILE_LAST_BODY_COMP_AT } from '@/lib/utils/clientProfileBodyCompDate';
 import { decrementSandboxTrialAfterSuccessfulSave } from '@/lib/utils/sandboxTrialDecrement';
+import { isRetryableFirestoreOrNetworkError } from '@/lib/firebase/isRetryableFirestoreOrNetworkError';
+import { ASSESSMENT_SAVE_RETRY_QUEUE_COPY } from '@/constants/assessmentSaveRetryCopy';
 
 interface UseAssessmentSaveProps {
   user: { uid: string; email: string | null | undefined } | null;
@@ -88,10 +96,10 @@ export function useAssessmentSave({
     // Phase C4: Name-change guard -- prevent slug drift during assessment save
     // If the form name differs from the stored client name (from partial/edit context),
     // use the stored name to avoid accidentally creating a new client identity.
-    const partialCtx = sessionStorage.getItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
-    if (partialCtx) {
+    const partialRec = readPartialAssessmentRecord();
+    if (partialRec?.clientName) {
       try {
-        const { clientName: storedName } = JSON.parse(partialCtx);
+        const storedName = partialRec.clientName;
         if (storedName) {
           const { generateClientSlug } = await import('@/services/clientProfiles');
           const formSlug = generateClientSlug(clientName);
@@ -145,25 +153,21 @@ export function useAssessmentSave({
       let publicReportSynced = true;
       
         // Check for edit mode first
-        const editData = sessionStorage.getItem(STORAGE_KEYS.EDIT_ASSESSMENT);
-        let parsedEdit: {
+        const parsedRaw = parseEditAssessmentPayload();
+        const parsedEdit: {
           assessmentId?: string;
           formData?: FormData;
           snapshotId?: string;
           editType?: string;
-        } | null = null;
-        if (editData) {
-          try {
-            parsedEdit = JSON.parse(editData) as {
-              assessmentId?: string;
-              formData?: FormData;
-              snapshotId?: string;
-              editType?: string;
-            };
-          } catch {
-            // Non-fatal: malformed sessionStorage, fall through to full save
-          }
-        }
+        } | null = parsedRaw
+          ? {
+              assessmentId: parsedRaw.assessmentId,
+              /* Parsed from sessionStorage JSON — caller merges with live form before save */
+              formData: parsedRaw.formData as unknown as FormData | undefined,
+              snapshotId: parsedRaw.snapshotId,
+              editType: parsedRaw.editType,
+            }
+          : null;
         if (parsedEdit?.assessmentId && profile?.organizationId) {
             if (parsedEdit.snapshotId) {
               // Edit existing snapshot in place with cascade; for partial, merge with current so we don't wipe other pillars
@@ -184,8 +188,8 @@ export function useAssessmentSave({
                 profile.organizationId
               );
               if (result.success) {
-                sessionStorage.removeItem(STORAGE_KEYS.EDIT_ASSESSMENT);
-                sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
+                removeEditAssessment();
+                removePartialAssessment();
                 clearDraft();
                 setIsEditMode(true);
                 try {
@@ -224,7 +228,7 @@ export function useAssessmentSave({
               profile
             );
             assessmentId = parsedEdit.assessmentId;
-            sessionStorage.removeItem(STORAGE_KEYS.EDIT_ASSESSMENT);
+            removeEditAssessment();
             clearDraft();
             setIsEditMode(true);
             toast({
@@ -242,15 +246,7 @@ export function useAssessmentSave({
             return;
         }
 
-        const partialData = sessionStorage.getItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
-        let parsedPartial: { category?: string; clientName?: string } | null = null;
-        if (partialData) {
-          try {
-            parsedPartial = JSON.parse(partialData) as { category?: string; clientName?: string };
-          } catch {
-            // Non-fatal: malformed sessionStorage, fall through to full save
-          }
-        }
+        const parsedPartial = readPartialAssessmentRecord();
         if (parsedPartial?.category) {
           const cat = parsedPartial.category;
           const storedName = parsedPartial.clientName;
@@ -263,14 +259,7 @@ export function useAssessmentSave({
             if (orgId) {
               await saveDraftAssessment(clientName, formData, orgId);
             }
-            try {
-              sessionStorage.setItem(
-                STORAGE_KEYS.DRAFT_ASSESSMENT,
-                JSON.stringify({ formData, timestamp: Date.now(), clientName: storedName || clientName })
-              );
-            } catch {
-              // non-fatal
-            }
+            writeSessionDraftAssessmentBundle(formData, storedName || clientName);
             toast({
               title: 'Draft saved',
               description: 'Finish the assessment to update the live report.',
@@ -313,7 +302,7 @@ export function useAssessmentSave({
           await createOrUpdateClientProfile(user.uid, storedName || clientName, updateData, profile?.organizationId, profile);
 
           setHighlightCategory(category);
-          sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
+          removePartialAssessment();
           if (profile?.organizationId) await clearDraftAssessment(storedName || clientName, profile.organizationId);
         } else {
           // Full assessment
@@ -322,14 +311,7 @@ export function useAssessmentSave({
             if (orgId) {
               await saveDraftAssessment(clientName, formData, orgId);
             }
-            try {
-              sessionStorage.setItem(
-                STORAGE_KEYS.DRAFT_ASSESSMENT,
-                JSON.stringify({ formData, timestamp: Date.now(), clientName })
-              );
-            } catch {
-              // non-fatal
-            }
+            writeSessionDraftAssessmentBundle(formData, clientName);
             toast({
               title: 'Draft saved',
               description: 'Finish the assessment to update the live report.',
@@ -653,20 +635,55 @@ export function useAssessmentSave({
     } catch (e) {
       // Use logger for consistency with project rules
       logger.error('[SYNC] Save failed:', e instanceof Error ? e.message : String(e));
-      
-      // Check if it's an organizationId validation error
+
       const errorMessage = e instanceof Error ? e.message : String(e);
+      const orgIdForQueue = profile?.organizationId?.trim() ?? '';
+
       if (errorMessage.includes('Organization ID is required')) {
-        toast({ 
-          title: UI_TOASTS.ERROR.UNABLE_TO_SAVE, 
-          description: UI_TOASTS.ERROR.UNABLE_TO_SAVE_DESC, 
-          variant: 'destructive' 
+        toast({
+          title: UI_TOASTS.ERROR.UNABLE_TO_SAVE,
+          description: UI_TOASTS.ERROR.UNABLE_TO_SAVE_DESC,
+          variant: 'destructive',
+        });
+      } else if (
+        !isDemoAssessment &&
+        orgIdForQueue &&
+        user &&
+        isRetryableFirestoreOrNetworkError(e)
+      ) {
+        try {
+          await enqueueAssessment({
+            id: `${user.uid}_${Date.now()}`,
+            queuedAt: Date.now(),
+            coachUid: user.uid,
+            organizationId: orgIdForQueue,
+            formData,
+            scores,
+            isDemoAssessment,
+          });
+          toast({
+            title: ASSESSMENT_SAVE_RETRY_QUEUE_COPY.title,
+            description: ASSESSMENT_SAVE_RETRY_QUEUE_COPY.description,
+          });
+        } catch (queueErr) {
+          logger.error('[Assessment] Failed to queue assessment after transient error:', queueErr);
+          toast({
+            title: ASSESSMENT_SAVE_RETRY_QUEUE_COPY.queueFailedTitle,
+            description: ASSESSMENT_SAVE_RETRY_QUEUE_COPY.queueFailedDescription,
+            variant: 'destructive',
+          });
+        }
+      } else if (isRetryableFirestoreOrNetworkError(e)) {
+        toast({
+          title: UI_TOASTS.ERROR.SAVE_CONNECTION_ISSUE,
+          description: UI_TOASTS.ERROR.SAVE_CONNECTION_ISSUE_DESC,
+          variant: 'destructive',
         });
       } else {
-        toast({ 
-          title: UI_TOASTS.ERROR.SYNC_ERROR, 
-          description: UI_TOASTS.ERROR.SYNC_ERROR_DESC, 
-          variant: 'destructive' 
+        toast({
+          title: UI_TOASTS.ERROR.SYNC_ERROR,
+          description: UI_TOASTS.ERROR.SYNC_ERROR_DESC,
+          variant: 'destructive',
         });
       }
     } finally {

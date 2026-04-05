@@ -6,6 +6,7 @@
  */
 
 import * as admin from 'firebase-admin';
+import { logger } from 'firebase-functions';
 
 export async function snapshotPlatformMetrics(): Promise<void> {
   const db = admin.firestore();
@@ -14,7 +15,7 @@ export async function snapshotPlatformMetrics(): Promise<void> {
   const statsSnap = await statsRef.get();
 
   if (!statsSnap.exists) {
-    console.log('[MetricsHistory] system_stats/global_metrics does not exist, skipping snapshot');
+    logger.info('[MetricsHistory] system_stats/global_metrics does not exist, skipping snapshot');
     return;
   }
 
@@ -39,7 +40,7 @@ export async function snapshotPlatformMetrics(): Promise<void> {
   };
 
   await db.doc(`platform/metrics/history/${dateKey}`).set(historyDoc, { merge: true });
-  console.log(`[MetricsHistory] Snapshot written for ${dateKey}`);
+  logger.info(`[MetricsHistory] Snapshot written for ${dateKey}`);
 }
 
 /**
@@ -73,5 +74,5 @@ export async function resetAssessmentsThisMonth(): Promise<void> {
     { merge: true },
   );
 
-  console.log(`[MetricsHistory] assessmentsThisMonth reset to 0 for ${orgCount} orgs`);
+  logger.info(`[MetricsHistory] assessmentsThisMonth reset to 0 for ${orgCount} orgs`);
 }

@@ -18,7 +18,10 @@ import { BASE_CADENCE_INTERVALS } from '@/types/client';
 import type { PartialAssessmentCategory } from '@/types/client';
 import { getPillarLabel } from '@/constants/pillars';
 import { ROUTES } from '@/constants/routes';
-import { UI_DASHBOARD_CLIENTS } from '@/constants/ui';
+import {
+  UI_DASHBOARD_CLIENTS,
+  clientDirectorySelectRowAria,
+} from '@/constants/ui';
 import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
 
 type SortKey = 'name' | 'lastAssessed' | 'score';
@@ -276,7 +279,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
       </div>
 
       {/* Desktop / Tablet table */}
-      <div className="hidden overflow-x-auto rounded-xl border border-border bg-card shadow-sm sm:block">
+      <div className="hidden overflow-x-auto rounded-lg border border-border/70 bg-background sm:block">
         <table className="min-w-full divide-y divide-border text-xs sm:text-sm">
           <thead className="bg-muted/40">
             <tr>
@@ -285,6 +288,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                   type="checkbox"
                   checked={sorted.slice(0, visibleCount).length > 0 && selected.size === sorted.slice(0, visibleCount).length}
                   onChange={toggleSelectAll}
+                  aria-label={UI_DASHBOARD_CLIENTS.TABLE_SELECT_ALL_VISIBLE_ARIA}
                   className="h-4 w-4 cursor-pointer rounded border-border text-primary focus:ring-ring"
                 />
               </th>
@@ -334,7 +338,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                       <p className="text-sm text-muted-foreground">{UI_DASHBOARD_CLIENTS.EMPTY_BODY}</p>
                       <Button
                         type="button"
-                        className="rounded-xl font-bold"
+                        className="rounded-lg font-bold"
                         onClick={() => navigate(ROUTES.ASSESSMENT)}
                       >
                         {UI_DASHBOARD_CLIENTS.EMPTY_CTA}
@@ -361,6 +365,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                         type="checkbox"
                         checked={selected.has(client.id)}
                         onChange={() => toggleSelect(client.id)}
+                        aria-label={clientDirectorySelectRowAria(formatClientDisplayName(client.name))}
                         className="h-4 w-4 cursor-pointer rounded border-border text-primary focus:ring-ring"
                       />
                     </td>
@@ -418,14 +423,14 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
       {/* Mobile card layout */}
       <div className="sm:hidden space-y-2">
         {loadingData ? (
-          <div className="rounded-xl border border-border bg-card p-6">
+          <div className="rounded-lg border border-border/70 bg-background p-6">
             <div className="flex flex-col items-center gap-3">
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-foreground border-t-transparent" />
               <span className="text-sm font-medium text-muted-foreground">Loading clients...</span>
             </div>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-xl border border-border bg-card p-6 text-center">
+          <div className="rounded-lg border border-border/70 bg-background p-6 text-center">
             {search ? (
               <p className="text-sm text-muted-foreground font-medium">
                 {UI_DASHBOARD_CLIENTS.SEARCH_NO_MATCH}
@@ -436,7 +441,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                 <p className="text-sm text-muted-foreground">{UI_DASHBOARD_CLIENTS.EMPTY_BODY}</p>
                 <Button
                   type="button"
-                  className="rounded-xl font-bold w-full sm:w-auto"
+                  className="rounded-lg font-bold w-full sm:w-auto"
                   onClick={() => navigate(ROUTES.ASSESSMENT)}
                 >
                   {UI_DASHBOARD_CLIENTS.EMPTY_CTA}
@@ -456,7 +461,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                 key={client.id}
                 role="button"
                 tabIndex={0}
-                className={`cursor-pointer rounded-xl border border-border bg-card p-4 shadow-sm transition-colors active:bg-muted/50 ${dimClass}`}
+                className={`cursor-pointer rounded-lg border border-border/70 bg-background p-4 transition-colors active:bg-muted/50 ${dimClass}`}
                 style={{ minHeight: 44 }}
                 onClick={() => navigate(`/client/${encodeURIComponent(client.name)}`)}
                 onKeyDown={(e) => {
@@ -473,6 +478,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                       type="checkbox"
                       checked={selected.has(client.id)}
                       onChange={() => toggleSelect(client.id)}
+                      aria-label={clientDirectorySelectRowAria(formatClientDisplayName(client.name))}
                       className="h-4 w-4 shrink-0 cursor-pointer rounded border-border text-primary focus:ring-ring"
                     />
                     <p className="truncate text-sm font-semibold text-foreground">
@@ -528,7 +534,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
           <Button
             variant="outline"
             onClick={() => setVisibleCount((prev) => prev + 20)}
-            className="rounded-xl border-border px-8 text-xs font-semibold text-muted-foreground transition-all hover:border-foreground hover:text-foreground"
+            className="rounded-lg border-border px-8 text-xs font-semibold text-muted-foreground transition-all hover:border-foreground hover:text-foreground"
           >
             Show More Clients
           </Button>

@@ -14,6 +14,7 @@ import { httpsCallable } from 'firebase/functions';
 import { getFirebaseFunctions } from '@/services/firebase';
 import { LANDING_GUEST_CHECKOUT_ENABLED, STRIPE_CONFIG } from '@/constants/platform';
 import { logger } from '@/lib/utils/logger';
+import { functionsCallableUserMessage } from '@/lib/firebase/functionsCallableUserMessage';
 import type { Region, BillingPeriod, PackageTrack } from '@/constants/pricing';
 import type {
   CreateCheckoutRequest,
@@ -22,6 +23,12 @@ import type {
   UpdateSubscriptionPlanRequest,
   UpdateSubscriptionPlanResponse,
 } from '@/types/platform';
+
+/** Result after attempting hosted Checkout (redirect vs stay in app with error). */
+export type CheckoutSessionAttempt = {
+  redirected: boolean;
+  errorMessage: string | null;
+};
 
 export function useCheckout() {
   const [loading, setLoading] = useState(false);
@@ -43,11 +50,11 @@ export function useCheckout() {
       billingPeriod: BillingPeriod = 'monthly',
       packageTrack?: PackageTrack,
       includeCustomBranding?: boolean,
-    ): Promise<boolean> => {
+    ): Promise<CheckoutSessionAttempt> => {
       // If Stripe is not configured, skip payment entirely
       if (!STRIPE_CONFIG.isEnabled) {
         logger.info('[Checkout] Stripe not configured — skipping payment (trial mode)');
-        return false;
+        return { redirected: false, errorMessage: null };
       }
 
       setLoading(true);
@@ -76,15 +83,15 @@ export function useCheckout() {
         }
 
         window.location.assign(sessionUrl);
-        return true;
+        return { redirected: true, errorMessage: null };
       } catch (err: unknown) {
-        const message =
-          err instanceof Error
-            ? err.message
-            : 'Unable to start checkout. Please try again.';
+        const message = functionsCallableUserMessage(
+          err,
+          'Unable to start checkout. Please try again.',
+        );
         setError(message);
         logger.error('[Checkout] Failed to start checkout:', message);
-        return false;
+        return { redirected: false, errorMessage: message };
       } finally {
         setLoading(false);
       }
@@ -102,10 +109,10 @@ export function useCheckout() {
       clientCount: number,
       billingPeriod: BillingPeriod,
       packageTrack: PackageTrack,
-    ): Promise<boolean> => {
+    ): Promise<CheckoutSessionAttempt> => {
       if (!LANDING_GUEST_CHECKOUT_ENABLED) {
         logger.info('[Checkout] Landing guest checkout disabled (env)');
-        return false;
+        return { redirected: false, errorMessage: null };
       }
 
       setLoading(true);
@@ -131,15 +138,15 @@ export function useCheckout() {
         }
 
         window.location.assign(sessionUrl);
-        return true;
+        return { redirected: true, errorMessage: null };
       } catch (err: unknown) {
-        const message =
-          err instanceof Error
-            ? err.message
-            : 'Unable to start checkout. Please try again.';
+        const message = functionsCallableUserMessage(
+          err,
+          'Unable to start checkout. Please try again.',
+        );
         setError(message);
         logger.error('[Checkout] Landing guest checkout failed:', message);
-        return false;
+        return { redirected: false, errorMessage: message };
       } finally {
         setLoading(false);
       }
@@ -148,10 +155,10 @@ export function useCheckout() {
   );
 
   const purchaseCreditTopup = useCallback(
-    async (organizationId: string): Promise<boolean> => {
+    async (organizationId: string): Promise<CheckoutSessionAttempt> => {
       if (!STRIPE_CONFIG.isEnabled) {
         logger.info('[Checkout] Stripe not configured — skipping credit topup');
-        return false;
+        return { redirected: false, errorMessage: null };
       }
 
       setLoading(true);
@@ -170,12 +177,12 @@ export function useCheckout() {
         if (!sessionUrl) throw new Error('No checkout session URL returned from server.');
 
         window.location.href = sessionUrl;
-        return true;
+        return { redirected: true, errorMessage: null };
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Unable to start credit checkout.';
+        const message = functionsCallableUserMessage(err, 'Unable to start credit checkout.');
         setError(message);
         logger.error('[Checkout] Failed to start credit topup:', message);
-        return false;
+        return { redirected: false, errorMessage: message };
       } finally {
         setLoading(false);
       }
@@ -215,8 +222,10 @@ export function useCheckout() {
         });
         return result.data;
       } catch (err: unknown) {
-        const message =
-          err instanceof Error ? err.message : 'Unable to update your plan. Please try again.';
+        const message = functionsCallableUserMessage(
+          err,
+          'Unable to update your plan. Please try again.',
+        );
         setError(message);
         logger.error('[Checkout] updateSubscriptionPlan failed:', message);
         throw err;

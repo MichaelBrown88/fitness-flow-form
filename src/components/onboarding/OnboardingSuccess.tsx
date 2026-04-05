@@ -9,7 +9,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, ClipboardList } from 'lucide-react';
 import { ROUTES } from '@/constants/routes';
 import { useAuth } from '@/hooks/useAuth';
-import { STORAGE_KEYS } from '@/constants/storageKeys';
+import { writePrefillClientPayload } from '@/lib/assessment/assessmentSessionStorage';
 import { ASSESSMENT_COPY } from '@/constants/assessmentCopy';
 
 interface OnboardingSuccessProps {
@@ -21,11 +21,7 @@ export function OnboardingSuccess({ businessName }: OnboardingSuccessProps) {
   const selfName = (profile?.displayName || user?.displayName || 'Me').trim() || 'Me';
 
   const handleSelfFirstAssessment = () => {
-    try {
-      sessionStorage.setItem(STORAGE_KEYS.PREFILL_CLIENT, JSON.stringify({ fullName: selfName }));
-    } catch {
-      // non-fatal
-    }
+    writePrefillClientPayload({ fullName: selfName });
     window.location.assign(ROUTES.ASSESSMENT);
   };
 

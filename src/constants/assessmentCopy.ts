@@ -68,3 +68,9 @@ export const ASSESSMENT_COPY = {
   REMOTE_CHECKIN_LIFESTYLE_CTA: 'Lifestyle check-in',
   REMOTE_CHECKIN_POSTURE_CTA: 'Progress photos (posture)',
 } as const;
+
+/** Coach assessment report header — arrow control is “up” navigation, not browser history */
+export const COACH_ASSESSMENT_REPORT_NAV = {
+  BACK_TO_CLIENT_ARIA: 'Back to client profile',
+  BACK_TO_DASHBOARD_ARIA: 'Back to dashboard',
+} as const;

@@ -91,16 +91,6 @@ export const getClientRoadmapDoc = (
 ): DocumentReference => doc(getDb(), ORGANIZATION.clients.roadmap(orgId, clientSlug));
 
 // ---------------------------------------------------------------------------
-// Achievements  (one per client)
-// ---------------------------------------------------------------------------
-
-export const getClientAchievementsDoc = (
-  orgId: string,
-  clientSlug: string,
-): DocumentReference =>
-  doc(getDb(), ORGANIZATION.clients.achievements(orgId, clientSlug));
-
-// ---------------------------------------------------------------------------
 // Assessment Draft  (save-for-later, one per client)
 // ---------------------------------------------------------------------------
 
@@ -205,19 +195,15 @@ export async function platformAdminLookupExistsForEmail(email: string): Promise<
   return canonical.exists() || legacy.exists();
 }
 
-/** Writes the same payload to canonical (email) and legacy lookup docs when ids differ. */
+/** Writes platform admin lookup at the canonical document id only (matches Firestore rules). */
 export async function mirrorPlatformAdminLookupWrite(
   email: string,
   data: DocumentData,
   options?: { merge?: boolean },
 ): Promise<void> {
   const canonicalRef = getPlatformAdminLookupDoc(email);
-  const legacyRef = getPlatformAdminLegacyLookupDoc(email);
   const merge = options?.merge ?? false;
   await setDoc(canonicalRef, data, { merge });
-  if (legacyRef.path !== canonicalRef.path) {
-    await setDoc(legacyRef, data, { merge });
-  }
 }
 
 export const getPlatformConfigDoc = (): DocumentReference =>

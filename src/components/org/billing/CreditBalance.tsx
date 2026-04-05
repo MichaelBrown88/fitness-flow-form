@@ -12,6 +12,8 @@ import { Zap, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCheckout } from '@/hooks/useCheckout';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
+import { CHECKOUT_FLOW_COPY } from '@/constants/checkoutFlowCopy';
 import { isUnlimitedAiCredits } from '@/constants/pricing';
 
 interface CreditBalanceProps {
@@ -23,6 +25,7 @@ const LOW_CREDITS_THRESHOLD = 5;
 
 export function CreditBalance({ credits, className }: CreditBalanceProps) {
   const { effectiveOrgId } = useAuth();
+  const { toast } = useToast();
   const { purchaseCreditTopup, loading } = useCheckout();
 
   if (credits === undefined || credits === null) return null;
@@ -32,7 +35,14 @@ export function CreditBalance({ credits, className }: CreditBalanceProps) {
   const handleTopup = async () => {
     const orgId = effectiveOrgId;
     if (!orgId) return;
-    await purchaseCreditTopup(orgId);
+    const { redirected, errorMessage } = await purchaseCreditTopup(orgId);
+    if (!redirected && errorMessage) {
+      toast({
+        variant: 'destructive',
+        title: CHECKOUT_FLOW_COPY.checkoutCallableFailedToastTitle,
+        description: errorMessage,
+      });
+    }
   };
 
   return (

@@ -3,11 +3,15 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { Link, NavLink, useNavigate, useSearchParams, Outlet } from 'react-router-dom';
+import { Link, NavLink, useNavigate, useSearchParams, Outlet, useLocation } from 'react-router-dom';
 import AppShell from '@/components/layout/AppShell';
+import { Seo } from '@/components/seo/Seo';
 import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
 import { ROUTES } from '@/constants/routes';
+import { UI_CLIENT_DETAIL } from '@/constants/ui';
+import { getAppShellSeoForPathname } from '@/constants/seo';
+import { UI_COMMAND_MENU } from '@/constants/ui';
 import { useClientDetail } from '@/hooks/useClientDetail';
 import { useAuth } from '@/hooks/useAuth';
 import { getRoadmapForClient } from '@/services/roadmaps';
@@ -58,6 +62,7 @@ export default function ClientDetailLayout() {
   const { profile: authProfile } = useAuth();
   const clientData = useClientDetail();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [transferOpen, setTransferOpen] = useState(false);
@@ -152,38 +157,63 @@ export default function ClientDetailLayout() {
     return () => { cancelled = true; };
   }, [effectiveOrgId, clientName]);
 
+  const seoPath = location.pathname.split('?')[0];
+  const clientSeoMeta = getAppShellSeoForPathname(location.pathname, {
+    clientDisplayName: displayClientName,
+  });
+
   if (!user) {
+    const bootMeta = getAppShellSeoForPathname(location.pathname);
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-foreground-secondary">
-        Loading…
-      </div>
+      <>
+        <Seo pathname={seoPath} title={bootMeta.title} description={bootMeta.description} noindex={bootMeta.noindex} />
+        <div className="flex min-h-screen items-center justify-center text-sm text-foreground-secondary">
+          Loading…
+        </div>
+      </>
     );
   }
 
   if (loading) {
     return (
-      <AppShell title={displayClientName}>
-        <div className="py-10 text-sm text-foreground-secondary">Loading client data…</div>
-      </AppShell>
+      <>
+        <Seo pathname={seoPath} title={clientSeoMeta.title} description={clientSeoMeta.description} noindex={clientSeoMeta.noindex} />
+        <AppShell title={displayClientName}>
+          <div className="py-10 text-sm text-foreground-secondary">Loading client data…</div>
+        </AppShell>
+      </>
     );
   }
 
   return (
+    <>
+      <Seo pathname={seoPath} title={clientSeoMeta.title} description={clientSeoMeta.description} noindex={clientSeoMeta.noindex} />
     <AppShell
       title={displayClientName}
       hideTitle
       actions={
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" onClick={navigateBack} className="h-9 w-9 p-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={navigateBack}
+            className="h-9 w-9 p-0"
+            aria-label={UI_CLIENT_DETAIL.HEADER_BACK_ARIA}
+          >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-9 w-9 p-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-9 w-9 p-0"
+                aria-label={UI_CLIENT_DETAIL.HEADER_ACTIONS_MENU_ARIA}
+              >
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52 rounded-xl">
+            <DropdownMenuContent align="end" className="w-52 rounded-lg">
               <DropdownMenuItem onClick={() => handleNewAssessment()} className="py-3 text-sm font-medium">
                 <UserPlus className="mr-2 h-4 w-4" />
                 New Assessment
@@ -217,10 +247,15 @@ export default function ClientDetailLayout() {
         </div>
       }
     >
-      <Breadcrumb items={[{ label: 'Dashboard', href: ROUTES.DASHBOARD }, { label: displayClientName }]} />
+      <Breadcrumb
+        items={[
+          { label: UI_COMMAND_MENU.CLIENTS, href: ROUTES.DASHBOARD_CLIENTS },
+          { label: displayClientName },
+        ]}
+      />
 
       {incompleteDraft && (
-        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-center justify-between gap-3">
+        <div className="mb-6 flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
           <p className="text-sm font-medium text-amber-900">
             This client has an incomplete assessment saved. Finish it to update their live report.
           </p>
@@ -240,7 +275,7 @@ export default function ClientDetailLayout() {
         </h1>
       </div>
 
-      <nav className="flex flex-wrap items-center gap-1 mb-6 p-1 bg-muted rounded-xl w-fit">
+      <nav className="mb-6 flex w-fit flex-wrap items-center gap-1 rounded-lg bg-muted p-1">
         <NavLink
           to={buildClientPath(clientName)}
           end
@@ -312,7 +347,7 @@ export default function ClientDetailLayout() {
       </Dialog>
 
       <Dialog open={!!deleteSnapshotDialog} onOpenChange={(open) => !open && setDeleteSnapshotDialog(null)}>
-        <DialogContent className="rounded-2xl max-w-[90vw] sm:max-w-[425px]">
+        <DialogContent className="max-w-[90vw] rounded-lg sm:max-w-[425px]">
           <DialogHeader className="text-left">
             <DialogTitle className="text-xl font-bold tracking-tight">Remove snapshot</DialogTitle>
             <DialogDescription className="text-sm font-medium text-muted-foreground pt-2">
@@ -320,8 +355,8 @@ export default function ClientDetailLayout() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-row gap-2 mt-6">
-            <Button variant="outline" onClick={() => setDeleteSnapshotDialog(null)} className="flex-1 rounded-xl font-bold h-11">Cancel</Button>
-            <Button variant="destructive" onClick={() => void handleDeleteSnapshot()} className="flex-1 rounded-xl font-bold h-11">Remove</Button>
+            <Button variant="outline" onClick={() => setDeleteSnapshotDialog(null)} className="h-11 flex-1 rounded-lg font-bold">Cancel</Button>
+            <Button variant="destructive" onClick={() => void handleDeleteSnapshot()} className="h-11 flex-1 rounded-lg font-bold">Remove</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -379,19 +414,19 @@ export default function ClientDetailLayout() {
               value={deleteConfirmName}
               onChange={(e) => setDeleteConfirmName(e.target.value)}
               placeholder={displayClientName}
-              className="rounded-xl"
+              className="rounded-lg"
               disabled={deleting}
               autoFocus
             />
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setDeleteClientOpen(false)} disabled={deleting} className="rounded-xl h-11 px-6 font-bold">
+            <Button variant="outline" onClick={() => setDeleteClientOpen(false)} disabled={deleting} className="h-11 rounded-lg px-6 font-bold">
               Cancel
             </Button>
             <Button
               variant="destructive"
               disabled={deleteConfirmName.trim() !== displayClientName.trim() || deleting}
-              className="rounded-xl h-11 px-6 font-bold"
+              className="h-11 rounded-lg px-6 font-bold"
               onClick={async () => {
                 setDeleting(true);
                 try {
@@ -408,5 +443,6 @@ export default function ClientDetailLayout() {
         </DialogContent>
       </Dialog>
     </AppShell>
+    </>
   );
 }

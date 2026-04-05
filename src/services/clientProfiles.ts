@@ -1121,9 +1121,11 @@ export async function deleteClientPermanently(params: {
   // 3. Delete draft
   await deleteDoc(doc(db, ORGANIZATION.clients.draft(organizationId, clientSlug))).catch((): void => undefined);
 
-  // 4. Delete roadmap and achievements
+  // 4. Delete roadmap and achievements (per-definition docs + any legacy `record` row)
   await deleteDoc(doc(db, ORGANIZATION.clients.roadmap(organizationId, clientSlug))).catch((): void => undefined);
-  await deleteDoc(doc(db, ORGANIZATION.clients.achievements(organizationId, clientSlug))).catch((): void => undefined);
+  await deleteSubcollection(ORGANIZATION.clientAchievements.collection(organizationId, clientSlug)).catch(
+    (): void => undefined,
+  );
 
   // 5. Delete public report share tokens
   try {

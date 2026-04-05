@@ -1,5 +1,10 @@
 /**
  * Caps for org-scoped list queries. Prefer pagination when UX needs full org coverage.
+ *
+ * collectionGroup audits (every query must use org scoping in rules or callable + limit):
+ * - `clients` by email: AuthContext magic link — uses CLIENT_EMAIL_LOOKUP_LIMIT
+ * - `roadmaps` legacy shareToken: roadmaps.ts — callable preferred; client path uses limit
+ * - `history` (platform reconciler): platformDataReconciler — admin-only, limit(500)
  */
 export const ORG_CLIENT_PROFILES_QUERY_LIMIT = 500;
 export const ORG_WEBHOOKS_QUERY_LIMIT = 50;

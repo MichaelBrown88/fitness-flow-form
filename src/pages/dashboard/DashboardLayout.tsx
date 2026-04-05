@@ -1,18 +1,24 @@
 /**
- * Dashboard layout: shared data, header, checklist, tabs (NavLinks), and Outlet for child routes.
+ * Coach workspace layout: sidebar, pills, conditional search, assistant provider, Outlet.
  */
 
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { Timestamp } from 'firebase/firestore';
 import AppShell from '@/components/layout/AppShell';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
-import { Plus } from 'lucide-react';
+import { Plus, Menu, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react';
 import { ROUTES } from '@/constants/routes';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
-import { clearDraft } from '@/hooks/useAssessmentDraft';
+import { COACH_ASSISTANT_COPY } from '@/constants/coachAssistantCopy';
+import {
+  clearAssessmentEntryBleedKeys,
+  removePartialAssessment,
+  writePrefillClientPayload,
+} from '@/lib/assessment/assessmentSessionStorage';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useAuth } from '@/hooks/useAuth';
 import { getRoadmapForClient } from '@/services/roadmaps';
@@ -20,7 +26,9 @@ import { getClientProfile, resolveClientDisplayNameFromOrgClientDoc } from '@/se
 import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
 import { useToast } from '@/hooks/use-toast';
 import { DashboardHeader } from '@/components/dashboard/sub-components/DashboardHeader';
-import { DashboardViewTabs } from '@/components/dashboard/sub-components/DashboardViewTabs';
+import { CoachWorkspacePills } from '@/components/dashboard/CoachWorkspacePills';
+import { CoachWorkspaceSidebar } from '@/components/dashboard/CoachWorkspaceSidebar';
+import { CoachWorkspaceProfileFooter } from '@/components/dashboard/CoachWorkspaceProfileFooter';
 import { DashboardDialogs } from '@/components/dashboard/sub-components/DashboardDialogs';
 import { GettingStartedChecklist } from '@/components/dashboard/GettingStartedChecklist';
 import { generateTasks, type QueueEntry, type RoadmapNeededInfo, type ProfileGapInfo } from '@/lib/tasks/generateTasks';
@@ -29,9 +37,34 @@ import type { CoachTask } from '@/lib/tasks/generateTasks';
 import { staffPreferredFirstName } from '@/lib/utils/staffDisplayName';
 import { Seo } from '@/components/seo/Seo';
 import { getDashboardSeoForPathname } from '@/constants/seo';
+import { CoachAssistantProvider } from '@/contexts/CoachAssistantContext';
+import { useCoachAssistant } from '@/hooks/useCoachAssistant';
+import {
+  useCoachArtifacts,
+  type CoachAchievementShareRow,
+  type CoachArtifactRow,
+  type CoachRoadmapShareRow,
+  type CoachShareablePreview,
+} from '@/hooks/useCoachArtifacts';
+import { CoachArtifactPreviewSheet } from '@/components/dashboard/CoachArtifactPreviewSheet';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { DASHBOARD_SHELL_COPY } from '@/constants/dashboardShellCopy';
+import { cn } from '@/lib/utils';
 
 export type DashboardOutletContext = ReturnType<typeof useDashboardData> & {
   tasks: CoachTask[];
+  openShareablePreview: (preview: CoachShareablePreview) => void;
+  reportShares: CoachArtifactRow[];
+  roadmapShares: CoachRoadmapShareRow[];
+  achievementShares: CoachAchievementShareRow[];
+  shareablesLoading: boolean;
+  shareablesError: string | null;
 };
 
 function trialEndedAt(trialEndsAt: unknown): boolean {
@@ -52,6 +85,33 @@ export default function DashboardLayout() {
   const { toast } = useToast();
   const { user, effectiveOrgId, orgSettings, profile } = useAuth();
   const dashboardClientQueryHandledRef = useRef<string>('');
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [assistantSidebarCollapsed, setAssistantSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(STORAGE_KEYS.COACH_ASSISTANT_SIDEBAR_COLLAPSED) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const [shareablePreview, setShareablePreview] = useState<CoachShareablePreview | null>(null);
+
+  const toggleAssistantSidebarCollapsed = useCallback(() => {
+    setAssistantSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(STORAGE_KEYS.COACH_ASSISTANT_SIDEBAR_COLLAPSED, next ? '1' : '0');
+      } catch {
+        /* localStorage unavailable */
+      }
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (location.pathname !== ROUTES.DASHBOARD && location.pathname !== ROUTES.DASHBOARD_ARTIFACTS) {
+      setMobileSidebarOpen(false);
+    }
+  }, [location.pathname]);
 
   const {
     loading,
@@ -81,7 +141,9 @@ export default function DashboardLayout() {
             if (!roadmap && client.latestDate) {
               needed.push({ clientName: client.name, assessmentDate: client.latestDate });
             }
-          } catch { /* skip */ }
+          } catch {
+            /* skip */
+          }
         });
 
         const profileChecks = filteredClients.slice(0, 50).map(async (client) => {
@@ -93,7 +155,9 @@ export default function DashboardLayout() {
             if (!p.phone) missing.push('phone');
             if (!p.dateOfBirth) missing.push('date of birth');
             if (missing.length > 2) gaps.push({ clientName: client.name, missingFields: missing });
-          } catch { /* skip */ }
+          } catch {
+            /* skip */
+          }
         });
 
         await Promise.all([...checks, ...profileChecks]);
@@ -103,7 +167,7 @@ export default function DashboardLayout() {
         }
       };
 
-      run();
+      void run();
     }, 800);
 
     return () => {
@@ -144,11 +208,7 @@ export default function DashboardLayout() {
       if (!fullName) {
         fullName = formatClientDisplayName(decoded);
       }
-      try {
-        sessionStorage.setItem(STORAGE_KEYS.PREFILL_CLIENT, JSON.stringify({ fullName }));
-      } catch {
-        /* sessionStorage unavailable */
-      }
+      writePrefillClientPayload({ fullName });
       params.delete('client');
       const nextSearch = params.toString();
       navigate(
@@ -191,12 +251,29 @@ export default function DashboardLayout() {
     });
   }, [reassessmentQueue, roadmapsNeeded, incompleteProfiles]);
 
+  const assistantApi = useCoachAssistant({
+    coachUid: dataUser?.uid,
+    organizationId: effectiveOrgId ?? undefined,
+    tasks,
+    filteredClients: filteredClients ?? [],
+    navigate,
+  });
+
+  const {
+    reportRows,
+    roadmapRows,
+    achievementRows,
+    loading: shareablesLoading,
+    error: shareablesError,
+  } = useCoachArtifacts(dataUser?.uid, effectiveOrgId ?? undefined);
+
+  const openShareablePreview = useCallback((preview: CoachShareablePreview) => {
+    setShareablePreview(preview);
+  }, []);
+
   const handleGlobalNewAssessment = () => {
-    sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
-    sessionStorage.removeItem(STORAGE_KEYS.IS_DEMO);
-    sessionStorage.removeItem(STORAGE_KEYS.PREFILL_CLIENT);
-    sessionStorage.removeItem(STORAGE_KEYS.EDIT_ASSESSMENT);
-    clearDraft();
+    removePartialAssessment();
+    clearAssessmentEntryBleedKeys();
     navigate(ROUTES.ASSESSMENT);
   };
 
@@ -221,6 +298,34 @@ export default function DashboardLayout() {
 
   const coachFirstName = staffPreferredFirstName(profile, dataUser);
   const dashboardSeo = getDashboardSeoForPathname(location.pathname);
+  const path = location.pathname;
+  const isWorkspaceShell = path === ROUTES.DASHBOARD || path === ROUTES.DASHBOARD_ARTIFACTS;
+  const isWorkTab = path.startsWith(ROUTES.DASHBOARD_WORK);
+  const showClientSearch =
+    path.startsWith(ROUTES.DASHBOARD_CLIENTS) ||
+    path.startsWith(ROUTES.DASHBOARD_WORK) ||
+    path.startsWith(ROUTES.DASHBOARD_TEAM);
+
+  const sidebarProps = {
+    threads: assistantApi.threads,
+    activeThreadId: assistantApi.activeThreadId,
+    onNewChat: assistantApi.createNewThread,
+    onSelectThread: (id: string) => {
+      assistantApi.selectThread(id);
+      setMobileSidebarOpen(false);
+    },
+    onDeleteThread: assistantApi.deleteThread,
+    reportShares: reportRows,
+    roadmapShares: roadmapRows,
+    achievementShares: achievementRows,
+    shareablesLoading,
+    onShareablePreview: (p: CoachShareablePreview) => {
+      openShareablePreview(p);
+      setMobileSidebarOpen(false);
+    },
+    recentClients: (filteredClients ?? []).slice(0, 10).map((c) => ({ name: c.name })),
+    showTeamTab: dashboardData.showTeamTab,
+  };
 
   return (
     <ErrorBoundary>
@@ -231,74 +336,248 @@ export default function DashboardLayout() {
         noindex={dashboardSeo.noindex}
       />
       <OfflineBanner />
-      <AppShell
-        title="Dashboard"
-        hideTitle
-        actions={
-          <Button
-            type="button"
-            onClick={handleGlobalNewAssessment}
-            className="h-9 px-4 rounded-xl font-bold gap-2 text-xs"
-          >
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">New Assessment</span>
-          </Button>
-        }
-      >
-        <div className="max-w-[1400px] mx-auto space-y-6 sm:space-y-8 md:space-y-10 lg:space-y-12 pb-12 overflow-x-hidden">
-          <DashboardHeader
-            coachFirstName={coachFirstName}
-            totalClients={analytics?.totalClients ?? 0}
-            totalAssessments={analytics?.totalAssessments ?? 0}
-            overdueCount={reassessmentQueue?.summary?.overdue ?? 0}
-          />
-
-          <div className="bg-card text-card-foreground rounded-2xl border border-border p-3 sm:p-4 md:p-6 lg:p-8 overflow-hidden">
-            <DashboardViewTabs
-              search={dashboardData.search}
-              setSearch={dashboardData.setSearch}
+      <CoachAssistantProvider value={assistantApi}>
+        <AppShell
+          title="Dashboard"
+          hideTitle
+          variant="full-width"
+          hideCoachBrandAndUser
+          headerLeading={
+            isWorkspaceShell ? (
+              <>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 text-muted-foreground lg:hidden"
+                  onClick={() => setMobileSidebarOpen(true)}
+                  aria-label={COACH_ASSISTANT_COPY.MOBILE_SIDEBAR}
+                >
+                  <Menu className="h-5 w-5" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="hidden h-9 w-9 text-muted-foreground lg:flex"
+                  onClick={toggleAssistantSidebarCollapsed}
+                  aria-label={
+                    assistantSidebarCollapsed
+                      ? COACH_ASSISTANT_COPY.SIDEBAR_EXPAND_ARIA
+                      : COACH_ASSISTANT_COPY.SIDEBAR_COLLAPSE_ARIA
+                  }
+                  aria-expanded={!assistantSidebarCollapsed}
+                >
+                  {assistantSidebarCollapsed ? (
+                    <PanelLeftOpen className="h-5 w-5" />
+                  ) : (
+                    <PanelLeftClose className="h-5 w-5" />
+                  )}
+                </Button>
+              </>
+            ) : undefined
+          }
+          headerCenter={
+            <CoachWorkspacePills
+              variant="toolbar"
               scheduleCount={overdueCountVal}
               showTeamTab={dashboardData.showTeamTab}
-              useRouterLinks
             />
+          }
+          actions={
+            <Button
+              type="button"
+              onClick={handleGlobalNewAssessment}
+              className="h-9 px-4 rounded-lg font-bold gap-2 text-xs"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">{COACH_ASSISTANT_COPY.CHIP_NEW_ASSESSMENT}</span>
+            </Button>
+          }
+        >
+          <a
+            href="#workspace-main"
+            className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-16 focus:z-[60] focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:ring-2 focus:ring-ring"
+          >
+            {COACH_ASSISTANT_COPY.SKIP_MAIN}
+          </a>
 
-            <Outlet context={{ ...dashboardData, tasks } satisfies DashboardOutletContext} />
+          <div
+            className={cn(
+              'flex min-h-0 w-full flex-1 items-stretch',
+              isWorkspaceShell && 'overflow-hidden',
+            )}
+          >
+            {isWorkspaceShell ? (
+              <>
+                {assistantSidebarCollapsed ? null : (
+                  <CoachWorkspaceSidebar {...sidebarProps} className="hidden lg:flex" />
+                )}
+                <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
+                  <SheetContent
+                    side="left"
+                    className="flex h-full max-h-[100dvh] w-[280px] flex-col overflow-hidden border-r-0 p-0"
+                  >
+                    <CoachWorkspaceSidebar
+                      {...sidebarProps}
+                      className="flex min-h-0 w-full flex-1 flex-col border-0"
+                    />
+                  </SheetContent>
+                </Sheet>
+              </>
+            ) : null}
+
+            <div
+              className={cn(
+                'flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden',
+                isWorkspaceShell
+                  ? 'px-0 pb-0 sm:px-2 lg:px-3'
+                  : 'px-3 pb-20 sm:px-4 sm:pb-6 md:px-5 lg:px-6',
+              )}
+            >
+              <DashboardHeader
+                variant={isWorkspaceShell ? 'compact' : 'default'}
+                coachFirstName={coachFirstName}
+                totalClients={analytics?.totalClients ?? 0}
+                totalAssessments={analytics?.totalAssessments ?? 0}
+                overdueCount={reassessmentQueue?.summary?.overdue ?? 0}
+              />
+
+              <div
+                className={cn(
+                  'flex min-h-0 flex-1 flex-col',
+                  isWorkspaceShell
+                    ? 'mt-0 gap-0'
+                    : cn(
+                        'gap-4 sm:gap-6',
+                        isWorkTab ? 'mt-3 sm:mt-4 md:mt-5' : 'mt-4 sm:mt-6 md:mt-8',
+                      ),
+                )}
+              >
+                <div
+                  className={cn(
+                    'flex flex-col flex-1 min-h-0 min-w-0 overflow-x-hidden rounded-lg border border-border/60 bg-background text-foreground',
+                    !isWorkspaceShell &&
+                      (isWorkTab ? 'pt-3 sm:pt-3 md:pt-4' : 'pt-4 sm:pt-5 md:pt-6'),
+                    isWorkspaceShell && 'border-border/50 bg-card/20',
+                  )}
+                  id="workspace-main"
+                >
+                  <TooltipProvider delayDuration={300}>
+                    <div
+                      className={cn(
+                        'relative w-full px-3 sm:max-w-xs sm:w-64 sm:px-4',
+                        isWorkTab ? 'mb-2 sm:mb-3' : 'mb-3 sm:mb-4',
+                      )}
+                    >
+                      {showClientSearch ? (
+                        <>
+                          <Input
+                            placeholder={
+                              path.startsWith(ROUTES.DASHBOARD_TEAM)
+                                ? DASHBOARD_SHELL_COPY.SEARCH_COACHES_PLACEHOLDER
+                                : DASHBOARD_SHELL_COPY.SEARCH_CLIENTS_PLACEHOLDER
+                            }
+                            value={dashboardData.search}
+                            onChange={(e) => dashboardData.setSearch(e.target.value)}
+                            className="h-10 w-full rounded-lg border-input bg-background pl-4 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-ring sm:h-11"
+                            aria-label={
+                              path.startsWith(ROUTES.DASHBOARD_TEAM)
+                                ? DASHBOARD_SHELL_COPY.SEARCH_COACHES_PLACEHOLDER
+                                : DASHBOARD_SHELL_COPY.SEARCH_CLIENTS_PLACEHOLDER
+                            }
+                          />
+                          <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" aria-hidden>
+                            <Search className="h-4 w-4 text-muted-foreground" strokeWidth={2} />
+                          </div>
+                        </>
+                      ) : (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="relative w-full sm:max-w-xs sm:w-64">
+                              <Input
+                                disabled
+                                placeholder={DASHBOARD_SHELL_COPY.SEARCH_CLIENTS_PLACEHOLDER}
+                                className="h-10 w-full cursor-not-allowed rounded-lg border-input bg-muted/30 pl-4 pr-10 text-sm opacity-80 sm:h-11"
+                                aria-label={DASHBOARD_SHELL_COPY.SEARCH_DISABLED_TOOLTIP}
+                              />
+                              <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" aria-hidden>
+                                <Search className="h-4 w-4 text-muted-foreground" strokeWidth={2} />
+                              </div>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="max-w-xs text-xs">
+                            {DASHBOARD_SHELL_COPY.SEARCH_DISABLED_TOOLTIP}
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
+                  </TooltipProvider>
+
+                  <div className="flex flex-col flex-1 min-h-0 min-w-0">
+                    <Outlet
+                      context={
+                        {
+                          ...dashboardData,
+                          tasks,
+                          openShareablePreview,
+                          reportShares: reportRows,
+                          roadmapShares: roadmapRows,
+                          achievementShares: achievementRows,
+                          shareablesLoading,
+                          shareablesError,
+                        } satisfies DashboardOutletContext
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
 
-        <GettingStartedChecklist
-          hasClients={(analytics?.totalClients ?? 0) > 0}
-          hasAssessments={(analytics?.totalAssessments ?? 0) > 0}
-          hasSharedReport={hasSharedReport}
-          primaryAssessmentIdForShare={
-            filteredClients.find((c) => c.assessments.length > 0)?.assessments[0]?.id ?? null
-          }
-          primaryClientNameForShare={
-            filteredClients.find((c) => c.assessments.length > 0)?.name ?? null
-          }
-          businessProfileComplete={Boolean(orgSettings?.name?.trim() && orgSettings?.region)}
-          equipmentDetailsDone={Boolean(orgSettings?.onboardingCompletedAt)}
-          isOrgAdmin={profile?.role === 'org_admin'}
-          showTrialSubscribeNudge={orgSettings?.subscription?.planKind === 'gym_trial'}
-          showBrandingNudge={orgSettings?.customBrandingEnabled === false}
-        />
+          <GettingStartedChecklist
+            hasClients={(analytics?.totalClients ?? 0) > 0}
+            hasAssessments={(analytics?.totalAssessments ?? 0) > 0}
+            hasSharedReport={hasSharedReport}
+            primaryAssessmentIdForShare={
+              filteredClients.find((c) => c.assessments.length > 0)?.assessments[0]?.id ?? null
+            }
+            primaryClientNameForShare={
+              filteredClients.find((c) => c.assessments.length > 0)?.name ?? null
+            }
+            businessProfileComplete={Boolean(orgSettings?.name?.trim() && orgSettings?.region)}
+            equipmentDetailsDone={Boolean(orgSettings?.onboardingCompletedAt)}
+            isOrgAdmin={profile?.role === 'org_admin'}
+            showTrialSubscribeNudge={orgSettings?.subscription?.planKind === 'gym_trial'}
+            showBrandingNudge={orgSettings?.customBrandingEnabled === false}
+          />
 
-        <DashboardDialogs
-          deleteDialog={dashboardData.deleteDialog}
-          setDeleteDialog={dashboardData.setDeleteDialog}
-          onDelete={dashboardData.handleDelete}
-          clientHistoryDialog={dashboardData.clientHistoryDialog}
-          setClientHistoryDialog={dashboardData.setClientHistoryDialog}
-          clientHistory={dashboardData.clientHistory}
-          clientSummaryId={dashboardData.clientSummaryId}
-          loadingHistory={dashboardData.loadingHistory}
-          onNewAssessment={dashboardData.handleNewAssessmentForClient}
-          onEditSnapshot={dashboardData.handleEditSnapshot}
-          deleteSnapshotDialog={dashboardData.deleteSnapshotDialog}
-          setDeleteSnapshotDialog={dashboardData.setDeleteSnapshotDialog}
-          onDeleteSnapshot={dashboardData.handleDeleteSnapshot}
-        />
-      </AppShell>
+          <CoachArtifactPreviewSheet preview={shareablePreview} onClose={() => setShareablePreview(null)} />
+
+          {!isWorkspaceShell && (
+            <CoachWorkspaceProfileFooter
+              variant="floating"
+              showTeamTab={dashboardData.showTeamTab}
+            />
+          )}
+
+          <DashboardDialogs
+            deleteDialog={dashboardData.deleteDialog}
+            setDeleteDialog={dashboardData.setDeleteDialog}
+            onDelete={dashboardData.handleDelete}
+            clientHistoryDialog={dashboardData.clientHistoryDialog}
+            setClientHistoryDialog={dashboardData.setClientHistoryDialog}
+            clientHistory={dashboardData.clientHistory}
+            clientSummaryId={dashboardData.clientSummaryId}
+            loadingHistory={dashboardData.loadingHistory}
+            onNewAssessment={dashboardData.handleNewAssessmentForClient}
+            onEditSnapshot={dashboardData.handleEditSnapshot}
+            deleteSnapshotDialog={dashboardData.deleteSnapshotDialog}
+            setDeleteSnapshotDialog={dashboardData.setDeleteSnapshotDialog}
+            onDeleteSnapshot={dashboardData.handleDeleteSnapshot}
+          />
+        </AppShell>
+      </CoachAssistantProvider>
     </ErrorBoundary>
   );
 }

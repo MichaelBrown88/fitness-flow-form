@@ -44,7 +44,7 @@ export function CoachPositioningSection() {
         </div>
 
         <div ref={bodyRef} className="mx-auto max-w-2xl">
-          <ul className="space-y-0 overflow-hidden rounded-2xl border border-border/90 bg-card/80 shadow-sm backdrop-blur-sm dark:border-border dark:bg-card/45">
+          <ul className="space-y-0 overflow-hidden rounded-lg border border-border/90 bg-card/80 shadow-sm backdrop-blur-sm dark:border-border dark:bg-card/45">
             {LANDING_COACH_POSITIONING_BULLETS.map((line, index) => (
               <li
                 key={line}

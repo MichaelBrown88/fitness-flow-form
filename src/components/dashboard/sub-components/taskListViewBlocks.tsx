@@ -153,7 +153,9 @@ function ClientCadenceGroupCard({
             {formatClientDisplayName(group.clientName)}
           </p>
           <p className="text-xs text-muted-foreground truncate">
-            {sortedTasks.length} check-in{sortedTasks.length === 1 ? '' : 's'} · {truncated}
+            {sortedTasks.length === 1
+              ? `1 check-in · ${truncated}`
+              : `${sortedTasks.length} check-ins · ${truncated}`}
           </p>
         </div>
         {worstLabel.text ? (

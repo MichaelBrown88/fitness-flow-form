@@ -8,6 +8,7 @@ import type { FormData } from '@/contexts/FormContext';
 import type { ScoreSummary } from '@/lib/scoring';
 import type { SnapshotSummary } from '@/services/publicReports';
 import { subscribeToPublicReport } from '@/services/publicReports';
+import type { SocialShareArtifacts } from '@/constants/socialShareArtifacts';
 import { computeScores, buildRoadmap } from '@/lib/scoring';
 import { generateCoachPlan } from '@/lib/recommendations';
 import { logger } from '@/lib/utils/logger';
@@ -25,6 +26,7 @@ export interface UsePublicReportResult {
   clientName: string;
   /** AI-generated "what changed" narrative — set after coach first shares the report */
   changeNarrative: string | null;
+  socialShareArtifacts: SocialShareArtifacts | null;
 }
 
 function parseDoc(
@@ -63,6 +65,7 @@ export function usePublicReport(token: string | undefined): UsePublicReportResul
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [changeNarrative, setChangeNarrative] = useState<string | null>(null);
+  const [socialShareArtifacts, setSocialShareArtifacts] = useState<SocialShareArtifacts | null>(null);
 
   useEffect(() => {
     if (!token) {
@@ -75,6 +78,7 @@ export function usePublicReport(token: string | undefined): UsePublicReportResul
       setSnapshotSummaries([]);
       setOrgDetails(null);
       setPlan(null);
+      setSocialShareArtifacts(null);
       return;
     }
 
@@ -94,6 +98,7 @@ export function usePublicReport(token: string | undefined): UsePublicReportResul
           setSnapshotSummaries([]);
           setOrgDetails(null);
           setPlan(null);
+          setSocialShareArtifacts(null);
           return;
         }
         if (data.revoked) {
@@ -106,6 +111,7 @@ export function usePublicReport(token: string | undefined): UsePublicReportResul
           setSnapshotSummaries([]);
           setOrgDetails(null);
           setPlan(null);
+          setSocialShareArtifacts(null);
           return;
         }
 
@@ -120,6 +126,25 @@ export function usePublicReport(token: string | undefined): UsePublicReportResul
         setPreviousScores(prevS);
         setSnapshotSummaries(summaries);
         setChangeNarrative(data.changeNarrative ?? null);
+        const art = data.socialShareArtifacts;
+        if (
+          art &&
+          typeof art.og1200x630Url === 'string' &&
+          typeof art.square1080Url === 'string' &&
+          typeof art.story1080x1920Url === 'string' &&
+          typeof art.contentHash === 'string' &&
+          art.generatedAt != null
+        ) {
+          setSocialShareArtifacts({
+            og1200x630Url: art.og1200x630Url,
+            square1080Url: art.square1080Url,
+            story1080x1920Url: art.story1080x1920Url,
+            contentHash: art.contentHash,
+            generatedAt: art.generatedAt,
+          });
+        } else {
+          setSocialShareArtifacts(null);
+        }
         setLoading(false);
 
         if (data.organizationId) {
@@ -163,5 +188,6 @@ export function usePublicReport(token: string | undefined): UsePublicReportResul
     loading,
     clientName,
     changeNarrative,
+    socialShareArtifacts,
   };
 }

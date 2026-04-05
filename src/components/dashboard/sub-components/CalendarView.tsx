@@ -20,6 +20,7 @@ import type { DueEntry, DayClients, DragPayload } from './CalendarDayDetail';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 export interface SelectedEntry {
   clientName: string;
@@ -36,6 +37,8 @@ interface CalendarViewProps {
   onNewAssessmentForClient: (clientName: string, category?: string) => void;
   organizationId?: string;
   onScheduleChanged?: () => void;
+  /** Tighter grid and less chrome so the month fits typical dashboard panes without scrolling. */
+  density?: 'default' | 'compact';
 }
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -48,7 +51,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   onNewAssessmentForClient,
   organizationId,
   onScheduleChanged,
+  density = 'default',
 }) => {
+  const compact = density === 'compact';
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<DayClients | null>(null);
   const [dragOverKey, setDragOverKey] = useState<string | null>(null);
@@ -271,37 +276,51 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   );
 
   return (
-    <div ref={calendarWrapperRef} className="space-y-4">
+    <div ref={calendarWrapperRef} className={compact ? 'space-y-2' : 'space-y-4'}>
       <div className="flex items-center justify-between">
         <button
           type="button"
           onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-          className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className={`rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground ${compact ? 'p-1' : 'p-2'}`}
         >
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
         </button>
-        <h3 className="text-sm font-bold text-foreground">
+        <h3 className={`font-bold text-foreground ${compact ? 'text-xs' : 'text-sm'}`}>
           {format(currentMonth, 'MMMM yyyy')}
         </h3>
         <button
           type="button"
           onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-          className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className={`rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground ${compact ? 'p-1' : 'p-2'}`}
         >
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
         </button>
       </div>
 
-      <p className="text-center text-xs text-muted-foreground">
-        <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-foreground">⌘</kbd>
-        <span className="mx-1">/</span>
-        <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-foreground">Ctrl</kbd>
-        <span className="ml-1">+ click to select multiple • Drag near edges to change month</span>
-      </p>
+      {!compact ? (
+        <p className="text-center text-xs text-muted-foreground">
+          <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-foreground">⌘</kbd>
+          <span className="mx-1">/</span>
+          <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-foreground">Ctrl</kbd>
+          <span className="ml-1">+ click to select multiple • Drag near edges to change month</span>
+        </p>
+      ) : (
+        <p className="text-center text-[10px] leading-tight text-muted-foreground">
+          <kbd className="rounded border border-border bg-muted px-1 py-0.5 font-mono text-[9px] text-foreground">⌘</kbd>
+          <span className="mx-0.5">/</span>
+          <kbd className="rounded border border-border bg-muted px-1 py-0.5 font-mono text-[9px] text-foreground">Ctrl</kbd>
+          <span className="ml-1">+ click multi-select</span>
+        </p>
+      )}
 
       <div className="grid grid-cols-7 gap-px">
         {WEEKDAY_LABELS.map((d) => (
-          <div key={d} className="py-2 text-center text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
+          <div
+            key={d}
+            className={`text-center font-black uppercase tracking-[0.15em] text-muted-foreground ${
+              compact ? 'py-1 text-[9px]' : 'py-2 text-[10px]'
+            }`}
+          >
             {d}
           </div>
         ))}
@@ -327,16 +346,28 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               onDragOver={(e) => handleDragOver(e, key)}
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, day)}
-              className={`relative min-h-[72px] p-1 text-left transition-colors sm:min-h-[96px] sm:p-1.5 ${
+              className={`relative text-left transition-colors ${
+                compact
+                  ? 'min-h-[48px] p-0.5 sm:min-h-[52px]'
+                  : 'min-h-[72px] p-1 sm:min-h-[96px] sm:p-1.5'
+              } ${
                 inMonth ? 'bg-card hover:bg-muted/50' : 'bg-muted/40'
               } ${clients.length > 0 ? 'cursor-pointer' : 'cursor-default'} ${
                 isDropTarget ? 'bg-violet-500/15 ring-2 ring-inset ring-violet-500 dark:bg-violet-950/40' : ''
               }`}
             >
-              <span className={`text-[10px] font-semibold sm:text-xs ${
-                today ? 'inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground sm:h-6 sm:w-6' :
-                inMonth ? 'text-foreground' : 'text-muted-foreground'
-              }`}>
+              <span
+                className={cn(
+                  'font-semibold',
+                  compact ? 'text-[9px]' : 'text-[10px] sm:text-xs',
+                  today &&
+                    (compact
+                      ? 'inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground'
+                      : 'inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground sm:h-6 sm:w-6'),
+                  !today && inMonth && 'text-foreground',
+                  !today && !inMonth && 'text-muted-foreground',
+                )}
+              >
                 {format(day, 'd')}
               </span>
               {clients.length > 0 && (

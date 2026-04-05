@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import type { OrgAdminOutletContext } from './OrgAdminLayout';
 import { formatPrice, getLocaleForRegion } from '@/lib/utils/currency';
 import { DEFAULT_REGION, type Region } from '@/constants/pricing';
+import { subscriptionPlanDisplayHeadline } from '@/lib/pricing/subscriptionPlanDisplay';
 interface ErasureRequest {
   id: string;
   shareToken: string;
@@ -42,7 +43,6 @@ export default function OrgOverview() {
     }).catch(() => {});
   }, [orgId, pendingErasureCount]);
 
-  const planLabel = orgDetails?.plan;
   const statusLabel = orgDetails?.status;
 
   async function markActioned(requestId: string) {
@@ -53,6 +53,13 @@ export default function OrgOverview() {
   }
 
   if (!orgDetails) return null;
+
+  const planHeadline = subscriptionPlanDisplayHeadline({
+    plan: orgDetails.plan || 'free',
+    capacityTierId: orgDetails.capacityTierId,
+    clientCap: orgDetails.seatBlock ?? orgDetails.clientSeats,
+    packageTrack: orgDetails.packageTrack,
+  });
 
   return (
     <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 pb-12 sm:pb-20">
@@ -85,7 +92,7 @@ export default function OrgOverview() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
             <div className="bg-muted/50 rounded-lg p-3 sm:p-4">
               <p className="text-[10px] sm:text-xs text-foreground-secondary mb-1 font-medium">Plan</p>
-              <p className="text-lg sm:text-xl font-semibold text-foreground capitalize">{planLabel || 'free'}</p>
+              <p className="text-lg sm:text-xl font-semibold text-foreground">{planHeadline}</p>
             </div>
             <div className="bg-muted/50 rounded-lg p-3 sm:p-4">
               <p className="text-[10px] sm:text-xs text-foreground-secondary mb-1 font-medium">Monthly Fee</p>

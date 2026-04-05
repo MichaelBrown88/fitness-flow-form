@@ -12,6 +12,13 @@ import { generateBodyCompInterpretation } from '@/lib/recommendations';
 import { Loader2, Share2, MoreVertical, ArrowLeft, Edit2, Plus, Eye } from 'lucide-react';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import {
+  removeEditAssessment,
+  removeIsDemoFlag,
+  removePartialAssessment,
+  removePrefillClient,
+  writeEditAssessmentPayload,
+} from '@/lib/assessment/assessmentSessionStorage';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -24,6 +31,8 @@ const ClientReport = lazy(() => import('@/components/reports/ClientReport'));
 const CoachReport = lazy(() => import('@/components/reports/CoachReport'));
 
 import { ROUTES, COACH_ASSESSMENT_QUERY } from '@/constants/routes';
+import { COACH_ASSESSMENT_REPORT_NAV } from '@/constants/assessmentCopy';
+import { UI_COMMAND_MENU } from '@/constants/ui';
 
 const AssessmentReport = () => {
   const { id } = useParams();
@@ -57,6 +66,9 @@ const AssessmentReport = () => {
     handleEmailLink,
     handleSystemShare,
     handleWhatsAppShare,
+    handleGenerateSocialShareArtifacts,
+    socialShareArtifacts,
+    socialShareGenerating,
     shareLoading,
   } = useReportShare({
     assessmentId: id,
@@ -96,11 +108,10 @@ const AssessmentReport = () => {
         <div className="space-y-4 rounded-lg border border-border bg-background p-6 text-sm text-foreground-secondary">
           <p>{error ?? 'Assessment not available.'}</p>
           <Button onClick={() => {
-            // CRITICAL: Clear all assessment modes to prevent data bleed
-            sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
-            sessionStorage.removeItem(STORAGE_KEYS.EDIT_ASSESSMENT);
-            sessionStorage.removeItem(STORAGE_KEYS.PREFILL_CLIENT);
-            sessionStorage.removeItem(STORAGE_KEYS.IS_DEMO);
+            removePartialAssessment();
+            removeEditAssessment();
+            removePrefillClient();
+            removeIsDemoFlag();
             navigate(ROUTES.ASSESSMENT);
           }}>New assessment</Button>
         </div>
@@ -120,7 +131,9 @@ const AssessmentReport = () => {
           <p className="text-sm sm:text-base text-amber-700 mb-6">We encountered an issue creating the AI Coach Plan. The raw assessment data is safe, but the recommendations could not be generated.</p>
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto">
             <Button variant="outline" onClick={() => window.location.reload()} className="w-full sm:w-auto">Retry</Button>
-            <Button onClick={() => navigate(ROUTES.DASHBOARD)} className="w-full sm:w-auto">Return to Dashboard</Button>
+            <Button onClick={() => navigate(ROUTES.DASHBOARD)} className="w-full sm:w-auto">
+              Return to {UI_COMMAND_MENU.HOME}
+            </Button>
           </div>
         </div>
       </AppShell>
@@ -146,28 +159,32 @@ const AssessmentReport = () => {
     if (formData?.fullName) {
       navigate(`/client/${encodeURIComponent(formData.fullName)}`);
     } else {
-      navigate('/dashboard');
+      navigate(ROUTES.DASHBOARD);
     }
   };
 
+  const reportBackLabel = formData.fullName?.trim()
+    ? COACH_ASSESSMENT_REPORT_NAV.BACK_TO_CLIENT_ARIA
+    : COACH_ASSESSMENT_REPORT_NAV.BACK_TO_DASHBOARD_ARIA;
+
   const navigateToEdit = () => {
     if (!id || !formData) return;
-    sessionStorage.setItem(STORAGE_KEYS.EDIT_ASSESSMENT, JSON.stringify({
+    writeEditAssessmentPayload({
       assessmentId: id,
       formData: formData,
       clientName: formData.fullName,
-    }));
-    sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
-    sessionStorage.removeItem(STORAGE_KEYS.PREFILL_CLIENT);
-    sessionStorage.removeItem(STORAGE_KEYS.IS_DEMO);
+    });
+    removePartialAssessment();
+    removePrefillClient();
+    removeIsDemoFlag();
     navigate('/assessment');
   };
 
   const navigateToNew = () => {
-    sessionStorage.removeItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
-    sessionStorage.removeItem(STORAGE_KEYS.EDIT_ASSESSMENT);
-    sessionStorage.removeItem(STORAGE_KEYS.PREFILL_CLIENT);
-    sessionStorage.removeItem(STORAGE_KEYS.IS_DEMO);
+    removePartialAssessment();
+    removeEditAssessment();
+    removePrefillClient();
+    removeIsDemoFlag();
     navigate('/assessment');
   };
 
@@ -178,8 +195,16 @@ const AssessmentReport = () => {
         variant="full-width"
         actions={
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" onClick={navigateToDashboard} className="h-9 w-9 p-0">
-              <ArrowLeft className="h-4 w-4" />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={navigateToDashboard}
+              className="h-9 w-9 p-0"
+              title={reportBackLabel}
+              aria-label={reportBackLabel}
+            >
+              <ArrowLeft className="h-4 w-4" aria-hidden />
             </Button>
             <Button
               variant="default"
@@ -214,7 +239,7 @@ const AssessmentReport = () => {
       {/* Breadcrumb + Header row */}
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-10 pt-3 pb-1">
         <Breadcrumb items={[
-          { label: 'Dashboard', href: ROUTES.DASHBOARD },
+          { label: UI_COMMAND_MENU.HOME, href: ROUTES.DASHBOARD },
           ...(formData.fullName
             ? [{ label: formData.fullName, href: `/client/${encodeURIComponent(formData.fullName)}` }]
             : []),
@@ -309,6 +334,10 @@ const AssessmentReport = () => {
         onEmailLink={handleEmailLink}
         onSystemShare={handleSystemShare}
         onWhatsAppShare={handleWhatsAppShare}
+        assessmentId={id}
+        socialShareGenerating={socialShareGenerating}
+        socialShareArtifacts={socialShareArtifacts}
+        onGenerateSocialShareArtifacts={handleGenerateSocialShareArtifacts}
       />
     </AppShell>
     </ErrorBoundary>

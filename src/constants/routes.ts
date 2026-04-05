@@ -1,9 +1,17 @@
 export const ROUTES = {
   HOME: '/',
   DASHBOARD: '/dashboard',
+  /** Client directory (table) — primary roster surface. */
+  DASHBOARD_CLIENTS: '/dashboard/clients',
+  /** Tasks (reassessment queue) + calendar combined. */
+  DASHBOARD_WORK: '/dashboard/work',
+  /** @deprecated Use DASHBOARD_WORK + ?view=tasks — kept for redirects/bookmarks. */
   DASHBOARD_SCHEDULE: '/dashboard/schedule',
+  /** @deprecated Use DASHBOARD_WORK + ?view=calendar — kept for redirects/bookmarks. */
   DASHBOARD_CALENDAR: '/dashboard/calendar',
   DASHBOARD_TEAM: '/dashboard/team',
+  /** Public share links (reports, roadmaps, achievements) — full-page grid. */
+  DASHBOARD_ARTIFACTS: '/dashboard/artifacts',
   ASSESSMENT: '/assessment',
   LOGIN: '/login',
   SETTINGS: '/settings',
@@ -52,6 +60,19 @@ export const ROUTES = {
   ADMIN_ORGANIZATIONS: '/admin/organizations',
   ADMIN_ORGANIZATION: (orgId: string) => `/admin/organizations/${orgId}` as const,
 } as const;
+
+/**
+ * Legacy query on `ROUTES.DASHBOARD_WORK`: `view=calendar` scrolls the calendar column into view.
+ * Prefer `#work-calendar` for the same behavior (see `dashboardWorkPath('calendar')`).
+ */
+export const DASHBOARD_WORK_VIEW_QUERY = 'view' as const;
+
+export type DashboardWorkView = 'tasks' | 'calendar';
+
+export function dashboardWorkPath(view?: DashboardWorkView): string {
+  if (!view || view === 'tasks') return ROUTES.DASHBOARD_WORK;
+  return `${ROUTES.DASHBOARD_WORK}#work-calendar`;
+}
 
 /**
  * Deep links into Settings main + Organization sub-tabs (synced in Settings.tsx via search params).

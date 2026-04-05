@@ -69,8 +69,8 @@ export function staffPreferredFirstName(
   profile: UserProfile | null | undefined,
   firebaseUser: User | null | undefined,
 ): string {
-  const full = staffPreferredFullDisplayName(profile, firebaseUser);
-  return full.split(/\s+/)[0] || GENERIC_STAFF_DISPLAY_PLACEHOLDER;
+  const full = staffPreferredFullDisplayName(profile, firebaseUser).trim();
+  return full.split(/\s+/)[0]?.trim() || GENERIC_STAFF_DISPLAY_PLACEHOLDER;
 }
 
 /** Coach roster / org subcollection rows (may only have displayName + email). */

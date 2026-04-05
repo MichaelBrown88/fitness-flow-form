@@ -64,6 +64,8 @@ export const UI_TOASTS = {
     DIAGNOSTICS_COPIED_DESC: 'Paste into your support chat or email.',
     SHARED_SUCCESSFULLY: 'Shared successfully',
     SHARED_DESC: 'The report link has been shared.',
+    SOCIAL_CAPTION_COPIED: 'Social caption copied',
+    SOCIAL_CAPTION_COPIED_DESC: 'Paste into Facebook, Instagram, or Threads with your link.',
     SCAN_COMPLETE: 'Scan complete! You can re-scan if needed or continue to the next step.',
     LOADING_IMAGES: 'Loading images...',
   },
@@ -75,6 +77,9 @@ export const UI_TOASTS = {
     UNABLE_TO_SAVE_DESC: 'Organization ID is missing. Please refresh the page and try again. If the problem persists, contact support.',
     SYNC_ERROR: 'Sync Error',
     SYNC_ERROR_DESC: 'Unable to sync with dashboard. Please check your connection and try again.',
+    SAVE_CONNECTION_ISSUE: 'Connection issue',
+    SAVE_CONNECTION_ISSUE_DESC:
+      'We could not reach the server. Check your connection and try saving again.',
     CONNECTION_LOST: 'Connection Lost',
     CONNECTION_LOST_DESC: 'Phone disconnected. Scan the QR code to reconnect.',
     SESSION_NOT_READY: 'Session not ready',
@@ -198,19 +203,54 @@ export const UI_STATUS = {
 
 // Dashboard Tab Labels
 export const UI_TABS = {
+  ASSISTANT: 'Assistant',
   CLIENTS: 'Clients',
+  WORK: 'Work',
   SCHEDULE: 'Tasks',
   CALENDAR: 'Calendar',
   TEAM: 'Team',
+} as const;
+
+/** Client profile layout (coach) — icon-only header controls */
+export const UI_CLIENT_DETAIL = {
+  /** Matches exit target: client roster, not marketing or assistant hub */
+  HEADER_BACK_ARIA: 'Back to clients',
+  HEADER_ACTIONS_MENU_ARIA: 'Client actions',
+  /** Collapsible section title — distinct from the Overview nav tab */
+  OVERVIEW_SECTION_TITLE: 'Snapshot',
+} as const;
+
+/** Command palette page shortcuts */
+export const UI_COMMAND_MENU = {
+  HOME: 'Home',
+  CLIENTS: 'Clients',
+  WORK: 'Work',
+  ARTIFACTS: 'Artifacts',
 } as const;
 
 /** Clients tab empty states */
 export const UI_DASHBOARD_CLIENTS = {
   EMPTY_TITLE: 'No clients yet',
   EMPTY_BODY: 'Run a new assessment to add your first client and see them here.',
-  EMPTY_CTA: 'New assessment',
+  EMPTY_CTA: 'New Assessment',
   SEARCH_NO_MATCH: 'No clients match that name.',
+  RECENT_ASSESSMENTS_TITLE: 'Recent assessments',
+  RECENT_ASSESSMENTS_SUB: 'Latest activity across your roster.',
+  RECENT_ASSESSMENTS_EMPTY: 'No assessments yet. Run an assessment to see it here.',
+  RECENT_ASSESSMENTS_VIEW: 'View report',
+  /** Client directory: header checkbox for bulk select (visible rows). */
+  TABLE_SELECT_ALL_VISIBLE_ARIA: 'Select all visible clients',
 } as const;
+
+/** Accessible name for a client row selection checkbox in the directory table. */
+export function clientDirectorySelectRowAria(displayName: string): string {
+  return `Select ${displayName} for bulk actions`;
+}
+
+/** Accessible name for the per-row actions menu trigger. */
+export function clientDirectoryRowActionsAria(displayName: string): string {
+  return `Open actions for ${displayName}`;
+}
 
 // Schedule Tab Labels
 export const UI_SCHEDULE = {

@@ -1,18 +1,18 @@
 /**
  * Public-facing GDPR Article 17 erasure request page.
  * Accessible at /r/:token/erasure — no authentication required.
- * Writes an erasure request to organizations/{orgId}/erasureRequests/{requestId}.
+ * Submits via `submitPublicErasureRequest` callable (server validates token → org).
  */
 
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { getDb } from '@/services/firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import AppShell from '@/components/layout/AppShell';
 import { ROUTES } from '@/constants/routes';
 import { Trash2, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { logger } from '@/lib/utils/logger';
 
 type Status = 'idle' | 'loading' | 'success' | 'error' | 'not_found';
 
@@ -37,35 +37,22 @@ export default function RequestErasure() {
     setStatus('loading');
 
     try {
-      const db = getDb();
-      const reportSnap = await getDoc(doc(db, 'publicReports', trimmedToken));
-      if (!reportSnap.exists()) {
-        setStatus('not_found');
-        return;
-      }
-
-      const reportData = reportSnap.data();
-      const organizationId: string | undefined = reportData.organizationId;
-      const assessmentId: string | undefined = reportData.assessmentId;
-
-      if (!organizationId) {
-        setStatus('not_found');
-        return;
-      }
-
-      const requestsRef = collection(db, `organizations/${organizationId}/erasureRequests`);
-      await addDoc(requestsRef, {
-        shareToken: trimmedToken,
-        assessmentId: assessmentId ?? null,
-        organizationId,
-        reason: reason.trim() || 'No reason provided',
-        status: 'pending',
-        requestedAt: serverTimestamp(),
-        schemaVersion: 1,
-      });
-
+      const fn = httpsCallable<{ shareToken: string; reason?: string }, { success: boolean }>(
+        getFunctions(),
+        'submitPublicErasureRequest',
+      );
+      await fn({ shareToken: trimmedToken, reason: reason.trim() || undefined });
       setStatus('success');
-    } catch {
+    } catch (err) {
+      logger.warn('[RequestErasure] submitPublicErasureRequest failed', err);
+      const code =
+        typeof err === 'object' && err !== null && 'code' in err
+          ? String((err as { code: string }).code)
+          : '';
+      if (code === 'functions/not-found' || code === 'functions/failed-precondition') {
+        setStatus('not_found');
+        return;
+      }
       setErrorMessage('Something went wrong. Please try again or contact support.');
       setStatus('error');
     }

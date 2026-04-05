@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { sendEmailVerification } from 'firebase/auth';
 import { useAuth } from '@/hooks/useAuth';
@@ -6,6 +6,7 @@ import { useOrgAdminNavVisibility } from '@/hooks/useOrgAdminNavVisibility';
 import { Button } from '@/components/ui/button';
 import { Sparkles, ChevronDown, Menu, Building2, LayoutDashboard, Settings, LogOut, Mail, X, Globe, CreditCard } from 'lucide-react';
 import { ROUTES } from '@/constants/routes';
+import { UI_COMMAND_MENU } from '@/constants/ui';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { ClientProfileDropdown } from '@/components/client/ClientProfileDropdown';
@@ -40,6 +41,12 @@ export default function AppShell({
   clientName,
   /** Hide the built-in page title (for pages with custom headers) */
   hideTitle,
+  /** Centered region in coach header (e.g. workspace tabs) — between logo and actions */
+  headerCenter,
+  /** Dashboard workspace: hide header logo block and user dropdown (profile lives in sidebar / floating control). */
+  hideCoachBrandAndUser = false,
+  /** Optional left header region (e.g. workspace sidebar toggle) — shown before the logo when logo is visible, or alone when hidden. */
+  headerLeading,
 }: {
   title: string;
   subtitle?: string;
@@ -60,6 +67,9 @@ export default function AppShell({
   clientName?: string;
   /** Hide the built-in page title (for pages with custom headers) */
   hideTitle?: boolean;
+  headerCenter?: ReactNode;
+  hideCoachBrandAndUser?: boolean;
+  headerLeading?: ReactNode;
 }) {
   const { user, loading, signOut, orgSettings, profile } = useAuth();
   const showOrgAdminNav = useOrgAdminNavVisibility();
@@ -142,10 +152,10 @@ export default function AppShell({
   // Coach mode: full layout with navigation (semantic tokens — aligns with public AppShell + dark mode)
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
-      <header className="border-b border-border bg-card sticky top-0 z-50 w-full shrink-0">
-        <div className="flex items-center justify-between h-14 sm:h-16 px-3 sm:px-4 md:px-6 lg:px-10">
-          {/* Left side: Logo */}
-          <div className="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0">
+      <header className="border-b border-border/80 bg-background/95 backdrop-blur-sm sticky top-0 z-50 w-full shrink-0 supports-[backdrop-filter]:bg-background/80">
+        <div className="relative flex min-h-12 w-full min-w-0 items-center justify-between gap-2 sm:min-h-14 sm:gap-3 px-3 sm:px-4 md:px-6 lg:px-10">
+          {/* Left: logo (hidden on dashboard workspace — branding lives in main greeting). */}
+          <div className="relative z-10 flex min-w-0 shrink-0 items-center gap-2 sm:gap-3 md:gap-4">
             {variant === 'full-width' && onMenuToggle && (
               <Button
                 variant="ghost"
@@ -156,38 +166,47 @@ export default function AppShell({
                 <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
             )}
-            <Link to={ROUTES.DASHBOARD} className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
-              {logoUrl ? (
-                // Organization custom logo
-                <img
-                  src={logoUrl}
-                  alt={orgName}
-                  className="h-6 w-auto sm:h-8 max-w-[120px] sm:max-w-[150px] object-contain"
-                />
-              ) : (
-                // SaaS default logo (One Assess)
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-[hsl(var(--gradient-from))] to-[hsl(var(--gradient-to))] flex items-center justify-center text-primary-foreground font-bold text-[10px] sm:text-sm shadow-md">
-                    OA
+            {headerLeading ? <div className="flex items-center shrink-0">{headerLeading}</div> : null}
+            {!hideCoachBrandAndUser && (
+              <Link to={ROUTES.DASHBOARD} className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
+                {logoUrl ? (
+                  <img
+                    src={logoUrl}
+                    alt={orgName}
+                    className="h-6 w-auto sm:h-8 max-w-[120px] sm:max-w-[150px] object-contain"
+                  />
+                ) : (
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-[hsl(var(--gradient-from))] to-[hsl(var(--gradient-to))] flex items-center justify-center text-primary-foreground font-bold text-[10px] sm:text-sm shadow-md">
+                      OA
+                    </div>
+                    <span className="text-base sm:text-lg font-bold tracking-tight text-foreground hidden sm:inline">One Assess</span>
                   </div>
-                  <span className="text-base sm:text-lg font-bold tracking-tight text-foreground hidden sm:inline">One Assess</span>
-                </div>
-              )}
-              {customBrandingEnabled && (
-                <div className="hidden leading-tight md:block border-l border-border pl-3 md:pl-4">
-                  <p className="text-[10px] sm:text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
-                    {orgName}
-                  </p>
-                  <p className="text-[10px] sm:text-xs font-semibold text-foreground-secondary">
-                    Professional Intake
-                  </p>
-                </div>
-              )}
-            </Link>
+                )}
+                {customBrandingEnabled && (
+                  <div className="hidden leading-tight md:block border-l border-border pl-3 md:pl-4">
+                    <p className="text-[10px] sm:text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+                      {orgName}
+                    </p>
+                    <p className="text-[10px] sm:text-xs font-semibold text-foreground-secondary">
+                      Professional Intake
+                    </p>
+                  </div>
+                )}
+              </Link>
+            )}
           </div>
 
+          {headerCenter ? (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-14 sm:px-20 md:px-28 lg:px-36">
+              <div className="pointer-events-auto max-w-full overflow-x-auto overscroll-x-contain py-1">
+                {headerCenter}
+              </div>
+            </div>
+          ) : null}
+
           {/* Right side: actions/user */}
-          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 shrink-0">
+          <div className="relative z-10 flex shrink-0 items-center gap-1.5 sm:gap-2 md:gap-3">
             <ThemeToggle className="h-8 w-8 sm:h-9 sm:w-9 text-muted-foreground" />
             {showDemoFill && onDemoFill && (
               <Button
@@ -207,76 +226,78 @@ export default function AppShell({
               {user && <NotificationBell />}
               {!loading && (
                 user ? (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        className="flex items-center gap-1 sm:gap-2 rounded-full p-0.5 sm:p-1 hover:bg-muted/60 transition-colors"
-                      >
-                        <span 
-                          className="flex h-9 w-9 sm:h-8 sm:w-8 items-center justify-center rounded-full text-xs sm:text-xs font-bold text-white gradient-bg"
+                  hideCoachBrandAndUser ? null : (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          className="flex items-center gap-1 sm:gap-2 rounded-full p-0.5 sm:p-1 hover:bg-muted/60 transition-colors"
                         >
-                          {initials}
-                        </span>
-                        <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground mr-0.5 sm:mr-1" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                      <DropdownMenuLabel className="font-normal">
-                        <div className="flex flex-col space-y-1">
-                          <p className="text-sm font-medium leading-none">{user.displayName || 'Coach Account'}</p>
-                          <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
-                        </div>
-                      </DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem asChild>
-                        <Link to={ROUTES.DASHBOARD} className="flex items-center gap-2">
-                          <LayoutDashboard className="h-4 w-4" />
-                          Dashboard
-                        </Link>
-                      </DropdownMenuItem>
-                      {showOrgAdminNav && (
+                          <span 
+                            className="flex h-9 w-9 sm:h-8 sm:w-8 items-center justify-center rounded-full text-xs sm:text-xs font-bold text-white gradient-bg"
+                          >
+                            {initials}
+                          </span>
+                          <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground mr-0.5 sm:mr-1" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
+                        <DropdownMenuLabel className="font-normal">
+                          <div className="flex flex-col space-y-1">
+                            <p className="text-sm font-medium leading-none">{user.displayName || 'Coach Account'}</p>
+                            <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                          </div>
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem asChild>
-                          <Link to={ROUTES.ORG_DASHBOARD} className="flex items-center gap-2">
-                            <Building2 className="h-4 w-4" />
-                            Org admin
+                          <Link to={ROUTES.DASHBOARD} className="flex items-center gap-2">
+                            <LayoutDashboard className="h-4 w-4" />
+                            {UI_COMMAND_MENU.HOME}
                           </Link>
                         </DropdownMenuItem>
-                      )}
-                      {showOrgAdminNav && (
+                        {showOrgAdminNav && (
+                          <DropdownMenuItem asChild>
+                            <Link to={ROUTES.ORG_DASHBOARD} className="flex items-center gap-2">
+                              <Building2 className="h-4 w-4" />
+                              Org admin
+                            </Link>
+                          </DropdownMenuItem>
+                        )}
+                        {showOrgAdminNav && (
+                          <DropdownMenuItem asChild>
+                            <Link to={ROUTES.BILLING} className="flex items-center gap-2">
+                              <CreditCard className="h-4 w-4" />
+                              Billing & plans
+                            </Link>
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem asChild>
-                          <Link to={ROUTES.BILLING} className="flex items-center gap-2">
-                            <CreditCard className="h-4 w-4" />
-                            Billing & plans
+                          <Link to={ROUTES.SETTINGS} className="flex items-center gap-2">
+                            <Settings className="h-4 w-4" />
+                            Settings
                           </Link>
                         </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem asChild>
-                        <Link to={ROUTES.SETTINGS} className="flex items-center gap-2">
-                          <Settings className="h-4 w-4" />
-                          Settings
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to={ROUTES.HOME} className="flex items-center gap-2">
-                          <Globe className="h-4 w-4" />
-                          Website
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-red-600 focus:text-red-600 flex items-center gap-2"
-                        onClick={() => {
-                          void signOut();
-                        }}
-                      >
-                        <LogOut className="h-4 w-4" />
-                        Sign out
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                        <DropdownMenuItem asChild>
+                          <Link to={ROUTES.HOME} className="flex items-center gap-2">
+                            <Globe className="h-4 w-4" />
+                            Website
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-red-600 focus:text-red-600 flex items-center gap-2"
+                          onClick={() => {
+                            void signOut();
+                          }}
+                        >
+                          <LogOut className="h-4 w-4" />
+                          Sign out
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )
                 ) : (
-                  <Button asChild size="sm" variant="outline" className="rounded-full">
+                  <Button asChild size="sm" variant="outline" className="rounded-lg">
                     <Link to="/login">Coach login</Link>
                   </Button>
                 )
@@ -309,7 +330,9 @@ export default function AppShell({
         </div>
       )}
 
-      <main className={`flex-1 ${variant === 'default' ? 'mx-auto max-w-7xl w-full px-3 sm:px-4 md:px-6 lg:px-10 py-4 sm:py-6 md:py-8 lg:py-12' : ''}`}>
+      <main
+        className={`flex-1 min-h-0 w-full flex flex-col ${variant === 'default' ? 'mx-auto max-w-7xl px-3 sm:px-4 md:px-6 lg:px-10 py-4 sm:py-6 md:py-8 lg:py-12' : ''}`}
+      >
         {variant === 'default' && !hideTitle && (
           <div className="mb-4 sm:mb-6 space-y-0.5">
             <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-foreground">{title}</h1>

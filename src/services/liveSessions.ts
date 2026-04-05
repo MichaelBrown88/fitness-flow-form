@@ -51,16 +51,21 @@ const SESSIONS_COLLECTION = 'live_sessions';
  */
 export const LIVE_SESSION_PLACEHOLDER_CLIENT_ID = 'current-client' as const;
 
-/** Generate a short cryptographically secure ID (URL-safe, no special chars). */
-function generateSecureId(length: number): string {
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-    const bytes = new Uint8Array(Math.ceil((length * 6) / 8));
+/**
+ * URL-safe random id from full-entropy bytes (base64url), avoiding mod-36 bias.
+ * @param byteLength number of random bytes (output length ~ ceil(4/3 * byteLength))
+ */
+function generateSecureId(byteLength: number): string {
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues && typeof btoa === 'function') {
+    const bytes = new Uint8Array(byteLength);
     crypto.getRandomValues(bytes);
-    const base36 = Array.from(bytes, (b) => (b % 36).toString(36)).join('');
-    return base36.slice(0, length);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]!);
+    }
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   }
-  // Fallback only in non-browser environments; prefer crypto in production
-  return Math.random().toString(36).substring(2, 2 + length);
+  return Math.random().toString(36).slice(2, 2 + 22);
 }
 
 export const createLiveSession = async (
@@ -72,8 +77,8 @@ export const createLiveSession = async (
   const validOrgId = validateOrganizationId(organizationId, profile);
 
   // Use cryptographically secure random IDs so session/companion tokens cannot be guessed
-  const sessionId = generateSecureId(12);
-  const companionToken = generateSecureId(12);
+  const sessionId = generateSecureId(16);
+  const companionToken = generateSecureId(16);
   
   const session: LiveSession = {
     id: sessionId,

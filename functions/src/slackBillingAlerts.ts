@@ -1,3 +1,5 @@
+import { logger } from 'firebase-functions';
+
 /**
  * Slack billing alerts for solo-founder monitoring.
  *
@@ -20,7 +22,7 @@ async function postToSlack(text: string): Promise<void> {
       signal: AbortSignal.timeout(5_000),
     });
   } catch (err) {
-    console.warn('[SlackBillingAlert] Failed to post:', err);
+    logger.warn('[SlackBillingAlert] Failed to post', err);
   }
 }
 

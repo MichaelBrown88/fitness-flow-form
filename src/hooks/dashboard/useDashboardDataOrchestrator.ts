@@ -22,7 +22,7 @@ export function useDashboardData() {
   const navigate = useNavigate();
 
   const [search, setSearch] = useState('');
-  const [view, setView] = useState<DashboardView>('clients');
+  const [view, setView] = useState<DashboardView>('assistant');
 
   // Derive scope: non-coaching admins see all org data; everyone else sees own
   const isAdmin = profile?.role === 'org_admin';
@@ -112,7 +112,7 @@ export function useDashboardData() {
   // Onboarding redirect
   useEffect(() => {
     if (!loading && user && profile && profile.onboardingCompleted === false) {
-      if (window.location.pathname === '/dashboard') {
+      if (window.location.pathname === '/dashboard' || window.location.pathname.startsWith('/dashboard/')) {
         navigate('/onboarding', { replace: true });
       }
     }

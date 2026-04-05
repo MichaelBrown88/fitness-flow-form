@@ -72,7 +72,7 @@ export function LandingPricingPlans() {
       </div>
 
       <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8 items-start">
-        <GlassCard className="p-8 sm:p-10 bg-card/70 hover:shadow-xl transition-apple">
+        <GlassCard className="bg-card/70 p-8 transition-apple hover:shadow-md sm:p-10">
           <h3 className="text-xl font-bold mb-2 text-foreground">Free</h3>
           <p className="text-sm text-foreground-secondary mb-8 font-medium">
             Up to {FREE_TIER_CLIENT_LIMIT} clients, no card

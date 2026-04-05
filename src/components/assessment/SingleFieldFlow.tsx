@@ -193,7 +193,7 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
           <div className="mb-6 flex flex-wrap items-center gap-2">
             <Button
               onClick={handleSnapPhoto}
-              className="h-10 px-5 rounded-xl bg-primary text-primary-foreground font-semibold gap-2 text-sm hover:brightness-110"
+              className="h-10 px-5 rounded-lg bg-primary text-primary-foreground font-semibold gap-2 text-sm hover:brightness-110"
             >
               <Camera className="h-4 w-4" />
               Snap a Photo
@@ -249,7 +249,7 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
             variant="ghost"
             onClick={handleBack}
             disabled={activeFieldIdx === 0 && !onGoToPreviousSection}
-            className="h-12 px-6 rounded-xl font-bold text-muted-foreground hover:text-foreground"
+            className="h-12 px-6 rounded-lg font-bold text-muted-foreground hover:text-foreground"
           >
             <ChevronLeft className="mr-2 h-5 w-5" />
             Back
@@ -258,7 +258,7 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
           <Button
             onClick={handleNext}
             disabled={!hasValue && currentStep.some(f => f.required)}
-            className={`h-12 px-8 rounded-xl font-bold transition-all ${
+            className={`h-12 px-8 rounded-lg font-bold transition-all ${
               hasValue || !currentStep.some(f => f.required)
                 ? 'bg-foreground text-white hover:bg-foreground/90'
                 : 'bg-muted text-muted-foreground cursor-not-allowed'

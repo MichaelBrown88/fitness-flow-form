@@ -1,6 +1,6 @@
 /**
  * Renders client-selection step when there is no client in context,
- * otherwise renders the assessment form (PhaseFormContent).
+ * then setup (confirm client + drafts), optional session plan, then capture (PhaseFormContent).
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -10,39 +10,29 @@ import { useAuth } from '@/hooks/useAuth';
 import { resolveClientDisplayNameFromOrgClientDoc } from '@/services/clientProfiles';
 import { getDraft } from '@/hooks/useAssessmentDraft';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
+import {
+  isAssessmentSetupConfirmedInSession,
+  parseEditAssessmentPayload,
+  readPartialAssessmentRecord,
+  removeAssessmentSetupConfirmed,
+  removeEditAssessment,
+  removePartialAssessment,
+  removePrefillClient,
+} from '@/lib/assessment/assessmentSessionStorage';
+import { shouldSkipSessionPlanWizard } from '@/lib/assessment/assessmentGateUtils';
 import { PhaseFormContent } from './PhaseFormContent';
 import { AssessmentClientStep } from './AssessmentClientStep';
 import { AssessmentPlanWizard } from './AssessmentPlanWizard';
+import { AssessmentSetupStep } from './AssessmentSetupStep';
 
 function hasClientInStorage(): boolean {
   try {
     const draft = getDraft();
     if (draft?.clientName?.trim()) return true;
-    const editData = sessionStorage.getItem(STORAGE_KEYS.EDIT_ASSESSMENT);
-    if (editData) {
-      const parsed = JSON.parse(editData) as { formData?: { fullName?: string } };
-      if (parsed.formData?.fullName?.trim()) return true;
-    }
-    const partialData = sessionStorage.getItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
-    if (partialData) {
-      const parsed = JSON.parse(partialData) as { clientName?: string };
-      if (parsed.clientName?.trim()) return true;
-    }
-  } catch {
-    // ignore
-  }
-  return false;
-}
-
-function shouldSkipSessionPlanWizard(): boolean {
-  try {
-    if (sessionStorage.getItem(STORAGE_KEYS.PARTIAL_ASSESSMENT)) return true;
-    if (sessionStorage.getItem(STORAGE_KEYS.IS_DEMO) === 'true') return true;
-    const editData = sessionStorage.getItem(STORAGE_KEYS.EDIT_ASSESSMENT);
-    if (editData) {
-      const parsed = JSON.parse(editData) as { editType?: string };
-      if (parsed.editType?.startsWith('partial-') || parsed.editType === 'manual') return true;
-    }
+    const parsedEdit = parseEditAssessmentPayload();
+    if (parsedEdit?.formData?.fullName?.trim()) return true;
+    const partialRec = readPartialAssessmentRecord();
+    if (partialRec?.clientName?.trim()) return true;
   } catch {
     // ignore
   }
@@ -62,6 +52,8 @@ export function AssessmentGate({
   const { profile } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [skippedClientStep, setSkippedClientStep] = useState(false);
+  const [forceClientStep, setForceClientStep] = useState(false);
+  const [setupConfirmed, setSetupConfirmed] = useState(() => isAssessmentSetupConfirmedInSession());
   const [sessionPlanComplete, setSessionPlanComplete] = useState(() => shouldSkipSessionPlanWizard());
   const hasClientFromUrl = useMemo(() => searchParams.get('client') ?? null, [searchParams]);
 
@@ -94,12 +86,24 @@ export function AssessmentGate({
     };
   }, [hasClientFromUrl, profile?.organizationId, updateFormData, setSearchParams]);
 
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(STORAGE_KEYS.IS_DEMO) === 'true') {
+        sessionStorage.setItem(STORAGE_KEYS.ASSESSMENT_SETUP_CONFIRMED, '1');
+        setSetupConfirmed(true);
+      }
+    } catch {
+      /* non-fatal */
+    }
+  }, []);
+
   const hasClientContext = useMemo(() => {
+    if (forceClientStep) return false;
     if (hasClientFromUrl) return true;
     if (formData.fullName?.trim()) return true;
     if (hasClientInStorage()) return true;
     return false;
-  }, [formData.fullName, hasClientFromUrl]);
+  }, [forceClientStep, formData.fullName, hasClientFromUrl]);
 
   const showForm = hasClientContext || skippedClientStep;
 
@@ -119,6 +123,33 @@ export function AssessmentGate({
     }
   }, []);
 
+  const isResolvingUrlClient = Boolean(hasClientFromUrl && !formData.fullName?.trim());
+
+  const handleSetupComplete = useCallback(() => {
+    setSetupConfirmed(true);
+  }, []);
+
+  const handleChangeClientFromSetup = useCallback(() => {
+    removeAssessmentSetupConfirmed();
+    removePrefillClient();
+    removePartialAssessment();
+    removeEditAssessment();
+    updateFormData({ fullName: '' });
+    setSetupConfirmed(false);
+    setSkippedClientStep(false);
+    setForceClientStep(true);
+  }, [updateFormData]);
+
+  if (showForm && !setupConfirmed) {
+    return (
+      <AssessmentSetupStep
+        isResolvingClient={isResolvingUrlClient}
+        onComplete={handleSetupComplete}
+        onChangeClient={handleChangeClientFromSetup}
+      />
+    );
+  }
+
   if (showForm && needsSessionPlan) {
     return <AssessmentPlanWizard onComplete={handlePlanWizardDone} />;
   }
@@ -136,6 +167,7 @@ export function AssessmentGate({
   return (
     <AssessmentClientStep
       onContinue={(choseNewClient) => {
+        setForceClientStep(false);
         if (choseNewClient) setSkippedClientStep(true);
       }}
     />

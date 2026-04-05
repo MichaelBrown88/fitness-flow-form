@@ -36,7 +36,7 @@ export const DASHBOARD_TASKS = {
 
   /** Dashboard header subtitle fragment */
   HEADER_PAST_CADENCE: (n: number) =>
-    n === 1 ? '1 past cadence' : `${n} past cadence`,
+    n === 1 ? '1 client past cadence' : `${n} clients past cadence`,
 
   HEADER_PAST_CADENCE_LINK_TITLE: 'View schedule — follow-ups past cadence',
 

@@ -75,7 +75,7 @@ export const NotFoundState = ({ onBack }: { onBack: () => void }) => (
       <p className="text-muted-foreground">Organization not found</p>
       <Button onClick={onBack} variant="outline">
         <ArrowLeft className="w-4 h-4 mr-2" />
-        Back to Dashboard
+        Back
       </Button>
     </div>
   </div>

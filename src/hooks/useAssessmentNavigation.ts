@@ -9,7 +9,14 @@ import type { FormData } from '@/contexts/FormContext';
 import type { OrgSettings } from '@/services/organizations';
 import { shouldShowField } from '@/lib/utils/equipmentFieldFilter';
 import { logger } from '@/lib/utils/logger';
-import { STORAGE_KEYS } from '@/constants/storageKeys';
+import {
+  getPartialCategoryFromEditType,
+  hasPartialAssessmentInSession,
+  parseEditAssessmentPayload,
+  writePartialAssessment,
+  readSavedAssessmentPhaseIndex,
+  readPartialAssessmentRecord,
+} from '@/lib/assessment/assessmentSessionStorage';
 
 interface UseAssessmentNavigationProps {
   formData: FormData;
@@ -17,22 +24,12 @@ interface UseAssessmentNavigationProps {
 }
 
 export function useAssessmentNavigation({ formData, orgSettings }: UseAssessmentNavigationProps) {
-  const getEditPartialCategory = (editType: string | undefined): string | null => {
-    if (!editType) return null;
-    if (editType.startsWith('partial-')) return editType.replace('partial-', '');
-    if (editType === 'manual') return 'strength';
-    return null;
-  };
-
   // Partial assessment mode state (read from PARTIAL_ASSESSMENT or EDIT_ASSESSMENT for edit flow)
   const [isPartialAssessment, setIsPartialAssessment] = useState(() => {
     try {
-      if (sessionStorage.getItem(STORAGE_KEYS.PARTIAL_ASSESSMENT)) return true;
-      const editData = sessionStorage.getItem(STORAGE_KEYS.EDIT_ASSESSMENT);
-      if (editData) {
-        const parsed = JSON.parse(editData) as { editType?: string };
-        if (getEditPartialCategory(parsed.editType)) return true;
-      }
+      if (hasPartialAssessmentInSession()) return true;
+      const parsed = parseEditAssessmentPayload();
+      if (parsed && getPartialCategoryFromEditType(parsed.editType)) return true;
       return false;
     } catch {
       return false;
@@ -41,57 +38,40 @@ export function useAssessmentNavigation({ formData, orgSettings }: UseAssessment
 
   const [partialCategory, setPartialCategory] = useState<string | null>(() => {
     try {
-      const partialData = sessionStorage.getItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
-      if (partialData) {
-        const { category } = JSON.parse(partialData);
-        return category ?? null;
-      }
-      const editData = sessionStorage.getItem(STORAGE_KEYS.EDIT_ASSESSMENT);
-      if (editData) {
-        const parsed = JSON.parse(editData) as { editType?: string };
-        return getEditPartialCategory(parsed.editType);
-      }
+      const rec = readPartialAssessmentRecord();
+      if (rec?.category != null) return rec.category;
+      const parsed = parseEditAssessmentPayload();
+      return getPartialCategoryFromEditType(parsed?.editType);
     } catch {
       return null;
     }
-    return null;
   });
 
   // Ensure partial mode is applied when editing a partial (EDIT_ASSESSMENT can be set before PARTIAL_ASSESSMENT)
   useEffect(() => {
-    const editRaw = sessionStorage.getItem(STORAGE_KEYS.EDIT_ASSESSMENT);
-    if (!editRaw) return;
-    try {
-      const parsed = JSON.parse(editRaw) as { editType?: string; formData?: { fullName?: string } };
-      const category = getEditPartialCategory(parsed.editType);
-      if (!category) return;
-      sessionStorage.setItem(STORAGE_KEYS.PARTIAL_ASSESSMENT, JSON.stringify({
-        category,
-        clientName: parsed.formData?.fullName ?? '',
-      }));
-      setIsPartialAssessment(true);
-      setPartialCategory(category);
-    } catch {
-      // non-fatal
-    }
+    const parsed = parseEditAssessmentPayload();
+    if (!parsed) return;
+    const category = getPartialCategoryFromEditType(parsed.editType);
+    if (!category) return;
+    writePartialAssessment({
+      category,
+      clientName: typeof parsed.formData?.fullName === 'string' ? parsed.formData.fullName : '',
+    });
+    setIsPartialAssessment(true);
+    setPartialCategory(category);
   }, []);
 
   const getInitialPhase = () => {
     try {
-      const partialData = sessionStorage.getItem(STORAGE_KEYS.PARTIAL_ASSESSMENT);
-      if (partialData) {
-        return 1; // Jump to category phase in partial mode
+      if (hasPartialAssessmentInSession()) {
+        return 1;
       }
-      const editData = sessionStorage.getItem(STORAGE_KEYS.EDIT_ASSESSMENT);
-      if (editData) {
-        const parsed = JSON.parse(editData) as { editType?: string };
-        if (getEditPartialCategory(parsed.editType)) return 1;
+      const parsed = parseEditAssessmentPayload();
+      if (parsed && getPartialCategoryFromEditType(parsed.editType)) {
+        return 1;
       }
-      const saved = sessionStorage.getItem(STORAGE_KEYS.ASSESSMENT_PHASE);
-      if (saved !== null) {
-        const idx = parseInt(saved, 10);
-        if (Number.isFinite(idx) && idx >= 0) return Math.min(idx, 15);
-      }
+      const savedIdx = readSavedAssessmentPhaseIndex();
+      if (savedIdx !== null) return savedIdx;
     } catch (e) {
       logger.warn('Failed to parse partial assessment data:', e);
     }

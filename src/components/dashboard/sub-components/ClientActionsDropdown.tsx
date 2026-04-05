@@ -33,6 +33,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { getShareTokensForAssessment } from '@/services/share';
 import { copyTextToClipboard } from '@/lib/utils/clipboard';
 import { CONFIG } from '@/config';
+import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
+import { clientDirectoryRowActionsAria } from '@/constants/ui';
 
 interface ClientActionsDropdownProps {
   clientName: string;
@@ -56,6 +58,7 @@ export const ClientActionsDropdown: React.FC<ClientActionsDropdownProps> = ({
   const navigate = useNavigate();
   const { user } = useAuth();
   const encodedName = encodeURIComponent(clientName);
+  const displayName = formatClientDisplayName(clientName);
   const [linkState, setLinkState] = useState<'idle' | 'loading' | 'copied' | 'none'>('idle');
 
   const handleCopyReportLink = async () => {
@@ -84,6 +87,7 @@ export const ClientActionsDropdown: React.FC<ClientActionsDropdownProps> = ({
           variant="ghost"
           size="sm"
           className="h-9 w-9 rounded-lg p-0 text-muted-foreground hover:bg-muted hover:text-foreground sm:h-8 sm:w-8"
+          aria-label={clientDirectoryRowActionsAria(displayName)}
         >
           <MoreHorizontal className="h-4 w-4" />
         </Button>

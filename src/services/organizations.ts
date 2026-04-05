@@ -109,6 +109,8 @@ export interface OrgSettings {
   trialAssessmentsRemaining?: number;
   /** Remaining AI assessment credits (Stripe / billing) */
   assessmentCredits?: number;
+  /** Purchased top-up credits that persist across monthly renewal replenishment (Functions-maintained). */
+  assessmentCreditsTopupBalance?: number;
 }
 
 /**

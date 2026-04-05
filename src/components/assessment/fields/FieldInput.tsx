@@ -25,7 +25,7 @@ export const FieldInput: React.FC<FieldInputProps> = ({
       placeholder={placeholder}
       value={(value as string) ?? ''}
       onValueChange={onValueChange}
-      className="h-12 rounded-xl border-border focus:ring-primary"
+      className="h-12 rounded-lg border-border focus:ring-primary"
     />
   );
 };

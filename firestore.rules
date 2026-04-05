@@ -120,7 +120,7 @@ service cloud.firestore {
         d.organizationId is string &&
         d.organizationId.size() > 0 &&
         isOrgCoach(d.organizationId) &&
-        d.type in ['ocr_body_comp', 'ocr_inbody', 'posture_analysis', 'exercise_recommendation', 'comparison_narrative'] &&
+        d.type in ['ocr_body_comp', 'ocr_inbody', 'posture_analysis', 'exercise_recommendation', 'comparison_narrative', 'coach_assistant_wording'] &&
         d.status in ['local_success', 'ai_fallback', 'ai_success', 'error'] &&
         d.provider in ['local', 'gemini', 'mediapipe', 'pattern'] &&
         d.costEstimate is number &&
@@ -248,10 +248,22 @@ service cloud.firestore {
         }
       }
 
-      // GDPR erasure requests
+      // Slug → stable client UUID (coach app reads/writes on profile create; migrations use Admin SDK)
+      match /clientLookup/{slug} {
+        allow read: if canReadOrgData(orgId);
+        allow write: if canWriteOrgData(orgId);
+      }
+
+      // Client self-service uploads — written by Admin/callables today; coaches read only
+      match /clientSubmissions/{clientUid}/items/{submissionId} {
+        allow read: if canReadOrgData(orgId);
+        allow create, update, delete: if false;
+      }
+
+      // GDPR erasure requests (creates via submitPublicErasureRequest callable — Admin SDK only)
       match /erasureRequests/{requestId} {
         allow read: if isOrgAdmin(orgId) || (isPlatformAdmin() && hasDataAccess(orgId));
-        allow create: if true; // Anyone can submit an erasure request
+        allow create: if false;
         allow update: if isOrgAdmin(orgId) || (isPlatformAdmin() && hasDataAccess(orgId));
         allow delete: if false;
       }
@@ -372,11 +384,15 @@ service cloud.firestore {
 
       allow update: if isAuthenticated() &&
         resource.data.organizationId != null &&
-        isOrgCoach(resource.data.organizationId);
+        isOrgCoach(resource.data.organizationId) &&
+        request.resource.data.organizationId == resource.data.organizationId &&
+        request.resource.data.clientId == resource.data.clientId;
 
       // Unauthenticated companion (client mobile) may only update capture fields
       allow update: if !isAuthenticated() &&
         exists(/databases/$(database)/documents/live_sessions/$(sessionId)) &&
+        request.resource.data.organizationId == resource.data.organizationId &&
+        request.resource.data.clientId == resource.data.clientId &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'companionJoined', 'lastHeartbeat', 'postureImages',
           'analysis', 'companionLogs',
@@ -437,7 +453,7 @@ service cloud.firestore {
     // =========================================================
 
     match /platform_admins/{adminId} {
-      allow read: if isAuthenticated();
+      allow read: if (isAuthenticated() && request.auth.uid == adminId) || isPlatformAdmin();
       allow create, update: if isPlatformAdmin() || canBootstrapPlatformAdminDoc(adminId);
       allow delete: if isPlatformAdmin();
     }

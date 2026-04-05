@@ -1,4 +1,4 @@
-import { ROUTES } from "@/constants/routes";
+import { ROUTES, dashboardWorkPath } from "@/constants/routes";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -9,7 +9,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMediaPipeRouteLifecycle } from "@/hooks/useMediaPipeRouteLifecycle";
 import { ThemeManager } from "./components/layout/ThemeManager";
 import { ThemeModeProvider } from "./contexts/ThemeModeContext";
-import { ErrorBoundary } from "./components/ErrorBoundary";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+import { Button } from "@/components/ui/button";
+import { FIRESTORE_SYNC_COPY } from "@/constants/firestoreSyncCopy";
+import { FirestoreSyncBanner } from "@/components/layout/FirestoreSyncBanner";
+import { RouteErrorBoundary } from "@/components/ui/RouteErrorBoundary";
+import { ROUTE_ERROR_BOUNDARY_COPY } from "@/constants/routeErrorBoundaryCopy";
 import { ImpersonationBanner } from "./components/ImpersonationBanner";
 import { MaintenanceBanner } from "./components/MaintenanceBanner";
 import { ReloadPrompt } from "./components/pwa/ReloadPrompt";
@@ -22,11 +27,12 @@ const Index = lazy(() => import("./pages/Index"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Login = lazy(() => import("./pages/Login"));
 const SignOut = lazy(() => import("./pages/SignOut"));
-const DashboardLayout = lazy(() => import("./pages/dashboard/DashboardLayout"));
-const DashboardClients = lazy(() => import("./pages/dashboard/DashboardClients"));
-const DashboardSchedule = lazy(() => import("./pages/dashboard/DashboardSchedule"));
-const DashboardCalendar = lazy(() => import("./pages/dashboard/DashboardCalendar"));
-const DashboardTeam = lazy(() => import("./pages/dashboard/DashboardTeam"));
+const DashboardLayout = lazy(() => import("@/pages/dashboard/DashboardLayout"));
+const DashboardAssistant = lazy(() => import("@/pages/dashboard/DashboardAssistant"));
+const DashboardClients = lazy(() => import("@/pages/dashboard/DashboardClients"));
+const DashboardWork = lazy(() => import("@/pages/dashboard/DashboardWork"));
+const DashboardTeam = lazy(() => import("@/pages/dashboard/DashboardTeam"));
+const DashboardArtifacts = lazy(() => import("@/pages/dashboard/DashboardArtifacts"));
 const AssessmentReport = lazy(() => import("./pages/AssessmentReport"));
 const PublicReportViewer = lazy(() => import("./pages/PublicReportViewer"));
 const Settings = lazy(() => import("./pages/Settings"));
@@ -85,7 +91,8 @@ const queryClient = new QueryClient({
 });
 
 const RequireAuth = ({ children }: { children: JSX.Element }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, profile, firestoreProfileSyncError, retryFirestoreSync, signOut } =
+    useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -103,6 +110,32 @@ const RequireAuth = ({ children }: { children: JSX.Element }) => {
         replace
         state={{ from: location.pathname + location.search }}
       />
+    );
+  }
+
+  if (!profile && firestoreProfileSyncError) {
+    return (
+      <div
+        className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-6 py-12 text-center"
+        role="alert"
+      >
+        <div className="max-w-md space-y-2">
+          <h1 className="text-lg font-semibold text-foreground">
+            {FIRESTORE_SYNC_COPY.requireAuthBlockedTitle}
+          </h1>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {FIRESTORE_SYNC_COPY.requireAuthBlockedBody}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <Button type="button" onClick={() => retryFirestoreSync()}>
+            {FIRESTORE_SYNC_COPY.requireAuthRetry}
+          </Button>
+          <Button type="button" variant="outline" onClick={() => void signOut()}>
+            {FIRESTORE_SYNC_COPY.requireAuthSignOut}
+          </Button>
+        </div>
+      </div>
     );
   }
 
@@ -136,6 +169,7 @@ const App = () => (
                 }}
               >
               <ErrorBoundary>
+              <FirestoreSyncBanner />
               <MaintenanceBanner />
               <ImpersonationBanner />
               <MediaPipeRouteLifecycle />
@@ -212,16 +246,30 @@ const App = () => (
                     />
                     {/* Protected routes (auth required) */}
                     <Route path="/dashboard" element={<RequireAuth><DashboardLayout /></RequireAuth>}>
-                      <Route index element={<DashboardClients />} />
-                      <Route path="schedule" element={<DashboardSchedule />} />
-                      <Route path="calendar" element={<DashboardCalendar />} />
+                      <Route index element={<DashboardAssistant />} />
+                      <Route path="clients" element={<DashboardClients />} />
+                      <Route path="work" element={<DashboardWork />} />
                       <Route path="team" element={<DashboardTeam />} />
+                      <Route path="artifacts" element={<DashboardArtifacts />} />
+                      <Route
+                        path="schedule"
+                        element={<Navigate to={dashboardWorkPath('tasks')} replace />}
+                      />
+                      <Route
+                        path="calendar"
+                        element={<Navigate to={dashboardWorkPath('calendar')} replace />}
+                      />
                     </Route>
                     <Route
                       path="/assessment"
                       element={
                         <RequireAuth>
-                          <Index />
+                          <RouteErrorBoundary
+                            title={ROUTE_ERROR_BOUNDARY_COPY.assessment.title}
+                            body={ROUTE_ERROR_BOUNDARY_COPY.assessment.body}
+                          >
+                            <Index />
+                          </RouteErrorBoundary>
                         </RequireAuth>
                       }
                     />
@@ -283,14 +331,29 @@ const App = () => (
                       <Route index element={<OrgOverview />} />
                       <Route path="team" element={<OrgTeam />} />
                       <Route path="retention" element={<OrgRetention />} />
-                      <Route path="billing" element={<OrgBilling />} />
+                      <Route
+                        path="billing"
+                        element={
+                          <RouteErrorBoundary
+                            title={ROUTE_ERROR_BOUNDARY_COPY.billing.title}
+                            body={ROUTE_ERROR_BOUNDARY_COPY.billing.body}
+                          >
+                            <OrgBilling />
+                          </RouteErrorBoundary>
+                        }
+                      />
                       <Route path="integrations" element={<OrgIntegrations />} />
                     </Route>
                     <Route
                       path="/billing"
                       element={
                         <RequireAuth>
-                          <Billing />
+                          <RouteErrorBoundary
+                            title={ROUTE_ERROR_BOUNDARY_COPY.billing.title}
+                            body={ROUTE_ERROR_BOUNDARY_COPY.billing.body}
+                          >
+                            <Billing />
+                          </RouteErrorBoundary>
                         </RequireAuth>
                       }
                     />
@@ -298,7 +361,12 @@ const App = () => (
                       path="/billing/success"
                       element={
                         <RequireAuth>
-                          <BillingSuccess />
+                          <RouteErrorBoundary
+                            title={ROUTE_ERROR_BOUNDARY_COPY.billing.title}
+                            body={ROUTE_ERROR_BOUNDARY_COPY.billing.body}
+                          >
+                            <BillingSuccess />
+                          </RouteErrorBoundary>
                         </RequireAuth>
                       }
                     />

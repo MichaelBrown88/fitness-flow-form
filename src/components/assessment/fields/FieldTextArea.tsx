@@ -31,7 +31,7 @@ export const FieldTextArea: React.FC<FieldTextAreaProps> = ({
       }}
       onBlur={() => handleChange(localValue)}
       rows={4}
-      className="mt-2 rounded-xl border-border focus:ring-primary"
+      className="mt-2 rounded-lg border-border focus:ring-primary"
     />
   );
 };

@@ -17,7 +17,7 @@ export function CTASection() {
   const ctaRef = useScrollReveal({ staggerDelay: 150, staggerIndex: 2 });
 
   return (
-    <section className="relative overflow-hidden bg-landing-contrast-bg py-24 sm:py-32">
+    <section className="relative overflow-hidden bg-landing-contrast-bg py-28 sm:py-36">
       {/* Subtle gradient glow */}
       <div className="absolute inset-0 -z-0">
         <div className="absolute left-1/2 top-1/2 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/12 blur-[100px]" />
@@ -40,7 +40,7 @@ export function CTASection() {
             {user ? (
               <Link 
                 to="/dashboard"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-card px-8 py-4 text-base font-bold text-foreground shadow-lg shadow-black/10 transition-colors hover:bg-muted"
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-border/70 bg-card px-8 py-4 text-base font-bold text-foreground shadow-sm transition-colors hover:bg-muted"
               >
                 Go to Dashboard
                 <ArrowRight className="h-5 w-5" />
@@ -48,7 +48,7 @@ export function CTASection() {
             ) : (
               <div className="flex flex-col items-center gap-4">
                 <LandingTrialCtaLink
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-card px-8 py-4 text-base font-bold text-foreground shadow-lg shadow-black/10 transition-colors hover:bg-muted"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-border/70 bg-card px-8 py-4 text-base font-bold text-foreground shadow-sm transition-colors hover:bg-muted"
                   ariaLabel={landingTrialAriaLabel('cta', LANDING_GUEST_CHECKOUT_ENABLED)}
                 >
                   Start Free Trial

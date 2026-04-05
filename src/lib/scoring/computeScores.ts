@@ -23,12 +23,13 @@ export function computeScores(form: FormData): ScoreSummary {
   ];
 
   const assessedCategories = categories.filter((c) => c.assessed);
-  const overall =
+  const overallRaw =
     assessedCategories.length > 0
-      ? Math.round(
-          assessedCategories.reduce((acc, c) => acc + c.score, 0) / assessedCategories.length,
-        )
+      ? assessedCategories.reduce((acc, c) => acc + c.score, 0) / assessedCategories.length
       : 0;
+  const overall = Number.isFinite(overallRaw)
+    ? Math.round(Math.max(0, Math.min(100, overallRaw)))
+    : 0;
 
   const allFiveAssessed = PILLAR_IDS.every((id) => categories.find((c) => c.id === id)?.assessed);
   const fullProfileScore = allFiveAssessed ? overall : null;

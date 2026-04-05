@@ -12,7 +12,7 @@ export function ReportPortalCapabilityGraphic() {
 
   return (
     <div className="relative mx-auto max-w-lg pb-10 pl-1 pr-2 pt-1 sm:pr-8 sm:pb-12">
-      <div className="rounded-2xl border border-border bg-card p-4 shadow-md dark:border-border dark:bg-card sm:p-5">
+      <div className="rounded-lg border border-border bg-card p-4 shadow-md dark:border-border dark:bg-card sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <span className="inline-flex rounded-full bg-muted px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">
             {r.reportBadge}
@@ -46,7 +46,7 @@ export function ReportPortalCapabilityGraphic() {
         </div>
       </div>
 
-      <div className="absolute -bottom-1 right-0 w-[min(100%,11.75rem)] rounded-2xl border-2 border-primary/35 bg-card shadow-xl dark:border-primary/40 dark:bg-card motion-safe:animate-fade-in-up sm:-right-2 sm:bottom-0 sm:w-[12.5rem]">
+      <div className="absolute -bottom-1 right-0 w-[min(100%,11.75rem)] rounded-lg border-2 border-primary/35 bg-card shadow-md dark:border-primary/40 dark:bg-card motion-safe:animate-fade-in-up sm:-right-2 sm:bottom-0 sm:w-[12.5rem]">
         <div className="border-b border-border px-3 py-2 dark:border-border">
           <p className="text-[9px] font-semibold uppercase tracking-wide text-foreground-tertiary">
             {r.linkCaption}

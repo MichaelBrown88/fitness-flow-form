@@ -3,14 +3,14 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate, Outlet, NavLink } from 'react-router-dom';
+import { useNavigate, Outlet, NavLink, useLocation } from 'react-router-dom';
 import { getFirebaseAuth, getDb } from '@/services/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { collection, query, where, getCountFromServer } from 'firebase/firestore';
 import { useAuth } from '@/hooks/useAuth';
 import { getOrganizationDetails, getOrgCoachesWithStats } from '@/services/platformAdmin';
 import { getOrgCoaches, addCoachToOrganization, removeCoachFromOrganization, sendCoachInviteEmail } from '@/services/coachManagement';
-import { calculateMonthlyFee } from '@/lib/pricing';
+import { calculateMonthlyFee, PRICING_PLANS, type SubscriptionPlan } from '@/lib/pricing';
 import { getMonthlyPrice } from '@/lib/pricing/config';
 import { DEFAULT_REGION, type Region } from '@/constants/pricing';
 import { useToast } from '@/hooks/use-toast';
@@ -30,6 +30,9 @@ import {
 import { useOrgRetention, type RetentionSummary, type ClientRetentionData, type CoachRetentionMetrics } from '@/hooks/useOrgRetention';
 import type { OrganizationDetails } from '@/types/platform';
 import { ROUTES } from '@/constants/routes';
+import { getAppShellSeoForPathname } from '@/constants/seo';
+import { Seo } from '@/components/seo/Seo';
+import { UI_COMMAND_MENU } from '@/constants/ui';
 import { ArrowLeft, Building2, UserPlus } from 'lucide-react';
 
 export type OrgCoach = {
@@ -63,6 +66,7 @@ export type OrgAdminOutletContext = {
 
 export default function OrgAdminLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { profile, effectiveOrgId } = useAuth();
   const { toast } = useToast();
   const [orgDetails, setOrgDetails] = useState<OrganizationDetails | null>(null);
@@ -135,9 +139,10 @@ export default function OrgAdminLayout() {
     }
     const r = (orgDetails.region ?? DEFAULT_REGION) as Region;
     const seats = orgDetails.seatBlock ?? orgDetails.clientSeats ?? 0;
-    return r === 'KW'
-      ? calculateMonthlyFee(orgDetails.plan || 'free', seats)
-      : getMonthlyPrice(r, seats);
+    const planRaw = orgDetails.plan ?? 'free';
+    const plan: SubscriptionPlan =
+      planRaw in PRICING_PLANS ? (planRaw as SubscriptionPlan) : 'free';
+    return r === 'KW' ? calculateMonthlyFee(plan, seats) : getMonthlyPrice(r, seats);
   }, [orgDetails]);
 
   const totalClientSeats = coaches.reduce((sum, coach) => sum + coach.clientCount, 0);
@@ -224,31 +229,53 @@ export default function OrgAdminLayout() {
     }
   };
 
+  const orgSeoPath = location.pathname.split('?')[0];
+  const orgSeoMeta = getAppShellSeoForPathname(location.pathname);
+  const orgSeo = (
+    <Seo
+      pathname={orgSeoPath}
+      title={orgSeoMeta.title}
+      description={orgSeoMeta.description}
+      noindex={orgSeoMeta.noindex}
+    />
+  );
+
   if (loading) {
     return (
+      <>
+        {orgSeo}
       <AppShell title="Organization" subtitle="Loading...">
-        <div className="flex items-center justify-center min-h-[400px]">
+        <div
+          className="flex items-center justify-center min-h-[400px]"
+          role="status"
+          aria-busy="true"
+          aria-live="polite"
+        >
           <div className="text-muted-foreground flex items-center gap-2">
-            <Building2 className="w-4 h-4 animate-pulse" />
-            Loading organization details...
+            <Building2 className="w-4 h-4 animate-pulse" aria-hidden />
+            <span>Loading organization details…</span>
           </div>
         </div>
       </AppShell>
+      </>
     );
   }
 
   if (!orgDetails) {
     return (
+      <>
+        {orgSeo}
       <AppShell title="Organization" subtitle="Organization not found">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center space-y-4">
             <p className="text-muted-foreground">Organization details not found</p>
             <Button onClick={() => navigate(ROUTES.DASHBOARD)} variant="outline">
-              Back to Dashboard
+              Back to {UI_COMMAND_MENU.HOME}
             </Button>
           </div>
         </div>
       </AppShell>
+      </>
     );
   }
 
@@ -276,6 +303,8 @@ export default function OrgAdminLayout() {
     `px-4 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-background text-foreground' : 'text-muted-foreground hover:text-foreground-secondary'}`;
 
   return (
+    <>
+      {orgSeo}
     <AppShell
       title="Organization"
       subtitle={orgDetails.name || 'Your organization'}
@@ -285,7 +314,7 @@ export default function OrgAdminLayout() {
         </Button>
       }
     >
-      <nav className="flex gap-1 p-1 rounded-xl bg-muted mb-6">
+      <nav className="mb-6 flex gap-1 rounded-lg bg-muted p-1">
         <NavLink to={ROUTES.ORG_DASHBOARD} end className={tabClass}>
           <span className="flex items-center gap-2">
             Overview
@@ -370,5 +399,6 @@ export default function OrgAdminLayout() {
         </DialogContent>
       </Dialog>
     </AppShell>
+    </>
   );
 }

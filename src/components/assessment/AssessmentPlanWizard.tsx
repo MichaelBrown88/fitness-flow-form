@@ -100,10 +100,10 @@ export function AssessmentPlanWizard({ onComplete }: { onComplete: () => void })
           <button
             type="button"
             onClick={() => setIntakeMode('studio')}
-            className={`rounded-xl border p-4 text-left transition-colors min-h-[88px] ${
+            className={`rounded-lg border p-4 text-left transition-colors min-h-[88px] ${
               intakeMode === 'studio'
                 ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
-                : 'border-border bg-card hover:bg-muted/40'
+                : 'border-border/70 bg-background hover:bg-muted/40'
             }`}
           >
             <Monitor className="h-5 w-5 text-muted-foreground mb-2" aria-hidden />
@@ -113,10 +113,10 @@ export function AssessmentPlanWizard({ onComplete }: { onComplete: () => void })
           <button
             type="button"
             onClick={() => setIntakeMode('send_link_first')}
-            className={`rounded-xl border p-4 text-left transition-colors min-h-[88px] ${
+            className={`rounded-lg border p-4 text-left transition-colors min-h-[88px] ${
               intakeMode === 'send_link_first'
                 ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
-                : 'border-border bg-card hover:bg-muted/40'
+                : 'border-border/70 bg-background hover:bg-muted/40'
             }`}
           >
             <Smartphone className="h-5 w-5 text-muted-foreground mb-2" aria-hidden />
@@ -137,10 +137,10 @@ export function AssessmentPlanWizard({ onComplete }: { onComplete: () => void })
               onClick={() => {
                 setTemplateKey(key);
               }}
-              className={`rounded-xl border px-4 py-3 text-left text-sm transition-colors min-h-[72px] ${
+              className={`rounded-lg border px-4 py-3 text-left text-sm transition-colors min-h-[72px] ${
                 !hasCustomModule && templateKey === key
                   ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
-                  : 'border-border bg-card hover:bg-muted/40 disabled:opacity-50'
+                  : 'border-border/70 bg-background hover:bg-muted/40 disabled:opacity-50'
               }`}
             >
               <span className="font-semibold text-foreground block">{TEMPLATE_LABEL[key]}</span>
@@ -174,7 +174,7 @@ export function AssessmentPlanWizard({ onComplete }: { onComplete: () => void })
                     type="button"
                     onClick={() => toggle(key)}
                     className={`rounded-lg border px-3 py-3 text-left text-sm font-medium min-h-[44px] ${
-                      toggles[key] ? 'border-primary bg-primary/10' : 'border-border bg-card'
+                      toggles[key] ? 'border-primary bg-primary/10' : 'border-border/70 bg-background'
                     }`}
                   >
                     {label}
@@ -187,7 +187,7 @@ export function AssessmentPlanWizard({ onComplete }: { onComplete: () => void })
       </section>
 
       {intakeMode === 'send_link_first' && profile?.organizationId && formData.fullName?.trim() ? (
-        <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-3">
+        <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
           <p className="text-sm text-muted-foreground">
             Generate a secure link for this client. Requires the remote assessment MVP to be enabled for your project
             (see functions env).
@@ -205,7 +205,7 @@ export function AssessmentPlanWizard({ onComplete }: { onComplete: () => void })
                 type="button"
                 onClick={() => setRemoteLinkScope(scope)}
                 className={`rounded-lg border px-3 py-2 text-left text-xs font-medium min-h-[44px] ${
-                  remoteLinkScope === scope ? 'border-primary bg-primary/10' : 'border-border bg-card'
+                  remoteLinkScope === scope ? 'border-primary bg-primary/10' : 'border-border/70 bg-background'
                 }`}
               >
                 {label}

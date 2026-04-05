@@ -71,9 +71,9 @@ export function FieldControl({
                 <label
                   key={option.value}
                   htmlFor={inputId}
-                  className={`flex h-11 cursor-pointer items-center gap-3 rounded-xl border-2 px-4 text-left transition-all ${
+                  className={`flex h-11 cursor-pointer items-center gap-3 rounded-lg border-2 px-4 text-left transition-all ${
                     isSelected
-                      ? 'border-foreground bg-foreground text-white shadow-lg scale-[1.02]'
+                      ? 'border-foreground bg-foreground text-white shadow-sm'
                       : `bg-background text-foreground-secondary ${colorClass}`
                   }`}
                 >
@@ -113,7 +113,7 @@ export function FieldControl({
             <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm">
               <Button 
                 onClick={onShowPostureCompanion}
-                className="flex-1 h-14 rounded-2xl bg-primary text-primary-foreground font-bold text-xs gap-3 shadow-lg shadow-primary/20"
+                className="h-14 flex-1 gap-3 rounded-lg bg-primary text-xs font-bold text-primary-foreground shadow-sm"
               >
                 <Smartphone className="h-5 w-5" />
                 Start posture scan

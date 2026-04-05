@@ -37,7 +37,7 @@ export const FieldLabel: React.FC<FieldLabelProps> = ({ field, orgSettings, form
               </TooltipTrigger>
               <TooltipContent 
                 side="right" 
-                className="z-[100] max-w-[300px] p-5 bg-foreground text-white rounded-2xl border-none shadow-xl animate-in fade-in zoom-in duration-200"
+                className="z-[100] max-w-[300px] animate-in rounded-lg border-none bg-foreground p-5 text-white shadow-lg fade-in zoom-in duration-200"
               >
                 <div className="space-y-3 text-left">
                   {tooltipLines.map((line, i) => {

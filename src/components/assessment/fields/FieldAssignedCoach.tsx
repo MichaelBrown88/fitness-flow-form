@@ -36,7 +36,7 @@ export const FieldAssignedCoach: React.FC<FieldAssignedCoachProps> = ({
 
   if (coaches.length === 0) {
     return (
-      <div className="mt-2 p-4 rounded-xl border-2 border-amber-200 bg-amber-50 text-amber-700">
+      <div className="mt-2 rounded-lg border-2 border-amber-200 bg-amber-50 p-4 text-amber-700">
         <p className="text-sm font-bold mb-1">No coaches available</p>
         <p className="text-xs">You must add at least one coach in your organization settings before creating assessments.</p>
       </div>
@@ -56,9 +56,9 @@ export const FieldAssignedCoach: React.FC<FieldAssignedCoachProps> = ({
               key={coach.uid}
               type="button"
               onClick={() => handleChange(coach.uid)}
-              className={`flex min-h-[64px] h-auto w-full items-center gap-4 rounded-2xl border-2 px-5 py-3 text-left transition-all ${
+              className={`flex h-auto min-h-[64px] w-full items-center gap-4 rounded-lg border-2 px-5 py-3 text-left transition-all ${
                 isSelected
-                  ? 'border-foreground bg-foreground text-white shadow-lg scale-[1.02]'
+                  ? 'border-foreground bg-foreground text-white shadow-sm'
                   : `bg-background text-foreground-secondary ${colorClass}`
               }`}
             >
@@ -93,10 +93,10 @@ export const FieldAssignedCoach: React.FC<FieldAssignedCoachProps> = ({
         value={selectedCoachUid}
         onValueChange={(val) => handleChange(val)}
       >
-        <SelectTrigger className="h-14 rounded-2xl border-2 border-border bg-background text-foreground font-bold">
+        <SelectTrigger className="h-14 rounded-lg border-2 border-border bg-background font-bold text-foreground">
           <SelectValue placeholder="Select a coach" />
         </SelectTrigger>
-        <SelectContent className="rounded-2xl">
+        <SelectContent className="rounded-lg">
           {coaches.map((coach) => (
             <SelectItem key={coach.uid} value={coach.uid} className="py-3">
               <div className="flex flex-col">

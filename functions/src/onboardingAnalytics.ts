@@ -1,11 +1,12 @@
 /**
  * Onboarding Analytics Cloud Function
  *
- * Tracks step transitions (0->1, 1->2, 2->3, 3->4) for funnel analysis.
+ * Tracks step reaches (1–5) from useOnboarding for funnel analysis.
  * Stores only step + date counts; no PII.
  */
 
 import * as admin from 'firebase-admin';
+import { logger } from 'firebase-functions';
 import type { CallableRequest } from 'firebase-functions/v2/https';
 import { FieldValue } from 'firebase-admin/firestore';
 import {
@@ -14,7 +15,7 @@ import {
 } from './constants/onboardingFunnel';
 
 export interface LogOnboardingStepRequest {
-  step: number; // Step reached (1, 2, 3, or 4)
+  step: number; // Step reached (1–5, see useOnboarding)
 }
 
 function getDb() {
@@ -60,7 +61,7 @@ export async function handleLogOnboardingStep(
 
     return { success: true };
   } catch (err) {
-    console.warn('logOnboardingStep failed:', err);
+    logger.warn('logOnboardingStep failed', { err });
     return { success: false };
   }
 }

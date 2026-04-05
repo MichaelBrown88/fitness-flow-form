@@ -38,6 +38,9 @@ export default function ClientReportTab() {
     handleEmailLink,
     handleSystemShare,
     handleWhatsAppShare,
+    handleGenerateSocialShareArtifacts,
+    socialShareArtifacts,
+    socialShareGenerating,
     shareLoading,
   } = useReportShare({
     assessmentId,
@@ -119,6 +122,10 @@ export default function ClientReportTab() {
         onEmailLink={handleEmailLink}
         onSystemShare={handleSystemShare}
         onWhatsAppShare={handleWhatsAppShare}
+        assessmentId={assessmentId}
+        socialShareGenerating={socialShareGenerating}
+        socialShareArtifacts={socialShareArtifacts}
+        onGenerateSocialShareArtifacts={handleGenerateSocialShareArtifacts}
       />
     </div>
   );
