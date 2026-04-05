@@ -10,7 +10,7 @@ import { OfflineBanner } from '@/components/OfflineBanner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
-import { Plus, Menu, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react';
+import { Plus, Menu, PanelLeftClose, PanelLeftOpen, Search, AlertTriangle } from 'lucide-react';
 import { ROUTES } from '@/constants/routes';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import { COACH_ASSISTANT_COPY } from '@/constants/coachAssistantCopy';
@@ -175,6 +175,21 @@ export default function DashboardLayout() {
       window.clearTimeout(timeoutId);
     };
   }, [effectiveOrgId, dataUser, filteredClients]);
+
+  const trialDaysRemaining = useMemo(() => {
+    const sub = orgSettings?.subscription;
+    if (!sub || sub.planKind === 'solo_free' || sub.status !== 'trial') return null;
+    const d =
+      sub.trialEndsAt instanceof Timestamp
+        ? sub.trialEndsAt.toDate()
+        : sub.trialEndsAt instanceof Date
+          ? sub.trialEndsAt
+          : null;
+    if (!d) return null;
+    const ms = d.getTime() - Date.now();
+    if (ms <= 0) return null; // already ended — redirect handles this
+    return Math.ceil(ms / (1000 * 60 * 60 * 24));
+  }, [orgSettings]);
 
   useEffect(() => {
     if (!orgSettings || !profile?.onboardingCompleted) return;
@@ -435,6 +450,31 @@ export default function DashboardLayout() {
                   : 'px-3 pb-20 sm:px-4 sm:pb-6 md:px-5 lg:px-6',
               )}
             >
+              {trialDaysRemaining !== null && trialDaysRemaining <= 7 && (
+                <div className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm mb-3 ${
+                  trialDaysRemaining <= 1
+                    ? 'bg-rose-50 border border-rose-200 text-rose-800'
+                    : trialDaysRemaining <= 3
+                      ? 'bg-amber-50 border border-amber-200 text-amber-800'
+                      : 'bg-blue-50 border border-blue-200 text-blue-800'
+                }`}>
+                  <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
+                  <span className="flex-1 font-medium">
+                    {trialDaysRemaining === 1
+                      ? 'Your free trial ends tomorrow.'
+                      : `Your free trial ends in ${trialDaysRemaining} days.`}
+                    {' '}Choose a plan to keep your data and continue using One Assess.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => navigate(ROUTES.BILLING)}
+                    className="shrink-0 font-semibold underline underline-offset-2 hover:opacity-80"
+                  >
+                    See plans
+                  </button>
+                </div>
+              )}
+
               <DashboardHeader
                 variant={isWorkspaceShell ? 'compact' : 'default'}
                 coachFirstName={coachFirstName}

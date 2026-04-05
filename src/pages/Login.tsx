@@ -211,14 +211,15 @@ const Login = () => {
                   </button>
                 </div>
               </div>
-              <div className="flex justify-end">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-muted-foreground">Trouble signing in?</span>
                 <button
                   type="button"
                   onClick={handleForgotPassword}
-                  className="text-xs text-primary transition-colors hover:opacity-80"
+                  className="text-sm font-medium text-primary transition-colors hover:opacity-80 underline underline-offset-2"
                   disabled={submitting}
                 >
-                  Forgot password?
+                  Reset password
                 </button>
               </div>
               {error && (
@@ -228,7 +229,7 @@ const Login = () => {
               )}
               {resetSent && (
                 <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
-                  Password reset email sent. Check your inbox and follow the link to reset your password.
+                  Reset email sent. Check your inbox (and spam folder) — the link expires in 1 hour.
                 </div>
               )}
               <Button
@@ -241,9 +242,9 @@ const Login = () => {
             </form>
 
             <p className="mt-6 text-center text-sm text-foreground-secondary">
-              Don't have an account?{' '}
+              New to One Assess?{' '}
               <Link to={ROUTES.ONBOARDING} className="font-medium text-primary hover:underline">
-                Start your free trial
+                Start your free trial →
               </Link>
             </p>
           </div>

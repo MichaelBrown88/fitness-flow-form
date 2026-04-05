@@ -50,7 +50,7 @@ export function LandingPricingPlans() {
             className={cn(
               'px-4 py-2 rounded-lg text-xs font-bold transition-apple',
               billingPeriod === 'monthly'
-                ? 'bg-foreground text-primary-foreground shadow-sm'
+                ? 'bg-foreground text-background shadow-sm'
                 : 'text-foreground-secondary hover:text-foreground',
             )}
           >
@@ -62,11 +62,14 @@ export function LandingPricingPlans() {
             className={cn(
               'px-4 py-2 rounded-lg text-xs font-bold transition-apple',
               billingPeriod === 'annual'
-                ? 'bg-foreground text-primary-foreground shadow-sm'
+                ? 'bg-foreground text-background shadow-sm'
                 : 'text-foreground-secondary hover:text-foreground',
             )}
           >
-            Annual <span className="font-semibold text-foreground-tertiary">~20% off</span>
+            Annual{' '}
+            <span className={cn('font-semibold', billingPeriod === 'annual' ? 'text-background/70' : 'text-foreground-tertiary')}>
+              ~20% off
+            </span>
           </button>
         </div>
       </div>

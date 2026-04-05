@@ -3,8 +3,9 @@
  * then setup (confirm client + drafts), optional session plan, then capture (PhaseFormContent).
  */
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 import { useFormContext } from '@/contexts/FormContext';
 import { useAuth } from '@/hooks/useAuth';
 import { resolveClientDisplayNameFromOrgClientDoc } from '@/services/clientProfiles';
@@ -50,6 +51,8 @@ export function AssessmentGate({
 }) {
   const { formData, updateFormData } = useFormContext();
   const { profile } = useAuth();
+  const { toast } = useToast();
+  const clientResolutionFailedRef = useRef(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [skippedClientStep, setSkippedClientStep] = useState(false);
   const [forceClientStep, setForceClientStep] = useState(false);
@@ -72,6 +75,14 @@ export function AssessmentGate({
       } catch {
         if (cancelled) return;
         updateFormData({ fullName: rawDecoded });
+        if (!clientResolutionFailedRef.current) {
+          clientResolutionFailedRef.current = true;
+          toast({
+            title: "Couldn't confirm client",
+            description: `Using "${rawDecoded}" — double-check the client name before continuing.`,
+            variant: 'destructive',
+          });
+        }
       }
       if (cancelled) return;
       setSearchParams((prev) => {

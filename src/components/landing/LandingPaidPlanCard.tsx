@@ -130,7 +130,7 @@ export function LandingPaidPlanCard({
   const primaryCtaClassName = cn(
     'block w-full rounded-lg py-4 text-center font-bold shadow-sm transition-apple',
     highlighted
-      ? 'bg-foreground text-primary-foreground hover:opacity-90'
+      ? 'bg-foreground text-background hover:opacity-90'
       : 'bg-background border border-border text-foreground hover:bg-secondary shadow-sm',
   );
 
@@ -213,7 +213,7 @@ export function LandingPaidPlanCard({
       <div className="relative transform md:-translate-y-4">
         <div className="absolute inset-0 rounded-lg bg-gradient-to-b from-gradient-from to-gradient-to opacity-20 blur-sm" />
         <GlassCard className="relative border border-brand-medium bg-card p-8 shadow-md sm:p-10">
-          <div className="absolute right-0 top-0 rounded-bl-lg rounded-tr-lg bg-gradient-to-l from-gradient-from to-gradient-to px-4 py-2 text-[10px] font-bold uppercase tracking-[0.15em] text-primary-foreground">
+          <div className="absolute right-0 top-0 rounded-bl-lg rounded-tr-lg bg-gradient-to-l from-gradient-from to-gradient-to px-4 py-2 text-[10px] font-bold uppercase tracking-[0.15em] text-background">
             Most Popular
           </div>
           {cardBody}

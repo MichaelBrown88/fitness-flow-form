@@ -261,10 +261,10 @@ function BillingPage() {
         }
       >
         <div className="max-w-md mx-auto text-center space-y-3 py-16 px-4">
-          <h2 className="text-xl font-bold text-foreground">Access restricted</h2>
-          <p className="text-sm text-muted-foreground">Only organization admins can view billing.</p>
+          <h2 className="text-xl font-bold text-foreground">Billing is admin-only</h2>
+          <p className="text-sm text-muted-foreground">Billing is managed by your organisation admin. Ask them to adjust your plan or share an invoice.</p>
           <Button type="button" variant="link" onClick={() => navigate(ROUTES.DASHBOARD)} className="text-primary">
-            Back to dashboard
+            Go to dashboard
           </Button>
         </div>
       </AppShell>
@@ -282,7 +282,7 @@ function BillingPage() {
             className="h-10 w-10 rounded-full border-4 border-border border-t-primary animate-spin"
             aria-hidden
           />
-          <p className="text-sm text-muted-foreground">Loading billing…</p>
+          <p className="text-sm text-muted-foreground">Loading your plan…</p>
         </div>
       </AppShell>
       </>
@@ -526,9 +526,9 @@ function BillingPage() {
                 </div>
                 <div className="min-w-0 flex-1 space-y-3">
                   <div>
-                    <p className="text-sm font-semibold text-foreground">Client usage</p>
+                    <p className="text-sm font-semibold text-foreground">Client slots used</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Active (non-archived) clients vs your plan limit
+                      Active clients counted against your plan limit
                     </p>
                   </div>
                   <div className="h-2.5 rounded-full bg-muted overflow-hidden">
@@ -543,7 +543,7 @@ function BillingPage() {
                     />
                   </div>
                   <p className="text-sm font-medium tabular-nums text-foreground">
-                    {orgData.statsClientCount} / {clientCapForDisplay} clients
+                    {orgData.statsClientCount} of {clientCapForDisplay} client slots used
                   </p>
                 </div>
               </div>
@@ -561,12 +561,12 @@ function BillingPage() {
 
               {orgData.subscription.monthlyAiCredits != null ? (
                 <div className="rounded-lg border border-border/70 bg-muted/25 px-4 py-4 space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">AI credits</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">AI scan credits</p>
                   <p className="text-sm font-semibold text-foreground">
-                    {orgData.assessmentCredits ?? '—'} / {orgData.subscription.monthlyAiCredits} remaining this cycle
+                    {orgData.assessmentCredits ?? '—'} of {orgData.subscription.monthlyAiCredits} credits remaining this month
                   </p>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Each AI body-comp import or posture analysis uses one credit. Resets on subscription renewal.
+                    Each posture analysis or body composition scan uses one credit. Credits reset on your monthly renewal date.
                   </p>
                 </div>
               ) : null}

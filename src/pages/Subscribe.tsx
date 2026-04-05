@@ -54,7 +54,7 @@ export default function Subscribe() {
   }, [loading, profile?.onboardingCompleted, sub, navigate]);
 
   return (
-    <AppShell title="Choose your plan" hideTitle>
+    <AppShell title="Your free trial has ended" hideTitle>
       <div className="mx-auto max-w-lg px-4 py-12 text-center space-y-6">
         <div className="space-y-2">
           <h1 className="text-2xl font-bold text-foreground">{SUBSCRIBE_COPY.title}</h1>
@@ -73,10 +73,10 @@ export default function Subscribe() {
             className="rounded-xl h-11 font-bold"
             onClick={() => navigate(ROUTES.BILLING)}
           >
-            Continue to billing
+            See plans and pricing
           </Button>
           <Button variant="outline" className="rounded-xl h-11" onClick={() => navigate(ROUTES.CONTACT)}>
-            Talk to sales
+            Talk to us
           </Button>
         </div>
         <button

@@ -13,6 +13,7 @@ export default function ClientSettings() {
   const { profile: authProfile, orgSettings } = useAuth();
   const {
     clientName,
+    displayClientName,
     profile,
     editData,
     setEditData,
@@ -25,7 +26,7 @@ export default function ClientSettings() {
       hasSynced.current = true;
       const dateStr = profile.trainingStartDate ?? '';
       setEditData({
-        clientName: profile.clientName ?? clientName,
+        clientName: profile.clientName ?? displayClientName,
         email: profile.email ?? '',
         phone: profile.phone ?? '',
         dateOfBirth: profile.dateOfBirth ?? '',
@@ -44,7 +45,7 @@ export default function ClientSettings() {
             <UserCheck className="h-3.5 w-3.5" /> Client Name
           </label>
           <Input
-            value={editData.clientName ?? clientName ?? ''}
+            value={editData.clientName ?? displayClientName ?? ''}
             onChange={(e) => setEditData({ ...editData, clientName: e.target.value })}
             placeholder="Full name"
             className="h-11 rounded-xl"

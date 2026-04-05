@@ -103,26 +103,33 @@ export default function SandboxTrial() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-8 text-center bg-background">
+      <div className="min-h-screen flex flex-col bg-background">
         <Seo
           pathname={ROUTES.TRY}
           title={trySeo.title}
           description={trySeo.description}
           noindex={trySeo.noindex}
         />
-        <div
-          role="alert"
-          className="max-w-md rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-foreground"
-        >
-          {error}
-        </div>
-        <div className="flex flex-col items-center gap-3 sm:flex-row">
-          <Button type="button" variant="default" className="h-10 px-6 font-semibold" onClick={() => window.location.reload()}>
-            Try again
-          </Button>
-          <Button type="button" variant="outline" className="h-10 px-6 font-semibold" asChild>
-            <Link to={ROUTES.SIGNUP}>{SANDBOX_TRY_COPY.CTA_CREATE_ACCOUNT}</Link>
-          </Button>
+        <header className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <Link to={ROUTES.HOME} className="text-sm font-semibold text-foreground hover:opacity-70 transition-opacity flex items-center gap-2">
+            ← One Assess
+          </Link>
+        </header>
+        <div className="flex flex-col items-center justify-center flex-1 gap-4 p-8 text-center">
+          <div
+            role="alert"
+            className="max-w-md rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-foreground"
+          >
+            {error}
+          </div>
+          <div className="flex flex-col items-center gap-3 sm:flex-row">
+            <Button type="button" variant="default" className="h-10 px-6 font-semibold" onClick={() => window.location.reload()}>
+              Try again
+            </Button>
+            <Button type="button" variant="outline" className="h-10 px-6 font-semibold" asChild>
+              <Link to={ROUTES.SIGNUP}>{SANDBOX_TRY_COPY.CTA_CREATE_ACCOUNT}</Link>
+            </Button>
+          </div>
         </div>
       </div>
     );

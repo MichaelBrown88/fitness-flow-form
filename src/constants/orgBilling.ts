@@ -6,24 +6,24 @@ export const ORG_BILLING_COPY = {
   billingPageIntro:
     'Choose your client-capacity plan in One Assess. Stripe Checkout collects payment for new subscriptions; Stripe also hosts card and invoice management.',
   billingPageIntroShort:
-    'See your plan and usage here. Change capacity in the packages section; use Stripe only for checkout (new subs) or card and invoices.',
+    'Your plan and usage are shown here. Change your client limit in the packages section below.',
 
   billingPageYourPlanEyebrow: 'Your plan',
   billingPageAccountStripTitle: 'Billing contact',
   billingPageAccountStripLead:
-    'This person receives billing-related email from One Assess. The card on file and invoice PDFs are in Stripe; your capacity plan is managed in One Assess.',
+    'This person receives billing emails from One Assess. Your card and invoices are managed through our billing portal.',
 
-  billingPageMissingOrgTitle: 'No organisation linked',
+  billingPageMissingOrgTitle: "Your account isn't set up yet",
   billingPageMissingOrgBody:
-    'Your account is not linked to an organisation yet. Finish onboarding or contact support if this persists.',
+    "It looks like your account setup isn't complete. Go back to onboarding to finish, or contact support if you're stuck.",
 
-  billingPageLoadFailedTitle: 'Could not load billing',
+  billingPageLoadFailedTitle: "Couldn't load your billing details",
   billingPageLoadFailedBody:
-    'We could not load your organisation billing record. Check your connection and try again, or contact support.',
+    "Something went wrong loading your plan. Check your connection and try again — your data is safe.",
 
-  billingPageOrgDocMissingTitle: 'Organisation not found',
+  billingPageOrgDocMissingTitle: "We couldn't find your account",
   billingPageOrgDocMissingBody:
-    'There is no organisation record for this account yet. If you just finished onboarding, try again in a moment; otherwise contact support.',
+    "This sometimes happens right after signing up — it just takes a moment to finish creating your account. Wait a few seconds and refresh. If the problem continues, contact support.",
 
   stripeDisabledTitle: 'Online checkout',
   stripeDisabledBody:
@@ -69,15 +69,15 @@ export const ORG_BILLING_COPY = {
     'No Stripe customer on file yet. Use the subscribe section below to run through checkout like a new paying organization.',
 
   /** When Firestore has no amount yet but status is still "trial" */
-  billingPagePlanTrialNoPrice: 'Free trial — pick a capacity package below when you are ready to subscribe.',
+  billingPagePlanTrialNoPrice: "You're on a free trial. Choose a plan below when you're ready to subscribe.",
   /** Active org, Stripe customer, but amount not synced to Firestore yet */
   billingPagePlanActiveWithPortal:
-    'Stripe customer on file — change capacity in the packages section below; open Stripe for your card and invoices.',
+    "You're subscribed. Change your client limit in the packages section, or open the billing portal for your card and invoices.",
   /** Active but no Stripe customer and no price in app data */
   billingPagePlanActiveNoStripe:
-    'No subscription price on file — use checkout below to choose a package.',
+    "You don't have an active subscription yet. Choose a package below to get started.",
   /** cancelled, past_due, none, etc. with no amount */
-  billingPagePlanOtherNoPrice: 'No recurring price on file — use checkout or the portal to fix billing.',
+  billingPagePlanOtherNoPrice: "Your billing isn't fully set up. Choose a package below or contact support.",
 
   billingPageSectionYourSubscription: 'Your subscription',
   billingPageSectionManageStripe: 'Manage in Stripe',
@@ -113,18 +113,18 @@ export const ORG_BILLING_COPY = {
   billingActiveSubContactCta: 'Contact support',
 
   billingPageIntroActiveLocked:
-    'You are subscribed. Your current plan and usage are above — compare packages below and confirm changes in One Assess. Open Stripe only for your card and invoices.',
+    "You're all set. Your plan and client usage are shown above. To change your client limit, pick a different package below. Use the billing portal only to update your card or download invoices.",
 
   /** Toast when opening portal but Stripe lists no subscriptions for this customer */
-  billingPagePortalNoSubscriptionToastTitle: 'No subscription in Stripe yet',
+  billingPagePortalNoSubscriptionToastTitle: 'No active subscription found',
   billingPagePortalNoSubscriptionToastBody:
-    'You can still update your card in the portal. To cancel or change plans, complete checkout on this page first so Stripe creates a subscription.',
+    'You can still update your card in the billing portal. To change or cancel your plan, choose a package on this page first.',
 
   /** Inline hint — customer exists but Firestore has no stripeSubscriptionId */
   billingPagePortalHintNoSubId:
-    'Stripe only shows plan changes when there is an active subscription on your customer. Finish checkout below if you have not subscribed yet.',
+    'The billing portal shows your card and invoices. To change your plan or client limit, use the packages section on this page.',
 
   /** Inline hint — org appears subscribed; portal misconfiguration is common */
   billingPagePortalHintDashboard:
-    'If the portal opens but you only see payment method and invoices, enable subscription management in Stripe Dashboard → Settings → Billing → Customer portal, and add every capacity price (monthly and annual) customers can switch to. To keep solo and gym on separate plan lists, create two portal configurations in Stripe and set STRIPE_BILLING_PORTAL_CONFIGURATION_ID_SOLO_* and _GYM_* on Cloud Functions.',
+    'The billing portal is for updating your card and downloading invoices. To change your client capacity, use the packages section below.',
 } as const;

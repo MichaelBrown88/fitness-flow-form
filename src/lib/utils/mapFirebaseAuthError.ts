@@ -22,9 +22,9 @@ export function mapFirebaseAuthError(err: unknown, fallback: string): string {
       return 'Network error. Check your connection and try again.';
     case 'auth/popup-closed-by-user':
     case 'auth/cancelled-popup-request':
-      return 'Sign-in was cancelled. Try again when you are ready.';
+      return 'Sign-in was cancelled.';
     case 'auth/account-exists-with-different-credential':
-      return 'An account already exists with this email using a different sign-in method.';
+      return 'An account with that email already exists. Try signing in with Google or Apple instead.';
     default:
       return fallback;
   }

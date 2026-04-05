@@ -130,11 +130,15 @@ export const PhaseFormContent = ({
     setSidebarOpen(false);
   };
 
+  const [scoreError, setScoreError] = useState(false);
   const scores = useMemo((): ScoreSummary => {
     try {
-      return computeScores(formData);
+      const result = computeScores(formData);
+      setScoreError(false);
+      return result;
     } catch (e) {
       logger.error('Error computing scores:', e);
+      setScoreError(true);
       return FALLBACK_SCORE_SUMMARY;
     }
   }, [formData]);
@@ -351,7 +355,19 @@ export const PhaseFormContent = ({
             onClick={openPreResultsReview}
           />
 
-          {activePhase?.id === 'P7' ? (
+          {activePhase?.id === 'P7' && scoreError ? (
+            <div className="mx-auto max-w-lg rounded-xl border border-rose-200 bg-rose-50 p-6 text-center space-y-3">
+              <p className="text-sm font-semibold text-rose-800">Couldn't generate results</p>
+              <p className="text-xs text-rose-700">Something went wrong while calculating the scores. Your data is saved — go back and check for any incomplete required fields, then try again.</p>
+              <button
+                type="button"
+                onClick={() => { setScoreError(false); }}
+                className="text-xs font-semibold text-rose-700 underline hover:text-rose-900"
+              >
+                Try again
+              </button>
+            </div>
+          ) : activePhase?.id === 'P7' ? (
             <PhaseFormResultsPanel
               formData={formData}
               scores={scores}

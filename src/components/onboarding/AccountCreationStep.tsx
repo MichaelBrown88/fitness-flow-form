@@ -152,14 +152,32 @@ export function AccountCreationStep({
 
           {/* Strength indicator */}
           {debouncedPassword.length > 0 && (
-            <div className="mt-2 flex items-center gap-2">
-              <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-300 ${strength.color}`}
-                  style={{ width: `${strength.percent}%` }}
-                />
+            <div className="mt-2 space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-300 ${strength.color}`}
+                    style={{ width: `${strength.percent}%` }}
+                  />
+                </div>
+                <span className="text-xs font-medium text-muted-foreground w-16 text-right">{strength.label}</span>
               </div>
-              <span className="text-xs font-medium text-muted-foreground w-16 text-right">{strength.label}</span>
+              <ul className="grid grid-cols-2 gap-x-3 gap-y-1">
+                {[
+                  { label: '6+ characters', met: debouncedPassword.length >= PASSWORD_MIN_LENGTH },
+                  { label: '8+ characters', met: debouncedPassword.length >= 8 },
+                  { label: 'Uppercase letter', met: /[A-Z]/.test(debouncedPassword) },
+                  { label: 'Number', met: /[0-9]/.test(debouncedPassword) },
+                  { label: 'Symbol', met: /[^A-Za-z0-9]/.test(debouncedPassword) },
+                ].map(({ label, met }) => (
+                  <li key={label} className={`flex items-center gap-1.5 text-[11px] ${met ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+                    <span className={`inline-block w-3 h-3 rounded-full border flex-shrink-0 ${met ? 'bg-emerald-500 border-emerald-500' : 'border-muted-foreground/40'}`} aria-hidden>
+                      {met && <svg viewBox="0 0 12 12" fill="none" className="w-3 h-3"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                    </span>
+                    {label}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </div>

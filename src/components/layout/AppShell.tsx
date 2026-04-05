@@ -6,6 +6,7 @@ import { useOrgAdminNavVisibility } from '@/hooks/useOrgAdminNavVisibility';
 import { Button } from '@/components/ui/button';
 import { Sparkles, ChevronDown, Menu, Building2, LayoutDashboard, Settings, LogOut, Mail, X, Globe, CreditCard } from 'lucide-react';
 import { ROUTES } from '@/constants/routes';
+import { STORAGE_KEYS } from '@/constants/storageKeys';
 import { UI_COMMAND_MENU } from '@/constants/ui';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -77,7 +78,13 @@ export default function AppShell({
     user?.displayName?.split(' ').map((n) => n[0]).join('').toUpperCase() ||
     (user?.email ? user.email[0]?.toUpperCase() : 'C');
 
-  const [emailBannerDismissed, setEmailBannerDismissed] = useState(false);
+  const [emailBannerDismissed, setEmailBannerDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(STORAGE_KEYS.EMAIL_BANNER_DISMISSED) === '1';
+    } catch {
+      return false;
+    }
+  });
   const [resendState, setResendState] = useState<'idle' | 'sent' | 'error'>('idle');
   const handleResendVerification = useCallback(async () => {
     if (!user || resendState === 'sent') return;
@@ -189,7 +196,7 @@ export default function AppShell({
                       {orgName}
                     </p>
                     <p className="text-[10px] sm:text-xs font-semibold text-foreground-secondary">
-                      Professional Intake
+                      Assessment Platform
                     </p>
                   </div>
                 )}
@@ -244,7 +251,7 @@ export default function AppShell({
                       <DropdownMenuContent align="end" className="w-56">
                         <DropdownMenuLabel className="font-normal">
                           <div className="flex flex-col space-y-1">
-                            <p className="text-sm font-medium leading-none">{user.displayName || 'Coach Account'}</p>
+                            <p className="text-sm font-medium leading-none">{user.displayName || 'Your account'}</p>
                             <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
                           </div>
                         </DropdownMenuLabel>
@@ -259,7 +266,7 @@ export default function AppShell({
                           <DropdownMenuItem asChild>
                             <Link to={ROUTES.ORG_DASHBOARD} className="flex items-center gap-2">
                               <Building2 className="h-4 w-4" />
-                              Org admin
+                              Organisation admin
                             </Link>
                           </DropdownMenuItem>
                         )}
@@ -267,7 +274,7 @@ export default function AppShell({
                           <DropdownMenuItem asChild>
                             <Link to={ROUTES.BILLING} className="flex items-center gap-2">
                               <CreditCard className="h-4 w-4" />
-                              Billing & plans
+                              Billing
                             </Link>
                           </DropdownMenuItem>
                         )}
@@ -311,18 +318,21 @@ export default function AppShell({
       {user && !user.emailVerified && !emailBannerDismissed && (
         <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center justify-center gap-3 text-sm">
           <Mail className="h-4 w-4 text-amber-600 shrink-0" />
-          <span className="text-amber-800 font-medium">Verify your email — check your inbox</span>
+          <span className="text-amber-800 font-medium">Please verify your email address — we sent a link to your inbox</span>
           <button
             type="button"
             onClick={handleResendVerification}
             disabled={resendState === 'sent'}
             className="text-xs font-semibold text-amber-700 underline hover:text-amber-900 disabled:opacity-50 disabled:no-underline disabled:cursor-default"
           >
-            {resendState === 'sent' ? 'Sent!' : resendState === 'error' ? 'Try again' : 'Resend'}
+            {resendState === 'sent' ? 'Email sent' : resendState === 'error' ? 'Resend' : 'Resend email'}
           </button>
           <button
             type="button"
-            onClick={() => setEmailBannerDismissed(true)}
+            onClick={() => {
+              setEmailBannerDismissed(true);
+              try { localStorage.setItem(STORAGE_KEYS.EMAIL_BANNER_DISMISSED, '1'); } catch { /* non-fatal */ }
+            }}
             className="ml-auto text-amber-400 hover:text-amber-600"
           >
             <X className="h-4 w-4" />

@@ -4,12 +4,12 @@
 
 export const SUBSCRIBE_COPY = {
   title: 'Your trial has ended',
-  leadGym: (trialClientCap: number) =>
-    `Continue with a paid plan to keep your team on One Assess. During trial you could have up to ${trialClientCap} active clients; choose a capacity tier that fits your gym or studio.`,
-  leadSolo: (trialClientCap: number) =>
-    `Continue with a paid plan to keep using One Assess. During trial you could have up to ${trialClientCap} active clients; pick a capacity tier on billing that fits your practice.`,
-  bulletsTitle: 'What you get',
-  bulletCapacity: 'Capacity-based billing (UK GBP checkout for British organisations)',
-  bulletAi: 'AI assessment credits included per tier',
-  bulletBranding: 'Optional custom branding add-on at checkout',
+  leadGym: (_trialClientCap: number) =>
+    `To keep your team on One Assess, choose a plan for your gym or studio. Your assessments and client data are safe — nothing is deleted.`,
+  leadSolo: (_trialClientCap: number) =>
+    `To keep using One Assess, choose a plan that fits your practice. Your assessments and client data are safe — nothing is deleted.`,
+  bulletsTitle: "What's included",
+  bulletCapacity: 'Pay for the number of clients you need — start small and scale up',
+  bulletAi: 'AI posture and body composition scans included',
+  bulletBranding: 'Optional: white-label client reports with your own branding',
 } as const;

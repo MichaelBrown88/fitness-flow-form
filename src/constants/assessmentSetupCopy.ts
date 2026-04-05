@@ -37,7 +37,7 @@ export const ASSESSMENT_SETUP_COPY = {
   SAVE_AND_EXIT: 'Save and exit',
 
   /** Shown when coach jumps to a section from the sidebar while in linear capture */
-  JUMP_REVIEW_TITLE: 'Jumped to a section',
+  JUMP_REVIEW_TITLE: 'Editing an earlier section',
   JUMP_REVIEW_DESC:
-    'You are editing an earlier section from the sidebar. Continue step by step, or use Save and exit to finish later.',
+    "You navigated back to an earlier section. When you're done, continue forward through the form or save and exit to finish later.",
 } as const;

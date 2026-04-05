@@ -39,4 +39,7 @@ export const STORAGE_KEYS = {
   COACH_ASSISTANT_INTERACTION_MODE: 'coachAssistantInteractionMode',
   /** `1` = assistant workspace sidebar collapsed on large screens. */
   COACH_ASSISTANT_SIDEBAR_COLLAPSED: 'coachAssistantSidebarCollapsed',
+
+  /** `1` = user dismissed the "verify your email" banner; persists across refreshes. */
+  EMAIL_BANNER_DISMISSED: 'oneassess-email-banner-dismissed',
 } as const;

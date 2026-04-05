@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ASSESSMENT_COPY } from '@/constants/assessmentCopy';
 import {
   buildPlanFromFocusToggles,
@@ -252,15 +253,28 @@ export function AssessmentPlanWizard({ onComplete }: { onComplete: () => void })
         </div>
       ) : null}
 
-      <Button
-        type="button"
-        size="lg"
-        className="w-full sm:w-auto min-h-[48px]"
-        disabled={!intakeMode}
-        onClick={handleContinue}
-      >
-        {ASSESSMENT_COPY.CONTINUE_TO_ASSESSMENT}
-      </Button>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className={!intakeMode ? 'cursor-not-allowed' : undefined}>
+              <Button
+                type="button"
+                size="lg"
+                className="w-full sm:w-auto min-h-[48px]"
+                disabled={!intakeMode}
+                onClick={handleContinue}
+              >
+                {ASSESSMENT_COPY.CONTINUE_TO_ASSESSMENT}
+              </Button>
+            </span>
+          </TooltipTrigger>
+          {!intakeMode && (
+            <TooltipContent side="top">
+              Choose how you will run the session above to continue
+            </TooltipContent>
+          )}
+        </Tooltip>
+      </TooltipProvider>
     </div>
   );
 }
