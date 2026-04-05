@@ -38,6 +38,11 @@ function hasAnyData(formData: FormData): boolean {
   });
 }
 
+/** True when the form has enough filled fields to warrant draft auto-save / Firestore sync. */
+export function hasAssessmentDraftableData(formData: FormData): boolean {
+  return hasAnyData(formData);
+}
+
 // ── Static Helpers ───────────────────────────────────────────────
 
 /** Read a saved draft (or null). */

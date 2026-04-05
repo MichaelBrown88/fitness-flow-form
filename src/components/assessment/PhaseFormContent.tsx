@@ -22,6 +22,8 @@ import { useCameraHandler } from '@/hooks/useCameraHandler';
 import { useDemoAssessment } from '@/hooks/useDemoAssessment';
 import { useAssessmentShareHandlers } from '@/hooks/useAssessmentShareHandlers';
 import { useAssessmentDraft, getDraft, clearDraft } from '@/hooks/useAssessmentDraft';
+import { useAssessmentFirestoreDraftSync } from '@/hooks/useAssessmentFirestoreDraftSync';
+import { getDraftAssessment } from '@/services/coachAssessments';
 import { logger } from '@/lib/utils/logger';
 import { UI_DRAFT } from '@/constants/ui';
 import { ROUTES } from '@/constants/routes';
@@ -116,6 +118,12 @@ export const PhaseFormContent = ({
     toggleSection: flowToggleSection,
   } = flow;
 
+  useAssessmentFirestoreDraftSync(
+    formData,
+    isResultsPhase,
+    profile?.organizationId,
+    activePhaseIdx,
+  );
 
   // Load current assessment data when starting partial assessment
   useEffect(() => {
@@ -168,11 +176,17 @@ export const PhaseFormContent = ({
   
   // ── Draft auto-save + recovery ──────────────────────────────────
   const [draftBanner, setDraftBanner] = useState<{ clientName: string; timestamp: number } | null>(null);
+  const [cloudDraftOffer, setCloudDraftOffer] = useState<{
+    clientName: string;
+    updatedAtMs: number;
+    formData: FormData;
+    activePhaseIdx: number | null;
+  } | null>(null);
 
   // On mount: check for an existing draft (only if NOT in edit/prefill mode)
   useEffect(() => {
-    const hasEdit = !!sessionStorage.getItem('editAssessmentData');
-    const hasPrefill = !!sessionStorage.getItem('prefillClientData');
+    const hasEdit = !!sessionStorage.getItem(STORAGE_KEYS.EDIT_ASSESSMENT);
+    const hasPrefill = !!sessionStorage.getItem(STORAGE_KEYS.PREFILL_CLIENT);
     if (hasEdit || hasPrefill) return;
 
     const draft = getDraft();
@@ -181,10 +195,91 @@ export const PhaseFormContent = ({
     }
   }, []);
 
+  // If Firestore draft is newer than sessionStorage, prefer cloud resume
+  useEffect(() => {
+    const hasEdit = !!sessionStorage.getItem(STORAGE_KEYS.EDIT_ASSESSMENT);
+    const hasPrefill = !!sessionStorage.getItem(STORAGE_KEYS.PREFILL_CLIENT);
+    const orgId = profile?.organizationId;
+    if (!user || !orgId || hasEdit || hasPrefill || isPartialAssessment) return;
+
+    const name = (
+      formData.fullName.trim() ||
+      getDraft()?.clientName ||
+      activeClientName ||
+      ''
+    ).trim();
+    if (!name) return;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const cloud = await getDraftAssessment(name, orgId);
+        if (cancelled || !cloud?.formData || Object.keys(cloud.formData).length === 0) return;
+
+        const sessionDraft = getDraft();
+        const cloudMs = cloud.updatedAt?.toMillis() ?? 0;
+        const sessionMs = sessionDraft?.timestamp ?? 0;
+
+        if (cloudMs > sessionMs) {
+          setCloudDraftOffer({
+            clientName: name,
+            updatedAtMs: cloudMs,
+            formData: cloud.formData,
+            activePhaseIdx: cloud.activePhaseIdx,
+          });
+          setDraftBanner(null);
+        }
+      } catch (e) {
+        logger.warn('[Draft] Failed to load Firestore draft for comparison', e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, profile?.organizationId, formData.fullName, activeClientName, isPartialAssessment]);
+
   // Activate the debounced auto-save (writes formData → sessionStorage)
   useAssessmentDraft(formData, isResultsPhase);
 
+  const handleResumeCloudDraft = useCallback(() => {
+    if (!cloudDraftOffer) return;
+    updateFormData(cloudDraftOffer.formData as Partial<FormData>);
+    const p = cloudDraftOffer.activePhaseIdx;
+    if (typeof p === 'number' && p >= 0) {
+      try {
+        sessionStorage.setItem(STORAGE_KEYS.ASSESSMENT_PHASE, String(p));
+      } catch {
+        // non-fatal
+      }
+      setActivePhaseIdx(p);
+    }
+    try {
+      sessionStorage.setItem(
+        STORAGE_KEYS.DRAFT_ASSESSMENT,
+        JSON.stringify({
+          formData: cloudDraftOffer.formData,
+          timestamp: Date.now(),
+          clientName: cloudDraftOffer.clientName,
+        }),
+      );
+    } catch {
+      // non-fatal
+    }
+    setCloudDraftOffer(null);
+    setDraftBanner(null);
+  }, [cloudDraftOffer, updateFormData, setActivePhaseIdx]);
+
+  const handleDismissCloudDraft = useCallback(() => {
+    setCloudDraftOffer(null);
+    const d = getDraft();
+    if (d?.clientName) {
+      setDraftBanner({ clientName: d.clientName, timestamp: d.timestamp });
+    }
+  }, []);
+
   const handleResumeDraft = useCallback(() => {
+    setCloudDraftOffer(null);
     const draft = getDraft();
     if (draft?.formData) {
       updateFormData(draft.formData as Partial<FormData>);
@@ -193,6 +288,7 @@ export const PhaseFormContent = ({
   }, [updateFormData]);
 
   const handleDiscardDraft = useCallback(() => {
+    setCloudDraftOffer(null);
     clearDraft();
     setDraftBanner(null);
   }, []);
@@ -542,7 +638,40 @@ export const PhaseFormContent = ({
             </div>
           )}
 
-          {draftBanner && (
+          {cloudDraftOffer && !isPartialAssessment && activePhase.id !== 'P7' && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-xl border border-primary/40 bg-primary/5 p-3 sm:p-4 shadow-sm animate-fade-in-up">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-foreground">{UI_DRAFT.CLOUD_NEWER_TITLE}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {UI_DRAFT.CLOUD_NEWER_DESC}{' '}
+                  <span className="text-foreground-secondary">
+                    {cloudDraftOffer.clientName} &middot;{' '}
+                    {new Date(cloudDraftOffer.updatedAtMs).toLocaleString(undefined, {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDismissCloudDraft}
+                  className="text-xs font-bold"
+                >
+                  {UI_DRAFT.CLOUD_KEEP_LOCAL}
+                </Button>
+                <Button size="sm" onClick={handleResumeCloudDraft} className="text-xs font-bold">
+                  {UI_DRAFT.CLOUD_RESUME}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {draftBanner && !cloudDraftOffer && (
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-xl border border-border bg-background p-3 sm:p-4 shadow-sm animate-fade-in-up">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-foreground">{UI_DRAFT.TITLE}</p>

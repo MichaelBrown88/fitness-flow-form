@@ -121,19 +121,29 @@ export type SaveResult = {
  * Save an incomplete assessment as draft only. Does not update live report or create snapshot.
  * Used when coach clicks "Save for Later". Dashboard can check getDraftAssessment to show "Finish assessment" CTA.
  */
+export type SaveDraftAssessmentOptions = {
+  /** Persisted for cross-device resume (see `useAssessmentFirestoreDraftSync`). */
+  activePhaseIdx?: number;
+};
+
 export async function saveDraftAssessment(
   clientName: string,
   formData: FormData,
   organizationId: string,
+  options?: SaveDraftAssessmentOptions,
 ): Promise<void> {
   const slug = generateClientSlug(clientName);
   const draftRef = doc(getDb(), ORGANIZATION.clients.draft(organizationId, slug));
-  await setDoc(draftRef, {
+  const payload: Record<string, unknown> = {
     clientName: clientName.trim(),
     formData: sanitizeForFirestore(formData),
     updatedAt: serverTimestamp(),
     organizationId,
-  });
+  };
+  if (options?.activePhaseIdx !== undefined) {
+    payload.activePhaseIdx = options.activePhaseIdx;
+  }
+  await setDoc(draftRef, payload);
 }
 
 /**
@@ -142,15 +152,23 @@ export async function saveDraftAssessment(
 export async function getDraftAssessment(
   clientName: string,
   organizationId: string,
-): Promise<{ formData: FormData; updatedAt: Timestamp | null } | null> {
+): Promise<{
+  formData: FormData;
+  updatedAt: Timestamp | null;
+  activePhaseIdx: number | null;
+} | null> {
   const slug = generateClientSlug(clientName);
   const draftRef = doc(getDb(), ORGANIZATION.clients.draft(organizationId, slug));
   const snap = await getDoc(draftRef);
   if (!snap.exists()) return null;
   const data = snap.data();
+  const rawPhase = data?.activePhaseIdx;
+  const activePhaseIdx =
+    typeof rawPhase === 'number' && Number.isFinite(rawPhase) ? rawPhase : null;
   return {
     formData: (data?.formData ?? {}) as FormData,
     updatedAt: (data?.updatedAt as Timestamp) ?? null,
+    activePhaseIdx,
   };
 }
 

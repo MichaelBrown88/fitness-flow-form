@@ -70,7 +70,11 @@ export interface UseClientDetailResult {
   editData: Partial<ClientProfile>;
   deleteDialog: DeleteDialogState | null;
   deleteSnapshotDialog: { snapshotId: string } | null;
-  incompleteDraft: { formData: FormData; updatedAt: Timestamp | null } | null;
+  incompleteDraft: {
+    formData: FormData;
+    updatedAt: Timestamp | null;
+    activePhaseIdx: number | null;
+  } | null;
   
   setIsEditing: React.Dispatch<React.SetStateAction<boolean>>;
   setEditData: React.Dispatch<React.SetStateAction<Partial<ClientProfile>>>;
@@ -117,7 +121,11 @@ export function useClientDetail(): UseClientDetailResult {
   const [editData, setEditData] = useState<Partial<ClientProfile>>({});
   const [deleteDialog, setDeleteDialog] = useState<DeleteDialogState | null>(null);
   const [deleteSnapshotDialog, setDeleteSnapshotDialog] = useState<{ snapshotId: string } | null>(null);
-  const [incompleteDraft, setIncompleteDraft] = useState<{ formData: FormData; updatedAt: Timestamp | null } | null>(null);
+  const [incompleteDraft, setIncompleteDraft] = useState<{
+    formData: FormData;
+    updatedAt: Timestamp | null;
+    activePhaseIdx: number | null;
+  } | null>(null);
 
   const displayClientName = useMemo(() => {
     const fromProfile = profile?.clientName?.trim();
@@ -510,6 +518,15 @@ export function useClientDetail(): UseClientDetailResult {
         STORAGE_KEYS.PREFILL_CLIENT,
         JSON.stringify({ clientName }),
       );
+      if (
+        typeof incompleteDraft.activePhaseIdx === 'number' &&
+        incompleteDraft.activePhaseIdx >= 0
+      ) {
+        sessionStorage.setItem(
+          STORAGE_KEYS.ASSESSMENT_PHASE,
+          String(incompleteDraft.activePhaseIdx),
+        );
+      }
     } catch {
       // non-fatal
     }

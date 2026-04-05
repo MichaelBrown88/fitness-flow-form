@@ -21,6 +21,7 @@ import { updateRetestSchedule } from '@/services/clientProfiles';
 import type { UserProfile } from '@/types/auth';
 import type { OrgSettings } from '@/services/organizations';
 import { CLIENT_PROFILE_LAST_BODY_COMP_AT } from '@/lib/utils/clientProfileBodyCompDate';
+import { decrementSandboxTrialAfterSuccessfulSave } from '@/lib/utils/sandboxTrialDecrement';
 
 interface UseAssessmentSaveProps {
   user: { uid: string; email: string | null | undefined } | null;
@@ -80,16 +81,6 @@ export function useAssessmentSave({
         window.location.href = '/onboarding';
         return;
       }
-      // Decrement the counter (optimistic — full decrement happens in save service)
-      const { doc, updateDoc, increment } = await import('firebase/firestore');
-      const { getDb } = await import('@/services/firebase');
-      const db = getDb();
-      const orgId = profile?.organizationId;
-      if (orgId) {
-        void updateDoc(doc(db, 'organizations', orgId), {
-          trialAssessmentsRemaining: increment(-1),
-        });
-      }
     }
     
     let clientName = (formData.fullName || 'Unnamed client').trim();
@@ -115,7 +106,8 @@ export function useAssessmentSave({
       }
     }
     
-    // Offline path — persist to IndexedDB and return early
+    // Offline path — persist to IndexedDB and return early.
+    // Sandbox trial is decremented only after a successful Firestore save (here or via useOfflineSync drain).
     if (!navigator.onLine && !isDemoAssessment) {
       try {
         await enqueueAssessment({
@@ -212,6 +204,11 @@ export function useAssessmentSave({
                   description: result.message,
                 });
                 saveSucceeded = true;
+                await decrementSandboxTrialAfterSuccessfulSave({
+                  organizationId: profile.organizationId,
+                  isDemoAssessment,
+                  subscriptionPlan: orgSettings?.subscription?.plan ?? null,
+                });
                 setSavingId(parsedEdit.assessmentId);
                 setSaving(false);
                 return;
@@ -235,6 +232,11 @@ export function useAssessmentSave({
               description: `Assessment for ${clientName} has been updated without changing the original date.`
             });
             saveSucceeded = true;
+            await decrementSandboxTrialAfterSuccessfulSave({
+              organizationId: profile?.organizationId,
+              isDemoAssessment,
+              subscriptionPlan: orgSettings?.subscription?.plan ?? null,
+            });
             setSavingId(assessmentId);
             setSaving(false);
             return;
@@ -398,6 +400,11 @@ export function useAssessmentSave({
         }
 
       saveSucceeded = true;
+      await decrementSandboxTrialAfterSuccessfulSave({
+        organizationId: profile?.organizationId,
+        isDemoAssessment,
+        subscriptionPlan: orgSettings?.subscription?.plan ?? null,
+      });
       setSavingId(assessmentId);
       clearDraft();
       toast({ 

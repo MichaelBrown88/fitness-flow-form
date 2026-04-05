@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import React, { Suspense, lazy } from 'react';
 import { AuthProvider } from "./contexts/AuthContext";
 import { useAuth } from "@/hooks/useAuth";
+import { useMediaPipeRouteLifecycle } from "@/hooks/useMediaPipeRouteLifecycle";
 import { ThemeManager } from "./components/layout/ThemeManager";
 import { ThemeModeProvider } from "./contexts/ThemeModeContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -108,6 +109,11 @@ const RequireAuth = ({ children }: { children: JSX.Element }) => {
   return children;
 };
 
+function MediaPipeRouteLifecycle(): null {
+  useMediaPipeRouteLifecycle();
+  return null;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeModeProvider>
@@ -132,6 +138,7 @@ const App = () => (
               <ErrorBoundary>
               <MaintenanceBanner />
               <ImpersonationBanner />
+              <MediaPipeRouteLifecycle />
               <Suspense
                 fallback={
                   <div

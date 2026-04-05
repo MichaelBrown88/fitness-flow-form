@@ -14,7 +14,14 @@
  */
 
 import * as admin from 'firebase-admin';
+import { logger } from 'firebase-functions';
 import Stripe from 'stripe';
+import {
+  beginStripeWebhookProcessing,
+  markStripeWebhookEventCompleted,
+  clearStripeWebhookProcessingLock,
+  claimCreditTopupCheckoutSession,
+} from './stripeWebhookIdempotency';
 import { assertRateLimit, buildRateLimitKey } from './rateLimit';
 import {
   parseMetadataInt,
@@ -806,7 +813,7 @@ import { sendTrialEndingSoonEmail } from './trialNudges';
 export async function handleStripeWebhook(req: Request, res: Response) {
   const webhookSecret = resolveWebhookSecret();
   if (!webhookSecret) {
-    console.error('[Stripe Webhook] STRIPE_WEBHOOK_SECRET not configured');
+    logger.error('Stripe webhook secret not configured');
     res.status(500).send('Webhook secret not configured');
     return;
   }
@@ -816,25 +823,55 @@ export async function handleStripeWebhook(req: Request, res: Response) {
 
   let event: Stripe.Event;
   try {
-    // Firebase Functions v2 provides the raw body as a Buffer on req.body
-    // when the content-type is not JSON, or use req.rawBody if available
     const rawBody = (req as unknown as { rawBody: Buffer }).rawBody || req.body;
     event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
   } catch (err) {
-    console.error('[Stripe Webhook] Signature verification failed:', err);
+    logger.error('Stripe webhook signature verification failed', err);
     res.status(400).send('Webhook signature verification failed');
     return;
   }
 
   const db = admin.firestore();
+  let processingClaimed = false;
+  try {
+    const mode = await beginStripeWebhookProcessing(db, event);
+    if (mode === 'duplicate') {
+      logger.info('Stripe webhook skipped (duplicate or concurrent)', {
+        eventId: event.id,
+        type: event.type,
+      });
+      res.status(200).json({ received: true, duplicate: true });
+      return;
+    }
+    processingClaimed = true;
+    await runStripeWebhookHandlers(db, stripe, event);
+    await markStripeWebhookEventCompleted(db, event.id);
+    res.status(200).json({ received: true });
+  } catch (err) {
+    if (processingClaimed) {
+      await clearStripeWebhookProcessingLock(db, event.id);
+    }
+    logger.error('Stripe webhook handler failed', {
+      eventId: event.id,
+      type: event.type,
+      err,
+    });
+    res.status(500).send('Webhook handler failed');
+  }
+}
 
+async function runStripeWebhookHandlers(
+  db: admin.firestore.Firestore,
+  stripe: Stripe,
+  event: Stripe.Event,
+): Promise<void> {
   switch (event.type) {
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session;
       if (session.metadata?.landingGuestPreview === 'true') {
-        console.log(
-          '[Stripe Webhook] checkout.session.completed — landing guest preview (no organization write)',
-        );
+        logger.info('checkout.session.completed — landing guest preview (no organization write)', {
+          eventId: event.id,
+        });
         break;
       }
       const orgId = session.metadata?.organizationId;
@@ -901,14 +938,17 @@ export async function handleStripeWebhook(req: Request, res: Response) {
           updateData['subscription.amountFils'] = amountCents;
         }
         await db.doc(`organizations/${orgId}`).update(updateData);
-        console.log(`[Stripe Webhook] checkout.session.completed — org ${orgId} activated`);
+        logger.info('checkout.session.completed — org activated', { eventId: event.id, orgId });
 
         if (session.metadata?.customBranding === 'true') {
           await db.doc(`organizations/${orgId}`).update({
             customBrandingEnabled: true,
             customBrandingPaidAt: admin.firestore.FieldValue.serverTimestamp(),
           });
-          console.log(`[Stripe Webhook] checkout.session.completed — org ${orgId} custom branding enabled (with subscription)`);
+          logger.info('checkout.session.completed — custom branding with subscription', {
+            eventId: event.id,
+            orgId,
+          });
         }
 
         const orgSnap = await db.doc(`organizations/${orgId}`).get();
@@ -925,7 +965,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
           customBrandingEnabled: true,
           customBrandingPaidAt: admin.firestore.FieldValue.serverTimestamp(),
         });
-        console.log(`[Stripe Webhook] checkout.session.completed — org ${orgId} custom branding paid`);
+        logger.info('checkout.session.completed — custom branding paid', { eventId: event.id, orgId });
       }
 
       // Credit top-up: add the purchased credits to the org's balance
@@ -935,11 +975,24 @@ export async function handleStripeWebhook(req: Request, res: Response) {
           20,
           METADATA_MAX_CREDIT_TOPUP_QTY,
         );
+        const claimed = await claimCreditTopupCheckoutSession(db, session.id, {
+          orgId,
+          stripeEventId: event.id,
+          quantity: qty,
+        });
+        if (!claimed) {
+          logger.info('credit_topup skipped — checkout session already fulfilled', {
+            eventId: event.id,
+            sessionId: session.id,
+            orgId,
+          });
+          break;
+        }
         await db.doc(`organizations/${orgId}`).update({
           assessmentCredits: admin.firestore.FieldValue.increment(qty),
           lastCreditTopupAt: admin.firestore.FieldValue.serverTimestamp(),
         });
-        console.log(`[Stripe Webhook] credit_topup — org ${orgId} +${qty} credits`);
+        logger.info('credit_topup applied', { eventId: event.id, orgId, qty, sessionId: session.id });
       }
       break;
     }
@@ -990,7 +1043,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         }
 
         await db.doc(`organizations/${orgId}`).update(updateData);
-        console.log(`[Stripe Webhook] subscription.updated — org ${orgId} status: ${status}`);
+        logger.info('subscription.updated', { eventId: event.id, orgId, status });
 
         // Notify the org owner when the subscription goes past_due
         if (status === 'past_due') {
@@ -1021,7 +1074,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         await db.doc(`organizations/${orgId}`).update({
           'subscription.status': 'cancelled',
         });
-        console.log(`[Stripe Webhook] subscription.deleted — org ${orgId} cancelled`);
+        logger.info('subscription.deleted', { eventId: event.id, orgId });
 
         const orgSnap = await db.doc(`organizations/${orgId}`).get();
         const orgData = orgSnap.data();
@@ -1054,7 +1107,10 @@ export async function handleStripeWebhook(req: Request, res: Response) {
       const subId =
         typeof subRef === 'string' ? subRef : subRef && typeof subRef === 'object' ? subRef.id : null;
       if (!subId) {
-        console.log(`[Stripe Webhook] invoice.payment_failed — no subscription on invoice ${invoice.id}`);
+        logger.info('invoice.payment_failed — no subscription on invoice', {
+          eventId: event.id,
+          invoiceId: invoice.id,
+        });
         break;
       }
 
@@ -1063,17 +1119,23 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         const sub = await stripe.subscriptions.retrieve(subId);
         orgId = sub.metadata?.organizationId;
       } catch (e) {
-        console.error('[Stripe Webhook] invoice.payment_failed — failed to load subscription', e);
+        logger.error('invoice.payment_failed — failed to load subscription', {
+          eventId: event.id,
+          subId,
+          err: e,
+        });
         break;
       }
       if (!orgId) {
-        console.log(
-          `[Stripe Webhook] invoice.payment_failed — invoice ${invoice.id} subscription ${subId} missing organizationId metadata`,
-        );
+        logger.info('invoice.payment_failed — missing organizationId on subscription', {
+          eventId: event.id,
+          invoiceId: invoice.id,
+          subId,
+        });
         break;
       }
 
-      console.log(`[Stripe Webhook] invoice.payment_failed — org ${orgId} invoice ${invoice.id}`);
+      logger.info('invoice.payment_failed', { eventId: event.id, orgId, invoiceId: invoice.id });
 
       const orgSnap = await db.doc(`organizations/${orgId}`).get();
       const orgData = orgSnap.data();
@@ -1153,7 +1215,11 @@ export async function handleStripeWebhook(req: Request, res: Response) {
           creditsReplenishedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
       }
-      console.log(`[Stripe Webhook] invoice.payment_succeeded — org ${orgId} credits reset to ${monthlyCredits}`);
+      logger.info('invoice.payment_succeeded — credits replenished', {
+        eventId: event.id,
+        orgId,
+        monthlyCredits,
+      });
       break;
     }
 
@@ -1171,19 +1237,20 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         try {
           await sendTrialEndingSoonEmail(orgId, 3);
         } catch (err) {
-          console.error(`[Stripe Webhook] trial_will_end email failed for org ${orgId}:`, err);
+          logger.error('trial_will_end email failed', { eventId: event.id, orgId, err });
         }
 
-        console.log(`[Stripe Webhook] trial_will_end — org ${orgId}, ends ${trialEnd}`);
+        logger.info('trial_will_end', { eventId: event.id, orgId, trialEnd });
       }
       break;
     }
 
     default:
-      console.log(`[Stripe Webhook] Unhandled event type: ${event.type}`);
+      logger.info('Stripe webhook unhandled event type', {
+        eventId: event.id,
+        type: event.type,
+      });
   }
-
-  res.status(200).json({ received: true });
 }
 
 // ---------------------------------------------------------------------------

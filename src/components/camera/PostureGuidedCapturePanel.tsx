@@ -59,6 +59,7 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
   const turnDelayTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSequenceCancelledRef = useRef(false);
   const shotHandlerRef = useRef<(viewIdx: number) => void | Promise<void>>(() => {});
+  const beginViewCaptureRef = useRef<(viewIdx: number) => void>(() => {});
   const pendingCapturesRef = useRef<{ viewId: string; imageSrc: string }[]>([]);
   const postureWarmupPendingAutoStartRef = useRef(false);
   const countdownRetryCountRef = useRef(0);
@@ -313,7 +314,7 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
               throttledSpeak(CONFIG.COMPANION.VOICE_GUIDE.LANDMARK_REJECT_SPEAK, true);
               turnDelayTimeoutRef.current = setTimeout(() => {
                 if (isSequenceCancelledRef.current) return;
-                beginViewCapture(viewIdx);
+                beginViewCaptureRef.current(viewIdx);
               }, 2000);
               return;
             }
@@ -322,7 +323,7 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
               throttledSpeak('Nice one. Now slowly turn to your right.', true);
               turnDelayTimeoutRef.current = setTimeout(() => {
                 if (isSequenceCancelledRef.current) return;
-                beginViewCapture(viewIdx + 1);
+                beginViewCaptureRef.current(viewIdx + 1);
               }, 3500);
             } else {
               setFlowState('complete');
@@ -332,7 +333,6 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
         }
       }, 1000);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- beginViewCapture below
     [captureImage, speak, throttledSpeak]
   );
 
@@ -383,6 +383,10 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
     },
     [throttledSpeak, runCountdownAndCapture]
   );
+
+  useEffect(() => {
+    beginViewCaptureRef.current = beginViewCapture;
+  }, [beginViewCapture]);
 
   /** shotHandlerRef kept for future Gemini re-integration — currently unused. */
   useEffect(() => {

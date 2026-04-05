@@ -230,6 +230,10 @@ export const UI_DRAFT = {
   START_FRESH: 'Start Fresh',
   DRAFT_SAVED: 'Draft saved',
   SAVING: 'Saving...',
+  CLOUD_NEWER_TITLE: 'Newer draft saved online',
+  CLOUD_NEWER_DESC: 'This device has an older copy. Resume from your latest cloud draft.',
+  CLOUD_RESUME: 'Resume from online',
+  CLOUD_KEEP_LOCAL: 'Keep this device',
 } as const;
 
 /** Public client roadmap viewer — support / diagnostics (paired with `PUBLIC_CLIENT_URL_QUERY.ROADMAP_DEBUG`). */

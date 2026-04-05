@@ -57,6 +57,7 @@ const Companion = () => {
   const turnDelayTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSequenceCancelledRef = useRef(false);
   const shotHandlerRef = useRef<(viewIdx: number) => void | Promise<void>>(() => {});
+  const beginViewCaptureRef = useRef<(viewIdx: number) => void>(() => {});
   const pendingCapturesRef = useRef<{ viewId: string; imageSrc: string }[]>([]);
   /** After Gemini warmup, auto-start capture when vertical (matches “flow starts” expectation). */
   const postureWarmupPendingAutoStartRef = useRef(false);
@@ -349,7 +350,7 @@ const Companion = () => {
               throttledSpeak(CONFIG.COMPANION.VOICE_GUIDE.LANDMARK_REJECT_SPEAK, true);
               turnDelayTimeoutRef.current = setTimeout(() => {
                 if (isSequenceCancelledRef.current) return;
-                beginViewCapture(viewIdx);
+                beginViewCaptureRef.current(viewIdx);
               }, 2000);
               return;
             }
@@ -358,7 +359,7 @@ const Companion = () => {
               throttledSpeak('Nice one. Now slowly turn to your right.', true);
               turnDelayTimeoutRef.current = setTimeout(() => {
                 if (isSequenceCancelledRef.current) return;
-                beginViewCapture(viewIdx + 1);
+                beginViewCaptureRef.current(viewIdx + 1);
               }, 3500);
             } else {
               setFlowState('complete');
@@ -368,7 +369,6 @@ const Companion = () => {
         }
       }, 1000);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- beginViewCapture is defined below, stable via ref pattern
     [captureImage, speak, throttledSpeak]
   );
 
@@ -420,6 +420,9 @@ const Companion = () => {
     [throttledSpeak, runCountdownAndCapture]
   );
 
+  useEffect(() => {
+    beginViewCaptureRef.current = beginViewCapture;
+  }, [beginViewCapture]);
 
   /** shotHandlerRef is kept for future Gemini Live re-integration — currently unused. */
   useEffect(() => {

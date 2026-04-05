@@ -130,6 +130,53 @@ service cloud.firestore {
         d.timestamp == request.time;
     }
 
+    // Coach inbox (notifications/{recipientUid}/items) — who may create for recipientUid
+    function coachInboxNotificationRecipientOrgId(recipientUid) {
+      return get(/databases/$(database)/documents/userProfiles/$(recipientUid)).data.organizationId;
+    }
+
+    function coachInboxNotificationCreateAllowed(recipientUid) {
+      return isAuthenticated() && (
+        request.auth.uid == recipientUid ||
+        (
+          exists(/databases/$(database)/documents/userProfiles/$(recipientUid)) &&
+          exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
+          coachInboxNotificationRecipientOrgId(recipientUid) is string &&
+          coachInboxNotificationRecipientOrgId(recipientUid).size() > 0 &&
+          coachInboxNotificationRecipientOrgId(recipientUid) == coachInboxNotificationRecipientOrgId(request.auth.uid)
+        ) ||
+        (
+          isPlatformAdmin() &&
+          exists(/databases/$(database)/documents/userProfiles/$(recipientUid)) &&
+          coachInboxNotificationRecipientOrgId(recipientUid) is string &&
+          coachInboxNotificationRecipientOrgId(recipientUid).size() > 0 &&
+          hasDataAccess(coachInboxNotificationRecipientOrgId(recipientUid))
+        )
+      );
+    }
+
+    // Align with src/services/notificationWriter.ts (UID path); serverTimestamp() => createdAt == request.time
+    function coachInboxNotificationPayloadValid(recipientUid) {
+      let d = request.resource.data;
+      return d.keys().hasOnly([
+        'type', 'title', 'body', 'priority', 'read', 'createdAt', 'actionUrl', 'meta', 'recipientUid'
+      ]) &&
+        d.read == false &&
+        d.recipientUid == recipientUid &&
+        d.title is string &&
+        d.body is string &&
+        (d.actionUrl == null || d.actionUrl is string) &&
+        (d.meta == null || d.meta is map) &&
+        d.type in [
+          'assessment_complete', 'report_shared', 'roadmap_ready', 'phase_complete', 'reassessment_due',
+          'lifestyle_reminder', 'new_client', 'client_submission', 'lifestyle_checkin', 'pause_request',
+          'pause_approved', 'pause_denied', 'account_paused', 'account_unpaused', 'schedule_review',
+          'score_drop', 'coach_accepted', 'subscription_past_due', 'subscription_cancelled', 'system'
+        ] &&
+        d.priority in ['low', 'medium', 'high'] &&
+        d.createdAt == request.time;
+    }
+
     // =========================================================
     // ORGANIZATIONS
     // =========================================================
@@ -344,7 +391,7 @@ service cloud.firestore {
 
     match /notifications/{uid}/items/{notificationId} {
       allow read: if isAuthenticated() && request.auth.uid == uid;
-      allow create: if isAuthenticated();
+      allow create: if coachInboxNotificationCreateAllowed(uid) && coachInboxNotificationPayloadValid(uid);
       allow update: if isAuthenticated() && request.auth.uid == uid;
       allow delete: if isAuthenticated() && request.auth.uid == uid;
     }
@@ -441,6 +488,18 @@ service cloud.firestore {
     // =========================================================
 
     match /_rateLimits/{key} {
+      allow read, write: if false;
+    }
+
+    // =========================================================
+    // STRIPE WEBHOOK IDEMPOTENCY (Admin SDK / Cloud Functions only)
+    // =========================================================
+
+    match /stripeInboundEvents/{eventId} {
+      allow read, write: if false;
+    }
+
+    match /stripeFulfilledCheckoutSessions/{sessionId} {
       allow read, write: if false;
     }
   }

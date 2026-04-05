@@ -10,6 +10,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getAllPending, removePending, getPendingCount } from '@/lib/offline/pendingAssessments';
 import { saveCoachAssessment } from '@/services/coachAssessments';
+import { decrementSandboxTrialAfterSuccessfulSave } from '@/lib/utils/sandboxTrialDecrement';
 import { getFirebaseAuth } from '@/services/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/utils/logger';
@@ -50,6 +51,10 @@ export function useOfflineSync() {
           entry.organizationId,
           undefined,
         );
+        await decrementSandboxTrialAfterSuccessfulSave({
+          organizationId: entry.organizationId,
+          isDemoAssessment: entry.isDemoAssessment,
+        });
         await removePending(entry.id);
         synced++;
       } catch (err) {
