@@ -63,17 +63,17 @@ export const ARTIFACTS_KIND_META: Record<
   report: {
     label: COACH_ASSISTANT_COPY.SIDEBAR_CATEGORY_REPORTS,
     Icon: FileText,
-    previewAreaClass: 'from-muted/40 to-muted/15',
+    previewAreaClass: 'from-muted/50 to-muted/20',
   },
   roadmap: {
     label: COACH_ASSISTANT_COPY.SIDEBAR_CATEGORY_ROADMAPS,
     Icon: Map,
-    previewAreaClass: 'from-primary/10 to-muted/20',
+    previewAreaClass: 'from-muted/50 to-muted/20',
   },
   achievements: {
     label: COACH_ASSISTANT_COPY.SIDEBAR_CATEGORY_ACHIEVEMENTS,
     Icon: Trophy,
-    previewAreaClass: 'from-score-amber-muted/50 to-muted/20',
+    previewAreaClass: 'from-muted/50 to-muted/20',
   },
 };
 

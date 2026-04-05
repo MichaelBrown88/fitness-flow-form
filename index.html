@@ -17,13 +17,17 @@
     <!-- Favicon & PWA — `<link rel="manifest">` is injected by vite-plugin-pwa (see `productBranding.vitePwaCoachManifest`) -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/pwa-192x192.svg" />
+    <!-- DM Sans — primary typeface -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet" />
     <!-- Must match src/constants/themeChrome.ts (same as --background light/dark in index.css) -->
-    <meta name="theme-color" content="#fcfcfd" />
+    <meta name="theme-color" content="#faf8f5" />
     <!-- FOUC: sync key with STORAGE_KEYS.COLOR_MODE in src/constants/storageKeys.ts -->
     <script>
       (function () {
-        var light = '#fcfcfd';
-        var dark = '#050912';
+        var light = '#faf8f5';
+        var dark = '#0f0d0b';
         try {
           if (localStorage.getItem('oneassess-color-mode') === 'dark') {
             document.documentElement.classList.add('dark');

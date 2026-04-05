@@ -218,9 +218,9 @@ export const PhaseFormContent = ({
     setReviewCheckpointOpen(true);
   }, []);
 
-  // Skip empty phases (e.g. filtered-out equipment phases)
+  // Skip empty phases (e.g. filtered-out equipment phases or org-filtered lifestyle phases)
   useEffect(() => {
-    if ((activePhase.sections?.length ?? 0) === 0 && activePhaseIdx < totalPhases - 1) {
+    if ((filteredActivePhase.sections?.length ?? 0) === 0 && activePhaseIdx < totalPhases - 1) {
       const timeout = setTimeout(() => {
         const nextVisibleIdx = visiblePhases.findIndex((p, i) => i > activePhaseIdx);
         if (nextVisibleIdx !== -1) {
@@ -279,6 +279,25 @@ export const PhaseFormContent = ({
     }
   }, [demoTrigger, isDemoAssessment, runDemoSequential]);
 
+  // Filter optional lifestyle fields based on org config.
+  // Fields with no orgConfigKey are always shown. Fields with orgConfigKey are shown
+  // unless the org has explicitly set that key to false. Undefined = enabled (backward compat).
+  const filteredActivePhase = useMemo(() => {
+    const optionalFields = orgSettings?.lifestyleOptionalFields;
+    if (!optionalFields || activePhase.id !== 'P1') return activePhase;
+    return {
+      ...activePhase,
+      sections: activePhase.sections?.map((section) => ({
+        ...section,
+        fields: section.fields.filter((field) => {
+          if (!field.orgConfigKey) return true;
+          const enabled = optionalFields[field.orgConfigKey as keyof typeof optionalFields];
+          return enabled !== false;
+        }),
+      })),
+    };
+  }, [activePhase, orgSettings?.lifestyleOptionalFields]);
+
   if (totalPhases === 0) {
     return <div className="py-20 text-center">{PHASE_FORM_COPY.NO_PHASES_CONFIGURED}</div>;
   }
@@ -333,7 +352,7 @@ export const PhaseFormContent = ({
 
         <section className="space-y-6">
           <PhaseFormSingleFieldFlow
-            activePhase={activePhase}
+            activePhase={filteredActivePhase}
             activePhaseIdx={activePhaseIdx}
             totalPhases={totalPhases}
             visiblePhases={visiblePhases}

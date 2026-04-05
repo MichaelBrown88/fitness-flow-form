@@ -50,7 +50,7 @@ export function RecentAssessmentsList({ clients }: RecentAssessmentsListProps) {
 
   return (
     <section
-      className="rounded-xl border border-border bg-card/60 p-4 shadow-sm dark:bg-card/40"
+      className="rounded-lg border border-border/70 bg-background p-4"
       aria-labelledby="recent-assessments-heading"
     >
       <div className="mb-3">

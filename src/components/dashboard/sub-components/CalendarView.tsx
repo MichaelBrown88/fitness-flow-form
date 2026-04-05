@@ -297,19 +297,12 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         </button>
       </div>
 
-      {!compact ? (
+      {!compact && (
         <p className="text-center text-xs text-muted-foreground">
           <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-foreground">⌘</kbd>
           <span className="mx-1">/</span>
           <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-foreground">Ctrl</kbd>
           <span className="ml-1">+ click to select multiple • Drag near edges to change month</span>
-        </p>
-      ) : (
-        <p className="text-center text-[10px] leading-tight text-muted-foreground">
-          <kbd className="rounded border border-border bg-muted px-1 py-0.5 font-mono text-[9px] text-foreground">⌘</kbd>
-          <span className="mx-0.5">/</span>
-          <kbd className="rounded border border-border bg-muted px-1 py-0.5 font-mono text-[9px] text-foreground">Ctrl</kbd>
-          <span className="ml-1">+ click multi-select</span>
         </p>
       )}
 

@@ -5,7 +5,8 @@
  */
 
 export type GradientId =
-  | 'volt' // Default: Nike-style chartreuse accent (charcoal-friendly)
+  | 'terracotta'       // Default: warm terracotta accent
+  | 'volt'             // Nike-style chartreuse accent (charcoal-friendly)
   | 'purple-indigo'    // indigo-500 to purple-500
   | 'blue-cyan'        // Blue to cyan
   | 'emerald-teal'     // Green to teal
@@ -32,6 +33,17 @@ export interface GradientDefinition {
  * Each gradient is carefully chosen to work with Apple's neutral palette
  */
 export const GRADIENT_PALETTE: Record<GradientId, GradientDefinition> = {
+  terracotta: {
+    id: 'terracotta',
+    name: 'Blood Orange',
+    from: 'orange-700',
+    to: 'orange-900',
+    fromHex: '#d84a15',
+    toHex: '#a63310',
+    light: 'orange-50',
+    medium: 'orange-100',
+    dark: 'orange-800',
+  },
   volt: {
     id: 'volt',
     name: 'Volt',
@@ -136,8 +148,8 @@ export const GRADIENT_PALETTE: Record<GradientId, GradientDefinition> = {
 /**
  * Get gradient definition by ID
  */
-export function getGradient(id: GradientId = 'volt'): GradientDefinition {
-  return GRADIENT_PALETTE[id] || GRADIENT_PALETTE.volt;
+export function getGradient(id: GradientId = 'terracotta'): GradientDefinition {
+  return GRADIENT_PALETTE[id] || GRADIENT_PALETTE.terracotta;
 }
 
 /**

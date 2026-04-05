@@ -1,6 +1,8 @@
 export const ROUTES = {
   HOME: '/',
   DASHBOARD: '/dashboard',
+  /** AI assistant — default landing tab. */
+  DASHBOARD_ASSISTANT: '/dashboard/assistant',
   /** Client directory (table) — primary roster surface. */
   DASHBOARD_CLIENTS: '/dashboard/clients',
   /** Tasks (reassessment queue) + calendar combined. */
@@ -29,7 +31,7 @@ export const ROUTES = {
   PUBLIC_REPORT_ROADMAP: '/r/:token/roadmap',
   PUBLIC_REPORT_LIFESTYLE: '/r/:token/lifestyle',
   PUBLIC_REPORT_ERASURE: '/r/:token/erasure',
-  PUBLIC_REPORT_PRE_SESSION: '/r/:token/pre-session',
+
   ASSESSMENT_REPORT: '/coach/assessments/:id',
   ASSESSMENT_REPORT_CLIENT: '/coach/assessments/:id/client',
   /** Marketing pricing — same page as landing pricing section; always reachable when signed in. */

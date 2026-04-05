@@ -10,7 +10,7 @@ import type { VersionSelectorSnapshot } from '@/components/reports/AssessmentVer
 import type { FormData } from '@/contexts/FormContext';
 import { computeScores } from '@/lib/scoring';
 import { generateBodyCompInterpretation } from '@/lib/recommendations';
-import { Download, Loader2, Zap } from 'lucide-react';
+import { Download, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { PostureComparisonCard } from '@/components/client/PostureComparisonCard';
@@ -444,23 +444,6 @@ const PublicReportViewer = () => {
         </div>
       )}
 
-      {token && (
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-10 pt-4">
-          <Link
-            to={`/r/${token}/pre-session`}
-            className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 hover:bg-amber-100 transition-colors group"
-          >
-            <Zap className="h-4 w-4 text-amber-500 shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-amber-900">Got a session coming up?</p>
-              <p className="text-xs text-amber-700 mt-0.5">Tap to send your coach a quick check-in before you arrive.</p>
-            </div>
-            <span className="text-xs font-semibold text-amber-700 shrink-0 group-hover:underline">
-              Check in →
-            </span>
-          </Link>
-        </div>
-      )}
 
       <div
         className="transition-opacity duration-150"

@@ -323,56 +323,6 @@ export async function submitLifestyleCheckin(
   return docRef.id;
 }
 
-export interface PreSessionCheckinPayload {
-  energyLevel?: number;
-  hasPain?: boolean;
-  painDetails?: string;
-  focusArea?: string;
-}
-
-/**
- * Submit a pre-session check-in for a returning client.
- * Writes to publicReports/{token}/preSessionCheckins.
- */
-export async function submitPreSessionCheckin(
-  token: string,
-  payload: PreSessionCheckinPayload,
-): Promise<string> {
-  const colRef = collection(getDb(), COLLECTIONS.PUBLIC_REPORTS, token, COLLECTIONS.PRE_SESSION_CHECKINS);
-  const docRef = await addDoc(colRef, {
-    ...payload,
-    createdAt: serverTimestamp(),
-  });
-  return docRef.id;
-}
-
-/**
- * Fetch the most recent pre-session check-in for a client.
- * Returns null if none exists or if it's older than maxAgeHours.
- */
-export async function getLatestPreSessionCheckin(
-  token: string,
-  maxAgeHours = 24,
-): Promise<(PreSessionCheckinPayload & { createdAt: Date; id: string }) | null> {
-  const { query: firestoreQuery, orderBy, limit, getDocs } = await import('firebase/firestore');
-  const colRef = collection(getDb(), COLLECTIONS.PUBLIC_REPORTS, token, COLLECTIONS.PRE_SESSION_CHECKINS);
-  const q = firestoreQuery(colRef, orderBy('createdAt', 'desc'), limit(1));
-  const snap = await getDocs(q);
-  if (snap.empty) return null;
-  const docSnap = snap.docs[0];
-  const data = docSnap.data();
-  const createdAt: Date = data.createdAt?.toDate?.() ?? new Date(0);
-  const ageHours = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60);
-  if (ageHours > maxAgeHours) return null;
-  return {
-    id: docSnap.id,
-    energyLevel: data.energyLevel,
-    hasPain: data.hasPain,
-    painDetails: data.painDetails,
-    focusArea: data.focusArea,
-    createdAt,
-  };
-}
 
 
 

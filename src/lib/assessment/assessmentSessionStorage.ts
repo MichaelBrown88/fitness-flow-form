@@ -331,6 +331,21 @@ export function clearClientNavAssessmentBleedKeys(): void {
   removeEditAssessment();
 }
 
+/**
+ * Prepare session state to start a baseline (full) assessment for a new client.
+ * Bypasses AssessmentSetupStep and AssessmentPlanWizard.
+ */
+export function startBaselineAssessmentSession(clientName: string): void {
+  clearAssessmentEntryBleedKeys();
+  writePrefillClientPayload({ fullName: clientName });
+  safeSetItem(STORAGE_KEYS.ASSESSMENT_SETUP_CONFIRMED, '1');
+}
+
+/** Mark setup step as confirmed so it is skipped on next assessment load. */
+export function confirmAssessmentSetup(): void {
+  safeSetItem(STORAGE_KEYS.ASSESSMENT_SETUP_CONFIRMED, '1');
+}
+
 export function shouldSuppressLocalDraftRecovery(): boolean {
   return hasEditAssessmentInSession() || hasPrefillClientInSession();
 }

@@ -17,20 +17,18 @@ export function TaskListFocusStrip({ entries, navigate, density = 'default' }: T
   const compact = density === 'compact';
 
   return (
-    <div
-      className={`rounded-xl border border-border bg-muted/30 ${compact ? 'space-y-1 p-2' : 'space-y-2 p-3 sm:p-4'}`}
-    >
+    <div className={compact ? 'space-y-0' : 'space-y-0'}>
       <p
-        className={`font-black uppercase tracking-[0.15em] text-muted-foreground ${compact ? 'text-[9px]' : 'text-[10px]'}`}
+        className={`font-black uppercase tracking-[0.15em] text-muted-foreground ${compact ? 'text-[9px] mb-1' : 'text-[10px] mb-2'}`}
       >
         {DASHBOARD_TASKS.FOCUS_STRIP_TITLE}
       </p>
-      <ul className={compact ? 'space-y-1' : 'space-y-2'}>
+      <ul className="divide-y divide-border/40">
         {entries.map((e) => (
           <li
             key={e.clientName}
-            className={`flex flex-col rounded-lg border border-border/60 bg-card sm:flex-row sm:items-center sm:justify-between ${
-              compact ? 'gap-1.5 px-2 py-1.5' : 'gap-2 px-3 py-2.5 min-h-[44px]'
+            className={`flex flex-row items-center justify-between gap-3 group ${
+              compact ? 'py-2' : 'py-3 min-h-[44px]'
             }`}
           >
             <div className="min-w-0 flex-1">

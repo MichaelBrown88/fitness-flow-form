@@ -18,6 +18,7 @@ import { getClientAssessmentHistory, deleteSnapshot } from '@/services/assessmen
 import type { AssessmentSnapshot } from '@/services/assessmentHistory';
 import {
   clearAssessmentEntryBleedKeys,
+  confirmAssessmentSetup,
   removeAssessmentSetupConfirmed,
   removePartialAssessment,
   writeEditAssessmentPayload,
@@ -158,22 +159,26 @@ export function useDashboardActions(
     }
     clearAssessmentEntryBleedKeys();
     clearDraft();
+
+    // Always include client name; enrich from latest assessment if available
+    const prefill: Record<string, unknown> = { fullName: clientName };
     try {
       const history = await getClientAssessments(user.uid, clientName, readOrgId);
       if (history.length > 0) {
         const latest = await getCoachAssessment(user.uid, history[0].id, undefined, readOrgId, profile);
         if (latest?.formData) {
-          writePrefillClientPayload({
-            clientName: latest.formData.fullName,
-            dateOfBirth: latest.formData.dateOfBirth,
-            email: latest.formData.email,
-            phone: latest.formData.phone,
-          });
+          if (latest.formData.fullName) prefill.fullName = latest.formData.fullName;
+          prefill.dateOfBirth = latest.formData.dateOfBirth;
+          prefill.email = latest.formData.email;
+          prefill.phone = latest.formData.phone;
         }
       }
     } catch (e) {
       logger.error('Failed to pre-fill data:', e);
     }
+    writePrefillClientPayload(prefill);
+    // Coach chose this client + pillar explicitly — skip the confirmation step
+    confirmAssessmentSetup();
     navigate('/assessment');
   };
 

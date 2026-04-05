@@ -1,17 +1,21 @@
-import { useState, type ComponentType } from 'react';
+import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ROUTES } from '@/constants/routes';
 import {
   MessageSquarePlus,
   Search,
-  Clock,
   Link2,
   Trash2,
   ChevronDown,
-  FileText,
-  Map,
-  Trophy,
+  Share2,
+  AlertCircle,
 } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -35,6 +39,7 @@ import type {
 } from '@/hooks/useCoachArtifacts';
 import { CoachWorkspaceProfileFooter } from '@/components/dashboard/CoachWorkspaceProfileFooter';
 import { coachShareablePublicUrl } from '@/lib/utils/coachShareableUrls';
+import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
 import { cn } from '@/lib/utils';
 
 const SHAREABLE_ROW =
@@ -59,7 +64,6 @@ interface CoachWorkspaceSidebarProps {
 function ShareableCategory({
   title,
   hint,
-  icon: Icon,
   emptyLabel,
   loading,
   hasItems,
@@ -68,8 +72,7 @@ function ShareableCategory({
 }: {
   title: string;
   hint: string;
-  icon: ComponentType<{ className?: string }>;
-  emptyLabel: string;
+  emptyLabel: React.ReactNode;
   loading: boolean;
   hasItems: boolean;
   defaultOpen: boolean;
@@ -83,7 +86,6 @@ function ShareableCategory({
         type="button"
         className="group flex w-full items-center gap-2 py-1.5 text-left text-xs font-medium text-foreground/90 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
-        <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground/75" aria-hidden />
         <span className="min-w-0 flex-1">{title}</span>
         <ChevronDown
           className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60 transition-transform duration-200 group-data-[state=open]:rotate-180"
@@ -197,7 +199,7 @@ export function CoachWorkspaceSidebar({
             <div className="mb-3 flex items-center justify-between gap-2">
               <h2
                 id="sidebar-artifacts-heading"
-                className="text-xs font-medium text-muted-foreground"
+                className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
               >
                 {COACH_ASSISTANT_COPY.SIDEBAR_ARTIFACTS_SECTION}
               </h2>
@@ -219,11 +221,10 @@ export function CoachWorkspaceSidebar({
             <ShareableCategory
               title={COACH_ASSISTANT_COPY.SIDEBAR_CATEGORY_REPORTS}
               hint={COACH_ASSISTANT_COPY.SIDEBAR_CATEGORY_REPORTS_HINT}
-              icon={FileText}
               emptyLabel={COACH_ASSISTANT_COPY.EMPTY_SHAREABLE_REPORTS}
               loading={shareablesLoading}
               hasItems={reportShares.length > 0}
-              defaultOpen
+              defaultOpen={false}
             >
               <ul className="space-y-0.5">
                 {reportShares.slice(0, 8).map((a) => (
@@ -257,11 +258,18 @@ export function CoachWorkspaceSidebar({
             <ShareableCategory
               title={COACH_ASSISTANT_COPY.SIDEBAR_CATEGORY_ROADMAPS}
               hint={COACH_ASSISTANT_COPY.SIDEBAR_CATEGORY_ROADMAPS_HINT}
-              icon={Map}
-              emptyLabel={COACH_ASSISTANT_COPY.EMPTY_SHAREABLE_ROADMAPS}
+              emptyLabel={
+                <span>
+                  No published roadmaps yet.{' '}
+                  <Link to={ROUTES.DASHBOARD_CLIENTS} className="underline underline-offset-2 hover:text-foreground">
+                    Open a client
+                  </Link>{' '}
+                  to build one.
+                </span>
+              }
               loading={shareablesLoading}
               hasItems={roadmapShares.length > 0}
-              defaultOpen
+              defaultOpen={false}
             >
               <ul className="space-y-0.5">
                 {roadmapShares.slice(0, 8).map((r) => (
@@ -295,11 +303,10 @@ export function CoachWorkspaceSidebar({
             <ShareableCategory
               title={COACH_ASSISTANT_COPY.SIDEBAR_CATEGORY_ACHIEVEMENTS}
               hint={COACH_ASSISTANT_COPY.SIDEBAR_CATEGORY_ACHIEVEMENTS_HINT}
-              icon={Trophy}
               emptyLabel={COACH_ASSISTANT_COPY.EMPTY_SHAREABLE_ACHIEVEMENTS}
               loading={shareablesLoading}
               hasItems={achievementShares.length > 0}
-              defaultOpen
+              defaultOpen={false}
             >
               <ul className="space-y-0.5">
                 {achievementShares.slice(0, 8).map((r) => (
@@ -335,22 +342,25 @@ export function CoachWorkspaceSidebar({
         </div>
 
         <div className="border-t border-border px-3 py-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5 flex items-center gap-1">
-            <Clock className="h-3 w-3" />
-            {COACH_ASSISTANT_COPY.SIDEBAR_RECENTS}
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
+            Needs Attention
           </p>
-          <ul className="space-y-0.5">
-            {recentClients.slice(0, 8).map((c) => (
-              <li key={c.name}>
-                <Link
-                  to={`/client/${encodeURIComponent(c.name)}`}
-                  className="block rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground truncate"
-                >
-                  {c.name}
-                </Link>
-              </li>
-            ))}
-          </ul>
+          {recentClients.length === 0 ? (
+            <p className="text-xs text-muted-foreground px-2 py-1">All clients on track</p>
+          ) : (
+            <ul className="space-y-0.5">
+              {recentClients.map((c) => (
+                <li key={c.name}>
+                  <Link
+                    to={`/client/${encodeURIComponent(c.name)}`}
+                    className="block rounded-lg px-2 py-1 text-xs font-medium text-score-amber-fg hover:bg-muted/60 hover:text-foreground truncate"
+                  >
+                    {formatClientDisplayName(c.name)}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
 
@@ -375,6 +385,84 @@ export function CoachWorkspaceSidebar({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </aside>
+  );
+}
+
+/** Narrow icon-only strip shown when the workspace sidebar is collapsed. */
+export function CoachWorkspaceSidebarCollapsed({
+  onNewChat,
+  hasAttention,
+}: {
+  onNewChat: () => void;
+  hasAttention: boolean;
+}) {
+  const openCommandMenu = () => window.dispatchEvent(new Event('openCommandMenu'));
+
+  return (
+    <aside
+      className="hidden lg:flex w-12 shrink-0 flex-col self-stretch border-r border-border/80 bg-muted/20 dark:bg-muted/10 items-center gap-1 py-2"
+      aria-label="Workspace (collapsed)"
+    >
+      <TooltipProvider delayDuration={300}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={onNewChat}
+              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label="New chat"
+            >
+              <MessageSquarePlus className="h-4 w-4" aria-hidden />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right">New chat</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={openCommandMenu}
+              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label="Search"
+            >
+              <Search className="h-4 w-4" aria-hidden />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right">Search</TooltipContent>
+        </Tooltip>
+
+        <div className="my-1 h-px w-8 bg-border/60" />
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link
+              to={ROUTES.DASHBOARD_ARTIFACTS}
+              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label="Artifacts"
+            >
+              <Share2 className="h-4 w-4" aria-hidden />
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent side="right">Artifacts</TooltipContent>
+        </Tooltip>
+
+        {hasAttention && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div
+                className="flex h-8 w-8 items-center justify-center rounded-md text-score-amber-fg"
+                role="img"
+                aria-label="Clients need attention"
+              >
+                <AlertCircle className="h-4 w-4" aria-hidden />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="right">Clients need attention</TooltipContent>
+          </Tooltip>
+        )}
+      </TooltipProvider>
     </aside>
   );
 }

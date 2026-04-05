@@ -1,72 +1,71 @@
-import { useEffect } from 'react';
-import { useOutletContext, useSearchParams } from 'react-router-dom';
-import { TaskListView } from '@/components/dashboard/sub-components/TaskListView';
+import { useMemo } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { CalendarView } from '@/components/dashboard/sub-components/CalendarView';
+import { WorkClientList } from '@/components/dashboard/sub-components/WorkClientList';
+import { Button } from '@/components/ui/button';
+import { Link2 } from 'lucide-react';
 import type { DashboardOutletContext } from './DashboardLayout';
-import { DASHBOARD_WORK_VIEW_QUERY } from '@/constants/routes';
-import { UI_TABS } from '@/constants/ui';
 
 export default function DashboardWork() {
   const ctx = useOutletContext<DashboardOutletContext>();
-  const [searchParams] = useSearchParams();
 
-  useEffect(() => {
-    if (!ctx.reassessmentQueue) return;
-    const view = searchParams.get(DASHBOARD_WORK_VIEW_QUERY);
-    const hash = typeof window !== 'undefined' ? window.location.hash : '';
-    if (view !== 'calendar' && hash !== '#work-calendar') return;
-    requestAnimationFrame(() => {
-      document.getElementById('work-calendar')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-  }, [searchParams, ctx.reassessmentQueue]);
+  const attentionCount = useMemo(() => {
+    if (!ctx.reassessmentQueue) return 0;
+    return ctx.reassessmentQueue.queue.filter(
+      item => item.status === 'overdue' || item.status === 'due-soon',
+    ).length;
+  }, [ctx.reassessmentQueue]);
 
   if (!ctx.reassessmentQueue) return null;
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col gap-3 overflow-hidden lg:gap-4">
-      <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-1 gap-3 overflow-hidden lg:grid-cols-2 lg:gap-4">
-        <section
-          id="work-tasks"
-          aria-labelledby="work-tasks-heading"
-          className="flex max-h-[min(50vh,24rem)] min-h-0 min-w-0 flex-col lg:max-h-full"
-        >
-          <h2
-            id="work-tasks-heading"
-            className="mb-2 shrink-0 text-xs font-semibold tracking-tight text-foreground"
-          >
-            {UI_TABS.SCHEDULE}
+    <div className="mx-auto w-full max-w-5xl space-y-5 px-3 sm:px-4 pt-6 pb-8">
+      <section>
+        <div className="mb-2 flex items-center gap-2">
+          <h2 className="text-[11px] font-black uppercase tracking-[0.12em] text-muted-foreground">
+            Needs Attention
           </h2>
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border/70 bg-muted/10 dark:bg-muted/5">
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-3">
-              <TaskListView tasks={ctx.tasks} search={ctx.search} density="compact" />
-            </div>
-          </div>
-        </section>
+          {attentionCount > 0 && (
+            <span className="inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-score-red px-1 text-[9px] font-bold text-white tabular-nums">
+              {attentionCount}
+            </span>
+          )}
+        </div>
+        <div className="overflow-hidden rounded-lg border border-border/70 bg-background">
+          <WorkClientList
+            queue={ctx.reassessmentQueue.queue}
+            search={ctx.search}
+            onStartAssessment={ctx.handleNewAssessmentForClient}
+          />
+        </div>
+      </section>
 
-        <section
-          id="work-calendar"
-          aria-labelledby="work-calendar-heading"
-          className="flex max-h-[min(50vh,24rem)] min-h-0 min-w-0 flex-col lg:max-h-full"
-        >
-          <h2
-            id="work-calendar-heading"
-            className="mb-2 shrink-0 text-xs font-semibold tracking-tight text-foreground"
-          >
-            {UI_TABS.CALENDAR}
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-[11px] font-black uppercase tracking-[0.12em] text-muted-foreground">
+            Calendar
           </h2>
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border/70 bg-muted/10 dark:bg-muted/5">
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-3">
-              <CalendarView
-                reassessmentQueue={ctx.reassessmentQueue}
-                onNewAssessmentForClient={ctx.handleNewAssessmentForClient}
-                organizationId={ctx.profile?.organizationId}
-                onScheduleChanged={ctx.refreshSchedules}
-                density="compact"
-              />
-            </div>
-          </div>
-        </section>
-      </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1.5 text-xs text-muted-foreground"
+            disabled
+            title="Connect a third-party calendar — coming soon"
+          >
+            <Link2 className="h-3.5 w-3.5" />
+            Connect calendar
+          </Button>
+        </div>
+        <div className="overflow-hidden rounded-lg border border-border/70 bg-background p-3">
+          <CalendarView
+            reassessmentQueue={ctx.reassessmentQueue}
+            onNewAssessmentForClient={ctx.handleNewAssessmentForClient}
+            organizationId={ctx.profile?.organizationId}
+            onScheduleChanged={ctx.refreshSchedules}
+            density="compact"
+          />
+        </div>
+      </section>
     </div>
   );
 }

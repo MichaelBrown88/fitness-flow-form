@@ -37,6 +37,7 @@ interface UnifiedClientTableProps {
   orgDefaultIntervals?: Record<string, number>;
   orgDefaultActivePillars?: PartialAssessmentCategory[];
   onViewHistory?: (clientName: string) => void;
+  onStartAssessment?: (clientName: string) => void;
   /** Bulk pause/archive writes (real org id, not impersonation read scope) */
   writeOrganizationId?: string;
   coachUid?: string;
@@ -45,6 +46,20 @@ interface UnifiedClientTableProps {
 }
 
 const ALL_PILLARS: PartialAssessmentCategory[] = ['bodycomp', 'posture', 'fitness', 'strength', 'lifestyle'];
+
+const GOAL_LABELS: Record<string, string> = {
+  'build-muscle': 'Build muscle',
+  'weight-loss': 'Weight loss',
+  'body-recomposition': 'Body recomp',
+  'build-strength': 'Build strength',
+  'improve-fitness': 'Improve fitness',
+  'general-health': 'General health',
+};
+
+function primaryGoalLabel(goals: string[] | undefined): string | null {
+  if (!goals || goals.length === 0) return null;
+  return GOAL_LABELS[goals[0]] ?? goals[0];
+}
 
 interface NextDueInfo {
   pillar: string;
@@ -182,6 +197,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
   orgDefaultIntervals,
   orgDefaultActivePillars,
   onViewHistory,
+  onStartAssessment,
   writeOrganizationId,
   coachUid,
   profile,
@@ -308,7 +324,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                 Trend
               </th>
               <th className="hidden px-3 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground sm:px-4 md:table-cell md:px-6">
-                Next Due
+                Goal
               </th>
               <th className="px-3 py-3 text-right text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground sm:px-4 md:px-6">
                 Actions
@@ -351,7 +367,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
               sorted.slice(0, visibleCount).map((client) => {
                 const isPaused = client.clientStatus === 'paused';
                 const isArchived = client.clientStatus === 'archived';
-                const nextDue = computeNextDue(client, orgDefaultIntervals, orgDefaultActivePillars);
+                const goalLabel = primaryGoalLabel(client.assessments[0]?.goals);
                 const dimClass = (isPaused || isArchived) ? 'opacity-60' : '';
 
                 return (
@@ -399,8 +415,8 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                       <TrendIndicator trend={client.scoreChange} />
                     </td>
                     <td className="px-3 sm:px-4 md:px-6 py-4 hidden md:table-cell">
-                      {nextDue ? (
-                        <span className={`text-xs font-semibold ${nextDue.color}`}>{nextDue.label}</span>
+                      {goalLabel ? (
+                        <span className="text-xs font-medium text-foreground/80">{goalLabel}</span>
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
                       )}
@@ -410,6 +426,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                         clientName={client.name}
                         latestAssessmentId={client.assessments[0]?.id}
                         onViewHistory={onViewHistory}
+                        onStartAssessment={onStartAssessment}
                       />
                     </td>
                   </tr>
@@ -453,7 +470,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
           sorted.slice(0, visibleCount).map((client) => {
             const isPaused = client.clientStatus === 'paused';
             const isArchived = client.clientStatus === 'archived';
-            const nextDue = computeNextDue(client, orgDefaultIntervals, orgDefaultActivePillars);
+            const goalLabel = primaryGoalLabel(client.assessments[0]?.goals);
             const dimClass = (isPaused || isArchived) ? 'opacity-60' : '';
 
             return (
@@ -514,9 +531,9 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                       {coachMap.get(client.coachUid)}
                     </span>
                   )}
-                  {nextDue && (
-                    <span className={`text-[10px] font-semibold ${nextDue.color}`}>
-                      {nextDue.label}
+                  {goalLabel && (
+                    <span className="text-[10px] font-medium text-foreground/70">
+                      {goalLabel}
                     </span>
                   )}
                   <span className="ml-auto shrink-0 text-[10px] font-medium text-muted-foreground">

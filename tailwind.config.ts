@@ -142,6 +142,8 @@ export default {
       },
       transitionTimingFunction: {
         'apple': 'var(--easing-apple)',
+        'spring': 'var(--easing-spring)',
+        'smooth': 'var(--easing-smooth)',
       },
       keyframes: {
         "accordion-down": {

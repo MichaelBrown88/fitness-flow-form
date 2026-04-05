@@ -2,14 +2,14 @@
 
 export const COACH_ASSISTANT_COPY = {
   MODE_DATA_LABEL: 'Data',
-  MODE_ASSIST_LABEL: 'Assist',
-  MODE_DATA_DESC: 'Answers use only your live app data and templates.',
+  MODE_ASSIST_LABEL: 'AI Assist',
+  MODE_DATA_DESC: 'Searches only your client records — no AI generation.',
   MODE_ASSIST_DESC:
-    'Adds a short AI-written summary. It can still mis-speak — trust the cards and numbers below.',
+    'Can answer general fitness coaching questions in addition to your client data. AI responses may occasionally be inaccurate — always verify with client cards.',
   MODE_TOOLTIP:
-    'Data mode never calls the language model. Assist mode may rephrase facts only; verify with structured results.',
-  PROVENANCE_DATA_ONLY: 'App data',
-  PROVENANCE_LLM: 'Summary may include AI wording',
+    'Data: searches your client records only, no AI.\nAI Assist: can answer general fitness questions (e.g. programming for forward head posture) alongside your client data. AI may occasionally be inaccurate — verify important details.',
+  PROVENANCE_DATA_ONLY: '',
+  PROVENANCE_LLM: 'AI-assisted',
   PLACEHOLDER: 'Ask anything, or type / for commands',
   SLASH_HINT: 'Type / for commands (e.g. /today, /help)',
   NEW_CHAT: 'New chat',

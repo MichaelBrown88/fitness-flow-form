@@ -238,11 +238,13 @@ function extractPillarScores(assessment: CoachAssessmentSummary | null) {
 export interface OrgCadenceDefaults {
   intervals?: Record<string, number>;
   activePillars?: PartialAssessmentCategory[];
+  /** Lifestyle check-in preset (days): 7 | 14 | 30. Overrides intervals.lifestyle when set. */
+  lifestyleCadencePreset?: number;
 }
 
 /**
  * Get the effective interval for a pillar.
- * Chain: client custom override > org default > clinical baseline.
+ * Chain: client custom override > org lifestyle preset (lifestyle only) > org default > clinical baseline.
  */
 function getInterval(
   pillar: string,
@@ -251,6 +253,9 @@ function getInterval(
 ): number {
   const customInterval = retestSchedule?.custom?.[pillar as PartialAssessmentCategory]?.intervalDays;
   if (customInterval && customInterval > 0) return customInterval;
+  if (pillar === 'lifestyle' && orgDefaults?.lifestyleCadencePreset && orgDefaults.lifestyleCadencePreset > 0) {
+    return orgDefaults.lifestyleCadencePreset;
+  }
   const orgInterval = orgDefaults?.intervals?.[pillar];
   if (orgInterval && orgInterval > 0) return orgInterval;
   return BASE_CADENCE_INTERVALS[pillar as keyof typeof BASE_CADENCE_INTERVALS]

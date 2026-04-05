@@ -26,6 +26,7 @@ import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
 import { UI_TOASTS } from '@/constants/ui';
 import {
   clearClientNavAssessmentBleedKeys,
+  confirmAssessmentSetup,
   writeAssessmentPhaseIndex,
   writeEditAssessmentPayload,
   writePartialAssessment,
@@ -273,23 +274,25 @@ export function useClientDetail(): UseClientDetailResult {
 
     clearClientNavAssessmentBleedKeys();
 
-    // Get latest assessment to pre-fill
+    // Always include the client name; enrich with contact details from latest assessment if available
+    const prefill: Record<string, unknown> = { fullName: clientName };
     if (assessments.length > 0) {
       try {
         const latest = await getCoachAssessment(user.uid, assessments[0].id, undefined, readOrgId, userProfile);
         if (latest?.formData) {
-          writePrefillClientPayload({
-            clientName: latest.formData.fullName,
-            dateOfBirth: latest.formData.dateOfBirth,
-            email: latest.formData.email,
-            phone: latest.formData.phone,
-          });
+          if (latest.formData.fullName) prefill.fullName = latest.formData.fullName;
+          prefill.dateOfBirth = latest.formData.dateOfBirth;
+          prefill.email = latest.formData.email;
+          prefill.phone = latest.formData.phone;
         }
       } catch (e) {
         logger.warn('Failed to pre-fill data', 'CLIENT_DETAIL', e);
       }
     }
-    
+    writePrefillClientPayload(prefill);
+    // Coach already chose this client + pillar — skip the confirmation step
+    confirmAssessmentSetup();
+
     navigate('/assessment');
   }, [user, clientName, assessments, navigate, readOrgId, userProfile]);
 
@@ -509,7 +512,7 @@ export function useClientDetail(): UseClientDetailResult {
     if (!incompleteDraft) return;
     try {
       writeSessionDraftAssessmentBundle(incompleteDraft.formData, clientName);
-      writePrefillClientPayload({ clientName });
+      writePrefillClientPayload({ fullName: clientName });
       if (
         typeof incompleteDraft.activePhaseIdx === 'number' &&
         incompleteDraft.activePhaseIdx >= 0

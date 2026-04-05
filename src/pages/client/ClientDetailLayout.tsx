@@ -23,6 +23,7 @@ import {
   Map,
   Settings as SettingsIcon,
   Trash2,
+  Loader2,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -157,6 +158,11 @@ export default function ClientDetailLayout() {
     return () => { cancelled = true; };
   }, [effectiveOrgId, clientName]);
 
+  // Reset scroll position when navigating between client sub-tabs or to a new client
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
   const seoPath = location.pathname.split('?')[0];
   const clientSeoMeta = getAppShellSeoForPathname(location.pathname, {
     clientDisplayName: displayClientName,
@@ -179,7 +185,10 @@ export default function ClientDetailLayout() {
       <>
         <Seo pathname={seoPath} title={clientSeoMeta.title} description={clientSeoMeta.description} noindex={clientSeoMeta.noindex} />
         <AppShell title={displayClientName}>
-          <div className="py-10 text-sm text-foreground-secondary">Loading client data…</div>
+          <div className="flex items-center gap-2 py-10 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+            Loading client data…
+          </div>
         </AppShell>
       </>
     );
@@ -237,7 +246,7 @@ export default function ClientDetailLayout() {
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => { setDeleteConfirmName(''); setDeleteClientOpen(true); }}
-                className="py-3 text-sm font-medium text-red-600 focus:text-red-600 focus:bg-red-50"
+                className="py-3 text-sm font-medium text-destructive focus:text-destructive focus:bg-destructive/10"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete Permanently
@@ -255,14 +264,14 @@ export default function ClientDetailLayout() {
       />
 
       {incompleteDraft && (
-        <div className="mb-6 flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-          <p className="text-sm font-medium text-amber-900">
+        <div className="mb-6 flex items-center justify-between gap-3 rounded-lg border border-score-amber-fg/30 bg-score-amber-muted/60 px-4 py-3">
+          <p className="text-sm font-medium text-score-amber-fg">
             This client has an incomplete assessment saved. Finish it to update their live report.
           </p>
           <Button
             size="sm"
             onClick={handleFinishAssessment}
-            className="shrink-0 bg-amber-600 hover:bg-amber-700 text-white rounded-lg"
+            className="shrink-0 rounded-lg"
           >
             Finish assessment
           </Button>

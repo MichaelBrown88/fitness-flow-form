@@ -26,6 +26,12 @@ export interface PhaseField {
   }[];
   required?: boolean;
   readOnly?: boolean;
+  /**
+   * Key in OrgSettings.lifestyleOptionalFields. When set, this field is hidden
+   * if the org has explicitly disabled the corresponding optional field.
+   * Undefined (no key) = always shown.
+   */
+  orgConfigKey?: string;
   pattern?: string; // Movement pattern (e.g., 'Hip Hinge', 'Lunge')
   side?: 'left' | 'right'; // For side-by-side comparison
   pairId?: string; // To group fields together on one screen

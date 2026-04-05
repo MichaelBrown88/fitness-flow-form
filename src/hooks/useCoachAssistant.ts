@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
-import { generateCoachAssistantWording } from '@/lib/ai/coachAssistantWording';
+import { generateCoachAssistantResponse } from '@/lib/ai/coachAssistantWording';
 import { runCoachAssistantIntent } from '@/lib/coachAssistant/runCoachAssistantIntent';
 import type { ClientGroup } from '@/hooks/dashboard/types';
 import type { CoachTask } from '@/lib/tasks/generateTasks';
@@ -62,6 +62,15 @@ function loadMode(uid: string, orgId: string): CoachAssistantInteractionMode {
   } catch {
     return 'data';
   }
+}
+
+/** Extract plain text from a message's blocks (for conversation history). */
+function messageToText(m: CoachAssistantMessage): string {
+  return m.blocks
+    .filter((b): b is Extract<typeof b, { type: 'text' }> => b.type === 'text')
+    .map((b) => b.content)
+    .join(' ')
+    .trim();
 }
 
 export function useCoachAssistant(options: {
@@ -163,6 +172,10 @@ export function useCoachAssistant(options: {
       const uid = coachUid;
       const org = organizationId;
 
+      // Capture conversation history BEFORE adding the new user message
+      const activeThreadNow = threads.find((t) => t.id === threadId);
+      const priorMessages = activeThreadNow?.messages ?? [];
+
       const userMsg: CoachAssistantMessage = {
         id: newId(),
         role: 'user',
@@ -194,17 +207,31 @@ export function useCoachAssistant(options: {
 
         if (interactionMode === 'assist') {
           try {
-            const wording = await generateCoachAssistantWording({
+            // Build conversation history for multi-turn context
+            const history = priorMessages
+              .map((m) => ({ role: m.role, content: messageToText(m) }))
+              .filter((m) => m.content.length > 0);
+
+            const aiText = await generateCoachAssistantResponse({
               coachUid: uid,
               organizationId: org,
-              facts: intent.factsForModel,
+              userText: text,
+              intentFacts: intent.factsForModel,
+              conversationHistory: history,
             });
-            blocks = [{ type: 'text', content: wording }, ...intent.blocks];
+
+            // For unknown intent (general questions): use AI answer only
+            // For data-driven intents: use AI narrative + keep action buttons
+            if (intent.factsForModel.intent === 'unknown') {
+              blocks = [{ type: 'text', content: aiText }];
+            } else {
+              const actionBlocks = intent.blocks.filter((b) => b.type === 'actions');
+              blocks = [{ type: 'text', content: aiText }, ...actionBlocks];
+            }
             provenance = 'data_plus_llm';
           } catch (e) {
-            logger.warn('[useCoachAssistant] Assist wording failed, using data-only', e);
-            blocks = intent.blocks;
-            provenance = 'data_only';
+            logger.warn('[useCoachAssistant] AI response failed, falling back to data-only', e);
+            // Keep data-only blocks on failure
           }
         }
 

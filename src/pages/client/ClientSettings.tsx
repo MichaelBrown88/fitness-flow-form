@@ -38,8 +38,8 @@ export default function ClientSettings() {
 
   return (
     <div className="space-y-8">
-      <section className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
-        <h2 className="text-lg font-bold text-foreground">Profile & contact</h2>
+      <section className="space-y-4">
+        <h2 className="text-[11px] font-black uppercase tracking-[0.12em] text-muted-foreground">Profile & contact</h2>
         <div className="grid gap-2">
           <label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground flex items-center gap-2">
             <UserCheck className="h-3.5 w-3.5" /> Client Name
@@ -113,7 +113,7 @@ export default function ClientSettings() {
       </section>
 
       {authProfile?.organizationId && (
-        <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <section>
           <RetestScheduleCard
             profile={profile}
             clientName={clientName}

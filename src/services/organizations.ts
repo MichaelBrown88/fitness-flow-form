@@ -104,6 +104,22 @@ export interface OrgSettings {
   customBrandingEnabled?: boolean;
   // Default retest cadence for new clients
   defaultCadence?: DefaultCadenceConfig;
+  /**
+   * Lifestyle pillar reassessment frequency preset.
+   * 7 = weekly, 14 = every 2 weeks (default), 30 = monthly.
+   */
+  lifestyleCadencePreset?: 7 | 14 | 30;
+  /**
+   * Which optional lifestyle questions are enabled for this org.
+   * Undefined = all enabled (backward compat for existing orgs).
+   */
+  lifestyleOptionalFields?: {
+    alcoholFrequency?: boolean;
+    medications?: boolean;
+    caffeine?: boolean;
+    stepsPerDay?: boolean;
+    sedentaryHours?: boolean;
+  };
   /** Billing / trial fields on the org root document */
   subscription?: OrgSubscriptionSnapshot;
   trialAssessmentsRemaining?: number;

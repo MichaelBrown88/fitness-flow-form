@@ -32,13 +32,13 @@ export const DASHBOARD_TASKS = {
 
   SUMMARY_SEPARATOR: ' · ',
 
-  TAB_BADGE_TOOLTIP: 'Clients with at least one check-in past cadence',
+  TAB_BADGE_TOOLTIP: 'Clients with overdue assessments',
 
   /** Dashboard header subtitle fragment */
   HEADER_PAST_CADENCE: (n: number) =>
-    n === 1 ? '1 client past cadence' : `${n} clients past cadence`,
+    n === 1 ? '1 client overdue' : `${n} clients overdue`,
 
-  HEADER_PAST_CADENCE_LINK_TITLE: 'View schedule — follow-ups past cadence',
+  HEADER_PAST_CADENCE_LINK_TITLE: 'View schedule — overdue clients',
 
   CLIENT_QUERY_TOAST_TITLE: 'Client selected',
   CLIENT_QUERY_TOAST_DESC: (fullName: string) =>
@@ -70,7 +70,7 @@ export const DASHBOARD_TASKS = {
 
 export function taskReassessmentTitle(pillarLabel: string, isPastCadence: boolean): string {
   return isPastCadence
-    ? `${pillarLabel} — past cadence`
+    ? `${pillarLabel} — overdue`
     : `${pillarLabel} — due soon`;
 }
 
@@ -80,6 +80,6 @@ export function taskReassessmentDescription(
   isPastCadence: boolean,
 ): string {
   return isPastCadence
-    ? `${clientName}'s ${pillarLabel} check-in is past its cadence date.`
-    : `${clientName}'s ${pillarLabel} check-in is coming up.`;
+    ? `${clientName}'s ${pillarLabel} assessment is overdue.`
+    : `${clientName}'s ${pillarLabel} assessment is coming up.`;
 }

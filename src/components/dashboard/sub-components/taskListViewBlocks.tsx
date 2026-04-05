@@ -136,13 +136,13 @@ function ClientCadenceGroupCard({
   const panelId = `client-cadence-${urgency}-${encodeURIComponent(group.clientName)}`;
 
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
+    <div className="border-b border-border/40 last:border-b-0">
       <button
         type="button"
         aria-expanded={expanded}
         aria-controls={panelId}
         onClick={onToggle}
-        className="flex min-h-[44px] w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-muted/40 transition-colors"
+        className="flex min-h-[44px] w-full items-center gap-3 py-2.5 text-left hover:bg-muted/30 rounded-lg px-1 -mx-1 transition-colors"
       >
         <ChevronRight
           className={`w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform ${expanded ? 'rotate-90' : ''}`}
@@ -165,7 +165,7 @@ function ClientCadenceGroupCard({
         ) : null}
       </button>
       {expanded && (
-        <div id={panelId} className="border-t border-border divide-y divide-border/80">
+        <div id={panelId} className="pl-6 pb-1 divide-y divide-border/30">
           {sortedTasks.map((task) => (
             <TaskRow key={task.id} task={task} navigate={navigate} />
           ))}

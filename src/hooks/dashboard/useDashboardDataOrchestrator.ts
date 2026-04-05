@@ -56,8 +56,12 @@ export function useDashboardData() {
   const orgCadenceDefaults = useMemo<OrgCadenceDefaults | undefined>(() => {
     const dc = orgSettings?.defaultCadence;
     if (!dc) return undefined;
-    return { intervals: dc.intervals, activePillars: dc.activePillars };
-  }, [orgSettings?.defaultCadence]);
+    return {
+      intervals: dc.intervals,
+      activePillars: dc.activePillars,
+      lifestyleCadencePreset: orgSettings?.lifestyleCadencePreset,
+    };
+  }, [orgSettings?.defaultCadence, orgSettings?.lifestyleCadencePreset]);
 
   const reassessmentQueue = useReassessmentQueue(clientGroups, orgCadenceDefaults);
 

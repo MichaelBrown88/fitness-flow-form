@@ -23,6 +23,9 @@ const Login = lazy(() => import("./pages/Login"));
 const SignOut = lazy(() => import("./pages/SignOut"));
 const DashboardLayout = lazy(() => import("./pages/dashboard/DashboardLayout"));
 const DashboardClients = lazy(() => import("./pages/dashboard/DashboardClients"));
+const DashboardAssistant = lazy(() => import("./pages/dashboard/DashboardAssistant"));
+const DashboardWork = lazy(() => import("./pages/dashboard/DashboardWork"));
+const DashboardArtifacts = lazy(() => import("./pages/dashboard/DashboardArtifacts"));
 const DashboardSchedule = lazy(() => import("./pages/dashboard/DashboardSchedule"));
 const DashboardCalendar = lazy(() => import("./pages/dashboard/DashboardCalendar"));
 const DashboardTeam = lazy(() => import("./pages/dashboard/DashboardTeam"));
@@ -53,7 +56,7 @@ const ClientRoadmap = lazy(() => import("./pages/ClientRoadmap"));
 const PublicRoadmapViewer = lazy(() => import("./pages/PublicRoadmapViewer"));
 const PublicLifestyleCheckin = lazy(() => import("./pages/PublicLifestyleCheckin"));
 const PublicRemoteAssessment = lazy(() => import("./pages/PublicRemoteAssessment"));
-const PublicPreSessionCheckin = lazy(() => import("./pages/PublicPreSessionCheckin"));
+
 const RequestErasure = lazy(() => import("./pages/RequestErasure"));
 const SandboxTrial = lazy(() => import("./pages/SandboxTrial"));
 
@@ -191,10 +194,7 @@ const App = () => (
                       path="/r/:token/erasure"
                       element={<RequestErasure />}
                     />
-                    <Route
-                      path="/r/:token/pre-session"
-                      element={<PublicPreSessionCheckin />}
-                    />
+
                     {/* Legacy share route redirects to token-based URL */}
                     <Route
                       path="/share/:coachUid/:assessmentId"
@@ -203,6 +203,10 @@ const App = () => (
                     {/* Protected routes (auth required) */}
                     <Route path="/dashboard" element={<RequireAuth><DashboardLayout /></RequireAuth>}>
                       <Route index element={<DashboardClients />} />
+                      <Route path="clients" element={<DashboardClients />} />
+                      <Route path="assistant" element={<DashboardAssistant />} />
+                      <Route path="work" element={<DashboardWork />} />
+                      <Route path="artifacts" element={<DashboardArtifacts />} />
                       <Route path="schedule" element={<DashboardSchedule />} />
                       <Route path="calendar" element={<DashboardCalendar />} />
                       <Route path="team" element={<DashboardTeam />} />

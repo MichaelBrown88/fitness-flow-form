@@ -15,8 +15,6 @@ import { ROUTES } from '@/constants/routes';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import { COACH_ASSISTANT_COPY } from '@/constants/coachAssistantCopy';
 import {
-  clearAssessmentEntryBleedKeys,
-  removePartialAssessment,
   writePrefillClientPayload,
 } from '@/lib/assessment/assessmentSessionStorage';
 import { useDashboardData } from '@/hooks/useDashboardData';
@@ -27,7 +25,7 @@ import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
 import { useToast } from '@/hooks/use-toast';
 import { DashboardHeader } from '@/components/dashboard/sub-components/DashboardHeader';
 import { CoachWorkspacePills } from '@/components/dashboard/CoachWorkspacePills';
-import { CoachWorkspaceSidebar } from '@/components/dashboard/CoachWorkspaceSidebar';
+import { CoachWorkspaceSidebar, CoachWorkspaceSidebarCollapsed } from '@/components/dashboard/CoachWorkspaceSidebar';
 import { CoachWorkspaceProfileFooter } from '@/components/dashboard/CoachWorkspaceProfileFooter';
 import { DashboardDialogs } from '@/components/dashboard/sub-components/DashboardDialogs';
 import { GettingStartedChecklist } from '@/components/dashboard/GettingStartedChecklist';
@@ -47,6 +45,7 @@ import {
   type CoachShareablePreview,
 } from '@/hooks/useCoachArtifacts';
 import { CoachArtifactPreviewSheet } from '@/components/dashboard/CoachArtifactPreviewSheet';
+import { NewClientModal } from '@/components/dashboard/NewClientModal';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import {
   Tooltip,
@@ -108,9 +107,15 @@ export default function DashboardLayout() {
   }, []);
 
   useEffect(() => {
-    if (location.pathname !== ROUTES.DASHBOARD && location.pathname !== ROUTES.DASHBOARD_ARTIFACTS) {
-      setMobileSidebarOpen(false);
-    }
+    const p = location.pathname;
+    const inWorkspace =
+      p === ROUTES.DASHBOARD ||
+      p === ROUTES.DASHBOARD_ARTIFACTS ||
+      p.startsWith(ROUTES.DASHBOARD_ASSISTANT) ||
+      p.startsWith(ROUTES.DASHBOARD_CLIENTS) ||
+      p.startsWith(ROUTES.DASHBOARD_WORK) ||
+      p.startsWith(ROUTES.DASHBOARD_TEAM);
+    if (!inWorkspace) setMobileSidebarOpen(false);
   }, [location.pathname]);
 
   const {
@@ -286,11 +291,7 @@ export default function DashboardLayout() {
     setShareablePreview(preview);
   }, []);
 
-  const handleGlobalNewAssessment = () => {
-    removePartialAssessment();
-    clearAssessmentEntryBleedKeys();
-    navigate(ROUTES.ASSESSMENT);
-  };
+  const [newClientModalOpen, setNewClientModalOpen] = useState(false);
 
   const overdueCountVal = reassessmentQueue?.summary?.overdue ?? 0;
 
@@ -314,11 +315,20 @@ export default function DashboardLayout() {
   const coachFirstName = staffPreferredFirstName(profile, dataUser);
   const dashboardSeo = getDashboardSeoForPathname(location.pathname);
   const path = location.pathname;
-  const isWorkspaceShell = path === ROUTES.DASHBOARD || path === ROUTES.DASHBOARD_ARTIFACTS;
-  const isWorkTab = path.startsWith(ROUTES.DASHBOARD_WORK);
-  const showClientSearch =
+  const isWorkspaceShell =
+    path === ROUTES.DASHBOARD ||
+    path === ROUTES.DASHBOARD_ARTIFACTS ||
+    path.startsWith(ROUTES.DASHBOARD_ASSISTANT) ||
     path.startsWith(ROUTES.DASHBOARD_CLIENTS) ||
     path.startsWith(ROUTES.DASHBOARD_WORK) ||
+    path.startsWith(ROUTES.DASHBOARD_TEAM);
+  // Assistant tab manages its own scroll; other workspace tabs use the outer container
+  const isAssistantTab =
+    path === ROUTES.DASHBOARD ||
+    path === ROUTES.DASHBOARD_ARTIFACTS ||
+    path.startsWith(ROUTES.DASHBOARD_ASSISTANT);
+  const showClientSearch =
+    path.startsWith(ROUTES.DASHBOARD_CLIENTS) ||
     path.startsWith(ROUTES.DASHBOARD_TEAM);
 
   const sidebarProps = {
@@ -338,7 +348,10 @@ export default function DashboardLayout() {
       openShareablePreview(p);
       setMobileSidebarOpen(false);
     },
-    recentClients: (filteredClients ?? []).slice(0, 10).map((c) => ({ name: c.name })),
+    recentClients: (reassessmentQueue?.queue ?? [])
+      .filter((item) => item.status === 'overdue' || item.status === 'due-soon')
+      .slice(0, 8)
+      .map((item) => ({ name: item.clientName })),
     showTeamTab: dashboardData.showTeamTab,
   };
 
@@ -396,17 +409,16 @@ export default function DashboardLayout() {
             <CoachWorkspacePills
               variant="toolbar"
               scheduleCount={overdueCountVal}
-              showTeamTab={dashboardData.showTeamTab}
             />
           }
           actions={
             <Button
               type="button"
-              onClick={handleGlobalNewAssessment}
+              onClick={() => setNewClientModalOpen(true)}
               className="h-9 px-4 rounded-lg font-bold gap-2 text-xs"
             >
               <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">{COACH_ASSISTANT_COPY.CHIP_NEW_ASSESSMENT}</span>
+              <span className="hidden sm:inline">New Client</span>
             </Button>
           }
         >
@@ -425,7 +437,12 @@ export default function DashboardLayout() {
           >
             {isWorkspaceShell ? (
               <>
-                {assistantSidebarCollapsed ? null : (
+                {assistantSidebarCollapsed ? (
+                  <CoachWorkspaceSidebarCollapsed
+                    onNewChat={sidebarProps.onNewChat}
+                    hasAttention={sidebarProps.recentClients.length > 0}
+                  />
+                ) : (
                   <CoachWorkspaceSidebar {...sidebarProps} className="hidden lg:flex" />
                 )}
                 <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
@@ -451,12 +468,12 @@ export default function DashboardLayout() {
               )}
             >
               {trialDaysRemaining !== null && trialDaysRemaining <= 7 && (
-                <div className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm mb-3 ${
+                <div className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm mb-3 border ${
                   trialDaysRemaining <= 1
-                    ? 'bg-rose-50 border border-rose-200 text-rose-800'
+                    ? 'bg-score-red-muted/60 border-score-red-fg/30 text-score-red-fg'
                     : trialDaysRemaining <= 3
-                      ? 'bg-amber-50 border border-amber-200 text-amber-800'
-                      : 'bg-blue-50 border border-blue-200 text-blue-800'
+                      ? 'bg-score-amber-muted/60 border-score-amber-fg/30 text-score-amber-fg'
+                      : 'bg-muted/60 border-border text-foreground'
                 }`}>
                   <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
                   <span className="flex-1 font-medium">
@@ -475,43 +492,42 @@ export default function DashboardLayout() {
                 </div>
               )}
 
-              <DashboardHeader
-                variant={isWorkspaceShell ? 'compact' : 'default'}
-                coachFirstName={coachFirstName}
-                totalClients={analytics?.totalClients ?? 0}
-                totalAssessments={analytics?.totalAssessments ?? 0}
-                overdueCount={reassessmentQueue?.summary?.overdue ?? 0}
-              />
+              {!isWorkspaceShell && (
+                <DashboardHeader
+                  variant="default"
+                  coachFirstName={coachFirstName}
+                  totalClients={analytics?.totalClients ?? 0}
+                  totalAssessments={analytics?.totalAssessments ?? 0}
+                  overdueCount={reassessmentQueue?.summary?.overdue ?? 0}
+                />
+              )}
 
               <div
                 className={cn(
                   'flex min-h-0 flex-1 flex-col',
-                  isWorkspaceShell
-                    ? 'mt-0 gap-0'
-                    : cn(
-                        'gap-4 sm:gap-6',
-                        isWorkTab ? 'mt-3 sm:mt-4 md:mt-5' : 'mt-4 sm:mt-6 md:mt-8',
-                      ),
+                  isWorkspaceShell ? 'mt-0 gap-0' : 'gap-4 sm:gap-6 mt-4 sm:mt-6 md:mt-8',
                 )}
               >
                 <div
                   className={cn(
-                    'flex flex-col flex-1 min-h-0 min-w-0 overflow-x-hidden rounded-lg border border-border/60 bg-background text-foreground',
-                    !isWorkspaceShell &&
-                      (isWorkTab ? 'pt-3 sm:pt-3 md:pt-4' : 'pt-4 sm:pt-5 md:pt-6'),
-                    isWorkspaceShell && 'border-border/50 bg-card/20',
+                    'flex flex-col flex-1 min-h-0 min-w-0 text-foreground',
+                    isAssistantTab
+                      ? 'overflow-hidden rounded-lg border border-border/50 bg-card/20'
+                      : isWorkspaceShell
+                        ? 'overflow-y-auto overscroll-contain rounded-lg border border-border/50 bg-card/20'
+                        : 'overflow-x-hidden pt-3 sm:pt-4',
                   )}
                   id="workspace-main"
                 >
-                  <TooltipProvider delayDuration={300}>
-                    <div
-                      className={cn(
-                        'relative w-full px-3 sm:max-w-xs sm:w-64 sm:px-4',
-                        isWorkTab ? 'mb-2 sm:mb-3' : 'mb-3 sm:mb-4',
-                      )}
-                    >
-                      {showClientSearch ? (
-                        <>
+                  {showClientSearch && (
+                    <TooltipProvider delayDuration={300}>
+                      <div
+                        className={cn(
+                          'w-full px-3 sm:max-w-xs sm:w-64 sm:px-4',
+                          'pt-3 sm:pt-4 mb-3 sm:mb-4',
+                        )}
+                      >
+                        <div className="relative">
                           <Input
                             placeholder={
                               path.startsWith(ROUTES.DASHBOARD_TEAM)
@@ -530,31 +546,12 @@ export default function DashboardLayout() {
                           <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" aria-hidden>
                             <Search className="h-4 w-4 text-muted-foreground" strokeWidth={2} />
                           </div>
-                        </>
-                      ) : (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="relative w-full sm:max-w-xs sm:w-64">
-                              <Input
-                                disabled
-                                placeholder={DASHBOARD_SHELL_COPY.SEARCH_CLIENTS_PLACEHOLDER}
-                                className="h-10 w-full cursor-not-allowed rounded-lg border-input bg-muted/30 pl-4 pr-10 text-sm opacity-80 sm:h-11"
-                                aria-label={DASHBOARD_SHELL_COPY.SEARCH_DISABLED_TOOLTIP}
-                              />
-                              <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" aria-hidden>
-                                <Search className="h-4 w-4 text-muted-foreground" strokeWidth={2} />
-                              </div>
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent side="bottom" className="max-w-xs text-xs">
-                            {DASHBOARD_SHELL_COPY.SEARCH_DISABLED_TOOLTIP}
-                          </TooltipContent>
-                        </Tooltip>
-                      )}
-                    </div>
-                  </TooltipProvider>
+                        </div>
+                      </div>
+                    </TooltipProvider>
+                  )}
 
-                  <div className="flex flex-col flex-1 min-h-0 min-w-0">
+                  <div className={cn('flex flex-col min-w-0', isAssistantTab ? 'flex-1 min-h-0' : 'flex-none')}>
                     <Outlet
                       context={
                         {
@@ -593,6 +590,12 @@ export default function DashboardLayout() {
           />
 
           <CoachArtifactPreviewSheet preview={shareablePreview} onClose={() => setShareablePreview(null)} />
+
+          <NewClientModal
+            open={newClientModalOpen}
+            onOpenChange={setNewClientModalOpen}
+            organizationId={effectiveOrgId ?? profile?.organizationId ?? ''}
+          />
 
           {!isWorkspaceShell && (
             <CoachWorkspaceProfileFooter

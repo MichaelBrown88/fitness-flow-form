@@ -59,7 +59,7 @@ export const ThemeManager: React.FC<{ children: React.ReactNode }> = ({ children
     const root = document.documentElement;
     // Only apply org gradient when custom branding is enabled; otherwise use One Assess default.
     const useOrgGradient = orgSettings?.customBrandingEnabled === true;
-    const gradientId = (useOrgGradient ? (orgSettings?.gradientId || 'volt') : 'volt') as GradientId;
+    const gradientId = (useOrgGradient ? (orgSettings?.gradientId || 'terracotta') : 'terracotta') as GradientId;
     const gradient = getGradient(gradientId);
     
     // Convert hex colors to HSL for CSS variables
@@ -111,7 +111,7 @@ export const ThemeManager: React.FC<{ children: React.ReactNode }> = ({ children
       ? `${hue} 28% 16%`
       : `${hue} ${sat} 94%`;
     const darkHsl = isDark
-      ? `${hue} 95% 58%`
+      ? `${hue} ${Math.min(65, parseInt(fromHsl[1], 10) + 10)}% 62%`
       : `${hue} ${fromHsl[1]} 51%`;
     
     root.style.setProperty('--gradient-light', lightHsl);

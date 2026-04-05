@@ -4,7 +4,7 @@ import { sendEmailVerification } from 'firebase/auth';
 import { useAuth } from '@/hooks/useAuth';
 import { useOrgAdminNavVisibility } from '@/hooks/useOrgAdminNavVisibility';
 import { Button } from '@/components/ui/button';
-import { Sparkles, ChevronDown, Menu, Building2, LayoutDashboard, Settings, LogOut, Mail, X, Globe, CreditCard } from 'lucide-react';
+import { Sparkles, ChevronDown, Menu, Building2, LayoutDashboard, Settings, LogOut, Mail, X, Globe, CreditCard, Users } from 'lucide-react';
 import { ROUTES } from '@/constants/routes';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import { UI_COMMAND_MENU } from '@/constants/ui';
@@ -262,6 +262,14 @@ export default function AppShell({
                             {UI_COMMAND_MENU.HOME}
                           </Link>
                         </DropdownMenuItem>
+                        {showOrgAdminNav && (
+                          <DropdownMenuItem asChild>
+                            <Link to={ROUTES.DASHBOARD_TEAM} className="flex items-center gap-2">
+                              <Users className="h-4 w-4" />
+                              Team
+                            </Link>
+                          </DropdownMenuItem>
+                        )}
                         {showOrgAdminNav && (
                           <DropdownMenuItem asChild>
                             <Link to={ROUTES.ORG_DASHBOARD} className="flex items-center gap-2">

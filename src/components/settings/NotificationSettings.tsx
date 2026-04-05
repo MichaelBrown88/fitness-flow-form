@@ -17,7 +17,7 @@ interface NotificationPreference {
 const DEFAULT_PREFERENCES: Omit<NotificationPreference, 'enabled'>[] = [
   { type: 'assessment_complete', label: 'Assessment Complete', description: 'When a client assessment is finalized' },
   { type: 'reassessment_due', label: 'Reassessment Due', description: 'When a client is due for a retest' },
-  { type: 'lifestyle_reminder', label: 'Lifestyle Reminders', description: 'Periodic lifestyle check-in prompts' },
+  { type: 'lifestyle_reminder', label: 'Lifestyle Reminders', description: 'Periodic lifestyle assessment reminders' },
   { type: 'new_client', label: 'New Client', description: 'When a new client is added to your roster' },
   { type: 'client_submission', label: 'Client Submission', description: 'When a client submits body comp or posture data' },
   { type: 'schedule_review', label: 'Schedule Review', description: 'Reminders to review client follow-up schedules' },

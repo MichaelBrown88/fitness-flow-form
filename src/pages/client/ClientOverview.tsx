@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, lazy, Suspense, type ReactNode } from 'react';
+import { useState, useEffect, useMemo, lazy, Suspense, type ReactNode } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { PILLAR_DISPLAY } from '@/constants/pillars';
@@ -15,17 +15,12 @@ import {
   ChevronDown,
   ClipboardList,
   Loader2,
-  Zap,
-  AlertCircle,
 } from 'lucide-react';
 import { PostureComparisonCard } from '@/components/client/PostureComparisonCard';
-import { ClientCheckinStrip } from '@/components/client/ClientCheckinStrip';
-import { getClientCheckinHints } from '@/lib/clientCheckinHints';
 import type { ClientDetailOutletContext } from './ClientDetailLayout';
 import { UI_CLIENT_DETAIL } from '@/constants/ui';
 import { computeScores } from '@/lib/scoring';
 import { generateCoachPlan, generateBodyCompInterpretation, type CoachPlan } from '@/lib/recommendations';
-import { getLatestPreSessionCheckin, type PreSessionCheckinPayload } from '@/services/publicReports';
 import type { FormData } from '@/contexts/FormContext';
 import type { ScoreSummary } from '@/lib/scoring/types';
 
@@ -46,22 +41,22 @@ function CollapsibleSection({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="overflow-hidden rounded-lg border border-border/70 bg-background">
+    <div className="border-b border-border/50 pb-6 last:border-b-0">
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between gap-2 p-4 sm:p-6 hover:bg-muted/50 transition-colors"
+        className="w-full flex items-center justify-between gap-2 py-2 mb-4 hover:opacity-70 transition-opacity"
       >
-        <h3 className="text-base sm:text-lg font-bold text-foreground flex items-center gap-2 min-w-0 truncate">
-          <span className="shrink-0">{icon}</span>
+        <h3 className="text-[11px] font-black uppercase tracking-[0.12em] text-muted-foreground flex items-center gap-2 min-w-0 truncate">
+          <span className="shrink-0 opacity-60">{icon}</span>
           <span className="truncate">{title}</span>
         </h3>
         <div className="flex items-center gap-2 shrink-0">
           {badge}
-          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
+          <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
         </div>
       </button>
-      {open && <div className="px-4 sm:px-6 pb-4 sm:pb-6">{children}</div>}
+      {open && <div>{children}</div>}
     </div>
   );
 }
@@ -106,6 +101,14 @@ function CoachSummaryContent({ formData, scores }: { formData: FormData; scores:
   );
 }
 
+const TRACKED_PILLARS: { id: 'bodycomp' | 'posture' | 'fitness' | 'strength' | 'lifestyle'; label: string }[] = [
+  { id: 'bodycomp', label: 'Body Comp' },
+  { id: 'posture', label: 'Posture' },
+  { id: 'fitness', label: 'Fitness' },
+  { id: 'strength', label: 'Strength' },
+  { id: 'lifestyle', label: 'Lifestyle' },
+];
+
 export default function ClientOverview() {
   const ctx = useOutletContext<ClientDetailOutletContext>();
   const {
@@ -114,46 +117,52 @@ export default function ClientOverview() {
     categoryChanges,
     stats,
     handleNewAssessment,
-    profile,
     snapshots,
+    profile,
   } = ctx;
 
-  const checkinHints = useMemo(() => getClientCheckinHints(profile), [profile]);
+  // Baseline completeness: which pillars have never been assessed?
+  const baselineStatus = useMemo(() => {
+    if (!profile) return null;
+    const activePillars = profile.activePillars ?? ['bodycomp', 'strength', 'fitness', 'lifestyle'];
+    const pillarDateMap: Record<string, boolean> = {
+      bodycomp: !!(profile.lastBodyCompDate ?? profile.lastInBodyDate),
+      posture: !!profile.lastPostureDate,
+      fitness: !!profile.lastFitnessDate,
+      strength: !!profile.lastStrengthDate,
+      lifestyle: !!profile.lastLifestyleDate,
+    };
+    const missing = TRACKED_PILLARS
+      .filter(p => activePillars.includes(p.id) && !pillarDateMap[p.id])
+      .map(p => p);
+    return { isComplete: missing.length === 0, missing };
+  }, [profile]);
 
   const scores = useMemo(
     () => currentAssessment ? computeScores(currentAssessment.formData) : null,
     [currentAssessment],
   );
 
-  const shareToken = profile?.shareToken;
-  type PreSessionCheckin = PreSessionCheckinPayload & { createdAt: Date; id: string };
-  const [preSessionCheckin, setPreSessionCheckin] = useState<PreSessionCheckin | null>(null);
-  const [checkinDismissed, setCheckinDismissed] = useState(false);
-
-  const loadPreSessionCheckin = useCallback(async () => {
-    if (!shareToken) return;
-    try {
-      const checkin = await getLatestPreSessionCheckin(shareToken);
-      setPreSessionCheckin(checkin);
-    } catch {
-      // non-fatal — pre-session check-in is optional
-    }
-  }, [shareToken]);
-
-  useEffect(() => {
-    void loadPreSessionCheckin();
-  }, [loadPreSessionCheckin]);
-
   return (
     <div className="space-y-8">
-      {profile && checkinHints.length > 0 ? (
-        <ClientCheckinStrip
-          hints={checkinHints}
-          onRun={(id) => {
-            void handleNewAssessment(id === 'lifestyle' ? 'lifestyle' : 'posture');
-          }}
-        />
-      ) : null}
+      {baselineStatus && !baselineStatus.isComplete && (
+        <div className="rounded-xl border border-score-amber bg-score-amber-muted/40 px-4 py-3">
+          <p className="text-sm font-semibold text-foreground mb-2">Baseline incomplete</p>
+          <div className="flex flex-wrap gap-2">
+            {baselineStatus.missing.map(p => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => void handleNewAssessment(p.id)}
+                className="text-xs font-bold text-score-amber-fg border border-score-amber rounded-lg px-3 py-1.5 hover:bg-score-amber-muted transition-colors"
+              >
+                Start {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <CollapsibleSection
         title={UI_CLIENT_DETAIL.OVERVIEW_SECTION_TITLE}
         icon={<TrendingUp className="h-5 w-5 text-primary" />}
@@ -224,57 +233,6 @@ export default function ClientOverview() {
           </div>
         )}
       </CollapsibleSection>
-
-      {preSessionCheckin && !checkinDismissed && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 sm:p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-2 shrink-0">
-              <Zap className="h-4 w-4 text-amber-500" />
-              <span className="text-sm font-semibold text-amber-900">Pre-session note</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setCheckinDismissed(true)}
-              className="text-xs text-amber-600 hover:text-amber-800 font-medium shrink-0"
-            >
-              Dismiss
-            </button>
-          </div>
-          <div className="mt-3 grid gap-2 sm:grid-cols-3 text-sm">
-            {preSessionCheckin.energyLevel !== undefined && (
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-[0.15em] text-amber-600">Energy</span>
-                <span className="font-semibold text-amber-900">{preSessionCheckin.energyLevel}/5</span>
-              </div>
-            )}
-            {preSessionCheckin.hasPain !== undefined && (
-              <div className="flex items-center gap-2">
-                {preSessionCheckin.hasPain
-                  ? <AlertCircle className="h-3.5 w-3.5 text-red-500 shrink-0" />
-                  : null}
-                <span className="text-[10px] font-black uppercase tracking-[0.15em] text-amber-600">Pain</span>
-                <span className={`font-semibold ${preSessionCheckin.hasPain ? 'text-red-700' : 'text-emerald-700'}`}>
-                  {preSessionCheckin.hasPain ? 'Yes' : 'No'}
-                </span>
-              </div>
-            )}
-            {preSessionCheckin.painDetails && (
-              <p className="sm:col-span-3 text-xs text-amber-800 bg-amber-100 rounded-lg px-3 py-2">
-                {preSessionCheckin.painDetails}
-              </p>
-            )}
-            {preSessionCheckin.focusArea && (
-              <div className="sm:col-span-3">
-                <span className="text-[10px] font-black uppercase tracking-[0.15em] text-amber-600">Focus: </span>
-                <span className="text-sm text-amber-900">{preSessionCheckin.focusArea}</span>
-              </div>
-            )}
-          </div>
-          <p className="text-[10px] text-amber-500 mt-2">
-            Submitted {preSessionCheckin.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </p>
-        </div>
-      )}
 
       <CollapsibleSection title="Quick Assessments" icon={<TargetIcon className="h-5 w-5 text-primary" />}>
         <div className="grid gap-2 sm:gap-3 grid-cols-3 sm:grid-cols-5">

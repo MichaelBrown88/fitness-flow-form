@@ -28,6 +28,7 @@ import {
   PauseCircle,
   PlayCircle,
   History,
+  ClipboardPlus,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { getShareTokensForAssessment } from '@/services/share';
@@ -46,6 +47,8 @@ interface ClientActionsDropdownProps {
   onPauseToggle?: () => void;
   /** Callback to open assessment history dialog (main dashboard) */
   onViewHistory?: (clientName: string) => void;
+  /** Callback to start a new assessment for this client */
+  onStartAssessment?: (clientName: string) => void;
 }
 
 export const ClientActionsDropdown: React.FC<ClientActionsDropdownProps> = ({
@@ -54,6 +57,7 @@ export const ClientActionsDropdown: React.FC<ClientActionsDropdownProps> = ({
   clientStatus,
   onPauseToggle,
   onViewHistory,
+  onStartAssessment,
 }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -93,6 +97,18 @@ export const ClientActionsDropdown: React.FC<ClientActionsDropdownProps> = ({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56 rounded-xl border-border p-1 shadow-xl">
+        {onStartAssessment && (
+          <>
+            <DropdownMenuItem
+              onClick={() => onStartAssessment(clientName)}
+              className="rounded-lg text-xs font-bold px-2 py-2 cursor-pointer focus:bg-primary/10 gap-2 text-primary"
+            >
+              <ClipboardPlus className="h-3.5 w-3.5" />
+              Start Assessment
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="bg-muted" />
+          </>
+        )}
         {/* View Section */}
         <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground px-2 py-1.5">
           View
