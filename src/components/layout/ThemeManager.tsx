@@ -59,7 +59,7 @@ export const ThemeManager: React.FC<{ children: React.ReactNode }> = ({ children
     const root = document.documentElement;
     // Only apply org gradient when custom branding is enabled; otherwise use One Assess default.
     const useOrgGradient = orgSettings?.customBrandingEnabled === true;
-    const gradientId = (useOrgGradient ? (orgSettings?.gradientId || 'terracotta') : 'terracotta') as GradientId;
+    const gradientId = (useOrgGradient ? (orgSettings?.gradientId || 'pear') : 'pear') as GradientId;
     const gradient = getGradient(gradientId);
     
     // Convert hex colors to HSL for CSS variables
