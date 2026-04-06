@@ -12,7 +12,11 @@ import {
   handleCreateCustomerPortalSession,
   handleCreateBrandingCheckoutSession,
   handleCreateCreditTopupSession,
+  handleUpdateSubscriptionPlan,
+  handleSyncCheckoutSession,
 } from './stripe';
+import { handleSubmitPublicErasureRequest } from './publicErasureRequest';
+import { handleGeneratePublicReportSocialShareArtifacts } from './generatePublicReportSocialShareArtifacts';
 import { handleAssessmentCompletedTrigger } from './webhooks';
 import { handleSendCoachInvite } from './invites';
 import { handleAcceptCoachInvite } from './acceptCoachInvite';
@@ -57,6 +61,7 @@ import {
   sendDraftRecoveryNudges,
 } from './notifications';
 import { handleOnboardingCompleted } from './transactionalEmails';
+import { sendTrialExpiryNudges } from './trialNudges';
 
 admin.initializeApp();
 
@@ -115,6 +120,34 @@ export const createBrandingCheckoutSession = onCall({
 export const createCreditTopupSession = onCall({
   enforceAppCheck: false,
 }, handleCreateCreditTopupSession);
+
+/** Public report page — GDPR erasure request (token proves access). */
+export const submitPublicErasureRequest = onCall(
+  {
+    enforceAppCheck: false,
+    cors: true,
+    invoker: 'public',
+  },
+  handleSubmitPublicErasureRequest,
+);
+
+/** In-app Stripe subscription capacity change (authenticated org billing). */
+export const updateSubscriptionPlan = onCall(
+  { enforceAppCheck: false },
+  handleUpdateSubscriptionPlan,
+);
+
+/** Post-checkout org sync when webhooks are delayed (authenticated). */
+export const syncCheckoutSession = onCall(
+  { enforceAppCheck: false },
+  handleSyncCheckoutSession,
+);
+
+/** Coach-authenticated: render OG/social PNGs for a public report share link. */
+export const generatePublicReportSocialShareArtifacts = onCall(
+  { enforceAppCheck: false, timeoutSeconds: 120 },
+  handleGeneratePublicReportSocialShareArtifacts,
+);
 
 // ---------------------------------------------------------------------------
 // Webhook fan-out: fires when a session (assessment) doc is created
@@ -865,6 +898,15 @@ export const onLifestyleCheckinCreated = onDocumentWritten(
 export const dailyReassessmentReminders = onSchedule(
   { schedule: 'every day 08:00', timeZone: 'UTC' },
   async () => { await sendReassessmentReminders(); },
+);
+
+/**
+ * Trial last-day nudges — runs daily at 08:30 UTC (after reassessment reminders).
+ * Complements Stripe `customer.subscription.trial_will_end` emails handled in webhooks.
+ */
+export const dailyTrialExpiryNudges = onSchedule(
+  { schedule: 'every day 08:30', timeZone: 'UTC' },
+  async () => { await sendTrialExpiryNudges(); },
 );
 
 /**

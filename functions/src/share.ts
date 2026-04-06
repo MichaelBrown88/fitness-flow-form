@@ -1,6 +1,7 @@
 import * as admin from 'firebase-admin';
 import type { CallableRequest } from 'firebase-functions/v2/https';
 import { HttpsError } from 'firebase-functions/v2/https';
+import { logger } from 'firebase-functions';
 import { Resend } from 'resend';
 import { APP_HOST, RESEND_API_KEY, RESEND_FROM } from './config';
 import { renderNotificationEmail, sendResendHtmlText } from './email';
@@ -87,8 +88,13 @@ async function ensurePublicReport(coachUid: string, assessmentId: string) {
     if (!organizationId) {
       throw new Error('User profile missing organizationId; cannot create report artifacts.');
     }
-    await ensureReportArtifacts({ coachUid, assessmentId, organizationId });
-    return (await legacyRef.get()).data() as PublicReportDoc | undefined;
+    const { shareToken } = await ensureReportArtifacts({
+      coachUid,
+      assessmentId,
+      organizationId,
+    });
+    const createdSnap = await getDb().doc(`publicReports/${shareToken}`).get();
+    return createdSnap.data() as PublicReportDoc | undefined;
   }
   return snap.data() as PublicReportDoc;
 }
@@ -126,7 +132,7 @@ export async function requestShareLinks(request: CallableRequest<SharePayload>) 
       whatsappText,
     };
   } catch (err) {
-    console.error('[requestShareLinks] error', err);
+    logger.error('[requestShareLinks] error', err);
     throw err instanceof Error ? err : new Error(String(err));
   }
 }

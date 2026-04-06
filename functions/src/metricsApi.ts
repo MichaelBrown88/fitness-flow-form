@@ -9,6 +9,11 @@
 import * as admin from 'firebase-admin';
 import { logger } from 'firebase-functions';
 import { filsToGbpPence } from './currency.js';
+import {
+  currencyRatesFromFirestoreDoc,
+  subscriptionSmallestUnitToGbpPence,
+  type CurrencyRatesForReporting,
+} from './shared/reportingFx.js';
 import { getLogCostFils as getLogCostFilsShared } from './aiPricing.js';
 import { firestoreValueToDate as toDate } from './firestoreTimestamp.js';
 
@@ -113,17 +118,22 @@ function getLogDate(log: Record<string, unknown>): Date | null {
   );
 }
 
-function getMrrGbpPence(subscription: Record<string, unknown> | undefined): number {
+function getMrrGbpPence(
+  subscription: Record<string, unknown> | undefined,
+  rates: CurrencyRatesForReporting,
+): number {
   if (!subscription || subscription.status !== 'active') return 0;
   const currency = typeof subscription.currency === 'string' ? subscription.currency : 'KWD';
   const amount = Number(subscription.amountCents ?? subscription.amountFils ?? 0);
   if (!amount) return 0;
-  if (currency === 'GBP') return amount;
-  if (currency === 'USD') return Math.round((amount / 100) * (1 / 1.27) * 100);
-  return filsToGbpPence(amount);
+  return subscriptionSmallestUnitToGbpPence(amount, currency, rates);
 }
 
-function getOrgLifecycleForDay(data: Record<string, unknown>, day: Date): {
+function getOrgLifecycleForDay(
+  data: Record<string, unknown>,
+  day: Date,
+  rates: CurrencyRatesForReporting,
+): {
   exists: boolean;
   active: boolean;
   trial: boolean;
@@ -163,7 +173,7 @@ function getOrgLifecycleForDay(data: Record<string, unknown>, day: Date): {
     exists: true,
     active,
     trial,
-    mrrCents: active ? getMrrGbpPence(subscription) : 0,
+    mrrCents: active ? getMrrGbpPence(subscription, rates) : 0,
   };
 }
 
@@ -268,6 +278,10 @@ export async function rebuildPlatformMetricsHistoryCallable(
   }
 
   const days = typeof request.data?.days === 'number' ? request.data.days : 30;
+  const configSnap = await db.doc('platform/config').get();
+  const currencyRates = currencyRatesFromFirestoreDoc(
+    configSnap.exists ? (configSnap.data() as Record<string, unknown>) : undefined,
+  );
   const orgsSnap = await db.collection('organizations').get();
   const aiLogsSnap = await db.collection('ai_usage_logs').get();
   const logs = aiLogsSnap.docs.map((docSnap) => docSnap.data() as Record<string, unknown>);
@@ -296,7 +310,7 @@ export async function rebuildPlatformMetricsHistoryCallable(
     for (const orgDoc of orgsSnap.docs) {
       const data = orgDoc.data() as Record<string, unknown>;
       if ((data.metadata as Record<string, unknown> | undefined)?.isDeleted === true) continue;
-      const lifecycle = getOrgLifecycleForDay(data, day);
+      const lifecycle = getOrgLifecycleForDay(data, day, currencyRates);
       if (!lifecycle.exists) continue;
       totalOrgs += 1;
       if (lifecycle.active) activeOrgs += 1;
