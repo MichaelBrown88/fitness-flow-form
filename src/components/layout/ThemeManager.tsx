@@ -87,43 +87,58 @@ export const ThemeManager: React.FC<{ children: React.ReactNode }> = ({ children
       return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
     };
     
-    // Set gradient CSS variables
-    root.style.setProperty('--gradient-from', hexToHsl(gradient.fromHex));
-    root.style.setProperty('--gradient-to', hexToHsl(gradient.toHex));
+    // Always set raw gradient hex vars (used in SVG fills / color-mix)
     root.style.setProperty('--gradient-from-hex', gradient.fromHex);
     root.style.setProperty('--gradient-to-hex', gradient.toHex);
-    
-    // Set primary color to gradient-from
-    root.style.setProperty('--primary', hexToHsl(gradient.fromHex));
-    root.style.setProperty('--ring', hexToHsl(gradient.fromHex));
-    root.style.setProperty('--sidebar-primary', hexToHsl(gradient.fromHex));
-    root.style.setProperty('--sidebar-ring', hexToHsl(gradient.fromHex));
-    
-    // Set gradient tints (light, medium, dark)
-    // These are approximate - we'll use Tailwind classes for exact values
-    const fromHsl = hexToHsl(gradient.fromHex).split(' ');
-    const hue = fromHsl[0];
-    const sat = `${Math.max(30, parseInt(fromHsl[1], 10) - 20)}%`;
-    const lightHsl = isDark
-      ? `${hue} 22% 11%`
-      : `${hue} ${sat} 97%`;
-    const mediumHsl = isDark
-      ? `${hue} 28% 16%`
-      : `${hue} ${sat} 94%`;
-    const darkHsl = isDark
-      ? `${hue} ${Math.min(65, parseInt(fromHsl[1], 10) + 10)}% 62%`
-      : `${hue} ${Math.min(parseInt(fromHsl[1], 10), 75)}% 22%`; // deep for text-on-light legibility
-    
-    root.style.setProperty('--gradient-light', lightHsl);
-    root.style.setProperty('--gradient-medium', mediumHsl);
-    root.style.setProperty('--gradient-dark', darkHsl);
-    
-    // Store original hex for any direct use
     root.style.setProperty('--brand-primary', gradient.fromHex);
 
-    const primaryFg = primaryForegroundHslFromBrandHex(gradient.fromHex);
-    root.style.setProperty('--primary-foreground', primaryFg);
-    root.style.setProperty('--sidebar-primary-foreground', primaryFg);
+    const fromHsl = hexToHsl(gradient.fromHex).split(' ');
+    const hue = fromHsl[0];
+    const rawSat = parseInt(fromHsl[1], 10);
+    const tintSat = `${Math.max(30, rawSat - 20)}%`;
+
+    if (isDark) {
+      /**
+       * Dark mode — full-brightness brand colour everywhere.
+       * Pear (#bcff00) pops on the rich-black base.
+       */
+      const brightHsl = hexToHsl(gradient.fromHex);
+      const brightToHsl = hexToHsl(gradient.toHex);
+      root.style.setProperty('--gradient-from', brightHsl);
+      root.style.setProperty('--gradient-to', brightToHsl);
+      root.style.setProperty('--primary', brightHsl);
+      root.style.setProperty('--ring', brightHsl);
+      root.style.setProperty('--sidebar-primary', brightHsl);
+      root.style.setProperty('--sidebar-ring', brightHsl);
+      root.style.setProperty('--gradient-light',  `${hue} 22% 11%`);
+      root.style.setProperty('--gradient-medium', `${hue} 28% 16%`);
+      root.style.setProperty('--gradient-dark',   `${hue} ${Math.min(65, rawSat + 10)}% 62%`);
+      const fgDark = primaryForegroundHslFromBrandHex(gradient.fromHex);
+      root.style.setProperty('--primary-foreground', fgDark);
+      root.style.setProperty('--sidebar-primary-foreground', fgDark);
+    } else {
+      /**
+       * Light mode — one unified mid-dark green applied everywhere.
+       * Same hue family as the brand, darkened to ~30 % lightness so it
+       * reads clearly on the ceiling-white (#e9ebe6) background while still
+       * looking like the brand colour (not near-black).
+       * Applied to --primary AND --gradient-dark so buttons, text accents,
+       * icons and borders all share a single consistent green.
+       */
+      const unifiedGreen = `${hue} ${Math.min(rawSat, 80)}% 30%`;
+      root.style.setProperty('--gradient-from', unifiedGreen);
+      root.style.setProperty('--gradient-to',   `${hue} ${Math.min(rawSat, 80)}% 26%`);
+      root.style.setProperty('--primary', unifiedGreen);
+      root.style.setProperty('--ring', unifiedGreen);
+      root.style.setProperty('--sidebar-primary', unifiedGreen);
+      root.style.setProperty('--sidebar-ring', unifiedGreen);
+      root.style.setProperty('--gradient-light',  `${hue} ${tintSat} 95%`);
+      root.style.setProperty('--gradient-medium', `${hue} ${tintSat} 90%`);
+      root.style.setProperty('--gradient-dark', unifiedGreen); // same token — one green in light mode
+      // Dark green is dark enough for white foreground on buttons
+      root.style.setProperty('--primary-foreground', '0 0% 100%');
+      root.style.setProperty('--sidebar-primary-foreground', '0 0% 100%');
+    }
     
   }, [
     orgSettings?.gradientId,
