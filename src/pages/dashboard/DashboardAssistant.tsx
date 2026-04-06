@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
   Loader2,
@@ -80,6 +80,45 @@ export default function DashboardAssistant() {
   const [mentionMenu, setMentionMenu] = useState<{ query: string; index: number } | null>(null);
 
   const coachFirst = user ? staffPreferredFirstName(profile, user) : 'Coach';
+
+  // ── Scroll management ──────────────────────────────────────────────────────
+  // The scroll container lives here; AssistantThreadPanel just renders content.
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollContentRef = useRef<HTMLDivElement>(null);
+  // True when the view is stuck to the bottom — reset on each new message.
+  const shouldAutoScrollRef = useRef(true);
+
+  // When a new message arrives or the thinking state changes, force-scroll to bottom.
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+    shouldAutoScrollRef.current = true;
+  }, [assistant.messages.length, assistant.sending]);
+
+  // ResizeObserver keeps the view glued to the bottom while the typewriter
+  // adds content — fires on every character so we never fall behind.
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    const content = scrollContentRef.current;
+    if (!container || !content) return;
+    const ro = new ResizeObserver(() => {
+      if (shouldAutoScrollRef.current) {
+        container.scrollTop = container.scrollHeight;
+      }
+    });
+    ro.observe(content);
+    return () => ro.disconnect();
+  // Re-attach observer when switching between empty/thread view
+  }, [assistant.messages.length]);
+
+  // If the user manually scrolls up, stop auto-scrolling until the next message.
+  const handleScrollContainer = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    shouldAutoScrollRef.current = nearBottom;
+  }, []);
 
   const send = useCallback(async (text?: string) => {
     const t = (text ?? draft).trim();
@@ -410,8 +449,15 @@ export default function DashboardAssistant() {
         </div>
       ) : (
         <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-background">
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
-            <div className="mx-auto w-full max-w-3xl px-4 py-5 sm:max-w-4xl sm:px-6 sm:py-6 lg:max-w-5xl lg:px-8">
+          <div
+            ref={scrollContainerRef}
+            className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
+            onScroll={handleScrollContainer}
+          >
+            <div
+              ref={scrollContentRef}
+              className="mx-auto w-full max-w-3xl px-4 py-5 sm:max-w-4xl sm:px-6 sm:py-6 lg:max-w-5xl lg:px-8"
+            >
               <AssistantThreadPanel messages={assistant.messages} thinking={assistant.sending} />
             </div>
           </div>

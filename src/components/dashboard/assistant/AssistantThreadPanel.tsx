@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { COACH_ASSISTANT_COPY } from '@/constants/coachAssistantCopy';
 import type { CoachAssistantMessage } from '@/types/coachAssistant';
@@ -84,13 +84,6 @@ function ThinkingDots() {
 }
 
 export function AssistantThreadPanel({ messages, thinking = false }: AssistantThreadPanelProps) {
-  const bottomRef = useRef<HTMLDivElement>(null);
-
-  // Scroll to bottom when messages or thinking state change
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [messages.length, thinking]);
-
   if (messages.length === 0 && !thinking) return null;
 
   // The most recent assistant message gets the typewriter treatment
@@ -162,7 +155,6 @@ export function AssistantThreadPanel({ messages, thinking = false }: AssistantTh
         </div>
       )}
 
-      <div ref={bottomRef} className="h-px" aria-hidden />
     </div>
   );
 }

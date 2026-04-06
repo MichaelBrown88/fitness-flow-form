@@ -5,7 +5,8 @@
  */
 
 export type GradientId =
-  | 'terracotta'       // Default: warm terracotta accent
+  | 'pear'             // Default: #bcff00 pear — One Assess brand
+  | 'terracotta'       // Warm terracotta accent
   | 'volt'             // Nike-style chartreuse accent (charcoal-friendly)
   | 'purple-indigo'    // indigo-500 to purple-500
   | 'blue-cyan'        // Blue to cyan
@@ -33,6 +34,17 @@ export interface GradientDefinition {
  * Each gradient is carefully chosen to work with Apple's neutral palette
  */
 export const GRADIENT_PALETTE: Record<GradientId, GradientDefinition> = {
+  pear: {
+    id: 'pear',
+    name: 'Pear',
+    from: 'lime-400',
+    to: 'lime-500',
+    fromHex: '#bcff00',
+    toHex: '#a8e600',
+    light: 'lime-50',
+    medium: 'lime-100',
+    dark: 'lime-700',
+  },
   terracotta: {
     id: 'terracotta',
     name: 'Blood Orange',
@@ -148,8 +160,8 @@ export const GRADIENT_PALETTE: Record<GradientId, GradientDefinition> = {
 /**
  * Get gradient definition by ID
  */
-export function getGradient(id: GradientId = 'terracotta'): GradientDefinition {
-  return GRADIENT_PALETTE[id] || GRADIENT_PALETTE.terracotta;
+export function getGradient(id: GradientId = 'pear'): GradientDefinition {
+  return GRADIENT_PALETTE[id] || GRADIENT_PALETTE.pear;
 }
 
 /**

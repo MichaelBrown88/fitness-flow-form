@@ -4,56 +4,61 @@
 
 /*
   Design System — One Assess
-  Direction: Warm Command — trustworthy, minimalistic, luxury
-  Dark mode first. Warm charcoal base. Terracotta accent (#C97B52).
+  Direction: Athletic Performance — bold, clean, premium fitness
+  Dark mode first. Rich black base (#061414). Pear accent (#bcff00).
   Font: DM Sans (Google Fonts, loaded in index.html)
   Rule: one surface level maximum. Whitespace groups, not boxes.
 */
 
 @layer base {
   :root {
+    /*
+      Brand palette — One Assess
+      pear #bcff00 · rich black #061414 · laurel leaf #96998c
+      celeste #d2d3ce · ceiling white #e9ebe6
+    */
+
     /* ── Light Mode ──────────────────────────────────────── */
-    --background: 0 0% 97%;                /* #F7F7F7 clean neutral white */
-    --background-secondary: 0 0% 93%;      /* #EDEDED */
-    --background-tertiary: 0 0% 88%;       /* #E0E0E0 */
+    --background: 76 14% 91%;              /* #e9ebe6 ceiling white */
+    --background-secondary: 76 8% 87%;
+    --background-tertiary: 74 5% 82%;      /* celeste-toned */
 
-    --foreground: 0 0% 10%;                /* #1A1A1A neutral near-black */
-    --foreground-secondary: 0 0% 40%;      /* #666666 */
-    --foreground-tertiary: 0 0% 54%;       /* #8A8A8A */
-    --foreground-quaternary: 0 0% 68%;     /* #ADADAD */
+    --foreground: 180 55% 5%;              /* #061414 rich black */
+    --foreground-secondary: 74 6% 38%;
+    --foreground-tertiary: 74 6% 53%;
+    --foreground-quaternary: 74 6% 67%;    /* laurel leaf toned */
 
-    --card: 0 0% 100%;
-    --card-foreground: 28 22% 10%;
-    --card-elevated: 0 0% 100%;
-    --card-subtle: 36 25% 97%;
+    --card: 76 18% 98%;
+    --card-foreground: 180 55% 5%;
+    --card-elevated: 76 18% 100%;
+    --card-subtle: 76 10% 94%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 28 22% 10%;
+    --popover: 76 18% 98%;
+    --popover-foreground: 180 55% 5%;
 
-    /* ── Accent / Primary — Terracotta ───────────────────── */
-    /* --gradient-from/to kept for per-org ThemeManager overrides */
-    --gradient-from: 14 78% 42%;           /* #C23E10 blood orange */
-    --gradient-to: 12 80% 36%;             /* #A63310 deeper blood orange */
-    --gradient-from-hex: #c23e10;
-    --gradient-to-hex: #a63310;
-    --gradient-light: 14 70% 95%;          /* very pale blood orange wash */
-    --gradient-medium: 14 65% 88%;
-    --gradient-dark: 14 80% 36%;
+    /* ── Accent / Primary — Pear ─────────────────────────── */
+    --gradient-from: 76 100% 50%;          /* #bcff00 pear */
+    --gradient-to: 78 100% 44%;
+    --gradient-from-hex: #bcff00;
+    --gradient-to-hex: #a8e600;
+    --gradient-light: 76 80% 92%;
+    --gradient-medium: 76 70% 84%;
+    --gradient-dark: 76 100% 30%;          /* dark lime for text-on-light */
 
     --primary: var(--gradient-from);
-    --primary-foreground: 36 30% 97%;      /* warm cream on terracotta */
+    --primary-foreground: 180 55% 5%;      /* rich black on pear */
 
     --brand-primary: var(--gradient-from-hex);
-    --brand-primary-transparent: hsl(21 46% 49% / 0.12);
+    --brand-primary-transparent: hsl(76 100% 50% / 0.12);
 
-    --secondary: 33 16% 93%;
-    --secondary-foreground: 28 22% 10%;
+    --secondary: 76 8% 87%;
+    --secondary-foreground: 180 55% 5%;
 
-    --muted: 33 14% 93%;
-    --muted-foreground: 26 10% 42%;
+    --muted: 76 8% 87%;
+    --muted-foreground: 74 6% 42%;
 
-    --accent: 33 16% 93%;
-    --accent-foreground: 28 22% 10%;
+    --accent: 76 8% 87%;
+    --accent-foreground: 180 55% 5%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
@@ -81,11 +86,11 @@
     --chart-distribution-yellow: 45 93% 47%;
 
     /* ── Borders & Inputs ────────────────────────────────── */
-    --border: 0 0% 87%;                    /* #DEDEDE */
-    --border-medium: 0 0% 80%;             /* #CCCCCC */
-    --border-dark: 0 0% 68%;               /* #ADADAD */
-    --input: 0 0% 87%;
-    --ring: 14 78% 42%;
+    --border: 74 5% 82%;                   /* celeste */
+    --border-medium: 74 5% 75%;
+    --border-dark: 74 5% 65%;
+    --input: 74 5% 82%;
+    --ring: 76 100% 38%;
 
     /* ── Radius ──────────────────────────────────────────── */
     --radius: 0.5rem;        /* 8px  — default buttons, inputs */
@@ -127,21 +132,21 @@
     --easing-apple: var(--easing-spring);  /* alias — keeps existing component refs working */
 
     /* ── Shadows (warm-tinted) ───────────────────────────── */
-    --shadow-sm: 0 1px 2px 0 hsl(28 20% 8% / 0.06);
-    --shadow-md: 0 4px 12px -2px hsl(28 20% 8% / 0.10), 0 2px 4px -1px hsl(28 20% 8% / 0.06);
-    --shadow-lg: 0 12px 24px -4px hsl(28 20% 8% / 0.12), 0 4px 8px -2px hsl(28 20% 8% / 0.06);
-    --shadow-xl: 0 20px 40px -8px hsl(28 20% 8% / 0.14), 0 8px 16px -4px hsl(28 20% 8% / 0.08);
-    --shadow-colored: 0 8px 24px -4px hsl(21 46% 49% / 0.20);
+    --shadow-sm: 0 1px 2px 0 hsl(180 55% 5% / 0.06);
+    --shadow-md: 0 4px 12px -2px hsl(180 55% 5% / 0.10), 0 2px 4px -1px hsl(180 55% 5% / 0.06);
+    --shadow-lg: 0 12px 24px -4px hsl(180 55% 5% / 0.12), 0 4px 8px -2px hsl(180 55% 5% / 0.06);
+    --shadow-xl: 0 20px 40px -8px hsl(180 55% 5% / 0.14), 0 8px 16px -4px hsl(180 55% 5% / 0.08);
+    --shadow-colored: 0 8px 24px -4px hsl(76 100% 50% / 0.22);
 
     /* ── Sidebar ─────────────────────────────────────────── */
-    --sidebar-background: 36 30% 97%;
-    --sidebar-foreground: 28 22% 10%;
-    --sidebar-primary: 21 46% 49%;
-    --sidebar-primary-foreground: 36 30% 97%;
-    --sidebar-accent: 33 16% 93%;
-    --sidebar-accent-foreground: 28 22% 10%;
-    --sidebar-border: 30 12% 85%;
-    --sidebar-ring: 21 46% 49%;
+    --sidebar-background: 76 14% 95%;
+    --sidebar-foreground: 180 55% 5%;
+    --sidebar-primary: 76 100% 50%;
+    --sidebar-primary-foreground: 180 55% 5%;
+    --sidebar-accent: 76 8% 88%;
+    --sidebar-accent-foreground: 180 55% 5%;
+    --sidebar-border: 74 5% 80%;
+    --sidebar-ring: 76 100% 38%;
 
     /* ── Platform Admin (always dark — unchanged) ────────── */
     --admin-bg: 222 47% 4%;
@@ -152,67 +157,67 @@
     --admin-fg-muted: 215 14% 62%;
 
     /* ── Landing contrast band ───────────────────────────── */
-    --landing-contrast-bg: 28 18% 10%;
-    --landing-contrast-fg: 36 30% 97%;
-    --landing-contrast-muted: 28 8% 55%;
-    --landing-contrast-subtle: 28 8% 68%;
-    --landing-contrast-border: 28 10% 22%;
-    --landing-contrast-surface: 28 14% 14%;
-    --landing-contrast-surface-elevated: 28 12% 18%;
+    --landing-contrast-bg: 180 55% 5%;    /* rich black */
+    --landing-contrast-fg: 76 14% 91%;    /* ceiling white */
+    --landing-contrast-muted: 74 6% 57%;  /* laurel leaf */
+    --landing-contrast-subtle: 74 6% 68%;
+    --landing-contrast-border: 180 25% 13%;
+    --landing-contrast-surface: 180 35% 7%;
+    --landing-contrast-surface-elevated: 180 25% 10%;
   }
 
   /* ── Dark Mode (default experience) ─────────────────────── */
   .dark {
-    /* Pure neutral dark grey — accent carries all the personality */
-    --background: 0 0% 7%;                /* #121212 */
-    --background-secondary: 0 0% 9%;      /* #171717 */
-    --background-tertiary: 0 0% 12%;      /* #1F1F1F */
+    /* Rich black base — pear accent carries all the energy */
+    --background: 180 55% 5%;              /* #061414 rich black */
+    --background-secondary: 180 35% 7%;
+    --background-tertiary: 180 25% 10%;
 
-    --foreground: 0 0% 93%;               /* #EDEDED near-white */
-    --foreground-secondary: 0 0% 60%;     /* #999999 */
-    --foreground-tertiary: 0 0% 44%;      /* #707070 */
-    --foreground-quaternary: 0 0% 33%;    /* #545454 */
+    --foreground: 76 14% 91%;              /* #e9ebe6 ceiling white */
+    --foreground-secondary: 74 6% 72%;
+    --foreground-tertiary: 74 6% 57%;      /* #96998c laurel leaf */
+    --foreground-quaternary: 74 6% 42%;
 
-    --card: 0 0% 10%;                     /* #1A1A1A */
-    --card-foreground: 0 0% 93%;
-    --card-elevated: 0 0% 12%;            /* #1F1F1F */
-    --card-subtle: 0 0% 9%;               /* #171717 */
+    --card: 180 35% 7%;
+    --card-foreground: 76 14% 91%;
+    --card-elevated: 180 25% 9%;
+    --card-subtle: 180 40% 6%;
 
-    --popover: 0 0% 11%;
-    --popover-foreground: 0 0% 93%;
+    --popover: 180 35% 7%;
+    --popover-foreground: 76 14% 91%;
 
-    /* Blood orange — slightly brighter in dark mode for contrast */
-    --gradient-from: 14 85% 52%;          /* #D84A15 blood orange */
-    --gradient-to: 12 82% 44%;            /* #BF3A0F */
-    --gradient-from-hex: #d84a15;
-    --gradient-to-hex: #bf3a0f;
-    --gradient-light: 14 50% 12%;         /* dark blood orange surface tint */
-    --gradient-medium: 14 55% 18%;
-    --gradient-dark: 14 85% 65%;          /* bright blood orange for text-on-dark */
+    /* Pear — full brightness on dark background */
+    --gradient-from: 76 100% 50%;          /* #bcff00 pear */
+    --gradient-to: 78 100% 44%;
+    --gradient-from-hex: #bcff00;
+    --gradient-to-hex: #a8e600;
+    --gradient-light: 76 50% 9%;           /* dark pear surface tint */
+    --gradient-medium: 76 55% 14%;
+    --gradient-dark: 76 100% 65%;          /* bright pear for text-on-dark */
 
     --primary: var(--gradient-from);
-    --primary-foreground: 37 29% 94%;
+    --primary-foreground: 180 55% 5%;      /* rich black on pear */
 
     --brand-primary: var(--gradient-from-hex);
-    --brand-primary-transparent: hsl(21 52% 55% / 0.12);
+    --brand-primary-transparent: hsl(76 100% 50% / 0.12);
 
-    --secondary: 30 11% 12%;
-    --secondary-foreground: 37 29% 94%;
+    --secondary: 180 20% 9%;
+    --secondary-foreground: 76 14% 91%;
 
-    --muted: 30 10% 12%;
-    --muted-foreground: 30 9% 55%;
+    --muted: 180 20% 9%;
+    --muted-foreground: 74 6% 57%;         /* laurel leaf */
 
-    --accent: 30 11% 14%;
-    --accent-foreground: 37 29% 94%;
+    --accent: 180 20% 10%;
+    --accent-foreground: 76 14% 91%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 16%;                   /* #292929 */
-    --border-medium: 0 0% 21%;            /* #363636 */
-    --border-dark: 0 0% 30%;              /* #4D4D4D */
-    --input: 0 0% 15%;
-    --ring: 14 85% 52%;
+    --border: 180 20% 13%;
+    --border-medium: 180 15% 18%;
+    --border-dark: 180 12% 24%;
+    --input: 180 20% 11%;
+    --ring: 76 100% 50%;               /* pear */
 
     /* Score — dark surfaces instead of pale washes */
     --score-green-light: 160 30% 10%;
@@ -226,24 +231,24 @@
     --shadow-md: 0 4px 12px -2px hsl(20 4% 2% / 0.55);
     --shadow-lg: 0 12px 28px -4px hsl(20 4% 2% / 0.60);
     --shadow-xl: 0 22px 40px -8px hsl(20 4% 2% / 0.65);
-    --shadow-colored: 0 10px 30px -6px hsl(21 52% 55% / 0.16);
+    --shadow-colored: 0 10px 30px -6px hsl(76 100% 50% / 0.15);
 
-    --sidebar-background: 0 0% 5%;
-    --sidebar-foreground: 0 0% 93%;
-    --sidebar-primary: 14 85% 52%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 11%;
-    --sidebar-accent-foreground: 0 0% 93%;
-    --sidebar-border: 0 0% 14%;
-    --sidebar-ring: 14 85% 52%;
+    --sidebar-background: 180 50% 4%;
+    --sidebar-foreground: 76 14% 91%;
+    --sidebar-primary: 76 100% 50%;
+    --sidebar-primary-foreground: 180 55% 5%;
+    --sidebar-accent: 180 30% 8%;
+    --sidebar-accent-foreground: 76 14% 91%;
+    --sidebar-border: 180 25% 9%;
+    --sidebar-ring: 76 100% 50%;
 
-    --landing-contrast-bg: 20 3% 10%;
-    --landing-contrast-fg: 37 20% 93%;
-    --landing-contrast-muted: 20 3% 50%;
-    --landing-contrast-subtle: 20 3% 62%;
-    --landing-contrast-border: 20 3% 18%;
-    --landing-contrast-surface: 20 3% 12%;
-    --landing-contrast-surface-elevated: 20 3% 15%;
+    --landing-contrast-bg: 180 55% 5%;
+    --landing-contrast-fg: 76 14% 91%;
+    --landing-contrast-muted: 74 6% 57%;
+    --landing-contrast-subtle: 74 6% 68%;
+    --landing-contrast-border: 180 25% 13%;
+    --landing-contrast-surface: 180 35% 7%;
+    --landing-contrast-surface-elevated: 180 25% 10%;
   }
 }
 
