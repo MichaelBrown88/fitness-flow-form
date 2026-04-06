@@ -112,7 +112,7 @@ export const ThemeManager: React.FC<{ children: React.ReactNode }> = ({ children
       : `${hue} ${sat} 94%`;
     const darkHsl = isDark
       ? `${hue} ${Math.min(65, parseInt(fromHsl[1], 10) + 10)}% 62%`
-      : `${hue} ${fromHsl[1]} 51%`;
+      : `${hue} ${Math.min(parseInt(fromHsl[1], 10), 75)}% 22%`; // deep for text-on-light legibility
     
     root.style.setProperty('--gradient-light', lightHsl);
     root.style.setProperty('--gradient-medium', mediumHsl);
