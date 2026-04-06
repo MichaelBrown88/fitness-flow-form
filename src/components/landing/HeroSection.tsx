@@ -49,9 +49,9 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
         className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
         aria-hidden
       >
-        <div className="absolute left-1/2 top-0 h-[880px] w-[880px] -translate-x-1/2 rounded-full bg-muted/20 blur-[100px] motion-safe:animate-blob dark:bg-primary/8" />
-        <div className="absolute left-0 top-1/2 h-[720px] w-[720px] rounded-full bg-gradient-light/30 blur-[100px] motion-safe:animate-blob animation-delay-2000 dark:bg-gradient-light/15" />
-        <div className="absolute bottom-0 right-0 h-[640px] w-[640px] rounded-full bg-foreground/6 blur-[100px] motion-safe:animate-blob animation-delay-4000 dark:bg-background-tertiary/40" />
+        <div className="absolute left-1/2 top-0 h-[880px] w-[880px] -translate-x-1/2 rounded-full bg-muted/25 blur-[100px] motion-safe:animate-blob dark:bg-muted/8" />
+        <div className="absolute left-0 top-1/2 h-[720px] w-[720px] rounded-full bg-muted/15 blur-[100px] motion-safe:animate-blob animation-delay-2000 dark:bg-background-tertiary/20" />
+        <div className="absolute bottom-0 right-0 h-[640px] w-[640px] rounded-full bg-foreground/5 blur-[100px] motion-safe:animate-blob animation-delay-4000 dark:bg-background-tertiary/40" />
       </div>
 
       <div className="max-w-6xl mx-auto w-full relative z-10">
@@ -171,7 +171,7 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2 rounded-full bg-card px-3 py-1.5 shadow-sm dark:bg-background-secondary sm:px-4 sm:py-2">
-                  <div className="h-2 w-2 rounded-full bg-primary sm:h-2.5 sm:w-2.5" />
+                  <div className="h-2 w-2 rounded-full bg-score-green sm:h-2.5 sm:w-2.5" />
                   <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-foreground sm:text-xs">
                     Active
                   </span>
@@ -224,8 +224,8 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
 
               {/* Metrics: two wide pills below lg only */}
               <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:hidden">
-                <div className="flex items-center gap-3 rounded-xl border border-gradient-medium/40 bg-gradient-light/50 p-3 dark:border-primary/25 dark:bg-primary/10 sm:gap-4 sm:p-4">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-gradient-dark dark:bg-primary/25 dark:text-primary sm:h-11 sm:w-11">
+                <div className="flex items-center gap-3 rounded-xl border border-border/80 bg-muted/60 p-3 dark:border-border dark:bg-background-tertiary/60 sm:gap-4 sm:p-4">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-foreground/70 dark:bg-background-secondary dark:text-foreground/60 sm:h-11 sm:w-11">
                     <Scale className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
                   <div>
@@ -238,7 +238,7 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
                   </div>
                 </div>
                 <div className="flex items-center gap-3 rounded-xl border border-border/90 bg-muted/80 p-3 dark:border-border dark:bg-background-tertiary/80 sm:gap-4 sm:p-4">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-gradient-dark dark:bg-primary/25 dark:text-primary sm:h-11 sm:w-11">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-foreground/70 dark:bg-background-secondary dark:text-foreground/60 sm:h-11 sm:w-11">
                     <Zap className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
                   <div>
@@ -259,7 +259,7 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
               style={{ animationDelay: "0.4s" }}
             >
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/12 text-gradient-dark dark:bg-primary/20 dark:text-primary sm:h-12 sm:w-12">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground/70 dark:bg-background-secondary dark:text-foreground/60 sm:h-12 sm:w-12">
                   <Sparkles className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden />
                 </div>
                 <div className="text-left">
@@ -275,7 +275,7 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
 
             <div className="absolute -right-8 top-[5.25rem] hidden rounded-xl border border-border/90 bg-card/95 p-3 shadow-md motion-safe:animate-float dark:border-border dark:bg-card/95 dark:shadow-lg dark:shadow-black/30 sm:-right-12 sm:top-[6.75rem] sm:p-4 lg:-right-14 md:block">
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary/12 text-gradient-dark dark:bg-primary/20 dark:text-primary sm:h-12 sm:w-12">
+                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-muted text-foreground/70 dark:bg-background-secondary dark:text-foreground/60 sm:h-12 sm:w-12">
                   <ScanLine className="h-5 w-5 sm:h-6 sm:w-6" />
                 </div>
                 <div>
@@ -287,7 +287,7 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
                   </p>
                 </div>
                 <Check
-                  className="ml-1 shrink-0 text-gradient-dark dark:text-primary sm:ml-2"
+                  className="ml-1 shrink-0 text-score-green dark:text-score-green sm:ml-2"
                   size={18}
                   strokeWidth={3}
                 />
@@ -322,7 +322,7 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
               style={{ animationDelay: "1.4s" }}
             >
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/12 text-gradient-dark dark:bg-primary/20 dark:text-primary sm:h-11 sm:w-11">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground/70 dark:bg-background-secondary dark:text-foreground/60 sm:h-11 sm:w-11">
                   <FileCheck className="h-5 w-5 sm:h-[22px] sm:w-[22px]" aria-hidden />
                 </div>
                 <div>

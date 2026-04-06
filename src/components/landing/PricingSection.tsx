@@ -16,7 +16,7 @@ export function PricingSection({ children }: PricingSectionProps) {
       id="pricing"
       className="relative overflow-hidden bg-background px-6 py-20 sm:py-28"
     >
-      <div className="absolute left-1/2 top-1/2 -z-10 h-full w-full max-w-5xl -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-muted/50 via-gradient-light/25 to-muted/50 blur-3xl dark:from-background-tertiary/40 dark:via-primary/8 dark:to-background-tertiary/40" />
+      <div className="absolute left-1/2 top-1/2 -z-10 h-full w-full max-w-5xl -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-muted/50 via-muted/20 to-muted/50 blur-3xl dark:from-background-tertiary/40 dark:via-background-tertiary/20 dark:to-background-tertiary/40" />
 
       <div className="max-w-7xl mx-auto">
         <div ref={headerRef}>
