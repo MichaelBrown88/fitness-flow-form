@@ -43,7 +43,7 @@
     --gradient-to-hex: #a8e600;
     --gradient-light: 76 80% 92%;
     --gradient-medium: 76 70% 84%;
-    --gradient-dark: 76 100% 30%;          /* dark lime for text-on-light */
+    --gradient-dark: 76 70% 22%;           /* deep olive-green for text-on-light — legible on ceiling white */
 
     --primary: var(--gradient-from);
     --primary-foreground: 180 55% 5%;      /* rich black on pear */

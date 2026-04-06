@@ -30,7 +30,7 @@ const colorClasses: Record<string, string> = {
   slate:
     'border-border bg-muted text-foreground dark:border-border dark:bg-card-elevated dark:text-foreground',
   volt:
-    'border-gradient-medium/50 bg-gradient-light/90 text-on-brand-tint dark:border-primary/35 dark:bg-primary/15',
+    'border-border bg-muted text-foreground dark:border-border dark:bg-card-elevated dark:text-foreground',
 };
 
 export function BuiltByExperts() {
@@ -39,7 +39,7 @@ export function BuiltByExperts() {
       {/* Background decoration */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
         <div className="absolute left-[-10%] top-[30%] h-96 w-96 rounded-full bg-muted/20 blur-3xl" />
-        <div className="absolute bottom-[20%] right-[-10%] h-96 w-96 rounded-full bg-gradient-light/25 blur-3xl" />
+        <div className="absolute bottom-[20%] right-[-10%] h-96 w-96 rounded-full bg-muted/15 blur-3xl" />
       </div>
 
       <div className="max-w-7xl mx-auto relative z-10">

@@ -11,108 +11,75 @@ const HERO_RADAR_PILLAR_ORDER: readonly ScoringPillarId[] = [
   "lifestyle",
 ] as const;
 
-const HERO_RADAR_PILLAR_META: Record<
-  ScoringPillarId,
-  {
-    Icon: LucideIcon;
-    value: string;
-    ring: string;
-    soft: string;
-    label: string;
-    border: string;
-  }
-> = {
-  bodyComp: {
-    Icon: Scale,
-    value: "18.5% BF",
-    ring: "bg-primary/15 text-on-brand-tint dark:bg-primary/25",
-    soft: "bg-card/95",
-    label: "text-foreground",
-    border: "border-border/90 dark:border-border",
-  },
-  cardio: {
-    Icon: Heart,
-    value: "72/100",
-    ring: "bg-primary/15 text-on-brand-tint dark:bg-primary/25",
-    soft: "bg-card/95",
-    label: "text-foreground",
-    border: "border-border/90 dark:border-border",
-  },
-  strength: {
-    Icon: Dumbbell,
-    value: "80/100",
-    ring: "bg-primary/15 text-on-brand-tint dark:bg-primary/25",
-    soft: "bg-card/95",
-    label: "text-foreground",
-    border: "border-border/90 dark:border-border",
-  },
-  movementQuality: {
-    Icon: Zap,
-    value: "85/100",
-    ring: "bg-primary/15 text-on-brand-tint dark:bg-primary/25",
-    soft: "bg-card/95",
-    label: "text-foreground",
-    border: "border-border/90 dark:border-border",
-  },
-  lifestyle: {
-    Icon: Moon,
-    value: "76/100",
-    ring: "bg-primary/15 text-on-brand-tint dark:bg-primary/25",
-    soft: "bg-card/95",
-    label: "text-foreground",
-    border: "border-border/90 dark:border-border",
-  },
+interface PillarMeta {
+  Icon: LucideIcon;
+  value: string;
+  /** Text alignment relative to the anchor point */
+  align: "center" | "right" | "left";
+}
+
+const HERO_RADAR_PILLAR_META: Record<ScoringPillarId, PillarMeta> = {
+  bodyComp:        { Icon: Scale,    value: "18.5% BF", align: "center" },
+  cardio:          { Icon: Heart,    value: "72/100",   align: "right"  },
+  strength:        { Icon: Dumbbell, value: "80/100",   align: "right"  },
+  movementQuality: { Icon: Zap,      value: "85/100",   align: "left"   },
+  lifestyle:       { Icon: Moon,     value: "76/100",   align: "left"   },
 };
 
-/** Matches HeroSection radar `lg:inset-[12%]` — map viewBox 0–100 to outer % */
-const INSET_PCT = 12;
-const INNER_PCT = 100 - 2 * INSET_PCT;
+/**
+ * Radar chart lives in `absolute inset-[12%]` of the parent square.
+ * SVG viewBox is 0–100 within that inset.
+ * We map each vertex to the outer-square percentage and push the label
+ * slightly further out from the centroid so it sits just outside the point.
+ */
+const INSET = 0.12;       // 12% inset on each side
+const INNER = 1 - 2 * INSET; // 0.76
 
-function mapVertex(vx: number, vy: number): { x: number; y: number } {
-  return {
-    x: INSET_PCT + (INNER_PCT * vx) / 100,
-    y: INSET_PCT + (INNER_PCT * vy) / 100,
-  };
+/** SVG viewBox vertex → outer-square % (0–100) */
+function toOuter(svgX: number, svgY: number): [number, number] {
+  return [
+    (INSET + (INNER * svgX) / 100) * 100,
+    (INSET + (INNER * svgY) / 100) * 100,
+  ];
 }
 
-const CHART_CENTROID = mapVertex(50, 49);
+const CENTROID: [number, number] = toOuter(50, 49);
 
-/** Lower-right "perfect" anchor (matches previous tuned strength card). */
-const RADIAL_REF = { x: 89, y: 93 };
-
-const RADIAL_DISTANCE = Math.hypot(
-  RADIAL_REF.x - CHART_CENTROID.x,
-  RADIAL_REF.y - CHART_CENTROID.y,
-);
-
-function cardCenterPct(vx: number, vy: number): { leftPct: number; topPct: number } {
-  const v = mapVertex(vx, vy);
-  const dx = v.x - CHART_CENTROID.x;
-  const dy = v.y - CHART_CENTROID.y;
+/** Push each vertex outward by `push` percentage points from the centroid */
+function labelPos(svgX: number, svgY: number, push: number): [number, number] {
+  const [ox, oy] = toOuter(svgX, svgY);
+  const dx = ox - CENTROID[0];
+  const dy = oy - CENTROID[1];
   const len = Math.hypot(dx, dy);
-  return {
-    leftPct: CHART_CENTROID.x + (RADIAL_DISTANCE * dx) / len,
-    topPct: CHART_CENTROID.y + (RADIAL_DISTANCE * dy) / len,
-  };
+  return [
+    ox + (dx / len) * push,
+    oy + (dy / len) * push,
+  ];
 }
 
-const HERO_RADAR_PILLAR_POSITIONS_PCT: readonly [
-  { leftPct: number; topPct: number },
-  { leftPct: number; topPct: number },
-  { leftPct: number; topPct: number },
-  { leftPct: number; topPct: number },
-  { leftPct: number; topPct: number },
-] = [
-  cardCenterPct(50, 15),
-  cardCenterPct(85, 35),
-  cardCenterPct(75, 80),
-  cardCenterPct(25, 80),
-  cardCenterPct(15, 35),
+// Vertex push distance — how far beyond the vertex point to place the label
+const PUSH = 9;
+
+const POSITIONS: [number, number][] = [
+  labelPos(50, 15,  PUSH),  // top — bodyComp
+  labelPos(85, 35,  PUSH),  // right — cardio
+  labelPos(75, 80,  PUSH),  // bottom-right — strength
+  labelPos(25, 80,  PUSH),  // bottom-left — movementQuality
+  labelPos(15, 35,  PUSH),  // left — lifestyle
+];
+
+/** transform-origin for each label so it expands away from the point */
+const TRANSFORM: string[] = [
+  "translate(-50%, -100%)",   // top: sit above the point
+  "translate(0%, -50%)",      // right: sit to the right
+  "translate(0%, 0%)",        // bottom-right: expand down-right
+  "translate(-100%, 0%)",     // bottom-left: expand down-left
+  "translate(-100%, -50%)",   // left: sit to the left
 ];
 
 /**
- * Five scoring pillars on a common circle from chart centroid (same radius as strength/movement).
- * lg+ only; parent is square `relative` with inset chart.
+ * Compact inline label anchored near each radar vertex.
+ * Shown on lg+ only; parent is a square `relative` wrapper.
  */
 export function HeroRadarPillarsAround() {
   return (
@@ -120,30 +87,33 @@ export function HeroRadarPillarsAround() {
       {HERO_RADAR_PILLAR_ORDER.map((id, i) => {
         const meta = HERO_RADAR_PILLAR_META[id];
         const Icon = meta.Icon;
-        const { leftPct, topPct } = HERO_RADAR_PILLAR_POSITIONS_PCT[i];
+        const [lx, ly] = POSITIONS[i];
+        const transform = TRANSFORM[i];
+
         return (
           <div
             key={id}
-            className={`pointer-events-none absolute z-20 hidden w-[4.5rem] flex-col items-center gap-1 rounded-lg border px-1 py-2 text-center shadow-sm backdrop-blur-sm lg:flex xl:w-[5.25rem] xl:gap-1.5 xl:rounded-xl xl:px-1.5 xl:py-2.5 ${meta.border} ${meta.soft}`}
+            className="pointer-events-none absolute z-20 hidden lg:flex"
             style={{
-              left: `${leftPct}%`,
-              top: `${topPct}%`,
-              transform: "translate(-50%, -50%)",
+              left: `${lx}%`,
+              top: `${ly}%`,
+              transform,
             }}
           >
-            <div
-              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full xl:h-8 xl:w-8 ${meta.ring}`}
-            >
-              <Icon className="h-3.5 w-3.5 xl:h-4 xl:w-4" strokeWidth={2.25} aria-hidden />
+            {/* Compact label pill */}
+            <div className="flex items-center gap-1 rounded-full border border-border/70 bg-background/90 px-1.5 py-0.5 shadow-sm backdrop-blur-sm dark:border-border dark:bg-card/90 xl:px-2 xl:py-1">
+              <Icon
+                className="h-2.5 w-2.5 shrink-0 text-foreground/70 xl:h-3 xl:w-3"
+                strokeWidth={2.5}
+                aria-hidden
+              />
+              <span className="text-[8px] font-bold uppercase leading-none tracking-wide text-foreground/60 xl:text-[9px]">
+                {getPillarLabel(id, "short")}
+              </span>
+              <span className="text-[9px] font-black tabular-nums leading-none text-foreground xl:text-[10px]">
+                {meta.value}
+              </span>
             </div>
-            <p
-              className={`line-clamp-2 text-[8px] font-bold uppercase leading-tight tracking-wide xl:text-[9px] ${meta.label}`}
-            >
-              {getPillarLabel(id, "short")}
-            </p>
-            <p className="text-[10px] font-bold tabular-nums text-foreground xl:text-xs">
-              {meta.value}
-            </p>
           </div>
         );
       })}

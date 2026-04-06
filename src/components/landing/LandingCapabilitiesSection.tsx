@@ -24,7 +24,7 @@ export function LandingCapabilitiesSection() {
         aria-hidden
       >
         <div className="absolute right-[-6%] top-[18%] h-96 w-96 rounded-full bg-muted/22 blur-3xl dark:bg-background-tertiary/30" />
-        <div className="absolute bottom-[12%] left-[-8%] h-96 w-96 rounded-full bg-gradient-light/30 blur-3xl dark:bg-background-tertiary/25" />
+        <div className="absolute bottom-[12%] left-[-8%] h-96 w-96 rounded-full bg-muted/15 blur-3xl dark:bg-background-tertiary/25" />
       </div>
 
       <div className="relative z-10 mx-auto max-w-7xl">
@@ -60,7 +60,7 @@ export function LandingCapabilitiesSection() {
           </p>
           <div className="flex flex-wrap gap-3">
             <div className="flex min-h-11 min-w-[44px] items-center gap-3 rounded-lg border border-border/90 bg-card/90 px-3.5 py-2 shadow-sm dark:border-border dark:bg-card/50">
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-gradient-from to-gradient-to text-[10px] font-bold text-primary-foreground">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-foreground text-[10px] font-bold text-background dark:bg-foreground/90">
                 {LANDING_COPY.capabilitiesHipaaBadgeAbbrev}
               </div>
               <span className="text-sm font-semibold text-foreground">
