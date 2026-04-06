@@ -521,13 +521,8 @@ export default function DashboardLayout() {
                 >
                   {showClientSearch && (
                     <TooltipProvider delayDuration={300}>
-                      <div
-                        className={cn(
-                          'w-full px-3 sm:max-w-xs sm:w-64 sm:px-4',
-                          'pt-3 sm:pt-4 mb-3 sm:mb-4',
-                        )}
-                      >
-                        <div className="relative">
+                      <div className="mx-auto w-full max-w-5xl px-3 pt-5 pb-2 sm:px-4 sm:pt-6">
+                        <div className="relative max-w-xs">
                           <Input
                             placeholder={
                               path.startsWith(ROUTES.DASHBOARD_TEAM)

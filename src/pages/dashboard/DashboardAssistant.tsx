@@ -36,10 +36,10 @@ function greetingHour(): string {
 type ChipDef = { label: string; onClick: () => void; Icon: LucideIcon };
 
 const QUICK_PILL_CLASS =
-  'inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-background px-3.5 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted/50 hover:border-border/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-card/80';
+  'inline-flex items-center gap-2 rounded-xl border border-border/60 bg-background px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 hover:border-border/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-card/80';
 
 const COMPOSER_SHELL =
-  'w-full rounded-2xl border border-border/70 bg-card px-3 py-2.5 shadow-sm dark:border-border dark:bg-card focus-within:outline-none';
+  'w-full rounded-2xl border border-border/70 bg-card px-5 py-4 shadow-sm dark:border-border dark:bg-card focus-within:outline-none';
 
 const SLASH_COMMANDS = [
   { cmd: '/today', desc: 'Daily brief — who needs attention right now' },
@@ -279,7 +279,7 @@ export default function DashboardAssistant() {
     disabled: assistant.sending,
     'aria-label': COACH_ASSISTANT_COPY.PLACEHOLDER,
     className: cn(
-      'min-h-[52px] max-h-36 w-full resize-none border-0 bg-transparent py-2 text-sm text-foreground',
+      'min-h-[72px] max-h-48 w-full resize-none border-0 bg-transparent py-2 text-base text-foreground',
       'placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0',
     ),
   };
@@ -344,7 +344,7 @@ export default function DashboardAssistant() {
             ))}
           </div>
         )}
-        <Textarea {...textareaProps} className={cn(textareaProps.className, 'min-h-[48px] px-0')} />
+        <Textarea {...textareaProps} className={cn(textareaProps.className, 'min-h-[68px] px-0')} />
         <div className="flex items-center justify-between pt-1.5">
           <div className="flex items-center gap-1.5">
             {inThread && (
@@ -396,13 +396,13 @@ export default function DashboardAssistant() {
       )}
     >
       {!hasMessages ? (
-        <div className="flex min-h-0 flex-1 flex-col justify-center px-4 py-8 sm:py-10">
-          <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-5">
-            <div className="space-y-1.5 text-center">
-              <p className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+        <div className="flex min-h-0 flex-1 flex-col justify-center px-6 py-10 sm:py-14">
+          <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-7">
+            <div className="space-y-2 text-center">
+              <p className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
                 {`${greetingHour()}, ${coachFirst}.`}
               </p>
-              <p className="text-sm text-muted-foreground">{COACH_ASSISTANT_COPY.EMPTY_TITLE}</p>
+              <p className="text-base text-muted-foreground">{COACH_ASSISTANT_COPY.EMPTY_TITLE}</p>
             </div>
 
             {composerBarEmpty}
