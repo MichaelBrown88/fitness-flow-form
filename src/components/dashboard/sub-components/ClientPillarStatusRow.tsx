@@ -75,7 +75,7 @@ export function ClientPillarStatusRow({ item, onStartAssessment }: ClientPillarS
 
       {/* Urgency label */}
       {urgency && (
-        <span className={`text-[10px] font-bold shrink-0 ${item.status === 'overdue' ? 'text-score-red-fg' : 'text-score-amber-fg'}`}>
+        <span className={`hidden sm:inline text-[10px] font-bold shrink-0 ${item.status === 'overdue' ? 'text-score-red-fg' : 'text-score-amber-fg'}`}>
           {urgency}
         </span>
       )}

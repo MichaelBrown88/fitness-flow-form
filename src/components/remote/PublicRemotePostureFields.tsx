@@ -8,7 +8,7 @@ import {
 } from '@/services/remoteAssessmentClient';
 import { Loader2 } from 'lucide-react';
 
-const VIEWS: RemotePostureView[] = ['front', 'back', 'side-left', 'side-right'];
+const VIEWS: RemotePostureView[] = ['front', 'side-left', 'back', 'side-right'];
 
 type PublicRemotePostureFieldsProps = {
   token: string;

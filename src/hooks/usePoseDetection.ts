@@ -2,7 +2,7 @@
  * Hook for MediaPipe pose detection and validation (Tasks Vision PoseLandmarker).
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, type MutableRefObject } from 'react';
 import { CONFIG } from '@/config';
 import { LandmarkResult } from '@/lib/ai/postureLandmarks';
 import { detectPoseFromImageSource, getPoseInstance } from '@/lib/ai/mediapipeSingleton';
@@ -28,6 +28,14 @@ interface UsePoseDetectionResult {
   isPoseReady: boolean;
 }
 
+/** Live metrics for Gemini distance injections (avg ankle Y − nose Y). */
+export type PoseUserScaleZone = 'absent' | 'too_close' | 'too_far' | 'perfect';
+
+export interface PoseLiveMetricsRef {
+  userScale: number | null;
+  zone: PoseUserScaleZone;
+}
+
 interface UsePoseDetectionOptions {
   mode: 'posture' | 'bodycomp';
   isAuthorized: boolean;
@@ -40,6 +48,15 @@ interface UsePoseDetectionOptions {
   suppressAudioFeedback?: boolean;
   /** Skip pose pipeline entirely (static empty validation). */
   disablePosePipeline?: boolean;
+  /**
+   * Updated every pose frame when the pipeline runs. Parent passes the same ref to
+   * `useGeminiFramingGuide` so Live sessions receive deterministic distance events.
+   */
+  poseLiveMetricsRef?: MutableRefObject<PoseLiveMetricsRef>;
+  /**
+   * After the first successful front capture, parent sets true — distance band and centering relax so small drift is ignored.
+   */
+  relaxDistanceGatingRef?: MutableRefObject<boolean>;
 }
 
 export function usePoseDetection({
@@ -52,6 +69,8 @@ export function usePoseDetection({
   webcamVideo,
   suppressAudioFeedback = false,
   disablePosePipeline = false,
+  poseLiveMetricsRef,
+  relaxDistanceGatingRef,
 }: UsePoseDetectionOptions): UsePoseDetectionResult {
   const [poseValidation, setPoseValidation] = useState<PoseValidation>({
     isReady: false,
@@ -70,6 +89,11 @@ export function usePoseDetection({
   const lastBrightnessWarningRef = useRef(0);
   const brightnessCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const rafRef = useRef<number | null>(null);
+  const relaxDistanceGatingHolderRef = useRef(relaxDistanceGatingRef);
+  useEffect(() => {
+    relaxDistanceGatingHolderRef.current = relaxDistanceGatingRef;
+  }, [relaxDistanceGatingRef]);
+
   const BRIGHTNESS_CHECK_INTERVAL_MS = 3000;
   const BRIGHTNESS_WARNING_COOLDOWN_MS = 15000;
   const MIN_BRIGHTNESS = 50;
@@ -91,6 +115,9 @@ export function usePoseDetection({
         setIsPoseReady(false);
         setCurrentLandmarks(null);
         currentLandmarksRef.current = null;
+        if (poseLiveMetricsRef) {
+          poseLiveMetricsRef.current = { userScale: null, zone: 'absent' };
+        }
         if (Math.random() < 0.05) {
           logger.debug('[POSE] No landmarks detected');
         }
@@ -110,12 +137,23 @@ export function usePoseDetection({
       const ankleR = landmarks[28];
       const nose = landmarks[0];
 
+      const visMin = CONFIG.COMPANION.POSE_THRESHOLDS.STRUCTURAL_ANCHOR_MIN_VISIBILITY;
       const missingParts: string[] = [];
-      if ((shoulderL.visibility || 0) < 0.5 || (shoulderR.visibility || 0) < 0.5) missingParts.push('Shoulders');
-      if ((ankleL.visibility || 0) < 0.5 || (ankleR.visibility || 0) < 0.5) missingParts.push('Feet');
-      if ((nose.visibility || 0) < 0.5) missingParts.push('Head');
+      if ((shoulderL.visibility || 0) < visMin || (shoulderR.visibility || 0) < visMin) {
+        missingParts.push('Shoulders');
+      }
+      if ((hipL.visibility || 0) < visMin || (hipR.visibility || 0) < visMin) {
+        missingParts.push('Hips');
+      }
+      if ((ankleL.visibility || 0) < visMin || (ankleR.visibility || 0) < visMin) {
+        missingParts.push('Feet');
+      }
+      if ((nose.visibility || 0) < visMin) {
+        missingParts.push('Head');
+      }
 
-      const bodyHeight = Math.max(ankleL.y, ankleR.y) - nose.y;
+      /** Normalized vertical fill: avg(ankle Y) − nose Y — clinical distance band in CONFIG. */
+      const userScale = (ankleL.y + ankleR.y) / 2 - nose.y;
       const bodyCenter = (shoulderL.x + shoulderR.x + hipL.x + hipR.x) / 4;
 
       const view = views[viewIdxRef.current]?.id || 'front';
@@ -156,9 +194,32 @@ export function usePoseDetection({
       const outOfFrame =
         headOut || leftShoulderOut || rightShoulderOut || leftHipOut || rightHipOut || leftAnkleOut || rightAnkleOut;
 
-      const tooClose = bodyHeight > CONFIG.COMPANION.POSE_THRESHOLDS.TOO_CLOSE;
-      const tooFar = bodyHeight < CONFIG.COMPANION.POSE_THRESHOLDS.TOO_FAR;
-      const notCentered = Math.abs(bodyCenter - 0.5) > CONFIG.COMPANION.POSE_THRESHOLDS.NOT_CENTERED;
+      const scaleMin = CONFIG.COMPANION.POSE_THRESHOLDS.USER_SCALE_OPTIMAL_MIN;
+      const scaleMax = CONFIG.COMPANION.POSE_THRESHOLDS.USER_SCALE_OPTIMAL_MAX;
+      const distanceGatingOk = missingParts.length === 0;
+      const relaxDistance = relaxDistanceGatingHolderRef.current?.current === true;
+      const tooCloseRaw = distanceGatingOk && userScale > scaleMax;
+      const tooFarRaw = distanceGatingOk && userScale < scaleMin;
+      const tooClose = relaxDistance ? false : tooCloseRaw;
+      const tooFar = relaxDistance ? false : tooFarRaw;
+
+      if (poseLiveMetricsRef) {
+        if (!distanceGatingOk) {
+          poseLiveMetricsRef.current = { userScale: null, zone: 'absent' };
+        } else if (relaxDistance) {
+          poseLiveMetricsRef.current = { userScale, zone: 'perfect' };
+        } else if (tooCloseRaw) {
+          poseLiveMetricsRef.current = { userScale, zone: 'too_close' };
+        } else if (tooFarRaw) {
+          poseLiveMetricsRef.current = { userScale, zone: 'too_far' };
+        } else {
+          poseLiveMetricsRef.current = { userScale, zone: 'perfect' };
+        }
+      }
+      const isSideView = view === 'side-left' || view === 'side-right';
+      const notCentered = isSideView
+        ? false
+        : Math.abs(bodyCenter - 0.5) > CONFIG.COMPANION.POSE_THRESHOLDS.NOT_CENTERED;
 
       let message = 'Perfect, hold still';
       let shortMessage = 'READY';
@@ -207,6 +268,7 @@ export function usePoseDetection({
         logger.debug('[POSE] Validation:', {
           isReady,
           message,
+          userScale: distanceGatingOk ? userScale : null,
           tooClose,
           tooFar,
           notCentered,
@@ -227,7 +289,7 @@ export function usePoseDetection({
         lastAudioFeedbackRef.current = Date.now();
       }
     },
-    [isWaitingForPosition, onAudioFeedback, suppressAudioFeedback, views]
+    [isWaitingForPosition, onAudioFeedback, poseLiveMetricsRef, suppressAudioFeedback, views]
   );
 
   const onPoseResultsRef = useRef(onPoseResults);
@@ -248,6 +310,9 @@ export function usePoseDetection({
     const skipPose =
       !isAuthorized || !webcamVideo || (mode === 'posture' && disablePosePipeline);
     if (skipPose) {
+      if (poseLiveMetricsRef) {
+        poseLiveMetricsRef.current = { userScale: null, zone: 'absent' };
+      }
       if (rafRef.current != null) {
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
@@ -349,7 +414,7 @@ export function usePoseDetection({
         rafRef.current = null;
       }
     };
-  }, [mode, isAuthorized, webcamVideo, disablePosePipeline, minIntervalMs]);
+  }, [mode, isAuthorized, webcamVideo, disablePosePipeline, minIntervalMs, poseLiveMetricsRef]);
 
   return {
     poseValidation,

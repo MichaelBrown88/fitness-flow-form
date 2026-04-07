@@ -55,6 +55,8 @@ import {
 } from '@/components/ui/tooltip';
 import { DASHBOARD_SHELL_COPY } from '@/constants/dashboardShellCopy';
 import { cn } from '@/lib/utils';
+import { useOrgHealthCheck } from '@/hooks/useOrgHealthCheck';
+import { OrgSetupWizard } from '@/components/onboarding/OrgSetupWizard';
 
 export type DashboardOutletContext = ReturnType<typeof useDashboardData> & {
   tasks: CoachTask[];
@@ -83,6 +85,7 @@ export default function DashboardLayout() {
   const location = useLocation();
   const { toast } = useToast();
   const { user, effectiveOrgId, orgSettings, profile } = useAuth();
+  const { loading: healthLoading, allHealthy } = useOrgHealthCheck();
   const dashboardClientQueryHandledRef = useRef<string>('');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [assistantSidebarCollapsed, setAssistantSidebarCollapsed] = useState(() => {
@@ -355,6 +358,12 @@ export default function DashboardLayout() {
     showTeamTab: dashboardData.showTeamTab,
   };
 
+  // Org health check: show catch-up wizard for legacy orgs missing required fields.
+  // Wait until both auth and orgSettings have loaded before deciding.
+  if (!healthLoading && !allHealthy) {
+    return <OrgSetupWizard onComplete={() => { /* AuthContext onSnapshot auto-updates after Firestore write */ }} />;
+  }
+
   return (
     <ErrorBoundary>
       <Seo
@@ -463,7 +472,7 @@ export default function DashboardLayout() {
               className={cn(
                 'flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden',
                 isWorkspaceShell
-                  ? 'px-0 pb-0 sm:px-2 lg:px-3'
+                  ? 'pt-2 sm:pt-3 px-0 pb-0 sm:px-2 lg:px-3'
                   : 'px-3 pb-20 sm:px-4 sm:pb-6 md:px-5 lg:px-6',
               )}
             >
@@ -521,7 +530,7 @@ export default function DashboardLayout() {
                 >
                   {showClientSearch && (
                     <TooltipProvider delayDuration={300}>
-                      <div className="mx-auto w-full max-w-5xl px-3 pt-5 pb-2 sm:px-4 sm:pt-6">
+                      <div className="mx-auto w-full max-w-5xl px-3 pt-6 pb-2 sm:px-4 sm:pt-12">
                         <div className="relative max-w-xs">
                           <Input
                             placeholder={
@@ -546,7 +555,7 @@ export default function DashboardLayout() {
                     </TooltipProvider>
                   )}
 
-                  <div className={cn('flex flex-col min-w-0', isAssistantTab ? 'flex-1 min-h-0' : 'flex-none')}>
+                  <div className={cn('flex flex-col min-w-0', isAssistantTab ? 'flex-1 min-h-0' : isWorkspaceShell ? 'flex-1' : 'flex-none')}>
                     <Outlet
                       context={
                         {

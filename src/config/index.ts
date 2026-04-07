@@ -6,6 +6,11 @@
  */
 
 export const CONFIG = {
+  /**
+   * Gemini Live voice framing for posture Companion / guided capture. Default off; set `VITE_ENABLE_GEMINI_LIVE=true` for device QA.
+   */
+  ENABLE_GEMINI_LIVE: import.meta.env.VITE_ENABLE_GEMINI_LIVE === 'true',
+
   // --- APP HOST & URLS ---
   APP: {
     HOST: import.meta.env.VITE_PUBLIC_APP_HOST || 
@@ -43,9 +48,10 @@ export const CONFIG = {
         'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task',
       TIMEOUT_MS: 15000,
       LIVE_POSE_TARGET_FPS: 7,
-      MIN_POSE_DETECTION_CONFIDENCE: 0.5,
-      MIN_POSE_PRESENCE_CONFIDENCE: 0.5,
-      MIN_TRACKING_CONFIDENCE: 0.5,
+      /** Stricter than MediaPipe defaults (0.5): reduce low-light / occlusion hallucinations for clinical posture. */
+      MIN_POSE_DETECTION_CONFIDENCE: 0.7,
+      MIN_POSE_PRESENCE_CONFIDENCE: 0.7,
+      MIN_TRACKING_CONFIDENCE: 0.75,
     },
     GEMINI: {
       MODEL_NAME: "gemini-2.5-flash", // General Vertex text (classification, etc.)
@@ -75,12 +81,36 @@ export const CONFIG = {
   },
 
   // --- POSTURE VIEWS ---
-  // Enforced sequence (all entry points): Front → Back → Side Left → Side Right
+  // Enforced sequence: Front → quarter turn right → left profile → quarter turn right → back → quarter turn right → right profile
   POSTURE_VIEWS: [
-    { id: 'front', label: 'FRONT', instr: 'Face the camera squarely, full body in frame', captureOrder: 0 },
-    { id: 'back', label: 'BACK', instr: 'Turn so your back faces the camera, full body visible', captureOrder: 1 },
-    { id: 'side-left', label: 'LEFT SIDE', instr: 'Turn so your left side faces the camera', captureOrder: 2 },
-    { id: 'side-right', label: 'RIGHT SIDE', instr: 'Turn so your right side faces the camera', captureOrder: 3 },
+    {
+      id: 'front',
+      label: 'FRONT',
+      instr:
+        'Face the camera. Position yourself so your body fills the guide box from head to toe — not tiny in the distance, not cropped.',
+      captureOrder: 0,
+    },
+    {
+      id: 'side-left',
+      label: 'LEFT SIDE',
+      instr:
+        'Slowly turn a quarter turn to your right from the front until your left side faces the camera. Stay in profile; your body should fill the guide box.',
+      captureOrder: 1,
+    },
+    {
+      id: 'back',
+      label: 'BACK',
+      instr:
+        'Turn another quarter turn to your right so your back faces the camera. Full body fills the guide box.',
+      captureOrder: 2,
+    },
+    {
+      id: 'side-right',
+      label: 'RIGHT SIDE',
+      instr:
+        'One more quarter turn to your right so your right side faces the camera. Profile view; body fills the guide box.',
+      captureOrder: 3,
+    },
   ] as const,
 
   // --- COMPANION APP SETTINGS ---
@@ -90,11 +120,18 @@ export const CONFIG = {
       SPEECH_RATE: 0.92,
     },
     POSE_THRESHOLDS: {
-      TOO_CLOSE: 0.85, // Body height as % of frame
-      TOO_FAR: 0.4,    // Body height as % of frame
-      NOT_CENTERED: 0.15, // Max X deviation from center
-      /** Landmark visibility gate for Companion capture retries & processing quality. */
-      minConfidence: 0.6,
+      /**
+       * Full-body scale: average ankle Y minus nose Y (MediaPipe normalized 0–1).
+       * Target band ~70–80% of frame height for clinical repeatability.
+       */
+      USER_SCALE_OPTIMAL_MIN: 0.6,
+      USER_SCALE_OPTIMAL_MAX: 0.88,
+      NOT_CENTERED: 0.15, // Max X deviation from center (ignored for side views in live pose gate)
+      /**
+       * Per-landmark visibility floor for structural anchors (shoulders, hips, ankles).
+       * Used with live preview, still capture gate, and posture processing — not a global average.
+       */
+      STRUCTURAL_ANCHOR_MIN_VISIBILITY: 0.7,
     },
     ORIENTATION: {
       MAX_DEVIATION_DEG: 4, // Max degrees from vertical
@@ -118,6 +155,16 @@ export const CONFIG = {
       NOT_CONNECTED_USE_TRY_AGAIN: 'Voice guide is not connected. Tap Try again above before starting the scan.',
       LANDMARK_REJECT_SPEAK:
         "I couldn't quite see your full body that time. Step back a little so I can see you head to toe, then hold still and we'll try again.",
+      /**
+       * Shown on Companion posture flow — SOP for parallax: camera height + vertical matter more than code can infer.
+       */
+      POSTURE_CAMERA_HEIGHT_SOP:
+        'Place the camera at about waist height, perfectly vertical in portrait — not overhead or on the floor — for repeatable posture scans.',
+      /** Shown above “Enable camera” on posture flows (short line). */
+      PERMISSION_WAIST_HEIGHT_HINT:
+        'Set the phone at about waist height and vertical before you continue — it makes framing much easier.',
+      /** Legacy TTS between views when Gemini Live is off. */
+      POSTURE_QUARTER_TURN_RIGHT: 'Nice one. Slowly turn a quarter turn to your right.',
     },
     CAPTURE: {
       COUNTDOWN_SEC: 5,

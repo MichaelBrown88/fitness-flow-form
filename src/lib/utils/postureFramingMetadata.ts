@@ -23,17 +23,17 @@ export function computePostureFramingMetadata(
   const rightAnkle = raw[28];
   if (!nose || !leftShoulder || !rightShoulder || !leftAnkle || !rightAnkle) return null;
 
-  const ankleY = Math.max(leftAnkle.y, rightAnkle.y);
+  const ankleYAvg = (leftAnkle.y + rightAnkle.y) / 2;
   const shoulderY = (leftShoulder.y + rightShoulder.y) / 2;
-  const bodyHeightNorm = Math.max(0.001, ankleY - nose.y);
-  const shoulderToFootNorm = Math.max(0.001, ankleY - shoulderY);
+  const bodyHeightNorm = Math.max(0.001, ankleYAvg - nose.y);
+  const shoulderToFootNorm = Math.max(0.001, ankleYAvg - shoulderY);
 
   const bodyFillPercent = bodyHeightNorm * 100;
   const shoulderToFootPixelHeight = shoulderToFootNorm * imageHeightPx;
 
-  const { TOO_FAR, TOO_CLOSE } = CONFIG.COMPANION.POSE_THRESHOLDS;
-  const ideal = (TOO_FAR + TOO_CLOSE) / 2;
-  const halfSpan = Math.max(0.05, (TOO_CLOSE - TOO_FAR) / 2);
+  const { USER_SCALE_OPTIMAL_MIN, USER_SCALE_OPTIMAL_MAX } = CONFIG.COMPANION.POSE_THRESHOLDS;
+  const ideal = (USER_SCALE_OPTIMAL_MIN + USER_SCALE_OPTIMAL_MAX) / 2;
+  const halfSpan = Math.max(0.05, (USER_SCALE_OPTIMAL_MAX - USER_SCALE_OPTIMAL_MIN) / 2);
   const distanceScore = Math.max(0, Math.min(1, 1 - Math.abs(bodyHeightNorm - ideal) / halfSpan));
 
   return { bodyFillPercent, distanceScore, shoulderToFootPixelHeight };

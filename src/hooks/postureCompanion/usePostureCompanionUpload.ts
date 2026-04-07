@@ -158,7 +158,7 @@ export function usePostureCompanionUpload({
 
         if (Object.keys(fileMap).length === 0) {
           throw new Error(
-            'Could not match uploaded files to views. Please name files with "front", "back", "side-left", or "side-right" in the filename, or upload them in order: Front, Back, Side-Left, Side-Right.',
+            'Could not match uploaded files to views. Please name files with "front", "side-left", "back", or "side-right" in the filename, or upload them in order: Front, Left side, Back, Right side.',
           );
         }
 

@@ -6,7 +6,7 @@
  * fallback for older models (2.5) that don't support tool use in Live.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { getFirebaseApp } from '@/services/firebase';
 import {
   getAI,
@@ -26,8 +26,16 @@ import {
   geminiInjectionPhoneNotLevel,
   geminiInjectionPhoneStablePortrait,
   geminiInjectionSessionConnected,
+  geminiInjectionUserDistancePerfect,
+  geminiInjectionUserTooClose,
+  geminiInjectionUserTooFar,
 } from '@/constants/geminiFramingLiveInjections';
 import { logger } from '@/lib/utils/logger';
+import {
+  getOrCreatePrimedAudioContext,
+  type AudioContextRef,
+} from '@/lib/utils/primeWebAudioContextOnUserGesture';
+import type { PoseLiveMetricsRef, PoseUserScaleZone } from '@/hooks/usePoseDetection';
 
 const OUTPUT_PCM_SAMPLE_RATE_HZ = 24000;
 const CAPTURE_FN_NAME = 'capture_now';
@@ -111,6 +119,19 @@ export interface UseGeminiFramingGuideOptions {
   onShotTrigger: (viewIndex: number) => void | Promise<void>;
   /** Fired once when the first Gemini TTS audio chunk is queued (for UI that fades pre-voice hints). */
   onVoiceGuideAudioStarted?: () => void;
+  /**
+   * Optional ref for the AudioContext used to play Live PCM. When set, the parent should assign it
+   * synchronously from the permission tap via `primeWebAudioContextRef` before any await so Safari keeps
+   * output unblocked; the hook uses this same context for all playback.
+   */
+  playbackAudioContextRef?: AudioContextRef;
+  /**
+   * Filled by `usePoseDetection` each frame. When set, distance [SYSTEM_EVENT: …] lines are sent on zone
+   * transitions (avg ankle Y − nose Y vs CONFIG USER_SCALE_*).
+   */
+  poseLiveMetricsRef?: MutableRefObject<PoseLiveMetricsRef>;
+  /** When false, skip USER_TOO_* / PERFECT injections (e.g. after first front capture). */
+  allowDistanceInjectionsRef?: MutableRefObject<boolean>;
 }
 
 export type GeminiLiveConnectionStatus = 'idle' | 'connecting' | 'open' | 'error';
@@ -141,7 +162,12 @@ export function useGeminiFramingGuide({
   onWarmupComplete,
   onShotTrigger,
   onVoiceGuideAudioStarted,
+  playbackAudioContextRef,
+  poseLiveMetricsRef,
+  allowDistanceInjectionsRef,
 }: UseGeminiFramingGuideOptions): UseGeminiFramingGuideResult {
+  const internalPlaybackCtxRef = useRef<AudioContext | null>(null);
+  const playbackCtxRef = playbackAudioContextRef ?? internalPlaybackCtxRef;
   const sessionRef = useRef<LiveSession | null>(null);
   const framesPausedRef = useRef(false);
   const warmupDoneRef = useRef(false);
@@ -157,8 +183,8 @@ export function useGeminiFramingGuide({
   const onShotTriggerRef = useRef(onShotTrigger);
   const onVoiceGuideAudioStartedRef = useRef(onVoiceGuideAudioStarted);
   const voiceGuideAudioStartedRef = useRef(false);
-  const audioCtxRef = useRef<AudioContext | null>(null);
   const nextPlayTimeRef = useRef(0);
+  const wasLiveActiveWhenHiddenRef = useRef(false);
   const offscreenCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const waitingPoseNudgeSentRef = useRef(false);
   const prevFlowStateForNudgeRef = useRef(flowState);
@@ -168,6 +194,17 @@ export function useGeminiFramingGuide({
   const liveSessionStartInFlightRef = useRef(false);
   /** When armShot() armed a view; used for transcription-timeout fallback capture. */
   const armedAtMsRef = useRef(0);
+  type UserScaleInjectCursor = PoseUserScaleZone | 'uninitialized';
+  const lastUserScaleInjectedZoneRef = useRef<UserScaleInjectCursor>('uninitialized');
+  const lastUserScaleInjectAtRef = useRef(0);
+  const poseLiveMetricsRefHolder = useRef(poseLiveMetricsRef);
+  useEffect(() => {
+    poseLiveMetricsRefHolder.current = poseLiveMetricsRef;
+  }, [poseLiveMetricsRef]);
+  const allowDistanceInjectionsHolderRef = useRef(allowDistanceInjectionsRef);
+  useEffect(() => {
+    allowDistanceInjectionsHolderRef.current = allowDistanceInjectionsRef;
+  }, [allowDistanceInjectionsRef]);
   useEffect(() => {
     mayUseLiveSessionRef.current = mayUseLiveSession;
   }, [mayUseLiveSession]);
@@ -244,8 +281,9 @@ export function useGeminiFramingGuide({
   }, []);
 
   const queuePcmAudio = useCallback((base64: string) => {
-    const ctx = audioCtxRef.current;
-    if (!ctx) return;
+    const ctx = playbackCtxRef.current;
+    if (!ctx || ctx.state === 'closed') return;
+    logger.debug('[GEMINI_LIVE] queuePcmAudio state:', ctx.state);
     if (!voiceGuideAudioStartedRef.current) {
       voiceGuideAudioStartedRef.current = true;
       onVoiceGuideAudioStartedRef.current?.();
@@ -261,7 +299,7 @@ export function useGeminiFramingGuide({
     if (startAt < now) startAt = now;
     src.start(startAt);
     nextPlayTimeRef.current = startAt + buffer.duration;
-  }, []);
+  }, [playbackCtxRef]);
 
   const fireCaptureTrigger = useCallback(() => {
     const idx = armedViewRef.current;
@@ -334,6 +372,20 @@ export function useGeminiFramingGuide({
               | { parts?: Array<{ inlineData?: { mimeType?: string; data?: string }; text?: string }> }
               | undefined,
           };
+
+          const previewParts = sc.modelTurn?.parts;
+          let hasAudio = false;
+          if (previewParts) {
+            for (const p of previewParts) {
+              const mime = p.inlineData?.mimeType ?? '';
+              const data = p.inlineData?.data;
+              if (mime.startsWith('audio/pcm') && data) {
+                hasAudio = true;
+                break;
+              }
+            }
+          }
+          logger.debug('[GEMINI_LIVE] Received chunk from model', { hasAudio });
 
           if (
             sc.turnComplete &&
@@ -420,6 +472,32 @@ export function useGeminiFramingGuide({
         void session.sendVideoRealtime({ mimeType: 'image/jpeg', data: base64 }).catch((err) => {
           logger.warn('[GEMINI_LIVE] sendVideoRealtime failed', 'GEMINI_LIVE', err);
         });
+
+        const liveRef = poseLiveMetricsRefHolder.current;
+        const allowDistance =
+          allowDistanceInjectionsHolderRef.current?.current !== false;
+        if (liveRef && allowDistance) {
+          const { zone } = liveRef.current;
+          if (zone === 'absent') {
+            lastUserScaleInjectedZoneRef.current = 'absent';
+          } else {
+            const lastZ = lastUserScaleInjectedZoneRef.current;
+            const now = Date.now();
+            if (zone !== lastZ && now - lastUserScaleInjectAtRef.current >= 1200) {
+              lastUserScaleInjectedZoneRef.current = zone;
+              lastUserScaleInjectAtRef.current = now;
+              const payload =
+                zone === 'too_close'
+                  ? geminiInjectionUserTooClose()
+                  : zone === 'too_far'
+                    ? geminiInjectionUserTooFar()
+                    : geminiInjectionUserDistancePerfect();
+              void session.sendTextRealtime(payload).catch((err) => {
+                logger.warn('[GEMINI_LIVE] user scale injection failed', 'GEMINI_LIVE', err);
+              });
+            }
+          }
+        }
       }, CONFIG.AI.GEMINI.LIVE_FRAME_INTERVAL_MS);
     },
     [clearFrameInterval]
@@ -429,6 +507,7 @@ export function useGeminiFramingGuide({
     framesPausedRef.current = true;
     armedAtMsRef.current = 0;
     armedViewRef.current = null;
+    lastUserScaleInjectedZoneRef.current = 'uninitialized';
     clearFrameInterval();
     const s = sessionRef.current;
     sessionRef.current = null;
@@ -522,7 +601,7 @@ export function useGeminiFramingGuide({
           });
         }
       } catch (e) {
-        logger.error('[GEMINI_LIVE] connect failed', 'GEMINI_LIVE', e);
+        logger.error('[GEMINI_LIVE] Connection failed', 'GEMINI_LIVE', e);
         logger.warn('[COMPANION_PERM] Gemini Live connect failed (see GEMINI_LIVE error)', {
           message: e instanceof Error ? e.message : String(e),
         });
@@ -572,23 +651,48 @@ export function useGeminiFramingGuide({
   }, [shutdown]);
 
   /**
-   * Safari (incl. mobile): AudioContext.resume() must run in the same synchronous turn as a user gesture.
-   * Call this as the first line inside onClick before any await (Enable camera, Retry, etc.).
+   * Backgrounding (e.g. iOS notification shade) often kills the Live WebSocket. When the user returns,
+   * surface a clear error so they can Retry (which re-runs the audio primer on tap).
+   */
+  useEffect(() => {
+    if (!mayUseLiveSession) return;
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        const s = sessionRef.current;
+        wasLiveActiveWhenHiddenRef.current = Boolean(s && !s.isClosed);
+        framesPausedRef.current = true;
+        return;
+      }
+      if (document.visibilityState !== 'visible') return;
+      framesPausedRef.current = false;
+      if (!wasLiveActiveWhenHiddenRef.current) return;
+      wasLiveActiveWhenHiddenRef.current = false;
+      const s = sessionRef.current;
+      if (s && !s.isClosed) return;
+      clearFrameInterval();
+      sessionRef.current = null;
+      setIsSessionOpen(false);
+      setConnectionStatus('error');
+      setConnectionError(
+        'Voice guide disconnected when the app was in the background. Tap Retry to reconnect.',
+      );
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [mayUseLiveSession, clearFrameInterval]);
+
+  /**
+   * Safari (incl. mobile): create/resume AudioContext and run a silent primer synchronously in the user-gesture
+   * turn. Call as the first line inside onClick before any await (Enable camera, Retry, etc.).
    */
   const unlockWebAudioOnUserGesture = useCallback(() => {
     try {
-      type WindowWithWebkit = Window & { webkitAudioContext?: typeof AudioContext };
-      const Ctx = window.AudioContext || (window as WindowWithWebkit).webkitAudioContext;
-      if (!Ctx) return;
-      if (!audioCtxRef.current) {
-        audioCtxRef.current = new Ctx();
-      }
-      void audioCtxRef.current.resume();
-      nextPlayTimeRef.current = audioCtxRef.current.currentTime;
+      playbackCtxRef.current = getOrCreatePrimedAudioContext(playbackCtxRef.current);
+      nextPlayTimeRef.current = playbackCtxRef.current.currentTime;
     } catch (e) {
       logger.warn('[GEMINI_LIVE] unlockWebAudioOnUserGesture', 'GEMINI_LIVE', e);
     }
-  }, []);
+  }, [playbackCtxRef]);
 
   const startLiveSessionFromUserGesture = useCallback(() => {
     unlockWebAudioOnUserGesture();
@@ -596,15 +700,14 @@ export function useGeminiFramingGuide({
   }, [unlockWebAudioOnUserGesture, beginLiveSession]);
 
   const primeAudioOutput = useCallback(async () => {
-    type WindowWithWebkit = Window & { webkitAudioContext?: typeof AudioContext };
-    const Ctx = window.AudioContext || (window as WindowWithWebkit).webkitAudioContext;
-    if (!Ctx) return;
-    if (!audioCtxRef.current) {
-      audioCtxRef.current = new Ctx();
+    try {
+      playbackCtxRef.current = getOrCreatePrimedAudioContext(playbackCtxRef.current);
+      await playbackCtxRef.current.resume();
+      nextPlayTimeRef.current = playbackCtxRef.current.currentTime;
+    } catch (e) {
+      logger.warn('[GEMINI_LIVE] primeAudioOutput', 'GEMINI_LIVE', e);
     }
-    void audioCtxRef.current.resume();
-    nextPlayTimeRef.current = audioCtxRef.current.currentTime;
-  }, []);
+  }, [playbackCtxRef]);
 
   const armShot = useCallback(async (viewIndex: number): Promise<boolean> => {
     const session = sessionRef.current;
@@ -621,6 +724,7 @@ export function useGeminiFramingGuide({
     armedViewRef.current = viewIndex;
     armedAtMsRef.current = Date.now();
     framesPausedRef.current = false;
+    lastUserScaleInjectedZoneRef.current = 'uninitialized';
     try {
       await session.sendTextRealtime(geminiInjectionArmView(v.label, v.instr));
       return true;

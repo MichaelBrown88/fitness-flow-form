@@ -3,18 +3,46 @@
  * Extracted from Companion.tsx to improve maintainability
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type MutableRefObject } from 'react';
 import { CONFIG } from '@/config';
 import { logger } from '@/lib/utils/logger';
 import { playCompanionShutterClick } from '@/lib/utils/companionShutterClick';
 
+/** Aligns with `GeminiLiveConnectionStatus` from `useGeminiFramingGuide` (avoid circular imports). */
+export type LegacyTtsGeminiConnectionStatus = 'idle' | 'connecting' | 'open' | 'error';
+
+export interface LegacyTtsGateRefValue {
+  geminiEnabled: boolean;
+  geminiConnectionStatus: LegacyTtsGeminiConnectionStatus;
+  /**
+   * Posture + Gemini Live: suppress all `speechSynthesis` (countdown, cues) so only Live speaks.
+   * Permission unlock line may still run with `speak(..., true)`.
+   */
+  postureGeminiHandoff?: boolean;
+}
+
+export interface UseAudioFeedbackOptions {
+  /**
+   * Parent keeps this ref in sync (e.g. via `useLayoutEffect`). When Gemini Live is enabled and
+   * connecting/open, `speak` becomes a no-op so `speechSynthesis` cannot fight PCM playback.
+   */
+  legacyTtsGateRef?: MutableRefObject<LegacyTtsGateRefValue>;
+}
+
 interface UseAudioFeedbackResult {
-  speak: (text: string) => void;
+  /** Pass `bypassSuppression: true` only for the permission-unlock phrase (mobile Safari). */
+  speak: (text: string, bypassSuppression?: boolean) => void;
   requestPermission: () => Promise<void>;
   hasPermission: boolean;
 }
 
-export function useAudioFeedback(): UseAudioFeedbackResult {
+export function shouldSuppressLegacyTts(gate: LegacyTtsGateRefValue | undefined): boolean {
+  if (!gate?.geminiEnabled) return false;
+  if (gate.postureGeminiHandoff) return true;
+  return gate.geminiConnectionStatus === 'connecting' || gate.geminiConnectionStatus === 'open';
+}
+
+export function useAudioFeedback(options?: UseAudioFeedbackOptions): UseAudioFeedbackResult {
   /**
    * Gated by the user tapping “Enable camera & motion” (or equivalent). Starts false on all platforms so
    * Companion always runs the same gesture stack — including `startLiveSessionFromUserGesture()` — and we
@@ -66,7 +94,19 @@ export function useAudioFeedback(): UseAudioFeedbackResult {
     return pick ?? null;
   };
 
-  const speak = (text: string) => {
+  const speak = (text: string, bypassSuppression = false) => {
+    const gate = options?.legacyTtsGateRef?.current;
+    const geminiEnabled = gate?.geminiEnabled ?? false;
+    const geminiConnectionStatus = gate?.geminiConnectionStatus ?? 'idle';
+    const suppressLegacyTts = !bypassSuppression && shouldSuppressLegacyTts(gate);
+    logger.debug('[TTS] speak() called', {
+      text,
+      geminiEnabled,
+      geminiConnectionStatus,
+      suppressLegacyTts,
+      bypassSuppression,
+    });
+    if (suppressLegacyTts) return;
     try {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
@@ -85,7 +125,7 @@ export function useAudioFeedback(): UseAudioFeedbackResult {
     logger.warn('[COMPANION_PERM] useAudioFeedback.requestPermission: enter');
     try {
       playCompanionShutterClick();
-      speak("Great, I can hear you. Let's get started.");
+      speak("Great, I can hear you. Let's get started.", true);
     } catch (e) {
       logger.warn('[COMPANION_PERM] useAudioFeedback chime/speak failed', e);
     }

@@ -25,7 +25,7 @@ const LIFESTYLE_KEYS = new Set([
 ]);
 
 /** Posture views allowed for remote upload + merge (must match companion / storage naming). */
-export const REMOTE_POSTURE_VIEWS = ['front', 'back', 'side-left', 'side-right'] as const;
+export const REMOTE_POSTURE_VIEWS = ['front', 'side-left', 'back', 'side-right'] as const;
 export type RemotePostureView = (typeof REMOTE_POSTURE_VIEWS)[number];
 
 function normalizeName(name: string): string {

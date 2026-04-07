@@ -397,7 +397,7 @@ export default function DashboardAssistant() {
     >
       {!hasMessages ? (
         <div className="flex min-h-0 flex-1 flex-col justify-center px-6 py-10 sm:py-14">
-          <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-7">
+          <div className="mx-auto flex w-full max-w-5xl flex-col items-center gap-7">
             <div className="space-y-2 text-center">
               <p className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
                 {`${greetingHour()}, ${coachFirst}.`}

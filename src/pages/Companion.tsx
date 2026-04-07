@@ -2,14 +2,18 @@
  * Companion Page — posture flow uses Gemini Live framing + MediaPipe Tasks pose preview.
  */
 
-import React, { useRef, useState, useCallback, useEffect } from 'react';
+import React, { useRef, useState, useCallback, useEffect, useLayoutEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import Webcam from 'react-webcam';
 import { CONFIG } from '@/config';
 import { useCompanionAuth } from '@/hooks/useCompanionAuth';
-import { useAudioFeedback } from '@/hooks/useAudioFeedback';
+import {
+  useAudioFeedback,
+  shouldSuppressLegacyTts,
+  type LegacyTtsGateRefValue,
+} from '@/hooks/useAudioFeedback';
 import { useOrientationDetection } from '@/hooks/useOrientationDetection';
-import { usePoseDetection } from '@/hooks/usePoseDetection';
+import { usePoseDetection, type PoseLiveMetricsRef } from '@/hooks/usePoseDetection';
 import { useGeminiFramingGuide } from '@/hooks/useGeminiFramingGuide';
 import { COMPANION_QUERY_MODE_BODYCOMP_LEGACY } from '@/constants/companionUrl';
 import { updatePostureImage, updateHeartbeat, logCompanionMessage } from '@/services/liveSessions';
@@ -17,6 +21,7 @@ import { evaluateCompanionStillCaptureLandmarks } from '@/services/postureProces
 import { CompanionUI } from '@/components/companion/CompanionUI';
 import { CompanionLoadingStates } from '@/components/companion/CompanionLoadingStates';
 import { logger } from '@/lib/utils/logger';
+import { primeWebAudioContextRef } from '@/lib/utils/primeWebAudioContextOnUserGesture';
 import { playCompanionLevelStableChime } from '@/lib/utils/companionLevelStableChime';
 import { playCompanionShutterClick } from '@/lib/utils/companionShutterClick';
 import { Loader2 } from 'lucide-react';
@@ -42,6 +47,19 @@ const Companion = () => {
     | 'bodycomp';
   const [facingMode] = useState<'user' | 'environment'>(mode === 'bodycomp' ? 'environment' : 'user');
 
+  /** Gemini Live — `CONFIG.ENABLE_GEMINI_LIVE` (`VITE_ENABLE_GEMINI_LIVE=true`). When true, legacy TTS is suppressed while Live is connecting/open. */
+  const geminiEnabled = CONFIG.ENABLE_GEMINI_LIVE;
+
+  const legacyTtsGateRef = useRef<LegacyTtsGateRefValue>({
+    geminiEnabled,
+    geminiConnectionStatus: 'idle',
+    postureGeminiHandoff: false,
+  });
+
+  const poseLiveMetricsRef = useRef<PoseLiveMetricsRef>({ userScale: null, zone: 'absent' });
+  const relaxPostureDistanceRef = useRef(false);
+  const allowGeminiDistanceInjectionsRef = useRef(true);
+
   const webcamRef = useRef<Webcam>(null);
   const [webcamVideo, setWebcamVideo] = useState<HTMLVideoElement | null>(null);
   const [flowState, setFlowState] = useState<FlowState>('permissions');
@@ -66,7 +84,9 @@ const Companion = () => {
   const isPoseReadyRef = useRef(false);
   const positionStableSinceRef = useRef<number | null>(null);
   const positionCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const STABLE_HOLD_MS = 1500;
+  /** Shared with Gemini Live hook — primed synchronously on permission tap before any await (Safari Web Audio). */
+  const livePlaybackAudioContextRef = useRef<AudioContext | null>(null);
+  const STABLE_HOLD_MS = 900;
   const CAPTURE_COUNTDOWN_SECS = 3;
 
   useEffect(() => {
@@ -98,10 +118,20 @@ const Companion = () => {
 
   const { isValidating, isAuthorized, errorMsg, runValidation } = useCompanionAuth(sessionId, token, mode);
 
-  const { speak, requestPermission: requestAudioPermission, hasPermission: hasAudioPermission } = useAudioFeedback();
+  const { speak, requestPermission: requestAudioPermission, hasPermission: hasAudioPermission } = useAudioFeedback({
+    legacyTtsGateRef,
+  });
 
   const throttledSpeak = useCallback(
     (text: string, force: boolean = false) => {
+      if (shouldSuppressLegacyTts(legacyTtsGateRef.current)) {
+        logger.debug('[TTS] throttledSpeak skipped (Gemini Live active)', {
+          text,
+          geminiEnabled: legacyTtsGateRef.current.geminiEnabled,
+          geminiConnectionStatus: legacyTtsGateRef.current.geminiConnectionStatus,
+        });
+        return;
+      }
       const now = Date.now();
       if (force || now - lastAudioTimeRef.current >= AUDIO_THROTTLE_MS) {
         lastAudioTimeRef.current = now;
@@ -130,20 +160,15 @@ const Companion = () => {
     mode === 'posture' && CONFIG.COMPANION.ORIENTATION.POSTURE_RELAX_UPRIGHT;
   const gateVertical = relaxPostureUpright || isVertical;
 
-  /** Gemini Live is disabled for now — using browser TTS + MediaPipe position-gated countdown. Re-enable when gemini-3.1-flash-live is supported by Firebase AI Logic. */
-  const geminiEnabled = false;
-
   const {
     startLiveSessionFromUserGesture,
-    primeAudioOutput,
     armShot,
-    shutdown,
     retry: retryGeminiLive,
     nudgeLevelPhone,
     connectionStatus: geminiConnectionStatus,
     connectionError: geminiConnectionError,
   } = useGeminiFramingGuide({
-    mayUseLiveSession: geminiEnabled,
+    mayUseLiveSession: geminiEnabled && hasPermission && mode === 'posture',
     flowState,
     views: VIEWS,
     getVideoElement: () => webcamRef.current?.video ?? null,
@@ -159,10 +184,23 @@ const Companion = () => {
     onVoiceGuideAudioStarted: () => {
       setVoiceGuideStarted(true);
     },
+    playbackAudioContextRef: livePlaybackAudioContextRef,
+    poseLiveMetricsRef,
+    allowDistanceInjectionsRef: allowGeminiDistanceInjectionsRef,
   });
+
+  useLayoutEffect(() => {
+    legacyTtsGateRef.current.geminiEnabled = geminiEnabled;
+    legacyTtsGateRef.current.geminiConnectionStatus = geminiConnectionStatus;
+    legacyTtsGateRef.current.postureGeminiHandoff = geminiEnabled && mode === 'posture';
+  }, [geminiEnabled, geminiConnectionStatus, mode]);
 
   const requestPermission = useCallback(async () => {
     try {
+      if (geminiEnabled && mode === 'posture') {
+        primeWebAudioContextRef(livePlaybackAudioContextRef);
+        startLiveSessionFromUserGesture();
+      }
       const orientationDone = requestOrientationPermission();
       await requestAudioPermission();
       await orientationDone;
@@ -173,7 +211,14 @@ const Companion = () => {
     if (mode === 'bodycomp') {
       throttledSpeak('Level your phone to continue.', true);
     }
-  }, [requestAudioPermission, requestOrientationPermission, mode, throttledSpeak]);
+  }, [
+    geminiEnabled,
+    mode,
+    requestAudioPermission,
+    requestOrientationPermission,
+    startLiveSessionFromUserGesture,
+    throttledSpeak,
+  ]);
 
   const wasVerticalRef = useRef(isVertical);
 
@@ -220,6 +265,8 @@ const Companion = () => {
     webcamVideo,
     suppressAudioFeedback: false,
     disablePosePipeline: false,
+    poseLiveMetricsRef,
+    relaxDistanceGatingRef: mode === 'posture' ? relaxPostureDistanceRef : undefined,
   });
 
   useEffect(() => {
@@ -290,7 +337,7 @@ const Companion = () => {
           const gate = await evaluateCompanionStillCaptureLandmarks(imageSrc, viewData.id);
           if (!gate.ok) {
             logger.warn(
-              `[COUNTDOWN] Capture rejected for ${viewData.label} — low landmark confidence (${gate.avgVisibility.toFixed(2)})`
+              `[COUNTDOWN] Capture rejected for ${viewData.label} — structural anchors (avg ${gate.avgVisibility.toFixed(2)}, min ${gate.minAnchorVisibility.toFixed(2)}; ${gate.failingRegions.join(', ') || 'unknown'})`
             );
             return false;
           }
@@ -325,6 +372,16 @@ const Companion = () => {
     [sessionId, mode]
   );
 
+  const captureImageRef = useRef(captureImage);
+  useEffect(() => {
+    captureImageRef.current = captureImage;
+  }, [captureImage]);
+
+  const armShotRef = useRef(armShot);
+  useEffect(() => {
+    armShotRef.current = armShot;
+  }, [armShot]);
+
   const runCountdownAndCapture = useCallback(
     (viewIdx: number) => {
       if (isSequenceCancelledRef.current) return;
@@ -355,12 +412,16 @@ const Companion = () => {
               return;
             }
             countdownRetryCountRef.current = 0;
+            if (viewIdx === 0) {
+              relaxPostureDistanceRef.current = true;
+              allowGeminiDistanceInjectionsRef.current = false;
+            }
             if (viewIdx < VIEWS.length - 1) {
-              throttledSpeak('Nice one. Now slowly turn to your right.', true);
+              throttledSpeak(CONFIG.COMPANION.VOICE_GUIDE.POSTURE_QUARTER_TURN_RIGHT, true);
               turnDelayTimeoutRef.current = setTimeout(() => {
                 if (isSequenceCancelledRef.current) return;
                 beginViewCaptureRef.current(viewIdx + 1);
-              }, 3500);
+              }, CONFIG.COMPANION.CAPTURE.POSTURE_GEMINI_NEXT_VIEW_MS);
             } else {
               setFlowState('complete');
               throttledSpeak("That's all the photos done. Great job!", true);
@@ -384,11 +445,20 @@ const Companion = () => {
       positionStableSinceRef.current = null;
       countdownRetryCountRef.current = 0;
 
+      const useGeminiLedCapture =
+        geminiEnabled && mode === 'posture' && geminiConnectionStatus === 'open';
+
       const viewData = VIEWS[viewIdx];
-      const directionCue = viewIdx === 0
-        ? `Alright, let's start with your ${viewData.label.toLowerCase()} view. Step back until your full body is inside the green guide box.`
-        : `Now your ${viewData.label.toLowerCase()} view. Make sure your full body is in the green box.`;
+      const directionCue =
+        viewIdx === 0
+          ? 'Alright — front view first. Position yourself so your body fills the green guide box from head to toe.'
+          : `Now your ${viewData.label.toLowerCase()} view. Keep filling the guide box — follow the voice guide.`;
       throttledSpeak(directionCue, true);
+
+      if (useGeminiLedCapture) {
+        void armShot(viewIdx);
+        return;
+      }
 
       if (positionCheckIntervalRef.current) clearInterval(positionCheckIntervalRef.current);
       positionCheckIntervalRef.current = setInterval(() => {
@@ -410,24 +480,51 @@ const Companion = () => {
             turnDelayTimeoutRef.current = setTimeout(() => {
               if (isSequenceCancelledRef.current) return;
               runCountdownAndCapture(viewIdx);
-            }, 2500);
+            }, 1800);
           }
         } else {
           positionStableSinceRef.current = null;
         }
       }, 300);
     },
-    [throttledSpeak, runCountdownAndCapture]
+    [armShot, geminiConnectionStatus, geminiEnabled, mode, runCountdownAndCapture, throttledSpeak]
   );
 
   useEffect(() => {
     beginViewCaptureRef.current = beginViewCapture;
   }, [beginViewCapture]);
 
-  /** shotHandlerRef is kept for future Gemini Live re-integration — currently unused. */
   useEffect(() => {
-    shotHandlerRef.current = () => {};
-  }, []);
+    shotHandlerRef.current = async (i: number) => {
+      if (!geminiEnabled || mode !== 'posture') return;
+      if (isSequenceCancelledRef.current) return;
+      const accepted = await captureImageRef.current(i);
+      if (isSequenceCancelledRef.current) return;
+      if (!accepted) {
+        if (countdownRetryCountRef.current < MAX_COUNTDOWN_RETRIES) {
+          countdownRetryCountRef.current += 1;
+          turnDelayTimeoutRef.current = setTimeout(() => {
+            if (isSequenceCancelledRef.current) return;
+            void armShotRef.current(i);
+          }, 2000);
+        }
+        return;
+      }
+      countdownRetryCountRef.current = 0;
+      if (i === 0) {
+        relaxPostureDistanceRef.current = true;
+        allowGeminiDistanceInjectionsRef.current = false;
+      }
+      if (i < VIEWS.length - 1) {
+        turnDelayTimeoutRef.current = setTimeout(() => {
+          if (isSequenceCancelledRef.current) return;
+          beginViewCaptureRef.current(i + 1);
+        }, CONFIG.COMPANION.CAPTURE.POSTURE_GEMINI_NEXT_VIEW_MS);
+      } else {
+        setFlowState('complete');
+      }
+    };
+  }, [geminiEnabled, mode]);
 
   const cancelSequence = useCallback(() => {
     logger.debug('[SEQUENCE] User cancelled sequence');
@@ -448,6 +545,8 @@ const Companion = () => {
     positionStableSinceRef.current = null;
     setCountdown(null);
     pendingCapturesRef.current = [];
+    relaxPostureDistanceRef.current = false;
+    allowGeminiDistanceInjectionsRef.current = true;
     setFlowState('ready');
     setCurrentView(0);
     if (sessionId) {
@@ -458,17 +557,24 @@ const Companion = () => {
 
   const startSequence = useCallback(() => {
     if (flowState !== 'ready' || currentView >= VIEWS.length) return;
+    if (geminiEnabled && mode === 'posture' && geminiConnectionStatus !== 'open') {
+      logger.warn('[COMPANION] Start Capture blocked: voice guide not connected');
+      return;
+    }
     postureWarmupPendingAutoStartRef.current = false;
     isSequenceCancelledRef.current = false;
     countdownRetryCountRef.current = 0;
+    relaxPostureDistanceRef.current = false;
+    allowGeminiDistanceInjectionsRef.current = true;
     setFlowState('capturing');
     setCurrentView(0);
     beginViewCapture(0);
-  }, [flowState, currentView, beginViewCapture]);
+  }, [beginViewCapture, currentView, flowState, geminiConnectionStatus, geminiEnabled, mode]);
 
   useEffect(() => {
     if (mode !== 'posture' || flowState !== 'ready' || !postureWarmupPendingAutoStartRef.current) return;
     if (!gateVertical) return;
+    if (geminiEnabled && geminiConnectionStatus !== 'open') return;
     let cancelled = false;
     queueMicrotask(() => {
       if (cancelled) return;
@@ -477,7 +583,7 @@ const Companion = () => {
     return () => {
       cancelled = true;
     };
-  }, [mode, flowState, gateVertical, startSequence]);
+  }, [mode, flowState, gateVertical, geminiConnectionStatus, geminiEnabled, startSequence]);
 
   useEffect(() => {
     if (!isAuthorized || isValidating || !sessionId) return;
@@ -593,10 +699,14 @@ const Companion = () => {
       flowState={flowState}
       guideBoxState={guideBoxState}
       blockStartCaptureUntilVertical={mode === 'posture' && !relaxPostureUpright}
-      geminiConnectionStatus={undefined}
-      geminiConnectionError={null}
-      onRetryGemini={undefined}
-      voiceGuideStarted={false}
+      geminiConnectionStatus={
+        mode === 'posture' && geminiEnabled ? geminiConnectionStatus : undefined
+      }
+      geminiConnectionError={
+        mode === 'posture' && geminiEnabled ? geminiConnectionError : null
+      }
+      onRetryGemini={mode === 'posture' && geminiEnabled ? retryGeminiLive : undefined}
+      voiceGuideStarted={mode === 'posture' && geminiEnabled ? voiceGuideStarted : false}
     />
   );
 };

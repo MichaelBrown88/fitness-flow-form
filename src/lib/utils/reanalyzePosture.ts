@@ -39,7 +39,12 @@ export async function reanalyzeClientPosture(
     const { getCurrentAssessment } = await import('@/services/assessmentHistory');
     const current = await getCurrentAssessment(user.uid, clientName, organizationId);
     
-    const views: Array<'front' | 'back' | 'side-left' | 'side-right'> = ['front', 'back', 'side-left', 'side-right'];
+    const views: Array<'front' | 'back' | 'side-left' | 'side-right'> = [
+      'front',
+      'side-left',
+      'back',
+      'side-right',
+    ];
     let hasImagesFromAssessment = false;
     
     // Check if assessment document has posture images

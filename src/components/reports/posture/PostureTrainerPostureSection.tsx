@@ -11,7 +11,7 @@ import {
 import { calculateFrontViewMetrics, calculateSideViewMetrics } from '@/lib/utils/postureMath';
 import { getPostureFeedbackDefinition } from '@/constants/postureFeedbackLibrary';
 
-const VIEWS: PostureFindingViewId[] = ['front', 'back', 'side-left', 'side-right'];
+const VIEWS: PostureFindingViewId[] = ['front', 'side-left', 'back', 'side-right'];
 
 function getImageUrl(postureImages: Record<string, string> | undefined, view: PostureFindingViewId): string {
   if (!postureImages) return '';

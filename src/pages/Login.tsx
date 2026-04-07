@@ -30,11 +30,19 @@ const Login = () => {
 
   useEffect(() => {
     if (!loading && user && profile) {
-      if (!profile.onboardingCompleted) {
+      // Truly new users (no org yet) need the full onboarding signup flow.
+      if (!profile.onboardingCompleted && !profile.organizationId) {
         navigate(ROUTES.ONBOARDING, { replace: true });
         return;
       }
-      navigate(from, { replace: true });
+      // Existing org users go to dashboard. Never send them back to /onboarding
+      // or /signup via location.state — that's how the redirect loop forms.
+      const ONBOARDING_PATHS = [ROUTES.ONBOARDING, '/signup', '/onboarding'];
+      const safeDest =
+        profile.organizationId && ONBOARDING_PATHS.includes(from)
+          ? ROUTES.DASHBOARD
+          : from;
+      navigate(safeDest, { replace: true });
     }
   }, [loading, user, profile, navigate, from]);
 

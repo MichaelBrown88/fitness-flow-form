@@ -318,6 +318,9 @@ export function CompanionUI({
             <p className="text-[13px] font-medium leading-snug text-white/95">
               Follow the voice guide — framing hints show in the border around the video.
             </p>
+            <p className="mt-2 text-[11px] font-medium leading-snug text-white/75">
+              {CONFIG.COMPANION.VOICE_GUIDE.POSTURE_CAMERA_HEIGHT_SOP}
+            </p>
           </div>
         )}
 
@@ -360,6 +363,11 @@ export function CompanionUI({
             </button>
           ) : !hasPermission ? (
             <div className="flex flex-col items-center gap-3 w-full max-w-xs">
+              {mode === 'posture' ? (
+                <p className="text-center text-[12px] font-medium leading-snug text-white/85 px-1">
+                  {CONFIG.COMPANION.VOICE_GUIDE.PERMISSION_WAIST_HEIGHT_HINT}
+                </p>
+              ) : null}
               <Button
                 onClick={requestPermission}
                 className="bg-primary text-primary-foreground hover:bg-primary/90 h-14 px-8 rounded-xl text-sm font-semibold shadow-lg w-full"
@@ -400,6 +408,13 @@ export function CompanionUI({
                   Level the phone to enable Start Capture.
                 </p>
               ) : null}
+              {mode === 'posture' &&
+              geminiConnectionStatus !== undefined &&
+              geminiConnectionStatus !== 'open' ? (
+                <p className="text-center text-[12px] font-medium text-white/75 px-2">
+                  Wait until the voice guide is connected before starting capture.
+                </p>
+              ) : null}
               <Button
                 onClick={(e) => {
                   e.preventDefault();
@@ -408,7 +423,12 @@ export function CompanionUI({
                     onStartSequence();
                   }
                 }}
-                disabled={blockStartCaptureUntilVertical && !isVertical}
+                disabled={
+                  (blockStartCaptureUntilVertical && !isVertical) ||
+                  (mode === 'posture' &&
+                    geminiConnectionStatus !== undefined &&
+                    geminiConnectionStatus !== 'open')
+                }
                 className="bg-emerald-500 hover:bg-emerald-600 h-16 px-10 rounded-xl text-base font-semibold shadow-lg text-white w-full disabled:opacity-40 disabled:pointer-events-none"
               >
                 Start Capture

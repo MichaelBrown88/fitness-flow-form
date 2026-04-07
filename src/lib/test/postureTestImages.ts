@@ -56,7 +56,12 @@ export async function loadTestPostureImages(): Promise<Record<string, string>> {
   
   // Otherwise, try to load from URLs
   const images: Record<string, string> = {};
-  const views: ('front' | 'side-right' | 'side-left' | 'back')[] = ['front', 'back', 'side-left', 'side-right'];
+  const views: ('front' | 'side-right' | 'side-left' | 'back')[] = [
+    'front',
+    'side-left',
+    'back',
+    'side-right',
+  ];
   
   // Check if URLs are configured
   const hasUrls = views.some(view => TEST_IMAGE_URLS[view] && TEST_IMAGE_URLS[view].trim() !== '');
@@ -106,7 +111,12 @@ export async function loadImagesFromFiles(files: {
   back?: File;
 }): Promise<Record<string, string>> {
   const images: Record<string, string> = {};
-  const views: ('front' | 'side-right' | 'side-left' | 'back')[] = ['front', 'back', 'side-left', 'side-right'];
+  const views: ('front' | 'side-right' | 'side-left' | 'back')[] = [
+    'front',
+    'side-left',
+    'back',
+    'side-right',
+  ];
   
   // Validate that we have at least one file
   const fileCount = Object.values(files).filter(f => f !== undefined).length;

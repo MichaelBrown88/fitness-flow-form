@@ -195,9 +195,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           }
           
-          // Auto-heal: If onboarding not complete but org has assessments, mark onboarding complete
+          // Auto-heal: If onboarding not complete (false or never set) but org has assessments, mark onboarding complete
           if (
-            currentProfile.onboardingCompleted === false &&
+            !currentProfile.onboardingCompleted &&
             currentProfile.organizationId
           ) {
             try {

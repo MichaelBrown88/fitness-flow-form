@@ -50,7 +50,7 @@ export function detectImportantMinorIssues(ctx: PrioritizationContext): {
   // Small postural deviations
   if (form.postureAiResults) {
     const ai = form.postureAiResults;
-    const views = ['front', 'back', 'side-left', 'side-right'] as const;
+    const views = ['front', 'side-left', 'back', 'side-right'] as const;
 
     for (const view of views) {
       const analysis = ai[view];

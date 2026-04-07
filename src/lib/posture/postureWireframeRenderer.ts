@@ -10,6 +10,43 @@ import {
   drawAlignmentLine,
   drawLandmarkPoint,
 } from './drawingUtils';
+import {
+  segmentShouldDraw,
+  wireframeLandmarkTier,
+  wireframeSegmentTier,
+  WIREFRAME_LOW_VISIBILITY_STROKE,
+} from './postureWireframeVisibility';
+
+type LandmarkCanvas = {
+  x: number;
+  y: number;
+  v: number;
+  visible: boolean;
+  locked: boolean;
+};
+
+function landmarkCanvas(
+  landmarks: Array<{ x: number; y: number; z?: number; visibility?: number }>,
+  idx: number,
+  cw: number,
+  ch: number
+): LandmarkCanvas {
+  const l = landmarks[idx];
+  const v = l?.visibility ?? 0;
+  const tier = wireframeLandmarkTier(v);
+  return {
+    x: (l?.x ?? 0) * cw,
+    y: (l?.y ?? 0) * ch,
+    v,
+    visible: tier !== 'absent',
+    locked: tier === 'locked',
+  };
+}
+
+/** Sync wireframe segment styling with clinical gate: import thresholds from single source in postureWireframeVisibility. */
+function visibilityStrokeOverride(a: LandmarkCanvas, b: LandmarkCanvas): string | undefined {
+  return !a.locked || !b.locked ? WIREFRAME_LOW_VISIBILITY_STROKE : undefined;
+}
 
 /**
  * Draws view-specific MediaPipe pose landmarks wireframe on an image
@@ -74,11 +111,9 @@ function drawFrontBackWireframe(
   const isBackView = view === 'back';
   const alignments = calculateFrontBackAlignments(landmarks, ctx.canvas.width, ctx.canvas.height, isBackView);
 
-  const getPos = (idx: number) => ({
-    x: (landmarks[idx]?.x ?? 0) * ctx.canvas.width,
-    y: (landmarks[idx]?.y ?? 0) * ctx.canvas.height,
-    visible: (landmarks[idx]?.visibility ?? 1) > 0.3,
-  });
+  const cw = ctx.canvas.width;
+  const ch = ctx.canvas.height;
+  const lm = (idx: number) => landmarkCanvas(landmarks, idx, cw, ch);
 
   // 1. VERTICAL MIDLINE
   drawControlLine(ctx, alignments.bodyMidlineX, 0, alignments.bodyMidlineX, ctx.canvas.height, ALIGNMENT_COLORS.MIDLINE);
@@ -99,18 +134,20 @@ function drawFrontBackWireframe(
   ctx.lineWidth = lineWidth - 1;
   ctx.setLineDash([]);
 
-  const leftShoulder = getPos(11);
-  const leftHip = getPos(23);
-  if (leftShoulder.visible && leftHip.visible) {
+  const leftShoulder = lm(11);
+  const leftHip = lm(23);
+  if (segmentShouldDraw(leftShoulder.v, leftHip.v)) {
+    ctx.strokeStyle = visibilityStrokeOverride(leftShoulder, leftHip) ?? ALIGNMENT_COLORS.NEUTRAL;
     ctx.beginPath();
     ctx.moveTo(leftShoulder.x, leftShoulder.y);
     ctx.lineTo(leftHip.x, leftHip.y);
     ctx.stroke();
   }
 
-  const rightShoulder = getPos(12);
-  const rightHip = getPos(24);
-  if (rightShoulder.visible && rightHip.visible) {
+  const rightShoulder = lm(12);
+  const rightHip = lm(24);
+  if (segmentShouldDraw(rightShoulder.v, rightHip.v)) {
+    ctx.strokeStyle = visibilityStrokeOverride(rightShoulder, rightHip) ?? ALIGNMENT_COLORS.NEUTRAL;
     ctx.beginPath();
     ctx.moveTo(rightShoulder.x, rightShoulder.y);
     ctx.lineTo(rightHip.x, rightHip.y);
@@ -119,18 +156,29 @@ function drawFrontBackWireframe(
 
   // 4. HEAD TILT (front view only)
   if (!isBackView) {
-    const leftEar = getPos(7);
-    const rightEar = getPos(8);
-    if (leftEar.visible && rightEar.visible) {
-      drawAlignmentLine(ctx, leftEar.x, leftEar.y, rightEar.x, rightEar.y, alignments.headTilt.severity, lineWidth);
+    const leftEar = lm(7);
+    const rightEar = lm(8);
+    if (segmentShouldDraw(leftEar.v, rightEar.v)) {
+      drawAlignmentLine(
+        ctx,
+        leftEar.x,
+        leftEar.y,
+        rightEar.x,
+        rightEar.y,
+        alignments.headTilt.severity,
+        lineWidth,
+        visibilityStrokeOverride(leftEar, rightEar)
+      );
     }
   }
 
   // 5. LATERAL HEAD POSITION (front view only)
   if (!isBackView && alignments.lateralHead.severity !== 'good') {
-    const nose = getPos(0);
+    const nose = lm(0);
     if (nose.visible) {
-      ctx.strokeStyle = getSeverityColor(alignments.lateralHead.severity);
+      ctx.strokeStyle = nose.locked
+        ? getSeverityColor(alignments.lateralHead.severity)
+        : WIREFRAME_LOW_VISIBILITY_STROKE;
       ctx.lineWidth = 2;
       ctx.setLineDash([5, 5]);
       ctx.beginPath();
@@ -142,11 +190,21 @@ function drawFrontBackWireframe(
   }
 
   // 6. SHOULDER LINE
-  if (leftShoulder.visible && rightShoulder.visible) {
-    drawAlignmentLine(ctx, leftShoulder.x, leftShoulder.y, rightShoulder.x, rightShoulder.y, alignments.shoulders.severity, lineWidth);
+  if (segmentShouldDraw(leftShoulder.v, rightShoulder.v)) {
+    drawAlignmentLine(
+      ctx,
+      leftShoulder.x,
+      leftShoulder.y,
+      rightShoulder.x,
+      rightShoulder.y,
+      alignments.shoulders.severity,
+      lineWidth,
+      visibilityStrokeOverride(leftShoulder, rightShoulder)
+    );
 
     const avgShoulderYRef = (leftShoulder.y + rightShoulder.y) / 2;
-    ctx.strokeStyle = getSeverityColor(alignments.shoulders.severity);
+    ctx.strokeStyle =
+      visibilityStrokeOverride(leftShoulder, rightShoulder) ?? getSeverityColor(alignments.shoulders.severity);
     ctx.lineWidth = alignments.shoulders.severity === 'good' ? 2 : 4;
     ctx.setLineDash(alignments.shoulders.severity === 'good' ? [8, 8] : [6, 4]);
     ctx.beginPath();
@@ -157,11 +215,21 @@ function drawFrontBackWireframe(
   }
 
   // 7. HIP LINE
-  if (leftHip.visible && rightHip.visible) {
-    drawAlignmentLine(ctx, leftHip.x, leftHip.y, rightHip.x, rightHip.y, alignments.hips.severity, lineWidth);
+  if (segmentShouldDraw(leftHip.v, rightHip.v)) {
+    drawAlignmentLine(
+      ctx,
+      leftHip.x,
+      leftHip.y,
+      rightHip.x,
+      rightHip.y,
+      alignments.hips.severity,
+      lineWidth,
+      visibilityStrokeOverride(leftHip, rightHip)
+    );
 
     const avgHipYRef = (leftHip.y + rightHip.y) / 2;
-    ctx.strokeStyle = getSeverityColor(alignments.hips.severity);
+    ctx.strokeStyle =
+      visibilityStrokeOverride(leftHip, rightHip) ?? getSeverityColor(alignments.hips.severity);
     ctx.lineWidth = alignments.hips.severity === 'good' ? 2 : 4;
     ctx.setLineDash(alignments.hips.severity === 'good' ? [8, 8] : [6, 4]);
     ctx.beginPath();
@@ -172,7 +240,10 @@ function drawFrontBackWireframe(
   }
 
   // 8. HIP SHIFT
-  ctx.strokeStyle = getSeverityColor(alignments.hipShift.severity);
+  const hipShiftLowVis = !leftHip.locked || !rightHip.locked;
+  ctx.strokeStyle = hipShiftLowVis
+    ? WIREFRAME_LOW_VISIBILITY_STROKE
+    : getSeverityColor(alignments.hipShift.severity);
   ctx.lineWidth = alignments.hipShift.severity === 'good' ? 2 : 4;
   ctx.setLineDash(alignments.hipShift.severity === 'good' ? [8, 8] : [6, 4]);
   ctx.beginPath();
@@ -183,18 +254,46 @@ function drawFrontBackWireframe(
   ctx.setLineDash([]);
 
   // 9. LEFT LEG
-  const leftKnee = getPos(25);
-  const leftAnkle = getPos(27);
+  const leftKnee = lm(25);
+  const leftAnkle = lm(27);
   if (leftHip.visible && leftKnee.visible && leftAnkle.visible) {
-    drawControlLine(ctx, leftHip.x, leftHip.y, leftAnkle.x, leftAnkle.y);
-    drawAlignmentLine(ctx, leftHip.x, leftHip.y, leftKnee.x, leftKnee.y, alignments.leftLeg.severity, lineWidth);
-    drawAlignmentLine(ctx, leftKnee.x, leftKnee.y, leftAnkle.x, leftAnkle.y, alignments.leftLeg.severity, lineWidth);
+    const leftLegLowVis = !leftHip.locked || !leftKnee.locked || !leftAnkle.locked;
+    drawControlLine(
+      ctx,
+      leftHip.x,
+      leftHip.y,
+      leftAnkle.x,
+      leftAnkle.y,
+      leftLegLowVis ? WIREFRAME_LOW_VISIBILITY_STROKE : ALIGNMENT_COLORS.CONTROL
+    );
+    drawAlignmentLine(
+      ctx,
+      leftHip.x,
+      leftHip.y,
+      leftKnee.x,
+      leftKnee.y,
+      alignments.leftLeg.severity,
+      lineWidth,
+      visibilityStrokeOverride(leftHip, leftKnee)
+    );
+    drawAlignmentLine(
+      ctx,
+      leftKnee.x,
+      leftKnee.y,
+      leftAnkle.x,
+      leftAnkle.y,
+      alignments.leftLeg.severity,
+      lineWidth,
+      visibilityStrokeOverride(leftKnee, leftAnkle)
+    );
 
     const idealKneeXLeft = alignments.leftLeg.hipPos.x +
       (alignments.leftLeg.anklePos.x - alignments.leftLeg.hipPos.x) *
       ((alignments.leftLeg.kneePos.y - alignments.leftLeg.hipPos.y) /
        (alignments.leftLeg.anklePos.y - alignments.leftLeg.hipPos.y));
-    ctx.strokeStyle = getSeverityColor(alignments.leftLeg.severity);
+    ctx.strokeStyle = leftLegLowVis
+      ? WIREFRAME_LOW_VISIBILITY_STROKE
+      : getSeverityColor(alignments.leftLeg.severity);
     ctx.lineWidth = alignments.leftLeg.severity === 'good' ? 2 : 4;
     ctx.setLineDash(alignments.leftLeg.severity === 'good' ? [6, 6] : [4, 3]);
     ctx.beginPath();
@@ -206,18 +305,46 @@ function drawFrontBackWireframe(
   }
 
   // 10. RIGHT LEG
-  const rightKnee = getPos(26);
-  const rightAnkle = getPos(28);
+  const rightKnee = lm(26);
+  const rightAnkle = lm(28);
   if (rightHip.visible && rightKnee.visible && rightAnkle.visible) {
-    drawControlLine(ctx, rightHip.x, rightHip.y, rightAnkle.x, rightAnkle.y);
-    drawAlignmentLine(ctx, rightHip.x, rightHip.y, rightKnee.x, rightKnee.y, alignments.rightLeg.severity, lineWidth);
-    drawAlignmentLine(ctx, rightKnee.x, rightKnee.y, rightAnkle.x, rightAnkle.y, alignments.rightLeg.severity, lineWidth);
+    const rightLegLowVis = !rightHip.locked || !rightKnee.locked || !rightAnkle.locked;
+    drawControlLine(
+      ctx,
+      rightHip.x,
+      rightHip.y,
+      rightAnkle.x,
+      rightAnkle.y,
+      rightLegLowVis ? WIREFRAME_LOW_VISIBILITY_STROKE : ALIGNMENT_COLORS.CONTROL
+    );
+    drawAlignmentLine(
+      ctx,
+      rightHip.x,
+      rightHip.y,
+      rightKnee.x,
+      rightKnee.y,
+      alignments.rightLeg.severity,
+      lineWidth,
+      visibilityStrokeOverride(rightHip, rightKnee)
+    );
+    drawAlignmentLine(
+      ctx,
+      rightKnee.x,
+      rightKnee.y,
+      rightAnkle.x,
+      rightAnkle.y,
+      alignments.rightLeg.severity,
+      lineWidth,
+      visibilityStrokeOverride(rightKnee, rightAnkle)
+    );
 
     const idealKneeXRight = alignments.rightLeg.hipPos.x +
       (alignments.rightLeg.anklePos.x - alignments.rightLeg.hipPos.x) *
       ((alignments.rightLeg.kneePos.y - alignments.rightLeg.hipPos.y) /
        (alignments.rightLeg.anklePos.y - alignments.rightLeg.hipPos.y));
-    ctx.strokeStyle = getSeverityColor(alignments.rightLeg.severity);
+    ctx.strokeStyle = rightLegLowVis
+      ? WIREFRAME_LOW_VISIBILITY_STROKE
+      : getSeverityColor(alignments.rightLeg.severity);
     ctx.lineWidth = alignments.rightLeg.severity === 'good' ? 2 : 4;
     ctx.setLineDash(alignments.rightLeg.severity === 'good' ? [6, 6] : [4, 3]);
     ctx.beginPath();
@@ -252,31 +379,31 @@ function drawFrontBackWireframe(
   }
 
   // DRAW LANDMARK POINTS
-  const frontBackPoints: Array<{ pos: ReturnType<typeof getPos>; severity: SeverityLevel | null }> = [];
+  const frontBackPoints: Array<{ idx: number; severity: SeverityLevel | null }> = [];
 
   if (!isBackView) {
     frontBackPoints.push(
-      { pos: getPos(0), severity: alignments.lateralHead.severity },
-      { pos: getPos(7), severity: alignments.headTilt.severity },
-      { pos: getPos(8), severity: alignments.headTilt.severity },
+      { idx: 0, severity: alignments.lateralHead.severity },
+      { idx: 7, severity: alignments.headTilt.severity },
+      { idx: 8, severity: alignments.headTilt.severity },
     );
   }
 
   frontBackPoints.push(
-    { pos: getPos(11), severity: alignments.shoulders.severity },
-    { pos: getPos(12), severity: alignments.shoulders.severity },
-    { pos: getPos(23), severity: alignments.hips.severity },
-    { pos: getPos(24), severity: alignments.hips.severity },
-    { pos: getPos(25), severity: alignments.leftLeg.severity },
-    { pos: getPos(26), severity: alignments.rightLeg.severity },
-    { pos: getPos(27), severity: 'good' },
-    { pos: getPos(28), severity: 'good' },
+    { idx: 11, severity: alignments.shoulders.severity },
+    { idx: 12, severity: alignments.shoulders.severity },
+    { idx: 23, severity: alignments.hips.severity },
+    { idx: 24, severity: alignments.hips.severity },
+    { idx: 25, severity: alignments.leftLeg.severity },
+    { idx: 26, severity: alignments.rightLeg.severity },
+    { idx: 27, severity: 'good' },
+    { idx: 28, severity: 'good' },
   );
 
-  for (const { pos, severity } of frontBackPoints) {
-    if (pos.visible) {
-      drawLandmarkPoint(ctx, pos.x, pos.y, severity, pointRadius);
-    }
+  for (const { idx, severity } of frontBackPoints) {
+    const pos = lm(idx);
+    if (!pos.visible) continue;
+    drawLandmarkPoint(ctx, pos.x, pos.y, severity, pointRadius, !pos.locked);
   }
 }
 
@@ -287,7 +414,21 @@ function drawSideWireframe(
   pointRadius: number,
   lineWidth: number
 ): void {
-  const alignments = calculateSideViewAlignments(landmarks, view, ctx.canvas.width, ctx.canvas.height);
+  const cw = ctx.canvas.width;
+  const ch = ctx.canvas.height;
+  const earIdx = view === 'side-left' ? 7 : 8;
+  const shoulderIdx = view === 'side-left' ? 11 : 12;
+  const hipIdx = view === 'side-left' ? 23 : 24;
+  const kneeIdx = view === 'side-left' ? 25 : 26;
+  const ankleIdx = view === 'side-left' ? 27 : 28;
+  const lv = (idx: number) => landmarkCanvas(landmarks, idx, cw, ch);
+  const earLm = lv(earIdx);
+  const shoulderLm = lv(shoulderIdx);
+  const hipLm = lv(hipIdx);
+  const kneeLm = lv(kneeIdx);
+  const ankleLm = lv(ankleIdx);
+
+  const alignments = calculateSideViewAlignments(landmarks, view, cw, ch);
 
   // 1. VERTICAL PLUMB LINE
   ctx.strokeStyle = ALIGNMENT_COLORS.MIDLINE;
@@ -304,27 +445,98 @@ function drawSideWireframe(
   drawControlLine(ctx, 0, alignments.hip.y, ctx.canvas.width, alignments.hip.y);
 
   // 2. EAR POSITION
-  drawAlignmentLine(ctx, alignments.ear.x, alignments.ear.y, alignments.shoulder.x, alignments.shoulder.y, alignments.ear.severity, lineWidth);
+  const eyeIdx = view === 'side-left' ? 3 : 6;
+  const eyeLm = lv(eyeIdx);
+  drawAlignmentLine(
+    ctx,
+    alignments.ear.x,
+    alignments.ear.y,
+    alignments.shoulder.x,
+    alignments.shoulder.y,
+    alignments.ear.severity,
+    lineWidth,
+    visibilityStrokeOverride(earLm, shoulderLm)
+  );
 
-  drawHorizontalAlignmentLine(ctx, alignments.ear.x, alignments.plumbX, alignments.ear.y, alignments.ear.severity, 60);
+  drawHorizontalAlignmentLine(
+    ctx,
+    alignments.ear.x,
+    alignments.plumbX,
+    alignments.ear.y,
+    alignments.ear.severity,
+    60,
+    !earLm.locked ? WIREFRAME_LOW_VISIBILITY_STROKE : undefined
+  );
 
   // 3. HEAD PITCH
-  drawAlignmentLine(ctx, alignments.ear.x, alignments.ear.y, alignments.eye.x, alignments.eye.y, alignments.headUpDown.severity, lineWidth + 1);
+  drawAlignmentLine(
+    ctx,
+    alignments.ear.x,
+    alignments.ear.y,
+    alignments.eye.x,
+    alignments.eye.y,
+    alignments.headUpDown.severity,
+    lineWidth + 1,
+    visibilityStrokeOverride(earLm, eyeLm)
+  );
 
   // 4. SHOULDER POSITION
-  drawAlignmentLine(ctx, alignments.shoulder.x, alignments.shoulder.y, alignments.hip.x, alignments.hip.y, alignments.shoulder.severity, lineWidth);
+  drawAlignmentLine(
+    ctx,
+    alignments.shoulder.x,
+    alignments.shoulder.y,
+    alignments.hip.x,
+    alignments.hip.y,
+    alignments.shoulder.severity,
+    lineWidth,
+    visibilityStrokeOverride(shoulderLm, hipLm)
+  );
 
-  drawHorizontalAlignmentLine(ctx, alignments.shoulder.x, alignments.plumbX, alignments.shoulder.y, alignments.shoulder.severity, 60);
+  drawHorizontalAlignmentLine(
+    ctx,
+    alignments.shoulder.x,
+    alignments.plumbX,
+    alignments.shoulder.y,
+    alignments.shoulder.severity,
+    60,
+    !shoulderLm.locked ? WIREFRAME_LOW_VISIBILITY_STROKE : undefined
+  );
 
   // 5. HIP POSITION
-  drawAlignmentLine(ctx, alignments.hip.x, alignments.hip.y, alignments.knee.x, alignments.knee.y, alignments.hip.severity, lineWidth);
+  drawAlignmentLine(
+    ctx,
+    alignments.hip.x,
+    alignments.hip.y,
+    alignments.knee.x,
+    alignments.knee.y,
+    alignments.hip.severity,
+    lineWidth,
+    visibilityStrokeOverride(hipLm, kneeLm)
+  );
 
-  drawHorizontalAlignmentLine(ctx, alignments.hip.x, alignments.plumbX, alignments.hip.y, alignments.hip.severity, 80);
+  drawHorizontalAlignmentLine(
+    ctx,
+    alignments.hip.x,
+    alignments.plumbX,
+    alignments.hip.y,
+    alignments.hip.severity,
+    80,
+    !hipLm.locked ? WIREFRAME_LOW_VISIBILITY_STROKE : undefined
+  );
 
   // 6. KNEE POSITION
   const kneeSeverity = alignments.knee.status === 'neutral' ? 'good' :
     (Math.abs(alignments.knee.deviation) > POSTURE_THRESHOLDS.PLUMB_LINE.MODERATE * ctx.canvas.width ? 'moderate' : 'mild');
-  drawAlignmentLine(ctx, alignments.knee.x, alignments.knee.y, alignments.ankle.x, alignments.ankle.y, kneeSeverity, lineWidth);
+  drawAlignmentLine(
+    ctx,
+    alignments.knee.x,
+    alignments.knee.y,
+    alignments.ankle.x,
+    alignments.ankle.y,
+    kneeSeverity,
+    lineWidth,
+    visibilityStrokeOverride(kneeLm, ankleLm)
+  );
 
   // 7. KYPHOSIS
   if (alignments.kyphosis.severity !== 'good') {
@@ -377,41 +589,46 @@ function drawSideWireframe(
   // 10. ARM
   const elbowIdx = view === 'side-left' ? 13 : 14;
   const wristIdx = view === 'side-left' ? 15 : 16;
-  const shoulderIdx = view === 'side-left' ? 11 : 12;
 
-  const elbow = landmarks[elbowIdx];
-  const wrist = landmarks[wristIdx];
-  const shoulder = landmarks[shoulderIdx];
+  const elbowLm = lv(elbowIdx);
+  const wristLm = lv(wristIdx);
 
-  if (elbow && shoulder && (elbow.visibility ?? 1) > 0.3) {
-    ctx.strokeStyle = ALIGNMENT_COLORS.NEUTRAL;
+  if (segmentShouldDraw(shoulderLm.v, elbowLm.v)) {
+    ctx.strokeStyle = visibilityStrokeOverride(shoulderLm, elbowLm) ?? ALIGNMENT_COLORS.NEUTRAL;
     ctx.lineWidth = lineWidth - 1;
     ctx.setLineDash([]);
 
     ctx.beginPath();
-    ctx.moveTo((shoulder.x) * ctx.canvas.width, (shoulder.y) * ctx.canvas.height);
-    ctx.lineTo((elbow.x) * ctx.canvas.width, (elbow.y) * ctx.canvas.height);
+    ctx.moveTo(shoulderLm.x, shoulderLm.y);
+    ctx.lineTo(elbowLm.x, elbowLm.y);
     ctx.stroke();
 
-    if (wrist && (wrist.visibility ?? 1) > 0.3) {
+    if (segmentShouldDraw(elbowLm.v, wristLm.v)) {
+      ctx.strokeStyle = visibilityStrokeOverride(elbowLm, wristLm) ?? ALIGNMENT_COLORS.NEUTRAL;
       ctx.beginPath();
-      ctx.moveTo((elbow.x) * ctx.canvas.width, (elbow.y) * ctx.canvas.height);
-      ctx.lineTo((wrist.x) * ctx.canvas.width, (wrist.y) * ctx.canvas.height);
+      ctx.moveTo(elbowLm.x, elbowLm.y);
+      ctx.lineTo(wristLm.x, wristLm.y);
       ctx.stroke();
     }
   }
 
   // DRAW LANDMARK POINTS
-  const sidePoints = [
-    { x: alignments.ear.x, y: alignments.ear.y, severity: alignments.ear.severity },
-    { x: alignments.shoulder.x, y: alignments.shoulder.y, severity: alignments.shoulder.severity },
-    { x: alignments.hip.x, y: alignments.hip.y, severity: alignments.hip.severity },
-    { x: alignments.knee.x, y: alignments.knee.y, severity: kneeSeverity as SeverityLevel },
-    { x: alignments.ankle.x, y: alignments.ankle.y, severity: null },
+  const sidePoints: Array<{
+    lm: LandmarkCanvas;
+    x: number;
+    y: number;
+    severity: SeverityLevel | null;
+  }> = [
+    { lm: earLm, x: alignments.ear.x, y: alignments.ear.y, severity: alignments.ear.severity },
+    { lm: shoulderLm, x: alignments.shoulder.x, y: alignments.shoulder.y, severity: alignments.shoulder.severity },
+    { lm: hipLm, x: alignments.hip.x, y: alignments.hip.y, severity: alignments.hip.severity },
+    { lm: kneeLm, x: alignments.knee.x, y: alignments.knee.y, severity: kneeSeverity as SeverityLevel },
+    { lm: ankleLm, x: alignments.ankle.x, y: alignments.ankle.y, severity: null },
   ];
 
   for (const point of sidePoints) {
-    drawLandmarkPoint(ctx, point.x, point.y, point.severity, pointRadius);
+    if (!point.lm.visible) continue;
+    drawLandmarkPoint(ctx, point.x, point.y, point.severity, pointRadius, !point.lm.locked);
   }
 }
 
@@ -421,9 +638,10 @@ function drawHorizontalAlignmentLine(
   plumbX: number,
   y: number,
   severity: SeverityLevel,
-  extend: number
+  extend: number,
+  strokeStyleOverride?: string
 ): void {
-  ctx.strokeStyle = getSeverityColor(severity);
+  ctx.strokeStyle = strokeStyleOverride ?? getSeverityColor(severity);
   ctx.lineWidth = severity === 'good' ? 2 : 4;
   ctx.setLineDash(severity === 'good' ? [8, 8] : [6, 4]);
   ctx.beginPath();
@@ -443,8 +661,8 @@ export function generateWireframeOnly(
   options: WireframeOnlyOptions = {}
 ): string {
   const {
-    pointColor = '#00ff00',
-    lineColor = 'rgba(0, 255, 0, 0.8)',
+    pointColor = '#22c55e',
+    lineColor = 'rgba(34, 197, 94, 0.85)',
     backgroundColor = '#1a1a2e',
   } = options;
 
@@ -468,9 +686,10 @@ export function generateWireframeOnly(
 
     if (!start || !end) continue;
 
-    const startVis = start.visibility ?? 1;
-    const endVis = end.visibility ?? 1;
-    if (startVis < 0.3 || endVis < 0.3) continue;
+    if (!segmentShouldDraw(start.visibility, end.visibility)) continue;
+
+    const segTier = wireframeSegmentTier(start.visibility, end.visibility);
+    ctx.strokeStyle = segTier === 'locked' ? lineColor : WIREFRAME_LOW_VISIBILITY_STROKE;
 
     ctx.beginPath();
     ctx.moveTo(start.x * width, start.y * height);
@@ -478,9 +697,12 @@ export function generateWireframeOnly(
     ctx.stroke();
   }
 
-  ctx.fillStyle = pointColor;
   landmarks.forEach((landmark) => {
-    if (!landmark || (landmark.visibility ?? 1) < 0.3) return;
+    if (!landmark) return;
+    const tier = wireframeLandmarkTier(landmark.visibility);
+    if (tier === 'absent') return;
+
+    ctx.fillStyle = tier === 'locked' ? pointColor : WIREFRAME_LOW_VISIBILITY_STROKE;
 
     ctx.beginPath();
     ctx.arc(landmark.x * width, landmark.y * height, 4, 0, Math.PI * 2);

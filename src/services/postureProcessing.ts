@@ -14,6 +14,10 @@
  */
 
 import { CONFIG } from '@/config';
+import {
+  POSTURE_LANDMARK_QUALITY_COPY,
+  postureLandmarkStructuralRetakeReason,
+} from '@/constants/postureLandmarkQuality';
 import { LandmarkResult, detectPostureLandmarks } from '@/lib/ai/postureLandmarks';
 import { drawLandmarkWireframe } from '@/lib/utils/postureOverlay';
 import { buildPostureResult } from '@/lib/ai/postureTemplates';
@@ -42,20 +46,74 @@ export const POSTURE_STRUCTURAL_LANDMARK_INDICES = [11, 12, 23, 24, 27, 28] as c
 
 export type PostureStillCaptureViewId = (typeof CONFIG.POSTURE_VIEWS)[number]['id'];
 
+export interface StructuralAnchorGateResult {
+  pass: boolean;
+  avgVisibility: number;
+  minAnchorVisibility: number;
+  /** Grouped user-facing regions (e.g. Shoulders, Hips, Feet) when any anchor fails the threshold. */
+  failingRegions: string[];
+}
+
+/**
+ * Strict gate: every structural anchor (11,12,23,24,27,28) must meet
+ * {@link CONFIG.COMPANION.POSE_THRESHOLDS.STRUCTURAL_ANCHOR_MIN_VISIBILITY}.
+ */
+export function evaluateStructuralAnchorVisibility(
+  raw: import('@/lib/types/mediapipe').MediaPipeLandmark[] | undefined
+): StructuralAnchorGateResult {
+  const threshold = CONFIG.COMPANION.POSE_THRESHOLDS.STRUCTURAL_ANCHOR_MIN_VISIBILITY;
+  const avgVisibility = averageStructuralLandmarkVisibility(raw);
+  if (!raw?.length) {
+    return { pass: false, avgVisibility, minAnchorVisibility: 0, failingRegions: ['Body'] };
+  }
+  const failingIndices: number[] = [];
+  let minAnchorVisibility = 1;
+  for (const index of POSTURE_STRUCTURAL_LANDMARK_INDICES) {
+    const lm = raw[index];
+    const v = lm?.visibility ?? 0;
+    minAnchorVisibility = Math.min(minAnchorVisibility, v);
+    if (v < threshold) {
+      failingIndices.push(index);
+    }
+  }
+  const failingRegions = structuralIndicesToRegionLabels(failingIndices);
+  return {
+    pass: failingIndices.length === 0,
+    avgVisibility,
+    minAnchorVisibility,
+    failingRegions,
+  };
+}
+
+function structuralIndicesToRegionLabels(indices: readonly number[]): string[] {
+  const labels: string[] = [];
+  if (indices.some((i) => i === 11 || i === 12)) labels.push('Shoulders');
+  if (indices.some((i) => i === 23 || i === 24)) labels.push('Hips');
+  if (indices.some((i) => i === 27 || i === 28)) labels.push('Feet');
+  return labels;
+}
+
 /**
  * Single-frame gate for Companion / guided capture before accepting a screenshot.
  */
 export async function evaluateCompanionStillCaptureLandmarks(
   imageData: string,
   view: PostureStillCaptureViewId
-): Promise<{ ok: true; avgVisibility: number } | { ok: false; avgVisibility: number }> {
+): Promise<
+  | { ok: true; avgVisibility: number; minAnchorVisibility: number }
+  | { ok: false; avgVisibility: number; minAnchorVisibility: number; failingRegions: string[] }
+> {
   const landmarks = await detectPostureLandmarks(imageData, view);
-  const avgVisibility = averageStructuralLandmarkVisibility(landmarks.raw);
-  const min = CONFIG.COMPANION.POSE_THRESHOLDS.minConfidence;
-  if (avgVisibility < min) {
-    return { ok: false, avgVisibility };
+  const gate = evaluateStructuralAnchorVisibility(landmarks.raw);
+  if (!gate.pass) {
+    return {
+      ok: false,
+      avgVisibility: gate.avgVisibility,
+      minAnchorVisibility: gate.minAnchorVisibility,
+      failingRegions: gate.failingRegions,
+    };
   }
-  return { ok: true, avgVisibility };
+  return { ok: true, avgVisibility: gate.avgVisibility, minAnchorVisibility: gate.minAnchorVisibility };
 }
 
 export function averageStructuralLandmarkVisibility(
@@ -71,21 +129,25 @@ function assessLandmarkConfidence(
   raw: import('@/lib/types/mediapipe').MediaPipeLandmark[] | undefined
 ): LandmarkConfidence {
   if (!raw || raw.length === 0) {
-    return { confident: false, avgVisibility: 0, retakeReason: 'No landmarks detected — ensure full body is visible' };
+    return { confident: false, avgVisibility: 0, retakeReason: POSTURE_LANDMARK_QUALITY_COPY.NO_LANDMARKS };
   }
   const structural = POSTURE_STRUCTURAL_LANDMARK_INDICES.map((i) => raw[i]).filter(Boolean);
   if (structural.length === 0) {
-    return { confident: false, avgVisibility: 0, retakeReason: 'Key body points not detected — step back so full body is in frame' };
-  }
-  const avgVisibility = structural.reduce((sum, l) => sum + (l.visibility ?? 0), 0) / structural.length;
-  if (avgVisibility < CONFIG.COMPANION.POSE_THRESHOLDS.minConfidence) {
     return {
       confident: false,
-      avgVisibility,
-      retakeReason: 'Poor landmark confidence — try better lighting or form-fitting clothing',
+      avgVisibility: 0,
+      retakeReason: POSTURE_LANDMARK_QUALITY_COPY.KEY_POINTS_MISSING,
     };
   }
-  return { confident: true, avgVisibility };
+  const gate = evaluateStructuralAnchorVisibility(raw);
+  if (!gate.pass) {
+    return {
+      confident: false,
+      avgVisibility: gate.avgVisibility,
+      retakeReason: postureLandmarkStructuralRetakeReason(gate.failingRegions),
+    };
+  }
+  return { confident: true, avgVisibility: gate.avgVisibility };
 }
 
 // Progress stages for UI feedback

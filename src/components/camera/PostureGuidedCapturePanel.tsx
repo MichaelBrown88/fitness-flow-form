@@ -2,12 +2,16 @@
  * Coach-device guided posture capture: same Gemini Live + batch MediaPipe processing as QR companion.
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Webcam from 'react-webcam';
 import { CONFIG } from '@/config';
-import { useAudioFeedback } from '@/hooks/useAudioFeedback';
+import {
+  useAudioFeedback,
+  shouldSuppressLegacyTts,
+  type LegacyTtsGateRefValue,
+} from '@/hooks/useAudioFeedback';
 import { useOrientationDetection } from '@/hooks/useOrientationDetection';
-import { usePoseDetection } from '@/hooks/usePoseDetection';
+import { usePoseDetection, type PoseLiveMetricsRef } from '@/hooks/usePoseDetection';
 import { useGeminiFramingGuide } from '@/hooks/useGeminiFramingGuide';
 import { updatePostureImage, updateHeartbeat, logCompanionMessage } from '@/services/liveSessions';
 import { evaluateCompanionStillCaptureLandmarks } from '@/services/postureProcessing';
@@ -15,6 +19,7 @@ import { CompanionUI } from '@/components/companion/CompanionUI';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, Loader2 } from 'lucide-react';
 import { logger } from '@/lib/utils/logger';
+import { primeWebAudioContextRef } from '@/lib/utils/primeWebAudioContextOnUserGesture';
 import { playCompanionLevelStableChime } from '@/lib/utils/companionLevelStableChime';
 import { playCompanionShutterClick } from '@/lib/utils/companionShutterClick';
 import type { UserProfile } from '@/types/auth';
@@ -43,6 +48,18 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
   profile,
   onClose,
 }) => {
+  const geminiEnabled = CONFIG.ENABLE_GEMINI_LIVE;
+
+  const legacyTtsGateRef = useRef<LegacyTtsGateRefValue>({
+    geminiEnabled,
+    geminiConnectionStatus: 'idle',
+    postureGeminiHandoff: false,
+  });
+
+  const poseLiveMetricsRef = useRef<PoseLiveMetricsRef>({ userScale: null, zone: 'absent' });
+  const relaxPostureDistanceRef = useRef(false);
+  const allowGeminiDistanceInjectionsRef = useRef(true);
+
   const facingMode = 'user' as const;
   const webcamRef = useRef<Webcam>(null);
   const [webcamVideo, setWebcamVideo] = useState<HTMLVideoElement | null>(null);
@@ -67,7 +84,8 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
   const isPoseReadyRef = useRef(false);
   const positionStableSinceRef = useRef<number | null>(null);
   const positionCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const STABLE_HOLD_MS = 1500;
+  const livePlaybackAudioContextRef = useRef<AudioContext | null>(null);
+  const STABLE_HOLD_MS = 900;
   const CAPTURE_COUNTDOWN_SECS = 3;
 
   useEffect(() => {
@@ -97,10 +115,18 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
   }, [sessionId, flowState]);
 
   const { speak, requestPermission: requestAudioPermission, hasPermission: hasAudioPermission } =
-    useAudioFeedback();
+    useAudioFeedback({ legacyTtsGateRef });
 
   const throttledSpeak = useCallback(
     (text: string, force: boolean = false) => {
+      if (shouldSuppressLegacyTts(legacyTtsGateRef.current)) {
+        logger.debug('[TTS] throttledSpeak skipped (Gemini Live active)', {
+          text,
+          geminiEnabled: legacyTtsGateRef.current.geminiEnabled,
+          geminiConnectionStatus: legacyTtsGateRef.current.geminiConnectionStatus,
+        });
+        return;
+      }
       const now = Date.now();
       if (force || now - lastAudioTimeRef.current >= AUDIO_THROTTLE_MS) {
         lastAudioTimeRef.current = now;
@@ -123,20 +149,15 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
   const relaxPostureUpright = CONFIG.COMPANION.ORIENTATION.POSTURE_RELAX_UPRIGHT;
   const gateVertical = relaxPostureUpright || isVertical;
 
-  /** Gemini Live disabled — using browser TTS + MediaPipe position-gated countdown. */
-  const geminiEnabled = false;
-
   const {
     startLiveSessionFromUserGesture,
-    primeAudioOutput,
     armShot,
-    shutdown,
     retry: retryGeminiLive,
     nudgeLevelPhone,
     connectionStatus: geminiConnectionStatus,
     connectionError: geminiConnectionError,
   } = useGeminiFramingGuide({
-    mayUseLiveSession: geminiEnabled,
+    mayUseLiveSession: geminiEnabled && hasPermission,
     flowState,
     views: VIEWS,
     getVideoElement: () => webcamRef.current?.video ?? null,
@@ -150,10 +171,23 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
       void shotHandlerRef.current(i);
     },
     onVoiceGuideAudioStarted: () => setVoiceGuideStarted(true),
+    playbackAudioContextRef: livePlaybackAudioContextRef,
+    poseLiveMetricsRef,
+    allowDistanceInjectionsRef: allowGeminiDistanceInjectionsRef,
   });
+
+  useLayoutEffect(() => {
+    legacyTtsGateRef.current.geminiEnabled = geminiEnabled;
+    legacyTtsGateRef.current.geminiConnectionStatus = geminiConnectionStatus;
+    legacyTtsGateRef.current.postureGeminiHandoff = geminiEnabled;
+  }, [geminiEnabled, geminiConnectionStatus]);
 
   const requestPermission = useCallback(async () => {
     try {
+      if (geminiEnabled) {
+        primeWebAudioContextRef(livePlaybackAudioContextRef);
+        startLiveSessionFromUserGesture();
+      }
       const orientationDone = requestOrientationPermission();
       await requestAudioPermission();
       await orientationDone;
@@ -161,7 +195,7 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
     } catch (e) {
       logger.error('[POSTURE_GUIDED] requestPermission failed', e);
     }
-  }, [requestAudioPermission, requestOrientationPermission]);
+  }, [geminiEnabled, requestAudioPermission, requestOrientationPermission, startLiveSessionFromUserGesture]);
 
   const poseDetectionResult = usePoseDetection({
     mode: 'posture',
@@ -173,6 +207,8 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
     webcamVideo,
     suppressAudioFeedback: false,
     disablePosePipeline: false,
+    poseLiveMetricsRef,
+    relaxDistanceGatingRef: relaxPostureDistanceRef,
   });
 
   useEffect(() => {
@@ -255,7 +291,7 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
         const gate = await evaluateCompanionStillCaptureLandmarks(imageSrc, viewData.id);
         if (!gate.ok) {
           logger.warn(
-            `[COUNTDOWN] Capture rejected for ${viewData.label} — low landmark confidence (${gate.avgVisibility.toFixed(2)})`
+            `[COUNTDOWN] Capture rejected for ${viewData.label} — structural anchors (avg ${gate.avgVisibility.toFixed(2)}, min ${gate.minAnchorVisibility.toFixed(2)}; ${gate.failingRegions.join(', ') || 'unknown'})`
           );
           return false;
         }
@@ -289,6 +325,16 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
     [sessionId, organizationId, profile]
   );
 
+  const captureImageRef = useRef(captureImage);
+  useEffect(() => {
+    captureImageRef.current = captureImage;
+  }, [captureImage]);
+
+  const armShotRef = useRef(armShot);
+  useEffect(() => {
+    armShotRef.current = armShot;
+  }, [armShot]);
+
   const runCountdownAndCapture = useCallback(
     (viewIdx: number) => {
       if (isSequenceCancelledRef.current) return;
@@ -319,12 +365,16 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
               return;
             }
             countdownRetryCountRef.current = 0;
+            if (viewIdx === 0) {
+              relaxPostureDistanceRef.current = true;
+              allowGeminiDistanceInjectionsRef.current = false;
+            }
             if (viewIdx < VIEWS.length - 1) {
-              throttledSpeak('Nice one. Now slowly turn to your right.', true);
+              throttledSpeak(CONFIG.COMPANION.VOICE_GUIDE.POSTURE_QUARTER_TURN_RIGHT, true);
               turnDelayTimeoutRef.current = setTimeout(() => {
                 if (isSequenceCancelledRef.current) return;
                 beginViewCaptureRef.current(viewIdx + 1);
-              }, 3500);
+              }, CONFIG.COMPANION.CAPTURE.POSTURE_GEMINI_NEXT_VIEW_MS);
             } else {
               setFlowState('complete');
               throttledSpeak("That's all the photos done. Great job!", true);
@@ -348,11 +398,19 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
       positionStableSinceRef.current = null;
       countdownRetryCountRef.current = 0;
 
+      const useGeminiLedCapture = geminiEnabled && geminiConnectionStatus === 'open';
+
       const viewData = VIEWS[viewIdx];
-      const directionCue = viewIdx === 0
-        ? `Alright, let's start with your ${viewData.label.toLowerCase()} view. Step back until your full body is inside the green guide box.`
-        : `Now your ${viewData.label.toLowerCase()} view. Make sure your full body is in the green box.`;
+      const directionCue =
+        viewIdx === 0
+          ? 'Alright — front view first. Position yourself so your body fills the green guide box from head to toe.'
+          : `Now your ${viewData.label.toLowerCase()} view. Keep filling the guide box — follow the voice guide.`;
       throttledSpeak(directionCue, true);
+
+      if (useGeminiLedCapture) {
+        void armShot(viewIdx);
+        return;
+      }
 
       if (positionCheckIntervalRef.current) clearInterval(positionCheckIntervalRef.current);
       positionCheckIntervalRef.current = setInterval(() => {
@@ -374,24 +432,51 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
             turnDelayTimeoutRef.current = setTimeout(() => {
               if (isSequenceCancelledRef.current) return;
               runCountdownAndCapture(viewIdx);
-            }, 2500);
+            }, 1800);
           }
         } else {
           positionStableSinceRef.current = null;
         }
       }, 300);
     },
-    [throttledSpeak, runCountdownAndCapture]
+    [armShot, geminiConnectionStatus, geminiEnabled, runCountdownAndCapture, throttledSpeak]
   );
 
   useEffect(() => {
     beginViewCaptureRef.current = beginViewCapture;
   }, [beginViewCapture]);
 
-  /** shotHandlerRef kept for future Gemini re-integration — currently unused. */
   useEffect(() => {
-    shotHandlerRef.current = () => {};
-  }, []);
+    shotHandlerRef.current = async (i: number) => {
+      if (!geminiEnabled) return;
+      if (isSequenceCancelledRef.current) return;
+      const accepted = await captureImageRef.current(i);
+      if (isSequenceCancelledRef.current) return;
+      if (!accepted) {
+        if (countdownRetryCountRef.current < MAX_COUNTDOWN_RETRIES) {
+          countdownRetryCountRef.current += 1;
+          turnDelayTimeoutRef.current = setTimeout(() => {
+            if (isSequenceCancelledRef.current) return;
+            void armShotRef.current(i);
+          }, 2000);
+        }
+        return;
+      }
+      countdownRetryCountRef.current = 0;
+      if (i === 0) {
+        relaxPostureDistanceRef.current = true;
+        allowGeminiDistanceInjectionsRef.current = false;
+      }
+      if (i < VIEWS.length - 1) {
+        turnDelayTimeoutRef.current = setTimeout(() => {
+          if (isSequenceCancelledRef.current) return;
+          beginViewCaptureRef.current(i + 1);
+        }, CONFIG.COMPANION.CAPTURE.POSTURE_GEMINI_NEXT_VIEW_MS);
+      } else {
+        setFlowState('complete');
+      }
+    };
+  }, [geminiEnabled]);
 
   const cancelSequence = useCallback(() => {
     postureWarmupPendingAutoStartRef.current = false;
@@ -411,6 +496,8 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
     positionStableSinceRef.current = null;
     setCountdown(null);
     pendingCapturesRef.current = [];
+    relaxPostureDistanceRef.current = false;
+    allowGeminiDistanceInjectionsRef.current = true;
     setFlowState('ready');
     setCurrentView(0);
     void logCompanionMessage(sessionId, 'Sequence cancelled by user', 'warn');
@@ -419,17 +506,24 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
 
   const startSequence = useCallback(() => {
     if (flowState !== 'ready' || currentView >= VIEWS.length) return;
+    if (geminiEnabled && geminiConnectionStatus !== 'open') {
+      logger.warn('[POSTURE_GUIDED] Start Capture blocked: voice guide not connected');
+      return;
+    }
     postureWarmupPendingAutoStartRef.current = false;
     isSequenceCancelledRef.current = false;
     countdownRetryCountRef.current = 0;
+    relaxPostureDistanceRef.current = false;
+    allowGeminiDistanceInjectionsRef.current = true;
     setFlowState('capturing');
     setCurrentView(0);
     beginViewCapture(0);
-  }, [flowState, currentView, beginViewCapture]);
+  }, [beginViewCapture, currentView, flowState, geminiConnectionStatus, geminiEnabled]);
 
   useEffect(() => {
     if (flowState !== 'ready' || !postureWarmupPendingAutoStartRef.current) return;
     if (!gateVertical) return;
+    if (geminiEnabled && geminiConnectionStatus !== 'open') return;
     let cancelled = false;
     queueMicrotask(() => {
       if (cancelled) return;
@@ -438,7 +532,7 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
     return () => {
       cancelled = true;
     };
-  }, [flowState, gateVertical, startSequence]);
+  }, [flowState, gateVertical, geminiConnectionStatus, geminiEnabled, startSequence]);
 
   const openedLogRef = useRef(false);
   useEffect(() => {
@@ -546,10 +640,10 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
         flowState={flowState}
         guideBoxState={guideBoxState}
         blockStartCaptureUntilVertical={!relaxPostureUpright}
-        geminiConnectionStatus={undefined}
-        geminiConnectionError={null}
-        onRetryGemini={undefined}
-        voiceGuideStarted={false}
+        geminiConnectionStatus={geminiEnabled ? geminiConnectionStatus : undefined}
+        geminiConnectionError={geminiEnabled ? geminiConnectionError : null}
+        onRetryGemini={geminiEnabled ? retryGeminiLive : undefined}
+        voiceGuideStarted={geminiEnabled ? voiceGuideStarted : false}
       />
     </div>
   );

@@ -33,7 +33,7 @@ const TARGET_FIRST_NAMES = new Set([
 ]);
 
 const STORAGE_BUCKET = 'assessment-engine-8f633.firebasestorage.app';
-const POSTURE_VIEWS = ['front', 'back', 'side-left', 'side-right'] as const;
+const POSTURE_VIEWS = ['front', 'side-left', 'back', 'side-right'] as const;
 
 /** Insert after last manual posture multiselect; then OHS, hinge, … match typical flow after AI capture. */
 const INSERT_P4_AI_AFTER_FIELD = 'postureKneesOverall';

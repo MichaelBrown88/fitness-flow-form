@@ -15,7 +15,7 @@ export type ProcessingStage =
   | 'complete'
   | 'error';
 
-export const VIEWS = ['front', 'back', 'side-left', 'side-right'] as const;
+export const VIEWS = ['front', 'side-left', 'back', 'side-right'] as const;
 export type ViewType = (typeof VIEWS)[number];
 
 /** Processing status for all views */

@@ -458,7 +458,12 @@ export const getClientPostureImages = async (
     const analysis: Record<string, PostureAnalysisResult> = {};
     
     // Get full-size storage URLs for each view
-    const views: ('front' | 'back' | 'side-left' | 'side-right')[] = ['front', 'back', 'side-left', 'side-right'];
+    const views: ('front' | 'back' | 'side-left' | 'side-right')[] = [
+      'front',
+      'side-left',
+      'back',
+      'side-right',
+    ];
     for (const view of views) {
       const storageUrl = session[`postureImagesFull_${view}`] || 
                         session[`postureImagesStorage_${view}`];

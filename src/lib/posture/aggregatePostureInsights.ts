@@ -10,7 +10,7 @@ const SEV_ORDER: Record<PostureFindingSeverity, number> = {
 
 const PRI_ORDER: Record<'high' | 'medium' | 'low', number> = { high: 3, medium: 2, low: 1 };
 
-const VIEWS: PostureFindingViewId[] = ['front', 'back', 'side-left', 'side-right'];
+const VIEWS: PostureFindingViewId[] = ['front', 'side-left', 'back', 'side-right'];
 
 export function aggregatePostureFindings(
   results: Partial<Record<PostureFindingViewId, PostureAnalysisResult>>

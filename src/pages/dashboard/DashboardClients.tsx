@@ -12,7 +12,7 @@ export default function DashboardClients() {
   const dueSoon = ctx.reassessmentQueue?.summary?.dueSoon ?? 0;
 
   return (
-    <div className="flex flex-col gap-5 pt-6 pb-8 sm:pt-8">
+    <div className="flex flex-col gap-5 py-6 sm:py-8 mt-auto mb-auto">
       {/* Stats row */}
       <div className="mx-auto w-full max-w-5xl px-3 sm:px-4">
         <div className="flex flex-wrap gap-3">

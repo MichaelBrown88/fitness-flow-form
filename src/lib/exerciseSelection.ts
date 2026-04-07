@@ -129,7 +129,7 @@ export function buildClientProfile(form: FormData, scores: ScoreSummary): Client
   let headTilt = false;
   
   if (postureResults) {
-    const views = ['front', 'back', 'side-left', 'side-right'] as const;
+    const views = ['front', 'side-left', 'back', 'side-right'] as const;
     for (const view of views) {
       const analysis = postureResults[view];
       if (!analysis) continue;

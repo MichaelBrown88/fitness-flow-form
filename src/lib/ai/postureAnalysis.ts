@@ -294,7 +294,7 @@ Return a JSON object with "view" (the classification) and "confidence" (0-1 scor
     const parsed = JSON.parse(responseText) as PostureViewClassification;
 
     // Validate the response
-    const validViews = ['front', 'back', 'side-left', 'side-right'];
+    const validViews = ['front', 'side-left', 'back', 'side-right'];
     if (!validViews.includes(parsed.view)) {
       throw new Error(`Invalid view classification: ${parsed.view}`);
     }

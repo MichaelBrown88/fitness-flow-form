@@ -1,4 +1,5 @@
 import type { SeverityLevel } from '@/lib/utils/postureAlignment';
+import { CHART_HEX } from '@/lib/design/chartColors';
 import { ALIGNMENT_COLORS } from './types';
 
 /**
@@ -53,9 +54,10 @@ export function drawAlignmentLine(
   x1: number, y1: number,
   x2: number, y2: number,
   severity: SeverityLevel,
-  lineWidth: number = 4
+  lineWidth: number = 4,
+  strokeStyleOverride?: string
 ): void {
-  ctx.strokeStyle = getSeverityColor(severity);
+  ctx.strokeStyle = strokeStyleOverride ?? getSeverityColor(severity);
   ctx.lineWidth = lineWidth;
   ctx.setLineDash([]);
   ctx.beginPath();
@@ -71,7 +73,9 @@ export function drawLandmarkPoint(
   ctx: CanvasRenderingContext2D,
   x: number, y: number,
   severity: SeverityLevel | null,
-  radius: number = 8
+  radius: number = 8,
+  /** Landmark visible but below clinical capture confidence — amber fill vs posture severity colors. */
+  lowVisibilityConfidence?: boolean
 ): void {
   // Outline
   ctx.strokeStyle = '#000000';
@@ -81,7 +85,13 @@ export function drawLandmarkPoint(
   ctx.stroke();
 
   // Fill
-  ctx.fillStyle = severity !== null ? getSeverityPointColor(severity) : ALIGNMENT_COLORS.POINT_NEUTRAL;
+  const fill =
+    lowVisibilityConfidence === true
+      ? CHART_HEX.scoreAmber
+      : severity !== null
+        ? getSeverityPointColor(severity)
+        : ALIGNMENT_COLORS.POINT_NEUTRAL;
+  ctx.fillStyle = fill;
   ctx.beginPath();
   ctx.arc(x, y, radius - 1, 0, Math.PI * 2);
   ctx.fill();
