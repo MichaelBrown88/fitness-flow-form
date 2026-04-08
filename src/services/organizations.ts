@@ -73,6 +73,8 @@ export interface OrgSubscriptionSnapshot {
   /** Billing region (GB, US, KW) — synced from Stripe / checkout */
   region?: string;
   currency?: string;
+  /** Capacity tier ID (S10, S20, … G250) — written by customer.subscription.updated webhook */
+  capacityTierId?: string;
 }
 
 export interface OrgSettings {

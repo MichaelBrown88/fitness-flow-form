@@ -21,7 +21,7 @@ export function publicReportOpenGraphTitle(clientName: string, coachBrandName?: 
 export function publicReportOpenGraphDescription(overallScore?: number | null): string {
   const s =
     overallScore != null && Number.isFinite(overallScore)
-      ? `Overall score ${Math.round(overallScore)}. `
+      ? `AXIS Score™ ${Math.round(overallScore)}. `
       : '';
   const body =
     `${s}Interactive assessment your coach shared — movement, posture, and progress. Open for the full report.`;
@@ -40,7 +40,7 @@ export function publicReportSocialPostCaption(
 ): string {
   const brand = coachBrandName?.trim() || PRODUCT_DISPLAY_NAME;
   const scoreBit =
-    overallScore != null && Number.isFinite(overallScore) ? ` Score ${Math.round(overallScore)}.` : '';
+    overallScore != null && Number.isFinite(overallScore) ? ` AXIS Score™ ${Math.round(overallScore)}.` : '';
   return `Fitness update for ${clientName}.${scoreBit} View the full interactive report:\n\n${pageUrl}\n\n— Shared via ${brand}`;
 }
 

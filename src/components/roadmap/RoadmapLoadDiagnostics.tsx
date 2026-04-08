@@ -37,7 +37,7 @@ export function RoadmapLoadDiagnostics({ variant }: RoadmapLoadDiagnosticsProps)
   if (variant === 'error') {
     return (
       <details className="mt-6 text-left max-w-xl mx-auto rounded-lg border border-border bg-muted/30 p-3 text-xs">
-        <summary className="cursor-pointer font-medium text-foreground">Roadmap load diagnostics</summary>
+        <summary className="cursor-pointer font-medium text-foreground">ARC™ load diagnostics</summary>
         <p className="mt-2 text-muted-foreground leading-relaxed">
           Share this JSON with support. Add{' '}
           <span className="font-mono text-foreground/80">?{PUBLIC_CLIENT_URL_QUERY.ROADMAP_DEBUG}=1</span> to the URL if
@@ -56,7 +56,7 @@ export function RoadmapLoadDiagnostics({ variant }: RoadmapLoadDiagnosticsProps)
   }
   return (
     <details className="mt-8 text-left rounded-lg border border-border bg-muted/30 p-3 text-xs">
-      <summary className="cursor-pointer font-medium text-foreground">Roadmap load diagnostics</summary>
+      <summary className="cursor-pointer font-medium text-foreground">ARC™ load diagnostics</summary>
       <div className="mt-2 flex justify-end">
         <Button type="button" variant="outline" size="sm" className="h-8 text-xs" onClick={handleCopy}>
           {UI_PUBLIC_ROADMAP_SUPPORT.COPY_DIAGNOSTICS}

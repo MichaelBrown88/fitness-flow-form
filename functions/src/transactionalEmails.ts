@@ -89,7 +89,7 @@ export async function sendWelcomeEmail(
     logoUrl: EMAIL_ASSETS_LOGO_URL || undefined,
     headline: firstName === 'there' ? 'Welcome aboard' : `Welcome, ${firstName}`,
     paragraphs: [
-      'Your account is set up and you’re ready to go. Log in to start assessing clients and building their roadmaps.',
+      'Your account is set up and you’re ready to go. Log in to start assessing clients and building their ARC™ plans.',
     ],
     primaryCta: { label: 'Go to dashboard', href: DASHBOARD_URL },
     secondaryLink: { label: 'Log in', href: LOGIN_URL },
@@ -193,8 +193,8 @@ export async function maybeSendFirstAssessmentCelebrationEmail(
     logoUrl: EMAIL_ASSETS_LOGO_URL || undefined,
     headline: 'Your first assessment is in',
     paragraphs: [
-      `You’ve saved an assessment for ${clientName}. That’s a major step toward clearer client roadmaps and less assessment admin.`,
-      'Continue in the app anytime to run more assessments, share reports, and refine plans.',
+      `You’ve saved an assessment for ${clientName}. That’s a major step toward clearer client ARC™ plans and less assessment admin.`,
+      'Continue in the app anytime to run more assessments, share reports, and refine ARC™ plans.',
     ],
     primaryCta: { label: 'View client', href: clientUrl },
     secondaryLink: { label: 'Go to dashboard', href: DASHBOARD_URL },

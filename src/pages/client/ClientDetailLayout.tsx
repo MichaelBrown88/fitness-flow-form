@@ -1,5 +1,5 @@
 /**
- * Client detail layout: shared data, breadcrumb, tabs (Overview | Client Report | Roadmap | Achievements | Coaches Report | History | Settings), Outlet, and dialogs.
+ * Client detail layout: shared data, breadcrumb, tabs (Overview | Client Report | ARC™ | Milestones | Coaches Report | History | Settings), Outlet, and dialogs. Tab routes unchanged (`/roadmap`, etc.).
  */
 
 import { useState, useEffect, useRef } from 'react';
@@ -308,7 +308,7 @@ export default function ClientDetailLayout() {
             `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground-secondary'}`
           }
         >
-          Roadmap
+          ARC™
         </NavLink>
         <NavLink
           to={buildClientPath(clientName, 'achievements')}
@@ -316,7 +316,7 @@ export default function ClientDetailLayout() {
             `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground-secondary'}`
           }
         >
-          Achievements
+          Milestones
         </NavLink>
         <NavLink
           to={buildClientPath(clientName, 'history')}

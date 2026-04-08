@@ -125,7 +125,7 @@ export async function requestShareLinks(request: CallableRequest<SharePayload>) 
       ? `${APP_HOST}/r/${token}`
       : (report.shareUrl || `${APP_HOST}/share/${coachUid}/${assessmentId}`);
 
-    const whatsappText = `Here is your One Assess assessment report:\n${shareUrl}`;
+    const whatsappText = `Here is your One Assess report (AXIS Score™ & pillars):\n${shareUrl}`;
 
     return {
       shareUrl,
@@ -168,13 +168,13 @@ export async function sendReportEmail(request: CallableRequest<EmailPayload>) {
     : (report.shareUrl || `${APP_HOST}/share/${coachUid}/${data.assessmentId}`);
   const subject =
     view === 'coach'
-      ? 'Coach report ready'
-      : `${data.clientName || 'Your'} One Assess assessment report`;
+      ? 'Coach report ready (SIGNAL™ & AXIS Score™)'
+      : `${data.clientName || 'Your'} One Assess report — AXIS Score™ ready`;
   const clientLabel = data.clientName?.trim() || 'Your';
   const summary =
     view === 'coach'
-      ? 'Your coach assessment report is ready to view.'
-      : `${clientLabel} assessment report is ready to view.`;
+      ? 'Your coach report is ready — SIGNAL™ themes and AXIS Score™ in One Assess.'
+      : `${clientLabel} report is ready to view — AXIS Score™ and pillars in One Assess.`;
 
   const { html, text } = renderNotificationEmail({
     subject,

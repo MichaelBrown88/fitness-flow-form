@@ -101,6 +101,11 @@ export function ClientJourneyPhase({ phase, items, phaseIndex, isLastPhase, phas
       </div>
 
       <div className="space-y-6">
+        {items.some((i) => i.id.startsWith('syn-')) && (
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-primary -mt-1 mb-1">
+            SIGNAL™ priorities
+          </p>
+        )}
         {(() => {
           const byPillar = groupPhaseItemsByPillar(items);
           const orderedCategories = (Object.entries(CATEGORY_ORDER) as [RoadmapCategory, number][])

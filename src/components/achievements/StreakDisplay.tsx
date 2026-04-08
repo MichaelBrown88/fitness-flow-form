@@ -16,8 +16,8 @@ export function StreakDisplay({ streaks, currentStreak }: StreakDisplayProps) {
           <Flame className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
         </div>
         <div>
-          <h3 className="text-sm sm:text-base font-bold text-foreground">Assessment Streak</h3>
-          <p className="text-xs sm:text-xs text-muted-foreground">Keep your consistency going</p>
+          <h3 className="text-sm sm:text-base font-bold text-foreground">ARC™ streak</h3>
+          <p className="text-xs sm:text-xs text-muted-foreground">Keep your ARC™ streak alive</p>
         </div>
         <div className="ml-auto text-right">
           <div className="text-2xl sm:text-3xl font-bold text-foreground">{currentStreak}</div>

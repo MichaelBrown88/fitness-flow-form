@@ -67,13 +67,13 @@ export function ClientProfileDropdown({
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
 
-        {/* Achievements */}
+        {/* ARC™ milestones (public achievements route) */}
         <DropdownMenuItem
           className="flex items-center gap-2"
           onClick={() => navigate(`/r/${shareToken}/achievements`)}
         >
           <Trophy className="h-4 w-4" />
-          Achievements
+          ARC™ milestones
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />

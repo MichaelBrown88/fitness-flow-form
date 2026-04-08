@@ -17,6 +17,8 @@ export const ROUTES = {
   ASSESSMENT: '/assessment',
   LOGIN: '/login',
   SETTINGS: '/settings',
+  /** Alias for billing upgrade CTAs (redirects in App router). */
+  SETTINGS_BILLING: '/settings/billing',
   ACHIEVEMENTS: '/achievements',
   ORG_DASHBOARD: '/org/dashboard',
   ORG_DASHBOARD_TEAM: '/org/dashboard/team',

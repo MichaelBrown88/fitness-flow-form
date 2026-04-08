@@ -102,9 +102,9 @@ function ClientAchievementsContent({
           <Trophy className="w-5 h-5 text-white" />
         </div>
         <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-bold text-foreground">Achievements</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-foreground">ARC™ milestones</h1>
           <p className="text-xs sm:text-sm text-muted-foreground">
-            {data.unlockedCount} of {ACHIEVEMENT_DEFINITIONS.length} unlocked
+            {data.unlockedCount} of {ACHIEVEMENT_DEFINITIONS.length} unlocked on their journey
           </p>
         </div>
       </div>

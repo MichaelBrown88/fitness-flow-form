@@ -35,7 +35,7 @@ const PublicRoadmapViewer = () => {
     const trimmed = token?.trim();
     if (!trimmed) {
       setLoading(false);
-      setError('This roadmap link is invalid or incomplete.');
+      setError('This ARC™ link is invalid or incomplete.');
       setRoadmap(null);
       return;
     }
@@ -56,7 +56,7 @@ const PublicRoadmapViewer = () => {
         }
         if (cancelled) return;
         if (!loaded) {
-          setError('This roadmap link is no longer active.');
+          setError('This ARC™ link is no longer active.');
           setRoadmap(null);
           return;
         }
@@ -70,7 +70,7 @@ const PublicRoadmapViewer = () => {
       } catch (err) {
         if (cancelled) return;
         logger.error('Failed to load public roadmap', err);
-        setError('Something went wrong loading this roadmap.');
+        setError('Something went wrong loading this ARC™.');
         setRoadmap(null);
       } finally {
         if (!cancelled) setLoading(false);
@@ -83,7 +83,7 @@ const PublicRoadmapViewer = () => {
   const effectiveShareToken = reportToken?.trim() || token?.trim() || undefined;
 
   const shellProps: AppShellOuterProps = {
-    title: roadmap ? `${roadmap.clientName}'s Plan` : 'Your Plan',
+    title: roadmap ? `${roadmap.clientName}'s ARC™` : 'Your ARC™',
     mode: 'public',
     showClientNav: !!effectiveShareToken,
     shareToken: effectiveShareToken,

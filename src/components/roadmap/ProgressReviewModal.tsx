@@ -49,7 +49,7 @@ export const ProgressReviewModal: React.FC<ProgressReviewModalProps> = ({
       <div className="bg-background rounded-2xl shadow-xl max-w-lg w-full mx-4 overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div>
-            <h2 className="text-lg font-bold text-foreground">Roadmap Progress Review</h2>
+            <h2 className="text-lg font-bold text-foreground">ARC™ progress review</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
               New assessment data detected — review suggested updates
             </p>

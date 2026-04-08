@@ -31,7 +31,7 @@ export function UnderTheHood() {
                 <span className={LANDING_H2_ACCENT_ON_DARK}>Pretty Pictures.</span>
               </>
             }
-            subtitle="360+ data points analyzed against 5,000+ clinical benchmarks to generate actionable insights."
+            subtitle="360+ data points analyzed against 5,000+ clinical benchmarks — feeding AXIS Score™, pillar detail, and coach-facing SIGNAL™ themes."
             dark
           />
         </div>

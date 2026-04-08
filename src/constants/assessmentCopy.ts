@@ -4,10 +4,10 @@
  */
 
 export const ASSESSMENT_COPY = {
-  SESSION_RESULTS_TITLE: "This session's results",
-  FULL_PROFILE_SCORE: 'Full profile score',
-  PROFILE_PREVIEW: 'Your profile so far',
-  COMPLETE_PROFILE: 'Complete profile',
+  SESSION_RESULTS_TITLE: "This session's AXIS snapshot",
+  FULL_PROFILE_SCORE: 'AXIS Score™',
+  PROFILE_PREVIEW: 'Your AXIS Score™ so far',
+  COMPLETE_PROFILE: 'Complete AXIS profile',
   NOT_INCLUDED_THIS_VISIT: 'Not included this visit',
   SESSION_FOCUS: 'Session focus',
   SESSION_PROGRESS: (current: number, total: number) =>
@@ -20,7 +20,7 @@ export const ASSESSMENT_COPY = {
   WIZARD_TITLE: 'What are you covering today?',
   WIZARD_SUBTITLE: 'Choose a template or customise which phases appear. You can change this anytime before results.',
   TEMPLATE_FULL: 'Full assessment',
-  TEMPLATE_FULL_DESC: 'All phases — complete profile score when finished.',
+  TEMPLATE_FULL_DESC: 'All phases — unlock your full AXIS Score™ when finished.',
   TEMPLATE_LIFESTYLE: 'Lifestyle check-in',
   TEMPLATE_LIFESTYLE_DESC: 'Intake, PAR-Q, lifestyle, and results.',
   TEMPLATE_BODY_COMP: 'Body composition',
@@ -43,8 +43,8 @@ export const ASSESSMENT_COPY = {
   REMOTE_INVALID: 'This link is invalid or has expired. Ask your coach for a new link.',
   AWAITING_STUDIO_BADGE: 'Awaiting studio',
   AWAITING_STUDIO_HINT: 'Client completed remote steps; finish coach-only phases in studio.',
-  FULL_PROFILE_HEADLINE: (score: number) => `Full profile score: ${score}/100`,
-  SESSION_SCORE_HEADLINE: (score: number) => `This session: ${score}/100 (assessed areas only)`,
+  FULL_PROFILE_HEADLINE: (score: number) => `AXIS Score™: ${score}/100`,
+  SESSION_SCORE_HEADLINE: (score: number) => `AXIS snapshot: ${score}/100 (assessed areas only)`,
   COACH_GUIDANCE_TOGGLE: 'Show coach guidance (scripts & cues)',
   FIRST_CLIENT_SELF_TITLE: 'Your first assessment is on you',
   FIRST_CLIENT_SELF_DESC:

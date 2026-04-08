@@ -40,7 +40,7 @@ export function buildFounderWelcomeEducationContent(
 
   const paragraphs: string[] = [
     opener,
-    `I built ${p.appName} because I kept seeing excellent coaches lose time to assessment admin instead of coaching. I wanted a calmer way to capture assessments, share progress with clients, and keep roadmaps in one place — without adding another pile of busywork.`,
+    `I built ${p.appName} because I kept seeing excellent coaches lose time to assessment admin instead of coaching. I wanted a calmer way to capture assessments, share AXIS Score™ and reports with clients, and keep ARC™ plans in one place — without adding another pile of busywork.`,
     `${p.appName} is still young, and I’m working on it every day to make it genuinely useful for coaches. You’re not “just another signup” to us; you’re exactly who I’m trying to get this right for.`,
     `If anything feels confusing, missing, or slower than it should be, I’d love to hear from you. Honest feedback helps us improve fastest — you can reply to this email directly, and I read every message.`,
     signOffLine,

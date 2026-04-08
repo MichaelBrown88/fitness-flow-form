@@ -16,6 +16,8 @@ interface GapAnalysisSectionProps {
   goals?: string[];
   formData?: FormData;
   hideHeader?: boolean;
+  /** Render only this pillar's card (no carousel/grid wrapper) */
+  singlePillar?: 'body-comp' | 'strength' | 'cardio';
 }
 
 const DeltaIndicator: React.FC<{ delta?: number }> = ({ delta }) => {
@@ -119,6 +121,7 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
   goals,
   formData,
   hideHeader,
+  singlePillar,
 }) => {
   const bodyComp = gapAnalysisData[0];
   const functional = gapAnalysisData[1];
@@ -421,6 +424,11 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
     );
   };
 
+  // Single-pillar mode: render just the relevant card with no wrapper
+  if (singlePillar === 'body-comp') return renderBodyCompCard(true);
+  if (singlePillar === 'strength') return renderFunctionalCard(true);
+  if (singlePillar === 'cardio') return renderMetabolicCard(true);
+
   return (
     <section className="w-full min-w-0 overflow-x-hidden">
       {!hideHeader && (
@@ -441,7 +449,7 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
           </p>
         </div>
       )}
-      
+
       {/* Desktop Layout */}
       <div className="hidden lg:grid grid-cols-3 gap-4 sm:gap-5 md:gap-6 mb-6 md:mb-8">
         {renderBodyCompCard(true)}

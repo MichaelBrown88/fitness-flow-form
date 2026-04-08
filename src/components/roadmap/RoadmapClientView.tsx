@@ -62,9 +62,9 @@ export default function RoadmapClientView({
   return (
     <div className={rootClass}>
       <header className="text-center space-y-3">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-primary">Your Journey</p>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-primary">Your ARC™</p>
         <h1 className="text-3xl font-bold text-foreground">
-          Hi {clientName.split(' ')[0]}, here&apos;s your plan
+          Hi {clientName.split(' ')[0]}, here&apos;s your ARC™
         </h1>
         {organizationName && (
           <p className="text-xs text-foreground-secondary">Prepared by {organizationName}</p>
@@ -108,7 +108,7 @@ export default function RoadmapClientView({
 
       <div className="rounded-xl border border-border bg-card p-5">
         <div className="flex items-center justify-between text-xs mb-3">
-          <span className="font-semibold text-foreground">Overall Progress</span>
+          <span className="font-semibold text-foreground">ARC™ progress</span>
           <span className="text-foreground-secondary">
             {achievedCount} of {items.length} milestones completed
           </span>
@@ -147,10 +147,10 @@ export default function RoadmapClientView({
 
       <footer className="text-center pt-6 border-t border-border space-y-1">
         <p className="text-[10px] text-foreground-secondary">
-          This journey was created by your coach and is updated as you progress.
+          Your ARC™ was created by your coach and is updated as you progress.
         </p>
         <p className="text-[10px] text-foreground-secondary">
-          Speak to your coach if you have any questions about your plan.
+          Speak to your coach if you have any questions about your ARC™.
         </p>
       </footer>
     </div>

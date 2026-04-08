@@ -15,7 +15,7 @@ const values = [
     icon: Target,
     title: 'Designed for Retention',
     description:
-      'Clients stay when they see progress. Every feature (the score, the gamification, the live reports) exists to make your clients feel invested in their journey.',
+      'Clients stay when they see progress. Every feature (AXIS Score™, ARC™ milestones, live reports) exists to make clients feel invested in their plan with you.',
     color: 'volt',
   },
   {

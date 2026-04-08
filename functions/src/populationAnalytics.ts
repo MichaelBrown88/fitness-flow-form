@@ -173,7 +173,7 @@ const ACTIVITY_ENCODE: Record<string, number> = {
 const ALCOHOL_ENCODE:  Record<string, number> = { 'never': 1, 'occasionally': 2, 'weekly': 3, 'daily': 4 };
 
 const VAR_LABELS: Record<string, string> = {
-  overall: 'Overall Score',
+  overall: 'AXIS Score™',
   bodyComp: 'Body Composition',
   cardio: 'Cardio Score',
   strength: 'Strength Score',

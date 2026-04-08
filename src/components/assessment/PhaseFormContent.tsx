@@ -195,7 +195,7 @@ export const PhaseFormContent = ({
     try {
       return buildRoadmap(scores, formData);
     } catch (e) {
-      logger.error('Error building roadmap:', e);
+      logger.error('Error building assessment phase timeline (scoring):', e);
       return [];
     }
   }, [scores, formData]);

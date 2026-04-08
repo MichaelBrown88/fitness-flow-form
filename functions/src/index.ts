@@ -602,7 +602,7 @@ export const syncPublicRoadmapMirror = onCall(
       if ((e as NodeJS.ErrnoException).code === 'RATE_LIMITED') {
         throw new HttpsError(
           'resource-exhausted',
-          'Too many roadmap sync requests. Try again shortly.',
+          'Too many ARC™ sync requests. Try again shortly.',
         );
       }
       throw e;

@@ -1,13 +1,14 @@
 /** Coach workspace assistant — user-visible copy (i18n-ready). */
 
 export const COACH_ASSISTANT_COPY = {
-  MODE_DATA_LABEL: 'Data',
-  MODE_ASSIST_LABEL: 'AI Assist',
-  MODE_DATA_DESC: 'Searches only your client records — no AI generation.',
+  MODE_DATA_LABEL: 'Data AI',
+  MODE_ASSIST_LABEL: 'Fitness AI',
+  MODE_DATA_DESC:
+    'Answers from your real assessment and schedule data only — fetch and report, no invented records. For programming advice use Fitness AI.',
   MODE_ASSIST_DESC:
-    'Can answer general fitness coaching questions in addition to your client data. AI responses may occasionally be inaccurate — always verify with client cards.',
+    'General fitness, programming, and coaching help, plus your workspace when you ask about clients. Verify important numbers on client cards.',
   MODE_TOOLTIP:
-    'Data: searches your client records only, no AI.\nAI Assist: can answer general fitness questions (e.g. programming for forward head posture) alongside your client data. AI may occasionally be inaccurate — verify important details.',
+    'Data AI: reads a live snapshot of your roster, overdue pillars, tasks, and weakness summaries — reports only what is in that data.\nFitness AI: exercise science, programming, nutrition, and broader coaching chat; uses your workspace summary when relevant.',
   PROVENANCE_DATA_ONLY: '',
   PROVENANCE_LLM: 'AI-assisted',
   PLACEHOLDER: 'Ask anything, or type / for commands',
@@ -15,10 +16,10 @@ export const COACH_ASSISTANT_COPY = {
   NEW_CHAT: 'New chat',
   SIDEBAR_SEARCH: 'Search',
   SIDEBAR_CHATS: 'Chats',
-  /** Sidebar block title — contains Reports, Roadmaps, Achievements collapsibles. */
+  /** Sidebar block title — contains Reports, ARC™, Milestones collapsibles. */
   SIDEBAR_ARTIFACTS_SECTION: 'Artifacts',
   /** Accessible name for the artifacts region (e.g. screen readers). */
-  SIDEBAR_ARTIFACTS_REGION_LABEL: 'Artifacts — public report, roadmap, and achievements links',
+  SIDEBAR_ARTIFACTS_REGION_LABEL: 'Artifacts — public report, client ARC™, and milestone links',
   /** Sidebar → full-page Artifacts grid */
   SIDEBAR_ARTIFACTS_VIEW_ALL: 'View all',
   /** Shown in sidebar on /dashboard/artifacts so lists are not duplicated for assistive tech. */
@@ -29,39 +30,39 @@ export const COACH_ASSISTANT_COPY = {
     'Public links you can share with clients or post on social — open a card to preview or copy.',
   ARTIFACTS_FILTER_ALL: 'All',
   ARTIFACTS_FILTER_REPORTS: 'Reports',
-  ARTIFACTS_FILTER_ROADMAPS: 'Roadmaps',
-  ARTIFACTS_FILTER_ACHIEVEMENTS: 'Achievements',
+  ARTIFACTS_FILTER_ROADMAPS: 'ARC™',
+  ARTIFACTS_FILTER_ACHIEVEMENTS: 'Milestones',
   ARTIFACTS_GRID_EMPTY_FILTERED: 'Nothing in this view.',
   ARTIFACTS_GRID_EMPTY_ALL:
-    'No public links yet. Share a report from an assessment or publish a client roadmap to see cards here.',
+    'No public links yet. Share a report from an assessment or publish a client ARC™ to see cards here.',
   ARTIFACTS_GRID_LOADING: 'Loading…',
   SIDEBAR_CATEGORY_REPORTS: 'Reports',
-  SIDEBAR_CATEGORY_ROADMAPS: 'Roadmaps',
-  SIDEBAR_CATEGORY_ACHIEVEMENTS: 'Achievements',
+  SIDEBAR_CATEGORY_ROADMAPS: 'ARC™',
+  SIDEBAR_CATEGORY_ACHIEVEMENTS: 'Milestones',
   SIDEBAR_CATEGORY_REPORTS_HINT: 'Assessment report — link preview works in social apps.',
-  SIDEBAR_CATEGORY_ROADMAPS_HINT: 'Published roadmap viewer for the same share token.',
-  SIDEBAR_CATEGORY_ACHIEVEMENTS_HINT: 'Trophy wall clients can open from the link.',
+  SIDEBAR_CATEGORY_ROADMAPS_HINT: 'Published ARC™ viewer for the same share token.',
+  SIDEBAR_CATEGORY_ACHIEVEMENTS_HINT: 'Milestone wall clients can open from the link.',
   EMPTY_SHAREABLE_REPORTS:
     'No shared reports yet. Share from an assessment to add a link here.',
   EMPTY_SHAREABLE_ROADMAPS:
-    'No published roadmaps yet. Set a share link on a client roadmap to list it here.',
+    'No published ARC™ links yet. Set a share link on a client ARC™ to list it here.',
   EMPTY_SHAREABLE_ACHIEVEMENTS:
-    'Share a client report first — achievements use the same public link.',
-  ROADMAP_PREVIEW_TITLE: (clientName: string) => `Shared roadmap — ${clientName}`,
+    'Share a client report first — milestones use the same public link.',
+  ROADMAP_PREVIEW_TITLE: (clientName: string) => `Shared ARC™ — ${clientName}`,
   ROADMAP_PREVIEW_SUB:
-    'Public roadmap page — copy the link or caption for Instagram, Facebook, or your client.',
-  ACHIEVEMENTS_PREVIEW_TITLE: (clientName: string) => `Shared achievements — ${clientName}`,
+    'Public ARC™ page — copy the link or caption for Instagram, Facebook, or your client.',
+  ACHIEVEMENTS_PREVIEW_TITLE: (clientName: string) => `Shared milestones — ${clientName}`,
   ACHIEVEMENTS_PREVIEW_SUB:
-    'Public achievements view — great for social proof posts and quick client shout-outs.',
+    'Public milestones view — great for social proof posts and quick client shout-outs.',
   ROADMAP_SOCIAL_CAPTION: (clientName: string, url: string) =>
-    `Training roadmap — ${clientName}\n${url}`,
+    `Training ARC™ — ${clientName}\n${url}`,
   ACHIEVEMENTS_SOCIAL_CAPTION: (clientName: string, url: string) =>
-    `Achievements unlocked — ${clientName}\n${url}`,
-  EMAIL_ROADMAP_SUBJECT: (clientName: string) => `Your roadmap — ${clientName}`,
-  EMAIL_ACHIEVEMENTS_SUBJECT: (clientName: string) => `Your achievements — ${clientName}`,
+    `ARC™ milestones unlocked — ${clientName}\n${url}`,
+  EMAIL_ROADMAP_SUBJECT: (clientName: string) => `Your ARC™ — ${clientName}`,
+  EMAIL_ACHIEVEMENTS_SUBJECT: (clientName: string) => `Your milestones — ${clientName}`,
   SIDEBAR_RECENTS: 'Recents',
   EMPTY_TITLE: 'What would you like to do?',
-  EMPTY_SUB: 'Use quick actions or type a question. Data mode is on by default.',
+  EMPTY_SUB: 'Use Data AI for overdue clients, roster questions, and patterns in your assessments. Use Fitness AI for programming and general coaching topics.',
   CHIP_TODAY: 'Today',
   CHIP_FIND_CLIENT: 'Find client',
   CHIP_NEW_ASSESSMENT: 'New Assessment',
@@ -69,12 +70,11 @@ export const COACH_ASSISTANT_COPY = {
   CHIP_SHARE: 'Public links',
   QUICK_ACTIONS_MENU_ARIA: 'Quick actions',
   HELP_TEXT: `Try:
-• /today — tasks and priorities
+• /today — tasks and priorities (answered here in chat)
 • /help — this list
-• /clients — open client directory
-• /work — tasks and calendar
-• /share — Open the Artifacts page (grid of public links)
-• Say a client name to open their profile`,
+• /clients — ask about your roster here, or open Clients from a button when offered
+• /work — reassessment queue and calendar (summarised in chat)
+• /share — public links (reports, ARC™, milestones) summarised in chat`,
   TODAY_EMPTY: 'No overdue or upcoming tasks from your queue right now.',
   TODAY_INTRO: 'Here is what is on your plate:',
   CLIENT_AMBIGUOUS: 'Several clients match. Pick one:',
@@ -82,7 +82,35 @@ export const COACH_ASSISTANT_COPY = {
   CLIENT_OPEN: 'Open profile',
   DEFAULT_REPLY:
     'I did not understand that. Try /help, pick a quick action, or use the search icon for clients.',
+  /** Shown when the model request fails so we do not silently show DEFAULT_REPLY. */
+  AI_UNAVAILABLE:
+    'The assistant could not reach the AI service right now. Check your connection and try again. You can still use /commands or type a client name for quick links.',
+  /** Warm copy when the model service errors — shown as a normal assistant bubble. */
+  ASSISTANT_SOFT_FAILURE:
+    "I'm having trouble reaching the assistant right now — your connection or our AI service may be busy. I'm still here; try sending that again in a moment. Meanwhile you can use the Clients tab or /commands when they work.",
   LOADING: 'Thinking…',
+  THINKING_FETCHING: 'Checking your client data…',
+  THINKING_GENERATING: 'Putting your answer together…',
+  STREAM_INCOMPLETE_NOTE:
+    'This response may be incomplete — try sending your question again.',
+  STREAM_PREVIEW_ARIA: 'Assistant is composing a reply',
+  STREAM_COMPOSING_LINE: 'Composing reply…',
+  /** Assistant bubble typewriter: ms per character (~55 chars/sec, slightly faster than typical reading). */
+  ASSISTANT_TYPEWRITER_MS_PER_CHAR: 17,
+  AI_ASSISTANT_UPGRADE_CTA: 'Upgrade plan',
+  AI_ASSISTANT_QUOTA_RESET_HINT: () => {
+    const d = new Date();
+    const next = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+    return next.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
+  },
+  AI_ASSISTANT_QUOTA_REQUESTS_EXCEEDED: (resetLabel: string) =>
+    `You've reached your AI assistant request limit for this month. Upgrade your plan to continue using the assistant, or your allowance resets on ${resetLabel}.`,
+  AI_ASSISTANT_QUOTA_TOKENS_EXCEEDED: (resetLabel: string) =>
+    `You've reached your AI assistant token budget for this month. Upgrade your plan to continue, or your allowance resets on ${resetLabel}.`,
+  AI_USAGE_REQUESTS_LABEL: (used: number, cap: number) =>
+    `AI requests: ${used} / ${cap} this month`,
+  AI_USAGE_TOKENS_SUBLABEL: (used: number, cap: number) =>
+    `Tokens: ${used.toLocaleString()} / ${cap.toLocaleString()}`,
   ARTIFACTS_EMPTY: 'No shared report links yet. Share a report from an assessment to see it here.',
   ARTIFACTS_LOAD_ERROR: 'Could not load public links.',
   COPY_LINK: 'Copy link',

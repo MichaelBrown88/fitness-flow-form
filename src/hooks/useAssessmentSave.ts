@@ -442,7 +442,7 @@ export function useAssessmentSave({
         }
       }
 
-      // Evaluate achievements, refresh roadmap drift, and send notifications (non-blocking)
+      // Evaluate achievements, refresh ARC™ drift scores, and send notifications (non-blocking)
       if (profile?.organizationId && assessmentId && shareToken) {
         // Resolve stable clientId once — used by both achievements and drift refresh
         let resolvedClientId: string = assessmentId;
@@ -530,7 +530,7 @@ export function useAssessmentSave({
           logger.warn('[Assessment] Failed to evaluate achievements (non-fatal):', achErr);
         }
 
-        // Step 2: Refresh roadmap drift scores + check phase completion (non-blocking)
+        // Step 2: Refresh ARC™ drift scores + check phase completion (non-blocking)
         try {
           const { refreshRoadmapScores, getRoadmapForClient } = await import('@/services/roadmaps');
           const driftScores: Record<string, number> = {};
@@ -542,7 +542,7 @@ export function useAssessmentSave({
             resolvedClientId,
             scores,
           );
-          logger.debug('[Assessment] Roadmap scores refreshed for drift detection');
+          logger.debug('[Assessment] ARC™ scores refreshed for drift detection');
 
           // Check if all phase targets are now met → notify client + coach
           const roadmap = await getRoadmapForClient(
@@ -580,7 +580,7 @@ export function useAssessmentSave({
             }
           }
         } catch (driftErr) {
-          logger.warn('[Assessment] Failed to refresh roadmap scores (non-fatal):', driftErr);
+          logger.warn('[Assessment] Failed to refresh ARC™ scores (non-fatal):', driftErr);
         }
 
         // Step 2b: Score drop alert — notify coach if overall score fell by 5+ points
@@ -602,7 +602,7 @@ export function useAssessmentSave({
               recipientUid: user.uid,
               type: 'score_drop',
               title: `Score drop: ${formData.fullName || clientName}`,
-              body: `Overall score fell from ${Math.round(previousScore)} to ${Math.round(scores.overall)}. A review may be warranted.`,
+              body: `AXIS Score™ fell from ${Math.round(previousScore)} to ${Math.round(scores.overall)}. A review may be warranted.`,
               priority: 'high',
               actionUrl: `/client/${encodeURIComponent(clientName)}`,
               meta: {

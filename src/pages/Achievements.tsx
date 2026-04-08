@@ -85,9 +85,9 @@ export default function AchievementsPage() {
           <Trophy className="w-5 h-5 text-white" />
         </div>
         <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-bold text-foreground">Achievements</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-foreground">ARC™ milestones</h1>
           <p className="text-xs sm:text-sm text-muted-foreground">
-            {achievements.unlockedCount} of {ACHIEVEMENT_DEFINITIONS.length} unlocked
+            {achievements.unlockedCount} of {ACHIEVEMENT_DEFINITIONS.length} unlocked on your journey
           </p>
         </div>
       </div>
@@ -100,7 +100,7 @@ export default function AchievementsPage() {
 
   if (achievements.isLoading) {
     return token ? (
-      <AppShell title="Achievements" mode="public" showClientNav shareToken={token} clientName={clientName ?? 'Client'}>
+      <AppShell title="ARC™ milestones" mode="public" showClientNav shareToken={token} clientName={clientName ?? 'Client'}>
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-6 w-6 text-primary motion-safe:animate-spin" />
         </div>
@@ -114,7 +114,7 @@ export default function AchievementsPage() {
 
   if (token) {
     return (
-      <AppShell title="Achievements" mode="public" showClientNav shareToken={token} clientName={clientName ?? 'Client'}>
+      <AppShell title="ARC™ milestones" mode="public" showClientNav shareToken={token} clientName={clientName ?? 'Client'}>
         {content}
       </AppShell>
     );

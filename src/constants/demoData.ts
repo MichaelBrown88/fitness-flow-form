@@ -94,7 +94,7 @@ export const DEMO_SCORES: ScoreSummary = {
 };
 
 export const DEMO_GOALS = [
-  'Improve overall fitness score to 80+',
+  'Improve AXIS Score™ to 80+',
   'Reduce body fat to 16%',
   'Run a 5K under 25 minutes',
 ];
@@ -107,7 +107,7 @@ export const DEMO_PLAN: CoachPlan = {
   ],
   clientScript: {
     findings: [
-      'Your overall score of 72 shows a solid foundation with clear areas for improvement.',
+      'Your AXIS Score™ of 72 shows a solid foundation with clear areas for improvement.',
       'Body composition is in a healthy range — you\'re well-positioned for performance gains.',
       'Shoulder mobility and cardiovascular fitness are your two biggest opportunities.',
     ],
@@ -123,7 +123,7 @@ export const DEMO_PLAN: CoachPlan = {
     threeMonthOutlook: [
       'Expect shoulder mobility to reach functional range within 6 weeks.',
       'Cardiovascular score should improve 10-15 points by month 3.',
-      'Overall score target: 80+ within 12 weeks.',
+      'AXIS Score™ target: 80+ within 12 weeks.',
     ],
     clientCommitment: [
       '3 training sessions per week (60 min each)',

@@ -289,9 +289,10 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
 
       try {
         const gate = await evaluateCompanionStillCaptureLandmarks(imageSrc, viewData.id);
-        if (!gate.ok) {
+        if (gate.ok === false) {
+          const regions = gate.failingRegions.join(', ') || 'unknown';
           logger.warn(
-            `[COUNTDOWN] Capture rejected for ${viewData.label} — structural anchors (avg ${gate.avgVisibility.toFixed(2)}, min ${gate.minAnchorVisibility.toFixed(2)}; ${gate.failingRegions.join(', ') || 'unknown'})`
+            `[COUNTDOWN] Capture rejected for ${viewData.label} — structural anchors (avg ${gate.avgVisibility.toFixed(2)}, min ${gate.minAnchorVisibility.toFixed(2)}; ${regions})`
           );
           return false;
         }

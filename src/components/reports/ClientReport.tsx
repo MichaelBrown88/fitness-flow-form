@@ -26,6 +26,7 @@ export default function ClientReport({
   previousScores,
   previousFormData,
   standalone = true,
+  roadmapShareToken,
 }: {
   scores: ScoreSummary;
   goals?: string[];
@@ -35,6 +36,8 @@ export default function ClientReport({
   previousScores?: ScoreSummary | null;
   previousFormData?: FormData;
   standalone?: boolean;
+  /** When provided, shows a link to the client's published ARC™ */
+  roadmapShareToken?: string;
 }) {
   const {
     safeScores,
@@ -137,17 +140,7 @@ export default function ClientReport({
         {activeView === 'coach' ? (
           <ClientReportCoachPane plan={plan} scores={scores} formData={formData} />
         ) : isMobile ? (
-          <ClientReportMobileLayout
-            scores={scores}
-            formData={formData}
-            previousFormData={previousFormData}
-            standalone={standalone}
-            strengths={strengths}
-            areasForImprovement={areasForImprovement}
-            goals={goals}
-            clientName={clientName}
-            sectionCtx={sectionCtx}
-          />
+          <ClientReportMobileLayout sectionCtx={sectionCtx} />
         ) : (
           <ClientReportDesktopAccordion
             isSectionOpen={isSectionOpen}
@@ -155,6 +148,21 @@ export default function ClientReport({
             setSectionRef={setSectionRef}
             sectionCtx={sectionCtx}
           />
+        )}
+
+        {standalone && roadmapShareToken && activeView === 'client' && (
+          <div className="hidden md:flex items-center justify-between rounded-xl border border-border bg-muted/40 px-5 py-4">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Your ARC™ is ready</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Your coach has published your personalised journey plan.</p>
+            </div>
+            <a
+              href={`/roadmap/${roadmapShareToken}`}
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:opacity-90 shrink-0"
+            >
+              View ARC™
+            </a>
+          </div>
         )}
       </div>
     </div>

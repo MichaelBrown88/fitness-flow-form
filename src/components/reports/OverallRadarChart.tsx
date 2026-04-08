@@ -35,7 +35,7 @@ const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Toolti
     return (
       <div className="rounded-lg border border-border bg-card p-3 shadow-lg">
         <p className="font-semibold text-foreground">{data.fullLabel}</p>
-        <p className="text-sm text-muted-foreground">Score: {data.value}/100</p>
+        <p className="text-sm text-muted-foreground">Pillar score: {data.value}/100</p>
       </div>
     );
   }

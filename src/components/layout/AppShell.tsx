@@ -20,6 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
 
 export default function AppShell({
   title,
@@ -48,6 +49,7 @@ export default function AppShell({
   hideCoachBrandAndUser = false,
   /** Optional left header region (e.g. workspace sidebar toggle) — shown before the logo when logo is visible, or alone when hidden. */
   headerLeading,
+  lockViewportHeight = false,
 }: {
   title: string;
   subtitle?: string;
@@ -71,6 +73,8 @@ export default function AppShell({
   headerCenter?: ReactNode;
   hideCoachBrandAndUser?: boolean;
   headerLeading?: ReactNode;
+  /** Pin layout to one viewport height; inner regions own scroll (dashboard workspace). */
+  lockViewportHeight?: boolean;
 }) {
   const { user, loading, signOut, orgSettings, profile } = useAuth();
   const showOrgAdminNav = useOrgAdminNavVisibility();
@@ -158,7 +162,12 @@ export default function AppShell({
 
   // Coach mode: full layout with navigation (semantic tokens — aligns with public AppShell + dark mode)
   return (
-    <div className="flex flex-col min-h-screen bg-background text-foreground">
+    <div
+      className={cn(
+        'flex flex-col bg-background text-foreground',
+        lockViewportHeight ? 'h-dvh max-h-dvh overflow-hidden' : 'min-h-screen',
+      )}
+    >
       <header className="border-b border-border/80 bg-background/95 backdrop-blur-sm sticky top-0 z-50 w-full shrink-0 supports-[backdrop-filter]:bg-background/80">
         <div className="relative flex min-h-12 w-full min-w-0 items-center justify-between gap-2 sm:min-h-14 sm:gap-3 px-3 sm:px-4 md:px-6 lg:px-10">
           {/* Left: logo (hidden on dashboard workspace — branding lives in main greeting). */}

@@ -86,3 +86,4 @@ repomix-output.xml
 # yarn.lock
 # pnpm-lock.yaml
 
+.claude/worktrees/

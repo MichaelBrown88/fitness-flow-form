@@ -32,7 +32,7 @@ export function MilestoneProgress({ milestones }: MilestoneProgressProps) {
     <div className="space-y-3 sm:space-y-4">
       <div>
         <h3 className="text-sm sm:text-base font-bold text-foreground">Score Milestones</h3>
-        <p className="text-xs sm:text-xs text-muted-foreground">Track your overall score progress</p>
+        <p className="text-xs sm:text-xs text-muted-foreground">Track your AXIS Score™ progress</p>
       </div>
 
       <Card className="p-4 sm:p-5 md:p-6 space-y-4 sm:space-y-5">

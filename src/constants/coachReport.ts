@@ -22,7 +22,7 @@ export function getCoachReportSectionId(key: CoachReportSectionId): string {
 }
 
 export const COACH_REPORT_NAV_LABELS: Record<CoachReportSectionId, string> = {
-  brief: 'Brief',
+  brief: 'SIGNAL™ brief',
   priorities: 'Priorities',
   'program-strategy': 'Program strategy',
   'movement-blocks': 'Movement blocks',
@@ -61,5 +61,5 @@ export const COACH_REPORT_COPY = {
   LABEL_HYDRATION: 'Hydration:',
   LABEL_CARB_TIMING: 'Carb timing:',
   OUTLOOK_FALLBACK: 'When baseline movement and stability improve.',
-  OVERALL_SCORE_ARIA: 'Overall score',
+  OVERALL_SCORE_ARIA: 'AXIS Score™',
 } as const;

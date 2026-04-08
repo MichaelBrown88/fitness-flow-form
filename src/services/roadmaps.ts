@@ -429,7 +429,7 @@ export async function getRoadmapByShareToken(
       return null;
     }
   } catch (err) {
-    logger.error('Failed to load roadmap by share token', 'ROADMAPS', err);
+    logger.error('Failed to load public ARC™ by share token', 'ROADMAPS', err);
     return null;
   }
 }
@@ -454,7 +454,7 @@ export async function deleteRoadmap(organizationId: string, clientSlug: string):
       try {
         await deleteDoc(doc(getDb(), COLLECTIONS.PUBLIC_ROADMAPS, data.shareToken));
       } catch (e) {
-        logger.warn('[ROADMAPS] Failed to delete public roadmap mirror', e);
+        logger.warn('[ROADMAPS] Failed to delete public ARC™ mirror', e);
       }
     }
   }

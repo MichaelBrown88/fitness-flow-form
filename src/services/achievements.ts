@@ -287,7 +287,7 @@ export async function populateClientData(): Promise<number> {
         for (const ach of unlocked) {
           await addDoc(notifRef, {
             type: 'system',
-            title: `Achievement Unlocked: ${ach.title}`,
+            title: `ARC™ milestone unlocked: ${ach.title}`,
             body: ach.description,
             priority: 'low',
             read: false,

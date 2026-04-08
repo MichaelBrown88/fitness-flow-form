@@ -26,10 +26,10 @@ export function CoachContextDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Coach brief: {clientName}</DialogTitle>
+          <DialogTitle>SIGNAL™ brief: {clientName}</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground -mt-2">
-          Use this when populating the roadmap. Goals and main issues are from the latest assessment.
+          SIGNAL™ surfaces priority themes from the latest assessment — use it while you build their ARC™.
         </p>
 
         <div className="space-y-5 pt-2">
@@ -52,7 +52,7 @@ export function CoachContextDialog({
           <section>
             <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground mb-2">
               <AlertCircle className="h-4 w-4 text-amber-500" />
-              Main issues to consider
+              SIGNAL™ priorities
             </h3>
             {brief.mainIssues.length > 0 ? (
               <ul className="list-disc list-inside text-sm text-foreground-secondary space-y-1">
@@ -68,7 +68,7 @@ export function CoachContextDialog({
           <section>
             <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground mb-2">
               <Lightbulb className="h-4 w-4 text-emerald-500" />
-              What to consider when building the roadmap
+              What SIGNAL™ means for the ARC™
             </h3>
             <ul className="list-disc list-inside text-sm text-foreground-secondary space-y-1">
               {brief.considerations.map((c, i) => (

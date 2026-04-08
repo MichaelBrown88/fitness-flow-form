@@ -9,7 +9,7 @@
  */
 
 export const USD_TO_KWD_RATE = 0.305;
-export const TOKENS_PER_REQUEST = 7_000;
+export const TOKENS_PER_REQUEST = 15_000;
 
 /**
  * Cost per request in USD for each AI provider.

@@ -31,7 +31,7 @@ export const SEO_INDEXABLE_BY_PATH: Record<string, SeoPageMeta> = {
   [ROUTES.HOME]: {
     title: 'Fitness assessment software for coaches & gyms | One Assess',
     description:
-      'AI posture analysis, professional client reports, and progress tracking for personal trainers and gyms. Try free, see the demo, or start a gym trial.',
+      'AI posture analysis, client reports with AXIS Score™, coach SIGNAL™ priorities, and client ARC™ plans for personal trainers and gyms. Try free, demo, or gym trial.',
   },
   [ROUTES.PRICING]: {
     title: 'Pricing & plans for coaches & gyms | One Assess',
@@ -41,7 +41,7 @@ export const SEO_INDEXABLE_BY_PATH: Record<string, SeoPageMeta> = {
   [ROUTES.ABOUT]: {
     title: 'About One Assess | Fitness assessments for working coaches',
     description:
-      'Why we built coach-first assessment software: less spreadsheet time, clearer client reports, and retention tools gyms actually use.',
+      'Why we built coach-first assessment software: less spreadsheet time, client reports with AXIS Score™, SIGNAL™ for coaches, and ARC™ retention tools gyms actually use.',
   },
   [ROUTES.CONTACT]: {
     title: 'Contact One Assess | Support for coaches and gym teams',
@@ -51,7 +51,7 @@ export const SEO_INDEXABLE_BY_PATH: Record<string, SeoPageMeta> = {
   [ROUTES.DEMO]: {
     title: 'Sample fitness assessment report | Interactive demo | One Assess',
     description:
-      'Explore a full sample client report: movement and posture insights, scores, and coaching-ready outputs from One Assess.',
+      'Explore a full sample client report: movement and posture insights, AXIS Score™, pillars, and coaching-ready outputs from One Assess.',
   },
   [ROUTES.TRY]: {
     title: 'Try AI fitness assessments free | No signup | One Assess',
@@ -175,7 +175,7 @@ export function getDashboardSeoForPathname(pathname: string): SeoPageMeta {
   if (pathname.startsWith(ROUTES.DASHBOARD_ARTIFACTS)) {
     return {
       title: 'Artifacts | One Assess',
-      description: 'Public report, roadmap, and achievements links for clients and social posts.',
+      description: 'Public report, client ARC™ (roadmap), and milestone links for clients and social posts.',
       noindex: true,
     };
   }
@@ -209,7 +209,7 @@ export function getAppShellSeoForPathname(
     return {
       ...base,
       title: `${options.clientDisplayName.trim()} | One Assess`,
-      description: 'Client profile, reports, roadmap, and history.',
+      description: 'Client profile, reports, ARC™ (roadmap), milestones, and history.',
     };
   }
 

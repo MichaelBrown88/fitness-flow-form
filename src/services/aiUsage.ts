@@ -22,7 +22,8 @@ export type AIUsageType =
   | 'posture_analysis'
   | 'exercise_recommendation'
   | 'comparison_narrative'
-  | 'coach_assistant_wording';
+  | 'coach_assistant_wording'
+  | 'coach_assistant_response';
 export type AIUsageStatus = 'local_success' | 'ai_fallback' | 'ai_success' | 'error';
 
 export interface AIUsageLog {
@@ -46,6 +47,7 @@ const AI_USAGE_TYPES = new Set<AIUsageType>([
   'exercise_recommendation',
   'comparison_narrative',
   'coach_assistant_wording',
+  'coach_assistant_response',
 ]);
 
 const AI_USAGE_STATUSES = new Set<AIUsageStatus>(['local_success', 'ai_fallback', 'ai_success', 'error']);

@@ -17,8 +17,8 @@ export function PublicRoadmapViewerLoading({ shellProps }: { shellProps: AppShel
         aria-busy="true"
         aria-live="polite"
       >
-        <span className="sr-only">Loading your plan</span>
-        <p className="text-sm text-muted-foreground text-center">Loading your plan…</p>
+        <span className="sr-only">Loading your ARC™</span>
+        <p className="text-sm text-muted-foreground text-center">Loading your ARC™…</p>
         <div className="space-y-4" aria-hidden>
           <Skeleton className="h-8 w-48 mx-auto rounded-lg" />
           <Skeleton className="h-28 w-full rounded-xl" />
@@ -48,7 +48,7 @@ export function PublicRoadmapViewerMissing({
   return (
     <AppShell {...shellProps}>
       <div className="max-w-2xl mx-auto px-4 py-8 text-center space-y-4">
-        <p className="text-lg font-semibold text-foreground">Roadmap Not Found</p>
+        <p className="text-lg font-semibold text-foreground">ARC™ not found</p>
         <p className="text-sm text-muted-foreground">{error ?? 'This link may have expired.'}</p>
         <p className="text-xs text-muted-foreground">
           If this keeps happening, ask your coach for a new link.

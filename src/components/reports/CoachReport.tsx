@@ -64,9 +64,12 @@ export default function CoachReport({
       <section className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm">
         <div className="flex flex-wrap items-baseline justify-between gap-3 mb-4">
           <h2 className="text-xl font-bold text-foreground">{clientName || C.CLIENT_FALLBACK}</h2>
-          <span className="text-2xl font-bold text-foreground tabular-nums" aria-label={C.OVERALL_SCORE_ARIA}>
-            {overall}
-          </span>
+          <div className="text-right">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{C.OVERALL_SCORE_ARIA}</p>
+            <span className="text-2xl font-bold text-foreground tabular-nums" aria-label={C.OVERALL_SCORE_ARIA}>
+              {overall}
+            </span>
+          </div>
         </div>
         {goals.length > 0 && (
           <p className="text-sm leading-relaxed text-foreground-secondary mb-3">

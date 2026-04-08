@@ -260,7 +260,7 @@ export function CoachWorkspaceSidebar({
               hint={COACH_ASSISTANT_COPY.SIDEBAR_CATEGORY_ROADMAPS_HINT}
               emptyLabel={
                 <span>
-                  No published roadmaps yet.{' '}
+                  No published ARC™ links yet.{' '}
                   <Link to={ROUTES.DASHBOARD_CLIENTS} className="underline underline-offset-2 hover:text-foreground">
                     Open a client
                   </Link>{' '}

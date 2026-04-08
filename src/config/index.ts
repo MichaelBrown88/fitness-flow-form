@@ -54,7 +54,10 @@ export const CONFIG = {
       MIN_TRACKING_CONFIDENCE: 0.75,
     },
     GEMINI: {
-      MODEL_NAME: "gemini-2.5-flash", // General Vertex text (classification, etc.)
+      MODEL_NAME: (() => {
+        const v = import.meta.env.VITE_GEMINI_MODEL;
+        return typeof v === 'string' && v.trim() !== '' ? v.trim() : 'gemini-2.5-flash';
+      })(),
       BACKEND: "VertexAIBackend", // Internal Firebase AI backend
       /** Posture narrative after MediaPipe metrics — 3.x-class default; override with VITE_GEMINI_POSTURE_FEEDBACK_MODEL if your project uses a different ID. */
       POSTURE_FEEDBACK_MODEL_NAME: (() => {

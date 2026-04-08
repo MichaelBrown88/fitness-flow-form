@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
-  Loader2,
   Sun,
   Search,
   ClipboardPlus,
@@ -16,8 +15,8 @@ import { AssistantModeToggle } from '@/components/dashboard/assistant/AssistantM
 import { AssistantThreadPanel } from '@/components/dashboard/assistant/AssistantThreadPanel';
 import { useCoachAssistantContext } from '@/contexts/CoachAssistantContext';
 import { COACH_ASSISTANT_COPY } from '@/constants/coachAssistantCopy';
-import { UI_EVENTS } from '@/constants/uiEvents';
-import { ROUTES, dashboardWorkPath } from '@/constants/routes';
+import { ROUTES } from '@/constants/routes';
+import { writePrefillClientPayload } from '@/lib/assessment/assessmentSessionStorage';
 import { staffPreferredFirstName } from '@/lib/utils/staffDisplayName';
 import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
 import { useAuth } from '@/hooks/useAuth';
@@ -42,11 +41,11 @@ const COMPOSER_SHELL =
   'w-full rounded-2xl border border-border/70 bg-card px-5 py-4 shadow-sm dark:border-border dark:bg-card focus-within:outline-none';
 
 const SLASH_COMMANDS = [
-  { cmd: '/today', desc: 'Daily brief — who needs attention right now' },
-  { cmd: '/clients', desc: 'Go to your client directory' },
-  { cmd: '/work', desc: 'Open reassessment queue and calendar' },
-  { cmd: '/share', desc: 'Browse reports, roadmaps and achievements' },
-  { cmd: '/help', desc: 'Show available commands' },
+  { cmd: '/today', desc: 'Daily brief — answered in this chat' },
+  { cmd: '/clients', desc: 'Ask about your roster in chat' },
+  { cmd: '/work', desc: 'Queue & calendar — summarised here' },
+  { cmd: '/share', desc: 'Public links — summarised here' },
+  { cmd: '/help', desc: 'Command list' },
 ] as const;
 
 function briefLabel(item: ReassessmentItem): string {
@@ -81,6 +80,14 @@ export default function DashboardAssistant() {
 
   const coachFirst = user ? staffPreferredFirstName(profile, user) : 'Coach';
 
+  const handleStartAssessmentForClient = useCallback(
+    (fullName: string) => {
+      writePrefillClientPayload({ fullName: fullName.trim() });
+      navigate(ROUTES.ASSESSMENT);
+    },
+    [navigate],
+  );
+
   // ── Scroll management ──────────────────────────────────────────────────────
   // The scroll container lives here; AssistantThreadPanel just renders content.
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -94,7 +101,13 @@ export default function DashboardAssistant() {
     if (!el) return;
     el.scrollTop = el.scrollHeight;
     shouldAutoScrollRef.current = true;
-  }, [assistant.messages.length, assistant.sending]);
+  }, [
+    assistant.messages.length,
+    assistant.sending,
+    assistant.thinkingPhase,
+    assistant.thinkingSessionKey,
+    assistant.streamPreview?.active,
+  ]);
 
   // ResizeObserver keeps the view glued to the bottom while the typewriter
   // adds content — fires on every character so we never fall behind.
@@ -140,17 +153,26 @@ export default function DashboardAssistant() {
         {
           label: COACH_ASSISTANT_COPY.CHIP_FIND_CLIENT,
           Icon: Search,
-          onClick: () => window.dispatchEvent(new Event(UI_EVENTS.OPEN_COMMAND_MENU)),
+          onClick: () =>
+            void assistant.sendMessage(
+              'Browse my client roster: who needs attention, and help me pick someone to look at.',
+            ),
         },
         {
           label: COACH_ASSISTANT_COPY.CHIP_NEW_ASSESSMENT,
           Icon: ClipboardPlus,
-          onClick: () => navigate(ROUTES.ASSESSMENT),
+          onClick: () =>
+            void assistant.sendMessage(
+              'I want to start a new assessment. Use my roster to suggest who to assess next and how to open the assessment flow.',
+            ),
         },
         {
           label: COACH_ASSISTANT_COPY.CHIP_CALENDAR,
           Icon: CalendarRange,
-          onClick: () => navigate(dashboardWorkPath('calendar')),
+          onClick: () =>
+            void assistant.sendMessage(
+              'What does my reassessment schedule look like for the next week? Who is due or overdue?',
+            ),
         },
         {
           label: COACH_ASSISTANT_COPY.CHIP_SHARE,
@@ -158,7 +180,7 @@ export default function DashboardAssistant() {
           onClick: () => void assistant.sendMessage('/share'),
         },
       ] satisfies ChipDef[],
-    [assistant, navigate],
+    [assistant],
   );
 
   const briefItems = useMemo(() => {
@@ -179,13 +201,13 @@ export default function DashboardAssistant() {
   const filteredMentionClients = useMemo(() => {
     if (!mentionMenu) return [];
     const q = mentionMenu.query.toLowerCase();
-    return (ctx.filteredClients ?? [])
+    return (ctx.clientGroups ?? [])
       .filter(c => {
         const display = formatClientDisplayName(c.name).toLowerCase();
         return display.includes(q) || c.name.toLowerCase().includes(q);
       })
       .slice(0, 8);
-  }, [mentionMenu, ctx.filteredClients]);
+  }, [mentionMenu, ctx.clientGroups]);
 
   const applySlashCommand = useCallback((cmd: string | undefined) => {
     if (!cmd) return;
@@ -276,7 +298,6 @@ export default function DashboardAssistant() {
     onChange: handleChange,
     placeholder: COACH_ASSISTANT_COPY.PLACEHOLDER,
     onKeyDown: handleKeyDown,
-    disabled: assistant.sending,
     'aria-label': COACH_ASSISTANT_COPY.PLACEHOLDER,
     className: cn(
       'min-h-[72px] max-h-48 w-full resize-none border-0 bg-transparent py-2 text-base text-foreground',
@@ -345,37 +366,55 @@ export default function DashboardAssistant() {
           </div>
         )}
         <Textarea {...textareaProps} className={cn(textareaProps.className, 'min-h-[68px] px-0')} />
-        <div className="flex items-center justify-between pt-1.5">
-          <div className="flex items-center gap-1.5">
-            {inThread && (
-              <button
-                type="button"
-                onClick={() => setActionsOpen((v) => !v)}
-                className={cn(
-                  'flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
-                  actionsOpen && 'bg-muted text-foreground',
+        <div className="flex items-center justify-between gap-3 pt-1.5">
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <div className="flex items-center gap-1.5">
+              {inThread && (
+                <button
+                  type="button"
+                  onClick={() => setActionsOpen((v) => !v)}
+                  className={cn(
+                    'flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+                    actionsOpen && 'bg-muted text-foreground',
+                  )}
+                  aria-label="Quick actions"
+                  title="Quick actions"
+                >
+                  <Plus className={cn('h-4 w-4 transition-transform', actionsOpen && 'rotate-45')} />
+                </button>
+              )}
+              <AssistantModeToggle
+                mode={assistant.interactionMode}
+                onChange={assistant.setInteractionMode}
+                variant="minimal"
+                density="compact"
+              />
+            </div>
+            {assistant.usageDisplay !== null && assistant.usageDisplay !== undefined && (
+              <p className="truncate text-[11px] leading-snug text-muted-foreground">
+                {COACH_ASSISTANT_COPY.AI_USAGE_REQUESTS_LABEL(
+                  assistant.usageDisplay.requestsUsed,
+                  assistant.usageDisplay.requestsCap,
                 )}
-                aria-label="Quick actions"
-                title="Quick actions"
-              >
-                <Plus className={cn('h-4 w-4 transition-transform', actionsOpen && 'rotate-45')} />
-              </button>
+                {assistant.usageDisplay.tokensCap !== null && (
+                  <span className="ml-2 text-muted-foreground/85">
+                    {COACH_ASSISTANT_COPY.AI_USAGE_TOKENS_SUBLABEL(
+                      assistant.usageDisplay.tokensUsed,
+                      assistant.usageDisplay.tokensCap,
+                    )}
+                  </span>
+                )}
+              </p>
             )}
-            <AssistantModeToggle
-              mode={assistant.interactionMode}
-              onChange={assistant.setInteractionMode}
-              variant="minimal"
-              density="compact"
-            />
           </div>
           <Button
             type="button"
             size="sm"
             className="h-8 min-w-[4rem] rounded-lg px-4 text-xs font-semibold"
             onClick={() => void send()}
-            disabled={assistant.sending || !draft.trim()}
+            disabled={!draft.trim()}
           >
-            {assistant.sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : 'Send'}
+            Send
           </Button>
         </div>
       </div>
@@ -434,10 +473,14 @@ export default function DashboardAssistant() {
                         <span className="text-xs text-foreground truncate min-w-0">{briefLabel(item)}</span>
                         <button
                           type="button"
-                          onClick={() => void ctx.handleNewAssessmentForClient(item.clientName, pillar !== 'full' ? pillar : undefined)}
+                          onClick={() =>
+                            void assistant.sendMessage(
+                              `Show me everything useful for reassessing ${item.clientName} — latest AXIS score, pillar schedule, and suggest next steps. Offer a button to start their assessment when I'm ready.`,
+                            )
+                          }
                           className="shrink-0 text-[11px] font-bold text-primary hover:underline"
                         >
-                          Start
+                          In chat
                         </button>
                       </li>
                     );
@@ -458,11 +501,20 @@ export default function DashboardAssistant() {
               ref={scrollContentRef}
               className="mx-auto w-full max-w-3xl px-4 py-5 sm:max-w-4xl sm:px-6 sm:py-6 lg:max-w-5xl lg:px-8"
             >
-              <AssistantThreadPanel messages={assistant.messages} thinking={assistant.sending} />
+              <AssistantThreadPanel
+                messages={assistant.messages}
+                thinkingPhase={assistant.thinkingPhase}
+                thinkingSteps={assistant.thinkingSteps}
+                thinkingSessionKey={assistant.thinkingSessionKey}
+                streamPreview={assistant.streamPreview}
+                assistantTypewriterMessageId={assistant.assistantTypewriterMessageId}
+                onAssistantTypewriterComplete={assistant.onAssistantTypewriterComplete}
+                onStartAssessmentForClient={handleStartAssessmentForClient}
+              />
             </div>
           </div>
 
-          <div className="shrink-0 border-t border-border/60 bg-background/95 supports-[backdrop-filter]:backdrop-blur-sm dark:bg-background/90">
+          <div className="shrink-0 border-t border-border/60 bg-background/95 pb-[env(safe-area-inset-bottom)] supports-[backdrop-filter]:backdrop-blur-sm dark:bg-background/90">
             <div className="mx-auto w-full max-w-3xl px-4 py-3 sm:max-w-4xl sm:px-6 lg:max-w-5xl lg:px-8">
               {composerBarThread}
             </div>

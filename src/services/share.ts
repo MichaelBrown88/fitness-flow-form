@@ -59,7 +59,7 @@ export async function requestShareArtifacts(params: {
 
   let scoreContext = '';
   if (overallScore !== undefined) {
-    scoreContext = `Your overall score: ${overallScore}/100`;
+    scoreContext = `Your AXIS Score™: ${overallScore}/100`;
     if (scoreDelta !== undefined && scoreDelta !== 0) {
       const sign = scoreDelta > 0 ? '+' : '';
       scoreContext += ` (${sign}${scoreDelta} since last time)`;
@@ -67,7 +67,7 @@ export async function requestShareArtifacts(params: {
     scoreContext += '.\n';
   }
 
-  const shareMessage = `Hi ${firstName} — your One Assess results are ready! 🎯\n${scoreContext}View your full report here: ${shareUrl}`;
+  const shareMessage = `Hi ${firstName} — your One Assess results are ready! 🎯\n${scoreContext}View your full report (AXIS Score™ & pillars) here: ${shareUrl}`;
   const whatsappText = shareMessage;
 
   // Notify the client that their report is ready (non-blocking, client view only)
@@ -78,7 +78,7 @@ export async function requestShareArtifacts(params: {
         shareToken,
         type: 'report_shared',
         title: 'Your report is ready',
-        body: 'Your coach has shared your latest assessment results.',
+        body: 'Your coach shared your latest assessment — open your AXIS Score™ and full report.',
         priority: 'medium',
         actionUrl: shareUrl,
       });

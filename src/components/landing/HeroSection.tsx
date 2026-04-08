@@ -164,10 +164,10 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
               <div className="mb-6 flex items-start justify-between gap-3 sm:mb-10">
                 <div className="min-w-0">
                   <p className="text-xl font-bold text-foreground sm:text-3xl">
-                    Fitness Score
+                    AXIS Score™
                   </p>
                   <p className="text-sm text-muted-foreground sm:text-base">
-                    Comprehensive Athlete Profile
+                    Five-pillar fitness profile
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2 rounded-full bg-card px-3 py-1.5 shadow-sm dark:bg-background-secondary sm:px-4 sm:py-2">
@@ -212,7 +212,7 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
                         82
                       </span>
                       <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground sm:text-xs">
-                        Overall
+                        AXIS Score™
                       </span>
                     </div>
                   </div>
@@ -264,7 +264,7 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
                 </div>
                 <div className="text-left">
                   <p className="text-xs font-semibold text-muted-foreground sm:text-sm">
-                    Milestone
+                    ARC™ milestone
                   </p>
                   <p className="text-sm font-bold text-foreground sm:text-base">
                     Unlocked

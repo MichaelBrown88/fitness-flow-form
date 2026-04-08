@@ -389,8 +389,20 @@ export async function createOrUpdateClientProfile(
     if (existingData?.organizationId && existingData.organizationId !== validOrgId) {
       throw new Error('Cannot update client profile: Organization mismatch.');
     }
+
+    // Also patch contact fields inside the embedded formData snapshot so assessment
+    // pre-fill doesn't serve stale values after a profile update.
+    const existingFormData = existingData.formData as Record<string, unknown> | undefined;
+    const contactPatch: Record<string, unknown> = {};
+    if (existingFormData) {
+      if ('email' in data && data.email !== undefined) contactPatch['formData.email'] = data.email;
+      if ('phone' in data && data.phone !== undefined) contactPatch['formData.phone'] = data.phone;
+      if ('dateOfBirth' in data && data.dateOfBirth !== undefined) contactPatch['formData.dateOfBirth'] = data.dateOfBirth;
+    }
+
     await updateDoc(legacyRef, {
       ...data,
+      ...contactPatch,
       organizationId: validOrgId,
       updatedAt: serverTimestamp(),
     });
@@ -644,20 +656,28 @@ export async function renameClient(
   }
 
   const newRef = clientProfileDoc(validOrgId, normalizedNew);
+  // Patch embedded formData.fullName so stale old-name references don't recreate the old slug doc
+  const oldFormData = oldData.formData as Record<string, unknown> | undefined;
   await setDoc(newRef, {
     ...oldData,
     clientName: normalizedNew,
+    clientNameLower: normalizedNew.toLowerCase(),
+    ...(oldFormData ? { formData: { ...oldFormData, fullName: normalizedNew } } : {}),
     updatedAt: serverTimestamp(),
   });
 
-  // 2b. Migrate current/state
+  // 2b. Migrate current/state (also patch embedded formData.fullName)
   const oldCurrentPath = ORGANIZATION.clients.current(validOrgId, oldSlug);
   const newCurrentPath = ORGANIZATION.clients.current(validOrgId, newSlug);
   const oldCurrentSnap = await getDoc(doc(db, oldCurrentPath));
   if (oldCurrentSnap.exists()) {
+    const oldCurrentData = oldCurrentSnap.data() as Record<string, unknown>;
+    const currentFormData = oldCurrentData.formData as Record<string, unknown> | undefined;
     await setDoc(doc(db, newCurrentPath), {
-      ...oldCurrentSnap.data(),
+      ...oldCurrentData,
       clientName: normalizedNew,
+      clientNameLower: normalizedNew.toLowerCase(),
+      ...(currentFormData ? { formData: { ...currentFormData, fullName: normalizedNew } } : {}),
     });
   }
 
@@ -676,9 +696,21 @@ export async function renameClient(
     return { success: false, message: 'Migration verification failed. Old data preserved.' };
   }
 
-  // 2e. Delete old documents
+  // 2e. Migrate roadmap (not a subcollection of current/sessions — must be copied explicitly)
+  const oldRoadmapPath = ORGANIZATION.clients.roadmap(validOrgId, oldSlug);
+  const newRoadmapPath = ORGANIZATION.clients.roadmap(validOrgId, newSlug);
+  const oldRoadmapSnap = await getDoc(doc(db, oldRoadmapPath));
+  if (oldRoadmapSnap.exists()) {
+    await setDoc(doc(db, newRoadmapPath), {
+      ...oldRoadmapSnap.data(),
+      clientName: normalizedNew,
+    });
+  }
+
+  // 2f. Delete old documents
   for (const sessionDoc of sessionDocs.docs) await deleteDoc(sessionDoc.ref);
   if (oldCurrentSnap.exists()) await deleteDoc(doc(db, oldCurrentPath));
+  if (oldRoadmapSnap.exists()) await deleteDoc(doc(db, oldRoadmapPath));
   await deleteDoc(oldRef);
 
   logger.info(`[Rename] Successfully migrated "${normalizedOld}" -> "${normalizedNew}"`);

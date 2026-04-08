@@ -482,6 +482,33 @@ export async function handleAIUsageChange(
     if (afterOrgId) {
       await updateOrgStats(afterOrgId, { totalAiCostsGbpPence: afterCostGbpPence });
     }
+
+    // Decrement assessmentCredits for AI-consumed assessment types (not assistant chat)
+    if (afterOrgId) {
+      const logType = typeof afterData?.type === 'string' ? afterData.type : '';
+      const logStatus = typeof afterData?.status === 'string' ? afterData.status : '';
+      const logProvider = typeof afterData?.provider === 'string' ? afterData.provider : '';
+
+      const ASSESSMENT_TYPES = new Set([
+        'ocr_body_comp', 'ocr_inbody', 'posture_analysis',
+        'exercise_recommendation', 'comparison_narrative',
+      ]);
+      const AI_PROVIDERS = new Set(['gemini', 'openai', 'anthropic']);
+      const CREDIT_CONSUMING_STATUSES = new Set(['ai_success', 'ai_fallback']);
+
+      if (
+        ASSESSMENT_TYPES.has(logType) &&
+        AI_PROVIDERS.has(logProvider) &&
+        CREDIT_CONSUMING_STATUSES.has(logStatus)
+      ) {
+        await getDb().doc(`organizations/${afterOrgId}`).update({
+          assessmentCredits: admin.firestore.FieldValue.increment(-1),
+        });
+        logger.info('[AI-CREDITS] Decremented assessmentCredits', {
+          orgId: afterOrgId, type: logType, status: logStatus,
+        });
+      }
+    }
   } else if (isUpdated) {
     const systemMtdDelta =
       (afterIsCurrentMonth ? afterCostGbpPence : 0) -

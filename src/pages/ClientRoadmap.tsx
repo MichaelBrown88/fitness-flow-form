@@ -45,7 +45,7 @@ export default function ClientRoadmap() {
 
   if (loading) {
     return (
-      <AppShell title={clientName ? `${clientName}'s Roadmap` : 'Roadmap'}>
+      <AppShell title={clientName ? `${clientName}'s ARC™` : 'ARC™'}>
         <div className="flex items-center justify-center min-h-[60vh]">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
@@ -58,7 +58,7 @@ export default function ClientRoadmap() {
   if (showBuilder) {
     return (
       <AppShell
-        title="Create Roadmap"
+        title="Create ARC™"
         actions={
           <Button variant="ghost" size="sm" onClick={() => navigate(clientPath)} className="h-9 w-9 p-0">
             <ArrowLeft className="h-4 w-4" />
@@ -69,7 +69,7 @@ export default function ClientRoadmap() {
           <Breadcrumb items={[
             { label: UI_COMMAND_MENU.HOME, href: ROUTES.DASHBOARD },
             { label: clientName, href: clientPath },
-            { label: 'Create Roadmap' },
+            { label: 'Create ARC™' },
           ]} />
           <RoadmapBuilder
             clientName={clientName}
@@ -98,7 +98,7 @@ export default function ClientRoadmap() {
       ) : (
         <Button variant="outline" size="sm" onClick={() => setEditingRoadmap(true)}>
           <Pencil className="h-4 w-4 mr-1.5" />
-          Edit roadmap
+          Edit ARC™
         </Button>
       )}
       <Button variant="outline" size="sm" onClick={handleShare} disabled={!roadmapId}>
@@ -112,19 +112,19 @@ export default function ClientRoadmap() {
 
   return (
     <AppShell
-      title={clientName ? `${clientName}'s Roadmap` : 'Roadmap'}
+      title={clientName ? `${clientName}'s ARC™` : 'ARC™'}
       actions={headerActions}
     >
     <div className="max-w-3xl mx-auto px-4 py-8">
       <Breadcrumb items={[
         { label: UI_COMMAND_MENU.HOME, href: ROUTES.DASHBOARD },
         { label: clientName, href: clientPath },
-        { label: 'Roadmap' },
+        { label: 'ARC™' },
       ]} />
 
       {editingRoadmap ? (
         <>
-          <h1 className="text-2xl font-bold mb-6">{clientName}&apos;s Journey — Editing</h1>
+          <h1 className="text-2xl font-bold mb-6">{clientName}&apos;s ARC™ — Editing</h1>
           <RoadmapEditor
             summary={summary}
             items={items}

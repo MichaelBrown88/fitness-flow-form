@@ -274,13 +274,14 @@ export function useClientDetail(): UseClientDetailResult {
 
     clearClientNavAssessmentBleedKeys();
 
-    // Always include the client name; enrich with contact details from latest assessment if available
+    // Always use the current canonical clientName — never use formData.fullName from history
+    // as it may contain a stale pre-rename name that would recreate a duplicate client doc.
     const prefill: Record<string, unknown> = { fullName: clientName };
     if (assessments.length > 0) {
       try {
         const latest = await getCoachAssessment(user.uid, assessments[0].id, undefined, readOrgId, userProfile);
         if (latest?.formData) {
-          if (latest.formData.fullName) prefill.fullName = latest.formData.fullName;
+          // Intentionally skip latest.formData.fullName — clientName from URL is authoritative
           prefill.dateOfBirth = latest.formData.dateOfBirth;
           prefill.email = latest.formData.email;
           prefill.phone = latest.formData.phone;

@@ -23,7 +23,7 @@ export const LANDING_COPY = {
   heroTrustMicro: '5k+ assessments · Solo free · Gym 14-day trial',
   /** Single hero subheading under H1 on `/` (aligned with home SEO keywords). */
   heroSubtitle:
-    'Fitness assessment software for coaches and gyms. AI posture checks and professional reports. Track progress between sessions with less admin.',
+    'Fitness assessment software for coaches and gyms. AI posture checks, professional reports, and a clear AXIS Score™ for clients. ARC™ plans and milestones between sessions — less admin for you.',
   /** H1 first line when `pathname` is `/pricing` (same landing shell as home). */
   heroPricingTitleLine1: 'Pricing for',
   /** H1 gradient line for `/pricing`. */
@@ -48,17 +48,17 @@ export const LANDING_COPY = {
 
   howItWorksStep2Title: 'Report and share',
   howItWorksStep2Footer:
-    'Turn results into a clear story. Send a private link so clients reopen their report anytime, and see what to focus on next, step by step.',
+    'Turn results into a clear story. SIGNAL™ highlights cross-pillar priorities for coaches; send a private link so clients reopen their report and AXIS Score™ anytime.',
 
   howItWorksStep3Title: 'Stay on track',
   howItWorksStep3Footer:
-    'Show progress between sessions with milestones clients can see, lighter single-area check-ins, and change over time so you see who needs a nudge.',
+    'Keep clients engaged with ARC™ milestones they can see, lighter single-area check-ins, and AXIS Score™ trends so you know who needs a nudge.',
 
   capabilitiesPill: 'One Workflow',
   capabilitiesSectionTitleBefore: 'Everything In One Calm ',
   capabilitiesSectionTitleAccent: 'Workflow',
   capabilitiesSectionSubtitle:
-    'Capture, explain, and follow through without extra tools or a pile of admin.',
+    'Capture assessments, explain findings with clarity, and follow through with ARC™ — without extra tools or a pile of admin.',
 
   capabilitiesComplianceAriaLabel: 'Compliance certifications',
   capabilitiesComplianceHeading: 'Certified compliance',
@@ -67,7 +67,7 @@ export const LANDING_COPY = {
   capabilitiesCompliantLabel: 'Compliant',
 
   ctaSectionSubtitle:
-    'Professional assessments, secure client links, and progress between sessions. Solo is free without a card; gyms get a 14-day trial, then subscribe when you are ready.',
+    'Professional assessments, secure client links, AXIS Score™, and ARC™ between sessions. Solo is free without a card; gyms get a 14-day trial, then subscribe when you are ready.',
   ctaSectionMicrocopy: 'No card required to start on the solo free tier.',
   mobileStickyCta: 'Start free',
   /** Visible footer link to platform staff sign-in (not org admin). */
@@ -80,7 +80,7 @@ export const LANDING_COPY = {
   coachPositioningTitleBefore: "We Don't Replace Your ",
   coachPositioningTitleAccent: 'Coaching',
   coachPositioningSubtitle:
-    'One Assess does not generate workout programs. We help you run consistent assessments, clear professional reports, and visible progress between sessions. Less admin, more time for the coaching only you can do. Your programming and judgment stay yours.',
+    'One Assess does not generate workout programs. We help you run consistent assessments, clear professional reports, SIGNAL™ priority themes, and client-visible ARC™ plans. Less admin, more time for the coaching only you can do. Your programming and judgment stay yours.',
   testimonialsSectionTitleBefore: 'Trusted by ',
   testimonialsSectionTitleAccent: 'Coaches Everywhere',
 
@@ -90,7 +90,7 @@ export const LANDING_COPY = {
 
 export const LANDING_COACH_POSITIONING_BULLETS: readonly string[] = [
   'No auto-generated training plans. Your programs stay yours.',
-  'Built to add clarity and consistency to your workflow, not to sit in your seat with the client.',
+  'Built to add clarity and consistency to your workflow — AXIS Score™, SIGNAL™, and ARC™ — not to sit in your seat with the client.',
   'Less paperwork and chasing updates; more room for coaching that needs a human touch.',
 ];
 
@@ -120,20 +120,20 @@ export const LANDING_CAPABILITY_VISUAL_COPY = {
     reportBadge: 'Assessment report',
     reportDate: 'Jan 12, 2025',
     clientNameLine: 'Alex Chen',
-    reportTagline: 'Your personalized journey to better health and performance.',
-    sectionStartingPoint: 'Your Starting Point',
+    reportTagline: 'Your AXIS Score™, pillars, and pathway to better health and performance.',
+    sectionStartingPoint: 'Your starting point',
     sectionGapAnalysis: 'Gap Analysis',
     linkCaption: 'What clients see',
     mobilePreviewTitle: 'Their phone',
     tabOverview: 'Overview',
     tabAnalysis: 'Analysis',
     tabMovement: 'Movement',
-    tabPlan: 'Your plan',
+    tabPlan: 'Your ARC™',
   },
   progress: {
-    journeyEyebrow: 'Your Journey',
-    planHeadline: "Hi Alex, here's your plan",
-    overallProgress: 'Overall progress',
+    journeyEyebrow: 'Your ARC™',
+    planHeadline: "Hi Alex, here's your ARC™",
+    overallProgress: 'ARC™ progress',
     milestonesSummary: '3 of 8 milestones completed',
     phasePill: 'Phase 2: Development',
     milestoneTitle: 'Two strength sessions weekly',
@@ -160,7 +160,7 @@ export const LANDING_CAPABILITY_ROWS: readonly LandingCapabilityRowCopy[] = [
     bullets: [
       'Professional output you review before it goes out.',
       'Clients use a secure link in the browser. No extra app.',
-      'Same link can show their plan and wins alongside the report.',
+      'Same link can show their ARC™, milestones, and AXIS Score™ alongside the report.',
     ],
     imageSide: 'left',
     visualId: 'reportPortal',
@@ -169,9 +169,9 @@ export const LANDING_CAPABILITY_ROWS: readonly LandingCapabilityRowCopy[] = [
     eyebrow: 'Follow through',
     title: 'Progress that keeps people with you',
     bullets: [
-      'Phases and next steps stay visible between sessions.',
-      'Milestones give clients something to aim for.',
-      'See who might be drifting before they ghost.',
+      'ARC™ phases and next steps stay visible between sessions.',
+      'ARC™ milestones give clients something to aim for.',
+      'AXIS Score™ trends help you see who might be drifting before they ghost.',
     ],
     imageSide: 'right',
     visualId: 'progress',
@@ -218,7 +218,7 @@ export const LANDING_FAQ_ITEMS: readonly LandingFaqItem[] = [
   {
     question: 'Does One Assess write workout programs for my clients?',
     answer:
-      'No. One Assess does not generate workout programs. It supports assessment capture, professional reports, and visibility on progress and plans you define. You stay in control of programming and coaching decisions.',
+      'No. One Assess does not generate workout programs. It supports assessment capture, professional reports, AXIS Score™, SIGNAL™ for coaches, and ARC™ plans you define. You stay in control of programming and coaching decisions.',
   },
   {
     question: 'How does the Clinical Logic Engine work?',
@@ -252,7 +252,12 @@ export const LANDING_FAQ_ITEMS: readonly LandingFaqItem[] = [
   {
     question: 'How do clients see their report and plan?',
     answer:
-      'You share a secure, private link per client. They can view their report, phased plan, and progress in the browser. No separate client app required. You stay in control of what you send.',
+      'You share a secure, private link per client. They can view their report, AXIS Score™, ARC™ (phased plan), and milestones in the browser. No separate client app required. You stay in control of what you send.',
+  },
+  {
+    question: 'What are AXIS Score™, SIGNAL™, and ARC™?',
+    answer:
+      'AXIS Score™ is your client’s 0–100 rollup across five pillars. SIGNAL™ is the coach-facing layer that surfaces cross-pillar priority themes from the assessment. ARC™ is the client’s phased plan and milestones — the journey you build and they follow between sessions.',
   },
   {
     question: 'Do clients need to sign up or create an account?',

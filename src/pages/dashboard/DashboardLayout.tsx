@@ -278,8 +278,10 @@ export default function DashboardLayout() {
     coachUid: dataUser?.uid,
     organizationId: effectiveOrgId ?? undefined,
     tasks,
-    filteredClients: filteredClients ?? [],
-    navigate,
+    /** Full roster — assistant matching and AI context must not depend on the clients-tab search box. */
+    clients: dashboardData.clientGroups,
+    reassessmentQueue: dashboardData.reassessmentQueue,
+    orgSubscription: orgSettings?.subscription,
   });
 
   const {
@@ -379,6 +381,7 @@ export default function DashboardLayout() {
           hideTitle
           variant="full-width"
           hideCoachBrandAndUser
+          lockViewportHeight={isWorkspaceShell}
           headerLeading={
             isWorkspaceShell ? (
               <>

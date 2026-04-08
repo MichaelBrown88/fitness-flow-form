@@ -258,6 +258,14 @@ const App = () => (
                       }
                     />
                     <Route
+                      path={ROUTES.SETTINGS_BILLING}
+                      element={
+                        <RequireAuth>
+                          <Navigate to={ROUTES.BILLING} replace />
+                        </RequireAuth>
+                      }
+                    />
+                    <Route
                       path="/achievements"
                       element={
                         <RequireAuth>

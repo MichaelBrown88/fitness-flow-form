@@ -52,9 +52,9 @@ export const StartingPointSection: React.FC<StartingPointSectionProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
         {/* Score Card */}
         <Card className="col-span-1 flex flex-col items-center justify-center p-3 sm:p-4 md:p-6 lg:p-8 text-center relative overflow-hidden min-h-0 sm:min-h-[320px] md:min-h-[360px] lg:min-h-[420px]">
-          <CardInfoDrawer title="Overall Score">
-            <p>Your overall score of <strong>{scores.overall}/100</strong> is calculated from 5 health pillars: Body Composition, Functional Strength, Metabolic Fitness, Movement Quality, and Lifestyle.</p>
-            <p>Each pillar contributes equally to your total score. Improving any single pillar will raise your overall number.</p>
+          <CardInfoDrawer title="AXIS Score™">
+            <p>Your AXIS Score™ of <strong>{scores.overall}/100</strong> combines five pillars: Body Composition, Functional Strength, Metabolic Fitness, Movement Quality, and Lifestyle.</p>
+            <p>Each pillar contributes equally. Improving any single pillar will raise your AXIS Score™.</p>
           </CardInfoDrawer>
           {/* Circular Progress Gauge */}
           <div ref={scoreRef} className={`relative w-28 h-28 sm:w-40 sm:h-40 md:w-48 md:h-48 lg:w-56 lg:h-56 xl:w-64 xl:h-64 flex items-center justify-center mb-1 sm:mb-2 md:mb-4 lg:mb-6 mt-1 sm:mt-2 md:mt-3 lg:mt-4 ${hasScoreChange ? 'animate-score-pulse' : ''}`}>
@@ -105,7 +105,7 @@ export const StartingPointSection: React.FC<StartingPointSectionProps> = ({
           </div>
 
           {/* Score label + trend indicator -- sits below ring */}
-          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.15em] mb-1 sm:mb-1.5">Overall Score</span>
+          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.15em] mb-1 sm:mb-1.5">AXIS Score™</span>
           {scoreDiff !== null && scoreDiff !== 0 && (
             <div className={`inline-flex items-center gap-0.5 text-[10px] sm:text-xs font-semibold mb-2 sm:mb-3 ${scoreDiff > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
               {scoreDiff > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}

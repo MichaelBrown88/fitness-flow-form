@@ -29,7 +29,7 @@ export const ReportHeader: React.FC<ReportHeaderProps> = ({
             {clientName || 'Your Assessment Report'}
           </h1>
           <p className="hidden sm:block text-xs md:text-sm lg:text-base text-muted-foreground font-medium leading-snug">
-            Your personalized journey to better health and performance.
+            Your AXIS Score™ and pillar breakdown — a personalised snapshot from this assessment.
           </p>
         </div>
         

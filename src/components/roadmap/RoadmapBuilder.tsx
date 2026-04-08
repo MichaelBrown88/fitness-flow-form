@@ -52,7 +52,7 @@ export function generateRoadmapSummary(clientName: string, goals: string[], item
   const focusText = hasFoundation
     ? `Starting with ${PHASE_NARRATIVES.foundation.title.toLowerCase()} work before progressing to full training.`
     : 'No major restrictions — progressing across all areas from day one.';
-  return `${clientName}'s personalised ${totalWeeks}-week journey across ${phaseCount} phase${phaseCount > 1 ? 's' : ''} with ${items.length} milestones${goalText ? `, focused on ${goalText}` : ''}. ${focusText}`;
+  return `${clientName}'s personalised ${totalWeeks}-week ARC™ plan spanning ${phaseCount} phase${phaseCount > 1 ? 's' : ''}, with ${items.length} milestones${goalText ? `, focused on ${goalText}` : ''}. ${focusText}`;
 }
 
 interface Props {
@@ -197,7 +197,7 @@ export function RoadmapBuilder({ clientName, blocks, allPossibleBlocks = [], cli
           <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-gradient-from to-gradient-to text-primary-foreground">
             <Sparkles className="h-6 w-6 text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">{clientName}&apos;s Suggested Roadmap</h1>
+          <h1 className="text-2xl font-bold text-foreground">{clientName}&apos;s suggested ARC™</h1>
           <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">{summaryText}</p>
           {coachBrief && (
             <Button
@@ -206,7 +206,7 @@ export function RoadmapBuilder({ clientName, blocks, allPossibleBlocks = [], cli
               className="mt-3 gap-1.5"
               onClick={() => setCoachContextOpen(true)}
             >
-              <FileText className="h-3.5 w-3.5" /> View client context
+              <FileText className="h-3.5 w-3.5" /> View SIGNAL™ brief
             </Button>
           )}
         </div>
@@ -253,7 +253,7 @@ export function RoadmapBuilder({ clientName, blocks, allPossibleBlocks = [], cli
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="space-y-6">
         <div className="text-center py-4">
-          <h1 className="text-2xl font-bold text-foreground">Customise {clientName}&apos;s Roadmap</h1>
+          <h1 className="text-2xl font-bold text-foreground">Customise {clientName}&apos;s ARC™</h1>
           <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">Drag items between phases or remove items you don&apos;t want to include.</p>
           {coachBrief && (
             <Button
@@ -262,7 +262,7 @@ export function RoadmapBuilder({ clientName, blocks, allPossibleBlocks = [], cli
               className="mt-3 gap-1.5"
               onClick={() => setCoachContextOpen(true)}
             >
-              <FileText className="h-3.5 w-3.5" /> View client context
+              <FileText className="h-3.5 w-3.5" /> View SIGNAL™ brief
             </Button>
           )}
         </div>

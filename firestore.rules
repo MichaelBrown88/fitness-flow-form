@@ -209,6 +209,13 @@ service cloud.firestore {
         allow update: if isOrgAdmin(orgId) || (isPlatformAdmin() && hasDataAccess(orgId));
         allow delete: if false;
       }
+
+      /** Monthly AI assistant usage aggregates (coach tab quotas) */
+      match /aiUsage/{monthId} {
+        allow read: if canReadOrgData(orgId);
+        allow create, update: if canWriteOrgData(orgId);
+        allow delete: if false;
+      }
     }
 
     // =========================================================

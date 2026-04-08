@@ -1,5 +1,5 @@
 /**
- * Roadmap tab: shows the client roadmap inline. Create/edit remains on the dedicated roadmap page.
+ * ARC™ tab (route still `/roadmap`): shows the client ARC™ inline. Create/edit remains on the dedicated ARC™ page.
  */
 
 import { Link, useOutletContext } from 'react-router-dom';
@@ -29,7 +29,7 @@ export default function ClientRoadmapTab() {
     return (
       <div className="flex flex-col items-center justify-center py-16">
         <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-        <p className="text-sm text-muted-foreground">Loading roadmap…</p>
+        <p className="text-sm text-muted-foreground">Loading ARC™…</p>
       </div>
     );
   }
@@ -39,7 +39,7 @@ export default function ClientRoadmapTab() {
       <div className="rounded-2xl border border-border bg-muted p-8 text-center max-w-md mx-auto">
         <Map className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
         <p className="text-sm font-medium text-foreground-secondary">Complete an assessment first</p>
-        <p className="text-xs text-muted-foreground mt-1">Then you can create a roadmap for this client.</p>
+        <p className="text-xs text-muted-foreground mt-1">Then you can create an ARC™ for this client.</p>
       </div>
     );
   }
@@ -48,12 +48,12 @@ export default function ClientRoadmapTab() {
     return (
       <div className="rounded-2xl border border-border bg-muted p-8 text-center max-w-md mx-auto">
         <Map className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-        <p className="text-sm font-medium text-foreground-secondary">No roadmap yet</p>
-        <p className="text-xs text-muted-foreground mt-2 mb-4">Create and send a roadmap from the full roadmap page.</p>
+        <p className="text-sm font-medium text-foreground-secondary">No ARC™ yet</p>
+        <p className="text-xs text-muted-foreground mt-2 mb-4">Create and send an ARC™ from the full ARC™ page.</p>
         <Button size="sm" className="rounded-lg gap-1.5" asChild>
           <Link to={roadmapPath}>
             <Plus className="h-4 w-4" />
-            Create roadmap
+            Create ARC™
           </Link>
         </Button>
       </div>
@@ -67,7 +67,7 @@ export default function ClientRoadmapTab() {
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
           <span>
             This client's scores have shifted significantly since this plan was built. Consider reviewing
-            and updating the roadmap to reflect their current progress.
+            and updating their ARC™ to reflect their current progress.
           </span>
         </div>
       )}
@@ -81,7 +81,7 @@ export default function ClientRoadmapTab() {
       />
       <div className="mt-6">
         <Button variant="outline" size="sm" className="rounded-lg" asChild>
-          <Link to={roadmapPath}>Edit or send roadmap</Link>
+          <Link to={roadmapPath}>Edit or send ARC™</Link>
         </Button>
       </div>
     </div>

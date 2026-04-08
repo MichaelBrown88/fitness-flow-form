@@ -57,7 +57,7 @@ function buildMirrorPayload(
   }
 
   if (!coachUid || !organizationId) {
-    throw new HttpsError('failed-precondition', 'Roadmap data is incomplete.');
+    throw new HttpsError('failed-precondition', 'ARC™ data is incomplete.');
   }
 
   const displayName =
@@ -121,7 +121,7 @@ export async function handleSyncPublicRoadmapMirror(
       .get();
 
     if (querySnap.empty) {
-      throw new HttpsError('not-found', 'Roadmap not found.');
+      throw new HttpsError('not-found', 'ARC™ not found.');
     }
 
     const docSnap = querySnap.docs[0];
@@ -129,7 +129,7 @@ export async function handleSyncPublicRoadmapMirror(
     const parent = docSnap.ref.parent.parent;
     const slug = parent?.id;
     if (!slug) {
-      throw new HttpsError('failed-precondition', 'Invalid roadmap document path.');
+      throw new HttpsError('failed-precondition', 'Invalid ARC™ document path.');
     }
     clientSlug = slug;
   } else {
@@ -144,17 +144,17 @@ export async function handleSyncPublicRoadmapMirror(
       }
     }
     if (!reportSnap?.exists) {
-      throw new HttpsError('not-found', 'Roadmap not found.');
+      throw new HttpsError('not-found', 'ARC™ not found.');
     }
     const report = reportSnap.data()!;
     const reportDocId = reportSnap.ref.id;
     reportForMirror = report;
     if (report.visibility != null && report.visibility !== 'public') {
-      throw new HttpsError('not-found', 'Roadmap not found.');
+      throw new HttpsError('not-found', 'ARC™ not found.');
     }
     const organizationId = typeof report.organizationId === 'string' ? report.organizationId : '';
     if (!organizationId) {
-      throw new HttpsError('not-found', 'Roadmap not found.');
+      throw new HttpsError('not-found', 'ARC™ not found.');
     }
 
     const clientsCol = db.collection(`organizations/${organizationId}/clients`);
@@ -265,7 +265,7 @@ export async function handleSyncPublicRoadmapMirror(
     }
 
     if (!roadmapSnap?.exists || !resolvedClientId) {
-      throw new HttpsError('not-found', 'Roadmap not found.');
+      throw new HttpsError('not-found', 'ARC™ not found.');
     }
     data = roadmapSnap.data()!;
     clientSlug = resolvedClientId;

@@ -28,7 +28,7 @@ export function AssistantAiCreditsBanner({
   if (aiCreditLimit <= 0 || aiCreditLimit === UNLIMITED_CREDITS) return null;
 
   const ratio = aiCredits / aiCreditLimit;
-  if (ratio > 0.5) return null;
+  if (ratio > 0.3) return null;
 
   if (variant === 'inline') {
     return (

@@ -8,8 +8,6 @@ import { MovementPostureMobility } from '@/components/reports/MovementPostureMob
 import { StartingPointSection } from '@/components/reports/client/sub-components/StartingPointSection';
 import { GapAnalysisSection } from '@/components/reports/client/sub-components/GapAnalysisSection';
 import { StrengthsFocusSection } from '@/components/reports/client/sub-components/StrengthsFocusSection';
-import { DestinationSection } from '@/components/reports/client/sub-components/DestinationSection';
-import { ActionPlanCTA } from '@/components/reports/client/ClientReportMobileChrome';
 import type { SectionId } from './clientReportSections';
 
 export interface ClientReportSectionContext {
@@ -34,32 +32,49 @@ export function renderClientReportSection(id: SectionId, ctx: ClientReportSectio
   switch (id) {
     case 'starting-point':
       return (
-        <StartingPointSection
-          scores={ctx.safeScores}
-          previousOverallScore={ctx.previousScores?.overall ?? null}
-          archetype={ctx.archetype}
-          overallRadarData={ctx.overallRadarData}
-          previousRadarData={ctx.previousRadarData}
-          hideHeader
-        />
+        <div className="space-y-4 sm:space-y-5 md:space-y-6">
+          <StartingPointSection
+            scores={ctx.safeScores}
+            previousOverallScore={ctx.previousScores?.overall ?? null}
+            archetype={ctx.archetype}
+            overallRadarData={ctx.overallRadarData}
+            previousRadarData={ctx.previousRadarData}
+            hideHeader
+          />
+          <StrengthsFocusSection strengths={ctx.strengths} areasForImprovement={ctx.areasForImprovement} />
+        </div>
       );
-    case 'gap-analysis':
+    case 'body-comp':
       return (
         <GapAnalysisSection
           gapAnalysisData={ctx.gapAnalysisData}
           previousGapAnalysisData={ctx.previousGapAnalysisData}
-          goals={ctx.goals}
           formData={ctx.formData}
+          singlePillar="body-comp"
           hideHeader
         />
       );
-    case 'strengths-focus':
+    case 'strength':
       return (
-        <StrengthsFocusSection strengths={ctx.strengths} areasForImprovement={ctx.areasForImprovement} />
+        <GapAnalysisSection
+          gapAnalysisData={ctx.gapAnalysisData}
+          previousGapAnalysisData={ctx.previousGapAnalysisData}
+          formData={ctx.formData}
+          singlePillar="strength"
+          hideHeader
+        />
       );
-    case 'lifestyle':
-      return <LifestyleFactorsBar formData={ctx.formData} previousFormData={ctx.previousFormData} />;
-    case 'movement':
+    case 'cardio':
+      return (
+        <GapAnalysisSection
+          gapAnalysisData={ctx.gapAnalysisData}
+          previousGapAnalysisData={ctx.previousGapAnalysisData}
+          formData={ctx.formData}
+          singlePillar="cardio"
+          hideHeader
+        />
+      );
+    case 'movement-quality':
       return (
         <MovementPostureMobility
           formData={ctx.formData}
@@ -69,10 +84,8 @@ export function renderClientReportSection(id: SectionId, ctx: ClientReportSectio
           previousFormData={ctx.previousFormData}
         />
       );
-    case 'destination':
-      return <DestinationSection goals={ctx.goals} formData={ctx.formData} hideHeader />;
-    case 'action-plan':
-      return <ActionPlanCTA clientName={ctx.clientName} standalone={ctx.standalone} />;
+    case 'lifestyle':
+      return <LifestyleFactorsBar formData={ctx.formData} previousFormData={ctx.previousFormData} />;
     default:
       return null;
   }

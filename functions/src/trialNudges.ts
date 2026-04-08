@@ -60,7 +60,7 @@ export async function sendTrialEndingSoonEmail(
     paragraphs: isLastDay
       ? [
           `Hey ${firstName}, your ${APP_NAME} gym trial ends tomorrow. After that, you'll lose access to your client data and assessments.`,
-          'Subscribe now to keep everything — all your clients, assessments, and roadmaps stay exactly where they are.',
+          'Subscribe now to keep everything — all your clients, assessments, and ARC™ plans stay exactly where they are.',
         ]
       : [
           `Hey ${firstName}, your ${APP_NAME} gym trial ends in ${daysLeft} days. We wanted to give you a heads-up so you have time to decide.`,

@@ -96,7 +96,7 @@ function Hero({
         <div className="border-l-2 border-emerald-500 pl-4">
           <p className="text-sm text-muted-foreground leading-relaxed">
             <span className="text-emerald-400 font-semibold text-base">{efficacyPct}%</span>
-            {' '}of clients who return for a second assessment show a measurable improvement in overall score.
+            {' '}of clients who return for a second assessment show a measurable improvement in AXIS Score™.
             No competitor captures all five health domains in one structured record.
           </p>
         </div>

@@ -56,7 +56,7 @@ function buildShareSvg(params: {
   const scoreLabel =
     overallScore !== null ? String(overallScore) : '—';
   const sub =
-    overallScore !== null ? 'Overall score' : 'Fitness report';
+    overallScore !== null ? 'AXIS Score™' : 'Fitness report';
 
   const name = escapeXml(truncate(clientName, layout === 'landscape' ? 42 : 36));
   const org = orgLine ? escapeXml(truncate(orgLine, 40)) : '';

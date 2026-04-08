@@ -124,9 +124,9 @@ export function generateTasks(params: {
       type: 'roadmap_review',
       urgency: 'soon',
       clientName: rm.clientName,
-      title: 'Roadmap items past deadline',
-      description: `${rm.itemsPastDeadline} item(s) in ${rm.clientName}'s roadmap need attention.`,
-      actionLabel: 'Review Roadmap',
+      title: 'ARC™ items past deadline',
+      description: `${rm.itemsPastDeadline} item(s) in ${rm.clientName}'s ARC™ need attention.`,
+      actionLabel: 'Review ARC™',
       actionRoute: `/coach/clients/${encodeURIComponent(rm.clientName)}/roadmap`,
     });
   }
@@ -137,9 +137,9 @@ export function generateTasks(params: {
       type: 'roadmap_needed',
       urgency: 'this_week',
       clientName: needed.clientName,
-      title: 'Create client roadmap',
-      description: `${needed.clientName} completed an assessment and needs a personalised roadmap.`,
-      actionLabel: 'Create Roadmap',
+      title: 'Create client ARC™',
+      description: `${needed.clientName} completed an assessment and needs a personalised ARC™.`,
+      actionLabel: 'Create ARC™',
       actionRoute: `/coach/clients/${encodeURIComponent(needed.clientName)}/roadmap`,
       dueDate: needed.assessmentDate,
     });
