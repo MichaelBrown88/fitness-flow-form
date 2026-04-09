@@ -47,7 +47,7 @@ export function CaptureCapabilityGraphic() {
             {c.bodyFatValue}
           </span>
         </div>
-        <p className="text-center text-[10px] font-medium text-primary">{c.confirmHint}</p>
+        <p className="text-center text-[10px] font-medium text-muted-foreground">{c.confirmHint}</p>
       </div>
     </div>
   );

@@ -30,7 +30,6 @@ export const phaseP0: PhaseDefinition = {
         { id: 'phone' as keyof FormData, type: 'tel' as FieldType, label: ASSESSMENT_LABELS.P0.phone, required: true, placeholder: ASSESSMENT_PLACEHOLDERS.P0.phone, tooltip: ASSESSMENT_TOOLTIPS.P0.phone },
         { id: 'dateOfBirth' as keyof FormData, type: 'date' as FieldType, label: ASSESSMENT_LABELS.P0.dateOfBirth, required: true, tooltip: ASSESSMENT_TOOLTIPS.P0.dateOfBirth },
         { id: 'gender' as keyof FormData, type: 'select' as FieldType, label: ASSESSMENT_LABELS.P0.gender, required: true, options: ASSESSMENT_OPTIONS.gender, tooltip: ASSESSMENT_TOOLTIPS.P0.gender },
-        { id: 'assignedCoach' as keyof FormData, type: 'select' as FieldType, label: ASSESSMENT_LABELS.P0.assignedCoach, required: true, tooltip: ASSESSMENT_TOOLTIPS.P0.assignedCoach },
         {
           id: 'trainingHistory' as keyof FormData,
           type: 'select' as FieldType,

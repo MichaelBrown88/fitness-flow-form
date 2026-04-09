@@ -113,7 +113,7 @@ export function ROIComparison() {
               </div>
 
               <div className="relative z-10">
-                <div className="mb-6 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.15em] text-primary">
+                <div className="mb-6 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
                   <Sun size={14} /> 5:00 PM - Done for the day
                 </div>
                 <h3 className="mb-2 text-2xl font-bold text-foreground">The All-in-One Flow</h3>
@@ -152,11 +152,11 @@ export function ROIComparison() {
                     <span className="text-sm font-bold">Weekly Unpaid Admin</span>
                     <span className="text-xl font-black">0 Hours</span>
                   </div>
-                  <p className="mt-2 text-xs font-medium text-primary">&ldquo;Spend less time planning, more time coaching.&rdquo;</p>
+                  <p className="mt-2 text-xs font-medium text-muted-foreground">&ldquo;Spend less time planning, more time coaching.&rdquo;</p>
                 </div>
                 
                 <LandingTrialCtaLink
-                  className="mt-6 inline-flex items-center justify-center gap-2 rounded-lg bg-foreground px-6 py-3 text-sm font-bold text-background shadow-sm transition-all hover:bg-foreground/90 hover:shadow-md"
+                  className="mt-6 inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-bold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 hover:shadow-md"
                   ariaLabel={landingTrialAriaLabel('roi', LANDING_GUEST_CHECKOUT_ENABLED)}
                 >
                   Start Free Trial

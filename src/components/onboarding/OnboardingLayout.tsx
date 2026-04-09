@@ -94,7 +94,7 @@ export function OnboardingLayout({
                 }`}
               >
                 <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                  isCurrent ? 'bg-foreground text-white' :
+                  isCurrent ? 'bg-primary text-primary-foreground' :
                   isComplete ? 'bg-muted-foreground/50 text-background' : 'bg-muted text-muted-foreground'
                 }`}>
                   {isComplete ? '✓' : index + 1}

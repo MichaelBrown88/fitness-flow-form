@@ -4,18 +4,16 @@
 
 import { FREE_TIER_CLIENT_LIMIT } from '@/constants/pricing';
 
-/** H2 keyword accent on light sections (uses product gradient tokens). */
-export const LANDING_H2_ACCENT_LIGHT =
-  'text-transparent bg-clip-text bg-gradient-to-r from-gradient-from to-gradient-to';
-
 /**
- * Accent word(s) on light backgrounds (white/slate-50): `--gradient-dark` stays readable.
- * In dark mode, restores the full brand gradient for the same accent span.
+ * Accent word(s) in section headings — no colour treatment in either mode.
+ * Volt is reserved for interactive elements (buttons, CTAs, selected states).
  */
-export const LANDING_H2_ACCENT_LIGHT_READABLE =
-  'text-gradient-dark dark:text-transparent dark:bg-clip-text dark:bg-gradient-to-r dark:from-gradient-from dark:to-gradient-to';
+export const LANDING_H2_ACCENT_LIGHT = '';
 
-/** H2 keyword accent on dark sections (e.g. Under the hood). */
+/** Same as LANDING_H2_ACCENT_LIGHT — kept for import compatibility. */
+export const LANDING_H2_ACCENT_LIGHT_READABLE = LANDING_H2_ACCENT_LIGHT;
+
+/** H2 keyword accent on DARK section backgrounds — vivid gradient text fill, no shadow needed. */
 export const LANDING_H2_ACCENT_ON_DARK =
   'text-transparent bg-clip-text bg-gradient-to-r from-gradient-from to-gradient-to';
 

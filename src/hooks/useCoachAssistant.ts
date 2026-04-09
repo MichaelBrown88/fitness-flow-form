@@ -10,8 +10,15 @@ import { buildAssistantThinkingSteps } from '@/lib/coachAssistant/assistantThink
 import { inferFetchClientIdsFromAssistantProse } from '@/lib/coachAssistant/assistantInferFetch';
 import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
 import { extractFormDataExcerptForAssistant } from '@/lib/coachAssistant/assistantFormExcerpt';
-import { serialiseClientDetailForAssistant } from '@/lib/coachAssistant/assistantPayloadBuilder';
+import {
+  serialiseClientDetailForAssistant,
+  buildAdminOrgContext,
+} from '@/lib/coachAssistant/assistantPayloadBuilder';
 import { getCoachAssessment } from '@/services/coachAssessments';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/services/firebase';
+import { ORGANIZATION } from '@/lib/database/paths';
+import type { RoadmapItem } from '@/lib/roadmap/types';
 import type { AssistantPayloadDepth } from '@/lib/coachAssistant/assistantPayloadBuilder';
 import { flushNextFrame } from '@/lib/utils/flushNextFrame';
 import type { ClientGroup } from '@/hooks/dashboard/types';
@@ -115,8 +122,23 @@ export function useCoachAssistant(options: {
   clients: ClientGroup[];
   reassessmentQueue: UseReassessmentQueueResult;
   orgSubscription?: OrgSubscriptionSnapshot;
+  /** True when the logged-in user is an org admin with isActiveCoach = false. */
+  isOrgAdmin?: boolean;
+  isActiveCoach?: boolean;
+  /** uid → displayName map for per-coach metric labels. */
+  coachMap?: Map<string, string>;
 }) {
-  const { coachUid, organizationId, tasks, clients, reassessmentQueue, orgSubscription } = options;
+  const {
+    coachUid,
+    organizationId,
+    tasks,
+    clients,
+    reassessmentQueue,
+    orgSubscription,
+    isOrgAdmin,
+    isActiveCoach,
+    coachMap,
+  } = options;
   const [threads, setThreads] = useState<CoachAssistantThread[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [interactionMode, setInteractionModeState] = useState<CoachAssistantInteractionMode>('data');
@@ -135,6 +157,19 @@ export function useCoachAssistant(options: {
   const abortRef = useRef<AbortController | null>(null);
 
   const planTier = useMemo(() => subscriptionAiPlanTier(orgSubscription), [orgSubscription]);
+
+  const adminOrgContext = useMemo(() => {
+    if (!isOrgAdmin || isActiveCoach) return null;
+    return buildAdminOrgContext({
+      clients,
+      queue: reassessmentQueue.queue,
+      coachMap: coachMap ?? new Map(),
+    });
+  }, [isOrgAdmin, isActiveCoach, clients, reassessmentQueue.queue, coachMap]);
+
+  const abortCurrentMessage = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
 
   const onAssistantTypewriterComplete = useCallback((messageId: string) => {
     setAssistantTypewriterMessageId((prev) => (prev === messageId ? null : prev));
@@ -357,6 +392,7 @@ export function useCoachAssistant(options: {
           interactionMode,
           payloadDepth: depth,
           injectedFullClientJson: injected,
+          adminOrgContext,
           planTier,
           signal,
           onStreamProgress: () => {
@@ -478,6 +514,33 @@ export function useCoachAssistant(options: {
                 note: 'Could not load expanded assessment fields; use scores and weaknesses above.',
               };
             }
+
+            // Load ARC™ milestone progress (roadmap/plan)
+            try {
+              const roadmapRef = doc(db, ORGANIZATION.clients.roadmap(org, matchClient.id));
+              const roadmapSnap = await getDoc(roadmapRef);
+              if (roadmapSnap.exists()) {
+                const roadmapData = roadmapSnap.data() as { items?: RoadmapItem[] } | undefined;
+                const items = roadmapData?.items ?? [];
+                const milestoneProgress = items
+                  .filter((item) => item.trackables && item.trackables.length > 0)
+                  .flatMap((item) =>
+                    item.trackables!.map((t) => ({
+                      label: t.label,
+                      unit: t.unit ?? null,
+                      baseline: t.valueBaseline ?? t.baseline,
+                      current: t.valueCurrent ?? t.current,
+                      target: t.valueTarget ?? t.target,
+                      status: item.status,
+                    })),
+                  );
+                if (milestoneProgress.length > 0) {
+                  injectedPayload.milestoneProgress = milestoneProgress;
+                }
+              }
+            } catch (roadmapErr) {
+              logger.warn('[useCoachAssistant] Could not load roadmap for assistant follow-up', roadmapErr);
+            }
           }
 
           const injected = JSON.stringify(injectedPayload);
@@ -535,6 +598,7 @@ export function useCoachAssistant(options: {
     selectThread,
     deleteThread,
     sendMessage,
+    abortCurrentMessage,
     sending,
     thinkingPhase,
     thinkingSteps,

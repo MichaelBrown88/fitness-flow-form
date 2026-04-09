@@ -3,7 +3,7 @@
  */
 
 export const PHASE_FORM_COPY = {
-  SAVE_AND_EXIT: 'Save & Exit',
+  SAVE_AND_EXIT: 'Save and exit',
   SAVE_AND_EXIT_TOAST_DESCRIPTION: 'Your progress is saved. You can pick up where you left off from the dashboard.',
   PARTIAL_BADGE_PREFIX: 'Quick Update:',
   GENERATING_REPORTS_TITLE: "Building your client's report\u2026",

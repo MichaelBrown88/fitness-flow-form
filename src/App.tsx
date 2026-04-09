@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { ThemeManager } from "./components/layout/ThemeManager";
 import { ThemeModeProvider } from "./contexts/ThemeModeContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { RouteErrorBoundary } from "./components/ui/RouteErrorBoundary";
 import { ImpersonationBanner } from "./components/ImpersonationBanner";
 import { MaintenanceBanner } from "./components/MaintenanceBanner";
 import { ReloadPrompt } from "./components/pwa/ReloadPrompt";
@@ -31,6 +32,7 @@ const DashboardCalendar = lazy(() => import("./pages/dashboard/DashboardCalendar
 const DashboardTeam = lazy(() => import("./pages/dashboard/DashboardTeam"));
 const AssessmentReport = lazy(() => import("./pages/AssessmentReport"));
 const PublicReportViewer = lazy(() => import("./pages/PublicReportViewer"));
+const ClientPortalEntry = lazy(() => import("./pages/ClientPortalEntry"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Achievements = lazy(() => import("./pages/Achievements"));
 const Companion = lazy(() => import("./pages/Companion"));
@@ -171,14 +173,16 @@ const App = () => (
                     <Route path="/onboarding" element={<Onboarding />} />
                     {/* Zero-friction sandbox trial — no sign-up required */}
                     <Route path="/try" element={<SandboxTrial />} />
+                    {/* Client portal entry — PWA start_url lands here; redirects to last token */}
+                    <Route path="/r" element={<ClientPortalEntry />} />
                     {/* Public client-facing report (no auth) - Token-based secure sharing */}
                     <Route
                       path="/r/:token"
-                      element={<PublicReportViewer />}
+                      element={<RouteErrorBoundary title="Report unavailable" body="This report couldn't be loaded. The link may be invalid or expired." homeTo="/"><PublicReportViewer /></RouteErrorBoundary>}
                     />
                     <Route
                       path="/r/:token/roadmap"
-                      element={<PublicRoadmapViewer />}
+                      element={<RouteErrorBoundary title="ARC™ unavailable" body="This ARC™ couldn't be loaded. The link may be invalid or expired." homeTo="/"><PublicRoadmapViewer /></RouteErrorBoundary>}
                     />
                     {/* Token-scoped achievements (no auth required) */}
                     <Route
@@ -215,7 +219,9 @@ const App = () => (
                       path="/assessment"
                       element={
                         <RequireAuth>
-                          <Index />
+                          <RouteErrorBoundary title="Assessment error" body="Something went wrong in the assessment flow. Your data is saved — return to the dashboard and try again." homeTo={ROUTES.DASHBOARD}>
+                            <Index />
+                          </RouteErrorBoundary>
                         </RequireAuth>
                       }
                     />
@@ -321,7 +327,7 @@ const App = () => (
                       }
                     />
                     {/* Companion mode (Mobile view) - No RequireAuth because it uses a token */}
-                    <Route path="/companion/:sessionId" element={<Companion />} />
+                    <Route path="/companion/:sessionId" element={<RouteErrorBoundary title="Session error" body="The companion session encountered an error. Close this window and rejoin from the assessment." homeTo="/"><Companion /></RouteErrorBoundary>} />
                     
                     {/* Legacy portal routes - clients now use /r/:token */}
                     <Route path="/portal/login" element={<Navigate to="/" replace />} />

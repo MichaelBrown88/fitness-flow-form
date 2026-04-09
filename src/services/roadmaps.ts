@@ -1,7 +1,6 @@
 import { COLLECTIONS } from '@/constants/collections';
 import { getDb, getFirebaseAuth } from '@/services/firebase';
 import {
-  collectionGroup,
   deleteDoc,
   doc,
   getDoc,
@@ -393,29 +392,6 @@ export async function getRoadmapByShareToken(
         code === 'functions/resource-exhausted' ||
         code === 'functions/internal' ||
         code === '';
-
-      // Report-UUID URLs use a different credential than `roadmap.shareToken` (24-char hex); skip legacy query.
-      if (
-        getFirebaseAuth().currentUser &&
-        softCallableFailure &&
-        !PUBLIC_REPORT_UUID_SHAPE.test(token)
-      ) {
-        try {
-          const legacyQ = query(
-            collectionGroup(db, COLLECTIONS.ROADMAP),
-            where('shareToken', '==', token),
-            limit(1),
-          );
-          const snap = await getDocs(legacyQ);
-          if (!snap.empty) {
-            const d = snap.docs[0];
-            const clientSlug = d.ref.parent.parent?.id ?? d.id;
-            return { ...(d.data() as RoadmapDoc), id: clientSlug };
-          }
-        } catch (legacyErr) {
-          logger.warn('[ROADMAPS] legacy shareToken collectionGroup failed after callable', legacyErr);
-        }
-      }
 
       if (
         code === 'functions/not-found' ||

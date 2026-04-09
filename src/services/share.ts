@@ -105,13 +105,17 @@ export async function sendReportEmail(params: { assessmentId: string; view: Shar
 export async function getShareTokensForAssessment(
   coachUid: string,
   assessmentId: string,
+  organizationId?: string,
 ): Promise<ShareTokenInfo[]> {
-  const q = query(
-    collection(getDb(), COLLECTIONS.PUBLIC_REPORTS),
+  // Never run an unscoped query — without an org we cannot isolate results to this tenant.
+  if (!organizationId) return [];
+  const constraints = [
     where('coachUid', '==', coachUid),
     where('assessmentId', '==', assessmentId),
+    where('organizationId', '==', organizationId),
     limit(20),
-  );
+  ];
+  const q = query(collection(getDb(), COLLECTIONS.PUBLIC_REPORTS), ...constraints);
   const snapshot = await getDocs(q);
 
   return snapshot.docs.map((d) => {

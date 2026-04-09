@@ -50,8 +50,11 @@ export function useDashboardData() {
     coachUidFilter,
   });
 
-  // Client grouping (enriched with retestSchedule from client profiles)
-  const { clientGroups, filteredClients, refreshSchedules } = useClientList(items, search, effectiveOrgId);
+  // Client grouping (enriched with retestSchedule from client profiles).
+  // Non-coaching admins pass null so listClientSchedules fetches all org clients.
+  // Coaches (and coaching admins) pass their own uid so only their clients are fetched.
+  const scheduleCoachUid: string | null = (isAdmin && !isActiveCoach) ? null : (user?.uid ?? null);
+  const { clientGroups, filteredClients, refreshSchedules } = useClientList(items, search, effectiveOrgId ?? undefined, scheduleCoachUid);
   
   const orgCadenceDefaults = useMemo<OrgCadenceDefaults | undefined>(() => {
     const dc = orgSettings?.defaultCadence;

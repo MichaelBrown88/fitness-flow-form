@@ -54,14 +54,8 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
   shareLoading,
 }) => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const [shared, setShared] = React.useState(false);
-
-  const handleViewReport = () => {
-    if (!user || !savingId || !isEditMode) return;
-    onClearEditMode?.();
-    navigate(`/coach/assessments/${savingId}`);
-  };
 
   const wrapShare = (fn: (v: 'client' | 'coach') => void) => () => {
     fn('client');
@@ -102,26 +96,31 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 rounded-lg">
-                <DropdownMenuItem onClick={wrapShare(onShare)} className="py-3 text-sm font-medium">System Share</DropdownMenuItem>
+                <DropdownMenuItem onClick={wrapShare(onShare)} className="py-3 text-sm font-medium">Share…</DropdownMenuItem>
                 <DropdownMenuItem onClick={wrapShare(onEmailLink)} className="py-3 text-sm font-medium">Email Link</DropdownMenuItem>
                 <DropdownMenuItem onClick={wrapShare(onWhatsAppShare)} className="py-3 text-sm font-medium">WhatsApp Message</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
 
-          {isEditMode && savingId && (
-            <Button 
-              variant="outline" 
-              size="lg" 
-              onClick={handleViewReport}
+          {savingId && (
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => {
+                if (isEditMode) {
+                  onClearEditMode?.();
+                }
+                navigate(`/coach/assessments/${savingId}`);
+              }}
               className="rounded-lg h-12 text-sm font-bold"
             >
               <Eye className="mr-2 h-4 w-4" />
-              View Updated Report
+              View Report
             </Button>
           )}
           <Button variant="ghost" size="lg" onClick={onStartNew} className="rounded-lg h-12 text-sm font-bold">
-            New Client
+            New assessment
           </Button>
         </div>
       </div>
@@ -129,7 +128,7 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
       {shared && (
         <div className="flex items-center gap-2 text-sm text-emerald-600 bg-emerald-50 rounded-lg px-4 py-2.5">
           <CheckCircle2 className="h-4 w-4 shrink-0" />
-          <span>Tasks have been added to your dashboard.</span>
+          <span>Report shared with client.</span>
         </div>
       )}
 
@@ -139,12 +138,13 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
           <p className="text-sm font-medium text-muted-foreground">Loading Report...</p>
         </div>
       }>
-        <ClientReport 
-          scores={scores} 
-          goals={Array.isArray(formData.clientGoals) ? formData.clientGoals : []} 
-          formData={formData} 
-          plan={plan} 
+        <ClientReport
+          scores={scores}
+          goals={Array.isArray(formData.clientGoals) ? formData.clientGoals : []}
+          formData={formData}
+          plan={plan}
           standalone={false}
+          organizationId={profile?.organizationId}
         />
       </Suspense>
     </div>

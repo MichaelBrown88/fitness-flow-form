@@ -6,6 +6,14 @@
  */
 
 import * as admin from 'firebase-admin';
+import { alertMrrDrop, alertAiCostSpike } from './slackBillingAlerts';
+
+// Alert when MRR drops by more than this fraction in one day (default 20%)
+const MRR_DROP_THRESHOLD = parseFloat(process.env.ALERT_MRR_DROP_PCT ?? '20') / 100;
+// Alert when MTD AI costs exceed this amount in GBP pence (default £50 = 5000p)
+const AI_COST_SPIKE_THRESHOLD_GBP_PENCE = Math.round(
+  parseFloat(process.env.ALERT_AI_COST_SPIKE_GBP ?? '50') * 100,
+);
 
 export async function snapshotPlatformMetrics(): Promise<void> {
   const db = admin.firestore();
@@ -40,6 +48,43 @@ export async function snapshotPlatformMetrics(): Promise<void> {
 
   await db.doc(`platform/metrics/history/${dateKey}`).set(historyDoc, { merge: true });
   console.log(`[MetricsHistory] Snapshot written for ${dateKey}`);
+
+  // --- Platform admin alerting ---
+
+  // Read yesterday's snapshot for comparison
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayKey = yesterday.toISOString().split('T')[0];
+  const prevSnap = await db.doc(`platform/metrics/history/${yesterdayKey}`).get();
+  const prevData = prevSnap.data();
+
+  const currMrr: number = (historyDoc.mrrGbpPence as number) ?? 0;
+  const prevMrr: number = prevData?.mrrGbpPence ?? 0;
+
+  // MRR drop: only alert if previous MRR was non-zero and today's drop exceeds threshold
+  if (prevMrr > 0 && currMrr < prevMrr) {
+    const dropFraction = (prevMrr - currMrr) / prevMrr;
+    if (dropFraction >= MRR_DROP_THRESHOLD) {
+      await alertMrrDrop({
+        prevMrrGbpPence: prevMrr,
+        currMrrGbpPence: currMrr,
+        dropPct: dropFraction * 100,
+      }).catch((err) => console.warn('[MetricsHistory] MRR drop alert failed', err));
+    }
+  }
+
+  // AI cost spike: alert on first day MTD costs exceed threshold (not every day after)
+  const currAiMtd: number = (historyDoc.aiCostsMtdGbpPence as number) ?? 0;
+  const prevAiMtd: number = prevData?.aiCostsMtdGbpPence ?? 0;
+  if (
+    currAiMtd >= AI_COST_SPIKE_THRESHOLD_GBP_PENCE &&
+    prevAiMtd < AI_COST_SPIKE_THRESHOLD_GBP_PENCE
+  ) {
+    await alertAiCostSpike({
+      mtdGbpPence: currAiMtd,
+      thresholdGbpPence: AI_COST_SPIKE_THRESHOLD_GBP_PENCE,
+    }).catch((err) => console.warn('[MetricsHistory] AI cost spike alert failed', err));
+  }
 }
 
 /**

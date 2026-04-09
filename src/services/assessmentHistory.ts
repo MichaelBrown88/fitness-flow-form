@@ -84,10 +84,47 @@ const getClientProfileDoc = (orgId: string, clientName: string) =>
 // No-op detection — avoids writing identical data and incrementing counters
 // ---------------------------------------------------------------------------
 
+/**
+ * Normalizes form data for change detection only — NOT for Firestore writes.
+ *
+ * Unlike sanitizeForFirestore, large base64 image strings are truncated to
+ * their first 200 characters rather than replaced with a fixed placeholder.
+ * This prevents a false-negative where a coach retakes a posture photo but
+ * both the old and new images are large enough to become identical placeholders,
+ * causing the save to be skipped.
+ *
+ * Timestamps are reduced to their seconds value to eliminate nanosecond noise
+ * from server-assigned timestamps vs client-constructed ones.
+ */
+export function normalizeForComparison(obj: unknown): unknown {
+  if (obj === undefined || (typeof obj === 'number' && !Number.isFinite(obj))) return null;
+  if (obj === null || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return (obj as unknown[]).map(normalizeForComparison);
+  const ctorName = (obj as object).constructor?.name;
+  if (ctorName === 'Timestamp') {
+    const ts = obj as { seconds: number };
+    return `ts:${ts.seconds}`;
+  }
+  if (ctorName === 'FieldValue' || '_methodName' in obj) return '(sentinel)';
+  // Sort keys so JSON.stringify produces a deterministic string regardless of insertion order.
+  // Without this, two identical objects spread/merged in different order would hash differently.
+  const result: Record<string, unknown> = {};
+  for (const key of Object.keys(obj as Record<string, unknown>).sort()) {
+    if (key.startsWith('_')) continue;
+    const value = (obj as Record<string, unknown>)[key];
+    if (typeof value === 'string' && value.startsWith('data:image/') && value.length > 200) {
+      result[key] = value.slice(0, 200);
+    } else {
+      result[key] = normalizeForComparison(value);
+    }
+  }
+  return result;
+}
+
 function hasFormDataChanged(oldData: FormData, newData: FormData): boolean {
   return (
-    JSON.stringify(sanitizeForFirestore(oldData)) !==
-    JSON.stringify(sanitizeForFirestore(newData))
+    JSON.stringify(normalizeForComparison(oldData)) !==
+    JSON.stringify(normalizeForComparison(newData))
   );
 }
 

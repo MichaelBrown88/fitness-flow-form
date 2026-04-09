@@ -195,6 +195,8 @@ export function buildAssistantCoachDataPayload(params: {
       clientId: c.id,
       name: formatClientDisplayName(c.name),
       overallScore: c.latestScore,
+      previousScore: latest?.previousScore ?? null,
+      trend: latest?.trend ?? null,
       lastUpdatedDaysAgo: c.latestDate !== null ? daysBetween(c.latestDate, new Date()) : null,
       pillars: cats.map((cat) => ({
         id: cat.id,
@@ -213,6 +215,76 @@ export function buildAssistantCoachDataPayload(params: {
   };
 }
 
+/**
+ * Org-admin context injected into the assistant system prompt when the logged-in
+ * user is a non-coaching org admin (isAdmin && !isActiveCoach).
+ * Derived entirely from data already loaded on the dashboard — no extra fetches.
+ */
+export function buildAdminOrgContext(params: {
+  clients: ClientGroup[];
+  queue: ReassessmentItem[];
+  coachMap: Map<string, string>;
+}): Record<string, unknown> {
+  const { clients, queue, coachMap } = params;
+
+  // Retention counts
+  const statusCounts = { total: clients.length, active: 0, inactive: 0, archived: 0 };
+  for (const c of clients) {
+    const st = c.clientStatus ?? 'active';
+    if (st === 'active') statusCounts.active++;
+    else if (st === 'inactive') statusCounts.inactive++;
+    else if (st === 'archived') statusCounts.archived++;
+  }
+
+  // Per-coach buckets
+  const coachClientMap = new Map<string, ClientGroup[]>();
+  for (const c of clients) {
+    const uid = c.coachUid ?? 'unassigned';
+    const bucket = coachClientMap.get(uid) ?? [];
+    bucket.push(c);
+    coachClientMap.set(uid, bucket);
+  }
+
+  const coachMetrics = Array.from(coachClientMap.entries())
+    .map(([uid, coachClients]) => {
+      const name = coachMap.get(uid) ?? 'Unassigned';
+      const avgScore =
+        coachClients.length > 0
+          ? Math.round(coachClients.reduce((s, c) => s + c.latestScore, 0) / coachClients.length)
+          : 0;
+      const clientIds = new Set(coachClients.map((c) => c.id));
+      const clientNames = new Set(coachClients.map((c) => c.name.toLowerCase()));
+      const coachQueue = queue.filter(
+        (q) => clientIds.has(q.id) || clientNames.has(q.clientName.toLowerCase()),
+      );
+      return {
+        coachName: name,
+        clientCount: coachClients.length,
+        avgScore,
+        overdueCount: coachQueue.filter((q) => q.status === 'overdue').length,
+        dueSoonCount: coachQueue.filter((q) => q.status === 'due-soon').length,
+      };
+    })
+    .sort((a, b) => b.clientCount - a.clientCount);
+
+  const totalAvgScore =
+    clients.length > 0
+      ? Math.round(clients.reduce((s, c) => s + c.latestScore, 0) / clients.length)
+      : 0;
+
+  return {
+    isOrgAdminView: true,
+    retentionSummary: statusCounts,
+    orgTotals: {
+      avgOverallScore: totalAvgScore,
+      overdue: queue.filter((q) => q.status === 'overdue').length,
+      dueSoon: queue.filter((q) => q.status === 'due-soon').length,
+      coachCount: coachClientMap.size,
+    },
+    coachMetrics,
+  };
+}
+
 /** Full detail blob for one client after fetch_client_data (follow-up turn). */
 export function serialiseClientDetailForAssistant(client: ClientGroup): Record<string, unknown> {
   const assessments = client.assessments.slice(0, FULL_DETAIL_ASSESSMENTS).map((a) => ({
@@ -224,6 +296,8 @@ export function serialiseClientDetailForAssistant(client: ClientGroup): Record<s
           ? a.updatedAt.toDate().toISOString()
           : null,
     overallScore: a.overallScore,
+    previousScore: a.previousScore ?? null,
+    trend: a.trend ?? null,
     categories: (a.scoresSummary?.categories ?? []).map((cat) => ({
       id: cat.id,
       label: getPillarLabel(cat.id),

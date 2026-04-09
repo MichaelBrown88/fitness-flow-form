@@ -114,8 +114,8 @@ export function useAssessmentLogic(assessmentId: string | undefined, clientNameO
                  );
                  if (sessionsWithPosture.length > 0) {
                     const latest = sessionsWithPosture[0]; // Simplification
-                    if (latest.images) fd = { ...fd, postureImagesStorage: { ...fd.postureImagesStorage, ...latest.images } };
-                    if (latest.analysis) fd = { ...fd, postureAiResults: { ...fd.postureAiResults, ...latest.analysis } };
+                    if (latest.images) fd = { ...fd, postureImagesStorage: { ...(fd.postureImagesStorage as Record<string, string> | undefined ?? {}), ...(latest.images as Record<string, string>) } };
+                    if (latest.analysis) fd = { ...fd, postureAiResults: { ...(fd.postureAiResults ?? {}), ...latest.analysis } as typeof latest.analysis };
                  }
               }
             } catch (err) {
@@ -154,7 +154,7 @@ export function useAssessmentLogic(assessmentId: string | undefined, clientNameO
 
                 if (mapped.length === 0) {
                   mapped = [{
-                    id: assessmentId,
+                    id: assessmentId ?? '',
                     score: scores.overall,
                     date: new Date(),
                     type: 'full-assessment',

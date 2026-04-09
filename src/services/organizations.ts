@@ -84,8 +84,12 @@ export interface OrgSettings {
   /** Billing region from onboarding (GB, US, KW). */
   region?: string;
   logoUrl?: string;
+  /** Logo shown on dark backgrounds. Falls back to logoUrl when absent. */
+  logoUrlDark?: string;
   brandColor?: string; // hex (deprecated - use gradientId instead)
   gradientId?: string; // Gradient ID from gradient system (e.g., 'volt', 'purple-indigo', 'blue-cyan')
+  /** Custom brand hex colour (e.g. '#CC0000'). When set, overrides gradientId for ThemeManager. */
+  brandHex?: string;
   modules: {
     parq: boolean; // P0 - PAR-Q health screening
     bodycomp: boolean; // P2 - Body composition scan (section: 'body-comp')
@@ -132,16 +136,26 @@ export interface OrgSettings {
 }
 
 /**
- * Upload organization logo
+ * Upload organization logo (light mode / default).
  */
 export async function uploadOrgLogo(orgId: string, file: File): Promise<string> {
   const storage = getStorage();
   const logoRef = ref(storage, `organizations/${orgId}/logo_${Date.now()}`);
-  
   await uploadBytes(logoRef, file);
   const downloadUrl = await getDownloadURL(logoRef);
-  
   await updateOrgSettings(orgId, { logoUrl: downloadUrl });
+  return downloadUrl;
+}
+
+/**
+ * Upload organization dark-mode logo (shown on dark backgrounds).
+ */
+export async function uploadOrgLogoDark(orgId: string, file: File): Promise<string> {
+  const storage = getStorage();
+  const logoRef = ref(storage, `organizations/${orgId}/logo_dark_${Date.now()}`);
+  await uploadBytes(logoRef, file);
+  const downloadUrl = await getDownloadURL(logoRef);
+  await updateOrgSettings(orgId, { logoUrlDark: downloadUrl });
   return downloadUrl;
 }
 
@@ -269,7 +283,9 @@ export async function getOrgSettings(orgId: string): Promise<OrgSettings> {
     region: data.region,
     brandColor: data.brandColor ?? DEFAULT_SETTINGS.brandColor,
     gradientId: data.gradientId ?? DEFAULT_SETTINGS.gradientId,
+    brandHex: data.brandHex,
     logoUrl: data.logoUrl,
+    logoUrlDark: data.logoUrlDark,
     modules: (() => {
       const raw = { ...DEFAULT_SETTINGS.modules, ...(data.modules || {}) } as Record<string, boolean>;
       // Migrate legacy body-comp module flag key → 'bodycomp' for existing Firestore docs

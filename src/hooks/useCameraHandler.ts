@@ -18,6 +18,7 @@ interface UseCameraHandlerProps {
   activePhaseIdx: number;
   visiblePhases: Array<{ id: string }>;
   isPartialAssessment: boolean;
+  organizationId?: string;
   onPhaseChange?: (idx: number) => void;
 }
 
@@ -28,6 +29,7 @@ export function useCameraHandler({
   activePhaseIdx,
   visiblePhases,
   isPartialAssessment,
+  organizationId,
   onPhaseChange,
 }: UseCameraHandlerProps) {
   const { toast } = useToast();
@@ -53,25 +55,30 @@ export function useCameraHandler({
       });
 
       try {
-        const result = await processBodyCompScan(imageSrc);
+        const result = await processBodyCompScan(imageSrc, organizationId);
         if (result.fields && Object.keys(result.fields).length > 0) {
           setOcrReviewData(result.fields);
         } else {
-          toast({ 
-            title: "Scan failed", 
+          toast({
+            title: "Scan failed",
             description: "AI couldn't find data. Please try again with a clearer photo.",
             variant: "destructive"
           });
         }
       } catch (err) {
         logger.error('OCR error:', err);
-        toast({ title: "Scan failed", description: "An error occurred during AI analysis.", variant: "destructive" });
+        const isCredit = err instanceof Error && err.name === 'AICreditExhaustedError';
+        toast({
+          title: isCredit ? "No AI credits remaining" : "Scan failed",
+          description: isCredit ? err.message : "An error occurred during AI analysis.",
+          variant: "destructive",
+        });
       } finally {
         setIsProcessingOcr(false);
         setProcessingMode(null);
       }
     }
-  }, [showCamera, toast]);
+  }, [showCamera, organizationId, toast]);
 
   const applyOcrData = useCallback(() => {
     if (ocrReviewData) {

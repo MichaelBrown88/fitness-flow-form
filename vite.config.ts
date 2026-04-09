@@ -77,7 +77,8 @@ export default defineConfig(({ mode }) => ({
       name: 'client-html-fallback',
       configureServer(server: { middlewares: { use: (fn: (req: { url?: string }, res: unknown, next: () => void) => void) => void } }) {
         server.middlewares.use((req: { url?: string }, _res: unknown, next: () => void) => {
-          if (req.url && /^\/r\//.test(req.url)) {
+          // Match /r, /r/, /r/anything — all client PWA routes
+          if (req.url && /^\/r($|\/|\?)/.test(req.url)) {
             req.url = '/client.html';
           }
           next();
@@ -102,7 +103,7 @@ export default defineConfig(({ mode }) => ({
         globIgnores: ['**/heic2any-*', '**/generateCategoricalChart-*', '**/pose-*'],
         maximumFileSizeToCacheInBytes: 300_000, // 300 KB safety cap
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api/, /^\/companion\//, /^\/r\//],
+        navigateFallbackDenylist: [/^\/api/, /^\/companion\//, /^\/r($|\/)/],
         runtimeCaching: [
           {
             // Some Storage URLs use storage.googleapis.com (not only *.googleapis.com subdomain shape).

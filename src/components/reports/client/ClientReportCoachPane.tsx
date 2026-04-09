@@ -29,7 +29,7 @@ export function ClientReportCoachPane({
         <CoachReport
           plan={plan}
           scores={scores}
-          bodyComp={formData ? generateBodyCompInterpretation(formData) : undefined}
+          bodyComp={formData ? generateBodyCompInterpretation(formData) ?? undefined : undefined}
           formData={formData}
         />
       ) : (

@@ -192,7 +192,7 @@ export function getPhaseFocus(
   const primaryGoal = clientGoals[0];
   const secondaryGoal = clientGoals[1];
   const goalFocus = primaryGoal && PHASE_FOCUS_BY_GOAL[phase][primaryGoal];
-  let focusPoints = goalFocus ?? DEFAULT_PHASE_FOCUS[phase];
+  let focusPoints: string[] = (goalFocus || DEFAULT_PHASE_FOCUS[phase]) || [];
   if (phase === 'development' && secondaryGoal) {
     const secondaryLabel = GOAL_LABELS[secondaryGoal] ?? secondaryGoal.replace(/-/g, ' ');
     focusPoints = [...focusPoints, `Then shift focus toward ${secondaryLabel}.`];

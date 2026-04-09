@@ -127,7 +127,10 @@ export function useAssessmentList({
           unsubscribeRef.current();
           unsubscribeRef.current = null;
         }
-        const fallbackQuery = query(orgClientsColRef, orderBy('createdAt', 'desc'), limit(50));
+        // If coach filter is active we over-fetch to buffer for client-side filtering;
+        // without a filter (admin view) we only need 20.
+        const fallbackLimit = resolvedCoachFilter ? 50 : 20;
+        const fallbackQuery = query(orgClientsColRef, orderBy('createdAt', 'desc'), limit(fallbackLimit));
         const fallbackUnsubscribe = onSnapshot(fallbackQuery, async (snapshot) => {
           try {
             if (isInitialLoadRef.current) {

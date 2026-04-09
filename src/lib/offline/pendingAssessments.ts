@@ -23,6 +23,7 @@ export interface PendingAssessment {
   formData: FormData;
   scores: ScoreSummary;
   isDemoAssessment: boolean;
+  retryCount?: number; // Incremented on each failed drain attempt
 }
 
 function openDb(): Promise<IDBDatabase> {

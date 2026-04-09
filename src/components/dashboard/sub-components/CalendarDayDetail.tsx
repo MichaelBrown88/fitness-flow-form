@@ -168,7 +168,7 @@ export function DayDetailPanel({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 gap-1 text-[10px] font-bold uppercase tracking-wide text-primary hover:bg-primary/10 hover:text-primary dark:hover:bg-primary/15"
+                  className="h-7 gap-1 text-[10px] font-bold uppercase tracking-wide text-gradient-dark hover:bg-primary/10 dark:hover:bg-primary/15"
                   onClick={() => onStartAssessment(c.name, c.pillar)}
                 >
                   <Play className="h-3 w-3" />

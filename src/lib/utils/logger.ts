@@ -5,7 +5,10 @@
  * Behaviour:
  * - Development: debug/info/warn/error mirror to console.
  * - Production: warn/error mirror to console; debug/info are in-memory only (no console noise).
+ * - Production: logger.error also forwards to Sentry when a DSN is configured.
  */
+
+import * as Sentry from '@sentry/react';
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -72,6 +75,12 @@ class Logger {
 
   error(message: string, ...args: unknown[]): void {
     this.log('error', message, ...args);
+    // Forward to Sentry in production. captureException is a no-op when Sentry
+    // has not been initialised (i.e. VITE_SENTRY_DSN is absent in dev).
+    if (!import.meta.env.DEV) {
+      const cause = args.find((a) => a instanceof Error) ?? new Error(message);
+      Sentry.captureException(cause, { extra: { args } });
+    }
   }
 
   getLogs(level?: LogLevel): LogEntry[] {

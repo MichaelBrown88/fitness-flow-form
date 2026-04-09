@@ -253,18 +253,28 @@ export interface ClientScheduleData {
 }
 
 /**
- * Batch-fetch schedule data for all clients in an organization.
+ * Batch-fetch schedule data for clients in an organization.
  * Returns cadence intervals AND one-time due date overrides.
  * Used by the dashboard to enrich ClientGroups with schedule data.
+ *
+ * @param coachUid - When provided, only fetches that coach's assigned clients.
+ *   Pass `null` to fetch all org clients (org admin non-coach view).
+ *   Omitting / passing `undefined` also fetches only the authenticated coach's clients
+ *   and is equivalent to passing their uid.
  */
 export async function listClientSchedules(
   organizationId: string,
+  coachUid?: string | null,
 ): Promise<Map<string, ClientScheduleData>> {
   const result = new Map<string, ClientScheduleData>();
   if (!organizationId) return result;
 
   const colRef = collection(getDb(), ORGANIZATION.clients.collection(organizationId));
-  const snap = await getDocs(query(colRef, limit(ORG_CLIENT_PROFILES_QUERY_LIMIT)));
+  const constraints =
+    coachUid != null
+      ? [where('coachUid', '==', coachUid), limit(ORG_CLIENT_PROFILES_QUERY_LIMIT)]
+      : [limit(ORG_CLIENT_PROFILES_QUERY_LIMIT)];
+  const snap = await getDocs(query(colRef, ...constraints));
 
   for (const docSnap of snap.docs) {
     const data = docSnap.data() as ClientProfile;
@@ -392,7 +402,7 @@ export async function createOrUpdateClientProfile(
 
     // Also patch contact fields inside the embedded formData snapshot so assessment
     // pre-fill doesn't serve stale values after a profile update.
-    const existingFormData = existingData.formData as Record<string, unknown> | undefined;
+    const existingFormData = (existingData as Record<string, unknown>).formData as Record<string, unknown> | undefined;
     const contactPatch: Record<string, unknown> = {};
     if (existingFormData) {
       if ('email' in data && data.email !== undefined) contactPatch['formData.email'] = data.email;
@@ -657,7 +667,7 @@ export async function renameClient(
 
   const newRef = clientProfileDoc(validOrgId, normalizedNew);
   // Patch embedded formData.fullName so stale old-name references don't recreate the old slug doc
-  const oldFormData = oldData.formData as Record<string, unknown> | undefined;
+  const oldFormData = (oldData as Record<string, unknown>).formData as Record<string, unknown> | undefined;
   await setDoc(newRef, {
     ...oldData,
     clientName: normalizedNew,

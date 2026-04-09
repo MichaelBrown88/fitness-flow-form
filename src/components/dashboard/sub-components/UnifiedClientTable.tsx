@@ -5,18 +5,18 @@
  * Supports status filtering (Active / Paused / Archived / All).
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, TrendingDown, Minus, Pin } from 'lucide-react';
 import { ClientActionsDropdown } from './ClientActionsDropdown';
 import { ClientTableBulkActions } from './unifiedClientTableBulk';
+import { PauseClientDialog } from '@/components/client/PauseClientDialog';
+import { generateClientSlug } from '@/services/clientProfiles';
 import type { ClientGroup } from '@/hooks/dashboard/types';
 import type { UserProfile } from '@/types/auth';
 import { scoreGrade, SCORE_COLORS } from '@/lib/scoring/scoreColor';
-import { BASE_CADENCE_INTERVALS } from '@/types/client';
 import type { PartialAssessmentCategory } from '@/types/client';
-import { getPillarLabel } from '@/constants/pillars';
 import { ROUTES } from '@/constants/routes';
 import {
   UI_DASHBOARD_CLIENTS,
@@ -45,8 +45,6 @@ interface UnifiedClientTableProps {
   onBulkComplete?: () => void;
 }
 
-const ALL_PILLARS: PartialAssessmentCategory[] = ['bodycomp', 'posture', 'fitness', 'strength', 'lifestyle'];
-
 const GOAL_LABELS: Record<string, string> = {
   'build-muscle': 'Build muscle',
   'weight-loss': 'Weight loss',
@@ -61,125 +59,43 @@ function primaryGoalLabel(goals: string[] | undefined): string | null {
   return GOAL_LABELS[goals[0]] ?? goals[0];
 }
 
-interface NextDueInfo {
-  pillar: string;
-  label: string;
-  color: string;
-  daysFromDue: number;
-}
-
-function computeNextDue(
-  client: ClientGroup,
-  orgIntervals?: Record<string, number>,
-  orgActivePillars?: PartialAssessmentCategory[],
-): NextDueInfo | null {
-  const pillars = client.activePillars ?? orgActivePillars ?? ALL_PILLARS;
-  if (pillars.length === 0) return null;
-
-  // If training hasn't started yet, nothing is due
-  if (client.trainingStartDate && client.trainingStartDate > new Date()) {
-    const daysUntil = Math.ceil((client.trainingStartDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-    const weeks = Math.ceil(daysUntil / 7);
-    return {
-      pillar: pillars[0],
-      label: `Starts in ${weeks} wk`,
-      color: 'text-muted-foreground',
-      daysFromDue: -daysUntil,
-    };
-  }
-
-  let nearest: NextDueInfo | null = null;
-
-  const profileDate = client.lastAssessmentDate ?? client.latestDate;
-  const effectiveLatest = profileDate
-    ? (client.trainingStartDate && client.trainingStartDate > profileDate ? client.trainingStartDate : profileDate)
-    : null;
-
-  for (const pillar of pillars) {
-    const customInterval = client.retestSchedule?.custom?.[pillar]?.intervalDays;
-    const orgInterval = orgIntervals?.[pillar];
-    const interval = (customInterval && customInterval > 0)
-      ? customInterval
-      : (orgInterval && orgInterval > 0)
-      ? orgInterval
-      : BASE_CADENCE_INTERVALS[pillar];
-
-    const pillarSpecific = client.pillarDates?.[pillar];
-    let baseDate = pillarSpecific ?? effectiveLatest;
-    if (
-      pillarSpecific &&
-      effectiveLatest &&
-      pillarSpecific.getTime() < effectiveLatest.getTime()
-    ) {
-      baseDate = effectiveLatest;
-    }
-    if (!baseDate) continue;
-
-    const dueDate = new Date(baseDate.getTime() + interval * 24 * 60 * 60 * 1000);
-    const daysFromDue = Math.floor((Date.now() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
-
-    if (!nearest || daysFromDue > nearest.daysFromDue) {
-      let label: string;
-      let color: string;
-
-      if (daysFromDue > 0) {
-        const weeks = Math.ceil(daysFromDue / 7);
-        label = `${getPillarLabel(pillar)} — overdue`;
-        color = 'text-score-red-fg';
-        if (weeks > 1) label = `${getPillarLabel(pillar)} — ${weeks}wk overdue`;
-      } else if (Math.abs(daysFromDue) <= 7) {
-        label = `${getPillarLabel(pillar)} — this week`;
-        color = 'text-score-amber-fg';
-      } else {
-        const weeks = Math.ceil(Math.abs(daysFromDue) / 7);
-        label = `${getPillarLabel(pillar)} — in ${weeks} wk`;
-        color = 'text-muted-foreground';
-      }
-
-      nearest = { pillar, label, color, daysFromDue };
-    }
-  }
-
-  return nearest;
-}
-
-const ScoreBadge: React.FC<{ score: number }> = ({ score }) => {
+const ScoreBadge: React.FC<{ score: number }> = React.memo(({ score }) => {
   const grade = scoreGrade(score);
   return (
     <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ${SCORE_COLORS[grade].badge}`}>
       {score || '—'}
     </span>
   );
-};
+});
 
-const TrendIndicator: React.FC<{ trend?: number }> = ({ trend }) => {
+const TrendIndicator: React.FC<{ trend?: number }> = React.memo(({ trend }) => {
   if (trend === undefined || trend === null) {
     return (
-      <span className="text-[10px] font-medium text-muted-foreground tabular-nums" aria-label="No trend data yet">
+      <span className="text-xs font-medium text-muted-foreground tabular-nums" aria-label="No trend data yet">
         —
       </span>
     );
   }
   if (trend > 0) {
     return (
-      <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+      <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-1.5 py-0.5 text-xs font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
         <TrendingUp className="h-3 w-3" />+{trend}
       </span>
     );
   }
   if (trend < 0) {
     return (
-      <span className="inline-flex items-center gap-0.5 rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-700 dark:bg-red-950/50 dark:text-red-300">
+      <span className="inline-flex items-center gap-0.5 rounded-full bg-red-50 px-1.5 py-0.5 text-xs font-bold text-red-700 dark:bg-red-950/50 dark:text-red-300">
         <TrendingDown className="h-3 w-3" />{trend}
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-0.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+    <span className="inline-flex items-center gap-0.5 rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
       <Minus className="h-3 w-3" />0
     </span>
   );
-};
+});
 
 const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: 'active', label: 'Active' },
@@ -209,6 +125,32 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
   const [visibleCount, setVisibleCount] = useState(20);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('active');
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [pauseTarget, setPauseTarget] = useState<{ name: string; isPaused: boolean } | null>(null);
+
+  const handlePauseConfirm = useCallback(async (reason?: string) => {
+    if (!pauseTarget || !writeOrganizationId) return;
+    const { pauseClient } = await import('@/services/clientProfiles');
+    await pauseClient({
+      organizationId: writeOrganizationId,
+      clientSlug: generateClientSlug(pauseTarget.name),
+      pausedBy: coachUid ?? 'unknown',
+      reason,
+    });
+    setPauseTarget(null);
+    onBulkComplete?.();
+  }, [pauseTarget, writeOrganizationId, coachUid, onBulkComplete]);
+
+  const handleUnpauseConfirm = useCallback(async (mode: 'resume' | 'reset') => {
+    if (!pauseTarget || !writeOrganizationId) return;
+    const { unpauseClient } = await import('@/services/clientProfiles');
+    await unpauseClient({
+      organizationId: writeOrganizationId,
+      clientSlug: generateClientSlug(pauseTarget.name),
+      mode,
+    });
+    setPauseTarget(null);
+    onBulkComplete?.();
+  }, [pauseTarget, writeOrganizationId, onBulkComplete]);
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -240,7 +182,6 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
     return clients.filter(c => {
       const status = c.clientStatus || 'active';
       if (statusFilter === 'all') return true;
-      if (statusFilter === 'active') return status === 'active' || status === 'paused';
       return status === statusFilter;
     });
   }, [clients, statusFilter]);
@@ -266,13 +207,22 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
     return copy;
   }, [filtered, sortKey, sortDir]);
 
+  // Pre-format dates once per sort change, not on every render
+  const formattedDates = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const client of sorted) {
+      map.set(client.id, client.latestDate ? client.latestDate.toLocaleDateString() : '—');
+    }
+    return map;
+  }, [sorted]);
+
   const sortIcon = (key: SortKey) => {
     if (sortKey !== key) return '';
     return sortDir === 'asc' ? ' ↑' : ' ↓';
   };
 
   const thClass =
-    'px-3 sm:px-4 md:px-6 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors';
+    'px-3 sm:px-4 md:px-6 py-3 text-left text-xs font-black uppercase tracking-[0.15em] text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors';
   const colCount = (showCoachColumn ? 8 : 7);
 
   return (
@@ -285,7 +235,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
             onClick={() => setStatusFilter(opt.value)}
             className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
               statusFilter === opt.value
-                ? 'bg-foreground text-background'
+                ? 'bg-primary text-primary-foreground'
                 : 'text-muted-foreground hover:bg-muted'
             }`}
           >
@@ -320,13 +270,13 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
               <th className={thClass} onClick={() => toggleSort('score')}>
                 Score{sortIcon('score')}
               </th>
-              <th className="hidden px-3 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground sm:px-4 md:px-6 lg:table-cell">
+              <th className="hidden px-3 py-3 text-left text-xs font-black uppercase tracking-[0.15em] text-muted-foreground sm:px-4 md:px-6 md:table-cell">
                 Trend
               </th>
-              <th className="hidden px-3 py-3 text-left text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground sm:px-4 md:table-cell md:px-6">
+              <th className="hidden px-3 py-3 text-left text-xs font-black uppercase tracking-[0.15em] text-muted-foreground sm:px-4 lg:table-cell lg:px-6">
                 Goal
               </th>
-              <th className="px-3 py-3 text-right text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground sm:px-4 md:px-6">
+              <th className="px-3 py-3 text-right text-xs font-black uppercase tracking-[0.15em] text-muted-foreground sm:px-4 md:px-6">
                 Actions
               </th>
             </tr>
@@ -388,8 +338,8 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                     <td className="px-3 py-4 text-xs font-semibold text-foreground sm:px-4 sm:text-sm md:px-6">
                       <span className="flex items-center gap-2">
                         {formatClientDisplayName(client.name)}
-                        {isPaused && <span className="text-[10px] font-bold text-muted-foreground">Paused</span>}
-                        {isArchived && <span className="text-[10px] font-bold text-muted-foreground">Archived</span>}
+                        {isPaused && <span className="text-xs font-bold text-muted-foreground">Paused</span>}
+                        {isArchived && <span className="text-xs font-bold text-muted-foreground">Archived</span>}
                       </span>
                       {client.notes && (
                         <span className="mt-0.5 flex items-center gap-1">
@@ -406,15 +356,15 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                       </td>
                     )}
                     <td className="px-3 py-4 text-xs font-medium text-muted-foreground sm:px-4 sm:text-sm md:px-6">
-                      {client.latestDate ? client.latestDate.toLocaleDateString() : '—'}
+                      {formattedDates.get(client.id) ?? '—'}
                     </td>
                     <td className="px-3 sm:px-4 md:px-6 py-4">
                       <ScoreBadge score={client.latestScore} />
                     </td>
-                    <td className="px-3 sm:px-4 md:px-6 py-4 hidden lg:table-cell">
+                    <td className="px-3 sm:px-4 md:px-6 py-4 hidden md:table-cell">
                       <TrendIndicator trend={client.scoreChange} />
                     </td>
-                    <td className="px-3 sm:px-4 md:px-6 py-4 hidden md:table-cell">
+                    <td className="px-3 sm:px-4 lg:px-6 py-4 hidden lg:table-cell">
                       {goalLabel ? (
                         <span className="text-xs font-medium text-foreground/80">{goalLabel}</span>
                       ) : (
@@ -425,8 +375,10 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                       <ClientActionsDropdown
                         clientName={client.name}
                         latestAssessmentId={client.assessments[0]?.id}
+                        clientStatus={client.clientStatus}
                         onViewHistory={onViewHistory}
                         onStartAssessment={onStartAssessment}
+                        onPauseToggle={() => setPauseTarget({ name: client.name, isPaused: client.clientStatus === 'paused' })}
                       />
                     </td>
                   </tr>
@@ -500,15 +452,18 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                     />
                     <p className="truncate text-sm font-semibold text-foreground">
                       {formatClientDisplayName(client.name)}
-                      {isPaused && <span className="ml-2 text-[10px] font-bold text-muted-foreground">Paused</span>}
-                      {isArchived && <span className="ml-2 text-[10px] font-bold text-muted-foreground">Archived</span>}
+                      {isPaused && <span className="ml-2 text-xs font-bold text-muted-foreground">Paused</span>}
+                      {isArchived && <span className="ml-2 text-xs font-bold text-muted-foreground">Archived</span>}
                     </p>
                   </div>
                   <div className="shrink-0" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                     <ClientActionsDropdown
                       clientName={client.name}
                       latestAssessmentId={client.assessments[0]?.id}
+                      clientStatus={client.clientStatus}
                       onViewHistory={onViewHistory}
+                      onStartAssessment={onStartAssessment}
+                      onPauseToggle={() => setPauseTarget({ name: client.name, isPaused: client.clientStatus === 'paused' })}
                     />
                   </div>
                 </div>
@@ -527,17 +482,17 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                   <ScoreBadge score={client.latestScore} />
                   <TrendIndicator trend={client.scoreChange} />
                   {showCoachColumn && client.coachUid && coachMap?.get(client.coachUid) && (
-                    <span className="max-w-[80px] truncate text-[10px] font-medium text-muted-foreground">
+                    <span className="max-w-[80px] truncate text-xs font-medium text-muted-foreground">
                       {coachMap.get(client.coachUid)}
                     </span>
                   )}
                   {goalLabel && (
-                    <span className="text-[10px] font-medium text-foreground/70">
+                    <span className="text-xs font-medium text-foreground/70">
                       {goalLabel}
                     </span>
                   )}
-                  <span className="ml-auto shrink-0 text-[10px] font-medium text-muted-foreground">
-                    {client.latestDate ? client.latestDate.toLocaleDateString() : 'Not assessed'}
+                  <span className="ml-auto shrink-0 text-xs font-medium text-muted-foreground">
+                    {formattedDates.get(client.id) ?? 'Not assessed'}
                   </span>
                 </div>
               </div>
@@ -568,6 +523,17 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
         onBulkComplete={onBulkComplete}
         navigate={navigate}
       />
+
+      {pauseTarget && (
+        <PauseClientDialog
+          open={Boolean(pauseTarget)}
+          onOpenChange={(open) => { if (!open) setPauseTarget(null); }}
+          clientName={pauseTarget.name}
+          isPaused={pauseTarget.isPaused}
+          onPause={handlePauseConfirm}
+          onUnpause={handleUnpauseConfirm}
+        />
+      )}
     </section>
   );
 };

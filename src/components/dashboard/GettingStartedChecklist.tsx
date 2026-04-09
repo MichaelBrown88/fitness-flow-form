@@ -147,7 +147,7 @@ export function GettingStartedChecklist({
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
         )}
       >
-        <ListChecks className="h-5 w-5 text-primary shrink-0" aria-hidden />
+        <ListChecks className="h-5 w-5 text-gradient-dark shrink-0" aria-hidden />
         <span className="text-sm font-semibold text-foreground">{GETTING_STARTED.FAB_LABEL}</span>
         <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-bold tabular-nums text-on-brand-tint">
           {completedCount}/{totalCount}

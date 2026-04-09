@@ -16,6 +16,7 @@ import {
   handleSyncCheckoutSession,
 } from './stripe';
 import { handleSubmitPublicErasureRequest } from './publicErasureRequest';
+import { handleExecuteClientErasure } from './executeClientErasure';
 import { handleGeneratePublicReportSocialShareArtifacts } from './generatePublicReportSocialShareArtifacts';
 import { handleAssessmentCompletedTrigger } from './webhooks';
 import { handleSendCoachInvite } from './invites';
@@ -64,6 +65,12 @@ import { handleOnboardingCompleted } from './transactionalEmails';
 import { sendTrialExpiryNudges } from './trialNudges';
 
 admin.initializeApp();
+
+// TODO(launch): Flip all enforceAppCheck values below to `true` once App Check
+// is confirmed working in a production build (reCAPTCHA site key verified, NOT
+// just local debug token). Do not enable before a prod smoke-test — it will
+// block all Cloud Function calls from clients that fail attestation.
+// See: Firebase Console → App Check → Apps → enforcement status.
 
 export const requestReportShare = onCall({
   enforceAppCheck: false,
@@ -129,6 +136,12 @@ export const submitPublicErasureRequest = onCall(
     invoker: 'public',
   },
   handleSubmitPublicErasureRequest,
+);
+
+/** GDPR Article 17 — org admin executes the actual deletion for a pending erasure request. */
+export const executeClientErasure = onCall(
+  { enforceAppCheck: false },
+  handleExecuteClientErasure,
 );
 
 /** In-app Stripe subscription capacity change (authenticated org billing). */

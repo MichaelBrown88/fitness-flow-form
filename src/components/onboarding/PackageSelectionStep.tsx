@@ -235,7 +235,7 @@ export function PackageSelectionStep({
                   className={cn(
                     'flex-1 h-10 rounded-xl text-xs font-bold transition-apple',
                     billingPeriod === 'monthly'
-                      ? 'bg-foreground text-primary-foreground'
+                      ? 'bg-primary text-primary-foreground'
                       : 'bg-muted text-foreground-secondary',
                   )}
                 >
@@ -247,7 +247,7 @@ export function PackageSelectionStep({
                   className={cn(
                     'flex-1 h-10 rounded-xl text-xs font-bold transition-apple',
                     billingPeriod === 'annual'
-                      ? 'bg-foreground text-primary-foreground'
+                      ? 'bg-primary text-primary-foreground'
                       : 'bg-muted text-foreground-secondary',
                   )}
                 >
@@ -368,7 +368,7 @@ export function PackageSelectionStep({
               type="button"
               onClick={handleContinue}
               disabled={checkoutLoading || completingSetup}
-              className="w-full h-12 rounded-xl bg-foreground text-primary-foreground font-bold text-sm hover:opacity-90 transition-apple disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 transition-apple disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {checkoutLoading ? (
                 <>

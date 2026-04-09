@@ -282,6 +282,9 @@ export default function DashboardLayout() {
     clients: dashboardData.clientGroups,
     reassessmentQueue: dashboardData.reassessmentQueue,
     orgSubscription: orgSettings?.subscription,
+    isOrgAdmin: dashboardData.isAdmin,
+    isActiveCoach: dashboardData.isActiveCoach,
+    coachMap: dashboardData.coachMap,
   });
 
   const {
@@ -492,15 +495,17 @@ export default function DashboardLayout() {
                     {trialDaysRemaining === 1
                       ? 'Your free trial ends tomorrow.'
                       : `Your free trial ends in ${trialDaysRemaining} days.`}
-                    {' '}Choose a plan to keep your data and continue using One Assess.
+                    {' '}Choose a plan to keep your data and continue using the platform.
                   </span>
-                  <button
+                  <Button
                     type="button"
+                    size="sm"
                     onClick={() => navigate(ROUTES.BILLING)}
-                    className="shrink-0 font-semibold underline underline-offset-2 hover:opacity-80"
+                    className="shrink-0 h-8 px-3 text-xs font-semibold"
+                    variant={trialDaysRemaining !== null && trialDaysRemaining <= 1 ? 'destructive' : 'default'}
                   >
                     See plans
-                  </button>
+                  </Button>
                 </div>
               )}
 

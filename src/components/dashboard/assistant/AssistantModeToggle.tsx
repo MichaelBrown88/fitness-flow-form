@@ -1,3 +1,4 @@
+import { Database, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -38,8 +39,9 @@ export function AssistantModeToggle({
     >
       <button
         type="button"
+        aria-pressed={mode === 'data'}
         className={cn(
-          'font-semibold transition-colors',
+          'inline-flex items-center gap-1 font-semibold transition-colors',
           isCompact
             ? 'rounded-full px-2 py-1 text-[10px]'
             : 'rounded-md px-2.5 py-1 text-xs',
@@ -49,21 +51,24 @@ export function AssistantModeToggle({
         )}
         onClick={() => onChange('data')}
       >
+        <Database className={cn('shrink-0', isCompact ? 'h-2.5 w-2.5' : 'h-3 w-3')} aria-hidden />
         {COACH_ASSISTANT_COPY.MODE_DATA_LABEL}
       </button>
       <button
         type="button"
+        aria-pressed={mode === 'assist'}
         className={cn(
-          'font-semibold transition-colors',
+          'inline-flex items-center gap-1 font-semibold transition-colors',
           isCompact
             ? 'rounded-full px-2 py-1 text-[10px]'
             : 'rounded-md px-2.5 py-1 text-xs',
           mode === 'assist'
-            ? 'bg-muted text-foreground shadow-sm dark:bg-background-secondary'
+            ? 'bg-amber-100 text-amber-800 shadow-sm dark:bg-amber-900/40 dark:text-amber-300'
             : 'text-foreground/55 hover:text-foreground/90',
         )}
         onClick={() => onChange('assist')}
       >
+        <MessageCircle className={cn('shrink-0', isCompact ? 'h-2.5 w-2.5' : 'h-3 w-3')} aria-hidden />
         {COACH_ASSISTANT_COPY.MODE_ASSIST_LABEL}
       </button>
     </div>
@@ -78,11 +83,12 @@ export function AssistantModeToggle({
         variant="ghost"
         size="sm"
         className={cn(
-          'h-8 rounded-md px-3 text-xs font-semibold text-foreground/60',
+          'h-8 gap-1.5 rounded-md px-3 text-xs font-semibold text-foreground/60',
           mode === 'data' && 'bg-muted text-foreground shadow-sm dark:bg-background-secondary',
         )}
         onClick={() => onChange('data')}
       >
+        <Database className="h-3 w-3 shrink-0" aria-hidden />
         {COACH_ASSISTANT_COPY.MODE_DATA_LABEL}
       </Button>
       <Button
@@ -90,11 +96,14 @@ export function AssistantModeToggle({
         variant="ghost"
         size="sm"
         className={cn(
-          'h-8 rounded-md px-3 text-xs font-semibold text-foreground/60',
-          mode === 'assist' && 'bg-muted text-foreground shadow-sm dark:bg-background-secondary',
+          'h-8 gap-1.5 rounded-md px-3 text-xs font-semibold',
+          mode === 'assist'
+            ? 'bg-amber-100 text-amber-800 shadow-sm dark:bg-amber-900/40 dark:text-amber-300'
+            : 'text-foreground/60',
         )}
         onClick={() => onChange('assist')}
       >
+        <MessageCircle className="h-3 w-3 shrink-0" aria-hidden />
         {COACH_ASSISTANT_COPY.MODE_ASSIST_LABEL}
       </Button>
     </div>

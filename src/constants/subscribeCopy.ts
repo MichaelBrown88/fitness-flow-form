@@ -5,7 +5,7 @@
 export const SUBSCRIBE_COPY = {
   title: 'Your trial has ended',
   leadGym: (_trialClientCap: number) =>
-    `To keep your team on One Assess, choose a plan for your gym or studio. Your assessments and client data are safe — nothing is deleted.`,
+    `To keep your team on One Assess, choose a Team plan. Your assessments and client data are safe — nothing is deleted.`,
   leadSolo: (_trialClientCap: number) =>
     `To keep using One Assess, choose a plan that fits your practice. Your assessments and client data are safe — nothing is deleted.`,
   bulletsTitle: "What's included",

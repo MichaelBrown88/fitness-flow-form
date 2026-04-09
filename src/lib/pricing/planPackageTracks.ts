@@ -1,5 +1,5 @@
 /**
- * Plan package lines (Solo Coach / Gym · Studio) and GB capacity tiers per track.
+ * Plan package lines (Solo / Team) and GB capacity tiers per track.
  * US/KW use legacy SEAT_TIERS index slices.
  */
 
@@ -23,12 +23,12 @@ export const PLAN_PACKAGE_TRACK_COPY: Record<
   { title: string; subtitle: string }
 > = {
   solo: {
-    title: 'Solo Coach',
+    title: 'Solo',
     subtitle: 'Independent coaches · up to 100 clients',
   },
   gym: {
-    title: 'Gym / Studio',
-    subtitle: 'Teams · 50–250 clients',
+    title: 'Team',
+    subtitle: 'Multi-coach · 50–250 clients',
   },
 };
 

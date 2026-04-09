@@ -1,14 +1,16 @@
 /** Coach workspace assistant — user-visible copy (i18n-ready). */
 
 export const COACH_ASSISTANT_COPY = {
-  MODE_DATA_LABEL: 'Data AI',
-  MODE_ASSIST_LABEL: 'Fitness AI',
+  MODE_DATA_LABEL: 'Client Data',
+  MODE_ASSIST_LABEL: 'Coaching Chat',
   MODE_DATA_DESC:
-    'Answers from your real assessment and schedule data only — fetch and report, no invented records. For programming advice use Fitness AI.',
+    'Grounded in your real assessment data — scores, schedules, weaknesses, and history. Everything you see is from your actual client records.',
   MODE_ASSIST_DESC:
-    'General fitness, programming, and coaching help, plus your workspace when you ask about clients. Verify important numbers on client cards.',
+    'General fitness, programming, and exercise science help. Not reading your client files — switch to Client Data for roster questions.',
   MODE_TOOLTIP:
-    'Data AI: reads a live snapshot of your roster, overdue pillars, tasks, and weakness summaries — reports only what is in that data.\nFitness AI: exercise science, programming, nutrition, and broader coaching chat; uses your workspace summary when relevant.',
+    'Client Data: reads your live roster, assessments, overdue pillars, and weakness patterns. Answers are grounded in your real records — nothing invented.\n\nCoaching Chat: exercise science, programming, and coaching knowledge. Useful for building plans and thinking through training concepts — but not connected to your client data.',
+  MODE_ASSIST_WARNING: 'Coaching Chat — not reading your client files',
+  MODE_ASSIST_WARNING_SUB: 'Switch to Client Data for roster questions.',
   PROVENANCE_DATA_ONLY: '',
   PROVENANCE_LLM: 'AI-assisted',
   PLACEHOLDER: 'Ask anything, or type / for commands',
@@ -64,17 +66,20 @@ export const COACH_ASSISTANT_COPY = {
   EMPTY_TITLE: 'What would you like to do?',
   EMPTY_SUB: 'Use Data AI for overdue clients, roster questions, and patterns in your assessments. Use Fitness AI for programming and general coaching topics.',
   CHIP_TODAY: 'Today',
-  CHIP_FIND_CLIENT: 'Find client',
-  CHIP_NEW_ASSESSMENT: 'New Assessment',
-  CHIP_CALENDAR: 'Calendar',
+  CHIP_WHOS_DUE: "Who's due?",
+  CHIP_CLIENT_PROGRESS: 'Client progress',
+  CHIP_NEW_ASSESSMENT: 'New assessment',
+  CHIP_ROSTER_HEALTH: 'Roster health',
   CHIP_SHARE: 'Public links',
   QUICK_ACTIONS_MENU_ARIA: 'Quick actions',
   HELP_TEXT: `Try:
-• /today — tasks and priorities (answered here in chat)
+• /today — your daily brief: overdue clients, tasks, and priorities
+• /due — who needs reassessing and when
+• /progress — score trends and most improved clients
+• /health — roster-wide patterns, weak pillars, and who needs focus
+• /share — public links (reports, ARC™, milestones) summarised in chat
 • /help — this list
-• /clients — ask about your roster here, or open Clients from a button when offered
-• /work — reassessment queue and calendar (summarised in chat)
-• /share — public links (reports, ARC™, milestones) summarised in chat`,
+• @ClientName — mention a client to ask about them directly`,
   TODAY_EMPTY: 'No overdue or upcoming tasks from your queue right now.',
   TODAY_INTRO: 'Here is what is on your plate:',
   CLIENT_AMBIGUOUS: 'Several clients match. Pick one:',
@@ -148,6 +153,9 @@ export const COACH_ASSISTANT_COPY = {
 export const COACH_ASSISTANT_SLASH = {
   TODAY: '/today',
   HELP: '/help',
+  DUE: '/due',
+  PROGRESS: '/progress',
+  HEALTH: '/health',
   CLIENTS: '/clients',
   WORK: '/work',
   SHARE: '/share',

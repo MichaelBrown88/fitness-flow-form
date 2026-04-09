@@ -43,7 +43,7 @@ export function OnboardingSuccess({ businessName }: OnboardingSuccessProps) {
       <button
         type="button"
         onClick={handleSelfFirstAssessment}
-        className="w-full max-w-sm h-14 bg-foreground text-background rounded-xl font-bold text-sm hover:bg-foreground/90 transition-colors flex items-center justify-center gap-2 shadow-lg"
+        className="w-full max-w-sm h-14 bg-primary text-primary-foreground rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 shadow-lg"
       >
         <ClipboardList size={18} />
         {ASSESSMENT_COPY.FIRST_CLIENT_SELF_TITLE}

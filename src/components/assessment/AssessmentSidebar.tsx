@@ -169,14 +169,17 @@ export const AssessmentSidebar = ({
                       isExpanded
                         ? 'text-foreground font-semibold bg-muted/50'
                         : isSecComp
-                          ? 'text-muted-foreground'
+                          ? 'text-foreground/70 font-medium'
                           : 'text-muted-foreground'
                     } hover:text-foreground hover:bg-muted/50`}
                   >
                     <span className={`w-1.5 h-1.5 rounded-full mr-2 shrink-0 ${
-                      isExpanded ? 'bg-primary' : isSecComp ? 'bg-primary/40' : 'bg-muted'
+                      isExpanded ? 'bg-primary' : isSecComp ? 'bg-primary/60' : 'bg-muted'
                     }`} />
-                    <span className="truncate">{sec.title}</span>
+                    <span className="truncate flex-1 text-left">{sec.title}</span>
+                    {isSecComp && !isExpanded && (
+                      <span className="ml-1 text-[10px] text-primary/60 font-semibold shrink-0">✓</span>
+                    )}
                   </button>
                 );
               })}
@@ -264,6 +267,8 @@ const MobilePhaseStrip: React.FC<MobilePhaseStripProps> = ({
               data-phase-idx={idx}
               onClick={() => !isDisabled && onPhaseClick(idx)}
               disabled={isDisabled}
+              aria-label={`${phase.title}${isCompleted ? ' (complete)' : isActive ? ' (current)' : ''}`}
+              aria-current={isActive ? 'step' : undefined}
               className={`h-2 rounded-full transition-all duration-300 ${
                 isActive ? 'w-6 bg-primary' :
                 isCompleted ? 'w-2 bg-primary/60' :

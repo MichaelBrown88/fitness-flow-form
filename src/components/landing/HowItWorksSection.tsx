@@ -42,7 +42,7 @@ export function HowItWorksSection() {
           }
         >
           {/* Step 1: Guided Assessment */}
-          <div className="group relative">
+          <div className="group relative h-full">
             <div className="absolute inset-0 rounded-lg bg-gradient-to-b from-muted/30 to-transparent dark:from-card/80 dark:to-background" />
             <div className="relative flex h-full flex-col rounded-lg border border-border/90 bg-card/70 p-8 shadow-sm backdrop-blur-sm dark:border-border dark:bg-card/75">
               <div className="mb-8 flex items-center gap-4">
@@ -51,7 +51,7 @@ export function HowItWorksSection() {
               </div>
               
               {/* UI Mockup */}
-              <div className="mb-6 rounded-lg border border-border/60 bg-background/95 p-5 dark:border-border dark:bg-background-secondary/60">
+              <div className="mb-6 flex-1 rounded-lg border border-border/60 bg-background/95 p-5 dark:border-border dark:bg-background-secondary/60">
                 <div className="mb-4 flex items-center justify-between">
                   <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
                     Movement Screen
@@ -83,7 +83,7 @@ export function HowItWorksSection() {
           </div>
 
           {/* Step 2: The Report */}
-          <div className="group relative">
+          <div className="group relative h-full">
             <div className="absolute inset-0 rounded-lg bg-gradient-to-b from-muted/30 to-transparent dark:from-card/80 dark:to-background" />
             <div className="relative flex h-full flex-col rounded-lg border border-border/90 bg-card/70 p-8 shadow-sm backdrop-blur-sm dark:border-border dark:bg-card/75">
               <div className="mb-8 flex items-center gap-4">
@@ -92,7 +92,7 @@ export function HowItWorksSection() {
               </div>
 
               {/* UI Mockup: Gap Analysis */}
-              <div className="mb-6 rounded-lg border border-border/60 bg-background/95 p-5 dark:border-border dark:bg-background-secondary/60">
+              <div className="mb-6 flex-1 rounded-lg border border-border/60 bg-background/95 p-5 dark:border-border dark:bg-background-secondary/60">
                 <div className="mb-4 flex items-center gap-2">
                   <div className="rounded-lg bg-muted p-1.5 text-foreground/70">
                     <Heart size={14} />
@@ -129,7 +129,7 @@ export function HowItWorksSection() {
           </div>
 
           {/* Step 3: Stay on track */}
-          <div className="group relative">
+          <div className="group relative h-full">
             <div className="absolute inset-0 rounded-lg bg-gradient-to-b from-muted/20 to-transparent dark:from-card/80 dark:to-background" />
             <div className="relative flex h-full flex-col rounded-lg border border-border/90 bg-card/70 p-8 shadow-sm backdrop-blur-sm dark:border-border dark:bg-card/75">
               <div className="mb-8 flex items-center gap-4">
@@ -138,7 +138,7 @@ export function HowItWorksSection() {
               </div>
 
               {/* UI Mockup: Quick Actions */}
-              <div className="mb-6 rounded-lg border border-border/60 bg-background/95 p-5 dark:border-border dark:bg-background-secondary/60">
+              <div className="mb-6 flex-1 rounded-lg border border-border/60 bg-background/95 p-5 dark:border-border dark:bg-background-secondary/60">
                 <div className="mb-4 flex items-center justify-between">
                   <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
                     Client Dashboard

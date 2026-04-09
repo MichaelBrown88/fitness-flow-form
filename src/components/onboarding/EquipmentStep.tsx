@@ -39,12 +39,12 @@ function EquipmentCard({ active, onToggle, icon: Icon, title, description, activ
     >
       <div className="flex items-start justify-between mb-3">
         <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-          active ? 'bg-foreground text-white' : 'bg-muted text-muted-foreground'
+          active ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
         }`}>
           <Icon size={20} />
         </div>
         <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
-          active ? 'bg-foreground border-foreground text-white' : 'border-border-medium'
+          active ? 'bg-primary border-primary text-primary-foreground' : 'border-border-medium'
         }`}>
           {active && <Check size={14} />}
         </div>
@@ -138,7 +138,7 @@ export function EquipmentStep({ data, onNext, onSkip, onBack }: EquipmentStepPro
         <button
           type="button"
           onClick={handleSubmit}
-          className="flex-1 h-12 rounded-xl bg-foreground text-white font-bold text-sm hover:bg-foreground/90 transition-colors"
+          className="flex-1 h-12 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 transition-colors"
         >
           Continue
         </button>

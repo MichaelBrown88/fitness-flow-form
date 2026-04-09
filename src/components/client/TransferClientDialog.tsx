@@ -132,7 +132,7 @@ export function TransferClientDialog({
           <Button
             onClick={handleConfirm}
             disabled={!selectedCoach || submitting}
-            className="bg-foreground text-white rounded-xl h-11 px-6 font-bold"
+            className="bg-primary text-primary-foreground rounded-xl h-11 px-6 font-bold"
           >
             {submitting ? 'Transferring...' : 'Transfer Client'}
           </Button>

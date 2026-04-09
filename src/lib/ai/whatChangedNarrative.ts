@@ -11,6 +11,7 @@ import { getApp } from 'firebase/app';
 import { CONFIG } from '@/config';
 import { logAIUsage } from '@/services/aiUsage';
 import { logger } from '@/lib/utils/logger';
+import { checkAndDecrementAICredit } from '@/lib/ai/creditGate';
 import type { ScoreSummary } from '@/lib/scoring/types';
 
 const CATEGORY_DISPLAY: Record<string, string> = {
@@ -75,6 +76,11 @@ Rules:
 - Be specific and data-driven (mention actual score numbers)
 - Do not use the word "assessment" more than once
 - Sound encouraging regardless of whether scores improved or declined`;
+
+  // Gate: check and atomically decrement credit balance before spending tokens
+  if (organizationId) {
+    await checkAndDecrementAICredit(organizationId);
+  }
 
   try {
     const firebaseApp = getApp();

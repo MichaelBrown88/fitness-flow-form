@@ -8,7 +8,6 @@ export interface FormData {
   phone: string;
   dateOfBirth: string;
   gender: string;
-  assignedCoach: string;
   clientGoals: string[];
   heightCm: string;
   // Goal target details
@@ -233,7 +232,6 @@ export const initialFormData: FormData = {
   phone: '',
   dateOfBirth: '',
   gender: '',
-  assignedCoach: '',
   clientGoals: [],
   heightCm: '',
   // Goal target details

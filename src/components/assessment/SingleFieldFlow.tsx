@@ -260,7 +260,7 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
             disabled={!hasValue && currentStep.some(f => f.required)}
             className={`h-12 px-8 rounded-lg font-bold transition-all ${
               hasValue || !currentStep.some(f => f.required)
-                ? 'bg-foreground text-white hover:bg-foreground/90'
+                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                 : 'bg-muted text-muted-foreground cursor-not-allowed'
             }`}
           >

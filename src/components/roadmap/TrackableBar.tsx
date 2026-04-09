@@ -263,7 +263,7 @@ export function TrackableBar({ trackable, compact }: TrackableBarProps) {
           dispTarget={dispTarget}
           unit={unit}
           zones={zones}
-          compact={compact}
+          compact={compact ?? false}
         />
       </div>
     );

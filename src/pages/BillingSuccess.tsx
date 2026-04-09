@@ -57,11 +57,6 @@ export default function BillingSuccessPage() {
         <p className="text-sm text-foreground-secondary mb-6 text-left leading-relaxed">
           {CHECKOUT_FLOW_COPY.billingSuccessLead}
         </p>
-        {sessionId ? (
-          <p className="text-xs text-muted-foreground font-mono break-all mb-6 text-left">
-            {CHECKOUT_FLOW_COPY.guestSuccessSessionHint} {sessionId}
-          </p>
-        ) : null}
         <ul className="text-left text-sm text-muted-foreground space-y-2 mb-8 list-disc pl-5">
           <li>{CHECKOUT_FLOW_COPY.billingSuccessStepDashboard}</li>
           <li>{CHECKOUT_FLOW_COPY.billingSuccessStepBilling}</li>
@@ -75,13 +70,13 @@ export default function BillingSuccessPage() {
         </Link>
         <Link
           to={ROUTES.BILLING}
-          className="block mt-3 text-sm font-medium text-primary hover:underline"
+          className="block mt-3 text-sm font-medium text-gradient-dark hover:underline"
         >
           {CHECKOUT_FLOW_COPY.billingSuccessCtaBilling}
         </Link>
         <Link
           to={ROUTES.DEMO}
-          className="block mt-3 text-sm font-medium text-primary hover:underline"
+          className="block mt-3 text-sm font-medium text-gradient-dark hover:underline"
         >
           {CHECKOUT_FLOW_COPY.billingSuccessCtaSample}
         </Link>

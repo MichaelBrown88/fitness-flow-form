@@ -17,7 +17,6 @@ import { STRIPE_CONFIG } from '@/constants/platform';
 import { subscriptionPlanDisplayHeadline } from '@/lib/pricing/subscriptionPlanDisplay';
 import { resolveSubscriptionClientLimit } from '@/lib/pricing/resolveSubscriptionClientLimit';
 import { ORG_BILLING_COPY } from '@/constants/orgBilling';
-import { BILLING_NAV_COPY } from '@/constants/billingNavCopy';
 import { BillingStripeSubscribeCard } from '@/components/org/billing/BillingStripeSubscribeCard';
 import { useToast } from '@/hooks/use-toast';
 import AppShell from '@/components/layout/AppShell';
@@ -263,7 +262,7 @@ function BillingPage() {
         <div className="max-w-md mx-auto text-center space-y-3 py-16 px-4">
           <h2 className="text-xl font-bold text-foreground">Billing is admin-only</h2>
           <p className="text-sm text-muted-foreground">Billing is managed by your organisation admin. Ask them to adjust your plan or share an invoice.</p>
-          <Button type="button" variant="link" onClick={() => navigate(ROUTES.DASHBOARD)} className="text-primary">
+          <Button type="button" variant="link" onClick={() => navigate(ROUTES.DASHBOARD)} className="text-gradient-dark">
             Go to dashboard
           </Button>
         </div>
@@ -445,14 +444,7 @@ function BillingPage() {
       }
     >
       <ErrorBoundary>
-      <div className="mx-auto max-w-5xl space-y-12 sm:space-y-14 pb-20 sm:pb-28 px-1 sm:px-0">
-        <p className="text-xs text-muted-foreground leading-relaxed border border-border/60 rounded-lg bg-muted/20 px-3 py-2">
-          {BILLING_NAV_COPY.COACH_PAGE_CONTEXT}
-        </p>
-        <p className="text-sm text-muted-foreground leading-relaxed animate-fade-in-up">
-          {checkoutLocked ? ORG_BILLING_COPY.billingPageIntroActiveLocked : ORG_BILLING_COPY.billingPageIntroShort}
-        </p>
-
+      <div className="mx-auto max-w-5xl space-y-10 sm:space-y-12 pb-20 sm:pb-28 px-1 sm:px-0">
         <section aria-labelledby="billing-plan-heading">
           <Card className="overflow-hidden rounded-lg border border-border/70 bg-background shadow-none">
             <div className="border-b border-border/60 bg-gradient-to-br from-primary/[0.08] via-primary/[0.02] to-transparent px-6 py-7 sm:px-8 sm:py-8">
@@ -548,17 +540,6 @@ function BillingPage() {
                 </div>
               </div>
 
-              {hasStripeCustomer && !orgData.stripeSubscriptionId?.trim() ? (
-                <p className="text-xs text-muted-foreground border border-border/70 rounded-lg p-4 bg-muted/30 leading-relaxed">
-                  {ORG_BILLING_COPY.billingPagePortalHintNoSubId}
-                </p>
-              ) : null}
-              {hasStripeCustomer && orgData.stripeSubscriptionId?.trim() ? (
-                <p className="text-xs text-muted-foreground border border-border/70 rounded-lg p-4 bg-muted/20 leading-relaxed">
-                  {ORG_BILLING_COPY.billingPagePortalHintDashboard}
-                </p>
-              ) : null}
-
               {orgData.subscription.monthlyAiCredits != null ? (
                 <div className="rounded-lg border border-border/70 bg-muted/25 px-4 py-4 space-y-1">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">AI scan credits</p>
@@ -590,6 +571,7 @@ function BillingPage() {
             stripeSubscriptionId={orgData.stripeSubscriptionId}
             orgType={orgData.orgType}
             packageTrack={orgData.packageTrack}
+            currentSubscriptionClientLimit={clientCapForDisplay}
             offerBrandingAddOn={region === 'GB' && orgData.customBrandingEnabled === false}
             onSubscriptionUpdated={() => setBillingRefreshKey((k) => k + 1)}
           />

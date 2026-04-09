@@ -67,7 +67,7 @@ export const PhaseFormContent = ({
     }
   }, []);
 
-  const flow = useAssessmentFlow({ formData, orgSettings });
+  const flow = useAssessmentFlow({ formData, orgSettings: orgSettings ?? undefined });
   const {
     activePhaseIdx,
     setActivePhaseIdx,
@@ -170,6 +170,7 @@ export const PhaseFormContent = ({
     activePhaseIdx,
     visiblePhases,
     isPartialAssessment,
+    organizationId: profile?.organizationId,
     onPhaseChange: setActivePhaseIdx,
   });
   const {

@@ -26,6 +26,8 @@ export interface ClientReportSectionContext {
   previousFormData: FormData | undefined;
   standalone: boolean;
   clientName: string;
+  /** Only set on coach pages — omitted on public/standalone views to prevent useAuth coupling. */
+  organizationId?: string;
 }
 
 export function renderClientReportSection(id: SectionId, ctx: ClientReportSectionContext): React.ReactNode {
@@ -82,6 +84,7 @@ export function renderClientReportSection(id: SectionId, ctx: ClientReportSectio
           standalone={ctx.standalone}
           hideHeader
           previousFormData={ctx.previousFormData}
+          organizationId={ctx.organizationId}
         />
       );
     case 'lifestyle':

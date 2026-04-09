@@ -63,7 +63,7 @@ export function ReportPortalCapabilityGraphic() {
             <div
               key={label}
               className={`flex min-h-9 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-md px-0.5 py-1 ${
-                active ? 'text-primary' : 'text-foreground-tertiary'
+                active ? 'text-foreground' : 'text-foreground-tertiary'
               }`}
             >
               {active ? (

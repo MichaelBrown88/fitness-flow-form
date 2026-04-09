@@ -61,7 +61,7 @@ function DismissibleChart({ children }: { children: React.ReactNode }) {
     return (
       <button
         type="button"
-        className="text-[11px] font-semibold text-primary underline underline-offset-2"
+        className="text-[11px] font-semibold text-gradient-dark underline underline-offset-2"
         onClick={() => setOpen(true)}
       >
         Show chart

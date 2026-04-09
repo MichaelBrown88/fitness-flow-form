@@ -135,7 +135,7 @@ export function buildClientProfile(form: FormData, scores: ScoreSummary): Client
       if (!analysis) continue;
       
       if (analysis.forward_head?.deviation_degrees > 10) forwardHead = true;
-      if (analysis.head_alignment?.tilt_degrees > 5) headTilt = true;
+      if ((analysis.head_alignment?.tilt_degrees ?? 0) > 5) headTilt = true;
       if (analysis.kyphosis?.curve_degrees > 45) kyphosis = true;
       if (analysis.pelvic_tilt?.status === 'Anterior Tilt') anteriorPelvicTilt = true;
       if (analysis.spinal_curvature) lordosis = true;
@@ -168,7 +168,7 @@ export function buildClientProfile(form: FormData, scores: ScoreSummary): Client
   // Hip instability from lunge assessment
   const lungeLeftHip = form.lungeLeftTorso;
   const lungeRightHip = form.lungeRightTorso;
-  const hasHipInstability = (lungeLeftHip && lungeLeftHip !== 'neutral') || (lungeRightHip && lungeRightHip !== 'neutral');
+  const hasHipInstability = !!(lungeLeftHip && lungeLeftHip !== 'neutral') || !!(lungeRightHip && lungeRightHip !== 'neutral');
   
   // Mobility restrictions from movement assessments
   // ohsSquatDepth: 'full-depth' | 'parallel' | 'quarter-depth' | 'no-depth'

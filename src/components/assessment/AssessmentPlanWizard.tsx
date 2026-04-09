@@ -8,7 +8,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ASSESSMENT_COPY } from '@/constants/assessmentCopy';
 import {
   buildPlanFromFocusToggles,
@@ -16,7 +15,7 @@ import {
   type SessionFocusTemplateKey,
   type SessionFocusToggles,
 } from '@/lib/types/assessmentPlan';
-import { ChevronDown, Monitor, Smartphone } from 'lucide-react';
+import { ChevronDown, Copy, Monitor, Smartphone } from 'lucide-react';
 import { logger } from '@/lib/utils/logger';
 import type { RemoteAssessmentScope } from '@/lib/types/remoteAssessment';
 
@@ -141,7 +140,7 @@ export function AssessmentPlanWizard({ onComplete }: { onComplete: () => void })
               className={`rounded-lg border px-4 py-3 text-left text-sm transition-colors min-h-[72px] ${
                 !hasCustomModule && templateKey === key
                   ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
-                  : 'border-border/70 bg-background hover:bg-muted/40 disabled:opacity-50'
+                  : 'border-border/70 bg-background hover:bg-muted/40 disabled:opacity-40 disabled:cursor-not-allowed'
               }`}
             >
               <span className="font-semibold text-foreground block">{TEMPLATE_LABEL[key]}</span>
@@ -149,6 +148,11 @@ export function AssessmentPlanWizard({ onComplete }: { onComplete: () => void })
             </button>
           ))}
         </div>
+        {hasCustomModule && (
+          <p className="text-xs text-muted-foreground px-1">
+            Templates are paused while custom focus is active. Clear your selections below to use a template.
+          </p>
+        )}
 
         <Collapsible open={customOpen} onOpenChange={setCustomOpen}>
           <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm font-medium text-foreground hover:bg-muted/50 min-h-[44px]">
@@ -189,9 +193,9 @@ export function AssessmentPlanWizard({ onComplete }: { onComplete: () => void })
 
       {intakeMode === 'send_link_first' && profile?.organizationId && formData.fullName?.trim() ? (
         <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Generate a secure link for this client. Requires the remote assessment MVP to be enabled for your project
-            (see functions env).
+          <p className="text-sm font-medium text-foreground">Generate a client link</p>
+          <p className="text-xs text-muted-foreground">
+            Choose what the client will complete on their own. You finish any remaining steps together in studio.
           </p>
           <div className="grid gap-2 sm:grid-cols-3">
             {(
@@ -213,12 +217,12 @@ export function AssessmentPlanWizard({ onComplete }: { onComplete: () => void })
               </button>
             ))}
           </div>
-          <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 items-start">
             <Button
               type="button"
               variant="secondary"
               disabled={remoteBusy}
-              className="min-h-[44px]"
+              className="min-h-[44px] shrink-0"
               onClick={async () => {
                 setRemoteBusy(true);
                 setRemoteLink(null);
@@ -234,7 +238,7 @@ export function AssessmentPlanWizard({ onComplete }: { onComplete: () => void })
                 } catch (e) {
                   toast({
                     title: 'Could not create link',
-                    description: e instanceof Error ? e.message : 'Check Cloud Functions and REMOTE_ASSESSMENT_MVP.',
+                    description: e instanceof Error ? e.message : 'Something went wrong. Please try again.',
                     variant: 'destructive',
                   });
                 } finally {
@@ -245,36 +249,45 @@ export function AssessmentPlanWizard({ onComplete }: { onComplete: () => void })
               {remoteBusy ? 'Creating…' : 'Generate client link'}
             </Button>
             {remoteLink ? (
-              <code className="text-xs break-all rounded-lg bg-background border border-border p-2 self-center">
-                {remoteLink}
-              </code>
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <code className="text-xs break-all rounded-lg bg-background border border-border px-3 py-2 flex-1">
+                  {remoteLink}
+                </code>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="shrink-0 h-8 w-8"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(remoteLink);
+                    toast({ title: 'Copied', description: 'Link copied to clipboard.' });
+                  }}
+                  aria-label="Copy link"
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
             ) : null}
           </div>
         </div>
       ) : null}
 
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className={!intakeMode ? 'cursor-not-allowed' : undefined}>
-              <Button
-                type="button"
-                size="lg"
-                className="w-full sm:w-auto min-h-[48px]"
-                disabled={!intakeMode}
-                onClick={handleContinue}
-              >
-                {ASSESSMENT_COPY.CONTINUE_TO_ASSESSMENT}
-              </Button>
-            </span>
-          </TooltipTrigger>
-          {!intakeMode && (
-            <TooltipContent side="top">
-              Choose how you will run the session above to continue
-            </TooltipContent>
-          )}
-        </Tooltip>
-      </TooltipProvider>
+      <div className="space-y-2">
+        <Button
+          type="button"
+          size="lg"
+          className="w-full sm:w-auto min-h-[48px]"
+          disabled={!intakeMode}
+          onClick={handleContinue}
+        >
+          {ASSESSMENT_COPY.CONTINUE_TO_ASSESSMENT}
+        </Button>
+        {!intakeMode && (
+          <p className="text-xs text-muted-foreground">
+            Select how you will run the session above to continue.
+          </p>
+        )}
+      </div>
     </div>
   );
 }

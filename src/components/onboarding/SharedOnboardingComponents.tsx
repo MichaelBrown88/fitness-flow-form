@@ -46,7 +46,7 @@ export const OptionCard = ({
       {Icon && (
         <div
           className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
-            selected ? 'bg-foreground text-white' : 'bg-muted text-muted-foreground'
+            selected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
           }`}
         >
           <Icon size={20} />
@@ -60,7 +60,7 @@ export const OptionCard = ({
         {children}
       </div>
       {selected && (
-        <div className="w-5 h-5 bg-foreground rounded-full flex items-center justify-center text-white shrink-0">
+        <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center text-primary-foreground shrink-0">
           <Check size={12} strokeWidth={3} />
         </div>
       )}

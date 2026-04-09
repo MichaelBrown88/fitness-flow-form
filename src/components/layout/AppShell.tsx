@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { sendEmailVerification } from 'firebase/auth';
 import { useAuth } from '@/hooks/useAuth';
 import { useOrgAdminNavVisibility } from '@/hooks/useOrgAdminNavVisibility';
+import { useThemeMode } from '@/contexts/ThemeModeContext';
 import { Button } from '@/components/ui/button';
 import { Sparkles, ChevronDown, Menu, Building2, LayoutDashboard, Settings, LogOut, Mail, X, Globe, CreditCard, Users } from 'lucide-react';
 import { ROUTES } from '@/constants/routes';
@@ -78,6 +79,8 @@ export default function AppShell({
 }) {
   const { user, loading, signOut, orgSettings, profile } = useAuth();
   const showOrgAdminNav = useOrgAdminNavVisibility();
+  const { theme } = useThemeMode();
+  const isDark = theme === 'dark';
   const initials =
     user?.displayName?.split(' ').map((n) => n[0]).join('').toUpperCase() ||
     (user?.email ? user.email[0]?.toUpperCase() : 'C');
@@ -103,9 +106,20 @@ export default function AppShell({
   // Paid custom branding, or legacy orgs with no flag set (grandfathered).
   const customBrandingEnabled =
     orgSettings?.customBrandingEnabled === true || orgSettings?.customBrandingEnabled === undefined;
-  // Use public branding if provided (for unauthenticated routes), otherwise fallback to auth context. Gate on custom branding.
-  const hasOrgLogo = customBrandingEnabled && (publicLogoUrl || (orgSettings?.logoUrl && orgSettings.logoUrl.trim() !== ''));
-  const logoUrl = !customBrandingEnabled ? null : (publicLogoUrl !== undefined ? publicLogoUrl : (hasOrgLogo ? orgSettings?.logoUrl : null));
+
+  // Resolve the correct logo: dark-mode logo when available + in dark mode, else light logo.
+  // publicLogoUrl is used for unauthenticated routes (no dark variant passed there).
+  const orgLogoLight = orgSettings?.logoUrl?.trim() || null;
+  const orgLogoDark = orgSettings?.logoUrlDark?.trim() || null;
+  const orgLogoResolved = isDark ? (orgLogoDark ?? orgLogoLight) : orgLogoLight;
+  const hasOrgLogo = customBrandingEnabled && (publicLogoUrl || orgLogoResolved);
+  const logoUrl = !customBrandingEnabled
+    ? null
+    : publicLogoUrl !== undefined
+      ? publicLogoUrl
+      : hasOrgLogo
+        ? orgLogoResolved
+        : null;
   const orgName = !customBrandingEnabled ? 'One Assess' : (publicOrgName || orgSettings?.name || 'Your Organization');
 
   if (mode === 'public') {

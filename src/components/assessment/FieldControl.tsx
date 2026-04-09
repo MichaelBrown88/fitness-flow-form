@@ -16,7 +16,6 @@ import { FieldTextArea } from './fields/FieldTextArea';
 import { FieldSelect } from './fields/FieldSelect';
 import { FieldMultiSelect } from './fields/FieldMultiSelect';
 import { FieldInput } from './fields/FieldInput';
-import { FieldAssignedCoach } from './fields/FieldAssignedCoach';
 
 import type { PhaseField } from '@/lib/phaseConfig';
 
@@ -40,8 +39,6 @@ export function FieldControl({
   const {
     localValue,
     setLocalValue,
-    orgCoaches,
-    loadingCoaches,
     fieldOptions,
     shouldShow,
     handleChange,
@@ -73,7 +70,7 @@ export function FieldControl({
                   htmlFor={inputId}
                   className={`flex h-11 cursor-pointer items-center gap-3 rounded-lg border-2 px-4 text-left transition-all ${
                     isSelected
-                      ? 'border-foreground bg-foreground text-white shadow-sm'
+                      ? 'border-primary bg-primary text-primary-foreground shadow-sm'
                       : `bg-background text-foreground-secondary ${colorClass}`
                   }`}
                 >
@@ -144,16 +141,6 @@ export function FieldControl({
           />
         );
       case 'select':
-        if (field.id === 'assignedCoach') {
-          return (
-            <FieldAssignedCoach 
-              coaches={orgCoaches}
-              loading={loadingCoaches}
-              value={localValue}
-              handleChange={handleChange}
-            />
-          );
-        }
         return (
           <FieldSelect 
             id={field.id}

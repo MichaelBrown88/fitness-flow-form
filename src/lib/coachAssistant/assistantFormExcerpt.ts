@@ -177,6 +177,13 @@ export function extractFormDataExcerptForAssistant(formData: FormData): Record<s
       gripRightKg: pick(fd, 'gripRightKg', 24),
       chairStandReps: pick(fd, 'chairStandReps', 24),
     },
+    healthFlags: {
+      medicationsFlag: pick(fd, 'medicationsFlag', 80),
+      medicationsNotes: pick(fd, 'medicationsNotes', 400),
+      parqFlagged: (['parq1','parq2','parq3','parq4','parq5','parq6','parq7','parq8','parq9','parq10','parq11','parq12','parq13'] as const)
+        .some((k) => fd[k] === 'yes'),
+      parqNotes: pick(fd, 'parqNotes', 400),
+    },
     coachNarrative: {
       coachReport: pick(fd, 'coachReport', 2_000),
       clientReport: pick(fd, 'clientReport', 900),
@@ -186,11 +193,11 @@ export function extractFormDataExcerptForAssistant(formData: FormData): Record<s
   let json = JSON.stringify(excerpt);
   if (json.length <= MAX_JSON_CHARS) return excerpt;
 
-  const shrink = { ...excerpt, coachNarrative: { coachReport: undefined, clientReport: undefined } };
+  const shrink: Record<string, unknown> = { ...excerpt, coachNarrative: { coachReport: undefined as string | undefined, clientReport: undefined as string | undefined } };
   json = JSON.stringify(shrink);
   if (json.length <= MAX_JSON_CHARS) return shrink;
 
-  const noAi = { ...shrink, postureAiByView: null };
+  const noAi: Record<string, unknown> = { ...shrink, postureAiByView: null };
   json = JSON.stringify(noAi);
   if (json.length <= MAX_JSON_CHARS) return noAi;
 

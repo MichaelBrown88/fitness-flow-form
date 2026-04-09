@@ -112,7 +112,7 @@ export function NewClientModal({ open, onOpenChange, organizationId }: NewClient
               <Button
                 onClick={handleStartNow}
                 disabled={!isValid}
-                className="h-11 rounded-xl bg-foreground text-white hover:bg-foreground/90 flex items-center gap-2"
+                className="h-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-2"
               >
                 Start now
                 <ArrowRight className="h-4 w-4" />

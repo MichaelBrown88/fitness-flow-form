@@ -27,6 +27,7 @@ export default function ClientReport({
   previousFormData,
   standalone = true,
   roadmapShareToken,
+  organizationId,
 }: {
   scores: ScoreSummary;
   goals?: string[];
@@ -38,6 +39,8 @@ export default function ClientReport({
   standalone?: boolean;
   /** When provided, shows a link to the client's published ARC™ */
   roadmapShareToken?: string;
+  /** Passed from coach pages to enable re-analysis; omitted on public views. */
+  organizationId?: string;
 }) {
   const {
     safeScores,
@@ -84,6 +87,7 @@ export default function ClientReport({
       previousFormData,
       standalone,
       clientName,
+      organizationId,
     }),
     [
       safeScores,
@@ -101,6 +105,7 @@ export default function ClientReport({
       previousFormData,
       standalone,
       clientName,
+      organizationId,
     ],
   );
 

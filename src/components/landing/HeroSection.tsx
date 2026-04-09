@@ -72,9 +72,9 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
               </>
             ) : (
               <>
-                Assess Smarter.{' '}
+                Assess Smarter<span className="text-primary">.</span>{' '}
                 <br />
-                <span className={LANDING_H2_ACCENT_LIGHT_READABLE}>Retain Longer.</span>
+                Retain Longer<span className="text-primary">.</span>
               </>
             )}
           </h1>
@@ -84,7 +84,15 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
             className="text-balance mx-auto mb-7 max-w-xl text-lg leading-snug text-muted-foreground motion-safe:animate-fade-in-up sm:mb-10 sm:text-xl sm:leading-relaxed md:max-w-2xl md:text-2xl"
             style={{ animationDelay: "0.15s" }}
           >
-            {isPricing ? LANDING_COPY.heroPricingSubtitle : LANDING_COPY.heroSubtitle}
+            {isPricing ? LANDING_COPY.heroPricingSubtitle : (
+              <>
+                Fitness assessment software for coaches and gyms. AI posture checks, professional reports, and a clear{' '}
+                <span className="inline-flex items-center rounded-md bg-foreground px-2 py-0.5 text-[0.8em] font-bold text-primary leading-none dark:bg-transparent dark:border dark:border-primary/50 dark:text-primary">AXIS Score™</span>
+                {' '}for clients.{' '}
+                <span className="inline-flex items-center rounded-md bg-foreground px-2 py-0.5 text-[0.8em] font-bold text-primary leading-none dark:bg-transparent dark:border dark:border-primary/50 dark:text-primary">ARC™</span>
+                {' '}plans and milestones between sessions — less admin for you.
+              </>
+            )}
           </p>
 
           {/* CTA cluster — compact inline, clear primary/secondary distinction */}

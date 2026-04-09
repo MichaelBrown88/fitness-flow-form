@@ -141,6 +141,7 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
   const {
     isVertical,
     hasPermission: hasOrientationPermission,
+    permissionDenied: orientationPermissionDenied,
     requestPermission: requestOrientationPermission,
   } = useOrientationDetection(true, 'posture');
 
@@ -645,6 +646,7 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
         geminiConnectionError={geminiEnabled ? geminiConnectionError : null}
         onRetryGemini={geminiEnabled ? retryGeminiLive : undefined}
         voiceGuideStarted={geminiEnabled ? voiceGuideStarted : false}
+        orientationDenied={orientationPermissionDenied}
       />
     </div>
   );

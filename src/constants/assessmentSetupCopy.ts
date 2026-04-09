@@ -5,7 +5,7 @@
 export const ASSESSMENT_SETUP_COPY = {
   TITLE: 'Confirm assessment',
   SUBTITLE:
-    'Check who you are assessing and how you are working before you continue. You can change the client if needed.',
+    'Confirm who you\'re assessing and your assessment mode. You can change the client if needed.',
   ASSESSING_LABEL: 'Client',
   NEW_CLIENT_PLACEHOLDER: 'New client',
   MODE_FULL: 'New full assessment',
@@ -14,24 +14,24 @@ export const ASSESSMENT_SETUP_COPY = {
   CONTINUE: 'Continue',
   CHANGE_CLIENT: 'Change client',
   PLAN_NEXT_HINT:
-    'Next you will set session focus and equipment for this assessment (if applicable).',
+    'Next, you\'ll set session focus and any equipment for this assessment.',
   RESOLVING_CLIENT: 'Resolving client…',
 
-  DISCARD_DRAFT_TITLE: 'Start fresh?',
+  DISCARD_DRAFT_TITLE: 'Discard this draft?',
   DISCARD_DRAFT_DESC:
-    'This removes the saved progress on this device for this session. You can still use data saved online if you sync later.',
+    'This will clear the draft saved on this device. Any progress saved to the cloud will still be available.',
   DISCARD_DRAFT_CANCEL: 'Keep draft',
-  DISCARD_DRAFT_CONFIRM: 'Discard',
+  DISCARD_DRAFT_CONFIRM: 'Discard draft',
 
   REVIEW_TITLE: 'Ready to generate the report?',
   REVIEW_SUBTITLE:
-    'We will save your progress and open results. You can keep editing afterward if something is missing.',
+    'We\'ll save your progress and generate the report. You can keep editing afterward if something is missing.',
   REVIEW_CLIENT: 'Client',
   REVIEW_PROGRESS: 'Completion',
-  REVIEW_COMPLETE_YES: 'Ready to update live report',
+  REVIEW_COMPLETE_YES: 'Ready to generate the report',
   REVIEW_COMPLETE_NO: 'Still collecting — you can save and continue later',
   REVIEW_MISSING_HINT:
-    'Add at least one scored section for this client before updating the live report.',
+    'Complete at least one scored section before generating a report.',
   GENERATE_REPORT: 'Generate report',
   KEEP_EDITING: 'Keep editing',
   SAVE_AND_EXIT: 'Save and exit',

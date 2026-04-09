@@ -95,7 +95,7 @@ export function IdentityStep({ data, onNext, error: externalError }: IdentitySte
 
         <button
           type="submit"
-          className="w-full h-12 rounded-xl bg-foreground text-white font-bold text-sm hover:bg-foreground/90 transition-colors"
+          className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 transition-colors"
         >
           Continue
         </button>

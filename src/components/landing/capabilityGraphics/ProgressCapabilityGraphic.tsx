@@ -6,7 +6,7 @@ export function ProgressCapabilityGraphic() {
   return (
     <div className="mx-auto max-w-sm space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm dark:border-border dark:bg-card">
       <header className="space-y-1 text-center">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-primary">{p.journeyEyebrow}</p>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{p.journeyEyebrow}</p>
         <p className="text-base font-bold text-foreground sm:text-lg">{p.planHeadline}</p>
       </header>
 

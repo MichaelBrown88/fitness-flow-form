@@ -14,7 +14,7 @@ export function coachPlanSubtitle(
     case 'solo_free':
       return 'Solo';
     case 'gym_trial':
-      return subscription?.status === 'trial' ? 'Gym trial' : 'Gym';
+      return subscription?.status === 'trial' ? 'Team trial' : 'Team';
     case 'paid':
       return 'Team';
     case 'pending_onboarding':

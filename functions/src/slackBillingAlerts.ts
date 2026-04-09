@@ -70,3 +70,56 @@ export async function alertTrialEnding(params: {
   const end = params.trialEnd || 'soon';
   await postToSlack(`⏳ *Trial ending ${end}* — ${org}`);
 }
+
+export async function alertTrialStarted(params: {
+  orgId: string;
+  orgName?: string;
+  trialEnd?: string;
+}): Promise<void> {
+  const org = params.orgName || params.orgId;
+  const end = params.trialEnd ? ` (ends ${params.trialEnd})` : '';
+  await postToSlack(`🆕 *Trial started* — ${org}${end}`);
+}
+
+export async function alertPastDue(params: {
+  orgId: string;
+  orgName?: string;
+}): Promise<void> {
+  const org = params.orgName || params.orgId;
+  await postToSlack(`🔴 *Subscription past_due* — ${org} — payment failed, action required`);
+}
+
+export async function alertCapacityHit(params: {
+  orgId: string;
+  orgName?: string;
+  clientCount: number;
+  clientCap: number;
+  level: 'warning' | 'full';
+}): Promise<void> {
+  const org = params.orgName || params.orgId;
+  const pct = Math.round((params.clientCount / params.clientCap) * 100);
+  if (params.level === 'full') {
+    await postToSlack(`📊 *Capacity full* — ${org} has reached their ${params.clientCap}-client limit (${params.clientCount}/${params.clientCap})`);
+  } else {
+    await postToSlack(`📊 *Capacity warning* — ${org} is ${pct}% full (${params.clientCount}/${params.clientCap} clients)`);
+  }
+}
+
+export async function alertMrrDrop(params: {
+  prevMrrGbpPence: number;
+  currMrrGbpPence: number;
+  dropPct: number;
+}): Promise<void> {
+  const prev = (params.prevMrrGbpPence / 100).toFixed(2);
+  const curr = (params.currMrrGbpPence / 100).toFixed(2);
+  await postToSlack(`📉 *MRR drop detected* — £${prev} → £${curr} (−${params.dropPct.toFixed(1)}%)`);
+}
+
+export async function alertAiCostSpike(params: {
+  mtdGbpPence: number;
+  thresholdGbpPence: number;
+}): Promise<void> {
+  const mtd = (params.mtdGbpPence / 100).toFixed(2);
+  const threshold = (params.thresholdGbpPence / 100).toFixed(2);
+  await postToSlack(`🤖 *AI cost spike* — MTD spend £${mtd} exceeded threshold £${threshold}`);
+}

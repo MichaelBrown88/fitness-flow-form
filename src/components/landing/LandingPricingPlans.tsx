@@ -50,7 +50,7 @@ export function LandingPricingPlans() {
             className={cn(
               'px-4 py-2 rounded-lg text-xs font-bold transition-apple',
               billingPeriod === 'monthly'
-                ? 'bg-foreground text-background shadow-sm'
+                ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'text-foreground-secondary hover:text-foreground',
             )}
           >
@@ -62,7 +62,7 @@ export function LandingPricingPlans() {
             className={cn(
               'px-4 py-2 rounded-lg text-xs font-bold transition-apple',
               billingPeriod === 'annual'
-                ? 'bg-foreground text-background shadow-sm'
+                ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'text-foreground-secondary hover:text-foreground',
             )}
           >
@@ -112,7 +112,7 @@ export function LandingPricingPlans() {
         <p className="text-center text-sm text-foreground-secondary">
           <Link
             to={ROUTES.ONBOARDING}
-            className="font-medium text-primary underline-offset-4 hover:underline"
+            className="font-medium text-gradient-dark underline-offset-4 hover:underline"
           >
             Create your account first
           </Link>
@@ -122,7 +122,7 @@ export function LandingPricingPlans() {
 
       <p className="text-center text-sm text-foreground-secondary max-w-xl mx-auto">
         Need more than 100 clients (Solo) or 250 (Gym)?{' '}
-        <Link to={ROUTES.CONTACT} className="font-semibold text-primary underline-offset-4 hover:underline">
+        <Link to={ROUTES.CONTACT} className="font-semibold text-gradient-dark underline-offset-4 hover:underline">
           Contact sales
         </Link>
         .

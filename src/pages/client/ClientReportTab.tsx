@@ -86,7 +86,7 @@ export default function ClientReportTab() {
         <Button
           type="button"
           size="sm"
-          className="h-9 rounded-lg bg-foreground text-white font-medium gap-1.5"
+          className="h-9 rounded-lg bg-primary text-primary-foreground font-medium gap-1.5"
           onClick={() => setShareModalOpen(true)}
           disabled={shareLoading}
         >
@@ -111,6 +111,7 @@ export default function ClientReportTab() {
           previousScores={previousScores ?? undefined}
           previousFormData={previousFormData ?? undefined}
           standalone={true}
+          organizationId={profile?.organizationId}
         />
       </Suspense>
 

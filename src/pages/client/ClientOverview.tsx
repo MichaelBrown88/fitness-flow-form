@@ -96,7 +96,7 @@ function CoachSummaryContent({ formData, scores }: { formData: FormData; scores:
         Loading…
       </div>
     }>
-      <CoachReport plan={plan} scores={scores} bodyComp={bodyComp} formData={formData} />
+      <CoachReport plan={plan} scores={scores} bodyComp={bodyComp ?? undefined} formData={formData} />
     </Suspense>
   );
 }
@@ -200,7 +200,7 @@ export default function ClientOverview() {
         {!currentAssessment ? (
           <div className="py-12 text-center bg-muted rounded-xl">
             <p className="text-sm text-muted-foreground mb-6">No assessment data found for this client.</p>
-            <Button onClick={() => handleNewAssessment()} className="bg-foreground text-white rounded-xl h-12 px-8">
+            <Button onClick={() => handleNewAssessment()} className="bg-primary text-primary-foreground rounded-xl h-12 px-8">
               <UserPlus className="h-4 w-4 mr-2" />
               Start First Assessment
             </Button>

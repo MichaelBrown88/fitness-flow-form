@@ -168,7 +168,7 @@ const ParQQuestionnaire: React.FC<ParQQuestionnaireProps> = ({ onExitParQ, onCom
 
       {/* Progress — identical to SingleFieldFlow */}
       <div className="space-y-2">
-        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+        <div className="flex items-center justify-between text-xs font-bold uppercase tracking-[0.15em] text-muted-foreground">
           <span>Health Screening Progress</span>
           <span>{validQuestionIndex + 1} of {visibleQuestions.length}</span>
         </div>
@@ -176,13 +176,13 @@ const ParQQuestionnaire: React.FC<ParQQuestionnaireProps> = ({ onExitParQ, onCom
       </div>
 
       {/* Question card — identical to SingleFieldFlow card */}
-      <div className="bg-background rounded-3xl p-8 lg:p-10 shadow-xl shadow-primary/10 border border-primary/5 min-h-[400px] flex flex-col justify-center">
-        <h3 className="text-xl font-bold tracking-tight text-foreground mb-6 leading-tight">
+      <div className="bg-background rounded-3xl p-5 sm:p-8 lg:p-10 shadow-xl shadow-primary/10 border border-primary/5 min-h-[280px] sm:min-h-[400px] flex flex-col justify-center">
+        <h3 className="text-xl font-bold tracking-tight text-foreground mb-4 sm:mb-6 leading-tight">
           {currentQuestion.question}
         </h3>
 
         {currentQuestion.tooltip && (
-          <p className="text-sm text-muted-foreground mb-8 font-medium leading-relaxed italic border-l-2 border-border pl-4">
+          <p className="text-sm text-muted-foreground mb-5 sm:mb-8 font-medium leading-relaxed italic border-l-2 border-border pl-4">
             Note: {currentQuestion.tooltip}
           </p>
         )}
@@ -233,7 +233,7 @@ const ParQQuestionnaire: React.FC<ParQQuestionnaireProps> = ({ onExitParQ, onCom
         )}
 
         {/* Navigation — inside card, identical to SingleFieldFlow */}
-        <div className="flex items-center justify-between mt-12 pt-8 border-t border-border/60">
+        <div className="flex items-center justify-between mt-8 pt-6 sm:mt-12 sm:pt-8 border-t border-border/60">
           <Button
             variant="ghost"
             onClick={goToPrevious}
@@ -249,7 +249,7 @@ const ParQQuestionnaire: React.FC<ParQQuestionnaireProps> = ({ onExitParQ, onCom
             disabled={!hasAnswer}
             className={`h-12 px-8 rounded-xl font-bold transition-all ${
               hasAnswer
-                ? 'bg-foreground text-white hover:bg-foreground/90'
+                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                 : 'bg-muted text-muted-foreground cursor-not-allowed'
             }`}
           >

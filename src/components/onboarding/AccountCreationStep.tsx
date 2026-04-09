@@ -218,7 +218,7 @@ export function AccountCreationStep({
         <button
           type="submit"
           disabled={submitting}
-          className="w-full h-12 rounded-xl bg-foreground text-white font-bold text-sm hover:bg-foreground/90 transition-colors disabled:opacity-50"
+          className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
         >
           {submitting ? 'Creating account...' : 'Create Account'}
         </button>

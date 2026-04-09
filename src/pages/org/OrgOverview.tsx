@@ -1,21 +1,38 @@
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getDb } from '@/services/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Package, Users, FileText, Trash2, Check } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Package, Users, FileText, Trash2, AlertTriangle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 import type { OrgAdminOutletContext } from './OrgAdminLayout';
 import { formatPrice, getLocaleForRegion } from '@/lib/utils/currency';
 import { DEFAULT_REGION, type Region } from '@/constants/pricing';
 import { subscriptionPlanDisplayHeadline } from '@/lib/pricing/subscriptionPlanDisplay';
+import { logger } from '@/lib/utils/logger';
+
 interface ErasureRequest {
   id: string;
   shareToken: string;
   reason: string;
   status: string;
   requestedAt: { toDate?: () => Date } | null;
+}
+
+interface ExecuteClientErasureResponse {
+  success: true;
+  deletedDocs: number;
 }
 
 export default function OrgOverview() {
@@ -29,8 +46,13 @@ export default function OrgOverview() {
   } = useOutletContext<OrgAdminOutletContext>();
 
   const { effectiveOrgId, profile } = useAuth();
+  const { toast } = useToast();
   const orgId = effectiveOrgId || profile?.organizationId;
   const [erasureRequests, setErasureRequests] = useState<ErasureRequest[]>([]);
+
+  // Confirmation dialog state
+  const [pendingErasure, setPendingErasure] = useState<ErasureRequest | null>(null);
+  const [erasing, setErasing] = useState(false);
 
   useEffect(() => {
     if (!orgId || pendingErasureCount === 0) return;
@@ -45,11 +67,28 @@ export default function OrgOverview() {
 
   const statusLabel = orgDetails?.status;
 
-  async function markActioned(requestId: string) {
-    if (!orgId) return;
-    const ref = doc(getDb(), `organizations/${orgId}/erasureRequests/${requestId}`);
-    await updateDoc(ref, { status: 'actioned' });
-    setErasureRequests((prev) => prev.filter((r) => r.id !== requestId));
+  async function confirmErase() {
+    if (!orgId || !pendingErasure) return;
+    setErasing(true);
+    try {
+      const fn = httpsCallable<
+        { orgId: string; erasureRequestId: string },
+        ExecuteClientErasureResponse
+      >(getFunctions(), 'executeClientErasure');
+      await fn({ orgId, erasureRequestId: pendingErasure.id });
+      setErasureRequests((prev) => prev.filter((r) => r.id !== pendingErasure.id));
+      toast({ title: 'Data erased', description: 'The client\'s data has been permanently deleted.' });
+    } catch (err) {
+      logger.error('[OrgOverview] executeClientErasure failed', err);
+      toast({
+        title: 'Erasure failed',
+        description: err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setErasing(false);
+      setPendingErasure(null);
+    }
   }
 
   if (!orgDetails) return null;
@@ -173,8 +212,10 @@ export default function OrgOverview() {
               Pending data erasure requests
             </CardTitle>
             <CardDescription className="text-xs text-rose-600">
-              These clients have submitted a GDPR Article 17 right-to-erasure request. Action each
-              request within 30 days.
+              These clients have submitted a GDPR Article 17 right-to-erasure request. You must
+              complete each deletion within <strong>30 days</strong> of the request date.
+              Clicking <strong>Erase data</strong> permanently deletes the client&apos;s assessments,
+              report, and roadmap from our systems.
             </CardDescription>
           </CardHeader>
           <CardContent className="p-4 sm:p-6 pt-0 space-y-3">
@@ -184,29 +225,85 @@ export default function OrgOverview() {
                   <p className="truncate text-xs font-medium text-foreground">
                     Token: <span className="font-mono">{req.shareToken.slice(0, 12)}…</span>
                   </p>
-                  {req.reason && (
+                  {req.reason && req.reason !== 'No reason provided' && (
                     <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{req.reason}</p>
                   )}
                   {req.requestedAt?.toDate && (
                     <p className="mt-0.5 text-[10px] text-muted-foreground">
-                      {req.requestedAt.toDate().toLocaleDateString()}
+                      Requested: {req.requestedAt.toDate().toLocaleDateString()}
                     </p>
                   )}
                 </div>
                 <Button
                   size="sm"
-                  variant="outline"
-                  className="shrink-0 gap-1.5 border-rose-200 text-rose-700 hover:bg-rose-50"
-                  onClick={() => markActioned(req.id)}
+                  variant="destructive"
+                  className="shrink-0 gap-1.5"
+                  onClick={() => setPendingErasure(req)}
                 >
-                  <Check className="h-3 w-3" />
-                  Mark actioned
+                  <Trash2 className="h-3 w-3" />
+                  Erase data
                 </Button>
               </div>
             ))}
           </CardContent>
         </Card>
       )}
+
+      {/* Erasure confirmation dialog */}
+      <Dialog open={pendingErasure !== null} onOpenChange={(open) => { if (!open && !erasing) setPendingErasure(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-rose-700">
+              <AlertTriangle className="h-5 w-5" />
+              Permanently erase client data?
+            </DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-3 pt-1 text-sm text-foreground">
+                <p>
+                  This will immediately and <strong>permanently delete</strong>:
+                </p>
+                <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
+                  <li>All assessment records and scores</li>
+                  <li>The client&apos;s shared report and all previous versions</li>
+                  <li>Their ARC™ roadmap and progress data</li>
+                  <li>Posture images and lifestyle check-in responses</li>
+                </ul>
+                <p className="text-xs text-muted-foreground">
+                  The erasure request itself is kept as a compliance record. This action cannot
+                  be undone.
+                </p>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setPendingErasure(null)}
+              disabled={erasing}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => void confirmErase()}
+              disabled={erasing}
+              className="gap-2"
+            >
+              {erasing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Erasing…
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4" />
+                  Yes, permanently erase
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

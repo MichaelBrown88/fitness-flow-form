@@ -57,7 +57,7 @@ function PlanStep({ orgType, onContinue, onSubscribe }: PlanStepProps) {
         <button
           type="button"
           onClick={onContinue}
-          className="w-full h-12 rounded-xl bg-foreground text-primary-foreground font-bold text-sm hover:opacity-90 transition-apple"
+          className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 transition-apple"
         >
           Looks good — continue
         </button>
@@ -257,7 +257,7 @@ export function OrgSetupWizard({ onComplete }: OrgSetupWizardProps) {
           <button
             type="button"
             onClick={onComplete}
-            className="w-full h-12 rounded-xl bg-foreground text-primary-foreground font-bold text-sm hover:opacity-90 transition-apple"
+            className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 transition-apple"
           >
             Go to dashboard
           </button>

@@ -29,6 +29,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -225,7 +226,7 @@ export default function ClientDetailLayout() {
             <DropdownMenuContent align="end" className="w-52 rounded-lg">
               <DropdownMenuItem onClick={() => handleNewAssessment()} className="py-3 text-sm font-medium">
                 <UserPlus className="mr-2 h-4 w-4" />
-                New Assessment
+                New assessment
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link to={buildClientPath(clientName, 'settings')} className="py-3 text-sm font-medium">
@@ -238,18 +239,20 @@ export default function ClientDetailLayout() {
                   Transfer Client
                 </DropdownMenuItem>
               )}
+              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => setPauseDialogOpen(true)} className="py-3 text-sm font-medium">
-                {isPaused ? 'Unpause Account' : 'Pause Account'}
+                {isPaused ? 'Unpause account' : 'Pause account'}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setArchiveDialogOpen(true)} className="py-3 text-sm font-medium">
-                {isArchived ? 'Reactivate Client' : 'Archive Client'}
+                {isArchived ? 'Reactivate client' : 'Archive client'}
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => { setDeleteConfirmName(''); setDeleteClientOpen(true); }}
                 className="py-3 text-sm font-medium text-destructive focus:text-destructive focus:bg-destructive/10"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
-                Delete Permanently
+                Delete permanently
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -266,7 +269,7 @@ export default function ClientDetailLayout() {
       {incompleteDraft && (
         <div className="mb-6 flex items-center justify-between gap-3 rounded-lg border border-score-amber-fg/30 bg-score-amber-muted/60 px-4 py-3">
           <p className="text-sm font-medium text-score-amber-fg">
-            This client has an incomplete assessment saved. Finish it to update their live report.
+            This client has an assessment in progress. Resume it to complete their report.
           </p>
           <Button
             size="sm"

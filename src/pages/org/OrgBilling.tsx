@@ -16,7 +16,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DEFAULT_REGION, FREE_TIER_CLIENT_LIMIT, type Region } from '@/constants/pricing';
 import { STRIPE_CONFIG } from '@/constants/platform';
 import { ORG_BILLING_COPY } from '@/constants/orgBilling';
-import { BILLING_NAV_COPY } from '@/constants/billingNavCopy';
 import { ROUTES } from '@/constants/routes';
 import { checkoutClientTargetForStripe } from '@/lib/pricing/orgCheckoutTarget';
 import { resolveSubscriptionClientLimit } from '@/lib/pricing/resolveSubscriptionClientLimit';
@@ -103,9 +102,6 @@ export default function OrgBilling() {
 
   return (
     <div className="max-w-5xl mx-auto pb-12 sm:pb-20 space-y-4 px-1 sm:px-0">
-      <p className="text-xs text-muted-foreground leading-relaxed border border-border/60 rounded-lg bg-muted/20 px-3 py-2">
-        {BILLING_NAV_COPY.ORG_ADMIN_PAGE_CONTEXT}
-      </p>
       <Card className="border-border/80">
         <CardContent className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="min-w-0 space-y-1">
@@ -157,15 +153,6 @@ export default function OrgBilling() {
                 </>
               )}
             </Button>
-            {!orgDetails?.stripeSubscriptionId?.trim() ? (
-              <p className="text-xs text-muted-foreground border border-border rounded-lg p-3 bg-muted/30">
-                {ORG_BILLING_COPY.billingPagePortalHintNoSubId}
-              </p>
-            ) : (
-              <p className="text-xs text-muted-foreground border border-border rounded-lg p-3 bg-muted/20">
-                {ORG_BILLING_COPY.billingPagePortalHintDashboard}
-              </p>
-            )}
           </CardContent>
         </Card>
       ) : STRIPE_CONFIG.isEnabled && orgId ? (
@@ -195,6 +182,7 @@ export default function OrgBilling() {
           stripeSubscriptionId={orgDetails?.stripeSubscriptionId}
           orgType={orgType}
           packageTrack={packageTrack}
+          currentSubscriptionClientLimit={clientLimitDisplay}
           offerBrandingAddOn={region === 'GB' && orgDetails?.customBrandingEnabled === false}
           onSubscriptionUpdated={() => {
             if (!orgId) return;

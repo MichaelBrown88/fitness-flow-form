@@ -9,6 +9,7 @@ import { logger } from '@/lib/utils/logger';
 import { COLLECTIONS } from '@/constants/collections';
 import { isFeatureEnabled } from '@/services/platform/platformConfig';
 import { FeatureDisabledError } from './postureAnalysis';
+import { checkAndDecrementAICredit, AICreditExhaustedError } from '@/lib/ai/creditGate';
 
 export interface OcrResult {
   fields: Partial<FormData>;
@@ -264,15 +265,15 @@ async function runGeminiOcr(imageSrc: string): Promise<OcrResult & { layoutSigna
  * 
  * Optimization: Pre-crop image to focus on data table, reducing token usage
  */
-export async function processBodyCompScan(imageSrc: string): Promise<OcrResult> {
+export async function processBodyCompScan(imageSrc: string, organizationId?: string): Promise<OcrResult> {
   const coachUid = auth.currentUser?.uid || 'anonymous';
-  
+
   const ocrEnabled = await isFeatureEnabled('ocr_enabled');
   if (!ocrEnabled) {
     logger.warn('[OCR] Body composition OCR feature is disabled via kill switch');
     throw new FeatureDisabledError('Report Photo Import');
   }
-  
+
   try {
     logger.debug('[OCR] Pre-cropping body composition image...');
     const croppedImage = await cropBodyCompImage(imageSrc);
@@ -288,6 +289,11 @@ export async function processBodyCompScan(imageSrc: string): Promise<OcrResult> 
       logger.debug('[OCR] Cache hit — returning learned pattern (Gemini skipped)');
       await logAIUsage(coachUid, 'ocr_body_comp', 'ai_success', 'pattern');
       return { fields: cachedFields, rawText: '', confidence: 0.9, provider: 'pattern' };
+    }
+
+    // Gate: check and atomically decrement credit balance before spending tokens
+    if (organizationId) {
+      await checkAndDecrementAICredit(organizationId);
     }
 
     const geminiResult = await runGeminiOcr(croppedImage);

@@ -69,28 +69,25 @@ export function useCoachArtifacts(coachUid: string | undefined, organizationId: 
     try {
       const db = getDb();
 
+      const reportConstraints = [
+        where('coachUid', '==', coachUid),
+        ...(organizationId ? [where('organizationId', '==', organizationId)] : []),
+        limit(SHAREABLES_LIMIT),
+      ];
+      const roadmapConstraints = [
+        where('coachUid', '==', coachUid),
+        ...(organizationId ? [where('organizationId', '==', organizationId)] : []),
+        limit(SHAREABLES_LIMIT),
+      ];
+
       const [reportSnap, roadmapSnap] = await Promise.all([
-        getDocs(
-          query(
-            collection(db, COLLECTIONS.PUBLIC_REPORTS),
-            where('coachUid', '==', coachUid),
-            limit(SHAREABLES_LIMIT),
-          ),
-        ),
-        getDocs(
-          query(
-            collection(db, COLLECTIONS.PUBLIC_ROADMAPS),
-            where('coachUid', '==', coachUid),
-            limit(SHAREABLES_LIMIT),
-          ),
-        ),
+        getDocs(query(collection(db, COLLECTIONS.PUBLIC_REPORTS), ...reportConstraints)),
+        getDocs(query(collection(db, COLLECTIONS.PUBLIC_ROADMAPS), ...roadmapConstraints)),
       ]);
 
       const reports: CoachArtifactRow[] = [];
       reportSnap.forEach((docSnap) => {
         const data = docSnap.data();
-        const docOrg = data.organizationId as string | undefined;
-        if (organizationId && docOrg && docOrg !== organizationId) return;
         const updatedAt = data.updatedAt as Timestamp | undefined;
         reports.push({
           token: docSnap.id,
@@ -110,8 +107,6 @@ export function useCoachArtifacts(coachUid: string | undefined, organizationId: 
       const roadmaps: CoachRoadmapShareRow[] = [];
       roadmapSnap.forEach((docSnap) => {
         const data = docSnap.data();
-        const docOrg = data.organizationId as string | undefined;
-        if (organizationId && docOrg && docOrg !== organizationId) return;
         const updatedAt = data.updatedAt as Timestamp | undefined;
         roadmaps.push({
           token: docSnap.id,

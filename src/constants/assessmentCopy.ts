@@ -18,7 +18,7 @@ export const ASSESSMENT_COPY = {
   SEND_LINK_FIRST_DESC:
     'Your client can complete eligible sections from their phone first; you finish coach-only parts in studio.',
   WIZARD_TITLE: 'What are you covering today?',
-  WIZARD_SUBTITLE: 'Choose a template or customise which phases appear. You can change this anytime before results.',
+  WIZARD_SUBTITLE: 'Choose a template or customise which phases appear. You can change this before starting.',
   TEMPLATE_FULL: 'Full assessment',
   TEMPLATE_FULL_DESC: 'All phases — unlock your full AXIS Score™ when finished.',
   TEMPLATE_LIFESTYLE: 'Lifestyle check-in',

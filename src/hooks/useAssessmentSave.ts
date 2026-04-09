@@ -117,12 +117,24 @@ export function useAssessmentSave({
     // Offline path — persist to IndexedDB and return early.
     // Sandbox trial is decremented only after a successful Firestore save (here or via useOfflineSync drain).
     if (!navigator.onLine && !isDemoAssessment) {
+      const offlineOrgId = profile?.organizationId ?? '';
+      if (!offlineOrgId) {
+        // Without an organizationId the queued entry would fail on every drain attempt.
+        // Surface an explicit error rather than creating an undrainable queue entry.
+        toast({
+          title: 'Cannot save offline',
+          description: 'Organisation not loaded — please reload the page and try again.',
+          variant: 'destructive',
+        });
+        saveInitiatedRef.current = false;
+        return;
+      }
       try {
         await enqueueAssessment({
           id: `${user.uid}_${Date.now()}`,
           queuedAt: Date.now(),
           coachUid: user.uid,
-          organizationId: profile?.organizationId ?? '',
+          organizationId: offlineOrgId,
           formData,
           scores,
           isDemoAssessment,
@@ -284,6 +296,10 @@ export function useAssessmentSave({
           shareToken = result.shareToken;
           publicReportSynced = result.publicReportSynced;
 
+          // No-op: persistence detected no changes — skip the success pipeline entirely.
+          // finally{} still fires to reset saving state.
+          if (!assessmentId) return;
+
           const { createOrUpdateClientProfile } = await import('@/services/clientProfiles');
           const now = Timestamp.now();
           const updateData: Record<string, unknown> = {
@@ -324,6 +340,11 @@ export function useAssessmentSave({
           assessmentId = result.assessmentId;
           shareToken = result.shareToken;
           publicReportSynced = result.publicReportSynced;
+
+          // No-op: persistence detected no changes — skip the success pipeline entirely.
+          // finally{} still fires to reset saving state.
+          if (!assessmentId) return;
+
           if (profile?.organizationId) await clearDraftAssessment(clientName, profile.organizationId);
 
           // Update client profile: lastAssessmentDate, all pillar dates, and shareToken

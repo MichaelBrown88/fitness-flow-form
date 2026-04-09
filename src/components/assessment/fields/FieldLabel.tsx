@@ -15,7 +15,7 @@ import type { OrgSettings } from '@/services/organizations';
  
  interface FieldLabelProps {
    field: PhaseField;
-   orgSettings: OrgSettings;
+   orgSettings: OrgSettings | null;
    formData: FormData;
  }
 

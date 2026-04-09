@@ -9,7 +9,7 @@ import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { generateBodyCompInterpretation } from '@/lib/recommendations';
-import { Loader2, Share2, MoreVertical, ArrowLeft, Edit2, Plus, Eye } from 'lucide-react';
+import { Loader2, Share2, MoreVertical, ArrowLeft, Edit2, Plus, Eye, AlertTriangle } from 'lucide-react';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import {
   removeEditAssessment,
@@ -125,8 +125,8 @@ const AssessmentReport = () => {
       <AppShell title="Assessment report" variant="full-width">
         <div className="flex flex-col items-center justify-center py-12 sm:py-20 bg-amber-50 rounded-xl border border-amber-200 p-4 sm:p-8 text-center max-w-2xl mx-auto mt-4 sm:mt-10">
           <div className="bg-amber-100 p-3 rounded-full mb-4">
-             <Loader2 className="h-6 w-6 text-amber-600" /> 
-           </div> 
+             <AlertTriangle className="h-6 w-6 text-amber-600" aria-hidden />
+           </div>
           <h3 className="text-base sm:text-lg font-bold text-amber-900 mb-2">Report Generation Issue</h3>
           <p className="text-sm sm:text-base text-amber-700 mb-6">We encountered an issue creating the AI Coach Plan. The raw assessment data is safe, but the recommendations could not be generated.</p>
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto">
@@ -209,7 +209,7 @@ const AssessmentReport = () => {
             <Button
               variant="default"
               size="sm"
-              className="h-9 rounded-lg bg-foreground text-white font-medium gap-1.5"
+              className="h-9 rounded-lg bg-primary text-primary-foreground font-medium gap-1.5"
               onClick={() => setShareModalOpen(true)}
               disabled={shareLoading}
             >
@@ -225,11 +225,11 @@ const AssessmentReport = () => {
               <DropdownMenuContent align="end" className="w-52 rounded-xl">
                 <DropdownMenuItem onClick={navigateToEdit}>
                   <Edit2 className="mr-2 h-4 w-4" />
-                  Edit Assessment
+                  Edit assessment
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={navigateToNew}>
                   <Plus className="mr-2 h-4 w-4" />
-                  New Assessment
+                  New assessment
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -278,20 +278,27 @@ const AssessmentReport = () => {
                 Compare versions ({versionSelector.totalCount})
               </button>
             ) : (
-              <div className="flex justify-center">
+              <div className="flex flex-col items-center gap-2">
                 <AssessmentVersionSelector
-              snapshots={versionSelector.gridItems}
-              selectedIndex={versionSelector.selectedIndex}
-              totalCount={versionSelector.totalCount}
-              initialAssessment={versionSelector.initialAssessment}
-              initialAssessmentGlobalIndex={versionSelector.initialAssessmentGlobalIndex}
-              currentPage={versionSelector.currentPage}
-              totalPages={versionSelector.totalPages}
-              pageSize={versionSelector.pageSize}
-              onSelect={versionSelector.handleSelect}
-              onPageChange={versionSelector.handlePageChange}
-              getTrend={versionSelector.getTrend}
-            />
+                  snapshots={versionSelector.gridItems}
+                  selectedIndex={versionSelector.selectedIndex}
+                  totalCount={versionSelector.totalCount}
+                  initialAssessment={versionSelector.initialAssessment}
+                  initialAssessmentGlobalIndex={versionSelector.initialAssessmentGlobalIndex}
+                  currentPage={versionSelector.currentPage}
+                  totalPages={versionSelector.totalPages}
+                  pageSize={versionSelector.pageSize}
+                  onSelect={versionSelector.handleSelect}
+                  onPageChange={versionSelector.handlePageChange}
+                  getTrend={versionSelector.getTrend}
+                />
+                <button
+                  type="button"
+                  onClick={() => setVersionSelectorExpanded(false)}
+                  className="text-xs text-muted-foreground hover:text-foreground-secondary"
+                >
+                  Hide
+                </button>
               </div>
             )}
           </div>
@@ -312,12 +319,13 @@ const AssessmentReport = () => {
                 previousScores={versionSelector.previousScores ?? previousScores}
                 previousFormData={(versionSelector.previousFormData ?? previousFormData) ?? undefined}
                 standalone={true}
+                organizationId={profile?.organizationId}
               />
             ) : (
               <CoachReport
                 plan={plan}
                 scores={versionSelector.selectedScores ?? scores}
-                bodyComp={bodyComp}
+                bodyComp={bodyComp ?? undefined}
                 formData={versionSelector.selectedFormData ?? formData}
                 highlightCategory={highlightCategory}
               />

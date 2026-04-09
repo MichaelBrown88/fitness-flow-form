@@ -405,7 +405,7 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData, pr
         pushups,
         squats,
         plankTime,
-        gripStrength > 0 ? gripStrength : undefined,
+        (gripStrength ?? 0) > 0 ? gripStrength : undefined,
         gripCurrentTime,
         gripMethod,
         ambitionLevel,
@@ -415,7 +415,7 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData, pr
       // Determine overall status based on gaps
       const hasEnduranceData = pushups > 0 || squats > 0;
       const hasCoreData = plankTime > 0;
-      const hasStrengthData = gripStrength > 0;
+      const hasStrengthData = (gripStrength ?? 0) > 0;
       
       let status: 'red' | 'yellow' | 'green' | 'gray' = 'gray';
       let currentValue = 'N/A';

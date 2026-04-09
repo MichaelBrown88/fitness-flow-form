@@ -114,12 +114,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Clear IndexedDB for Firebase
       if ('indexedDB' in window && indexedDB.databases) {
         indexedDB.databases().then(databases => {
-          databases.forEach(db => {
-            if (db.name && (db.name.includes('firebase') || db.name.includes('firestore'))) {
-              indexedDB.deleteDatabase(db.name);
-              logger.debug(`Cleared IndexedDB: ${db.name}`);
-            }
-          });
+          const toDelete = databases.filter(
+            (db) => db.name && (db.name.includes('firebase') || db.name.includes('firestore')),
+          );
+          return Promise.all(
+            toDelete.map((db) =>
+              new Promise<void>((resolve) => {
+                const req = indexedDB.deleteDatabase(db.name!);
+                req.onsuccess = () => { logger.debug(`Cleared IndexedDB: ${db.name}`); resolve(); };
+                req.onerror = () => { logger.warn(`Failed to delete IndexedDB: ${db.name}`); resolve(); };
+              }),
+            ),
+          );
         }).catch(err => {
           logger.warn('Failed to clear IndexedDB:', err);
         });
@@ -303,7 +309,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 region: orgData.region,
                 brandColor: orgData.brandColor || '#03dee2',
                 gradientId: orgData.gradientId || 'volt',
+                brandHex: orgData.brandHex,
                 logoUrl: orgData.logoUrl,
+                logoUrlDark: orgData.logoUrlDark,
                 customBrandingEnabled: orgData.customBrandingEnabled,
                 subscription: orgData.subscription,
                 assessmentCredits:

@@ -60,7 +60,7 @@ export const ClientActionsDropdown: React.FC<ClientActionsDropdownProps> = ({
   onStartAssessment,
 }) => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const encodedName = encodeURIComponent(clientName);
   const displayName = formatClientDisplayName(clientName);
   const [linkState, setLinkState] = useState<'idle' | 'loading' | 'copied' | 'none'>('idle');
@@ -69,7 +69,7 @@ export const ClientActionsDropdown: React.FC<ClientActionsDropdownProps> = ({
     if (!latestAssessmentId || !user) return;
     setLinkState('loading');
     try {
-      const tokens = await getShareTokensForAssessment(user.uid, latestAssessmentId);
+      const tokens = await getShareTokensForAssessment(user.uid, latestAssessmentId, profile?.organizationId);
       const active = tokens.find((t) => !t.revoked);
       if (active) {
         await copyTextToClipboard(`${CONFIG.APP.HOST}/r/${active.token}`);
@@ -101,7 +101,7 @@ export const ClientActionsDropdown: React.FC<ClientActionsDropdownProps> = ({
           <>
             <DropdownMenuItem
               onClick={() => onStartAssessment(clientName)}
-              className="rounded-lg text-xs font-bold px-2 py-2 cursor-pointer focus:bg-primary/10 gap-2 text-primary"
+              className="rounded-lg text-xs font-bold px-2 py-2 cursor-pointer focus:bg-primary/10 gap-2 text-gradient-dark"
             >
               <ClipboardPlus className="h-3.5 w-3.5" />
               Start Assessment

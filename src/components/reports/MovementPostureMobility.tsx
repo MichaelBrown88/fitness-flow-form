@@ -13,7 +13,6 @@ import { PostureClientPostureSection } from './posture/PostureClientPostureSecti
 import { PostureTrainerPostureSection } from './posture/PostureTrainerPostureSection';
 import { Activity, AlertCircle, CheckCircle2, TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
 import { logger } from '@/lib/utils/logger';
 import { CardInfoDrawer } from './CardInfoDrawer';
 
@@ -23,11 +22,12 @@ interface MovementPostureMobilityProps {
   standalone?: boolean;
   hideHeader?: boolean;
   previousFormData?: FormData;
+  /** Org ID passed by coach pages for re-analysis; omitted on public/standalone views. */
+  organizationId?: string;
 }
 
-export function MovementPostureMobility({ formData, scores, standalone = false, hideHeader, previousFormData }: MovementPostureMobilityProps) {
+export function MovementPostureMobility({ formData, scores, standalone = false, hideHeader, previousFormData, organizationId }: MovementPostureMobilityProps) {
   const { toast } = useToast();
-  const { profile } = useAuth();
   const [isReanalyzing, setIsReanalyzing] = useState(false);
 
   const movementDelta = useMemo(() => {
@@ -60,7 +60,7 @@ export function MovementPostureMobility({ formData, scores, standalone = false, 
     setIsReanalyzing(true);
     try {
       const { reanalyzeClientPosture } = await import('@/lib/utils/reanalyzePosture');
-      const result = await reanalyzeClientPosture(formData.fullName, profile?.organizationId);
+      const result = await reanalyzeClientPosture(formData.fullName, organizationId);
       
       if (result.success > 0) {
         toast({
@@ -572,7 +572,7 @@ export function MovementPostureMobility({ formData, scores, standalone = false, 
 
       {/* Desktop: two separate cards */}
       <div className="hidden md:grid md:grid-cols-2 gap-5 md:gap-6">
-        <Card className="p-5 md:p-6 border-none bg-card ring-1 ring-border relative">
+        <Card className="p-5 md:p-6 border-none bg-card ring-1 ring-border relative min-w-0">
           <CardInfoDrawer title="Movement Quality">
             <p>Movement quality is assessed via Overhead Squat, Hinge, and Lunge tests. These measure how well your body moves through fundamental patterns that are essential for safe and effective training.</p>
           </CardInfoDrawer>
@@ -626,7 +626,7 @@ export function MovementPostureMobility({ formData, scores, standalone = false, 
           </div>
         </Card>
 
-        <Card className="p-5 md:p-6 border-none bg-card ring-1 ring-border relative">
+        <Card className="p-5 md:p-6 border-none bg-card ring-1 ring-border relative min-w-0">
           <CardInfoDrawer title="Mobility">
             <p>Joint mobility is assessed at the hip, shoulder, and ankle. Good mobility means your joints can move freely through their full range of motion without compensation or pain.</p>
             <p>Limited mobility increases injury risk and reduces the effectiveness of your training.</p>

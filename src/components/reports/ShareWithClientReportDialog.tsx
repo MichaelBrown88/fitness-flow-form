@@ -126,7 +126,7 @@ export function ShareWithClientReportDialog({
             disabled={shareLoading}
           >
             <Share2 className="h-4 w-4" />
-            Share (device)
+            Share…
           </Button>
           <Button
             variant="outline"

@@ -1,7 +1,6 @@
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
 import { CHECKOUT_FLOW_COPY } from '@/constants/checkoutFlowCopy';
 import type { BillingPeriod, CapacityTier } from '@/constants/pricing';
 import { formatPrice } from '@/lib/utils/currency';
@@ -23,9 +22,8 @@ export interface BillingCheckoutSummaryPanelProps {
   confirmLoading?: boolean;
   error: string | null;
   onContinue: () => void;
-  offerBrandingAddOn?: boolean;
+  /** True when branding add-on is selected in the parent — used to show line item and update total */
   includeBrandingAddOn: boolean;
-  onIncludeBrandingChange: (value: boolean) => void;
   brandingPriceGbp: number;
 }
 
@@ -42,9 +40,7 @@ export function BillingCheckoutSummaryPanel({
   confirmLoading = false,
   error,
   onContinue,
-  offerBrandingAddOn = false,
   includeBrandingAddOn,
-  onIncludeBrandingChange,
   brandingPriceGbp,
 }: BillingCheckoutSummaryPanelProps) {
   const subAmount =
@@ -55,9 +51,6 @@ export function BillingCheckoutSummaryPanel({
         : 0;
   const oneTimeTotal = includeBrandingAddOn ? brandingPriceGbp : 0;
   const estimatedDueAtCheckout = subAmount + oneTimeTotal;
-  const brandingSelectable = offerBrandingAddOn && !checkoutLocked;
-  const brandingLockedNote = offerBrandingAddOn && checkoutLocked;
-  const brandingPriceFormatted = formatPrice(brandingPriceGbp, 'GBP', 'en-GB');
   const primaryDisabled = !selectedTier || (checkoutLocked ? confirmLoading : loading);
   const showAnnualCompare = Boolean(annualComparison && billingPeriod === 'annual');
 
@@ -76,45 +69,6 @@ export function BillingCheckoutSummaryPanel({
       <CardContent className="space-y-3 px-4 sm:px-5 pb-4 sm:pb-5 pt-0">
         {selectedTier ? (
           <>
-            {brandingSelectable ? (
-              <label
-                htmlFor="checkout-branding-addon"
-                className="flex items-start gap-2.5 rounded-lg border border-border bg-muted/30 px-3 py-2.5 cursor-pointer"
-              >
-                <Checkbox
-                  id="checkout-branding-addon"
-                  checked={includeBrandingAddOn}
-                  onCheckedChange={(v) => onIncludeBrandingChange(v === true)}
-                  disabled={loading || confirmLoading}
-                  className="mt-0.5"
-                />
-                <span className="min-w-0 text-sm leading-snug">
-                  <span className="font-medium text-foreground">
-                    {CHECKOUT_FLOW_COPY.checkoutSummaryIncludeBrandingLabel}
-                  </span>{' '}
-                  <span className="tabular-nums text-muted-foreground">({brandingPriceFormatted})</span>
-                  <span className="block text-[11px] text-muted-foreground mt-0.5">
-                    {CHECKOUT_FLOW_COPY.checkoutSummaryIncludeBrandingHint}
-                  </span>
-                </span>
-              </label>
-            ) : null}
-
-            {brandingLockedNote ? (
-              <div
-                className="rounded-lg border border-dashed border-border bg-muted/15 px-3 py-2 text-xs text-muted-foreground leading-relaxed"
-                role="status"
-              >
-                <span className="font-medium text-foreground">
-                  {CHECKOUT_FLOW_COPY.checkoutSummaryIncludeBrandingLockedTitle}
-                </span>{' '}
-                {CHECKOUT_FLOW_COPY.checkoutSummaryIncludeBrandingLockedBody.replace(
-                  '{price}',
-                  brandingPriceFormatted,
-                )}
-              </div>
-            ) : null}
-
             <ul className="space-y-2 text-sm border-b border-border/60 pb-3" aria-label="Selected plan lines">
               <li className="flex justify-between gap-3 items-baseline">
                 <span className="font-medium text-foreground truncate min-w-0">{selectedTier.label}</span>

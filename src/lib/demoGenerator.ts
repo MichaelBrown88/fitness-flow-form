@@ -351,9 +351,6 @@ export async function generateDemoData(): Promise<Partial<FormData>> {
   const parq12 = rng() > 0.9 ? 'yes' : 'no';
   const parq13 = gender === 'female' && rng() > 0.85 ? 'yes' : 'no';
   
-  // Coach assignment
-  const assignedCoach = pickRandom(['coach-mike', 'coach-selina'], rng);
-  
   // Build the payload
   const payload: Partial<FormData> = {
     fullName,
@@ -361,7 +358,6 @@ export async function generateDemoData(): Promise<Partial<FormData>> {
     phone,
     dateOfBirth,
     gender,
-    assignedCoach,
     heightCm: String(heightCm),
     activityLevel,
     stepsPerDay: String(stepsPerDay),

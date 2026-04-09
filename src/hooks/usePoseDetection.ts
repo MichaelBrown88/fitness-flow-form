@@ -330,6 +330,14 @@ export function usePoseDetection({
         logger.debug('[POSE] PoseLandmarker ready — starting preview loop');
       } catch (e) {
         logger.error('[POSE] Initialization failed:', e);
+        if (!cancelled) {
+          setPoseValidation({
+            isReady: false,
+            message: 'Camera analysis unavailable. Reload the page to retry.',
+            shortMessage: 'ERROR',
+            details: { tooClose: false, tooFar: false, notCentered: false, missingParts: [], outOfFrame: false },
+          });
+        }
         return;
       } finally {
         if (!cancelled) setIsPoseLoading(false);

@@ -22,6 +22,10 @@
     ],
     "rewrites": [
       {
+        "source": "/r",
+        "destination": "/client.html"
+      },
+      {
         "source": "/r/**",
         "destination": "/client.html"
       },

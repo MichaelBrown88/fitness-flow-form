@@ -63,17 +63,10 @@ function generateShareToken(): string {
  * Strictly whitelists fields and removes PII (Email, Phone)
  */
 function sanitizeFormDataForPublic(formData: FormData): FormData {
-  // Create a shallow copy first
   const sanitized = { ...formData };
-  
-  // Remove PII that isn't needed for the report
-  // We keep 'fullName' as it's used for display, but email/phone are definitely private
+  // Remove PII not needed for the client report view
   sanitized.email = '';
   sanitized.phone = '';
-  sanitized.assignedCoach = ''; // internal reference, not needed for client view
-  
-  // We can add more sensitive fields here if needed
-  
   return sanitized;
 }
 
@@ -92,17 +85,19 @@ export async function publishPublicReport(params: {
   snapshotType?: string;
 }): Promise<string> {
   const { coachUid, assessmentId, formData, visibility = 'public', organizationId, profile, snapshotType = 'full-assessment' } = params;
-  
-  // Validate organizationId before proceeding
-  // If updating existing report, verify ownership
+
+  // Validate org upfront so it can be included in the query filter
+  const validOrgId = validateOrganizationId(organizationId, profile);
+
   const existingQuery = query(
     collection(getDb(), COLLECTIONS.PUBLIC_REPORTS),
     where('coachUid', '==', coachUid),
     where('assessmentId', '==', assessmentId),
+    where('organizationId', '==', validOrgId),
     where('visibility', '==', 'public'),
     limit(1)
   );
-  
+
   const existingSnapshot = await getDocs(existingQuery);
 
   let shareToken: string;
@@ -110,29 +105,18 @@ export async function publishPublicReport(params: {
   let existingReport: PublicReportDoc | null = null;
 
   if (!existingSnapshot.empty) {
-    // Reuse existing token
+    // Reuse existing token (org already matched by the WHERE clause above)
     const existingDoc = existingSnapshot.docs[0];
     shareToken = existingDoc.id;
     existingReport = {
       shareToken: existingDoc.id,
       ...existingDoc.data(),
     } as PublicReportDoc;
-    
-    // Verify ownership: if existing report has orgId, validate it matches
-    if (existingReport.organizationId) {
-      const validOrgId = validateOrganizationId(organizationId || existingReport.organizationId, profile);
-      if (existingReport.organizationId !== validOrgId) {
-        throw new Error('Cannot update report: Organization mismatch. This report belongs to a different organization.');
-      }
-    }
   } else {
     // Generate new secure token
     shareToken = generateShareToken();
     isNew = true;
   }
-
-  // Validate organizationId for new reports or when updating
-  const validOrgId = validateOrganizationId(organizationId || existingReport?.organizationId, profile);
 
   const ref = doc(getDb(), COLLECTIONS.PUBLIC_REPORTS, shareToken);
   const snapshot = await getDoc(ref);

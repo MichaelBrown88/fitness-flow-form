@@ -73,8 +73,8 @@ export function buildRoadmap(scores: ScoreSummary, formData?: FormData): Roadmap
   // Posture improvement calculations
   let postureWeeks = 0;
   const postureIssues: string[] = [];
-  const headPos = Array.isArray(formData?.postureHeadOverall) ? formData?.postureHeadOverall : [formData?.postureHeadOverall];
-  const shoulderPos = Array.isArray(formData?.postureShouldersOverall) ? formData?.postureShouldersOverall : [formData?.postureShouldersOverall];
+  const headPos: string[] = Array.isArray(formData?.postureHeadOverall) ? formData.postureHeadOverall : [];
+  const shoulderPos: string[] = Array.isArray(formData?.postureShouldersOverall) ? formData.postureShouldersOverall : [];
 
   if (headPos.includes('forward-head')) {
     postureWeeks = Math.max(postureWeeks, 8);

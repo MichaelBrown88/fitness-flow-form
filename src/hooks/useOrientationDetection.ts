@@ -9,6 +9,7 @@ import { logger } from '@/lib/utils/logger';
 interface UseOrientationDetectionResult {
   isVertical: boolean;
   hasPermission: boolean;
+  permissionDenied: boolean;
   requestPermission: () => Promise<void>;
 }
 
@@ -22,6 +23,7 @@ export function useOrientationDetection(
       : CONFIG.COMPANION.ORIENTATION.STABLE_VERTICAL_MS_BODYCOMP;
 
   const [isVertical, setIsVertical] = useState(false);
+  const [permissionDenied, setPermissionDenied] = useState(false);
   const [hasPermission, setHasPermission] = useState<boolean>(() => {
     const DeviceOrientationEventAny = DeviceOrientationEvent as unknown as {
       requestPermission?: () => Promise<'granted' | 'denied'>;
@@ -96,12 +98,13 @@ export function useOrientationDetection(
       mode,
     });
     try {
-      if (requiresExplicitOrientationPermission) {
+      if (typeof DeviceOrientationEventAny.requestPermission === 'function') {
         const state = await DeviceOrientationEventAny.requestPermission();
         logger.warn('[COMPANION_PERM] DeviceOrientationEvent.requestPermission result', { state });
         if (state === 'granted') {
           setHasPermission(true);
         } else {
+          setPermissionDenied(true);
           logger.warn(
             '[COMPANION_PERM] orientation denied — combined hasPermission stays false; Enable will not dismiss'
           );
@@ -139,6 +142,7 @@ export function useOrientationDetection(
   return {
     isVertical,
     hasPermission,
+    permissionDenied,
     requestPermission,
   };
 }

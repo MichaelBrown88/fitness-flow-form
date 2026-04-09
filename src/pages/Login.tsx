@@ -224,7 +224,7 @@ const Login = () => {
                 <button
                   type="button"
                   onClick={handleForgotPassword}
-                  className="text-sm font-medium text-primary transition-colors hover:opacity-80 underline underline-offset-2"
+                  className="text-sm font-medium text-gradient-dark transition-colors hover:opacity-80 underline underline-offset-2"
                   disabled={submitting}
                 >
                   Reset password
@@ -251,7 +251,7 @@ const Login = () => {
 
             <p className="mt-6 text-center text-sm text-foreground-secondary">
               New to One Assess?{' '}
-              <Link to={ROUTES.ONBOARDING} className="font-medium text-primary hover:underline">
+              <Link to={ROUTES.ONBOARDING} className="font-medium text-gradient-dark hover:underline">
                 Start your free trial →
               </Link>
             </p>

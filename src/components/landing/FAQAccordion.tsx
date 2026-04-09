@@ -49,7 +49,7 @@ export function FAQSection({ items }: FAQSectionProps) {
               style={{ animationDelay: `${index * 50}ms` } satisfies CSSProperties}
             >
               <GlassCard className="overflow-hidden">
-                <AccordionTrigger className="text-balance px-6 py-5 text-left text-lg font-bold text-foreground hover:no-underline hover:text-primary data-[state=open]:text-primary [&>svg]:text-muted-foreground data-[state=open]:[&>svg]:text-primary [&[data-state=open]>svg]:rotate-90">
+                <AccordionTrigger className="text-balance px-6 py-5 text-left text-lg font-bold text-foreground hover:no-underline [&[data-state=open]>svg]:rotate-90">
                   {item.question}
                 </AccordionTrigger>
                 <AccordionContent className="text-balance px-6 pb-6 pt-0 text-base font-medium leading-relaxed text-muted-foreground">

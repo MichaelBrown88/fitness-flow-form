@@ -163,7 +163,7 @@ export function BusinessInfoStep({ data, onNext, onBack }: BusinessInfoStepProps
           </button>
           <button
             type="submit"
-            className="flex-1 h-12 rounded-xl bg-foreground text-primary-foreground font-bold text-sm hover:opacity-90 transition-apple"
+            className="flex-1 h-12 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 transition-apple"
           >
             Continue
           </button>

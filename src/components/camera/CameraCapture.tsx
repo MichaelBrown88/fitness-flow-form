@@ -1,7 +1,7 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import Webcam from 'react-webcam';
 import { Button } from '../ui/button';
-import { X, AlertCircle, Smartphone, Camera, RefreshCcw } from 'lucide-react';
+import { X, AlertCircle, Smartphone, Camera, RefreshCcw, Maximize2, Minimize2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/utils/logger';
 
@@ -29,7 +29,23 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [tilt, setTilt] = useState<number>(0);
   const [isVertical, setIsVertical] = useState(mode === 'ocr'); // Always vertical for OCR
+  const [orientationDenied, setOrientationDenied] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const onFSChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onFSChange);
+    return () => document.removeEventListener('fullscreenchange', onFSChange);
+  }, []);
+
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  }, []);
 
   // Gyroscope logic for posture
   useEffect(() => {
@@ -52,6 +68,8 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
         .then((state) => {
           if (state === 'granted') {
             window.addEventListener('deviceorientation', handleOrientation);
+          } else {
+            setOrientationDenied(true);
           }
         })
         .catch((e: unknown) => logger.error('[CameraCapture] deviceorientation permission', e));
@@ -64,13 +82,13 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
 
   const performCapture = useCallback(() => {
     if (mode === 'posture' && !isVertical) {
-      toast({ title: "Phone not level", variant: "destructive" });
+      toast({ title: "Phone not level", description: "Hold the phone vertically and try again.", variant: "destructive" });
       return;
     }
 
     const imageSrc = webcamRef.current?.getScreenshot();
     if (!imageSrc) {
-      toast({ title: "CAMERA ERROR", description: "Could not grab image.", variant: "destructive" });
+      toast({ title: "Couldn't capture image", description: "Try again or close and reopen the camera.", variant: "destructive" });
       return;
     }
 
@@ -79,7 +97,16 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
 
   const handleUserMediaError = (err: string | DOMException) => {
     logger.error('Webcam error:', err);
-    setError('Could not access camera.');
+    const name = typeof err === 'string' ? err : err.name;
+    if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+      setError('Camera access denied. Check your browser permissions and try again.');
+    } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+      setError('No camera found on this device.');
+    } else if (name === 'NotReadableError' || name === 'TrackStartError') {
+      setError('Camera is in use by another app. Close it and try again.');
+    } else {
+      setError('Could not access camera.');
+    }
   };
 
   return (
@@ -96,19 +123,31 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
         </div>
         <div className="flex items-center gap-2">
           {mode === 'posture' && (
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => setFacingMode(prev => prev === 'user' ? 'environment' : 'user')} 
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setFacingMode(prev => prev === 'user' ? 'environment' : 'user')}
+              aria-label="Flip camera"
               className="text-white hover:bg-background/20 h-12 w-12 rounded-full backdrop-blur-md border border-white/10"
             >
               <RefreshCcw className="h-5 w-5" />
             </Button>
           )}
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={onClose} 
+          {typeof document !== 'undefined' && 'requestFullscreen' in document.documentElement && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleFullscreen}
+              aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+              className="text-white hover:bg-background/20 h-12 w-12 rounded-full backdrop-blur-md border border-white/10"
+            >
+              {isFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
             className="text-white hover:bg-background/20 h-12 w-12 rounded-full backdrop-blur-md border border-white/10"
           >
             <X className="h-8 w-8" />
@@ -151,8 +190,8 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
               <div className="absolute -bottom-1 -right-1 w-12 h-12 border-b-4 border-r-4 border-white rounded-br-2xl" />
               
               <div className="absolute inset-0 flex items-center justify-center">
-                <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.15em] rotate-90 whitespace-nowrap">
-                  Align Body Comp Report Here
+                <p className="text-white/70 text-xs font-semibold text-center px-4 leading-relaxed">
+                  Align your body composition report within this frame
                 </p>
               </div>
             </div>
@@ -179,14 +218,25 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
               <span className="text-[10px] font-black uppercase tracking-[0.15em] text-white/30">Feet Area</span>
             </div>
 
+            {/* Orientation denied warning */}
+            {orientationDenied && (
+              <div className="absolute inset-0 z-40 flex items-end justify-center p-8 pb-40">
+                <div className="bg-orange-600/90 text-white px-5 py-4 rounded-2xl flex flex-col items-center gap-1.5 max-w-xs text-center animate-in zoom-in-95">
+                  <Smartphone className="h-6 w-6" />
+                  <p className="font-bold text-sm">Motion access denied</p>
+                  <p className="text-xs text-white/85 leading-snug">
+                    Settings → Safari → Motion & Orientation Access, then reload.
+                  </p>
+                </div>
+              </div>
+            )}
             {/* Tilt Warning */}
-            {!isVertical && (
+            {!orientationDenied && !isVertical && (
               <div className="absolute inset-0 z-40 flex items-center justify-center p-12 bg-black/40 backdrop-blur-[2px]">
                 <div className="bg-red-600/90 text-white px-6 py-4 rounded-2xl flex flex-col items-center gap-2 animate-in zoom-in-95">
-                  <Smartphone className={`h-8 w-8 ${tilt > 90 ? 'rotate-180' : ''}`} />
-                  <p className="font-black uppercase tracking-[0.15em] text-[10px] text-center">
-                    {tilt > 90 ? 'Tilt Forward' : 'Tilt Back'}
-                  </p>
+                  <Smartphone className="h-8 w-8" />
+                  <p className="font-bold text-sm text-center">Hold phone upright</p>
+                  <p className="text-xs text-white/80 text-center">Keep the phone vertical to capture</p>
                 </div>
               </div>
             )}

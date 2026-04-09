@@ -107,7 +107,7 @@ export default function ClientSettings() {
             className="rounded-xl resize-none"
           />
         </div>
-        <Button onClick={() => void handleSaveProfile()} className="w-full sm:w-auto bg-foreground text-white rounded-xl h-11 px-6 font-bold">
+        <Button onClick={() => void handleSaveProfile()} className="w-full sm:w-auto bg-primary text-primary-foreground rounded-xl h-11 px-6 font-bold">
           Save Profile
         </Button>
       </section>

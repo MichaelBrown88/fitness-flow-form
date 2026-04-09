@@ -62,8 +62,6 @@ type CoachAssessmentDoc = {
   createdAt: Timestamp;
   coachUid: string;
   coachEmail?: string | null;
-  /** UID of the coach who physically performed the assessment (set when different from coachUid) */
-  performedByUid?: string;
   overallScore: number;
   goals: string[];
   formData: FormData;
@@ -93,22 +91,6 @@ async function resolveOrganizationId(
   throw new Error('Organization ID is required for assessment access.');
 }
 
-/**
- * Resolve the effective coach UID for assessment attribution.
- * If assignedCoach is set and differs from the logged-in user, the assessment
- * is attributed to the assigned coach (guest assessment / favor scenario).
- */
-function resolveEffectiveCoach(
-  loggedInCoachUid: string,
-  formData: FormData,
-  _organizationId: string,
-): string {
-  const assignedCoach = formData.assignedCoach?.trim();
-  if (assignedCoach && assignedCoach !== loggedInCoachUid) {
-    return assignedCoach;
-  }
-  return loggedInCoachUid;
-}
 
 export type SaveResult = {
   assessmentId: string;
@@ -198,16 +180,12 @@ export async function saveCoachAssessment(
   // Validate organizationId before proceeding
   const validOrgId = validateOrganizationId(organizationId, profile);
 
-  // Resolve effective coach: use assignedCoach for guest assessment attribution (Phase F)
-  const effectiveCoachUid = resolveEffectiveCoach(coachUid, formData, validOrgId);
-  const isGuestAssessment = effectiveCoachUid !== coachUid;
-
   // 1. Pre-calculate scores summary — needed by both history snapshot and dashboard doc
   const scoresSummary = summarizeScores(formData);
 
   // 2. ALWAYS update history first (keeps the "Current" view accurate and logs the change)
   const { updateCurrentAssessment } = await import('./assessmentHistory');
-  const hasChanges = await updateCurrentAssessment(effectiveCoachUid, name, formData, overallScore, 'full', 'all', validOrgId, scoresSummary);
+  const hasChanges = await updateCurrentAssessment(coachUid, name, formData, overallScore, 'full', 'all', validOrgId, scoresSummary);
   if (!hasChanges) {
     return { assessmentId: '', shareToken: null, publicReportSynced: false };
   }
@@ -264,7 +242,6 @@ export async function saveCoachAssessment(
       assessmentType: 'full' as const,
       category: 'all',
       remoteIntakeAwaitingStudio: false,
-      ...(isGuestAssessment ? { assignedCoachUid: effectiveCoachUid, performedByUid: coachUid } : {}),
     });
 
     // Clean up legacy UUID doc now that slug doc is in place
@@ -276,7 +253,7 @@ export async function saveCoachAssessment(
     try {
       const { publishPublicReport } = await import('./publicReports');
       shareToken = await publishPublicReport({
-        coachUid: effectiveCoachUid,
+        coachUid,
         assessmentId: slug,
         formData,
         organizationId: validOrgId,
@@ -310,7 +287,6 @@ export async function saveCoachAssessment(
     assessmentType: 'full' as const,
     category: 'all',
     remoteIntakeAwaitingStudio: false,
-    ...(isGuestAssessment ? { assignedCoachUid: effectiveCoachUid, performedByUid: coachUid } : {}),
   });
   const docRef = { id: slug };
 
@@ -320,7 +296,7 @@ export async function saveCoachAssessment(
   try {
     const { publishPublicReport } = await import('./publicReports');
     newShareToken = await publishPublicReport({
-      coachUid: effectiveCoachUid,
+      coachUid,
       assessmentId: docRef.id,
       formData,
       organizationId: validOrgId,
@@ -528,6 +504,7 @@ export async function getAllClients(coachUid: string, organizationId?: string, m
 
   const q = query(
     orgClientsCollection(resolvedOrgId),
+    where('coachUid', '==', coachUid),
     orderBy('createdAt', 'desc'),
     limit(resolvedLimit)
   );
@@ -557,13 +534,9 @@ export async function savePartialAssessment(
   // Validate organizationId before proceeding
   const validOrgId = validateOrganizationId(organizationId, profile);
 
-  // Resolve effective coach for guest assessment attribution (Phase F)
-  const effectiveCoachUid = resolveEffectiveCoach(coachUid, formData, validOrgId);
-  const isGuestAssessment = effectiveCoachUid !== coachUid;
-
   // 1. Get current assessment to merge with
   const { getCurrentAssessment, updateCurrentAssessment } = await import('./assessmentHistory');
-  const current = await getCurrentAssessment(effectiveCoachUid, finalName, validOrgId);
+  const current = await getCurrentAssessment(coachUid, finalName, validOrgId);
 
   // Merge: new partial data overrides existing data
   const mergedFormData = current?.formData
@@ -577,7 +550,7 @@ export async function savePartialAssessment(
   const scoresSummary = summarizeScores(mergedFormData);
 
   // 2. ALWAYS update history first (keeps audit trail complete even on dedup)
-  const hasChanges = await updateCurrentAssessment(effectiveCoachUid, finalName, mergedFormData, overallScore, changeType, category, validOrgId, scoresSummary);
+  const hasChanges = await updateCurrentAssessment(coachUid, finalName, mergedFormData, overallScore, changeType, category, validOrgId, scoresSummary);
   if (!hasChanges) {
     return { assessmentId: '', shareToken: null, publicReportSynced: false };
   }
@@ -634,7 +607,6 @@ export async function savePartialAssessment(
       assessmentType: 'pillar' as const,
       pillar: category,
       remoteIntakeAwaitingStudio: false,
-      ...(isGuestAssessment ? { assignedCoachUid: effectiveCoachUid, performedByUid: coachUid } : {}),
     });
 
     if (legacyPartialRefToDelete) await deleteDoc(legacyPartialRefToDelete);
@@ -644,7 +616,7 @@ export async function savePartialAssessment(
     try {
       const { publishPublicReport } = await import('./publicReports');
       partialShareToken = await publishPublicReport({
-        coachUid: effectiveCoachUid,
+        coachUid,
         assessmentId: slug,
         formData: mergedFormData,
         organizationId: validOrgId,
@@ -678,7 +650,6 @@ export async function savePartialAssessment(
     assessmentType: 'pillar' as const,
     pillar: category,
     remoteIntakeAwaitingStudio: false,
-    ...(isGuestAssessment ? { assignedCoachUid: effectiveCoachUid, performedByUid: coachUid } : {}),
   });
   const docRef = { id: slug };
 
@@ -688,7 +659,7 @@ export async function savePartialAssessment(
   try {
     const { publishPublicReport } = await import('./publicReports');
     newPartialToken = await publishPublicReport({
-      coachUid: effectiveCoachUid,
+      coachUid,
       assessmentId: docRef.id,
       formData: mergedFormData,
       organizationId: validOrgId,

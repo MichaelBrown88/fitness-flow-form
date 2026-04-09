@@ -45,7 +45,7 @@ export function TeamRosterStep({ initialValue = '', onNext, onBack }: TeamRoster
         <button
           type="button"
           onClick={() => onNext(notes.trim())}
-          className="w-full h-12 rounded-xl bg-foreground text-primary-foreground font-bold text-sm hover:opacity-90 transition-apple"
+          className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 transition-apple"
         >
           Continue
         </button>

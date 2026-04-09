@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { getAllPending, removePending, getPendingCount } from '@/lib/offline/pendingAssessments';
+import { getAllPending, removePending, getPendingCount, enqueueAssessment } from '@/lib/offline/pendingAssessments';
 import { saveCoachAssessment } from '@/services/coachAssessments';
 import { decrementSandboxTrialAfterSuccessfulSave } from '@/lib/utils/sandboxTrialDecrement';
 import { getFirebaseAuth } from '@/services/firebase';
@@ -41,6 +41,15 @@ export function useOfflineSync() {
     let failed = 0;
 
     for (const entry of pending) {
+      // Entries enqueued without an organizationId can never succeed — remove to
+      // prevent an infinite retry loop rather than counting as a failed sync.
+      if (!entry.organizationId) {
+        logger.warn('[OfflineSync] Discarding queued entry with no organizationId', { id: entry.id });
+        await removePending(entry.id);
+        continue;
+      }
+
+      const MAX_RETRIES = 5;
       try {
         const coachEmail = getFirebaseAuth().currentUser?.email ?? null;
         await saveCoachAssessment(
@@ -59,7 +68,16 @@ export function useOfflineSync() {
         synced++;
       } catch (err) {
         logger.error('[OfflineSync] Failed to sync assessment', err);
-        failed++;
+        const retryCount = (entry.retryCount ?? 0) + 1;
+        if (retryCount >= MAX_RETRIES) {
+          logger.warn('[OfflineSync] Max retries reached — discarding entry', { id: entry.id, retryCount });
+          await removePending(entry.id);
+          failed++;
+        } else {
+          // Update retry count in the store and leave for next drain attempt
+          await enqueueAssessment({ ...entry, retryCount });
+          failed++;
+        }
       }
     }
 

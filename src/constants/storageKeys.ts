@@ -42,4 +42,10 @@ export const STORAGE_KEYS = {
 
   /** `1` = user dismissed the "verify your email" banner; persists across refreshes. */
   EMAIL_BANNER_DISMISSED: 'oneassess-email-banner-dismissed',
+
+  /** Last share token successfully loaded by a client — used to redirect the installed PWA back to their report. */
+  CLIENT_LAST_TOKEN: 'oneassess-client-last-token',
+
+  /** sessionStorage flag: client has seen the privacy notice on their report this session. */
+  CLIENT_PRIVACY_NOTICE_SEEN: 'oneassess-client-privacy-seen',
 } as const;

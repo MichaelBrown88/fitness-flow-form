@@ -228,7 +228,7 @@ export function DefaultCadenceSettings({
       <Button
         onClick={handleSave}
         disabled={isSaving}
-        className="w-full rounded-xl bg-foreground text-white font-bold h-11 hover:bg-foreground/90 transition-colors"
+        className="w-full rounded-xl bg-primary text-primary-foreground font-bold h-11 hover:bg-primary/90 transition-colors"
       >
         {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         Save

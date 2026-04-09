@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { PostureComparisonCard } from '@/components/client/PostureComparisonCard';
 import type { AssessmentSnapshot } from '@/services/assessmentHistory';
 import { logger } from '@/lib/utils/logger';
+import { STORAGE_KEYS } from '@/constants/storageKeys';
 import { Helmet } from 'react-helmet-async';
 import {
   publicReportCanonicalUrl,
@@ -25,6 +26,7 @@ import {
 } from '@/constants/publicReportShare';
 import { SEO_SITE_ORIGIN } from '@/constants/seo';
 import { PRODUCT_DISPLAY_NAME } from '@/constants/productBranding';
+import { PrivacyNoticeBanner } from '@/components/client/PrivacyNoticeBanner';
 
 const ClientReport = lazy(() => import('@/components/reports/ClientReport'));
 
@@ -123,6 +125,17 @@ const PublicReportViewer = () => {
     changeNarrative,
     socialShareArtifacts,
   } = usePublicReport(token);
+
+  // Persist token so the installed PWA can redirect back to this report on next open.
+  useEffect(() => {
+    if (token && formData && !error) {
+      try {
+        localStorage.setItem(STORAGE_KEYS.CLIENT_LAST_TOKEN, token);
+      } catch {
+        /* storage quota — non-critical */
+      }
+    }
+  }, [token, formData, error]);
 
   const [selectedVersionIndex, setSelectedVersionIndex] = useState(0);
   const [versionPage, setVersionPage] = useState(0);
@@ -363,7 +376,10 @@ const PublicReportViewer = () => {
               </p>
             </>
           ) : (
-            <p className="text-sm text-muted-foreground">{error ?? 'This report is not available.'}</p>
+            <>
+              <p className="text-sm text-muted-foreground">{error ?? 'This report is not available.'}</p>
+              <p className="text-xs text-muted-foreground">Ask your coach to send you an updated link.</p>
+            </>
           )}
         </div>
       </AppShell>
@@ -417,6 +433,8 @@ const PublicReportViewer = () => {
       shareToken={token ?? undefined}
       clientName={clientName}
     >
+      <PrivacyNoticeBanner />
+
       {snapshotSummaries.length >= 2 && (
         <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-10 pt-4">
           <AssessmentVersionSelector

@@ -6,6 +6,7 @@ import { logAIUsage } from '@/services/aiUsage';
 import { auth, getFirebaseApp } from '@/services/firebase';
 import { logger } from '@/lib/utils/logger';
 import { isFeatureEnabled } from '@/services/platform/platformConfig';
+import { checkAndDecrementAICredit, AICreditExhaustedError } from '@/lib/ai/creditGate';
 import { validateOrganizationId } from '@/lib/utils/validateOrganizationId';
 import type { UserProfile } from '@/types/auth';
 import type { PostureFindingRecord } from '@/lib/types/postureFindings';
@@ -324,7 +325,10 @@ export async function analyzePostureImage(
     logger.warn('Posture analysis feature is disabled via kill switch', 'POSTURE_AI');
     throw new FeatureDisabledError('AI Posture Analysis');
   }
-  
+
+  // Gate: check and atomically decrement credit balance before spending tokens
+  await checkAndDecrementAICredit(organizationId);
+
   try {
     // 1. CALCULATE DETERMINISTIC METRICS FIRST (Free)
     let calculated: Partial<import('@/lib/utils/postureMath').CalculatedPostureMetrics> = {};
@@ -495,7 +499,7 @@ export async function analyzePostureImage(
 
     let aiResponse;
     try {
-      aiResponse = await result.response;
+      aiResponse = await result!.response;
       logger.debug(`Received response from Gemini for ${view}`, ctx);
     } catch (responseError) {
       logger.error('Failed to get response from Gemini', ctx, responseError);

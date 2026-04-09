@@ -148,7 +148,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
             <div className="mt-auto w-full pt-8 border-t border-border space-y-3">
               {/* Hidden file input for manual upload */}
               <input
-                ref={fileInputRef}
+                ref={fileInputRef as React.RefObject<HTMLInputElement>}
                 type="file"
                 accept="image/*,.heic,.heif"
                 multiple

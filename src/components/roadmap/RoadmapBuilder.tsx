@@ -238,7 +238,7 @@ export function RoadmapBuilder({ clientName, blocks, allPossibleBlocks = [], cli
           open={coachContextOpen}
           onOpenChange={setCoachContextOpen}
           clientName={clientName}
-          brief={coachBrief}
+          brief={coachBrief ?? null}
         />
         <PhaseFocusDialog
           open={phaseFocusPhase !== null}

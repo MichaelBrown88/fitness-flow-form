@@ -2,9 +2,6 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useFormContext, type FormData } from '@/contexts/FormContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { getOrgCoaches } from '@/services/coachManagement';
-import { safeParse } from '@/lib/utils/numbers';
-import { logger } from '@/lib/utils/logger';
 import type { PhaseField } from '@/types/assessment';
 
 export type FieldValue = string | number | string[] | null;
@@ -15,84 +12,16 @@ interface UseFieldControlProps {
 
 export function useFieldControl({ field }: UseFieldControlProps) {
   const { formData, updateFormData } = useFormContext();
-  const { user, profile, orgSettings } = useAuth();
+  const { orgSettings } = useAuth();
   const { toast } = useToast();
   
   const [localValue, setLocalValue] = useState<FieldValue>((formData[field.id as keyof FormData] as FieldValue) || '');
-  const [orgCoaches, setOrgCoaches] = useState<Array<{
-    uid: string;
-    displayName: string;
-    email?: string;
-    role: string;
-    clientCount: number;
-    assessmentCount: number;
-  }>>([]);
-  const [loadingCoaches, setLoadingCoaches] = useState(false);
 
   const fieldValue = formData[field.id as keyof FormData];
   // Sync local state when global state changes
   useEffect(() => {
     setLocalValue((fieldValue as FieldValue) || '');
   }, [fieldValue, field.id]);
-
-  // Load org coaches for assignedCoach field
-  useEffect(() => {
-    if (field.id !== 'assignedCoach' || !profile?.organizationId) return;
-
-    let cancelled = false;
-    setLoadingCoaches(true);
-    getOrgCoaches(profile.organizationId)
-      .then((coaches) => {
-        if (cancelled) return;
-        const adminInList = coaches.some(c => c.uid === user?.uid);
-        let coachesList = coaches;
-
-        if (!adminInList && user && profile.role === 'org_admin') {
-          coachesList = [{
-            uid: user.uid,
-            displayName: profile.displayName || user.displayName || user.email || 'Admin',
-            email: user.email || undefined,
-            role: 'org_admin',
-            clientCount: 0,
-            assessmentCount: 0,
-          }, ...coaches];
-        }
-
-        setOrgCoaches(coachesList);
-
-        if (!formData.assignedCoach && coachesList.length > 0) {
-          const adminCoach = coachesList.find(c => c.role === 'org_admin') || coachesList[0];
-          updateFormData({ assignedCoach: adminCoach.uid });
-          setLocalValue(adminCoach.uid);
-        }
-      })
-      .catch((error) => {
-        if (cancelled) return;
-        logger.error('Error loading coaches:', error);
-        if (user && profile?.role === 'org_admin') {
-          const adminCoach = {
-            uid: user.uid,
-            displayName: profile.displayName || user.displayName || user.email || 'Admin',
-            email: user.email || undefined,
-            role: 'org_admin',
-            clientCount: 0,
-            assessmentCount: 0,
-          };
-          setOrgCoaches([adminCoach]);
-          if (!formData.assignedCoach) {
-            updateFormData({ assignedCoach: user.uid });
-            setLocalValue(user.uid);
-          }
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingCoaches(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [field.id, profile?.organizationId, user, profile?.role, profile?.displayName, formData.assignedCoach, updateFormData]);
 
   // Auto-select cardio test based on equipment
   useEffect(() => {
@@ -189,8 +118,6 @@ export function useFieldControl({ field }: UseFieldControlProps) {
   return {
     localValue,
     setLocalValue,
-    orgCoaches,
-    loadingCoaches,
     fieldOptions,
     shouldShow,
     handleChange,

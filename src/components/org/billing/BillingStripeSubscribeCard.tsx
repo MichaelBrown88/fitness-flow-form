@@ -1,20 +1,14 @@
 /**
- * Checkout prep: pick capacity tier + period, then redirect to Stripe Checkout (step 2).
+ * Plan picker: billing period toggle → tier card grid → custom branding add-on → summary panel.
  */
 
 import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Palette } from 'lucide-react';
 import { BillingCheckoutSummaryPanel } from '@/components/org/billing/BillingCheckoutSummaryPanel';
+import { CapacityTierGrid, AnnualSavingsBadge } from '@/components/org/billing/CapacityTierGrid';
 import { useCheckout } from '@/hooks/useCheckout';
 import { useToast } from '@/hooks/use-toast';
 import { STRIPE_CONFIG } from '@/constants/platform';
@@ -40,6 +34,8 @@ export interface BillingStripeSubscribeCardProps {
   packageTrack?: string;
   hasStripeCustomer?: boolean;
   statsClientCount?: number;
+  /** Client limit of the current active subscription (to highlight "Current plan" on a tier card). */
+  currentSubscriptionClientLimit?: number;
   /** GB: offer custom branding on Checkout when org does not already have paid branding enabled. */
   offerBrandingAddOn?: boolean;
   onSubscriptionUpdated?: () => void;
@@ -53,22 +49,11 @@ function snapToTierAtLeast(minClients: number, tiers: CapacityTier[]): number {
   return (match ?? sorted[sorted.length - 1]).clientLimit;
 }
 
-function equivMonthlyFromAnnual(tier: CapacityTier): string {
-  const avg = tier.annualPriceGbp / 12;
-  return formatPrice(avg, 'GBP', 'en-GB');
-}
-
-function annualSavingsPercent(tier: CapacityTier): number {
-  const full = tier.monthlyPriceGbp * 12;
-  if (full <= 0) return 0;
-  return Math.max(0, Math.round((annualSavingsVsMonthly(tier) / full) * 100));
-}
-
 function buildAnnualComparison(tier: CapacityTier | null) {
   if (!tier) return null;
   const twelveMonthAtMonthly = tier.monthlyPriceGbp * 12;
   const annualOnePayment = tier.annualPriceGbp;
-  const savingVsMonthly = twelveMonthAtMonthly - annualOnePayment;
+  const savingVsMonthly = annualSavingsVsMonthly(tier);
   return {
     twelveMonthAtMonthly,
     annualOnePayment,
@@ -77,16 +62,10 @@ function buildAnnualComparison(tier: CapacityTier | null) {
   };
 }
 
-function capacityOptionLabel(tier: CapacityTier, billingPeriod: BillingPeriod): string {
-  const price =
-    billingPeriod === 'monthly'
-      ? `${formatPrice(tier.monthlyPriceGbp, 'GBP', 'en-GB')}/mo`
-      : `${formatPrice(tier.annualPriceGbp, 'GBP', 'en-GB')}/yr`;
-  const ai = tier.monthlyAiCredits === -1 ? '∞' : String(tier.monthlyAiCredits);
-  return CHECKOUT_FLOW_COPY.billingSubscribeCapacityOption
-    .replace('{clients}', String(tier.clientLimit))
-    .replace('{price}', price)
-    .replace('{ai}', ai);
+function annualSavingsPct(tier: CapacityTier): number {
+  const full = tier.monthlyPriceGbp * 12;
+  if (full <= 0) return 0;
+  return Math.max(0, Math.round((annualSavingsVsMonthly(tier) / full) * 100));
 }
 
 export function BillingStripeSubscribeCard({
@@ -98,6 +77,7 @@ export function BillingStripeSubscribeCard({
   orgType,
   packageTrack,
   statsClientCount,
+  currentSubscriptionClientLimit,
   offerBrandingAddOn = false,
   onSubscriptionUpdated,
 }: BillingStripeSubscribeCardProps) {
@@ -106,21 +86,25 @@ export function BillingStripeSubscribeCard({
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
   const [includeBrandingAddOn, setIncludeBrandingAddOn] = useState(false);
 
-  const isGymOrg =
-    orgType === 'gym' || orgType === 'gym_chain' || packageTrack === 'gym';
+  const isGymOrg = orgType === 'gym' || orgType === 'gym_chain' || packageTrack === 'gym';
   const isSoloOrg = orgType === 'solo_coach' || packageTrack === 'solo';
   const trackEligible = isGymOrg || isSoloOrg;
-  const packageTrackCheckout: PackageTrack = isGymOrg ? 'gym' : 'solo';
+  const currentTrack: PackageTrack = isGymOrg ? 'gym' : 'solo';
   const defaultSeats = isGymOrg ? GYM_TRIAL_CLIENT_CAP : 10;
   const suggestedMin = Math.max(1, Math.min(300, Math.floor(clientTarget || defaultSeats)));
 
-  const tiers = useMemo(() => {
-    if (!trackEligible) return [];
-    return getActivePaidTiersForTrack(packageTrackCheckout).sort((a, b) => a.clientLimit - b.clientLimit);
-  }, [trackEligible, packageTrackCheckout]);
-
   const checkoutLocked =
     subscriptionStatus === 'active' && Boolean(stripeSubscriptionId?.trim());
+
+  // Active subscribers can switch between solo and gym tracks in-app.
+  // New subscribers stay on their org's current track.
+  const [selectedTrack, setSelectedTrack] = useState<PackageTrack>(currentTrack);
+  const isCrossTrackSwitch = checkoutLocked && selectedTrack !== currentTrack;
+
+  const tiers = useMemo(() => {
+    if (!trackEligible) return [];
+    return getActivePaidTiersForTrack(selectedTrack).sort((a, b) => a.clientLimit - b.clientLimit);
+  }, [trackEligible, selectedTrack]);
 
   const [selectedClientLimit, setSelectedClientLimit] = useState<number>(defaultSeats);
 
@@ -129,27 +113,26 @@ export function BillingStripeSubscribeCard({
     setSelectedClientLimit(snapToTierAtLeast(suggestedMin, tiers));
   }, [suggestedMin, tiers]);
 
-  if (!STRIPE_CONFIG.isEnabled || !trackEligible) {
-    return null;
-  }
+  if (!STRIPE_CONFIG.isEnabled || !trackEligible) return null;
 
+  // Non-GB region: simplified contact section
   if (region !== 'GB') {
     return (
       <section
         id="billing-checkout-prep"
-        className="scroll-mt-24 rounded-lg border border-dashed border-border/70 bg-muted/15 p-6 sm:p-8 space-y-4"
+        className="scroll-mt-24 rounded-xl border border-border/70 bg-background p-6 sm:p-8 space-y-4"
       >
-        <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">
           {CHECKOUT_FLOW_COPY.billingSubscribeSectionLabel}
         </p>
         <div>
-          <h2 className="text-lg font-semibold text-foreground">{CHECKOUT_FLOW_COPY.billingNonGbSectionTitle}</h2>
-          <p className="text-sm text-muted-foreground mt-2 max-w-2xl leading-relaxed">
+          <h2 className="text-base font-semibold text-foreground">{CHECKOUT_FLOW_COPY.billingNonGbSectionTitle}</h2>
+          <p className="text-sm text-muted-foreground mt-1.5 max-w-xl leading-relaxed">
             {CHECKOUT_FLOW_COPY.billingNonGbSectionLead}
           </p>
         </div>
         {checkoutLocked ? (
-          <p className="text-sm text-muted-foreground border border-border/70 rounded-lg p-4 bg-background">
+          <p className="text-sm text-muted-foreground border border-border/70 rounded-lg p-4 bg-muted/20">
             {CHECKOUT_FLOW_COPY.billingNonGbActiveSubHint}
           </p>
         ) : null}
@@ -160,15 +143,15 @@ export function BillingStripeSubscribeCard({
     );
   }
 
-  const selectedTier =
-    tiers.find((t) => t.clientLimit === selectedClientLimit) ?? tiers[0] ?? null;
-
-  const tierSliderRaw = selectedTier
-    ? tiers.findIndex((t) => t.clientLimit === selectedTier.clientLimit)
-    : 0;
-  const tierSliderIndex = tierSliderRaw >= 0 ? tierSliderRaw : 0;
-
+  const selectedTier = tiers.find((t) => t.clientLimit === selectedClientLimit) ?? tiers[0] ?? null;
   const brandingPriceGbp = region === 'GB' ? getCustomBrandingPrice(region) : 0;
+  const brandingPriceFormatted = formatPrice(brandingPriceGbp, 'GBP', 'en-GB');
+  const annualComparison = buildAnnualComparison(selectedTier);
+  const savingsPct = selectedTier ? annualSavingsPct(selectedTier) : 0;
+
+  // Branding: selectable on new checkout; locked note for active subs; hidden if already enabled
+  const showBrandingSection = offerBrandingAddOn || (checkoutLocked && brandingPriceGbp > 0 && region === 'GB');
+  const brandingSelectable = offerBrandingAddOn && !checkoutLocked;
 
   const handleSubscribe = async () => {
     const { redirected, errorMessage } = await startCheckout(
@@ -176,8 +159,8 @@ export function BillingStripeSubscribeCard({
       region,
       selectedClientLimit,
       billingPeriod,
-      packageTrackCheckout,
-      offerBrandingAddOn && !checkoutLocked && includeBrandingAddOn ? true : undefined,
+      selectedTrack,
+      brandingSelectable && includeBrandingAddOn ? true : undefined,
     );
     if (!redirected && errorMessage) {
       toast({
@@ -196,18 +179,22 @@ export function BillingStripeSubscribeCard({
           region,
           selectedClientLimit,
           billingPeriod,
-          packageTrackCheckout,
+          selectedTrack,
         );
         if (data.unchanged) {
           toast({
-            title: 'Already on this package',
-            description: 'Choose a different capacity or billing period if you want to change.',
+            title: 'Already on this plan',
+            description: 'Choose a different capacity or billing period to make a change.',
+          });
+        } else if (isCrossTrackSwitch) {
+          toast({
+            title: selectedTrack === 'gym' ? 'Switched to Gym plan' : 'Switched to Solo plan',
+            description: 'Your plan type and capacity have been updated. Changes will apply within a minute.',
           });
         } else {
           toast({
             title: 'Plan updated',
-            description:
-              'Your subscription was updated in Stripe. Limits and credits refresh shortly; check your email for any invoice.',
+            description: 'Your plan was updated. Limits and credits will refresh shortly.',
           });
         }
         onSubscriptionUpdated?.();
@@ -216,11 +203,7 @@ export function BillingStripeSubscribeCard({
           e && typeof e === 'object' && 'message' in e && typeof (e as { message: string }).message === 'string'
             ? (e as { message: string }).message
             : 'Please try again or contact support.';
-        toast({
-          variant: 'destructive',
-          title: 'Could not update plan',
-          description,
-        });
+        toast({ variant: 'destructive', title: 'Could not update plan', description });
       }
     })();
   };
@@ -232,174 +215,195 @@ export function BillingStripeSubscribeCard({
     ? CHECKOUT_FLOW_COPY.billingSubscribeLeadCompare
     : CHECKOUT_FLOW_COPY.billingSubscribeLeadCheckout;
 
-  const savingsPct = selectedTier ? annualSavingsPercent(selectedTier) : 0;
-  const annualComparison = buildAnnualComparison(selectedTier);
-
-  const tierPicker = (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="text-sm font-medium text-foreground shrink-0">
-          {CHECKOUT_FLOW_COPY.billingSubscribePeriodLabel}
-        </span>
-        <div
-          className="inline-flex rounded-lg border border-border bg-muted/50 p-0.5"
-          role="group"
-          aria-label={CHECKOUT_FLOW_COPY.billingSubscribePeriodLabel}
-        >
-          {(['monthly', 'annual'] as const).map((p) => {
-            const active = billingPeriod === p;
-            return (
-              <button
-                key={p}
-                type="button"
-                disabled={loading || planUpdateLoading}
-                onClick={() => setBillingPeriod(p)}
-                aria-pressed={active}
-                className={cn(
-                  'rounded-md px-3 py-1.5 text-sm font-semibold transition-apple focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                  active ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                {p === 'monthly'
-                  ? CHECKOUT_FLOW_COPY.billingSubscribePeriodMonthly
-                  : CHECKOUT_FLOW_COPY.billingSubscribePeriodAnnual}
-              </button>
-            );
-          })}
-        </div>
-        {billingPeriod === 'annual' && savingsPct > 0 ? (
-          <Badge variant="secondary" className="text-xs font-semibold">
-            ~{savingsPct}% vs monthly
-          </Badge>
-        ) : null}
-      </div>
-
-      <div className="rounded-lg border border-border/70 bg-muted/15 p-4 space-y-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <Label htmlFor="capacity-select" className="text-sm font-medium text-foreground shrink-0">
-            {CHECKOUT_FLOW_COPY.billingSubscribeCapacityLabel}
-          </Label>
-          <Select
-            value={String(selectedClientLimit)}
-            onValueChange={(v) => setSelectedClientLimit(Number(v))}
-            disabled={loading || planUpdateLoading || tiers.length === 0}
-          >
-            <SelectTrigger id="capacity-select" className="h-9 w-full sm:w-[min(100%,320px)] rounded-lg">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent position="popper" className="max-h-[min(24rem,70vh)]">
-              {tiers.map((tier) => (
-                <SelectItem key={tier.id} value={String(tier.clientLimit)}>
-                  {capacityOptionLabel(tier, billingPeriod)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <input
-            id="capacity-slider"
-            type="range"
-            min={0}
-            max={Math.max(0, tiers.length - 1)}
-            step={1}
-            value={tierSliderIndex}
-            disabled={loading || planUpdateLoading || tiers.length === 0}
-            onChange={(e) => {
-              const i = Number(e.target.value);
-              const t = tiers[i];
-              if (t) setSelectedClientLimit(t.clientLimit);
-            }}
-            aria-valuemin={0}
-            aria-valuemax={Math.max(0, tiers.length - 1)}
-            aria-valuenow={tierSliderIndex}
-            aria-label={CHECKOUT_FLOW_COPY.billingSubscribeCapacityLabel}
-            className="w-full h-2 rounded-full bg-muted accent-primary cursor-pointer disabled:opacity-50"
-          />
-          {tiers.length > 1 ? (
-            <div className="flex justify-between text-[10px] text-muted-foreground tabular-nums px-0.5">
-              <span>{tiers[0]?.clientLimit}</span>
-              <span>{tiers[tiers.length - 1]?.clientLimit}</span>
-            </div>
-          ) : null}
-        </div>
-
-        {selectedTier ? (
-          <p className="text-sm text-muted-foreground tabular-nums">
-            {formatPrice(
-              billingPeriod === 'monthly' ? selectedTier.monthlyPriceGbp : selectedTier.annualPriceGbp,
-              'GBP',
-              'en-GB',
-            )}
-            {billingPeriod === 'monthly'
-              ? CHECKOUT_FLOW_COPY.billingSubscribePerMonthShort
-              : CHECKOUT_FLOW_COPY.billingSubscribePerYearShort}
-            {billingPeriod === 'annual' ? (
-              <span className="text-xs ml-2">
-                (
-                {CHECKOUT_FLOW_COPY.billingSubscribeEquivMonthly.replace(
-                  '{amount}',
-                  equivMonthlyFromAnnual(selectedTier),
-                )}
-                )
-              </span>
-            ) : null}
-            <span className="mx-2 text-border">·</span>
-            {selectedTier.monthlyAiCredits === -1
-              ? 'Unlimited AI/mo'
-              : `${selectedTier.monthlyAiCredits} AI credits/mo`}
-          </p>
-        ) : null}
-      </div>
-
-      <p className="text-xs text-muted-foreground">
-        {checkoutLocked
-          ? CHECKOUT_FLOW_COPY.billingSubscribePackageHintActiveSub
-          : CHECKOUT_FLOW_COPY.billingSubscribePackageHint}{' '}
-        <span className="text-muted-foreground/80">{CHECKOUT_FLOW_COPY.billingSubscribeGbpCatalogNote}</span>
-      </p>
-    </div>
-  );
-
-  const summaryPanel = (
-    <BillingCheckoutSummaryPanel
-      selectedTier={selectedTier}
-      billingPeriod={billingPeriod}
-      annualComparison={annualComparison}
-      loading={loading}
-      checkoutLocked={checkoutLocked}
-      confirmLoading={checkoutLocked ? planUpdateLoading : loading}
-      error={error}
-      onContinue={checkoutLocked ? handleConfirmPlanChange : handleSubscribe}
-      offerBrandingAddOn={offerBrandingAddOn}
-      includeBrandingAddOn={includeBrandingAddOn}
-      onIncludeBrandingChange={setIncludeBrandingAddOn}
-      brandingPriceGbp={brandingPriceGbp}
-    />
-  );
-
   return (
     <section
       id="billing-checkout-prep"
-      className="scroll-mt-24 rounded-lg border border-border/70 bg-background p-5 sm:p-6 shadow-none"
+      className="scroll-mt-24 rounded-xl border border-border/70 bg-background p-5 sm:p-6 shadow-none space-y-6"
     >
+      {/* Section header */}
       <div className="space-y-1">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
           {CHECKOUT_FLOW_COPY.billingSubscribeSectionLabel}
         </p>
-        <h2 className="text-base font-semibold text-foreground tracking-tight">{title}</h2>
+        <h2 className="text-base font-semibold text-foreground">{title}</h2>
         <p className="text-xs text-muted-foreground leading-snug max-w-xl">{lead}</p>
         {statsClientCount != null ? (
-          <p className="text-xs text-muted-foreground pt-1">
+          <p className="text-xs text-muted-foreground pt-0.5">
             {CHECKOUT_FLOW_COPY.checkoutClientsInOrg.replace('{count}', String(statsClientCount))}
           </p>
         ) : null}
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8">
-        <div className="order-2 min-w-0 lg:order-1 lg:col-span-7 xl:col-span-8">{tierPicker}</div>
-        <div className="order-1 min-w-0 lg:order-2 lg:col-span-5 xl:col-span-4">{summaryPanel}</div>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8">
+        {/* Left: picker + add-ons */}
+        <div className="order-2 min-w-0 lg:order-1 lg:col-span-7 xl:col-span-8 space-y-6">
+
+          {/* Billing period toggle */}
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-sm font-medium text-foreground shrink-0">
+              {CHECKOUT_FLOW_COPY.billingSubscribePeriodLabel}
+            </span>
+            <div
+              className="inline-flex rounded-lg border border-border bg-muted/50 p-0.5"
+              role="group"
+              aria-label="Billing period"
+            >
+              {(['monthly', 'annual'] as const).map((p) => {
+                const active = billingPeriod === p;
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    disabled={loading || planUpdateLoading}
+                    onClick={() => setBillingPeriod(p)}
+                    aria-pressed={active}
+                    className={cn(
+                      'rounded-md px-3 py-1.5 text-sm font-semibold transition-apple focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                      active ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {p === 'monthly'
+                      ? CHECKOUT_FLOW_COPY.billingSubscribePeriodMonthly
+                      : CHECKOUT_FLOW_COPY.billingSubscribePeriodAnnual}
+                  </button>
+                );
+              })}
+            </div>
+            {checkoutLocked
+              ? <span className="text-xs text-muted-foreground">View prices only — period changes require the billing portal.</span>
+              : <AnnualSavingsBadge pct={savingsPct} />
+            }
+          </div>
+
+          {/* Tier cards */}
+          <CapacityTierGrid
+            tiers={tiers}
+            selectedClientLimit={selectedClientLimit}
+            billingPeriod={billingPeriod}
+            currentClientLimit={currentSubscriptionClientLimit}
+            disabled={loading || planUpdateLoading}
+            onSelect={setSelectedClientLimit}
+          />
+
+          <p className="text-xs text-muted-foreground">
+            {checkoutLocked
+              ? CHECKOUT_FLOW_COPY.billingSubscribePackageHintActiveSub
+              : CHECKOUT_FLOW_COPY.billingSubscribePackageHint}{' '}
+            <span className="text-muted-foreground/70">{CHECKOUT_FLOW_COPY.billingSubscribeGbpCatalogNote}</span>
+          </p>
+
+          {/* Plan type selector — only shown for active subscribers */}
+          {checkoutLocked && (
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-sm font-medium text-foreground shrink-0">Plan type</span>
+                <div
+                  className="inline-flex rounded-lg border border-border bg-muted/50 p-0.5"
+                  role="group"
+                  aria-label="Plan type"
+                >
+                  {(['solo', 'gym'] as const).map((t) => {
+                    const active = selectedTrack === t;
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        disabled={loading || planUpdateLoading}
+                        onClick={() => setSelectedTrack(t)}
+                        aria-pressed={active}
+                        className={cn(
+                          'rounded-md px-3 py-1.5 text-sm font-semibold transition-apple focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                          active ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                        )}
+                      >
+                        {t === 'solo' ? 'Solo' : 'Team'}
+                      </button>
+                    );
+                  })}
+                </div>
+                {isCrossTrackSwitch && (
+                  <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                    Switching plan type
+                  </span>
+                )}
+              </div>
+              {isCrossTrackSwitch && selectedTrack === 'solo' && (
+                <p className="text-xs text-muted-foreground leading-snug">
+                  Switching to Solo removes multi-coach access. Make sure you have only one coach and your active clients fit the selected capacity — the confirmation will tell you if anything needs resolving first.
+                </p>
+              )}
+              {isCrossTrackSwitch && selectedTrack === 'gym' && (
+                <p className="text-xs text-muted-foreground leading-snug">
+                  Switching to a Team plan lets you invite additional coaches, each with their own login and client list. Your existing clients and data stay intact.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Custom branding add-on */}
+          {showBrandingSection && (
+            <div className="rounded-xl border border-border/70 bg-muted/15 p-4 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3 min-w-0">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                    <Palette className="h-4 w-4 text-foreground-secondary" aria-hidden />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground">
+                      {CHECKOUT_FLOW_COPY.brandingAddOnTitle}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                      {CHECKOUT_FLOW_COPY.brandingAddOnDesc}
+                    </p>
+                  </div>
+                </div>
+                <span className="shrink-0 text-sm font-bold tabular-nums text-foreground">
+                  {CHECKOUT_FLOW_COPY.brandingAddOnPrice(brandingPriceFormatted)}
+                </span>
+              </div>
+
+              {brandingSelectable ? (
+                <label
+                  htmlFor="checkout-branding-addon"
+                  className="flex items-center gap-2.5 cursor-pointer"
+                >
+                  <Checkbox
+                    id="checkout-branding-addon"
+                    checked={includeBrandingAddOn}
+                    onCheckedChange={(v) => setIncludeBrandingAddOn(v === true)}
+                    disabled={loading || planUpdateLoading}
+                  />
+                  <span className="text-sm font-medium text-foreground">
+                    {CHECKOUT_FLOW_COPY.brandingAddOnCheckboxLabel}
+                  </span>
+                </label>
+              ) : checkoutLocked ? (
+                <p className="text-xs text-muted-foreground">
+                  {CHECKOUT_FLOW_COPY.brandingAddOnActiveSubNote}{' '}
+                  <Link to={ROUTES.CONTACT} className="underline underline-offset-2 hover:text-foreground">
+                    Contact us
+                  </Link>
+                </p>
+              ) : null}
+            </div>
+          )}
+        </div>
+
+        {/* Right: summary panel */}
+        <div className="order-1 min-w-0 lg:order-2 lg:col-span-5 xl:col-span-4">
+          <BillingCheckoutSummaryPanel
+            selectedTier={selectedTier}
+            billingPeriod={billingPeriod}
+            annualComparison={annualComparison}
+            loading={loading}
+            checkoutLocked={checkoutLocked}
+            confirmLoading={checkoutLocked ? planUpdateLoading : loading}
+            error={error}
+            onContinue={checkoutLocked ? handleConfirmPlanChange : handleSubscribe}
+            includeBrandingAddOn={brandingSelectable && includeBrandingAddOn}
+            brandingPriceGbp={brandingPriceGbp}
+          />
+        </div>
       </div>
     </section>
   );

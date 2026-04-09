@@ -65,6 +65,8 @@ interface CompanionUIProps {
   onRetryGemini?: () => void;
   /** After first Gemini audio chunk — hides pre-voice instruction line. */
   voiceGuideStarted?: boolean;
+  /** iOS: user explicitly denied motion/orientation permission. */
+  orientationDenied?: boolean;
 }
 
 export function CompanionUI({
@@ -96,6 +98,7 @@ export function CompanionUI({
   geminiConnectionError = null,
   onRetryGemini,
   voiceGuideStarted = false,
+  orientationDenied = false,
 }: CompanionUIProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -363,7 +366,14 @@ export function CompanionUI({
             </button>
           ) : !hasPermission ? (
             <div className="flex flex-col items-center gap-3 w-full max-w-xs">
-              {mode === 'posture' ? (
+              {orientationDenied ? (
+                <div className="w-full rounded-xl bg-red-500/20 border border-red-400/30 px-4 py-3 text-center">
+                  <p className="text-[13px] font-semibold text-white leading-snug">Motion access denied</p>
+                  <p className="text-[11px] text-white/75 mt-1 leading-snug">
+                    Go to Settings → Safari → Motion & Orientation Access and enable it, then reload.
+                  </p>
+                </div>
+              ) : mode === 'posture' ? (
                 <p className="text-center text-[12px] font-medium leading-snug text-white/85 px-1">
                   {CONFIG.COMPANION.VOICE_GUIDE.PERMISSION_WAIST_HEIGHT_HINT}
                 </p>
@@ -391,7 +401,7 @@ export function CompanionUI({
                 <button
                   type="button"
                   onClick={onRetryGemini}
-                  className="text-[11px] font-medium text-primary underline underline-offset-2"
+                  className="text-[11px] font-medium text-gradient-dark underline underline-offset-2"
                 >
                   Retry voice guide
                 </button>

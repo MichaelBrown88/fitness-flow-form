@@ -1714,7 +1714,7 @@ export async function deleteV1Paths(): Promise<void> {
   logger.debug(`\n✅ v1 cleanup complete: ${totalDeleted} legacy doc(s) deleted.`);
 }
 
-if (typeof window !== 'undefined') {
+if (import.meta.env.DEV && typeof window !== 'undefined') {
   const win = window as unknown as {
     auditCanonicalData?: typeof auditCanonicalData;
     exportPlatformData?: typeof exportPlatformData;

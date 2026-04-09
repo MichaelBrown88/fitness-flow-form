@@ -19,6 +19,12 @@ export function useClientList(
   items: CoachAssessmentSummary[],
   search: string,
   organizationId?: string,
+  /**
+   * UID of the coach whose clients to fetch. Pass `null` for org-admin non-coach views
+   * (fetches all org clients). Omit / pass `undefined` to use the coach's own UID
+   * — but callers should always supply this explicitly for correct data minimisation.
+   */
+  coachUid?: string | null,
 ) {
   // Fetch client schedules; bump version to trigger refetch after edits
   const [scheduleMap, setScheduleMap] = useState<ScheduleMap>(new Map());
@@ -31,7 +37,7 @@ export function useClientList(
     const load = async () => {
       try {
         const { listClientSchedules } = await import('@/services/clientProfiles');
-        const map = await listClientSchedules(organizationId);
+        const map = await listClientSchedules(organizationId, coachUid);
         if (!cancelled) setScheduleMap(map);
       } catch (err) {
         logger.warn('[useClientList] Failed to load client schedules:', err);
@@ -41,7 +47,8 @@ export function useClientList(
     load();
     return () => { cancelled = true; };
   // Re-fetch schedules when items change (e.g. after partial assessment updates lastAssessmentDate)
-  }, [organizationId, scheduleVersion, items.length]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organizationId, scheduleVersion, items.length, coachUid]);
 
   const clientGroups = useMemo(() => {
     // Deduplicate by clientName (keep the latest summary per client)

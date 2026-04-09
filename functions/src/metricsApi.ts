@@ -178,19 +178,37 @@ function getOrgLifecycleForDay(
 }
 
 async function loadAssessmentEvents(db: admin.firestore.Firestore): Promise<AssessmentEvent[]> {
-  const historySnap = await db.collectionGroup('sessions').get();
+  const BATCH_SIZE = 1_000;
   const events: AssessmentEvent[] = [];
+  let lastDoc: admin.firestore.QueryDocumentSnapshot | undefined;
 
-  historySnap.docs.forEach((docSnap) => {
-    const data = docSnap.data() as Record<string, unknown>;
-    const organizationId = getSessionOrgId(docSnap.ref.path);
-    if (!organizationId || !isTrackableAssessmentType(data.type)) return;
+  while (true) {
+    let query = db
+      .collectionGroup('sessions')
+      .orderBy(admin.firestore.FieldPath.documentId())
+      .limit(BATCH_SIZE);
 
-    const timestamp = toDate(data.timestamp);
-    if (!organizationId || !timestamp) return;
+    if (lastDoc) {
+      query = query.startAfter(lastDoc);
+    }
 
-    events.push({ organizationId, timestamp });
-  });
+    const batch = await query.get();
+    if (batch.empty) break;
+
+    batch.docs.forEach((docSnap) => {
+      const data = docSnap.data() as Record<string, unknown>;
+      const organizationId = getSessionOrgId(docSnap.ref.path);
+      if (!organizationId || !isTrackableAssessmentType(data.type)) return;
+
+      const timestamp = toDate(data.timestamp);
+      if (!timestamp) return;
+
+      events.push({ organizationId, timestamp });
+    });
+
+    if (batch.size < BATCH_SIZE) break;
+    lastDoc = batch.docs[batch.docs.length - 1];
+  }
 
   return events;
 }
@@ -210,58 +228,48 @@ export async function getMetricsHistoryCallable(
     throw new Error('Platform admin access required.');
   }
   const days = typeof request.data?.days === 'number' ? request.data.days : 30;
-  const results: MetricsHistoryEntry[] = [];
   const now = new Date();
 
+  // Build date keys
+  const dateKeys: string[] = [];
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
-    const dateKey = d.toISOString().split('T')[0];
-    try {
-      const docRef = db.doc(`platform/metrics/history/${dateKey}`);
-      const snap = await docRef.get();
-      if (snap.exists) {
-        const data = snap.data();
-        results.push({
-          date: dateKey,
-          mrrCents: data?.mrrGbpPence ?? 0,
-          activeOrgs: data?.activeOrgs ?? 0,
-          trialOrgs: data?.trialOrgs ?? 0,
-          totalOrgs: data?.totalOrgs ?? 0,
-          totalAssessments: data?.totalAssessments ?? 0,
-          assessmentsThisMonth: data?.assessmentsThisMonth ?? 0,
-          aiCostsMtdCents: data?.aiCostsMtdGbpPence ?? 0,
-          totalAiCostsCents: data?.totalAiCostsGbpPence ?? 0,
-        });
-      } else {
-        results.push({
-          date: dateKey,
-          mrrCents: 0,
-          activeOrgs: 0,
-          trialOrgs: 0,
-          totalOrgs: 0,
-          totalAssessments: 0,
-          assessmentsThisMonth: 0,
-          aiCostsMtdCents: 0,
-          totalAiCostsCents: 0,
-        });
-      }
-    } catch (err) {
-      logger.warn(`Failed to read platform/metrics/history/${dateKey}:`, err);
-      results.push({
-        date: dateKey,
-        mrrCents: 0,
-        activeOrgs: 0,
-        trialOrgs: 0,
-        totalOrgs: 0,
-        totalAssessments: 0,
-        assessmentsThisMonth: 0,
-        aiCostsMtdCents: 0,
-        totalAiCostsCents: 0,
-      });
-    }
+    dateKeys.push(d.toISOString().split('T')[0]);
   }
-  return results;
+
+  // Batch-fetch all history docs in one round trip instead of N sequential reads
+  const refs = dateKeys.map((k) => db.doc(`platform/metrics/history/${k}`));
+  const snaps = await db.getAll(...refs);
+
+  const emptyEntry = (dateKey: string): MetricsHistoryEntry => ({
+    date: dateKey,
+    mrrCents: 0,
+    activeOrgs: 0,
+    trialOrgs: 0,
+    totalOrgs: 0,
+    totalAssessments: 0,
+    assessmentsThisMonth: 0,
+    aiCostsMtdCents: 0,
+    totalAiCostsCents: 0,
+  });
+
+  return dateKeys.map((dateKey, idx) => {
+    const snap = snaps[idx];
+    if (!snap.exists) return emptyEntry(dateKey);
+    const data = snap.data();
+    return {
+      date: dateKey,
+      mrrCents: data?.mrrGbpPence ?? 0,
+      activeOrgs: data?.activeOrgs ?? 0,
+      trialOrgs: data?.trialOrgs ?? 0,
+      totalOrgs: data?.totalOrgs ?? 0,
+      totalAssessments: data?.totalAssessments ?? 0,
+      assessmentsThisMonth: data?.assessmentsThisMonth ?? 0,
+      aiCostsMtdCents: data?.aiCostsMtdGbpPence ?? 0,
+      totalAiCostsCents: data?.totalAiCostsGbpPence ?? 0,
+    };
+  });
 }
 
 export async function rebuildPlatformMetricsHistoryCallable(
@@ -330,7 +338,7 @@ export async function rebuildPlatformMetricsHistoryCallable(
       }
     });
 
-    const entry: MetricsHistoryEntry = {
+    results.push({
       date: dateKey,
       mrrCents,
       activeOrgs,
@@ -340,26 +348,33 @@ export async function rebuildPlatformMetricsHistoryCallable(
       assessmentsThisMonth,
       aiCostsMtdCents: filsToGbpPence(aiCostsMtdFils),
       totalAiCostsCents: filsToGbpPence(totalAiCostsFils),
-    };
+    });
+  }
 
-    await db.doc(`platform/metrics/history/${dateKey}`).set(
-      {
-        date: entry.date,
-        mrrGbpPence: entry.mrrCents,
-        activeOrgs: entry.activeOrgs,
-        trialOrgs: entry.trialOrgs,
-        totalOrgs: entry.totalOrgs,
-        totalAssessments: entry.totalAssessments,
-        assessmentsThisMonth: entry.assessmentsThisMonth,
-        aiCostsMtdGbpPence: entry.aiCostsMtdCents,
-        totalAiCostsGbpPence: entry.totalAiCostsCents,
-        snapshotAt: admin.firestore.FieldValue.serverTimestamp(),
-        rebuiltAt: admin.firestore.FieldValue.serverTimestamp(),
-      },
-      { merge: true },
-    );
-
-    results.push(entry);
+  // Batch-write all history entries (Firestore limit: 500 ops per batch)
+  const BATCH_LIMIT = 500;
+  for (let i = 0; i < results.length; i += BATCH_LIMIT) {
+    const writeBatch = db.batch();
+    for (const entry of results.slice(i, i + BATCH_LIMIT)) {
+      writeBatch.set(
+        db.doc(`platform/metrics/history/${entry.date}`),
+        {
+          date: entry.date,
+          mrrGbpPence: entry.mrrCents,
+          activeOrgs: entry.activeOrgs,
+          trialOrgs: entry.trialOrgs,
+          totalOrgs: entry.totalOrgs,
+          totalAssessments: entry.totalAssessments,
+          assessmentsThisMonth: entry.assessmentsThisMonth,
+          aiCostsMtdGbpPence: entry.aiCostsMtdCents,
+          totalAiCostsGbpPence: entry.totalAiCostsCents,
+          snapshotAt: admin.firestore.FieldValue.serverTimestamp(),
+          rebuiltAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+    }
+    await writeBatch.commit();
   }
 
   logger.info('Platform metrics history rebuilt', { days, entries: results.length });
@@ -450,31 +465,41 @@ export async function reconcileSystemStats(): Promise<RebuildSystemStatsResult> 
   let totalCoaches = 0;
   let totalClients = 0;
 
-  for (const orgDoc of orgsSnap.docs) {
-    const orgData = orgDoc.data() as Record<string, unknown>;
-    if ((orgData.metadata as Record<string, unknown> | undefined)?.isDeleted === true) continue;
-    const orgId = orgDoc.id;
+  // Parallelize reads across all orgs, then batch-write results
+  const orgStats = await Promise.all(
+    orgsSnap.docs.map(async (orgDoc) => {
+      const orgData = orgDoc.data() as Record<string, unknown>;
+      if ((orgData.metadata as Record<string, unknown> | undefined)?.isDeleted === true) return null;
+      const orgId = orgDoc.id;
+      const [coachesSnap, clientsSnap] = await Promise.all([
+        db.collection(`organizations/${orgId}/coaches`).get(),
+        db.collection(`organizations/${orgId}/clients`).get(),
+      ]);
+      return { orgId, coachCount: coachesSnap.size, clientCount: clientsSnap.size };
+    }),
+  );
 
-    const coachesSnap = await db.collection(`organizations/${orgId}/coaches`).get();
-    const clientsSnap = await db.collection(`organizations/${orgId}/clients`).get();
-    const orgCoachCount = coachesSnap.size;
-    const orgClientCount = clientsSnap.size;
-    totalCoaches += orgCoachCount;
-    totalClients += orgClientCount;
-
+  const writeBatch = db.batch();
+  for (const stat of orgStats) {
+    if (!stat) continue;
+    const { orgId, coachCount, clientCount } = stat;
+    totalCoaches += coachCount;
+    totalClients += clientCount;
     const assessmentCounts = orgAssessmentCounts.get(orgId) ?? { total: 0, thisMonth: 0 };
-    await db.doc(`organizations/${orgId}`).set(
+    writeBatch.set(
+      db.doc(`organizations/${orgId}`),
       {
         stats: {
           assessmentCount: assessmentCounts.total,
           assessmentsThisMonth: assessmentCounts.thisMonth,
-          coachCount: orgCoachCount,
-          clientCount: orgClientCount,
+          coachCount,
+          clientCount,
         },
       },
       { merge: true },
     );
   }
+  await writeBatch.commit();
 
   const result: RebuildSystemStatsResult = {
     totalAssessments,

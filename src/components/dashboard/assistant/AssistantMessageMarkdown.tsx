@@ -45,7 +45,7 @@ const markdownComponents: Partial<Components> = {
     </em>
   ),
   ul: ({ children, ...props }) => (
-    <ul className="my-2.5 list-disc space-y-1.5 pl-5 marker:text-primary/50" {...props}>
+    <ul className="my-2.5 list-disc space-y-1.5 pl-5 marker:text-gradient-dark/70" {...props}>
       {children}
     </ul>
   ),
@@ -94,10 +94,30 @@ const markdownComponents: Partial<Components> = {
       {children}
     </pre>
   ),
+  table: ({ children, ...props }) => (
+    <div className="my-3 overflow-x-auto rounded-lg border border-border/50">
+      <table className="min-w-full text-[12px] leading-relaxed" {...props}>
+        {children}
+      </table>
+    </div>
+  ),
+  thead: ({ children, ...props }) => (
+    <thead className="bg-muted/50" {...props}>{children}</thead>
+  ),
+  th: ({ children, ...props }) => (
+    <th className="px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap" {...props}>
+      {children}
+    </th>
+  ),
+  td: ({ children, ...props }) => (
+    <td className="px-3 py-2 text-[12px] text-foreground border-t border-border/40" {...props}>
+      {children}
+    </td>
+  ),
   a: ({ children, href, ...props }) => (
     <a
       href={href}
-      className="font-medium text-primary underline underline-offset-2 hover:text-primary/90"
+      className="font-medium text-gradient-dark underline underline-offset-2 hover:opacity-80"
       target="_blank"
       rel="noopener noreferrer"
       {...props}

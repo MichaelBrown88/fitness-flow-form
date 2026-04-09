@@ -432,6 +432,20 @@ export async function handleCreateCheckoutSession(
   const orgData = orgDoc.data();
   await assertOrgBillingCallableAccess(db, request.auth.uid, organizationId, orgData);
 
+  // Guard: if org already has an active Stripe subscription, reject checkout.
+  // Capacity changes must go through updateSubscriptionPlan (which updates in-place with proration).
+  // This prevents a second subscription being created alongside the existing one.
+  const existingSubId = typeof orgData?.stripe?.stripeSubscriptionId === 'string'
+    ? orgData.stripe.stripeSubscriptionId.trim()
+    : '';
+  const existingSubStatus = orgData?.subscription?.status;
+  if (existingSubId && existingSubStatus === 'active') {
+    throw new HttpsError(
+      'failed-precondition',
+      'Your organisation already has an active subscription. To change your client capacity or billing period, use the plan change feature on the billing page.',
+    );
+  }
+
   /** Only explicit `false` (not purchased) — matches client upsell; legacy `undefined` keeps prior behaviour without a surprise charge. */
   const wantsBranding =
     includeCustomBranding === true && orgData?.customBrandingEnabled === false;
@@ -802,6 +816,31 @@ export async function handleUpdateSubscriptionPlan(
     );
   }
 
+  // Guard: gym → solo requires human review — multiple coaches and excess clients
+  // can't be resolved automatically. Route to support instead.
+  const currentOrgTrack: PackageTrack =
+    orgData?.subscription?.packageTrack === 'gym' ||
+    orgData?.type === 'gym' ||
+    orgData?.type === 'gym_chain'
+      ? 'gym'
+      : 'solo';
+  if (currentOrgTrack === 'gym' && track === 'solo') {
+    const coachCount: number = orgData?._counts?.coaches ?? orgData?.coachCount ?? 1;
+    const activeClients: number = orgData?.stats?.clientCount ?? orgData?.statsClientCount ?? 0;
+    if (coachCount > 1) {
+      throw new HttpsError(
+        'failed-precondition',
+        `Your organisation has ${coachCount} coaches. Moving to a Solo plan requires just one coach. Please remove additional coaches first, or contact support for help with the transition.`,
+      );
+    }
+    if (activeClients > row.clientLimit) {
+      throw new HttpsError(
+        'failed-precondition',
+        `You have ${activeClients} active clients but the Solo · ${row.clientLimit} plan allows ${row.clientLimit}. Archive clients to fit the new limit first, or contact support for help.`,
+      );
+    }
+  }
+
   const stripe = getStripe();
   const sub = await stripe.subscriptions.retrieve(subId, { expand: ['items.data.price'] });
   const item = sub.items?.data?.[0];
@@ -835,6 +874,7 @@ export async function handleUpdateSubscriptionPlan(
     billingPeriod: bp,
     clientLimit: String(row.clientLimit),
     monthlyAiCredits: String(row.monthlyAiCredits),
+    packageTrack: row.packageTrack,
     region: 'GB',
     clientCount: String(row.clientLimit),
   };
@@ -844,6 +884,28 @@ export async function handleUpdateSubscriptionPlan(
     proration_behavior: 'create_prorations',
     metadata: meta,
   });
+
+  // Write packageTrack to Firestore immediately — the webhook will also fire but
+  // this keeps the UI consistent without waiting for the async webhook delivery.
+  const firestoreUpdate: Record<string, unknown> = {
+    'subscription.packageTrack': row.packageTrack,
+    'subscription.capacityTierId': row.id,
+    'subscription.clientCap': row.clientLimit,
+    'subscription.clientSeats': row.clientLimit,
+    'subscription.clientCount': row.clientLimit,
+    'subscription.monthlyAiCredits': row.monthlyAiCredits,
+  };
+  // Solo → gym: promote org type so the UI shows gym tiers immediately.
+  if (currentOrgTrack === 'solo' && row.packageTrack === 'gym') {
+    firestoreUpdate['type'] = 'gym';
+    firestoreUpdate['subscription.type'] = 'gym';
+  }
+  // Gym → solo (passed the pre-flight above): update org type.
+  if (currentOrgTrack === 'gym' && row.packageTrack === 'solo') {
+    firestoreUpdate['type'] = 'solo_coach';
+    firestoreUpdate['subscription.type'] = 'solo_coach';
+  }
+  await db.doc(`organizations/${organizationId}`).update(firestoreUpdate);
 
   return { ok: true };
 }
@@ -1044,6 +1106,8 @@ import {
   alertSubscriptionCancelled,
   alertPaymentFailed,
   alertTrialEnding,
+  alertTrialStarted,
+  alertPastDue,
 } from './slackBillingAlerts';
 import { sendTrialEndingSoonEmail } from './trialNudges';
 
@@ -1103,6 +1167,21 @@ async function runStripeWebhookHandlers(
   event: Stripe.Event,
 ): Promise<void> {
   switch (event.type) {
+    case 'customer.subscription.created': {
+      const subscription = event.data.object as Stripe.Subscription;
+      const orgId = subscription.metadata?.organizationId;
+      if (orgId && subscription.status === 'trialing') {
+        const orgSnap = await db.doc(`organizations/${orgId}`).get();
+        const orgName = orgSnap.data()?.name as string | undefined;
+        const trialEnd = subscription.trial_end
+          ? new Date(subscription.trial_end * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+          : undefined;
+        alertTrialStarted({ orgId, orgName, trialEnd });
+        logger.info('subscription.created — trial started', { eventId: event.id, orgId });
+      }
+      break;
+    }
+
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session;
       if (session.metadata?.landingGuestPreview === 'true') {
@@ -1200,6 +1279,9 @@ async function runStripeWebhookHandlers(
             updateData['subscription.clientCount'] = row.clientLimit;
             updateData['subscription.monthlyAiCredits'] = row.monthlyAiCredits;
             updateData['subscription.plan'] = `package_${capacityTierId.toLowerCase()}`;
+            // Keep packageTrack in sync — required for cross-track plan changes
+            // (solo ↔ gym) to show the correct tier grid on the billing page.
+            updateData['subscription.packageTrack'] = row.packageTrack;
           }
         }
         if (stripePriceId) {
@@ -1217,7 +1299,8 @@ async function runStripeWebhookHandlers(
         // Notify the org owner when the subscription goes past_due
         if (status === 'past_due') {
           const orgSnap = await db.doc(`organizations/${orgId}`).get();
-          const ownerId: string | undefined = orgSnap.data()?.ownerId;
+          const orgData = orgSnap.data();
+          const ownerId: string | undefined = orgData?.ownerId;
           if (ownerId) {
             await db.collection(`notifications/${ownerId}/items`).add({
               type: 'subscription_past_due',
@@ -1230,6 +1313,7 @@ async function runStripeWebhookHandlers(
               actionUrl: '/billing',
             });
           }
+          alertPastDue({ orgId, orgName: orgData?.name as string | undefined });
         }
       }
       break;
@@ -1474,9 +1558,7 @@ export async function handleCreateCreditTopupSession(
     throw new HttpsError('not-found', 'Organization not found.');
   }
   const orgData = orgDoc.data()!;
-  if (orgData.ownerId !== request.auth.uid) {
-    throw new HttpsError('permission-denied', 'Only the organization owner can purchase credits.');
-  }
+  await assertOrgBillingCallableAccess(db, request.auth.uid, organizationId, orgData);
 
   const region: string = orgData.subscription?.region || orgData.region || 'GB';
   const { amount, currency } = creditTopupAmountForRegion(region);

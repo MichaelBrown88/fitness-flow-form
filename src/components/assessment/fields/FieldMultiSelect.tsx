@@ -44,7 +44,7 @@ export const FieldMultiSelect: React.FC<FieldMultiSelectProps> = ({
             onClick={() => toggle(opt.value)}
             className={`relative flex h-auto min-h-[64px] items-center gap-4 overflow-hidden rounded-lg border-2 px-5 py-3 text-left transition-all ${
               isActive
-              ? 'border-foreground bg-foreground text-white shadow-sm'
+              ? 'border-primary bg-primary text-primary-foreground shadow-sm'
               : `bg-background text-foreground-secondary ${colorClass}`
             }`}
             aria-pressed={isActive}
@@ -52,7 +52,7 @@ export const FieldMultiSelect: React.FC<FieldMultiSelectProps> = ({
           >
             {(opt.tag || selectionLabel) && (
               <div className={`absolute top-0 right-0 px-3 py-1 rounded-bl-xl text-[10px] font-black uppercase tracking-[0.15em] ${
-                isActive ? 'bg-background/20 text-white' : 'bg-foreground text-white'
+                isActive ? 'bg-background/20 text-primary-foreground' : 'bg-primary text-primary-foreground'
               }`}>
                 {selectionLabel ?? opt.tag}
               </div>

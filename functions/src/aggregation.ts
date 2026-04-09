@@ -9,6 +9,7 @@ import * as admin from 'firebase-admin';
 import { logger } from 'firebase-functions';
 import type { Change } from 'firebase-functions';
 import { filsToGbpPence } from './currency';
+import { alertCapacityHit } from './slackBillingAlerts';
 import {
   currencyRatesFromFirestoreDoc,
   DEFAULT_CURRENCY_RATES,
@@ -412,6 +413,14 @@ export async function handleClientChange(
     if (isBillingActiveClientStatus(status)) {
       await updateSystemStats({ totalClients: 1 });
       await updateOrgStats(orgId, { clientCount: 1 });
+
+      // Capacity alerting: fire once when crossing 80% or hitting the cap.
+      // Reads are cheap here; fire-and-forget (non-blocking to the write path).
+      if (orgId) {
+        void checkAndAlertCapacity(orgId).catch((err) =>
+          logger.warn('[handleClientChange] Capacity check failed', err),
+        );
+      }
     }
     return;
   }
@@ -437,6 +446,54 @@ export async function handleClientChange(
       await updateSystemStats({ totalClients: 1 });
       await updateOrgStats(orgId, { clientCount: 1 });
     }
+  }
+}
+
+/**
+ * Check org client count vs subscription cap and alert if at 80% or full.
+ * Only fires on the exact crossing point to avoid repeated alerts.
+ */
+async function checkAndAlertCapacity(orgId: string): Promise<void> {
+  const db = getDb();
+  const [orgSnap, statsSnap] = await Promise.all([
+    db.doc(`organizations/${orgId}`).get(),
+    db.doc(`organizations/${orgId}/stats/summary`).get(),
+  ]);
+  const orgData = orgSnap.data();
+  // clientCap comes from subscription; fall back to legacy fields
+  const clientCap: number =
+    orgData?.subscription?.clientCap ??
+    orgData?.subscription?.clientSeats ??
+    orgData?.subscription?.clientCount ??
+    0;
+  if (!clientCap) return; // free tier or no subscription; nothing to check
+
+  // Current active-client count — use stats doc if available, else org field
+  const statsData = statsSnap.data();
+  const currentCount: number = statsData?.clientCount ?? orgData?.stats?.clientCount ?? 0;
+  const prevCount = currentCount - 1; // we just incremented by 1
+
+  const pct = currentCount / clientCap;
+  const prevPct = prevCount / clientCap;
+
+  if (currentCount >= clientCap && prevCount < clientCap) {
+    // Crossed into full
+    await alertCapacityHit({
+      orgId,
+      orgName: orgData?.name as string | undefined,
+      clientCount: currentCount,
+      clientCap,
+      level: 'full',
+    });
+  } else if (pct >= 0.8 && prevPct < 0.8) {
+    // Crossed 80% warning threshold
+    await alertCapacityHit({
+      orgId,
+      orgName: orgData?.name as string | undefined,
+      clientCount: currentCount,
+      clientCap,
+      level: 'warning',
+    });
   }
 }
 
@@ -481,33 +538,6 @@ export async function handleAIUsageChange(
 
     if (afterOrgId) {
       await updateOrgStats(afterOrgId, { totalAiCostsGbpPence: afterCostGbpPence });
-    }
-
-    // Decrement assessmentCredits for AI-consumed assessment types (not assistant chat)
-    if (afterOrgId) {
-      const logType = typeof afterData?.type === 'string' ? afterData.type : '';
-      const logStatus = typeof afterData?.status === 'string' ? afterData.status : '';
-      const logProvider = typeof afterData?.provider === 'string' ? afterData.provider : '';
-
-      const ASSESSMENT_TYPES = new Set([
-        'ocr_body_comp', 'ocr_inbody', 'posture_analysis',
-        'exercise_recommendation', 'comparison_narrative',
-      ]);
-      const AI_PROVIDERS = new Set(['gemini', 'openai', 'anthropic']);
-      const CREDIT_CONSUMING_STATUSES = new Set(['ai_success', 'ai_fallback']);
-
-      if (
-        ASSESSMENT_TYPES.has(logType) &&
-        AI_PROVIDERS.has(logProvider) &&
-        CREDIT_CONSUMING_STATUSES.has(logStatus)
-      ) {
-        await getDb().doc(`organizations/${afterOrgId}`).update({
-          assessmentCredits: admin.firestore.FieldValue.increment(-1),
-        });
-        logger.info('[AI-CREDITS] Decremented assessmentCredits', {
-          orgId: afterOrgId, type: logType, status: logStatus,
-        });
-      }
     }
   } else if (isUpdated) {
     const systemMtdDelta =

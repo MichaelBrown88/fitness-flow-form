@@ -59,5 +59,29 @@ export function runCoachAssistantIntent(
     return { blocks: PLACEHOLDER, factsForModel: { intent: 'slash_share' } };
   }
 
+  if (lower === COACH_ASSISTANT_SLASH.DUE || lower === COACH_ASSISTANT_SLASH.DUE.slice(1)) {
+    return {
+      blocks: PLACEHOLDER,
+      factsForModel: { intent: 'slash_due' },
+      threadTitleHint: 'Who\'s due',
+    };
+  }
+
+  if (lower === COACH_ASSISTANT_SLASH.PROGRESS || lower === COACH_ASSISTANT_SLASH.PROGRESS.slice(1)) {
+    return {
+      blocks: PLACEHOLDER,
+      factsForModel: { intent: 'slash_progress' },
+      threadTitleHint: 'Client progress',
+    };
+  }
+
+  if (lower === COACH_ASSISTANT_SLASH.HEALTH || lower === COACH_ASSISTANT_SLASH.HEALTH.slice(1)) {
+    return {
+      blocks: PLACEHOLDER,
+      factsForModel: { intent: 'slash_health' },
+      threadTitleHint: 'Roster health',
+    };
+  }
+
   return { blocks: PLACEHOLDER, factsForModel: { intent: 'chat' } };
 }

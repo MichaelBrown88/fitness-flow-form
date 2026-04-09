@@ -38,7 +38,7 @@ export function resolveAssistantActionPath(
     case 'view_roadmap':
       return clientSeg ? `/client/${clientSeg}/roadmap` : null;
     case 'view_schedule':
-      return dashboardWorkPath('work');
+      return dashboardWorkPath('tasks');
     case 'view_artifacts':
       return ROUTES.DASHBOARD_ARTIFACTS;
     case 'view_billing':

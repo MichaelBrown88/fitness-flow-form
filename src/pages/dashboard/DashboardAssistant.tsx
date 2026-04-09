@@ -2,11 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, ty
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
   Sun,
-  Search,
   ClipboardPlus,
-  CalendarRange,
+  TrendingUp,
+  AlertCircle,
   Share2,
+  CalendarClock,
   Plus,
+  MessageCircle,
+  Square,
   type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -41,10 +44,11 @@ const COMPOSER_SHELL =
   'w-full rounded-2xl border border-border/70 bg-card px-5 py-4 shadow-sm dark:border-border dark:bg-card focus-within:outline-none';
 
 const SLASH_COMMANDS = [
-  { cmd: '/today', desc: 'Daily brief — answered in this chat' },
-  { cmd: '/clients', desc: 'Ask about your roster in chat' },
-  { cmd: '/work', desc: 'Queue & calendar — summarised here' },
-  { cmd: '/share', desc: 'Public links — summarised here' },
+  { cmd: '/today', desc: 'Daily brief — overdue clients, tasks, priorities' },
+  { cmd: '/due', desc: "Who's due or overdue for reassessment" },
+  { cmd: '/progress', desc: 'Score trends and most improved clients' },
+  { cmd: '/health', desc: 'Roster-wide patterns and who needs focus' },
+  { cmd: '/share', desc: 'Public links — reports, ARC™, milestones' },
   { cmd: '/help', desc: 'Command list' },
 ] as const;
 
@@ -151,11 +155,16 @@ export default function DashboardAssistant() {
           onClick: () => void assistant.sendMessage('/today'),
         },
         {
-          label: COACH_ASSISTANT_COPY.CHIP_FIND_CLIENT,
-          Icon: Search,
+          label: COACH_ASSISTANT_COPY.CHIP_WHOS_DUE,
+          Icon: CalendarClock,
+          onClick: () => void assistant.sendMessage('/due'),
+        },
+        {
+          label: COACH_ASSISTANT_COPY.CHIP_CLIENT_PROGRESS,
+          Icon: TrendingUp,
           onClick: () =>
             void assistant.sendMessage(
-              'Browse my client roster: who needs attention, and help me pick someone to look at.',
+              '/progress',
             ),
         },
         {
@@ -163,16 +172,13 @@ export default function DashboardAssistant() {
           Icon: ClipboardPlus,
           onClick: () =>
             void assistant.sendMessage(
-              'I want to start a new assessment. Use my roster to suggest who to assess next and how to open the assessment flow.',
+              'I want to start a new assessment. Who should I assess next based on my schedule, and can you open the assessment flow for them?',
             ),
         },
         {
-          label: COACH_ASSISTANT_COPY.CHIP_CALENDAR,
-          Icon: CalendarRange,
-          onClick: () =>
-            void assistant.sendMessage(
-              'What does my reassessment schedule look like for the next week? Who is due or overdue?',
-            ),
+          label: COACH_ASSISTANT_COPY.CHIP_ROSTER_HEALTH,
+          Icon: AlertCircle,
+          onClick: () => void assistant.sendMessage('/health'),
         },
         {
           label: COACH_ASSISTANT_COPY.CHIP_SHARE,
@@ -365,6 +371,17 @@ export default function DashboardAssistant() {
             ))}
           </div>
         )}
+        {assistant.interactionMode === 'assist' && (
+          <div className="mb-2 flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 dark:border-amber-800/60 dark:bg-amber-950/40">
+            <MessageCircle className="h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
+            <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+              {COACH_ASSISTANT_COPY.MODE_ASSIST_WARNING}
+            </span>
+            <span className="ml-1 text-[11px] text-amber-600/80 dark:text-amber-400/70">
+              {COACH_ASSISTANT_COPY.MODE_ASSIST_WARNING_SUB}
+            </span>
+          </div>
+        )}
         <Textarea {...textareaProps} className={cn(textareaProps.className, 'min-h-[68px] px-0')} />
         <div className="flex items-center justify-between gap-3 pt-1.5">
           <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -407,15 +424,29 @@ export default function DashboardAssistant() {
               </p>
             )}
           </div>
-          <Button
-            type="button"
-            size="sm"
-            className="h-8 min-w-[4rem] rounded-lg px-4 text-xs font-semibold"
-            onClick={() => void send()}
-            disabled={!draft.trim()}
-          >
-            Send
-          </Button>
+          {assistant.sending ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8 min-w-[4rem] rounded-lg px-3 text-xs font-semibold gap-1.5"
+              onClick={() => assistant.abortCurrentMessage()}
+              aria-label="Stop response"
+            >
+              <Square className="h-3 w-3 fill-current" aria-hidden />
+              Stop
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              size="sm"
+              className="h-8 min-w-[4rem] rounded-lg px-4 text-xs font-semibold"
+              onClick={() => void send()}
+              disabled={!draft.trim()}
+            >
+              Send
+            </Button>
+          )}
         </div>
       </div>
     </div>
@@ -478,9 +509,9 @@ export default function DashboardAssistant() {
                               `Show me everything useful for reassessing ${item.clientName} — latest AXIS score, pillar schedule, and suggest next steps. Offer a button to start their assessment when I'm ready.`,
                             )
                           }
-                          className="shrink-0 text-[11px] font-bold text-primary hover:underline"
+                          className="shrink-0 rounded-full bg-primary px-2.5 py-0.5 text-[10px] font-bold text-primary-foreground hover:bg-primary/90 transition-colors"
                         >
-                          In chat
+                          Ask assistant
                         </button>
                       </li>
                     );

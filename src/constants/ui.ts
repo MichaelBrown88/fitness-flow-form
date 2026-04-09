@@ -267,7 +267,7 @@ export const UI_SCHEDULE = {
 export const UI_DRAFT = {
   TITLE: 'Resume where you left off?',
   RESUME: 'Resume',
-  START_FRESH: 'Start Fresh',
+  START_FRESH: 'Start fresh',
   DRAFT_SAVED: 'Draft saved',
   SAVING: 'Saving...',
   CLOUD_NEWER_TITLE: 'Newer draft saved online',

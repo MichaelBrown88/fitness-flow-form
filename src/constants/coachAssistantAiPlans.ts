@@ -16,8 +16,8 @@ export type AssistantAiPlanLimits = {
 
 export const ASSISTANT_AI_PLAN_LIMITS: Record<AssistantAiPlanTier, AssistantAiPlanLimits> = {
   trial:   { maxRequests: 25,    maxTokens: 300_000 },
-  starter: { maxRequests: 600,   maxTokens: 8_000_000 },
-  pro:     { maxRequests: 1_000, maxTokens: 20_000_000 },
+  starter: { maxRequests: 1_500, maxTokens: 20_000_000 },
+  pro:     { maxRequests: 3_500, maxTokens: 50_000_000 },
   studio:  { maxRequests: null,  maxTokens: null },
 };
 

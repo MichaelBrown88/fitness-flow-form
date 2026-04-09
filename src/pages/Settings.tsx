@@ -11,10 +11,11 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
-import { updateOrgSettings, uploadOrgLogo, type OrgSettings, DEFAULT_EQUIPMENT_CONFIG } from '@/services/organizations';
+import { updateOrgSettings, uploadOrgLogo, uploadOrgLogoDark, type OrgSettings, DEFAULT_EQUIPMENT_CONFIG } from '@/services/organizations';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Upload, Palette, ShieldCheck, Box, Settings as SettingsIcon, User, Building2, Calendar, ArrowLeft, Bell, CreditCard } from 'lucide-react';
-import { getAllGradients, type GradientId } from '@/lib/design/gradients';
+import { getAllGradients, getGradient, type GradientId } from '@/lib/design/gradients';
+import { BrandingPreview } from '@/components/settings/BrandingPreview';
 import { doc, setDoc } from 'firebase/firestore';
 import { getDb } from '@/services/firebase';
 import { logger } from '@/lib/utils/logger';
@@ -42,8 +43,12 @@ const Settings = () => {
   const { toast } = useToast();
   const [localOrgName, setLocalOrgName] = useState(orgSettings?.name || '');
   const [localGradientId, setLocalGradientId] = useState<GradientId>((orgSettings?.gradientId as GradientId) || 'volt');
+  const [localBrandHex, setLocalBrandHex] = useState<string>(
+    orgSettings?.brandHex || getGradient((orgSettings?.gradientId as GradientId) || 'volt').fromHex,
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isUploadingDark, setIsUploadingDark] = useState(false);
   const [brandingCheckoutLoading, setBrandingCheckoutLoading] = useState(false);
   const brandingPurchaseSuccessHandled = useRef(false);
   const gradients = getAllGradients();
@@ -79,7 +84,9 @@ const Settings = () => {
   useEffect(() => {
     if (orgSettings) {
       setLocalOrgName(orgSettings.name);
-      setLocalGradientId((orgSettings.gradientId as GradientId) || 'volt');
+      const gid = (orgSettings.gradientId as GradientId) || 'volt';
+      setLocalGradientId(gid);
+      setLocalBrandHex(orgSettings.brandHex || getGradient(gid).fromHex);
     }
   }, [orgSettings]);
 
@@ -107,8 +114,13 @@ const Settings = () => {
 
   const brandingDirty = useMemo(() => {
     if (!orgSettings) return false;
-    return localOrgName !== orgSettings.name || localGradientId !== (orgSettings.gradientId || 'volt');
-  }, [orgSettings, localOrgName, localGradientId]);
+    const savedHex = orgSettings.brandHex || getGradient((orgSettings.gradientId as GradientId) || 'volt').fromHex;
+    return (
+      localOrgName !== orgSettings.name ||
+      localGradientId !== (orgSettings.gradientId || 'volt') ||
+      localBrandHex !== savedHex
+    );
+  }, [orgSettings, localOrgName, localGradientId, localBrandHex]);
 
   const profileDirty = useMemo(() => {
     const saved = (profile?.displayName ?? '').trim();
@@ -186,6 +198,7 @@ const Settings = () => {
       await updateOrgSettings(profile.organizationId, {
         name: localOrgName,
         gradientId: localGradientId,
+        brandHex: /^#[0-9a-fA-F]{6}$/.test(localBrandHex) ? localBrandHex : undefined,
       });
       await refreshSettings();
       toast({ title: 'Settings saved to database' });
@@ -226,6 +239,21 @@ const Settings = () => {
       toast({ title: 'Upload failed', description: 'Storage permissions restricted.', variant: 'destructive' });
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleDarkLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !profile?.organizationId) return;
+    setIsUploadingDark(true);
+    try {
+      await uploadOrgLogoDark(profile.organizationId, file);
+      await refreshSettings();
+      toast({ title: 'Dark mode logo uploaded' });
+    } catch (err) {
+      toast({ title: 'Upload failed', description: 'Storage permissions restricted.', variant: 'destructive' });
+    } finally {
+      setIsUploadingDark(false);
     }
   };
 
@@ -535,12 +563,12 @@ const Settings = () => {
                 Questions?{' '}
                 <a
                   href="mailto:support@one-assess.com?subject=Custom%20branding%20add-on"
-                  className="font-semibold text-primary underline-offset-4 hover:underline"
+                  className="font-semibold text-gradient-dark underline-offset-4 hover:underline"
                 >
                   Email support
                 </a>{' '}
                 or{' '}
-                <Link to={`${ROUTES.CONTACT}?interest=custom-branding`} className="font-semibold text-primary underline-offset-4 hover:underline">
+                <Link to={`${ROUTES.CONTACT}?interest=custom-branding`} className="font-semibold text-gradient-dark underline-offset-4 hover:underline">
                   contact form
                 </Link>
                 .
@@ -565,20 +593,20 @@ const Settings = () => {
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
-                    Brand gradient
+                    Brand colour
                   </Label>
-                  <Select value={localGradientId} onValueChange={(value) => setLocalGradientId(value as GradientId)}>
-                    <SelectTrigger className="w-full rounded-lg border-border h-11">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {gradients.map((gradient) => (
-                        <SelectItem key={gradient.id} value={gradient.id}>
-                          {gradient.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center gap-2">
+                    <div className="relative h-11 w-11 shrink-0 rounded-lg border-2 border-border shadow-sm overflow-hidden">
+                      <div className="absolute inset-0" style={{ backgroundColor: /^#[0-9a-fA-F]{6}$/.test(localBrandHex) ? localBrandHex : '#bcff00' }} />
+                      <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(localBrandHex) ? localBrandHex : '#bcff00'} onChange={(e) => setLocalBrandHex(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                    </div>
+                    <Input value={localBrandHex} onChange={(e) => { const v = e.target.value; if (/^#?[0-9a-fA-F]{0,6}$/.test(v)) setLocalBrandHex(v.startsWith('#') ? v : `#${v}`); }} placeholder="#RRGGBB" className="rounded-lg border-border h-11 font-mono uppercase" maxLength={7} />
+                  </div>
+                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 mt-2">
+                    {gradients.map((gradient) => (
+                      <button key={gradient.id} type="button" onClick={() => { setLocalGradientId(gradient.id); setLocalBrandHex(gradient.fromHex); }} className={`h-8 rounded-lg border-2 transition-all ${localBrandHex.toLowerCase() === gradient.fromHex.toLowerCase() ? 'border-foreground scale-105' : 'border-transparent hover:border-muted-foreground/40'}`} style={{ backgroundColor: gradient.fromHex }} title={gradient.name} />
+                    ))}
+                  </div>
                 </div>
                 <Button
                   type="button"
@@ -591,112 +619,204 @@ const Settings = () => {
               </div>
             </section>
             ) : (
-            <section className="space-y-4">
-              <div className="flex items-center gap-2 text-foreground mb-2">
+            <section className="space-y-6">
+              <div className="flex items-center gap-2 text-foreground">
                 <Palette className="h-5 w-5 text-primary" />
                 <h2 className="text-lg font-bold">Organization Branding</h2>
               </div>
-              
+
               <div className="grid gap-6 md:grid-cols-2">
-                {/* Name and Gradient */}
-                <div className="rounded-lg border border-border/70 bg-background p-6 space-y-4">
+                {/* ── Name + Colour ── */}
+                <div className="rounded-lg border border-border/70 bg-background p-6 space-y-5">
+                  {/* Org name */}
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">Organization Name</Label>
-                    <Input 
-                      value={localOrgName} 
+                    <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
+                      Organisation name
+                    </Label>
+                    <Input
+                      value={localOrgName}
                       onChange={(e) => setLocalOrgName(e.target.value)}
-                      placeholder="Organization Name"
+                      placeholder="Organisation name"
                       className="rounded-lg border-border h-11"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">Brand Gradient</Label>
-                    <Select value={localGradientId} onValueChange={(value) => setLocalGradientId(value as GradientId)}>
-                      <SelectTrigger className="w-full rounded-lg border-border h-11">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {gradients.map((gradient) => (
-                          <SelectItem key={gradient.id} value={gradient.id}>
-                            <div className="flex items-center gap-3">
-                              <div 
-                                className="w-6 h-6 rounded-md"
-                                style={{
-                                  background: `linear-gradient(to right, ${gradient.fromHex}, ${gradient.toHex})`
-                                }}
-                              />
-                              <span>{gradient.name}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mt-3">
-                      {gradients.map((gradient) => (
-                        <button
-                          key={gradient.id}
-                          type="button"
-                          onClick={() => setLocalGradientId(gradient.id)}
-                          className={`relative h-12 rounded-lg border-2 transition-all ${
-                            localGradientId === gradient.id
-                              ? 'border-foreground shadow-md scale-105'
-                              : 'border-border hover:border-muted-foreground/40'
-                          }`}
-                          style={{
-                            background: `linear-gradient(to right, ${gradient.fromHex}, ${gradient.toHex})`
-                          }}
-                          title={gradient.name}
-                        >
-                          {localGradientId === gradient.id && (
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <div className="w-5 h-5 rounded-full bg-card/90 flex items-center justify-center">
-                                <svg className="w-3 h-3 text-foreground" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                </svg>
-                              </div>
-                            </div>
-                          )}
-                        </button>
-                      ))}
+
+                  {/* Brand colour — custom hex picker */}
+                  <div className="space-y-3">
+                    <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
+                      Brand colour
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      {/* Native colour picker hidden behind a styled swatch */}
+                      <div className="relative h-11 w-11 shrink-0 rounded-lg border-2 border-border shadow-sm overflow-hidden">
+                        <div
+                          className="absolute inset-0"
+                          style={{ backgroundColor: /^#[0-9a-fA-F]{6}$/.test(localBrandHex) ? localBrandHex : '#bcff00' }}
+                        />
+                        <input
+                          type="color"
+                          value={/^#[0-9a-fA-F]{6}$/.test(localBrandHex) ? localBrandHex : '#bcff00'}
+                          onChange={(e) => setLocalBrandHex(e.target.value)}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                          title="Pick a colour"
+                        />
+                      </div>
+                      <Input
+                        value={localBrandHex}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (/^#?[0-9a-fA-F]{0,6}$/.test(v)) {
+                            setLocalBrandHex(v.startsWith('#') ? v : `#${v}`);
+                          }
+                        }}
+                        onBlur={() => {
+                          if (!/^#[0-9a-fA-F]{6}$/.test(localBrandHex)) {
+                            // Reset to saved value on invalid input
+                            const saved = orgSettings?.brandHex || getGradient(localGradientId).fromHex;
+                            setLocalBrandHex(saved);
+                          }
+                        }}
+                        placeholder="#RRGGBB"
+                        className="rounded-lg border-border h-11 font-mono uppercase"
+                        maxLength={7}
+                      />
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Enter any hex colour. We automatically adjust it for light and dark modes.
+                    </p>
+
+                    {/* Quick preset swatches */}
+                    <div className="space-y-1.5">
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                        Quick presets
+                      </p>
+                      <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                        {gradients.map((gradient) => {
+                          const isActive = localBrandHex.toLowerCase() === gradient.fromHex.toLowerCase();
+                          return (
+                            <button
+                              key={gradient.id}
+                              type="button"
+                              onClick={() => {
+                                setLocalGradientId(gradient.id);
+                                setLocalBrandHex(gradient.fromHex);
+                              }}
+                              className={`relative h-9 rounded-lg border-2 transition-all ${
+                                isActive
+                                  ? 'border-foreground shadow-md scale-105'
+                                  : 'border-transparent hover:border-muted-foreground/40'
+                              }`}
+                              style={{ backgroundColor: gradient.fromHex }}
+                              title={gradient.name}
+                            >
+                              {isActive && (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <div className="w-4 h-4 rounded-full bg-card/90 flex items-center justify-center">
+                                    <svg className="w-2.5 h-2.5 text-foreground" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                    </svg>
+                                  </div>
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
-                  <Button 
-                    onClick={handleSaveOrgInfo} 
-                    disabled={isSaving}
-                    className="w-full rounded-lg bg-foreground text-background font-bold h-11 shadow-lg transition-all hover:bg-foreground/90"
+
+                  <Button
+                    onClick={() => void handleSaveOrgInfo()}
+                    disabled={isSaving || !brandingDirty}
+                    className="w-full rounded-lg bg-primary text-primary-foreground font-bold h-11 shadow-lg transition-all hover:bg-primary/90"
                   >
                     {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Save Branding
+                    Save branding
                   </Button>
                 </div>
 
-                {/* Logo Upload */}
-                <div className="rounded-lg border border-border/70 bg-background p-6 flex flex-col items-center justify-center text-center space-y-4">
-                  <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground self-start">Organization Logo</Label>
-                  <div className="h-28 w-full flex items-center justify-center rounded-lg bg-muted">
-                    {orgSettings?.logoUrl ? (
-                      <img src={orgSettings.logoUrl} alt="Org Logo" className="h-20 w-auto object-contain" />
-                    ) : (
-                      <div className="flex flex-col items-center gap-1 text-muted-foreground/50">
-                        <Upload className="h-6 w-6 opacity-20" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.15em]">No Logo</span>
-                      </div>
-                    )}
+                {/* ── Logos ── */}
+                <div className="rounded-lg border border-border/70 bg-background p-6 space-y-5">
+                  <div>
+                    <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
+                      Logos
+                    </Label>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Upload a dark logo for light backgrounds and a light/reversed logo for dark backgrounds. PNG or SVG on a transparent background works best.
+                    </p>
                   </div>
-                  <div className="relative w-full">
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      onChange={handleLogoUpload}
-                      className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                      disabled={isUploading}
-                    />
-                    <Button variant="outline" className="w-full rounded-lg font-bold h-11 gap-2 border-border bg-card hover:bg-muted">
-                      {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                      {orgSettings?.logoUrl ? 'Change Logo' : 'Upload New Logo'}
-                    </Button>
+
+                  {/* Light mode logo */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-foreground">Light mode logo</p>
+                    <div className="h-24 w-full flex items-center justify-center rounded-lg bg-white border border-border/70">
+                      {orgSettings?.logoUrl ? (
+                        <img src={orgSettings.logoUrl} alt="Light logo" className="h-16 w-auto max-w-[80%] object-contain" />
+                      ) : (
+                        <div className="flex flex-col items-center gap-1 text-muted-foreground/40">
+                          <Upload className="h-5 w-5" />
+                          <span className="text-[10px] font-semibold uppercase tracking-wider">Not set</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLogoUpload}
+                        className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                        disabled={isUploading}
+                      />
+                      <Button variant="outline" className="w-full rounded-lg font-semibold h-10 gap-2 border-border bg-card hover:bg-muted text-sm">
+                        {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                        {orgSettings?.logoUrl ? 'Replace' : 'Upload light logo'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Dark mode logo */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-foreground">Dark mode logo</p>
+                    <div className="h-24 w-full flex items-center justify-center rounded-lg bg-zinc-900 border border-border/70">
+                      {orgSettings?.logoUrlDark ? (
+                        <img src={orgSettings.logoUrlDark} alt="Dark logo" className="h-16 w-auto max-w-[80%] object-contain" />
+                      ) : orgSettings?.logoUrl ? (
+                        <div className="flex flex-col items-center gap-1">
+                          <img src={orgSettings.logoUrl} alt="Fallback" className="h-12 w-auto max-w-[70%] object-contain opacity-50" />
+                          <span className="text-[9px] text-zinc-500 font-medium">Using light logo as fallback</span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-1 text-zinc-600">
+                          <Upload className="h-5 w-5" />
+                          <span className="text-[10px] font-semibold uppercase tracking-wider">Not set</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleDarkLogoUpload}
+                        className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                        disabled={isUploadingDark}
+                      />
+                      <Button variant="outline" className="w-full rounded-lg font-semibold h-10 gap-2 border-border bg-card hover:bg-muted text-sm">
+                        {isUploadingDark ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                        {orgSettings?.logoUrlDark ? 'Replace' : 'Upload dark logo'}
+                      </Button>
+                    </div>
                   </div>
                 </div>
+              </div>
+
+              {/* ── Live Preview ── */}
+              <div className="rounded-lg border border-border/70 bg-background p-6">
+                <BrandingPreview
+                  orgName={localOrgName}
+                  brandHex={localBrandHex}
+                  logoUrl={orgSettings?.logoUrl ?? null}
+                  logoUrlDark={orgSettings?.logoUrlDark ?? null}
+                />
               </div>
             </section>
             )}

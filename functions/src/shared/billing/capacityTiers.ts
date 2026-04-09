@@ -105,7 +105,7 @@ export const NEW_CAPACITY_TIERS: readonly CapacityTier[] = [
   {
     id: 'G50',
     packageTrack: 'gym',
-    label: 'Gym · 50 clients',
+    label: 'Team · 50 clients',
     clientLimit: 50,
     monthlyPriceGbp: 149,
     annualPriceGbp: 1430,
@@ -114,7 +114,7 @@ export const NEW_CAPACITY_TIERS: readonly CapacityTier[] = [
   {
     id: 'G100',
     packageTrack: 'gym',
-    label: 'Gym · 100 clients',
+    label: 'Team · 100 clients',
     clientLimit: 100,
     monthlyPriceGbp: 199,
     annualPriceGbp: 1910,
@@ -123,7 +123,7 @@ export const NEW_CAPACITY_TIERS: readonly CapacityTier[] = [
   {
     id: 'G150',
     packageTrack: 'gym',
-    label: 'Gym · 150 clients',
+    label: 'Team · 150 clients',
     clientLimit: 150,
     monthlyPriceGbp: 239,
     annualPriceGbp: 2294,
@@ -132,7 +132,7 @@ export const NEW_CAPACITY_TIERS: readonly CapacityTier[] = [
   {
     id: 'G200',
     packageTrack: 'gym',
-    label: 'Gym · 200 clients',
+    label: 'Team · 200 clients',
     clientLimit: 200,
     monthlyPriceGbp: 269,
     annualPriceGbp: 2582,
@@ -141,7 +141,7 @@ export const NEW_CAPACITY_TIERS: readonly CapacityTier[] = [
   {
     id: 'G250',
     packageTrack: 'gym',
-    label: 'Gym · 250 clients',
+    label: 'Team · 250 clients',
     clientLimit: 250,
     monthlyPriceGbp: 289,
     annualPriceGbp: 2774,
