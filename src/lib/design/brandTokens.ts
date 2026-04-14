@@ -197,26 +197,21 @@ export function computePreviewTokens(brandHex: string, isDark: boolean): BrandPr
 // ---------------------------------------------------------------------------
 
 /**
- * Returns a map of CSS variable name → HSL value string to set on `:root`.
+ * Returns a map of CSS variable name → value to set on `:root` via ThemeManager.
+ *
+ * SCOPE: Client-facing branding only. These vars power:
+ *   - Client portal branded elements
+ *   - Shared report accent colour
+ *   - Exported PDF brand colour
+ *
+ * NOT included (set structurally in index.css, monochrome):
+ *   --primary, --primary-foreground, --ring, --sidebar-primary, --sidebar-ring
  *
  * Variable roles:
- *
- *   --primary              Vivid brand colour in both modes.
- *                          Used for: button bg, badge bg, active indicator bg,
- *                          focus ring, progress bar fill.
- *
- *   --primary-foreground   Text on --primary surfaces. Auto WCAG:
- *                          dark charcoal on volt/yellow, white on blue/navy.
- *
- *   --gradient-dark        Accessible darkened version of the brand hue.
- *                          Used for: text links, inline text accents,
- *                          any place the brand colour appears AS text on white.
- *
- *   --brand-accent         Alias for --primary (vivid). Useful for decorative
- *                          SVG fills and colour-mix() expressions.
- *
- *   --gradient-light/medium   Recognisable light tints of the brand hue,
- *                              for card/nav active backgrounds.
+ *   --gradient-from / --gradient-to  Raw brand HSL, used in client portal gradients.
+ *   --brand-accent                   Alias for --gradient-from.
+ *   --gradient-light / --medium      Light tints for client portal card accents.
+ *   --gradient-dark                  Accessible darkened brand colour for text on white.
  */
 export function computeBrandCssVars(
   brandHex: string,
@@ -230,32 +225,20 @@ export function computeBrandCssVars(
     const primaryTo = ensureDarkModeLightness(toHex);
     const primaryHsl = hexToHslString(primary);
     const primaryToHsl = hexToHslString(primaryTo);
-    const fg = primaryFgForBrand(primary);
-    const fgHsl = fg === '#ffffff' ? '0 0% 100%' : '220 20% 8%';
     const { h: ph, s: ps } = hexToHsl(primary);
     return {
       '--gradient-from': primaryHsl,
       '--gradient-to': primaryToHsl,
-      '--primary': primaryHsl,
-      '--ring': primaryHsl,
-      '--sidebar-primary': primaryHsl,
-      '--sidebar-ring': primaryHsl,
       '--brand-accent': primaryHsl,
       '--gradient-light': `${ph} ${Math.max(18, ps - 35)}% 12%`,
       '--gradient-medium': `${ph} ${Math.max(22, ps - 28)}% 17%`,
       '--gradient-dark': `${ph} ${Math.min(70, ps + 5)}% 60%`,
-      '--primary-foreground': fgHsl,
-      '--sidebar-primary-foreground': fgHsl,
     };
   }
 
   // ── Light mode ────────────────────────────────────────────────────────────
-  // --primary  = vivid brand hex. Volt stays volt, blue stays blue.
-  // Buttons are brand-coloured with auto-computed dark/light text on top.
   const primaryHsl = hexToHslString(brandHex);
   const primaryToHsl = hexToHslString(toHex);
-  const fg = primaryFgForBrand(brandHex);
-  const fgHsl = fg === '#ffffff' ? '0 0% 100%' : '220 20% 8%';
 
   // --gradient-dark: the accessible darkened version for text-on-white contexts.
   // Uses strict AA (4.5:1) so it's safe for body-size text.
@@ -270,15 +253,9 @@ export function computeBrandCssVars(
   return {
     '--gradient-from': primaryHsl,
     '--gradient-to': primaryToHsl,
-    '--primary': primaryHsl,           // VIVID
-    '--ring': primaryHsl,
-    '--sidebar-primary': primaryHsl,
-    '--sidebar-ring': primaryHsl,
     '--brand-accent': primaryHsl,
     '--gradient-light': lightTint,
     '--gradient-medium': mediumTint,
-    '--gradient-dark': gradientDark,   // accessible, text-on-white only
-    '--primary-foreground': fgHsl,     // dark charcoal for volt/yellow, white for navy
-    '--sidebar-primary-foreground': fgHsl,
+    '--gradient-dark': gradientDark,
   };
 }
