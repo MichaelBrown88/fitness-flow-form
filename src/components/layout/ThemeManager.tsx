@@ -29,10 +29,18 @@ export const ThemeManager: React.FC<{ children: React.ReactNode }> = ({ children
     const useOrgBranding =
       orgSettings?.customBrandingEnabled === true || orgSettings?.customBrandingEnabled === undefined;
 
+    // Migrate legacy pear gradient id → jewel-teal.
+    const storedGradientId = orgSettings?.gradientId === 'pear' ? 'jewel-teal' : orgSettings?.gradientId;
+
     // Resolve brand hex: custom hex beats gradient preset beats default.
-    const gradientId = (useOrgBranding ? (orgSettings?.gradientId || 'jewel-teal') : 'jewel-teal') as GradientId;
+    // Treat old pear hex values as unset — they were the previous brand default, not a custom choice.
+    const oldPearHexes = new Set(['#bcff00', '#BCFF00', '#a8e600', '#A8E600']);
+    const storedBrandHex = orgSettings?.brandHex?.trim() ?? '';
+    const isLegacyPear = oldPearHexes.has(storedBrandHex);
+
+    const gradientId = (useOrgBranding ? (storedGradientId || 'jewel-teal') : 'jewel-teal') as GradientId;
     const gradient = getGradient(gradientId);
-    const customHex = useOrgBranding ? orgSettings?.brandHex?.trim() : '';
+    const customHex = useOrgBranding && !isLegacyPear ? storedBrandHex : '';
     const fromHex = customHex || gradient.fromHex;
     const toHex = customHex || gradient.toHex;
 
