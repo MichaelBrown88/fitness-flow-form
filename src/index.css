@@ -449,9 +449,6 @@
 @utility shadow-apple-xl {
   box-shadow: var(--shadow-xl);
 }
-@utility shadow-apple-colored {
-  box-shadow: var(--shadow-colored);
-}
 @utility animate-fade-in-up {
   /* ── Motion ──────────────────────────────────────────────── */
   animation: fade-in-up var(--duration-slow) var(--easing-spring) both;
@@ -567,12 +564,11 @@
     --gradient-medium: 174 50% 84%;
     --gradient-dark: 174 60% 22%;
 
-    /* ── Structural Primary — monochrome, NOT overwritten by ThemeManager ── */
+    /* ── Structural Primary — monochrome (Task 6 scopes ThemeManager so this is not overwritten) ── */
     --primary: 0 0% 4%;                 /* #0A0A0A — button fill, focus ring */
     --primary-foreground: 0 0% 100%;    /* #FFFFFF — text on primary buttons */
 
     --brand-primary: var(--gradient-from-hex);
-    /* --brand-primary-transparent removed — not used structurally */
 
     --secondary: 0 0% 96%;
     --secondary-foreground: 0 0% 4%;
@@ -707,7 +703,7 @@
     --popover: 0 0% 8%;
     --popover-foreground: 0 0% 96%;
 
-    /* Gradient / Brand tokens — kept for org branding (client portal only) */
+    /* ── Gradient / Brand tokens — kept for org branding (client portal only) ── */
     --gradient-from: 174 86% 36%;
     --gradient-to: 174 86% 30%;
     --gradient-from-hex: #0da899;
@@ -716,7 +712,7 @@
     --gradient-medium: 174 40% 10%;
     --gradient-dark: 174 70% 65%;
 
-    /* Structural Primary — monochrome, NOT overwritten by ThemeManager */
+    /* ── Structural Primary — monochrome (Task 6 scopes ThemeManager so this is not overwritten) ── */
     --primary: 0 0% 96%;                /* #F5F5F5 — button fill on dark */
     --primary-foreground: 0 0% 4%;      /* #0A0A0A — text on primary buttons */
 
