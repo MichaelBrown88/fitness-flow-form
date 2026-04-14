@@ -38,9 +38,9 @@ export function CTASection() {
           
           <div ref={ctaRef}>
             {user ? (
-              <Link 
+              <Link
                 to="/dashboard"
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-border/70 bg-card px-8 py-4 text-base font-bold text-foreground shadow-sm transition-colors hover:bg-muted"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-8 py-4 text-base font-bold text-primary-foreground shadow-sm transition-all hover:opacity-90 active:scale-[0.99]"
               >
                 Go to Dashboard
                 <ArrowRight className="h-5 w-5" />
@@ -48,7 +48,7 @@ export function CTASection() {
             ) : (
               <div className="flex flex-col items-center gap-4">
                 <LandingTrialCtaLink
-                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-border/70 bg-card px-8 py-4 text-base font-bold text-foreground shadow-sm transition-colors hover:bg-muted"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-8 py-4 text-base font-bold text-primary-foreground shadow-sm transition-all hover:opacity-90 active:scale-[0.99]"
                   ariaLabel={landingTrialAriaLabel('cta', LANDING_GUEST_CHECKOUT_ENABLED)}
                 >
                   Start Free Trial
