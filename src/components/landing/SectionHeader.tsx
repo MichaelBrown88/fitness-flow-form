@@ -39,7 +39,7 @@ const SectionHeader = ({
     ? "bg-landing-contrast-surface border-landing-contrast-border text-landing-contrast-muted"
     : "bg-card border-border text-muted-foreground";
 
-  const titleColor = dark ? "text-white" : "text-foreground";
+  const titleColor = dark ? "text-landing-contrast-fg" : "text-foreground";
   const subtitleColor = dark ? "text-muted-foreground" : "text-muted-foreground";
 
   return (
