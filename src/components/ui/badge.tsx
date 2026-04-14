@@ -4,14 +4,29 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold transition-apple focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 glass-label",
+  "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold transition-apple focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
   {
     variants: {
       variant: {
-        default: "gradient-bg text-primary-foreground",
-        secondary: "glass-subtle text-foreground",
-        destructive: "bg-destructive/90 text-destructive-foreground",
-        outline: "glass-label text-foreground",
+        /* Neutral — structural grey. Default for tags/filters/labels. */
+        default:
+          "bg-muted text-foreground-secondary",
+        secondary:
+          "bg-muted text-muted-foreground border border-border",
+        outline:
+          "border border-border text-foreground-secondary",
+        /* Semantic — score/status indicators */
+        success:
+          "bg-[hsl(var(--score-green-light))] text-[hsl(var(--score-green-fg))]",
+        warning:
+          "bg-[hsl(var(--score-amber-light))] text-[hsl(var(--score-amber-fg))]",
+        danger:
+          "bg-[hsl(var(--score-red-light))] text-[hsl(var(--score-red-fg))]",
+        destructive:
+          "bg-[hsl(var(--score-red-light))] text-[hsl(var(--score-red-fg))]",
+        /* Achievement */
+        gold:
+          "bg-yellow-50 text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-400",
       },
     },
     defaultVariants: {
