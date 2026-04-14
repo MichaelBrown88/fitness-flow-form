@@ -120,7 +120,6 @@ export function ROIComparison() {
                 <p className="mb-8 text-sm text-muted-foreground">Assessment finished? Your work is done.</p>
 
                 <div className="relative mb-8 overflow-hidden rounded-lg border border-border bg-muted p-6 dark:border-border dark:bg-background-secondary/90">
-                  <div className="absolute left-0 top-0 h-full w-1 bg-primary" />
                   <div className="mb-4 flex items-center gap-4">
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
                       <Check size={20} strokeWidth={3} />
