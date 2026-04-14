@@ -81,7 +81,7 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
 
           {/* Subtitle — one block under H1 (copy blends SEO terms into the product line). */}
           <p
-            className="mx-auto mb-7 max-w-2xl text-base leading-snug text-muted-foreground motion-safe:animate-fade-in-up sm:mb-10 sm:text-lg sm:leading-relaxed md:max-w-3xl md:text-xl line-clamp-3"
+            className="mx-auto mb-7 max-w-2xl text-base leading-snug text-muted-foreground motion-safe:animate-fade-in-up sm:mb-10 sm:text-lg sm:leading-relaxed md:max-w-3xl md:text-xl"
             style={{ animationDelay: "0.15s" }}
           >
             {isPricing ? LANDING_COPY.heroPricingSubtitle : (
