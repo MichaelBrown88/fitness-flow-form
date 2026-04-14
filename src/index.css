@@ -349,15 +349,10 @@
   }
 }
 @utility glass-button-active {
-  /* Active state — terracotta accent */
-  background: linear-gradient(
-    135deg,
-    hsl(var(--gradient-from)),
-    hsl(var(--gradient-to))
-  );
+  /* Active nav / selected state — structural monochrome */
+  background: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
-  border: 1px solid hsl(var(--gradient-to) / 0.3);
-  box-shadow: 0 2px 12px hsl(var(--gradient-from) / 0.25);
+  border: 1px solid transparent;
 }
 @utility glass-label {
   background: hsl(var(--background-secondary));
@@ -396,25 +391,9 @@
   @apply rounded-full px-3 py-1.5 text-sm border transition-all;
 }
 @utility hero {
-  /* ── Landing hero ───────────────────────────────────────── */
-  background:
-    radial-gradient(
-      900px 420px at 20% -120px,
-      hsl(174 50% 40% / 0.08),
-      transparent 60%
-    ),
-    radial-gradient(
-      800px 520px at 110% -80px,
-      hsl(165 20% 8% / 0.8),
-      transparent 55%
-    ),
-    linear-gradient(
-      180deg,
-      hsl(165 35% 6%) 0%,
-      hsl(165 25% 8%) 60%,
-      transparent 100%
-    );
-  color: hsl(76 14% 91%);  /* ceiling white — unchanged */
+  /* ── Landing hero — uses dark-mode monochrome palette ── */
+  background: hsl(var(--landing-contrast-bg));
+  color: hsl(var(--landing-contrast-fg));
 }
 @utility gradient-bg {
   /* ── Gradient Utilities ─────────────────────────────────── */
@@ -498,11 +477,7 @@
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: linear-gradient(
-      135deg,
-      hsl(var(--gradient-from)),
-      hsl(var(--gradient-to))
-    );
+    background: hsl(var(--primary));
     cursor: pointer;
     box-shadow: 0 2px 8px hsl(28 20% 8% / 0.2);
     transition: transform var(--duration-fast) var(--easing-spring);
@@ -520,11 +495,7 @@
     height: 20px;
     border-radius: 50%;
     border: none;
-    background: linear-gradient(
-      135deg,
-      hsl(var(--gradient-from)),
-      hsl(var(--gradient-to))
-    );
+    background: hsl(var(--primary));
     cursor: pointer;
     box-shadow: 0 2px 8px hsl(28 20% 8% / 0.2);
     transition: transform var(--duration-fast) var(--easing-spring);
@@ -561,66 +532,61 @@
 
 /*
   Design System — One Assess
-  Direction: Athletic Performance — bold, clean, premium fitness
-  Dark mode first. Deep forest base (#0c1f1a). Jewel Teal accent (#0da899).
+  Direction: Monochrome + Semantic Color
+  Black, white and grey own every structural surface.
+  Color appears only where it carries meaning (scores, status, pillars).
   Font: DM Sans (Google Fonts, loaded in index.html)
-  Rule: one surface level maximum. Whitespace groups, not boxes.
 */
 
 @layer base {
   :root {
-    /*
-      Brand palette — One Assess
-      jewel-teal #0da899 · deep forest #0c1f1a · laurel leaf #96998c
-      celeste #d2d3ce · ceiling white #e9ebe6
-    */
-
     /* ── Light Mode ──────────────────────────────────────── */
-    --background: 76 14% 91%;              /* #e9ebe6 ceiling white */
-    --background-secondary: 76 8% 87%;
-    --background-tertiary: 74 5% 82%;      /* celeste-toned */
+    --background: 0 0% 95%;              /* #F2F2F2 — page base, lets white cards float */
+    --background-secondary: 0 0% 96%;   /* #F5F5F5 */
+    --background-tertiary: 0 0% 98%;    /* #FAFAFA */
 
-    --foreground: 180 55% 5%;              /* #061414 rich black */
-    --foreground-secondary: 74 6% 38%;
-    --foreground-tertiary: 74 6% 53%;
-    --foreground-quaternary: 74 6% 67%;    /* laurel leaf toned */
+    --foreground: 0 0% 4%;              /* #0A0A0A — primary text */
+    --foreground-secondary: 0 0% 32%;   /* #525252 — body text, labels */
+    --foreground-tertiary: 0 0% 64%;    /* #A3A3A3 — captions, placeholders */
+    --foreground-quaternary: 0 0% 75%;  /* lighter muted */
 
-    --card: 76 18% 98%;
-    --card-foreground: 180 55% 5%;
-    --card-elevated: 76 18% 100%;
-    --card-subtle: 76 10% 94%;
+    --card: 0 0% 100%;                  /* #FFFFFF */
+    --card-foreground: 0 0% 4%;
+    --card-elevated: 0 0% 98%;          /* #FAFAFA — nested cards */
+    --card-subtle: 0 0% 97%;
 
-    --popover: 76 18% 98%;
-    --popover-foreground: 180 55% 5%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 4%;
 
-    /* ── Accent / Primary — Jewel Teal ──────────────────── */
-    --gradient-from: 174 86% 36%;          /* #0da899 jewel teal */
+    /* ── Gradient / Brand tokens — kept for org branding (client portal only) ── */
+    --gradient-from: 174 86% 36%;       /* jewel-teal default — ThemeManager overwrites for org */
     --gradient-to: 174 86% 30%;
     --gradient-from-hex: #0da899;
     --gradient-to-hex: #0b8e82;
     --gradient-light: 174 50% 92%;
     --gradient-medium: 174 50% 84%;
-    --gradient-dark: 174 60% 22%;          /* dark teal for text-on-light — ~7:1 on ceiling white */
+    --gradient-dark: 174 60% 22%;
 
-    --primary: var(--gradient-from);
-    --primary-foreground: 165 45% 9%;      /* deep forest on teal */
+    /* ── Structural Primary — monochrome, NOT overwritten by ThemeManager ── */
+    --primary: 0 0% 4%;                 /* #0A0A0A — button fill, focus ring */
+    --primary-foreground: 0 0% 100%;    /* #FFFFFF — text on primary buttons */
 
     --brand-primary: var(--gradient-from-hex);
-    --brand-primary-transparent: hsl(174 86% 36% / 0.12);
+    /* --brand-primary-transparent removed — not used structurally */
 
-    --secondary: 76 8% 87%;
-    --secondary-foreground: 180 55% 5%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 4%;
 
-    --muted: 76 8% 87%;
-    --muted-foreground: 74 6% 42%;
+    --muted: 0 0% 96%;                  /* #F5F5F5 */
+    --muted-foreground: 0 0% 64%;       /* #A3A3A3 */
 
-    --accent: 76 8% 87%;
-    --accent-foreground: 180 55% 5%;
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 4%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 72% 51%;           /* red-500 — unchanged */
     --destructive-foreground: 0 0% 100%;
 
-    /* ── Score / Semantic ────────────────────────────────── */
+    /* ── Score / Semantic — unchanged ───────────────────── */
     --score-green: 160 84% 39%;
     --score-green-fg: 162 93% 24%;
     --score-green-light: 152 81% 96%;
@@ -643,18 +609,18 @@
     --chart-distribution-yellow: 45 93% 47%;
 
     /* ── Borders & Inputs ────────────────────────────────── */
-    --border: 74 5% 82%;                   /* celeste */
-    --border-medium: 74 5% 75%;
-    --border-dark: 74 5% 65%;
-    --input: 74 5% 82%;
-    --ring: 174 86% 36%;
+    --border: 0 0% 90%;                 /* #E5E5E5 — card edges, dividers */
+    --border-medium: 0 0% 83%;          /* #D4D4D4 — inputs, focused borders */
+    --border-dark: 0 0% 73%;
+    --input: 0 0% 96%;                  /* #F5F5F5 — filled input background */
+    --ring: 0 0% 4%;                    /* #0A0A0A — focus ring matches primary */
 
     /* ── Radius ──────────────────────────────────────────── */
-    --radius: 0.5rem;        /* 8px  — default buttons, inputs */
-    --radius-sm: 0.375rem;   /* 6px  — small badges */
-    --radius-lg: 0.75rem;    /* 12px — cards */
-    --radius-xl: 1rem;       /* 16px — modals, sheets */
-    --radius-2xl: 1.25rem;   /* 20px */
+    --radius: 0.5rem;        /* 8px  — default */
+    --radius-sm: 0.375rem;   /* 6px */
+    --radius-lg: 0.75rem;    /* 12px */
+    --radius-xl: 1rem;       /* 16px */
+    --radius-2xl: 1.25rem;   /* 20px — cards */
     --radius-3xl: 1.5rem;    /* 24px */
     --radius-full: 9999px;
 
@@ -686,24 +652,23 @@
     --easing-smooth: cubic-bezier(0.4, 0, 0.2, 1);
     --easing-out: cubic-bezier(0, 0, 0.2, 1);
     --easing-spring: cubic-bezier(0.16, 1, 0.3, 1);
-    --easing-apple: var(--easing-spring);  /* alias — keeps existing component refs working */
+    --easing-apple: var(--easing-spring);
 
-    /* ── Shadows (warm-tinted) ───────────────────────────── */
-    --shadow-sm: 0 1px 2px 0 hsl(180 55% 5% / 0.06);
-    --shadow-md: 0 4px 12px -2px hsl(180 55% 5% / 0.10), 0 2px 4px -1px hsl(180 55% 5% / 0.06);
-    --shadow-lg: 0 12px 24px -4px hsl(180 55% 5% / 0.12), 0 4px 8px -2px hsl(180 55% 5% / 0.06);
-    --shadow-xl: 0 20px 40px -8px hsl(180 55% 5% / 0.14), 0 8px 16px -4px hsl(180 55% 5% / 0.08);
-    --shadow-colored: 0 8px 24px -4px hsl(174 86% 36% / 0.22);
+    /* ── Shadows ─────────────────────────────────────────── */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.10), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 12px 24px -4px rgba(0, 0, 0, 0.12), 0 4px 8px -2px rgba(0, 0, 0, 0.06);
+    --shadow-xl: 0 20px 40px -8px rgba(0, 0, 0, 0.14), 0 8px 16px -4px rgba(0, 0, 0, 0.08);
 
-    /* ── Sidebar ─────────────────────────────────────────── */
-    --sidebar-background: 76 14% 95%;
-    --sidebar-foreground: 180 55% 5%;
-    --sidebar-primary: 174 86% 36%;
-    --sidebar-primary-foreground: 165 45% 9%;
-    --sidebar-accent: 76 8% 88%;
-    --sidebar-accent-foreground: 180 55% 5%;
-    --sidebar-border: 74 5% 80%;
-    --sidebar-ring: 174 86% 36%;
+    /* ── Sidebar — monochrome structural ─────────────────── */
+    --sidebar-background: 0 0% 100%;    /* white sidebar on light mode */
+    --sidebar-foreground: 0 0% 4%;
+    --sidebar-primary: 0 0% 4%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 95%;
+    --sidebar-accent-foreground: 0 0% 4%;
+    --sidebar-border: 0 0% 90%;
+    --sidebar-ring: 0 0% 4%;
 
     /* ── Platform Admin (always dark — unchanged) ────────── */
     --admin-bg: 222 47% 4%;
@@ -713,70 +678,69 @@
     --admin-fg: 0 0% 100%;
     --admin-fg-muted: 215 14% 62%;
 
-    /* ── Landing contrast band ───────────────────────────── */
-    --landing-contrast-bg: 165 55% 3%;    /* deep forest darkest */
-    --landing-contrast-fg: 76 14% 91%;    /* ceiling white */
-    --landing-contrast-muted: 74 6% 57%;  /* laurel leaf */
-    --landing-contrast-subtle: 74 6% 68%;
-    --landing-contrast-border: 165 25% 10%;
-    --landing-contrast-surface: 165 45% 5%;
-    --landing-contrast-surface-elevated: 165 35% 8%;
+    /* ── Landing contrast band — uses dark-mode monochrome ── */
+    --landing-contrast-bg: 0 0% 4%;           /* #0A0A0A */
+    --landing-contrast-fg: 0 0% 96%;          /* #F5F5F5 */
+    --landing-contrast-muted: 0 0% 45%;       /* #737373 */
+    --landing-contrast-subtle: 0 0% 55%;
+    --landing-contrast-border: 0 0% 15%;      /* #262626 */
+    --landing-contrast-surface: 0 0% 8%;      /* #141414 */
+    --landing-contrast-surface-elevated: 0 0% 11%;  /* #1C1C1C */
   }
 
   /* ── Dark Mode (default experience) ─────────────────────── */
   .dark {
-    /* Deep forest base — jewel teal accent carries all the energy */
-    --background: 165 55% 3%;              /* deep forest darkest */
-    --background-secondary: 165 45% 5%;
-    --background-tertiary: 165 35% 8%;
+    --background: 0 0% 4%;              /* #0A0A0A — page base */
+    --background-secondary: 0 0% 8%;   /* #141414 */
+    --background-tertiary: 0 0% 11%;   /* #1C1C1C */
 
-    --foreground: 76 14% 91%;              /* #e9ebe6 ceiling white */
-    --foreground-secondary: 74 6% 72%;
-    --foreground-tertiary: 74 6% 57%;      /* #96998c laurel leaf */
-    --foreground-quaternary: 74 6% 42%;
+    --foreground: 0 0% 96%;             /* #F5F5F5 — primary text */
+    --foreground-secondary: 0 0% 64%;   /* #A3A3A3 — body text */
+    --foreground-tertiary: 0 0% 45%;    /* #737373 — captions */
+    --foreground-quaternary: 0 0% 35%;
 
-    --card: 165 45% 5%;
-    --card-foreground: 76 14% 91%;
-    --card-elevated: 165 35% 7%;
-    --card-subtle: 165 50% 2%;
+    --card: 0 0% 8%;                    /* #141414 */
+    --card-foreground: 0 0% 96%;
+    --card-elevated: 0 0% 11%;          /* #1C1C1C */
+    --card-subtle: 0 0% 6%;
 
-    --popover: 165 45% 5%;
-    --popover-foreground: 76 14% 91%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 96%;
 
-    /* Jewel Teal — full brightness on dark background */
-    --gradient-from: 174 86% 36%;          /* #0da899 jewel teal */
+    /* Gradient / Brand tokens — kept for org branding (client portal only) */
+    --gradient-from: 174 86% 36%;
     --gradient-to: 174 86% 30%;
     --gradient-from-hex: #0da899;
     --gradient-to-hex: #0b8e82;
-    --gradient-light: 174 40% 5%;          /* dark teal surface tint */
+    --gradient-light: 174 40% 5%;
     --gradient-medium: 174 40% 10%;
-    --gradient-dark: 174 70% 65%;          /* bright teal for text-on-dark */
+    --gradient-dark: 174 70% 65%;
 
-    --primary: var(--gradient-from);
-    --primary-foreground: 165 55% 3%;      /* deep forest on teal */
+    /* Structural Primary — monochrome, NOT overwritten by ThemeManager */
+    --primary: 0 0% 96%;                /* #F5F5F5 — button fill on dark */
+    --primary-foreground: 0 0% 4%;      /* #0A0A0A — text on primary buttons */
 
     --brand-primary: var(--gradient-from-hex);
-    --brand-primary-transparent: hsl(174 86% 36% / 0.12);
 
-    --secondary: 165 20% 6%;
-    --secondary-foreground: 76 14% 91%;
+    --secondary: 0 0% 11%;
+    --secondary-foreground: 0 0% 96%;
 
-    --muted: 165 20% 6%;
-    --muted-foreground: 74 6% 57%;         /* laurel leaf */
+    --muted: 0 0% 11%;                  /* #1C1C1C */
+    --muted-foreground: 0 0% 45%;       /* #737373 */
 
-    --accent: 165 20% 7%;
-    --accent-foreground: 76 14% 91%;
+    --accent: 0 0% 11%;
+    --accent-foreground: 0 0% 96%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 165 20% 10%;
-    --border-medium: 165 15% 15%;
-    --border-dark: 165 12% 21%;
-    --input: 165 20% 8%;
-    --ring: 174 86% 36%;               /* jewel teal */
+    --border: 0 0% 15%;                 /* #262626 */
+    --border-medium: 0 0% 20%;          /* #333333 */
+    --border-dark: 0 0% 27%;
+    --input: 0 0% 11%;                  /* #1C1C1C */
+    --ring: 0 0% 96%;                   /* #F5F5F5 — focus ring matches primary */
 
-    /* Score — dark surfaces instead of pale washes */
+    /* Score — dark surfaces (unchanged) */
     --score-green-light: 160 30% 6%;
     --score-green-muted: 160 35% 11%;
     --score-amber-light: 38 30% 6%;
@@ -784,28 +748,27 @@
     --score-red-light: 0 30% 6%;
     --score-red-muted: 0 35% 11%;
 
-    --shadow-sm: 0 1px 2px 0 hsl(165 30% 2% / 0.50);
-    --shadow-md: 0 4px 12px -2px hsl(165 30% 2% / 0.55);
-    --shadow-lg: 0 12px 28px -4px hsl(165 30% 2% / 0.60);
-    --shadow-xl: 0 22px 40px -8px hsl(165 30% 2% / 0.65);
-    --shadow-colored: 0 10px 30px -6px hsl(174 86% 36% / 0.15);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.40);
+    --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.50);
+    --shadow-lg: 0 12px 28px -4px rgba(0, 0, 0, 0.55);
+    --shadow-xl: 0 22px 40px -8px rgba(0, 0, 0, 0.60);
 
-    --sidebar-background: 165 55% 2%;
-    --sidebar-foreground: 76 14% 91%;
-    --sidebar-primary: 174 86% 36%;
-    --sidebar-primary-foreground: 165 55% 3%;
-    --sidebar-accent: 165 30% 6%;
-    --sidebar-accent-foreground: 76 14% 91%;
-    --sidebar-border: 165 25% 7%;
-    --sidebar-ring: 174 86% 36%;
+    --sidebar-background: 0 0% 4%;
+    --sidebar-foreground: 0 0% 96%;
+    --sidebar-primary: 0 0% 96%;
+    --sidebar-primary-foreground: 0 0% 4%;
+    --sidebar-accent: 0 0% 11%;
+    --sidebar-accent-foreground: 0 0% 96%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 0 0% 96%;
 
-    --landing-contrast-bg: 165 55% 3%;
-    --landing-contrast-fg: 76 14% 91%;
-    --landing-contrast-muted: 74 6% 57%;
-    --landing-contrast-subtle: 74 6% 68%;
-    --landing-contrast-border: 165 25% 10%;
-    --landing-contrast-surface: 165 45% 5%;
-    --landing-contrast-surface-elevated: 165 35% 8%;
+    --landing-contrast-bg: 0 0% 4%;
+    --landing-contrast-fg: 0 0% 96%;
+    --landing-contrast-muted: 0 0% 45%;
+    --landing-contrast-subtle: 0 0% 55%;
+    --landing-contrast-border: 0 0% 15%;
+    --landing-contrast-surface: 0 0% 8%;
+    --landing-contrast-surface-elevated: 0 0% 11%;
   }
 }
 
