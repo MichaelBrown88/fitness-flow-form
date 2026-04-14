@@ -12,7 +12,7 @@ import { computeBrandCssVars } from '@/lib/design/brandTokens';
  * Colour resolution order (highest priority first):
  *   1. orgSettings.brandHex  — coach-supplied custom hex (e.g. '#CC0000')
  *   2. orgSettings.gradientId — one of the curated gradient presets
- *   3. Hard-coded 'pear' default (One Assess brand)
+ *   3. Hard-coded 'jewel-teal' default (One Assess brand)
  *
  * In light mode the colour is darkened to ~30 % lightness for legibility.
  * In dark mode it is applied at full brightness.
@@ -30,7 +30,7 @@ export const ThemeManager: React.FC<{ children: React.ReactNode }> = ({ children
       orgSettings?.customBrandingEnabled === true || orgSettings?.customBrandingEnabled === undefined;
 
     // Resolve brand hex: custom hex beats gradient preset beats default.
-    const gradientId = (useOrgBranding ? (orgSettings?.gradientId || 'pear') : 'pear') as GradientId;
+    const gradientId = (useOrgBranding ? (orgSettings?.gradientId || 'jewel-teal') : 'jewel-teal') as GradientId;
     const gradient = getGradient(gradientId);
     const customHex = useOrgBranding ? orgSettings?.brandHex?.trim() : '';
     const fromHex = customHex || gradient.fromHex;
