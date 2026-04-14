@@ -222,7 +222,7 @@ export function Navbar() {
           <button
             ref={menuButtonRef}
             type="button"
-            className="text-foreground md:hidden"
+            className="p-2.5 text-foreground md:hidden"
             onClick={() => setIsMobileMenuOpen((o) => !o)}
             aria-label="Toggle menu"
             aria-expanded={isMobileMenuOpen}
