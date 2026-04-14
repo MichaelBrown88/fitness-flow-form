@@ -663,7 +663,7 @@ export function generateWireframeOnly(
   const {
     pointColor = '#22c55e',
     lineColor = 'rgba(34, 197, 94, 0.85)',
-    backgroundColor = '#1a1a2e',
+    backgroundColor = '#0c1f1a',
   } = options;
 
   const canvas = document.createElement('canvas');

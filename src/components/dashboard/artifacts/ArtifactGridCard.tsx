@@ -79,7 +79,7 @@ function ReportCardThumbnail({ token }: { token: string }) {
   }, [token]);
 
   return (
-    <div style={{ width: POST_W, height: POST_W, background: '#0f172a', overflow: 'hidden' }}>
+    <div style={{ width: POST_W, height: POST_W, background: '#0c1f1a', overflow: 'hidden' }}>
       {!loading && card ? (
         <PillarScoreCardPreview data={card} previewWidth={POST_W} perspective="coach" />
       ) : (
@@ -96,7 +96,7 @@ export function ArtifactGridCard({ item, onOpen }: ArtifactGridCardProps) {
         type="button"
         onClick={() => onOpen(item)}
         className="group overflow-hidden rounded-xl border border-white/10 text-left shadow-md transition-all hover:scale-[1.02] hover:border-white/20 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-        style={{ background: '#0f172a', display: 'block', width: POST_W }}
+        style={{ background: '#0c1f1a', display: 'block', width: POST_W }}
       >
         {item.kind === 'report' && item.report ? (
           <ReportCardThumbnail token={item.report.token} />
@@ -137,7 +137,7 @@ export function ArtifactGridCard({ item, onOpen }: ArtifactGridCardProps) {
         {/* Bottom strip — fills the 4:5 height beyond the square card */}
         <div
           className="flex flex-col justify-center px-4"
-          style={{ height: POST_H - POST_W, background: '#070d18' }}
+          style={{ height: POST_H - POST_W, background: '#081510' }}
         >
           <p className="truncate text-sm font-semibold text-white/85">{item.clientName}</p>
           {item.updatedAt && (

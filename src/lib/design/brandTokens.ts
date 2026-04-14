@@ -6,11 +6,11 @@
  *
  * ─── Core principle ────────────────────────────────────────────────────────
  *
- * Bright neon colours (volt, pear) CAN work in light mode — you just flip
+ * Jewel Teal (#0da899) works on both light and dark surfaces:
  * which element carries the colour:
  *
- *   ❌ White bg + volt text              → fails contrast (~1.3:1)
- *   ✅ Volt bg + dark charcoal text      → passes (14:1)
+ *   ✅ Teal bg + deep forest text        → 5.82:1 (WCAG AA)
+ *   ✅ Dark teal text on ceiling white   → ~7:1 (WCAG AAA)
  *
  * So --primary stays vivid in BOTH modes. --primary-foreground is computed
  * by WCAG contrast (dark text on bright colours, white on dark colours).
@@ -23,7 +23,7 @@
 // Colour math
 // ---------------------------------------------------------------------------
 
-/** WCAG relative luminance for a sRGB hex string (e.g. `#bcff00`). */
+/** WCAG relative luminance for a sRGB hex string (e.g. `#0da899`). */
 export function relativeLuminance(hex: string): number {
   const r = parseInt(hex.slice(1, 3), 16) / 255;
   const g = parseInt(hex.slice(3, 5), 16) / 255;
@@ -43,7 +43,7 @@ const CHARCOAL_HEX = '#0e1218';
 
 /**
  * Returns '#ffffff' or CHARCOAL_HEX — whichever has higher contrast on `brandHex`.
- * e.g. volt (#bcff00) → charcoal   |   navy → white
+ * e.g. teal (#0da899) → charcoal   |   navy → white
  */
 export function primaryFgForBrand(brandHex: string): string {
   const bg = relativeLuminance(brandHex);
@@ -155,7 +155,7 @@ export interface BrandPreviewTokens {
 }
 
 export function computePreviewTokens(brandHex: string, isDark: boolean): BrandPreviewTokens {
-  const safeHex = /^#[0-9a-fA-F]{6}$/.test(brandHex) ? brandHex : '#bcff00';
+  const safeHex = /^#[0-9a-fA-F]{6}$/.test(brandHex) ? brandHex : '#0da899';
   const { h, s } = hexToHsl(safeHex);
 
   if (isDark) {

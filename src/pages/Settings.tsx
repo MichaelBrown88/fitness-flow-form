@@ -597,8 +597,8 @@ const Settings = () => {
                   </Label>
                   <div className="flex items-center gap-2">
                     <div className="relative h-11 w-11 shrink-0 rounded-lg border-2 border-border shadow-sm overflow-hidden">
-                      <div className="absolute inset-0" style={{ backgroundColor: /^#[0-9a-fA-F]{6}$/.test(localBrandHex) ? localBrandHex : '#bcff00' }} />
-                      <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(localBrandHex) ? localBrandHex : '#bcff00'} onChange={(e) => setLocalBrandHex(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                      <div className="absolute inset-0" style={{ backgroundColor: /^#[0-9a-fA-F]{6}$/.test(localBrandHex) ? localBrandHex : '#0da899' }} />
+                      <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(localBrandHex) ? localBrandHex : '#0da899'} onChange={(e) => setLocalBrandHex(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
                     </div>
                     <Input value={localBrandHex} onChange={(e) => { const v = e.target.value; if (/^#?[0-9a-fA-F]{0,6}$/.test(v)) setLocalBrandHex(v.startsWith('#') ? v : `#${v}`); }} placeholder="#RRGGBB" className="rounded-lg border-border h-11 font-mono uppercase" maxLength={7} />
                   </div>
@@ -651,11 +651,11 @@ const Settings = () => {
                       <div className="relative h-11 w-11 shrink-0 rounded-lg border-2 border-border shadow-sm overflow-hidden">
                         <div
                           className="absolute inset-0"
-                          style={{ backgroundColor: /^#[0-9a-fA-F]{6}$/.test(localBrandHex) ? localBrandHex : '#bcff00' }}
+                          style={{ backgroundColor: /^#[0-9a-fA-F]{6}$/.test(localBrandHex) ? localBrandHex : '#0da899' }}
                         />
                         <input
                           type="color"
-                          value={/^#[0-9a-fA-F]{6}$/.test(localBrandHex) ? localBrandHex : '#bcff00'}
+                          value={/^#[0-9a-fA-F]{6}$/.test(localBrandHex) ? localBrandHex : '#0da899'}
                           onChange={(e) => setLocalBrandHex(e.target.value)}
                           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                           title="Pick a colour"
