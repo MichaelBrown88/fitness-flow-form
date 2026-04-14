@@ -81,8 +81,8 @@ export default function AchievementsPage() {
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <div className="p-2 gradient-bg rounded-xl shrink-0">
-          <Trophy className="w-5 h-5 text-white" />
+        <div className="p-2 bg-yellow-500 rounded-xl shrink-0">
+          <Trophy className="w-5 h-5 text-yellow-950" />
         </div>
         <div className="min-w-0">
           <h1 className="text-lg sm:text-xl font-bold text-foreground">ARC™ milestones</h1>

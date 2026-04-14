@@ -12,8 +12,8 @@ export function StreakDisplay({ streaks, currentStreak }: StreakDisplayProps) {
   return (
     <Card className="p-4 sm:p-6 md:p-8">
       <div className="flex items-center gap-3 mb-4 sm:mb-6">
-        <div className="p-2 gradient-bg rounded-xl">
-          <Flame className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+        <div className="p-2 bg-yellow-500 rounded-xl">
+          <Flame className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-950" />
         </div>
         <div>
           <h3 className="text-sm sm:text-base font-bold text-foreground">ARC™ streak</h3>
@@ -36,11 +36,11 @@ export function StreakDisplay({ streaks, currentStreak }: StreakDisplayProps) {
               <div
                 className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all ${
                   isUnlocked
-                    ? 'gradient-bg shadow-md'
+                    ? 'bg-yellow-500 shadow-md'
                     : 'bg-muted border-2 border-dashed border-border'
                 }`}
               >
-                <span className={`text-xs sm:text-sm font-bold ${isUnlocked ? 'text-white' : 'text-foreground-tertiary'}`}>
+                <span className={`text-xs sm:text-sm font-bold ${isUnlocked ? 'text-yellow-950' : 'text-foreground-tertiary'}`}>
                   {streak.threshold}
                 </span>
               </div>

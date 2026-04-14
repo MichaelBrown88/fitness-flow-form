@@ -45,11 +45,11 @@ export function MilestoneProgress({ milestones }: MilestoneProgressProps) {
             <div key={milestone.id} className={`flex items-center gap-3 ${isNew ? 'ring-1 ring-primary/20 rounded-lg p-2 -mx-2 bg-primary/5' : ''}`}>
               <div
                 className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center shrink-0 ${
-                  isUnlocked ? 'gradient-bg' : 'bg-muted'
+                  isUnlocked ? 'bg-yellow-500' : 'bg-muted'
                 } ${isNew ? 'animate-pulse' : ''}`}
               >
                 {isUnlocked ? (
-                  <CheckCircle2 className="w-4 h-4 text-white" />
+                  <CheckCircle2 className="w-4 h-4 text-yellow-950" />
                 ) : (
                   <IconComponent className="w-4 h-4 text-muted-foreground" />
                 )}
@@ -67,7 +67,7 @@ export function MilestoneProgress({ milestones }: MilestoneProgressProps) {
                 <div className="h-2 bg-muted rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all duration-700 ease-out ${
-                      isUnlocked ? 'gradient-bg' : 'bg-muted-foreground/40'
+                      isUnlocked ? 'bg-yellow-500' : 'bg-muted-foreground/40'
                     }`}
                     style={{ width: `${milestone.progress}%` }}
                   />

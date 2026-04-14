@@ -67,16 +67,16 @@ export function TrophyGrid({ trophies }: TrophyGridProps) {
               key={trophy.id}
               className={`p-3 sm:p-4 flex flex-col items-center text-center transition-all ${
                 isUnlocked
-                  ? 'bg-background ring-1 ring-gradient-medium shadow-sm'
+                  ? 'bg-background ring-1 ring-yellow-400 shadow-sm'
                   : 'bg-muted/50 opacity-60'
               } ${isNew ? 'ring-2 ring-primary/40 shadow-md shadow-primary/10' : ''}`}
             >
               <div
                 className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center mb-2 sm:mb-3 ${
-                  isUnlocked ? 'gradient-bg' : 'bg-muted'
+                  isUnlocked ? 'bg-yellow-500' : 'bg-muted'
                 } ${isNew ? 'animate-pulse' : ''}`}
               >
-                <IconComponent className={`w-5 h-5 sm:w-6 sm:h-6 ${isUnlocked ? 'text-white' : 'text-muted-foreground'}`} />
+                <IconComponent className={`w-5 h-5 sm:w-6 sm:h-6 ${isUnlocked ? 'text-yellow-950' : 'text-muted-foreground'}`} />
               </div>
               {isNew && (
                 <span className="text-[10px] font-black uppercase tracking-[0.15em] text-primary mb-1">New!</span>
@@ -89,7 +89,7 @@ export function TrophyGrid({ trophies }: TrophyGridProps) {
                 <div className="w-full mt-2 sm:mt-3">
                   <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                     <div
-                      className="h-full gradient-bg rounded-full transition-all duration-500"
+                      className="h-full bg-yellow-500 rounded-full transition-all duration-500"
                       style={{ width: `${trophy.progress}%` }}
                     />
                   </div>
