@@ -99,19 +99,19 @@ export function scoreMovementQuality(form: FormData, age: number, gender: string
     const lordosisData = ai['side-right']?.lordosis || ai['side-left']?.lordosis;
     const spineData = ai.back?.spinal_curvature;
     let kyphosisScore = 100;
-    if (kyphosisData && kyphosisData.status !== 'Normal') {
-      if (kyphosisData.status === 'Mild') kyphosisScore = 75;
-      else if (kyphosisData.status === 'Moderate') kyphosisScore = 50;
-      else if (kyphosisData.status === 'Severe') kyphosisScore = 25;
+    if (kyphosisData && kyphosisData.status !== 'Within range') {
+      if (kyphosisData.status === 'Slightly increased') kyphosisScore = 75;
+      else if (kyphosisData.status === 'Moderately increased') kyphosisScore = 50;
+      else if (kyphosisData.status === 'Notably increased') kyphosisScore = 25;
     }
     let lordosisScore = 100;
-    if (lordosisData && lordosisData.status !== 'Normal') {
-      if (lordosisData.status === 'Mild') lordosisScore = 75;
-      else if (lordosisData.status === 'Moderate') lordosisScore = 50;
-      else if (lordosisData.status === 'Severe') lordosisScore = 25;
+    if (lordosisData && lordosisData.status !== 'Within range') {
+      if (lordosisData.status === 'Slightly increased') lordosisScore = 75;
+      else if (lordosisData.status === 'Moderately increased') lordosisScore = 50;
+      else if (lordosisData.status === 'Notably increased') lordosisScore = 25;
     }
     let scoliosisScore = 100;
-    if (spineData && spineData.status !== 'Normal') {
+    if (spineData && spineData.status !== 'Aligned') {
       const deg = Math.abs(spineData.curve_degrees || 0);
       if (deg < 10) scoliosisScore = 75;
       else if (deg < 20) scoliosisScore = 50;

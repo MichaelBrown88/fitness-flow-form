@@ -6,6 +6,7 @@
  * Self-service items are informational for now (future feature).
  */
 
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Trophy,
@@ -13,6 +14,7 @@ import {
   Heart,
   Scale,
   ChevronDown,
+  Settings,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -22,6 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { ClientConsentSettings } from '@/components/client/ClientConsentSettings';
 
 interface ClientProfileDropdownProps {
   clientName: string;
@@ -34,6 +37,7 @@ export function ClientProfileDropdown({
   shareToken,
 }: ClientProfileDropdownProps) {
   const navigate = useNavigate();
+  const [settingsOpen, setSettingsOpen] = useState(false);
   
   const initials =
     clientName
@@ -44,6 +48,7 @@ export function ClientProfileDropdown({
       .slice(0, 2) || 'C';
 
   return (
+    <>
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
@@ -108,7 +113,24 @@ export function ClientProfileDropdown({
           </span>
           <span className="text-[10px] font-medium text-muted-foreground">Coming soon</span>
         </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+
+        <DropdownMenuItem
+          className="flex items-center gap-2"
+          onClick={() => setSettingsOpen(true)}
+        >
+          <Settings className="h-4 w-4" />
+          Privacy &amp; sharing
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+
+    <ClientConsentSettings
+      open={settingsOpen}
+      onOpenChange={setSettingsOpen}
+      token={shareToken}
+    />
+    </>
   );
 }

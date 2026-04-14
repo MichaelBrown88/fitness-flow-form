@@ -59,7 +59,7 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
         <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-14 lg:mb-16">
           {/* Headline */}
           <h1
-            className="text-balance mb-5 text-[3rem] font-bold leading-[1.06] tracking-tight text-foreground motion-safe:animate-fade-in-up sm:mb-6 sm:text-6xl md:text-7xl lg:text-8xl"
+            className="text-balance mb-5 text-[4rem] font-bold leading-[1.06] tracking-tight text-foreground motion-safe:animate-fade-in-up sm:mb-6 sm:text-8xl md:text-[6rem] lg:text-[7rem]"
             style={{ animationDelay: "0.05s" }}
           >
             {isPricing ? (
@@ -81,15 +81,15 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
 
           {/* Subtitle — one block under H1 (copy blends SEO terms into the product line). */}
           <p
-            className="text-balance mx-auto mb-7 max-w-xl text-lg leading-snug text-muted-foreground motion-safe:animate-fade-in-up sm:mb-10 sm:text-xl sm:leading-relaxed md:max-w-2xl md:text-2xl"
+            className="mx-auto mb-7 max-w-2xl text-base leading-snug text-muted-foreground motion-safe:animate-fade-in-up sm:mb-10 sm:text-lg sm:leading-relaxed md:max-w-3xl md:text-xl line-clamp-3"
             style={{ animationDelay: "0.15s" }}
           >
             {isPricing ? LANDING_COPY.heroPricingSubtitle : (
               <>
                 Fitness assessment software for coaches and gyms. AI posture checks, professional reports, and a clear{' '}
-                <span className="inline-flex items-center rounded-md bg-foreground px-2 py-0.5 text-[0.8em] font-bold text-primary leading-none dark:bg-transparent dark:border dark:border-primary/50 dark:text-primary">AXIS Score™</span>
+                <strong className="text-foreground">AXIS Score™</strong>
                 {' '}for clients.{' '}
-                <span className="inline-flex items-center rounded-md bg-foreground px-2 py-0.5 text-[0.8em] font-bold text-primary leading-none dark:bg-transparent dark:border dark:border-primary/50 dark:text-primary">ARC™</span>
+                <strong className="text-foreground">ARC™</strong>
                 {' '}plans and milestones between sessions — less admin for you.
               </>
             )}

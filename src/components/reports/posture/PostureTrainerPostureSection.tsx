@@ -74,6 +74,9 @@ export function PostureTrainerPostureSection({ postureResults, postureImages }: 
   return (
     <div className="mt-6 space-y-4 border-t border-border pt-6">
       <h5 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Trainer view</h5>
+      <p className="text-xs text-muted-foreground leading-relaxed">
+        These posture observations are for fitness coaching context only. They are not a clinical or medical assessment. Apply your professional judgement. If you suspect a medical condition, refer the client to their GP.
+      </p>
 
       <div className="grid grid-cols-2 gap-3">
         {availableViews.map((view) => {

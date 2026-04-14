@@ -38,7 +38,7 @@ export interface PricingFeature {
 
 export const TRACK_FEATURES: Record<PlanPackageTrack, PricingFeature[]> = {
   solo: [
-    { text: 'Clinical Logic Engine & professional reports', included: true },
+    { text: 'Movement Analysis Engine & professional reports', included: true },
     { text: 'AI scan credits scale with seats', included: true },
     { text: `Custom branding from £${CUSTOM_BRANDING_PRICE_GBP} one-time`, included: false },
   ],

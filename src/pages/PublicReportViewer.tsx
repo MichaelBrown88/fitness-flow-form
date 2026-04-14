@@ -26,7 +26,13 @@ import {
 } from '@/constants/publicReportShare';
 import { SEO_SITE_ORIGIN } from '@/constants/seo';
 import { PRODUCT_DISPLAY_NAME } from '@/constants/productBranding';
-import { PrivacyNoticeBanner } from '@/components/client/PrivacyNoticeBanner';
+import {
+  ClientConsentGate,
+  useClientConsent,
+} from '@/components/client/ClientConsentGate';
+import { ShareResultsDrawer } from '@/components/client/ShareResultsDrawer';
+import { buildPillarCards } from '@/lib/share/pillarCardData';
+import { Share2 } from 'lucide-react';
 
 const ClientReport = lazy(() => import('@/components/reports/ClientReport'));
 
@@ -125,6 +131,12 @@ const PublicReportViewer = () => {
     changeNarrative,
     socialShareArtifacts,
   } = usePublicReport(token);
+
+  // Consent gate — shown once per device per token (replaces PrivacyNoticeBanner).
+  const { showGate, consentLoaded, dismiss: dismissConsent } = useClientConsent(token);
+
+  // Share results drawer state
+  const [shareDrawerOpen, setShareDrawerOpen] = useState(false);
 
   // Persist token so the installed PWA can redirect back to this report on next open.
   useEffect(() => {
@@ -424,6 +436,15 @@ const PublicReportViewer = () => {
   return (
     <>
       {helmet}
+      {/* Consent gate — full-screen, shown once per device. Renders before AppShell loads. */}
+      {consentLoaded && showGate && token && (
+        <ClientConsentGate
+          token={token}
+          coachName={orgDetails?.name ?? null}
+          coachLogoUrl={orgDetails?.logoUrl ?? null}
+          onDismissed={dismissConsent}
+        />
+      )}
       <AppShell
       title={`${clientName}'s Report`}
       mode="public"
@@ -433,7 +454,6 @@ const PublicReportViewer = () => {
       shareToken={token ?? undefined}
       clientName={clientName}
     >
-      <PrivacyNoticeBanner />
 
       {snapshotSummaries.length >= 2 && (
         <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-10 pt-4">
@@ -502,6 +522,40 @@ const PublicReportViewer = () => {
         <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-10 py-6">
           <PostureComparisonCard snapshots={postureSnapshots} />
         </div>
+      )}
+
+      {token && displayScores && (
+        (() => {
+          const shareCards = buildPillarCards({
+            scores: displayScores,
+            previousScores: displayPrevScores ?? null,
+            clientName: clientName,
+            snapshotCount: snapshotSummaries.length || 1,
+            snapshotTypes: snapshotSummaries.map((s) => s.type),
+            coachLogoUrl: orgDetails?.logoUrl ?? null,
+            coachName: orgDetails?.name ?? null,
+          });
+          return shareCards.length > 0 ? (
+            <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-10 pt-6">
+              <Button
+                type="button"
+                variant="default"
+                size="lg"
+                className="w-full gap-2 rounded-xl"
+                onClick={() => setShareDrawerOpen(true)}
+              >
+                <Share2 className="h-4 w-4 shrink-0" aria-hidden />
+                Share my results
+              </Button>
+              <ShareResultsDrawer
+                open={shareDrawerOpen}
+                onOpenChange={setShareDrawerOpen}
+                cards={shareCards}
+                token={token}
+              />
+            </div>
+          ) : null;
+        })()
       )}
 
       {token && (

@@ -45,31 +45,31 @@ const HEAD_PITCH_REC: Record<string, string> = {
 };
 
 const KYPHOSIS_DESC: Record<string, string> = {
-  Normal: 'Your upper back curve appears normal.',
-  Mild: 'Your upper back shows a slightly increased curve.',
-  Moderate: 'Your upper back has a noticeably increased curve.',
-  Severe: 'Your upper back has a significantly increased curve.',
+  'Within range': 'Your upper back curve appears normal.',
+  'Slightly increased': 'Your upper back shows a slightly increased curve.',
+  'Moderately increased': 'Your upper back has a noticeably increased curve.',
+  'Notably increased': 'Your upper back has a significantly increased curve.',
 };
 
 const KYPHOSIS_REC: Record<string, string> = {
-  Normal: '',
-  Mild: 'Incorporate thoracic extension exercises into your routine.',
-  Moderate: 'Prioritize upper back extension and chest stretching.',
-  Severe: 'Focus on thoracic mobility work and consider professional assessment.',
+  'Within range': '',
+  'Slightly increased': 'Incorporate thoracic extension exercises into your routine.',
+  'Moderately increased': 'Prioritize upper back extension and chest stretching.',
+  'Notably increased': 'Focus on thoracic mobility work and consider professional assessment.',
 };
 
 const LORDOSIS_DESC: Record<string, string> = {
-  Normal: 'Your lower back curve appears normal.',
-  Mild: 'Your lower back shows a slightly increased curve.',
-  Moderate: 'Your lower back has a noticeably increased curve.',
-  Severe: 'Your lower back has a significantly increased curve.',
+  'Within range': 'Your lower back curve appears normal.',
+  'Slightly increased': 'Your lower back shows a slightly increased curve.',
+  'Moderately increased': 'Your lower back has a noticeably increased curve.',
+  'Notably increased': 'Your lower back has a significantly increased curve.',
 };
 
 const LORDOSIS_REC: Record<string, string> = {
-  Normal: '',
-  Mild: 'Strengthen your core with exercises like dead bugs and planks.',
-  Moderate: 'Prioritize core stability and hip flexor stretching.',
-  Severe: 'Focus on core strengthening and hip flexor mobility daily.',
+  'Within range': '',
+  'Slightly increased': 'Strengthen your core with exercises like dead bugs and planks.',
+  'Moderately increased': 'Prioritize core stability and hip flexor stretching.',
+  'Notably increased': 'Focus on core strengthening and hip flexor mobility daily.',
 };
 
 const PELVIC_SIDE_DESC: Record<string, string> = {
@@ -269,8 +269,8 @@ export function buildFrontBackResult(
       description: shoulderDesc,
       recommendation: shoulderRec,
     },
-    kyphosis: { status: 'Normal', curve_degrees: 0, description: 'Assessed in side views.' },
-    lordosis: { status: 'Normal', curve_degrees: 0, description: 'Assessed in side views.' },
+    kyphosis: { status: 'Within range', curve_degrees: 0, description: 'Assessed in side views.' },
+    lordosis: { status: 'Within range', curve_degrees: 0, description: 'Assessed in side views.' },
     pelvic_tilt: {
       status: pelvicStatus === 'Lateral Tilt' ? 'Lateral Tilt' : 'Neutral',
       lateral_tilt_degrees: hipDiffCm > 1 ? hipDiffCm * 2 : 0,
@@ -376,14 +376,14 @@ export function buildSideViewResult(
       recommendation: '',
     },
     kyphosis: {
-      status: 'Normal',
+      status: 'Within range',
       curve_degrees: 0,
-      description: KYPHOSIS_DESC.Normal,
+      description: KYPHOSIS_DESC['Within range'],
     },
     lordosis: {
-      status: 'Normal',
+      status: 'Within range',
       curve_degrees: 0,
-      description: LORDOSIS_DESC.Normal,
+      description: LORDOSIS_DESC['Within range'],
     },
     pelvic_tilt: {
       status: pelvicStatus,

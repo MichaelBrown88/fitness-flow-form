@@ -55,9 +55,10 @@ export default function Terms() {
               our Service.
             </p>
             <p className="text-foreground-secondary leading-relaxed">
-              One Assess is a Software-as-a-Service (SaaS) platform designed for fitness professionals, 
-              coaches, gyms, and healthcare providers to conduct biomechanical assessments and generate 
-              client reports.
+              One Assess is a Software-as-a-Service (SaaS) platform designed for fitness professionals,
+              coaches, and gyms to conduct posture and movement assessments and generate client reports.
+              The Service is intended for fitness and wellness coaching purposes only and is not a medical
+              device or clinical assessment tool.
             </p>
           </section>
 
@@ -139,8 +140,8 @@ export default function Terms() {
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-foreground mb-4">5. Intellectual Property</h2>
             <p className="text-foreground-secondary leading-relaxed mb-4">
-              The Service, including its proprietary clinical logic engine, algorithms, software, designs, 
-              and content, is owned by One Assess and protected by intellectual property laws. 
+              The Service, including its proprietary Movement Analysis Engine, algorithms, software, designs,
+              and content, is owned by One Assess and protected by intellectual property laws.
               You may not copy, modify, distribute, or create derivative works without our written permission.
             </p>
             <p className="text-foreground-secondary leading-relaxed">

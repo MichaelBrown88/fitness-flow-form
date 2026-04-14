@@ -46,25 +46,25 @@ export async function sendTrialEndingSoonEmail(
 
   const isLastDay = daysLeft <= 1;
   const subject = isLastDay
-    ? `Your ${APP_NAME} trial ends tomorrow`
-    : `Your ${APP_NAME} trial ends in ${daysLeft} days`;
+    ? `Keep everything you've built, ${firstName}`
+    : `Your progress is ready to carry forward`;
 
   const { html, text } = renderActivationEmail({
     subject,
     preheader: isLastDay
-      ? 'Subscribe now to keep your data and client access.'
-      : `You have ${daysLeft} days left to try ${APP_NAME}.`,
+      ? 'Subscribe today and everything stays exactly as it is.'
+      : `Subscribe before your trial ends and keep all your clients and data.`,
     appName: APP_NAME,
     logoUrl: EMAIL_ASSETS_LOGO_URL || undefined,
-    headline: isLastDay ? 'Last day of your trial' : `${daysLeft} days left on your trial`,
+    headline: isLastDay ? `Keep everything you've built` : `Ready to keep going?`,
     paragraphs: isLastDay
       ? [
-          `Hey ${firstName}, your ${APP_NAME} gym trial ends tomorrow. After that, you'll lose access to your client data and assessments.`,
-          'Subscribe now to keep everything — all your clients, assessments, and ARC™ plans stay exactly where they are.',
+          `Hey ${firstName}, your trial wraps up tomorrow. Everything you've built is ready to carry forward. All your clients, assessments, and ARC plans stay exactly where they are when you subscribe.`,
+          `Takes two minutes to pick a plan and keep your momentum going.`,
         ]
       : [
-          `Hey ${firstName}, your ${APP_NAME} gym trial ends in ${daysLeft} days. We wanted to give you a heads-up so you have time to decide.`,
-          'When you subscribe, nothing changes — all your clients, data, and progress carry over seamlessly.',
+          `Hey ${firstName}, your trial has ${daysLeft} days left. When you subscribe, everything carries over seamlessly. Clients, data, and progress, all exactly where you left them.`,
+          `When you're ready, choosing a plan takes a couple of minutes.`,
         ],
     primaryCta: { label: 'Choose a plan', href: billingUrl },
     secondaryLink: { label: 'Go to dashboard', href: `${APP_HOST}/dashboard` },

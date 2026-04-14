@@ -450,12 +450,12 @@ export function useAssessmentSave({
           const consentPath = `organizations/${profile.organizationId}/clients/${cId}/consents/${consentDocId}`;
           const consentRef = fsDoc(fsDb(), consentPath);
           await fsSetDoc(consentRef, {
-            type: 'health_data_processing',
-            version: 1,
+            type: 'health_data_processing_explicit',
+            version: 2,
             grantedByCoachUid: user.uid,
             grantedAt: fsSvr(),
             firstAssessmentId: assessmentId,
-            note: 'Implicit consent: coach collected health data on behalf of client during first assessment.',
+            note: 'Coach attests explicit consent was obtained from client at point of assessment. Client was informed their posture photos and health data are stored securely for fitness coaching purposes only and are not used for medical assessment.',
           }, { merge: true });
           logger.debug('[Assessment] Health data consent record written');
         } catch (consentErr) {

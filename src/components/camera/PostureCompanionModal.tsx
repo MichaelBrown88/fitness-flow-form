@@ -148,7 +148,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
             <div className="mt-auto w-full pt-8 border-t border-border space-y-3">
               {/* Hidden file input for manual upload */}
               <input
-                ref={fileInputRef as React.RefObject<HTMLInputElement>}
+                ref={fileInputRef as React.RefObject<HTMLInputElement | null>}
                 type="file"
                 accept="image/*,.heic,.heif"
                 multiple
@@ -294,7 +294,6 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
 
         </div>
       </DialogContent>
-      
       {/* Image Preview Modal */}
       <Dialog open={deviceCaptureOpen} onOpenChange={(open) => !open && setDeviceCaptureOpen(false)}>
         <DialogContent className="h-[100dvh] max-h-none w-full max-w-none gap-0 overflow-hidden rounded-none border-0 p-0">
@@ -312,7 +311,6 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
           ) : null}
         </DialogContent>
       </Dialog>
-
       {previewImage && (
         <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
           <DialogContent className="max-w-4xl max-h-[90vh] p-0 border-none bg-black/95">

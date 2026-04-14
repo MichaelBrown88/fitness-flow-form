@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { defineConfig, type Plugin, type ViteDevServer } from "vite";
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
@@ -85,6 +86,7 @@ export default defineConfig(({ mode }) => ({
         });
       },
     },
+    tailwindcss(),
     react(),
     mode === "development" && componentTagger(),
     VitePWA({
@@ -136,7 +138,7 @@ export default defineConfig(({ mode }) => ({
           {
             // JS chunks: cache lazily, but use NetworkFirst (not StaleWhileRevalidate)
             // so stale chunks get replaced immediately on new deployments
-            urlPattern: /\.js$/,
+            urlPattern: /\/assets\/[^/]+\.js$/,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'js-chunks',

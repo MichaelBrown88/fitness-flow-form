@@ -167,7 +167,7 @@ export const POSTURE_FEEDBACK_LIBRARY = {
     feedback: {
       mild: tier('Placeholder: mild lateral trunk shift.', 'Placeholder: core bracing and unilateral carries.'),
       moderate: tier('Placeholder: noticeable lateral shift.', 'Placeholder: assess rotation and hip hike patterns.'),
-      significant: tier('Placeholder: marked lateral shift.', 'Placeholder: structured scoliosis-aware screening with coach.'),
+      significant: tier('Placeholder: marked lateral shift.', 'Placeholder: structured follow-up with coach to monitor lateral spinal positioning over time.'),
     },
   },
   uneven_hip_height: {

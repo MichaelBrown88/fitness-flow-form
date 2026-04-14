@@ -37,6 +37,28 @@ export interface ActivationEmailContent {
   footerVariant?: EmailFooterVariant;
 }
 
+export interface DigestStatCard {
+  /** Large number or value, e.g. "12" or "4.2 hrs" */
+  value: string;
+  /** Short label below the value, e.g. "assessments" */
+  label: string;
+}
+
+export interface DigestEmailContent {
+  subject: string;
+  preheader?: string;
+  appName: string;
+  logoUrl?: string | null;
+  headline: string;
+  /** Stat cards shown in a row beneath the headline (1–4 cards) */
+  stats: DigestStatCard[];
+  paragraphs: string[];
+  bullets?: string[];
+  primaryCta: EmailCta;
+  secondaryLink?: EmailCta;
+  footerVariant?: EmailFooterVariant;
+}
+
 export interface NotificationEmailContent {
   subject: string;
   preheader?: string;
@@ -283,5 +305,96 @@ export function renderNotificationEmail(content: NotificationEmailContent): Rend
   return {
     html: wrapDocument(content.subject, inner, content.preheader),
     text: textLines.join('\n'),
+  };
+}
+
+/**
+ * Digest: monthly recap with stat cards (value + label), then prose + optional bullets.
+ * Stat cards are rendered as a responsive inline-block row — 1–4 cards fit naturally.
+ */
+export function renderDigestEmail(content: DigestEmailContent): RenderedEmail {
+  const fv = content.footerVariant ?? 'marketing';
+
+  // Stat cards — each card is an inline-block cell so they wrap gracefully on narrow clients
+  const cardCells = content.stats
+    .map(
+      (card) => `
+    <td style="display:inline-block;width:${Math.floor(96 / Math.min(content.stats.length, 4))}%;min-width:80px;max-width:120px;text-align:center;padding:12px 4px;vertical-align:top;">
+      <div style="font-size:28px;font-weight:700;color:${t.textPrimary};line-height:1;letter-spacing:-0.02em;">${escapeHtml(card.value)}</div>
+      <div style="font-size:11px;font-weight:500;color:${t.textMuted};text-transform:uppercase;letter-spacing:0.05em;margin-top:4px;">${escapeHtml(card.label)}</div>
+    </td>`,
+    )
+    .join('');
+
+  const statsBlock = `
+  <tr>
+    <td style="padding:16px 24px 4px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+             style="background:${t.pageBg};border-radius:8px;padding:4px 0;">
+        <tbody>
+          <tr style="display:block;text-align:center;">
+            ${cardCells}
+          </tr>
+        </tbody>
+      </table>
+    </td>
+  </tr>`;
+
+  const h = escapeHtml(content.headline);
+  const paras = content.paragraphs
+    .map(
+      (p) =>
+        `<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${t.textPrimary};">${escapeHtml(p)}</p>`,
+    )
+    .join('');
+  const bullets =
+    content.bullets && content.bullets.length > 0
+      ? `<ul style="margin:0 0 20px;padding-left:20px;color:${t.textPrimary};font-size:15px;line-height:1.5;">
+          ${content.bullets.map((b) => `<li style="margin-bottom:8px;">${escapeHtml(b)}</li>`).join('')}
+        </ul>`
+      : '';
+  const secondary = content.secondaryLink
+    ? `<p style="margin:24px 0 0;font-size:13px;color:${t.textMuted};">${textLink(content.secondaryLink.href, content.secondaryLink.label)}</p>`
+    : '';
+
+  const bodyRow = `
+  <tr>
+    <td style="padding:28px 24px 8px;">
+      <h1 style="margin:0 0 4px;font-size:22px;line-height:1.25;color:${t.textPrimary};font-weight:600;">${h}</h1>
+    </td>
+  </tr>
+  ${statsBlock}
+  <tr>
+    <td style="padding:20px 24px 20px;">
+      ${paras}
+      ${bullets}
+      <p style="margin:8px 0 0;">${ctaButton(content.primaryCta.href, content.primaryCta.label)}</p>
+      ${secondary}
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:16px 24px 24px;border-top:1px solid ${t.border};">
+      ${footerHtml(content.appName, fv)}
+    </td>
+  </tr>`;
+
+  const inner = `${headerBlock(content.appName, content.logoUrl, false)}${bodyRow}`;
+
+  // Plain-text version
+  const textParts: string[] = [content.headline, ''];
+  textParts.push(content.stats.map((c) => `${c.value} ${c.label}`).join('  ·  '), '');
+  textParts.push(...content.paragraphs);
+  if (content.bullets?.length) {
+    textParts.push('', ...content.bullets.map((b) => `• ${b}`));
+  }
+  textParts.push('', `${content.primaryCta.label}: ${content.primaryCta.href}`);
+  if (content.secondaryLink) {
+    textParts.push(`${content.secondaryLink.label}: ${content.secondaryLink.href}`);
+  }
+  textParts.push('', footerText(content.appName, fv));
+
+  return {
+    html: wrapDocument(content.subject, inner, content.preheader),
+    text: textParts.join('\n'),
   };
 }

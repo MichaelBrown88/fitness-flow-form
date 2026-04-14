@@ -67,7 +67,7 @@ export const CONFIG = {
       // Use VITE_GEMINI_LIVE_MODEL to override framing guide (Gemini Live).
       LIVE_MODEL_NAME: (() => {
         const v = import.meta.env.VITE_GEMINI_LIVE_MODEL;
-        return typeof v === 'string' && v.trim() !== '' ? v.trim() : 'gemini-2.5-flash-native-audio-preview-12-2025';
+        return typeof v === 'string' && v.trim() !== '' ? v.trim() : 'gemini-3.1-flash-live-preview';
       })(),
       LIVE_FRAME_INTERVAL_MS: 1000,
       /**

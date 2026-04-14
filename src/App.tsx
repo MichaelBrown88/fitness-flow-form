@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, type JSX } from 'react';
 import { AuthProvider } from "./contexts/AuthContext";
 import { useAuth } from "@/hooks/useAuth";
 import { ThemeManager } from "./components/layout/ThemeManager";
@@ -61,6 +61,7 @@ const PublicRemoteAssessment = lazy(() => import("./pages/PublicRemoteAssessment
 
 const RequestErasure = lazy(() => import("./pages/RequestErasure"));
 const SandboxTrial = lazy(() => import("./pages/SandboxTrial"));
+const ShareCardPage = lazy(() => import("./pages/share/ShareCardPage"));
 
 // Platform admin pages (separate from org admin)
 const PlatformLogin = lazy(() => import("./pages/admin/PlatformLogin"));
@@ -197,6 +198,12 @@ const App = () => (
                     <Route
                       path="/r/:token/erasure"
                       element={<RequestErasure />}
+                    />
+
+                    {/* Pillar score share cards — no app chrome, social media dimensions */}
+                    <Route
+                      path="/share/:token/:pillar/:format"
+                      element={<ShareCardPage />}
                     />
 
                     {/* Legacy share route redirects to token-based URL */}

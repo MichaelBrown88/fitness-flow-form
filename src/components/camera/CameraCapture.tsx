@@ -24,6 +24,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
   overlayText
 }) => {
   const webcamRef = useRef<Webcam>(null);
+  const [consentGiven, setConsentGiven] = useState(mode !== 'posture'); // posture requires explicit consent
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>(mode === 'posture' ? 'user' : 'environment');
   const [error, setError] = useState<string | null>(null);
@@ -108,6 +109,34 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
       setError('Could not access camera.');
     }
   };
+
+  // Posture consent gate — must be accepted before camera initialises
+  if (!consentGiven) {
+    return (
+      <div className="fixed inset-0 z-[100] bg-black text-white flex flex-col items-center justify-center p-8 font-sans">
+        <div className="max-w-sm w-full bg-zinc-900 rounded-2xl p-6 space-y-5">
+          <h3 className="text-base font-semibold text-white">Before we capture your posture photos</h3>
+          <p className="text-sm text-white/70 leading-relaxed">
+            These photos are used to generate a fitness posture observation for your coach. They are stored securely and used only for your assessment.
+          </p>
+          <p className="text-sm font-medium text-amber-400">
+            This is not a medical assessment. Posture observations are for fitness coaching context only and do not constitute a clinical diagnosis.
+          </p>
+          <p className="text-xs text-white/50 leading-relaxed">
+            You can request deletion of your data at any time from your report page.
+          </p>
+          <div className="flex gap-3 pt-2">
+            <Button variant="outline" onClick={onClose} className="flex-1 border-white/20 text-white/70">
+              Cancel
+            </Button>
+            <Button onClick={() => setConsentGiven(true)} className="flex-1 bg-primary text-primary-foreground">
+              I understand, continue
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[100] bg-black text-white flex flex-col overflow-hidden font-sans">

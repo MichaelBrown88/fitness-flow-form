@@ -12,7 +12,7 @@ if (import.meta.env.VITE_SENTRY_DSN) {
   Sentry.init({
     dsn: import.meta.env.VITE_SENTRY_DSN as string,
     environment: import.meta.env.MODE, // "production" | "development" | "staging"
-    // release: import.meta.env.VITE_APP_VERSION, // Uncomment once you set a release version
+    release: import.meta.env.VITE_APP_VERSION as string | undefined,
     integrations: [
       Sentry.browserTracingIntegration(),
       Sentry.replayIntegration({

@@ -48,4 +48,12 @@ export const STORAGE_KEYS = {
 
   /** sessionStorage flag: client has seen the privacy notice on their report this session. */
   CLIENT_PRIVACY_NOTICE_SEEN: 'oneassess-client-privacy-seen',
+
+  /**
+   * localStorage key prefix for consent gate state per token.
+   * Full key: `${CLIENT_CONSENT_STATE_PREFIX}${token}`
+   * Value: 'answered' once the client has responded to the consent prompt (yes or no).
+   * Persistent across sessions so the gate only shows once per device per token.
+   */
+  CLIENT_CONSENT_STATE_PREFIX: 'oneassess-consent-',
 } as const;

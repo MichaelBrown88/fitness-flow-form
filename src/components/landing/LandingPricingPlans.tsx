@@ -23,7 +23,7 @@ const PAID_TRACK_ORDER: PlanPackageTrack[] = ['solo', 'gym'];
 
 const FREE_FEATURES: PricingFeature[] = [
   { text: `${FREE_TIER_MONTHLY_AI_CREDITS} AI scans / month`, included: true },
-  { text: 'Clinical Logic Engine & client reports', included: true },
+  { text: 'Movement Analysis Engine & client reports', included: true },
 ];
 
 export function LandingPricingPlans() {

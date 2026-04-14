@@ -23,7 +23,7 @@ export function UnderTheHood() {
         {/* Centered header — Apple style */}
         <div ref={headerRef}>
           <SectionHeader
-            pill="Clinical Logic Engine"
+            pill="Movement Analysis Engine"
             pillIcon={<Activity size={12} />}
             title={
               <>
@@ -31,7 +31,7 @@ export function UnderTheHood() {
                 <span className={LANDING_H2_ACCENT_ON_DARK}>Pretty Pictures.</span>
               </>
             }
-            subtitle="360+ data points analyzed against 5,000+ clinical benchmarks — feeding AXIS Score™, pillar detail, and coach-facing SIGNAL™ themes."
+            subtitle="360+ data points analyzed across posture, movement, and body composition — feeding AXIS Score™, pillar detail, and coach-facing SIGNAL™ themes."
             dark
           />
         </div>
@@ -45,8 +45,8 @@ export function UnderTheHood() {
                 desc: 'Compare client metrics against age/gender matched population averages.',
               },
               {
-                title: 'Risk Stratification',
-                desc: 'Identify musculoskeletal risks before they become injuries.',
+                title: 'Pattern Recognition',
+                desc: 'Support better movement habits between sessions.',
               },
               {
                 title: 'Trend Analysis',

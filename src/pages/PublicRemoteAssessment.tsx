@@ -50,6 +50,7 @@ export default function PublicRemoteAssessment() {
   const [error, setError] = useState<string | null>(null);
   const [lifestyle, setLifestyle] = useState<LifestyleRemoteState>(INITIAL_LIFESTYLE_REMOTE);
   const [posturePaths, setPosturePaths] = useState<Partial<Record<RemotePostureView, string>>>({});
+  const [postureConsentGiven, setPostureConsentGiven] = useState(false);
 
   useEffect(() => {
     if (!token) {
@@ -184,7 +185,27 @@ export default function PublicRemoteAssessment() {
           </Button>
         ) : null}
         {showPostureUi && token ? (
-          <PublicRemotePostureFields token={token} value={posturePaths} onChange={setPosturePaths} />
+          !postureConsentGiven ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30 p-5 space-y-4">
+              <p className="text-sm font-medium text-foreground">About your posture photos</p>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Your coach has invited you to upload posture photos as part of your fitness assessment. These photos are stored securely and are visible only to your coach and their organisation.
+              </p>
+              <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                This is not a medical assessment. Posture observations are for fitness coaching context only and do not constitute a clinical diagnosis. You can request deletion of your data at any time.
+              </p>
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 rounded border-border accent-primary"
+                  onChange={(e) => { if (e.target.checked) setPostureConsentGiven(true); }}
+                />
+                <span className="text-sm text-foreground">I understand and consent to my photos being used for this fitness assessment.</span>
+              </label>
+            </div>
+          ) : (
+            <PublicRemotePostureFields token={token} value={posturePaths} onChange={setPosturePaths} />
+          )
         ) : null}
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
         {(session.scope !== 'lifestyle_posture' || step === 1) && (

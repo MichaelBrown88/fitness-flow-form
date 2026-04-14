@@ -354,6 +354,25 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Client sharing + email consent prefs — token IS the credential.
+    // Only a single doc ('prefs') is ever written; clients have no Firebase Auth.
+    match /publicReports/{token}/clientConsent/{docId} {
+      allow get: if true;
+      allow list: if false;
+      // Unauthenticated clients may create/update only their own prefs doc.
+      // Fields are strictly enumerated to prevent abuse.
+      allow create, update: if docId == 'prefs' &&
+        request.resource.data.keys().hasOnly([
+          'socialSharingConsented', 'monthlyEmailConsented',
+          'consentGivenAt', 'consentUpdatedAt'
+        ]) &&
+        (request.resource.data.socialSharingConsented == null ||
+          request.resource.data.socialSharingConsented is bool) &&
+        (request.resource.data.monthlyEmailConsented == null ||
+          request.resource.data.monthlyEmailConsented is bool);
+      allow delete: if false;
+    }
+
     // =========================================================
     // PUBLIC ROADMAPS  (token mirror for client roadmap viewer)
     // Written when coach sets roadmap shareToken; doc ID = that token.

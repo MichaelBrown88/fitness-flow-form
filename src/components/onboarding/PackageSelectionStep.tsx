@@ -341,7 +341,7 @@ export function PackageSelectionStep({
                 'Unlimited manual assessments; AI scans use monthly credits',
                 `Custom branding add-on from £${CUSTOM_BRANDING_PRICE_GBP} one-time (purchase separately; not included during free tier)`,
                 'Powered by One Assess on every report',
-                'Clinical Logic Engine',
+                'Movement Analysis Engine',
               ].map((feature) => (
                 <div key={feature} className="flex items-center gap-2 text-xs text-foreground-secondary">
                   <CheckCircle size={14} className="text-score-green shrink-0" />

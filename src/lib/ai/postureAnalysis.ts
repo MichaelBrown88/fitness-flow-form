@@ -97,14 +97,14 @@ export interface PostureAnalysisResult {
   };
   // Kyphosis (Thoracic Curve)
   kyphosis: {
-    status: 'Normal' | 'Mild' | 'Moderate' | 'Severe';
+    status: 'Within range' | 'Slightly increased' | 'Moderately increased' | 'Notably increased';
     curve_degrees: number; // Increased thoracic curve
     description: string;
     recommendation?: string;
   };
   // Lordosis (Lumbar Curve)
   lordosis: {
-    status: 'Normal' | 'Mild' | 'Moderate' | 'Severe';
+    status: 'Within range' | 'Slightly increased' | 'Moderately increased' | 'Notably increased';
     curve_degrees: number; // Increased lumbar curve
     description: string;
     recommendation?: string;
@@ -175,11 +175,11 @@ export interface PostureAnalysisResult {
     recommendation?: string;
   };
   
-  // Spinal Curvature (Back View) - Scoliosis
+  // Spinal Curvature (Back View)
   spinal_curvature?: {
-    status: 'Normal' | 'Mild Scoliosis' | 'Moderate Scoliosis' | 'Severe Scoliosis';
+    status: 'Aligned' | 'Slight lateral curve' | 'Moderate lateral curve' | 'Pronounced lateral curve';
     curve_degrees: number;
-    curve_direction: 'Left' | 'Right' | 'S-Curve';
+    curve_direction: 'right-leaning' | 'left-leaning' | 'bilateral';
     description: string;
     recommendation?: string;
   };

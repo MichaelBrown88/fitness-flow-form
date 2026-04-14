@@ -1,6 +1,7 @@
 import './init-env';
 import { randomUUID } from 'node:crypto';
 import * as admin from 'firebase-admin';
+import { logger } from 'firebase-functions';
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { HttpsError, onCall, onRequest } from 'firebase-functions/v2/https';
@@ -63,6 +64,21 @@ import {
 } from './notifications';
 import { handleOnboardingCompleted } from './transactionalEmails';
 import { sendTrialExpiryNudges } from './trialNudges';
+import {
+  sendMonthlyValueDigests,
+  sendFirstAiUseFollowUp,
+  sendReportNeverSharedNudges,
+  sendAssessmentSlowdownNudges,
+  sendCapacityApproachingEmail,
+  sendFounderCheckIns,
+  sendLeadMagnetTips,
+} from './lifecycleEmails';
+import { sendClientMonthInReviewEmails } from './clientMonthInReview';
+import {
+  alertCapacityHit,
+  alertWeeklyFinanceDigest,
+  alertAiCostSpike,
+} from './slackBillingAlerts';
 
 admin.initializeApp();
 
@@ -244,9 +260,34 @@ export const aggregateOrgClientChanges = onDocumentWritten(
     document: 'organizations/{orgId}/clients/{clientId}',
   },
   async (event) => {
-    if (event.data) {
-      const params = event.params as { orgId: string; clientId: string };
-      await handleClientChange(event.data, params.orgId);
+    if (!event.data) return;
+    const params = event.params as { orgId: string; clientId: string };
+    await handleClientChange(event.data, params.orgId);
+
+    // Capacity alert — only fire when a client is added (not removed or updated)
+    const wasAdded = !event.data.before.exists && event.data.after.exists;
+    if (!wasAdded) return;
+    try {
+      const db = admin.firestore();
+      const orgSnap = await db.doc(`organizations/${params.orgId}`).get();
+      if (!orgSnap.exists) return;
+      const orgData = orgSnap.data()!;
+      const clientCount: number = typeof orgData.clientCount === 'number' ? orgData.clientCount : 0;
+      const clientCap: number = typeof orgData.subscription?.clientCap === 'number' ? orgData.subscription.clientCap : 0;
+      if (clientCap <= 0) return;
+      const pct = clientCount / clientCap;
+      if (pct >= 1) {
+        await alertCapacityHit({ orgId: params.orgId, orgName: orgData.name, clientCount, clientCap, level: 'full' });
+      } else if (pct >= 0.9) {
+        await alertCapacityHit({ orgId: params.orgId, orgName: orgData.name, clientCount, clientCap, level: 'warning' });
+      }
+      if (pct >= 0.8) {
+        await sendCapacityApproachingEmail(params.orgId).catch((err) =>
+          logger.warn('[aggregateOrgClientChanges] capacity email failed', err),
+        );
+      }
+    } catch (err) {
+      logger.warn('[aggregateOrgClientChanges] capacity alert failed', err);
     }
   },
 );
@@ -259,6 +300,23 @@ export const aggregateAIUsageChanges = onDocumentWritten(
     if (event.data) {
       await handleAIUsageChange(event.data);
     }
+  },
+);
+
+/**
+ * First AI use follow-up — fires when an org's monthly aiUsage doc is first created.
+ * Sends a 72-hour delayed educational email with 5 real coaching use cases.
+ * Uses emailMilestones deduplication so it only ever sends once per org.
+ */
+export const firstAiUseEmailTrigger = onDocumentWritten(
+  { document: 'organizations/{orgId}/aiUsage/{monthId}' },
+  async (event) => {
+    // Only fire on creation (not on subsequent updates)
+    if (!event.data || event.data.before.exists) return;
+    const { orgId } = event.params as { orgId: string; monthId: string };
+    await sendFirstAiUseFollowUp(orgId).catch((err) =>
+      logger.warn('[firstAiUseEmailTrigger] failed', err),
+    );
   },
 );
 
@@ -949,6 +1007,118 @@ export const onInviteAccepted = onDocumentWritten(
 export const dailyDraftRecoveryNudges = onSchedule(
   { schedule: 'every day 09:00', timeZone: 'UTC' },
   async () => { await sendDraftRecoveryNudges(); },
+);
+
+/**
+ * Weekly finance digest — every Monday at 07:00 UTC.
+ * Posts MRR, active orgs, trial count, and past-due count to #finance.
+ */
+export const weeklyFinanceDigest = onSchedule(
+  { schedule: 'every monday 07:00', timeZone: 'UTC', timeoutSeconds: 60 },
+  async () => {
+    try {
+      const db = admin.firestore();
+      const orgsSnap = await db.collection('organizations').get();
+      let mrrGbpPence = 0;
+      let activeOrgs = 0;
+      let trialOrgs = 0;
+      let pastDueOrgs = 0;
+      for (const doc of orgsSnap.docs) {
+        const d = doc.data();
+        const status: string = d.subscription?.status ?? 'trial';
+        const amountCents: number = typeof d.subscription?.amountCents === 'number' ? d.subscription.amountCents : 0;
+        if (status === 'active') { activeOrgs++; mrrGbpPence += amountCents; }
+        else if (status === 'trial') trialOrgs++;
+        else if (status === 'past_due') { pastDueOrgs++; mrrGbpPence += amountCents; }
+      }
+      const weekLabel = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+      await alertWeeklyFinanceDigest({ mrrGbpPence, activeOrgs, trialOrgs, pastDueOrgs, weekLabel });
+    } catch (err) {
+      logger.error('[weeklyFinanceDigest] failed', err);
+    }
+  },
+);
+
+/**
+ * Daily AI cost spike check — runs at 02:00 UTC.
+ * Alerts #engineering if MTD AI spend exceeds £50 (configurable via AI_COST_ALERT_THRESHOLD_GBP).
+ */
+export const dailyAiCostCheck = onSchedule(
+  { schedule: 'every day 02:00', timeZone: 'UTC', timeoutSeconds: 60 },
+  async () => {
+    try {
+      const db = admin.firestore();
+      const now = new Date();
+      const monthId = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+      const snap = await db.doc(`platform/aiUsage/monthly/${monthId}`).get();
+      if (!snap.exists) return;
+      const mtdGbpPence: number = typeof snap.data()?.totalCostGbpPence === 'number' ? snap.data()!.totalCostGbpPence : 0;
+      const thresholdGbp = parseFloat(process.env.AI_COST_ALERT_THRESHOLD_GBP || '50');
+      const thresholdGbpPence = Math.round(thresholdGbp * 100);
+      if (mtdGbpPence >= thresholdGbpPence) {
+        await alertAiCostSpike({ mtdGbpPence, thresholdGbpPence });
+      }
+    } catch (err) {
+      logger.error('[dailyAiCostCheck] failed', err);
+    }
+  },
+);
+
+// ─── Lifecycle emails ─────────────────────────────────────────────────────────
+
+/**
+ * Monthly value digest — 1st of each month at 07:30 UTC (after counter reset at 00:01).
+ * Shows each coach their prior-month stats: assessments, AI queries, hours saved.
+ */
+export const monthlyValueDigestEmail = onSchedule(
+  { schedule: '1 of month 07:30', timeZone: 'UTC', timeoutSeconds: 540 },
+  async () => { await sendMonthlyValueDigests(); },
+);
+
+/**
+ * Assessment slowdown nudge — 1st of each month at 08:00 UTC.
+ * Personal from-founder note when monthly volume drops ≥50% vs average.
+ */
+export const monthlySlowdownNudgeEmail = onSchedule(
+  { schedule: '1 of month 08:00', timeZone: 'UTC', timeoutSeconds: 540 },
+  async () => { await sendAssessmentSlowdownNudges(); },
+);
+
+/**
+ * Report-never-shared nudge — daily at 09:30 UTC.
+ * Fires once for orgs with 3+ assessments but zero shared client reports.
+ */
+export const dailyReportShareNudgeEmail = onSchedule(
+  { schedule: 'every day 09:30', timeZone: 'UTC', timeoutSeconds: 300 },
+  async () => { await sendReportNeverSharedNudges(); },
+);
+
+/**
+ * Founder check-in — daily at 10:00 UTC.
+ * Personal note to coaches who are 6–8 weeks in with ≥5 assessments.
+ */
+export const dailyFounderCheckInEmail = onSchedule(
+  { schedule: 'every day 10:00', timeZone: 'UTC', timeoutSeconds: 300 },
+  async () => { await sendFounderCheckIns(); },
+);
+
+/**
+ * Lead magnet tip — daily at 10:30 UTC.
+ * Educational email for coaches who are 2–3 weeks in and still building their client list.
+ */
+export const dailyLeadMagnetTipEmail = onSchedule(
+  { schedule: 'every day 10:30', timeZone: 'UTC', timeoutSeconds: 300 },
+  async () => { await sendLeadMagnetTips(); },
+);
+
+/**
+ * Client Month in Review — 1st of each month at 09:00 UTC.
+ * Sends each client a progress recap (or nudge to book) based on their assessment activity.
+ * Respects client email consent and skips clients whose natural cadence exceeds monthly.
+ */
+export const clientMonthInReviewEmail = onSchedule(
+  { schedule: '1 of month 09:00', timeZone: 'UTC', timeoutSeconds: 540 },
+  async () => { await sendClientMonthInReviewEmails(); },
 );
 
 /**

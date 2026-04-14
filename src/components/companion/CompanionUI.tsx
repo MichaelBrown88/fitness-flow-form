@@ -39,7 +39,7 @@ interface CompanionUIProps {
   isSequenceActive: boolean;
   isUploading: number;
   countdown: number | null;
-  webcamRef: React.RefObject<Webcam>;
+  webcamRef: React.RefObject<Webcam | null>;
   onCapture: () => void;
   onStartSequence: () => void;
   onCancelSequence?: () => void;

@@ -198,7 +198,7 @@ export function usePlatformDashboard(): UsePlatformDashboardResult {
   const [filterRegion, setFilterRegion] = useState('');
   const [filterIncomplete, setFilterIncomplete] = useState(false);
   const [filterTest, setFilterTest] = useState(false);
-  const searchDebounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   
   // Platform config (feature flags)
   const [platformConfig, setPlatformConfig] = useState<PlatformConfig>(DEFAULT_PLATFORM_CONFIG);

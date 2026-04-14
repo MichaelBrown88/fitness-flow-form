@@ -193,7 +193,7 @@ export const LANDING_TESTIMONIALS: readonly LandingTestimonial[] = [
   },
   {
     quote:
-      'The Clinical Logic Engine is incredibly accurate. It catches biomechanical issues I might miss, and the evidence-based reports make it easy to explain findings to clients with confidence.',
+      'The Movement Analysis Engine has transformed how I run assessments. It helps me structure posture observations I can discuss with clients, and the professional reports make it easy to explain what I see.',
     author: 'Marcus Johnson',
     role: 'Gym Owner',
     company: 'Iron Works Gym',
@@ -219,9 +219,9 @@ export const LANDING_FAQ_ITEMS: readonly LandingFaqItem[] = [
       'No. One Assess does not generate workout programs. It supports assessment capture, professional reports, AXIS Score™, SIGNAL™ for coaches, and ARC™ plans you define. You stay in control of programming and coaching decisions.',
   },
   {
-    question: 'How does the Clinical Logic Engine work?',
+    question: 'How does the Movement Analysis Engine work?',
     answer:
-      'Our proprietary Clinical Logic Engine uses deterministic algorithms (not AI guessing) to analyze biomechanical data. It maps 360+ key points on the body against a database of 5,000+ validated clinical benchmarks. Each measurement is compared to normative data, and our engine generates evidence-based findings in seconds. You can review and customize all results before generating client reports.',
+      'Our Movement Analysis Engine uses computer vision to observe posture and movement patterns and generate structured fitness coaching insights. It identifies key body positions, flags notable deviations from typical alignment ranges, and produces observations your coach can review and discuss with you. All results are for fitness coaching context — they are not a medical assessment. You can review and customise all results before generating client reports.',
   },
   {
     question: 'Can I customize the reports with my branding?',

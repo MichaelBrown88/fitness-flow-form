@@ -125,14 +125,14 @@ function drawFrontBackDeviations(
   }
 
   // 4. Spinal Curvature (Scoliosis) - back view only
-  if (isBackView && analysis.spinal_curvature && analysis.spinal_curvature.status !== 'Normal') {
+  if (isBackView && analysis.spinal_curvature && analysis.spinal_curvature.status !== 'Aligned') {
     const curveDeg = analysis.spinal_curvature.curve_degrees || 0;
     const curveDir = analysis.spinal_curvature.curve_direction;
 
     let bulgeSide = curveDeg > 0 ? 1 : -1;
-    if (curveDir === 'Right') {
+    if (curveDir === 'right-leaning') {
       bulgeSide = -1;
-    } else if (curveDir === 'Left') {
+    } else if (curveDir === 'left-leaning') {
       bulgeSide = 1;
     }
 

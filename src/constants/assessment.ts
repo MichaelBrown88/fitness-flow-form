@@ -237,7 +237,7 @@ export const ASSESSMENT_TOOLTIPS = {
     postureInputMode: 'Instructions:\n1. Choose "AI Posture Scan" for automated landmark detection using the camera (e.g. phone or tablet as a companion device).\n2. Choose "Manual" to record observations directly.',
     postureHeadOverall: 'Instructions:\n1. Observe client from the side view.\n2. Note if the ear is positioned directly over the shoulder (Neutral).\n3. If the head sits forward of the shoulder line, mark as Forward Head.',
     postureShouldersOverall: 'Instructions:\n1. View from the side for rounded positions.\n2. View from the back for height symmetry or winged blades.\n3. Note any persistent elevation on one side.',
-    postureBackOverall: 'Instructions:\n1. Observe spinal curves from the side view.\n2. Note excessive upper back rounding (Kyphosis) or lower back arch (Lordosis).\n3. Check for side-to-side curvature (Scoliosis) from the back.',
+    postureBackOverall: 'Instructions:\n1. Observe spinal curves from the side view.\n2. Note excessive upper back rounding or lower back arch.\n3. Check for side-to-side lateral curve from the back.',
     postureHipsOverall: 'Instructions:\n1. Place hands on hip bones from the side.\n2. Note if the pelvis tilts forward (Anterior) or backward (Posterior).\n3. Check for height difference between left and right sides.',
     postureKneesOverall: 'Instructions:\n1. View from the front for inward/outward bowing.\n2. Inward cave = Valgus; Outward bow = Varus.\n3. Note any excessive locking back (hyperextension) from the side.',
     ohsShoulderMobility: 'Instructions:\n1. Stand with feet shoulder-width apart.\n2. Raise arms overhead with elbows locked.\n3. Note if arms stay vertical or tilt forward.',
@@ -493,10 +493,10 @@ export const ASSESSMENT_OPTIONS = {
   ],
   postureBackOverall: [
     { value: 'neutral', label: 'Neutral' },
-    { value: 'increased-kyphosis', label: 'Increased kyphosis (upper back rounded)' },
-    { value: 'increased-lordosis', label: 'Increased lordosis (excess lower-back arch)' },
-    { value: 'scoliosis', label: 'Scoliosis (side-to-side curve)' },
-    { value: 'flat-back', label: 'Flat back (reduced curves)' },
+    { value: 'increased-kyphosis', label: 'Increased upper back curve (rounded upper back)' },
+    { value: 'increased-lordosis', label: 'Increased lower back curve (excess lower-back arch)' },
+    { value: 'scoliosis', label: 'Lateral spinal curve (side-to-side)' },
+    { value: 'flat-back', label: 'Reduced spinal curves (flat back)' },
   ],
   postureHipsOverall: [
     { value: 'neutral', label: 'Neutral' },

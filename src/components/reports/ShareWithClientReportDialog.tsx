@@ -8,7 +8,6 @@ import {
   Link2,
   Mail,
   MessageCircle,
-  Facebook,
   Type,
   ImageIcon,
 } from 'lucide-react';
@@ -164,7 +163,7 @@ export function ShareWithClientReportDialog({
               }}
               disabled={shareLoading}
             >
-              <Facebook className="h-4 w-4" />
+              <Share2 className="h-4 w-4" />
               {COACH_ASSISTANT_COPY.ARTIFACT_OPEN_FACEBOOK}
             </Button>
           ) : null}

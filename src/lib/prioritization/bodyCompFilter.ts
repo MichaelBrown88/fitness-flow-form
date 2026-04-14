@@ -146,7 +146,7 @@ export function detectBodyCompIssues(ctx: PrioritizationContext): {
   movementFindings.forEach(id => {
     const deviation = MOVEMENT_LOGIC_DB[id];
     if (deviation) {
-      importantIssues.push(`Clinical Correction: ${deviation.name}`);
+      importantIssues.push(`Movement Correction: ${deviation.name}`);
 
       // Add Stretch
       important.push({

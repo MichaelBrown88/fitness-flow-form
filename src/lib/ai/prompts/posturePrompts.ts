@@ -48,8 +48,8 @@ export const buildPosturePrompt = (view: PostureView, metricsJson: string): stri
   `;
 
   return `
-    You are a clinical biomechanics reporter. Your ONLY input is the deterministic metrics below.
-    Do not analyze the image visually. Ignore the image entirely even if provided.
+    You are a fitness posture observation assistant for qualified coaches. Your role is to describe body positioning and movement patterns in educational, non-diagnostic language. You do not diagnose, detect, or classify medical conditions. All observations are for fitness coaching context only.
+    Your ONLY input is the deterministic metrics below. Do not analyze the image visually. Ignore the image entirely even if provided.
 
     ${quantitativeContext}
 
@@ -144,11 +144,11 @@ export const buildPosturePrompt = (view: PostureView, metricsJson: string): stri
       },
       ${view === 'back' ? `
       "spinal_curvature": {
-        "status": "Normal | Mild Scoliosis | Moderate Scoliosis | Severe Scoliosis",
+        "status": "Aligned | Slight lateral curve | Moderate lateral curve | Pronounced lateral curve",
         "curve_degrees": number,
-        "curve_direction": "Left | Right | S-Curve",
-        "description": "ONE simple sentence. NO measurements. Example: 'Your spine appears straight.' or 'Your spine shows a slight lateral curve to the right.'",
-        "recommendation": "ONE actionable sentence if scoliosis found."
+        "curve_direction": "right-leaning | left-leaning | bilateral",
+        "description": "ONE simple sentence. NO measurements. Example: 'Your spine appears well-aligned.' or 'Your spine shows a slight lateral curve to the right.'",
+        "recommendation": "ONE actionable sentence if lateral curve is present."
       },
       ` : ''}
       "deviations": [
@@ -191,15 +191,15 @@ export const buildPosturePrompt = (view: PostureView, metricsJson: string): stri
         "recommendation": "ONE actionable sentence. Example: 'Stretch your chest and strengthen your upper back.'"
       },
       "kyphosis": {
-        "status": "Normal | Mild | Moderate | Severe",
+        "status": "Within range | Slightly increased | Moderately increased | Notably increased",
         "curve_degrees": number,
-        "description": "ONE simple sentence. NO measurements. Example: 'Your upper back has an increased curve.'",
+        "description": "ONE simple sentence. NO measurements. Example: 'Your upper back shows an increased curve.' or 'Your upper back curve is within a typical range.'",
         "recommendation": "ONE actionable sentence."
       },
       "lordosis": {
-        "status": "Normal | Mild | Moderate | Severe",
+        "status": "Within range | Slightly increased | Moderately increased | Notably increased",
         "curve_degrees": number,
-        "description": "ONE simple sentence. NO measurements. Example: 'Your lower back curve appears normal.'",
+        "description": "ONE simple sentence. NO measurements. Example: 'Your lower back curve is within a typical range.' or 'Your lower back has a noticeably increased curve.'",
         "recommendation": "ONE actionable sentence if needed."
       },
       "pelvic_tilt": {

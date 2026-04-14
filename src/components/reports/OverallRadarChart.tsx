@@ -68,7 +68,8 @@ export default function OverallRadarChart({ data, previousData, compact = false 
           <PolarGrid stroke={CHART_HEX.gridLight} strokeDasharray="3 3" />
           <PolarAngleAxis
             dataKey="name"
-            tick={({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            tick={(({
               payload,
               x,
               y,
@@ -99,7 +100,7 @@ export default function OverallRadarChart({ data, previousData, compact = false 
                   {label}
                 </text>
               );
-            }}
+            }) as any}
           />
           <PolarRadiusAxis
             angle={30}

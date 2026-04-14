@@ -229,6 +229,10 @@ export function PostureClientPostureSection({ postureResults, postureImages }: P
         legendSeverities={expandedLegend}
         onClose={() => setExpanded(null)}
       />
+
+      <p className="text-xs text-muted-foreground border-t border-border pt-4 leading-relaxed">
+        These posture observations are for fitness coaching context only. They are not a clinical or medical assessment and do not constitute a diagnosis. If you have concerns about your posture or musculoskeletal health, consult a qualified healthcare professional.
+      </p>
     </div>
   );
 }

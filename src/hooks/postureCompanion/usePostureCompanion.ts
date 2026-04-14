@@ -66,7 +66,7 @@ export function usePostureCompanion({
       postureShouldersOverall:
         session.analysis.front?.shoulder_alignment?.status === 'Neutral' ? ['neutral'] : ['rounded'],
       postureBackOverall:
-        session.analysis['side-right']?.kyphosis?.status !== 'Normal'
+        session.analysis['side-right']?.kyphosis?.status !== 'Within range'
           ? ['increased-kyphosis']
           : ['neutral'],
     };

@@ -147,17 +147,18 @@ export default function Privacy() {
             </p>
             <h3 className="text-xl font-semibold text-foreground mb-3">5.1 Service Providers</h3>
             <p className="text-foreground-secondary leading-relaxed mb-4">
-              We may share data with trusted third-party service providers who assist us in operating our 
-              Service, such as:
+              We may share data with trusted third-party sub-processors who assist us in operating our
+              Service. Our current sub-processors are:
             </p>
             <ul className="list-disc list-inside text-foreground-secondary space-y-2 mb-4 ml-4">
-              <li>Cloud hosting providers (e.g., Google Cloud Platform, Firebase)</li>
-              <li>Payment processors (for billing)</li>
-              <li>Email service providers (for communications)</li>
+              <li><strong>Google Cloud Platform</strong> — Cloud infrastructure, database (Firebase Firestore), file storage (Firebase Storage), and authentication (Firebase Authentication). Data may be stored in the EU or US depending on configuration.</li>
+              <li><strong>Google Gemini API (Vertex AI)</strong> — AI processing for posture observation and report generation. Images and posture metrics are transmitted to this service for analysis.</li>
+              <li><strong>Stripe</strong> — Payment processing. We do not store card details; Stripe handles all payment data under their own PCI-DSS compliance programme.</li>
+              <li><strong>Resend / transactional email provider</strong> — Email delivery for account notifications, assessment links, and lifecycle communications.</li>
             </ul>
             <p className="text-foreground-secondary leading-relaxed mb-4">
-              All service providers are contractually obligated to protect your data and use it only for 
-              the purposes specified in our agreements.
+              All sub-processors are contractually obligated to protect your data and use it only for the
+              purposes specified in our agreements. We will update this list when sub-processors change.
             </p>
 
             <h3 className="text-xl font-semibold text-foreground mb-3">5.2 Legal Requirements</h3>

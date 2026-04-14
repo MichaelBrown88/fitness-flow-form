@@ -34,7 +34,7 @@ export function CommandMenu() {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const showOrgAdminNav = useOrgAdminNavVisibility();
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

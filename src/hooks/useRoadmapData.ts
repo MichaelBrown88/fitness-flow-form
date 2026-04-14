@@ -83,7 +83,7 @@ export function useRoadmapData(clientName: string) {
   const [activePhase, setActivePhase] = useState<RoadmapPhase>('foundation');
 
   const initialLoadDone = useRef(false);
-  const saveTimer = useRef<ReturnType<typeof setTimeout>>();
+  const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     if (!effectiveOrgId || !user || !clientName) return;

@@ -355,14 +355,14 @@ export function compareSideViews(
   const leftIssues = [
     leftFHP?.status !== 'Neutral',
     leftShoulder?.rounded_forward,
-    leftKyphosis?.status !== 'Normal',
+    leftKyphosis?.status !== 'Within range',
     leftPelvis?.status !== 'Neutral'
   ].filter(Boolean).length;
   
   const rightIssues = [
     rightFHP?.status !== 'Neutral',
     rightShoulder?.rounded_forward,
-    rightKyphosis?.status !== 'Normal',
+    rightKyphosis?.status !== 'Within range',
     rightPelvis?.status !== 'Neutral'
   ].filter(Boolean).length;
   

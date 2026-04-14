@@ -17,6 +17,15 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
+function isChunkLoadError(error: Error | null): boolean {
+  if (!error) return false;
+  return (
+    error.message.includes('Failed to fetch dynamically imported module') ||
+    error.message.includes('dynamically imported module') ||
+    error.message.includes('Importing a module script failed')
+  );
+}
+
 /**
  * Class-based error boundary with optional **ReactNode** `fallback` (e.g. camera modal).
  * For app routes and layouts, prefer `@/components/ui/ErrorBoundary` (react-error-boundary + router).
@@ -38,7 +47,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   handleRetry = () => {
-    this.setState({ hasError: false, error: null });
+    if (isChunkLoadError(this.state.error)) {
+      window.location.reload();
+    } else {
+      this.setState({ hasError: false, error: null });
+    }
   };
 
   handleGoHome = () => {
@@ -68,6 +81,7 @@ interface ErrorFallbackProps {
  * Default fallback UI shown when an error is caught
  */
 export function ErrorFallback({ error, onRetry, onGoHome }: ErrorFallbackProps) {
+  const chunkError = isChunkLoadError(error);
   return (
     <div className="min-h-screen bg-muted/50 flex items-center justify-center p-6" role="alert">
       <div className="max-w-md w-full bg-background rounded-3xl shadow-xl p-8 text-center">
@@ -75,9 +89,13 @@ export function ErrorFallback({ error, onRetry, onGoHome }: ErrorFallbackProps) 
           <AlertTriangle className="h-8 w-8 text-rose-500" />
         </div>
 
-        <h1 className="text-2xl font-bold text-foreground mb-2">Something went wrong</h1>
+        <h1 className="text-2xl font-bold text-foreground mb-2">
+          {chunkError ? 'App update required' : 'Something went wrong'}
+        </h1>
         <p className="text-muted-foreground mb-6">
-          We encountered an unexpected error. This has been logged and we'll look into it.
+          {chunkError
+            ? 'A new version of the app is available. Please reload the page to get the latest update.'
+            : "We encountered an unexpected error. This has been logged and we'll look into it."}
         </p>
 
         {error && import.meta.env.DEV && (
@@ -90,10 +108,10 @@ export function ErrorFallback({ error, onRetry, onGoHome }: ErrorFallbackProps) 
           {onRetry && (
             <Button type="button" onClick={onRetry} variant="outline" className="gap-2">
               <RefreshCw className="h-4 w-4" />
-              Try Again
+              {chunkError ? 'Reload Page' : 'Try Again'}
             </Button>
           )}
-          {onGoHome && (
+          {onGoHome && !chunkError && (
             <Button type="button" onClick={onGoHome} variant="default" className="gap-2">
               <Home className="h-4 w-4" />
               Go to {UI_COMMAND_MENU.HOME}

@@ -19,7 +19,7 @@ interface PillarMeta {
 }
 
 const HERO_RADAR_PILLAR_META: Record<ScoringPillarId, PillarMeta> = {
-  bodyComp:        { Icon: Scale,    value: "18.5% BF", align: "center" },
+  bodyComp:        { Icon: Scale,    value: "76/100",   align: "center" },
   cardio:          { Icon: Heart,    value: "72/100",   align: "right"  },
   strength:        { Icon: Dumbbell, value: "80/100",   align: "right"  },
   movementQuality: { Icon: Zap,      value: "85/100",   align: "left"   },
