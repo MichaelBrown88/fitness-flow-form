@@ -345,7 +345,7 @@ export default function OrgAdminLayout() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <UserPlus className="w-5 h-5 text-gradient-dark" />
+              <UserPlus className="w-5 h-5 text-foreground-secondary" />
               Add Coach to Organization
             </DialogTitle>
             <DialogDescription>
@@ -381,7 +381,7 @@ export default function OrgAdminLayout() {
             <Button
               onClick={handleAddCoach}
               disabled={addingCoach || !newCoachEmail.trim()}
-              className="gradient-bg text-primary-foreground hover:opacity-90"
+              className=""
             >
               {addingCoach ? (
                 <>

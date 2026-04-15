@@ -20,7 +20,7 @@ export default function OrgTeam() {
             <Button
               size="sm"
               onClick={() => setShowAddCoachDialog(true)}
-              className="gradient-bg text-primary-foreground hover:opacity-90 text-xs sm:text-sm h-9"
+              className="text-xs sm:text-sm h-9"
             >
               <UserPlus className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
               Add Coach
@@ -54,7 +54,7 @@ export default function OrgTeam() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-xs sm:text-sm font-medium text-foreground truncate">{coach.displayName}</p>
                         {coach.role === 'org_admin' && (
-                          <span className="px-1.5 sm:px-2 py-0.5 rounded text-[10px] sm:text-[10px] font-bold bg-gradient-light text-gradient-dark border border-border-medium shrink-0">
+                          <span className="px-1.5 sm:px-2 py-0.5 rounded text-[10px] sm:text-[10px] font-bold bg-muted text-foreground-secondary border border-border shrink-0">
                             Admin
                           </span>
                         )}

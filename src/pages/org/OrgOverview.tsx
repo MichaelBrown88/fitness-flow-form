@@ -107,7 +107,7 @@ export default function OrgOverview() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
             <div>
               <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <Package className="w-4 h-4 sm:w-5 sm:h-5 text-gradient-dark" />
+                <Package className="w-4 h-4 sm:w-5 sm:h-5 text-foreground-secondary" />
                 Subscription Plan
               </CardTitle>
               <CardDescription className="mt-1 text-xs sm:text-sm">
