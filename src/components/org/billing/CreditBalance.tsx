@@ -51,10 +51,10 @@ export function CreditBalance({ credits, className }: CreditBalanceProps) {
         className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold transition-colors ${
           isLow
             ? 'bg-amber-50 text-amber-700 border border-amber-200'
-            : 'bg-primary/5 text-on-brand-tint border border-primary/10'
+            : 'bg-muted text-foreground-secondary border border-border'
         }`}
       >
-        <Zap className={`h-3.5 w-3.5 ${isLow ? 'text-amber-500' : 'text-on-brand-tint'}`} />
+        <Zap className={`h-3.5 w-3.5 ${isLow ? 'text-amber-500' : 'text-foreground-secondary'}`} />
         {isUnlimited ? (
           <span>Unlimited AI</span>
         ) : (

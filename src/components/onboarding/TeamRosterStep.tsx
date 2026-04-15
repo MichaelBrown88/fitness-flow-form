@@ -23,7 +23,7 @@ export function TeamRosterStep({ initialValue = '', onNext, onBack }: TeamRoster
       </div>
 
       <div className="flex items-start gap-3 rounded-xl border border-border bg-card p-4">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-on-brand-tint">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-foreground-secondary">
           <Users className="h-5 w-5" aria-hidden />
         </div>
         <div className="min-w-0 flex-1 space-y-2">

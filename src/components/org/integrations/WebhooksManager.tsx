@@ -186,7 +186,7 @@ export function WebhooksManager({ organizationId }: WebhooksManagerProps) {
       ))}
 
       {showForm && (
-        <div className="rounded-xl border-2 border-primary/20 bg-brand-light p-4 space-y-4">
+        <div className="rounded-xl border-2 border-primary/20 bg-muted p-4 space-y-4">
           <p className="text-xs font-bold text-foreground-secondary">New Endpoint</p>
           <Input
             placeholder="https://your-server.com/webhook"

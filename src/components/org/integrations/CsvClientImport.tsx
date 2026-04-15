@@ -107,7 +107,7 @@ export function CsvClientImport({ organizationId, coachUid }: CsvClientImportPro
 
       <div
         onClick={() => fileRef.current?.click()}
-        className="cursor-pointer border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center gap-2 hover:border-primary/30 hover:bg-brand-light transition-colors"
+        className="cursor-pointer border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center gap-2 hover:border-primary/30 hover:bg-muted transition-colors"
       >
         <Upload className="h-6 w-6 text-muted-foreground" />
         <p className="text-sm font-medium text-muted-foreground">Click to upload CSV</p>

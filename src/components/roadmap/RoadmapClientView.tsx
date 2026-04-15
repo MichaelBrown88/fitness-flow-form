@@ -81,7 +81,7 @@ export default function RoadmapClientView({
           mode,
         });
         return (
-          <div className="rounded-xl bg-brand-light p-6 border border-border space-y-4">
+          <div className="rounded-xl bg-muted p-6 border border-border space-y-4">
             {summaryTrimmed && (
               <p className="text-sm leading-relaxed text-foreground font-medium border-b border-border pb-3">
                 {summaryTrimmed}

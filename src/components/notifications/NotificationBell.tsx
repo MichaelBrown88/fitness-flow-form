@@ -61,7 +61,7 @@ function NotificationItem({
       <div
         className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${
           isUnread
-            ? 'bg-primary/12 text-on-brand-tint dark:bg-primary/20 dark:text-on-brand-tint'
+            ? 'bg-muted text-foreground-secondary'
             : 'bg-muted text-muted-foreground'
         }`}
       >

@@ -243,7 +243,7 @@ export default function AppShell({
                 variant="ghost"
                 size="icon"
                 onClick={onDemoFill}
-                className="h-8 w-8 sm:h-9 sm:w-9 text-muted-foreground hover:text-primary hover:bg-brand-light"
+                className="h-8 w-8 sm:h-9 sm:w-9 text-muted-foreground hover:text-primary hover:bg-muted"
                 title="Auto-fill demo data"
               >
                 <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />

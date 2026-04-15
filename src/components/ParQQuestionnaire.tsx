@@ -202,7 +202,7 @@ const ParQQuestionnaire: React.FC<ParQQuestionnaireProps> = ({ onExitParQ, onCom
               onClick={() => handleAnswer('no')}
               className={`flex h-20 items-center justify-between px-8 rounded-2xl border-2 transition-all ${
                 currentAnswer === 'no'
-                  ? 'border-primary bg-brand-light text-on-brand-tint shadow-md ring-1 ring-primary'
+                  ? 'border-primary bg-muted text-foreground-secondary shadow-md ring-1 ring-primary'
                   : 'border-border bg-muted/50 hover:border-border hover:bg-background text-muted-foreground'
               }`}
             >

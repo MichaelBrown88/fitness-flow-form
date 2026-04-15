@@ -247,7 +247,7 @@ export default function ClientOverview() {
               key={action.id}
               variant="outline"
               onClick={() => handleNewAssessment(action.id as 'lifestyle' | 'bodycomp' | 'posture' | 'strength' | 'fitness')}
-              className="flex flex-col items-center gap-2 h-auto py-3 sm:py-4 rounded-xl border-border hover:border-primary/20 hover:bg-brand-light"
+              className="flex flex-col items-center gap-2 h-auto py-3 sm:py-4 rounded-xl border-border hover:border-primary/20 hover:bg-muted"
             >
               <action.icon className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
               <span className="text-[10px] font-bold text-foreground-secondary uppercase tracking-[0.15em]">{action.label}</span>

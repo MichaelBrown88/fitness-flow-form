@@ -61,7 +61,7 @@ export function FieldControl({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {fieldOptions?.map((option, idx) => {
               const isSelected = value === option.value;
-              const colorClass = idx === 0 ? 'hover:border-border hover:bg-muted/50 text-foreground-secondary border-border' : 'hover:border-primary/20 hover:bg-brand-light hover:text-on-brand-tint text-foreground-secondary border-primary/10';
+              const colorClass = idx === 0 ? 'hover:border-border hover:bg-muted/50 text-foreground-secondary border-border' : 'hover:border-primary/20 hover:bg-muted hover:text-foreground-secondary text-foreground-secondary border-border';
               const inputId = `${field.id}-${option.value}`;
               
               return (
@@ -94,7 +94,7 @@ export function FieldControl({
             })}
           </div>
 
-          <div className="p-8 bg-brand-light rounded-3xl border-2 border-dashed border-primary/20 flex flex-col items-center text-center space-y-6 animate-in fade-in zoom-in duration-500">
+          <div className="p-8 bg-muted rounded-3xl border-2 border-dashed border-primary/20 flex flex-col items-center text-center space-y-6 animate-in fade-in zoom-in duration-500">
             <div className="bg-background p-4 rounded-3xl shadow-sm">
               <Smartphone className="h-10 w-10 text-primary" />
             </div>

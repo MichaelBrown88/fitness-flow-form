@@ -281,7 +281,7 @@ const CoachRow: React.FC<{
     <tr className="border-b border-border transition-colors hover:bg-muted/40">
       <td className="px-4 py-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-on-brand-tint">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-foreground-secondary">
             {coach.displayName.charAt(0).toUpperCase()}
           </div>
           <div>

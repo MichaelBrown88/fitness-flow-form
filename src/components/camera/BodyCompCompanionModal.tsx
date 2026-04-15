@@ -219,7 +219,7 @@ export const BodyCompCompanionModal: React.FC<BodyCompCompanionModalProps> = ({
               )}
 
               {isProcessing && (
-                <div className="flex items-center gap-2 text-primary bg-brand-light px-4 py-3 rounded-xl">
+                <div className="flex items-center gap-2 text-primary bg-muted px-4 py-3 rounded-xl">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span className="text-xs font-bold">Reading your report...</span>
                 </div>
