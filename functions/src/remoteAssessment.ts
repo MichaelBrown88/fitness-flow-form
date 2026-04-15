@@ -7,6 +7,7 @@ import * as admin from 'firebase-admin';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { HttpsError } from 'firebase-functions/v2/https';
 import type { CallableRequest } from 'firebase-functions/v2/https';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export const REMOTE_ASSESSMENT_MVP = process.env.REMOTE_ASSESSMENT_MVP === 'true';
 
@@ -421,4 +422,117 @@ export async function handleGetRemoteBodyCompUploadUrl(
   });
 
   return { uploadUrl, storagePath, expiresAt: expiresWrite };
+}
+
+const BODY_COMP_VALID_FIELDS = [
+  'heightCm', 'inbodyScore', 'inbodyWeightKg', 'skeletalMuscleMassKg',
+  'bodyFatMassKg', 'inbodyBodyFatPct', 'inbodyBmi', 'totalBodyWaterL',
+  'waistHipRatio', 'visceralFatLevel', 'bmrKcal', 'segmentalTrunkKg',
+  'segmentalArmLeftKg', 'segmentalArmRightKg', 'segmentalLegLeftKg', 'segmentalLegRightKg',
+];
+
+const BODY_COMP_OCR_PROMPT = `You are an expert medical data extractor specialized in body composition analysis reports.
+Analyze the provided image and extract all relevant data points into a JSON object.
+
+FIELD GUIDANCE (use these exact JSON keys):
+- heightCm: Height in CM
+- inbodyScore: Total body composition score (0-100)
+- inbodyWeightKg: Weight in KG
+- skeletalMuscleMassKg: Skeletal Muscle Mass (SMM) in KG
+- bodyFatMassKg: Body Fat Mass (BFM) in KG
+- inbodyBodyFatPct: Percent Body Fat (PBF) as a number
+- inbodyBmi: BMI as a number
+- totalBodyWaterL: Total Body Water (TBW) in Litres
+- waistHipRatio: Waist-Hip Ratio (WHR) as a number
+- visceralFatLevel: Visceral Fat Level (VFL) as a number
+- bmrKcal: Basal Metabolic Rate (BMR) in kcal
+- segmentalTrunkKg, segmentalArmLeftKg, segmentalArmRightKg, segmentalLegLeftKg, segmentalLegRightKg: Segmental Lean Analysis in KG
+
+RULES:
+1. Return ONLY a JSON object - no markdown, no explanation.
+2. If a value is not found or unclear, use null.
+3. Numbers only for numeric fields (no units like "kg").`;
+
+export async function handleExtractRemoteBodyCompOcr(
+  request: CallableRequest<{ token?: string; storagePath?: string }>,
+): Promise<{ fields: Record<string, string> }> {
+  if (!REMOTE_ASSESSMENT_MVP) {
+    throw new HttpsError('failed-precondition', 'Remote assessment MVP is not enabled.');
+  }
+
+  const token = typeof request.data?.token === 'string' ? request.data.token.trim() : '';
+  const storagePathInput = typeof request.data?.storagePath === 'string' ? request.data.storagePath.trim() : '';
+
+  if (!token || !/^[a-f0-9]{32}$/.test(token)) {
+    throw new HttpsError('invalid-argument', 'Invalid token.');
+  }
+
+  const db = admin.firestore();
+  const snap = await db.doc(`remoteAssessmentTokens/${token}`).get();
+  if (!snap.exists) throw new HttpsError('not-found', 'Invalid or expired link.');
+
+  const meta = snap.data() as {
+    organizationId?: string;
+    clientSlug?: string;
+    expiresAt?: admin.firestore.Timestamp;
+  };
+  const orgId = meta.organizationId;
+  const slug = meta.clientSlug;
+  const exp = meta.expiresAt;
+  if (!orgId || !slug || !exp || exp.toMillis() < Date.now()) {
+    throw new HttpsError('not-found', 'Invalid or expired link.');
+  }
+
+  // Validate the storage path is scoped to this exact token
+  const expectedPrefix = `organizations/${orgId}/clients/${slug}/remote-uploads/${token}/`;
+  if (!storagePathInput.startsWith(expectedPrefix) || storagePathInput.includes('..') || !storagePathInput.match(/^[a-zA-Z0-9/_.-]+$/)) {
+    throw new HttpsError('invalid-argument', 'Invalid storage path.');
+  }
+
+  // Download image from Cloud Storage
+  const bucket = admin.storage().bucket();
+  const imageFile = bucket.file(storagePathInput);
+  const [imageExists] = await imageFile.exists();
+  if (!imageExists) throw new HttpsError('not-found', 'Image not found in storage.');
+
+  const [buffer] = await imageFile.download();
+  const base64 = buffer.toString('base64');
+  const mimeType: 'image/jpeg' | 'image/png' = storagePathInput.endsWith('.png') ? 'image/png' : 'image/jpeg';
+
+  // Run Gemini OCR
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new HttpsError('internal', 'OCR service not configured.');
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.0-flash',
+    generationConfig: { responseMimeType: 'application/json' },
+  });
+
+  const ocrResult = await model.generateContent([
+    { text: BODY_COMP_OCR_PROMPT },
+    { inlineData: { data: base64, mimeType } },
+  ]);
+
+  const aiText = ocrResult.response.text();
+  const startIdx = aiText.indexOf('{');
+  const endIdx = aiText.lastIndexOf('}');
+  if (startIdx === -1) throw new HttpsError('internal', 'OCR returned unexpected response.');
+
+  const data = JSON.parse(aiText.substring(startIdx, endIdx + 1)) as Record<string, unknown>;
+  const fields: Record<string, string> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value !== null && value !== undefined && BODY_COMP_VALID_FIELDS.includes(key)) {
+      fields[key] = String(value);
+    }
+  }
+
+  // Log AI usage against the org
+  await db.collection('aiUsage').add({
+    organizationId: orgId,
+    feature: 'remote_ocr_body_comp',
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  return { fields };
 }
