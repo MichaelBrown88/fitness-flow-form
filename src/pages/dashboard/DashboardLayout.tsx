@@ -529,9 +529,9 @@ export default function DashboardLayout() {
                   className={cn(
                     'flex flex-col flex-1 min-h-0 min-w-0 text-foreground',
                     isAssistantTab
-                      ? 'overflow-hidden rounded-lg border border-border/50 bg-card/20'
+                      ? 'overflow-hidden'
                       : isWorkspaceShell
-                        ? 'overflow-y-auto overscroll-contain rounded-lg border border-border/50 bg-card/20'
+                        ? 'overflow-y-auto overscroll-contain'
                         : 'overflow-x-hidden pt-3 sm:pt-4',
                   )}
                   id="workspace-main"

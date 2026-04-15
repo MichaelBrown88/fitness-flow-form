@@ -168,11 +168,11 @@ export default function ClientOverview() {
         icon={<TrendingUp className="h-5 w-5 text-primary" />}
       >
         <div className="grid gap-2 sm:gap-3 grid-cols-2 md:grid-cols-4">
-          <div className="rounded-xl bg-muted p-4">
+          <div className="rounded-2xl bg-card shadow-sm p-4">
             <div className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground mb-2">Total</div>
             <div className="text-2xl font-bold text-foreground">{stats.totalAssessments}</div>
           </div>
-          <div className="rounded-xl bg-muted p-4">
+          <div className="rounded-2xl bg-card shadow-sm p-4">
             <div className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground mb-2">Latest</div>
             <div className="flex items-end justify-between">
               <div className="text-2xl font-bold text-foreground">{stats.latestScore}</div>
@@ -183,11 +183,11 @@ export default function ClientOverview() {
               )}
             </div>
           </div>
-          <div className="rounded-xl bg-muted p-4">
+          <div className="rounded-2xl bg-card shadow-sm p-4">
             <div className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground mb-2">Average</div>
             <div className="text-2xl font-bold text-foreground">{stats.averageScore}</div>
           </div>
-          <div className="rounded-xl bg-muted p-4">
+          <div className="rounded-2xl bg-card shadow-sm p-4">
             <div className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground mb-2">Change</div>
             <div className={`text-2xl font-bold ${stats.scoreChange > 0 ? 'text-score-green-fg' : stats.scoreChange < 0 ? 'text-score-red-fg' : 'text-foreground'}`}>
               {stats.scoreChange > 0 ? '+' : ''}{stats.scoreChange}
@@ -198,7 +198,7 @@ export default function ClientOverview() {
 
       <CollapsibleSection title="Pillar Scores" icon={<Activity className="h-5 w-5 text-primary" />}>
         {!currentAssessment ? (
-          <div className="py-12 text-center bg-muted rounded-xl">
+          <div className="py-12 text-center bg-card rounded-2xl shadow-sm">
             <p className="text-sm text-muted-foreground mb-6">No assessment data found for this client.</p>
             <Button onClick={() => handleNewAssessment()} className="bg-primary text-primary-foreground h-12 px-8">
               <UserPlus className="h-4 w-4 mr-2" />
@@ -214,7 +214,7 @@ export default function ClientOverview() {
               { id: 'strength', label: 'Functional Strength', bg: 'bg-primary', icon: Dumbbell },
               { id: 'cardio', label: 'Metabolic Fitness', bg: 'bg-primary', icon: Heart },
             ].map((cat) => (
-              <div key={cat.id} className="text-center p-4 sm:p-5 rounded-xl bg-muted transition-all hover:bg-muted">
+              <div key={cat.id} className="text-center p-4 sm:p-5 rounded-2xl bg-card shadow-sm transition-all hover:shadow-md">
                 <div className="flex justify-center mb-3">
                   <cat.icon className="h-6 w-6 text-primary opacity-80" />
                 </div>

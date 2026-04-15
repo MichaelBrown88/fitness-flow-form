@@ -139,7 +139,7 @@ export function CoachWorkspaceSidebar({
   return (
     <aside
       className={cn(
-        'flex min-h-0 w-[260px] shrink-0 flex-col self-stretch border-r border-border/80 bg-muted/20 text-foreground dark:bg-muted/10',
+        'flex min-h-0 w-[260px] shrink-0 flex-col self-stretch border-r border-border/60 bg-card text-foreground',
         className,
       )}
       aria-label="Workspace"
@@ -401,7 +401,7 @@ export function CoachWorkspaceSidebarCollapsed({
 
   return (
     <aside
-      className="hidden lg:flex w-12 shrink-0 flex-col self-stretch border-r border-border/80 bg-muted/20 dark:bg-muted/10 items-center gap-1 py-2"
+      className="hidden lg:flex w-12 shrink-0 flex-col self-stretch border-r border-border/60 bg-card items-center gap-1 py-2"
       aria-label="Workspace (collapsed)"
     >
       <TooltipProvider delayDuration={300}>

@@ -31,7 +31,7 @@ export default function DashboardWork() {
             </span>
           )}
         </div>
-        <div className="overflow-hidden rounded-lg border border-border/70 bg-background">
+        <div className="overflow-hidden rounded-2xl bg-card shadow-sm">
           <WorkClientList
             queue={ctx.reassessmentQueue.queue}
             search={ctx.search}
@@ -56,7 +56,7 @@ export default function DashboardWork() {
             Connect calendar
           </Button>
         </div>
-        <div className="overflow-hidden rounded-lg border border-border/70 bg-background p-3">
+        <div className="overflow-hidden rounded-2xl bg-card shadow-sm p-4">
           <CalendarView
             reassessmentQueue={ctx.reassessmentQueue}
             onNewAssessmentForClient={ctx.handleNewAssessmentForClient}
