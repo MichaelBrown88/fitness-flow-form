@@ -9,18 +9,36 @@ import {
   submitRemoteAssessmentFields,
 } from '@/services/remoteAssessmentClient';
 import { logger } from '@/lib/utils/logger';
-import type { RemoteAssessmentScope, RemotePostureView } from '@/lib/types/remoteAssessment';
+import type { RemotePostureView } from '@/lib/types/remoteAssessment';
+import { RemoteWizardShell } from '@/components/remote/RemoteWizardShell';
+import {
+  RemoteBasicInfoStep,
+  INITIAL_BASIC_INFO,
+  isBasicInfoValid,
+  type BasicInfoState,
+} from '@/components/remote/steps/RemoteBasicInfoStep';
 import {
   PublicRemoteLifestyleFields,
   INITIAL_LIFESTYLE_REMOTE,
   type LifestyleRemoteState,
 } from '@/components/remote/PublicRemoteLifestyleFields';
-import { PublicRemotePostureFields } from '@/components/remote/PublicRemotePostureFields';
+import { RemoteParQStep } from '@/components/remote/steps/RemoteParQStep';
+import {
+  RemoteBodyCompStep,
+  type BodyCompStatus,
+} from '@/components/remote/steps/RemoteBodyCompStep';
+import { RemotePostureStep } from '@/components/remote/steps/RemotePostureStep';
+import { parqQuestions } from '@/components/ParQQuestionnaire';
 
-function lifestyleToFields(
-  lifestyle: LifestyleRemoteState,
-  allowed: Set<string>,
-): Record<string, string> {
+const STEPS = [
+  { id: 'basicInfo', label: 'Basic Info' },
+  { id: 'lifestyle', label: 'Lifestyle' },
+  { id: 'parq', label: 'Health Screening' },
+  { id: 'bodyComp', label: 'Body Comp' },
+  { id: 'posture', label: 'Posture' },
+] as const;
+
+function lifestyleToFields(lifestyle: LifestyleRemoteState, allowed: Set<string>): Record<string, string> {
   const out: Record<string, string> = {};
   const entries: [keyof LifestyleRemoteState, string][] = [
     ['activityLevel', lifestyle.activityLevel],
@@ -29,6 +47,11 @@ function lifestyleToFields(
     ['nutritionHabits', lifestyle.nutritionHabits],
     ['hydrationHabits', lifestyle.hydrationHabits],
     ['stepsPerDay', lifestyle.stepsPerDay.trim()],
+    ['sedentaryHours', lifestyle.sedentaryHours.trim()],
+    ['caffeineCupsPerDay', lifestyle.caffeineCupsPerDay.trim()],
+    ['alcoholFrequency', lifestyle.alcoholFrequency],
+    ['medicationsFlag', lifestyle.medicationsFlag],
+    ['medicationsNotes', lifestyle.medicationsNotes.trim()],
   ];
   for (const [k, v] of entries) {
     if (!allowed.has(k) || !v) continue;
@@ -39,75 +62,104 @@ function lifestyleToFields(
 
 export default function PublicRemoteAssessment() {
   const { token } = useParams<{ token: string }>();
+
+  // Session
   const [checking, setChecking] = useState(true);
-  const [session, setSession] = useState<{
-    scope: RemoteAssessmentScope;
-    allowedKeys: Set<string>;
-  } | null>(null);
-  const [step, setStep] = useState(0);
+  const [allowedKeys, setAllowedKeys] = useState<Set<string>>(new Set());
+
+  // Wizard navigation
+  const [currentStep, setCurrentStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Step state
+  const [basicInfo, setBasicInfo] = useState<BasicInfoState>(INITIAL_BASIC_INFO);
   const [lifestyle, setLifestyle] = useState<LifestyleRemoteState>(INITIAL_LIFESTYLE_REMOTE);
-  const [posturePaths, setPosturePaths] = useState<Partial<Record<RemotePostureView, string>>>({});
+  const [parqAnswers, setParqAnswers] = useState<Record<string, string>>({});
+  const [bodyCompStatus, setBodyCompStatus] = useState<BodyCompStatus>('pending');
+  const [bodyCompFields, setBodyCompFields] = useState<Record<string, string>>({});
+  const [postureSkipped, setPostureSkipped] = useState(false);
   const [postureConsentGiven, setPostureConsentGiven] = useState(false);
+  const [posturePaths, setPosturePaths] = useState<Partial<Record<RemotePostureView, string>>>({});
 
   useEffect(() => {
-    if (!token) {
-      setChecking(false);
-      setSession(null);
-      return;
-    }
+    if (!token) { setChecking(false); return; }
     let cancelled = false;
     void (async () => {
       const res = await fetchRemoteAssessmentSession(token);
       if (cancelled) return;
       if (res.ok) {
-        setSession({ scope: res.scope, allowedKeys: new Set(res.allowedKeys) });
-      } else {
-        setSession(null);
+        setAllowedKeys(new Set(res.allowedKeys));
       }
       setChecking(false);
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [token]);
 
-  const title = useMemo(() => {
-    if (!session) return 'Remote check-in';
-    if (session.scope === 'posture') return 'Progress photos';
-    if (session.scope === 'lifestyle_posture') return 'Remote check-in';
-    return 'Lifestyle check-in';
-  }, [session]);
+  // Per-step validity
+  const isCurrentStepValid = useMemo(() => {
+    switch (currentStep) {
+      case 0: return isBasicInfoValid(basicInfo);
+      case 1: return !!lifestyle.activityLevel;
+      case 2: {
+        const visible = parqQuestions.filter(q => {
+          if (!q.conditional) return true;
+          return basicInfo.gender === q.conditional.showWhen.value;
+        });
+        return visible.every(q => (parqAnswers[q.id] ?? '') !== '');
+      }
+      case 3: return bodyCompStatus === 'skipped' || bodyCompStatus === 'confirmed';
+      case 4: return postureSkipped || Object.keys(posturePaths).length > 0;
+      default: return false;
+    }
+  }, [currentStep, basicInfo, lifestyle, parqAnswers, bodyCompStatus, postureSkipped, posturePaths]);
 
-  const showLifestyle = session && (session.scope === 'lifestyle' || session.scope === 'lifestyle_posture');
-  const showPosture = session && (session.scope === 'posture' || session.scope === 'lifestyle_posture');
+  const handleNext = () => {
+    if (currentStep < STEPS.length - 1) {
+      setCurrentStep((s) => s + 1);
+    } else {
+      void handleSubmitAll();
+    }
+  };
+
+  const handleBack = () => {
+    setCurrentStep((s) => Math.max(0, s - 1));
+  };
 
   const handleSubmitAll = async () => {
-    if (!token || !session) return;
+    if (!token) return;
     setError(null);
     setSubmitting(true);
     try {
-      const fields: Record<string, string> = {};
-      if (showLifestyle) {
-        Object.assign(fields, lifestyleToFields(lifestyle, session.allowedKeys));
+      const fields: Record<string, string> = {
+        ...basicInfo,
+        ...lifestyleToFields(lifestyle, allowedKeys),
+        ...parqAnswers,
+      };
+      if (bodyCompStatus === 'confirmed') {
+        Object.assign(fields, bodyCompFields);
       }
-      if (showPosture) {
+      if (!postureSkipped) {
         for (const [view, path] of Object.entries(posturePaths)) {
           if (path) fields[`postureRemotePath_${view}`] = path;
         }
+      }
+      // Remove empty strings
+      for (const k of Object.keys(fields)) {
+        if (!fields[k]) delete fields[k];
       }
       await submitRemoteAssessmentFields(token, fields);
       setSubmitted(true);
     } catch (err) {
       logger.error('[PublicRemoteAssessment] Submit failed:', err);
-      setError(ASSESSMENT_COPY.REMOTE_INVALID);
+      setError('Something went wrong. Please try again.');
     } finally {
       setSubmitting(false);
     }
   };
 
+  // Loading / invalid / submitted states
   if (!token) {
     return (
       <AppShell title="Remote check-in" mode="public">
@@ -123,13 +175,13 @@ export default function PublicRemoteAssessment() {
       <AppShell title="Remote check-in" mode="public">
         <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
           <Loader2 className="h-8 w-8 animate-spin" aria-hidden />
-          <p className="text-sm">Checking your link…</p>
+          <p className="text-sm">Checking your link...</p>
         </div>
       </AppShell>
     );
   }
 
-  if (!session) {
+  if (allowedKeys.size === 0) {
     return (
       <AppShell title="Remote check-in" mode="public">
         <div className="max-w-md mx-auto px-4 py-8 text-center text-muted-foreground text-sm">
@@ -158,74 +210,68 @@ export default function PublicRemoteAssessment() {
     );
   }
 
-  const onLifestyleNext =
-    session.scope === 'lifestyle_posture' && step === 0
-      ? () => setStep(1)
-      : undefined;
-
-  const showPostureUi = showPosture && (session.scope !== 'lifestyle_posture' || step === 1);
-  const showLifestyleUi = showLifestyle && (session.scope !== 'lifestyle_posture' || step === 0);
-
-  return (
-    <AppShell title={title} mode="public">
-      <div className="max-w-md mx-auto px-4 py-8 space-y-6">
-        <p className="text-sm text-muted-foreground">
-          Your coach sent you this private link. Only share updates you are comfortable including.
-        </p>
-        {showLifestyleUi ? (
+  const renderStep = () => {
+    switch (currentStep) {
+      case 0:
+        return <RemoteBasicInfoStep value={basicInfo} onChange={setBasicInfo} />;
+      case 1:
+        return (
           <PublicRemoteLifestyleFields
             value={lifestyle}
             onChange={setLifestyle}
-            allowedKeys={session.allowedKeys}
+            allowedKeys={allowedKeys}
           />
-        ) : null}
-        {session.scope === 'lifestyle_posture' && step === 0 ? (
-          <Button type="button" className="w-full" onClick={() => onLifestyleNext?.()}>
-            {ASSESSMENT_COPY.REMOTE_CONTINUE_TO_PHOTOS}
-          </Button>
-        ) : null}
-        {showPostureUi && token ? (
-          !postureConsentGiven ? (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30 p-5 space-y-4">
-              <p className="text-sm font-medium text-foreground">About your posture photos</p>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Your coach has invited you to upload posture photos as part of your fitness assessment. These photos are stored securely and are visible only to your coach and their organisation.
-              </p>
-              <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                This is not a medical assessment. Posture observations are for fitness coaching context only and do not constitute a clinical diagnosis. You can request deletion of your data at any time.
-              </p>
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="mt-0.5 h-4 w-4 rounded border-border accent-primary"
-                  onChange={(e) => { if (e.target.checked) setPostureConsentGiven(true); }}
-                />
-                <span className="text-sm text-foreground">I understand and consent to my photos being used for this fitness assessment.</span>
-              </label>
-            </div>
-          ) : (
-            <PublicRemotePostureFields token={token} value={posturePaths} onChange={setPosturePaths} />
-          )
-        ) : null}
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
-        {(session.scope !== 'lifestyle_posture' || step === 1) && (
-          <Button
-            type="button"
-            className="w-full"
-            disabled={submitting}
-            onClick={() => void handleSubmitAll()}
-          >
-            {submitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Sending…
-              </>
-            ) : (
-              'Submit'
-            )}
-          </Button>
+        );
+      case 2:
+        return (
+          <RemoteParQStep
+            value={parqAnswers}
+            onChange={(patch) => setParqAnswers((prev) => ({ ...prev, ...patch }))}
+            gender={basicInfo.gender}
+          />
+        );
+      case 3:
+        return (
+          <RemoteBodyCompStep
+            token={token}
+            status={bodyCompStatus}
+            fields={bodyCompFields}
+            onStatusChange={setBodyCompStatus}
+            onFieldsChange={setBodyCompFields}
+          />
+        );
+      case 4:
+        return (
+          <RemotePostureStep
+            token={token}
+            skipped={postureSkipped}
+            consentGiven={postureConsentGiven}
+            posturePaths={posturePaths}
+            onSkip={() => setPostureSkipped((v) => !v)}
+            onConsentGiven={() => setPostureConsentGiven(true)}
+            onPosturePathsChange={setPosturePaths}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <AppShell title="Assessment" mode="public">
+      <RemoteWizardShell
+        steps={[...STEPS]}
+        currentStep={currentStep}
+        isValid={isCurrentStepValid}
+        isSubmitting={submitting}
+        onBack={handleBack}
+        onNext={handleNext}
+      >
+        {error && (
+          <p className="mb-4 text-sm text-destructive">{error}</p>
         )}
-      </div>
+        {renderStep()}
+      </RemoteWizardShell>
     </AppShell>
   );
 }
