@@ -53,6 +53,7 @@ import {
   handleGetRemoteAssessmentSession,
   handleGetRemotePostureUploadUrl,
   handleSubmitRemoteAssessmentFields,
+  handleGetRemoteBodyCompUploadUrl,
   REMOTE_ASSESSMENT_MVP,
 } from './remoteAssessment';
 import {
@@ -1386,5 +1387,22 @@ export const getRemotePostureUploadUrl = onCall(
     const key = buildRateLimitKey('remotePostureUpload', token, request.rawRequest?.ip);
     await assertRateLimit(db, key, { maxRequests: 30, windowSeconds: 60 });
     return handleGetRemotePostureUploadUrl(request);
+  },
+);
+
+export const getRemoteBodyCompUploadUrl = onCall(
+  { enforceAppCheck: false, invoker: 'public' },
+  async (request) => {
+    if (!REMOTE_ASSESSMENT_MVP) {
+      throw new HttpsError('failed-precondition', 'Remote assessment MVP is not enabled.');
+    }
+    const db = admin.firestore();
+    const token =
+      request.data && typeof (request.data as { token?: string }).token === 'string'
+        ? (request.data as { token: string }).token.trim().slice(0, 32)
+        : 'unknown';
+    const key = buildRateLimitKey('remoteBodyCompUpload', token, request.rawRequest?.ip);
+    await assertRateLimit(db, key, { maxRequests: 10, windowSeconds: 60 });
+    return handleGetRemoteBodyCompUploadUrl(request);
   },
 );

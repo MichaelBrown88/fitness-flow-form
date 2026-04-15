@@ -373,3 +373,52 @@ export async function handleGetRemotePostureUploadUrl(
 
   return { uploadUrl, storagePath, expiresAt: expiresWrite };
 }
+
+export async function handleGetRemoteBodyCompUploadUrl(
+  request: CallableRequest<{ token?: string; contentType?: string }>,
+): Promise<{ uploadUrl: string; storagePath: string; expiresAt: number }> {
+  if (!REMOTE_ASSESSMENT_MVP) {
+    throw new HttpsError('failed-precondition', 'Remote assessment MVP is not enabled.');
+  }
+  const token = typeof request.data?.token === 'string' ? request.data.token.trim() : '';
+  const contentType =
+    typeof request.data?.contentType === 'string' ? request.data.contentType.trim() : 'image/jpeg';
+
+  if (!token || !/^[a-f0-9]{32}$/.test(token)) {
+    throw new HttpsError('invalid-argument', 'Invalid token.');
+  }
+  if (contentType !== 'image/jpeg' && contentType !== 'image/png') {
+    throw new HttpsError('invalid-argument', 'Only image/jpeg and image/png are allowed.');
+  }
+
+  const db = admin.firestore();
+  const snap = await db.doc(`remoteAssessmentTokens/${token}`).get();
+  if (!snap.exists) throw new HttpsError('not-found', 'Invalid or expired link.');
+
+  const meta = snap.data() as {
+    organizationId?: string;
+    clientSlug?: string;
+    expiresAt?: admin.firestore.Timestamp;
+  };
+  const orgId = meta.organizationId;
+  const slug = meta.clientSlug;
+  const exp = meta.expiresAt;
+  if (!orgId || !slug || !exp || exp.toMillis() < Date.now()) {
+    throw new HttpsError('not-found', 'Invalid or expired link.');
+  }
+
+  const ext = contentType === 'image/png' ? 'png' : 'jpg';
+  const storagePath = `organizations/${orgId}/clients/${slug}/remote-uploads/${token}/bodycomp_${randomUUID()}.${ext}`;
+
+  const bucket = admin.storage().bucket();
+  const file = bucket.file(storagePath);
+  const expiresWrite = Date.now() + 15 * 60 * 1000;
+  const [uploadUrl] = await file.getSignedUrl({
+    version: 'v4',
+    action: 'write',
+    expires: expiresWrite,
+    contentType,
+  });
+
+  return { uploadUrl, storagePath, expiresAt: expiresWrite };
+}
