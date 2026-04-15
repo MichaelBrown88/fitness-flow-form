@@ -72,8 +72,9 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-3 min-w-0">
           <WorkspaceGreetingMark className="h-9 w-9 sm:h-10 sm:w-10" />
-          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground min-w-0">
-            {`${getGreeting()}, ${coachFirstName}.`}
+          <h1 className="text-xl sm:text-2xl tracking-tight min-w-0">
+            <span className="font-light text-foreground-tertiary">{getGreeting()}, </span>
+            <span className="font-extrabold text-foreground">{coachFirstName}.</span>
           </h1>
         </div>
         {assessmentCredits !== undefined && (

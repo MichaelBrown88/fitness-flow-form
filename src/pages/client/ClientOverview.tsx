@@ -47,8 +47,8 @@ function CollapsibleSection({
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between gap-2 py-2 mb-4 hover:opacity-70 transition-opacity"
       >
-        <h3 className="text-[11px] font-black uppercase tracking-[0.12em] text-muted-foreground flex items-center gap-2 min-w-0 truncate">
-          <span className="shrink-0 opacity-60">{icon}</span>
+        <h3 className="text-sm font-semibold text-foreground-secondary flex items-center gap-2 min-w-0 truncate">
+          <span className="shrink-0 opacity-50">{icon}</span>
           <span className="truncate">{title}</span>
         </h3>
         <div className="flex items-center gap-2 shrink-0">

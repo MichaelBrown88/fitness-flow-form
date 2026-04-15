@@ -282,7 +282,7 @@ export default function ClientDetailLayout() {
       )}
 
       <div className="flex items-center justify-between gap-3 mb-6">
-        <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-foreground truncate">
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground truncate">
           {displayClientName}
         </h1>
       </div>
