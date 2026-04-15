@@ -166,7 +166,7 @@ export function Navbar() {
           }`}
         >
           <Link to={ROUTES.HOME} className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-tr from-gradient-from to-gradient-to text-sm font-bold text-primary-foreground shadow-md">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground shadow-md">
               OA
             </div>
             <span className="text-lg font-bold tracking-tight text-foreground">

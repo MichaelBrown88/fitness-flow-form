@@ -23,7 +23,7 @@ export function TestimonialCard({ quote, author, role, company, avatarUrl, index
         {avatarUrl ? (
           <img src={avatarUrl} alt={author} className="w-12 h-12 rounded-full object-cover" />
         ) : (
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-gradient-from to-gradient-to text-sm font-bold text-primary-foreground">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
             {initials}
           </div>
         )}

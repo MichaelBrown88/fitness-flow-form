@@ -204,15 +204,15 @@ export function HeroSection({ variant = "home" }: HeroSectionProps) {
                     >
                       <polygon
                         points="50,15 85,35 75,80 25,80 15,35"
-                        fill="color-mix(in srgb, var(--gradient-from-hex) 22%, transparent)"
-                        stroke="var(--gradient-from-hex)"
+                        fill="color-mix(in srgb, hsl(var(--primary)) 22%, transparent)"
+                        stroke="hsl(var(--primary))"
                         strokeWidth="2"
                       />
-                      <circle cx="50" cy="15" r="3" fill="var(--gradient-from-hex)" />
-                      <circle cx="85" cy="35" r="3" fill="var(--gradient-from-hex)" />
-                      <circle cx="75" cy="80" r="3" fill="var(--gradient-from-hex)" />
-                      <circle cx="25" cy="80" r="3" fill="var(--gradient-from-hex)" />
-                      <circle cx="15" cy="35" r="3" fill="var(--gradient-from-hex)" />
+                      <circle cx="50" cy="15" r="3" fill="hsl(var(--primary))" />
+                      <circle cx="85" cy="35" r="3" fill="hsl(var(--primary))" />
+                      <circle cx="75" cy="80" r="3" fill="hsl(var(--primary))" />
+                      <circle cx="25" cy="80" r="3" fill="hsl(var(--primary))" />
+                      <circle cx="15" cy="35" r="3" fill="hsl(var(--primary))" />
                     </svg>
 
                     <div className="absolute left-1/2 top-1/2 z-30 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full border-4 border-background bg-card shadow-lg dark:border-border dark:bg-background-secondary sm:h-28 sm:w-28">

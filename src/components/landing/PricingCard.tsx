@@ -33,9 +33,9 @@ export function PricingCard({
   if (highlighted) {
     return (
       <div className="relative transform md:-translate-y-4">
-        <div className="absolute inset-0 rounded-lg bg-gradient-to-b from-gradient-from to-gradient-to opacity-20 blur-sm" />
+        <div className="absolute inset-0 rounded-lg bg-primary opacity-20 blur-sm" />
         <GlassCard className="relative border border-brand-medium bg-card p-10 shadow-md">
-          <div className="absolute right-0 top-0 rounded-bl-lg rounded-tr-lg bg-gradient-to-l from-gradient-from to-gradient-to px-4 py-2 text-[10px] font-bold uppercase tracking-[0.15em] text-primary-foreground">
+          <div className="absolute right-0 top-0 rounded-bl-lg rounded-tr-lg bg-primary px-4 py-2 text-[10px] font-bold uppercase tracking-[0.15em] text-primary-foreground">
             Most Popular
           </div>
           <h3 className="text-xl font-bold mb-2 text-foreground">{name}</h3>
