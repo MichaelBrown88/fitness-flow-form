@@ -139,7 +139,7 @@ export default function AppShell({
               ) : (
                 <div className="flex items-center gap-2">
                   <div
-                    className="w-8 h-8 rounded-full bg-gradient-to-tr from-[hsl(var(--gradient-from))] to-[hsl(var(--gradient-to))] flex items-center justify-center text-primary-foreground font-bold text-sm shadow-md"
+                    className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm shadow-md"
                     aria-hidden
                   >
                     OA
@@ -207,7 +207,7 @@ export default function AppShell({
                   />
                 ) : (
                   <div className="flex items-center gap-1.5 sm:gap-2">
-                    <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-[hsl(var(--gradient-from))] to-[hsl(var(--gradient-to))] flex items-center justify-center text-primary-foreground font-bold text-[10px] sm:text-sm shadow-md">
+                    <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-[10px] sm:text-sm shadow-md">
                       OA
                     </div>
                     <span className="text-base sm:text-lg font-bold tracking-tight text-foreground hidden sm:inline">One Assess</span>

@@ -147,7 +147,7 @@ export function CompanionUI({
         <div className="relative h-32 w-32 mb-8">
           <div className="absolute inset-0 rounded-full border-4 border-white/5" />
           <div className="absolute inset-0 rounded-full border-4 border-t-primary animate-spin" />
-          <div className="absolute inset-4 rounded-full bg-gradient-to-tr from-primary to-brand-dark animate-pulse flex items-center justify-center">
+          <div className="absolute inset-4 rounded-full bg-gradient-to-tr from-primary to-primary/60 animate-pulse flex items-center justify-center">
             <Loader2 className="h-10 w-10 text-white animate-spin" />
           </div>
         </div>
