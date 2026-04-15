@@ -264,7 +264,7 @@ export default function AppShell({
                           className="flex items-center gap-1 sm:gap-2 rounded-full p-0.5 sm:p-1 hover:bg-muted/60 transition-colors"
                         >
                           <span 
-                            className="flex h-9 w-9 sm:h-8 sm:w-8 items-center justify-center rounded-full text-xs sm:text-xs font-bold text-white gradient-bg"
+                            className="flex h-9 w-9 sm:h-8 sm:w-8 items-center justify-center rounded-full text-xs sm:text-xs font-bold bg-primary text-primary-foreground"
                           >
                             {initials}
                           </span>
