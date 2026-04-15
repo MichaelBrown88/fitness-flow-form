@@ -107,7 +107,7 @@ export function ROIComparison() {
           {/* The New Way - Flow */}
           <div className="relative">
             <div className="absolute inset-0 rounded-lg bg-primary/10 blur-xl" />
-            <GlassCard className="relative z-10 border-gradient-medium/50 bg-card p-8 shadow-md dark:border-primary/30 dark:bg-card/90">
+            <GlassCard className="relative z-10 border-border bg-card p-8 shadow-md dark:bg-card/90">
               <div className="absolute right-0 top-0 p-4 opacity-[0.08] dark:opacity-[0.15]">
                 <Sun size={120} className="text-primary" />
               </div>

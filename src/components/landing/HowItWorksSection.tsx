@@ -56,7 +56,7 @@ export function HowItWorksSection() {
                   <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
                     Movement Screen
                   </span>
-                  <span className="rounded-full bg-gradient-light px-2 py-1 text-[10px] font-bold text-on-brand-tint">
+                  <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-bold text-foreground-secondary">
                     Step 4/12
                   </span>
                 </div>
@@ -69,7 +69,7 @@ export function HowItWorksSection() {
                     <div className="h-4 w-4 rounded-full border-2 border-border-medium dark:border-border" />
                     <span className="text-xs font-medium text-foreground">Stable / Neutral</span>
                   </div>
-                  <div className="flex items-center gap-3 rounded-lg border-2 border-primary bg-gradient-light/90 p-2.5 dark:bg-primary/20 dark:text-foreground">
+                  <div className="flex items-center gap-3 rounded-lg border-2 border-border bg-muted p-2.5">
                     <div className="h-4 w-4 rounded-full border-[5px] border-primary" />
                     <span className="text-xs font-bold text-foreground">Valgus (Caves In)</span>
                   </div>

@@ -42,10 +42,10 @@ export default function Demo() {
         </div>
 
         <div className="text-center mb-10">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-gradient-medium/50 bg-gradient-light/80 px-4 py-1.5">
-            <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-            <span className="text-xs font-bold uppercase tracking-[0.1em] text-gradient-dark">
-              Interactive Demo
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border bg-muted px-4 py-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-foreground-secondary" />
+            <span className="text-xs font-bold uppercase tracking-[0.1em] text-foreground-secondary">
+              Live demo
             </span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
