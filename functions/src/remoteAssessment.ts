@@ -10,7 +10,7 @@ import type { CallableRequest } from 'firebase-functions/v2/https';
 
 export const REMOTE_ASSESSMENT_MVP = process.env.REMOTE_ASSESSMENT_MVP === 'true';
 
-export type RemoteAssessmentScope = 'lifestyle' | 'lifestyle_posture' | 'posture';
+export type RemoteAssessmentScope = 'lifestyle' | 'lifestyle_posture' | 'posture' | 'full';
 
 const LIFESTYLE_KEYS = new Set([
   'activityLevel',
@@ -83,11 +83,20 @@ export async function handleCreateRemoteAssessmentToken(
   const clientRef = db.doc(`organizations/${organizationId}/clients/${slug}`);
   const clientSnap = await clientRef.get();
   if (!clientSnap.exists) {
-    throw new HttpsError('not-found', 'Client not found.');
-  }
-  const coachUid = (clientSnap.data() as { coachUid?: string } | undefined)?.coachUid;
-  if (coachUid && coachUid !== uid) {
-    throw new HttpsError('permission-denied', 'Not this client’s coach.');
+    // Auto-create a pending client record so remote intake data has a place to land
+    await clientRef.set({
+      name: normalizeName(clientName),
+      coachUid: uid,
+      organizationId,
+      status: 'active',
+      remoteIntakePending: true,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  } else {
+    const coachUid = (clientSnap.data() as { coachUid?: string } | undefined)?.coachUid;
+    if (coachUid && coachUid !== uid) {
+      throw new HttpsError('permission-denied', 'Not this client\'s coach.');
+    }
   }
 
   const token = randomBytes(16).toString('hex');

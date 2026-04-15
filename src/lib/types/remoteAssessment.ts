@@ -1,5 +1,5 @@
 /** Mirrors `RemoteAssessmentScope` in Cloud Functions `remoteAssessment.ts`. */
-export type RemoteAssessmentScope = 'lifestyle' | 'lifestyle_posture' | 'posture';
+export type RemoteAssessmentScope = 'lifestyle' | 'lifestyle_posture' | 'posture' | 'full';
 
 export type RemotePostureView = 'front' | 'back' | 'side-left' | 'side-right';
 
