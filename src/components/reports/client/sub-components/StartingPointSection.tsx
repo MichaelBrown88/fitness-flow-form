@@ -42,7 +42,7 @@ export const StartingPointSection: React.FC<StartingPointSectionProps> = ({
     <section className="w-full min-w-0 overflow-x-hidden">
       {!hideHeader && (
         <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 mb-2 sm:mb-3 md:mb-4 lg:mb-5 xl:mb-6">
-          <div className="p-1 sm:p-1.5 md:p-2 bg-gradient-light text-foreground rounded-lg">
+          <div className="p-1 sm:p-1.5 md:p-2 bg-muted text-foreground rounded-lg">
             <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
           </div>
           <h3 className="text-xs md:text-sm lg:text-base font-semibold text-foreground">Your Starting Point</h3>
@@ -71,7 +71,7 @@ export const StartingPointSection: React.FC<StartingPointSectionProps> = ({
               <circle 
                 cx="50" cy="50" r="42" 
                 fill="transparent" 
-                stroke="url(#gradient-score)" 
+                stroke="hsl(var(--brand-accent))"
                 strokeWidth={gaugeStroke} 
                 strokeLinecap="round"
                 strokeDasharray={`${(scores.overall / 100) * 190} 264`}
@@ -91,12 +91,6 @@ export const StartingPointSection: React.FC<StartingPointSectionProps> = ({
                   className="animate-glow-fade" 
                 />
               )}
-              <defs>
-                <linearGradient id="gradient-score" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="var(--gradient-from-hex)" />
-                  <stop offset="100%" stopColor="var(--gradient-to-hex)" />
-                </linearGradient>
-              </defs>
             </svg>
             
             <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -115,7 +109,7 @@ export const StartingPointSection: React.FC<StartingPointSectionProps> = ({
           {(scoreDiff === null || scoreDiff === 0) && <div className="mb-2 sm:mb-3" />}
 
           {/* Badge */}
-          <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 md:px-5 py-1.5 sm:py-2 rounded-full bg-gradient-light text-foreground text-xs sm:text-sm font-bold border border-gradient-medium mb-2 sm:mb-3 md:mb-4">
+          <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 md:px-5 py-1.5 sm:py-2 rounded-full bg-muted text-foreground text-xs sm:text-sm font-bold border border-border mb-2 sm:mb-3 md:mb-4">
             <Trophy className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 fill-current text-foreground" />
             <span className="text-center">{archetype.name}</span>
           </div>

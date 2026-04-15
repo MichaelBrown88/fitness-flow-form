@@ -426,7 +426,7 @@ export function MovementPostureMobility({ formData, scores, standalone = false, 
     <section className="space-y-6">
       {!hideHeader && (
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-light text-foreground rounded-lg">
+          <div className="p-2 bg-muted text-foreground rounded-lg">
             <Activity className="w-5 h-5" />
           </div>
           <h3 className="text-xs md:text-sm lg:text-base font-semibold text-foreground">
@@ -479,7 +479,7 @@ export function MovementPostureMobility({ formData, scores, standalone = false, 
         {/* Movement Quality */}
         <div className="flex items-center justify-between mb-3">
           <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-gradient-dark" />
+            <TrendingUp className="w-4 h-4 text-foreground-secondary" />
             Movement Quality
             {movementDelta && (
               <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold ${movementDelta.direction === 'up' ? 'text-score-green-fg' : 'text-score-red-fg'}`}>
@@ -495,11 +495,11 @@ export function MovementPostureMobility({ formData, scores, standalone = false, 
         <div className="space-y-3">
           {movementStrengths.length > 0 && (
             <div>
-              <p className="text-[10px] font-black text-gradient-dark uppercase tracking-[0.15em] mb-1.5">Strengths</p>
+              <p className="text-[10px] font-black text-foreground-secondary uppercase tracking-[0.15em] mb-1.5">Strengths</p>
               <ul className="space-y-1.5">
                 {movementStrengths.map((s, i) => (
                   <li key={i} className="text-xs sm:text-sm text-foreground-secondary flex items-start gap-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-gradient-dark mt-0.5 shrink-0" />
+                    <CheckCircle2 className="w-3.5 h-3.5 text-foreground-secondary mt-0.5 shrink-0" />
                     <span>{s}</span>
                   </li>
                 ))}
@@ -530,7 +530,7 @@ export function MovementPostureMobility({ formData, scores, standalone = false, 
         {/* Mobility */}
         <div className="flex items-center justify-between mb-3">
           <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <Activity className="w-4 h-4 text-gradient-dark" />
+            <Activity className="w-4 h-4 text-foreground-secondary" />
             Mobility
           </h4>
           <Badge className="glass-button-active text-[10px]">
@@ -540,11 +540,11 @@ export function MovementPostureMobility({ formData, scores, standalone = false, 
         <div className="space-y-3">
           {finalMobilityStrengths.length > 0 && (
             <div>
-              <p className="text-[10px] font-black text-gradient-dark uppercase tracking-[0.15em] mb-1.5">Strengths</p>
+              <p className="text-[10px] font-black text-foreground-secondary uppercase tracking-[0.15em] mb-1.5">Strengths</p>
               <ul className="space-y-1.5">
                 {finalMobilityStrengths.map((s, i) => (
                   <li key={i} className="text-xs sm:text-sm text-foreground-secondary flex items-start gap-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-gradient-dark mt-0.5 shrink-0" />
+                    <CheckCircle2 className="w-3.5 h-3.5 text-foreground-secondary mt-0.5 shrink-0" />
                     <span>{s}</span>
                   </li>
                 ))}
@@ -578,7 +578,7 @@ export function MovementPostureMobility({ formData, scores, standalone = false, 
           </CardInfoDrawer>
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-gradient-dark" />
+              <TrendingUp className="w-4 h-4 text-foreground-secondary" />
               Movement Quality
               {movementDelta && (
                 <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold ${movementDelta.direction === 'up' ? 'text-score-green-fg' : 'text-score-red-fg'}`}>
@@ -594,11 +594,11 @@ export function MovementPostureMobility({ formData, scores, standalone = false, 
           <div className="space-y-4">
             {movementStrengths.length > 0 && (
               <div>
-                <p className="text-[10px] font-black text-gradient-dark uppercase tracking-[0.15em] mb-2">Strengths</p>
+                <p className="text-[10px] font-black text-foreground-secondary uppercase tracking-[0.15em] mb-2">Strengths</p>
                 <ul className="space-y-2">
                   {movementStrengths.map((s, i) => (
                     <li key={i} className="text-sm text-foreground-secondary flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-gradient-dark mt-0.5 shrink-0" />
+                      <CheckCircle2 className="w-4 h-4 text-foreground-secondary mt-0.5 shrink-0" />
                       <span>{s}</span>
                     </li>
                   ))}
@@ -633,7 +633,7 @@ export function MovementPostureMobility({ formData, scores, standalone = false, 
           </CardInfoDrawer>
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
-              <Activity className="w-4 h-4 text-gradient-dark" />
+              <Activity className="w-4 h-4 text-foreground-secondary" />
               Mobility
             </h4>
             <Badge className="glass-button-active mr-5">
@@ -643,11 +643,11 @@ export function MovementPostureMobility({ formData, scores, standalone = false, 
           <div className="space-y-4">
             {finalMobilityStrengths.length > 0 && (
               <div>
-                <p className="text-[10px] font-black text-gradient-dark uppercase tracking-[0.15em] mb-2">Strengths</p>
+                <p className="text-[10px] font-black text-foreground-secondary uppercase tracking-[0.15em] mb-2">Strengths</p>
                 <ul className="space-y-2">
                   {finalMobilityStrengths.map((s, i) => (
                     <li key={i} className="text-sm text-foreground-secondary flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-gradient-dark mt-0.5 shrink-0" />
+                      <CheckCircle2 className="w-4 h-4 text-foreground-secondary mt-0.5 shrink-0" />
                       <span>{s}</span>
                     </li>
                   ))}

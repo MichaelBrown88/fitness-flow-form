@@ -15,13 +15,13 @@ export const StrengthsFocusSection: React.FC<StrengthsFocusSectionProps> = ({
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:gap-5 lg:gap-6 mb-4 sm:mb-5 md:mb-6 lg:mb-8">
       <Card className="p-4 sm:p-5 md:p-6 lg:p-7">
         <h4 className="text-sm font-bold text-foreground mb-2 sm:mb-3 md:mb-4 flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-gradient-dark" />
+          <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-foreground-secondary" />
           Key Strengths
         </h4>
         <ul className="space-y-2 sm:space-y-3">
           {strengths.map((item, i) => (
             <li key={i} className="text-xs sm:text-sm text-foreground-secondary flex items-start gap-2 sm:gap-3">
-              <div className="w-1.5 h-1.5 rounded-full bg-gradient-from mt-2 shrink-0" style={{ backgroundColor: 'hsl(var(--gradient-from))' }} />
+              <div className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--brand-accent))] mt-2 shrink-0" style={{ backgroundColor: 'hsl(var(--brand-accent))' }} />
               {item.strength}
             </li>
           ))}

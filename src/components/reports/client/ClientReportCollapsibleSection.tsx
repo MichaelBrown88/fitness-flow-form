@@ -33,7 +33,7 @@ export function ClientReportCollapsibleSection({
             aria-expanded={open}
           >
             <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 min-w-0">
-              <div className="sm:p-1.5 md:p-2 sm:bg-gradient-light text-muted-foreground sm:text-foreground sm:rounded-lg shrink-0">
+              <div className="sm:p-1.5 md:p-2 sm:bg-muted text-muted-foreground sm:text-foreground sm:rounded-lg shrink-0">
                 {meta.icon}
               </div>
               <div className="min-w-0">

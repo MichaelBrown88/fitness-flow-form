@@ -6,11 +6,11 @@
 export const CATEGORY_ORDER = ['bodyComp', 'strength', 'cardio', 'movementQuality', 'lifestyle'] as const;
 
 export const CATEGORY_COLOR: Record<string, string> = {
-  bodyComp: 'gradient-bg',
-  strength: 'gradient-bg',
-  cardio: 'gradient-bg',
-  movementQuality: 'gradient-bg',
-  lifestyle: 'gradient-bg',
+  bodyComp: 'bg-[hsl(var(--brand-accent))]',
+  strength: 'bg-[hsl(var(--brand-accent))]',
+  cardio: 'bg-[hsl(var(--brand-accent))]',
+  movementQuality: 'bg-[hsl(var(--brand-accent))]',
+  lifestyle: 'bg-[hsl(var(--brand-accent))]',
 };
 
 export const CATEGORY_HEX: Record<string, string> = {
@@ -39,25 +39,25 @@ export const PROGRAM_PHASES = [
   {
     key: 'overload',
     title: 'Progressive Overload',
-    color: 'gradient-bg',
+    color: 'bg-[hsl(var(--brand-accent))]',
     text: 'Gradually increase volume, intensity, or density with excellent technique to drive adaptations.',
   },
   {
     key: 'performance',
     title: 'Performance Development',
-    color: 'gradient-bg',
+    color: 'bg-[hsl(var(--brand-accent))]',
     text: 'Translate base capacity into performance—better pace, higher outputs, stronger lifts.',
   },
   {
     key: 'specialisation',
     title: 'Specialisation',
-    color: 'gradient-bg',
+    color: 'bg-[hsl(var(--brand-accent))]',
     text: 'Emphasise your primary goal block (fat loss, hypertrophy, strength, or endurance) based on response.',
   },
   {
     key: 'mastery',
     title: 'Mastery',
-    color: 'gradient-bg',
+    color: 'bg-[hsl(var(--brand-accent))]',
     text: 'Refine strengths, shore up weak links, and consolidate results for long-term sustainability.',
   },
 ] as const;

@@ -94,8 +94,8 @@ const GapMetricRow: React.FC<{
             {renderCurrent()}
             <DeltaIndicator delta={delta} />
           </span>
-          <ArrowRight className={`w-3 h-3 ${typeof current === 'number' || current !== '--' ? 'text-gradient-dark' : 'text-foreground-tertiary'} flex-shrink-0`} />
-          <span className="text-sm font-bold text-gradient-dark text-right tabular-nums">{targetDisplay}</span>
+          <ArrowRight className={`w-3 h-3 ${typeof current === 'number' || current !== '--' ? 'text-foreground-secondary' : 'text-foreground-tertiary'} flex-shrink-0`} />
+          <span className="text-sm font-bold text-foreground-secondary text-right tabular-nums">{targetDisplay}</span>
         </div>
       </div>
     );
@@ -108,8 +108,8 @@ const GapMetricRow: React.FC<{
         {renderCurrent()}
         <DeltaIndicator delta={delta} />
       </span>
-      <ArrowRight className={`w-3 h-3 ${typeof current === 'number' || current !== '--' ? 'text-gradient-dark' : 'text-foreground-tertiary'} justify-self-center`} />
-      <span className="text-sm font-bold text-gradient-dark text-right tabular-nums">{targetDisplay}</span>
+      <ArrowRight className={`w-3 h-3 ${typeof current === 'number' || current !== '--' ? 'text-foreground-secondary' : 'text-foreground-tertiary'} justify-self-center`} />
+      <span className="text-sm font-bold text-foreground-secondary text-right tabular-nums">{targetDisplay}</span>
     </div>
   );
 };
@@ -140,7 +140,7 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
         </CardInfoDrawer>
         <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6 h-[44px]">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-light text-foreground rounded-lg">
+          <div className="p-2 bg-muted text-foreground rounded-lg">
             <Scale className="w-5 h-5" />
           </div>
           <h4 className="text-sm font-bold text-foreground">Body Composition</h4>
@@ -255,7 +255,7 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
         </CardInfoDrawer>
         <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6 h-[44px]">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-light text-foreground rounded-lg">
+            <div className="p-2 bg-muted text-foreground rounded-lg">
               <Dumbbell className="w-5 h-5" />
             </div>
             <h4 className="text-sm font-bold text-foreground">Functional Strength</h4>
@@ -341,7 +341,7 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
         </CardInfoDrawer>
         <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6 h-[44px]">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-light text-foreground rounded-lg">
+          <div className="p-2 bg-muted text-foreground rounded-lg">
             <Heart className="w-5 h-5" />
           </div>
           <h4 className="text-sm font-bold text-foreground">Metabolic Fitness</h4>
@@ -433,7 +433,7 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
     <section className="w-full min-w-0 overflow-x-hidden">
       {!hideHeader && (
         <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 mb-2 sm:mb-3 md:mb-4 lg:mb-5 xl:mb-6">
-          <div className="p-1 sm:p-1.5 md:p-2 bg-gradient-light text-foreground rounded-lg">
+          <div className="p-1 sm:p-1.5 md:p-2 bg-muted text-foreground rounded-lg">
             <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
           </div>
           <h3 className="text-xs md:text-sm lg:text-base font-semibold text-foreground">Gap Analysis</h3>
