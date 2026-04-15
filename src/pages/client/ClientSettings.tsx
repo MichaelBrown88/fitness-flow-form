@@ -39,7 +39,7 @@ export default function ClientSettings() {
   return (
     <div className="space-y-8">
       <section className="space-y-4">
-        <h2 className="text-[11px] font-black uppercase tracking-[0.12em] text-muted-foreground">Profile & contact</h2>
+        <h2 className="text-sm font-semibold text-foreground-secondary">Profile & contact</h2>
         <div className="grid gap-2">
           <label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground flex items-center gap-2">
             <UserCheck className="h-3.5 w-3.5" /> Client Name

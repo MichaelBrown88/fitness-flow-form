@@ -157,7 +157,7 @@ export function CoachWorkspaceSidebar({
 
       <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="px-3 py-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
+          <p className="text-xs font-semibold text-muted-foreground mb-1.5">
             {COACH_ASSISTANT_COPY.SIDEBAR_CHATS}
           </p>
           <ul className="space-y-0.5">
@@ -199,7 +199,7 @@ export function CoachWorkspaceSidebar({
             <div className="mb-3 flex items-center justify-between gap-2">
               <h2
                 id="sidebar-artifacts-heading"
-                className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                className="text-xs font-semibold text-muted-foreground"
               >
                 {COACH_ASSISTANT_COPY.SIDEBAR_ARTIFACTS_SECTION}
               </h2>
@@ -342,7 +342,7 @@ export function CoachWorkspaceSidebar({
         </div>
 
         <div className="border-t border-border px-3 py-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
+          <p className="text-xs font-semibold text-muted-foreground mb-1.5">
             Needs Attention
           </p>
           {recentClients.length === 0 ? (
@@ -353,7 +353,7 @@ export function CoachWorkspaceSidebar({
                 <li key={c.name}>
                   <Link
                     to={`/client/${encodeURIComponent(c.name)}`}
-                    className="block rounded-lg px-2 py-1 text-xs font-medium text-score-amber-fg hover:bg-muted/60 hover:text-foreground truncate"
+                    className="block rounded-lg px-2 py-1 text-xs font-medium text-foreground-secondary hover:bg-muted/60 hover:text-foreground truncate"
                   >
                     {formatClientDisplayName(c.name)}
                   </Link>

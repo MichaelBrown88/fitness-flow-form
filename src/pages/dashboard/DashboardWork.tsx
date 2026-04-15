@@ -22,7 +22,7 @@ export default function DashboardWork() {
     <div className="mx-auto w-full max-w-5xl space-y-5 px-3 sm:px-4 py-6 sm:py-10 mt-auto mb-auto">
       <section>
         <div className="mb-2 flex items-center gap-2">
-          <h2 className="text-[11px] font-black uppercase tracking-[0.12em] text-muted-foreground">
+          <h2 className="text-sm font-semibold text-foreground-secondary">
             Needs Attention
           </h2>
           {attentionCount > 0 && (
@@ -42,7 +42,7 @@ export default function DashboardWork() {
 
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-[11px] font-black uppercase tracking-[0.12em] text-muted-foreground">
+          <h2 className="text-sm font-semibold text-foreground-secondary">
             Calendar
           </h2>
           <Button

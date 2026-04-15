@@ -488,7 +488,7 @@ export default function DashboardAssistant() {
 
             {briefItems.length > 0 && (
               <div className="w-full space-y-1.5">
-                <p className="text-[11px] font-black uppercase tracking-[0.12em] text-muted-foreground px-1">
+                <p className="text-xs font-semibold text-muted-foreground px-1">
                   Needs attention
                 </p>
                 <ul className="space-y-1">
