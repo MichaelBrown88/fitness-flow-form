@@ -144,20 +144,20 @@ export function CoachWorkspaceSidebar({
       )}
       aria-label="Workspace"
     >
-      <div className="flex flex-col gap-2 border-b border-border/80 p-3">
-        <Button type="button" variant="outline" size="sm" className="w-full justify-start gap-2 rounded-md" onClick={onNewChat}>
+      <div className="flex flex-col gap-0.5 p-2">
+        <button type="button" onClick={onNewChat} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-foreground-secondary transition-colors hover:bg-muted hover:text-foreground">
           <MessageSquarePlus className="h-4 w-4 shrink-0" />
           {COACH_ASSISTANT_COPY.NEW_CHAT}
-        </Button>
-        <Button type="button" variant="ghost" size="sm" className="w-full justify-start gap-2" onClick={openCommandMenu}>
+        </button>
+        <button type="button" onClick={openCommandMenu} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-foreground-secondary transition-colors hover:bg-muted hover:text-foreground">
           <Search className="h-4 w-4 shrink-0" />
           {COACH_ASSISTANT_COPY.SIDEBAR_SEARCH}
-        </Button>
+        </button>
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="px-3 py-2">
-          <p className="text-xs font-semibold text-muted-foreground mb-1.5">
+        <div className="px-2 py-2">
+          <p className="px-3 text-xs font-semibold text-muted-foreground mb-1">
             {COACH_ASSISTANT_COPY.SIDEBAR_CHATS}
           </p>
           <ul className="space-y-0.5">
@@ -167,10 +167,10 @@ export function CoachWorkspaceSidebar({
                   type="button"
                   onClick={() => onSelectThread(t.id)}
                   className={cn(
-                    'min-w-0 flex-1 text-left rounded-md px-2 py-1.5 text-xs font-medium truncate transition-colors',
+                    'min-w-0 flex-1 text-left rounded-lg px-3 py-1.5 text-xs font-medium truncate transition-colors',
                     t.id === activeThreadId
                       ? 'bg-muted text-foreground'
-                      : 'hover:bg-muted/60 text-foreground/70 hover:text-foreground',
+                      : 'hover:bg-muted text-foreground/70 hover:text-foreground',
                   )}
                 >
                   {t.title}
@@ -194,7 +194,7 @@ export function CoachWorkspaceSidebar({
           </ul>
         </div>
 
-        <div className="border-t border-border px-3 py-3">
+        <div className="px-2 pt-3">
           <section aria-label={COACH_ASSISTANT_COPY.SIDEBAR_ARTIFACTS_REGION_LABEL}>
             <div className="mb-3 flex items-center justify-between gap-2">
               <h2
@@ -341,19 +341,19 @@ export function CoachWorkspaceSidebar({
           </section>
         </div>
 
-        <div className="border-t border-border px-3 py-2">
-          <p className="text-xs font-semibold text-muted-foreground mb-1.5">
+        <div className="px-2 pt-3">
+          <p className="px-3 text-xs font-semibold text-muted-foreground mb-1">
             Needs Attention
           </p>
           {recentClients.length === 0 ? (
-            <p className="text-xs text-muted-foreground px-2 py-1">All clients on track</p>
+            <p className="text-xs text-muted-foreground px-3 py-1">All clients on track</p>
           ) : (
             <ul className="space-y-0.5">
               {recentClients.map((c) => (
                 <li key={c.name}>
                   <Link
                     to={`/client/${encodeURIComponent(c.name)}`}
-                    className="block rounded-lg px-2 py-1 text-xs font-medium text-foreground-secondary hover:bg-muted/60 hover:text-foreground truncate"
+                    className="block rounded-lg px-3 py-1.5 text-xs font-medium text-foreground-secondary hover:bg-muted hover:text-foreground truncate"
                   >
                     {formatClientDisplayName(c.name)}
                   </Link>
@@ -364,7 +364,7 @@ export function CoachWorkspaceSidebar({
         </div>
       </div>
 
-      <div className="z-10 shrink-0 border-t border-border/80 bg-background/95 p-2 supports-[backdrop-filter]:backdrop-blur-sm">
+      <div className="z-10 shrink-0 border-t border-border/60 bg-card p-2">
         <CoachWorkspaceProfileFooter variant="sidebar" showTeamTab={showTeamTab} />
       </div>
 
