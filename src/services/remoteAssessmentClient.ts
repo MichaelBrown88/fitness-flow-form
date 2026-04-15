@@ -90,3 +90,27 @@ export async function uploadBlobToSignedUrl(
     throw new Error(`Upload failed (${put.status})`);
   }
 }
+
+export async function getRemoteBodyCompUploadSlot(
+  token: string,
+  contentType: 'image/jpeg' | 'image/png',
+): Promise<{ uploadUrl: string; storagePath: string; expiresAt: number }> {
+  const fn = httpsCallable<
+    { token: string; contentType: string },
+    { uploadUrl: string; storagePath: string; expiresAt: number }
+  >(fns(), 'getRemoteBodyCompUploadUrl');
+  const res = await fn({ token, contentType });
+  return res.data;
+}
+
+export async function extractBodyCompOcrFromStorage(
+  token: string,
+  storagePath: string,
+): Promise<{ fields: Record<string, string> }> {
+  const fn = httpsCallable<
+    { token: string; storagePath: string },
+    { fields: Record<string, string> }
+  >(fns(), 'extractRemoteBodyCompOcr');
+  const res = await fn({ token, storagePath });
+  return res.data;
+}
