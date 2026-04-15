@@ -175,8 +175,8 @@ const ParQQuestionnaire: React.FC<ParQQuestionnaireProps> = ({
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
-      {/* Medical Clearance Warning */}
-      {hasMedicalConcerns && (
+      {/* Medical Clearance Warning (studio mode only — remote mode shows its own banner) */}
+      {hasMedicalConcerns && !isRemoteMode && (
         <div className="p-5 bg-rose-50 border border-rose-100 rounded-2xl animate-in fade-in zoom-in-95 duration-300">
           <div className="flex items-start gap-3">
             <span className="text-lg leading-none mt-0.5">⚠️</span>
