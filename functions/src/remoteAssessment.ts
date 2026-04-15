@@ -12,17 +12,28 @@ export const REMOTE_ASSESSMENT_MVP = process.env.REMOTE_ASSESSMENT_MVP === 'true
 
 export type RemoteAssessmentScope = 'lifestyle' | 'lifestyle_posture' | 'posture' | 'full';
 
+const BASIC_INFO_KEYS = [
+  'fullName', 'email', 'phone', 'dateOfBirth', 'gender', 'heightCm',
+  'trainingHistory', 'recentActivity',
+] as const;
+
 const LIFESTYLE_KEYS = new Set([
-  'activityLevel',
-  'sleepArchetype',
-  'stressLevel',
-  'nutritionHabits',
-  'hydrationHabits',
-  'stepsPerDay',
-  'sedentaryHours',
-  'caffeineCupsPerDay',
-  'alcoholFrequency',
+  'activityLevel', 'sleepArchetype', 'stressLevel', 'nutritionHabits',
+  'hydrationHabits', 'stepsPerDay', 'sedentaryHours', 'caffeineCupsPerDay',
+  'alcoholFrequency', 'medicationsFlag', 'medicationsNotes',
 ]);
+
+const PARQ_KEYS = [
+  'parq1', 'parq2', 'parq3', 'parq4', 'parq5', 'parq6', 'parq7',
+  'parq8', 'parq9', 'parq10', 'parq11', 'parq12', 'parq13', 'parqNotes',
+];
+
+const BODY_COMP_KEYS = [
+  'inbodyWeightKg', 'inbodyBodyFatPct', 'bodyFatMassKg', 'inbodyBmi',
+  'visceralFatLevel', 'skeletalMuscleMassKg', 'totalBodyWaterL', 'waistHipRatio',
+  'bmrKcal', 'inbodyScore', 'segmentalTrunkKg', 'segmentalArmLeftKg',
+  'segmentalArmRightKg', 'segmentalLegLeftKg', 'segmentalLegRightKg',
+];
 
 /** Posture views allowed for remote upload + merge (must match companion / storage naming). */
 export const REMOTE_POSTURE_VIEWS = ['front', 'side-left', 'back', 'side-right'] as const;
@@ -38,14 +49,22 @@ function generateClientSlugFromName(clientName: string): string {
 }
 
 function allowedKeysForScope(scope: RemoteAssessmentScope): string[] {
-  if (scope === 'lifestyle') return Array.from(LIFESTYLE_KEYS);
   const posturePathKeys = REMOTE_POSTURE_VIEWS.map((v) => `postureRemotePath_${v}`);
+  if (scope === 'lifestyle') return Array.from(LIFESTYLE_KEYS);
   if (scope === 'posture') return posturePathKeys;
-  return [...Array.from(LIFESTYLE_KEYS), ...posturePathKeys];
+  if (scope === 'lifestyle_posture') return [...Array.from(LIFESTYLE_KEYS), ...posturePathKeys];
+  // 'full': all non-physical fields
+  return [
+    ...BASIC_INFO_KEYS,
+    ...Array.from(LIFESTYLE_KEYS),
+    ...PARQ_KEYS,
+    ...BODY_COMP_KEYS,
+    ...posturePathKeys,
+  ];
 }
 
 function parseScope(raw: unknown): RemoteAssessmentScope {
-  if (raw === 'lifestyle_posture' || raw === 'posture' || raw === 'lifestyle') return raw;
+  if (raw === 'lifestyle_posture' || raw === 'posture' || raw === 'lifestyle' || raw === 'full') return raw;
   return 'lifestyle';
 }
 
@@ -275,10 +294,15 @@ export async function handleSubmitRemoteAssessmentFields(
       nextForm.postureInputMode = 'manual';
     }
 
+    // Detect PAR-Q flag server-side (never submitted by client, always computed)
+    const PARQ_MEDICAL_IDS = ['parq1','parq2','parq3','parq4','parq5','parq6','parq7'];
+    const parqFlagged = PARQ_MEDICAL_IDS.some((k) => sanitized[k] === 'yes');
+
     tx.update(clientRef, {
       formData: nextForm,
       remoteIntakeAwaitingStudio: true,
       remoteIntakeLastAt: admin.firestore.FieldValue.serverTimestamp(),
+      ...(parqFlagged ? { parqFlagged: true } : {}),
     });
   });
 
