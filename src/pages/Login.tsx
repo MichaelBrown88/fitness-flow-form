@@ -108,7 +108,7 @@ const Login = () => {
         noindex
       />
       {/* Left side */}
-      <div className="hidden lg:flex flex-1 gradient-bg p-12 flex-col justify-center">
+      <div className="hidden lg:flex flex-1 bg-neutral-950 p-12 flex-col justify-center">
         <div className="max-w-md">
           <div className="flex items-center gap-2 mb-8">
             <div className="w-10 h-10 rounded-xl bg-background/20 flex items-center justify-center">
@@ -136,8 +136,8 @@ const Login = () => {
           </p>
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2 mb-8 justify-center">
-            <div className="w-10 h-10 rounded-xl gradient-bg flex items-center justify-center">
-              <span className="text-white font-bold">OA</span>
+            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+              <span className="text-primary-foreground font-bold">OA</span>
             </div>
             <span className="text-xl font-semibold">One Assess</span>
           </div>
@@ -224,7 +224,7 @@ const Login = () => {
                 <button
                   type="button"
                   onClick={handleForgotPassword}
-                  className="text-sm font-medium text-gradient-dark transition-colors hover:opacity-80 underline underline-offset-2"
+                  className="text-sm font-medium text-foreground-secondary transition-colors hover:opacity-80 underline underline-offset-2"
                   disabled={submitting}
                 >
                   Reset password
@@ -251,7 +251,7 @@ const Login = () => {
 
             <p className="mt-6 text-center text-sm text-foreground-secondary">
               New to One Assess?{' '}
-              <Link to={ROUTES.ONBOARDING} className="font-medium text-gradient-dark hover:underline">
+              <Link to={ROUTES.ONBOARDING} className="font-medium text-foreground-secondary hover:underline">
                 Start your free trial →
               </Link>
             </p>
