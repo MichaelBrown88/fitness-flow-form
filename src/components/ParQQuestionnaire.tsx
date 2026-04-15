@@ -7,6 +7,11 @@ import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
 interface ParQQuestionnaireProps {
   onExitParQ?: () => void;
   onComplete?: () => void;
+  /** Remote mode: supply answers externally instead of using FormContext */
+  value?: Record<string, string>;
+  onChange?: (patch: Record<string, string>) => void;
+  /** Remote mode: gender for conditional question filtering */
+  gender?: string;
 }
 
 interface ParQQuestion {
@@ -19,7 +24,7 @@ interface ParQQuestion {
   isNotes?: boolean;
 }
 
-const parqQuestions: ParQQuestion[] = [
+export const parqQuestions: ParQQuestion[] = [
   {
     id: 'parq1',
     question: 'Has your doctor ever said that you have a heart condition and that you should only do physical activity recommended by a doctor?',
@@ -74,45 +79,67 @@ const parqQuestions: ParQQuestion[] = [
   },
 ];
 
-const ParQQuestionnaire: React.FC<ParQQuestionnaireProps> = ({ onExitParQ, onComplete }) => {
+const ParQQuestionnaire: React.FC<ParQQuestionnaireProps> = ({
+  onExitParQ,
+  onComplete,
+  value: externalValue,
+  onChange: externalOnChange,
+  gender: externalGender,
+}) => {
   const { formData, updateFormData } = useFormContext();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+
+  // When value/onChange props are provided (remote mode), use them.
+  // Otherwise fall back to FormContext (studio mode).
+  const isRemoteMode = externalValue !== undefined && externalOnChange !== undefined;
+
+  const getAnswer = (id: string): string => {
+    if (isRemoteMode) return externalValue![id] ?? '';
+    return (formData[id as keyof typeof formData] as string) ?? '';
+  };
+
+  const setAnswer = (id: string, answer: string) => {
+    if (isRemoteMode) {
+      externalOnChange!({ ...externalValue!, [id]: answer });
+    } else {
+      updateFormData({ [id]: answer });
+    }
+  };
+
+  const genderValue = isRemoteMode ? (externalGender ?? '') : (formData.gender as string ?? '');
 
   // Filter questions based on conditional logic
   const visibleQuestions = useMemo(() =>
     parqQuestions.filter(question => {
       if (!question.conditional) return true;
       const { showWhen } = question.conditional;
-      return formData[showWhen.field as keyof typeof formData] === showWhen.value;
+      // All conditionals check gender
+      return genderValue === showWhen.value;
     }),
-    [formData],
+    [genderValue],
   );
 
   // Ensure currentQuestionIndex is valid when visibleQuestions changes
   const validQuestionIndex = Math.min(currentQuestionIndex, visibleQuestions.length - 1);
   const currentQuestion = visibleQuestions[validQuestionIndex];
   const isLastQuestion = validQuestionIndex === visibleQuestions.length - 1;
-  const currentAnswer = currentQuestion
-    ? formData[currentQuestion.id as keyof typeof formData]
-    : '';
+
+  const currentAnswer = currentQuestion ? getAnswer(currentQuestion.id) : '';
   const hasAnswer = currentQuestion?.isNotes
-    ? (currentAnswer as string)?.trim() !== ''
+    ? currentAnswer.trim() !== ''
     : currentAnswer !== '';
 
   // Check if any PAR-Q questions have been answered "yes"
-  const hasMedicalConcerns = visibleQuestions.some(question =>
-    formData[question.id as keyof typeof formData] === 'yes'
-  );
+  const hasMedicalConcerns = visibleQuestions.some(q => getAnswer(q.id) === 'yes');
 
   // Mark PAR-Q as complete when all required questions are answered
-  const allQuestionsAnswered = visibleQuestions
-    .every(question => formData[question.id as keyof typeof formData] !== '');
+  const allQuestionsAnswered = visibleQuestions.every(q => getAnswer(q.id) !== '');
 
   useEffect(() => {
-    if (allQuestionsAnswered && formData.parqQuestionnaire !== 'completed') {
+    if (!isRemoteMode && allQuestionsAnswered && formData.parqQuestionnaire !== 'completed') {
       updateFormData({ parqQuestionnaire: 'completed' });
     }
-  }, [allQuestionsAnswered, formData.parqQuestionnaire, updateFormData]);
+  }, [isRemoteMode, allQuestionsAnswered, formData.parqQuestionnaire, updateFormData]);
 
   // Keep index in bounds when visibleQuestions length changes
   useEffect(() => {
@@ -123,7 +150,7 @@ const ParQQuestionnaire: React.FC<ParQQuestionnaireProps> = ({ onExitParQ, onCom
 
   const handleAnswer = (answer: string) => {
     if (currentQuestion) {
-      updateFormData({ [currentQuestion.id]: answer });
+      setAnswer(currentQuestion.id, answer);
     }
   };
 
@@ -137,8 +164,7 @@ const ParQQuestionnaire: React.FC<ParQQuestionnaireProps> = ({ onExitParQ, onCom
 
   const goToNext = () => {
     if (isLastQuestion) {
-      // Last question → mark complete and advance to next section
-      updateFormData({ parqQuestionnaire: 'completed' });
+      if (!isRemoteMode) updateFormData({ parqQuestionnaire: 'completed' });
       onComplete?.();
     } else {
       setCurrentQuestionIndex(prev => prev + 1);
@@ -191,7 +217,7 @@ const ParQQuestionnaire: React.FC<ParQQuestionnaireProps> = ({ onExitParQ, onCom
         {currentQuestion.isNotes ? (
           <textarea
             placeholder="Document any additional health conditions, medications, or concerns mentioned..."
-            value={(currentAnswer as string) || ''}
+            value={currentAnswer || ''}
             onChange={(e) => handleAnswer(e.target.value)}
             rows={4}
             className="w-full p-5 border border-border rounded-2xl resize-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all font-medium text-foreground-secondary"
