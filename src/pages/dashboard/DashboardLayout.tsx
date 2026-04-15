@@ -430,7 +430,7 @@ export default function DashboardLayout() {
             <Button
               type="button"
               onClick={() => setNewClientModalOpen(true)}
-              className="h-9 px-4 rounded-lg font-bold gap-2 text-xs"
+              className="h-9 px-4 font-bold gap-2 text-xs"
             >
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">New Client</span>

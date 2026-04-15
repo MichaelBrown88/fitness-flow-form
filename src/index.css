@@ -552,12 +552,12 @@
     --ring: 0 0% 4%;                    /* #0A0A0A — focus ring matches primary */
 
     /* ── Radius ──────────────────────────────────────────── */
-    --radius: 0.5rem;        /* 8px  — default */
-    --radius-sm: 0.375rem;   /* 6px */
-    --radius-lg: 0.75rem;    /* 12px */
-    --radius-xl: 1rem;       /* 16px */
-    --radius-2xl: 1.25rem;   /* 20px — cards */
-    --radius-3xl: 1.5rem;    /* 24px */
+    --radius: 0.625rem;      /* 10px — default */
+    --radius-sm: 0.5rem;     /* 8px */
+    --radius-lg: 0.875rem;   /* 14px */
+    --radius-xl: 1.25rem;    /* 20px */
+    --radius-2xl: 1.75rem;   /* 28px — cards */
+    --radius-3xl: 2.5rem;    /* 40px — hero cards */
     --radius-full: 9999px;
 
     /* ── Typography Scale ────────────────────────────────── */

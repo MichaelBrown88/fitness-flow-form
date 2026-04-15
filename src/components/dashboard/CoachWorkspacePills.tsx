@@ -28,16 +28,16 @@ export function CoachWorkspacePills({
   const tabClass = (isActive: boolean) =>
     `${
       isToolbar
-        ? 'flex-none px-2.5 py-1 min-h-[32px] sm:min-h-[30px] text-[11px] sm:text-xs font-medium'
-        : 'flex-1 sm:flex-none px-3 sm:px-5 py-2 min-h-[44px] sm:min-h-0 text-xs sm:text-sm font-bold'
-    } rounded-md transition-colors duration-150 touch-manipulation flex flex-row flex-nowrap items-center justify-center gap-1 sm:gap-1.5 whitespace-nowrap ${
+        ? 'flex-none px-3 py-1.5 min-h-[32px] sm:min-h-[30px] text-[11px] sm:text-xs font-semibold'
+        : 'flex-1 sm:flex-none px-4 sm:px-6 py-2 min-h-[44px] sm:min-h-0 text-xs sm:text-sm font-bold'
+    } rounded-full transition-colors duration-150 touch-manipulation flex flex-row flex-nowrap items-center justify-center gap-1 sm:gap-1.5 whitespace-nowrap ${
       isToolbar
         ? isActive
-          ? 'bg-background text-foreground dark:bg-background-secondary'
-          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+          ? 'bg-background text-foreground shadow-sm dark:bg-background-secondary'
+          : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
         : isActive
-          ? 'bg-background text-foreground ring-1 ring-border/60 dark:bg-background-secondary'
-          : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
+          ? 'bg-background text-foreground shadow-sm dark:bg-background-secondary'
+          : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
     }`;
 
   const iconClass = isToolbar ? 'w-3 h-3 shrink-0' : 'w-3.5 h-3.5 shrink-0';
@@ -66,8 +66,8 @@ export function CoachWorkspacePills({
       <div
         className={
           isToolbar
-            ? 'inline-flex w-max max-w-full min-w-0 items-center gap-0.5 overflow-x-auto overscroll-x-contain rounded-md border border-border/50 bg-muted/30 p-0.5 dark:border-border/40 dark:bg-muted/20'
-            : 'flex w-full max-w-xl mx-auto items-center gap-0.5 overflow-x-auto rounded-lg border border-border/70 bg-muted/25 p-0.5 dark:border-border/50 dark:bg-muted/15 sm:gap-1'
+            ? 'inline-flex w-max max-w-full min-w-0 items-center gap-0.5 overflow-x-auto overscroll-x-contain rounded-full border border-border/50 bg-muted/40 p-1 dark:border-border/40 dark:bg-muted/20'
+            : 'flex w-full max-w-xl mx-auto items-center gap-0.5 overflow-x-auto rounded-full border border-border/70 bg-muted/30 p-1 dark:border-border/50 dark:bg-muted/15 sm:gap-1'
         }
       >
         <NavLink to={ROUTES.DASHBOARD_ASSISTANT} className={({ isActive }) => tabClass(isActive)}>
