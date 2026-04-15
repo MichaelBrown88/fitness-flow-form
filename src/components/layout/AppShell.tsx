@@ -123,46 +123,61 @@ export default function AppShell({
   const orgName = !customBrandingEnabled ? 'One Assess' : (publicOrgName || orgSettings?.name || 'Your Organization');
 
   if (mode === 'public') {
-    return (
-      <div className="min-h-screen bg-background text-foreground">
-        {/* Header: logo + client nav — semantic tokens for light/dark (DESIGN_SYSTEM) */}
-        <header className="bg-card border-b border-border py-3 px-4 sm:px-6">
-          <div className="flex items-center justify-between max-w-7xl mx-auto">
-            {/* Logo */}
-            <div className="flex items-center gap-2">
-              {logoUrl ? (
-                <img
-                  src={logoUrl}
-                  alt={orgName}
-                  className="h-8 w-auto max-w-[150px] object-contain"
-                />
-              ) : (
-                <div className="flex items-center gap-2">
-                  <div
-                    className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm shadow-md"
-                    aria-hidden
-                  >
-                    OA
-                  </div>
-                  <span className="font-bold text-foreground">One Assess</span>
+    const publicHeader = (
+      <header className="bg-card border-b border-border py-3 px-4 sm:px-6 shrink-0">
+        <div className="flex items-center justify-between max-w-7xl mx-auto">
+          {/* Logo */}
+          <div className="flex items-center gap-2">
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt={orgName}
+                className="h-8 w-auto max-w-[150px] object-contain"
+              />
+            ) : (
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm shadow-md"
+                  aria-hidden
+                >
+                  OA
                 </div>
-              )}
-            </div>
-
-            {/* Client nav: notification bell + profile dropdown (token-based, no auth required) */}
-            {showClientNav && shareToken && (
-              <div className="flex items-center gap-1.5">
-                <ThemeToggle className="h-9 w-9 text-muted-foreground" />
-                <NotificationBell shareToken={shareToken} />
-                <ClientProfileDropdown
-                  clientName={clientName || 'Client'}
-                  shareToken={shareToken}
-                />
+                <span className="font-bold text-foreground">One Assess</span>
               </div>
             )}
           </div>
-        </header>
-        
+
+          {/* Client nav: notification bell + profile dropdown (token-based, no auth required) */}
+          {showClientNav && shareToken && (
+            <div className="flex items-center gap-1.5">
+              <ThemeToggle className="h-9 w-9 text-muted-foreground" />
+              <NotificationBell shareToken={shareToken} />
+              <ClientProfileDropdown
+                clientName={clientName || 'Client'}
+                shareToken={shareToken}
+              />
+            </div>
+          )}
+        </div>
+      </header>
+    );
+
+    if (lockViewportHeight) {
+      return (
+        <div className="h-dvh flex flex-col bg-background text-foreground overflow-hidden">
+          {publicHeader}
+          <main className="flex-1 min-h-0 overflow-hidden">
+            {children}
+          </main>
+        </div>
+      );
+    }
+
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        {/* Header: logo + client nav — semantic tokens for light/dark (DESIGN_SYSTEM) */}
+        {publicHeader}
+
         <main className="max-w-7xl mx-auto py-8 px-4">
           {children}
         </main>
@@ -182,8 +197,8 @@ export default function AppShell({
         lockViewportHeight ? 'h-dvh max-h-dvh overflow-hidden' : 'min-h-screen',
       )}
     >
-      <header className="border-b border-border/80 bg-background/95 backdrop-blur-sm sticky top-0 z-50 w-full shrink-0 supports-[backdrop-filter]:bg-background/80">
-        <div className="relative flex min-h-12 w-full min-w-0 items-center justify-between gap-2 sm:min-h-14 sm:gap-3 px-3 sm:px-4 md:px-6 lg:px-10">
+      <header className="border-b border-border/40 bg-card/95 backdrop-blur-sm sticky top-0 z-50 w-full shrink-0 supports-[backdrop-filter]:bg-card/80">
+        <div className="relative flex min-h-14 w-full min-w-0 items-center justify-between gap-2 sm:min-h-16 sm:gap-3 px-3 sm:px-4 md:px-6 lg:px-10">
           {/* Left: logo (hidden on dashboard workspace — branding lives in main greeting). */}
           <div className="relative z-10 flex min-w-0 shrink-0 items-center gap-2 sm:gap-3 md:gap-4">
             {variant === 'full-width' && onMenuToggle && (
@@ -215,7 +230,7 @@ export default function AppShell({
                 )}
                 {customBrandingEnabled && (
                   <div className="hidden leading-tight md:block border-l border-border pl-3 md:pl-4">
-                    <p className="text-[10px] sm:text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+                    <p className="text-[10px] sm:text-[10px] font-semibold text-muted-foreground">
                       {orgName}
                     </p>
                     <p className="text-[10px] sm:text-xs font-semibold text-foreground-secondary">
@@ -237,13 +252,13 @@ export default function AppShell({
 
           {/* Right side: actions/user */}
           <div className="relative z-10 flex shrink-0 items-center gap-1.5 sm:gap-2 md:gap-3">
-            <ThemeToggle className="h-8 w-8 sm:h-9 sm:w-9 text-muted-foreground" />
+            <ThemeToggle className="h-9 w-9 text-muted-foreground" />
             {showDemoFill && onDemoFill && (
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={onDemoFill}
-                className="h-8 w-8 sm:h-9 sm:w-9 text-muted-foreground hover:text-primary hover:bg-muted"
+                className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-muted"
                 title="Auto-fill demo data"
               >
                 <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
