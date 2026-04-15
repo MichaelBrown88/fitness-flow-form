@@ -62,7 +62,7 @@ function primaryGoalLabel(goals: string[] | undefined): string | null {
 const ScoreBadge: React.FC<{ score: number }> = React.memo(({ score }) => {
   const grade = scoreGrade(score);
   return (
-    <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ${SCORE_COLORS[grade].badge}`}>
+    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${SCORE_COLORS[grade].badge}`}>
       {score || '—'}
     </span>
   );
@@ -245,7 +245,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
       </div>
 
       {/* Desktop / Tablet table */}
-      <div className="hidden overflow-x-auto rounded-lg border border-border/70 bg-background sm:block">
+      <div className="hidden overflow-x-auto rounded-2xl bg-card shadow-sm sm:block">
         <table className="min-w-full divide-y divide-border text-xs sm:text-sm">
           <thead className="bg-muted/40">
             <tr>
@@ -392,7 +392,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
       {/* Mobile card layout */}
       <div className="sm:hidden space-y-2">
         {loadingData ? (
-          <div className="rounded-lg border border-border/70 bg-background p-6">
+          <div className="rounded-2xl bg-card shadow-sm p-6">
             <div className="flex flex-col items-center gap-3">
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-foreground border-t-transparent" />
               <span className="text-sm font-medium text-muted-foreground">Loading clients...</span>
@@ -410,7 +410,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                 <p className="text-sm text-muted-foreground">{UI_DASHBOARD_CLIENTS.EMPTY_BODY}</p>
                 <Button
                   type="button"
-                  className="rounded-lg font-bold w-full sm:w-auto"
+                  className="font-bold w-full sm:w-auto"
                   onClick={() => navigate(ROUTES.ASSESSMENT)}
                 >
                   {UI_DASHBOARD_CLIENTS.EMPTY_CTA}
@@ -430,7 +430,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                 key={client.id}
                 role="button"
                 tabIndex={0}
-                className={`cursor-pointer rounded-lg border border-border/70 bg-background p-4 transition-colors active:bg-muted/50 ${dimClass}`}
+                className={`cursor-pointer rounded-2xl bg-card shadow-sm p-4 transition-colors active:bg-muted/50 ${dimClass}`}
                 style={{ minHeight: 44 }}
                 onClick={() => navigate(`/client/${encodeURIComponent(client.name)}`)}
                 onKeyDown={(e) => {

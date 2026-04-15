@@ -19,7 +19,7 @@ export default function DashboardWork() {
   if (!ctx.reassessmentQueue) return null;
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-5 px-3 sm:px-4 py-6 sm:py-10 mt-auto mb-auto">
+    <div className="mx-auto w-full max-w-5xl space-y-6 px-3 sm:px-5 py-8 sm:py-12 mt-auto mb-auto">
       <section>
         <div className="mb-2 flex items-center gap-2">
           <h2 className="text-sm font-semibold text-foreground-secondary">
@@ -56,7 +56,7 @@ export default function DashboardWork() {
             Connect calendar
           </Button>
         </div>
-        <div className="overflow-hidden rounded-2xl bg-card shadow-sm p-4">
+        <div className="overflow-hidden rounded-2xl bg-card shadow-sm p-5">
           <CalendarView
             reassessmentQueue={ctx.reassessmentQueue}
             onNewAssessmentForClient={ctx.handleNewAssessmentForClient}
