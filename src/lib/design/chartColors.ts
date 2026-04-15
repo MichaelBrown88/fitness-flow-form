@@ -39,10 +39,10 @@ export const CHART_PILLAR_COLOR_ORDER = [
   CHART_HEX.purple,
 ] as const;
 
-/** Category radar tab colours — Functional Strength uses brand gradient token in SVG */
+/** Category radar tab colours — Functional Strength uses brand accent token */
 export const CATEGORY_RADAR_COLOR_MAP: Record<string, string> = {
   'Body Composition': CHART_HEX.scoreGreen,
-  'Functional Strength': 'var(--gradient-from-hex)',
+  'Functional Strength': 'hsl(var(--brand-accent))',
   'Metabolic Fitness': CHART_HEX.sky,
   'Movement Quality': CHART_HEX.scoreAmber,
   'Lifestyle Factors': CHART_HEX.purple,

@@ -13,9 +13,8 @@ export const LANDING_H2_ACCENT_LIGHT = '';
 /** Same as LANDING_H2_ACCENT_LIGHT — kept for import compatibility. */
 export const LANDING_H2_ACCENT_LIGHT_READABLE = LANDING_H2_ACCENT_LIGHT;
 
-/** H2 keyword accent on DARK section backgrounds — vivid gradient text fill, no shadow needed. */
-export const LANDING_H2_ACCENT_ON_DARK =
-  'text-transparent bg-clip-text bg-gradient-to-r from-gradient-from to-gradient-to';
+/** H2 keyword accent on DARK section backgrounds. */
+export const LANDING_H2_ACCENT_ON_DARK = 'text-foreground';
 
 export const LANDING_COPY = {
   heroTrustMicro: '5k+ assessments · Solo free · Gym 14-day trial',

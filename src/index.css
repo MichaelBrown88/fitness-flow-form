@@ -33,18 +33,7 @@
   --color-primary: hsl(var(--primary));
   --color-primary-foreground: hsl(var(--primary-foreground));
 
-  --color-gradient-from: hsl(var(--gradient-from));
-  --color-gradient-to: hsl(var(--gradient-to));
-  --color-gradient-from-hex: var(--gradient-from-hex);
-  --color-gradient-to-hex: var(--gradient-to-hex);
-  --color-gradient-light: hsl(var(--gradient-light));
-  --color-gradient-medium: hsl(var(--gradient-medium));
-  --color-gradient-dark: hsl(var(--gradient-dark));
-
-  --color-brand: var(--brand-primary);
-  --color-brand-light: hsl(var(--gradient-light));
-  --color-brand-medium: hsl(var(--gradient-medium));
-  --color-brand-dark: hsl(var(--gradient-dark));
+  --color-brand-accent: hsl(var(--brand-accent));
 
   --color-secondary: hsl(var(--secondary));
   --color-secondary-foreground: hsl(var(--secondary-foreground));
@@ -395,47 +384,6 @@
   background: hsl(var(--landing-contrast-bg));
   color: hsl(var(--landing-contrast-fg));
 }
-@utility gradient-bg {
-  /* ── Gradient Utilities ─────────────────────────────────── */
-  background: linear-gradient(
-    135deg,
-    hsl(var(--gradient-from)),
-    hsl(var(--gradient-to))
-  );
-}
-@utility gradient-text {
-  background: linear-gradient(
-    135deg,
-    hsl(var(--gradient-from)),
-    hsl(var(--gradient-to))
-  );
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-@utility gradient-border {
-  border-image: linear-gradient(
-      135deg,
-      hsl(var(--gradient-from)),
-      hsl(var(--gradient-to))
-    )
-    1;
-}
-@utility gradient-light {
-  background-color: hsl(var(--gradient-light));
-}
-@utility gradient-medium {
-  background-color: hsl(var(--gradient-medium));
-}
-@utility gradient-dark {
-  color: hsl(var(--gradient-dark));
-}
-@utility text-on-brand-tint {
-  color: hsl(var(--gradient-dark));
-  .dark & {
-    color: hsl(var(--foreground));
-  }
-}
 @utility shadow-apple-sm {
   /* ── Shadows ─────────────────────────────────────────────── */
   box-shadow: var(--shadow-sm);
@@ -555,20 +503,12 @@
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 4%;
 
-    /* ── Gradient / Brand tokens — kept for org branding (client portal only) ── */
-    --gradient-from: 174 86% 36%;       /* jewel-teal default — ThemeManager overwrites for org */
-    --gradient-to: 174 86% 30%;
-    --gradient-from-hex: #0da899;
-    --gradient-to-hex: #0b8e82;
-    --gradient-light: 174 50% 92%;
-    --gradient-medium: 174 50% 84%;
-    --gradient-dark: 174 60% 22%;
+    /* ── Brand accent — monochrome default; overridden by ThemeManager for paid branding ── */
+    --brand-accent: 0 0% 4%;            /* #0A0A0A — matches --primary in light mode */
 
-    /* ── Structural Primary — monochrome (Task 6 scopes ThemeManager so this is not overwritten) ── */
+    /* ── Structural Primary — monochrome ── */
     --primary: 0 0% 4%;                 /* #0A0A0A — button fill, focus ring */
     --primary-foreground: 0 0% 100%;    /* #FFFFFF — text on primary buttons */
-
-    --brand-primary: var(--gradient-from-hex);
 
     --secondary: 0 0% 96%;
     --secondary-foreground: 0 0% 4%;
@@ -703,20 +643,12 @@
     --popover: 0 0% 8%;
     --popover-foreground: 0 0% 96%;
 
-    /* ── Gradient / Brand tokens — kept for org branding (client portal only) ── */
-    --gradient-from: 174 86% 36%;
-    --gradient-to: 174 86% 30%;
-    --gradient-from-hex: #0da899;
-    --gradient-to-hex: #0b8e82;
-    --gradient-light: 174 40% 5%;
-    --gradient-medium: 174 40% 10%;
-    --gradient-dark: 174 70% 65%;
+    /* ── Brand accent — monochrome default; overridden by ThemeManager for paid branding ── */
+    --brand-accent: 0 0% 96%;           /* #F5F5F5 — matches --primary in dark mode */
 
-    /* ── Structural Primary — monochrome (Task 6 scopes ThemeManager so this is not overwritten) ── */
+    /* ── Structural Primary — monochrome ── */
     --primary: 0 0% 96%;                /* #F5F5F5 — button fill on dark */
     --primary-foreground: 0 0% 4%;      /* #0A0A0A — text on primary buttons */
-
-    --brand-primary: var(--gradient-from-hex);
 
     --secondary: 0 0% 11%;
     --secondary-foreground: 0 0% 96%;

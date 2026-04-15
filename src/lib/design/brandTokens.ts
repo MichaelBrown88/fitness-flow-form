@@ -6,17 +6,13 @@
  *
  * ─── Core principle ────────────────────────────────────────────────────────
  *
- * Jewel Teal (#0da899) works on both light and dark surfaces:
- * which element carries the colour:
+ * The app is monochrome by default. --brand-accent is only applied by
+ * ThemeManager when an org has paid customBrandingEnabled AND has selected
+ * a colour. Without custom branding the CSS default (near-black/near-white)
+ * takes over so no teal leaks to unbranded orgs.
  *
- *   ✅ Teal bg + deep forest text        → 5.82:1 (WCAG AA)
- *   ✅ Dark teal text on ceiling white   → ~7:1 (WCAG AAA)
- *
- * So --primary stays vivid in BOTH modes. --primary-foreground is computed
- * by WCAG contrast (dark text on bright colours, white on dark colours).
- *
- * --gradient-dark is the contrast-safe darkened version, used ONLY when the
- * brand colour must appear AS TEXT on a white/light surface (links, labels).
+ * In dark mode the brand colour is boosted to at least 55% lightness so it
+ * remains legible on dark surfaces.
  */
 
 // ---------------------------------------------------------------------------
@@ -99,7 +95,7 @@ export function hexToHslString(hex: string): string {
  * Binary-searches for the HIGHEST lightness value (most vivid) at a given
  * hue+saturation that still achieves `minRatio` contrast against `bgLuminance`.
  *
- * Used for --gradient-dark (text-on-white) and similar text-colour use cases.
+ * Used for brand text-on-white contexts (links, inline labels).
  * Never used for button/badge backgrounds — those use the vivid colour directly.
  */
 function findMaxPassingLightness(
@@ -199,63 +195,24 @@ export function computePreviewTokens(brandHex: string, isDark: boolean): BrandPr
 /**
  * Returns a map of CSS variable name → value to set on `:root` via ThemeManager.
  *
- * SCOPE: Client-facing branding only. These vars power:
- *   - Client portal branded elements
- *   - Shared report accent colour
+ * SCOPE: Client-facing branding only. This var powers:
+ *   - Report chart fills
+ *   - Client portal accent elements
  *   - Exported PDF brand colour
  *
  * NOT included (set structurally in index.css, monochrome):
  *   --primary, --primary-foreground, --ring, --sidebar-primary, --sidebar-ring
- *
- * Variable roles:
- *   --gradient-from / --gradient-to  Raw brand HSL, used in client portal gradients.
- *   --brand-accent                   Alias for --gradient-from.
- *   --gradient-light / --medium      Light tints for client portal card accents.
- *   --gradient-dark                  Accessible darkened brand colour for text on white.
  */
 export function computeBrandCssVars(
   brandHex: string,
-  toHex: string,
   isDark: boolean,
 ): Record<string, string> {
-  const { h, s } = hexToHsl(brandHex);
+  const safeHex = /^#[0-9a-fA-F]{6}$/.test(brandHex) ? brandHex : '#0a0a0a';
 
   if (isDark) {
-    const primary = ensureDarkModeLightness(brandHex);
-    const primaryTo = ensureDarkModeLightness(toHex);
-    const primaryHsl = hexToHslString(primary);
-    const primaryToHsl = hexToHslString(primaryTo);
-    const { h: ph, s: ps } = hexToHsl(primary);
-    return {
-      '--gradient-from': primaryHsl,
-      '--gradient-to': primaryToHsl,
-      '--brand-accent': primaryHsl,
-      '--gradient-light': `${ph} ${Math.max(18, ps - 35)}% 12%`,
-      '--gradient-medium': `${ph} ${Math.max(22, ps - 28)}% 17%`,
-      '--gradient-dark': `${ph} ${Math.min(70, ps + 5)}% 60%`,
-    };
+    const boosted = ensureDarkModeLightness(safeHex);
+    return { '--brand-accent': hexToHslString(boosted) };
   }
 
-  // ── Light mode ────────────────────────────────────────────────────────────
-  const primaryHsl = hexToHslString(brandHex);
-  const primaryToHsl = hexToHslString(toHex);
-
-  // --gradient-dark: the accessible darkened version for text-on-white contexts.
-  // Uses strict AA (4.5:1) so it's safe for body-size text.
-  const bgLuminance = relativeLuminance('#f6f8fa');
-  const textL = findMaxPassingLightness(h, s, bgLuminance, 4.5);
-  const gradientDark = `${h} ${s}% ${textL}%`;
-
-  // Tints — strongly saturated so they feel like the brand, not grey.
-  const lightTint = `${h} ${Math.max(50, s - 15)}% 93%`;
-  const mediumTint = `${h} ${Math.max(55, s - 10)}% 87%`;
-
-  return {
-    '--gradient-from': primaryHsl,
-    '--gradient-to': primaryToHsl,
-    '--brand-accent': primaryHsl,
-    '--gradient-light': lightTint,
-    '--gradient-medium': mediumTint,
-    '--gradient-dark': gradientDark,
-  };
+  return { '--brand-accent': hexToHslString(safeHex) };
 }

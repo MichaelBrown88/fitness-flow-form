@@ -6,17 +6,16 @@ import { computeBrandCssVars } from '@/lib/design/brandTokens';
 
 /**
  * ThemeManager
- * Applies the organisation's brand colour to global CSS variables so Tailwind
- * and components pick it up dynamically.
+ * Sets `--brand-accent` on `:root` when an org has paid custom branding enabled.
+ * When branding is not enabled, the property is removed so the monochrome CSS
+ * default from index.css takes over — no teal leaks to unbranded orgs.
  *
  * Colour resolution order (highest priority first):
  *   1. orgSettings.brandHex  — coach-supplied custom hex (e.g. '#CC0000')
  *   2. orgSettings.gradientId — one of the curated gradient presets
- *   3. Hard-coded 'jewel-teal' default (One Assess brand)
+ *   3. Hard-coded 'jewel-teal' default (for paid orgs with no explicit choice)
  *
- * In light mode the colour is darkened to ~30 % lightness for legibility.
- * In dark mode it is applied at full brightness.
- * Button foreground (white vs charcoal) is chosen via WCAG contrast ratio.
+ * In dark mode the colour is boosted to at least 55% lightness for legibility.
  */
 export const ThemeManager: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { orgSettings } = useAuth();
@@ -25,32 +24,27 @@ export const ThemeManager: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const root = document.documentElement;
-    // Mirror AppShell's grandfathered logic: undefined = legacy paying org, treat as enabled.
     const useOrgBranding =
       orgSettings?.customBrandingEnabled === true || orgSettings?.customBrandingEnabled === undefined;
+
+    if (!useOrgBranding) {
+      root.style.removeProperty('--brand-accent');
+      return;
+    }
 
     // Migrate legacy pear gradient id → jewel-teal.
     const storedGradientId = orgSettings?.gradientId === 'pear' ? 'jewel-teal' : orgSettings?.gradientId;
 
-    // Resolve brand hex: custom hex beats gradient preset beats default.
-    // Treat old pear hex values as unset — they were the previous brand default, not a custom choice.
     const oldPearHexes = new Set(['#bcff00', '#BCFF00', '#a8e600', '#A8E600']);
     const storedBrandHex = orgSettings?.brandHex?.trim() ?? '';
     const isLegacyPear = oldPearHexes.has(storedBrandHex);
 
-    const gradientId = (useOrgBranding ? (storedGradientId || 'jewel-teal') : 'jewel-teal') as GradientId;
+    const gradientId = (storedGradientId || 'jewel-teal') as GradientId;
     const gradient = getGradient(gradientId);
-    const customHex = useOrgBranding && !isLegacyPear ? storedBrandHex : '';
+    const customHex = !isLegacyPear ? storedBrandHex : '';
     const fromHex = customHex || gradient.fromHex;
-    const toHex = customHex || gradient.toHex;
 
-    // Always write raw hex vars (used in SVG fills / color-mix)
-    root.style.setProperty('--gradient-from-hex', fromHex);
-    root.style.setProperty('--gradient-to-hex', toHex);
-    root.style.setProperty('--brand-primary', fromHex);
-
-    // Compute and apply all HSL-based CSS variables
-    const vars = computeBrandCssVars(fromHex, toHex, isDark);
+    const vars = computeBrandCssVars(fromHex, isDark);
     for (const [key, value] of Object.entries(vars)) {
       root.style.setProperty(key, value);
     }
