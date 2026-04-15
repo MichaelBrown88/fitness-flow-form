@@ -16,13 +16,13 @@ const NotFound = () => {
           The page you're looking for doesn't exist or has been moved.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Button asChild className="h-11 px-6 rounded-xl font-bold">
+          <Button asChild className="h-11 px-6 font-bold">
             <Link to={ROUTES.DASHBOARD}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to {UI_COMMAND_MENU.HOME}
             </Link>
           </Button>
-          <Button asChild variant="outline" className="h-11 px-6 rounded-xl font-bold">
+          <Button asChild variant="outline" className="h-11 px-6 font-bold">
             <Link to={ROUTES.ASSESSMENT}>
               Start New Assessment
             </Link>

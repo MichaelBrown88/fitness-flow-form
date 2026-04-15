@@ -64,7 +64,7 @@ export default function RequestErasure() {
         <div className="max-w-md mx-auto px-4 py-8 text-center text-muted-foreground text-sm">
           <p className="text-foreground font-medium mb-2">Invalid link</p>
           <p>Open the erasure link from your report email, or go back to your report.</p>
-          <Button variant="outline" size="sm" className="mt-6 rounded-xl" asChild>
+          <Button variant="outline" size="sm" className="mt-6" asChild>
             <Link to={ROUTES.HOME}>Go to home</Link>
           </Button>
         </div>
@@ -84,7 +84,7 @@ export default function RequestErasure() {
               30 days in line with GDPR Article 17.
             </p>
           </div>
-          <Button variant="outline" size="sm" className="rounded-xl" asChild>
+          <Button variant="outline" size="sm" asChild>
             <Link to={`/r/${trimmedToken}`}>Back to report</Link>
           </Button>
         </div>
@@ -103,7 +103,7 @@ export default function RequestErasure() {
               This link does not match any report in our system. Please use the link from your report email.
             </p>
           </div>
-          <Button variant="outline" size="sm" className="rounded-xl" asChild>
+          <Button variant="outline" size="sm" asChild>
             <Link to={ROUTES.HOME}>Go to home</Link>
           </Button>
         </div>

@@ -75,7 +75,7 @@ export default function Subscribe() {
           >
             See plans and pricing
           </Button>
-          <Button variant="outline" className="rounded-xl h-11" onClick={() => navigate(ROUTES.CONTACT)}>
+          <Button variant="outline" className="h-11" onClick={() => navigate(ROUTES.CONTACT)}>
             Talk to us
           </Button>
         </div>

@@ -56,10 +56,10 @@ export const DashboardDialogs: React.FC<DashboardDialogsProps> = ({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-row gap-2 mt-6">
-            <Button variant="outline" onClick={() => setDeleteSnapshotDialog(null)} className="flex-1 rounded-xl font-bold h-11">
+            <Button variant="outline" onClick={() => setDeleteSnapshotDialog(null)} className="flex-1 font-bold h-11">
               Cancel
             </Button>
-            <Button variant="destructive" onClick={() => void onDeleteSnapshot()} className="flex-1 rounded-xl font-bold h-11">
+            <Button variant="destructive" onClick={() => void onDeleteSnapshot()} className="flex-1 font-bold h-11">
               Remove
             </Button>
           </DialogFooter>
@@ -76,10 +76,10 @@ export const DashboardDialogs: React.FC<DashboardDialogsProps> = ({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex flex-row gap-2 mt-6">
-            <Button variant="outline" onClick={() => setDeleteDialog(null)} className="flex-1 rounded-xl font-bold h-11 border-border">
+            <Button variant="outline" onClick={() => setDeleteDialog(null)} className="flex-1 font-bold h-11 border-border">
               Cancel
             </Button>
-            <Button variant="destructive" onClick={onDelete} className="flex-1 rounded-xl font-bold h-11 bg-red-600 hover:bg-red-700 shadow-sm shadow-red-200 transition-all">
+            <Button variant="destructive" onClick={onDelete} className="flex-1 font-bold h-11 bg-red-600 hover:bg-red-700 shadow-sm shadow-red-200 transition-all">
               Delete Forever
             </Button>
           </DialogFooter>
@@ -106,7 +106,7 @@ export const DashboardDialogs: React.FC<DashboardDialogsProps> = ({
               <div className="flex flex-col items-center justify-center py-20 text-muted-foreground font-medium text-sm text-center gap-4 px-4">
                 <p>No assessment history found.</p>
                 {clientHistoryDialog ? (
-                  <Button variant="default" className="rounded-xl font-bold" asChild>
+                  <Button variant="default" className="font-bold" asChild>
                     <Link
                       to={`${ROUTES.ASSESSMENT}?client=${encodeURIComponent(clientHistoryDialog)}`}
                       onClick={() => setClientHistoryDialog(null)}
@@ -172,7 +172,7 @@ export const DashboardDialogs: React.FC<DashboardDialogsProps> = ({
           </div>
           
           <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-6 pt-4 border-t border-border shrink-0">
-            <Button variant="outline" onClick={() => setClientHistoryDialog(null)} className="sm:flex-1 rounded-xl font-bold h-11 border-border">
+            <Button variant="outline" onClick={() => setClientHistoryDialog(null)} className="sm:flex-1 font-bold h-11 border-border">
               Close
             </Button>
             <Button

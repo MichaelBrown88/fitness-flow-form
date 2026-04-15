@@ -227,7 +227,7 @@ export function WebhooksManager({ organizationId }: WebhooksManagerProps) {
             </button>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="rounded-xl font-bold text-xs" onClick={() => setShowForm(false)}>
+            <Button variant="outline" size="sm" className="font-bold text-xs" onClick={() => setShowForm(false)}>
               Cancel
             </Button>
             <Button

@@ -111,7 +111,7 @@ const PublicRoadmapViewer = () => {
       <div className="max-w-2xl mx-auto px-4 py-6">
         {reportToken ? (
           <div className="mb-4">
-            <Button variant="ghost" size="sm" className="h-9 w-9 p-0 rounded-xl shrink-0" asChild>
+            <Button variant="ghost" size="sm" className="h-9 w-9 p-0 shrink-0" asChild>
               <Link to={`/r/${reportToken}`} aria-label="Back to report">
                 <ArrowLeft className="h-4 w-4" aria-hidden />
               </Link>
@@ -119,7 +119,7 @@ const PublicRoadmapViewer = () => {
           </div>
         ) : (
           <div className="mb-4">
-            <Button variant="ghost" size="sm" className="h-9 w-9 p-0 rounded-xl shrink-0" asChild>
+            <Button variant="ghost" size="sm" className="h-9 w-9 p-0 shrink-0" asChild>
               <Link to={ROUTES.HOME} aria-label="Go to One Assess home">
                 <ArrowLeft className="h-4 w-4" aria-hidden />
               </Link>
