@@ -44,7 +44,9 @@ export function NewClientModal({ open, onOpenChange, organizationId }: NewClient
     if (!isValid) return;
     setLoading(true);
     try {
-      const res = await createRemoteAssessmentTokenForClient(organizationId, trimmedName);
+      const res = await createRemoteAssessmentTokenForClient(organizationId, trimmedName, {
+        remoteScope: 'full',
+      });
       setRemoteLink(`${window.location.origin}/remote/${res.token}`);
     } catch {
       toast({
@@ -120,19 +122,38 @@ export function NewClientModal({ open, onOpenChange, organizationId }: NewClient
             </div>
           ) : (
             <div className="space-y-3">
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 Share this link with <span className="font-semibold text-foreground">{trimmedName}</span> to complete their intake remotely.
               </p>
               <div className="flex items-center gap-2 rounded-xl border border-border bg-muted/50 p-3">
-                <span className="flex-1 text-xs text-foreground truncate font-mono">{remoteLink}</span>
+                <span className="flex-1 text-xs text-muted-foreground truncate font-mono">
+                  {remoteLink.replace(/^https?:\/\//, '')}
+                </span>
                 <button
                   type="button"
                   onClick={handleCopy}
                   className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="Copy link"
                 >
                   {copied ? <Check className="h-4 w-4 text-score-green" /> : <Copy className="h-4 w-4" />}
                 </button>
               </div>
+              <Button
+                className="w-full h-11 rounded-xl"
+                onClick={handleCopy}
+              >
+                {copied ? (
+                  <>
+                    <Check className="h-4 w-4 mr-2" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copy link
+                  </>
+                )}
+              </Button>
               <Button
                 variant="outline"
                 onClick={() => { setRemoteLink(null); setCopied(false); }}
