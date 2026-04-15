@@ -563,12 +563,12 @@ const Settings = () => {
                 Questions?{' '}
                 <a
                   href="mailto:support@one-assess.com?subject=Custom%20branding%20add-on"
-                  className="font-semibold text-gradient-dark underline-offset-4 hover:underline"
+                  className="font-semibold text-foreground-secondary underline-offset-4 hover:underline"
                 >
                   Email support
                 </a>{' '}
                 or{' '}
-                <Link to={`${ROUTES.CONTACT}?interest=custom-branding`} className="font-semibold text-gradient-dark underline-offset-4 hover:underline">
+                <Link to={`${ROUTES.CONTACT}?interest=custom-branding`} className="font-semibold text-foreground-secondary underline-offset-4 hover:underline">
                   contact form
                 </Link>
                 .

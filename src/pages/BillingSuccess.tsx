@@ -70,13 +70,13 @@ export default function BillingSuccessPage() {
         </Link>
         <Link
           to={ROUTES.BILLING}
-          className="block mt-3 text-sm font-medium text-gradient-dark hover:underline"
+          className="block mt-3 text-sm font-medium text-foreground-secondary hover:underline"
         >
           {CHECKOUT_FLOW_COPY.billingSuccessCtaBilling}
         </Link>
         <Link
           to={ROUTES.DEMO}
-          className="block mt-3 text-sm font-medium text-gradient-dark hover:underline"
+          className="block mt-3 text-sm font-medium text-foreground-secondary hover:underline"
         >
           {CHECKOUT_FLOW_COPY.billingSuccessCtaSample}
         </Link>

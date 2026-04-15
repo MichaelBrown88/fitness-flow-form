@@ -101,7 +101,7 @@ export const ClientActionsDropdown: React.FC<ClientActionsDropdownProps> = ({
           <>
             <DropdownMenuItem
               onClick={() => onStartAssessment(clientName)}
-              className="rounded-lg text-xs font-bold px-2 py-2 cursor-pointer focus:bg-primary/10 gap-2 text-gradient-dark"
+              className="rounded-lg text-xs font-bold px-2 py-2 cursor-pointer focus:bg-primary/10 gap-2 text-foreground-secondary"
             >
               <ClipboardPlus className="h-3.5 w-3.5" />
               Start Assessment

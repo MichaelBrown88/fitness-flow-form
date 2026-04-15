@@ -45,7 +45,7 @@ const markdownComponents: Partial<Components> = {
     </em>
   ),
   ul: ({ children, ...props }) => (
-    <ul className="my-2.5 list-disc space-y-1.5 pl-5 marker:text-gradient-dark/70" {...props}>
+    <ul className="my-2.5 list-disc space-y-1.5 pl-5 marker:text-foreground-tertiary" {...props}>
       {children}
     </ul>
   ),
@@ -117,7 +117,7 @@ const markdownComponents: Partial<Components> = {
   a: ({ children, href, ...props }) => (
     <a
       href={href}
-      className="font-medium text-gradient-dark underline underline-offset-2 hover:opacity-80"
+      className="font-medium text-foreground-secondary underline underline-offset-2 hover:opacity-80"
       target="_blank"
       rel="noopener noreferrer"
       {...props}

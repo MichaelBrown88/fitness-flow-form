@@ -262,7 +262,7 @@ function BillingPage() {
         <div className="max-w-md mx-auto text-center space-y-3 py-16 px-4">
           <h2 className="text-xl font-bold text-foreground">Billing is admin-only</h2>
           <p className="text-sm text-muted-foreground">Billing is managed by your organisation admin. Ask them to adjust your plan or share an invoice.</p>
-          <Button type="button" variant="link" onClick={() => navigate(ROUTES.DASHBOARD)} className="text-gradient-dark">
+          <Button type="button" variant="link" onClick={() => navigate(ROUTES.DASHBOARD)}>
             Go to dashboard
           </Button>
         </div>

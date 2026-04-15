@@ -401,7 +401,7 @@ export function CompanionUI({
                 <button
                   type="button"
                   onClick={onRetryGemini}
-                  className="text-[11px] font-medium text-gradient-dark underline underline-offset-2"
+                  className="text-[11px] font-medium text-foreground-secondary underline underline-offset-2"
                 >
                   Retry voice guide
                 </button>
