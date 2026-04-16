@@ -8,7 +8,8 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, TrendingDown, Minus, Pin, Link as LinkIcon } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Pin, Link as LinkIcon, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { ClientActionsDropdown } from './ClientActionsDropdown';
 import { ClientTableBulkActions } from './unifiedClientTableBulk';
 import { PauseClientDialog } from '@/components/client/PauseClientDialog';
@@ -32,6 +33,7 @@ interface UnifiedClientTableProps {
   loadingData: boolean;
   clients: ClientGroup[];
   search: string;
+  onSearchChange?: (value: string) => void;
   showCoachColumn?: boolean;
   coachMap?: Map<string, string>;
   orgDefaultIntervals?: Record<string, number>;
@@ -108,6 +110,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
   loadingData,
   clients,
   search,
+  onSearchChange,
   showCoachColumn = false,
   coachMap,
   orgDefaultIntervals,
@@ -227,21 +230,34 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
 
   return (
     <section className="space-y-4" aria-live="polite">
-      {/* Status filter */}
-      <div className="flex items-center gap-1">
-        {STATUS_FILTER_OPTIONS.map(opt => (
-          <button
-            key={opt.value}
-            onClick={() => setStatusFilter(opt.value)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-              statusFilter === opt.value
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:bg-muted'
-            }`}
-          >
-            {opt.label}
-          </button>
-        ))}
+      {/* Status filter + search */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-1">
+          {STATUS_FILTER_OPTIONS.map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => setStatusFilter(opt.value)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                statusFilter === opt.value
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-muted'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        {onSearchChange && (
+          <div className="relative w-full max-w-[220px]">
+            <Input
+              placeholder="Search clients..."
+              value={search}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="h-9 w-full rounded-lg border-border bg-card pl-3 pr-9 text-sm text-foreground placeholder:text-muted-foreground"
+            />
+            <Search className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          </div>
+        )}
       </div>
 
       {/* Desktop / Tablet table */}

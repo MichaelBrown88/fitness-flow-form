@@ -83,77 +83,58 @@ export function PostureComparisonCard({ snapshots }: PostureComparisonCardProps)
 
   return (
     <div className="space-y-4">
-      {/* View tabs */}
-      {availableViews.length > 1 && (
-        <div className="flex gap-1">
-          {availableViews.map((view) => (
-            <button
-              key={view}
-              type="button"
-              onClick={() => setActiveView(view)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                activeView === view
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-muted'
-              }`}
+      {/* Session selectors */}
+      <div className="grid grid-cols-2 gap-3">
+        {([{ idx: leftIdx, setIdx: setLeftIdx, other: rightIdx, label: 'Previous' },
+           { idx: rightIdx, setIdx: setRightIdx, other: leftIdx, label: 'Current' }] as const).map(({ idx, setIdx, other, label }) => (
+          <div key={label} className="flex items-center gap-2">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider shrink-0">{label}</span>
+            <select
+              value={idx}
+              onChange={(e) => {
+                const newIdx = Number(e.target.value);
+                if (newIdx === other) return;
+                setIdx(newIdx);
+              }}
+              className="flex-1 text-xs font-medium border border-border rounded-lg px-2 py-1.5 bg-background text-foreground-secondary focus:outline-none focus:ring-1 focus:ring-muted-foreground"
             >
-              {VIEW_LABELS[view]}
-            </button>
-          ))}
-        </div>
-      )}
+              {sessionsWithImages.map((s, sIdx) => (
+                <option key={s.snapshotId} value={sIdx} disabled={sIdx === other}>
+                  {s.date.toLocaleDateString()} — {s.overallScore}pts
+                </option>
+              ))}
+            </select>
+          </div>
+        ))}
+      </div>
 
-      {/* Side-by-side images */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4">
-        {([leftSession, rightSession] as SessionWithImages[]).map((session, i) => {
-          const imageUrl = session.images[activeView];
-          const isLeft = i === 0;
-          const idx = isLeft ? leftIdx : rightIdx;
-          const setIdx = isLeft ? setLeftIdx : setRightIdx;
-          const otherIdx = isLeft ? rightIdx : leftIdx;
-
+      {/* All views in a grid — 4 columns on desktop, 2 on mobile */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {availableViews.map((view) => {
+          const leftUrl = leftSession?.images[view];
+          const rightUrl = rightSession?.images[view];
           return (
-            <div key={session.snapshotId} className="space-y-2">
-              {/* Session selector */}
-              <select
-                value={idx}
-                onChange={(e) => {
-                  const newIdx = Number(e.target.value);
-                  if (newIdx === otherIdx) return;
-                  setIdx(newIdx);
-                }}
-                className="w-full text-xs font-medium border border-border rounded-lg px-2 py-1.5 bg-background text-foreground-secondary focus:outline-none focus:ring-1 focus:ring-muted-foreground"
-              >
-                {sessionsWithImages.map((s, sIdx) => (
-                  <option key={s.snapshotId} value={sIdx} disabled={sIdx === otherIdx}>
-                    {s.date.toLocaleDateString()} — {s.overallScore}pts
-                  </option>
-                ))}
-              </select>
-
-              {/* Image */}
-              <div className="relative rounded-xl overflow-hidden bg-muted aspect-[3/4]">
-                {imageUrl ? (
-                  <img
-                    src={imageUrl}
-                    alt={`Posture ${VIEW_LABELS[activeView]} — ${session.date.toLocaleDateString()}`}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <p className="text-xs text-muted-foreground text-center px-3">No {VIEW_LABELS[activeView].toLowerCase()} photo for this session</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Score badge */}
-              <div className="flex items-center justify-between px-1">
-                <span className="text-xs text-muted-foreground font-medium">
-                  {session.date.toLocaleDateString()}
-                </span>
-                <span className="text-xs font-bold text-foreground">
-                  {session.overallScore}
-                </span>
+            <div key={view} className="space-y-2">
+              <p className="text-[10px] font-bold text-muted-foreground text-center uppercase tracking-wider">{VIEW_LABELS[view]}</p>
+              <div className="grid grid-cols-2 gap-1">
+                <div className="relative rounded-lg overflow-hidden bg-muted aspect-[3/4]">
+                  {leftUrl ? (
+                    <img src={leftUrl} alt={`${VIEW_LABELS[view]} — ${leftSession.date.toLocaleDateString()}`} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-[9px] text-muted-foreground">—</span>
+                    </div>
+                  )}
+                </div>
+                <div className="relative rounded-lg overflow-hidden bg-muted aspect-[3/4]">
+                  {rightUrl ? (
+                    <img src={rightUrl} alt={`${VIEW_LABELS[view]} — ${rightSession.date.toLocaleDateString()}`} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-[9px] text-muted-foreground">—</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           );
@@ -162,7 +143,7 @@ export function PostureComparisonCard({ snapshots }: PostureComparisonCardProps)
 
       {sessionsWithImages.length > 2 && (
         <p className="text-[10px] text-muted-foreground text-center">
-          {sessionsWithImages.length} sessions with posture photos available — use selectors above to compare any two.
+          {sessionsWithImages.length} sessions with posture photos — use selectors above to compare any two.
         </p>
       )}
     </div>

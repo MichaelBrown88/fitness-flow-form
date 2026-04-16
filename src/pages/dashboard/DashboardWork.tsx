@@ -101,7 +101,7 @@ export default function DashboardWork() {
       </div>
 
       {/* Two-column: queues left, calendar right */}
-      <div className="grid gap-6 lg:gap-8 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px] lg:items-start">
+      <div className="grid gap-6 lg:gap-8 lg:grid-cols-[1fr_1fr] lg:items-start">
       <div className="space-y-6 min-w-0">
 
       {/* Remote intake ready — highest-priority, lowest-friction assessments */}

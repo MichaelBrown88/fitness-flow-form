@@ -81,6 +81,7 @@ export default function DashboardClients() {
           loadingData={ctx.loadingData}
           clients={ctx.filteredClients}
           search={ctx.search}
+          onSearchChange={ctx.setSearch}
           showCoachColumn={ctx.showCoachColumn}
           coachMap={ctx.coachMap}
           orgDefaultIntervals={ctx.orgSettings?.defaultCadence?.intervals}

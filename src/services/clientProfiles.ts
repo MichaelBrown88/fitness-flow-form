@@ -988,11 +988,26 @@ export async function archiveClient(params: {
   archivedBy: string;
   reason?: string;
   profile?: UserProfile | null;
+  /** Original client name for fallback lookup when slug doesn't match */
+  clientName?: string;
 }): Promise<void> {
-  const { organizationId, clientSlug, archivedBy, reason, profile } = params;
+  const { organizationId, clientSlug: inputSlug, archivedBy, reason, profile, clientName } = params;
   const validOrgId = validateOrganizationId(organizationId, profile);
   const db = getDb();
-  const clientRef = doc(db, ORGANIZATION.clients.doc(validOrgId, clientSlug));
+
+  // Resolve actual doc path (handles UUID-migrated clients)
+  let resolvedSlug = inputSlug;
+  const expectedRef = doc(db, ORGANIZATION.clients.doc(validOrgId, resolvedSlug));
+  const expectedSnap = await getDoc(expectedRef);
+  if (!expectedSnap.exists() && clientName) {
+    const clientsCol = collection(db, ORGANIZATION.clients.collection(validOrgId));
+    const nameQuery = query(clientsCol, where('clientName', '==', clientName), limit(1));
+    const found = await getDocs(nameQuery);
+    if (!found.empty) {
+      resolvedSlug = found.docs[0].id;
+    }
+  }
+  const clientRef = doc(db, ORGANIZATION.clients.doc(validOrgId, resolvedSlug));
 
   await updateDoc(clientRef, {
     status: 'archived',
@@ -1132,9 +1147,25 @@ export async function deleteClientPermanently(params: {
   /** Known assessment summary doc ID — used for a direct delete so the client disappears from the dashboard immediately even if clientNameLower is missing/mismatched. */
   knownAssessmentId?: string;
 }): Promise<void> {
-  const { organizationId, clientSlug, clientName, knownAssessmentId } = params;
+  const { organizationId, clientSlug: inputSlug, clientName, knownAssessmentId } = params;
   const db = getDb();
   const clientNameLower = clientName.toLowerCase();
+
+  // Verify the client doc exists at the expected slug path. If not, search by name
+  // to find the actual doc ID (handles UUID-migrated or mismatched slug clients).
+  let clientSlug = inputSlug;
+  const expectedRef = doc(db, ORGANIZATION.clients.doc(organizationId, clientSlug));
+  const expectedSnap = await getDoc(expectedRef);
+  if (!expectedSnap.exists()) {
+    // Search for the client by name in the collection
+    const clientsCol = collection(db, ORGANIZATION.clients.collection(organizationId));
+    const nameQuery = query(clientsCol, where('clientName', '==', clientName), limit(1));
+    const found = await getDocs(nameQuery);
+    if (!found.empty) {
+      clientSlug = found.docs[0].id;
+    }
+    // If still not found, the slug will be used as-is and the delete will fail with a clear error
+  }
 
   async function deleteSubcollection(colPath: string): Promise<void> {
     const colRef = collection(db, colPath);

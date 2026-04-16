@@ -690,6 +690,7 @@ export function useClientDetail(): UseClientDetailResult {
         archivedBy: user?.uid || 'unknown',
         reason,
         profile: userProfile,
+        clientName,
       });
       // Full reload so dashboard re-fetches client status from Firestore
       window.location.href = ROUTES.DASHBOARD;

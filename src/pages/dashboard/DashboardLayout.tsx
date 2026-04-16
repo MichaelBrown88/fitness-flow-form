@@ -528,32 +528,7 @@ export default function DashboardLayout() {
                   )}
                   id="workspace-main"
                 >
-                  {showClientSearch && (
-                    <TooltipProvider delayDuration={300}>
-                      <div className="mx-auto w-full max-w-5xl px-3 pt-6 pb-2 sm:px-4 sm:pt-12">
-                        <div className="relative max-w-xs">
-                          <Input
-                            placeholder={
-                              path.startsWith(ROUTES.DASHBOARD_TEAM)
-                                ? DASHBOARD_SHELL_COPY.SEARCH_COACHES_PLACEHOLDER
-                                : DASHBOARD_SHELL_COPY.SEARCH_CLIENTS_PLACEHOLDER
-                            }
-                            value={dashboardData.search}
-                            onChange={(e) => dashboardData.setSearch(e.target.value)}
-                            className="h-10 w-full rounded-lg border-input bg-background pl-4 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-ring sm:h-11"
-                            aria-label={
-                              path.startsWith(ROUTES.DASHBOARD_TEAM)
-                                ? DASHBOARD_SHELL_COPY.SEARCH_COACHES_PLACEHOLDER
-                                : DASHBOARD_SHELL_COPY.SEARCH_CLIENTS_PLACEHOLDER
-                            }
-                          />
-                          <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" aria-hidden>
-                            <Search className="h-4 w-4 text-muted-foreground" strokeWidth={2} />
-                          </div>
-                        </div>
-                      </div>
-                    </TooltipProvider>
-                  )}
+                  {/* Search moved inline to UnifiedClientTable filter row */}
 
                   <div className={cn('flex flex-col min-w-0', isAssistantTab ? 'flex-1 min-h-0' : isWorkspaceShell ? 'flex-1' : 'flex-none')}>
                     <Outlet
