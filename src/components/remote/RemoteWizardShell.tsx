@@ -31,9 +31,9 @@ export function RemoteWizardShell({
   const progressPct = ((currentStep + 1) / steps.length) * 100;
 
   return (
-    <div className="flex flex-col min-h-[calc(100dvh-56px)]">
+    <div className="flex flex-col h-full">
       {/* Progress header */}
-      <div className="px-4 pt-4 pb-2 space-y-2">
+      <div className="px-4 pt-4 pb-2 space-y-2 shrink-0">
         <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
           <span>{stepLabel}</span>
           <span>{currentStep + 1} of {steps.length}</span>
@@ -47,7 +47,7 @@ export function RemoteWizardShell({
       </div>
 
       {/* Step content */}
-      <div className="flex-1 px-4 py-4 overflow-y-auto">
+      <div className="flex-1 min-h-0 px-4 py-4 overflow-y-auto overflow-x-hidden">
         {children}
       </div>
 

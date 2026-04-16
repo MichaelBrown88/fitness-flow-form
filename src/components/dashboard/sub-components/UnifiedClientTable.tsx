@@ -336,10 +336,16 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                       />
                     </td>
                     <td className="px-3 py-4 text-xs font-semibold text-foreground sm:px-4 sm:text-sm md:px-6">
-                      <span className="flex items-center gap-2">
+                      <span className="flex items-center gap-2 flex-wrap">
                         {formatClientDisplayName(client.name)}
                         {isPaused && <span className="text-xs font-bold text-muted-foreground">Paused</span>}
                         {isArchived && <span className="text-xs font-bold text-muted-foreground">Archived</span>}
+                        {client.remoteIntakeAwaitingStudio && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-950/40 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-400">
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+                            Awaiting studio
+                          </span>
+                        )}
                       </span>
                       {client.notes && (
                         <span className="mt-0.5 flex items-center gap-1">
@@ -481,6 +487,12 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                 <div className="flex items-center gap-2 mt-2 flex-wrap">
                   <ScoreBadge score={client.latestScore} />
                   <TrendIndicator trend={client.scoreChange} />
+                  {client.remoteIntakeAwaitingStudio && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-950/40 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-400">
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+                      Awaiting studio
+                    </span>
+                  )}
                   {showCoachColumn && client.coachUid && coachMap?.get(client.coachUid) && (
                     <span className="max-w-[80px] truncate text-xs font-medium text-muted-foreground">
                       {coachMap.get(client.coachUid)}

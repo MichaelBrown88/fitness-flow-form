@@ -10,7 +10,7 @@ import { OfflineBanner } from '@/components/OfflineBanner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
-import { Plus, Menu, PanelLeftClose, PanelLeftOpen, Search, AlertTriangle } from 'lucide-react';
+import { Menu, Search, AlertTriangle } from 'lucide-react';
 import { ROUTES } from '@/constants/routes';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import { COACH_ASSISTANT_COPY } from '@/constants/coachAssistantCopy';
@@ -361,6 +361,8 @@ export default function DashboardLayout() {
       .slice(0, 8)
       .map((item) => ({ name: item.clientName })),
     showTeamTab: dashboardData.showTeamTab,
+    onNewClient: () => setNewClientModalOpen(true),
+    onToggleCollapse: toggleAssistantSidebarCollapsed,
   };
 
   // Org health check: show catch-up wizard for legacy orgs missing required fields.
@@ -385,56 +387,20 @@ export default function DashboardLayout() {
           variant="full-width"
           hideCoachBrandAndUser
           lockViewportHeight={isWorkspaceShell}
+          noDesktopHeader={isWorkspaceShell}
           headerLeading={
             isWorkspaceShell ? (
-              <>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 text-muted-foreground lg:hidden"
-                  onClick={() => setMobileSidebarOpen(true)}
-                  aria-label={COACH_ASSISTANT_COPY.MOBILE_SIDEBAR}
-                >
-                  <Menu className="h-5 w-5" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="hidden h-9 w-9 text-muted-foreground lg:flex"
-                  onClick={toggleAssistantSidebarCollapsed}
-                  aria-label={
-                    assistantSidebarCollapsed
-                      ? COACH_ASSISTANT_COPY.SIDEBAR_EXPAND_ARIA
-                      : COACH_ASSISTANT_COPY.SIDEBAR_COLLAPSE_ARIA
-                  }
-                  aria-expanded={!assistantSidebarCollapsed}
-                >
-                  {assistantSidebarCollapsed ? (
-                    <PanelLeftOpen className="h-5 w-5" />
-                  ) : (
-                    <PanelLeftClose className="h-5 w-5" />
-                  )}
-                </Button>
-              </>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 text-muted-foreground"
+                onClick={() => setMobileSidebarOpen(true)}
+                aria-label={COACH_ASSISTANT_COPY.MOBILE_SIDEBAR}
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
             ) : undefined
-          }
-          headerCenter={
-            <CoachWorkspacePills
-              variant="toolbar"
-              scheduleCount={overdueCountVal}
-            />
-          }
-          actions={
-            <Button
-              type="button"
-              onClick={() => setNewClientModalOpen(true)}
-              className="h-9 px-4 font-bold gap-2 text-xs"
-            >
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">New Client</span>
-            </Button>
           }
         >
           <a
@@ -455,6 +421,8 @@ export default function DashboardLayout() {
                 {assistantSidebarCollapsed ? (
                   <CoachWorkspaceSidebarCollapsed
                     onNewChat={sidebarProps.onNewChat}
+                    onNewClient={sidebarProps.onNewClient}
+                    onToggleCollapse={sidebarProps.onToggleCollapse}
                     hasAttention={sidebarProps.recentClients.length > 0}
                   />
                 ) : (
@@ -506,6 +474,15 @@ export default function DashboardLayout() {
                   >
                     See plans
                   </Button>
+                </div>
+              )}
+
+              {isWorkspaceShell && (
+                <div className="flex justify-center py-2 sm:py-3 shrink-0">
+                  <CoachWorkspacePills
+                    variant="toolbar"
+                    scheduleCount={overdueCountVal}
+                  />
                 </div>
               )}
 

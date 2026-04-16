@@ -289,6 +289,11 @@ export function useClientDetail(): UseClientDetailResult {
       } catch (e) {
         logger.warn('Failed to pre-fill data', 'CLIENT_DETAIL', e);
       }
+    } else if (profile?.remoteIntakeAwaitingStudio && profile.formData) {
+      // New client who completed remote intake — seed the full form with their answers.
+      // clientName from URL is still authoritative for fullName.
+      Object.assign(prefill, profile.formData);
+      prefill.fullName = clientName;
     }
     writePrefillClientPayload(prefill);
     // Coach already chose this client + pillar — skip the confirmation step

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Loader2, CheckCircle } from 'lucide-react';
+import { Loader2, CheckCircle, Shirt, Droplets, Clock, ClipboardList } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { ASSESSMENT_COPY } from '@/constants/assessmentCopy';
@@ -194,17 +194,73 @@ export default function PublicRemoteAssessment() {
   if (submitted) {
     return (
       <AppShell title="Remote check-in" mode="public">
-        <div className="max-w-md mx-auto px-4 py-8 space-y-6 text-center">
-          <div className="flex justify-center">
-            <div className="rounded-full bg-emerald-100 dark:bg-emerald-950 p-4">
-              <CheckCircle className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
+        <div className="max-w-md mx-auto px-4 py-10 space-y-8">
+          {/* Success header */}
+          <div className="text-center space-y-3">
+            <div className="flex justify-center">
+              <div className="rounded-full bg-emerald-100 dark:bg-emerald-950 p-4">
+                <CheckCircle className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
+              </div>
+            </div>
+            <h2 className="text-xl font-bold text-foreground">You're all set!</h2>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Your coach has received your answers and will review them before your session.
+            </p>
+          </div>
+
+          {/* What happens next */}
+          <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-foreground">What happens next</h3>
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                  <span className="text-xs font-bold text-primary">1</span>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Your coach reviews your answers and prepares your personalised assessment plan.
+                </p>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                  <span className="text-xs font-bold text-primary">2</span>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Your coach will confirm your appointment time and any outstanding questions.
+                </p>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                  <span className="text-xs font-bold text-primary">3</span>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  In studio, your coach will complete the physical assessments — body measurements, posture, and fitness tests.
+                </p>
+              </div>
             </div>
           </div>
-          <h2 className="text-lg font-semibold text-foreground">Thanks</h2>
-          <p className="text-sm text-muted-foreground">{ASSESSMENT_COPY.REMOTE_THANKS}</p>
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/">Home</Link>
-          </Button>
+
+          {/* Studio prep tips */}
+          <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-foreground">How to prepare for your session</h3>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <Shirt className="h-4 w-4 text-muted-foreground shrink-0" />
+                <p className="text-sm text-muted-foreground">Wear comfortable, form-fitting workout clothes.</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <ClipboardList className="h-4 w-4 text-muted-foreground shrink-0" />
+                <p className="text-sm text-muted-foreground">Avoid large meals for 2 hours before your session.</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <Droplets className="h-4 w-4 text-muted-foreground shrink-0" />
+                <p className="text-sm text-muted-foreground">Stay well-hydrated on the day — drink water throughout the morning.</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+                <p className="text-sm text-muted-foreground">Arrive 5 minutes early so we can get started on time.</p>
+              </div>
+            </div>
+          </div>
         </div>
       </AppShell>
     );
@@ -258,7 +314,7 @@ export default function PublicRemoteAssessment() {
   };
 
   return (
-    <AppShell title="Assessment" mode="public">
+    <AppShell title="Assessment" mode="public" lockViewportHeight>
       <RemoteWizardShell
         steps={[...STEPS]}
         currentStep={currentStep}

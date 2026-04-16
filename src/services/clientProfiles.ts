@@ -113,6 +113,10 @@ export type ClientProfile = {
    * (the override date falls behind the new lastAssessmentDate).
    */
   dueDateOverrides?: Record<string, Timestamp>;
+  /** Remote intake submitted by client; awaiting studio physical assessment. */
+  remoteIntakeAwaitingStudio?: boolean;
+  /** Raw key-value form data from remote intake submission (pre-assessment prefill). */
+  formData?: Record<string, unknown>;
 };
 
 // ============================================================================

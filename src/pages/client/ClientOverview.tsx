@@ -15,6 +15,7 @@ import {
   ChevronDown,
   ClipboardList,
   Loader2,
+  ArrowRight,
 } from 'lucide-react';
 import { PostureComparisonCard } from '@/components/client/PostureComparisonCard';
 import type { ClientDetailOutletContext } from './ClientDetailLayout';
@@ -198,12 +199,31 @@ export default function ClientOverview() {
 
       <CollapsibleSection title="Pillar Scores" icon={<Activity className="h-5 w-5 text-primary" />}>
         {!currentAssessment ? (
-          <div className="py-12 text-center bg-card rounded-2xl shadow-sm">
-            <p className="text-sm text-muted-foreground mb-6">No assessment data found for this client.</p>
-            <Button onClick={() => handleNewAssessment()} className="bg-primary text-primary-foreground h-12 px-8">
-              <UserPlus className="h-4 w-4 mr-2" />
-              Start First Assessment
-            </Button>
+          <div className="py-12 text-center bg-card rounded-2xl shadow-sm px-6">
+            {profile?.remoteIntakeAwaitingStudio ? (
+              <>
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 dark:bg-amber-950/40 px-3 py-1 text-xs font-bold text-amber-700 dark:text-amber-400 mb-4">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+                  Remote intake complete
+                </div>
+                <p className="text-sm font-semibold text-foreground mb-1">Ready for studio</p>
+                <p className="text-sm text-muted-foreground mb-6">
+                  This client has submitted their intake form. Click below to start the physical assessment — their answers will be pre-loaded.
+                </p>
+                <Button onClick={() => handleNewAssessment()} className="bg-primary text-primary-foreground h-12 px-8">
+                  <ArrowRight className="h-4 w-4 mr-2" />
+                  Continue in studio
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground mb-6">No assessment data found for this client.</p>
+                <Button onClick={() => handleNewAssessment()} className="bg-primary text-primary-foreground h-12 px-8">
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Start First Assessment
+                </Button>
+              </>
+            )}
           </div>
         ) : (
           <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">

@@ -36,6 +36,8 @@ import { RESEND_API_KEY, RESEND_FROM, APP_HOST, EMAIL_ASSETS_LOGO_URL } from './
 import { escapeHtml, sendResendHtmlText } from './email';
 import type { RenderedEmail } from './email';
 
+type RenderedEmailWithSubject = RenderedEmail & { subject: string };
+
 const resend = new Resend(RESEND_API_KEY);
 const APP_NAME = 'One Assess';
 
@@ -135,7 +137,7 @@ function renderMonthInReviewHtml(params: {
   arcPhase?: string | null;
   arcMilestonesAchieved?: number;
   arcMilestonesTotal?: number;
-}): RenderedEmail {
+}): RenderedEmailWithSubject {
   const {
     clientFirstName,
     monthLabel: ml,
@@ -267,7 +269,7 @@ function renderNudgeHtml(params: {
   reportUrl: string;
   coachLogoUrl?: string | null;
   coachName?: string | null;
-}): RenderedEmail {
+}): RenderedEmailWithSubject {
   const { clientFirstName, monthLabel: ml, daysSince, reportUrl, coachLogoUrl, coachName } = params;
 
   const subject = `${clientFirstName}, it's been a while — time for a check-in?`;
@@ -427,7 +429,7 @@ export async function sendClientMonthInReviewEmails(): Promise<void> {
     const daysSince = daysSinceLastSnapshot(summaries) ?? 999;
     const hasMultipleAssessments = summaries.length >= 2;
 
-    let email: RenderedEmail | null = null;
+    let email: RenderedEmailWithSubject | null = null;
 
     if (hasMultipleAssessments) {
       // Check if there's a new assessment within a reasonable window

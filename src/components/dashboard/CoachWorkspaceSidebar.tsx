@@ -6,9 +6,14 @@ import {
   Search,
   Link2,
   Trash2,
-  ChevronDown,
   Share2,
   AlertCircle,
+  Plus,
+  PanelLeftClose,
+  PanelLeftOpen,
+  FileText,
+  Route,
+  Trophy,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -27,7 +32,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { COACH_ASSISTANT_COPY } from '@/constants/coachAssistantCopy';
 import { UI_EVENTS } from '@/constants/uiEvents';
 import type { CoachAssistantThread } from '@/types/coachAssistant';
@@ -42,8 +46,39 @@ import { coachShareablePublicUrl } from '@/lib/utils/coachShareableUrls';
 import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
 import { cn } from '@/lib/utils';
 
-const SHAREABLE_ROW =
-  'text-xs font-medium text-foreground/80 truncate flex-1 min-w-0 text-left underline-offset-2 hover:underline py-1';
+type UnifiedArtifact =
+  | { kind: 'report'; token: string; clientName: string; updatedAt: Date | null; report: CoachArtifactRow }
+  | { kind: 'roadmap'; token: string; clientName: string; updatedAt: Date | null; row: CoachRoadmapShareRow }
+  | { kind: 'achievements'; token: string; clientName: string; updatedAt: Date | null; row: CoachAchievementShareRow };
+
+const ARTIFACT_KIND_ICON: Record<UnifiedArtifact['kind'], typeof FileText> = {
+  report: FileText,
+  roadmap: Route,
+  achievements: Trophy,
+};
+
+function mergeAndSortArtifacts(
+  reports: CoachArtifactRow[],
+  roadmaps: CoachRoadmapShareRow[],
+  achievements: CoachAchievementShareRow[],
+  limit: number,
+): UnifiedArtifact[] {
+  const all: UnifiedArtifact[] = [
+    ...reports.map((r): UnifiedArtifact => ({ kind: 'report', token: r.token, clientName: r.clientName, updatedAt: r.updatedAt, report: r })),
+    ...roadmaps.map((r): UnifiedArtifact => ({ kind: 'roadmap', token: r.token, clientName: r.clientName, updatedAt: r.updatedAt, row: r })),
+    ...achievements.map((r): UnifiedArtifact => ({ kind: 'achievements', token: r.token, clientName: r.clientName, updatedAt: r.updatedAt, row: r })),
+  ];
+  all.sort((a, b) => (b.updatedAt?.getTime() ?? 0) - (a.updatedAt?.getTime() ?? 0));
+  return all.slice(0, limit);
+}
+
+function artifactPreview(item: UnifiedArtifact): CoachShareablePreview {
+  switch (item.kind) {
+    case 'report': return { kind: 'report', report: item.report };
+    case 'roadmap': return { kind: 'roadmap', row: item.row };
+    case 'achievements': return { kind: 'achievements', row: item.row };
+  }
+}
 
 interface CoachWorkspaceSidebarProps {
   threads: CoachAssistantThread[];
@@ -58,52 +93,9 @@ interface CoachWorkspaceSidebarProps {
   onShareablePreview: (preview: CoachShareablePreview) => void;
   recentClients: { name: string }[];
   showTeamTab: boolean;
+  onNewClient: () => void;
+  onToggleCollapse: () => void;
   className?: string;
-}
-
-function ShareableCategory({
-  title,
-  hint,
-  emptyLabel,
-  loading,
-  hasItems,
-  defaultOpen,
-  children,
-}: {
-  title: string;
-  hint: string;
-  emptyLabel: React.ReactNode;
-  loading: boolean;
-  hasItems: boolean;
-  defaultOpen: boolean;
-  children: React.ReactNode;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-
-  return (
-    <Collapsible open={open} onOpenChange={setOpen}>
-      <CollapsibleTrigger
-        type="button"
-        className="group flex w-full items-center gap-2 py-1.5 text-left text-xs font-medium text-foreground/90 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-      >
-        <span className="min-w-0 flex-1">{title}</span>
-        <ChevronDown
-          className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60 transition-transform duration-200 group-data-[state=open]:rotate-180"
-          aria-hidden
-        />
-      </CollapsibleTrigger>
-      <CollapsibleContent className="pt-0.5">
-        <p className="mb-1 text-[10px] leading-snug text-muted-foreground/80">{hint}</p>
-        {loading ? (
-          <p className="text-xs text-muted-foreground">…</p>
-        ) : hasItems ? (
-          children
-        ) : (
-          <p className="text-xs text-muted-foreground">{emptyLabel}</p>
-        )}
-      </CollapsibleContent>
-    </Collapsible>
-  );
 }
 
 export function CoachWorkspaceSidebar({
@@ -119,6 +111,8 @@ export function CoachWorkspaceSidebar({
   onShareablePreview,
   recentClients,
   showTeamTab,
+  onNewClient,
+  onToggleCollapse,
   className,
 }: CoachWorkspaceSidebarProps) {
   const { pathname } = useLocation();
@@ -139,47 +133,80 @@ export function CoachWorkspaceSidebar({
   return (
     <aside
       className={cn(
-        'flex min-h-0 w-[260px] shrink-0 flex-col self-stretch border-r border-border/60 bg-card text-foreground',
+        'flex min-h-0 w-[260px] shrink-0 flex-col self-stretch bg-card text-foreground',
         className,
       )}
       aria-label="Workspace"
     >
-      <div className="flex flex-col gap-0.5 p-2">
-        <button type="button" onClick={onNewChat} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-foreground-secondary transition-colors hover:bg-muted hover:text-foreground">
-          <MessageSquarePlus className="h-4 w-4 shrink-0" />
-          {COACH_ASSISTANT_COPY.NEW_CHAT}
-        </button>
-        <button type="button" onClick={openCommandMenu} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-foreground-secondary transition-colors hover:bg-muted hover:text-foreground">
-          <Search className="h-4 w-4 shrink-0" />
-          {COACH_ASSISTANT_COPY.SIDEBAR_SEARCH}
+      {/* Header: brand + collapse */}
+      <div className="flex items-center justify-between px-4 pt-4 pb-2">
+        <span className="text-sm font-bold text-foreground tracking-tight">One Assess</span>
+        <button
+          type="button"
+          onClick={onToggleCollapse}
+          className="flex h-7 w-7 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          aria-label="Collapse sidebar"
+        >
+          <PanelLeftClose className="h-3.5 w-3.5" />
         </button>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="px-2 py-2">
-          <p className="px-3 text-xs font-semibold text-muted-foreground mb-1">
+      {/* Quick actions */}
+      <div className="flex gap-1.5 px-3 pb-3">
+        <button
+          type="button"
+          onClick={onNewClient}
+          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          New Client
+        </button>
+        <button
+          type="button"
+          onClick={onNewChat}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/60 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          aria-label={COACH_ASSISTANT_COPY.NEW_CHAT}
+        >
+          <MessageSquarePlus className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={openCommandMenu}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/60 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          aria-label={COACH_ASSISTANT_COPY.SIDEBAR_SEARCH}
+        >
+          <Search className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {/* Scrollable content */}
+      <div className="flex-1 min-h-0 overflow-y-auto px-3 pb-2">
+        {/* Chats */}
+        <div className="pb-4">
+          <p className="px-1 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
             {COACH_ASSISTANT_COPY.SIDEBAR_CHATS}
           </p>
           <ul className="space-y-0.5">
             {threads.map((t) => (
-              <li key={t.id} className="flex items-stretch gap-0.5">
+              <li key={t.id} className="group flex items-center gap-0.5">
                 <button
                   type="button"
                   onClick={() => onSelectThread(t.id)}
                   className={cn(
-                    'min-w-0 flex-1 text-left rounded-lg px-3 py-1.5 text-xs font-medium truncate transition-colors',
+                    'flex min-w-0 flex-1 items-center gap-2.5 rounded-xl px-3 py-2 text-left transition-colors',
                     t.id === activeThreadId
                       ? 'bg-muted text-foreground'
-                      : 'hover:bg-muted text-foreground/70 hover:text-foreground',
+                      : 'text-foreground/60 hover:bg-muted/60 hover:text-foreground',
                   )}
                 >
-                  {t.title}
+                  <MessageSquarePlus className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <span className="min-w-0 flex-1 truncate text-xs font-medium">{t.title}</span>
                 </button>
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                  className="h-7 w-7 shrink-0 rounded-xl text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive transition-all"
                   title={COACH_ASSISTANT_COPY.DELETE_THREAD}
                   aria-label={COACH_ASSISTANT_COPY.DELETE_THREAD}
                   onClick={(e) => {
@@ -187,175 +214,103 @@ export function CoachWorkspaceSidebar({
                     setThreadPendingDelete(t.id);
                   }}
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Trash2 className="h-3 w-3" />
                 </Button>
               </li>
             ))}
           </ul>
         </div>
 
-        <div className="px-2 pt-3">
+        {/* Artefacts */}
+        <div className="pb-4">
           <section aria-label={COACH_ASSISTANT_COPY.SIDEBAR_ARTIFACTS_REGION_LABEL}>
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <h2
-                id="sidebar-artifacts-heading"
-                className="text-xs font-semibold text-muted-foreground"
-              >
-                {COACH_ASSISTANT_COPY.SIDEBAR_ARTIFACTS_SECTION}
+            <div className="mb-1.5 flex items-center justify-between gap-2 px-1">
+              <h2 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                Artefacts
               </h2>
-              {!onArtifactsPage ? (
+              {!onArtifactsPage && (
                 <Link
                   to={ROUTES.DASHBOARD_ARTIFACTS}
                   className="shrink-0 text-[10px] font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
                 >
-                  {COACH_ASSISTANT_COPY.SIDEBAR_ARTIFACTS_VIEW_ALL}
+                  View all
                 </Link>
-              ) : null}
+              )}
             </div>
             {onArtifactsPage ? (
-              <p className="text-xs leading-snug text-muted-foreground">
+              <p className="px-1 text-xs leading-snug text-muted-foreground">
                 {COACH_ASSISTANT_COPY.SIDEBAR_ARTIFACTS_STUB_ON_GRID_PAGE}
               </p>
-            ) : (
-            <div className="flex flex-col gap-1">
-            <ShareableCategory
-              title={COACH_ASSISTANT_COPY.SIDEBAR_CATEGORY_REPORTS}
-              hint={COACH_ASSISTANT_COPY.SIDEBAR_CATEGORY_REPORTS_HINT}
-              emptyLabel={COACH_ASSISTANT_COPY.EMPTY_SHAREABLE_REPORTS}
-              loading={shareablesLoading}
-              hasItems={reportShares.length > 0}
-              defaultOpen={false}
-            >
-              <ul className="space-y-0.5">
-                {reportShares.slice(0, 8).map((a) => (
-                  <li key={a.token} className="flex items-center gap-0.5">
-                    <button
-                      type="button"
-                      className={SHAREABLE_ROW}
-                      onClick={() => onShareablePreview({ kind: 'report', report: a })}
-                    >
-                      {a.clientName}
-                    </button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 shrink-0 rounded-sm text-muted-foreground"
-                      title={COACH_ASSISTANT_COPY.COPY_LINK}
-                      aria-label={COACH_ASSISTANT_COPY.COPY_LINK}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        void navigator.clipboard.writeText(coachShareablePublicUrl('report', a.token));
-                      }}
-                    >
-                      <Link2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </ShareableCategory>
-
-            <ShareableCategory
-              title={COACH_ASSISTANT_COPY.SIDEBAR_CATEGORY_ROADMAPS}
-              hint={COACH_ASSISTANT_COPY.SIDEBAR_CATEGORY_ROADMAPS_HINT}
-              emptyLabel={
-                <span>
-                  No published ARC™ links yet.{' '}
-                  <Link to={ROUTES.DASHBOARD_CLIENTS} className="underline underline-offset-2 hover:text-foreground">
-                    Open a client
-                  </Link>{' '}
-                  to build one.
-                </span>
+            ) : shareablesLoading ? (
+              <p className="px-1 text-xs text-muted-foreground/60">Loading…</p>
+            ) : (() => {
+              const recent = mergeAndSortArtifacts(reportShares, roadmapShares, achievementShares, 4);
+              if (recent.length === 0) {
+                return <p className="px-1 text-xs text-muted-foreground/60">No shared links yet</p>;
               }
-              loading={shareablesLoading}
-              hasItems={roadmapShares.length > 0}
-              defaultOpen={false}
-            >
-              <ul className="space-y-0.5">
-                {roadmapShares.slice(0, 8).map((r) => (
-                  <li key={r.token} className="flex items-center gap-0.5">
-                    <button
-                      type="button"
-                      className={SHAREABLE_ROW}
-                      onClick={() => onShareablePreview({ kind: 'roadmap', row: r })}
-                    >
-                      {r.clientName}
-                    </button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 shrink-0 rounded-sm text-muted-foreground"
-                      title={COACH_ASSISTANT_COPY.COPY_LINK}
-                      aria-label={COACH_ASSISTANT_COPY.COPY_LINK}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        void navigator.clipboard.writeText(coachShareablePublicUrl('roadmap', r.token));
-                      }}
-                    >
-                      <Link2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </ShareableCategory>
-
-            <ShareableCategory
-              title={COACH_ASSISTANT_COPY.SIDEBAR_CATEGORY_ACHIEVEMENTS}
-              hint={COACH_ASSISTANT_COPY.SIDEBAR_CATEGORY_ACHIEVEMENTS_HINT}
-              emptyLabel={COACH_ASSISTANT_COPY.EMPTY_SHAREABLE_ACHIEVEMENTS}
-              loading={shareablesLoading}
-              hasItems={achievementShares.length > 0}
-              defaultOpen={false}
-            >
-              <ul className="space-y-0.5">
-                {achievementShares.slice(0, 8).map((r) => (
-                  <li key={`${r.token}-ach`} className="flex items-center gap-0.5">
-                    <button
-                      type="button"
-                      className={SHAREABLE_ROW}
-                      onClick={() => onShareablePreview({ kind: 'achievements', row: r })}
-                    >
-                      {r.clientName}
-                    </button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 shrink-0 rounded-sm text-muted-foreground"
-                      title={COACH_ASSISTANT_COPY.COPY_LINK}
-                      aria-label={COACH_ASSISTANT_COPY.COPY_LINK}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        void navigator.clipboard.writeText(coachShareablePublicUrl('achievements', r.token));
-                      }}
-                    >
-                      <Link2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </ShareableCategory>
-            </div>
-            )}
+              return (
+                <ul className="space-y-0.5">
+                  {recent.map((item) => {
+                    const Icon = ARTIFACT_KIND_ICON[item.kind];
+                    return (
+                      <li key={`${item.kind}-${item.token}`} className="group flex items-center gap-0.5">
+                        <button
+                          type="button"
+                          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl px-3 py-2 text-left text-foreground/60 transition-colors hover:bg-muted/60 hover:text-foreground"
+                          onClick={() => onShareablePreview(artifactPreview(item))}
+                        >
+                          <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                          <span className="min-w-0 flex-1 truncate text-xs font-medium">
+                            {item.clientName}
+                          </span>
+                        </button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 shrink-0 rounded-xl text-muted-foreground opacity-0 group-hover:opacity-100 transition-all"
+                          title={COACH_ASSISTANT_COPY.COPY_LINK}
+                          aria-label={COACH_ASSISTANT_COPY.COPY_LINK}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const url = item.kind === 'report'
+                              ? coachShareablePublicUrl('report', item.token)
+                              : item.kind === 'roadmap'
+                                ? coachShareablePublicUrl('roadmap', item.token)
+                                : coachShareablePublicUrl('achievements', item.token);
+                            void navigator.clipboard.writeText(url);
+                          }}
+                        >
+                          <Link2 className="h-3 w-3" />
+                        </Button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              );
+            })()}
           </section>
         </div>
 
-        <div className="px-2 pt-3">
-          <p className="px-3 text-xs font-semibold text-muted-foreground mb-1">
+        {/* Needs Attention */}
+        <div className="pb-2">
+          <p className="px-1 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
             Needs Attention
           </p>
           {recentClients.length === 0 ? (
-            <p className="text-xs text-muted-foreground px-3 py-1">All clients on track</p>
+            <p className="text-xs text-muted-foreground/60 px-1 py-1">All clients on track</p>
           ) : (
             <ul className="space-y-0.5">
               {recentClients.map((c) => (
                 <li key={c.name}>
                   <Link
                     to={`/client/${encodeURIComponent(c.name)}`}
-                    className="block rounded-lg px-3 py-1.5 text-xs font-medium text-foreground-secondary hover:bg-muted hover:text-foreground truncate"
+                    className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-foreground/60 hover:bg-muted/60 hover:text-foreground transition-colors"
                   >
-                    {formatClientDisplayName(c.name)}
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0 flex-1 truncate text-xs font-medium">
+                      {formatClientDisplayName(c.name)}
+                    </span>
                   </Link>
                 </li>
               ))}
@@ -364,7 +319,8 @@ export function CoachWorkspaceSidebar({
         </div>
       </div>
 
-      <div className="z-10 shrink-0 border-t border-border/60 bg-card p-2">
+      {/* Footer */}
+      <div className="z-10 shrink-0 border-t border-border/30 bg-card px-3 py-2">
         <CoachWorkspaceProfileFooter variant="sidebar" showTeamTab={showTeamTab} />
       </div>
 
@@ -392,16 +348,20 @@ export function CoachWorkspaceSidebar({
 /** Narrow icon-only strip shown when the workspace sidebar is collapsed. */
 export function CoachWorkspaceSidebarCollapsed({
   onNewChat,
+  onNewClient,
+  onToggleCollapse,
   hasAttention,
 }: {
   onNewChat: () => void;
+  onNewClient: () => void;
+  onToggleCollapse: () => void;
   hasAttention: boolean;
 }) {
   const openCommandMenu = () => window.dispatchEvent(new Event('openCommandMenu'));
 
   return (
     <aside
-      className="hidden lg:flex w-12 shrink-0 flex-col self-stretch border-r border-border/60 bg-card items-center gap-1 py-2"
+      className="hidden lg:flex w-12 shrink-0 flex-col self-stretch bg-card items-center gap-1.5 py-3"
       aria-label="Workspace (collapsed)"
     >
       <TooltipProvider delayDuration={300}>
@@ -409,11 +369,41 @@ export function CoachWorkspaceSidebarCollapsed({
           <TooltipTrigger asChild>
             <button
               type="button"
+              onClick={onToggleCollapse}
+              className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label="Expand sidebar"
+            >
+              <PanelLeftOpen className="h-3.5 w-3.5" aria-hidden />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right">Expand sidebar</TooltipContent>
+        </Tooltip>
+
+        <div className="h-px w-6 bg-border/30" />
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={onNewClient}
+              className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground transition-colors hover:bg-primary/90"
+              aria-label="New client"
+            >
+              <Plus className="h-3.5 w-3.5" aria-hidden />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right">New client</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
               onClick={onNewChat}
-              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               aria-label="New chat"
             >
-              <MessageSquarePlus className="h-4 w-4" aria-hidden />
+              <MessageSquarePlus className="h-3.5 w-3.5" aria-hidden />
             </button>
           </TooltipTrigger>
           <TooltipContent side="right">New chat</TooltipContent>
@@ -424,25 +414,23 @@ export function CoachWorkspaceSidebarCollapsed({
             <button
               type="button"
               onClick={openCommandMenu}
-              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               aria-label="Search"
             >
-              <Search className="h-4 w-4" aria-hidden />
+              <Search className="h-3.5 w-3.5" aria-hidden />
             </button>
           </TooltipTrigger>
           <TooltipContent side="right">Search</TooltipContent>
         </Tooltip>
 
-        <div className="my-1 h-px w-8 bg-border/60" />
-
         <Tooltip>
           <TooltipTrigger asChild>
             <Link
               to={ROUTES.DASHBOARD_ARTIFACTS}
-              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               aria-label="Artifacts"
             >
-              <Share2 className="h-4 w-4" aria-hidden />
+              <Share2 className="h-3.5 w-3.5" aria-hidden />
             </Link>
           </TooltipTrigger>
           <TooltipContent side="right">Artifacts</TooltipContent>
@@ -452,11 +440,11 @@ export function CoachWorkspaceSidebarCollapsed({
           <Tooltip>
             <TooltipTrigger asChild>
               <div
-                className="flex h-8 w-8 items-center justify-center rounded-md text-score-amber-fg"
+                className="flex h-8 w-8 items-center justify-center rounded-xl text-score-amber-fg"
                 role="img"
                 aria-label="Clients need attention"
               >
-                <AlertCircle className="h-4 w-4" aria-hidden />
+                <AlertCircle className="h-3.5 w-3.5" aria-hidden />
               </div>
             </TooltipTrigger>
             <TooltipContent side="right">Clients need attention</TooltipContent>

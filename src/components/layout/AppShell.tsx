@@ -51,6 +51,7 @@ export default function AppShell({
   /** Optional left header region (e.g. workspace sidebar toggle) — shown before the logo when logo is visible, or alone when hidden. */
   headerLeading,
   lockViewportHeight = false,
+  noDesktopHeader = false,
 }: {
   title: string;
   subtitle?: string;
@@ -76,6 +77,8 @@ export default function AppShell({
   headerLeading?: ReactNode;
   /** Pin layout to one viewport height; inner regions own scroll (dashboard workspace). */
   lockViewportHeight?: boolean;
+  /** Workspace mode: hide header on desktop (lg+), keep minimal strip on mobile for hamburger. */
+  noDesktopHeader?: boolean;
 }) {
   const { user, loading, signOut, orgSettings, profile } = useAuth();
   const showOrgAdminNav = useOrgAdminNavVisibility();
@@ -197,7 +200,7 @@ export default function AppShell({
         lockViewportHeight ? 'h-dvh max-h-dvh overflow-hidden' : 'min-h-screen',
       )}
     >
-      <header className="border-b border-border/40 bg-card/95 backdrop-blur-sm sticky top-0 z-50 w-full shrink-0 supports-[backdrop-filter]:bg-card/80">
+      <header className={cn("border-b border-border/40 bg-card/95 backdrop-blur-sm sticky top-0 z-50 w-full shrink-0 supports-[backdrop-filter]:bg-card/80", noDesktopHeader && "lg:hidden")}>
         <div className="relative flex min-h-14 w-full min-w-0 items-center justify-between gap-2 sm:min-h-16 sm:gap-3 px-3 sm:px-4 md:px-6 lg:px-10">
           {/* Left: logo (hidden on dashboard workspace — branding lives in main greeting). */}
           <div className="relative z-10 flex min-w-0 shrink-0 items-center gap-2 sm:gap-3 md:gap-4">
