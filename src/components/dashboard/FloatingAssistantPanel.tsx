@@ -6,7 +6,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MessageSquare, Square, X, Loader2 } from 'lucide-react';
+import { MessageSquare, Square, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
@@ -104,21 +104,10 @@ export function FloatingAssistantPanel({ open, onOpenChange }: FloatingAssistant
         side="right"
         className="flex h-full max-h-[100dvh] w-full flex-col overflow-hidden p-0 sm:max-w-[480px]"
       >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-border/60 px-4 py-3 shrink-0">
-          <div className="flex items-center gap-2">
-            <MessageSquare className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-semibold text-foreground">Assistant</h2>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => onOpenChange(false)}
-            aria-label="Close assistant"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+        {/* Header — SheetContent renders its own close (X) button via SheetPrimitive.Close */}
+        <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3 pr-12 shrink-0">
+          <MessageSquare className="h-4 w-4 text-primary" />
+          <h2 className="text-sm font-semibold text-foreground">Assistant</h2>
         </div>
 
         {/* Messages area */}

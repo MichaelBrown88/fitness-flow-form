@@ -1158,22 +1158,26 @@ export async function deleteClientPermanently(params: {
     }
   }
 
-  // 1. Delete sessions sub-collection
+  if (!organizationId?.trim()) {
+    throw new Error('Cannot delete client: organization ID is missing.');
+  }
+
+  // 1. Delete sessions sub-collection (non-critical cleanup)
   await deleteSubcollection(ORGANIZATION.clients.sessions.collection(organizationId, clientSlug)).catch((): void => undefined);
 
-  // 2. Delete current/state doc
+  // 2. Delete current/state doc (non-critical cleanup)
   await deleteDoc(doc(db, ORGANIZATION.clients.current(organizationId, clientSlug))).catch((): void => undefined);
 
-  // 3. Delete draft
+  // 3. Delete draft (non-critical cleanup)
   await deleteDoc(doc(db, ORGANIZATION.clients.draft(organizationId, clientSlug))).catch((): void => undefined);
 
-  // 4. Delete roadmap and achievements (per-definition docs + any legacy `record` row)
+  // 4. Delete roadmap and achievements (non-critical cleanup)
   await deleteDoc(doc(db, ORGANIZATION.clients.roadmap(organizationId, clientSlug))).catch((): void => undefined);
   await deleteSubcollection(ORGANIZATION.clientAchievements.collection(organizationId, clientSlug)).catch(
     (): void => undefined,
   );
 
-  // 5. Delete public report share tokens
+  // 5. Delete public report share tokens (non-critical cleanup)
   try {
     const publicReportsSnap = await getDocs(
       query(
@@ -1190,10 +1194,11 @@ export async function deleteClientPermanently(params: {
     }
   } catch { /* non-fatal */ }
 
-  // 6. Delete client profile
-  await deleteDoc(doc(db, ORGANIZATION.clients.doc(organizationId, clientSlug))).catch((): void => undefined);
+  // 6. Delete client profile — CRITICAL: if this fails, the client still appears in the roster.
+  // Do NOT catch this error; let it propagate so the caller knows deletion failed.
+  await deleteDoc(doc(db, ORGANIZATION.clients.doc(organizationId, clientSlug)));
 
-  // 7. Decrement org stats
+  // 7. Decrement org stats (non-critical cleanup, best-effort after profile is gone)
   await updateDoc(doc(db, ORGANIZATION.doc(organizationId)), {
     'stats.clientCount': increment(-1),
     'stats.lastUpdated': serverTimestamp(),

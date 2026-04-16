@@ -615,7 +615,10 @@ export function useClientDetail(): UseClientDetailResult {
   // Pause client account (coach-initiated)
   const handlePauseClient = useCallback(async (reason?: string) => {
     const orgId = readOrgId;
-    if (!orgId || !clientName) return;
+    if (!orgId || !clientName) {
+      toast({ title: 'Action failed', description: 'Organisation context not loaded. Please refresh and try again.', variant: 'destructive' });
+      return;
+    }
     const { pauseClient } = await import('@/services/clientProfiles');
     await pauseClient({
       organizationId: orgId,
@@ -643,7 +646,10 @@ export function useClientDetail(): UseClientDetailResult {
   // Unpause client account
   const handleUnpauseClient = useCallback(async (mode: 'resume' | 'reset') => {
     const orgId = readOrgId;
-    if (!orgId || !clientName) return;
+    if (!orgId || !clientName) {
+      toast({ title: 'Action failed', description: 'Organisation context not loaded. Please refresh and try again.', variant: 'destructive' });
+      return;
+    }
     const { unpauseClient } = await import('@/services/clientProfiles');
     await unpauseClient({
       organizationId: orgId,
@@ -672,7 +678,10 @@ export function useClientDetail(): UseClientDetailResult {
 
   const handleArchiveClient = useCallback(async (reason?: string) => {
     const orgId = readOrgId;
-    if (!orgId || !clientName) return;
+    if (!orgId || !clientName) {
+      toast({ title: 'Action failed', description: 'Organisation context not loaded. Please refresh and try again.', variant: 'destructive' });
+      return;
+    }
     try {
       const { archiveClient } = await import('@/services/clientProfiles');
       await archiveClient({
@@ -693,7 +702,10 @@ export function useClientDetail(): UseClientDetailResult {
 
   const handleReactivateClient = useCallback(async (mode: 'resume' | 'reset') => {
     const orgId = readOrgId;
-    if (!orgId || !clientName) return;
+    if (!orgId || !clientName) {
+      toast({ title: 'Action failed', description: 'Organisation context not loaded. Please refresh and try again.', variant: 'destructive' });
+      return;
+    }
     try {
       const { reactivateClient } = await import('@/services/clientProfiles');
       await reactivateClient({
