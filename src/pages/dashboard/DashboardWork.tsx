@@ -3,7 +3,7 @@ import { useOutletContext, useNavigate } from 'react-router-dom';
 import { CalendarView } from '@/components/dashboard/sub-components/CalendarView';
 import { WorkClientList } from '@/components/dashboard/sub-components/WorkClientList';
 import { Button } from '@/components/ui/button';
-import { Link2, Users, ClipboardCheck, AlertTriangle, CheckCircle2, ArrowRight, Sparkles } from 'lucide-react';
+import { Link2, Users, ClipboardCheck, AlertTriangle, CheckCircle2, ArrowRight, Sparkles, TrendingDown, Share2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { staffPreferredFirstName } from '@/lib/utils/staffDisplayName';
 import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
@@ -27,13 +27,27 @@ export default function DashboardWork() {
     return (ctx.clientGroups ?? []).filter(c => c.remoteIntakeAwaitingStudio);
   }, [ctx.clientGroups]);
 
-  const { overdueCount, dueSoonCount, attentionCount, onTrackCount } = useMemo(() => {
-    if (!ctx.reassessmentQueue) return { overdueCount: 0, dueSoonCount: 0, attentionCount: 0, onTrackCount: 0 };
+  // Clients whose score dropped significantly (coaching opportunities)
+  const scoreAlerts = useMemo(() => {
+    return (ctx.clientGroups ?? [])
+      .filter(c => (c.scoreChange ?? 0) < -5 && c.latestScore > 0)
+      .sort((a, b) => (a.scoreChange ?? 0) - (b.scoreChange ?? 0))
+      .slice(0, 5);
+  }, [ctx.clientGroups]);
+
+  // Clients with assessments but no shared report (pending deliverables)
+  const unsharableClients = useMemo(() => {
+    return (ctx.clientGroups ?? [])
+      .filter(c => c.assessments.length > 0 && !c.shareToken)
+      .slice(0, 5);
+  }, [ctx.clientGroups]);
+
+  const { overdueCount, dueSoonCount, attentionCount } = useMemo(() => {
+    if (!ctx.reassessmentQueue) return { overdueCount: 0, dueSoonCount: 0, attentionCount: 0 };
     const queue = ctx.reassessmentQueue.queue;
     const overdue = queue.filter(item => item.status === 'overdue').length;
     const dueSoon = queue.filter(item => item.status === 'due-soon').length;
-    const onTrack = queue.filter(item => item.status === 'up-to-date').length;
-    return { overdueCount: overdue, dueSoonCount: dueSoon, attentionCount: overdue + dueSoon, onTrackCount: onTrack };
+    return { overdueCount: overdue, dueSoonCount: dueSoon, attentionCount: overdue + dueSoon };
   }, [ctx.reassessmentQueue]);
 
   if (!ctx.reassessmentQueue) return null;
@@ -134,6 +148,77 @@ export default function DashboardWork() {
           />
         </div>
       </section>
+
+      {/* Score alerts — clients whose scores dropped (coaching opportunities) */}
+      {scoreAlerts.length > 0 && (
+        <section>
+          <div className="mb-2 flex items-center gap-2">
+            <TrendingDown className="h-3.5 w-3.5 text-score-red-fg" />
+            <h2 className="text-sm font-semibold text-foreground-secondary">
+              Score Drops
+            </h2>
+          </div>
+          <div className="overflow-hidden rounded-2xl bg-card shadow-sm border-l-4 border-l-score-red">
+            <ul className="divide-y divide-border/40 px-3">
+              {scoreAlerts.map(client => (
+                <li key={client.id} className="flex items-center justify-between gap-3 py-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground truncate">
+                      {formatClientDisplayName(client.name)}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Score dropped from {(client.latestScore - (client.scoreChange ?? 0))} to {client.latestScore}
+                    </p>
+                  </div>
+                  <span className="text-xs font-bold text-score-red-fg tabular-nums shrink-0">
+                    {client.scoreChange}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
+
+      {/* Pending deliverables — reports not yet shared with clients */}
+      {unsharableClients.length > 0 && (
+        <section>
+          <div className="mb-2 flex items-center gap-2">
+            <Share2 className="h-3.5 w-3.5 text-muted-foreground" />
+            <h2 className="text-sm font-semibold text-foreground-secondary">
+              Unshared Reports
+            </h2>
+            <span className="inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-muted px-1 text-[10px] font-bold text-muted-foreground tabular-nums">
+              {unsharableClients.length}
+            </span>
+          </div>
+          <div className="overflow-hidden rounded-2xl bg-card shadow-sm">
+            <ul className="divide-y divide-border/40 px-3">
+              {unsharableClients.map(client => (
+                <li key={client.id} className="flex items-center justify-between gap-3 py-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground truncate">
+                      {formatClientDisplayName(client.name)}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {client.assessments.length} assessment{client.assessments.length !== 1 ? 's' : ''} — report not shared
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => navigate(`/client/${encodeURIComponent(client.name)}/report?share=1`)}
+                    className="shrink-0 gap-1.5 text-xs font-semibold"
+                  >
+                    <Share2 className="h-3 w-3" />
+                    Share
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
 
       {/* Calendar */}
       <section>
