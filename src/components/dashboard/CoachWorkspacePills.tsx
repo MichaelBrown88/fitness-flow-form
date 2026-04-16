@@ -1,5 +1,5 @@
-import { NavLink } from 'react-router-dom';
-import { MessageSquare, Users, CalendarRange } from 'lucide-react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { Users, CalendarRange } from 'lucide-react';
 import { ROUTES } from '@/constants/routes';
 import { UI_TABS } from '@/constants/ui';
 import { DASHBOARD_TASKS } from '@/constants/dashboardTasksCopy';
@@ -24,6 +24,9 @@ export function CoachWorkspacePills({
   variant = 'page',
 }: CoachWorkspacePillsProps) {
   const isToolbar = variant === 'toolbar';
+  const location = useLocation();
+  /** The bare /dashboard index renders the Work (Today) tab, so highlight it. */
+  const isIndexRoute = location.pathname === ROUTES.DASHBOARD;
 
   const tabClass = (isActive: boolean) =>
     `${
@@ -48,7 +51,7 @@ export function CoachWorkspacePills({
       {UI_TABS.WORK}
       {scheduleCount > 0 && (
         <span
-          className={`shrink-0 rounded-full px-1 text-[9px] font-bold leading-none ${
+          className={`shrink-0 rounded-full px-1 text-[10px] font-bold leading-none ${
             isActive
               ? 'bg-score-amber-fg/20 text-score-amber-fg'
               : 'bg-score-amber-fg/15 text-score-amber-fg/80'
@@ -61,6 +64,9 @@ export function CoachWorkspacePills({
     </span>
   );
 
+  /** Today tab is active when at /dashboard (index) OR /dashboard/work */
+  const workTabClass = (navIsActive: boolean) => tabClass(navIsActive || isIndexRoute);
+
   return (
     <TooltipProvider delayDuration={300}>
       <div
@@ -70,23 +76,12 @@ export function CoachWorkspacePills({
             : 'flex w-full max-w-xl mx-auto items-center gap-0.5 overflow-x-auto rounded-full border border-border/70 bg-muted/30 p-1 dark:border-border/50 dark:bg-muted/15 sm:gap-1'
         }
       >
-        <NavLink to={ROUTES.DASHBOARD_ASSISTANT} className={({ isActive }) => tabClass(isActive)}>
-          <span className={TAB_ROW}>
-            <MessageSquare className={iconClass} />
-            {UI_TABS.ASSISTANT}
-          </span>
-        </NavLink>
-        <NavLink to={ROUTES.DASHBOARD_CLIENTS} className={({ isActive }) => tabClass(isActive)}>
-          <span className={TAB_ROW}>
-            <Users className={iconClass} />
-            {UI_TABS.CLIENTS}
-          </span>
-        </NavLink>
+        {/* Today (queue + calendar) — first tab, default landing */}
         {scheduleCount > 0 ? (
           <Tooltip>
             <TooltipTrigger asChild>
-              <NavLink to={ROUTES.DASHBOARD_WORK} className={({ isActive }) => tabClass(isActive)}>
-                {({ isActive }) => workTabContent(isActive)}
+              <NavLink to={ROUTES.DASHBOARD_WORK} className={({ isActive }) => workTabClass(isActive)}>
+                {({ isActive }) => workTabContent(isActive || isIndexRoute)}
               </NavLink>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="max-w-xs text-xs">
@@ -94,13 +89,20 @@ export function CoachWorkspacePills({
             </TooltipContent>
           </Tooltip>
         ) : (
-          <NavLink to={ROUTES.DASHBOARD_WORK} className={({ isActive }) => tabClass(isActive)}>
+          <NavLink to={ROUTES.DASHBOARD_WORK} className={({ isActive }) => workTabClass(isActive)}>
             <span className={TAB_ROW}>
               <CalendarRange className={iconClass} />
               {UI_TABS.WORK}
             </span>
           </NavLink>
         )}
+        {/* Clients roster */}
+        <NavLink to={ROUTES.DASHBOARD_CLIENTS} className={({ isActive }) => tabClass(isActive)}>
+          <span className={TAB_ROW}>
+            <Users className={iconClass} />
+            {UI_TABS.CLIENTS}
+          </span>
+        </NavLink>
       </div>
     </TooltipProvider>
   );

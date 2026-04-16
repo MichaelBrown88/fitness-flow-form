@@ -2,8 +2,8 @@
  * Client Report tab: client-facing report for the latest assessment (embedded in client detail).
  */
 
-import { Suspense, lazy, useState } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { Suspense, lazy, useState, useEffect } from 'react';
+import { useOutletContext, useSearchParams } from 'react-router-dom';
 import { useAssessmentLogic } from '@/hooks/useAssessmentLogic';
 import { useReportShare } from '@/hooks/useReportShare';
 import { useAuth } from '@/hooks/useAuth';
@@ -19,6 +19,17 @@ export default function ClientReportTab() {
   const assessmentId = assessments[0]?.id;
   const { user, profile } = useAuth();
   const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Auto-open share modal when navigated with ?share=1 (e.g. from Overview "Share Report" button)
+  useEffect(() => {
+    if (searchParams.get('share') === '1') {
+      setShareModalOpen(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete('share');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const {
     formData,

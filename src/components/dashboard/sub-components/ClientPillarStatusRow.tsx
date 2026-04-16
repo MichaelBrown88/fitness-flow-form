@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Scan, Camera, Activity, Dumbbell, Heart } from 'lucide-react';
 import type { ReassessmentItem, ScheduleStatus } from '@/hooks/useReassessmentQueue';
 import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
+import { cn } from '@/lib/utils';
 
 const PILLAR_ICONS = {
   bodycomp: Scan,
@@ -45,7 +46,10 @@ export function ClientPillarStatusRow({ item, onStartAssessment }: ClientPillarS
   const urgency = urgencyLabel(item);
 
   return (
-    <li className="flex items-center gap-3 py-3 min-w-0">
+    <li className={cn(
+      "flex items-center gap-3 py-3 min-w-0 border-l-[3px] pl-2",
+      item.status === 'overdue' ? 'border-l-score-red' : item.status === 'due-soon' ? 'border-l-score-amber' : 'border-l-transparent',
+    )}>
       {/* Client name */}
       <Link
         to={clientPath}

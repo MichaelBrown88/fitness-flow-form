@@ -1,11 +1,11 @@
 export const ROUTES = {
   HOME: '/',
   DASHBOARD: '/dashboard',
-  /** AI assistant — default landing tab. */
+  /** AI assistant — accessible via pill tab or Cmd+K. */
   DASHBOARD_ASSISTANT: '/dashboard/assistant',
   /** Client directory (table) — primary roster surface. */
   DASHBOARD_CLIENTS: '/dashboard/clients',
-  /** Tasks (reassessment queue) + calendar combined. */
+  /** Today — reassessment queue + calendar; default landing tab. */
   DASHBOARD_WORK: '/dashboard/work',
   /** @deprecated Use DASHBOARD_WORK + ?view=tasks — kept for redirects/bookmarks. */
   DASHBOARD_SCHEDULE: '/dashboard/schedule',

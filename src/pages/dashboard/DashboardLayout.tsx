@@ -57,6 +57,7 @@ import { DASHBOARD_SHELL_COPY } from '@/constants/dashboardShellCopy';
 import { cn } from '@/lib/utils';
 import { useOrgHealthCheck } from '@/hooks/useOrgHealthCheck';
 import { OrgSetupWizard } from '@/components/onboarding/OrgSetupWizard';
+import { FloatingAssistantPanel, FloatingAssistantTrigger } from '@/components/dashboard/FloatingAssistantPanel';
 
 export type DashboardOutletContext = ReturnType<typeof useDashboardData> & {
   tasks: CoachTask[];
@@ -96,6 +97,7 @@ export default function DashboardLayout() {
     }
   });
   const [shareablePreview, setShareablePreview] = useState<CoachShareablePreview | null>(null);
+  const [assistantPanelOpen, setAssistantPanelOpen] = useState(false);
 
   const toggleAssistantSidebarCollapsed = useCallback(() => {
     setAssistantSidebarCollapsed((prev) => {
@@ -120,6 +122,15 @@ export default function DashboardLayout() {
       p.startsWith(ROUTES.DASHBOARD_TEAM);
     if (!inWorkspace) setMobileSidebarOpen(false);
   }, [location.pathname]);
+
+  // Auto-open the floating assistant panel when navigating to /dashboard/assistant
+  // and redirect to /dashboard so the panel overlays the Today tab.
+  useEffect(() => {
+    if (location.pathname.startsWith(ROUTES.DASHBOARD_ASSISTANT)) {
+      setAssistantPanelOpen(true);
+      navigate(ROUTES.DASHBOARD, { replace: true });
+    }
+  }, [location.pathname, navigate]);
 
   const {
     loading,
@@ -330,11 +341,10 @@ export default function DashboardLayout() {
     path.startsWith(ROUTES.DASHBOARD_CLIENTS) ||
     path.startsWith(ROUTES.DASHBOARD_WORK) ||
     path.startsWith(ROUTES.DASHBOARD_TEAM);
-  // Assistant tab manages its own scroll; other workspace tabs use the outer container
+  // Artifacts tab manages its own scroll; other workspace tabs use the outer container.
+  // The assistant is now a floating panel, not a tab.
   const isAssistantTab =
-    path === ROUTES.DASHBOARD ||
-    path === ROUTES.DASHBOARD_ARTIFACTS ||
-    path.startsWith(ROUTES.DASHBOARD_ASSISTANT);
+    path === ROUTES.DASHBOARD_ARTIFACTS;
   const showClientSearch =
     path.startsWith(ROUTES.DASHBOARD_CLIENTS) ||
     path.startsWith(ROUTES.DASHBOARD_TEAM);
@@ -342,9 +352,14 @@ export default function DashboardLayout() {
   const sidebarProps = {
     threads: assistantApi.threads,
     activeThreadId: assistantApi.activeThreadId,
-    onNewChat: assistantApi.createNewThread,
+    onNewChat: () => {
+      assistantApi.createNewThread();
+      setAssistantPanelOpen(true);
+      setMobileSidebarOpen(false);
+    },
     onSelectThread: (id: string) => {
       assistantApi.selectThread(id);
+      setAssistantPanelOpen(true);
       setMobileSidebarOpen(false);
     },
     onDeleteThread: assistantApi.deleteThread,
@@ -607,6 +622,18 @@ export default function DashboardLayout() {
             deleteSnapshotDialog={dashboardData.deleteSnapshotDialog}
             setDeleteSnapshotDialog={dashboardData.setDeleteSnapshotDialog}
             onDeleteSnapshot={dashboardData.handleDeleteSnapshot}
+          />
+
+          {/* Global floating assistant — accessible from every dashboard view */}
+          {isWorkspaceShell && !assistantPanelOpen && (
+            <FloatingAssistantTrigger
+              onClick={() => setAssistantPanelOpen(true)}
+              hasActivity={assistantApi.sending}
+            />
+          )}
+          <FloatingAssistantPanel
+            open={assistantPanelOpen}
+            onOpenChange={setAssistantPanelOpen}
           />
         </AppShell>
       </CoachAssistantProvider>

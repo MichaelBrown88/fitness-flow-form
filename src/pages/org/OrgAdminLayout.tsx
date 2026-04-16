@@ -331,7 +331,7 @@ export default function OrgAdminLayout() {
         <NavLink to={ROUTES.ORG_DASHBOARD_RETENTION} className={tabClass}>
           Retention
         </NavLink>
-        <NavLink to={ROUTES.ORG_DASHBOARD_BILLING} className={tabClass}>
+        <NavLink to={ROUTES.BILLING} className={tabClass}>
           Billing
         </NavLink>
         <NavLink to={ROUTES.ORG_DASHBOARD_INTEGRATIONS} className={tabClass}>

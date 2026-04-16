@@ -15,6 +15,7 @@ import { UI_COMMAND_MENU } from '@/constants/ui';
 import { useClientDetail } from '@/hooks/useClientDetail';
 import { useAuth } from '@/hooks/useAuth';
 import { getRoadmapForClient } from '@/services/roadmaps';
+import type { RoadmapItem } from '@/lib/roadmap/types';
 import {
   ArrowLeft,
   UserPlus,
@@ -24,6 +25,7 @@ import {
   Settings as SettingsIcon,
   Trash2,
   Loader2,
+  ChevronDown,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -53,6 +55,8 @@ export type ClientDetailOutletContext = UseClientDetailResult & {
    * assessment save. The coach dashboard surfaces this as a "plan may be outdated" hint.
    */
   isRoadmapStale: boolean;
+  /** ARC milestone items — available for inline progress display on overview. */
+  roadmapItems: RoadmapItem[];
 };
 
 function buildClientPath(name: string, sub?: string): string {
@@ -104,6 +108,7 @@ export default function ClientDetailLayout() {
   const isArchived = profile?.status === 'archived';
   const [roadmapStatus, setRoadmapStatus] = useState<'loading' | 'none' | 'draft' | 'sent'>('loading');
   const [isRoadmapStale, setIsRoadmapStale] = useState(false);
+  const [roadmapItems, setRoadmapItems] = useState<RoadmapItem[]>([]);
   const { effectiveOrgId } = useAuth();
 
   useEffect(() => {
@@ -136,9 +141,11 @@ export default function ClientDetailLayout() {
         if (cancelled) return;
         if (!roadmapDoc) {
           setRoadmapStatus('none');
+          setRoadmapItems([]);
           return;
         }
         setRoadmapStatus(roadmapDoc.shareToken ? 'sent' : 'draft');
+        setRoadmapItems(roadmapDoc.items ?? []);
 
         // Drift detection: stale when the plan's assessmentId differs from the latest
         // assessment that refreshed currentScores (i.e. new assessment run since plan was built).
@@ -287,7 +294,7 @@ export default function ClientDetailLayout() {
         </h1>
       </div>
 
-      <nav className="mb-6 flex w-fit flex-wrap items-center gap-1 rounded-lg bg-muted p-1">
+      <nav className="mb-6 flex w-fit items-center gap-1 rounded-lg bg-muted p-1">
         <NavLink
           to={buildClientPath(clientName)}
           end
@@ -303,23 +310,7 @@ export default function ClientDetailLayout() {
             `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground-secondary'}`
           }
         >
-          Client Report
-        </NavLink>
-        <NavLink
-          to={buildClientPath(clientName, 'roadmap')}
-          className={({ isActive }) =>
-            `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground-secondary'}`
-          }
-        >
-          ARC™
-        </NavLink>
-        <NavLink
-          to={buildClientPath(clientName, 'achievements')}
-          className={({ isActive }) =>
-            `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground-secondary'}`
-          }
-        >
-          Milestones
+          Report
         </NavLink>
         <NavLink
           to={buildClientPath(clientName, 'history')}
@@ -329,17 +320,42 @@ export default function ClientDetailLayout() {
         >
           History
         </NavLink>
-        <NavLink
-          to={buildClientPath(clientName, 'settings')}
-          className={({ isActive }) =>
-            `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground-secondary'}`
-          }
-        >
-          Settings
-        </NavLink>
+
+        {/* Secondary pages: accessible but not primary workflow tabs */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className={`px-3 py-2 text-sm font-bold rounded-lg ${
+                location.pathname.includes('/roadmap') || location.pathname.includes('/achievements') || location.pathname.includes('/settings')
+                  ? 'bg-card text-foreground'
+                  : 'text-muted-foreground hover:text-foreground-secondary'
+              }`}
+            >
+              <span className="flex items-center gap-1">More <ChevronDown className="h-3 w-3" /></span>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-44 rounded-lg">
+            <DropdownMenuItem asChild>
+              <Link to={buildClientPath(clientName, 'roadmap')} className="py-2.5 text-sm font-medium">
+                <Map className="mr-2 h-4 w-4" /> ARC™
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to={buildClientPath(clientName, 'achievements')} className="py-2.5 text-sm font-medium">
+                Milestones
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to={buildClientPath(clientName, 'settings')} className="py-2.5 text-sm font-medium">
+                <SettingsIcon className="mr-2 h-4 w-4" /> Settings
+              </Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </nav>
 
-      <Outlet context={{ ...clientData, roadmapStatus, isRoadmapStale } satisfies ClientDetailOutletContext} />
+      <Outlet context={{ ...clientData, roadmapStatus, isRoadmapStale, roadmapItems } satisfies ClientDetailOutletContext} />
 
       <Dialog open={!!deleteDialog} onOpenChange={(open) => !open && setDeleteDialog(null)}>
         <DialogContent>
