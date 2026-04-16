@@ -40,23 +40,29 @@ export function ArchiveClientDialog({
   const [reactivateMode, setReactivateMode] = useState<'resume' | 'reset'>('reset');
   const [submitting, setSubmitting] = useState(false);
 
-  const handleArchive = async () => {
+  const handleArchive = async (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent AlertDialogAction from auto-closing before async completes
     setSubmitting(true);
     try {
       await onArchive(reason.trim() || undefined);
       onOpenChange(false);
       setReason('');
+    } catch {
+      // Error toast is shown by the hook handler; keep dialog open so user can retry
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleReactivate = async () => {
+  const handleReactivate = async (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent AlertDialogAction from auto-closing before async completes
     setSubmitting(true);
     try {
       await onReactivate(reactivateMode);
       onOpenChange(false);
       setReactivateMode('reset');
+    } catch {
+      // Error toast is shown by the hook handler; keep dialog open so user can retry
     } finally {
       setSubmitting(false);
     }

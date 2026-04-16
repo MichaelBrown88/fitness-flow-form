@@ -696,7 +696,6 @@ export function useClientDetail(): UseClientDetailResult {
     } catch (err) {
       logger.error('Failed to archive client', 'CLIENT_DETAIL', err);
       toast({ title: 'Failed to archive', description: err instanceof Error ? err.message : 'Please try again.', variant: 'destructive' });
-      throw err;
     }
   }, [readOrgId, clientName, user, userProfile, toast]);
 
@@ -719,7 +718,6 @@ export function useClientDetail(): UseClientDetailResult {
     } catch (err) {
       logger.error('Failed to reactivate client', 'CLIENT_DETAIL', err);
       toast({ title: 'Failed to reactivate', description: err instanceof Error ? err.message : 'Please try again.', variant: 'destructive' });
-      throw err;
     }
   }, [readOrgId, clientName, userProfile, toast]);
 

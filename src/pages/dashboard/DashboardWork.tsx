@@ -100,10 +100,8 @@ export default function DashboardWork() {
         )}
       </div>
 
-      {/* Desktop: two-column layout. Mobile/tablet: vertical stack. */}
-      <div className="grid gap-6 lg:gap-8 lg:grid-cols-[1fr_420px] xl:grid-cols-[1fr_480px] lg:items-start">
-      {/* Left column: action queues */}
-      <div className="space-y-6 min-w-0">
+      {/* Action queues + calendar stacked full width */}
+      <div className="space-y-6">
 
       {/* Remote intake ready — highest-priority, lowest-friction assessments */}
       {remoteReadyClients.length > 0 && (
@@ -236,39 +234,34 @@ export default function DashboardWork() {
         </section>
       )}
 
-      </div>{/* end left column */}
+      {/* Calendar — full width, default density for bigger cells */}
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-bold text-foreground-secondary">
+            Calendar
+          </h2>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1.5 text-xs text-muted-foreground"
+            disabled
+            title="Connect a third-party calendar — coming soon"
+          >
+            <Link2 className="h-3.5 w-3.5" />
+            Connect calendar
+          </Button>
+        </div>
+        <div className="overflow-hidden rounded-2xl bg-card shadow-sm p-4 sm:p-6">
+          <CalendarView
+            reassessmentQueue={ctx.reassessmentQueue}
+            onNewAssessmentForClient={ctx.handleNewAssessmentForClient}
+            organizationId={ctx.profile?.organizationId}
+            onScheduleChanged={ctx.refreshSchedules}
+          />
+        </div>
+      </section>
 
-      {/* Right column: calendar */}
-      <div className="min-w-0 lg:sticky lg:top-4">
-        <section>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-bold text-foreground-secondary">
-              Calendar
-            </h2>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 gap-1.5 text-xs text-muted-foreground"
-              disabled
-              title="Connect a third-party calendar — coming soon"
-            >
-              <Link2 className="h-3.5 w-3.5" />
-              Connect calendar
-            </Button>
-          </div>
-          <div className="overflow-hidden rounded-2xl bg-card shadow-sm p-5 border border-dashed border-border/50">
-            <CalendarView
-              reassessmentQueue={ctx.reassessmentQueue}
-              onNewAssessmentForClient={ctx.handleNewAssessmentForClient}
-              organizationId={ctx.profile?.organizationId}
-              onScheduleChanged={ctx.refreshSchedules}
-              density="compact"
-            />
-          </div>
-        </section>
-      </div>{/* end right column */}
-
-      </div>{/* end grid */}
+      </div>{/* end space-y-6 */}
     </div>
   );
 }
