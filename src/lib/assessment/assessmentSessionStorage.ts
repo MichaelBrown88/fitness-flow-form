@@ -36,12 +36,20 @@ export type PartialAssessmentSessionRecord = {
   category?: string;
 };
 
+export type PillarCadenceHint = {
+  pillar: string;
+  status: 'overdue' | 'due-soon' | 'up-to-date';
+  daysFromDue?: number;
+};
+
 export type PrefillClientSessionRecord = {
   clientName?: string;
   fullName?: string;
   dateOfBirth?: string;
   email?: string;
   phone?: string;
+  /** Cadence hints for the plan wizard — which pillars are due/overdue */
+  pillarCadenceHints?: PillarCadenceHint[];
 };
 
 export type EditAssessmentSessionPayload = {
@@ -212,6 +220,12 @@ export function readPrefillClientNameHint(): string {
   if (typeof fromFull === 'string' && fromFull.trim()) return fromFull.trim();
   const name = rec.clientName;
   return typeof name === 'string' ? name : '';
+}
+
+/** Cadence hints for the plan wizard — which pillars are due/overdue. */
+export function readPrefillPillarCadenceHints(): PillarCadenceHint[] {
+  const rec = safeParse<PrefillClientSessionRecord>(readPrefillClientRaw());
+  return rec?.pillarCadenceHints ?? [];
 }
 
 /** Display name for setup step: fullName ?? clientName from prefill JSON. */

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import { CalendarView } from '@/components/dashboard/sub-components/CalendarView';
 import { WorkClientList } from '@/components/dashboard/sub-components/WorkClientList';
@@ -7,6 +7,7 @@ import { Link2, Users, ClipboardCheck, AlertTriangle, CheckCircle2, ArrowRight, 
 import { useAuth } from '@/hooks/useAuth';
 import { staffPreferredFirstName } from '@/lib/utils/staffDisplayName';
 import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
+import { GettingStartedCard } from '@/components/dashboard/GettingStartedCard';
 import type { DashboardOutletContext } from './DashboardLayout';
 
 function greetingHour(): string {
@@ -50,9 +51,22 @@ export default function DashboardWork() {
     return { overdueCount: overdue, dueSoonCount: dueSoon, attentionCount: overdue + dueSoon };
   }, [ctx.reassessmentQueue]);
 
+  // Wrap the assessment handler to inject cadence hints from the queue
+  const handleStartAssessmentWithHints = useCallback((clientName: string, pillar: string) => {
+    const queueItem = ctx.reassessmentQueue?.queue.find(q => q.clientName === clientName);
+    const hints = queueItem?.pillarSchedules.map(ps => ({
+      pillar: ps.pillar,
+      status: ps.status as 'overdue' | 'due-soon' | 'up-to-date',
+      daysFromDue: ps.daysFromDue,
+    }));
+    ctx.handleNewAssessmentForClient(clientName, pillar, hints);
+  }, [ctx]);
+
   if (!ctx.reassessmentQueue) return null;
 
   const totalClients = ctx.analytics?.totalClients ?? 0;
+  const totalAssessments = ctx.analytics?.totalAssessments ?? 0;
+  const hasSharedReport = (ctx.clientGroups ?? []).some(c => Boolean(c.shareToken));
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6 px-3 sm:px-5 py-6 sm:py-10">
@@ -88,6 +102,13 @@ export default function DashboardWork() {
           </div>
         )}
       </div>
+
+      {/* Getting started checklist for new users */}
+      <GettingStartedCard
+        totalClients={totalClients}
+        totalAssessments={totalAssessments}
+        hasSharedReport={hasSharedReport}
+      />
 
       {/* Remote intake ready — highest-priority, lowest-friction assessments */}
       {remoteReadyClients.length > 0 && (
@@ -144,7 +165,7 @@ export default function DashboardWork() {
           <WorkClientList
             queue={ctx.reassessmentQueue.queue}
             search={ctx.search}
-            onStartAssessment={ctx.handleNewAssessmentForClient}
+            onStartAssessment={handleStartAssessmentWithHints}
           />
         </div>
       </section>

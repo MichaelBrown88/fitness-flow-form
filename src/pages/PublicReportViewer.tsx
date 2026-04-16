@@ -4,6 +4,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import AppShell from '@/components/layout/AppShell';
 import { usePublicReport } from '@/hooks/usePublicReport';
+import { getRoadmapByShareToken } from '@/services/roadmaps';
+import { useTokenAchievements } from '@/hooks/useTokenAchievements';
+import type { RoadmapItem, RoadmapPhase } from '@/lib/roadmap/types';
 import { getPublicSnapshot } from '@/services/publicReports';
 import AssessmentVersionSelector from '@/components/reports/AssessmentVersionSelector';
 import type { VersionSelectorSnapshot } from '@/components/reports/AssessmentVersionSelector';
@@ -32,9 +35,13 @@ import {
 } from '@/components/client/ClientConsentGate';
 import { ShareResultsDrawer } from '@/components/client/ShareResultsDrawer';
 import { buildPillarCards } from '@/lib/share/pillarCardData';
-import { Share2 } from 'lucide-react';
+import { Share2, Target, Trophy } from 'lucide-react';
 
 const ClientReport = lazy(() => import('@/components/reports/ClientReport'));
+const RoadmapClientView = lazy(() => import('@/components/roadmap/RoadmapClientView'));
+const StreakDisplay = lazy(() => import('@/components/achievements/StreakDisplay').then(m => ({ default: m.StreakDisplay })));
+const TrophyGrid = lazy(() => import('@/components/achievements/TrophyGrid').then(m => ({ default: m.TrophyGrid })));
+const MilestoneProgress = lazy(() => import('@/components/achievements/MilestoneProgress').then(m => ({ default: m.MilestoneProgress })));
 
 interface PublicReportHelmetProps {
   token: string | undefined;
@@ -148,6 +155,26 @@ const PublicReportViewer = () => {
       }
     }
   }, [token, formData, error]);
+
+  // Inline roadmap data (loaded after report for unified scroll)
+  const [roadmapData, setRoadmapData] = useState<{
+    items: RoadmapItem[];
+    summary: string;
+    activePhase?: RoadmapPhase;
+    clientGoals?: string[];
+  } | null>(null);
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    getRoadmapByShareToken(token).then(doc => {
+      if (cancelled || !doc) return;
+      setRoadmapData({ items: doc.items, summary: doc.summary, activePhase: doc.activePhase, clientGoals: doc.clientGoals });
+    }).catch(() => { /* non-critical */ });
+    return () => { cancelled = true; };
+  }, [token]);
+
+  // Inline achievements data
+  const achievements = useTokenAchievements(token);
 
   const [selectedVersionIndex, setSelectedVersionIndex] = useState(0);
   const [versionPage, setVersionPage] = useState(0);
@@ -556,6 +583,54 @@ const PublicReportViewer = () => {
             </div>
           ) : null;
         })()
+      )}
+
+      {/* Inline ARC Roadmap section */}
+      {roadmapData && roadmapData.items.length > 0 && (
+        <div className="max-w-2xl mx-auto px-3 sm:px-4 md:px-6 py-8" id="roadmap">
+          <div className="flex items-center gap-2 mb-4">
+            <Target className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-bold text-foreground">Your ARC™ Plan</h2>
+          </div>
+          <Suspense fallback={<Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />}>
+            <RoadmapClientView
+              items={roadmapData.items}
+              summary={roadmapData.summary}
+              activePhase={roadmapData.activePhase}
+              clientGoals={roadmapData.clientGoals}
+              embedded
+            />
+          </Suspense>
+        </div>
+      )}
+
+      {/* Inline Achievements section */}
+      {!achievements.isLoading && (achievements.streaks.length > 0 || achievements.trophies.length > 0 || achievements.milestones.length > 0) && (
+        <div className="max-w-2xl mx-auto px-3 sm:px-4 md:px-6 py-8" id="achievements">
+          <div className="flex items-center gap-2 mb-4">
+            <Trophy className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-bold text-foreground">Milestones</h2>
+            <span className="text-xs font-bold text-muted-foreground ml-auto">
+              {achievements.unlockedCount} unlocked
+            </span>
+          </div>
+          <div className="space-y-6">
+            <Suspense fallback={null}>
+              {achievements.streaks.length > 0 && (
+                <StreakDisplay
+                  currentStreak={achievements.currentStreak}
+                  streaks={achievements.streaks}
+                />
+              )}
+              {achievements.trophies.length > 0 && (
+                <TrophyGrid trophies={achievements.trophies} />
+              )}
+              {achievements.milestones.length > 0 && (
+                <MilestoneProgress milestones={achievements.milestones} />
+              )}
+            </Suspense>
+          </div>
+        </div>
       )}
 
       {token && (
