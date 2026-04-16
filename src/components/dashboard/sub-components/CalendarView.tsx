@@ -42,7 +42,7 @@ interface CalendarViewProps {
 }
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const MAX_VISIBLE_PILLS = 3;
+const MAX_VISIBLE_PILLS = 5;
 const EDGE_SCROLL_ZONE = 0.12;
 const EDGE_SCROLL_THROTTLE_MS = 400;
 
@@ -341,8 +341,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               onDrop={(e) => handleDrop(e, day)}
               className={`relative text-left transition-colors rounded-lg ${
                 compact
-                  ? 'min-h-[52px] p-1.5 sm:min-h-[60px]'
-                  : 'min-h-[72px] p-1.5 sm:min-h-[96px] sm:p-2'
+                  ? 'min-h-[72px] p-1.5 sm:min-h-[80px]'
+                  : 'min-h-[88px] p-1.5 sm:min-h-[110px] sm:p-2'
               } ${
                 inMonth ? 'hover:bg-muted/60' : 'opacity-40'
               } ${clients.length > 0 ? 'cursor-pointer' : 'cursor-default'} ${

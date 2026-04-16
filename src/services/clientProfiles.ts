@@ -1030,8 +1030,10 @@ export async function batchArchiveClients(params: {
   clientSlugs: string[];
   archivedBy: string;
   profile?: UserProfile | null;
+  /** Original client names for fallback lookup when slugs don't match */
+  clientNames?: string[];
 }): Promise<void> {
-  const { clientSlugs, archivedBy, profile } = params;
+  const { clientSlugs, archivedBy, profile, clientNames } = params;
   const validOrgId = validateOrganizationId(params.organizationId, profile);
   const db = getDb();
   const payload: UpdateData<DocumentData> = {
@@ -1046,8 +1048,27 @@ export async function batchArchiveClients(params: {
     updatedAt: serverTimestamp(),
   };
 
-  for (let i = 0; i < clientSlugs.length; i += CLIENT_BATCH_WRITE_MAX) {
-    const chunk = clientSlugs.slice(i, i + CLIENT_BATCH_WRITE_MAX);
+  // Resolve actual doc paths (handles UUID-migrated clients)
+  const resolvedSlugs: string[] = [];
+  for (let idx = 0; idx < clientSlugs.length; idx++) {
+    const slug = clientSlugs[idx];
+    const expectedRef = doc(db, ORGANIZATION.clients.doc(validOrgId, slug));
+    const snap = await getDoc(expectedRef);
+    if (snap.exists()) {
+      resolvedSlugs.push(slug);
+    } else if (clientNames?.[idx]) {
+      // Slug doesn't match a real doc — search by name
+      const clientsCol = collection(db, ORGANIZATION.clients.collection(validOrgId));
+      const nameQuery = query(clientsCol, where('clientName', '==', clientNames[idx]), limit(1));
+      const found = await getDocs(nameQuery);
+      resolvedSlugs.push(found.empty ? slug : found.docs[0].id);
+    } else {
+      resolvedSlugs.push(slug);
+    }
+  }
+
+  for (let i = 0; i < resolvedSlugs.length; i += CLIENT_BATCH_WRITE_MAX) {
+    const chunk = resolvedSlugs.slice(i, i + CLIENT_BATCH_WRITE_MAX);
     const batch = writeBatch(db);
     for (const slug of chunk) {
       const ref = doc(db, ORGANIZATION.clients.doc(validOrgId, slug));

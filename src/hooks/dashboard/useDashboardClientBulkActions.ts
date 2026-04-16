@@ -60,7 +60,7 @@ export function useDashboardClientBulkActions(options: UseDashboardClientBulkAct
   );
 
   const runArchive = useCallback(
-    async (clientSlugs: string[]) => {
+    async (clientSlugs: string[], clientNames?: string[]) => {
       const orgId = writeOrganizationId;
       const uid = coachUid;
       if (!orgId || !uid || clientSlugs.length === 0) return;
@@ -71,6 +71,7 @@ export function useDashboardClientBulkActions(options: UseDashboardClientBulkAct
           clientSlugs,
           archivedBy: uid,
           profile: profile ?? null,
+          clientNames,
         });
         toast({
           title: DASHBOARD_TASKS.BULK_TOAST_ARCHIVED_TITLE,
