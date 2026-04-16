@@ -3,7 +3,7 @@ import { useOutletContext, useNavigate } from 'react-router-dom';
 import { CalendarView } from '@/components/dashboard/sub-components/CalendarView';
 import { WorkClientList } from '@/components/dashboard/sub-components/WorkClientList';
 import { Button } from '@/components/ui/button';
-import { Link2, Users, ClipboardCheck, AlertTriangle, CheckCircle2, ArrowRight, Sparkles, TrendingDown, Share2 } from 'lucide-react';
+import { Users, ClipboardCheck, AlertTriangle, CheckCircle2, ArrowRight, Sparkles, TrendingDown, Share2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { staffPreferredFirstName } from '@/lib/utils/staffDisplayName';
 import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
@@ -100,8 +100,9 @@ export default function DashboardWork() {
         )}
       </div>
 
-      {/* Action queues + calendar stacked full width */}
-      <div className="space-y-6">
+      {/* Two-column: queues left, calendar right */}
+      <div className="grid gap-6 lg:gap-8 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px] lg:items-start">
+      <div className="space-y-6 min-w-0">
 
       {/* Remote intake ready — highest-priority, lowest-friction assessments */}
       {remoteReadyClients.length > 0 && (
@@ -234,34 +235,27 @@ export default function DashboardWork() {
         </section>
       )}
 
-      {/* Calendar — full width, default density for bigger cells */}
-      <section>
-        <div className="mb-3 flex items-center justify-between">
+      </div>{/* end left column */}
+
+      {/* Right column: calendar */}
+      <div className="min-w-0 lg:sticky lg:top-4">
+        <div className="mb-3">
           <h2 className="text-sm font-bold text-foreground-secondary">
             Calendar
           </h2>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 gap-1.5 text-xs text-muted-foreground"
-            disabled
-            title="Connect a third-party calendar — coming soon"
-          >
-            <Link2 className="h-3.5 w-3.5" />
-            Connect calendar
-          </Button>
         </div>
-        <div className="overflow-hidden rounded-2xl bg-card shadow-sm p-4 sm:p-6">
+        <div className="overflow-hidden rounded-2xl bg-card shadow-sm p-3">
           <CalendarView
             reassessmentQueue={ctx.reassessmentQueue}
             onNewAssessmentForClient={ctx.handleNewAssessmentForClient}
             organizationId={ctx.profile?.organizationId}
             onScheduleChanged={ctx.refreshSchedules}
+            density="compact"
           />
         </div>
-      </section>
+      </div>{/* end right column */}
 
-      </div>{/* end space-y-6 */}
+      </div>{/* end grid */}
     </div>
   );
 }

@@ -79,14 +79,13 @@ export function ClientPill({ entry, dateKey, day, dayClients, onPillClick, isSel
       draggable
       onDragStart={handleDragStart}
       onClick={handleClick}
-      className={`flex cursor-grab items-center gap-1 truncate rounded-md border px-1.5 py-1 text-[10px] font-semibold leading-tight active:cursor-grabbing sm:text-[11px] ${STATUS_COLORS[entry.status]} ${
-        isSelected ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : ''
+      className={`flex cursor-grab items-center gap-1 truncate rounded px-1 py-0.5 text-[10px] font-medium leading-tight active:cursor-grabbing ${STATUS_COLORS[entry.status]} ${
+        isSelected ? 'ring-1 ring-foreground/30' : ''
       }`}
-      title={`${displayName} — ${getPillarLabel(entry.pillar)} (Ctrl/Cmd+click to select multiple)`}
+      title={`${displayName} — ${getPillarLabel(entry.pillar)}`}
     >
-      <GripVertical className="h-2.5 w-2.5 shrink-0 opacity-40" />
       <span className="truncate">{firstName}</span>
-      <span className="opacity-60 shrink-0">{pillarAbbrev(entry.pillar)}</span>
+      <span className="opacity-50 shrink-0 text-[9px]">{pillarAbbrev(entry.pillar)}</span>
     </div>
   );
 }

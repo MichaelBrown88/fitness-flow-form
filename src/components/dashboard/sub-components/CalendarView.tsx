@@ -285,7 +285,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         >
           <ChevronLeft className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
         </button>
-        <h3 className={`font-bold text-foreground ${compact ? 'text-xs' : 'text-sm'}`}>
+        <h3 className={`font-semibold text-foreground ${compact ? 'text-sm' : 'text-base'}`}>
           {format(currentMonth, 'MMMM yyyy')}
         </h3>
         <button
@@ -310,8 +310,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         {WEEKDAY_LABELS.map((d) => (
           <div
             key={d}
-            className={`text-center font-black uppercase tracking-[0.15em] text-muted-foreground ${
-              compact ? 'py-1 text-[9px]' : 'py-2 text-[10px]'
+            className={`text-center font-semibold text-muted-foreground ${
+              compact ? 'py-1.5 text-[10px]' : 'py-2 text-[11px]'
             }`}
           >
             {d}
@@ -321,7 +321,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
       <div
         ref={calendarGridRef}
-        className="grid grid-cols-7 gap-px overflow-hidden rounded-xl border border-border bg-border"
+        className="grid grid-cols-7 gap-0.5 overflow-hidden rounded-xl"
       >
         {calendarDays.map((day) => {
           const key = format(day, 'yyyy-MM-dd');
@@ -339,26 +339,26 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               onDragOver={(e) => handleDragOver(e, key)}
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, day)}
-              className={`relative text-left transition-colors ${
+              className={`relative text-left transition-colors rounded-lg ${
                 compact
-                  ? 'min-h-[56px] p-1 sm:min-h-[64px]'
-                  : 'min-h-[72px] p-1 sm:min-h-[96px] sm:p-1.5'
+                  ? 'min-h-[52px] p-1.5 sm:min-h-[60px]'
+                  : 'min-h-[72px] p-1.5 sm:min-h-[96px] sm:p-2'
               } ${
-                inMonth ? 'bg-card hover:bg-muted/50' : 'bg-muted/40'
+                inMonth ? 'hover:bg-muted/60' : 'opacity-40'
               } ${clients.length > 0 ? 'cursor-pointer' : 'cursor-default'} ${
-                isDropTarget ? 'bg-violet-500/15 ring-2 ring-inset ring-violet-500 dark:bg-violet-950/40' : ''
+                isDropTarget ? 'bg-primary/10 ring-1 ring-inset ring-primary/30' : ''
               }`}
             >
               <span
                 className={cn(
                   'font-semibold',
-                  compact ? 'text-[9px]' : 'text-[10px] sm:text-xs',
+                  compact ? 'text-[10px]' : 'text-xs sm:text-sm',
                   today &&
                     (compact
-                      ? 'inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground'
-                      : 'inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground sm:h-6 sm:w-6'),
+                      ? 'inline-flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-background'
+                      : 'inline-flex h-6 w-6 items-center justify-center rounded-full bg-foreground text-background'),
                   !today && inMonth && 'text-foreground',
-                  !today && !inMonth && 'text-muted-foreground',
+                  !today && !inMonth && 'text-muted-foreground/60',
                 )}
               >
                 {format(day, 'd')}
@@ -395,7 +395,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       )}
 
       {selectedEntries.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-violet-300/40 bg-violet-500/10 px-3 py-2 dark:border-violet-500/30 dark:bg-violet-950/40">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/50 px-3 py-2">
           <span className="text-sm font-semibold text-foreground">
             {selectedEntries.length} selected
           </span>
@@ -404,7 +404,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 gap-1.5 border-violet-300/50 bg-background text-violet-700 hover:bg-violet-500/10 dark:border-violet-500/40 dark:text-violet-300 dark:hover:bg-violet-950/50"
+                className="h-8 gap-1.5"
               >
                 <CalendarIcon className="h-3.5 w-3.5" />
                 Change date
