@@ -276,7 +276,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   );
 
   return (
-    <div ref={calendarWrapperRef} className={compact ? 'space-y-2' : 'space-y-4'}>
+    <div ref={calendarWrapperRef} className={`flex flex-col ${compact ? 'gap-2' : 'gap-4'} flex-1 min-h-0`}>
       <div className="flex items-center justify-between">
         <button
           type="button"
@@ -321,7 +321,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
       <div
         ref={calendarGridRef}
-        className="grid grid-cols-7 gap-0.5 overflow-hidden rounded-xl"
+        className="grid grid-cols-7 grid-rows-[repeat(auto-fill,1fr)] gap-0.5 overflow-hidden rounded-xl flex-1 min-h-0"
       >
         {calendarDays.map((day) => {
           const key = format(day, 'yyyy-MM-dd');

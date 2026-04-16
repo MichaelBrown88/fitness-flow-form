@@ -66,7 +66,7 @@ export default function DashboardWork() {
   const totalClients = ctx.analytics?.totalClients ?? 0;
 
   return (
-    <div className="mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10">
+    <div className="mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 flex flex-col min-h-0 flex-1">
       {/* Greeting + roster pulse */}
       <div className="space-y-3 mb-6 lg:mb-8">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl lg:text-4xl">
@@ -100,8 +100,8 @@ export default function DashboardWork() {
         )}
       </div>
 
-      {/* Two-column: queues left, calendar right */}
-      <div className="grid gap-6 lg:gap-8 lg:grid-cols-[1fr_1fr] lg:items-start">
+      {/* Two-column: queues left, calendar right (calendar stretches to viewport bottom) */}
+      <div className="grid gap-6 lg:gap-8 lg:grid-cols-[1fr_1fr] lg:items-stretch flex-1 min-h-0">
       <div className="space-y-6 min-w-0">
 
       {/* Remote intake ready — highest-priority, lowest-friction assessments */}
@@ -237,14 +237,14 @@ export default function DashboardWork() {
 
       </div>{/* end left column */}
 
-      {/* Right column: calendar */}
-      <div className="min-w-0 lg:sticky lg:top-4">
+      {/* Right column: calendar — stretches to fill viewport height */}
+      <div className="min-w-0 flex flex-col">
         <div className="mb-3">
           <h2 className="text-sm font-bold text-foreground-secondary">
             Calendar
           </h2>
         </div>
-        <div className="overflow-hidden rounded-2xl bg-card shadow-sm p-3">
+        <div className="overflow-hidden rounded-2xl bg-card shadow-sm p-3 flex-1 flex flex-col min-h-0">
           <CalendarView
             reassessmentQueue={ctx.reassessmentQueue}
             onNewAssessmentForClient={ctx.handleNewAssessmentForClient}
