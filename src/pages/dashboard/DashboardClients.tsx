@@ -12,39 +12,39 @@ export default function DashboardClients() {
   const dueSoon = ctx.reassessmentQueue?.summary?.dueSoon ?? 0;
 
   return (
-    <div className="flex flex-col gap-5 py-6 sm:py-8 mt-auto mb-auto">
+    <div className="flex flex-col gap-6 py-6 sm:py-8 lg:py-10 mt-auto mb-auto px-4 sm:px-6 lg:px-8">
       {/* Stats row */}
-      <div className="mx-auto w-full max-w-5xl px-3 sm:px-4">
+      <div className="w-full">
         <div className="flex flex-wrap gap-3">
-          <div className="flex items-center gap-3 rounded-xl bg-muted px-4 py-3 min-w-[110px]">
-            <Users className="h-4 w-4 text-muted-foreground shrink-0" />
+          <div className="flex items-center gap-3 rounded-xl bg-muted px-5 py-4 min-w-[120px]">
+            <Users className="h-5 w-5 text-muted-foreground shrink-0" />
             <div>
               <div className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">Clients</div>
-              <div className="text-xl font-bold text-foreground">{total}</div>
+              <div className="text-2xl font-bold text-foreground">{total}</div>
             </div>
           </div>
           {overdue > 0 && (
-            <div className="flex items-center gap-3 rounded-xl bg-score-red-muted/40 border border-score-red/30 px-4 py-3 min-w-[110px]">
-              <AlertTriangle className="h-4 w-4 text-score-red-fg shrink-0" />
+            <div className="flex items-center gap-3 rounded-xl bg-score-red-muted/40 border border-score-red/30 px-5 py-4 min-w-[120px]">
+              <AlertTriangle className="h-5 w-5 text-score-red-fg shrink-0" />
               <div>
                 <div className="text-[10px] font-black uppercase tracking-[0.15em] text-score-red-fg">Overdue</div>
-                <div className="text-xl font-bold text-score-red-fg">{overdue}</div>
+                <div className="text-2xl font-bold text-score-red-fg">{overdue}</div>
               </div>
             </div>
           )}
           {dueSoon > 0 && overdue === 0 && (
-            <div className="flex items-center gap-3 rounded-xl bg-score-amber-muted/40 border border-score-amber/30 px-4 py-3 min-w-[110px]">
-              <AlertTriangle className="h-4 w-4 text-score-amber-fg shrink-0" />
+            <div className="flex items-center gap-3 rounded-xl bg-score-amber-muted/40 border border-score-amber/30 px-5 py-4 min-w-[120px]">
+              <AlertTriangle className="h-5 w-5 text-score-amber-fg shrink-0" />
               <div>
                 <div className="text-[10px] font-black uppercase tracking-[0.15em] text-score-amber-fg">Due Soon</div>
-                <div className="text-xl font-bold text-score-amber-fg">{dueSoon}</div>
+                <div className="text-2xl font-bold text-score-amber-fg">{dueSoon}</div>
               </div>
             </div>
           )}
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-5xl shrink-0">
+      <div className="w-full shrink-0">
         <UnifiedClientTable
           loadingData={ctx.loadingData}
           clients={ctx.filteredClients}
@@ -61,7 +61,7 @@ export default function DashboardClients() {
           onBulkComplete={ctx.refreshSchedules}
         />
       </div>
-      <div className="mx-auto w-full max-w-5xl min-h-0 shrink-0">
+      <div className="w-full min-h-0 shrink-0">
         <RecentAssessmentsList clients={ctx.clientGroups ?? []} />
       </div>
     </div>

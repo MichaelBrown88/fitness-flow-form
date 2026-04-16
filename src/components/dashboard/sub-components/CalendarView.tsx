@@ -341,7 +341,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               onDrop={(e) => handleDrop(e, day)}
               className={`relative text-left transition-colors ${
                 compact
-                  ? 'min-h-[48px] p-0.5 sm:min-h-[52px]'
+                  ? 'min-h-[56px] p-1 sm:min-h-[64px]'
                   : 'min-h-[72px] p-1 sm:min-h-[96px] sm:p-1.5'
               } ${
                 inMonth ? 'bg-card hover:bg-muted/50' : 'bg-muted/40'

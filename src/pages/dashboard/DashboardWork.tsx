@@ -66,10 +66,10 @@ export default function DashboardWork() {
   const totalClients = ctx.analytics?.totalClients ?? 0;
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-3 sm:px-5 py-6 sm:py-10">
+    <div className="mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10">
       {/* Greeting + roster pulse */}
-      <div className="space-y-3 mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+      <div className="space-y-3 mb-6 lg:mb-8">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl lg:text-4xl">
           {greetingHour()}, {coachFirst}.
         </h1>
         {totalClients > 0 && (
@@ -101,7 +101,7 @@ export default function DashboardWork() {
       </div>
 
       {/* Desktop: two-column layout. Mobile/tablet: vertical stack. */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_380px] lg:items-start">
+      <div className="grid gap-6 lg:gap-8 lg:grid-cols-[1fr_420px] xl:grid-cols-[1fr_480px] lg:items-start">
       {/* Left column: action queues */}
       <div className="space-y-6 min-w-0">
 
@@ -110,17 +110,17 @@ export default function DashboardWork() {
         <section>
           <div className="mb-2 flex items-center gap-2">
             <Sparkles className="h-3.5 w-3.5 text-score-green-fg" />
-            <h2 className="text-sm font-semibold text-foreground-secondary">
+            <h2 className="text-sm font-bold text-foreground-secondary">
               Ready for Studio
             </h2>
             <span className="inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-score-green px-1 text-[10px] font-bold text-white tabular-nums">
               {remoteReadyClients.length}
             </span>
           </div>
-          <div className="overflow-hidden rounded-2xl bg-card shadow-sm border-l-4 border-l-score-green">
-            <ul className="divide-y divide-border/40 px-3">
+          <div className="overflow-hidden rounded-2xl bg-card shadow-sm">
+            <ul className="divide-y divide-border/40 px-4">
               {remoteReadyClients.map(client => (
-                <li key={client.id} className="flex items-center justify-between gap-3 py-3">
+                <li key={client.id} className="flex items-center justify-between gap-3 py-4 border-l-[3px] border-l-score-green pl-2">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-foreground truncate">
                       {formatClientDisplayName(client.name)}
@@ -147,7 +147,7 @@ export default function DashboardWork() {
       {/* Needs Attention queue */}
       <section>
         <div className="mb-2 flex items-center gap-2">
-          <h2 className="text-sm font-semibold text-foreground-secondary">
+          <h2 className="text-sm font-bold text-foreground-secondary">
             Needs Attention
           </h2>
           {attentionCount > 0 && (
@@ -170,14 +170,14 @@ export default function DashboardWork() {
         <section>
           <div className="mb-2 flex items-center gap-2">
             <TrendingDown className="h-3.5 w-3.5 text-score-red-fg" />
-            <h2 className="text-sm font-semibold text-foreground-secondary">
+            <h2 className="text-sm font-bold text-foreground-secondary">
               Score Drops
             </h2>
           </div>
-          <div className="overflow-hidden rounded-2xl bg-card shadow-sm border-l-4 border-l-score-red">
-            <ul className="divide-y divide-border/40 px-3">
+          <div className="overflow-hidden rounded-2xl bg-card shadow-sm">
+            <ul className="divide-y divide-border/40 px-4">
               {scoreAlerts.map(client => (
-                <li key={client.id} className="flex items-center justify-between gap-3 py-3">
+                <li key={client.id} className="flex items-center justify-between gap-3 py-4 border-l-[3px] border-l-score-red pl-2">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-foreground truncate">
                       {formatClientDisplayName(client.name)}
@@ -201,7 +201,7 @@ export default function DashboardWork() {
         <section>
           <div className="mb-2 flex items-center gap-2">
             <Share2 className="h-3.5 w-3.5 text-muted-foreground" />
-            <h2 className="text-sm font-semibold text-foreground-secondary">
+            <h2 className="text-sm font-bold text-foreground-secondary">
               Unshared Reports
             </h2>
             <span className="inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-muted px-1 text-[10px] font-bold text-muted-foreground tabular-nums">
@@ -209,9 +209,9 @@ export default function DashboardWork() {
             </span>
           </div>
           <div className="overflow-hidden rounded-2xl bg-card shadow-sm">
-            <ul className="divide-y divide-border/40 px-3">
+            <ul className="divide-y divide-border/40 px-4">
               {unsharableClients.map(client => (
-                <li key={client.id} className="flex items-center justify-between gap-3 py-3">
+                <li key={client.id} className="flex items-center justify-between gap-3 py-4">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-foreground truncate">
                       {formatClientDisplayName(client.name)}
@@ -242,7 +242,7 @@ export default function DashboardWork() {
       <div className="min-w-0 lg:sticky lg:top-4">
         <section>
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-foreground-secondary">
+            <h2 className="text-sm font-bold text-foreground-secondary">
               Calendar
             </h2>
             <Button

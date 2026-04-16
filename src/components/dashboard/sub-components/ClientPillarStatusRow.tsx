@@ -47,7 +47,7 @@ export function ClientPillarStatusRow({ item, onStartAssessment }: ClientPillarS
 
   return (
     <li className={cn(
-      "flex items-center gap-3 py-3 min-w-0 border-l-[3px] pl-2",
+      "flex items-center gap-3 py-4 min-w-0 border-l-[3px] pl-3",
       item.status === 'overdue' ? 'border-l-score-red' : item.status === 'due-soon' ? 'border-l-score-amber' : 'border-l-transparent',
     )}>
       {/* Client name */}

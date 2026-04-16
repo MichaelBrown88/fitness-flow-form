@@ -33,7 +33,7 @@ export function WorkClientList({ queue, search, onStartAssessment }: WorkClientL
   }
 
   return (
-    <ul className="divide-y divide-border/40 px-3">
+    <ul className="divide-y divide-border/40 px-4">
       {filtered.map(item => (
         <ClientPillarStatusRow
           key={item.id}

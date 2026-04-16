@@ -27,11 +27,11 @@ export interface DragPayload {
 
 const STATUS_COLORS: Record<ScheduleStatus, string> = {
   overdue:
-    'border-red-300 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/55 dark:text-red-200',
+    'border-score-red/40 bg-score-red-muted/60 text-score-red-fg',
   'due-soon':
-    'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-200',
+    'border-score-amber/40 bg-score-amber-muted/60 text-score-amber-fg',
   'up-to-date':
-    'border-border bg-muted text-foreground dark:bg-background-tertiary dark:text-muted-foreground',
+    'border-border bg-muted/50 text-muted-foreground',
 };
 
 const PILLAR_ABBREV: Record<string, string> = {
@@ -79,7 +79,7 @@ export function ClientPill({ entry, dateKey, day, dayClients, onPillClick, isSel
       draggable
       onDragStart={handleDragStart}
       onClick={handleClick}
-      className={`flex cursor-grab items-center gap-0.5 truncate rounded border px-1 py-0.5 text-[9px] font-semibold leading-tight active:cursor-grabbing sm:text-[10px] ${STATUS_COLORS[entry.status]} ${
+      className={`flex cursor-grab items-center gap-1 truncate rounded-md border px-1.5 py-1 text-[10px] font-semibold leading-tight active:cursor-grabbing sm:text-[11px] ${STATUS_COLORS[entry.status]} ${
         isSelected ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : ''
       }`}
       title={`${displayName} — ${getPillarLabel(entry.pillar)} (Ctrl/Cmd+click to select multiple)`}
