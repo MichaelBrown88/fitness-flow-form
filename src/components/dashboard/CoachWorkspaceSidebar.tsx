@@ -181,46 +181,6 @@ export function CoachWorkspaceSidebar({
 
       {/* Scrollable content */}
       <div className="flex-1 min-h-0 overflow-y-auto px-3 pb-2">
-        {/* Chats */}
-        <div className="pb-4">
-          <p className="px-1 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-            {COACH_ASSISTANT_COPY.SIDEBAR_CHATS}
-          </p>
-          <ul className="space-y-0.5">
-            {threads.map((t) => (
-              <li key={t.id} className="group flex items-center gap-0.5">
-                <button
-                  type="button"
-                  onClick={() => onSelectThread(t.id)}
-                  className={cn(
-                    'flex min-w-0 flex-1 items-center gap-2.5 rounded-xl px-3 py-2 text-left transition-colors',
-                    t.id === activeThreadId
-                      ? 'bg-muted text-foreground'
-                      : 'text-foreground/60 hover:bg-muted/60 hover:text-foreground',
-                  )}
-                >
-                  <MessageSquarePlus className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                  <span className="min-w-0 flex-1 truncate text-xs font-medium">{t.title}</span>
-                </button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 shrink-0 rounded-xl text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive transition-all"
-                  title={COACH_ASSISTANT_COPY.DELETE_THREAD}
-                  aria-label={COACH_ASSISTANT_COPY.DELETE_THREAD}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setThreadPendingDelete(t.id);
-                  }}
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </div>
-
         {/* Artefacts */}
         <div className="pb-4">
           <section aria-label={COACH_ASSISTANT_COPY.SIDEBAR_ARTIFACTS_REGION_LABEL}>
@@ -292,31 +252,7 @@ export function CoachWorkspaceSidebar({
           </section>
         </div>
 
-        {/* Needs Attention */}
-        <div className="pb-2">
-          <p className="px-1 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-            Needs Attention
-          </p>
-          {recentClients.length === 0 ? (
-            <p className="text-xs text-muted-foreground/60 px-1 py-1">All clients on track</p>
-          ) : (
-            <ul className="space-y-0.5">
-              {recentClients.map((c) => (
-                <li key={c.name}>
-                  <Link
-                    to={`/client/${encodeURIComponent(c.name)}`}
-                    className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-foreground/60 hover:bg-muted/60 hover:text-foreground transition-colors"
-                  >
-                    <AlertCircle className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                    <span className="min-w-0 flex-1 truncate text-xs font-medium">
-                      {formatClientDisplayName(c.name)}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        {/* Needs Attention removed — shown on Today tab */}
       </div>
 
       {/* Footer */}

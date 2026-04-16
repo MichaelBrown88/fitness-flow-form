@@ -6,7 +6,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MessageSquare, Square, Loader2, X, Sparkles } from 'lucide-react';
+import { MessageSquare, Square, Loader2, X, Sparkles, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { AssistantModeToggle } from '@/components/dashboard/assistant/AssistantModeToggle';
@@ -130,12 +130,62 @@ export function FloatingAssistantPanel({ open, onOpenChange }: FloatingAssistant
       />
 
       {/* Workspace modal — nearly full screen with padding */}
-      <div className="fixed inset-4 sm:inset-6 lg:inset-8 z-50 flex flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+      <div className="fixed inset-4 sm:inset-6 lg:inset-8 z-50 flex overflow-hidden rounded-2xl border border-border bg-background shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        {/* Thread sidebar — desktop only */}
+        <div className="hidden lg:flex w-[220px] shrink-0 flex-col border-r border-border/60 bg-card">
+          <div className="flex items-center justify-between px-4 pt-4 pb-2">
+            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Chats</span>
+            <button
+              type="button"
+              onClick={() => assistant.createNewThread()}
+              className="flex h-6 w-6 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              aria-label="New chat"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <div className="flex-1 min-h-0 overflow-y-auto px-2 pb-2">
+            <ul className="space-y-0.5">
+              {assistant.threads.map(t => (
+                <li key={t.id} className="group flex items-center gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => assistant.selectThread(t.id)}
+                    className={`flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors ${
+                      t.id === assistant.activeThreadId
+                        ? 'bg-muted text-foreground'
+                        : 'text-foreground/60 hover:bg-muted/60 hover:text-foreground'
+                    }`}
+                  >
+                    <MessageSquare className="h-3 w-3 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0 flex-1 truncate text-[11px] font-medium">{t.title}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="h-6 w-6 shrink-0 rounded-lg text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive transition-all flex items-center justify-center"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      assistant.deleteThread(t.id);
+                    }}
+                    aria-label="Delete thread"
+                  >
+                    <Trash2 className="h-2.5 w-2.5" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {/* Main chat area */}
+        <div className="flex flex-1 min-w-0 flex-col">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border/60 px-5 py-3 shrink-0">
           <div className="flex items-center gap-2.5">
             <Sparkles className="h-5 w-5 text-primary" />
-            <h2 className="text-base font-semibold text-foreground">AI Assistant</h2>
+            <h2 className="text-base font-semibold text-foreground">
+              {assistant.interactionMode === 'data' ? 'Client AI' : 'General AI'}
+            </h2>
             {assistant.usageDisplay !== null && assistant.usageDisplay !== undefined && (
               <span className="text-[11px] text-muted-foreground ml-2">
                 {COACH_ASSISTANT_COPY.AI_USAGE_REQUESTS_LABEL(
@@ -209,13 +259,7 @@ export function FloatingAssistantPanel({ open, onOpenChange }: FloatingAssistant
 
         {/* Composer — fixed at bottom */}
         <div className="shrink-0 border-t border-border/60 bg-background/95 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          {assistant.interactionMode === 'assist' && (
-            <div className="mb-2 flex items-center gap-1.5 rounded-lg border border-score-amber/30 bg-score-amber-muted/40 px-2.5 py-1.5">
-              <span className="text-[11px] font-semibold text-score-amber-fg">
-                {COACH_ASSISTANT_COPY.MODE_ASSIST_WARNING}
-              </span>
-            </div>
-          )}
+          {/* Subtle mode indicator — no warning, just context */}
           <div className="mx-auto w-full max-w-4xl">
             <Textarea
               ref={textareaRef}
@@ -259,6 +303,7 @@ export function FloatingAssistantPanel({ open, onOpenChange }: FloatingAssistant
             </div>
           </div>
         </div>
+        </div>{/* end main chat area */}
       </div>
     </>
   );

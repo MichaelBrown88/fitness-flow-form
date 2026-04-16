@@ -43,6 +43,25 @@ const PILLAR_ABBREV: Record<string, string> = {
   full: 'ALL',
 };
 
+/** Semantic background colors per pillar for calendar pills */
+const PILLAR_BG: Record<string, string> = {
+  bodycomp: 'bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300',
+  posture: 'bg-violet-100 text-violet-800 dark:bg-violet-950/50 dark:text-violet-300',
+  fitness: 'bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300',
+  strength: 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300',
+  lifestyle: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300',
+  full: 'bg-muted text-foreground',
+};
+
+/** Dot color for the calendar legend */
+export const PILLAR_DOT_COLORS: Record<string, string> = {
+  bodycomp: 'bg-blue-500',
+  posture: 'bg-violet-500',
+  fitness: 'bg-rose-500',
+  strength: 'bg-amber-500',
+  lifestyle: 'bg-emerald-500',
+};
+
 function pillarAbbrev(pillar: string): string {
   return PILLAR_ABBREV[pillar] ?? pillar.slice(0, 2).toUpperCase();
 }
@@ -79,7 +98,7 @@ export function ClientPill({ entry, dateKey, day, dayClients, onPillClick, isSel
       draggable
       onDragStart={handleDragStart}
       onClick={handleClick}
-      className={`flex cursor-grab items-center gap-1 truncate rounded px-1 py-0.5 text-[10px] font-medium leading-tight active:cursor-grabbing ${STATUS_COLORS[entry.status]} ${
+      className={`flex cursor-grab items-center gap-1 truncate rounded px-1 py-0.5 text-[10px] font-medium leading-tight active:cursor-grabbing ${PILLAR_BG[entry.pillar] ?? PILLAR_BG.full} ${
         isSelected ? 'ring-1 ring-foreground/30' : ''
       }`}
       title={`${displayName} — ${getPillarLabel(entry.pillar)}`}

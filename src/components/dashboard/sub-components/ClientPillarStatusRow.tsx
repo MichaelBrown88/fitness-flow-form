@@ -13,6 +13,15 @@ const PILLAR_ICONS = {
   lifestyle: Activity,
 } as const;
 
+/** Semantic colors per pillar — consistent across queue, calendar, and legends */
+export const PILLAR_COLORS: Record<string, string> = {
+  bodycomp: 'text-blue-500',
+  posture: 'text-violet-500',
+  fitness: 'text-rose-500',
+  strength: 'text-amber-500',
+  lifestyle: 'text-emerald-500',
+} as const;
+
 const PILLAR_ORDER = ['bodycomp', 'posture', 'fitness', 'strength', 'lifestyle'] as const;
 
 function statusDotClass(status: ScheduleStatus | 'never'): string {
@@ -70,7 +79,7 @@ export function ClientPillarStatusRow({ item, onStartAssessment }: ClientPillarS
               className="relative flex items-center justify-center"
               title={`${pillar}: ${status}`}
             >
-              <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+              <Icon className={cn("h-3.5 w-3.5", PILLAR_COLORS[pillar] ?? 'text-muted-foreground')} />
               <span className={`absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border border-background ${statusDotClass(status)}`} />
             </div>
           );

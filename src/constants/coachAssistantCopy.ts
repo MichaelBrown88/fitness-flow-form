@@ -1,20 +1,20 @@
 /** Coach workspace assistant — user-visible copy (i18n-ready). */
 
 export const COACH_ASSISTANT_COPY = {
-  MODE_DATA_LABEL: 'Client Data',
-  MODE_ASSIST_LABEL: 'Coaching Chat',
+  MODE_DATA_LABEL: 'Client AI',
+  MODE_ASSIST_LABEL: 'General AI',
   MODE_DATA_DESC:
     'Grounded in your real assessment data — scores, schedules, weaknesses, and history. Everything you see is from your actual client records.',
   MODE_ASSIST_DESC:
-    'General fitness, programming, and exercise science help. Not reading your client files — switch to Client Data for roster questions.',
+    'General fitness, programming, and exercise science knowledge. Not connected to your client data — use Client AI for roster questions.',
   MODE_TOOLTIP:
-    'Client Data: reads your live roster, assessments, overdue pillars, and weakness patterns. Answers are grounded in your real records — nothing invented.\n\nCoaching Chat: exercise science, programming, and coaching knowledge. Useful for building plans and thinking through training concepts — but not connected to your client data.',
-  MODE_ASSIST_WARNING: 'Coaching Chat — not reading your client files',
-  MODE_ASSIST_WARNING_SUB: 'Switch to Client Data for roster questions.',
+    'Client AI: reads your live roster, assessments, overdue pillars, and weakness patterns. Answers are grounded in your real records — nothing invented.\n\nGeneral AI: exercise science, programming, and coaching knowledge. Useful for building plans and thinking through training concepts — but not connected to your client data. Take answers with a pinch of salt.',
+  MODE_ASSIST_WARNING: 'General AI mode',
+  MODE_ASSIST_WARNING_SUB: 'Not connected to client data. Answers may not be accurate.',
   PROVENANCE_DATA_ONLY: '',
   PROVENANCE_LLM: 'AI-assisted',
-  PLACEHOLDER: 'Ask anything, or type / for commands',
-  SLASH_HINT: 'Type / for commands (e.g. /today, /help)',
+  PLACEHOLDER: 'Ask about your clients, scores, or schedule...',
+  SLASH_HINT: '',
   NEW_CHAT: 'New chat',
   SIDEBAR_SEARCH: 'Search',
   SIDEBAR_CHATS: 'Chats',

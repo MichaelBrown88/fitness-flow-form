@@ -1178,14 +1178,25 @@ export async function deleteClientPermanently(params: {
   const expectedRef = doc(db, ORGANIZATION.clients.doc(organizationId, clientSlug));
   const expectedSnap = await getDoc(expectedRef);
   if (!expectedSnap.exists()) {
-    // Search for the client by name in the collection
+    // Search for the client by name in the collection (try multiple field names)
     const clientsCol = collection(db, ORGANIZATION.clients.collection(organizationId));
-    const nameQuery = query(clientsCol, where('clientName', '==', clientName), limit(1));
-    const found = await getDocs(nameQuery);
+    let found = await getDocs(query(clientsCol, where('clientName', '==', clientName), limit(1)));
+    if (found.empty) {
+      found = await getDocs(query(clientsCol, where('clientNameLower', '==', clientNameLower), limit(1)));
+    }
+    if (found.empty) {
+      found = await getDocs(query(clientsCol, where('name', '==', clientName), limit(1)));
+    }
     if (!found.empty) {
       clientSlug = found.docs[0].id;
     }
-    // If still not found, the slug will be used as-is and the delete will fail with a clear error
+    // Last resort: also delete the known assessment summary doc directly
+    // so the client at least disappears from the dashboard
+    if (found.empty && knownAssessmentId) {
+      try {
+        await deleteDoc(doc(db, `coachesAssessments/${knownAssessmentId}`));
+      } catch { /* non-fatal */ }
+    }
   }
 
   async function deleteSubcollection(colPath: string): Promise<void> {

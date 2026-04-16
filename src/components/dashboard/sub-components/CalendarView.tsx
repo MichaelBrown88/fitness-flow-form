@@ -15,7 +15,7 @@ import { ChevronLeft, ChevronRight, CalendarIcon, X } from 'lucide-react';
 import type { UseReassessmentQueueResult } from '@/hooks/useReassessmentQueue';
 import { setDueDateOverride } from '@/services/clientProfiles';
 import { logger } from '@/lib/utils/logger';
-import { ClientPill, DayDetailPanel } from './CalendarDayDetail';
+import { ClientPill, DayDetailPanel, PILLAR_DOT_COLORS } from './CalendarDayDetail';
 import type { DueEntry, DayClients, DragPayload } from './CalendarDayDetail';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -393,6 +393,22 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           Rescheduling…
         </div>
       )}
+
+      {/* Pillar legend */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1">
+        {[
+          { key: 'bodycomp', label: 'Body Comp' },
+          { key: 'posture', label: 'Movement' },
+          { key: 'fitness', label: 'Fitness' },
+          { key: 'strength', label: 'Strength' },
+          { key: 'lifestyle', label: 'Lifestyle' },
+        ].map(p => (
+          <span key={p.key} className="flex items-center gap-1">
+            <span className={`h-2 w-2 rounded-full ${PILLAR_DOT_COLORS[p.key]}`} />
+            <span className="text-[9px] font-medium text-muted-foreground">{p.label}</span>
+          </span>
+        ))}
+      </div>
 
       {selectedEntries.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/50 px-3 py-2">
