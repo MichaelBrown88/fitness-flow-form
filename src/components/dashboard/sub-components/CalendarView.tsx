@@ -11,7 +11,7 @@ import {
   subMonths,
   isToday,
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, CalendarIcon, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarIcon, X, Scan, Camera, Heart, Dumbbell, Activity } from 'lucide-react';
 import type { UseReassessmentQueueResult } from '@/hooks/useReassessmentQueue';
 import { setDueDateOverride } from '@/services/clientProfiles';
 import { logger } from '@/lib/utils/logger';
@@ -394,18 +394,18 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         </div>
       )}
 
-      {/* Pillar legend */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1">
-        {[
-          { key: 'bodycomp', label: 'Body Comp' },
-          { key: 'posture', label: 'Movement' },
-          { key: 'fitness', label: 'Fitness' },
-          { key: 'strength', label: 'Strength' },
-          { key: 'lifestyle', label: 'Lifestyle' },
-        ].map(p => (
-          <span key={p.key} className="flex items-center gap-1">
-            <span className={`h-2 w-2 rounded-full ${PILLAR_DOT_COLORS[p.key]}`} />
-            <span className="text-[9px] font-medium text-muted-foreground">{p.label}</span>
+      {/* Pillar legend with icons */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-2">
+        {([
+          { key: 'bodycomp', label: 'Body Comp', Icon: Scan, color: 'text-blue-500' },
+          { key: 'posture', label: 'Movement', Icon: Camera, color: 'text-violet-500' },
+          { key: 'fitness', label: 'Fitness', Icon: Heart, color: 'text-rose-500' },
+          { key: 'strength', label: 'Strength', Icon: Dumbbell, color: 'text-amber-500' },
+          { key: 'lifestyle', label: 'Lifestyle', Icon: Activity, color: 'text-emerald-500' },
+        ] as const).map(p => (
+          <span key={p.key} className="flex items-center gap-1.5">
+            <p.Icon className={`h-3 w-3 ${p.color}`} />
+            <span className="text-[10px] font-medium text-muted-foreground">{p.label}</span>
           </span>
         ))}
       </div>
