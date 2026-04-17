@@ -68,7 +68,7 @@ export type ClientProfile = {
   gender?: string;
   notes?: string;
   tags?: string[];
-  status?: 'active' | 'inactive' | 'paused' | 'archived';
+  status?: 'active' | 'inactive' | 'paused' | 'archived' | 'deleted';
   organizationId?: string;
   /** Which assessment pillars are actively tracked for scheduling */
   activePillars?: import('@/types/client').PartialAssessmentCategory[];
@@ -86,6 +86,12 @@ export type ClientProfile = {
   archivedBy?: string;
   /** Optional reason for archiving */
   archiveReason?: string;
+  /** When the account was soft-deleted (data preserved for grace period) */
+  deletedAt?: Timestamp;
+  /** Who deleted the account: coach UID */
+  deletedBy?: string;
+  /** When the soft-delete grace period expires and data can be permanently purged */
+  purgeAfter?: Timestamp;
   /** When the client actually started training — YYYY-MM-DD string (scheduling clock starts here) */
   trainingStartDate?: string;
   assignedCoachUid?: string;
@@ -223,7 +229,21 @@ export async function getClientProfile(
 
   const ref = clientProfileDoc(organizationId, clientName);
   const snap = await getDoc(ref);
-  if (!snap.exists()) return null;
+
+  if (!snap.exists()) {
+    // Slug miss — check clientLookup for a rename redirect
+    const slug = generateClientSlug(clientName);
+    const lookupRef = doc(getDb(), ORGANIZATION.clientLookup.doc(organizationId, slug));
+    const lookupSnap = await getDoc(lookupRef);
+    if (lookupSnap.exists()) {
+      const { clientId } = lookupSnap.data() as { clientId: string };
+      const redirectRef = doc(getDb(), ORGANIZATION.clients.doc(organizationId, clientId));
+      const redirectSnap = await getDoc(redirectRef);
+      if (redirectSnap.exists()) return redirectSnap.data() as ClientProfile;
+    }
+    return null;
+  }
+
   const data = snap.data() as ClientProfile;
 
   // Verify organization ownership
@@ -245,7 +265,7 @@ export interface ClientScheduleData {
   /** Fallback: last assessment of any type (used when pillar dates are missing) */
   lastAssessmentDate?: Date;
   /** Client account status */
-  clientStatus?: 'active' | 'inactive' | 'paused' | 'archived';
+  clientStatus?: 'active' | 'inactive' | 'paused' | 'archived' | 'deleted';
   /** Which pillars are actively tracked for scheduling */
   activePillars?: import('@/types/client').PartialAssessmentCategory[];
   /** Training start date — scheduling clock starts here instead of assessment date */
@@ -727,6 +747,13 @@ export async function renameClient(
   if (oldRoadmapSnap.exists()) await deleteDoc(doc(db, oldRoadmapPath));
   await deleteDoc(oldRef);
 
+  // 2g. Write slug redirect so old URLs resolve to the new client doc.
+  // This prevents accidental duplicate creation if someone navigates via old bookmark/history.
+  const lookupRef = doc(db, ORGANIZATION.clientLookup.doc(validOrgId, oldSlug));
+  await setDoc(lookupRef, { clientId: newSlug, clientName: normalizedNew }).catch(() => {
+    logger.warn(`[Rename] Failed to write slug redirect for "${oldSlug}" → "${newSlug}"`);
+  });
+
   logger.info(`[Rename] Successfully migrated "${normalizedOld}" -> "${normalizedNew}"`);
   return { success: true, message: `Renamed to "${normalizedNew}" and migrated all data.` };
 }
@@ -1083,13 +1110,17 @@ export async function batchArchiveClients(params: {
  * - resume: shift all pillar dates forward by the archived duration
  * - reset: start fresh from today
  */
+/**
+ * Reactivate an archived client.
+ * Always resets to a fresh baseline: clears all pillar dates, overrides, and retest schedule
+ * so the coach must run a new "first" assessment to establish current baselines.
+ */
 export async function reactivateClient(params: {
   organizationId: string;
   clientSlug: string;
-  mode: 'resume' | 'reset';
   profile?: UserProfile | null;
 }): Promise<void> {
-  const { organizationId, clientSlug, mode, profile } = params;
+  const { organizationId, clientSlug, profile } = params;
   const validOrgId = validateOrganizationId(organizationId, profile);
   const db = getDb();
   const clientRef = doc(db, ORGANIZATION.clients.doc(validOrgId, clientSlug));
@@ -1097,88 +1128,53 @@ export async function reactivateClient(params: {
   const snap = await getDoc(clientRef);
   if (!snap.exists()) throw new Error('Client not found');
 
-  const data = snap.data() as ClientProfile;
-  const archivedAt = data.archivedAt?.toDate();
-  const now = new Date();
-
-  const updates: Record<string, unknown> = {
+  await updateDoc(clientRef, {
     status: 'active',
     archivedAt: null,
     archivedBy: null,
     archiveReason: null,
+    // Clear all pillar dates — forces fresh baseline assessment
+    lastAssessmentDate: null,
+    [CLIENT_PROFILE_LAST_BODY_COMP_AT]: null,
+    lastPostureDate: null,
+    lastFitnessDate: null,
+    lastStrengthDate: null,
+    lastLifestyleDate: null,
+    // Clear scheduling state
+    dueDateOverrides: null,
+    retestSchedule: null,
     updatedAt: serverTimestamp(),
-  };
-
-  if (mode === 'resume' && archivedAt) {
-    const archivedMs = now.getTime() - archivedAt.getTime();
-    const dateFields = [
-      'lastAssessmentDate',
-      'lastPostureDate',
-      'lastFitnessDate',
-      'lastStrengthDate',
-      'lastLifestyleDate',
-    ] as const;
-
-    for (const field of dateFields) {
-      const ts = data[field];
-      if (ts) {
-        const shifted = new Date(ts.toDate().getTime() + archivedMs);
-        updates[field] = Timestamp.fromDate(shifted);
-      }
-    }
-
-    const profileRow = data as Record<string, unknown>;
-    for (const field of clientProfileBodyCompDateFieldKeys()) {
-      const ts = profileRow[field];
-      if (ts && typeof (ts as Timestamp).toDate === 'function') {
-        const shifted = new Date((ts as Timestamp).toDate().getTime() + archivedMs);
-        updates[field] = Timestamp.fromDate(shifted);
-      }
-    }
-
-    if (data.dueDateOverrides) {
-      const shiftedOverrides: Record<string, Timestamp> = {};
-      for (const [key, ts] of Object.entries(data.dueDateOverrides)) {
-        shiftedOverrides[key] = Timestamp.fromDate(new Date(ts.toDate().getTime() + archivedMs));
-      }
-      updates.dueDateOverrides = shiftedOverrides;
-    }
-  } else if (mode === 'reset') {
-    const nowTs = Timestamp.fromDate(now);
-    updates.lastAssessmentDate = nowTs;
-    updates[CLIENT_PROFILE_LAST_BODY_COMP_AT] = nowTs;
-    updates.lastPostureDate = nowTs;
-    updates.lastFitnessDate = nowTs;
-    updates.lastStrengthDate = nowTs;
-    updates.lastLifestyleDate = nowTs;
-    updates.dueDateOverrides = null;
-  }
-
-  await updateDoc(clientRef, updates);
+  });
 }
 
+/** Grace period before soft-deleted clients are permanently purged (30 days in ms). */
+const SOFT_DELETE_GRACE_PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
+
 /**
- * Permanently delete a client and ALL associated data from Firestore.
- * This action is irreversible.
+ * Soft-delete a client: marks them as deleted with a 30-day grace period.
+ * All data is preserved. The client can be restored within the grace period.
+ * After the grace period, a scheduled purge (or manual call) permanently removes data.
  */
 export async function deleteClientPermanently(params: {
   organizationId: string;
   clientSlug: string;
   clientName: string;
-  /** Known assessment summary doc ID — used for a direct delete so the client disappears from the dashboard immediately even if clientNameLower is missing/mismatched. */
+  deletedBy: string;
   knownAssessmentId?: string;
 }): Promise<void> {
-  const { organizationId, clientSlug: inputSlug, clientName, knownAssessmentId } = params;
+  const { organizationId, clientSlug: inputSlug, clientName, deletedBy } = params;
   const db = getDb();
   const clientNameLower = clientName.toLowerCase();
 
-  // Verify the client doc exists at the expected slug path. If not, search by name
-  // to find the actual doc ID (handles UUID-migrated or mismatched slug clients).
+  if (!organizationId?.trim()) {
+    throw new Error('Cannot delete client: organization ID is missing.');
+  }
+
+  // Resolve actual doc path (handles UUID-migrated or mismatched slug clients)
   let clientSlug = inputSlug;
   const expectedRef = doc(db, ORGANIZATION.clients.doc(organizationId, clientSlug));
   const expectedSnap = await getDoc(expectedRef);
   if (!expectedSnap.exists()) {
-    // Search for the client by name in the collection (try multiple field names)
     const clientsCol = collection(db, ORGANIZATION.clients.collection(organizationId));
     let found = await getDocs(query(clientsCol, where('clientName', '==', clientName), limit(1)));
     if (found.empty) {
@@ -1189,15 +1185,70 @@ export async function deleteClientPermanently(params: {
     }
     if (!found.empty) {
       clientSlug = found.docs[0].id;
-    }
-    // Last resort: also delete the known assessment summary doc directly
-    // so the client at least disappears from the dashboard
-    if (found.empty && knownAssessmentId) {
-      try {
-        await deleteDoc(doc(db, `coachesAssessments/${knownAssessmentId}`));
-      } catch { /* non-fatal */ }
+    } else {
+      throw new Error(`Client not found: ${clientName}`);
     }
   }
+
+  const now = new Date();
+  const purgeAfter = new Date(now.getTime() + SOFT_DELETE_GRACE_PERIOD_MS);
+
+  const clientRef = doc(db, ORGANIZATION.clients.doc(organizationId, clientSlug));
+  await updateDoc(clientRef, {
+    status: 'deleted',
+    deletedAt: serverTimestamp(),
+    deletedBy,
+    purgeAfter: Timestamp.fromDate(purgeAfter),
+    // Clear scheduling state so deleted clients don't appear in queues
+    dueDateOverrides: null,
+    pausedAt: null,
+    pausedBy: null,
+    pauseReason: null,
+    pauseApproved: null,
+    archivedAt: null,
+    archivedBy: null,
+    archiveReason: null,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/**
+ * Restore a soft-deleted client back to active status.
+ * Clears all deletion metadata. The coach should schedule a fresh assessment.
+ */
+export async function restoreClient(params: {
+  organizationId: string;
+  clientSlug: string;
+  profile?: UserProfile | null;
+}): Promise<void> {
+  const { organizationId, clientSlug, profile } = params;
+  const validOrgId = validateOrganizationId(organizationId, profile);
+  const db = getDb();
+  const clientRef = doc(db, ORGANIZATION.clients.doc(validOrgId, clientSlug));
+
+  const snap = await getDoc(clientRef);
+  if (!snap.exists()) throw new Error('Client not found');
+
+  await updateDoc(clientRef, {
+    status: 'active',
+    deletedAt: null,
+    deletedBy: null,
+    purgeAfter: null,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/**
+ * Permanently purge a soft-deleted client and ALL associated data.
+ * Only call this after the grace period has expired, or for immediate force-purge.
+ */
+export async function purgeClientData(params: {
+  organizationId: string;
+  clientSlug: string;
+  clientName: string;
+}): Promise<void> {
+  const { organizationId, clientSlug, clientName } = params;
+  const db = getDb();
 
   async function deleteSubcollection(colPath: string): Promise<void> {
     const colRef = collection(db, colPath);
@@ -1221,26 +1272,22 @@ export async function deleteClientPermanently(params: {
     }
   }
 
-  if (!organizationId?.trim()) {
-    throw new Error('Cannot delete client: organization ID is missing.');
-  }
-
-  // 1. Delete sessions sub-collection (non-critical cleanup)
+  // 1. Delete sessions sub-collection
   await deleteSubcollection(ORGANIZATION.clients.sessions.collection(organizationId, clientSlug)).catch((): void => undefined);
 
-  // 2. Delete current/state doc (non-critical cleanup)
+  // 2. Delete current/state doc
   await deleteDoc(doc(db, ORGANIZATION.clients.current(organizationId, clientSlug))).catch((): void => undefined);
 
-  // 3. Delete draft (non-critical cleanup)
+  // 3. Delete draft
   await deleteDoc(doc(db, ORGANIZATION.clients.draft(organizationId, clientSlug))).catch((): void => undefined);
 
-  // 4. Delete roadmap and achievements (non-critical cleanup)
+  // 4. Delete roadmap and achievements
   await deleteDoc(doc(db, ORGANIZATION.clients.roadmap(organizationId, clientSlug))).catch((): void => undefined);
   await deleteSubcollection(ORGANIZATION.clientAchievements.collection(organizationId, clientSlug)).catch(
     (): void => undefined,
   );
 
-  // 5. Delete public report share tokens (non-critical cleanup)
+  // 5. Delete public report share tokens
   try {
     const publicReportsSnap = await getDocs(
       query(
@@ -1257,11 +1304,10 @@ export async function deleteClientPermanently(params: {
     }
   } catch { /* non-fatal */ }
 
-  // 6. Delete client profile — CRITICAL: if this fails, the client still appears in the roster.
-  // Do NOT catch this error; let it propagate so the caller knows deletion failed.
+  // 6. Delete client profile doc
   await deleteDoc(doc(db, ORGANIZATION.clients.doc(organizationId, clientSlug)));
 
-  // 7. Decrement org stats (non-critical cleanup, best-effort after profile is gone)
+  // 7. Decrement org stats
   await updateDoc(doc(db, ORGANIZATION.doc(organizationId)), {
     'stats.clientCount': increment(-1),
     'stats.lastUpdated': serverTimestamp(),
@@ -1270,49 +1316,31 @@ export async function deleteClientPermanently(params: {
 
 /**
  * Delete a client by direct Firestore doc ID (bypasses slug generation).
- * Use when the slug-based path doesn't match (e.g. UUID-migrated or orphaned clients).
+ * Soft-deletes with the same grace period as deleteClientPermanently.
  */
 export async function deleteClientByDocId(
   organizationId: string,
   docId: string,
+  deletedBy: string,
 ): Promise<void> {
   const db = getDb();
+  const now = new Date();
+  const purgeAfter = new Date(now.getTime() + SOFT_DELETE_GRACE_PERIOD_MS);
 
-  async function deleteSubcollection(colPath: string): Promise<void> {
-    const colRef = collection(db, colPath);
-    const PAGE = 400;
-    while (true) {
-      const snap = await getDocs(query(colRef, limit(PAGE)));
-      if (snap.empty) return;
-      let batch = writeBatch(db);
-      let count = 0;
-      for (const docSnap of snap.docs) {
-        batch.delete(docSnap.ref);
-        count++;
-        if (count >= PAGE) {
-          await batch.commit();
-          batch = writeBatch(db);
-          count = 0;
-        }
-      }
-      if (count > 0) await batch.commit();
-      if (snap.size < PAGE) return;
-    }
-  }
-
-  // Cleanup subcollections (non-critical)
-  await deleteSubcollection(`organizations/${organizationId}/clients/${docId}/sessions`).catch((): void => undefined);
-  await deleteDoc(doc(db, `organizations/${organizationId}/clients/${docId}/current/state`)).catch((): void => undefined);
-  await deleteDoc(doc(db, `organizations/${organizationId}/clients/${docId}/assessmentDrafts/draft`)).catch((): void => undefined);
-  await deleteDoc(doc(db, `organizations/${organizationId}/clients/${docId}/roadmap/plan`)).catch((): void => undefined);
-  await deleteSubcollection(`organizations/${organizationId}/clients/${docId}/achievements`).catch((): void => undefined);
-
-  // Delete the client profile doc (critical)
-  await deleteDoc(doc(db, `organizations/${organizationId}/clients/${docId}`));
-
-  // Decrement org stats (best-effort)
-  await updateDoc(doc(db, ORGANIZATION.doc(organizationId)), {
-    'stats.clientCount': increment(-1),
-    'stats.lastUpdated': serverTimestamp(),
-  }).catch((): void => undefined);
+  const clientRef = doc(db, `organizations/${organizationId}/clients/${docId}`);
+  await updateDoc(clientRef, {
+    status: 'deleted',
+    deletedAt: serverTimestamp(),
+    deletedBy,
+    purgeAfter: Timestamp.fromDate(purgeAfter),
+    dueDateOverrides: null,
+    pausedAt: null,
+    pausedBy: null,
+    pauseReason: null,
+    pauseApproved: null,
+    archivedAt: null,
+    archivedBy: null,
+    archiveReason: null,
+    updatedAt: serverTimestamp(),
+  });
 }

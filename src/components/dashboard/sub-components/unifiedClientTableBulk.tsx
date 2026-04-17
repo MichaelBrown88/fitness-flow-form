@@ -64,7 +64,7 @@ export function ClientTableBulkActions({
   const pauseSlugs = useMemo(
     () =>
       selectedGroups
-        .filter((c) => c.clientStatus !== 'paused' && c.clientStatus !== 'archived')
+        .filter((c) => c.clientStatus !== 'paused' && c.clientStatus !== 'archived' && c.clientStatus !== 'deleted')
         .map((c) => clientSlugFromName(c.name)),
     [selectedGroups],
   );
@@ -119,20 +119,19 @@ export function ClientTableBulkActions({
               organizationId: writeOrganizationId!,
               clientSlug: generateClientSlug(client.name),
               clientName: client.name,
+              deletedBy: coachUid!,
               knownAssessmentId: client.assessments[0]?.id,
             });
           } catch {
-            // Slug-based delete failed — try direct doc ID as fallback (handles orphaned/UUID clients)
             const slug = generateClientSlug(client.name);
-            await deleteClientByDocId(writeOrganizationId!, slug).catch(() => {
-              // Last resort: try the summary doc ID as the client doc ID
+            await deleteClientByDocId(writeOrganizationId!, slug, coachUid!).catch(() => {
               if (client.id && client.id !== slug) {
-                return deleteClientByDocId(writeOrganizationId!, client.id);
+                return deleteClientByDocId(writeOrganizationId!, client.id, coachUid!);
               }
             });
           }
         }
-        toast({ title: 'Deleted', description: `${selectedGroups.length} client${selectedGroups.length !== 1 ? 's' : ''} permanently deleted.` });
+        toast({ title: 'Deleted', description: `${selectedGroups.length} client${selectedGroups.length !== 1 ? 's' : ''} moved to trash. You can restore within 30 days.` });
         setConfirm(null);
         onClearSelection();
         onBulkComplete?.();
@@ -278,10 +277,10 @@ export function ClientTableBulkActions({
         <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-destructive">
-              Permanently delete {selectedGroups.length} client{selectedGroups.length !== 1 ? 's' : ''}?
+              Delete {selectedGroups.length} client{selectedGroups.length !== 1 ? 's' : ''}?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently remove all data including assessments, history, and reports. This cannot be undone.
+              Deleted clients are moved to trash and can be restored within 30 days. After that, all data including assessments, history, and reports will be permanently removed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

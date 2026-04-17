@@ -235,7 +235,7 @@ export async function saveCoachAssessment(
       createdAt: existingData.createdAt ?? serverTimestamp(),
       updatedAt: serverTimestamp(),
       goals: Array.isArray(formData.clientGoals) ? formData.clientGoals : [],
-      formData,
+      // formData intentionally excluded — stored in current/state + sessions only
       scoresSummary,
       isSummary: true,
       isPartial: false,
@@ -247,25 +247,10 @@ export async function saveCoachAssessment(
     // Clean up legacy UUID doc now that slug doc is in place
     if (legacyRefToDelete) await deleteDoc(legacyRefToDelete);
 
-    // Update public report and capture shareToken
-    let shareToken: string | null = null;
-    let publicReportSynced = false;
-    try {
-      const { publishPublicReport } = await import('./publicReports');
-      shareToken = await publishPublicReport({
-        coachUid,
-        assessmentId: slug,
-        formData,
-        organizationId: validOrgId,
-        profile,
-        snapshotType: 'full-assessment',
-      });
-      publicReportSynced = true;
-    } catch (err) {
-      logger.warn('Failed to update public report after upsert save:', err);
-    }
-
-    return { assessmentId: slug, shareToken, publicReportSynced };
+    // Public report sync is handled by Cloud Function trigger on current/state writes.
+    // ShareToken is read from the existing slug doc if one was previously shared.
+    const shareToken = (existingData as Record<string, unknown>).shareToken as string | null ?? null;
+    return { assessmentId: slug, shareToken, publicReportSynced: false };
   }
 
   // 4. First assessment for this client — create slug-based current-state doc
@@ -280,7 +265,7 @@ export async function saveCoachAssessment(
     overallScore,
     assessmentCount: 1,
     goals: Array.isArray(formData.clientGoals) ? formData.clientGoals : [],
-    formData,
+    // formData intentionally excluded — stored in current/state + sessions only
     scoresSummary,
     isSummary: true,
     isPartial: false,
@@ -290,25 +275,8 @@ export async function saveCoachAssessment(
   });
   const docRef = { id: slug };
 
-  // Update public report if one exists (keeps shared links live)
-  let newShareToken: string | null = null;
-  let newPublicReportSynced = false;
-  try {
-    const { publishPublicReport } = await import('./publicReports');
-    newShareToken = await publishPublicReport({
-      coachUid,
-      assessmentId: docRef.id,
-      formData,
-      organizationId: validOrgId,
-      profile,
-      snapshotType: 'full-assessment',
-    });
-    newPublicReportSynced = true;
-  } catch (err) {
-    logger.warn('Failed to update public report after assessment save:', err);
-  }
-
-  return { assessmentId: docRef.id, shareToken: newShareToken, publicReportSynced: newPublicReportSynced };
+  // Public report sync handled by Cloud Function trigger on current/state writes.
+  return { assessmentId: docRef.id, shareToken: null, publicReportSynced: false };
 }
 
 export async function listCoachAssessments(
@@ -599,7 +567,6 @@ export async function savePartialAssessment(
       createdAt: existingDataPartial.createdAt ?? serverTimestamp(),
       updatedAt: serverTimestamp(),
       goals: Array.isArray(mergedFormData.clientGoals) ? mergedFormData.clientGoals : [],
-      formData: mergedFormData,
       scoresSummary,
       isSummary: true,
       category,
@@ -611,23 +578,8 @@ export async function savePartialAssessment(
 
     if (legacyPartialRefToDelete) await deleteDoc(legacyPartialRefToDelete);
 
-    let partialShareToken: string | null = null;
-    let partialPublicReportSynced = false;
-    try {
-      const { publishPublicReport } = await import('./publicReports');
-      partialShareToken = await publishPublicReport({
-        coachUid,
-        assessmentId: slug,
-        formData: mergedFormData,
-        organizationId: validOrgId,
-        snapshotType: `pillar-${category}`,
-      });
-      partialPublicReportSynced = true;
-    } catch (err) {
-      logger.warn('Failed to update public report after partial upsert save:', err);
-    }
-
-    return { assessmentId: slug, shareToken: partialShareToken, publicReportSynced: partialPublicReportSynced };
+    const partialShareToken = (existingDataPartial as Record<string, unknown>).shareToken as string | null ?? null;
+    return { assessmentId: slug, shareToken: partialShareToken, publicReportSynced: false };
   }
 
   // 4. First assessment for this client — create slug-based current-state doc
@@ -642,7 +594,6 @@ export async function savePartialAssessment(
     overallScore,
     assessmentCount: 1,
     goals: Array.isArray(mergedFormData.clientGoals) ? mergedFormData.clientGoals : [],
-    formData: mergedFormData,
     scoresSummary,
     isSummary: true,
     category,
@@ -653,24 +604,8 @@ export async function savePartialAssessment(
   });
   const docRef = { id: slug };
 
-  // Update public report if one exists
-  let newPartialToken: string | null = null;
-  let newPartialSynced = false;
-  try {
-    const { publishPublicReport } = await import('./publicReports');
-    newPartialToken = await publishPublicReport({
-      coachUid,
-      assessmentId: docRef.id,
-      formData: mergedFormData,
-      organizationId: validOrgId,
-      snapshotType: `pillar-${category}`,
-    });
-    newPartialSynced = true;
-  } catch (err) {
-    logger.warn('Failed to update public report after partial assessment save:', err);
-  }
-
-  return { assessmentId: docRef.id, shareToken: newPartialToken, publicReportSynced: newPartialSynced };
+  // Public report sync handled by Cloud Function trigger on current/state writes.
+  return { assessmentId: docRef.id, shareToken: null, publicReportSynced: false };
 }
 
 /**
@@ -704,38 +639,24 @@ export async function updateCoachAssessment(
   const scoresSummary = summarizeScores(formData);
 
   // Update the document while preserving createdAt
+  // formData intentionally excluded — stored in current/state + sessions only
   await updateDoc(ref, {
     clientName: (formData.fullName || 'Unnamed client').trim(),
     clientNameLower: (formData.fullName || 'Unnamed client').trim().toLowerCase(),
     overallScore,
     goals: Array.isArray(formData.clientGoals) ? formData.clientGoals : [],
-    formData: formData,
     scoresSummary,
     organizationId: validOrgId,
     updatedAt: serverTimestamp(),
     isPartial: false,
     category: 'all',
-    // Note: createdAt is NOT included here, so it will be preserved
   });
 
   // Also update the current assessment in the history system
   const clientName = (formData.fullName || 'Unnamed client').trim();
   const { updateCurrentAssessment } = await import('./assessmentHistory');
   await updateCurrentAssessment(coachUid, clientName, formData, overallScore, 'full', 'all', validOrgId);
-
-  // Update public report if one exists
-  try {
-    const { publishPublicReport } = await import('./publicReports');
-    await publishPublicReport({
-      coachUid,
-      assessmentId,
-      formData,
-      organizationId: validOrgId,
-    });
-  } catch (err) {
-    const { logger } = await import('@/lib/utils/logger');
-    logger.warn('Failed to update public report after assessment update:', err);
-  }
+  // Public report sync handled by Cloud Function trigger on current/state writes.
 }
 
 

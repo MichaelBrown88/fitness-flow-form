@@ -27,7 +27,7 @@ import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
 
 type SortKey = 'name' | 'lastAssessed' | 'score';
 type SortDir = 'asc' | 'desc';
-type StatusFilter = 'active' | 'paused' | 'archived' | 'all';
+type StatusFilter = 'active' | 'paused' | 'archived' | 'deleted' | 'all';
 
 interface UnifiedClientTableProps {
   loadingData: boolean;
@@ -103,6 +103,7 @@ const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: 'active', label: 'Active' },
   { value: 'paused', label: 'Paused' },
   { value: 'archived', label: 'Archived' },
+  { value: 'deleted', label: 'Trash' },
   { value: 'all', label: 'All' },
 ];
 
@@ -154,6 +155,17 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
     setPauseTarget(null);
     onBulkComplete?.();
   }, [pauseTarget, writeOrganizationId, onBulkComplete]);
+
+  const handleRestore = useCallback(async (name: string) => {
+    if (!writeOrganizationId) return;
+    const { restoreClient } = await import('@/services/clientProfiles');
+    await restoreClient({
+      organizationId: writeOrganizationId,
+      clientSlug: generateClientSlug(name),
+      profile,
+    });
+    onBulkComplete?.();
+  }, [writeOrganizationId, profile, onBulkComplete]);
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -334,7 +346,8 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                 const isPaused = client.clientStatus === 'paused';
                 const isArchived = client.clientStatus === 'archived';
                 const goalLabel = primaryGoalLabel(client.assessments[0]?.goals);
-                const dimClass = (isPaused || isArchived) ? 'opacity-60' : '';
+                const isDeleted = client.clientStatus === 'deleted';
+                const dimClass = (isPaused || isArchived || isDeleted) ? 'opacity-60' : '';
 
                 return (
                   <tr
@@ -359,6 +372,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                         )}
                         {isPaused && <span className="text-xs font-bold text-muted-foreground">Paused</span>}
                         {isArchived && <span className="text-xs font-bold text-muted-foreground">Archived</span>}
+                        {isDeleted && <span className="text-xs font-bold text-destructive">Deleted</span>}
                         {client.remoteIntakeAwaitingStudio && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-score-amber-muted/60 px-2 py-0.5 text-[10px] font-bold text-score-amber-fg">
                             <span className="h-1.5 w-1.5 rounded-full bg-score-amber shrink-0" />
@@ -404,6 +418,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                         onViewHistory={onViewHistory}
                         onStartAssessment={onStartAssessment}
                         onPauseToggle={() => setPauseTarget({ name: client.name, isPaused: client.clientStatus === 'paused' })}
+                        onRestore={handleRestore}
                       />
                     </td>
                   </tr>
@@ -479,6 +494,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                       {formatClientDisplayName(client.name)}
                       {isPaused && <span className="ml-2 text-xs font-bold text-muted-foreground">Paused</span>}
                       {isArchived && <span className="ml-2 text-xs font-bold text-muted-foreground">Archived</span>}
+                      {client.clientStatus === 'deleted' && <span className="ml-2 text-xs font-bold text-destructive">Deleted</span>}
                     </p>
                   </div>
                   <div className="shrink-0" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
@@ -489,6 +505,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                       onViewHistory={onViewHistory}
                       onStartAssessment={onStartAssessment}
                       onPauseToggle={() => setPauseTarget({ name: client.name, isPaused: client.clientStatus === 'paused' })}
+                      onRestore={handleRestore}
                     />
                   </div>
                 </div>

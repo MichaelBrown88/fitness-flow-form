@@ -29,6 +29,11 @@ export function sanitizeForFirestore(obj: unknown): unknown {
     // skip internal firebase properties if any leaked in
     if (key.startsWith('_')) continue;
 
+    // Strip empty values — no point storing fields that were never filled in.
+    // This reduces formData size by ~50% (half of assessment form fields are typically untouched).
+    if (value === '' || value === null || value === undefined) continue;
+    if (Array.isArray(value) && value.length === 0) continue;
+
     // OPTIMIZATION: Strip large base64 strings to prevent Firestore 1MB limit errors
     // These should be stored in Firebase Storage instead.
     if (typeof value === 'string' && value.startsWith('data:image/') && value.length > 10000) {

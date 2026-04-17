@@ -417,7 +417,7 @@ export function useReassessmentQueue(
     const effectiveOrgActivePillars = orgDefaults?.activePillars;
 
     return clientGroups
-      .filter(group => group.clientStatus !== 'paused' && group.clientStatus !== 'archived')
+      .filter(group => group.clientStatus !== 'paused' && group.clientStatus !== 'archived' && group.clientStatus !== 'deleted')
       .map(group => {
         const latestAssessment = group.assessments[0] || null;
         const latestDate = group.lastAssessmentDate ?? group.latestDate;

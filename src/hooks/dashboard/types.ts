@@ -36,7 +36,7 @@ export type ClientGroup = {
   /** Per-pillar last-completed dates for accurate overdue calculation */
   pillarDates?: Record<string, Date>;
   /** Client account status */
-  clientStatus?: 'active' | 'inactive' | 'paused' | 'archived';
+  clientStatus?: 'active' | 'inactive' | 'paused' | 'archived' | 'deleted';
   /** Which pillars are actively tracked for this client */
   activePillars?: PartialAssessmentCategory[];
   /** Training start date — scheduling clock starts here */

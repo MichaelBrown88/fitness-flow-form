@@ -25,7 +25,7 @@ interface ArchiveClientDialogProps {
   clientName: string;
   isArchived: boolean;
   onArchive: (reason?: string) => Promise<void>;
-  onReactivate: (mode: 'resume' | 'reset') => Promise<void>;
+  onReactivate: () => Promise<void>;
 }
 
 export function ArchiveClientDialog({
@@ -37,7 +37,6 @@ export function ArchiveClientDialog({
   onReactivate,
 }: ArchiveClientDialogProps) {
   const [reason, setReason] = useState('');
-  const [reactivateMode, setReactivateMode] = useState<'resume' | 'reset'>('reset');
   const [submitting, setSubmitting] = useState(false);
 
   const handleArchive = async (e: React.MouseEvent) => {
@@ -55,12 +54,11 @@ export function ArchiveClientDialog({
   };
 
   const handleReactivate = async (e: React.MouseEvent) => {
-    e.preventDefault(); // Prevent AlertDialogAction from auto-closing before async completes
+    e.preventDefault();
     setSubmitting(true);
     try {
-      await onReactivate(reactivateMode);
+      await onReactivate();
       onOpenChange(false);
-      setReactivateMode('reset');
     } catch {
       // Error toast is shown by the hook handler; keep dialog open so user can retry
     } finally {
@@ -78,44 +76,11 @@ export function ArchiveClientDialog({
               Reactivate {clientName}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Choose how to handle the assessment schedule.
+              This will bring {clientName} back to your active roster. Previous assessment history
+              is preserved, but they will need a fresh baseline assessment to re-establish current scores
+              and restart the scheduling cadence.
             </AlertDialogDescription>
           </AlertDialogHeader>
-
-          <div className="py-4 space-y-3">
-            <label className="flex items-start gap-3 rounded-xl p-3 cursor-pointer hover:bg-muted/50 transition-colors">
-              <input
-                type="radio"
-                name="reactivate-mode"
-                value="reset"
-                checked={reactivateMode === 'reset'}
-                onChange={() => setReactivateMode('reset')}
-                className="mt-0.5 accent-emerald-600"
-              />
-              <div>
-                <div className="text-sm font-bold text-foreground">Start fresh from today</div>
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  All countdowns restart from today. Best for long absences.
-                </div>
-              </div>
-            </label>
-            <label className="flex items-start gap-3 rounded-xl p-3 cursor-pointer hover:bg-muted/50 transition-colors">
-              <input
-                type="radio"
-                name="reactivate-mode"
-                value="resume"
-                checked={reactivateMode === 'resume'}
-                onChange={() => setReactivateMode('resume')}
-                className="mt-0.5 accent-emerald-600"
-              />
-              <div>
-                <div className="text-sm font-bold text-foreground">Resume remaining time</div>
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  Countdowns pick up where they left off.
-                </div>
-              </div>
-            </label>
-          </div>
 
           <AlertDialogFooter className="gap-2 sm:gap-0">
             <AlertDialogCancel className="rounded-xl h-11 px-6 font-bold" disabled={submitting}>

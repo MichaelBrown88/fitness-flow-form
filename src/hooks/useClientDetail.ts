@@ -100,7 +100,7 @@ export interface UseClientDetailResult {
   handlePauseClient: (reason?: string) => Promise<void>;
   handleUnpauseClient: (mode: 'resume' | 'reset') => Promise<void>;
   handleArchiveClient: (reason?: string) => Promise<void>;
-  handleReactivateClient: (mode: 'resume' | 'reset') => Promise<void>;
+  handleReactivateClient: () => Promise<void>;
   handleDeleteClientPermanently: () => Promise<void>;
   navigateBack: () => void;
 }
@@ -700,7 +700,7 @@ export function useClientDetail(): UseClientDetailResult {
     }
   }, [readOrgId, clientName, user, userProfile, toast]);
 
-  const handleReactivateClient = useCallback(async (mode: 'resume' | 'reset') => {
+  const handleReactivateClient = useCallback(async () => {
     const orgId = readOrgId;
     if (!orgId || !clientName) {
       toast({ title: 'Action failed', description: 'Organisation context not loaded. Please refresh and try again.', variant: 'destructive' });
@@ -711,10 +711,8 @@ export function useClientDetail(): UseClientDetailResult {
       await reactivateClient({
         organizationId: orgId,
         clientSlug: generateClientSlug(clientName),
-        mode,
         profile: userProfile,
       });
-      // Full reload so dashboard re-fetches client status from Firestore
       window.location.href = ROUTES.DASHBOARD;
     } catch (err) {
       logger.error('Failed to reactivate client', 'CLIENT_DETAIL', err);
@@ -734,11 +732,10 @@ export function useClientDetail(): UseClientDetailResult {
         organizationId: orgId,
         clientSlug: generateClientSlug(clientName),
         clientName,
+        deletedBy: user.uid,
         knownAssessmentId: assessments[0]?.id,
       });
-      toast({ title: `${clientName} permanently deleted`, description: 'All client data has been removed.' });
-      // Use a hard navigation so the dashboard's Firestore listener re-initialises
-      // with fresh data rather than serving a stale cached snapshot.
+      toast({ title: `${clientName} deleted`, description: 'Moved to trash. You can restore within 30 days.' });
       window.location.href = ROUTES.DASHBOARD;
     } catch (err) {
       logger.error('Failed to permanently delete client', 'CLIENT_DETAIL', err);

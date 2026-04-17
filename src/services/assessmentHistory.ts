@@ -19,9 +19,44 @@ import { PostureAnalysisResult } from "@/lib/ai/postureAnalysis";
 import { logger } from "@/lib/utils/logger";
 import { ORGANIZATION, sessionIdFromDate } from "@/lib/database/paths";
 import { generateClientSlug } from "@/services/clientProfiles";
-import { getPillarLabel } from "@/constants/pillars";
+import { getPillarLabel, SCORING_TO_PARTIAL_MAP } from "@/constants/pillars";
+import type { ScoreCategory } from "@/lib/scoring/types";
 
 const MAX_SESSION_LIMIT = 100;
+
+/**
+ * Build an AI-friendly score summary from scoring categories.
+ * ~500 bytes vs 28KB of raw formData. Used for AI context injection
+ * and lightweight analytics queries.
+ */
+function buildScoreSummary(
+  categories: ScoreCategory[],
+  overall: number,
+  previousCategories?: ScoreCategory[],
+  previousOverall?: number,
+) {
+  const prevByPillar = new Map(
+    (previousCategories ?? []).map(c => [c.id, c.score]),
+  );
+
+  const pillars: Record<string, { score: number; delta: number | null; assessed: boolean; flags: string[] }> = {};
+  for (const cat of categories) {
+    const pillarKey = SCORING_TO_PARTIAL_MAP[cat.id] ?? cat.id;
+    const prevScore = prevByPillar.get(cat.id);
+    pillars[pillarKey] = {
+      score: cat.score,
+      delta: prevScore !== undefined ? cat.score - prevScore : null,
+      assessed: cat.assessed,
+      flags: [...cat.weaknesses.slice(0, 3)],
+    };
+  }
+
+  return {
+    overall,
+    overallDelta: previousOverall !== undefined ? overall - previousOverall : null,
+    pillars,
+  };
+}
 
 export type FormValue =
   | string
@@ -267,6 +302,28 @@ export async function createSnapshot(
   const sessionId = sessionIdFromDate();
   const sessionRef = doc(getSessionsCol(organizationId, clientName), sessionId);
 
+  // Compute AI-friendly score summary with deltas from previous session
+  let scoreSummary: ReturnType<typeof buildScoreSummary> | undefined;
+  try {
+    const { computeScores } = await import("@/lib/scoring/computeScores");
+    const currentScores = computeScores(formData);
+    // Get previous session for delta calculation
+    const prevSnapshots = await getSnapshots("", clientName, 1, organizationId);
+    const prevFormData = prevSnapshots[0]?.formData;
+    let prevScores: ReturnType<typeof computeScores> | undefined;
+    if (prevFormData) {
+      prevScores = computeScores(prevFormData);
+    }
+    scoreSummary = buildScoreSummary(
+      currentScores.categories,
+      currentScores.overall,
+      prevScores?.categories,
+      prevScores?.overall,
+    );
+  } catch {
+    // Non-fatal: score summary is an optimization, not a requirement
+  }
+
   await setDoc(sessionRef, {
     schemaVersion: 2,
     timestamp: serverTimestamp(),
@@ -279,6 +336,7 @@ export async function createSnapshot(
     organizationId,
     createdBy: coachUid,
     ...(scoresSummary ? { scoresSummary } : {}),
+    ...(scoreSummary ? { scoreSummary } : {}),
   });
 
   return sessionId;

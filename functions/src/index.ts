@@ -198,6 +198,48 @@ export const onAssessmentCompleted = onDocumentWritten(
   }
 );
 
+/**
+ * Sync public report when current/state is updated.
+ * Keeps shared report links live without blocking the assessment save path.
+ */
+export const syncPublicReportOnStateChange = onDocumentWritten(
+  { document: 'organizations/{orgId}/clients/{clientSlug}/current/state' },
+  async (event) => {
+    const afterData = event.data?.after.data();
+    if (!afterData) return;
+
+    const { orgId, clientSlug } = event.params;
+    const db = admin.firestore();
+
+    // Check if a public report exists for this client
+    const reportsQuery = db.collection('publicReports')
+      .where('assessmentId', '==', clientSlug)
+      .where('organizationId', '==', orgId)
+      .where('visibility', '==', 'public')
+      .limit(1);
+
+    const existing = await reportsQuery.get();
+    if (existing.empty) return; // No shared report — nothing to sync
+
+    const reportRef = existing.docs[0].ref;
+    const formData = afterData.formData as Record<string, unknown> | undefined;
+    if (!formData) return;
+
+    // Sanitize: strip PII fields (email, phone) from public copy
+    const safeFormData = { ...formData };
+    delete safeFormData.email;
+    delete safeFormData.phone;
+
+    await reportRef.update({
+      formData: safeFormData,
+      latestOverallScore: afterData.overallScore ?? null,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    logger.info(`[SyncPublicReport] Updated report for ${clientSlug} in ${orgId}`);
+  },
+);
+
 export const sendCoachInvite = onCall({
   enforceAppCheck: false,
 }, async (request) => {
@@ -493,6 +535,53 @@ export const cleanupAuditLogs = onSchedule(
       await markerBatch.commit();
       console.log(`[AuditCleanup] Cleaned up ${markerSnapshot.size} expired impersonation markers`);
     }
+  },
+);
+
+/**
+ * Clean up expired rate limit docs.
+ * Rate limit docs have a `ttl` field (epoch ms) set at creation time.
+ */
+export const cleanupExpiredRateLimits = onSchedule(
+  { schedule: 'every day 04:00', timeZone: 'UTC' },
+  async () => {
+    const db = admin.firestore();
+    const now = Date.now();
+    const snapshot = await db.collection('_rateLimits').where('ttl', '<', now).limit(500).get();
+    if (snapshot.empty) {
+      console.log('[RateLimitCleanup] No expired rate limits');
+      return;
+    }
+    const batch = db.batch();
+    snapshot.docs.forEach((doc) => batch.delete(doc.ref));
+    await batch.commit();
+    console.log(`[RateLimitCleanup] Deleted ${snapshot.size} expired rate limit docs`);
+  },
+);
+
+/**
+ * Clean up stale live_sessions older than 7 days.
+ * These are real-time posture capture sessions that should be ephemeral.
+ */
+export const cleanupStaleLiveSessions = onSchedule(
+  { schedule: 'every day 04:30', timeZone: 'UTC' },
+  async () => {
+    const db = admin.firestore();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const snapshot = await db
+      .collection('live_sessions')
+      .where('createdAt', '<', admin.firestore.Timestamp.fromDate(sevenDaysAgo))
+      .limit(500)
+      .get();
+    if (snapshot.empty) {
+      console.log('[LiveSessionCleanup] No stale live sessions');
+      return;
+    }
+    const batch = db.batch();
+    snapshot.docs.forEach((doc) => batch.delete(doc.ref));
+    await batch.commit();
+    console.log(`[LiveSessionCleanup] Deleted ${snapshot.size} stale live sessions`);
   },
 );
 

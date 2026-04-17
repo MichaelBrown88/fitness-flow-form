@@ -29,6 +29,7 @@ import {
   PlayCircle,
   History,
   ClipboardPlus,
+  RotateCcw,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { getShareTokensForAssessment } from '@/services/share';
@@ -49,6 +50,8 @@ interface ClientActionsDropdownProps {
   onViewHistory?: (clientName: string) => void;
   /** Callback to start a new assessment for this client */
   onStartAssessment?: (clientName: string) => void;
+  /** Callback to restore a soft-deleted client */
+  onRestore?: (clientName: string) => void;
 }
 
 export const ClientActionsDropdown: React.FC<ClientActionsDropdownProps> = ({
@@ -58,6 +61,7 @@ export const ClientActionsDropdown: React.FC<ClientActionsDropdownProps> = ({
   onPauseToggle,
   onViewHistory,
   onStartAssessment,
+  onRestore,
 }) => {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
@@ -186,7 +190,7 @@ export const ClientActionsDropdown: React.FC<ClientActionsDropdownProps> = ({
           <ArrowRightLeft className="h-3.5 w-3.5 text-muted-foreground" />
           Transfer Client
         </DropdownMenuItem>
-        {onPauseToggle && (
+        {onPauseToggle && clientStatus !== 'deleted' && (
           <DropdownMenuItem
             onClick={onPauseToggle}
             className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-muted text-foreground-secondary gap-2"
@@ -202,6 +206,15 @@ export const ClientActionsDropdown: React.FC<ClientActionsDropdownProps> = ({
                 Pause Account
               </>
             )}
+          </DropdownMenuItem>
+        )}
+        {onRestore && clientStatus === 'deleted' && (
+          <DropdownMenuItem
+            onClick={() => onRestore(clientName)}
+            className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-muted text-score-green-fg gap-2"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            Restore from Trash
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>
