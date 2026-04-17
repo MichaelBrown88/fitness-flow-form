@@ -35,14 +35,14 @@ function getSessionOrgId(path: string): string | null {
 /**
  * Returns daily assessment counts for the last 30 days by computing deltas
  * between consecutive daily snapshots stored in platform/metrics/history.
- * No dependency on platform_activity_feed.
+ * No dependency on platform-activity-feed.
  */
 export async function getAssessmentChartDataCallable(
   request: { auth?: { uid?: string } },
 ): Promise<Array<{ date: string; assessments: number }>> {
   if (!request.auth?.uid) throw new Error('Authentication required.');
   const db = getDb();
-  const adminDoc = await db.doc(`platform_admins/${request.auth.uid}`).get();
+  const adminDoc = await db.doc(`platform-admins/${request.auth.uid}`).get();
   if (!adminDoc.exists) throw new Error('Platform admin access required.');
 
   const now = new Date();
@@ -80,7 +80,7 @@ export async function getAssessmentChartDataCallable(
 
 export async function getAssessmentsThisMonthCallable(): Promise<number> {
   const db = getDb();
-  const statsRef = db.doc('system_stats/global_metrics');
+  const statsRef = db.doc('platform-stats/global-metrics');
   const statsSnap = await statsRef.get();
   return statsSnap.exists ? (statsSnap.data()?.assessments_this_month ?? 0) : 0;
 }
@@ -223,7 +223,7 @@ export async function getMetricsHistoryCallable(
     throw new Error('Authentication required.');
   }
   const db = getDb();
-  const adminDoc = await db.doc(`platform_admins/${request.auth.uid}`).get();
+  const adminDoc = await db.doc(`platform-admins/${request.auth.uid}`).get();
   if (!adminDoc.exists) {
     throw new Error('Platform admin access required.');
   }
@@ -280,7 +280,7 @@ export async function rebuildPlatformMetricsHistoryCallable(
   }
 
   const db = getDb();
-  const adminDoc = await db.doc(`platform_admins/${request.auth.uid}`).get();
+  const adminDoc = await db.doc(`platform-admins/${request.auth.uid}`).get();
   if (!adminDoc.exists) {
     throw new Error('Platform admin access required.');
   }
@@ -291,7 +291,7 @@ export async function rebuildPlatformMetricsHistoryCallable(
     configSnap.exists ? (configSnap.data() as Record<string, unknown>) : undefined,
   );
   const orgsSnap = await db.collection('organizations').get();
-  const aiLogsSnap = await db.collection('ai_usage_logs').get();
+  const aiLogsSnap = await db.collection('ai-logs').get();
   const logs = aiLogsSnap.docs.map((docSnap) => docSnap.data() as Record<string, unknown>);
   const assessmentEvents = await loadAssessmentEvents(db);
   const results: MetricsHistoryEntry[] = [];
@@ -382,18 +382,18 @@ export async function rebuildPlatformMetricsHistoryCallable(
 }
 
 /**
- * Get AI costs MTD (Month-To-Date) in GBP pence from ai_usage_logs.
- * Prefer system_stats.aiCostsMtdGbpPence when populated; otherwise aggregate from logs.
+ * Get AI costs MTD (Month-To-Date) in GBP pence from ai-logs.
+ * Prefer platform-stats.aiCostsMtdGbpPence when populated; otherwise aggregate from logs.
  */
 export async function getAICostsMTDCallable(
   request: { auth?: { uid?: string } },
 ): Promise<number> {
   if (!request.auth?.uid) throw new Error('Authentication required.');
   const db = getDb();
-  const adminDoc = await db.doc(`platform_admins/${request.auth.uid}`).get();
+  const adminDoc = await db.doc(`platform-admins/${request.auth.uid}`).get();
   if (!adminDoc.exists) throw new Error('Platform admin access required.');
 
-  const statsSnap = await db.doc('system_stats/global_metrics').get();
+  const statsSnap = await db.doc('platform-stats/global-metrics').get();
   const stats = statsSnap.data();
   const storedGbpPence = stats?.aiCostsMtdGbpPence ?? null;
   if (typeof storedGbpPence === 'number' && storedGbpPence >= 0) {
@@ -404,7 +404,7 @@ export async function getAICostsMTDCallable(
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
   const snap = await db
-    .collection('ai_usage_logs')
+    .collection('ai-logs')
     .where('timestamp', '>=', admin.firestore.Timestamp.fromDate(startOfMonth))
     .limit(5000)
     .get();
@@ -448,7 +448,7 @@ export async function reconcileSystemStats(): Promise<RebuildSystemStatsResult> 
     orgAssessmentCounts.set(event.organizationId, entry);
   }
 
-  const aiLogsSnap = await db.collection('ai_usage_logs').get();
+  const aiLogsSnap = await db.collection('ai-logs').get();
   let totalAiCostsFils = 0;
   let aiCostsMtdFils = 0;
   aiLogsSnap.docs.forEach((d) => {
@@ -510,7 +510,7 @@ export async function reconcileSystemStats(): Promise<RebuildSystemStatsResult> 
     totalClients,
   };
 
-  await db.doc('system_stats/global_metrics').set(
+  await db.doc('platform-stats/global-metrics').set(
     {
       ...result,
       lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
@@ -519,7 +519,7 @@ export async function reconcileSystemStats(): Promise<RebuildSystemStatsResult> 
     { merge: true },
   );
 
-  logger.info('system_stats/global_metrics rebuilt from canonical sources', result);
+  logger.info('platform-stats/global-metrics rebuilt from canonical sources', result);
   return result;
 }
 
@@ -528,19 +528,19 @@ export async function rebuildSystemStatsCallable(
 ): Promise<RebuildSystemStatsResult> {
   if (!request.auth?.uid) throw new Error('Authentication required.');
   const db = getDb();
-  const adminDoc = await db.doc(`platform_admins/${request.auth.uid}`).get();
+  const adminDoc = await db.doc(`platform-admins/${request.auth.uid}`).get();
   if (!adminDoc.exists) throw new Error('Platform admin access required.');
   return reconcileSystemStats();
 }
 
-const LEGACY_COLLECTIONS = ['assessments_aggregation', 'coaches', 'platform_activity_feed'];
+const LEGACY_COLLECTIONS = ['assessments_aggregation', 'coaches', 'platform-activity-feed'];
 
 export async function deleteLegacyCollectionsCallable(
   request: { auth?: { uid?: string }; data?: { dryRun?: boolean } },
 ): Promise<{ dryRun: boolean; deleted: Record<string, number>; total: number }> {
   if (!request.auth?.uid) throw new Error('Authentication required.');
   const db = getDb();
-  const adminDoc = await db.doc(`platform_admins/${request.auth.uid}`).get();
+  const adminDoc = await db.doc(`platform-admins/${request.auth.uid}`).get();
   if (!adminDoc.exists) throw new Error('Platform admin access required.');
 
   const dryRun = request.data?.dryRun !== false;
@@ -596,7 +596,7 @@ export async function seedAIConfigCallable(
 ): Promise<{ success: true }> {
   if (!request.auth?.uid) throw new Error('Authentication required.');
   const db = getDb();
-  const adminDoc = await db.doc(`platform_admins/${request.auth.uid}`).get();
+  const adminDoc = await db.doc(`platform-admins/${request.auth.uid}`).get();
   if (!adminDoc.exists) throw new Error('Platform admin access required.');
 
   const configDoc: AIConfigDoc = {

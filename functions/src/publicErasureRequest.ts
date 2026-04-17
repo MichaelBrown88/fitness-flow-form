@@ -41,7 +41,7 @@ export async function handleSubmitPublicErasureRequest(
     windowSeconds: 3600,
   });
 
-  const reportSnap = await db.collection('publicReports').doc(shareToken).get();
+  const reportSnap = await db.collection('shared-reports').doc(shareToken).get();
   if (!reportSnap.exists) {
     throw new HttpsError('not-found', 'Report not found.');
   }

@@ -16,7 +16,7 @@ service firebase.storage {
 
     function isPlatformAdmin() {
       return isAuthenticated() &&
-        firestore.exists(/databases/(default)/documents/platform_admins/$(request.auth.uid));
+        firestore.exists(/databases/(default)/documents/platform-admins/$(request.auth.uid));
     }
 
     function isOrgCoach(orgId) {
@@ -39,7 +39,7 @@ service firebase.storage {
 
     // Reserved for future companion uploads. App currently uses
     // organizations/{orgId}/clients/... only (see backgroundUpload.ts).
-    match /live_sessions/{sessionId}/{allPaths=**} {
+    match /live-sessions/{sessionId}/{allPaths=**} {
       allow read, write: if false;
     }
 

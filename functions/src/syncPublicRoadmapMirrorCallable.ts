@@ -85,7 +85,7 @@ function buildMirrorPayload(
 }
 
 /**
- * Public callable: ensure `publicRoadmaps/{urlToken}` exists and return display fields.
+ * Public callable: ensure `shared-roadmaps/{urlToken}` exists and return display fields.
  * Supports (1) roadmap hex shareToken, (2) public report UUID when the app uses `/r/{reportToken}/roadmap`.
  */
 export async function handleSyncPublicRoadmapMirror(
@@ -106,7 +106,7 @@ export async function handleSyncPublicRoadmapMirror(
     throw new HttpsError('invalid-argument', 'Invalid share token.');
   }
 
-  /** Canonical id for `publicRoadmaps/{id}` — always lowercase so client cache reads match. */
+  /** Canonical id for `shared-roadmaps/{id}` — always lowercase so client cache reads match. */
   const mirrorDocId = tokenLower;
 
   let data: admin.firestore.DocumentData;
@@ -137,7 +137,7 @@ export async function handleSyncPublicRoadmapMirror(
     const reportIdVariants = [...new Set([raw, tokenLower, raw.toUpperCase()])];
     let reportSnap: admin.firestore.DocumentSnapshot | null = null;
     for (const id of reportIdVariants) {
-      const snap = await db.doc(`publicReports/${id}`).get();
+      const snap = await db.doc(`shared-reports/${id}`).get();
       if (snap.exists) {
         reportSnap = snap;
         break;
@@ -172,7 +172,7 @@ export async function handleSyncPublicRoadmapMirror(
       roadmapSnap = await db.doc(roadmapPath(resolvedClientId)).get();
     }
 
-    // `assessmentId` on publicReports can be stale (e.g. legacy client UUID after migration to slug doc ids).
+    // `assessmentId` on shared-reports can be stale (e.g. legacy client UUID after migration to slug doc ids).
     // Current-state assessments always live at `clients/{slug}/...` where slug matches `formData.fullName`.
     if (!roadmapSnap?.exists) {
       const formDataRaw = report.formData as admin.firestore.DocumentData | undefined;
@@ -190,7 +190,7 @@ export async function handleSyncPublicRoadmapMirror(
       }
     }
 
-    // `publicReports/{token}` doc id equals the client's profile `shareToken` when assessments sync the profile.
+    // `shared-reports/{token}` doc id equals the client's profile `shareToken` when assessments sync the profile.
     if (!roadmapSnap?.exists) {
       const shareLookupIds = [...new Set([tokenLower, raw, reportDocId, raw.toUpperCase()])];
       for (const st of shareLookupIds) {
@@ -277,7 +277,7 @@ export async function handleSyncPublicRoadmapMirror(
     reportForMirror,
   );
 
-  await db.collection('publicRoadmaps').doc(mirrorDocId).set(mirror, { merge: true });
+  await db.collection('shared-roadmaps').doc(mirrorDocId).set(mirror, { merge: true });
 
   return {
     clientSlug,

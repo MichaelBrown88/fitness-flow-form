@@ -7,9 +7,9 @@ export const COLLECTIONS = {
   ORGANIZATIONS: 'organizations',
   COACHES: 'coaches',
   CLIENTS: 'clients',
-  USER_PROFILES: 'userProfiles',
+  USER_PROFILES: 'user-profiles',
 
-  // Client subcollections
+  // Client subcollections (these are subcollection names, not top-level — no rename needed)
   /** Live composite state — one doc per client, ID always 'state' */
   CURRENT: 'current',
   /** Immutable assessment event log — one doc per session */
@@ -21,23 +21,23 @@ export const COLLECTIONS = {
   /** Save-for-later draft — one doc per client, ID always 'draft' */
   ASSESSMENT_DRAFTS: 'assessmentDrafts',
 
-  // Public / shared
-  PUBLIC_REPORTS: 'publicReports',
+  // Shared (public-facing)
+  PUBLIC_REPORTS: 'shared-reports',
   /** Token-keyed mirror of roadmap fields for anonymous /r/:token/roadmap (see roadmaps.ts) */
-  PUBLIC_ROADMAPS: 'publicRoadmaps',
-  LIVE_SESSIONS: 'live_sessions',
+  PUBLIC_ROADMAPS: 'shared-roadmaps',
+  LIVE_SESSIONS: 'live-sessions',
 
-  // Public report subcollections
+  // Report subcollections (subcollection names, unchanged)
   NOTIFICATIONS: 'notifications',
-  /** Historical snapshots: publicReports/{token}/snapshots/{snapshotId} */
+  /** Historical snapshots: shared-reports/{token}/snapshots/{snapshotId} */
   PUBLIC_REPORT_SNAPSHOTS: 'snapshots',
   LIFESTYLE_CHECKINS: 'lifestyleCheckins',
   /** Submitted before a returning client's session — coach sees latest on ClientOverview */
   PRE_SESSION_CHECKINS: 'preSessionCheckins',
 
   // Platform
-  PLATFORM_ADMINS: 'platform_admins',
-  SYSTEM_STATS: 'system_stats',
+  PLATFORM_ADMINS: 'platform-admins',
+  SYSTEM_STATS: 'platform-stats',
 
   // Misc
   LEARNED_OCR_PATTERNS: 'learned_ocr_patterns',

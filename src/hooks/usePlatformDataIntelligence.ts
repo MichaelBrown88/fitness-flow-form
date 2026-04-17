@@ -167,8 +167,8 @@ export function usePlatformDataIntelligence(): PlatformDataIntelligenceResult {
     const db = getDb();
     try {
       const [popSnap, milesSnap] = await Promise.all([
-        getDoc(doc(db, 'platform_analytics/population')),
-        getDoc(doc(db, 'platform_analytics/milestones')),
+        getDoc(doc(db, 'platform-analytics/population')),
+        getDoc(doc(db, 'platform-analytics/milestones')),
       ]);
 
       if (popSnap.exists()) {
@@ -208,7 +208,7 @@ export function usePlatformDataIntelligence(): PlatformDataIntelligenceResult {
   const markSeen = useCallback(async () => {
     try {
       const db = getDb();
-      await updateDoc(doc(db, 'platform_analytics/milestones'), {
+      await updateDoc(doc(db, 'platform-analytics/milestones'), {
         seenByAdminAt: Timestamp.now(),
       });
     } catch {
@@ -391,7 +391,7 @@ export function usePlatformDataIntelligence(): PlatformDataIntelligenceResult {
 export async function fetchMilestoneBadgeState(): Promise<boolean> {
   try {
     const db = getDb();
-    const snap = await getDoc(doc(db, 'platform_analytics/milestones'));
+    const snap = await getDoc(doc(db, 'platform-analytics/milestones'));
     if (!snap.exists()) return false;
     const data = snap.data();
     const seenAt: Date | undefined = data.seenByAdminAt instanceof Timestamp

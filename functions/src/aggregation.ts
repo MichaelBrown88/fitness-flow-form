@@ -2,7 +2,7 @@
  * Firestore Aggregation Functions
  * 
  * Implements write-time aggregation pattern for efficient dashboard queries.
- * Updates system_stats/global_metrics and organization-level stats atomically.
+ * Updates platform-stats/global-metrics and organization-level stats atomically.
  */
 
 import * as admin from 'firebase-admin';
@@ -30,7 +30,7 @@ function getDb() {
  * Get system stats document reference
  */
 function getSystemStatsDoc() {
-  return getDb().doc('system_stats/global_metrics');
+  return getDb().doc('platform-stats/global-metrics');
 }
 
 function getLocalLogCostFils(data: admin.firestore.DocumentData | undefined): number {
@@ -396,7 +396,7 @@ function isBillingActiveClientStatus(status: unknown): boolean {
 
 /**
  * Handle client changes in organizations/{orgId}/clients
- * Updates stats.clientCount (non-archived only) and system_stats.totalClients.
+ * Updates stats.clientCount (non-archived only) and platform-stats.totalClients.
  */
 export async function handleClientChange(
   change: Change<admin.firestore.DocumentSnapshot>,

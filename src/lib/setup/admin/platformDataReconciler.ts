@@ -862,7 +862,7 @@ export async function platformAudit(): Promise<void> {
     // Public reports
     const reportsSnap = await getDocs(
       query(
-        collection(db, 'publicReports'),
+        collection(db, 'shared-reports'),
         where('organizationId', '==', org.id),
         limit(100),
       ),
@@ -873,10 +873,10 @@ export async function platformAudit(): Promise<void> {
     let totalReportVersions = 0;
     for (const reportDoc of reportsSnap.docs) {
       const versionsSnap = await getDocs(
-        query(collection(db, `publicReports/${reportDoc.id}/reportVersions`), limit(200)),
+        query(collection(db, `shared-reports/${reportDoc.id}/reportVersions`), limit(200)),
       );
       const legacySnap = await getDocs(
-        query(collection(db, `publicReports/${reportDoc.id}/snapshots`), limit(200)),
+        query(collection(db, `shared-reports/${reportDoc.id}/snapshots`), limit(200)),
       );
       totalReportVersions += versionsSnap.size + legacySnap.size;
     }
@@ -884,7 +884,7 @@ export async function platformAudit(): Promise<void> {
   }
 
   // Platform-level orphan check
-  const publicReportsAll = await getDocs(query(collection(db, 'publicReports'), limit(500)));
+  const publicReportsAll = await getDocs(query(collection(db, 'shared-reports'), limit(500)));
   logger.debug(`\nPublicReports total (all orgs): ${publicReportsAll.size}`);
   logger.debug('✅ Audit complete.');
 }
@@ -1462,7 +1462,7 @@ async function resolveCallerOrgId(): Promise<string> {
   const currentUser = getAuth().currentUser;
   if (!currentUser) throw new Error('No authenticated user — please log in first.');
 
-  const profileSnap = await getDoc(doc(getDb(), `userProfiles/${currentUser.uid}`));
+  const profileSnap = await getDoc(doc(getDb(), `user-profiles/${currentUser.uid}`));
   if (!profileSnap.exists()) throw new Error('User profile not found.');
 
   const orgId = (profileSnap.data() as { organizationId?: string }).organizationId;

@@ -174,7 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       previousUserIdRef.current = firebaseUser.uid;
 
       // 3. Subscribe to User Profile
-      const profileRef = doc(db, 'userProfiles', firebaseUser.uid);
+      const profileRef = doc(db, 'user-profiles', firebaseUser.uid);
       unsubProfile = onSnapshot(profileRef, async (profileSnap) => {
         setFirestoreProfileSyncError(null);
         let currentProfile: UserProfile;
@@ -395,7 +395,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const newUser = result.user;
     const db = getDb();
 
-    const profileRef = doc(db, 'userProfiles', newUser.uid);
+    const profileRef = doc(db, 'user-profiles', newUser.uid);
     const profileSnap = await getDoc(profileRef);
     if (!profileSnap.exists()) {
       await provisionStaffShellOrg(db, {
@@ -412,7 +412,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const newUser = result.user;
     const db = getDb();
 
-    const profileRef = doc(db, 'userProfiles', newUser.uid);
+    const profileRef = doc(db, 'user-profiles', newUser.uid);
     const profileSnap = await getDoc(profileRef);
     if (!profileSnap.exists()) {
       await provisionStaffShellOrg(db, {

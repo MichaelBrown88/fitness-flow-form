@@ -178,7 +178,7 @@ const Settings = () => {
       const next = localDisplayName.trim();
       await updateProfile(user, { displayName: next });
       await setDoc(
-        doc(getDb(), 'userProfiles', user.uid),
+        doc(getDb(), 'user-profiles', user.uid),
         { displayName: next, updatedAt: new Date() },
         { merge: true },
       );
@@ -488,7 +488,7 @@ const Settings = () => {
                       onCheckedChange={async (checked) => {
                         if (!user) return;
                         try {
-                          await setDoc(doc(getDb(), 'userProfiles', user.uid), {
+                          await setDoc(doc(getDb(), 'user-profiles', user.uid), {
                             isActiveCoach: checked,
                             updatedAt: new Date(),
                           }, { merge: true });

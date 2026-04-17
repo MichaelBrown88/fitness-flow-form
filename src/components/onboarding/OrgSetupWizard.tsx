@@ -141,7 +141,7 @@ export function OrgSetupWizard({ onComplete }: OrgSetupWizardProps) {
     if (profile?.onboardingCompleted) return;
     if (!user || !profile?.organizationId) return;
     const db = getDb();
-    void updateDoc(doc(db, 'userProfiles', user.uid), {
+    void updateDoc(doc(db, 'user-profiles', user.uid), {
       onboardingCompleted: true,
       updatedAt: serverTimestamp(),
     }).catch((e) => logger.warn('[OrgSetupWizard] Auto-heal onboardingCompleted failed:', e));
@@ -223,7 +223,7 @@ export function OrgSetupWizard({ onComplete }: OrgSetupWizardProps) {
       }
 
       await updateDoc(doc(db, 'organizations', orgId), orgUpdates);
-      await updateDoc(doc(db, 'userProfiles', user.uid), {
+      await updateDoc(doc(db, 'user-profiles', user.uid), {
         onboardingCompleted: true,
         updatedAt: serverTimestamp(),
       });

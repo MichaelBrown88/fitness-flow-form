@@ -238,6 +238,6 @@ export const getOrgAssessmentDoc = (orgId: string, assessmentId: string): Docume
 export const getOrgAssessmentHistoryCollection = (orgId: string): CollectionReference =>
   collection(getDb(), `organizations/${orgId}/assessmentHistory`);
 
-/** ai_usage_logs — root-level AI cost tracking */
+/** ai-logs — root-level AI cost tracking */
 export const getAIUsageLogsCollection = (): CollectionReference =>
-  collection(getDb(), 'ai_usage_logs');
+  collection(getDb(), 'ai-logs');

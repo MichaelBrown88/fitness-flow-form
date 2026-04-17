@@ -60,7 +60,7 @@ async function resolveOrganizationId(coachUid: string): Promise<string | null> {
   if (orgIdCache.has(coachUid)) return orgIdCache.get(coachUid) ?? null;
   try {
     const db = getDb();
-    const snap = await getDoc(doc(db, 'userProfiles', coachUid));
+    const snap = await getDoc(doc(db, 'user-profiles', coachUid));
     const rawOrg = snap.exists() ? snap.data().organizationId : undefined;
     const orgId = typeof rawOrg === 'string' && rawOrg.length > 0 ? rawOrg : null;
     orgIdCache.set(coachUid, orgId);
@@ -147,7 +147,7 @@ export async function logAIUsage(
     }
 
     const db = getDb();
-    const usageRef = collection(db, 'ai_usage_logs');
+    const usageRef = collection(db, 'ai-logs');
 
     const knownProvider =
       provider !== 'local' && provider !== 'mediapipe' && provider !== 'pattern';
@@ -187,7 +187,7 @@ export async function getAIUsageStats(
   totalCost: number;
 }> {
   const db = getDb();
-  const usageRef = collection(db, 'ai_usage_logs');
+  const usageRef = collection(db, 'ai-logs');
 
   const startTime = new Date();
   startTime.setDate(startTime.getDate() - days);

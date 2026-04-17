@@ -6,7 +6,7 @@
 import * as admin from 'firebase-admin';
 
 /** Document ID = Stripe Event id (`evt_...`). */
-export const STRIPE_INBOUND_EVENTS_COLLECTION = 'stripeInboundEvents';
+export const STRIPE_INBOUND_EVENTS_COLLECTION = 'stripe-inbound-events';
 
 /** Document ID = Stripe Checkout Session id (`cs_...`) for one-time fulfillments (e.g. credit top-up). */
 export const STRIPE_FULFILLED_CHECKOUT_SESSIONS_COLLECTION = 'stripeFulfilledCheckoutSessions';

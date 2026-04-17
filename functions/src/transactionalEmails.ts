@@ -4,7 +4,7 @@
  * Requires RESEND_API_KEY, RESEND_FROM (see functions/env.example).
  *
  * Emails sent:
- *   - Welcome: when a user completes onboarding (triggered by userProfiles update). Personal founder
+ *   - Welcome: when a user completes onboarding (triggered by user-profiles update). Personal founder
  *     copy + From address when FOUNDER_WELCOME_FROM is set; otherwise product activation template.
  *   - First assessment celebration: once per coach when their first session is created.
  *   - Invite accepted: org owner when a coach accepts an invite.
@@ -120,7 +120,7 @@ export async function resolveUserEmail(uid: string, profileEmail: string | null 
 }
 
 /**
- * Firestore trigger handler: when userProfiles/{userId} is updated and
+ * Firestore trigger handler: when user-profiles/{userId} is updated and
  * onboardingCompleted flips to true, send welcome email.
  */
 export async function handleOnboardingCompleted(
@@ -144,7 +144,7 @@ export async function handleOnboardingCompleted(
 
 /**
  * One-time Activation email when a coach's first assessment session is saved.
- * Sets userProfiles/{uid}.emailMilestones.firstAssessmentCelebrationSentAt after a successful send.
+ * Sets user-profiles/{uid}.emailMilestones.firstAssessmentCelebrationSentAt after a successful send.
  */
 export async function maybeSendFirstAssessmentCelebrationEmail(
   orgId: string,
@@ -162,7 +162,7 @@ export async function maybeSendFirstAssessmentCelebrationEmail(
   if (sessionOrgId && sessionOrgId !== orgId) return;
 
   const db = admin.firestore();
-  const profileRef = db.doc(`userProfiles/${createdBy}`);
+  const profileRef = db.doc(`user-profiles/${createdBy}`);
   const profileSnap = await profileRef.get();
   if (!profileSnap.exists) return;
 
@@ -227,7 +227,7 @@ export async function sendInviteAcceptedEmail(params: {
   if (!RESEND_API_KEY) return;
 
   const db = admin.firestore();
-  const profileSnap = await db.doc(`userProfiles/${params.inviterUid}`).get();
+  const profileSnap = await db.doc(`user-profiles/${params.inviterUid}`).get();
   const profileEmail = profileSnap.exists
     ? (profileSnap.data()?.email as string | undefined)
     : undefined;

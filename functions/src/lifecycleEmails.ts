@@ -65,7 +65,7 @@ async function getOrgOwnerEmail(
 ): Promise<{ toEmail: string; firstName: string } | null> {
   const ownerId = orgData.ownerId as string | undefined;
   if (!ownerId) return null;
-  const profileSnap = await db.doc(`userProfiles/${ownerId}`).get();
+  const profileSnap = await db.doc(`user-profiles/${ownerId}`).get();
   const toEmail = await resolveUserEmail(ownerId, profileSnap.data()?.email as string | undefined);
   if (!toEmail) return null;
   const firstName =
@@ -274,7 +274,7 @@ export async function sendReportNeverSharedNudges(): Promise<void> {
     if (hasMilestone(orgData, 'reportShareNudge')) continue;
 
     const reportsSnap = await db
-      .collection('publicReports')
+      .collection('shared-reports')
       .where('organizationId', '==', doc.id)
       .limit(1)
       .get();

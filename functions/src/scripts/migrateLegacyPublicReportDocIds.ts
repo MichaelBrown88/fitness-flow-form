@@ -1,5 +1,5 @@
 /**
- * One-off: promote `publicReports/{coachUid}__{assessmentId}` documents to UUID ids
+ * One-off: promote `shared-reports/{coachUid}__{assessmentId}` documents to UUID ids
  * (same semantics as runtime promotion in `share.ts`), and refresh `shareToken` on matching client profiles.
  *
  *   GOOGLE_APPLICATION_CREDENTIALS=... npx ts-node --transpile-only src/scripts/migrateLegacyPublicReportDocIds.ts
@@ -37,7 +37,7 @@ async function main(): Promise<void> {
   let last: QueryDocumentSnapshot | undefined;
   let more = true;
   while (more) {
-    let q = db.collection('publicReports').orderBy(admin.firestore.FieldPath.documentId()).limit(PAGE_SIZE);
+    let q = db.collection('shared-reports').orderBy(admin.firestore.FieldPath.documentId()).limit(PAGE_SIZE);
     if (last) q = q.startAfter(last);
     const snap = await q.get();
     if (snap.empty) break;
@@ -53,7 +53,7 @@ async function main(): Promise<void> {
       const data = docSnap.data();
       const orgId = typeof data.organizationId === 'string' ? data.organizationId : '';
       const newToken = randomUUID();
-      const newRef = db.doc(`publicReports/${newToken}`);
+      const newRef = db.doc(`shared-reports/${newToken}`);
 
       console.log(
         `${COMMIT ? 'PROMOTE' : 'DRY-RUN'} ${oldId} -> ${newToken} orgId=${orgId || '?'}`,

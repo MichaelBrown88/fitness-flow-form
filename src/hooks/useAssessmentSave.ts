@@ -428,7 +428,7 @@ export function useAssessmentSave({
         try {
           const { doc, updateDoc } = await import('firebase/firestore');
           const { getDb } = await import('@/services/firebase');
-          await updateDoc(doc(getDb(), 'userProfiles', user.uid), {
+          await updateDoc(doc(getDb(), 'user-profiles', user.uid), {
             firstAssessmentCompleted: true,
           });
           logger.info('[Assessment] firstAssessmentCompleted flag set');

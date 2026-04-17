@@ -1,7 +1,8 @@
 /**
- * Firestore Collection Paths — v2
+ * Firestore Collection Paths — v3
  *
  * Single source of truth for all database paths.
+ * All top-level collections use kebab-case for consistency.
  *
  * HIERARCHY:
  *   organizations/{orgId}
@@ -10,17 +11,21 @@
  *       current/state                 ← live composite assessment state (one per client)
  *       sessions/{sessionId}          ← immutable assessment events (append-only)
  *       roadmap/plan                  ← phases + metrics
- *       achievements/{achievementId}  ← per-definition docs (see ORGANIZATION.clientAchievements)
+ *       achievements/{achievementId}  ← per-definition docs
  *       assessmentDrafts/draft        ← save-for-later partial draft
  *
- *   publicReports/{shareToken}        ← client PWA credential + current report snapshot
- *   userProfiles/{uid}               ← Firebase Auth user profile (coaches)
+ *   shared-reports/{shareToken}       ← client PWA credential + current report snapshot
+ *   shared-roadmaps/{shareToken}      ← roadmap mirror for anonymous viewer
+ *   user-profiles/{uid}              ← Firebase Auth user profile (coaches)
  *   notifications/{uid}/items/{id}   ← per-user notification feed
- *   platform_analytics/{doc}         ← pre-computed (Cloud Functions write only)
- *   platform_admins/{uid}            ← platform admin registry
- *   platform/{doc}                   ← config, feature flags, maintenance
- *   platform_audit_logs/{doc}        ← security / compliance events
- *   live_sessions/{sessionId}        ← real-time camera sessions (posture capture)
+ *   platform-analytics/{doc}         ← pre-computed (Cloud Functions write only)
+ *   platform-admins/{uid}            ← platform admin registry
+ *   platform/{doc}                   ← config, feature flags, maintenance, stats
+ *   platform-audit-logs/{doc}        ← security / compliance events
+ *   live-sessions/{sessionId}        ← real-time camera sessions (posture capture)
+ *   ai-logs/{logId}                  ← AI usage cost tracking
+ *   remote-tokens/{tokenId}          ← remote intake assessment links
+ *   rate-limits/{key}                ← request rate limiting (TTL-cleaned)
  *
  * COLLECTION GROUP QUERIES (analytics):
  *   collectionGroup('current')   → all clients' live state across platform
@@ -35,9 +40,9 @@ export const PLATFORM = {
   onboardingFunnel: () => 'platform/onboarding_funnel' as const,
 
   admins: {
-    collection: () => 'platform_admins' as const,
-    doc: (uid: string) => `platform_admins/${uid}` as const,
-    lookupCollection: () => 'platform_admin_lookup' as const,
+    collection: () => 'platform-admins' as const,
+    doc: (uid: string) => `platform-admins/${uid}` as const,
+    lookupCollection: () => 'platform-admin-lookup' as const,
     /** Canonical lookup doc id — must match `request.auth.token.email` in Firestore rules. */
     lookupKey: (email: string) => email.trim().toLowerCase(),
     /** Legacy id (dots/@ → underscores). Kept for existing data and dual-write during migration. */
@@ -46,11 +51,11 @@ export const PLATFORM = {
   },
 
   auditLogs: {
-    collection: () => 'platform_audit_logs' as const,
-    doc: (logId: string) => `platform_audit_logs/${logId}` as const,
+    collection: () => 'platform-audit-logs' as const,
+    doc: (logId: string) => `platform-audit-logs/${logId}` as const,
     impersonation: {
-      collection: () => 'platform_audit_logs/impersonation/logs' as const,
-      doc: (logId: string) => `platform_audit_logs/impersonation/logs/${logId}` as const,
+      collection: () => 'platform-audit-logs/impersonation/logs' as const,
+      doc: (logId: string) => `platform-audit-logs/impersonation/logs/${logId}` as const,
     },
   },
 
@@ -64,8 +69,8 @@ export const PLATFORM = {
 // Platform Analytics (written by Cloud Functions, read by platform admin)
 // ---------------------------------------------------------------------------
 export const ANALYTICS = {
-  population: () => 'platform_analytics/population' as const,
-  milestones: () => 'platform_analytics/milestones' as const,
+  population: () => 'platform-analytics/population' as const,
+  milestones: () => 'platform-analytics/milestones' as const,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -162,8 +167,8 @@ export const ORGANIZATION = {
 // User Profiles (one per Firebase Auth user — coaches and platform admins)
 // ---------------------------------------------------------------------------
 export const USER_PROFILES = {
-  collection: () => 'userProfiles' as const,
-  doc: (uid: string) => `userProfiles/${uid}` as const,
+  collection: () => 'user-profiles' as const,
+  doc: (uid: string) => `user-profiles/${uid}` as const,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -173,18 +178,18 @@ export const USER_PROFILES = {
 // ---------------------------------------------------------------------------
 export const PUBLIC = {
   reports: {
-    collection: () => 'publicReports' as const,
-    doc: (token: string) => `publicReports/${token}` as const,
+    collection: () => 'shared-reports' as const,
+    doc: (token: string) => `shared-reports/${token}` as const,
   },
 
   /** Token-keyed roadmap mirror for anonymous client viewer (see roadmaps.ts). */
   roadmaps: {
-    doc: (token: string) => `publicRoadmaps/${token}` as const,
+    doc: (token: string) => `shared-roadmaps/${token}` as const,
   },
 
   liveSessions: {
-    collection: () => 'live_sessions' as const,
-    doc: (sessionId: string) => `live_sessions/${sessionId}` as const,
+    collection: () => 'live-sessions' as const,
+    doc: (sessionId: string) => `live-sessions/${sessionId}` as const,
   },
 } as const;
 
@@ -201,8 +206,8 @@ export const NOTIFICATIONS = {
 // System Stats (aggregated platform counters, written by Cloud Functions)
 // ---------------------------------------------------------------------------
 export const SYSTEM_STATS = {
-  collection: () => 'system_stats' as const,
-  globalMetrics: () => 'system_stats/global_metrics' as const,
+  collection: () => 'platform-stats' as const,
+  globalMetrics: () => 'platform-stats/global-metrics' as const,
 } as const;
 
 // ---------------------------------------------------------------------------

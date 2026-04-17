@@ -59,7 +59,7 @@ export async function ensureReportArtifacts(params: {
   };
 
   await getDb()
-    .doc(`publicReports/${shareToken}`)
+    .doc(`shared-reports/${shareToken}`)
     .set(
       {
         ...publicReport,

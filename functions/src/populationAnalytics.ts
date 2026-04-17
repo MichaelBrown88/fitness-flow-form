@@ -5,8 +5,8 @@
  * 'sessions' collection (1 000 docs per page), computes population-level statistics,
  * and writes two pre-computed docs:
  *
- *   platform_analytics/population  — chart data for the Data Intelligence tab
- *   platform_analytics/milestones  — tier unlock state + badge signal
+ *   platform-analytics/population  — chart data for the Data Intelligence tab
+ *   platform-analytics/milestones  — tier unlock state + badge signal
  *
  * Session document structure (organizations/{orgId}/clients/{slug}/sessions/{id}):
  * {
@@ -1004,7 +1004,7 @@ export async function runPopulationAnalytics(): Promise<void> {
   logger.info(`[PopulationAnalytics] Outcome funnel: ${outcomeFunnel.overall.total} longitudinal clients`);
   logger.info(`[PopulationAnalytics] Return rate: ${dataCompleteness.returnRate}%`);
 
-  // --- 6. Write platform_analytics/population ---
+  // --- 6. Write platform-analytics/population ---
   const populationDoc = {
     computedAt: admin.firestore.FieldValue.serverTimestamp(),
     totalScoredAssessments: scoredCount,
@@ -1049,11 +1049,11 @@ export async function runPopulationAnalytics(): Promise<void> {
     ...(earliestSessionDate ? { earliestSessionDate } : {}),
   };
 
-  await db.doc('platform_analytics/population').set(populationDoc);
+  await db.doc('platform-analytics/population').set(populationDoc);
   logger.info(`[PopulationAnalytics] Written population doc (${scoredCount} scored assessments)`);
 
-  // --- 7. Write platform_analytics/milestones (preserve seenByAdminAt) ---
-  const milestonesRef = db.doc('platform_analytics/milestones');
+  // --- 7. Write platform-analytics/milestones (preserve seenByAdminAt) ---
+  const milestonesRef = db.doc('platform-analytics/milestones');
   const existing = await milestonesRef.get();
   const seenByAdminAt = existing.exists
     ? existing.data()?.seenByAdminAt ?? null

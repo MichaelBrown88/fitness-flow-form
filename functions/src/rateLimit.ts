@@ -9,7 +9,7 @@
  * Pattern:
  *   await assertRateLimit(db, key, { maxRequests: 10, windowSeconds: 60 });
  *
- * The counter doc lives at: _rateLimits/{key}
+ * The counter doc lives at: rate-limits/{key}
  * It stores { count, windowStart } and is cleaned up atomically on each call.
  *
  * For high-traffic scenarios, consider switching to a dedicated Redis/Memorystore
@@ -39,7 +39,7 @@ export async function assertRateLimit(
   key: string,
   opts: RateLimitOptions,
 ): Promise<void> {
-  const ref = db.collection('_rateLimits').doc(key);
+  const ref = db.collection('rate-limits').doc(key);
   const nowMs = Date.now();
   const windowMs = opts.windowSeconds * 1000;
 

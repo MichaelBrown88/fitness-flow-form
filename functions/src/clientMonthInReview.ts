@@ -15,7 +15,7 @@
  *     normal for them not to have a new assessment yet.
  *
  * Consent gate:
- *   - Only sends if publicReports/{token}/clientConsent/prefs.monthlyEmailConsented === true.
+ *   - Only sends if shared-reports/{token}/clientConsent/prefs.monthlyEmailConsented === true.
  *
  * Deduplication:
  *   - Writes a `clientMonthInReviewSent_YYYY-MM` key to the publicReport doc to prevent
@@ -353,7 +353,7 @@ export async function sendClientMonthInReviewEmails(): Promise<void> {
   // We also filter for reports that have snapshotSummaries (at least 1 assessment).
   // Max 500 per run — function timeout-safe.
   const snap = await db
-    .collection('publicReports')
+    .collection('shared-reports')
     .where('visibility', '==', 'public')
     .where('revoked', '!=', true)
     .limit(500)
@@ -378,7 +378,7 @@ export async function sendClientMonthInReviewEmails(): Promise<void> {
     // Check client consent
     try {
       const consentSnap = await db
-        .doc(`publicReports/${token}/clientConsent/prefs`)
+        .doc(`shared-reports/${token}/clientConsent/prefs`)
         .get();
       const consent = consentSnap.data() as ConsentPrefs | undefined;
       if (!consent || consent.monthlyEmailConsented !== true) {
@@ -460,7 +460,7 @@ export async function sendClientMonthInReviewEmails(): Promise<void> {
         // If their cadence is > 5 weeks naturally, skip the nudge (not overdue)
         if (avgGap !== null && avgGap > 35) {
           skipped++;
-          await db.doc(`publicReports/${token}`).update({ [dedupeField]: true });
+          await db.doc(`shared-reports/${token}`).update({ [dedupeField]: true });
           continue;
         }
         email = renderNudgeHtml({
@@ -495,7 +495,7 @@ export async function sendClientMonthInReviewEmails(): Promise<void> {
       });
 
       // Mark as sent for this month
-      await db.doc(`publicReports/${token}`).update({ [dedupeField]: true });
+      await db.doc(`shared-reports/${token}`).update({ [dedupeField]: true });
       sent++;
     } catch (e) {
       logger.error(`[clientMonthInReview] Failed to send to token ${token}`, e);

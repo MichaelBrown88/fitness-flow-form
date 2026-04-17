@@ -1291,7 +1291,7 @@ export async function purgeClientData(params: {
   try {
     const publicReportsSnap = await getDocs(
       query(
-        collection(db, 'publicReports'),
+        collection(db, 'shared-reports'),
         where('clientName', '==', clientName),
         where('organizationId', '==', organizationId),
         limit(PUBLIC_REPORTS_BY_CLIENT_DELETE_LIMIT),

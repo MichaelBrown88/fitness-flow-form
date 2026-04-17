@@ -33,7 +33,7 @@ export function NotificationSettings() {
     if (!user) return;
     const load = async () => {
       try {
-        const ref = doc(getDb(), 'userProfiles', user.uid);
+        const ref = doc(getDb(), 'user-profiles', user.uid);
         const snap = await getDoc(ref);
         const data = snap.data();
         const prefs = (data?.notificationPreferences || {}) as Record<string, boolean>;
@@ -60,7 +60,7 @@ export function NotificationSettings() {
     setSaving(true);
     try {
       await setDoc(
-        doc(getDb(), 'userProfiles', user.uid),
+        doc(getDb(), 'user-profiles', user.uid),
         { notificationPreferences: updated },
         { merge: true },
       );

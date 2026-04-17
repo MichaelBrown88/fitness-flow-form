@@ -43,7 +43,7 @@ export interface LiveSession {
   [key: string]: string | number | boolean | Timestamp | Record<string, string> | Record<string, PostureAnalysisResult> | Array<{ timestamp: Timestamp; message: string; level: 'info' | 'warn' | 'error' }> | undefined | null;
 }
 
-const SESSIONS_COLLECTION = 'live_sessions';
+const SESSIONS_COLLECTION = 'live-sessions';
 
 /**
  * `createLiveSession` uses this clientId until sessions are keyed by real client slug.

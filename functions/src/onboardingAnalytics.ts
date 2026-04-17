@@ -48,7 +48,7 @@ export async function handleLogOnboardingStep(
       { merge: true },
     );
 
-    await db.collection('platform_activity_feed').add({
+    await db.collection('platform-activity-feed').add({
       type: 'onboarding_step',
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
       organizationId: null,

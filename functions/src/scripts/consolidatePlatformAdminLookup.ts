@@ -1,5 +1,5 @@
 /**
- * One-off: copy `platform_admin_lookup` docs that use legacy ids (email with `.`/`@` → `_`)
+ * One-off: copy `platform-admin-lookup` docs that use legacy ids (email with `.`/`@` → `_`)
  * onto canonical ids (`email.trim().toLowerCase()`) and delete the legacy doc when safe.
  *
  *   GOOGLE_APPLICATION_CREDENTIALS=... npx ts-node --transpile-only src/scripts/consolidatePlatformAdminLookup.ts
@@ -36,7 +36,7 @@ async function main(): Promise<void> {
   let more = true;
   while (more) {
     let q = db
-      .collection('platform_admin_lookup')
+      .collection('platform-admin-lookup')
       .orderBy(admin.firestore.FieldPath.documentId())
       .limit(PAGE_SIZE);
     if (last) q = q.startAfter(last);
@@ -65,7 +65,7 @@ async function main(): Promise<void> {
         continue;
       }
 
-      const canonRef = db.doc(`platform_admin_lookup/${canonicalId}`);
+      const canonRef = db.doc(`platform-admin-lookup/${canonicalId}`);
       const canonSnap = await canonRef.get();
       if (canonSnap.exists) {
         console.log(`SKIP delete legacy ${docId}: canonical already exists`);

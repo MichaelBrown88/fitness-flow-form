@@ -1,6 +1,6 @@
 /**
  * Push aggregate platform metrics from Firestore to APEX OS Supabase ingest.
- * No user-level data — reads system_stats/global_metrics only.
+ * No user-level data — reads platform-stats/global-metrics only.
  *
  * Env (functions/.env for deploy, or Google Cloud env):
  *   APEX_PRODUCT_ANALYTICS_SECRET — Bearer token (same as Vercel PRODUCT_ANALYTICS_INGEST_SECRET)
@@ -54,10 +54,10 @@ export async function pushApexProductMetricsFromFirestore(): Promise<PushApexPro
   }
 
   const db = admin.firestore();
-  const snap = await db.doc('system_stats/global_metrics').get();
+  const snap = await db.doc('platform-stats/global-metrics').get();
 
   if (!snap.exists) {
-    logger.warn('[ApexIngest] system_stats/global_metrics missing — skip');
+    logger.warn('[ApexIngest] platform-stats/global-metrics missing — skip');
     return { pushed: false, reason: 'no_global_metrics' };
   }
 

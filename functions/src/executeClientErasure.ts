@@ -6,12 +6,12 @@
  *
  * What is deleted:
  *   organizations/{orgId}/clients/{clientSlug}  + all subcollections
- *   publicReports/{shareToken}                  + all subcollections
- *   publicRoadmaps/* where assessmentId == clientSlug && organizationId == orgId
+ *   shared-reports/{shareToken}                  + all subcollections
+ *   shared-roadmaps/* where assessmentId == clientSlug && organizationId == orgId
  *
  * What is retained (compliance records):
  *   organizations/{orgId}/erasureRequests/{requestId}  — updated to status:'completed'
- *   ai_usage_logs — anonymised cost records, no PII
+ *   ai-logs — anonymised cost records, no PII
  */
 
 import * as admin from 'firebase-admin';
@@ -133,7 +133,7 @@ export async function handleExecuteClientErasure(
 
   // ── 2. Delete publicReport subcollections + report doc ───────────────────
   if (shareToken) {
-    const reportRef = db().doc(`publicReports/${shareToken}`);
+    const reportRef = db().doc(`shared-reports/${shareToken}`);
     const reportSnap = await reportRef.get();
 
     if (reportSnap.exists) {
@@ -150,11 +150,11 @@ export async function handleExecuteClientErasure(
     }
   }
 
-  // ── 3. Delete any publicRoadmaps linked to this client ───────────────────
+  // ── 3. Delete any shared-roadmaps linked to this client ───────────────────
   if (clientSlug) {
     try {
       const roadmapsSnap = await db()
-        .collection('publicRoadmaps')
+        .collection('shared-roadmaps')
         .where('assessmentId', '==', clientSlug)
         .where('organizationId', '==', orgId)
         .get();
@@ -164,10 +164,10 @@ export async function handleExecuteClientErasure(
         totalDeleted++;
       }
       if (roadmapsSnap.size > 0) {
-        logger.info('executeClientErasure: deleted publicRoadmaps', { count: roadmapsSnap.size, clientSlug });
+        logger.info('executeClientErasure: deleted shared-roadmaps', { count: roadmapsSnap.size, clientSlug });
       }
     } catch (err) {
-      logger.warn('executeClientErasure: failed to delete publicRoadmaps', { err });
+      logger.warn('executeClientErasure: failed to delete shared-roadmaps', { err });
     }
   }
 

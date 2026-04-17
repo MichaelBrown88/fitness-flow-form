@@ -96,7 +96,7 @@ async function batchGetProfileDisplayNames(
   }
   for (let i = 0; i < unique.length; i += BATCH_GET_LIMIT) {
     const chunk = unique.slice(i, i + BATCH_GET_LIMIT);
-    const refs = chunk.map((uid) => db.doc(`userProfiles/${uid}`));
+    const refs = chunk.map((uid) => db.doc(`user-profiles/${uid}`));
     const snaps = await db.getAll(...refs);
     for (const snap of snaps) {
       if (!snap.exists) continue;
@@ -109,7 +109,7 @@ async function batchGetProfileDisplayNames(
   return out;
 }
 
-/** When userProfiles still says "Coach", fall back to Firebase Auth displayName or email local-part. */
+/** When user-profiles still says "Coach", fall back to Firebase Auth displayName or email local-part. */
 async function enrichDisplayNamesFromFirebaseAuth(
   orgId: string,
   uids: string[],
@@ -163,9 +163,9 @@ export async function computeTeamMetrics(
   const db = getDb();
 
   // Verify caller is a member of the org
-  const callerProfile = await db.doc(`userProfiles/${request.auth.uid}`).get();
+  const callerProfile = await db.doc(`user-profiles/${request.auth.uid}`).get();
   const profileData = callerProfile.data();
-  const isPlatformAdmin = (await db.doc(`platform_admins/${request.auth.uid}`).get()).exists;
+  const isPlatformAdmin = (await db.doc(`platform-admins/${request.auth.uid}`).get()).exists;
   if (!isPlatformAdmin && profileData?.organizationId !== orgId) {
     throw new HttpsError(
       'permission-denied',

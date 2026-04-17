@@ -106,7 +106,7 @@ export async function handleAcceptCoachInvite(
     throw new HttpsError('failed-precondition', 'This invitation is misconfigured.');
   }
 
-  const profileRef = db.doc(`userProfiles/${uid}`);
+  const profileRef = db.doc(`user-profiles/${uid}`);
   const profileSnap = await profileRef.get();
   const previousOrgId = profileSnap.exists
     ? (profileSnap.data() as { organizationId?: string }).organizationId

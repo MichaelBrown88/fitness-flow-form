@@ -41,7 +41,7 @@ function cleanEmail(value: unknown) {
 async function getPublicReportToken(coachUid: string, assessmentId: string): Promise<string | null> {
   // Try to find existing token-based report
   const query = getDb()
-    .collection('publicReports')
+    .collection('shared-reports')
     .where('coachUid', '==', coachUid)
     .where('assessmentId', '==', assessmentId)
     .where('visibility', '==', 'public')
@@ -54,7 +54,7 @@ async function getPublicReportToken(coachUid: string, assessmentId: string): Pro
   }
 
   // Fallback to legacy ID-based lookup
-  const legacyRef = getDb().doc(`publicReports/${coachUid}__${assessmentId}`);
+  const legacyRef = getDb().doc(`shared-reports/${coachUid}__${assessmentId}`);
   const legacySnap = await legacyRef.get();
   if (legacySnap.exists) {
     // Legacy report exists but doesn't have a token yet
@@ -70,7 +70,7 @@ async function ensurePublicReport(coachUid: string, assessmentId: string) {
   const token = await getPublicReportToken(coachUid, assessmentId);
 
   if (token) {
-    const ref = getDb().doc(`publicReports/${token}`);
+    const ref = getDb().doc(`shared-reports/${token}`);
     const snap = await ref.get();
     if (snap.exists) {
       return snap.data() as PublicReportDoc | undefined;
@@ -78,10 +78,10 @@ async function ensurePublicReport(coachUid: string, assessmentId: string) {
   }
 
   // Fallback to legacy ID-based
-  const legacyRef = getDb().doc(`publicReports/${coachUid}__${assessmentId}`);
+  const legacyRef = getDb().doc(`shared-reports/${coachUid}__${assessmentId}`);
   const snap = await legacyRef.get();
   if (!snap.exists) {
-    const profileSnap = await getDb().doc(`userProfiles/${coachUid}`).get();
+    const profileSnap = await getDb().doc(`user-profiles/${coachUid}`).get();
     const organizationId = profileSnap.exists
       ? (profileSnap.data() as { organizationId?: string })?.organizationId
       : undefined;
@@ -93,7 +93,7 @@ async function ensurePublicReport(coachUid: string, assessmentId: string) {
       assessmentId,
       organizationId,
     });
-    const createdSnap = await getDb().doc(`publicReports/${shareToken}`).get();
+    const createdSnap = await getDb().doc(`shared-reports/${shareToken}`).get();
     return createdSnap.data() as PublicReportDoc | undefined;
   }
   return snap.data() as PublicReportDoc;

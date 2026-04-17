@@ -15,6 +15,7 @@ import {
   handleCreateCreditTopupSession,
   handleUpdateSubscriptionPlan,
   handleSyncCheckoutSession,
+  handleListRecentInvoices,
 } from './stripe';
 import { handleSubmitPublicErasureRequest } from './publicErasureRequest';
 import { handleExecuteClientErasure } from './executeClientErasure';
@@ -138,6 +139,10 @@ export const createCustomerPortalSession = onCall({
   enforceAppCheck: false,
 }, handleCreateCustomerPortalSession);
 
+export const listRecentInvoices = onCall({
+  enforceAppCheck: false,
+}, handleListRecentInvoices);
+
 export const createBrandingCheckoutSession = onCall({
   enforceAppCheck: false,
 }, handleCreateBrandingCheckoutSession);
@@ -212,7 +217,7 @@ export const syncPublicReportOnStateChange = onDocumentWritten(
     const db = admin.firestore();
 
     // Check if a public report exists for this client
-    const reportsQuery = db.collection('publicReports')
+    const reportsQuery = db.collection('shared-reports')
       .where('assessmentId', '==', clientSlug)
       .where('organizationId', '==', orgId)
       .where('visibility', '==', 'public')
@@ -273,7 +278,7 @@ export const aggregateOrganizationChanges = onDocumentWritten(
 
 export const aggregateUserProfileChanges = onDocumentWritten(
   {
-    document: 'userProfiles/{userId}',
+    document: 'user-profiles/{userId}',
   },
   async (event) => {
     if (event.data) {
@@ -287,7 +292,7 @@ export const aggregateUserProfileChanges = onDocumentWritten(
  */
 export const onUserProfileWritten = onDocumentWritten(
   {
-    document: 'userProfiles/{userId}',
+    document: 'user-profiles/{userId}',
   },
   async (event) => {
     if (!event.data?.before?.exists || !event.data?.after?.exists) return;
@@ -338,7 +343,7 @@ export const aggregateOrgClientChanges = onDocumentWritten(
 
 export const aggregateAIUsageChanges = onDocumentWritten(
   {
-    document: 'ai_usage_logs/{logId}',
+    document: 'ai-logs/{logId}',
   },
   async (event) => {
     if (event.data) {
@@ -395,7 +400,7 @@ export const pushApexProductMetricsScheduled = onSchedule(
 
 /**
  * Weekly reconciliation — runs every Sunday at 02:00 UTC.
- * Re-computes system_stats/global_metrics from canonical sources as a
+ * Re-computes platform-stats/global-metrics from canonical sources as a
  * safety net against trigger drift.
  */
 export const weeklyReconcileStats = onSchedule(
@@ -496,7 +501,7 @@ export const cleanupAuditLogs = onSchedule(
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
     const staleLogsQuery = db
-      .collection('platform_audit_logs')
+      .collection('platform-audit-logs')
       .doc('impersonation')
       .collection('logs')
       .where('timestamp', '<', admin.firestore.Timestamp.fromDate(ninetyDaysAgo))
@@ -547,7 +552,7 @@ export const cleanupExpiredRateLimits = onSchedule(
   async () => {
     const db = admin.firestore();
     const now = Date.now();
-    const snapshot = await db.collection('_rateLimits').where('ttl', '<', now).limit(500).get();
+    const snapshot = await db.collection('rate-limits').where('ttl', '<', now).limit(500).get();
     if (snapshot.empty) {
       console.log('[RateLimitCleanup] No expired rate limits');
       return;
@@ -560,7 +565,7 @@ export const cleanupExpiredRateLimits = onSchedule(
 );
 
 /**
- * Clean up stale live_sessions older than 7 days.
+ * Clean up stale live-sessions older than 7 days.
  * These are real-time posture capture sessions that should be ephemeral.
  */
 export const cleanupStaleLiveSessions = onSchedule(
@@ -570,7 +575,7 @@ export const cleanupStaleLiveSessions = onSchedule(
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     const snapshot = await db
-      .collection('live_sessions')
+      .collection('live-sessions')
       .where('createdAt', '<', admin.firestore.Timestamp.fromDate(sevenDaysAgo))
       .limit(500)
       .get();
@@ -595,7 +600,7 @@ export const runPlatformHealthCheck = onCall(
   async (request) => {
     if (!request.auth?.uid) throw new Error('Authentication required.');
     const db = admin.firestore();
-    const adminDoc = await db.doc(`platform_admins/${request.auth.uid}`).get();
+    const adminDoc = await db.doc(`platform-admins/${request.auth.uid}`).get();
     if (!adminDoc.exists) throw new Error('Platform admin access required.');
     await checkPlatformHealth();
     return { success: true };
@@ -621,7 +626,7 @@ export const computePopulationAnalyticsNow = onCall(
   async (request) => {
     if (!request.auth?.uid) throw new Error('Authentication required.');
     const db = admin.firestore();
-    const adminDoc = await db.doc(`platform_admins/${request.auth.uid}`).get();
+    const adminDoc = await db.doc(`platform-admins/${request.auth.uid}`).get();
     if (!adminDoc.exists) throw new Error('Platform admin access required.');
     await runPopulationAnalytics();
     return { success: true };
@@ -636,7 +641,7 @@ export const pushApexProductMetricsNow = onCall(
   async (request) => {
     if (!request.auth?.uid) throw new Error('Authentication required.');
     const db = admin.firestore();
-    const adminDoc = await db.doc(`platform_admins/${request.auth.uid}`).get();
+    const adminDoc = await db.doc(`platform-admins/${request.auth.uid}`).get();
     if (!adminDoc.exists) throw new Error('Platform admin access required.');
     return pushApexProductMetricsFromFirestore();
   },
@@ -653,7 +658,7 @@ export const backfillClientIds = onCall(
   async (request) => {
     if (!request.auth?.uid) throw new Error('Authentication required.');
     const db = admin.firestore();
-    const adminDoc = await db.doc(`platform_admins/${request.auth.uid}`).get();
+    const adminDoc = await db.doc(`platform-admins/${request.auth.uid}`).get();
     if (!adminDoc.exists) throw new Error('Platform admin access required.');
 
     const orgsSnap = await db.collection('organizations').get();
@@ -720,7 +725,7 @@ export const getClientAchievements = onCall(
     const db = admin.firestore();
 
     // Step 1: resolve org + client from the public report
-    const reportSnap = await db.doc(`publicReports/${shareToken}`).get();
+    const reportSnap = await db.doc(`shared-reports/${shareToken}`).get();
     if (!reportSnap.exists) throw new Error('Report not found.');
 
     const reportData = reportSnap.data()!;
@@ -745,7 +750,7 @@ export const getClientAchievements = onCall(
 );
 
 /**
- * Anonymous / first-hit: ensure publicRoadmaps/{token} exists for legacy roadmap share links.
+ * Anonymous / first-hit: ensure shared-roadmaps/{token} exists for legacy roadmap share links.
  * Rate-limited. Accepts roadmap hex token (24 chars) or public report UUID (`/r/{reportId}/roadmap`).
  * cors: true so Firebase Hosting / custom domains work (CORS_ORIGINS is localhost-only).
  */
@@ -787,7 +792,7 @@ export const exportClientData = onCall(
 
     const db = admin.firestore();
 
-    const reportSnap = await db.doc(`publicReports/${shareToken}`).get();
+    const reportSnap = await db.doc(`shared-reports/${shareToken}`).get();
     if (!reportSnap.exists) throw new Error('Report not found.');
 
     const reportData = reportSnap.data()!;
@@ -878,7 +883,7 @@ export const migrateClientSubmissions = onCall(
   async (request) => {
     if (!request.auth?.uid) throw new Error('Authentication required.');
     const db = admin.firestore();
-    const adminDoc = await db.doc(`platform_admins/${request.auth.uid}`).get();
+    const adminDoc = await db.doc(`platform-admins/${request.auth.uid}`).get();
     if (!adminDoc.exists) throw new Error('Platform admin access required.');
 
     const rootRef = db.collection('clientSubmissions');
@@ -909,7 +914,7 @@ export const migrateClientSubmissions = onCall(
 );
 
 /**
- * One-time migration: copy achievements from legacy publicReports/{token}/achievements
+ * One-time migration: copy achievements from legacy shared-reports/{token}/achievements
  * to the new org-scoped path organizations/{orgId}/clients/{clientId}/achievements.
  *
  * Resolution order for clientId:
@@ -924,10 +929,10 @@ export const migrateAchievements = onCall(
   async (request) => {
     if (!request.auth?.uid) throw new Error('Authentication required.');
     const db = admin.firestore();
-    const adminDoc = await db.doc(`platform_admins/${request.auth.uid}`).get();
+    const adminDoc = await db.doc(`platform-admins/${request.auth.uid}`).get();
     if (!adminDoc.exists) throw new Error('Platform admin access required.');
 
-    const reportsSnap = await db.collection('publicReports').limit(500).get();
+    const reportsSnap = await db.collection('shared-reports').limit(500).get();
     let migrated = 0;
     let skipped = 0;
     let errors = 0;
@@ -944,7 +949,7 @@ export const migrateAchievements = onCall(
       const clientId: string = assessmentId;
 
       const legacySnap = await db
-        .collection(`publicReports/${shareToken}/achievements`)
+        .collection(`shared-reports/${shareToken}/achievements`)
         .get();
 
       if (legacySnap.empty) { skipped++; continue; }
@@ -981,7 +986,7 @@ export const migrateAchievements = onCall(
 
 /**
  * One-time cleanup: delete all legacy achievement docs that were left behind by
- * migrateAchievements. Those docs live at publicReports/{token}/achievements/{id}
+ * migrateAchievements. Those docs live at shared-reports/{token}/achievements/{id}
  * and have already been copied to the org-scoped path. Deleting them removes the
  * orphaned data without affecting any active read or write path.
  *
@@ -993,10 +998,10 @@ export const cleanupLegacyAchievements = onCall(
   async (request) => {
     if (!request.auth?.uid) throw new Error('Authentication required.');
     const db = admin.firestore();
-    const adminDoc = await db.doc(`platform_admins/${request.auth.uid}`).get();
+    const adminDoc = await db.doc(`platform-admins/${request.auth.uid}`).get();
     if (!adminDoc.exists) throw new Error('Platform admin access required.');
 
-    const reportsSnap = await db.collection('publicReports').limit(1000).get();
+    const reportsSnap = await db.collection('shared-reports').limit(1000).get();
     let deleted = 0;
     let skipped = 0;
 
@@ -1043,7 +1048,7 @@ export const onClientSubmissionCreated = onDocumentWritten(
  * public report link. Runs server-side because the client is unauthenticated.
  */
 export const onLifestyleCheckinCreated = onDocumentWritten(
-  { document: 'publicReports/{shareToken}/lifestyleCheckins/{checkinId}' },
+  { document: 'shared-reports/{shareToken}/lifestyleCheckins/{checkinId}' },
   async (event) => {
     if (!event.data?.after?.exists) return;
     const params = event.params as { shareToken: string; checkinId: string };
@@ -1228,7 +1233,7 @@ export const purgeOrphanOrgs = onCall(
   async (request) => {
     if (!request.auth?.uid) throw new Error('Authentication required.');
     const db = admin.firestore();
-    const adminDoc = await db.doc(`platform_admins/${request.auth.uid}`).get();
+    const adminDoc = await db.doc(`platform-admins/${request.auth.uid}`).get();
     if (!adminDoc.exists) throw new Error('Platform admin access required.');
 
     // Load valid org IDs
@@ -1308,7 +1313,7 @@ export const repairClientProfiles = onCall(
     const db = admin.firestore();
 
     // Platform admin gate
-    const adminDoc = await db.doc(`platform_admins/${request.auth.uid}`).get();
+    const adminDoc = await db.doc(`platform-admins/${request.auth.uid}`).get();
     if (!adminDoc.exists) throw new Error('Platform admin access required.');
 
     const { orgId: targetOrgId } = (request.data ?? {}) as { orgId?: string };

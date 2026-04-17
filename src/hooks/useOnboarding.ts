@@ -552,7 +552,7 @@ export function useOnboarding(): UseOnboardingResult {
           updatedAt: serverTimestamp(),
         };
 
-        batch.set(doc(db, 'userProfiles', user.uid), profileUpdate, { merge: true });
+        batch.set(doc(db, 'user-profiles', user.uid), profileUpdate, { merge: true });
         batch.set(
           doc(db, 'onboarding_sessions', user.uid),
           onboardingSessionPayload,

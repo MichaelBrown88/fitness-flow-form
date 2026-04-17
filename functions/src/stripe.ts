@@ -151,7 +151,7 @@ async function assertOrgBillingCallableAccess(
   if (orgData.ownerId === uid) {
     return;
   }
-  const profileSnap = await db.doc(`userProfiles/${uid}`).get();
+  const profileSnap = await db.doc(`user-profiles/${uid}`).get();
   const p = profileSnap.data();
   if (p?.organizationId === organizationId && p?.role === 'org_admin') {
     return;
@@ -461,7 +461,7 @@ export async function handleCreateCheckoutSession(
   let customerId = orgData?.stripe?.stripeCustomerId;
 
   if (!customerId) {
-    const userDoc = await db.doc(`userProfiles/${request.auth.uid}`).get();
+    const userDoc = await db.doc(`user-profiles/${request.auth.uid}`).get();
     const userEmail = userDoc.data()?.email || request.auth.token?.email || '';
 
     const customer = await stripe.customers.create({
@@ -732,6 +732,95 @@ export async function handleCreateCustomerPortalSession(
 }
 
 // ---------------------------------------------------------------------------
+// listRecentInvoices — fetch last N invoices for the org's Stripe customer
+// ---------------------------------------------------------------------------
+
+export interface ListRecentInvoicesRequest {
+  organizationId: string;
+  limit?: number;
+}
+
+export interface InvoiceSummary {
+  id: string;
+  number: string | null;
+  date: number; // Unix timestamp
+  amountDue: number; // in smallest currency unit (pence)
+  amountPaid: number;
+  currency: string;
+  status: string | null; // 'paid' | 'open' | 'void' | 'uncollectible' | 'draft'
+  pdfUrl: string | null;
+  description: string | null;
+}
+
+export interface ListRecentInvoicesResponse {
+  invoices: InvoiceSummary[];
+}
+
+export async function handleListRecentInvoices(
+  request: CallableRequest<ListRecentInvoicesRequest>,
+): Promise<ListRecentInvoicesResponse> {
+  if (!request.auth?.uid) {
+    throw new HttpsError('unauthenticated', 'Authentication required.');
+  }
+
+  const { organizationId, limit: requestedLimit } = request.data;
+  if (!organizationId) {
+    throw new HttpsError('invalid-argument', 'Missing required field: organizationId.');
+  }
+
+  const invoiceLimit = Math.min(Math.max(requestedLimit ?? 5, 1), 20);
+
+  const db = admin.firestore();
+  await enforceBillingCallableRateLimit(
+    db,
+    'list_invoices',
+    request.auth.uid,
+    request.rawRequest?.ip,
+  );
+
+  const orgDoc = await db.doc(`organizations/${organizationId}`).get();
+  if (!orgDoc.exists) {
+    throw new HttpsError('not-found', 'Organization not found.');
+  }
+  const orgData = orgDoc.data();
+  await assertOrgBillingCallableAccess(db, request.auth.uid, organizationId, orgData);
+
+  const customerId = orgData?.stripe?.stripeCustomerId;
+  if (!customerId) {
+    return { invoices: [] };
+  }
+
+  const stripe = getStripe();
+  const stripeInvoices = await stripe.invoices.list({
+    customer: customerId,
+    limit: invoiceLimit,
+    status: 'paid',
+  });
+
+  const invoices: InvoiceSummary[] = stripeInvoices.data.map((inv) => {
+    // Build a human-readable description from line items
+    const lines = inv.lines?.data ?? [];
+    const desc = lines.length > 0
+      ? lines.map((l) => l.description ?? '').filter(Boolean).join(', ')
+      : null;
+
+    return {
+      id: inv.id,
+      number: inv.number,
+      date: inv.created,
+      amountDue: inv.amount_due,
+      amountPaid: inv.amount_paid,
+      currency: inv.currency,
+      status: inv.status,
+      pdfUrl: inv.invoice_pdf ?? null,
+      description: desc,
+    };
+  });
+
+  return { invoices };
+}
+
+// ---------------------------------------------------------------------------
 // updateSubscriptionPlan — in-app capacity change (GB), no Customer Portal
 // ---------------------------------------------------------------------------
 
@@ -974,7 +1063,7 @@ export async function handleCreateBrandingCheckoutSession(
   let customerId = orgData?.stripe?.stripeCustomerId;
   if (!customerId) {
     const stripe = getStripe();
-    const userDoc = await db.doc(`userProfiles/${request.auth.uid}`).get();
+    const userDoc = await db.doc(`user-profiles/${request.auth.uid}`).get();
     const userEmail = userDoc.data()?.email || request.auth.token?.email || '';
     const customer = await stripe.customers.create({
       email: userEmail,
@@ -1565,7 +1654,7 @@ export async function handleCreateCreditTopupSession(
 
   let customerId: string | undefined = orgData.stripe?.stripeCustomerId;
   if (!customerId) {
-    const userDoc = await db.doc(`userProfiles/${request.auth.uid}`).get();
+    const userDoc = await db.doc(`user-profiles/${request.auth.uid}`).get();
     const userEmail = userDoc.data()?.email || request.auth.token?.email || '';
     const customer = await stripe.customers.create({
       email: userEmail,

@@ -93,7 +93,7 @@ export async function handleCreateRemoteAssessmentToken(
   }
 
   const db = admin.firestore();
-  const profile = await db.doc(`userProfiles/${uid}`).get();
+  const profile = await db.doc(`user-profiles/${uid}`).get();
   const org = (profile.data() as { organizationId?: string } | undefined)?.organizationId;
   if (org !== organizationId) {
     throw new HttpsError('permission-denied', 'Organization mismatch.');
@@ -122,7 +122,7 @@ export async function handleCreateRemoteAssessmentToken(
   const token = randomBytes(16).toString('hex');
   const expiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-  await db.doc(`remoteAssessmentTokens/${token}`).set({
+  await db.doc(`remote-tokens/${token}`).set({
     organizationId,
     clientSlug: slug,
     coachUid: uid,
@@ -153,7 +153,7 @@ export async function handleGetRemoteAssessmentSession(
   }
 
   const db = admin.firestore();
-  const snap = await db.doc(`remoteAssessmentTokens/${token}`).get();
+  const snap = await db.doc(`remote-tokens/${token}`).get();
   if (!snap.exists) {
     return { ok: false };
   }
@@ -219,7 +219,7 @@ export async function handleSubmitRemoteAssessmentFields(
   }
 
   const db = admin.firestore();
-  const snap = await db.doc(`remoteAssessmentTokens/${token}`).get();
+  const snap = await db.doc(`remote-tokens/${token}`).get();
   if (!snap.exists) {
     throw new HttpsError('not-found', 'Invalid or expired link.');
   }
@@ -336,7 +336,7 @@ export async function handleGetRemotePostureUploadUrl(
   }
 
   const db = admin.firestore();
-  const snap = await db.doc(`remoteAssessmentTokens/${token}`).get();
+  const snap = await db.doc(`remote-tokens/${token}`).get();
   if (!snap.exists) {
     throw new HttpsError('not-found', 'Invalid or expired link.');
   }
@@ -393,7 +393,7 @@ export async function handleGetRemoteBodyCompUploadUrl(
   }
 
   const db = admin.firestore();
-  const snap = await db.doc(`remoteAssessmentTokens/${token}`).get();
+  const snap = await db.doc(`remote-tokens/${token}`).get();
   if (!snap.exists) throw new HttpsError('not-found', 'Invalid or expired link.');
 
   const meta = snap.data() as {
@@ -468,7 +468,7 @@ export async function handleExtractRemoteBodyCompOcr(
   }
 
   const db = admin.firestore();
-  const snap = await db.doc(`remoteAssessmentTokens/${token}`).get();
+  const snap = await db.doc(`remote-tokens/${token}`).get();
   if (!snap.exists) throw new HttpsError('not-found', 'Invalid or expired link.');
 
   const meta = snap.data() as {

@@ -156,7 +156,7 @@ async function findPublicReportToken(
   assessmentId: string,
 ): Promise<{ token: string; data: PublicReportFields } | null> {
   const q = await db
-    .collection('publicReports')
+    .collection('shared-reports')
     .where('coachUid', '==', coachUid)
     .where('assessmentId', '==', assessmentId)
     .where('visibility', '==', 'public')
@@ -202,7 +202,7 @@ export async function handleGeneratePublicReportSocialShareArtifacts(
     throw new HttpsError('permission-denied', 'You cannot update this report.');
   }
 
-  const profileSnap = await db.doc(`userProfiles/${coachUid}`).get();
+  const profileSnap = await db.doc(`user-profiles/${coachUid}`).get();
   const profileOrg = profileSnap.exists
     ? (profileSnap.data() as { organizationId?: string }).organizationId
     : undefined;
@@ -269,7 +269,7 @@ export async function handleGeneratePublicReportSocialShareArtifacts(
     generatedAt: admin.firestore.FieldValue.serverTimestamp(),
   };
 
-  await db.doc(`publicReports/${token}`).set({ socialShareArtifacts }, { merge: true });
+  await db.doc(`shared-reports/${token}`).set({ socialShareArtifacts }, { merge: true });
 
   return {
     socialShareArtifacts: {

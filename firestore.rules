@@ -34,13 +34,13 @@ service cloud.firestore {
 
     function isPlatformAdmin() {
       return isAuthenticated() &&
-        (exists(/databases/$(database)/documents/platform_admins/$(request.auth.uid)) ||
+        (exists(/databases/$(database)/documents/platform-admins/$(request.auth.uid)) ||
           isPlatformAdminToken());
     }
 
     // First-time bootstrap: lookup row lists this auth uid, or pending_* before migration
     function platformAdminLookupForAuth() {
-      return get(/databases/$(database)/documents/platform_admin_lookup/$(request.auth.token.email));
+      return get(/databases/$(database)/documents/platform-admin-lookup/$(request.auth.token.email));
     }
 
     function canBootstrapPlatformAdminDoc(adminId) {
@@ -48,7 +48,7 @@ service cloud.firestore {
         request.auth.uid == adminId &&
         request.auth.token.email is string &&
         request.auth.token.email.size() > 0 &&
-        exists(/databases/$(database)/documents/platform_admin_lookup/$(request.auth.token.email)) &&
+        exists(/databases/$(database)/documents/platform-admin-lookup/$(request.auth.token.email)) &&
         (platformAdminLookupForAuth().data.uid == adminId ||
           platformAdminLookupForAuth().data.uid.matches('pending_.+'));
     }
@@ -131,7 +131,7 @@ service cloud.firestore {
 
     // Owning coach UID on a public report doc (for subcollection writes).
     function publicReportCoachUid(token) {
-      return get(/databases/$(database)/documents/publicReports/$(token)).data.coachUid;
+      return get(/databases/$(database)/documents/shared-reports/$(token)).data.coachUid;
     }
 
     // AI usage log create — coaches append-only for their own UID and org (no update/delete from client)
@@ -283,12 +283,12 @@ service cloud.firestore {
     // USER PROFILES  (one per Firebase Auth user — coaches)
     // =========================================================
 
-    match /userProfiles/{uid} {
+    match /user-profiles/{uid} {
       allow read: if request.auth.uid == uid ||
         isPlatformAdmin() ||
         (isAuthenticated() &&
           resource.data.organizationId ==
-          get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.organizationId);
+          get(/databases/$(database)/documents/user-profiles/$(request.auth.uid)).data.organizationId);
       // Self-writes restricted to safe fields (no role escalation); platform admins can write anything
       allow write: if isPlatformAdmin();
       allow update: if request.auth.uid == uid &&
@@ -307,7 +307,7 @@ service cloud.firestore {
     // The document holds enough data to render the client's current view.
     // =========================================================
 
-    match /publicReports/{token} {
+    match /shared-reports/{token} {
       // Token IS the credential — allow single-doc fetch only.
       // Coaches may query their own reports (coachUid filter required by Firestore rule).
       allow get: if true;
@@ -318,19 +318,19 @@ service cloud.firestore {
     }
 
     // Token-scoped subcollections (snapshots, achievements, notifications, client check-ins)
-    match /publicReports/{token}/snapshots/{snapshotId} {
+    match /shared-reports/{token}/snapshots/{snapshotId} {
       allow get: if true;
       allow list: if false;
       allow write: if isAuthenticated() && publicReportCoachUid(token) == request.auth.uid;
     }
 
-    match /publicReports/{token}/achievements/{achievementId} {
+    match /shared-reports/{token}/achievements/{achievementId} {
       allow get: if true;
       allow list: if false;
       allow write: if isAuthenticated() && publicReportCoachUid(token) == request.auth.uid;
     }
 
-    match /publicReports/{token}/notifications/{notificationId} {
+    match /shared-reports/{token}/notifications/{notificationId} {
       allow get: if true;
       allow list: if false;
       allow create: if isAuthenticated() && publicReportCoachUid(token) == request.auth.uid;
@@ -340,14 +340,14 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && publicReportCoachUid(token) == request.auth.uid;
     }
 
-    match /publicReports/{token}/lifestyleCheckins/{checkinId} {
+    match /shared-reports/{token}/lifestyleCheckins/{checkinId} {
       allow get: if true;
       allow list: if false;
       allow create: if true;
       allow update, delete: if false;
     }
 
-    match /publicReports/{token}/preSessionCheckins/{checkinId} {
+    match /shared-reports/{token}/preSessionCheckins/{checkinId} {
       allow get: if true;
       allow list: if false;
       allow create: if true;
@@ -356,7 +356,7 @@ service cloud.firestore {
 
     // Client sharing + email consent prefs — token IS the credential.
     // Only a single doc ('prefs') is ever written; clients have no Firebase Auth.
-    match /publicReports/{token}/clientConsent/{docId} {
+    match /shared-reports/{token}/clientConsent/{docId} {
       allow get: if true;
       allow list: if false;
       // Unauthenticated clients may create/update only their own prefs doc.
@@ -378,7 +378,7 @@ service cloud.firestore {
     // Written when coach sets roadmap shareToken; doc ID = that token.
     // =========================================================
 
-    match /publicRoadmaps/{token} {
+    match /shared-roadmaps/{token} {
       allow get: if true;
       // Coaches may query their own roadmaps (coachUid filter required by Firestore rule).
       allow list: if isAuthenticated() && resource.data.coachUid == request.auth.uid;
@@ -391,7 +391,7 @@ service cloud.firestore {
     // LIVE SESSIONS  (real-time posture capture)
     // =========================================================
 
-    match /live_sessions/{sessionId} {
+    match /live-sessions/{sessionId} {
       // Single-doc fetch: sessionId + companionToken are unguessable; companion listens without auth.
       allow get: if true;
       // Org-scoped listing for coach dashboards (matches client queries that filter organizationId).
@@ -411,7 +411,7 @@ service cloud.firestore {
 
       // Unauthenticated companion (client mobile) may only update capture fields
       allow update: if !isAuthenticated() &&
-        exists(/databases/$(database)/documents/live_sessions/$(sessionId)) &&
+        exists(/databases/$(database)/documents/live-sessions/$(sessionId)) &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'companionJoined', 'lastHeartbeat', 'postureImages',
           'analysis', 'companionLogs',
@@ -435,7 +435,7 @@ service cloud.firestore {
     // PLATFORM ANALYTICS  (Cloud Functions write only)
     // =========================================================
 
-    match /platform_analytics/{doc} {
+    match /platform-analytics/{doc} {
       allow read: if isPlatformAdmin();
       // Frontend may only clear the "new badge" marker — nothing else
       allow update: if isPlatformAdmin() &&
@@ -447,7 +447,7 @@ service cloud.firestore {
     // SYSTEM STATS
     // =========================================================
 
-    match /system_stats/{document} {
+    match /platform-stats/{document} {
       allow read: if isPlatformAdmin();
       allow write: if isPlatformAdmin();
     }
@@ -471,7 +471,7 @@ service cloud.firestore {
     // PLATFORM ADMINS
     // =========================================================
 
-    match /platform_admins/{adminId} {
+    match /platform-admins/{adminId} {
       allow read: if isAuthenticated();
       allow create, update: if isPlatformAdmin() || canBootstrapPlatformAdminDoc(adminId);
       allow delete: if isPlatformAdmin();
@@ -479,7 +479,7 @@ service cloud.firestore {
 
     // Canonical lookup id must equal lowercased auth email (see PLATFORM.admins.lookupKey).
     // get: unauthenticated platform login checks email against lookup; ids are guessable only if email is known.
-    match /platform_admin_lookup/{lookupId} {
+    match /platform-admin-lookup/{lookupId} {
       allow get: if true;
       allow list: if false;
       allow create, update, delete: if false;
@@ -489,7 +489,7 @@ service cloud.firestore {
     // PLATFORM AUDIT LOGS
     // =========================================================
 
-    match /platform_audit_logs/{document=**} {
+    match /platform-audit-logs/{document=**} {
       allow read: if isPlatformAdmin();
       allow write: if isPlatformAdmin();
     }
@@ -501,7 +501,7 @@ service cloud.firestore {
     // Coaches may create append-only logs for self + org (validated). Updates/deletes: Admin SDK / platform only.
     // =========================================================
 
-    match /ai_usage_logs/{logId} {
+    match /ai-logs/{logId} {
       allow read: if isPlatformAdmin() ||
         (isAuthenticated() &&
           resource.data.organizationId != null &&
@@ -514,7 +514,7 @@ service cloud.firestore {
     // REMOTE ASSESSMENT TOKENS  (Admin SDK / Cloud Functions only)
     // =========================================================
 
-    match /remoteAssessmentTokens/{tokenId} {
+    match /remote-tokens/{tokenId} {
       allow read, write: if false;
     }
 
@@ -522,7 +522,7 @@ service cloud.firestore {
     // RATE LIMIT COUNTERS  (Cloud Functions only)
     // =========================================================
 
-    match /_rateLimits/{key} {
+    match /rate-limits/{key} {
       allow read, write: if false;
     }
   }

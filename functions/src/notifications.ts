@@ -155,7 +155,7 @@ export async function handleLifestyleCheckinCreated(
 ): Promise<void> {
   const db = admin.firestore();
 
-  const reportRef = db.doc(`publicReports/${shareToken}`);
+  const reportRef = db.doc(`shared-reports/${shareToken}`);
   const reportSnap = await reportRef.get();
   if (!reportSnap.exists) return;
 
@@ -260,7 +260,7 @@ export async function sendReassessmentReminders(): Promise<void> {
 
           if (duePillars.length > 0) {
             const pillarLabels = duePillars.map((p) => PHASE_NAMES[p] ?? p).join(', ');
-            await db.collection(`publicReports/${shareToken}/notifications`).add({
+            await db.collection(`shared-reports/${shareToken}/notifications`).add({
               type: 'reassessment_due',
               title: 'Time for your reassessment',
               body: `Your ${pillarLabels} reassessment is due today. Contact your coach to book a session.`,

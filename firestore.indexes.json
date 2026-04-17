@@ -1,7 +1,7 @@
 {
   "indexes": [
     {
-      "collectionGroup": "ai_usage_logs",
+      "collectionGroup": "ai-logs",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "organizationId", "order": "ASCENDING" },
@@ -42,7 +42,7 @@
       ]
     },
     {
-      "collectionGroup": "userProfiles",
+      "collectionGroup": "user-profiles",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "organizationId", "order": "ASCENDING" },
@@ -50,7 +50,7 @@
       ]
     },
     {
-      "collectionGroup": "userProfiles",
+      "collectionGroup": "user-profiles",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "organizationId", "order": "ASCENDING" },
@@ -99,7 +99,7 @@
       ]
     },
     {
-      "collectionGroup": "publicReports",
+      "collectionGroup": "shared-reports",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "organizationId", "order": "ASCENDING" },
@@ -107,7 +107,7 @@
       ]
     },
     {
-      "collectionGroup": "publicReports",
+      "collectionGroup": "shared-reports",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "coachUid", "order": "ASCENDING" },

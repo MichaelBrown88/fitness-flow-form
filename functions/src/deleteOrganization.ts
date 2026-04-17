@@ -19,7 +19,7 @@ function getDb() {
 }
 
 async function assertPlatformAdminWithManageOrgs(uid: string): Promise<void> {
-  const adminDoc = await getDb().doc(`platform_admins/${uid}`).get();
+  const adminDoc = await getDb().doc(`platform-admins/${uid}`).get();
   if (!adminDoc.exists) {
     throw new Error('Only platform admins can permanently delete organizations.');
   }
@@ -120,9 +120,9 @@ export async function handleDeleteOrganization(
 
   const db = getDb();
 
-  // Get org members (userProfiles with organizationId === orgId)
+  // Get org members (user-profiles with organizationId === orgId)
   const profilesSnap = await db
-    .collection('userProfiles')
+    .collection('user-profiles')
     .where('organizationId', '==', orgId)
     .get();
 
@@ -133,7 +133,7 @@ export async function handleDeleteOrganization(
     });
   }
 
-  // Delete userProfiles
+  // Delete user-profiles
   const batch = db.batch();
   profilesSnap.docs.forEach((d) => batch.delete(d.ref));
   if (!profilesSnap.empty) {

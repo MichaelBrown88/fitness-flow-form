@@ -66,7 +66,7 @@ export default function SandboxTrial() {
         );
 
         await setDoc(
-          doc(db, 'userProfiles', uid),
+          doc(db, 'user-profiles', uid),
           {
             organizationId: orgId,
             role: 'org_admin',

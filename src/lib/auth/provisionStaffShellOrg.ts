@@ -24,7 +24,7 @@ export async function provisionStaffShellOrg(
     onboardingCompleted: false,
   };
 
-  await setDoc(doc(db, 'userProfiles', uid), userProfile);
+  await setDoc(doc(db, 'user-profiles', uid), userProfile);
 
   await setDoc(doc(db, `organizations/${orgId}/coaches/${uid}`), {
     uid,

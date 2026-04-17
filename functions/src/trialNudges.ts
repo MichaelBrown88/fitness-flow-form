@@ -37,7 +37,7 @@ export async function sendTrialEndingSoonEmail(
   const alreadySent = orgData.emailMilestones?.trialNudgeSentDays as number[] | undefined;
   if (alreadySent?.includes(daysLeft)) return;
 
-  const profileSnap = await db.doc(`userProfiles/${ownerId}`).get();
+  const profileSnap = await db.doc(`user-profiles/${ownerId}`).get();
   const toEmail = await resolveUserEmail(ownerId, profileSnap.data()?.email as string | undefined);
   if (!toEmail) return;
 

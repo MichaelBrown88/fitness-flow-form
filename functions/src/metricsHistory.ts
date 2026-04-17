@@ -18,11 +18,11 @@ const AI_COST_SPIKE_THRESHOLD_GBP_PENCE = Math.round(
 export async function snapshotPlatformMetrics(): Promise<void> {
   const db = admin.firestore();
 
-  const statsRef = db.doc('system_stats/global_metrics');
+  const statsRef = db.doc('platform-stats/global-metrics');
   const statsSnap = await statsRef.get();
 
   if (!statsSnap.exists) {
-    console.log('[MetricsHistory] system_stats/global_metrics does not exist, skipping snapshot');
+    console.log('[MetricsHistory] platform-stats/global-metrics does not exist, skipping snapshot');
     return;
   }
 
@@ -89,7 +89,7 @@ export async function snapshotPlatformMetrics(): Promise<void> {
 
 /**
  * Monthly counter reset — runs on the 1st of each month at 00:01 UTC.
- * Zeroes assessments_this_month in system_stats and assessmentsThisMonth
+ * Zeroes assessments_this_month in platform-stats and assessmentsThisMonth
  * in every non-deleted org's stats. The weekly reconciliation will correct
  * these to accurate values within 7 days.
  */
@@ -120,7 +120,7 @@ export async function resetAssessmentsThisMonth(): Promise<void> {
     await batch.commit();
   }
 
-  await db.doc('system_stats/global_metrics').set(
+  await db.doc('platform-stats/global-metrics').set(
     { assessments_this_month: 0 },
     { merge: true },
   );
