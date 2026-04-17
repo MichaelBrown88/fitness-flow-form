@@ -132,6 +132,11 @@ export async function handleCreateRemoteAssessmentToken(
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
+  // Track feature usage
+  await db.doc(`organizations/${organizationId}`).update({
+    featuresUsed: admin.firestore.FieldValue.arrayUnion('remote-intake'),
+  }).catch(() => { /* non-fatal */ });
+
   return { token, expiresAt: expiresAt.toMillis() };
 }
 

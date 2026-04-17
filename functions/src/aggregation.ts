@@ -538,6 +538,22 @@ export async function handleAIUsageChange(
 
     if (afterOrgId) {
       await updateOrgStats(afterOrgId, { totalAiCostsGbpPence: afterCostGbpPence });
+
+      // Track feature usage on the org doc (for platform admin health dashboard)
+      const featureType = afterData?.type as string | undefined;
+      const featureMap: Record<string, string> = {
+        posture_analysis: 'posture-ai',
+        ocr_inbody: 'body-comp-ocr',
+        coach_assistant_response: 'ai-assistant',
+        exercise_recommendation: 'ai-recommendations',
+        comparison_narrative: 'ai-narrative',
+      };
+      const featureTag = featureType ? featureMap[featureType] : undefined;
+      if (featureTag) {
+        await getDb().doc(`organizations/${afterOrgId}`).update({
+          featuresUsed: admin.firestore.FieldValue.arrayUnion(featureTag),
+        }).catch(() => { /* non-fatal */ });
+      }
     }
   } else if (isUpdated) {
     const systemMtdDelta =

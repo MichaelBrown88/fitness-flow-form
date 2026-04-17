@@ -29,7 +29,7 @@ import {
   handleClientChange,
   handleAIUsageChange,
 } from './aggregation';
-import { snapshotPlatformMetrics, resetAssessmentsThisMonth } from './metricsHistory';
+import { snapshotPlatformMetrics, resetAssessmentsThisMonth, computeOrgHealthSummaries, writeMonthlyRollup } from './metricsHistory';
 import { checkPlatformHealth } from './platformHealth';
 import { runPopulationAnalytics } from './populationAnalytics';
 import { pushApexProductMetricsFromFirestore } from './pushApexProductMetrics';
@@ -415,6 +415,25 @@ export const weeklyReconcileStats = onSchedule(
 export const monthlyResetAssessmentsThisMonth = onSchedule(
   { schedule: '1 of month 00:01', timeZone: 'UTC' },
   resetAssessmentsThisMonth,
+);
+
+/**
+ * Monthly rollup — runs on the 2nd of each month at 01:00 UTC (after counter reset).
+ * Aggregates previous month's daily snapshots into a single monthly summary.
+ */
+export const monthlyRollup = onSchedule(
+  { schedule: '2 of month 01:00', timeZone: 'UTC', timeoutSeconds: 120 },
+  writeMonthlyRollup,
+);
+
+/**
+ * Daily org-health computation — runs at 01:30 UTC (after metrics snapshot).
+ * Writes per-org health summaries to platform/metrics/org-health/{orgId}.
+ * NO client PII — just aggregate counts, features used, and a health score.
+ */
+export const dailyOrgHealthComputation = onSchedule(
+  { schedule: 'every day 01:30', timeZone: 'UTC', timeoutSeconds: 300 },
+  computeOrgHealthSummaries,
 );
 
 // Platform metrics callables (use pre-aggregated data)

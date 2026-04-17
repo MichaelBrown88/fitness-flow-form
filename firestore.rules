@@ -465,6 +465,13 @@ service cloud.firestore {
         allow read: if isAuthenticated();
         allow write: if isPlatformAdmin() && request.auth.uid == adminUid;
       }
+
+      // Platform metrics: daily/monthly snapshots, org-health summaries
+      // Written by Cloud Functions only; platform admin reads.
+      match /metrics/{doc=**} {
+        allow read: if isPlatformAdmin();
+        allow write: if false;
+      }
     }
 
     // =========================================================
