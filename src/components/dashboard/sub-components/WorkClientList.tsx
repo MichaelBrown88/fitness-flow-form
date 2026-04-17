@@ -6,10 +6,10 @@ import { ClientPillarStatusRow } from './ClientPillarStatusRow';
 interface WorkClientListProps {
   queue: ReassessmentItem[];
   search?: string;
-  onStartAssessment: (clientName: string, pillar: string) => void;
+  onScheduleClient: (item: ReassessmentItem) => void;
 }
 
-export function WorkClientList({ queue, search, onStartAssessment }: WorkClientListProps) {
+export function WorkClientList({ queue, search, onScheduleClient }: WorkClientListProps) {
   const filtered = useMemo(() => {
     const actionable = queue.filter(item => item.status === 'overdue' || item.status === 'due-soon');
     if (!search?.trim()) return actionable;
@@ -26,7 +26,7 @@ export function WorkClientList({ queue, search, onStartAssessment }: WorkClientL
           {hasSearch ? 'No clients match your search' : 'All clients are on track'}
         </p>
         {!hasSearch && (
-          <p className="text-xs text-muted-foreground">Nothing due or overdue right now.</p>
+          <p className="text-xs text-muted-foreground">Nothing due right now.</p>
         )}
       </div>
     );
@@ -38,7 +38,7 @@ export function WorkClientList({ queue, search, onStartAssessment }: WorkClientL
         <ClientPillarStatusRow
           key={item.id}
           item={item}
-          onStartAssessment={onStartAssessment}
+          onScheduleClient={onScheduleClient}
         />
       ))}
     </ul>

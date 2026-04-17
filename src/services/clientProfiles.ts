@@ -1267,3 +1267,52 @@ export async function deleteClientPermanently(params: {
     'stats.lastUpdated': serverTimestamp(),
   }).catch((): void => undefined);
 }
+
+/**
+ * Delete a client by direct Firestore doc ID (bypasses slug generation).
+ * Use when the slug-based path doesn't match (e.g. UUID-migrated or orphaned clients).
+ */
+export async function deleteClientByDocId(
+  organizationId: string,
+  docId: string,
+): Promise<void> {
+  const db = getDb();
+
+  async function deleteSubcollection(colPath: string): Promise<void> {
+    const colRef = collection(db, colPath);
+    const PAGE = 400;
+    while (true) {
+      const snap = await getDocs(query(colRef, limit(PAGE)));
+      if (snap.empty) return;
+      let batch = writeBatch(db);
+      let count = 0;
+      for (const docSnap of snap.docs) {
+        batch.delete(docSnap.ref);
+        count++;
+        if (count >= PAGE) {
+          await batch.commit();
+          batch = writeBatch(db);
+          count = 0;
+        }
+      }
+      if (count > 0) await batch.commit();
+      if (snap.size < PAGE) return;
+    }
+  }
+
+  // Cleanup subcollections (non-critical)
+  await deleteSubcollection(`organizations/${organizationId}/clients/${docId}/sessions`).catch((): void => undefined);
+  await deleteDoc(doc(db, `organizations/${organizationId}/clients/${docId}/current/state`)).catch((): void => undefined);
+  await deleteDoc(doc(db, `organizations/${organizationId}/clients/${docId}/assessmentDrafts/draft`)).catch((): void => undefined);
+  await deleteDoc(doc(db, `organizations/${organizationId}/clients/${docId}/roadmap/plan`)).catch((): void => undefined);
+  await deleteSubcollection(`organizations/${organizationId}/clients/${docId}/achievements`).catch((): void => undefined);
+
+  // Delete the client profile doc (critical)
+  await deleteDoc(doc(db, `organizations/${organizationId}/clients/${docId}`));
+
+  // Decrement org stats (best-effort)
+  await updateDoc(doc(db, ORGANIZATION.doc(organizationId)), {
+    'stats.clientCount': increment(-1),
+    'stats.lastUpdated': serverTimestamp(),
+  }).catch((): void => undefined);
+}

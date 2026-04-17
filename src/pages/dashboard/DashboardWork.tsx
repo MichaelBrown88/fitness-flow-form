@@ -1,12 +1,14 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useState } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import { CalendarView } from '@/components/dashboard/sub-components/CalendarView';
 import { WorkClientList } from '@/components/dashboard/sub-components/WorkClientList';
+import { ScheduleDialog } from '@/components/dashboard/sub-components/ScheduleDialog';
 import { Button } from '@/components/ui/button';
 import { Users, ClipboardCheck, AlertTriangle, CheckCircle2, ArrowRight, Sparkles, TrendingDown, Share2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { staffPreferredFirstName } from '@/lib/utils/staffDisplayName';
 import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
+import type { ReassessmentItem } from '@/hooks/useReassessmentQueue';
 import type { DashboardOutletContext } from './DashboardLayout';
 
 function greetingHour(): string {
@@ -50,16 +52,8 @@ export default function DashboardWork() {
     return { overdueCount: overdue, dueSoonCount: dueSoon, attentionCount: overdue + dueSoon };
   }, [ctx.reassessmentQueue]);
 
-  // Wrap the assessment handler to inject cadence hints from the queue
-  const handleStartAssessmentWithHints = useCallback((clientName: string, pillar: string) => {
-    const queueItem = ctx.reassessmentQueue?.queue.find(q => q.clientName === clientName);
-    const hints = queueItem?.pillarSchedules.map(ps => ({
-      pillar: ps.pillar,
-      status: ps.status as 'overdue' | 'due-soon' | 'up-to-date',
-      daysFromDue: ps.daysFromDue,
-    }));
-    ctx.handleNewAssessmentForClient(clientName, pillar, hints);
-  }, [ctx]);
+  // Schedule dialog state
+  const [scheduleTarget, setScheduleTarget] = useState<ReassessmentItem | null>(null);
 
   if (!ctx.reassessmentQueue) return null;
 
@@ -159,7 +153,7 @@ export default function DashboardWork() {
           <WorkClientList
             queue={ctx.reassessmentQueue.queue}
             search={ctx.search}
-            onStartAssessment={handleStartAssessmentWithHints}
+            onScheduleClient={setScheduleTarget}
           />
         </div>
       </section>
@@ -256,6 +250,19 @@ export default function DashboardWork() {
       </div>{/* end right column */}
 
       </div>{/* end grid */}
+
+      {/* Schedule dialog */}
+      {scheduleTarget && ctx.profile?.organizationId && (
+        <ScheduleDialog
+          client={scheduleTarget}
+          organizationId={ctx.profile.organizationId}
+          onScheduled={() => {
+            setScheduleTarget(null);
+            ctx.refreshSchedules?.();
+          }}
+          onClose={() => setScheduleTarget(null)}
+        />
+      )}
     </div>
   );
 }

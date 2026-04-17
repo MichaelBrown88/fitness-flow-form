@@ -94,6 +94,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     const map = new Map<string, DueEntry[]>();
     for (const item of reassessmentQueue.queue) {
       for (const ps of item.pillarSchedules) {
+        // Only show coach-committed (scheduled) entries, not cadence-computed dates
+        if (!ps.hasOverride) continue;
         const key = format(ps.dueDate, 'yyyy-MM-dd');
         const existing = map.get(key) ?? [];
         existing.push({ name: item.clientName, pillar: ps.pillar, status: ps.status });
@@ -363,26 +365,49 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               >
                 {format(day, 'd')}
               </span>
-              {clients.length > 0 && (
-                <div className="mt-0.5 space-y-0.5">
-                  {visibleClients.map((entry, i) => (
-                    <ClientPill
-                      key={`${entry.name}-${entry.pillar}-${i}`}
-                      entry={entry}
-                      dateKey={key}
-                      day={day}
-                      dayClients={clients}
-                      onPillClick={handlePillClick}
-                      isSelected={selectedKeysSet.has(`${entry.name}|${entry.pillar}|${key}`)}
-                    />
-                  ))}
-                  {overflow > 0 && (
-                    <span className="block pl-1 text-[9px] font-bold text-muted-foreground">
-                      +{overflow} more
-                    </span>
-                  )}
-                </div>
-              )}
+              {clients.length > 0 && (() => {
+                // Group entries by client name for cleaner display
+                const byClient = new Map<string, DueEntry[]>();
+                for (const entry of clients) {
+                  const existing = byClient.get(entry.name) ?? [];
+                  existing.push(entry);
+                  byClient.set(entry.name, existing);
+                }
+                const clientEntries = [...byClient.entries()].slice(0, MAX_VISIBLE_PILLS);
+                const clientOverflow = byClient.size - MAX_VISIBLE_PILLS;
+                return (
+                  <div className="mt-0.5 space-y-0.5">
+                    {clientEntries.map(([clientName, entries]) => {
+                      const firstName = clientName.split('-')[0] ?? clientName;
+                      return (
+                        <div
+                          key={clientName}
+                          className="flex items-center gap-0.5 truncate rounded px-1 py-0.5 text-[10px] font-medium leading-tight cursor-pointer hover:bg-muted/60"
+                          onClick={(e) => handlePillClick?.(e, day, clients, entries[0], key)}
+                          draggable
+                          onDragStart={(e) => {
+                            const payload: DragPayload = { clientName: entries[0].name, pillar: entries[0].pillar, fromDate: key };
+                            e.dataTransfer.setData('application/json', JSON.stringify(payload));
+                            e.dataTransfer.effectAllowed = 'move';
+                          }}
+                        >
+                          <span className="truncate text-foreground/70">{firstName}</span>
+                          {entries.map((entry) => {
+                            const IconComp = ({ bodycomp: Scan, posture: Camera, fitness: Heart, strength: Dumbbell, lifestyle: Activity } as Record<string, typeof Scan>)[entry.pillar];
+                            const color = ({ bodycomp: 'text-blue-500', posture: 'text-violet-500', fitness: 'text-rose-500', strength: 'text-amber-500', lifestyle: 'text-emerald-500' } as Record<string, string>)[entry.pillar];
+                            return IconComp ? <IconComp key={entry.pillar} className={`h-2.5 w-2.5 shrink-0 ${color ?? 'text-muted-foreground'}`} /> : null;
+                          })}
+                        </div>
+                      );
+                    })}
+                    {clientOverflow > 0 && (
+                      <span className="block pl-1 text-[9px] font-bold text-muted-foreground">
+                        +{clientOverflow} more
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           );
         })}
@@ -392,6 +417,13 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         <div className="animate-pulse text-center text-xs font-medium text-muted-foreground">
           Rescheduling…
         </div>
+      )}
+
+      {/* Empty state when no assessments are scheduled */}
+      {dueByDay.size === 0 && (
+        <p className="text-center text-xs text-muted-foreground py-2">
+          No assessments scheduled. Use the queue to schedule clients.
+        </p>
       )}
 
       {/* Pillar legend with icons */}

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Scan, Camera, Activity, Dumbbell, Heart } from 'lucide-react';
-import type { ReassessmentItem, ScheduleStatus } from '@/hooks/useReassessmentQueue';
+import { Scan, Camera, Activity, Dumbbell, Heart, CalendarPlus } from 'lucide-react';
+import type { ReassessmentItem } from '@/hooks/useReassessmentQueue';
 import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
 import { cn } from '@/lib/utils';
 
@@ -22,43 +22,22 @@ export const PILLAR_COLORS: Record<string, string> = {
   lifestyle: 'text-emerald-500',
 } as const;
 
-const PILLAR_ORDER = ['bodycomp', 'posture', 'fitness', 'strength', 'lifestyle'] as const;
-
-function statusDotClass(status: ScheduleStatus | 'never'): string {
-  switch (status) {
-    case 'overdue': return 'bg-score-red';
-    case 'due-soon': return 'bg-score-amber';
-    case 'up-to-date': return 'bg-score-green';
-    case 'never': return 'bg-border';
-  }
-}
-
-function urgencyLabel(item: ReassessmentItem): string {
-  const { mostUrgentPillar, pillarSchedules } = item;
-  if (!mostUrgentPillar || mostUrgentPillar === 'full') return '';
-  const ps = pillarSchedules.find(s => s.pillar === mostUrgentPillar);
-  if (!ps) return '';
-  if (ps.daysFromDue > 0) return `${ps.daysFromDue}d overdue`;
-  const daysLeft = Math.abs(ps.daysFromDue);
-  if (daysLeft === 0) return 'due today';
-  return `due in ${daysLeft}d`;
-}
-
 interface ClientPillarStatusRowProps {
   item: ReassessmentItem;
-  onStartAssessment: (clientName: string, pillar: string) => void;
+  onScheduleClient: (item: ReassessmentItem) => void;
 }
 
-export function ClientPillarStatusRow({ item, onStartAssessment }: ClientPillarStatusRowProps) {
+export function ClientPillarStatusRow({ item, onScheduleClient }: ClientPillarStatusRowProps) {
   const displayName = formatClientDisplayName(item.clientName);
   const clientPath = `/client/${encodeURIComponent(item.clientName)}`;
-  const urgency = urgencyLabel(item);
+
+  // Only show icons for pillars that need attention
+  const duePillars = item.pillarSchedules.filter(
+    ps => ps.status === 'overdue' || ps.status === 'due-soon',
+  );
 
   return (
-    <li className={cn(
-      "flex items-center gap-3 py-4 min-w-0 border-l-[3px] pl-3",
-      item.status === 'overdue' ? 'border-l-score-red' : item.status === 'due-soon' ? 'border-l-score-amber' : 'border-l-transparent',
-    )}>
+    <li className="flex items-center gap-3 py-4 min-w-0">
       {/* Client name */}
       <Link
         to={clientPath}
@@ -67,53 +46,31 @@ export function ClientPillarStatusRow({ item, onStartAssessment }: ClientPillarS
         {displayName}
       </Link>
 
-      {/* Pillar dots */}
+      {/* Due pillar icons — only what needs doing */}
       <div className="flex items-center gap-1.5 shrink-0">
-        {PILLAR_ORDER.map((pillar) => {
-          const ps = item.pillarSchedules.find(s => s.pillar === pillar);
-          const status: ScheduleStatus | 'never' = ps?.status ?? 'never';
-          const Icon = PILLAR_ICONS[pillar];
+        {duePillars.map((ps) => {
+          const Icon = PILLAR_ICONS[ps.pillar as keyof typeof PILLAR_ICONS];
+          if (!Icon) return null;
           return (
-            <div
-              key={pillar}
-              className="relative flex items-center justify-center"
-              title={`${pillar}: ${status}`}
-            >
-              <Icon className={cn("h-3.5 w-3.5", PILLAR_COLORS[pillar] ?? 'text-muted-foreground')} />
-              <span className={`absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border border-background ${statusDotClass(status)}`} />
-            </div>
+            <Icon
+              key={ps.pillar}
+              className={cn("h-4 w-4", PILLAR_COLORS[ps.pillar] ?? 'text-muted-foreground')}
+              title={ps.pillar}
+            />
           );
         })}
       </div>
 
-      {/* Urgency label */}
-      {urgency && (
-        <span className={`hidden sm:inline text-[10px] font-bold shrink-0 ${item.status === 'overdue' ? 'text-score-red-fg' : 'text-score-amber-fg'}`}>
-          {urgency}
-        </span>
-      )}
-
-      {/* Start button */}
-      {item.mostUrgentPillar && item.mostUrgentPillar !== 'full' && (
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => onStartAssessment(item.clientName, item.mostUrgentPillar!)}
-          className="h-7 px-3 text-[11px] font-bold shrink-0 rounded-lg border-border hover:border-primary/30 hover:bg-primary/5"
-        >
-          Start
-        </Button>
-      )}
-      {(!item.mostUrgentPillar || item.mostUrgentPillar === 'full') && item.status !== 'up-to-date' && (
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => onStartAssessment(item.clientName, 'bodycomp')}
-          className="h-7 px-3 text-[11px] font-bold shrink-0 rounded-lg border-border hover:border-primary/30 hover:bg-primary/5"
-        >
-          Start
-        </Button>
-      )}
+      {/* Schedule button */}
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => onScheduleClient(item)}
+        className="h-8 px-3 text-xs font-semibold shrink-0 rounded-lg gap-1.5"
+      >
+        <CalendarPlus className="h-3.5 w-3.5" />
+        Schedule
+      </Button>
     </li>
   );
 }

@@ -42,6 +42,8 @@ export interface PillarSchedule {
   status: ScheduleStatus;
   /** Positive = days overdue, negative = days until due */
   daysFromDue: number;
+  /** True when the due date comes from a coach-set override (commitment), not cadence computation (recommendation) */
+  hasOverride: boolean;
 }
 
 /** A single client row in the task list */
@@ -329,7 +331,7 @@ function computePillarSchedules(
       status = 'up-to-date';
     }
 
-    schedules.push({ pillar, dueDate, status, daysFromDue });
+    schedules.push({ pillar, dueDate, status, daysFromDue, hasOverride: !!useOverride });
   }
 
   return schedules;

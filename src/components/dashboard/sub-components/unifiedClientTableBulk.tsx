@@ -112,14 +112,25 @@ export function ClientTableBulkActions({
   const confirmDelete = () => {
     void (async () => {
       try {
-        const { deleteClientPermanently, generateClientSlug } = await import('@/services/clientProfiles');
+        const { deleteClientPermanently, deleteClientByDocId, generateClientSlug } = await import('@/services/clientProfiles');
         for (const client of selectedGroups) {
-          await deleteClientPermanently({
-            organizationId: writeOrganizationId!,
-            clientSlug: generateClientSlug(client.name),
-            clientName: client.name,
-            knownAssessmentId: client.assessments[0]?.id,
-          });
+          try {
+            await deleteClientPermanently({
+              organizationId: writeOrganizationId!,
+              clientSlug: generateClientSlug(client.name),
+              clientName: client.name,
+              knownAssessmentId: client.assessments[0]?.id,
+            });
+          } catch {
+            // Slug-based delete failed — try direct doc ID as fallback (handles orphaned/UUID clients)
+            const slug = generateClientSlug(client.name);
+            await deleteClientByDocId(writeOrganizationId!, slug).catch(() => {
+              // Last resort: try the summary doc ID as the client doc ID
+              if (client.id && client.id !== slug) {
+                return deleteClientByDocId(writeOrganizationId!, client.id);
+              }
+            });
+          }
         }
         toast({ title: 'Deleted', description: `${selectedGroups.length} client${selectedGroups.length !== 1 ? 's' : ''} permanently deleted.` });
         setConfirm(null);
