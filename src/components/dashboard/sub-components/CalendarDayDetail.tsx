@@ -27,11 +27,11 @@ export interface DragPayload {
 
 const STATUS_COLORS: Record<ScheduleStatus, string> = {
   overdue:
-    'border-red-300 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/55 dark:text-red-200',
+    'border-score-red/40 bg-score-red-muted/60 text-score-red-fg',
   'due-soon':
-    'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-200',
+    'border-score-amber/40 bg-score-amber-muted/60 text-score-amber-fg',
   'up-to-date':
-    'border-border bg-muted text-foreground dark:bg-background-tertiary dark:text-muted-foreground',
+    'border-border bg-muted/50 text-muted-foreground',
 };
 
 const PILLAR_ABBREV: Record<string, string> = {
@@ -41,6 +41,25 @@ const PILLAR_ABBREV: Record<string, string> = {
   strength: 'ST',
   lifestyle: 'LS',
   full: 'ALL',
+};
+
+/** Semantic background colors per pillar for calendar pills */
+const PILLAR_BG: Record<string, string> = {
+  bodycomp: 'bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300',
+  posture: 'bg-violet-100 text-violet-800 dark:bg-violet-950/50 dark:text-violet-300',
+  fitness: 'bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300',
+  strength: 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300',
+  lifestyle: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300',
+  full: 'bg-muted text-foreground',
+};
+
+/** Dot color for the calendar legend */
+export const PILLAR_DOT_COLORS: Record<string, string> = {
+  bodycomp: 'bg-blue-500',
+  posture: 'bg-violet-500',
+  fitness: 'bg-rose-500',
+  strength: 'bg-amber-500',
+  lifestyle: 'bg-emerald-500',
 };
 
 function pillarAbbrev(pillar: string): string {
@@ -79,14 +98,13 @@ export function ClientPill({ entry, dateKey, day, dayClients, onPillClick, isSel
       draggable
       onDragStart={handleDragStart}
       onClick={handleClick}
-      className={`flex cursor-grab items-center gap-0.5 truncate rounded border px-1 py-0.5 text-[9px] font-semibold leading-tight active:cursor-grabbing sm:text-[10px] ${STATUS_COLORS[entry.status]} ${
-        isSelected ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : ''
+      className={`flex cursor-grab items-center gap-1 truncate rounded px-1 py-0.5 text-[10px] font-medium leading-tight active:cursor-grabbing ${PILLAR_BG[entry.pillar] ?? PILLAR_BG.full} ${
+        isSelected ? 'ring-1 ring-foreground/30' : ''
       }`}
-      title={`${displayName} — ${getPillarLabel(entry.pillar)} (Ctrl/Cmd+click to select multiple)`}
+      title={`${displayName} — ${getPillarLabel(entry.pillar)}`}
     >
-      <GripVertical className="h-2.5 w-2.5 shrink-0 opacity-40" />
       <span className="truncate">{firstName}</span>
-      <span className="opacity-60 shrink-0">{pillarAbbrev(entry.pillar)}</span>
+      <span className="opacity-50 shrink-0 text-[9px]">{pillarAbbrev(entry.pillar)}</span>
     </div>
   );
 }

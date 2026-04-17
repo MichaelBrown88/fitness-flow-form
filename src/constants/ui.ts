@@ -205,7 +205,7 @@ export const UI_STATUS = {
 export const UI_TABS = {
   ASSISTANT: 'Assistant',
   CLIENTS: 'Clients',
-  WORK: 'Schedule',
+  WORK: 'Today',
   SCHEDULE: 'Tasks',
   CALENDAR: 'Calendar',
   TEAM: 'Team',
@@ -224,7 +224,7 @@ export const UI_CLIENT_DETAIL = {
 export const UI_COMMAND_MENU = {
   HOME: 'Home',
   CLIENTS: 'Clients',
-  WORK: 'Schedule',
+  WORK: 'Today',
   ARTIFACTS: 'Artifacts',
 } as const;
 

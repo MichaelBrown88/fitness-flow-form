@@ -63,7 +63,7 @@ export function AssistantModeToggle({
             ? 'rounded-full px-2 py-1 text-[10px]'
             : 'rounded-md px-2.5 py-1 text-xs',
           mode === 'assist'
-            ? 'bg-amber-100 text-amber-800 shadow-sm dark:bg-amber-900/40 dark:text-amber-300'
+            ? 'bg-muted/80 text-foreground/70 shadow-sm dark:bg-background-secondary'
             : 'text-foreground/55 hover:text-foreground/90',
         )}
         onClick={() => onChange('assist')}
@@ -98,7 +98,7 @@ export function AssistantModeToggle({
         className={cn(
           'h-8 gap-1.5 rounded-md px-3 text-xs font-semibold',
           mode === 'assist'
-            ? 'bg-amber-100 text-amber-800 shadow-sm dark:bg-amber-900/40 dark:text-amber-300'
+            ? 'bg-muted/80 text-foreground/70 shadow-sm dark:bg-background-secondary'
             : 'text-foreground/60',
         )}
         onClick={() => onChange('assist')}

@@ -2,7 +2,7 @@
  * Post–client-pick session setup: intake mode (copy) + template or custom phase scope.
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useFormContext } from '@/contexts/FormContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -15,7 +15,8 @@ import {
   type SessionFocusTemplateKey,
   type SessionFocusToggles,
 } from '@/lib/types/assessmentPlan';
-import { ChevronDown, Copy, Monitor, Smartphone } from 'lucide-react';
+import { readPrefillPillarCadenceHints, type PillarCadenceHint } from '@/lib/assessment/assessmentSessionStorage';
+import { ChevronDown, Copy, Monitor, Smartphone, AlertTriangle, Clock } from 'lucide-react';
 import { logger } from '@/lib/utils/logger';
 import type { RemoteAssessmentScope } from '@/lib/types/remoteAssessment';
 
@@ -46,22 +47,60 @@ const TEMPLATE_DESC: Record<SessionFocusTemplateKey, string> = {
   movement: ASSESSMENT_COPY.TEMPLATE_MOVEMENT_DESC,
 };
 
-const INITIAL_TOGGLES: SessionFocusToggles = {
-  lifestyle: false,
-  bodyComp: false,
-  cardio: false,
-  strength: false,
-  movement: false,
+/** Map cadence pillar IDs to toggle keys */
+const CADENCE_TO_TOGGLE: Record<string, keyof SessionFocusToggles> = {
+  lifestyle: 'lifestyle',
+  bodycomp: 'bodyComp',
+  fitness: 'cardio',
+  strength: 'strength',
+  posture: 'movement',
 };
+
+function buildInitialTogglesFromCadence(hints: PillarCadenceHint[]): { toggles: SessionFocusToggles; hasDue: boolean } {
+  const toggles: SessionFocusToggles = {
+    lifestyle: false,
+    bodyComp: false,
+    cardio: false,
+    strength: false,
+    movement: false,
+  };
+  let hasDue = false;
+  for (const hint of hints) {
+    const key = CADENCE_TO_TOGGLE[hint.pillar];
+    if (key && (hint.status === 'overdue' || hint.status === 'due-soon')) {
+      toggles[key] = true;
+      hasDue = true;
+    }
+  }
+  return { toggles, hasDue };
+}
 
 export function AssessmentPlanWizard({ onComplete }: { onComplete: () => void }) {
   const { updateFormData, formData } = useFormContext();
   const { profile } = useAuth();
   const { toast } = useToast();
+
+  const cadenceHints = useMemo(() => readPrefillPillarCadenceHints(), []);
+  const cadenceMap = useMemo(() => {
+    const map = new Map<string, PillarCadenceHint>();
+    for (const h of cadenceHints) {
+      const key = CADENCE_TO_TOGGLE[h.pillar];
+      if (key) map.set(key, h);
+    }
+    return map;
+  }, [cadenceHints]);
+  const initialState = useMemo(() => buildInitialTogglesFromCadence(cadenceHints), [cadenceHints]);
+
   const [intakeMode, setIntakeMode] = useState<'studio' | 'send_link_first' | null>(null);
-  const [templateKey, setTemplateKey] = useState<SessionFocusTemplateKey>('full');
-  const [customOpen, setCustomOpen] = useState(false);
-  const [toggles, setToggles] = useState<SessionFocusToggles>(INITIAL_TOGGLES);
+  const [templateKey, setTemplateKey] = useState<SessionFocusTemplateKey>(initialState.hasDue ? 'full' : 'full');
+  const [customOpen, setCustomOpen] = useState(initialState.hasDue);
+  const [toggles, setToggles] = useState<SessionFocusToggles>(initialState.hasDue ? initialState.toggles : {
+    lifestyle: false,
+    bodyComp: false,
+    cardio: false,
+    strength: false,
+    movement: false,
+  });
   const [remoteLink, setRemoteLink] = useState<string | null>(null);
   const [remoteBusy, setRemoteBusy] = useState(false);
   const [remoteLinkScope, setRemoteLinkScope] = useState<RemoteAssessmentScope>('lifestyle');
@@ -162,7 +201,7 @@ export function AssessmentPlanWizard({ onComplete }: { onComplete: () => void })
           <CollapsibleContent className="pt-3 space-y-2">
             <p className="text-xs text-muted-foreground px-1">{ASSESSMENT_COPY.CUSTOM_FOCUS_HINT}</p>
             <div className="grid gap-2 sm:grid-cols-2">
-              {(Object.keys(INITIAL_TOGGLES) as (keyof SessionFocusToggles)[]).map((key) => {
+              {(['lifestyle', 'bodyComp', 'cardio', 'strength', 'movement'] as (keyof SessionFocusToggles)[]).map((key) => {
                 const label =
                   key === 'lifestyle'
                     ? ASSESSMENT_COPY.TOGGLE_LIFESTYLE
@@ -173,16 +212,29 @@ export function AssessmentPlanWizard({ onComplete }: { onComplete: () => void })
                         : key === 'strength'
                           ? ASSESSMENT_COPY.TOGGLE_STRENGTH
                           : ASSESSMENT_COPY.TOGGLE_MOVEMENT;
+                const hint = cadenceMap.get(key);
                 return (
                   <button
                     key={key}
                     type="button"
                     onClick={() => toggle(key)}
-                    className={`rounded-lg border px-3 py-3 text-left text-sm font-medium min-h-[44px] ${
+                    className={`rounded-lg border px-3 py-3 text-left text-sm font-medium min-h-[44px] flex items-center justify-between gap-2 ${
                       toggles[key] ? 'border-primary bg-primary/10' : 'border-border/70 bg-background'
                     }`}
                   >
-                    {label}
+                    <span>{label}</span>
+                    {hint?.status === 'overdue' && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-score-red-muted/60 px-2 py-0.5 text-[10px] font-bold text-score-red-fg">
+                        <AlertTriangle className="h-2.5 w-2.5" />
+                        Overdue
+                      </span>
+                    )}
+                    {hint?.status === 'due-soon' && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-score-amber-muted/60 px-2 py-0.5 text-[10px] font-bold text-score-amber-fg">
+                        <Clock className="h-2.5 w-2.5" />
+                        Due soon
+                      </span>
+                    )}
                   </button>
                 );
               })}

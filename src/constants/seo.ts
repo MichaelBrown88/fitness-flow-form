@@ -132,8 +132,8 @@ export function getDashboardSeoForPathname(pathname: string): SeoPageMeta {
   };
   if (pathname === ROUTES.DASHBOARD) {
     return {
-      title: 'Assistant | One Assess',
-      description: 'Coach assistant, tasks, and client snapshot queries.',
+      title: 'Today | One Assess',
+      description: 'Reassessment queue, tasks, and daily coaching overview.',
       noindex: true,
     };
   }
@@ -146,8 +146,8 @@ export function getDashboardSeoForPathname(pathname: string): SeoPageMeta {
   }
   if (pathname.startsWith(ROUTES.DASHBOARD_WORK)) {
     return {
-      title: 'Work | One Assess',
-      description: 'Reassessment tasks and follow-up calendar.',
+      title: 'Today | One Assess',
+      description: 'Reassessment queue, tasks, and daily coaching overview.',
       noindex: true,
     };
   }

@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Scan, Camera, Activity, Dumbbell, Heart } from 'lucide-react';
 import type { ReassessmentItem, ScheduleStatus } from '@/hooks/useReassessmentQueue';
 import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
+import { cn } from '@/lib/utils';
 
 const PILLAR_ICONS = {
   bodycomp: Scan,
@@ -10,6 +11,15 @@ const PILLAR_ICONS = {
   fitness: Heart,
   strength: Dumbbell,
   lifestyle: Activity,
+} as const;
+
+/** Semantic colors per pillar — consistent across queue, calendar, and legends */
+export const PILLAR_COLORS: Record<string, string> = {
+  bodycomp: 'text-blue-500',
+  posture: 'text-violet-500',
+  fitness: 'text-rose-500',
+  strength: 'text-amber-500',
+  lifestyle: 'text-emerald-500',
 } as const;
 
 const PILLAR_ORDER = ['bodycomp', 'posture', 'fitness', 'strength', 'lifestyle'] as const;
@@ -45,7 +55,10 @@ export function ClientPillarStatusRow({ item, onStartAssessment }: ClientPillarS
   const urgency = urgencyLabel(item);
 
   return (
-    <li className="flex items-center gap-3 py-3 min-w-0">
+    <li className={cn(
+      "flex items-center gap-3 py-4 min-w-0 border-l-[3px] pl-3",
+      item.status === 'overdue' ? 'border-l-score-red' : item.status === 'due-soon' ? 'border-l-score-amber' : 'border-l-transparent',
+    )}>
       {/* Client name */}
       <Link
         to={clientPath}
@@ -66,7 +79,7 @@ export function ClientPillarStatusRow({ item, onStartAssessment }: ClientPillarS
               className="relative flex items-center justify-center"
               title={`${pillar}: ${status}`}
             >
-              <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+              <Icon className={cn("h-3.5 w-3.5", PILLAR_COLORS[pillar] ?? 'text-muted-foreground')} />
               <span className={`absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border border-background ${statusDotClass(status)}`} />
             </div>
           );

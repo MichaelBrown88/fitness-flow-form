@@ -4,7 +4,7 @@
 
 import React, { useMemo, useState } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
-import { Pause, Archive, ArrowRightLeft, X, Loader2 } from 'lucide-react';
+import { Pause, Archive, ArrowRightLeft, X, Loader2, Trash2 } from 'lucide-react';
 import type { ClientGroup } from '@/hooks/dashboard/types';
 import { clientSlugFromName } from '@/lib/database/paths';
 import { useDashboardClientBulkActions } from '@/hooks/dashboard/useDashboardClientBulkActions';
@@ -44,7 +44,7 @@ export function ClientTableBulkActions({
   navigate,
 }: ClientTableBulkActionsProps) {
   const { toast } = useToast();
-  const [confirm, setConfirm] = useState<'pause' | 'archive' | null>(null);
+  const [confirm, setConfirm] = useState<'pause' | 'archive' | 'delete' | null>(null);
 
   const bulkEnabled = Boolean(writeOrganizationId && coachUid);
   const { bulkBusy, runPause, runArchive } = useDashboardClientBulkActions({
@@ -69,12 +69,18 @@ export function ClientTableBulkActions({
     [selectedGroups],
   );
 
-  const archiveSlugs = useMemo(
+  const archiveClients = useMemo(
     () =>
-      selectedGroups
-        .filter((c) => c.clientStatus !== 'archived')
-        .map((c) => clientSlugFromName(c.name)),
+      selectedGroups.filter((c) => c.clientStatus !== 'archived'),
     [selectedGroups],
+  );
+  const archiveSlugs = useMemo(
+    () => archiveClients.map((c) => clientSlugFromName(c.name)),
+    [archiveClients],
+  );
+  const archiveNames = useMemo(
+    () => archiveClients.map((c) => c.name),
+    [archiveClients],
   );
 
   if (selected.size === 0) return null;
@@ -95,6 +101,34 @@ export function ClientTableBulkActions({
       return;
     }
     setConfirm('archive');
+  };
+
+  const handleDeleteClick = () => {
+    if (!bulkEnabled) return;
+    if (selectedGroups.length === 0) return;
+    setConfirm('delete');
+  };
+
+  const confirmDelete = () => {
+    void (async () => {
+      try {
+        const { deleteClientPermanently, generateClientSlug } = await import('@/services/clientProfiles');
+        for (const client of selectedGroups) {
+          await deleteClientPermanently({
+            organizationId: writeOrganizationId!,
+            clientSlug: generateClientSlug(client.name),
+            clientName: client.name,
+            knownAssessmentId: client.assessments[0]?.id,
+          });
+        }
+        toast({ title: 'Deleted', description: `${selectedGroups.length} client${selectedGroups.length !== 1 ? 's' : ''} permanently deleted.` });
+        setConfirm(null);
+        onClearSelection();
+        onBulkComplete?.();
+      } catch (err) {
+        toast({ title: 'Delete failed', description: err instanceof Error ? err.message : 'Please try again.', variant: 'destructive' });
+      }
+    })();
   };
 
   const handleTransferClick = () => {
@@ -121,7 +155,7 @@ export function ClientTableBulkActions({
   const confirmArchive = () => {
     void (async () => {
       try {
-        await runArchive(archiveSlugs);
+        await runArchive(archiveSlugs, archiveNames);
         setConfirm(null);
         onClearSelection();
       } catch {
@@ -164,6 +198,15 @@ export function ClientTableBulkActions({
         >
           <ArrowRightLeft className="h-3.5 w-3.5 shrink-0" />
           Transfer
+        </button>
+        <button
+          type="button"
+          disabled={!bulkEnabled || bulkBusy}
+          onClick={handleDeleteClick}
+          className="flex min-h-[44px] items-center gap-1.5 text-xs font-semibold text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
+        >
+          <Trash2 className="h-3.5 w-3.5 shrink-0" />
+          Delete
         </button>
         <div className="h-4 w-px bg-background/25 hidden sm:block" aria-hidden />
         <button
@@ -216,6 +259,31 @@ export function ClientTableBulkActions({
               }}
             >
               {bulkBusy ? 'Working…' : 'Archive clients'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={confirm === 'delete'} onOpenChange={(o) => !o && setConfirm(null)}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">
+              Permanently delete {selectedGroups.length} client{selectedGroups.length !== 1 ? 's' : ''}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove all data including assessments, history, and reports. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkBusy}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={bulkBusy}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => {
+                e.preventDefault();
+                confirmDelete();
+              }}
+            >
+              {bulkBusy ? 'Deleting…' : 'Delete permanently'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

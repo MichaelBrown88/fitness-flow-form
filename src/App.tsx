@@ -24,7 +24,7 @@ const Login = lazy(() => import("./pages/Login"));
 const SignOut = lazy(() => import("./pages/SignOut"));
 const DashboardLayout = lazy(() => import("./pages/dashboard/DashboardLayout"));
 const DashboardClients = lazy(() => import("./pages/dashboard/DashboardClients"));
-const DashboardAssistant = lazy(() => import("./pages/dashboard/DashboardAssistant"));
+// DashboardAssistant route now redirects to /dashboard (floating panel) — lazy import removed
 const DashboardWork = lazy(() => import("./pages/dashboard/DashboardWork"));
 const DashboardArtifacts = lazy(() => import("./pages/dashboard/DashboardArtifacts"));
 const DashboardSchedule = lazy(() => import("./pages/dashboard/DashboardSchedule"));
@@ -48,7 +48,7 @@ const OrgAdminLayout = lazy(() => import("./pages/org/OrgAdminLayout"));
 const OrgOverview = lazy(() => import("./pages/org/OrgOverview"));
 const OrgTeam = lazy(() => import("./pages/org/OrgTeam"));
 const OrgRetention = lazy(() => import("./pages/org/OrgRetention"));
-const OrgBilling = lazy(() => import("./pages/org/OrgBilling"));
+// OrgBilling route now redirects to /billing — lazy import removed
 const OrgIntegrations = lazy(() => import("./pages/org/OrgIntegrations"));
 const AssessmentComparison = lazy(() => import("./pages/AssessmentComparison"));
 const Billing = lazy(() => import("./pages/Billing"));
@@ -213,9 +213,9 @@ const App = () => (
                     />
                     {/* Protected routes (auth required) */}
                     <Route path="/dashboard" element={<RequireAuth><DashboardLayout /></RequireAuth>}>
-                      <Route index element={<DashboardClients />} />
+                      <Route index element={<DashboardWork />} />
                       <Route path="clients" element={<DashboardClients />} />
-                      <Route path="assistant" element={<DashboardAssistant />} />
+                      <Route path="assistant" element={<Navigate to={ROUTES.DASHBOARD} replace />} />
                       <Route path="work" element={<DashboardWork />} />
                       <Route path="artifacts" element={<DashboardArtifacts />} />
                       <Route path="schedule" element={<DashboardSchedule />} />
@@ -298,7 +298,7 @@ const App = () => (
                       <Route index element={<OrgOverview />} />
                       <Route path="team" element={<OrgTeam />} />
                       <Route path="retention" element={<OrgRetention />} />
-                      <Route path="billing" element={<OrgBilling />} />
+                      <Route path="billing" element={<Navigate to={ROUTES.BILLING} replace />} />
                       <Route path="integrations" element={<OrgIntegrations />} />
                     </Route>
                     <Route

@@ -8,7 +8,8 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, TrendingDown, Minus, Pin } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Pin, Link as LinkIcon, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { ClientActionsDropdown } from './ClientActionsDropdown';
 import { ClientTableBulkActions } from './unifiedClientTableBulk';
 import { PauseClientDialog } from '@/components/client/PauseClientDialog';
@@ -32,6 +33,7 @@ interface UnifiedClientTableProps {
   loadingData: boolean;
   clients: ClientGroup[];
   search: string;
+  onSearchChange?: (value: string) => void;
   showCoachColumn?: boolean;
   coachMap?: Map<string, string>;
   orgDefaultIntervals?: Record<string, number>;
@@ -78,14 +80,14 @@ const TrendIndicator: React.FC<{ trend?: number }> = React.memo(({ trend }) => {
   }
   if (trend > 0) {
     return (
-      <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-1.5 py-0.5 text-xs font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+      <span className="inline-flex items-center gap-0.5 rounded-full bg-score-green-muted/60 px-1.5 py-0.5 text-xs font-bold text-score-green-fg">
         <TrendingUp className="h-3 w-3" />+{trend}
       </span>
     );
   }
   if (trend < 0) {
     return (
-      <span className="inline-flex items-center gap-0.5 rounded-full bg-red-50 px-1.5 py-0.5 text-xs font-bold text-red-700 dark:bg-red-950/50 dark:text-red-300">
+      <span className="inline-flex items-center gap-0.5 rounded-full bg-score-red-muted/60 px-1.5 py-0.5 text-xs font-bold text-score-red-fg">
         <TrendingDown className="h-3 w-3" />{trend}
       </span>
     );
@@ -108,6 +110,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
   loadingData,
   clients,
   search,
+  onSearchChange,
   showCoachColumn = false,
   coachMap,
   orgDefaultIntervals,
@@ -227,21 +230,34 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
 
   return (
     <section className="space-y-4" aria-live="polite">
-      {/* Status filter */}
-      <div className="flex items-center gap-1">
-        {STATUS_FILTER_OPTIONS.map(opt => (
-          <button
-            key={opt.value}
-            onClick={() => setStatusFilter(opt.value)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-              statusFilter === opt.value
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:bg-muted'
-            }`}
-          >
-            {opt.label}
-          </button>
-        ))}
+      {/* Status filter + search */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-1">
+          {STATUS_FILTER_OPTIONS.map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => setStatusFilter(opt.value)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                statusFilter === opt.value
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-muted'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        {onSearchChange && (
+          <div className="relative w-full max-w-[220px]">
+            <Input
+              placeholder="Search clients..."
+              value={search}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="h-9 w-full rounded-lg border-border bg-card pl-3 pr-9 text-sm text-foreground placeholder:text-muted-foreground"
+            />
+            <Search className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          </div>
+        )}
       </div>
 
       {/* Desktop / Tablet table */}
@@ -338,11 +354,14 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                     <td className="px-3 py-4 text-xs font-semibold text-foreground sm:px-4 sm:text-sm md:px-6">
                       <span className="flex items-center gap-2 flex-wrap">
                         {formatClientDisplayName(client.name)}
+                        {client.shareToken && (
+                          <LinkIcon className="h-3 w-3 text-primary/60" aria-label="Report shared" />
+                        )}
                         {isPaused && <span className="text-xs font-bold text-muted-foreground">Paused</span>}
                         {isArchived && <span className="text-xs font-bold text-muted-foreground">Archived</span>}
                         {client.remoteIntakeAwaitingStudio && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-950/40 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-400">
-                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+                          <span className="inline-flex items-center gap-1 rounded-full bg-score-amber-muted/60 px-2 py-0.5 text-[10px] font-bold text-score-amber-fg">
+                            <span className="h-1.5 w-1.5 rounded-full bg-score-amber shrink-0" />
                             Awaiting studio
                           </span>
                         )}
@@ -488,8 +507,8 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                   <ScoreBadge score={client.latestScore} />
                   <TrendIndicator trend={client.scoreChange} />
                   {client.remoteIntakeAwaitingStudio && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-950/40 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-400">
-                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+                    <span className="inline-flex items-center gap-1 rounded-full bg-score-amber-muted/60 px-2 py-0.5 text-[10px] font-bold text-score-amber-fg">
+                      <span className="h-1.5 w-1.5 rounded-full bg-score-amber shrink-0" />
                       Awaiting studio
                     </span>
                   )}

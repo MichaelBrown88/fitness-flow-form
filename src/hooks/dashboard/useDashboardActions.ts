@@ -150,7 +150,7 @@ export function useDashboardActions(
     }
   };
 
-  const handleNewAssessmentForClient = async (clientName: string, category?: string) => {
+  const handleNewAssessmentForClient = async (clientName: string, category?: string, pillarCadenceHints?: { pillar: string; status: 'overdue' | 'due-soon' | 'up-to-date'; daysFromDue?: number }[]) => {
     if (!user) return;
     if (category) {
       writePartialAssessment({ category, clientName });
@@ -175,6 +175,9 @@ export function useDashboardActions(
       }
     } catch (e) {
       logger.error('Failed to pre-fill data:', e);
+    }
+    if (pillarCadenceHints?.length) {
+      prefill.pillarCadenceHints = pillarCadenceHints;
     }
     writePrefillClientPayload(prefill);
     // Coach chose this client + pillar explicitly — skip the confirmation step

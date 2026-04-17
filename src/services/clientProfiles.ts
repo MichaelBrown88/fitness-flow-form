@@ -988,11 +988,26 @@ export async function archiveClient(params: {
   archivedBy: string;
   reason?: string;
   profile?: UserProfile | null;
+  /** Original client name for fallback lookup when slug doesn't match */
+  clientName?: string;
 }): Promise<void> {
-  const { organizationId, clientSlug, archivedBy, reason, profile } = params;
+  const { organizationId, clientSlug: inputSlug, archivedBy, reason, profile, clientName } = params;
   const validOrgId = validateOrganizationId(organizationId, profile);
   const db = getDb();
-  const clientRef = doc(db, ORGANIZATION.clients.doc(validOrgId, clientSlug));
+
+  // Resolve actual doc path (handles UUID-migrated clients)
+  let resolvedSlug = inputSlug;
+  const expectedRef = doc(db, ORGANIZATION.clients.doc(validOrgId, resolvedSlug));
+  const expectedSnap = await getDoc(expectedRef);
+  if (!expectedSnap.exists() && clientName) {
+    const clientsCol = collection(db, ORGANIZATION.clients.collection(validOrgId));
+    const nameQuery = query(clientsCol, where('clientName', '==', clientName), limit(1));
+    const found = await getDocs(nameQuery);
+    if (!found.empty) {
+      resolvedSlug = found.docs[0].id;
+    }
+  }
+  const clientRef = doc(db, ORGANIZATION.clients.doc(validOrgId, resolvedSlug));
 
   await updateDoc(clientRef, {
     status: 'archived',
@@ -1015,8 +1030,10 @@ export async function batchArchiveClients(params: {
   clientSlugs: string[];
   archivedBy: string;
   profile?: UserProfile | null;
+  /** Original client names for fallback lookup when slugs don't match */
+  clientNames?: string[];
 }): Promise<void> {
-  const { clientSlugs, archivedBy, profile } = params;
+  const { clientSlugs, archivedBy, profile, clientNames } = params;
   const validOrgId = validateOrganizationId(params.organizationId, profile);
   const db = getDb();
   const payload: UpdateData<DocumentData> = {
@@ -1031,8 +1048,27 @@ export async function batchArchiveClients(params: {
     updatedAt: serverTimestamp(),
   };
 
-  for (let i = 0; i < clientSlugs.length; i += CLIENT_BATCH_WRITE_MAX) {
-    const chunk = clientSlugs.slice(i, i + CLIENT_BATCH_WRITE_MAX);
+  // Resolve actual doc paths (handles UUID-migrated clients)
+  const resolvedSlugs: string[] = [];
+  for (let idx = 0; idx < clientSlugs.length; idx++) {
+    const slug = clientSlugs[idx];
+    const expectedRef = doc(db, ORGANIZATION.clients.doc(validOrgId, slug));
+    const snap = await getDoc(expectedRef);
+    if (snap.exists()) {
+      resolvedSlugs.push(slug);
+    } else if (clientNames?.[idx]) {
+      // Slug doesn't match a real doc — search by name
+      const clientsCol = collection(db, ORGANIZATION.clients.collection(validOrgId));
+      const nameQuery = query(clientsCol, where('clientName', '==', clientNames[idx]), limit(1));
+      const found = await getDocs(nameQuery);
+      resolvedSlugs.push(found.empty ? slug : found.docs[0].id);
+    } else {
+      resolvedSlugs.push(slug);
+    }
+  }
+
+  for (let i = 0; i < resolvedSlugs.length; i += CLIENT_BATCH_WRITE_MAX) {
+    const chunk = resolvedSlugs.slice(i, i + CLIENT_BATCH_WRITE_MAX);
     const batch = writeBatch(db);
     for (const slug of chunk) {
       const ref = doc(db, ORGANIZATION.clients.doc(validOrgId, slug));
@@ -1132,9 +1168,36 @@ export async function deleteClientPermanently(params: {
   /** Known assessment summary doc ID — used for a direct delete so the client disappears from the dashboard immediately even if clientNameLower is missing/mismatched. */
   knownAssessmentId?: string;
 }): Promise<void> {
-  const { organizationId, clientSlug, clientName, knownAssessmentId } = params;
+  const { organizationId, clientSlug: inputSlug, clientName, knownAssessmentId } = params;
   const db = getDb();
   const clientNameLower = clientName.toLowerCase();
+
+  // Verify the client doc exists at the expected slug path. If not, search by name
+  // to find the actual doc ID (handles UUID-migrated or mismatched slug clients).
+  let clientSlug = inputSlug;
+  const expectedRef = doc(db, ORGANIZATION.clients.doc(organizationId, clientSlug));
+  const expectedSnap = await getDoc(expectedRef);
+  if (!expectedSnap.exists()) {
+    // Search for the client by name in the collection (try multiple field names)
+    const clientsCol = collection(db, ORGANIZATION.clients.collection(organizationId));
+    let found = await getDocs(query(clientsCol, where('clientName', '==', clientName), limit(1)));
+    if (found.empty) {
+      found = await getDocs(query(clientsCol, where('clientNameLower', '==', clientNameLower), limit(1)));
+    }
+    if (found.empty) {
+      found = await getDocs(query(clientsCol, where('name', '==', clientName), limit(1)));
+    }
+    if (!found.empty) {
+      clientSlug = found.docs[0].id;
+    }
+    // Last resort: also delete the known assessment summary doc directly
+    // so the client at least disappears from the dashboard
+    if (found.empty && knownAssessmentId) {
+      try {
+        await deleteDoc(doc(db, `coachesAssessments/${knownAssessmentId}`));
+      } catch { /* non-fatal */ }
+    }
+  }
 
   async function deleteSubcollection(colPath: string): Promise<void> {
     const colRef = collection(db, colPath);
@@ -1158,22 +1221,26 @@ export async function deleteClientPermanently(params: {
     }
   }
 
-  // 1. Delete sessions sub-collection
+  if (!organizationId?.trim()) {
+    throw new Error('Cannot delete client: organization ID is missing.');
+  }
+
+  // 1. Delete sessions sub-collection (non-critical cleanup)
   await deleteSubcollection(ORGANIZATION.clients.sessions.collection(organizationId, clientSlug)).catch((): void => undefined);
 
-  // 2. Delete current/state doc
+  // 2. Delete current/state doc (non-critical cleanup)
   await deleteDoc(doc(db, ORGANIZATION.clients.current(organizationId, clientSlug))).catch((): void => undefined);
 
-  // 3. Delete draft
+  // 3. Delete draft (non-critical cleanup)
   await deleteDoc(doc(db, ORGANIZATION.clients.draft(organizationId, clientSlug))).catch((): void => undefined);
 
-  // 4. Delete roadmap and achievements (per-definition docs + any legacy `record` row)
+  // 4. Delete roadmap and achievements (non-critical cleanup)
   await deleteDoc(doc(db, ORGANIZATION.clients.roadmap(organizationId, clientSlug))).catch((): void => undefined);
   await deleteSubcollection(ORGANIZATION.clientAchievements.collection(organizationId, clientSlug)).catch(
     (): void => undefined,
   );
 
-  // 5. Delete public report share tokens
+  // 5. Delete public report share tokens (non-critical cleanup)
   try {
     const publicReportsSnap = await getDocs(
       query(
@@ -1190,10 +1257,11 @@ export async function deleteClientPermanently(params: {
     }
   } catch { /* non-fatal */ }
 
-  // 6. Delete client profile
-  await deleteDoc(doc(db, ORGANIZATION.clients.doc(organizationId, clientSlug))).catch((): void => undefined);
+  // 6. Delete client profile — CRITICAL: if this fails, the client still appears in the roster.
+  // Do NOT catch this error; let it propagate so the caller knows deletion failed.
+  await deleteDoc(doc(db, ORGANIZATION.clients.doc(organizationId, clientSlug)));
 
-  // 7. Decrement org stats
+  // 7. Decrement org stats (non-critical cleanup, best-effort after profile is gone)
   await updateDoc(doc(db, ORGANIZATION.doc(organizationId)), {
     'stats.clientCount': increment(-1),
     'stats.lastUpdated': serverTimestamp(),

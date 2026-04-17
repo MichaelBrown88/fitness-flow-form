@@ -41,23 +41,29 @@ export function PauseClientDialog({
   const [unpauseMode, setUnpauseMode] = useState<'resume' | 'reset'>('resume');
   const [submitting, setSubmitting] = useState(false);
 
-  const handlePause = async () => {
+  const handlePause = async (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent AlertDialogAction from auto-closing before async completes
     setSubmitting(true);
     try {
       await onPause(reason.trim() || undefined);
       onOpenChange(false);
       setReason('');
+    } catch {
+      // Error toast shown by hook handler; keep dialog open for retry
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleUnpause = async () => {
+  const handleUnpause = async (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent AlertDialogAction from auto-closing before async completes
     setSubmitting(true);
     try {
       await onUnpause(unpauseMode);
       onOpenChange(false);
       setUnpauseMode('resume');
+    } catch {
+      // Error toast shown by hook handler; keep dialog open for retry
     } finally {
       setSubmitting(false);
     }
