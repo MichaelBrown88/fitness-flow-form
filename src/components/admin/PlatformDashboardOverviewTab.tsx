@@ -4,7 +4,7 @@
  * Top KPIs, health-signal cards, key charts, and platform totals.
  */
 
-import { DollarSign, Building2, FileText, Cpu, TrendingUp, Users, AlertTriangle, Zap, Activity, ArrowRightLeft, UserMinus, BarChart3 } from 'lucide-react';
+import { DollarSign, Building2, FileText, Cpu, TrendingUp, TrendingDown, Minus, Users, AlertTriangle, Zap, Activity, ArrowRightLeft, UserMinus, BarChart3, Shield, Target } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import type { PlatformMetrics, PlatformMetricsHistoryEntry, OrganizationSummary } from '@/types/platform';
 import type { ChartDataPoint } from '@/hooks/usePlatformDashboard';
@@ -17,6 +17,7 @@ export interface PlatformDashboardOverviewTabProps {
   silentOrgs: OrganizationSummary[];
   activationFunnel: { newOrgs: number; activated: number; rate: number };
   aiErrorRate: AIErrorRate;
+  sortedOrganizations?: OrganizationSummary[];
   formatCurrency: (amountInSmallestUnit: number, currency?: string) => string;
   formatNumber: (num: number) => string;
 }
@@ -41,9 +42,25 @@ export function PlatformDashboardOverviewTab({
   silentOrgs,
   activationFunnel,
   aiErrorRate,
+  sortedOrganizations = [],
   formatCurrency,
   formatNumber,
 }: PlatformDashboardOverviewTabProps) {
+  // Platform intelligence signals (merged from former Platform Intelligence tab)
+  const recentAssessments = assessmentChartData.slice(-30).reduce((s, d) => s + d.assessments, 0);
+  const prevAssessments = assessmentChartData.slice(-60, -30).reduce((s, d) => s + d.assessments, 0);
+  const velocityDelta = prevAssessments > 0 ? Math.round(((recentAssessments - prevAssessments) / prevAssessments) * 100) : 0;
+
+  const now = Date.now();
+  const ninetyDaysMs = 90 * 24 * 60 * 60 * 1000;
+  const matureOrgs = sortedOrganizations.filter(o => now - (o.createdAt?.getTime?.() ?? now) > ninetyDaysMs);
+  const matureActive = matureOrgs.filter(o => o.lastActiveDate && now - o.lastActiveDate.getTime() < ninetyDaysMs);
+  const grrProxy = matureOrgs.length > 0 ? Math.round((matureActive.length / matureOrgs.length) * 100) : null;
+
+  const totalAssessments = metrics?.totalAssessments ?? 0;
+  const byAssessments = [...sortedOrganizations].sort((a, b) => (b.assessmentCount ?? 0) - (a.assessmentCount ?? 0));
+  const top3Count = byAssessments.slice(0, 3).reduce((s, o) => s + (o.assessmentCount ?? 0), 0);
+  const concentration = totalAssessments > 0 ? Math.round((top3Count / totalAssessments) * 100) : null;
   return (
     <div className="space-y-8">
       {/* Top KPI cards: MRR, Orgs, Assessments, AI Costs */}
@@ -175,14 +192,14 @@ export function PlatformDashboardOverviewTab({
           </div>
           {(() => {
             const conversions = metrics?.trialConversionsThisMonth ?? 0;
-            const trials = metrics?.trialOrganizations ?? 0;
-            const total = conversions + trials;
-            const rate = total > 0 ? Math.round((conversions / total) * 100) : 0;
+            const churns = metrics?.churnsThisMonth ?? 0;
+            const totalTrialStarts = conversions + (metrics?.trialOrganizations ?? 0) + churns;
+            const rate = totalTrialStarts > 0 ? Math.round((conversions / totalTrialStarts) * 100) : 0;
             return (
               <>
                 <p className="text-2xl font-bold text-admin-fg">{rate}%</p>
                 <p className="text-xs text-admin-fg-muted mt-1">
-                  {conversions} converted / {total} total trials
+                  {conversions} converted this month
                 </p>
               </>
             );
@@ -220,6 +237,70 @@ export function PlatformDashboardOverviewTab({
               </>
             );
           })()}
+        </div>
+      </div>
+
+      {/* Platform Intelligence Signals */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-admin-card/50 border border-admin-border rounded-2xl p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-sky-600/15 flex items-center justify-center">
+              <Target className="w-5 h-5 text-sky-400" />
+            </div>
+            <h3 className="text-sm font-semibold text-admin-fg">Assessment Velocity</h3>
+          </div>
+          <div className="flex items-end gap-2">
+            <p className="text-2xl font-bold text-admin-fg">{recentAssessments}</p>
+            {velocityDelta !== 0 && (
+              <span className={`text-xs flex items-center gap-1 mb-1 ${velocityDelta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                {velocityDelta > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                {velocityDelta > 0 ? '+' : ''}{velocityDelta}%
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-admin-fg-muted mt-1">Last 30 days vs prior 30</p>
+        </div>
+
+        <div className="bg-admin-card/50 border border-admin-border rounded-2xl p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-600/15 flex items-center justify-center">
+              <Shield className="w-5 h-5 text-emerald-400" />
+            </div>
+            <h3 className="text-sm font-semibold text-admin-fg">Retention Signal</h3>
+          </div>
+          {grrProxy !== null ? (
+            <>
+              <p className={`text-2xl font-bold ${grrProxy >= 80 ? 'text-emerald-400' : grrProxy >= 60 ? 'text-amber-400' : 'text-red-400'}`}>{grrProxy}%</p>
+              <p className="text-xs text-admin-fg-muted mt-1">{matureActive.length}/{matureOrgs.length} mature orgs active in 90d</p>
+            </>
+          ) : (
+            <>
+              <p className="text-2xl font-bold text-admin-fg-muted">—</p>
+              <p className="text-xs text-admin-fg-muted mt-1">Needs orgs older than 90 days</p>
+            </>
+          )}
+        </div>
+
+        <div className="bg-admin-card/50 border border-admin-border rounded-2xl p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-600/15 flex items-center justify-center">
+              <BarChart3 className="w-5 h-5 text-amber-400" />
+            </div>
+            <h3 className="text-sm font-semibold text-admin-fg">Concentration Risk</h3>
+          </div>
+          {concentration !== null ? (
+            <>
+              <p className={`text-2xl font-bold ${concentration > 60 ? 'text-amber-400' : 'text-admin-fg'}`}>{concentration}%</p>
+              <p className="text-xs text-admin-fg-muted mt-1">
+                {concentration > 60 ? 'Top 3 orgs drive most volume' : 'Healthy distribution across orgs'}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-2xl font-bold text-admin-fg-muted">—</p>
+              <p className="text-xs text-admin-fg-muted mt-1">No assessment data yet</p>
+            </>
+          )}
         </div>
       </div>
 

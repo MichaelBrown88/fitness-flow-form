@@ -6,7 +6,6 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { Shield, LogOut, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -18,9 +17,6 @@ import { PlatformDashboardOverviewTab } from '@/components/admin/PlatformDashboa
 import { PlatformDashboardOrganizationsTab } from '@/components/admin/PlatformDashboardOrganizationsTab';
 import { PlatformDashboardFinancialTab } from '@/components/admin/PlatformDashboardFinancialTab';
 import { PlatformDashboardAdminTab } from '@/components/admin/PlatformDashboardAdminTab';
-import { PlatformDashboardDataIntelligenceTab } from '@/components/admin/PlatformDashboardDataIntelligenceTab';
-import { PlatformDashboardPlatformIntelligenceTab } from '@/components/admin/PlatformDashboardPlatformIntelligenceTab';
-import { fetchMilestoneBadgeState } from '@/hooks/usePlatformDataIntelligence';
 import type { PlatformFeatureFlags } from '@/types/platform';
 
 const FEATURE_KEYS: (keyof PlatformFeatureFlags)[] = ['posture_enabled', 'ocr_enabled', 'report_generation_enabled'];
@@ -28,14 +24,6 @@ const FEATURE_KEYS: (keyof PlatformFeatureFlags)[] = ['posture_enabled', 'ocr_en
 const PlatformDashboard = () => {
   const [maintenanceMessage, setMaintenanceMessage] = useState('');
   const [maintenanceFeatures, setMaintenanceFeatures] = useState<(keyof PlatformFeatureFlags)[]>([]);
-
-  const { data: serverMilestoneUnseen = false } = useQuery({
-    queryKey: ['platformMilestoneBadge'],
-    queryFn: fetchMilestoneBadgeState,
-    staleTime: 60_000,
-  });
-  const [milestoneBadgeDismissed, setMilestoneBadgeDismissed] = useState(false);
-  const hasUnseenMilestone = serverMilestoneUnseen && !milestoneBadgeDismissed;
 
   const dashboard = usePlatformDashboard();
 
@@ -175,22 +163,6 @@ const PlatformDashboard = () => {
             >
               Admin
             </TabsTrigger>
-            <TabsTrigger
-              value={PLATFORM_DASHBOARD_TABS.DATA_INTELLIGENCE}
-              className="data-[state=active]:bg-admin-border data-[state=active]:text-admin-fg text-admin-fg-muted relative"
-              onClick={() => setMilestoneBadgeDismissed(true)}
-            >
-              Data Intelligence
-              {hasUnseenMilestone && (
-                <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-indigo-400" />
-              )}
-            </TabsTrigger>
-            <TabsTrigger
-              value={PLATFORM_DASHBOARD_TABS.PLATFORM_INTELLIGENCE}
-              className="data-[state=active]:bg-admin-border data-[state=active]:text-admin-fg text-admin-fg-muted"
-            >
-              Platform Intelligence
-            </TabsTrigger>
           </TabsList>
 
           <TabsContent value={PLATFORM_DASHBOARD_TABS.OVERVIEW} className="mt-0">
@@ -201,6 +173,7 @@ const PlatformDashboard = () => {
               silentOrgs={silentOrgs}
               activationFunnel={activationFunnel}
               aiErrorRate={aiErrorRate}
+              sortedOrganizations={sortedOrganizations}
               formatCurrency={formatCurrency}
               formatNumber={formatNumber}
             />
@@ -281,21 +254,6 @@ const PlatformDashboard = () => {
             />
           </TabsContent>
 
-          <TabsContent value={PLATFORM_DASHBOARD_TABS.DATA_INTELLIGENCE} className="mt-0">
-            <PlatformDashboardDataIntelligenceTab />
-          </TabsContent>
-
-          <TabsContent value={PLATFORM_DASHBOARD_TABS.PLATFORM_INTELLIGENCE} className="mt-0">
-            <PlatformDashboardPlatformIntelligenceTab
-              metrics={metrics}
-              revenueByRegion={revenueByRegion}
-              metricsHistory={metricsHistory}
-              sortedOrganizations={sortedOrganizations}
-              silentOrgs={silentOrgs}
-              assessmentChartData={assessmentChartData}
-              formatCurrency={formatCurrency}
-            />
-          </TabsContent>
         </Tabs>
       </main>
     </div>

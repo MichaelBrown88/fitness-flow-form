@@ -47,37 +47,78 @@ interface FeatureToggleCardProps {
 }
 
 function FeatureToggleCard({ featureKey, icon, enabled, updating, onToggle, featureNames, featureDescriptions }: FeatureToggleCardProps) {
+  const [confirmPending, setConfirmPending] = useState<boolean | null>(null);
   const constantKey = featureKey.toUpperCase() as keyof typeof featureNames;
   const name = featureNames[constantKey] || featureKey;
   const description = featureDescriptions[constantKey] || '';
 
+  const handleSwitchChange = (checked: boolean) => {
+    // Disabling a feature requires confirmation (could break things for all users)
+    if (!checked) {
+      setConfirmPending(checked);
+    } else {
+      onToggle(featureKey, checked);
+    }
+  };
+
   return (
-    <div
-      className={`p-4 rounded-xl border transition-colors ${
-        enabled ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-red-500/10 border-red-500/30'
-      }`}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div
-            className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-              enabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
-            }`}
-          >
-            {icon}
+    <>
+      <div
+        className={`p-4 rounded-xl border transition-colors ${
+          enabled ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-red-500/10 border-red-500/30'
+        }`}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div
+              className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                enabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
+              }`}
+            >
+              {icon}
+            </div>
+            <div>
+              <p className="text-sm font-medium text-white">{name}</p>
+              <p className={`text-xs ${enabled ? 'text-emerald-400' : 'text-red-400'}`}>{enabled ? 'Enabled' : 'Disabled'}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-medium text-white">{name}</p>
-            <p className={`text-xs ${enabled ? 'text-emerald-400' : 'text-red-400'}`}>{enabled ? 'Enabled' : 'Disabled'}</p>
+          <div className="flex items-center gap-2">
+            {updating && <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />}
+            <Switch checked={enabled} onCheckedChange={handleSwitchChange} disabled={updating} />
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {updating && <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />}
-          <Switch checked={enabled} onCheckedChange={(checked) => onToggle(featureKey, checked)} disabled={updating} />
-        </div>
+        <p className="text-xs text-muted-foreground mt-3">{description}</p>
       </div>
-      <p className="text-xs text-muted-foreground mt-3">{description}</p>
-    </div>
+
+      {/* Confirmation dialog for disabling features */}
+      <Dialog open={confirmPending !== null} onOpenChange={(open) => !open && setConfirmPending(null)}>
+        <DialogContent className="sm:max-w-[400px] bg-admin-card border-admin-border">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-red-400" />
+              Disable {name}?
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This will immediately disable {name.toLowerCase()} for all organizations. Coaches using this feature will see errors until it's re-enabled.
+          </p>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button variant="ghost" onClick={() => setConfirmPending(null)} className="text-muted-foreground">
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                onToggle(featureKey, false);
+                setConfirmPending(null);
+              }}
+            >
+              Disable
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

@@ -35,8 +35,6 @@ export const PLATFORM_DASHBOARD_TABS = {
   ORGANIZATIONS: 'organizations',
   FINANCIAL: 'financial',
   ADMIN: 'admin',
-  DATA_INTELLIGENCE: 'data-intelligence',
-  PLATFORM_INTELLIGENCE: 'platform-intelligence',
 } as const;
 
 export type PlatformDashboardTab = (typeof PLATFORM_DASHBOARD_TABS)[keyof typeof PLATFORM_DASHBOARD_TABS];
