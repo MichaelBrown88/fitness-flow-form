@@ -185,6 +185,27 @@ export interface OrganizationDetails extends OrganizationSummary {
   packageTrack?: PackageTrack;
 }
 
+/** Pre-computed org health summary — written by Cloud Functions, NO client PII */
+export interface OrgHealthSummary {
+  orgId: string;
+  orgName: string;
+  plan: string;
+  region: string;
+  status: string;
+  clientCount: number;
+  coachCount: number;
+  assessmentsThisMonth: number;
+  assessmentsLastMonth: number;
+  lastActiveAt: Date;
+  firstAssessmentAt?: Date;
+  featuresUsed: string[];
+  aiCostsMtd: number;
+  aiCostsLifetime: number;
+  mrrContribution: number;
+  healthScore: number;
+  computedAt?: Date;
+}
+
 // AI cost breakdown per organization
 export interface AICostBreakdown {
   organizationId: string;
@@ -343,6 +364,28 @@ export interface StripeSubscriptionData {
   stripePriceId: string;
   status: 'active' | 'past_due' | 'canceled' | 'trialing';
   currentPeriodEnd: Date;
+}
+
+/** Invoice summary returned by listRecentInvoices Cloud Function. */
+export interface InvoiceSummary {
+  id: string;
+  number: string | null;
+  date: number;
+  amountDue: number;
+  amountPaid: number;
+  currency: string;
+  status: string | null;
+  pdfUrl: string | null;
+  description: string | null;
+}
+
+export interface ListRecentInvoicesRequest {
+  organizationId: string;
+  limit?: number;
+}
+
+export interface ListRecentInvoicesResponse {
+  invoices: InvoiceSummary[];
 }
 
 /** Default platform config - all features enabled, no maintenance */

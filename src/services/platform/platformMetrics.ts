@@ -10,6 +10,7 @@
 
 import { httpsCallable } from 'firebase/functions';
 import {
+  collection,
   doc,
   getDoc,
   getDocFromServer,
@@ -912,4 +913,38 @@ export function getDefaultMetrics(): PlatformMetrics {
     churnsThisMonth: 0,
     updatedAt: now,
   };
+}
+
+/**
+ * Fetch pre-computed org health summaries from platform/metrics/org-health/.
+ * These are written by the dailyOrgHealthComputation Cloud Function.
+ * NO client PII — safe for platform admin without data access grant.
+ */
+export async function getOrgHealthSummaries(): Promise<import('@/types/platform').OrgHealthSummary[]> {
+  const db = getDb();
+  const snap = await getDocs(
+    query(collection(db, 'platform/metrics/org-health')),
+  );
+  return snap.docs.map(d => {
+    const data = d.data();
+    return {
+      orgId: data.orgId ?? d.id,
+      orgName: data.orgName ?? d.id,
+      plan: data.plan ?? 'unknown',
+      region: data.region ?? 'unknown',
+      status: data.status ?? 'unknown',
+      clientCount: data.clientCount ?? 0,
+      coachCount: data.coachCount ?? 0,
+      assessmentsThisMonth: data.assessmentsThisMonth ?? 0,
+      assessmentsLastMonth: data.assessmentsLastMonth ?? 0,
+      lastActiveAt: data.lastActiveAt?.toDate?.() ?? new Date(),
+      firstAssessmentAt: data.firstAssessmentAt?.toDate?.() ?? undefined,
+      featuresUsed: data.featuresUsed ?? [],
+      aiCostsMtd: data.aiCostsMtd ?? 0,
+      aiCostsLifetime: data.aiCostsLifetime ?? 0,
+      mrrContribution: data.mrrContribution ?? 0,
+      healthScore: data.healthScore ?? 0,
+      computedAt: data.computedAt?.toDate?.() ?? undefined,
+    } satisfies import('@/types/platform').OrgHealthSummary;
+  });
 }

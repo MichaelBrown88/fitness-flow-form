@@ -4,7 +4,7 @@
  * Top KPIs, health-signal cards, key charts, and platform totals.
  */
 
-import { DollarSign, Building2, FileText, Cpu, TrendingUp, Users, AlertTriangle, Zap, Activity } from 'lucide-react';
+import { DollarSign, Building2, FileText, Cpu, TrendingUp, Users, AlertTriangle, Zap, Activity, ArrowRightLeft, UserMinus, BarChart3 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import type { PlatformMetrics, PlatformMetricsHistoryEntry, OrganizationSummary } from '@/types/platform';
 import type { ChartDataPoint } from '@/hooks/usePlatformDashboard';
@@ -161,6 +161,65 @@ export function PlatformDashboardOverviewTab({
           <p className="text-xs text-admin-fg-muted mt-2">
             {aiErrorRate.errors} errors · {aiErrorRate.total} total calls
           </p>
+        </div>
+      </div>
+
+      {/* SaaS KPIs: conversion, churn, avg revenue */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-admin-card/50 border border-admin-border rounded-2xl p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-600/15 flex items-center justify-center">
+              <ArrowRightLeft className="w-5 h-5 text-emerald-400" />
+            </div>
+            <h3 className="text-sm font-semibold text-admin-fg">Conversion Rate</h3>
+          </div>
+          {(() => {
+            const conversions = metrics?.trialConversionsThisMonth ?? 0;
+            const trials = metrics?.trialOrganizations ?? 0;
+            const total = conversions + trials;
+            const rate = total > 0 ? Math.round((conversions / total) * 100) : 0;
+            return (
+              <>
+                <p className="text-2xl font-bold text-admin-fg">{rate}%</p>
+                <p className="text-xs text-admin-fg-muted mt-1">
+                  {conversions} converted / {total} total trials
+                </p>
+              </>
+            );
+          })()}
+        </div>
+
+        <div className="bg-admin-card/50 border border-admin-border rounded-2xl p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-red-600/15 flex items-center justify-center">
+              <UserMinus className="w-5 h-5 text-red-400" />
+            </div>
+            <h3 className="text-sm font-semibold text-admin-fg">Churn</h3>
+          </div>
+          <p className="text-2xl font-bold text-admin-fg">{formatNumber(metrics?.churnsThisMonth ?? 0)}</p>
+          <p className="text-xs text-admin-fg-muted mt-1">
+            This month · {formatNumber(metrics?.churnsLifetime ?? 0)} lifetime
+          </p>
+        </div>
+
+        <div className="bg-admin-card/50 border border-admin-border rounded-2xl p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-600/15 flex items-center justify-center">
+              <BarChart3 className="w-5 h-5 text-indigo-400" />
+            </div>
+            <h3 className="text-sm font-semibold text-admin-fg">Avg Revenue / Org</h3>
+          </div>
+          {(() => {
+            const active = metrics?.activeOrganizations ?? 0;
+            const mrr = metrics?.mrrCents ?? 0;
+            const avg = active > 0 ? Math.round(mrr / active) : 0;
+            return (
+              <>
+                <p className="text-2xl font-bold text-admin-fg">{formatCurrency(avg, 'GBP')}</p>
+                <p className="text-xs text-admin-fg-muted mt-1">Per active org / month</p>
+              </>
+            );
+          })()}
         </div>
       </div>
 

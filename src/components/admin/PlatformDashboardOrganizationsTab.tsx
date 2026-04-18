@@ -219,7 +219,12 @@ export function PlatformDashboardOrganizationsTab({
                       </div>
                       <div>
                         <p className="text-white font-medium text-sm">{org.name}</p>
-                        <p className="text-xs text-muted-foreground capitalize">{org.type.replace('_', ' ')}</p>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs text-muted-foreground capitalize">{org.type.replace('_', ' ')}</span>
+                          {org.dataAccessPermission?.platformAdminAccess && (
+                            <span className="text-[9px] px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">ACCESS</span>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div className="col-span-1">
