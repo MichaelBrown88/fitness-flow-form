@@ -118,4 +118,55 @@ export const CHECKOUT_FLOW_COPY = {
   brandingAddOnCheckboxLabel: 'Add to this checkout',
   brandingAddOnActiveSubNote: 'Already subscribed? Contact us to add custom branding to your account.',
   brandingAddOnAlreadyEnabled: 'Custom branding is active on your account.',
+
+  // ── Change plan redesign ──────────────────────────────
+
+  trackSwitchToGymNote:
+    'Your clients, ARC\u2122 plans and history move with you. New gym features unlock instantly.',
+  trackSwitchToSoloNote:
+    'All client data stays. Gym-only features (team seats, multi-site) pause after the switch.',
+  trackSwitchToSoloBlockTitle: 'Too many active clients for Solo',
+  trackSwitchToSoloBlockBody: (count: number, limit: number) =>
+    `You have ${count} active clients but Solo plans support up to ${limit}. Archive or remove clients before switching.`,
+  leverPackageLabel: 'Package',
+  leverSoloTitle: 'Solo coach',
+  leverSoloSub: (price: string) => `Up to 100 clients \u00b7 from ${price}/mo`,
+  leverGymTitle: 'Gym / studio',
+  leverGymSub: (price: string) => `50\u2013250 clients \u00b7 from ${price}/mo`,
+  leverCapacityLabel: 'Client capacity',
+  leverPeriodLabel: 'Billing period',
+  leverAddOnsLabel: 'Add-ons',
+  summaryWhatWillChange: 'What will change',
+  summaryNoChangesYet: 'No changes yet',
+  summaryEmptyHint: 'Move any lever to preview the change.',
+  summaryResetLink: 'Reset',
+  summaryDueToday: 'Due today',
+  summaryThenMonthly: 'Then every month',
+  summaryThenAnnually: 'Then every year',
+  summaryStripeTrustLine: 'Secured by Stripe \u00b7 exact amount confirmed before you pay',
+  summaryTrackSwitchBullet: (from: string, to: string) =>
+    `Switch package \u00b7 ${from} \u2192 ${to}`,
+  summaryTrackSwitchNote:
+    'Your clients, ARC\u2122 plans and history come with you.',
+  summaryCapacityUpBullet: (from: number, to: number) =>
+    `Capacity ${from} \u2192 ${to} clients \u00b7 +${to - from} more slots`,
+  summaryCapacityDownBullet: (from: number, to: number) =>
+    `Capacity ${from} \u2192 ${to} clients \u00b7 room for ${to} active clients`,
+  summarySwitchAnnualBullet: (savings: string) =>
+    `Switch to annual \u00b7 save ${savings}/yr`,
+  summaryBrandingBullet: (price: string) =>
+    `Add custom branding \u00b7 one-time ${price}`,
+  overviewChangePlanCta: 'Change plan',
+  overviewChoosePlanCta: 'Choose a plan',
+  overviewResubscribeCta: 'Resubscribe',
+  overviewUpdatePaymentCta: 'Update payment method',
+  overviewNextInvoice: (date: string, amount: string) =>
+    `Next invoice on ${date} \u00b7 ${amount}`,
+  overviewViewInvoices: 'View invoices',
+  changePlanBreadcrumb: 'Change plan',
+  changePlanTitle: 'Change your plan',
+  changePlanLead: 'Move any lever \u2014 see the impact live.',
+  changePlanBackToOverview: 'Back to overview',
+  pastDueBannerTitle: 'Your last payment failed',
+  pastDueBannerBody: 'Update your payment method to avoid service interruption.',
 } as const;
