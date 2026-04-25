@@ -48,13 +48,13 @@ export async function submitRemoteAssessmentFields(
 
 /**
  * Optional intake metadata captured at client-creation time. Persisted on
- * the client doc by the Cloud Function so coaches don't have to re-enter
- * it later when reviewing the assessment.
+ * the client doc by the Cloud Function. Currently only the contact email,
+ * which the coach knows before they've assessed the client. Other fields
+ * (coaching focus, starting notes) belong post-assessment when there's
+ * actual signal to act on.
  */
 export interface RemoteAssessmentClientIntake {
   email?: string;
-  coachingFocus?: string;
-  startingNotes?: string;
 }
 
 export async function createRemoteAssessmentTokenForClient(

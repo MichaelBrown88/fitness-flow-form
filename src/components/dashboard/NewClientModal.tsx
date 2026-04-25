@@ -25,25 +25,12 @@ interface NewClientModalProps {
   organizationId: string;
 }
 
-const COACHING_FOCUSES = [
-  { value: 'general', label: 'General fitness' },
-  { value: 'strength', label: 'Strength' },
-  { value: 'hypertrophy', label: 'Hypertrophy' },
-  { value: 'endurance', label: 'Endurance' },
-  { value: 'rehab', label: 'Rehab' },
-  { value: 'sport', label: 'Sport-specific' },
-] as const;
-
-type CoachingFocus = (typeof COACHING_FOCUSES)[number]['value'];
-
 export function NewClientModal({ open, onOpenChange, organizationId }: NewClientModalProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const [clientName, setClientName] = useState('');
   const [clientEmail, setClientEmail] = useState('');
-  const [coachingFocus, setCoachingFocus] = useState<CoachingFocus>('general');
-  const [startingNotes, setStartingNotes] = useState('');
   const [loading, setLoading] = useState<'link' | 'studio' | null>(null);
   const [remoteLink, setRemoteLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -52,7 +39,6 @@ export function NewClientModal({ open, onOpenChange, organizationId }: NewClient
 
   const trimmedName = clientName.trim();
   const trimmedEmail = clientEmail.trim();
-  const trimmedNotes = startingNotes.trim();
   const isValidName = trimmedName.length >= 2;
   const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail);
   const hasOrgContext = organizationId.trim().length > 0;
@@ -69,8 +55,6 @@ export function NewClientModal({ open, onOpenChange, organizationId }: NewClient
   function resetState() {
     setClientName('');
     setClientEmail('');
-    setCoachingFocus('general');
-    setStartingNotes('');
     setRemoteLink(null);
     setCopied(false);
     setLoading(null);
@@ -82,11 +66,7 @@ export function NewClientModal({ open, onOpenChange, organizationId }: NewClient
   }
 
   function buildIntakePayload(): RemoteAssessmentClientIntake {
-    return {
-      ...(trimmedEmail ? { email: trimmedEmail } : {}),
-      ...(coachingFocus ? { coachingFocus } : {}),
-      ...(trimmedNotes ? { startingNotes: trimmedNotes } : {}),
-    };
+    return trimmedEmail ? { email: trimmedEmail } : {};
   }
 
   async function handleSendLink() {
@@ -140,8 +120,6 @@ export function NewClientModal({ open, onOpenChange, organizationId }: NewClient
     startBaselineAssessmentSession({
       fullName: trimmedName,
       ...(trimmedEmail ? { email: trimmedEmail } : {}),
-      ...(coachingFocus ? { coachingFocus } : {}),
-      ...(trimmedNotes ? { startingNotes: trimmedNotes } : {}),
     });
     handleClose(false);
     navigate(ROUTES.ASSESSMENT);
@@ -188,10 +166,6 @@ export function NewClientModal({ open, onOpenChange, organizationId }: NewClient
               setClientName={setClientName}
               clientEmail={clientEmail}
               setClientEmail={setClientEmail}
-              coachingFocus={coachingFocus}
-              setCoachingFocus={setCoachingFocus}
-              startingNotes={startingNotes}
-              setStartingNotes={setStartingNotes}
               isValidName={isValidName}
               loading={loading}
               onSendLink={handleSendLink}
@@ -225,10 +199,6 @@ interface FormStageProps {
   setClientName: (v: string) => void;
   clientEmail: string;
   setClientEmail: (v: string) => void;
-  coachingFocus: CoachingFocus;
-  setCoachingFocus: (v: CoachingFocus) => void;
-  startingNotes: string;
-  setStartingNotes: (v: string) => void;
   isValidName: boolean;
   loading: 'link' | 'studio' | null;
   onSendLink: () => void;
@@ -239,8 +209,6 @@ interface FormStageProps {
 function FormStage({
   clientName, setClientName,
   clientEmail, setClientEmail,
-  coachingFocus, setCoachingFocus,
-  startingNotes, setStartingNotes,
   isValidName, loading,
   onSendLink, onStartInStudio, onCancel,
 }: FormStageProps) {
@@ -258,7 +226,7 @@ function FormStage({
           />
         </FieldShell>
 
-        <FieldShell label="Email" help="We'll send the report link here once you approve it.">
+        <FieldShell label="Email (optional)" help="We'll send the intake link here when you click Send.">
           <Input
             type="email"
             inputMode="email"
@@ -267,40 +235,6 @@ function FormStage({
             value={clientEmail}
             onChange={(e) => setClientEmail(e.target.value)}
             className="h-11 rounded-2xl border-transparent bg-muted px-[18px] text-sm focus-visible:border-foreground focus-visible:ring-0"
-          />
-        </FieldShell>
-
-        <FieldShell label="Coaching focus" className="sm:col-span-2">
-          <div className="flex flex-wrap gap-1.5">
-            {COACHING_FOCUSES.map((f) => {
-              const active = coachingFocus === f.value;
-              return (
-                <button
-                  key={f.value}
-                  type="button"
-                  onClick={() => setCoachingFocus(f.value)}
-                  className={cn(
-                    "rounded-full px-3.5 py-2 text-[13px] font-semibold transition-colors",
-                    active
-                      ? "bg-foreground text-background"
-                      : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground",
-                  )}
-                  aria-pressed={active}
-                >
-                  {f.label}
-                </button>
-              );
-            })}
-          </div>
-        </FieldShell>
-
-        <FieldShell label="Starting notes" help="Saved to the client's record. Not shown in shared reports." className="sm:col-span-2">
-          <textarea
-            value={startingNotes}
-            onChange={(e) => setStartingNotes(e.target.value)}
-            placeholder="Anything the next assessment should know? Injuries, goals, recent programme changes."
-            rows={4}
-            className="min-h-[92px] w-full resize-none rounded-2xl border border-transparent bg-muted px-[18px] py-3.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-foreground focus:outline-none"
           />
         </FieldShell>
       </div>

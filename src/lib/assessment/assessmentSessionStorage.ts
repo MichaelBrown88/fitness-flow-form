@@ -348,14 +348,12 @@ export function clearClientNavAssessmentBleedKeys(): void {
 export interface BaselineAssessmentPrefill {
   fullName: string;
   email?: string;
-  coachingFocus?: string;
-  startingNotes?: string;
 }
 
 /**
  * Prepare session state to start a baseline (full) assessment for a new client.
  * Bypasses AssessmentSetupStep and AssessmentPlanWizard. Accepts either the
- * client name as a string (legacy) or a full prefill payload.
+ * client name as a string (legacy) or a prefill payload.
  */
 export function startBaselineAssessmentSession(input: string | BaselineAssessmentPrefill): void {
   clearAssessmentEntryBleedKeys();
@@ -364,8 +362,6 @@ export function startBaselineAssessmentSession(input: string | BaselineAssessmen
   writePrefillClientPayload({
     fullName: payload.fullName,
     ...(payload.email ? { email: payload.email } : {}),
-    ...(payload.coachingFocus ? { coachingFocus: payload.coachingFocus } : {}),
-    ...(payload.startingNotes ? { startingNotes: payload.startingNotes } : {}),
   });
   safeSetItem(STORAGE_KEYS.ASSESSMENT_SETUP_CONFIRMED, '1');
 }
