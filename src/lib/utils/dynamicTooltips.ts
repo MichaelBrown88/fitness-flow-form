@@ -67,7 +67,7 @@ export function getDynamicTooltip(
   if (fieldId === 'gripPlatePinchSeconds') {
     const genderLower = formData?.gender?.toLowerCase() || 'male';
     const standardizedWeight = genderLower === 'female' ? '10kg' : '15kg';
-    tooltip += `\n\n💪 Equipment-Free Method:\n• Use a standardized ${standardizedWeight} weight plate.\n• Client should pinch the plate between thumb and fingers, not use a full grip.\n• Record the maximum time (in seconds) they can hold the plate.`;
+    tooltip += `\n\n💪 Equipment-Free Method:\n• Use a standardised ${standardizedWeight} weight plate.\n• Client should pinch the plate between thumb and fingers, not use a full grip.\n• Record the maximum time (in seconds) they can hold the plate.`;
   }
 
   // ========================================

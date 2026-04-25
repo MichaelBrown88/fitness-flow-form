@@ -74,7 +74,7 @@ export default function Cookies() {
               2.2 Functional Cookies (Optional)
             </h3>
             <p className="text-foreground-secondary leading-relaxed mb-4">
-              These cookies remember your preferences and settings to provide a more personalized
+              These cookies remember your preferences and settings to provide a more personalised
               experience.
             </p>
             <ul className="list-disc list-inside text-foreground-secondary space-y-2 mb-4 ml-4">
@@ -88,7 +88,7 @@ export default function Cookies() {
             </h3>
             <p className="text-foreground-secondary leading-relaxed mb-4">
               These cookies help us understand how users interact with the Service so we can improve
-              the experience. All analytics data is aggregated and anonymized.
+              the experience. All analytics data is aggregated and anonymised.
             </p>
           </section>
 

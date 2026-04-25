@@ -51,7 +51,7 @@ export function MovementPostureMobility({ formData, scores, standalone = false, 
     if (!formData.fullName) {
       toast({
         title: 'Client name missing',
-        description: 'Cannot re-analyze without client name',
+        description: 'Cannot re-analyse without client name',
         variant: 'destructive',
       });
       return;
@@ -65,7 +65,7 @@ export function MovementPostureMobility({ formData, scores, standalone = false, 
       if (result.success > 0) {
         toast({
           title: 'Re-analysis complete',
-          description: `Successfully re-analyzed ${result.success} view(s). Refreshing page...`,
+          description: `Successfully re-analysed ${result.success} view(s). Refreshing page...`,
         });
         
         // Auto-refresh after 2 seconds
@@ -73,13 +73,13 @@ export function MovementPostureMobility({ formData, scores, standalone = false, 
           window.location.reload();
         }, 2000);
       } else {
-        throw new Error('No views were successfully re-analyzed');
+        throw new Error('No views were successfully re-analysed');
       }
     } catch (error) {
       logger.error('Re-analysis failed', 'MOVEMENT_POSTURE', error);
       toast({
         title: 'Re-analysis failed',
-        description: error instanceof Error ? error.message : 'Could not re-analyze posture images',
+        description: error instanceof Error ? error.message : 'Could not re-analyse posture images',
         variant: 'destructive',
       });
     } finally {
@@ -449,7 +449,7 @@ export function MovementPostureMobility({ formData, scores, standalone = false, 
                       className="text-xs h-9 sm:h-8"
                     >
                       <RefreshCw className={`w-3 h-3 mr-1 sm:mr-1.5 ${isReanalyzing ? 'animate-spin' : ''}`} />
-                      {isReanalyzing ? 'Re-analyzing...' : 'Re-analyze'}
+                      {isReanalyzing ? 'Re-analysing...' : 'Re-analyse'}
                     </Button>
                   ) : (
                     <span className="w-4 shrink-0" aria-hidden />

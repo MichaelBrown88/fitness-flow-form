@@ -225,7 +225,7 @@ export const ASSESSMENT_TOOLTIPS = {
     segmentalArmRightKg: 'Muscle mass in your right arm. Compare with your right side to check for balance.',
     segmentalLegLeftKg: 'Muscle mass in your left leg. Compare with your right side to check for balance.',
     segmentalLegRightKg: 'Muscle mass in your right leg. Compare with your left side to check for balance.',
-    bmrKcal: 'The calories your body burns at rest. This helps us set your personalized nutrition targets.',
+    bmrKcal: 'The calories your body burns at rest. This helps us set your personalised nutrition targets.',
   },
   P3: {
     cardioTestSelected: 'Instructions:\n1. Choose the YMCA Step Test for a portable option.\n2. Choose the Treadmill Test for a more controlled environment.',
@@ -273,7 +273,7 @@ export const ASSESSMENT_TOOLTIPS = {
     gripLeftKg: 'Instructions:\n1. Squeeze the dynamometer with maximum effort.\n2. Keep arm at your side, not touching your body.\n3. Record the best of 3 attempts.',
     gripRightKg: 'Instructions:\n1. Squeeze the dynamometer with maximum effort.\n2. Keep arm at your side, not touching your body.\n3. Record the best of 3 attempts.',
     gripDeadhangSeconds: 'Instructions:\n1. Hang from a pull-up bar with full grip.\n2. Record maximum time until grip fails or form breaks.\n3. Bodyweight is used to calculate equivalent grip strength.',
-    gripPlatePinchSeconds: 'Instructions:\n1. Pinch grip a standardized weight plate (10kg for females, 15kg for males).\n2. Lift and hold for maximum time.\n3. Record time in seconds until grip fails.',
+    gripPlatePinchSeconds: 'Instructions:\n1. Pinch grip a standardised weight plate (10kg for females, 15kg for males).\n2. Lift and hold for maximum time.\n3. Record time in seconds until grip fails.',
   },
   P6: {
     clientGoals: 'Select your primary goal first (the one you want to focus on first). Then add any secondary goals. Order determines how we structure your phases: Phase 1 focuses on your primary goal.',
@@ -393,7 +393,7 @@ export const ASSESSMENT_OPTIONS = {
     { value: 'solid-20-25', label: 'Improve strength by 20-25% – Solid progress' },
     { value: 'ambitious-30-40', label: 'Improve strength by 30-40% – Ambitious gains' },
     { value: 'aggressive-50', label: 'Improve strength by 50%+ – Aggressive progression' },
-    { value: 'maximize', label: 'Maximize strength potential – Elite-level focus' },
+    { value: 'maximize', label: 'Maximise strength potential – Elite-level focus' },
   ],
   goalLevelFitness: [
     { value: 'health', label: 'Health Focus (50th percentile)' },

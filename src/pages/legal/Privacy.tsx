@@ -110,11 +110,11 @@ export default function Privacy() {
             </p>
             <ul className="list-disc list-inside text-foreground-secondary space-y-2 mb-4 ml-4">
               <li><strong>Service Provision:</strong> To provide, maintain, and improve our Service</li>
-              <li><strong>Assessment Processing:</strong> To analyze biomechanical data and generate client reports</li>
+              <li><strong>Assessment Processing:</strong> To analyse biomechanical data and generate client reports</li>
               <li><strong>Account Management:</strong> To manage your account, process payments, and provide customer support</li>
               <li><strong>Communication:</strong> To send service updates, security alerts, and respond to your inquiries</li>
               <li><strong>Compliance:</strong> To comply with legal obligations and enforce our Terms of Service</li>
-              <li><strong>Analytics:</strong> To analyze usage patterns and improve our Service (using aggregated, anonymized data)</li>
+              <li><strong>Analytics:</strong> To analyse usage patterns and improve our Service (using aggregated, anonymised data)</li>
             </ul>
             <p className="text-foreground-secondary leading-relaxed">
               We do not sell, rent, or lease your personal information or client data to third parties.
@@ -255,7 +255,7 @@ export default function Privacy() {
             <h2 className="text-2xl font-semibold text-foreground mb-4">10. Children's Privacy</h2>
             <p className="text-foreground-secondary leading-relaxed mb-4">
               Our Service is intended for use by professional coaches and fitness professionals. While the Service 
-              is designed for adult clients, we recognize that coaches may assess youth athletes (individuals under 
+              is designed for adult clients, we recognise that coaches may assess youth athletes (individuals under
               the age of 18) as part of their practice.
             </p>
             <p className="text-foreground-secondary leading-relaxed mb-4">

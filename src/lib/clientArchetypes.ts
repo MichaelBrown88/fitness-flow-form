@@ -131,7 +131,7 @@ export function determineArchetype(scores: ScoreSummary, formData?: FormData): A
   if (primaryGoal === 'build-strength' || primaryGoal === 'build-muscle') {
     return {
       name: 'The Performance Seeker',
-      description: 'Focused on maximizing performance. Building strength, power, and muscle.',
+      description: 'Focused on maximising performance. Building strength, power, and muscle.',
       icon: '⚡',
       color: 'yellow',
       emblem: '⚡',

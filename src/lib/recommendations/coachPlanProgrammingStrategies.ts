@@ -54,13 +54,13 @@ export function buildProgrammingStrategies(
   } else if (primaryGoalRaw === 'weight-loss') {
     programmingStrategies.push({
       title: 'Metabolic Resilience & Fat Loss',
-      strategy: `To achieve your ${levelText} weight loss goal, we will utilize metabolic density training. This means keeping your heart rate elevated while focusing on fat-burning "anchors" like Zone 2 steady-state and high-intensity circuits.`,
+      strategy: `To achieve your ${levelText} weight loss goal, we will utilise metabolic density training. This means keeping your heart rate elevated while focusing on fat-burning "anchors" like Zone 2 steady-state and high-intensity circuits.`,
       exercises: ['Goblet Squats', 'Kettlebell Swings', 'Push-ups', 'TRX Rows'],
     });
   } else if (primaryGoalRaw === 'build-muscle' || primaryGoalRaw === 'build-strength') {
     programmingStrategies.push({
       title: 'Structural Hypertrophy & Power',
-      strategy: `Your ${levelText} ambition for ${primaryGoalRaw.replace('-', ' ')} requires a focus on structural hypertrophy. We will prioritize compound lifts with progressive overload, ensuring every session moves you closer to your target lean mass distribution.`,
+      strategy: `Your ${levelText} ambition for ${primaryGoalRaw.replace('-', ' ')} requires a focus on structural hypertrophy. We will prioritise compound lifts with progressive overload, ensuring every session moves you closer to your target lean mass distribution.`,
       exercises: ['Back Squats', 'Bench Press', 'Deadlifts', 'Overhead Press'],
     });
   } else if (primaryGoalRaw === 'improve-fitness') {

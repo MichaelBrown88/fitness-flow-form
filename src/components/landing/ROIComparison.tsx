@@ -133,7 +133,7 @@ export function ROIComparison() {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Check size={14} className="shrink-0 text-primary" />
-                      <span>Posture analyzed automatically</span>
+                      <span>Posture analysed automatically</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Check size={14} className="shrink-0 text-primary" />

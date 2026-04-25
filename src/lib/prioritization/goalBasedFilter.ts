@@ -22,7 +22,7 @@ export function generateGoalExercises(ctx: PrioritizationContext): {
       goalFocused.push({
         name: 'Metabolic Circuit Training',
         setsReps: '3-4 rounds, 30-45s work / 15s rest',
-        notes: 'Supersets to maximize calorie burn',
+        notes: 'Supersets to maximise calorie burn',
         priority: 'goal-focused',
         reason: 'Directly supports weight loss goal through increased calorie expenditure',
         sessionTypes: ['full-body', 'cardio'],

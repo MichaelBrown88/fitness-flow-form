@@ -293,11 +293,11 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData, pr
         
           if (isMuscleGoal) {
             status = 'green'; // Muscle building is usually a positive/growth phase
-            insight = `Focusing on controlled weight gain to maximize hypertrophy. Target: ${targetWeight.toFixed(1)}kg (${targetValue}).`;
+            insight = `Focusing on controlled weight gain to maximise hypertrophy. Target: ${targetWeight.toFixed(1)}kg (${targetValue}).`;
           } else if (isHighBF) {
           insight = `High body fat is creating metabolic drag.`;
         } else if ((gender === 'male' && bf <= 15) || (gender === 'female' && bf <= 22)) {
-          insight = `Excellent body fat management. We'll optimize for peak performance.`;
+          insight = `Excellent body fat management. We'll optimise for peak performance.`;
         } else {
           insight = `Body fat is within a healthy range. Focus on maintaining while building muscle.`;
         }
@@ -445,7 +445,7 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData, pr
         } else if (maxGap <= 10) {
           status = 'green';
           currentLabel = 'Near Target';
-          insight = 'Functional strength is strong. Minor improvements will optimize performance.';
+          insight = 'Functional strength is strong. Minor improvements will optimise performance.';
         } else if (maxGap <= 25) {
           status = 'yellow';
           currentLabel = 'Building Capacity';
@@ -637,7 +637,7 @@ export function useGapAnalysisData(scores: ScoreSummary, formData?: FormData, pr
       } else if (cardioGaps.rhr.gap > 10) {
         insight = 'Elevated resting heart rate suggests need for cardiovascular training.';
       } else if (status === 'green') {
-        insight = 'Strong cardiovascular base. We\'ll optimize for peak performance.';
+        insight = 'Strong cardiovascular base. We\'ll optimise for peak performance.';
       } else {
         insight = 'Building aerobic capacity will enhance overall performance.';
       }

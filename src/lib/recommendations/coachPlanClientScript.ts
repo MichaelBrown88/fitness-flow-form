@@ -97,7 +97,7 @@ export function applyInitialClientScriptNarrative(
   );
 
   clientScript.threeMonthOutlook.push(
-    `Weeks 1-4: You'll feel "tighter" and more controlled in your movement, and your energy levels will stabilize.`,
+    `Weeks 1-4: You'll feel "tighter" and more controlled in your movement, and your energy levels will stabilise.`,
   );
   clientScript.threeMonthOutlook.push(
     `Weeks 5-12: This is where we see the "compounding effect"—visible changes in body shape and a significant jump in your strength numbers.`,
@@ -180,7 +180,7 @@ export function applyStorytellingClientScript(
       `Over the next ${totalWeeks} weeks, we expect to see a profound transformation in how your body moves and how much energy you have.`,
     );
     clientScript.threeMonthOutlook.push(
-      `By month 3, the movement patterns that feel challenging now will be automatic, allowing us to utilize progressive overload to truly drive your ${goalInSentence} results.`,
+      `By month 3, the movement patterns that feel challenging now will be automatic, allowing us to utilise progressive overload to truly drive your ${goalInSentence} results.`,
     );
   }
 

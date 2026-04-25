@@ -116,7 +116,7 @@ export function detectBodyCompIssues(ctx: PrioritizationContext): {
         setsReps: '3 x 10-12',
         notes: 'Squat and hinge variations',
         priority: 'minor',
-        reason: 'Your lower body muscle mass is lower relative to your upper body; prioritize leg volume.',
+        reason: 'Your lower body muscle mass is lower relative to your upper body; prioritise leg volume.',
         sessionTypes: ['lower-body', 'legs'],
         addresses: ['muscle distribution']
       });
@@ -165,7 +165,7 @@ export function detectBodyCompIssues(ctx: PrioritizationContext): {
         setsReps: '2-3 x 12-15',
         notes: `Correction for ${deviation.name}. Targets underactive: ${deviation.underactiveMuscles.join(', ')}`,
         priority: 'important',
-        reason: `Strengthens weak muscles to stabilize and correct ${deviation.name}.`,
+        reason: `Strengthens weak muscles to stabilise and correct ${deviation.name}.`,
         sessionTypes: ['full-body', 'upper-body', 'lower-body'],
         addresses: [deviation.name, 'posture']
       });

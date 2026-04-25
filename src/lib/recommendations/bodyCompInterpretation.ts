@@ -156,7 +156,7 @@ export function generateBodyCompInterpretation(form: FormData, scores?: ScoreSum
   const sleep = 'Aim 7–9h, consistent sleep/wake times';
   const stress = (highVisceral || highStress) ? 'Daily breathwork 5–10 min; walking breaks; reduce late caffeine' : 'Maintain current routines';
   const dailyMovement = '6–10k steps/day target (break up long sitting)';
-  const inflammationReduction = (highVisceral || lowHydration) ? 'Reduce alcohol/ultra-processed foods; add omega-3s; emphasize whole foods' : undefined;
+  const inflammationReduction = (highVisceral || lowHydration) ? 'Reduce alcohol/ultra-processed foods; add omega-3s; emphasise whole foods' : undefined;
 
   return {
     healthPriority,

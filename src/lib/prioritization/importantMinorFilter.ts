@@ -67,7 +67,7 @@ export function detectImportantMinorIssues(ctx: PrioritizationContext): {
           setsReps: 'Throughout day',
           notes: 'Regular chin tucks and posture checks',
           priority: 'minor',
-          reason: 'Small correction to optimize posture',
+          reason: 'Small correction to optimise posture',
           sessionTypes: ['full-body'],
           addresses: ['forward head']
         });
@@ -84,7 +84,7 @@ export function detectImportantMinorIssues(ctx: PrioritizationContext): {
             setsReps: 'As needed',
             notes: 'Minor adjustments during training',
             priority: 'minor',
-            reason: 'Small correction to optimize alignment',
+            reason: 'Small correction to optimise alignment',
             sessionTypes: ['upper-body'],
             addresses: ['shoulder alignment']
           });
