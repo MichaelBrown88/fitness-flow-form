@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { useOutletContext, useNavigate } from 'react-router-dom';
-import { X } from 'lucide-react';
+import { useOutletContext } from 'react-router-dom';
+import { Share2 } from 'lucide-react';
 import { ArtifactGridCard } from '@/components/dashboard/artifacts/ArtifactGridCard';
 import { COACH_ASSISTANT_COPY } from '@/constants/coachAssistantCopy';
 import {
@@ -8,6 +8,7 @@ import {
   type ArtifactsGridItem,
 } from '@/lib/dashboard/artifactsGridItems';
 import { WorkspaceBreadcrumb } from '@/components/dashboard/WorkspaceBreadcrumb';
+import { EmptyState } from '@/components/ui/empty-state';
 import type { DashboardOutletContext } from './DashboardLayout';
 
 interface ArtifactsSectionProps {
@@ -34,7 +35,6 @@ function ArtifactsSection({ title, items, onOpen }: ArtifactsSectionProps) {
 }
 
 export default function DashboardArtifacts() {
-  const navigate = useNavigate();
   const {
     openShareablePreview,
     reportShares,
@@ -68,30 +68,19 @@ export default function DashboardArtifacts() {
   };
 
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col bg-background">
-      <div className="shrink-0 space-y-3 border-b border-border/60 px-3 py-4 sm:px-4 lg:px-5">
-        <WorkspaceBreadcrumb current="Artefacts" />
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <h1 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-              {COACH_ASSISTANT_COPY.ARTIFACTS_PAGE_TITLE}
-            </h1>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              {COACH_ASSISTANT_COPY.ARTIFACTS_PAGE_SUB}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            aria-label="Close artifacts"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
+    <div className="mx-auto flex w-full min-h-0 flex-1 flex-col gap-8 px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+      <WorkspaceBreadcrumb current="Artifacts" />
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 py-5 sm:px-4 lg:px-5">
+      <header className="space-y-1.5">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+          {COACH_ASSISTANT_COPY.ARTIFACTS_PAGE_TITLE}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {COACH_ASSISTANT_COPY.ARTIFACTS_PAGE_SUB}
+        </p>
+      </header>
+
+      <div className="min-h-0 flex-1">
         {shareablesError ? (
           <p className="text-sm text-destructive" role="alert">
             {COACH_ASSISTANT_COPY.ARTIFACTS_LOAD_ERROR}
@@ -99,7 +88,11 @@ export default function DashboardArtifacts() {
         ) : shareablesLoading ? (
           <p className="text-sm text-muted-foreground">{COACH_ASSISTANT_COPY.ARTIFACTS_GRID_LOADING}</p>
         ) : allItems.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{COACH_ASSISTANT_COPY.ARTIFACTS_GRID_EMPTY_ALL}</p>
+          <EmptyState
+            icon={Share2}
+            title="No shared links yet"
+            description={COACH_ASSISTANT_COPY.ARTIFACTS_GRID_EMPTY_ALL}
+          />
         ) : (
           <div className="flex flex-col gap-10">
             <ArtifactsSection title="Score Cards" items={reportItems} onOpen={openCard} />

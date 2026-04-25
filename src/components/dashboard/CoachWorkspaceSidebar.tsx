@@ -54,7 +54,7 @@ export function CoachWorkspaceSidebar({
   const workspaceNav: NavItem[] = [
     { label: 'Today', to: ROUTES.DASHBOARD_WORK, icon: Activity, match: (p) => p.startsWith(ROUTES.DASHBOARD_WORK) },
     { label: 'Clients', to: ROUTES.DASHBOARD_CLIENTS, icon: Users, badge: clientCount, match: (p) => p.startsWith(ROUTES.DASHBOARD_CLIENTS) },
-    { label: 'Artefacts', to: ROUTES.DASHBOARD_ARTIFACTS, icon: FileText, badge: artefactCount },
+    { label: 'Artifacts', to: ROUTES.DASHBOARD_ARTIFACTS, icon: FileText, badge: artefactCount },
   ];
 
   const studioNav: NavItem[] = [
@@ -272,12 +272,12 @@ export function CoachWorkspaceSidebarCollapsed({
             <Link
               to={ROUTES.DASHBOARD_ARTIFACTS}
               className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              aria-label="Artefacts"
+              aria-label="Artifacts"
             >
               <FileText className="h-4 w-4" />
             </Link>
           </TooltipTrigger>
-          <TooltipContent side="right">Artefacts</TooltipContent>
+          <TooltipContent side="right">Artifacts</TooltipContent>
         </Tooltip>
       </TooltipProvider>
     </aside>
