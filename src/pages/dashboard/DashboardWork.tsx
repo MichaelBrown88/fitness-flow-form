@@ -198,6 +198,7 @@ export default function DashboardWork() {
       </header>
 
       {/* ─── KPI row ──────────────────────────────────────────── */}
+      {/* Kit stat-row: 4 cols, 12px gap */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard label="Active clients" value={totalClients > 0 ? String(totalClients) : '—'} />
         <KpiCard
@@ -222,7 +223,8 @@ export default function DashboardWork() {
       </div>
 
       {/* ─── Two-column body ──────────────────────────────────── */}
-      <div className="grid min-h-0 flex-1 gap-6 lg:grid-cols-[1fr_360px] lg:items-start">
+      {/* Kit content-grid: 1.5fr / 1fr, gap 16px, items start */}
+      <div className="grid min-h-0 flex-1 items-start gap-4 lg:grid-cols-[1.5fr_1fr]">
         {/* LEFT: Clients needing attention */}
         <section className="min-w-0 space-y-6">
           <Panel
@@ -308,14 +310,21 @@ interface KpiCardProps {
 }
 
 function KpiCard({ label, value, trend }: KpiCardProps) {
+  // Kit spec: rounded-[20px], padding 16px 18px, gap 6px,
+  // value 28px / 700 / line 1.1 / -0.015em, label 11px uppercase,
+  // trend 12px semibold inline-flex.
   return (
-    <div className="flex flex-col gap-2 rounded-[20px] border border-border bg-card p-5">
-      <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className="text-3xl font-bold tracking-tight text-foreground tabular-nums">{value}</div>
+    <div className="flex flex-col gap-1.5 rounded-[20px] border border-border bg-card px-[18px] py-4">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        {label}
+      </div>
+      <div className="text-[28px] font-bold leading-[1.1] tracking-[-0.015em] text-foreground tabular-nums">
+        {value}
+      </div>
       {trend ? (
         <div
           className={cn(
-            'flex items-center gap-1 text-xs font-medium',
+            'flex items-center gap-1 text-xs font-semibold',
             trend.dir === 'up' ? 'text-score-green-fg' : 'text-score-amber-fg',
           )}
         >
@@ -323,7 +332,7 @@ function KpiCard({ label, value, trend }: KpiCardProps) {
           {trend.label}
         </div>
       ) : (
-        <div className="h-4" />
+        <div className="h-[18px]" />
       )}
     </div>
   );
@@ -337,25 +346,28 @@ interface PanelProps {
 }
 
 function Panel({ title, label, link, children }: PanelProps) {
+  // Kit spec: rounded-[20px], padding 18px 20px, gap 14px in column.
   return (
-    <div className="overflow-hidden rounded-[28px] border border-border bg-card shadow-sm">
-      <header className="flex items-center justify-between gap-3 px-5 pt-5">
-        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+    <div className="rounded-[20px] border border-border bg-card">
+      <header className="flex items-center justify-between gap-3 px-5 pt-[18px]">
+        <h3 className="text-sm font-semibold tracking-[-0.005em] text-foreground">{title}</h3>
         {label ? (
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+            {label}
+          </span>
         ) : null}
         {link ? (
           <button
             type="button"
             onClick={link.onClick}
-            className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+            className="inline-flex items-center gap-1 text-[13px] font-semibold text-foreground transition-colors hover:text-muted-foreground"
           >
             {link.label}
-            <ArrowRight className="h-3 w-3" />
+            <ArrowRight className="h-3.5 w-3.5" />
           </button>
         ) : null}
       </header>
-      <div className="px-2 pb-2 pt-3">{children}</div>
+      <div className="px-2 pb-2 pt-2">{children}</div>
     </div>
   );
 }
