@@ -33,6 +33,7 @@ export function NewClientModal({ open, onOpenChange, organizationId }: NewClient
   const trimmedEmail = clientEmail.trim();
   const isValid = trimmedName.length >= 2;
   const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail);
+  const hasOrgContext = organizationId.trim().length > 0;
 
   function handleClose(open: boolean) {
     if (!open) {
@@ -45,7 +46,7 @@ export function NewClientModal({ open, onOpenChange, organizationId }: NewClient
   }
 
   async function handleSendLink() {
-    if (!isValid) return;
+    if (!isValid || !hasOrgContext) return;
     setLoading(true);
     try {
       const res = await createRemoteAssessmentTokenForClient(organizationId, trimmedName, {
@@ -106,6 +107,14 @@ export function NewClientModal({ open, onOpenChange, organizationId }: NewClient
           <DialogTitle className="text-base font-bold">New Client</DialogTitle>
         </DialogHeader>
 
+        {!hasOrgContext ? (
+          <div className="flex flex-col items-center gap-3 py-6 text-center">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">
+              Loading your organisation… If this stays here, refresh the page or sign back in.
+            </p>
+          </div>
+        ) : (
         <div className="space-y-4 pt-1">
           <div>
             <Input
@@ -221,6 +230,7 @@ export function NewClientModal({ open, onOpenChange, organizationId }: NewClient
             </div>
           )}
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );
