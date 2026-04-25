@@ -751,7 +751,7 @@ export const getClientAchievements = onCall(
     const organizationId: string = reportData.organizationId;
     const assessmentId: string = reportData.assessmentId;
 
-    if (!organizationId || !assessmentId) throw new Error('Report is missing organization or assessment reference.');
+    if (!organizationId || !assessmentId) throw new Error('Report is missing organisation or assessment reference.');
 
     // Step 2: resolve clientId — in v2 assessmentId is the clientSlug
     const clientId: string = assessmentId;

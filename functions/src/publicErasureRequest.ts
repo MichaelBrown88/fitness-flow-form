@@ -50,7 +50,7 @@ export async function handleSubmitPublicErasureRequest(
   const organizationId =
     typeof reportData.organizationId === 'string' ? reportData.organizationId.trim() : '';
   if (!organizationId) {
-    throw new HttpsError('failed-precondition', 'Report has no organization.');
+    throw new HttpsError('failed-precondition', 'Report has no organisation.');
   }
 
   const assessmentId =

@@ -58,7 +58,7 @@ async function assertOrgAdmin(uid: string, orgId: string): Promise<void> {
     .doc(`organizations/${orgId}/coaches/${uid}`)
     .get();
   if (!coachSnap.exists) {
-    throw new HttpsError('permission-denied', 'Not a member of this organization.');
+    throw new HttpsError('permission-denied', 'Not a member of this organisation.');
   }
   const role = coachSnap.data()?.role as string | undefined;
   if (!['org_admin', 'admin', 'owner'].includes(role ?? '')) {

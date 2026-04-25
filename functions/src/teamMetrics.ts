@@ -169,7 +169,7 @@ export async function computeTeamMetrics(
   if (!isPlatformAdmin && profileData?.organizationId !== orgId) {
     throw new HttpsError(
       'permission-denied',
-      'Access denied: caller is not a member of this organization.',
+      'Access denied: caller is not a member of this organisation.',
     );
   }
 

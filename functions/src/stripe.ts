@@ -156,7 +156,7 @@ async function assertOrgBillingCallableAccess(
   if (p?.organizationId === organizationId && p?.role === 'org_admin') {
     return;
   }
-  throw new HttpsError('permission-denied', 'Not authorized for this organization.');
+  throw new HttpsError('permission-denied', 'Not authorised for this organisation.');
 }
 
 /** Purchased credit packs that survive monthly renewal replenishment (incremented on top-up checkout). */
@@ -707,7 +707,7 @@ export async function handleCreateCustomerPortalSession(
 
   const customerId = orgData?.stripe?.stripeCustomerId;
   if (!customerId) {
-    throw new HttpsError('failed-precondition', 'No Stripe customer found for this organization. Please subscribe first.');
+    throw new HttpsError('failed-precondition', 'No Stripe customer found for this organisation. Please subscribe first.');
   }
 
   const stripe = getStripe();
@@ -1048,7 +1048,7 @@ export async function handleCreateBrandingCheckoutSession(
   const orgData = orgDoc.data();
   await assertOrgBillingCallableAccess(db, request.auth.uid, organizationId, orgData);
   if (orgData?.customBrandingEnabled === true) {
-    throw new HttpsError('already-exists', 'Custom branding is already enabled for this organization.');
+    throw new HttpsError('already-exists', 'Custom branding is already enabled for this organisation.');
   }
 
   const region = (orgData?.subscription?.region ?? orgData?.region) as string || 'GB';
