@@ -103,9 +103,15 @@ export async function handleCreateRemoteAssessmentToken(
   const clientRef = db.doc(`organizations/${organizationId}/clients/${slug}`);
   const clientSnap = await clientRef.get();
   if (!clientSnap.exists) {
-    // Auto-create a pending client record so remote intake data has a place to land
+    // Auto-create a pending client record so remote intake data has a place to land.
+    // Write clientName/clientNameLower alongside `name` so dashboard lookups and the
+    // coachAssessments `data.clientName || 'Unnamed client'` fallback resolve correctly
+    // until the client submits their own fullName (which then overwrites these fields).
+    const normalized = normalizeName(clientName);
     await clientRef.set({
-      name: normalizeName(clientName),
+      name: normalized,
+      clientName: normalized,
+      clientNameLower: normalized.toLowerCase(),
       coachUid: uid,
       organizationId,
       status: 'active',
@@ -304,10 +310,23 @@ export async function handleSubmitRemoteAssessmentFields(
     const PARQ_MEDICAL_IDS = ['parq1','parq2','parq3','parq4','parq5','parq6','parq7'];
     const parqFlagged = PARQ_MEDICAL_IDS.some((k) => sanitized[k] === 'yes');
 
+    // If the client submitted their real fullName, overwrite the top-level name
+    // fields so the dashboard shows the client's own name instead of the coach-typed
+    // placeholder (or the 'Unnamed client' fallback).
+    const submittedName = normalizeName(sanitized.fullName ?? '');
+    const nameUpdate = submittedName
+      ? {
+          name: submittedName,
+          clientName: submittedName,
+          clientNameLower: submittedName.toLowerCase(),
+        }
+      : {};
+
     tx.update(clientRef, {
       formData: nextForm,
       remoteIntakeAwaitingStudio: true,
       remoteIntakeLastAt: admin.firestore.FieldValue.serverTimestamp(),
+      ...nameUpdate,
       ...(parqFlagged ? { parqFlagged: true } : {}),
     });
   });

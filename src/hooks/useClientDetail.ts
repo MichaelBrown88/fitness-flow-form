@@ -727,22 +727,21 @@ export function useClientDetail(): UseClientDetailResult {
       return;
     }
     try {
-      const { deleteClientPermanently } = await import('@/services/clientProfiles');
-      await deleteClientPermanently({
+      const { hardDeleteClient } = await import('@/services/clientProfiles');
+      await hardDeleteClient({
         organizationId: orgId,
         clientSlug: generateClientSlug(clientName),
-        clientName,
-        deletedBy: user.uid,
-        knownAssessmentId: assessments[0]?.id,
+        clientName: profile?.clientName?.trim() || clientName,
+        docId: profile?.clientId,
       });
-      toast({ title: `${clientName} deleted`, description: 'Moved to trash. You can restore within 30 days.' });
+      toast({ title: `${displayClientName} deleted`, description: 'Permanently deleted. All data removed.' });
       window.location.href = ROUTES.DASHBOARD;
     } catch (err) {
       logger.error('Failed to permanently delete client', 'CLIENT_DETAIL', err);
       toast({ title: 'Delete failed', description: err instanceof Error ? err.message : 'Please try again.', variant: 'destructive' });
       throw err;
     }
-  }, [readOrgId, clientName, assessments, toast]);
+  }, [readOrgId, clientName, profile?.clientName, profile?.clientId, displayClientName, toast]);
 
   return {
     clientName,

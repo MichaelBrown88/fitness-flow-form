@@ -24,15 +24,20 @@ export default function DashboardWork() {
   const { user, profile } = useAuth();
   const coachFirst = user ? staffPreferredFirstName(profile, user) : 'Coach';
 
+  // Soft-deleted (trashed) clients should never surface on Today — they live in
+  // the Clients → Trash tab. Same for archived/paused, which have their own UX.
+  const isInactive = (c: { clientStatus?: string }) =>
+    c.clientStatus === 'deleted' || c.clientStatus === 'archived' || c.clientStatus === 'paused';
+
   // Clients who completed remote intake and are ready for in-studio assessment
   const remoteReadyClients = useMemo(() => {
-    return (ctx.clientGroups ?? []).filter(c => c.remoteIntakeAwaitingStudio);
+    return (ctx.clientGroups ?? []).filter(c => c.remoteIntakeAwaitingStudio && !isInactive(c));
   }, [ctx.clientGroups]);
 
   // Clients whose score dropped significantly (coaching opportunities)
   const scoreAlerts = useMemo(() => {
     return (ctx.clientGroups ?? [])
-      .filter(c => (c.scoreChange ?? 0) < -5 && c.latestScore > 0)
+      .filter(c => (c.scoreChange ?? 0) < -5 && c.latestScore > 0 && !isInactive(c))
       .sort((a, b) => (a.scoreChange ?? 0) - (b.scoreChange ?? 0))
       .slice(0, 5);
   }, [ctx.clientGroups]);
@@ -40,7 +45,7 @@ export default function DashboardWork() {
   // Clients with assessments but no shared report (pending deliverables)
   const unsharableClients = useMemo(() => {
     return (ctx.clientGroups ?? [])
-      .filter(c => c.assessments.length > 0 && !c.shareToken)
+      .filter(c => c.assessments.length > 0 && !c.shareToken && !isInactive(c))
       .slice(0, 5);
   }, [ctx.clientGroups]);
 
@@ -125,7 +130,7 @@ export default function DashboardWork() {
                   <Button
                     size="sm"
                     className="shrink-0 gap-1.5 text-xs font-semibold"
-                    onClick={() => ctx.handleNewAssessmentForClient(client.name, 'full')}
+                    onClick={() => ctx.handleNewAssessmentForClient(client.name)}
                   >
                     <ArrowRight className="h-3.5 w-3.5" />
                     Continue in studio

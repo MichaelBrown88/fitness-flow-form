@@ -1239,6 +1239,63 @@ export async function restoreClient(params: {
 }
 
 /**
+ * Hard-delete a client immediately (no grace period). Resolves the doc path
+ * (handles UUID-migrated / mismatched slugs), then purges all associated data.
+ * Used by the "Delete Permanently" confirm-name dialog on client detail.
+ */
+export async function hardDeleteClient(params: {
+  organizationId: string;
+  clientSlug: string;
+  clientName: string;
+  /** Definitive Firestore doc ID if known (from a loaded ClientProfile). Bypasses name-based lookup. */
+  docId?: string;
+}): Promise<void> {
+  const { organizationId, clientSlug: inputSlug, clientName, docId } = params;
+  const db = getDb();
+  const clientNameLower = clientName.toLowerCase();
+
+  if (!organizationId?.trim()) {
+    throw new Error('Cannot delete client: organization ID is missing.');
+  }
+
+  let clientSlug = inputSlug;
+
+  // 1. If caller provided the exact doc ID, trust it — covers remote-intake clients
+  //    whose top-level name fields were missing (would resolve to "Unnamed client"
+  //    and fail every name-based query below).
+  if (docId?.trim()) {
+    const directRef = doc(db, ORGANIZATION.clients.doc(organizationId, docId.trim()));
+    const directSnap = await getDoc(directRef);
+    if (directSnap.exists()) {
+      await purgeClientData({ organizationId, clientSlug: docId.trim(), clientName });
+      return;
+    }
+  }
+
+  // 2. Try the input slug directly.
+  const expectedRef = doc(db, ORGANIZATION.clients.doc(organizationId, clientSlug));
+  const expectedSnap = await getDoc(expectedRef);
+  if (!expectedSnap.exists()) {
+    // 3. Fall back to name-based lookups (legacy / name-slug clients).
+    const clientsCol = collection(db, ORGANIZATION.clients.collection(organizationId));
+    let found = await getDocs(query(clientsCol, where('clientName', '==', clientName), limit(1)));
+    if (found.empty) {
+      found = await getDocs(query(clientsCol, where('clientNameLower', '==', clientNameLower), limit(1)));
+    }
+    if (found.empty) {
+      found = await getDocs(query(clientsCol, where('name', '==', clientName), limit(1)));
+    }
+    if (!found.empty) {
+      clientSlug = found.docs[0].id;
+    } else {
+      throw new Error(`Client not found: ${clientName}`);
+    }
+  }
+
+  await purgeClientData({ organizationId, clientSlug, clientName });
+}
+
+/**
  * Permanently purge a soft-deleted client and ALL associated data.
  * Only call this after the grace period has expired, or for immediate force-purge.
  */
