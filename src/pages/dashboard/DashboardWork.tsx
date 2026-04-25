@@ -11,9 +11,9 @@ import {
   Share2,
   Sparkles,
   TrendingDown,
-  TrendingUp,
 } from 'lucide-react';
 import { WorkspaceBreadcrumb } from '@/components/dashboard/WorkspaceBreadcrumb';
+import { WorkspaceKpiCard } from '@/components/dashboard/WorkspaceKpiCard';
 import { useAuth } from '@/hooks/useAuth';
 import { staffPreferredFirstName } from '@/lib/utils/staffDisplayName';
 import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
@@ -192,12 +192,12 @@ export default function DashboardWork() {
       {/* ─── KPI row ──────────────────────────────────────────── */}
       {/* Kit stat-row: 4 cols, 12px gap */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KpiCard label="Active clients" value={totalClients > 0 ? String(totalClients) : '—'} />
-        <KpiCard
+        <WorkspaceKpiCard label="Active clients" value={totalClients > 0 ? String(totalClients) : '—'} />
+        <WorkspaceKpiCard
           label="Assessments · 30d"
           value={assessments30d > 0 ? String(assessments30d) : '—'}
         />
-        <KpiCard
+        <WorkspaceKpiCard
           label="Needs attention"
           value={attentionCount === 0 && totalClients === 0 ? '—' : String(attentionCount)}
           trend={
@@ -208,7 +208,7 @@ export default function DashboardWork() {
               : undefined
           }
         />
-        <KpiCard
+        <WorkspaceKpiCard
           label="Reports shared"
           value={reportsSharedPct === null ? '—' : `${reportsSharedPct}%`}
         />
@@ -286,41 +286,6 @@ export default function DashboardWork() {
 }
 
 // ─── Sub-components ────────────────────────────────────────────────────
-
-interface KpiCardProps {
-  label: string;
-  value: string;
-  trend?: { dir: 'up' | 'down'; label: string };
-}
-
-function KpiCard({ label, value, trend }: KpiCardProps) {
-  // Kit spec: rounded-[20px], padding 16px 18px, gap 6px,
-  // value 28px / 700 / line 1.1 / -0.015em, label 11px uppercase,
-  // trend 12px semibold inline-flex.
-  return (
-    <div className="flex flex-col gap-1.5 rounded-[20px] border border-border bg-card px-[18px] py-4">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-        {label}
-      </div>
-      <div className="text-[28px] font-bold leading-[1.1] tracking-[-0.015em] text-foreground tabular-nums">
-        {value}
-      </div>
-      {trend ? (
-        <div
-          className={cn(
-            'flex items-center gap-1 text-xs font-semibold',
-            trend.dir === 'up' ? 'text-score-green-fg' : 'text-score-amber-fg',
-          )}
-        >
-          {trend.dir === 'up' ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-          {trend.label}
-        </div>
-      ) : (
-        <div className="h-[18px]" />
-      )}
-    </div>
-  );
-}
 
 interface PanelProps {
   title: React.ReactNode;

@@ -1,84 +1,68 @@
 import { useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { Users, AlertTriangle, ClipboardCheck, CheckCircle2, TrendingUp } from 'lucide-react';
 import { UnifiedClientTable } from '@/components/dashboard/sub-components/UnifiedClientTable';
 import { WorkspaceBreadcrumb } from '@/components/dashboard/WorkspaceBreadcrumb';
+import { WorkspaceKpiCard } from '@/components/dashboard/WorkspaceKpiCard';
 import type { DashboardOutletContext } from './DashboardLayout';
 
 export default function DashboardClients() {
   const ctx = useOutletContext<DashboardOutletContext>();
 
   const total = ctx.analytics?.totalClients ?? 0;
-  const totalAssessments = ctx.analytics?.totalAssessments ?? 0;
   const overdue = ctx.reassessmentQueue?.summary?.overdue ?? 0;
   const dueSoon = ctx.reassessmentQueue?.summary?.dueSoon ?? 0;
+  const attentionCount = overdue + dueSoon;
   const onTrack = useMemo(() => {
     if (!ctx.reassessmentQueue) return 0;
-    return ctx.reassessmentQueue.queue.filter(q => q.status === 'up-to-date').length;
+    return ctx.reassessmentQueue.queue.filter((q) => q.status === 'up-to-date').length;
   }, [ctx.reassessmentQueue]);
-  const sharedCount = useMemo(() => {
-    return (ctx.clientGroups ?? []).filter(c => c.shareToken).length;
+  const reportsSharedPct = useMemo(() => {
+    const eligible = (ctx.clientGroups ?? []).filter((c) => c.assessments.length > 0);
+    if (eligible.length === 0) return null;
+    const shared = eligible.filter((c) => c.shareToken).length;
+    return Math.round((shared / eligible.length) * 100);
   }, [ctx.clientGroups]);
 
   return (
-    <div className="flex flex-col gap-6 py-6 sm:py-8 lg:py-10 px-4 sm:px-6 lg:px-8">
+    <div className="mx-auto flex w-full min-h-0 flex-1 flex-col gap-8 px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
       <WorkspaceBreadcrumb current="Clients" />
-      {/* Metrics dashboard */}
-      <div className="flex flex-wrap gap-3">
-        <div className="flex items-center gap-3 rounded-xl bg-muted px-5 py-4 min-w-[120px]">
-          <Users className="h-5 w-5 text-muted-foreground shrink-0" />
-          <div>
-            <div className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">Clients</div>
-            <div className="text-2xl font-bold text-foreground">{total}</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 rounded-xl bg-muted px-5 py-4 min-w-[120px]">
-          <ClipboardCheck className="h-5 w-5 text-muted-foreground shrink-0" />
-          <div>
-            <div className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">Assessments</div>
-            <div className="text-2xl font-bold text-foreground">{totalAssessments}</div>
-          </div>
-        </div>
-        {overdue > 0 && (
-          <div className="flex items-center gap-3 rounded-xl bg-score-red-muted/40 border border-score-red/30 px-5 py-4 min-w-[120px]">
-            <AlertTriangle className="h-5 w-5 text-score-red-fg shrink-0" />
-            <div>
-              <div className="text-[10px] font-black uppercase tracking-[0.15em] text-score-red-fg">Overdue</div>
-              <div className="text-2xl font-bold text-score-red-fg">{overdue}</div>
-            </div>
-          </div>
-        )}
-        {dueSoon > 0 && (
-          <div className="flex items-center gap-3 rounded-xl bg-score-amber-muted/40 border border-score-amber/30 px-5 py-4 min-w-[120px]">
-            <AlertTriangle className="h-5 w-5 text-score-amber-fg shrink-0" />
-            <div>
-              <div className="text-[10px] font-black uppercase tracking-[0.15em] text-score-amber-fg">Due Soon</div>
-              <div className="text-2xl font-bold text-score-amber-fg">{dueSoon}</div>
-            </div>
-          </div>
-        )}
-        {onTrack > 0 && (
-          <div className="flex items-center gap-3 rounded-xl bg-score-green-muted/40 border border-score-green/30 px-5 py-4 min-w-[120px]">
-            <CheckCircle2 className="h-5 w-5 text-score-green-fg shrink-0" />
-            <div>
-              <div className="text-[10px] font-black uppercase tracking-[0.15em] text-score-green-fg">On Track</div>
-              <div className="text-2xl font-bold text-score-green-fg">{onTrack}</div>
-            </div>
-          </div>
-        )}
-        {sharedCount > 0 && (
-          <div className="flex items-center gap-3 rounded-xl bg-muted px-5 py-4 min-w-[120px]">
-            <TrendingUp className="h-5 w-5 text-muted-foreground shrink-0" />
-            <div>
-              <div className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">Reports Shared</div>
-              <div className="text-2xl font-bold text-foreground">{sharedCount}</div>
-            </div>
-          </div>
-        )}
+
+      <header className="space-y-1.5">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Clients</h1>
+        <p className="text-sm text-muted-foreground">
+          {total === 0
+            ? 'No clients yet — create one from the New assessment button to get started.'
+            : `${total} client${total === 1 ? '' : 's'} on your roster${attentionCount > 0 ? ` · ${attentionCount} need${attentionCount === 1 ? 's' : ''} attention` : ''}.`}
+        </p>
+      </header>
+
+      {/* Kit stat-row: 4 cards, 12px gap */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <WorkspaceKpiCard label="Active clients" value={total > 0 ? String(total) : '—'} />
+        <WorkspaceKpiCard
+          label="On track"
+          value={total === 0 ? '—' : String(onTrack)}
+          trend={total > 0 && onTrack === total ? { dir: 'up', label: 'all on track' } : undefined}
+        />
+        <WorkspaceKpiCard
+          label="Needs attention"
+          value={total === 0 ? '—' : String(attentionCount)}
+          trend={
+            overdue > 0
+              ? { dir: 'down', label: `${overdue} overdue` }
+              : attentionCount === 0 && total > 0
+              ? { dir: 'up', label: 'all caught up' }
+              : undefined
+          }
+        />
+        <WorkspaceKpiCard
+          label="Reports shared"
+          value={reportsSharedPct === null ? '—' : `${reportsSharedPct}%`}
+        />
       </div>
 
-      {/* Client table fills remaining space */}
-      <div className="w-full flex-1 min-h-0">
+      {/* Client table wrapped in the kit's panel container */}
+      <div className="min-h-0 flex-1 overflow-hidden rounded-[20px] border border-border bg-card">
         <UnifiedClientTable
           loadingData={ctx.loadingData}
           clients={ctx.filteredClients}
@@ -99,3 +83,4 @@ export default function DashboardClients() {
     </div>
   );
 }
+
