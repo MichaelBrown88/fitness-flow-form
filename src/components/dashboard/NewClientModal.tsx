@@ -89,8 +89,9 @@ export function NewClientModal({ open, onOpenChange, organizationId }: NewClient
 
   function handleEmail() {
     if (!remoteLink || !isValidEmail) return;
+    const greetingName = trimmedName.replace(/\b\w/g, (c) => c.toUpperCase());
     const subject = `Your assessment intake - let's get started`;
-    const body = `Hi ${trimmedName},\n\nHere's your private intake link. It takes about 5-10 minutes and we'll use your answers to tailor the physical assessment when you come in to the studio.\n\n${remoteLink}\n\nSee you soon!`;
+    const body = `Hi ${greetingName},\n\nHere's your private intake link. It takes about 5-10 minutes and we'll use your answers to tailor the physical assessment when you come in to the studio.\n\n${remoteLink}\n\nSee you soon!`;
     const href = `mailto:${encodeURIComponent(trimmedEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.location.href = href;
     toast({
