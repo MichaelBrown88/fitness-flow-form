@@ -1,303 +1,196 @@
-import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ROUTES } from '@/constants/routes';
 import {
-  MessageSquarePlus,
-  Search,
-  Link2,
-  Trash2,
-  Share2,
-  AlertCircle,
-  Plus,
+  Activity,
+  FileText,
   PanelLeftClose,
   PanelLeftOpen,
-  FileText,
-  Route,
-  Trophy,
+  Plus,
+  Search,
+  Settings,
+  Users,
 } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { Button } from '@/components/ui/button';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { COACH_ASSISTANT_COPY } from '@/constants/coachAssistantCopy';
-import { UI_EVENTS } from '@/constants/uiEvents';
-import type { CoachAssistantThread } from '@/types/coachAssistant';
-import type {
-  CoachAchievementShareRow,
-  CoachArtifactRow,
-  CoachRoadmapShareRow,
-  CoachShareablePreview,
-} from '@/hooks/useCoachArtifacts';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { CoachWorkspaceProfileFooter } from '@/components/dashboard/CoachWorkspaceProfileFooter';
-import { coachShareablePublicUrl } from '@/lib/utils/coachShareableUrls';
-import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
+import { UI_EVENTS } from '@/constants/uiEvents';
 import { cn } from '@/lib/utils';
 
-type UnifiedArtifact =
-  | { kind: 'report'; token: string; clientName: string; updatedAt: Date | null; report: CoachArtifactRow }
-  | { kind: 'roadmap'; token: string; clientName: string; updatedAt: Date | null; row: CoachRoadmapShareRow }
-  | { kind: 'achievements'; token: string; clientName: string; updatedAt: Date | null; row: CoachAchievementShareRow };
-
-const ARTIFACT_KIND_ICON: Record<UnifiedArtifact['kind'], typeof FileText> = {
-  report: FileText,
-  roadmap: Route,
-  achievements: Trophy,
-};
-
-function mergeAndSortArtifacts(
-  reports: CoachArtifactRow[],
-  roadmaps: CoachRoadmapShareRow[],
-  achievements: CoachAchievementShareRow[],
-  limit: number,
-): UnifiedArtifact[] {
-  const all: UnifiedArtifact[] = [
-    ...reports.map((r): UnifiedArtifact => ({ kind: 'report', token: r.token, clientName: r.clientName, updatedAt: r.updatedAt, report: r })),
-    ...roadmaps.map((r): UnifiedArtifact => ({ kind: 'roadmap', token: r.token, clientName: r.clientName, updatedAt: r.updatedAt, row: r })),
-    ...achievements.map((r): UnifiedArtifact => ({ kind: 'achievements', token: r.token, clientName: r.clientName, updatedAt: r.updatedAt, row: r })),
-  ];
-  all.sort((a, b) => (b.updatedAt?.getTime() ?? 0) - (a.updatedAt?.getTime() ?? 0));
-  return all.slice(0, limit);
-}
-
-function artifactPreview(item: UnifiedArtifact): CoachShareablePreview {
-  switch (item.kind) {
-    case 'report': return { kind: 'report', report: item.report };
-    case 'roadmap': return { kind: 'roadmap', row: item.row };
-    case 'achievements': return { kind: 'achievements', row: item.row };
-  }
-}
+// ─── Sidebar (expanded) ─────────────────────────────────────────────────
 
 interface CoachWorkspaceSidebarProps {
-  threads: CoachAssistantThread[];
-  activeThreadId: string | null;
-  onNewChat: () => void;
-  onSelectThread: (id: string) => void;
-  onDeleteThread: (id: string) => void;
-  reportShares: CoachArtifactRow[];
-  roadmapShares: CoachRoadmapShareRow[];
-  achievementShares: CoachAchievementShareRow[];
-  shareablesLoading: boolean;
-  onShareablePreview: (preview: CoachShareablePreview) => void;
-  recentClients: { name: string }[];
+  /** Total active clients in the org — used as the Clients nav badge. */
+  clientCount: number;
+  /** Total shared artefacts (reports + roadmaps + achievements) — Artefacts badge. */
+  artefactCount: number;
+  /** Whether to show the Team Members tab in the footer profile area. */
   showTeamTab: boolean;
   onNewClient: () => void;
   onToggleCollapse: () => void;
   className?: string;
 }
 
+interface NavItem {
+  label: string;
+  to: string;
+  icon: typeof Activity;
+  badge?: number;
+  match?: (pathname: string) => boolean;
+}
+
 export function CoachWorkspaceSidebar({
-  threads,
-  activeThreadId,
-  onNewChat,
-  onSelectThread,
-  onDeleteThread,
-  reportShares,
-  roadmapShares,
-  achievementShares,
-  shareablesLoading,
-  onShareablePreview,
-  recentClients,
+  clientCount,
+  artefactCount,
   showTeamTab,
   onNewClient,
   onToggleCollapse,
   className,
 }: CoachWorkspaceSidebarProps) {
   const { pathname } = useLocation();
-  const onArtifactsPage = pathname === ROUTES.DASHBOARD_ARTIFACTS;
-  const [threadPendingDelete, setThreadPendingDelete] = useState<string | null>(null);
 
   const openCommandMenu = () => {
     window.dispatchEvent(new Event(UI_EVENTS.OPEN_COMMAND_MENU));
   };
 
-  const confirmDelete = () => {
-    if (threadPendingDelete) {
-      onDeleteThread(threadPendingDelete);
-    }
-    setThreadPendingDelete(null);
-  };
+  const workspaceNav: NavItem[] = [
+    { label: 'Today', to: ROUTES.DASHBOARD_WORK, icon: Activity, match: (p) => p.startsWith(ROUTES.DASHBOARD_WORK) },
+    { label: 'Clients', to: ROUTES.DASHBOARD_CLIENTS, icon: Users, badge: clientCount, match: (p) => p.startsWith(ROUTES.DASHBOARD_CLIENTS) },
+    { label: 'Artefacts', to: ROUTES.DASHBOARD_ARTIFACTS, icon: FileText, badge: artefactCount },
+  ];
+
+  const studioNav: NavItem[] = [
+    { label: 'Studio settings', to: ROUTES.SETTINGS, icon: Settings },
+  ];
 
   return (
     <aside
       className={cn(
-        'flex min-h-0 w-[260px] shrink-0 flex-col self-stretch bg-card text-foreground',
+        'flex min-h-0 w-[260px] shrink-0 flex-col self-stretch bg-card-elevated text-foreground',
+        'border-r border-border',
         className,
       )}
       aria-label="Workspace"
     >
-      {/* Header: brand + collapse */}
-      <div className="flex items-center justify-between px-4 pt-4 pb-2">
-        <span className="text-sm font-bold text-foreground tracking-tight">One Assess</span>
+      {/* ─── Brand + collapse ─────────────────────────────── */}
+      <div className="flex items-center justify-between px-3 pt-3.5 pb-2">
+        <div className="flex items-center gap-2.5 px-1">
+          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-foreground text-[10px] font-bold text-background">
+            OA
+          </div>
+          <span className="text-[15px] font-bold tracking-[-0.01em] text-foreground">One Assess</span>
+        </div>
         <button
           type="button"
           onClick={onToggleCollapse}
-          className="flex h-7 w-7 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           aria-label="Collapse sidebar"
         >
-          <PanelLeftClose className="h-3.5 w-3.5" />
+          <PanelLeftClose className="h-4 w-4" />
         </button>
       </div>
 
-      {/* Quick actions */}
-      <div className="flex gap-1.5 px-3 pb-3">
+      {/* ─── Primary action ───────────────────────────────── */}
+      <div className="px-3 pb-2">
         <button
           type="button"
           onClick={onNewClient}
-          className="flex h-9 flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+          className="flex w-full items-center gap-2.5 rounded-xl bg-foreground px-3 py-2.5 text-[13px] font-semibold text-background transition-colors hover:bg-foreground/90"
         >
-          <Plus className="h-3.5 w-3.5" />
-          New Client
+          <Plus className="h-4 w-4" />
+          New assessment
         </button>
-        <button
-          type="button"
-          onClick={onNewChat}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/60 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          aria-label={COACH_ASSISTANT_COPY.NEW_CHAT}
-        >
-          <MessageSquarePlus className="h-3.5 w-3.5" />
-        </button>
+      </div>
+
+      {/* ─── Search (opens command menu) ──────────────────── */}
+      <div className="px-3 pb-3">
         <button
           type="button"
           onClick={openCommandMenu}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/60 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          aria-label={COACH_ASSISTANT_COPY.SIDEBAR_SEARCH}
+          className="flex w-full items-center gap-2 rounded-[10px] bg-muted px-3 py-2 text-[13px] text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground"
+          aria-label="Search clients"
         >
           <Search className="h-3.5 w-3.5" />
+          Search clients
         </button>
       </div>
 
-      {/* Scrollable content */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-3 pb-2">
-        {/* Artefacts */}
-        <div className="pb-4">
-          <section aria-label={COACH_ASSISTANT_COPY.SIDEBAR_ARTIFACTS_REGION_LABEL}>
-            <div className="mb-1.5 flex items-center justify-between gap-2 px-1">
-              <h2 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-                Artefacts
-              </h2>
-              {!onArtifactsPage && (
-                <Link
-                  to={ROUTES.DASHBOARD_ARTIFACTS}
-                  className="shrink-0 text-[10px] font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
-                >
-                  View all
-                </Link>
-              )}
-            </div>
-            {onArtifactsPage ? (
-              <p className="px-1 text-xs leading-snug text-muted-foreground">
-                {COACH_ASSISTANT_COPY.SIDEBAR_ARTIFACTS_STUB_ON_GRID_PAGE}
-              </p>
-            ) : shareablesLoading ? (
-              <p className="px-1 text-xs text-muted-foreground/60">Loading…</p>
-            ) : (() => {
-              const recent = mergeAndSortArtifacts(reportShares, roadmapShares, achievementShares, 4);
-              if (recent.length === 0) {
-                return <p className="px-1 text-xs text-muted-foreground/60">No shared links yet</p>;
-              }
-              return (
-                <ul className="space-y-0.5">
-                  {recent.map((item) => {
-                    const Icon = ARTIFACT_KIND_ICON[item.kind];
-                    return (
-                      <li key={`${item.kind}-${item.token}`} className="group flex items-center gap-0.5">
-                        <button
-                          type="button"
-                          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl px-3 py-2 text-left text-foreground/60 transition-colors hover:bg-muted/60 hover:text-foreground"
-                          onClick={() => onShareablePreview(artifactPreview(item))}
-                        >
-                          <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                          <span className="min-w-0 flex-1 truncate text-xs font-medium">
-                            {item.clientName}
-                          </span>
-                        </button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 shrink-0 rounded-xl text-muted-foreground opacity-0 group-hover:opacity-100 transition-all"
-                          title={COACH_ASSISTANT_COPY.COPY_LINK}
-                          aria-label={COACH_ASSISTANT_COPY.COPY_LINK}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const url = item.kind === 'report'
-                              ? coachShareablePublicUrl('report', item.token)
-                              : item.kind === 'roadmap'
-                                ? coachShareablePublicUrl('roadmap', item.token)
-                                : coachShareablePublicUrl('achievements', item.token);
-                            void navigator.clipboard.writeText(url);
-                          }}
-                        >
-                          <Link2 className="h-3 w-3" />
-                        </Button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              );
-            })()}
-          </section>
-        </div>
+      {/* ─── Nav ─────────────────────────────────────────── */}
+      <nav className="flex-1 overflow-y-auto px-2.5">
+        <NavSection label="Workspace" items={workspaceNav} pathname={pathname} />
+        <NavSection label="Studio" items={studioNav} pathname={pathname} className="mt-3" />
+      </nav>
 
-        {/* Needs Attention removed — shown on Today tab */}
-      </div>
-
-      {/* Footer */}
-      <div className="z-10 shrink-0 border-t border-border/30 bg-card px-3 py-2">
+      {/* ─── Footer (user) ───────────────────────────────── */}
+      <div className="z-10 shrink-0 border-t border-border bg-card-elevated px-3 py-2">
         <CoachWorkspaceProfileFooter variant="sidebar" showTeamTab={showTeamTab} />
       </div>
-
-      <AlertDialog open={threadPendingDelete !== null} onOpenChange={(open) => !open && setThreadPendingDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{COACH_ASSISTANT_COPY.DELETE_THREAD_CONFIRM_TITLE}</AlertDialogTitle>
-            <AlertDialogDescription>{COACH_ASSISTANT_COPY.DELETE_THREAD_CONFIRM_DESC}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{COACH_ASSISTANT_COPY.DELETE_THREAD_CANCEL}</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={confirmDelete}
-            >
-              {COACH_ASSISTANT_COPY.DELETE_THREAD_CONFIRM_ACTION}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </aside>
   );
 }
 
-/** Narrow icon-only strip shown when the workspace sidebar is collapsed. */
-export function CoachWorkspaceSidebarCollapsed({
-  onNewChat,
-  onNewClient,
-  onToggleCollapse,
-  hasAttention,
-}: {
-  onNewChat: () => void;
+interface NavSectionProps {
+  label: string;
+  items: NavItem[];
+  pathname: string;
+  className?: string;
+}
+
+function NavSection({ label, items, pathname, className }: NavSectionProps) {
+  return (
+    <div className={className}>
+      <div className="px-3 pt-2.5 pb-1">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          {label}
+        </span>
+      </div>
+      <ul className="space-y-0.5">
+        {items.map((item) => {
+          const active = item.match ? item.match(pathname) : pathname === item.to;
+          const Icon = item.icon;
+          return (
+            <li key={item.to}>
+              <Link
+                to={item.to}
+                className={cn(
+                  'flex items-center gap-2.5 rounded-[10px] px-3 py-2 text-[13px] font-medium transition-colors',
+                  active
+                    ? 'border border-border bg-card font-semibold text-foreground shadow-sm'
+                    : 'text-foreground-secondary hover:bg-muted hover:text-foreground',
+                )}
+              >
+                <Icon className="h-4 w-4" aria-hidden />
+                <span className="flex-1">{item.label}</span>
+                {item.badge !== undefined && item.badge > 0 ? (
+                  <span className="text-[11px] font-medium text-muted-foreground tabular-nums">
+                    {item.badge}
+                  </span>
+                ) : null}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+// ─── Sidebar (collapsed icon strip) ─────────────────────────────────────
+
+interface CoachWorkspaceSidebarCollapsedProps {
   onNewClient: () => void;
   onToggleCollapse: () => void;
   hasAttention: boolean;
-}) {
-  const openCommandMenu = () => window.dispatchEvent(new Event('openCommandMenu'));
+}
+
+export function CoachWorkspaceSidebarCollapsed({
+  onNewClient,
+  onToggleCollapse,
+  hasAttention,
+}: CoachWorkspaceSidebarCollapsedProps) {
+  const openCommandMenu = () => window.dispatchEvent(new Event(UI_EVENTS.OPEN_COMMAND_MENU));
 
   return (
     <aside
-      className="hidden lg:flex w-12 shrink-0 flex-col self-stretch bg-card items-center gap-1.5 py-3"
+      className="hidden w-12 shrink-0 flex-col items-center gap-1.5 self-stretch border-r border-border bg-card-elevated py-3 lg:flex"
       aria-label="Workspace (collapsed)"
     >
       <TooltipProvider delayDuration={300}>
@@ -306,43 +199,29 @@ export function CoachWorkspaceSidebarCollapsed({
             <button
               type="button"
               onClick={onToggleCollapse}
-              className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               aria-label="Expand sidebar"
             >
-              <PanelLeftOpen className="h-3.5 w-3.5" aria-hidden />
+              <PanelLeftOpen className="h-4 w-4" />
             </button>
           </TooltipTrigger>
           <TooltipContent side="right">Expand sidebar</TooltipContent>
         </Tooltip>
 
-        <div className="h-px w-6 bg-border/30" />
+        <div className="h-px w-6 bg-border" />
 
         <Tooltip>
           <TooltipTrigger asChild>
             <button
               type="button"
               onClick={onNewClient}
-              className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground transition-colors hover:bg-primary/90"
-              aria-label="New client"
+              className="flex h-8 w-8 items-center justify-center rounded-lg bg-foreground text-background transition-colors hover:bg-foreground/90"
+              aria-label="New assessment"
             >
-              <Plus className="h-3.5 w-3.5" aria-hidden />
+              <Plus className="h-4 w-4" />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="right">New client</TooltipContent>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              onClick={onNewChat}
-              className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              aria-label="New chat"
-            >
-              <MessageSquarePlus className="h-3.5 w-3.5" aria-hidden />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="right">New chat</TooltipContent>
+          <TooltipContent side="right">New assessment</TooltipContent>
         </Tooltip>
 
         <Tooltip>
@@ -350,10 +229,10 @@ export function CoachWorkspaceSidebarCollapsed({
             <button
               type="button"
               onClick={openCommandMenu}
-              className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               aria-label="Search"
             >
-              <Search className="h-3.5 w-3.5" aria-hidden />
+              <Search className="h-4 w-4" />
             </button>
           </TooltipTrigger>
           <TooltipContent side="right">Search</TooltipContent>
@@ -362,30 +241,44 @@ export function CoachWorkspaceSidebarCollapsed({
         <Tooltip>
           <TooltipTrigger asChild>
             <Link
-              to={ROUTES.DASHBOARD_ARTIFACTS}
-              className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              aria-label="Artifacts"
+              to={ROUTES.DASHBOARD_WORK}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label="Today"
             >
-              <Share2 className="h-3.5 w-3.5" aria-hidden />
+              <Activity className="h-4 w-4" />
             </Link>
           </TooltipTrigger>
-          <TooltipContent side="right">Artifacts</TooltipContent>
+          <TooltipContent side="right">Today</TooltipContent>
         </Tooltip>
 
-        {hasAttention && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div
-                className="flex h-8 w-8 items-center justify-center rounded-xl text-score-amber-fg"
-                role="img"
-                aria-label="Clients need attention"
-              >
-                <AlertCircle className="h-3.5 w-3.5" aria-hidden />
-              </div>
-            </TooltipTrigger>
-            <TooltipContent side="right">Clients need attention</TooltipContent>
-          </Tooltip>
-        )}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link
+              to={ROUTES.DASHBOARD_CLIENTS}
+              className="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label="Clients"
+            >
+              <Users className="h-4 w-4" />
+              {hasAttention ? (
+                <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-score-amber" />
+              ) : null}
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent side="right">Clients{hasAttention ? ' · attention needed' : ''}</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link
+              to={ROUTES.DASHBOARD_ARTIFACTS}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label="Artefacts"
+            >
+              <FileText className="h-4 w-4" />
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent side="right">Artefacts</TooltipContent>
+        </Tooltip>
       </TooltipProvider>
     </aside>
   );

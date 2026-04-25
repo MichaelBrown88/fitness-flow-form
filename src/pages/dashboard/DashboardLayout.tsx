@@ -350,32 +350,13 @@ export default function DashboardLayout() {
     path.startsWith(ROUTES.DASHBOARD_CLIENTS) ||
     path.startsWith(ROUTES.DASHBOARD_TEAM);
 
+  const attentionCount = (reassessmentQueue?.queue ?? []).filter(
+    (item) => item.status === 'overdue' || item.status === 'due-soon',
+  ).length;
+
   const sidebarProps = {
-    threads: assistantApi.threads,
-    activeThreadId: assistantApi.activeThreadId,
-    onNewChat: () => {
-      assistantApi.createNewThread();
-      setAssistantPanelOpen(true);
-      setMobileSidebarOpen(false);
-    },
-    onSelectThread: (id: string) => {
-      assistantApi.selectThread(id);
-      setAssistantPanelOpen(true);
-      setMobileSidebarOpen(false);
-    },
-    onDeleteThread: assistantApi.deleteThread,
-    reportShares: reportRows,
-    roadmapShares: roadmapRows,
-    achievementShares: achievementRows,
-    shareablesLoading,
-    onShareablePreview: (p: CoachShareablePreview) => {
-      openShareablePreview(p);
-      setMobileSidebarOpen(false);
-    },
-    recentClients: (reassessmentQueue?.queue ?? [])
-      .filter((item) => item.status === 'overdue' || item.status === 'due-soon')
-      .slice(0, 8)
-      .map((item) => ({ name: item.clientName })),
+    clientCount: dashboardData.analytics?.totalClients ?? 0,
+    artefactCount: reportRows.length + roadmapRows.length + achievementRows.length,
     showTeamTab: dashboardData.showTeamTab,
     onNewClient: () => setNewClientModalOpen(true),
     onToggleCollapse: toggleAssistantSidebarCollapsed,
@@ -436,10 +417,9 @@ export default function DashboardLayout() {
               <>
                 {assistantSidebarCollapsed ? (
                   <CoachWorkspaceSidebarCollapsed
-                    onNewChat={sidebarProps.onNewChat}
                     onNewClient={sidebarProps.onNewClient}
                     onToggleCollapse={sidebarProps.onToggleCollapse}
-                    hasAttention={sidebarProps.recentClients.length > 0}
+                    hasAttention={attentionCount > 0}
                   />
                 ) : (
                   <CoachWorkspaceSidebar {...sidebarProps} className="hidden lg:flex" />
