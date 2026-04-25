@@ -69,7 +69,7 @@ export default function DashboardArtifacts() {
 
   return (
     <div className="mx-auto flex w-full min-h-0 flex-1 flex-col gap-8 px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
-      <WorkspaceBreadcrumb current="Artifacts" />
+      <WorkspaceBreadcrumb current="Artefacts" />
 
       <header className="space-y-1.5">
         <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">

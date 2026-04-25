@@ -27,7 +27,7 @@ export const COACH_ASSISTANT_COPY = {
   /** Shown in sidebar on /dashboard/artifacts so lists are not duplicated for assistive tech. */
   SIDEBAR_ARTIFACTS_STUB_ON_GRID_PAGE:
     'Use the grid in the main area to open, preview, or copy links. Your chats stay above.',
-  ARTIFACTS_PAGE_TITLE: 'Artifacts',
+  ARTIFACTS_PAGE_TITLE: 'Artefacts',
   ARTIFACTS_PAGE_SUB:
     'Public links you can share with clients or post on social — open a card to preview or copy.',
   ARTIFACTS_FILTER_ALL: 'All',
