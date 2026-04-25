@@ -241,18 +241,19 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
   const colCount = (showCoachColumn ? 8 : 7);
 
   return (
-    <section className="space-y-4" aria-live="polite">
-      {/* Status filter + search */}
-      <div className="flex items-center justify-between gap-3">
+    <section className="space-y-3" aria-live="polite">
+      {/* Status filter + search — padded so the bar has breathing room from
+          the outer workspace panel edge (no more flush-to-corner). */}
+      <div className="flex items-center justify-between gap-3 px-4 pt-4 pb-1 sm:px-5">
         <div className="flex items-center gap-1">
           {STATUS_FILTER_OPTIONS.map(opt => (
             <button
               key={opt.value}
               onClick={() => setStatusFilter(opt.value)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
                 statusFilter === opt.value
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-muted'
+                  ? 'bg-foreground text-background'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               }`}
             >
               {opt.label}
@@ -265,15 +266,16 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
               placeholder="Search clients..."
               value={search}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="h-9 w-full rounded-lg border-border bg-card pl-3 pr-9 text-sm text-foreground placeholder:text-muted-foreground"
+              className="h-9 w-full rounded-full border-transparent bg-muted pl-3 pr-9 text-sm text-foreground placeholder:text-muted-foreground focus-visible:border-foreground focus-visible:ring-0"
             />
             <Search className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           </div>
         )}
       </div>
 
-      {/* Desktop / Tablet table */}
-      <div className="hidden overflow-x-auto rounded-2xl bg-card shadow-sm sm:block">
+      {/* Desktop / Tablet table — edge-to-edge inside the outer workspace
+          panel; outer panel provides the card surface + border. */}
+      <div className="hidden overflow-x-auto sm:block">
         <table className="min-w-full divide-y divide-border text-xs sm:text-sm">
           <thead className="bg-muted/40">
             <tr>
@@ -429,8 +431,8 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
         </table>
       </div>
 
-      {/* Mobile card layout */}
-      <div className="sm:hidden space-y-2">
+      {/* Mobile card layout — inset from the outer panel edges */}
+      <div className="space-y-2 px-3 pb-3 sm:hidden">
         {loadingData ? (
           <div className="rounded-2xl bg-card shadow-sm p-6">
             <div className="flex flex-col items-center gap-3">
