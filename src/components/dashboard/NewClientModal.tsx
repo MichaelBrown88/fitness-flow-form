@@ -195,7 +195,7 @@ export function NewClientModal({ open, onOpenChange, organizationId }: NewClient
 
               <div className="space-y-2 pt-1">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Or send by email
+                  Send by email
                 </p>
                 <div className="flex min-w-0 gap-2">
                   <Input
@@ -229,7 +229,7 @@ export function NewClientModal({ open, onOpenChange, organizationId }: NewClient
                 onClick={() => { setRemoteLink(null); setCopied(false); }}
                 className="w-full h-10 rounded-xl text-sm"
               >
-                Or start now in studio instead
+                Start in studio instead
               </Button>
             </div>
           )}
