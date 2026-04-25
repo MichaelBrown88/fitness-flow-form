@@ -223,7 +223,7 @@ export const LANDING_FAQ_ITEMS: readonly LandingFaqItem[] = [
       'Our Movement Analysis Engine uses computer vision to observe posture and movement patterns and generate structured fitness coaching insights. It identifies key body positions, flags notable deviations from typical alignment ranges, and produces observations your coach can review and discuss with you. All results are for fitness coaching context — they are not a medical assessment. You can review and customise all results before generating client reports.',
   },
   {
-    question: 'Can I customize the reports with my branding?',
+    question: 'Can I customise the reports with my branding?',
     answer:
       'Reports always show "Powered by One Assess" so clients know the platform behind your brand. Your logo and brand colours on reports and in the app are available as a paid add-on on paid plans. Custom domains for sharing reports are also available on higher tiers.',
   },
@@ -244,7 +244,7 @@ export const LANDING_FAQ_ITEMS: readonly LandingFaqItem[] = [
   {
     question: 'How do I invite my team members?',
     answer:
-      'On paid plans you can invite team members directly from your dashboard. They\'ll receive an email invitation to join your organization. You can manage their permissions and access levels.',
+      'On paid plans you can invite team members directly from your dashboard. They\'ll receive an email invitation to join your organisation. You can manage their permissions and access levels.',
   },
   {
     question: 'How do clients see their report and plan?',
