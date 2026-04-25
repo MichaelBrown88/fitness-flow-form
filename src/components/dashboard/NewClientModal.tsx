@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
@@ -30,11 +30,22 @@ export function NewClientModal({ open, onOpenChange, organizationId }: NewClient
   const [remoteLink, setRemoteLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  const emailInputRef = useRef<HTMLInputElement>(null);
+
   const trimmedName = clientName.trim();
   const trimmedEmail = clientEmail.trim();
   const isValid = trimmedName.length >= 2;
   const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail);
   const hasOrgContext = organizationId.trim().length > 0;
+
+  // When the link view appears, move focus to the email input so coaches
+  // can keep typing without grabbing the mouse.
+  useEffect(() => {
+    if (remoteLink && emailInputRef.current) {
+      const t = setTimeout(() => emailInputRef.current?.focus({ preventScroll: true }), 50);
+      return () => clearTimeout(t);
+    }
+  }, [remoteLink]);
 
   function handleClose(open: boolean) {
     if (!open) {
@@ -199,6 +210,7 @@ export function NewClientModal({ open, onOpenChange, organizationId }: NewClient
                 </p>
                 <div className="flex min-w-0 gap-2">
                   <Input
+                    ref={emailInputRef}
                     type="email"
                     inputMode="email"
                     autoComplete="email"
