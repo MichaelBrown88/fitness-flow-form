@@ -7,6 +7,7 @@ import {
   buildArtifactsGridItems,
   type ArtifactsGridItem,
 } from '@/lib/dashboard/artifactsGridItems';
+import { WorkspaceBreadcrumb } from '@/components/dashboard/WorkspaceBreadcrumb';
 import type { DashboardOutletContext } from './DashboardLayout';
 
 interface ArtifactsSectionProps {
@@ -68,7 +69,8 @@ export default function DashboardArtifacts() {
 
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col bg-background">
-      <div className="shrink-0 border-b border-border/60 px-3 py-4 sm:px-4 lg:px-5">
+      <div className="shrink-0 space-y-3 border-b border-border/60 px-3 py-4 sm:px-4 lg:px-5">
+        <WorkspaceBreadcrumb current="Artefacts" />
         <div className="flex items-start justify-between gap-2">
           <div>
             <h1 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">

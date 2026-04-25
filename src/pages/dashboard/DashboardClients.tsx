@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Users, AlertTriangle, ClipboardCheck, CheckCircle2, TrendingUp } from 'lucide-react';
 import { UnifiedClientTable } from '@/components/dashboard/sub-components/UnifiedClientTable';
+import { WorkspaceBreadcrumb } from '@/components/dashboard/WorkspaceBreadcrumb';
 import type { DashboardOutletContext } from './DashboardLayout';
 
 export default function DashboardClients() {
@@ -21,6 +22,7 @@ export default function DashboardClients() {
 
   return (
     <div className="flex flex-col gap-6 py-6 sm:py-8 lg:py-10 px-4 sm:px-6 lg:px-8">
+      <WorkspaceBreadcrumb current="Clients" />
       {/* Metrics dashboard */}
       <div className="flex flex-wrap gap-3">
         <div className="flex items-center gap-3 rounded-xl bg-muted px-5 py-4 min-w-[120px]">

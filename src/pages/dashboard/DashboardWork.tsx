@@ -6,7 +6,6 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import {
   ArrowRight,
   Calendar as CalendarIcon,
-  ChevronRight,
   CircleCheck,
   Plus,
   Share2,
@@ -14,6 +13,7 @@ import {
   TrendingDown,
   TrendingUp,
 } from 'lucide-react';
+import { WorkspaceBreadcrumb } from '@/components/dashboard/WorkspaceBreadcrumb';
 import { useAuth } from '@/hooks/useAuth';
 import { staffPreferredFirstName } from '@/lib/utils/staffDisplayName';
 import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
@@ -159,11 +159,7 @@ export default function DashboardWork() {
   return (
     <div className="mx-auto flex w-full min-h-0 flex-1 flex-col gap-8 px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
       {/* ─── Breadcrumb ───────────────────────────────────────── */}
-      <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <span>Workspace</span>
-        <ChevronRight className="h-3.5 w-3.5" />
-        <span className="font-semibold text-foreground">Today</span>
-      </nav>
+      <WorkspaceBreadcrumb current="Today" />
 
       {/* ─── Page head (greeting + actions) ───────────────────── */}
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">

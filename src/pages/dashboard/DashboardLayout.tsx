@@ -473,14 +473,7 @@ export default function DashboardLayout() {
                 </div>
               )}
 
-              {isWorkspaceShell && (
-                <div className="flex justify-center py-2 sm:py-3 shrink-0">
-                  <CoachWorkspacePills
-                    variant="toolbar"
-                    scheduleCount={overdueCountVal}
-                  />
-                </div>
-              )}
+              {/* Top-center workspace pills removed — nav now lives in the sidebar (kit) */}
 
               {!isWorkspaceShell && (
                 <DashboardHeader
