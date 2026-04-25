@@ -173,7 +173,7 @@ export function NewClientModal({ open, onOpenChange, organizationId }: NewClient
                   className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
                   aria-label="Copy link"
                 >
-                  {copied ? <Check className="h-4 w-4 text-score-green" /> : <Copy className="h-4 w-4" />}
+                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 </button>
               </div>
               <Button
