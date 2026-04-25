@@ -4,6 +4,7 @@ import { CalendarView } from '@/components/dashboard/sub-components/CalendarView
 import { WorkClientList } from '@/components/dashboard/sub-components/WorkClientList';
 import { ScheduleDialog } from '@/components/dashboard/sub-components/ScheduleDialog';
 import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import {
   ArrowRight,
   Calendar as CalendarIcon,
@@ -152,8 +153,11 @@ export default function DashboardWork() {
     return items;
   }, [remoteReadyClients, scoreAlerts, unsharableClients, ctx, navigate]);
 
-  // ─── Schedule dialog state (existing flow preserved) ─────────────────
+  // ─── Schedule dialog state (existing per-client flow preserved) ──────
   const [scheduleTarget, setScheduleTarget] = useState<ReassessmentItem | null>(null);
+
+  // ─── Calendar sheet (Schedule button opens slide-in) ─────────────────
+  const [calendarSheetOpen, setCalendarSheetOpen] = useState(false);
 
   if (!ctx.reassessmentQueue) return null;
 
@@ -181,16 +185,13 @@ export default function DashboardWork() {
         <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
-            className="h-10 gap-2 rounded-full"
-            onClick={() => {
-              const el = document.getElementById('today-calendar');
-              el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }}
+            className="h-9 gap-2 rounded-full px-4 text-[13px] font-semibold"
+            onClick={() => setCalendarSheetOpen(true)}
           >
             <CalendarIcon className="h-4 w-4" />
             Schedule
           </Button>
-          <Button onClick={ctx.onNewClient} className="h-10 gap-2 rounded-full">
+          <Button onClick={ctx.onNewClient} className="h-9 gap-2 rounded-full px-4 text-[13px] font-bold">
             <Plus className="h-4 w-4" />
             New assessment
           </Button>
@@ -271,21 +272,25 @@ export default function DashboardWork() {
         </aside>
       </div>
 
-      {/* ─── Calendar (full-width below grid) ─────────────────── */}
-      <section id="today-calendar" className="space-y-3 scroll-mt-4">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Calendar</h2>
-        <div className="overflow-hidden rounded-[28px] border border-border bg-card p-3 shadow-sm">
-          <CalendarView
-            reassessmentQueue={ctx.reassessmentQueue}
-            onNewAssessmentForClient={ctx.handleNewAssessmentForClient}
-            organizationId={ctx.profile?.organizationId}
-            onScheduleChanged={ctx.refreshSchedules}
-            density="compact"
-          />
-        </div>
-      </section>
+      {/* ─── Calendar sheet (Schedule button opens this) ──────── */}
+      <Sheet open={calendarSheetOpen} onOpenChange={setCalendarSheetOpen}>
+        <SheetContent side="right" className="w-full overflow-y-auto p-0 sm:max-w-2xl">
+          <SheetHeader className="px-6 pb-3 pt-6">
+            <SheetTitle className="text-xl font-bold tracking-tight">Schedule</SheetTitle>
+          </SheetHeader>
+          <div className="px-3 pb-6">
+            <CalendarView
+              reassessmentQueue={ctx.reassessmentQueue}
+              onNewAssessmentForClient={ctx.handleNewAssessmentForClient}
+              organizationId={ctx.profile?.organizationId}
+              onScheduleChanged={ctx.refreshSchedules}
+              density="compact"
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
 
-      {/* ─── Schedule dialog (existing flow) ──────────────────── */}
+      {/* ─── Per-client schedule dialog (existing flow) ───────── */}
       {scheduleTarget && ctx.profile?.organizationId && (
         <ScheduleDialog
           client={scheduleTarget}
