@@ -67,6 +67,7 @@ export type DashboardOutletContext = ReturnType<typeof useDashboardData> & {
   achievementShares: CoachAchievementShareRow[];
   shareablesLoading: boolean;
   shareablesError: string | null;
+  onNewClient: () => void;
 };
 
 function trialEndedAt(trialEndsAt: unknown): boolean {
@@ -542,6 +543,7 @@ export default function DashboardLayout() {
                           achievementShares: achievementRows,
                           shareablesLoading,
                           shareablesError,
+                          onNewClient: () => setNewClientModalOpen(true),
                         } satisfies DashboardOutletContext
                       }
                     />
