@@ -215,7 +215,7 @@ export function NewClientModal({ open, onOpenChange, organizationId }: NewClient
                     type="email"
                     inputMode="email"
                     autoComplete="email"
-                    placeholder={`${trimmedName.toLowerCase().replace(/\s+/g, '.')}@example.com`}
+                    placeholder="client@example.com"
                     value={clientEmail}
                     onChange={(e) => setClientEmail(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && isValidEmail && handleEmail()}
