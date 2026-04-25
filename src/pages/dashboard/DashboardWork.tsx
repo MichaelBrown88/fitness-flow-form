@@ -1,8 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import { CalendarView } from '@/components/dashboard/sub-components/CalendarView';
-import { WorkClientList } from '@/components/dashboard/sub-components/WorkClientList';
-import { ScheduleDialog } from '@/components/dashboard/sub-components/ScheduleDialog';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import {
@@ -153,9 +151,6 @@ export default function DashboardWork() {
     return items;
   }, [remoteReadyClients, scoreAlerts, unsharableClients, ctx, navigate]);
 
-  // ─── Schedule dialog state (existing per-client flow preserved) ──────
-  const [scheduleTarget, setScheduleTarget] = useState<ReassessmentItem | null>(null);
-
   // ─── Calendar sheet (Schedule button opens slide-in) ─────────────────
   const [calendarSheetOpen, setCalendarSheetOpen] = useState(false);
 
@@ -234,10 +229,10 @@ export default function DashboardWork() {
               attentionCount > 0 ? { label: 'See all clients', onClick: () => navigate('/dashboard/clients') } : undefined
             }
           >
-            <WorkClientList
+            <ClientAttentionList
               queue={ctx.reassessmentQueue.queue}
               search={ctx.search}
-              onScheduleClient={setScheduleTarget}
+              onOpenClient={(name) => navigate(`/client/${encodeURIComponent(name)}`)}
             />
           </Panel>
         </section>
@@ -290,18 +285,6 @@ export default function DashboardWork() {
         </SheetContent>
       </Sheet>
 
-      {/* ─── Per-client schedule dialog (existing flow) ───────── */}
-      {scheduleTarget && ctx.profile?.organizationId && (
-        <ScheduleDialog
-          client={scheduleTarget}
-          organizationId={ctx.profile.organizationId}
-          onScheduled={() => {
-            setScheduleTarget(null);
-            ctx.refreshSchedules?.();
-          }}
-          onClose={() => setScheduleTarget(null)}
-        />
-      )}
     </div>
   );
 }
@@ -374,6 +357,128 @@ function Panel({ title, label, link, children }: PanelProps) {
       </header>
       <div className="px-2 pb-2 pt-2">{children}</div>
     </div>
+  );
+}
+
+// ─── Client attention list (kit row recipe) ──────────────────────────
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 0 || !parts[0]) return '—';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function axisTone(score: number): 'green' | 'amber' | 'red' {
+  if (score >= 75) return 'green';
+  if (score >= 50) return 'amber';
+  return 'red';
+}
+
+const AXIS_PILL_TONE: Record<'green' | 'amber' | 'red', string> = {
+  green: 'bg-score-green-muted text-score-green-bold',
+  amber: 'bg-score-amber-muted text-score-amber-bold',
+  red: 'bg-score-red-muted text-score-red-bold',
+};
+
+const STATUS_PILL: Record<
+  'overdue' | 'due-soon' | 'up-to-date',
+  { label: string; dot: string }
+> = {
+  overdue: { label: 'Overdue', dot: 'bg-score-red' },
+  'due-soon': { label: 'Needs attention', dot: 'bg-score-amber' },
+  'up-to-date': { label: 'On track', dot: 'bg-score-green' },
+};
+
+interface ClientAttentionListProps {
+  queue: ReassessmentItem[];
+  search?: string;
+  onOpenClient: (name: string) => void;
+}
+
+function ClientAttentionList({ queue, search, onOpenClient }: ClientAttentionListProps) {
+  const filtered = queue
+    .filter((item) => item.status === 'overdue' || item.status === 'due-soon')
+    .filter((item) => {
+      const s = search?.trim().toLowerCase();
+      return !s || item.clientName.toLowerCase().includes(s);
+    })
+    .slice(0, 6);
+
+  if (filtered.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-2 px-4 py-12 text-center">
+        <CircleCheck className="h-7 w-7 text-score-green" />
+        <p className="text-sm font-semibold text-foreground">All clients are on track</p>
+        <p className="text-xs text-muted-foreground">Nothing due right now.</p>
+      </div>
+    );
+  }
+
+  return (
+    <ul className="px-4">
+      {filtered.map((item, idx) => (
+        <ClientAttentionRow
+          key={item.id}
+          item={item}
+          isLast={idx === filtered.length - 1}
+          onOpen={() => onOpenClient(item.clientName)}
+        />
+      ))}
+    </ul>
+  );
+}
+
+interface ClientAttentionRowProps {
+  item: ReassessmentItem;
+  isLast: boolean;
+  onOpen: () => void;
+}
+
+function ClientAttentionRow({ item, isLast, onOpen }: ClientAttentionRowProps) {
+  const tone = axisTone(item.overallScore);
+  const status = STATUS_PILL[item.status as 'overdue' | 'due-soon' | 'up-to-date'] ?? STATUS_PILL['up-to-date'];
+  const displayName = formatClientDisplayName(item.clientName);
+  const sub = item.statusReason || `Last assessed ${item.daysSinceAssessment} day${item.daysSinceAssessment === 1 ? '' : 's'} ago`;
+
+  return (
+    <li
+      className={cn(
+        'grid items-center gap-3.5 py-2.5',
+        'grid-cols-[36px_1fr_auto_auto_auto]',
+        !isLast && 'border-b border-[hsl(var(--background))]',
+      )}
+    >
+      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-[12px] font-semibold text-muted-foreground">
+        {initials(item.clientName)}
+      </div>
+      <div className="min-w-0">
+        <div className="truncate text-[14px] font-semibold tracking-[-0.005em] text-foreground">
+          {displayName}
+        </div>
+        <div className="mt-0.5 truncate text-[12px] text-muted-foreground">{sub}</div>
+      </div>
+      {item.overallScore > 0 ? (
+        <span className={cn('inline-flex items-center rounded-full px-2.5 py-1 text-[12px] font-bold', AXIS_PILL_TONE[tone])}>
+          AXIS {item.overallScore}
+        </span>
+      ) : (
+        <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          No data
+        </span>
+      )}
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold text-foreground-secondary">
+        <span className={cn('h-1.5 w-1.5 rounded-full', status.dot)} aria-hidden />
+        {status.label}
+      </span>
+      <Button
+        variant="outline"
+        onClick={onOpen}
+        className="h-8 rounded-full px-3 text-[12px] font-semibold"
+      >
+        Open
+      </Button>
+    </li>
   );
 }
 
