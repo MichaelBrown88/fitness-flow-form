@@ -113,6 +113,15 @@ const RequireAuth = ({ children }: { children: JSX.Element }) => {
   return children;
 };
 
+/**
+ * Redirect /settings → /dashboard/settings, preserving query + hash so
+ * deep links like /settings?tab=billing still land on the right tab.
+ */
+function SettingsRedirect() {
+  const { search, hash } = useLocation();
+  return <Navigate to={`/dashboard/settings${search}${hash}`} replace />;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeModeProvider>
@@ -221,6 +230,7 @@ const App = () => (
                       <Route path="schedule" element={<DashboardSchedule />} />
                       <Route path="calendar" element={<DashboardCalendar />} />
                       <Route path="team" element={<DashboardTeam />} />
+                      <Route path="settings" element={<Settings />} />
                     </Route>
                     <Route
                       path="/assessment"
@@ -262,14 +272,8 @@ const App = () => (
                       <Route path="history" element={<ClientHistory />} />
                       <Route path="settings" element={<ClientSettings />} />
                     </Route>
-                    <Route
-                      path="/settings"
-                      element={
-                        <RequireAuth>
-                          <Settings />
-                        </RequireAuth>
-                      }
-                    />
+                    {/* Legacy /settings → /dashboard/settings (preserves query string + hash). */}
+                    <Route path="/settings" element={<SettingsRedirect />} />
                     <Route
                       path={ROUTES.SETTINGS_BILLING}
                       element={

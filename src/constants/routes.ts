@@ -16,7 +16,8 @@ export const ROUTES = {
   DASHBOARD_ARTIFACTS: '/dashboard/artifacts',
   ASSESSMENT: '/assessment',
   LOGIN: '/login',
-  SETTINGS: '/settings',
+  /** Coach studio settings — nested inside dashboard so the workspace sidebar is shown. */
+  SETTINGS: '/dashboard/settings',
   /** Alias for billing upgrade CTAs (redirects in App router). */
   SETTINGS_BILLING: '/settings/billing',
   ACHIEVEMENTS: '/achievements',

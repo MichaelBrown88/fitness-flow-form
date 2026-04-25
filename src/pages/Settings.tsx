@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { updateProfile } from 'firebase/auth';
 import { useNavigate, Link, useSearchParams, useLocation } from 'react-router-dom';
-import AppShell from '@/components/layout/AppShell';
 import { Seo } from '@/components/seo/Seo';
+import { WorkspaceBreadcrumb } from '@/components/dashboard/WorkspaceBreadcrumb';
 import { useSettings } from '@/hooks/useSettings';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { updateOrgSettings, uploadOrgLogo, uploadOrgLogoDark, type OrgSettings, DEFAULT_EQUIPMENT_CONFIG } from '@/services/organizations';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Upload, Palette, ShieldCheck, Box, Settings as SettingsIcon, User, Building2, Calendar, ArrowLeft, Bell, CreditCard } from 'lucide-react';
+import { Loader2, Upload, Palette, ShieldCheck, Box, Settings as SettingsIcon, User, Building2, Calendar, Bell, CreditCard } from 'lucide-react';
 import { getAllGradients, getGradient, type GradientId } from '@/lib/design/gradients';
 import { BrandingPreview } from '@/components/settings/BrandingPreview';
 import { doc, setDoc } from 'firebase/firestore';
@@ -268,21 +268,10 @@ const Settings = () => {
         description={settingsSeo.description}
         noindex={settingsSeo.noindex}
       />
-    <AppShell
-      title="Settings"
-      actions={
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => guardedNavigate(ROUTES.DASHBOARD)}
-          className="h-9 w-9 sm:h-8 sm:w-8 p-0"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-      }
-    >
-      <div className="max-w-4xl pb-20">
+      <div className="flex flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+        <WorkspaceBreadcrumb current="Studio settings" />
+        <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Studio settings</h1>
+        <div className="max-w-4xl pb-20">
         {/* Tab Navigation */}
         <Tabs
           value={mainTab}
@@ -1051,7 +1040,7 @@ const Settings = () => {
           </TabsContent>
         </Tabs>
       </div>
-    </AppShell>
+      </div>
     </>
   );
 };

@@ -341,7 +341,8 @@ export default function DashboardLayout() {
     path.startsWith(ROUTES.DASHBOARD_ASSISTANT) ||
     path.startsWith(ROUTES.DASHBOARD_CLIENTS) ||
     path.startsWith(ROUTES.DASHBOARD_WORK) ||
-    path.startsWith(ROUTES.DASHBOARD_TEAM);
+    path.startsWith(ROUTES.DASHBOARD_TEAM) ||
+    path.startsWith(ROUTES.SETTINGS);
   // Artifacts tab manages its own scroll; other workspace tabs use the outer container.
   // The assistant is now a floating panel, not a tab.
   const isAssistantTab =
