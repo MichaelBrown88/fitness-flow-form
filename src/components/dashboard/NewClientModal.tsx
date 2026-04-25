@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -105,6 +106,9 @@ export function NewClientModal({ open, onOpenChange, organizationId }: NewClient
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-base font-bold">New Client</DialogTitle>
+          <DialogDescription className="text-sm text-muted-foreground">
+            Send a remote intake link, or start an assessment in studio now.
+          </DialogDescription>
         </DialogHeader>
 
         {!hasOrgContext ? (
