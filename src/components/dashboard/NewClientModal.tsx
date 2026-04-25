@@ -144,7 +144,7 @@ export function NewClientModal({ open, onOpenChange, organizationId }: NewClient
                 ) : (
                   <Link2 className="h-4 w-4" />
                 )}
-                Send link
+                Generate link
               </Button>
               <Button
                 onClick={handleStartNow}
