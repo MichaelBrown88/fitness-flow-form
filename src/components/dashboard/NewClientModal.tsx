@@ -192,6 +192,7 @@ export function NewClientModal({ open, onOpenChange, organizationId }: NewClient
                     placeholder={`${trimmedName.toLowerCase().replace(/\s+/g, '.')}@example.com`}
                     value={clientEmail}
                     onChange={(e) => setClientEmail(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && isValidEmail && handleEmail()}
                     className="h-11 min-w-0 flex-1 rounded-xl"
                   />
                   <Button
