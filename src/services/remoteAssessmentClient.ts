@@ -46,19 +46,36 @@ export async function submitRemoteAssessmentFields(
   await fn({ token, fields });
 }
 
+/**
+ * Optional intake metadata captured at client-creation time. Persisted on
+ * the client doc by the Cloud Function so coaches don't have to re-enter
+ * it later when reviewing the assessment.
+ */
+export interface RemoteAssessmentClientIntake {
+  email?: string;
+  coachingFocus?: string;
+  startingNotes?: string;
+}
+
 export async function createRemoteAssessmentTokenForClient(
   organizationId: string,
   clientName: string,
-  options?: { remoteScope?: RemoteAssessmentScope },
+  options?: { remoteScope?: RemoteAssessmentScope; intake?: RemoteAssessmentClientIntake },
 ): Promise<{ token: string; expiresAt: number }> {
   const fn = httpsCallable<
-    { organizationId: string; clientName: string; remoteScope?: RemoteAssessmentScope },
+    {
+      organizationId: string;
+      clientName: string;
+      remoteScope?: RemoteAssessmentScope;
+      intake?: RemoteAssessmentClientIntake;
+    },
     { token: string; expiresAt: number }
   >(fns(), 'createRemoteAssessmentToken');
   const res = await fn({
     organizationId,
     clientName,
     ...(options?.remoteScope ? { remoteScope: options.remoteScope } : {}),
+    ...(options?.intake && Object.keys(options.intake).length > 0 ? { intake: options.intake } : {}),
   });
   return res.data;
 }

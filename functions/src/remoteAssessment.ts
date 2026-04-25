@@ -69,11 +69,52 @@ function parseScope(raw: unknown): RemoteAssessmentScope {
   return 'lifestyle';
 }
 
+const COACHING_FOCUS_VALUES = new Set([
+  'general',
+  'strength',
+  'hypertrophy',
+  'endurance',
+  'rehab',
+  'sport',
+]);
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+interface ParsedIntake {
+  email?: string;
+  coachingFocus?: string;
+  startingNotes?: string;
+}
+
+/**
+ * Validate optional intake fields captured at NewClientModal creation time.
+ * Anything malformed is silently dropped — the caller's primary action
+ * (token creation) shouldn't fail because metadata was wonky.
+ */
+function parseIntake(raw: unknown): ParsedIntake {
+  if (!raw || typeof raw !== 'object') return {};
+  const r = raw as Record<string, unknown>;
+  const out: ParsedIntake = {};
+  if (typeof r.email === 'string') {
+    const email = r.email.trim();
+    if (email.length > 0 && email.length <= 254 && EMAIL_RE.test(email)) out.email = email;
+  }
+  if (typeof r.coachingFocus === 'string' && COACHING_FOCUS_VALUES.has(r.coachingFocus)) {
+    out.coachingFocus = r.coachingFocus;
+  }
+  if (typeof r.startingNotes === 'string') {
+    const notes = r.startingNotes.trim().slice(0, 2000);
+    if (notes.length > 0) out.startingNotes = notes;
+  }
+  return out;
+}
+
 export async function handleCreateRemoteAssessmentToken(
   request: CallableRequest<{
     organizationId?: string;
     clientName?: string;
     remoteScope?: RemoteAssessmentScope;
+    intake?: ParsedIntake;
   }>,
 ): Promise<{ token: string; expiresAt: number }> {
   if (!REMOTE_ASSESSMENT_MVP) {
@@ -87,6 +128,7 @@ export async function handleCreateRemoteAssessmentToken(
     typeof request.data?.organizationId === 'string' ? request.data.organizationId.trim() : '';
   const clientName = typeof request.data?.clientName === 'string' ? request.data.clientName.trim() : '';
   const remoteScope = parseScope(request.data?.remoteScope);
+  const intake = parseIntake(request.data?.intake);
 
   if (!organizationId || !clientName) {
     throw new HttpsError('invalid-argument', 'organizationId and clientName are required.');
@@ -117,11 +159,24 @@ export async function handleCreateRemoteAssessmentToken(
       status: 'active',
       remoteIntakePending: true,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      ...(intake.email ? { email: intake.email } : {}),
+      ...(intake.coachingFocus ? { coachingFocus: intake.coachingFocus } : {}),
+      ...(intake.startingNotes ? { startingNotes: intake.startingNotes } : {}),
     });
   } else {
     const coachUid = (clientSnap.data() as { coachUid?: string } | undefined)?.coachUid;
     if (coachUid && coachUid !== uid) {
       throw new HttpsError('permission-denied', 'Not this client\'s coach.');
+    }
+    // Coach is regenerating an intake link for an existing client and may
+    // have updated the intake metadata. Patch the doc with whatever was
+    // supplied — never blank existing fields.
+    if (intake.email || intake.coachingFocus || intake.startingNotes) {
+      await clientRef.update({
+        ...(intake.email ? { email: intake.email } : {}),
+        ...(intake.coachingFocus ? { coachingFocus: intake.coachingFocus } : {}),
+        ...(intake.startingNotes ? { startingNotes: intake.startingNotes } : {}),
+      });
     }
   }
 
