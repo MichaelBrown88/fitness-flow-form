@@ -172,6 +172,16 @@ export function useDashboardActions(
           prefill.email = latest.formData.email;
           prefill.phone = latest.formData.phone;
         }
+      } else if (readOrgId) {
+        // First-time assessment — check for a completed remote intake and seed the
+        // form with whatever the client filled in at home so the coach can pick up
+        // exactly where they left off.
+        const { getClientProfile } = await import('@/services/clientProfiles');
+        const clientProfile = await getClientProfile(user.uid, clientName, readOrgId);
+        if (clientProfile?.remoteIntakeAwaitingStudio && clientProfile.formData) {
+          Object.assign(prefill, clientProfile.formData);
+          prefill.fullName = (clientProfile.formData.fullName as string | undefined) || clientName;
+        }
       }
     } catch (e) {
       logger.error('Failed to pre-fill data:', e);

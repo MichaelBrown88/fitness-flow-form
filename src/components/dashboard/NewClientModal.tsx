@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Copy, Check, ArrowRight, Link2 } from 'lucide-react';
+import { Loader2, Copy, Check, ArrowRight, Link2, Mail } from 'lucide-react';
 import { createRemoteAssessmentTokenForClient } from '@/services/remoteAssessmentClient';
 import { startBaselineAssessmentSession } from '@/lib/assessment/assessmentSessionStorage';
 import { ROUTES } from '@/constants/routes';
@@ -24,16 +24,20 @@ export function NewClientModal({ open, onOpenChange, organizationId }: NewClient
   const navigate = useNavigate();
   const { toast } = useToast();
   const [clientName, setClientName] = useState('');
+  const [clientEmail, setClientEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [remoteLink, setRemoteLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   const trimmedName = clientName.trim();
+  const trimmedEmail = clientEmail.trim();
   const isValid = trimmedName.length >= 2;
+  const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail);
 
   function handleClose(open: boolean) {
     if (!open) {
       setClientName('');
+      setClientEmail('');
       setRemoteLink(null);
       setCopied(false);
     }
@@ -68,6 +72,20 @@ export function NewClientModal({ open, onOpenChange, organizationId }: NewClient
     } catch {
       toast({ title: 'Copy failed', description: 'Copy the link manually.', variant: 'destructive' });
     }
+  }
+
+  function handleEmail() {
+    if (!remoteLink || !isValidEmail) return;
+    const subject = `Your assessment intake — let's get started`;
+    const body = `Hi ${trimmedName},\n\nHere's your private intake link. It takes about 5–10 minutes and we'll use your answers to tailor the physical assessment when you come in to the studio.\n\n${remoteLink}\n\nSee you soon!`;
+    const href = `mailto:${encodeURIComponent(trimmedEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = href;
+  }
+
+  function truncateLink(url: string): string {
+    const stripped = url.replace(/^https?:\/\//, '');
+    if (stripped.length <= 52) return stripped;
+    return `${stripped.slice(0, 28)}…${stripped.slice(-20)}`;
   }
 
   function handleStartNow() {
@@ -125,9 +143,12 @@ export function NewClientModal({ open, onOpenChange, organizationId }: NewClient
               <p className="text-sm text-muted-foreground">
                 Share this link with <span className="font-semibold text-foreground">{trimmedName}</span> to complete their intake remotely.
               </p>
-              <div className="flex items-center gap-2 rounded-xl border border-border bg-muted/50 p-3">
-                <span className="flex-1 text-xs text-muted-foreground truncate font-mono">
-                  {remoteLink.replace(/^https?:\/\//, '')}
+              <div className="flex min-w-0 items-center gap-2 rounded-xl border border-border bg-muted/50 p-3">
+                <span
+                  className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground"
+                  title={remoteLink}
+                >
+                  {truncateLink(remoteLink)}
                 </span>
                 <button
                   type="button"
@@ -154,6 +175,37 @@ export function NewClientModal({ open, onOpenChange, organizationId }: NewClient
                   </>
                 )}
               </Button>
+
+              <div className="space-y-2 pt-1">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Or send by email
+                </p>
+                <div className="flex min-w-0 gap-2">
+                  <Input
+                    type="email"
+                    inputMode="email"
+                    autoComplete="email"
+                    placeholder={`${trimmedName.toLowerCase().replace(/\s+/g, '.')}@example.com`}
+                    value={clientEmail}
+                    onChange={(e) => setClientEmail(e.target.value)}
+                    className="h-11 min-w-0 flex-1 rounded-xl"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleEmail}
+                    disabled={!isValidEmail}
+                    className="h-11 shrink-0 gap-2 rounded-xl px-4"
+                  >
+                    <Mail className="h-4 w-4" />
+                    Send
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Opens your mail app with the link pre-filled — review and hit send.
+                </p>
+              </div>
+
               <Button
                 variant="outline"
                 onClick={() => { setRemoteLink(null); setCopied(false); }}
