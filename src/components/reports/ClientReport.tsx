@@ -9,6 +9,7 @@ import type { CoachPlan } from '@/lib/recommendations';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ReportHeader } from './client/sub-components/ReportHeader';
 import { ClientInfoBar } from './client/sub-components/ClientInfoBar';
+import { AxisSummaryCard } from './client/sub-components/AxisSummaryCard';
 import { useClientReportData } from './client/useClientReportData';
 import { useScrollRevealSections } from '@/hooks/useScrollRevealSections';
 import { SECTION_IDS, DEFAULT_OPEN } from './client/clientReportSections';
@@ -140,6 +141,19 @@ export default function ClientReport({
             />
             <ClientInfoBar formData={formData} />
           </>
+        )}
+
+        {/* Kit hero: AXIS Score™ summary card sits above the deeper sections.
+            Coach view gets action buttons; client view (standalone) is read-only. */}
+        {activeView === 'client' && safeScores.categories?.length > 0 && (
+          <AxisSummaryCard
+            clientName={clientName}
+            reportDate={reportDate}
+            scores={safeScores}
+            previousOverallScore={previousScores?.overall ?? null}
+            narrative={archetype?.description}
+            showActions={!standalone}
+          />
         )}
 
         {activeView === 'coach' ? (
