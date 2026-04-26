@@ -11,6 +11,7 @@ import { getFirebaseApp } from '@/services/firebase';
 import {
   getAI,
   GoogleAIBackend,
+  VertexAIBackend,
   getLiveGenerativeModel,
   ResponseModality,
   FunctionCallingMode,
@@ -562,17 +563,30 @@ export function useGeminiFramingGuide({
       setConnectionError(null);
 
       try {
-        const ai = getAI(getFirebaseApp(), { backend: new GoogleAIBackend() });
+        // Backend selection: see CONFIG.AI.GEMINI.LIVE_BACKEND for rationale.
+        // Default 'vertex' matches the backend used elsewhere in the app
+        // (postureAnalysis, BodyCompCompanionModal, ocrEngine, narratives).
+        // Using GoogleAIBackend on a Vertex-only project causes the Live
+        // WebSocket handshake to fail with "did not respond with a setupComplete
+        // message" because the Gemini Developer API key is not provisioned.
+        const liveBackend = CONFIG.AI.GEMINI.LIVE_BACKEND === 'google'
+          ? new GoogleAIBackend()
+          : new VertexAIBackend(CONFIG.AI.GEMINI.LIVE_LOCATION);
+        const ai = getAI(getFirebaseApp(), { backend: liveBackend });
         const liveModel = getLiveGenerativeModel(ai, {
           model: CONFIG.AI.GEMINI.LIVE_MODEL_NAME,
           systemInstruction: GEMINI_FRAMING_SYSTEM_PROMPT,
-          tools: [CAPTURE_TOOL],
-          toolConfig: {
-            functionCallingConfig: {
-              mode: FunctionCallingMode.AUTO,
-              allowedFunctionNames: [CAPTURE_FN_NAME],
-            },
-          },
+          ...(CONFIG.AI.GEMINI.LIVE_ENABLE_TOOLS
+            ? {
+                tools: [CAPTURE_TOOL],
+                toolConfig: {
+                  functionCallingConfig: {
+                    mode: FunctionCallingMode.AUTO,
+                    allowedFunctionNames: [CAPTURE_FN_NAME],
+                  },
+                },
+              }
+            : {}),
           generationConfig: {
             responseModalities: [ResponseModality.AUDIO],
             speechConfig: {
@@ -600,8 +614,13 @@ export function useGeminiFramingGuide({
         setIsSessionOpen(true);
         setConnectionStatus('open');
         logger.warn('[COMPANION_PERM] Gemini Live connected (session open)', {
+          backend: CONFIG.AI.GEMINI.LIVE_BACKEND,
+          location: CONFIG.AI.GEMINI.LIVE_BACKEND === 'vertex'
+            ? CONFIG.AI.GEMINI.LIVE_LOCATION
+            : 'n/a',
           model: CONFIG.AI.GEMINI.LIVE_MODEL_NAME,
           voice: CONFIG.AI.GEMINI.LIVE_VOICE_NAME,
+          toolsEnabled: CONFIG.AI.GEMINI.LIVE_ENABLE_TOOLS,
         });
         void receiveLoop(session);
         startJpegInterval(session);
@@ -619,13 +638,19 @@ export function useGeminiFramingGuide({
       } catch (e) {
         logger.error('[GEMINI_LIVE] Connection failed', 'GEMINI_LIVE', e);
         logger.warn('[COMPANION_PERM] Gemini Live connect failed (see GEMINI_LIVE error)', {
+          backend: CONFIG.AI.GEMINI.LIVE_BACKEND,
+          location: CONFIG.AI.GEMINI.LIVE_BACKEND === 'vertex'
+            ? CONFIG.AI.GEMINI.LIVE_LOCATION
+            : 'n/a',
+          model: CONFIG.AI.GEMINI.LIVE_MODEL_NAME,
+          toolsEnabled: CONFIG.AI.GEMINI.LIVE_ENABLE_TOOLS,
           message: e instanceof Error ? e.message : String(e),
         });
         setIsSessionOpen(false);
         setConnectionStatus('error');
         setConnectionError(e instanceof Error ? e.message : 'Could not connect to voice guide');
         onConnectionDiagnosticsRef.current?.(
-          `Gemini Live connection failed: ${e instanceof Error ? e.message : String(e)}`,
+          `Gemini Live connection failed [${CONFIG.AI.GEMINI.LIVE_BACKEND}/${CONFIG.AI.GEMINI.LIVE_MODEL_NAME}]: ${e instanceof Error ? e.message : String(e)}`,
           'error'
         );
       }

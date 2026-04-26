@@ -65,16 +65,69 @@ export const CONFIG = {
         const v = import.meta.env.VITE_GEMINI_POSTURE_FEEDBACK_MODEL;
         return typeof v === 'string' && v.trim() !== '' ? v.trim() : 'gemini-3-flash-preview';
       })(),
-      // Use VITE_GEMINI_LIVE_MODEL to override framing guide (Gemini Live).
+      /**
+       * Firebase AI Logic backend for Gemini Live.
+       *
+       * Two providers exist (Firebase AI Logic FAQ → required APIs):
+       *   - 'vertex' → VertexAIBackend, requires `aiplatform.googleapis.com`
+       *               + `firebasevertexai.googleapis.com`. Matches the backend
+       *               every other call in this app already uses (postureAnalysis,
+       *               BodyCompCompanionModal, ocrEngine, whatChangedNarrative,
+       *               coachAssistantWording).
+       *   - 'google' → GoogleAIBackend, requires `generativelanguage.googleapis.com`
+       *                + `firebasevertexai.googleapis.com` AND a Firebase-generated
+       *                Gemini Developer API key (created by the AI Logic guided setup
+       *                with the "Gemini Developer API" provider). Without that,
+       *                LiveModel.connect() handshake fails with
+       *                "The server did not respond with a setupComplete message".
+       *
+       * Default 'vertex' so Live works on the same project setup as the rest of the
+       * app. Override with `VITE_GEMINI_LIVE_BACKEND=google` only if your Firebase
+       * project has the Gemini Developer API guided setup completed.
+       */
+      LIVE_BACKEND: ((): 'vertex' | 'google' => {
+        const v = (import.meta.env.VITE_GEMINI_LIVE_BACKEND as string | undefined)?.trim().toLowerCase();
+        return v === 'google' ? 'google' : 'vertex';
+      })(),
+      /**
+       * Vertex AI Live API does NOT support the `global` location
+       * (https://firebase.google.com/docs/ai-logic/locations?api=vertex). Pick a
+       * regional location that supports the chosen Live model. `us-central1` is
+       * the conservative default. Ignored when LIVE_BACKEND === 'google'.
+       */
+      LIVE_LOCATION: (() => {
+        const v = import.meta.env.VITE_GEMINI_LIVE_LOCATION;
+        return typeof v === 'string' && v.trim() !== '' ? v.trim() : 'us-central1';
+      })(),
+      /**
+       * Live model name. Defaults differ per backend because the model IDs are
+       * different per provider:
+       *   - Vertex AI:           `gemini-live-2.5-flash-native-audio`        (Dec 2025)
+       *   - Gemini Developer API: `gemini-2.5-flash-native-audio-preview-12-2025`
+       * Override with `VITE_GEMINI_LIVE_MODEL` if you want a specific preview
+       * (e.g. `gemini-3.1-flash-live-preview` on Google AI when GA).
+       */
       LIVE_MODEL_NAME: (() => {
         const v = import.meta.env.VITE_GEMINI_LIVE_MODEL;
-        return typeof v === 'string' && v.trim() !== '' ? v.trim() : 'gemini-3.1-flash-live-preview';
+        if (typeof v === 'string' && v.trim() !== '') return v.trim();
+        const backend = (import.meta.env.VITE_GEMINI_LIVE_BACKEND as string | undefined)?.trim().toLowerCase();
+        return backend === 'google'
+          ? 'gemini-2.5-flash-native-audio-preview-12-2025'
+          : 'gemini-live-2.5-flash-native-audio';
       })(),
       /** Gemini Live prebuilt voice; override with VITE_GEMINI_LIVE_VOICE_NAME after auditioning Chirp voices. */
       LIVE_VOICE_NAME: (() => {
         const v = import.meta.env.VITE_GEMINI_LIVE_VOICE_NAME;
         return typeof v === 'string' && v.trim() !== '' ? v.trim() : 'Aoede';
       })(),
+      /**
+       * Function-calling toggle for the Live model. Some firebase-ai SDK versions
+       * have a known issue where `FunctionDeclaration.toInternal()` omits
+       * `parametersJsonSchema`, causing the server to reject the setup frame
+       * (firebase-android-sdk #7743). Disable with `VITE_GEMINI_LIVE_ENABLE_TOOLS=false`
+       * to fall back to transcript-trigger + safety-timeout capture if needed.
+       */
+      LIVE_ENABLE_TOOLS: import.meta.env.VITE_GEMINI_LIVE_ENABLE_TOOLS !== 'false',
       LIVE_FRAME_INTERVAL_MS: 1000,
       /**
        * Safety net: if the model neither calls capture_now nor speaks the transcription trigger,
