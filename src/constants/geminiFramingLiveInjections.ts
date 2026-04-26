@@ -19,6 +19,11 @@ export function geminiInjectionArmView(label: string, instr: string): string {
   return `[SYSTEM_EVENT: CAPTURE_VIEW_ARMED] View=${label}. Instruction for the client: ${instr}. When framing is correct, call the capture_now function.`;
 }
 
+export function geminiInjectionCaptureRejected(label: string, regions: readonly string[]): string {
+  const regionText = regions.length > 0 ? regions.join(', ') : 'full body';
+  return `[SYSTEM_EVENT: CAPTURE_REJECTED] View=${label}. The app rejected the last photo because these landmarks were not clear enough: ${regionText}. Give one calm correction, wait for the client to adjust, then call capture_now only when the full body is visible again.`;
+}
+
 /** Deterministic distance from MediaPipe (avg ankle Y − nose Y); do not override with visual guesswork. */
 export function geminiInjectionUserTooClose(): string {
   return '[SYSTEM_EVENT: USER_TOO_CLOSE] The app measured the client filling more than the target vertical frame. Say one short phrase only: take a small step back so more of the room shows above their head and below their feet, then stop.';

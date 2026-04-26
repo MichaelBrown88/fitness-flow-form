@@ -79,6 +79,7 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
   const beginViewCaptureRef = useRef<(viewIdx: number) => void>(() => {});
   const pendingCapturesRef = useRef<{ viewId: string; imageSrc: string }[]>([]);
   const postureWarmupPendingAutoStartRef = useRef(false);
+  const captureRejectRegionsRef = useRef<readonly string[]>([]);
   const countdownRetryCountRef = useRef(0);
   const MAX_COUNTDOWN_RETRIES = 2;
   const isPoseReadyRef = useRef(false);
@@ -152,6 +153,7 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
   const {
     startLiveSessionFromUserGesture,
     armShot,
+    rejectShot,
     retry: retryGeminiLive,
     nudgeLevelPhone,
     connectionStatus: geminiConnectionStatus,
@@ -189,7 +191,7 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
         startLiveSessionFromUserGesture();
       }
       const orientationDone = requestOrientationPermission();
-      await requestAudioPermission();
+      await requestAudioPermission({ speakUnlockPhrase: !geminiEnabled });
       await orientationDone;
       setFlowState('waiting_level');
     } catch (e) {
@@ -291,15 +293,18 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
         const gate = await evaluateCompanionStillCaptureLandmarks(imageSrc, viewData.id);
         if (gate.ok === false) {
           const regions = gate.failingRegions.join(', ') || 'unknown';
+          captureRejectRegionsRef.current = gate.failingRegions;
           logger.warn(
             `[COUNTDOWN] Capture rejected for ${viewData.label} — structural anchors (avg ${gate.avgVisibility.toFixed(2)}, min ${gate.minAnchorVisibility.toFixed(2)}; ${regions})`
           );
           return false;
         }
       } catch (e) {
+        captureRejectRegionsRef.current = ['Body'];
         logger.warn('[COUNTDOWN] Landmark gate failed', e);
         return false;
       }
+      captureRejectRegionsRef.current = [];
 
       try {
         playCompanionShutterClick();
@@ -335,6 +340,11 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
   useEffect(() => {
     armShotRef.current = armShot;
   }, [armShot]);
+
+  const rejectShotRef = useRef(rejectShot);
+  useEffect(() => {
+    rejectShotRef.current = rejectShot;
+  }, [rejectShot]);
 
   const runCountdownAndCapture = useCallback(
     (viewIdx: number) => {
@@ -458,7 +468,7 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
           countdownRetryCountRef.current += 1;
           turnDelayTimeoutRef.current = setTimeout(() => {
             if (isSequenceCancelledRef.current) return;
-            void armShotRef.current(i);
+            void rejectShotRef.current(i, captureRejectRegionsRef.current);
           }, 2000);
         }
         return;

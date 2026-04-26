@@ -32,7 +32,7 @@ export interface UseAudioFeedbackOptions {
 interface UseAudioFeedbackResult {
   /** Pass `bypassSuppression: true` only for the permission-unlock phrase (mobile Safari). */
   speak: (text: string, bypassSuppression?: boolean) => void;
-  requestPermission: () => Promise<void>;
+  requestPermission: (options?: { speakUnlockPhrase?: boolean }) => Promise<void>;
   hasPermission: boolean;
 }
 
@@ -121,11 +121,13 @@ export function useAudioFeedback(options?: UseAudioFeedbackOptions): UseAudioFee
     }
   };
 
-  const requestPermission = async () => {
+  const requestPermission = async (options?: { speakUnlockPhrase?: boolean }) => {
     logger.warn('[COMPANION_PERM] useAudioFeedback.requestPermission: enter');
     try {
       playCompanionShutterClick();
-      speak("Great, I can hear you. Let's get started.", true);
+      if (options?.speakUnlockPhrase !== false) {
+        speak("Great, I can hear you. Let's get started.", true);
+      }
     } catch (e) {
       logger.warn('[COMPANION_PERM] useAudioFeedback chime/speak failed', e);
     }

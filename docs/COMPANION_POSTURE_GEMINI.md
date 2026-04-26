@@ -13,7 +13,7 @@ This document describes the **posture** Companion upgrade (Gemini 3.1 Flash Live
 | Area | Change |
 |------|--------|
 | **Dependencies** | Removed classic `@mediapipe/pose` (+ camera/drawing utils). Kept `@mediapipe/tasks-vision` (WASM URL pinned in `CONFIG`). |
-| **Config** | `TASKS_WASM_BASE`, `POSE_LANDMARKER_MODEL_URL`, `LIVE_POSE_TARGET_FPS`, `LIVE_MODEL_NAME` / `VITE_GEMINI_LIVE_MODEL`, `LIVE_FRAME_INTERVAL_MS`, `minConfidence`, `POSTURE_GEMINI_NEXT_VIEW_MS`. |
+| **Config** | `TASKS_WASM_BASE`, `POSE_LANDMARKER_MODEL_URL`, `LIVE_POSE_TARGET_FPS`, `LIVE_MODEL_NAME` / `VITE_GEMINI_LIVE_MODEL`, `LIVE_VOICE_NAME` / `VITE_GEMINI_LIVE_VOICE_NAME`, `LIVE_FRAME_INTERVAL_MS`, `minConfidence`, `POSTURE_GEMINI_NEXT_VIEW_MS`. |
 | **Singleton** | `src/lib/ai/mediapipeSingleton.ts` — `PoseLandmarker`, GPU → CPU fallback, `queueDetection`, `prewarmMediaPipe`, `detectPoseFromImageSource`. |
 | **Static detection** | `src/lib/ai/postureLandmarks.ts` — queued image path + timeout. |
 | **Live preview** | `src/hooks/usePoseDetection.ts` — throttled ~7 FPS, `suppressAudioFeedback` for posture (Gemini speaks), optional `disablePosePipeline`, **no** `close()` on unmount. |
@@ -51,8 +51,9 @@ This document describes the **posture** Companion upgrade (Gemini 3.1 Flash Live
 ## Operational checklist (no code required)
 
 1. **Model name** — Confirm `gemini-3.1-flash-live-preview` (or your region’s Live model) is available on **Vertex** for the project/location. If connect fails, set **`VITE_GEMINI_LIVE_MODEL`** to the model ID Google documents for Live in your region.
-2. **CSP / hosting** — If you enforce **Content-Security-Policy**, allow **`wss:`** for the Firebase / Vertex Live WebSocket, plus **`https://cdn.jsdelivr.net`** (Tasks WASM) and **`https://storage.googleapis.com`** (`.task` model) in **`connect-src`** as needed.
-3. **iOS Safari** — Smoke test **AudioContext** after user gesture, **WebGL** vs **CPU** landmarker fallback, and **end-to-end capture latency**.
+2. **Voice name** — Default Live voice is `Aoede`. If you prefer a different Chirp prebuilt voice, set **`VITE_GEMINI_LIVE_VOICE_NAME`** and smoke test on iPhone Safari and Chrome.
+3. **CSP / hosting** — If you enforce **Content-Security-Policy**, allow **`wss:`** for the Firebase / Vertex Live WebSocket, plus **`https://cdn.jsdelivr.net`** (Tasks WASM) and **`https://storage.googleapis.com`** (`.task` model) in **`connect-src`** as needed.
+4. **iOS Safari** — Smoke test **AudioContext** after user gesture, **WebGL** vs **CPU** landmarker fallback, and **end-to-end capture latency**.
 
 ## Key files
 

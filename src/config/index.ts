@@ -67,14 +67,19 @@ export const CONFIG = {
       // Use VITE_GEMINI_LIVE_MODEL to override framing guide (Gemini Live).
       LIVE_MODEL_NAME: (() => {
         const v = import.meta.env.VITE_GEMINI_LIVE_MODEL;
-        return typeof v === 'string' && v.trim() !== '' ? v.trim() : 'gemini-2.5-flash-native-audio-preview-12-2025';
+        return typeof v === 'string' && v.trim() !== '' ? v.trim() : 'gemini-3.1-flash-live-preview';
+      })(),
+      /** Gemini Live prebuilt voice; override with VITE_GEMINI_LIVE_VOICE_NAME after auditioning Chirp voices. */
+      LIVE_VOICE_NAME: (() => {
+        const v = import.meta.env.VITE_GEMINI_LIVE_VOICE_NAME;
+        return typeof v === 'string' && v.trim() !== '' ? v.trim() : 'Aoede';
       })(),
       LIVE_FRAME_INTERVAL_MS: 1000,
       /**
        * Safety net: if the model neither calls capture_now nor speaks the transcription trigger,
        * fire capture after this many ms while a view is armed (logged). 0 = disabled.
        */
-      LIVE_CAPTURE_FALLBACK_MS: 0,
+      LIVE_CAPTURE_FALLBACK_MS: 12000,
     },
     // Firebase Cloud Functions
     FUNCTIONS: {

@@ -82,6 +82,7 @@ const Companion = () => {
   const countdownRetryCountRef = useRef(0);
   const MAX_COUNTDOWN_RETRIES = 2;
   const isPoseReadyRef = useRef(false);
+  const captureRejectRegionsRef = useRef<readonly string[]>([]);
   const positionStableSinceRef = useRef<number | null>(null);
   const positionCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   /** Shared with Gemini Live hook — primed synchronously on permission tap before any await (Safari Web Audio). */
@@ -163,6 +164,7 @@ const Companion = () => {
   const {
     startLiveSessionFromUserGesture,
     armShot,
+    rejectShot,
     retry: retryGeminiLive,
     nudgeLevelPhone,
     connectionStatus: geminiConnectionStatus,
@@ -202,7 +204,7 @@ const Companion = () => {
         startLiveSessionFromUserGesture();
       }
       const orientationDone = requestOrientationPermission();
-      await requestAudioPermission();
+      await requestAudioPermission({ speakUnlockPhrase: mode !== 'posture' || !geminiEnabled });
       await orientationDone;
       setFlowState('waiting_level');
     } catch (e) {
@@ -337,16 +339,19 @@ const Companion = () => {
           const gate = await evaluateCompanionStillCaptureLandmarks(imageSrc, viewData.id);
           if (gate.ok === false) {
             const regions = gate.failingRegions.join(', ') || 'unknown';
+            captureRejectRegionsRef.current = gate.failingRegions;
             logger.warn(
               `[COUNTDOWN] Capture rejected for ${viewData.label} — structural anchors (avg ${gate.avgVisibility.toFixed(2)}, min ${gate.minAnchorVisibility.toFixed(2)}; ${regions})`
             );
             return false;
           }
         } catch (e) {
+          captureRejectRegionsRef.current = ['Body'];
           logger.warn('[COUNTDOWN] Landmark gate failed', e);
           return false;
         }
       }
+      captureRejectRegionsRef.current = [];
 
       try {
         playCompanionShutterClick();
@@ -382,6 +387,11 @@ const Companion = () => {
   useEffect(() => {
     armShotRef.current = armShot;
   }, [armShot]);
+
+  const rejectShotRef = useRef(rejectShot);
+  useEffect(() => {
+    rejectShotRef.current = rejectShot;
+  }, [rejectShot]);
 
   const runCountdownAndCapture = useCallback(
     (viewIdx: number) => {
@@ -506,7 +516,7 @@ const Companion = () => {
           countdownRetryCountRef.current += 1;
           turnDelayTimeoutRef.current = setTimeout(() => {
             if (isSequenceCancelledRef.current) return;
-            void armShotRef.current(i);
+            void rejectShotRef.current(i, captureRejectRegionsRef.current);
           }, 2000);
         }
         return;

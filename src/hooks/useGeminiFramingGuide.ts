@@ -23,6 +23,7 @@ import { CONFIG } from '@/config';
 import { GEMINI_FRAMING_SYSTEM_PROMPT } from '@/constants/geminiFramingPrompt';
 import {
   geminiInjectionArmView,
+  geminiInjectionCaptureRejected,
   geminiInjectionPhoneNotLevel,
   geminiInjectionPhoneStablePortrait,
   geminiInjectionSessionConnected,
@@ -143,6 +144,7 @@ export interface UseGeminiFramingGuideResult {
   startLiveSessionFromUserGesture: () => void;
   primeAudioOutput: () => Promise<void>;
   armShot: (viewIndex: number) => Promise<boolean>;
+  rejectShot: (viewIndex: number, failingRegions: readonly string[]) => Promise<boolean>;
   shutdown: () => Promise<void>;
   /** Same as starting Live again after an error. */
   retry: () => void;
@@ -567,6 +569,11 @@ export function useGeminiFramingGuide({
           },
           generationConfig: {
             responseModalities: [ResponseModality.AUDIO],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: { voiceName: CONFIG.AI.GEMINI.LIVE_VOICE_NAME },
+              },
+            },
             outputAudioTranscription: {},
           },
         });
@@ -736,6 +743,36 @@ export function useGeminiFramingGuide({
     }
   }, []);
 
+  const rejectShot = useCallback(async (
+    viewIndex: number,
+    failingRegions: readonly string[]
+  ): Promise<boolean> => {
+    const session = sessionRef.current;
+    if (!session || session.isClosed) {
+      logger.warn('[GEMINI_LIVE] rejectShot: no session', 'GEMINI_LIVE');
+      return false;
+    }
+    const v = viewsRef.current[viewIndex];
+    if (!v) {
+      logger.warn('[GEMINI_LIVE] rejectShot: invalid view index', 'GEMINI_LIVE');
+      return false;
+    }
+    transcriptionBufferRef.current = '';
+    armedViewRef.current = viewIndex;
+    armedAtMsRef.current = Date.now();
+    framesPausedRef.current = false;
+    lastUserScaleInjectedZoneRef.current = 'uninitialized';
+    try {
+      await session.sendTextRealtime(geminiInjectionCaptureRejected(v.label, failingRegions));
+      return true;
+    } catch (e) {
+      logger.warn('[GEMINI_LIVE] rejectShot send failed', 'GEMINI_LIVE', e);
+      armedViewRef.current = null;
+      armedAtMsRef.current = 0;
+      return false;
+    }
+  }, []);
+
   const retry = useCallback(() => {
     startLiveSessionFromUserGesture();
   }, [startLiveSessionFromUserGesture]);
@@ -784,6 +821,7 @@ export function useGeminiFramingGuide({
     startLiveSessionFromUserGesture,
     primeAudioOutput,
     armShot,
+    rejectShot,
     shutdown,
     retry,
     nudgeLevelPhone,
