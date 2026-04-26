@@ -7,9 +7,10 @@
 
 export const CONFIG = {
   /**
-   * Gemini Live voice framing for posture Companion / guided capture. Default off; set `VITE_ENABLE_GEMINI_LIVE=true` for device QA.
+   * Gemini Live voice framing for posture Companion / guided capture.
+   * Default on for posture QA/prod; set `VITE_ENABLE_GEMINI_LIVE=false` to disable and run silent capture.
    */
-  ENABLE_GEMINI_LIVE: import.meta.env.VITE_ENABLE_GEMINI_LIVE === 'true',
+  ENABLE_GEMINI_LIVE: import.meta.env.VITE_ENABLE_GEMINI_LIVE !== 'false',
 
   // --- APP HOST & URLS ---
   APP: {

@@ -63,7 +63,7 @@ interface CompanionUIProps {
   geminiConnectionError?: string | null;
   /** Call from a button tap; hook runs unlock + reconnect. */
   onRetryGemini?: () => void;
-  /** After first Gemini audio chunk — hides pre-voice instruction line. */
+  /** Reserved for future voice status UI. */
   voiceGuideStarted?: boolean;
 }
 
@@ -95,7 +95,7 @@ export function CompanionUI({
   geminiConnectionStatus,
   geminiConnectionError = null,
   onRetryGemini,
-  voiceGuideStarted = false,
+  voiceGuideStarted: _voiceGuideStarted = false,
 }: CompanionUIProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -364,7 +364,7 @@ export function CompanionUI({
                 </Button>
               )}
             </div>
-          ) : flowState === 'ready' ? (
+          ) : flowState === 'ready' && mode === 'posture' && geminiConnectionStatus !== undefined ? (
             <div className="flex flex-col items-center gap-3 w-full max-w-xs">
               {mode === 'posture' && geminiConnectionStatus && geminiConnectionStatus === 'error' && onRetryGemini ? (
                 <button
@@ -413,6 +413,22 @@ export function CompanionUI({
                   Upload from Photos
                 </Button>
               )}
+            </div>
+          ) : flowState === 'ready' ? (
+            <div className="flex flex-col items-center gap-3 w-full max-w-xs">
+              <Button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (flowState === 'ready' && !isSequenceActive) {
+                    onStartSequence();
+                  }
+                }}
+                disabled={blockStartCaptureUntilVertical && !isVertical}
+                className="bg-emerald-500 hover:bg-emerald-600 h-16 px-10 rounded-xl text-base font-semibold shadow-lg text-white w-full disabled:opacity-40 disabled:pointer-events-none"
+              >
+                Start Capture
+              </Button>
             </div>
           ) : (mode === 'posture' && flowState === 'waiting_pose') || onFileUpload ? (
             <div className="flex w-full max-w-xs flex-col items-center gap-3">
