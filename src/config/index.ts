@@ -7,9 +7,10 @@
 
 export const CONFIG = {
   /**
-   * Gemini Live voice framing for posture Companion / guided capture. Default off; set `VITE_ENABLE_GEMINI_LIVE=true` for device QA.
+   * Gemini Live voice framing for posture Companion / guided capture.
+   * Default on for posture QA/prod; set `VITE_ENABLE_GEMINI_LIVE=false` to disable and run silent capture.
    */
-  ENABLE_GEMINI_LIVE: import.meta.env.VITE_ENABLE_GEMINI_LIVE === 'true',
+  ENABLE_GEMINI_LIVE: import.meta.env.VITE_ENABLE_GEMINI_LIVE !== 'false',
 
   // --- APP HOST & URLS ---
   APP: {
@@ -69,12 +70,17 @@ export const CONFIG = {
         const v = import.meta.env.VITE_GEMINI_LIVE_MODEL;
         return typeof v === 'string' && v.trim() !== '' ? v.trim() : 'gemini-3.1-flash-live-preview';
       })(),
+      /** Gemini Live prebuilt voice; override with VITE_GEMINI_LIVE_VOICE_NAME after auditioning Chirp voices. */
+      LIVE_VOICE_NAME: (() => {
+        const v = import.meta.env.VITE_GEMINI_LIVE_VOICE_NAME;
+        return typeof v === 'string' && v.trim() !== '' ? v.trim() : 'Aoede';
+      })(),
       LIVE_FRAME_INTERVAL_MS: 1000,
       /**
        * Safety net: if the model neither calls capture_now nor speaks the transcription trigger,
        * fire capture after this many ms while a view is armed (logged). 0 = disabled.
        */
-      LIVE_CAPTURE_FALLBACK_MS: 0,
+      LIVE_CAPTURE_FALLBACK_MS: 12000,
     },
     // Firebase Cloud Functions
     FUNCTIONS: {

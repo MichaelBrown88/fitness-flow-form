@@ -79,6 +79,7 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
   const beginViewCaptureRef = useRef<(viewIdx: number) => void>(() => {});
   const pendingCapturesRef = useRef<{ viewId: string; imageSrc: string }[]>([]);
   const postureWarmupPendingAutoStartRef = useRef(false);
+  const captureRejectRegionsRef = useRef<readonly string[]>([]);
   const countdownRetryCountRef = useRef(0);
   const MAX_COUNTDOWN_RETRIES = 2;
   const isPoseReadyRef = useRef(false);
@@ -115,7 +116,7 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
   }, [sessionId, flowState]);
 
   const { speak, requestPermission: requestAudioPermission, hasPermission: hasAudioPermission } =
-    useAudioFeedback({ legacyTtsGateRef });
+    useAudioFeedback({ legacyTtsGateRef, disableSpeechSynthesis: true });
 
   const throttledSpeak = useCallback(
     (text: string, force: boolean = false) => {
@@ -153,6 +154,7 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
   const {
     startLiveSessionFromUserGesture,
     armShot,
+    rejectShot,
     retry: retryGeminiLive,
     nudgeLevelPhone,
     connectionStatus: geminiConnectionStatus,
@@ -175,6 +177,9 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
     playbackAudioContextRef: livePlaybackAudioContextRef,
     poseLiveMetricsRef,
     allowDistanceInjectionsRef: allowGeminiDistanceInjectionsRef,
+    onConnectionDiagnostics: (message, level = 'info') => {
+      void logCompanionMessage(sessionId, message, level);
+    },
   });
 
   useLayoutEffect(() => {
@@ -190,7 +195,7 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
         startLiveSessionFromUserGesture();
       }
       const orientationDone = requestOrientationPermission();
-      await requestAudioPermission();
+      await requestAudioPermission({ speakUnlockPhrase: false });
       await orientationDone;
       setFlowState('waiting_level');
     } catch (e) {
@@ -206,7 +211,7 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
     onAudioFeedback: throttledSpeak,
     views: VIEWS,
     webcamVideo,
-    suppressAudioFeedback: false,
+    suppressAudioFeedback: true,
     disablePosePipeline: false,
     poseLiveMetricsRef,
     relaxDistanceGatingRef: relaxPostureDistanceRef,
@@ -292,15 +297,18 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
         const gate = await evaluateCompanionStillCaptureLandmarks(imageSrc, viewData.id);
         if (gate.ok === false) {
           const regions = gate.failingRegions.join(', ') || 'unknown';
+          captureRejectRegionsRef.current = gate.failingRegions;
           logger.warn(
             `[COUNTDOWN] Capture rejected for ${viewData.label} — structural anchors (avg ${gate.avgVisibility.toFixed(2)}, min ${gate.minAnchorVisibility.toFixed(2)}; ${regions})`
           );
           return false;
         }
       } catch (e) {
+        captureRejectRegionsRef.current = ['Body'];
         logger.warn('[COUNTDOWN] Landmark gate failed', e);
         return false;
       }
+      captureRejectRegionsRef.current = [];
 
       try {
         playCompanionShutterClick();
@@ -336,6 +344,11 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
   useEffect(() => {
     armShotRef.current = armShot;
   }, [armShot]);
+
+  const rejectShotRef = useRef(rejectShot);
+  useEffect(() => {
+    rejectShotRef.current = rejectShot;
+  }, [rejectShot]);
 
   const runCountdownAndCapture = useCallback(
     (viewIdx: number) => {
@@ -402,13 +415,6 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
 
       const useGeminiLedCapture = geminiEnabled && geminiConnectionStatus === 'open';
 
-      const viewData = VIEWS[viewIdx];
-      const directionCue =
-        viewIdx === 0
-          ? 'Alright — front view first. Position yourself so your body fills the green guide box from head to toe.'
-          : `Now your ${viewData.label.toLowerCase()} view. Keep filling the guide box — follow the voice guide.`;
-      throttledSpeak(directionCue, true);
-
       if (useGeminiLedCapture) {
         void armShot(viewIdx);
         return;
@@ -459,7 +465,7 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
           countdownRetryCountRef.current += 1;
           turnDelayTimeoutRef.current = setTimeout(() => {
             if (isSequenceCancelledRef.current) return;
-            void armShotRef.current(i);
+            void rejectShotRef.current(i, captureRejectRegionsRef.current);
           }, 2000);
         }
         return;

@@ -63,7 +63,7 @@ interface CompanionUIProps {
   geminiConnectionError?: string | null;
   /** Call from a button tap; hook runs unlock + reconnect. */
   onRetryGemini?: () => void;
-  /** After first Gemini audio chunk — hides pre-voice instruction line. */
+  /** Reserved for future voice status UI. */
   voiceGuideStarted?: boolean;
   /** iOS: user explicitly denied motion/orientation permission. */
   orientationDenied?: boolean;
@@ -97,7 +97,7 @@ export function CompanionUI({
   geminiConnectionStatus,
   geminiConnectionError = null,
   onRetryGemini,
-  voiceGuideStarted = false,
+  voiceGuideStarted: _voiceGuideStarted = false,
   orientationDenied = false,
 }: CompanionUIProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -306,27 +306,6 @@ export function CompanionUI({
         </div>
       )}
 
-      {mode === 'posture' &&
-        hasPermission &&
-        (flowState === 'waiting_level' || flowState === 'waiting_pose') && (
-          <div
-            className={cn(
-              'absolute left-4 right-4 z-[35] rounded-xl bg-black/60 px-3 py-2 text-center backdrop-blur-sm pointer-events-none transition-opacity duration-700',
-              voiceGuideStarted ? 'opacity-0' : 'opacity-100'
-            )}
-            style={{
-              bottom: 'calc(max(5.5rem, env(safe-area-inset-bottom, 0px) + 4.25rem))',
-            }}
-          >
-            <p className="text-[13px] font-medium leading-snug text-white/95">
-              Follow the voice guide — framing hints show in the border around the video.
-            </p>
-            <p className="mt-2 text-[11px] font-medium leading-snug text-white/75">
-              {CONFIG.COMPANION.VOICE_GUIDE.POSTURE_CAMERA_HEIGHT_SOP}
-            </p>
-          </div>
-        )}
-
       {countdown !== null && mode !== 'bodycomp' && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/30 z-30 pointer-events-none">
           <span className="text-[200px] font-bold text-white drop-shadow-2xl">{countdown}</span>
@@ -395,7 +374,7 @@ export function CompanionUI({
                 </Button>
               )}
             </div>
-          ) : flowState === 'ready' ? (
+          ) : flowState === 'ready' && mode === 'posture' && geminiConnectionStatus !== undefined ? (
             <div className="flex flex-col items-center gap-3 w-full max-w-xs">
               {mode === 'posture' && geminiConnectionStatus && geminiConnectionStatus === 'error' && onRetryGemini ? (
                 <button
@@ -410,19 +389,10 @@ export function CompanionUI({
                   <Loader2 className="h-3 w-3 shrink-0 animate-spin" aria-hidden />
                   <span className="text-[11px] font-medium">Voice guide connecting…</span>
                 </div>
-              ) : mode === 'posture' && geminiConnectionStatus === 'open' ? (
-                <span className="text-[11px] font-medium text-emerald-400">Voice guide connected</span>
               ) : null}
               {blockStartCaptureUntilVertical && !isVertical ? (
                 <p className="text-center text-[12px] font-medium text-amber-200/95 px-2">
                   Level the phone to enable Start Capture.
-                </p>
-              ) : null}
-              {mode === 'posture' &&
-              geminiConnectionStatus !== undefined &&
-              geminiConnectionStatus !== 'open' ? (
-                <p className="text-center text-[12px] font-medium text-white/75 px-2">
-                  Wait until the voice guide is connected before starting capture.
                 </p>
               ) : null}
               <Button
@@ -454,14 +424,24 @@ export function CompanionUI({
                 </Button>
               )}
             </div>
+          ) : flowState === 'ready' ? (
+            <div className="flex flex-col items-center gap-3 w-full max-w-xs">
+              <Button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (flowState === 'ready' && !isSequenceActive) {
+                    onStartSequence();
+                  }
+                }}
+                disabled={blockStartCaptureUntilVertical && !isVertical}
+                className="bg-emerald-500 hover:bg-emerald-600 h-16 px-10 rounded-xl text-base font-semibold shadow-lg text-white w-full disabled:opacity-40 disabled:pointer-events-none"
+              >
+                Start Capture
+              </Button>
+            </div>
           ) : (mode === 'posture' && flowState === 'waiting_pose') || onFileUpload ? (
             <div className="flex w-full max-w-xs flex-col items-center gap-3">
-              {mode === 'posture' && flowState === 'waiting_pose' ? (
-                <p className="px-2 text-center text-[11px] font-medium leading-snug text-white/85">
-                  Listen for framing tips. The scan usually starts on its own once the voice guide finishes; if
-                  not, tap Start Capture when it appears.
-                </p>
-              ) : null}
               {onFileUpload ? (
                 <Button
                   variant="outline"

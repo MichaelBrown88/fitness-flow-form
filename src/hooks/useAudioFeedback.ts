@@ -27,22 +27,26 @@ export interface UseAudioFeedbackOptions {
    * connecting/open, `speak` becomes a no-op so `speechSynthesis` cannot fight PCM playback.
    */
   legacyTtsGateRef?: MutableRefObject<LegacyTtsGateRefValue>;
+  /** Hard-disable browser speech synthesis for flows where Gemini Live is the only acceptable voice. */
+  disableSpeechSynthesis?: boolean;
 }
 
 interface UseAudioFeedbackResult {
   /** Pass `bypassSuppression: true` only for the permission-unlock phrase (mobile Safari). */
   speak: (text: string, bypassSuppression?: boolean) => void;
-  requestPermission: () => Promise<void>;
+  requestPermission: (options?: { speakUnlockPhrase?: boolean }) => Promise<void>;
   hasPermission: boolean;
 }
 
 export function shouldSuppressLegacyTts(gate: LegacyTtsGateRefValue | undefined): boolean {
+  if (gate?.postureGeminiHandoff) return true;
   if (!gate?.geminiEnabled) return false;
-  if (gate.postureGeminiHandoff) return true;
   return gate.geminiConnectionStatus === 'connecting' || gate.geminiConnectionStatus === 'open';
 }
 
 export function useAudioFeedback(options?: UseAudioFeedbackOptions): UseAudioFeedbackResult {
+  const disableSpeechSynthesis = options?.disableSpeechSynthesis === true;
+
   /**
    * Gated by the user tapping “Enable camera & motion” (or equivalent). Starts false on all platforms so
    * Companion always runs the same gesture stack — including `startLiveSessionFromUserGesture()` — and we
@@ -51,6 +55,7 @@ export function useAudioFeedback(options?: UseAudioFeedbackOptions): UseAudioFee
   const [hasPermission, setHasPermission] = useState<boolean>(false);
 
   useEffect(() => {
+    if (disableSpeechSynthesis) return;
     const warmVoices = () => {
       try {
         void window.speechSynthesis.getVoices();
@@ -61,7 +66,7 @@ export function useAudioFeedback(options?: UseAudioFeedbackOptions): UseAudioFee
     warmVoices();
     window.speechSynthesis.addEventListener('voiceschanged', warmVoices);
     return () => window.speechSynthesis.removeEventListener('voiceschanged', warmVoices);
-  }, []);
+  }, [disableSpeechSynthesis]);
 
   const selectedVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
   const voiceLoggedRef = useRef(false);
@@ -98,13 +103,15 @@ export function useAudioFeedback(options?: UseAudioFeedbackOptions): UseAudioFee
     const gate = options?.legacyTtsGateRef?.current;
     const geminiEnabled = gate?.geminiEnabled ?? false;
     const geminiConnectionStatus = gate?.geminiConnectionStatus ?? 'idle';
-    const suppressLegacyTts = !bypassSuppression && shouldSuppressLegacyTts(gate);
+    const suppressLegacyTts =
+      disableSpeechSynthesis || (!bypassSuppression && shouldSuppressLegacyTts(gate));
     logger.debug('[TTS] speak() called', {
       text,
       geminiEnabled,
       geminiConnectionStatus,
       suppressLegacyTts,
       bypassSuppression,
+      disableSpeechSynthesis,
     });
     if (suppressLegacyTts) return;
     try {
@@ -121,11 +128,13 @@ export function useAudioFeedback(options?: UseAudioFeedbackOptions): UseAudioFee
     }
   };
 
-  const requestPermission = async () => {
+  const requestPermission = async (options?: { speakUnlockPhrase?: boolean }) => {
     logger.warn('[COMPANION_PERM] useAudioFeedback.requestPermission: enter');
     try {
       playCompanionShutterClick();
-      speak("Great, I can hear you. Let's get started.", true);
+      if (options?.speakUnlockPhrase !== false) {
+        speak("Great, I can hear you. Let's get started.", true);
+      }
     } catch (e) {
       logger.warn('[COMPANION_PERM] useAudioFeedback chime/speak failed', e);
     }

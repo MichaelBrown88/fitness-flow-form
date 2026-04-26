@@ -23,6 +23,7 @@ import { CONFIG } from '@/config';
 import { GEMINI_FRAMING_SYSTEM_PROMPT } from '@/constants/geminiFramingPrompt';
 import {
   geminiInjectionArmView,
+  geminiInjectionCaptureRejected,
   geminiInjectionPhoneNotLevel,
   geminiInjectionPhoneStablePortrait,
   geminiInjectionSessionConnected,
@@ -132,6 +133,7 @@ export interface UseGeminiFramingGuideOptions {
   poseLiveMetricsRef?: MutableRefObject<PoseLiveMetricsRef>;
   /** When false, skip USER_TOO_* / PERFECT injections (e.g. after first front capture). */
   allowDistanceInjectionsRef?: MutableRefObject<boolean>;
+  onConnectionDiagnostics?: (message: string, level: 'info' | 'warn' | 'error') => void;
 }
 
 export type GeminiLiveConnectionStatus = 'idle' | 'connecting' | 'open' | 'error';
@@ -143,6 +145,7 @@ export interface UseGeminiFramingGuideResult {
   startLiveSessionFromUserGesture: () => void;
   primeAudioOutput: () => Promise<void>;
   armShot: (viewIndex: number) => Promise<boolean>;
+  rejectShot: (viewIndex: number, failingRegions: readonly string[]) => Promise<boolean>;
   shutdown: () => Promise<void>;
   /** Same as starting Live again after an error. */
   retry: () => void;
@@ -165,6 +168,7 @@ export function useGeminiFramingGuide({
   playbackAudioContextRef,
   poseLiveMetricsRef,
   allowDistanceInjectionsRef,
+  onConnectionDiagnostics,
 }: UseGeminiFramingGuideOptions): UseGeminiFramingGuideResult {
   const internalPlaybackCtxRef = useRef<AudioContext | null>(null);
   const playbackCtxRef = playbackAudioContextRef ?? internalPlaybackCtxRef;
@@ -182,6 +186,7 @@ export function useGeminiFramingGuide({
   const onWarmupCompleteRef = useRef(onWarmupComplete);
   const onShotTriggerRef = useRef(onShotTrigger);
   const onVoiceGuideAudioStartedRef = useRef(onVoiceGuideAudioStarted);
+  const onConnectionDiagnosticsRef = useRef(onConnectionDiagnostics);
   const voiceGuideAudioStartedRef = useRef(false);
   const nextPlayTimeRef = useRef(0);
   const wasLiveActiveWhenHiddenRef = useRef(false);
@@ -234,6 +239,9 @@ export function useGeminiFramingGuide({
   useEffect(() => {
     onVoiceGuideAudioStartedRef.current = onVoiceGuideAudioStarted;
   }, [onVoiceGuideAudioStarted]);
+  useEffect(() => {
+    onConnectionDiagnosticsRef.current = onConnectionDiagnostics;
+  }, [onConnectionDiagnostics]);
 
   /** Re-allow waiting_pose nudge after user tilts back to waiting_level (lost vertical). */
   useEffect(() => {
@@ -567,6 +575,11 @@ export function useGeminiFramingGuide({
           },
           generationConfig: {
             responseModalities: [ResponseModality.AUDIO],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: { voiceName: CONFIG.AI.GEMINI.LIVE_VOICE_NAME },
+              },
+            },
             outputAudioTranscription: {},
           },
         });
@@ -586,7 +599,10 @@ export function useGeminiFramingGuide({
         sessionRef.current = session;
         setIsSessionOpen(true);
         setConnectionStatus('open');
-        logger.warn('[COMPANION_PERM] Gemini Live connected (session open)');
+        logger.warn('[COMPANION_PERM] Gemini Live connected (session open)', {
+          model: CONFIG.AI.GEMINI.LIVE_MODEL_NAME,
+          voice: CONFIG.AI.GEMINI.LIVE_VOICE_NAME,
+        });
         void receiveLoop(session);
         startJpegInterval(session);
         const fs = flowStateRef.current;
@@ -608,6 +624,10 @@ export function useGeminiFramingGuide({
         setIsSessionOpen(false);
         setConnectionStatus('error');
         setConnectionError(e instanceof Error ? e.message : 'Could not connect to voice guide');
+        onConnectionDiagnosticsRef.current?.(
+          `Gemini Live connection failed: ${e instanceof Error ? e.message : String(e)}`,
+          'error'
+        );
       }
     } finally {
       liveSessionStartInFlightRef.current = false;
@@ -676,6 +696,10 @@ export function useGeminiFramingGuide({
       setConnectionError(
         'Voice guide disconnected when the app was in the background. Tap Retry to reconnect.',
       );
+      onConnectionDiagnosticsRef.current?.(
+        'Gemini Live disconnected after the app went to the background',
+        'warn'
+      );
     };
     document.addEventListener('visibilitychange', onVisibility);
     return () => document.removeEventListener('visibilitychange', onVisibility);
@@ -689,8 +713,13 @@ export function useGeminiFramingGuide({
     try {
       playbackCtxRef.current = getOrCreatePrimedAudioContext(playbackCtxRef.current);
       nextPlayTimeRef.current = playbackCtxRef.current.currentTime;
+      onConnectionDiagnosticsRef.current?.('Gemini Live audio output unlocked', 'info');
     } catch (e) {
       logger.warn('[GEMINI_LIVE] unlockWebAudioOnUserGesture', 'GEMINI_LIVE', e);
+      onConnectionDiagnosticsRef.current?.(
+        `Gemini Live audio unlock failed: ${e instanceof Error ? e.message : String(e)}`,
+        'warn'
+      );
     }
   }, [playbackCtxRef]);
 
@@ -730,6 +759,36 @@ export function useGeminiFramingGuide({
       return true;
     } catch (e) {
       logger.warn('[GEMINI_LIVE] armShot send failed', 'GEMINI_LIVE', e);
+      armedViewRef.current = null;
+      armedAtMsRef.current = 0;
+      return false;
+    }
+  }, []);
+
+  const rejectShot = useCallback(async (
+    viewIndex: number,
+    failingRegions: readonly string[]
+  ): Promise<boolean> => {
+    const session = sessionRef.current;
+    if (!session || session.isClosed) {
+      logger.warn('[GEMINI_LIVE] rejectShot: no session', 'GEMINI_LIVE');
+      return false;
+    }
+    const v = viewsRef.current[viewIndex];
+    if (!v) {
+      logger.warn('[GEMINI_LIVE] rejectShot: invalid view index', 'GEMINI_LIVE');
+      return false;
+    }
+    transcriptionBufferRef.current = '';
+    armedViewRef.current = viewIndex;
+    armedAtMsRef.current = Date.now();
+    framesPausedRef.current = false;
+    lastUserScaleInjectedZoneRef.current = 'uninitialized';
+    try {
+      await session.sendTextRealtime(geminiInjectionCaptureRejected(v.label, failingRegions));
+      return true;
+    } catch (e) {
+      logger.warn('[GEMINI_LIVE] rejectShot send failed', 'GEMINI_LIVE', e);
       armedViewRef.current = null;
       armedAtMsRef.current = 0;
       return false;
@@ -784,6 +843,7 @@ export function useGeminiFramingGuide({
     startLiveSessionFromUserGesture,
     primeAudioOutput,
     armShot,
+    rejectShot,
     shutdown,
     retry,
     nudgeLevelPhone,

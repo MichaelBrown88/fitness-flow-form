@@ -82,6 +82,7 @@ const Companion = () => {
   const countdownRetryCountRef = useRef(0);
   const MAX_COUNTDOWN_RETRIES = 2;
   const isPoseReadyRef = useRef(false);
+  const captureRejectRegionsRef = useRef<readonly string[]>([]);
   const positionStableSinceRef = useRef<number | null>(null);
   const positionCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   /** Shared with Gemini Live hook — primed synchronously on permission tap before any await (Safari Web Audio). */
@@ -120,6 +121,7 @@ const Companion = () => {
 
   const { speak, requestPermission: requestAudioPermission, hasPermission: hasAudioPermission } = useAudioFeedback({
     legacyTtsGateRef,
+    disableSpeechSynthesis: mode === 'posture',
   });
 
   const throttledSpeak = useCallback(
@@ -163,6 +165,7 @@ const Companion = () => {
   const {
     startLiveSessionFromUserGesture,
     armShot,
+    rejectShot,
     retry: retryGeminiLive,
     nudgeLevelPhone,
     connectionStatus: geminiConnectionStatus,
@@ -184,6 +187,11 @@ const Companion = () => {
     onVoiceGuideAudioStarted: () => {
       setVoiceGuideStarted(true);
     },
+    onConnectionDiagnostics: (message, level = 'info') => {
+      if (sessionId) {
+        void logCompanionMessage(sessionId, message, level);
+      }
+    },
     playbackAudioContextRef: livePlaybackAudioContextRef,
     poseLiveMetricsRef,
     allowDistanceInjectionsRef: allowGeminiDistanceInjectionsRef,
@@ -202,7 +210,7 @@ const Companion = () => {
         startLiveSessionFromUserGesture();
       }
       const orientationDone = requestOrientationPermission();
-      await requestAudioPermission();
+      await requestAudioPermission({ speakUnlockPhrase: mode !== 'posture' });
       await orientationDone;
       setFlowState('waiting_level');
     } catch (e) {
@@ -263,7 +271,7 @@ const Companion = () => {
     onAudioFeedback: throttledSpeak,
     views: VIEWS,
     webcamVideo,
-    suppressAudioFeedback: false,
+    suppressAudioFeedback: mode === 'posture',
     disablePosePipeline: false,
     poseLiveMetricsRef,
     relaxDistanceGatingRef: mode === 'posture' ? relaxPostureDistanceRef : undefined,
@@ -337,16 +345,19 @@ const Companion = () => {
           const gate = await evaluateCompanionStillCaptureLandmarks(imageSrc, viewData.id);
           if (gate.ok === false) {
             const regions = gate.failingRegions.join(', ') || 'unknown';
+            captureRejectRegionsRef.current = gate.failingRegions;
             logger.warn(
               `[COUNTDOWN] Capture rejected for ${viewData.label} — structural anchors (avg ${gate.avgVisibility.toFixed(2)}, min ${gate.minAnchorVisibility.toFixed(2)}; ${regions})`
             );
             return false;
           }
         } catch (e) {
+          captureRejectRegionsRef.current = ['Body'];
           logger.warn('[COUNTDOWN] Landmark gate failed', e);
           return false;
         }
       }
+      captureRejectRegionsRef.current = [];
 
       try {
         playCompanionShutterClick();
@@ -382,6 +393,11 @@ const Companion = () => {
   useEffect(() => {
     armShotRef.current = armShot;
   }, [armShot]);
+
+  const rejectShotRef = useRef(rejectShot);
+  useEffect(() => {
+    rejectShotRef.current = rejectShot;
+  }, [rejectShot]);
 
   const runCountdownAndCapture = useCallback(
     (viewIdx: number) => {
@@ -450,11 +466,13 @@ const Companion = () => {
         geminiEnabled && mode === 'posture' && geminiConnectionStatus === 'open';
 
       const viewData = VIEWS[viewIdx];
-      const directionCue =
-        viewIdx === 0
-          ? 'Alright — front view first. Position yourself so your body fills the green guide box from head to toe.'
-          : `Now your ${viewData.label.toLowerCase()} view. Keep filling the guide box — follow the voice guide.`;
-      throttledSpeak(directionCue, true);
+      if (mode !== 'posture') {
+        const directionCue =
+          viewIdx === 0
+            ? 'Alright — front view first. Position yourself so your body fills the green guide box from head to toe.'
+            : `Now your ${viewData.label.toLowerCase()} view. Keep filling the guide box — follow the voice guide.`;
+        throttledSpeak(directionCue, true);
+      }
 
       if (useGeminiLedCapture) {
         void armShot(viewIdx);
@@ -506,7 +524,7 @@ const Companion = () => {
           countdownRetryCountRef.current += 1;
           turnDelayTimeoutRef.current = setTimeout(() => {
             if (isSequenceCancelledRef.current) return;
-            void armShotRef.current(i);
+            void rejectShotRef.current(i, captureRejectRegionsRef.current);
           }, 2000);
         }
         return;
