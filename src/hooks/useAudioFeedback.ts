@@ -37,8 +37,8 @@ interface UseAudioFeedbackResult {
 }
 
 export function shouldSuppressLegacyTts(gate: LegacyTtsGateRefValue | undefined): boolean {
-  if (!gate?.geminiEnabled) return false;
   if (gate.postureGeminiHandoff) return true;
+  if (!gate?.geminiEnabled) return false;
   return gate.geminiConnectionStatus === 'connecting' || gate.geminiConnectionStatus === 'open';
 }
 

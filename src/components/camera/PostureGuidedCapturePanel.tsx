@@ -191,7 +191,7 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
         startLiveSessionFromUserGesture();
       }
       const orientationDone = requestOrientationPermission();
-      await requestAudioPermission({ speakUnlockPhrase: !geminiEnabled });
+      await requestAudioPermission({ speakUnlockPhrase: false });
       await orientationDone;
       setFlowState('waiting_level');
     } catch (e) {
@@ -207,7 +207,7 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
     onAudioFeedback: throttledSpeak,
     views: VIEWS,
     webcamVideo,
-    suppressAudioFeedback: false,
+    suppressAudioFeedback: true,
     disablePosePipeline: false,
     poseLiveMetricsRef,
     relaxDistanceGatingRef: relaxPostureDistanceRef,
@@ -410,13 +410,6 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
       countdownRetryCountRef.current = 0;
 
       const useGeminiLedCapture = geminiEnabled && geminiConnectionStatus === 'open';
-
-      const viewData = VIEWS[viewIdx];
-      const directionCue =
-        viewIdx === 0
-          ? 'Alright — front view first. Position yourself so your body fills the green guide box from head to toe.'
-          : `Now your ${viewData.label.toLowerCase()} view. Keep filling the guide box — follow the voice guide.`;
-      throttledSpeak(directionCue, true);
 
       if (useGeminiLedCapture) {
         void armShot(viewIdx);

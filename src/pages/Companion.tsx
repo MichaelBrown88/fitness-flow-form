@@ -204,7 +204,7 @@ const Companion = () => {
         startLiveSessionFromUserGesture();
       }
       const orientationDone = requestOrientationPermission();
-      await requestAudioPermission({ speakUnlockPhrase: mode !== 'posture' || !geminiEnabled });
+      await requestAudioPermission({ speakUnlockPhrase: mode !== 'posture' });
       await orientationDone;
       setFlowState('waiting_level');
     } catch (e) {
@@ -265,7 +265,7 @@ const Companion = () => {
     onAudioFeedback: throttledSpeak,
     views: VIEWS,
     webcamVideo,
-    suppressAudioFeedback: false,
+    suppressAudioFeedback: mode === 'posture',
     disablePosePipeline: false,
     poseLiveMetricsRef,
     relaxDistanceGatingRef: mode === 'posture' ? relaxPostureDistanceRef : undefined,
@@ -460,11 +460,13 @@ const Companion = () => {
         geminiEnabled && mode === 'posture' && geminiConnectionStatus === 'open';
 
       const viewData = VIEWS[viewIdx];
-      const directionCue =
-        viewIdx === 0
-          ? 'Alright — front view first. Position yourself so your body fills the green guide box from head to toe.'
-          : `Now your ${viewData.label.toLowerCase()} view. Keep filling the guide box — follow the voice guide.`;
-      throttledSpeak(directionCue, true);
+      if (mode !== 'posture') {
+        const directionCue =
+          viewIdx === 0
+            ? 'Alright — front view first. Position yourself so your body fills the green guide box from head to toe.'
+            : `Now your ${viewData.label.toLowerCase()} view. Keep filling the guide box — follow the voice guide.`;
+        throttledSpeak(directionCue, true);
+      }
 
       if (useGeminiLedCapture) {
         void armShot(viewIdx);
