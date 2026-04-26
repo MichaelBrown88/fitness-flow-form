@@ -23,6 +23,16 @@ export default function DashboardClients() {
     return Math.round((shared / eligible.length) * 100);
   }, [ctx.clientGroups]);
 
+  // Per-client reassessment status, keyed by clientName for the table to look
+  // up when rendering the kit status pill (On track / Needs attention / Overdue).
+  const attentionMap = useMemo(() => {
+    const map = new Map<string, 'overdue' | 'due-soon' | 'up-to-date'>();
+    for (const item of ctx.reassessmentQueue?.queue ?? []) {
+      map.set(item.clientName, item.status);
+    }
+    return map;
+  }, [ctx.reassessmentQueue]);
+
   return (
     <div className="mx-auto flex w-full min-h-0 flex-1 flex-col gap-8 px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
       <WorkspaceBreadcrumb current="Clients" />
@@ -78,6 +88,7 @@ export default function DashboardClients() {
           coachUid={ctx.user?.uid}
           profile={ctx.profile}
           onBulkComplete={ctx.refreshSchedules}
+          attentionMap={attentionMap}
         />
       </div>
     </div>

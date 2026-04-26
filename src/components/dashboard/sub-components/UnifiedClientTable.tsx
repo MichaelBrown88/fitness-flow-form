@@ -8,7 +8,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, TrendingDown, Minus, Pin, Link as LinkIcon, Search } from 'lucide-react';
+import { TrendingUp, TrendingDown, Pin, Link as LinkIcon, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { ClientActionsDropdown } from './ClientActionsDropdown';
 import { ClientTableBulkActions } from './unifiedClientTableBulk';
@@ -16,14 +16,15 @@ import { PauseClientDialog } from '@/components/client/PauseClientDialog';
 import { generateClientSlug } from '@/services/clientProfiles';
 import type { ClientGroup } from '@/hooks/dashboard/types';
 import type { UserProfile } from '@/types/auth';
-import { scoreGrade, SCORE_COLORS } from '@/lib/scoring/scoreColor';
 import type { PartialAssessmentCategory } from '@/types/client';
+import type { ScheduleStatus } from '@/hooks/useReassessmentQueue';
 import { ROUTES } from '@/constants/routes';
 import {
   UI_DASHBOARD_CLIENTS,
   clientDirectorySelectRowAria,
 } from '@/constants/ui';
 import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
+import { cn } from '@/lib/utils';
 
 type SortKey = 'name' | 'lastAssessed' | 'score';
 type SortDir = 'asc' | 'desc';
@@ -45,6 +46,9 @@ interface UnifiedClientTableProps {
   coachUid?: string;
   profile?: UserProfile | null;
   onBulkComplete?: () => void;
+  /** Per-client reassessment status (clientName → status). Used to render
+   *  the kit status pill. If absent, status pill renders as "No data". */
+  attentionMap?: Map<string, ScheduleStatus>;
 }
 
 const GOAL_LABELS: Record<string, string> = {
@@ -61,40 +65,73 @@ function primaryGoalLabel(goals: string[] | undefined): string | null {
   return GOAL_LABELS[goals[0]] ?? goals[0];
 }
 
-const ScoreBadge: React.FC<{ score: number }> = React.memo(({ score }) => {
-  const grade = scoreGrade(score);
+// ─── Kit row helpers ────────────────────────────────────────────────
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 0 || !parts[0]) return '—';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function axisTone(score: number): 'green' | 'amber' | 'red' | 'muted' {
+  if (!score) return 'muted';
+  if (score >= 75) return 'green';
+  if (score >= 50) return 'amber';
+  return 'red';
+}
+
+const AXIS_PILL_CLASS: Record<'green' | 'amber' | 'red' | 'muted', string> = {
+  green: 'bg-score-green-muted text-score-green-bold',
+  amber: 'bg-score-amber-muted text-score-amber-bold',
+  red: 'bg-score-red-muted text-score-red-bold',
+  muted: 'bg-muted text-muted-foreground',
+};
+
+const AxisScorePill: React.FC<{ score: number }> = React.memo(({ score }) => {
+  const tone = axisTone(score);
+  if (tone === 'muted') {
+    return (
+      <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        No data
+      </span>
+    );
+  }
   return (
-    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${SCORE_COLORS[grade].badge}`}>
-      {score || '—'}
+    <span className={cn('inline-flex items-center rounded-full px-2.5 py-1 text-[12px] font-bold tabular-nums', AXIS_PILL_CLASS[tone])}>
+      AXIS {score}
     </span>
   );
 });
 
-const TrendIndicator: React.FC<{ trend?: number }> = React.memo(({ trend }) => {
-  if (trend === undefined || trend === null) {
-    return (
-      <span className="text-xs font-medium text-muted-foreground tabular-nums" aria-label="No trend data yet">
-        —
-      </span>
-    );
-  }
-  if (trend > 0) {
-    return (
-      <span className="inline-flex items-center gap-0.5 rounded-full bg-score-green-muted/60 px-1.5 py-0.5 text-xs font-bold text-score-green-fg">
-        <TrendingUp className="h-3 w-3" />+{trend}
-      </span>
-    );
-  }
-  if (trend < 0) {
-    return (
-      <span className="inline-flex items-center gap-0.5 rounded-full bg-score-red-muted/60 px-1.5 py-0.5 text-xs font-bold text-score-red-fg">
-        <TrendingDown className="h-3 w-3" />{trend}
-      </span>
-    );
-  }
+const STATUS_PILL: Record<ScheduleStatus | 'no-data', { label: string; dot: string }> = {
+  overdue: { label: 'Overdue', dot: 'bg-score-red' },
+  'due-soon': { label: 'Needs attention', dot: 'bg-score-amber' },
+  'up-to-date': { label: 'On track', dot: 'bg-score-green' },
+  'no-data': { label: 'No data', dot: 'bg-muted-foreground/40' },
+};
+
+const ClientStatusPill: React.FC<{ status?: ScheduleStatus }> = React.memo(({ status }) => {
+  const config = STATUS_PILL[status ?? 'no-data'];
   return (
-    <span className="inline-flex items-center gap-0.5 rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
-      <Minus className="h-3 w-3" />0
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold text-foreground-secondary">
+      <span className={cn('h-1.5 w-1.5 rounded-full', config.dot)} aria-hidden />
+      {config.label}
+    </span>
+  );
+});
+
+/** Subtle trend indicator — text + arrow, no background pill. */
+const TrendIndicator: React.FC<{ trend?: number }> = React.memo(({ trend }) => {
+  if (trend === undefined || trend === null || trend === 0) {
+    return <span className="text-xs font-medium text-muted-foreground tabular-nums">—</span>;
+  }
+  const Icon = trend > 0 ? TrendingUp : TrendingDown;
+  const tone = trend > 0 ? 'text-score-green-fg' : 'text-score-red-fg';
+  return (
+    <span className={cn('inline-flex items-center gap-1 text-xs font-semibold tabular-nums', tone)}>
+      <Icon className="h-3 w-3" />
+      {trend > 0 ? `+${trend}` : trend}
     </span>
   );
 });
@@ -122,6 +159,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
   coachUid,
   profile,
   onBulkComplete,
+  attentionMap,
 }) => {
   const navigate = useNavigate();
   const [sortKey, setSortKey] = useState<SortKey>('lastAssessed');
@@ -236,9 +274,14 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
     return sortDir === 'asc' ? ' ↑' : ' ↓';
   };
 
+  // Kit table head: 11px / 600 / uppercase / tracking 0.12em / muted.
+  // Lighter weight than the previous font-black to match kit micro-labels.
   const thClass =
-    'px-3 sm:px-4 md:px-6 py-3 text-left text-xs font-black uppercase tracking-[0.15em] text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors';
-  const colCount = (showCoachColumn ? 8 : 7);
+    'px-3 sm:px-4 md:px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors';
+  const thStaticClass =
+    'px-3 sm:px-4 md:px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground';
+  // Columns: checkbox + client + [coach] + score + status + trend + actions
+  const colCount = (showCoachColumn ? 7 : 6);
 
   return (
     <section className="space-y-3" aria-live="polite">
@@ -292,23 +335,14 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                 Client{sortIcon('name')}
               </th>
               {showCoachColumn && (
-                <th className={`${thClass} hidden md:table-cell`}>Coach</th>
+                <th className={`${thStaticClass} hidden md:table-cell`}>Coach</th>
               )}
-              <th className={thClass} onClick={() => toggleSort('lastAssessed')}>
-                Last Assessed{sortIcon('lastAssessed')}
-              </th>
               <th className={thClass} onClick={() => toggleSort('score')}>
-                Score{sortIcon('score')}
+                AXIS{sortIcon('score')}
               </th>
-              <th className="hidden px-3 py-3 text-left text-xs font-black uppercase tracking-[0.15em] text-muted-foreground sm:px-4 md:px-6 md:table-cell">
-                Trend
-              </th>
-              <th className="hidden px-3 py-3 text-left text-xs font-black uppercase tracking-[0.15em] text-muted-foreground sm:px-4 lg:table-cell lg:px-6">
-                Goal
-              </th>
-              <th className="px-3 py-3 text-right text-xs font-black uppercase tracking-[0.15em] text-muted-foreground sm:px-4 md:px-6">
-                Actions
-              </th>
+              <th className={`${thStaticClass} hidden md:table-cell`}>Status</th>
+              <th className={`${thStaticClass} hidden lg:table-cell`}>Trend</th>
+              <th className={`${thStaticClass} text-right`}>Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -366,53 +400,60 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                         className="h-4 w-4 cursor-pointer rounded border-border text-primary focus:ring-ring"
                       />
                     </td>
-                    <td className="px-3 py-4 text-xs font-semibold text-foreground sm:px-4 sm:text-sm md:px-6">
-                      <span className="flex items-center gap-2 flex-wrap">
-                        {formatClientDisplayName(client.name)}
-                        {client.shareToken && (
-                          <LinkIcon className="h-3 w-3 text-primary/60" aria-label="Report shared" />
-                        )}
-                        {isPaused && <span className="text-xs font-bold text-muted-foreground">Paused</span>}
-                        {isArchived && <span className="text-xs font-bold text-muted-foreground">Archived</span>}
-                        {isDeleted && <span className="text-xs font-bold text-destructive">Deleted</span>}
-                        {client.remoteIntakeAwaitingStudio && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-score-amber-muted/60 px-2 py-0.5 text-[10px] font-bold text-score-amber-fg">
-                            <span className="h-1.5 w-1.5 rounded-full bg-score-amber shrink-0" />
-                            Awaiting studio
-                          </span>
-                        )}
-                      </span>
-                      {client.notes && (
-                        <span className="mt-0.5 flex items-center gap-1">
-                          <Pin className="h-2.5 w-2.5 shrink-0 text-amber-400" />
-                          <span className="max-w-[200px] truncate text-[10px] font-normal text-muted-foreground">
-                            {client.notes.length > 80 ? `${client.notes.slice(0, 80)}…` : client.notes}
-                          </span>
-                        </span>
-                      )}
+                    <td className="px-3 py-3 sm:px-4 md:px-6">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-[12px] font-semibold text-muted-foreground" aria-hidden>
+                          {initials(client.name)}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 text-sm font-semibold tracking-[-0.005em] text-foreground">
+                            <span className="truncate">{formatClientDisplayName(client.name)}</span>
+                            {client.shareToken && (
+                              <LinkIcon className="h-3 w-3 shrink-0 text-muted-foreground/60" aria-label="Report shared" />
+                            )}
+                            {isPaused && <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Paused</span>}
+                            {isArchived && <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Archived</span>}
+                            {isDeleted && <span className="text-[10px] font-bold uppercase tracking-wider text-destructive">Deleted</span>}
+                            {client.remoteIntakeAwaitingStudio && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-score-amber-muted/60 px-2 py-0.5 text-[10px] font-bold text-score-amber-fg">
+                                <span className="h-1.5 w-1.5 rounded-full bg-score-amber shrink-0" />
+                                Awaiting studio
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-0.5 truncate text-[12px] text-muted-foreground">
+                            {(() => {
+                              const date = formattedDates.get(client.id);
+                              const dateLabel = date && date !== '—' ? `Last assessed ${date}` : 'Not yet assessed';
+                              return goalLabel ? `${dateLabel} · ${goalLabel}` : dateLabel;
+                            })()}
+                          </div>
+                          {client.notes && (
+                            <div className="mt-1 flex items-center gap-1">
+                              <Pin className="h-2.5 w-2.5 shrink-0 text-amber-400" />
+                              <span className="max-w-[260px] truncate text-[11px] font-normal text-muted-foreground">
+                                {client.notes.length > 80 ? `${client.notes.slice(0, 80)}…` : client.notes}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </td>
                     {showCoachColumn && (
-                      <td className="hidden px-3 py-4 text-xs font-medium text-muted-foreground sm:px-4 md:table-cell md:px-6">
+                      <td className="hidden px-3 py-3 text-xs font-medium text-muted-foreground sm:px-4 md:table-cell md:px-6">
                         {client.coachUid && coachMap?.get(client.coachUid) ? coachMap.get(client.coachUid) : '—'}
                       </td>
                     )}
-                    <td className="px-3 py-4 text-xs font-medium text-muted-foreground sm:px-4 sm:text-sm md:px-6">
-                      {formattedDates.get(client.id) ?? '—'}
+                    <td className="px-3 py-3 sm:px-4 md:px-6">
+                      <AxisScorePill score={client.latestScore} />
                     </td>
-                    <td className="px-3 sm:px-4 md:px-6 py-4">
-                      <ScoreBadge score={client.latestScore} />
+                    <td className="hidden px-3 py-3 sm:px-4 md:table-cell md:px-6">
+                      <ClientStatusPill status={attentionMap?.get(client.name)} />
                     </td>
-                    <td className="px-3 sm:px-4 md:px-6 py-4 hidden md:table-cell">
+                    <td className="hidden px-3 py-3 sm:px-4 lg:table-cell lg:px-6">
                       <TrendIndicator trend={client.scoreChange} />
                     </td>
-                    <td className="px-3 sm:px-4 lg:px-6 py-4 hidden lg:table-cell">
-                      {goalLabel ? (
-                        <span className="text-xs font-medium text-foreground/80">{goalLabel}</span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
-                    </td>
-                    <td className="px-3 sm:px-4 md:px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-3 py-3 text-right sm:px-4 md:px-6" onClick={(e) => e.stopPropagation()}>
                       <ClientActionsDropdown
                         clientName={client.name}
                         latestAssessmentId={client.assessments[0]?.id}
@@ -523,7 +564,8 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
 
                 {/* Line 2: score, trend, coach, date, next due — all visible */}
                 <div className="flex items-center gap-2 mt-2 flex-wrap">
-                  <ScoreBadge score={client.latestScore} />
+                  <AxisScorePill score={client.latestScore} />
+                  <ClientStatusPill status={attentionMap?.get(client.name)} />
                   <TrendIndicator trend={client.scoreChange} />
                   {client.remoteIntakeAwaitingStudio && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-score-amber-muted/60 px-2 py-0.5 text-[10px] font-bold text-score-amber-fg">
