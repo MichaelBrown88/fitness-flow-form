@@ -121,6 +121,7 @@ const Companion = () => {
 
   const { speak, requestPermission: requestAudioPermission, hasPermission: hasAudioPermission } = useAudioFeedback({
     legacyTtsGateRef,
+    disableSpeechSynthesis: mode === 'posture',
   });
 
   const throttledSpeak = useCallback(
@@ -185,6 +186,11 @@ const Companion = () => {
     },
     onVoiceGuideAudioStarted: () => {
       setVoiceGuideStarted(true);
+    },
+    onConnectionDiagnostics: (message, level = 'info') => {
+      if (sessionId) {
+        void logCompanionMessage(sessionId, message, level);
+      }
     },
     playbackAudioContextRef: livePlaybackAudioContextRef,
     poseLiveMetricsRef,

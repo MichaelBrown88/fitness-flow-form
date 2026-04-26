@@ -116,7 +116,7 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
   }, [sessionId, flowState]);
 
   const { speak, requestPermission: requestAudioPermission, hasPermission: hasAudioPermission } =
-    useAudioFeedback({ legacyTtsGateRef });
+    useAudioFeedback({ legacyTtsGateRef, disableSpeechSynthesis: true });
 
   const throttledSpeak = useCallback(
     (text: string, force: boolean = false) => {
@@ -176,6 +176,9 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
     playbackAudioContextRef: livePlaybackAudioContextRef,
     poseLiveMetricsRef,
     allowDistanceInjectionsRef: allowGeminiDistanceInjectionsRef,
+    onConnectionDiagnostics: (message, level = 'info') => {
+      void logCompanionMessage(sessionId, message, level);
+    },
   });
 
   useLayoutEffect(() => {
