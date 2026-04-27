@@ -1,56 +1,47 @@
 /**
  * AXIS Pentagon — One Assess's signature five-pillar radar.
  *
- * Custom SVG, not Recharts. Geometric pentagon (one vertex per pillar)
- * that animates from previous scores → current scores, with the fill
- * colour interpolated across the score-tone palette (deep red → lush
- * green) based on the overall AXIS score.
+ * Outline-only geometric pentagon with per-pillar gradient stroke
+ * (each edge transitions between its two adjacent pillars' tones),
+ * a soft coloured glow underneath, and a muted ghost outline of the
+ * previous assessment. Animates from previous → current on view.
  *
- * Design intent: "fluid, dynamic, alive" — the shape literally expands
- * to its current limits on view, the colour brightens with health, and
- * a faint ghost of the previous shape stays behind for at-a-glance
- * delta context. Inspired by Whoop's lifespan element, geometric not
- * organic, kit-spec.
+ * Aesthetic: kit-monochrome backdrop + score-tone semantic colour.
+ * Inspired by the outline-with-glow charts in the reference deck —
+ * geometric, not organic; clean, not busy.
  */
 
-import React, { useEffect, useMemo, useRef, useState, useId } from 'react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 
 export interface RadarData {
   name: string;
   value: number;
   fullLabel: string;
-  /** Legacy field — kept for prop-compat with existing callers; unused
-   *  by the new pentagon (colour now derives from overall AXIS score). */
+  /** Legacy field — kept for prop-compat with existing callers; the
+   *  pentagon derives colour from each pillar's own score now. */
   color: string;
 }
 
 interface OverallRadarChartProps {
   data: RadarData[];
-  /** When provided, the shape animates from the previous scores to the
-   *  current scores on mount, and a ghost outline is left behind. */
+  /** When provided, the shape animates from previous → current and a
+   *  ghost outline of the previous shape stays behind. */
   previousData?: RadarData[];
   /** Mobile: shrink labels + radius slightly. */
   compact?: boolean;
 }
 
-// ─── Colour math ────────────────────────────────────────────────────
+// ─── Per-pillar colour math ─────────────────────────────────────────
 
-/**
- * Interpolate the AXIS shape fill colour across the score range.
- * 0 → deep red (HSL 0 65% 32%), 100 → lush green (HSL 142 62% 45%).
- * Goes through warm amber in the middle, no awkward grey transition.
- */
-function axisFillHsl(score: number): { hue: number; sat: number; light: number } {
+function pillarHsl(score: number): { hue: number; sat: number; light: number } {
   const s = Math.max(0, Math.min(100, score));
-  // Smoothly interpolate across red → orange → amber → lime → green.
-  // Hue stops: 0 (red), 22 (orange), 42 (amber), 95 (lime), 142 (green).
   const stops = [
-    { at: 0, h: 0, s: 65, l: 32 },
-    { at: 35, h: 22, s: 80, l: 42 },
-    { at: 55, h: 42, s: 88, l: 48 },
-    { at: 75, h: 95, s: 60, l: 45 },
-    { at: 100, h: 142, s: 62, l: 45 },
+    { at: 0, h: 0, s: 70, l: 38 },
+    { at: 35, h: 22, s: 82, l: 46 },
+    { at: 55, h: 42, s: 88, l: 50 },
+    { at: 75, h: 95, s: 60, l: 46 },
+    { at: 100, h: 142, s: 64, l: 44 },
   ];
   for (let i = 0; i < stops.length - 1; i++) {
     const a = stops[i];
@@ -68,56 +59,94 @@ function axisFillHsl(score: number): { hue: number; sat: number; light: number }
   return { hue: last.h, sat: last.s, light: last.l };
 }
 
-// ─── Pentagon geometry ──────────────────────────────────────────────
+function hslCss({ hue, sat, light }: { hue: number; sat: number; light: number }, alpha = 1): string {
+  return alpha === 1
+    ? `hsl(${hue.toFixed(0)} ${sat.toFixed(0)}% ${light.toFixed(0)}%)`
+    : `hsl(${hue.toFixed(0)} ${sat.toFixed(0)}% ${light.toFixed(0)}% / ${alpha})`;
+}
 
-/** Vertex angle for pillar i out of n, starting from the top, going clockwise. */
+// ─── Geometry ───────────────────────────────────────────────────────
+
 function vertexAngle(i: number, n: number): number {
   return -Math.PI / 2 + (i * 2 * Math.PI) / n;
 }
 
-interface Vertex {
-  x: number;
-  y: number;
-  /** 0–1 — how far from centre. */
-  t: number;
-}
+interface XY { x: number; y: number; }
 
-function vertexFor(score: number, i: number, n: number, cx: number, cy: number, maxR: number): Vertex {
+function polarPoint(score: number, i: number, n: number, cx: number, cy: number, maxR: number): XY {
   const t = Math.max(0, Math.min(1, score / 100));
   const r = t * maxR;
   const angle = vertexAngle(i, n);
-  return {
-    x: cx + r * Math.cos(angle),
-    y: cy + r * Math.sin(angle),
-    t,
-  };
+  return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) };
 }
 
-function polygonPoints(vertices: Vertex[]): string {
-  return vertices.map((v) => `${v.x.toFixed(2)},${v.y.toFixed(2)}`).join(' ');
+/** Build one rounded corner at vertex `curr` between edges (prev→curr) and (curr→next).
+ *  Returns the approach point (along prev→curr) and the exit point (along curr→next),
+ *  and the original vertex which is used as the Q control point. */
+function roundedCornerAt(prev: XY, curr: XY, next: XY, radius: number): { approach: XY; exit: XY } {
+  const v1 = { x: curr.x - prev.x, y: curr.y - prev.y };
+  const len1 = Math.hypot(v1.x, v1.y) || 1;
+  const r1 = Math.min(radius, len1 / 2);
+  const approach = { x: curr.x - (v1.x / len1) * r1, y: curr.y - (v1.y / len1) * r1 };
+
+  const v2 = { x: next.x - curr.x, y: next.y - curr.y };
+  const len2 = Math.hypot(v2.x, v2.y) || 1;
+  const r2 = Math.min(radius, len2 / 2);
+  const exit = { x: curr.x + (v2.x / len2) * r2, y: curr.y + (v2.y / len2) * r2 };
+
+  return { approach, exit };
+}
+
+/** Closed rounded-corner polygon path (single shape — used for the ghost
+ *  outline + the optional faint inner fill). */
+function roundedPolygonPath(vertices: XY[], radius: number): string {
+  if (vertices.length === 0) return '';
+  const n = vertices.length;
+  const parts: string[] = [];
+  for (let i = 0; i < n; i++) {
+    const prev = vertices[(i - 1 + n) % n];
+    const curr = vertices[i];
+    const next = vertices[(i + 1) % n];
+    const { approach, exit } = roundedCornerAt(prev, curr, next, radius);
+    if (i === 0) parts.push(`M ${approach.x.toFixed(2)} ${approach.y.toFixed(2)}`);
+    else parts.push(`L ${approach.x.toFixed(2)} ${approach.y.toFixed(2)}`);
+    parts.push(`Q ${curr.x.toFixed(2)} ${curr.y.toFixed(2)} ${exit.x.toFixed(2)} ${exit.y.toFixed(2)}`);
+  }
+  parts.push('Z');
+  return parts.join(' ');
+}
+
+/** Per-edge path. Returns the path for the rounded corner at `curr`
+ *  followed by a straight line into the next rounded corner approach.
+ *  Each edge gets its own gradient stroke so per-pillar colour reads
+ *  clearly through the outline. */
+function edgePath(prev: XY, curr: XY, next: XY, nextNext: XY, radius: number): string {
+  const corner1 = roundedCornerAt(prev, curr, next, radius);
+  const corner2 = roundedCornerAt(curr, next, nextNext, radius);
+  return [
+    `M ${corner1.exit.x.toFixed(2)} ${corner1.exit.y.toFixed(2)}`,
+    `L ${corner2.approach.x.toFixed(2)} ${corner2.approach.y.toFixed(2)}`,
+    `Q ${next.x.toFixed(2)} ${next.y.toFixed(2)} ${corner2.exit.x.toFixed(2)} ${corner2.exit.y.toFixed(2)}`,
+  ].join(' ');
 }
 
 // ─── Animation hook ─────────────────────────────────────────────────
 
-/** Animate `to` from `from` over `duration` ms with cubic-out easing. */
 function useAnimatedScores(targets: number[], opts: { from?: number[]; duration?: number } = {}): number[] {
   const { from, duration = 1100 } = opts;
   const [values, setValues] = useState<number[]>(() => from ?? targets.map(() => 0));
   const startRef = useRef<number | null>(null);
   const initialRef = useRef<number[]>(values);
 
-  // Reset when the target array length or values change
   const targetsKey = targets.join(',');
   useEffect(() => {
     initialRef.current = values;
     startRef.current = null;
-
     let raf = 0;
     const tick = (ts: number) => {
       if (startRef.current == null) startRef.current = ts;
       const elapsed = ts - startRef.current;
       const t = Math.min(1, elapsed / duration);
-      // cubic-out (matches kit easing-out: cubic-bezier(0,0,0.2,1))
       const eased = 1 - Math.pow(1 - t, 3);
       const next = targets.map((target, i) => {
         const start = initialRef.current[i] ?? 0;
@@ -126,11 +155,8 @@ function useAnimatedScores(targets: number[], opts: { from?: number[]; duration?
       setValues(next);
       if (t < 1) raf = requestAnimationFrame(tick);
     };
-
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-    // values intentionally omitted — we want to capture the value at the
-    // moment targets change, then animate from that snapshot.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetsKey, duration]);
 
@@ -148,48 +174,43 @@ const COMPACT_LABELS: Record<string, string> = {
 };
 
 export default function OverallRadarChart({ data, previousData, compact = false }: OverallRadarChartProps) {
-  // ─── Layout constants
-  const size = 320;
+  // ─── Layout
+  const size = 360;
   const cx = size / 2;
   const cy = size / 2;
-  const labelGap = compact ? 14 : 18;
-  const maxR = (size / 2) - labelGap - (compact ? 26 : 30);
+  const labelGap = compact ? 24 : 34;
+  const maxR = (size / 2) - labelGap - (compact ? 18 : 24);
+  const cornerRadius = compact ? 6 : 9;
 
-  // ─── Stable filter id for the glow (for SSR-safe React 19)
   const filterId = useId();
-  const glowId = `axis-glow-${filterId.replace(/:/g, '')}`;
-  const gradientId = `axis-grad-${filterId.replace(/:/g, '')}`;
+  const safeId = filterId.replace(/:/g, '');
+  const glowId = `axis-glow-${safeId}`;
+  const innerGradientId = `axis-inner-${safeId}`;
 
-  // ─── Targets for the animation
+  // ─── Animation targets
   const currentScores = useMemo(() => data.map((d) => d.value), [data]);
   const previousScores = useMemo(() => {
     if (!previousData) return undefined;
     return data.map((d) => previousData.find((p) => p.name === d.name)?.value ?? d.value);
   }, [data, previousData]);
 
-  // Animate from previous (if known) to current. On first paint with no
-  // previous, expand from 0 → current (the "fill to its limits" feel).
   const animatedScores = useAnimatedScores(currentScores, {
     from: previousScores ?? currentScores.map(() => 0),
     duration: previousScores ? 1100 : 900,
   });
 
-  // ─── Compute geometry
+  // ─── Geometry
   const n = data.length;
-  const ringStops = [25, 50, 75, 100]; // inner reference rings
+  const ringStops = [25, 50, 75, 100];
+  const currentVerts = animatedScores.map((s, i) => polarPoint(s, i, n, cx, cy, maxR));
+  const previousVerts = previousScores ? previousScores.map((s, i) => polarPoint(s, i, n, cx, cy, maxR)) : null;
+  const labelVerts = data.map((_, i) => polarPoint(108, i, n, cx, cy, maxR));
 
-  const currentVertices = animatedScores.map((s, i) => vertexFor(s, i, n, cx, cy, maxR));
-  const previousVertices = previousScores
-    ? previousScores.map((s, i) => vertexFor(s, i, n, cx, cy, maxR))
-    : null;
-  const labelVertices = data.map((_, i) => vertexFor(105, i, n, cx, cy, maxR)); // labels just outside max ring
+  const pillarColors = animatedScores.map((s) => hslCss(pillarHsl(s)));
 
-  // ─── Colour from overall current AXIS (live, follows the animation)
-  const currentOverall = animatedScores.reduce((sum, v) => sum + v, 0) / Math.max(1, animatedScores.length);
-  const fill = axisFillHsl(currentOverall);
-  const fillCss = `hsl(${fill.hue.toFixed(0)} ${fill.sat.toFixed(0)}% ${fill.light.toFixed(0)}%)`;
-  const fillSoftCss = `hsl(${fill.hue.toFixed(0)} ${fill.sat.toFixed(0)}% ${fill.light.toFixed(0)}% / 0.18)`;
-  const strokeCss = `hsl(${fill.hue.toFixed(0)} ${fill.sat.toFixed(0)}% ${Math.max(20, fill.light - 8).toFixed(0)}%)`;
+  // Average tone — used for the inner faint fill + the central glow tint.
+  const avgScore = animatedScores.reduce((sum, v) => sum + v, 0) / Math.max(1, animatedScores.length);
+  const avgHsl = pillarHsl(avgScore);
 
   return (
     <div className="relative h-full w-full">
@@ -200,41 +221,61 @@ export default function OverallRadarChart({ data, previousData, compact = false 
         aria-label="AXIS Score five-pillar profile"
       >
         <defs>
-          {/* Soft outer glow on the current shape — gives the "alive" feel. */}
-          <filter id={glowId} x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="3" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
+          {/* Soft outer glow — bigger stdDeviation than before for the
+              "alive" outline-with-glow look from the reference. */}
+          <filter id={glowId} x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="5.5" />
           </filter>
-          {/* Radial gradient: brighter at centre, deeper at the edge of the shape. */}
-          <radialGradient id={gradientId} cx="50%" cy="50%" r="70%">
-            <stop offset="0%" stopColor={fillCss} stopOpacity="0.55" />
-            <stop offset="60%" stopColor={fillCss} stopOpacity="0.35" />
-            <stop offset="100%" stopColor={fillCss} stopOpacity="0.18" />
+
+          {/* Faint radial fill — tints the inside of the shape with the
+              average tone, very low opacity. Provides subtle depth
+              without competing with the gradient stroke. */}
+          <radialGradient id={innerGradientId} cx="50%" cy="50%" r="65%">
+            <stop offset="0%" stopColor={hslCss(avgHsl)} stopOpacity="0.18" />
+            <stop offset="100%" stopColor={hslCss(avgHsl)} stopOpacity="0.04" />
           </radialGradient>
+
+          {/* Per-edge linear gradients — each edge interpolates between
+              its two endpoint pillar tones. Built dynamically below. */}
+          {data.map((_, i) => {
+            const a = currentVerts[i];
+            const b = currentVerts[(i + 1) % n];
+            return (
+              <linearGradient
+                key={`edge-grad-${i}`}
+                id={`axis-edge-${safeId}-${i}`}
+                gradientUnits="userSpaceOnUse"
+                x1={a.x}
+                y1={a.y}
+                x2={b.x}
+                y2={b.y}
+              >
+                <stop offset="0%" stopColor={pillarColors[i]} />
+                <stop offset="100%" stopColor={pillarColors[(i + 1) % n]} />
+              </linearGradient>
+            );
+          })}
         </defs>
 
         {/* Reference rings (faint pentagons at 25/50/75/100) */}
         {ringStops.map((stop) => {
-          const ringVerts = data.map((_, i) => vertexFor(stop, i, n, cx, cy, maxR));
+          const ringVerts = data.map((_, i) => polarPoint(stop, i, n, cx, cy, maxR));
           return (
             <polygon
               key={stop}
-              points={polygonPoints(ringVerts)}
+              points={ringVerts.map((v) => `${v.x.toFixed(2)},${v.y.toFixed(2)}`).join(' ')}
               fill="none"
               stroke="hsl(var(--border))"
-              strokeWidth={stop === 100 ? 1 : 0.6}
-              strokeDasharray={stop === 100 ? '0' : '3 4'}
-              opacity={stop === 100 ? 0.6 : 0.4}
+              strokeWidth={stop === 100 ? 1 : 0.5}
+              strokeDasharray={stop === 100 ? '0' : '3 5'}
+              opacity={stop === 100 ? 0.5 : 0.3}
             />
           );
         })}
 
-        {/* Spokes from centre to each pillar */}
+        {/* Spokes from centre (very faint) */}
         {data.map((_, i) => {
-          const v = vertexFor(100, i, n, cx, cy, maxR);
+          const v = polarPoint(100, i, n, cx, cy, maxR);
           return (
             <line
               key={`spoke-${i}`}
@@ -243,97 +284,130 @@ export default function OverallRadarChart({ data, previousData, compact = false 
               x2={v.x}
               y2={v.y}
               stroke="hsl(var(--border))"
-              strokeWidth={0.6}
-              opacity={0.4}
+              strokeWidth={0.5}
+              opacity={0.3}
             />
           );
         })}
 
-        {/* Previous-shape ghost outline (where you were last time) */}
-        {previousVertices && (
-          <polygon
-            points={polygonPoints(previousVertices)}
+        {/* Previous-shape ghost — muted dashed outline (no glow) */}
+        {previousVerts && (
+          <path
+            d={roundedPolygonPath(previousVerts, cornerRadius)}
             fill="none"
             stroke="hsl(var(--muted-foreground))"
             strokeWidth={1.25}
-            strokeDasharray="4 4"
-            opacity={0.45}
+            strokeDasharray="4 5"
+            opacity={0.4}
           />
         )}
 
-        {/* Current shape — fill (radial gradient) + outer glow */}
-        <polygon
-          points={polygonPoints(currentVertices)}
-          fill={`url(#${gradientId})`}
-          stroke={strokeCss}
-          strokeWidth={2}
-          strokeLinejoin="round"
-          filter={`url(#${glowId})`}
+        {/* Faint inner fill — subtle depth without competing with the stroke */}
+        <path
+          d={roundedPolygonPath(currentVerts, cornerRadius)}
+          fill={`url(#${innerGradientId})`}
+          stroke="none"
         />
 
-        {/* Per-vertex dots + delta indicators */}
-        {currentVertices.map((v, i) => {
-          const prev = previousVertices?.[i];
-          const delta = previousScores ? animatedScores[i] - previousScores[i] : 0;
-          const isImproved = delta > 0.5;
-          const isRegressed = delta < -0.5;
-          const dotColor = isImproved
-            ? 'hsl(var(--score-green))'
-            : isRegressed
-              ? 'hsl(var(--score-red))'
-              : strokeCss;
+        {/* Glow layer: render the same outline strokes blurred underneath
+            the crisp ones, so the glow halo is per-edge tinted. */}
+        <g filter={`url(#${glowId})`} opacity={0.7}>
+          {data.map((_, i) => {
+            const prev = currentVerts[(i - 1 + n) % n];
+            const curr = currentVerts[i];
+            const next = currentVerts[(i + 1) % n];
+            const nextNext = currentVerts[(i + 2) % n];
+            return (
+              <path
+                key={`glow-edge-${i}`}
+                d={edgePath(prev, curr, next, nextNext, cornerRadius)}
+                fill="none"
+                stroke={`url(#axis-edge-${safeId}-${i})`}
+                strokeWidth={3.5}
+                strokeLinecap="round"
+              />
+            );
+          })}
+        </g>
 
+        {/* Crisp outline: per-edge gradient strokes give per-pillar colour
+            information through the outline itself. */}
+        {data.map((_, i) => {
+          const prev = currentVerts[(i - 1 + n) % n];
+          const curr = currentVerts[i];
+          const next = currentVerts[(i + 1) % n];
+          const nextNext = currentVerts[(i + 2) % n];
+          return (
+            <path
+              key={`edge-${i}`}
+              d={edgePath(prev, curr, next, nextNext, cornerRadius)}
+              fill="none"
+              stroke={`url(#axis-edge-${safeId}-${i})`}
+              strokeWidth={2.75}
+              strokeLinecap="round"
+            />
+          );
+        })}
+
+        {/* Per-vertex dots — pillar-tone colour, with delta line if changed */}
+        {currentVerts.map((v, i) => {
+          const prev = previousVerts?.[i];
+          const delta = previousScores ? animatedScores[i] - previousScores[i] : 0;
+          const showDeltaLine = prev && Math.abs(delta) > 0.5;
           return (
             <g key={`vertex-${i}`}>
-              {/* Delta line: subtle line from previous to current vertex */}
-              {prev && (isImproved || isRegressed) && (
+              {showDeltaLine && (
                 <line
-                  x1={prev.x}
-                  y1={prev.y}
+                  x1={prev!.x}
+                  y1={prev!.y}
                   x2={v.x}
                   y2={v.y}
-                  stroke={dotColor}
+                  stroke={pillarColors[i]}
                   strokeWidth={1.5}
                   opacity={0.55}
+                  strokeLinecap="round"
                 />
               )}
-              {/* Outer dot — larger, softer, on the shape vertex */}
-              <circle cx={v.x} cy={v.y} r={4.5} fill={dotColor} opacity={0.25} />
-              <circle cx={v.x} cy={v.y} r={2.5} fill={dotColor} />
+              <circle cx={v.x} cy={v.y} r={5.5} fill={pillarColors[i]} opacity={0.22} />
+              <circle cx={v.x} cy={v.y} r={3} fill={pillarColors[i]} />
             </g>
           );
         })}
 
-        {/* Pillar labels */}
-        {labelVertices.map((v, i) => {
+        {/* Pillar labels — name above + score/100 below in pillar tone */}
+        {labelVerts.map((v, i) => {
           const raw = data[i].fullLabel;
           const label = compact ? (COMPACT_LABELS[raw] ?? raw) : raw;
           const score = Math.round(animatedScores[i] ?? 0);
-          // Position label outside the ring; align based on x position
-          const anchor: 'start' | 'middle' | 'end' = v.x < cx - 4 ? 'end' : v.x > cx + 4 ? 'start' : 'middle';
-          // Vertical adjustment: top labels slightly higher, bottom slightly lower
-          const dy = v.y < cy ? -2 : 10;
+          const anchor: 'start' | 'middle' | 'end' = v.x < cx - 6 ? 'end' : v.x > cx + 6 ? 'start' : 'middle';
+          const isAbove = v.y < cy - 4;
+          const labelDy = isAbove ? -10 : 4;
+          const scoreDy = isAbove ? -10 + (compact ? 13 : 16) : 4 + (compact ? 13 : 16);
           return (
             <g key={`label-${i}`}>
               <text
                 x={v.x}
-                y={v.y + dy}
+                y={v.y + labelDy}
                 textAnchor={anchor}
                 className="fill-foreground"
-                fontSize={compact ? 10 : 11}
+                fontSize={compact ? 11 : 12}
                 fontWeight={600}
+                style={{ letterSpacing: '-0.005em' }}
               >
                 {label}
               </text>
               <text
                 x={v.x}
-                y={v.y + dy + (compact ? 11 : 13)}
+                y={v.y + scoreDy}
                 textAnchor={anchor}
-                className="fill-muted-foreground tabular-nums"
-                fontSize={compact ? 9 : 10}
-                fontWeight={500}
+                className="tabular-nums"
+                fontSize={compact ? 12 : 14}
+                fontWeight={700}
               >
-                {score}
+                <tspan fill={pillarColors[i]}>{score}</tspan>
+                <tspan className="fill-muted-foreground" fontSize={compact ? 10 : 11} fontWeight={500}>
+                  /100
+                </tspan>
               </text>
             </g>
           );
@@ -343,15 +417,14 @@ export default function OverallRadarChart({ data, previousData, compact = false 
   );
 }
 
-// ─── Used-elsewhere export shape preserved (className helper) ───────
+// ─── Tiny export utility for callers wanting just the colour ────────
 
 export function AxisPentagonChip({ score, className }: { score: number; className?: string }) {
-  // Tiny utility export for callers that want just the colour mapping.
-  const c = axisFillHsl(score);
+  const c = pillarHsl(score);
   return (
     <span
       className={cn('inline-block h-2 w-2 rounded-full', className)}
-      style={{ background: `hsl(${c.hue.toFixed(0)} ${c.sat.toFixed(0)}% ${c.light.toFixed(0)}%)` }}
+      style={{ background: hslCss(c) }}
     />
   );
 }
