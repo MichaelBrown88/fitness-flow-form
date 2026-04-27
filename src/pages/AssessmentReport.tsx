@@ -320,6 +320,14 @@ const AssessmentReport = () => {
                 previousFormData={(versionSelector.previousFormData ?? previousFormData) ?? undefined}
                 standalone={true}
                 organizationId={profile?.organizationId}
+                coachActions={{
+                  onShare: () => setShareModalOpen(true),
+                  onSendToClient: () => setShareModalOpen(true),
+                }}
+                reportMeta={{
+                  coachName: profile?.displayName ?? user?.displayName ?? undefined,
+                  assessmentNumber: allSnapshots?.length || undefined,
+                }}
               />
             ) : (
               <CoachReport

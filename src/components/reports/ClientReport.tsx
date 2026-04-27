@@ -29,6 +29,8 @@ export default function ClientReport({
   standalone = true,
   roadmapShareToken,
   organizationId,
+  coachActions,
+  reportMeta,
 }: {
   scores: ScoreSummary;
   goals?: string[];
@@ -42,6 +44,22 @@ export default function ClientReport({
   roadmapShareToken?: string;
   /** Passed from coach pages to enable re-analysis; omitted on public views. */
   organizationId?: string;
+  /**
+   * Coach-side action handlers for the AXIS Summary hero. Pass from
+   * AssessmentReport (the coach review surface) — leave undefined from
+   * PublicReportViewer so /r/:token is read-only.
+   */
+  coachActions?: {
+    onShare?: () => void;
+    onSendToClient?: () => void;
+    onDownloadPdf?: () => void;
+  };
+  /** Optional metadata for the AXIS Summary hero (org · coach · #N). */
+  reportMeta?: {
+    orgName?: string;
+    coachName?: string;
+    assessmentNumber?: number;
+  };
 }) {
   const {
     safeScores,
@@ -144,7 +162,8 @@ export default function ClientReport({
         )}
 
         {/* Kit hero: AXIS Score™ summary card sits above the deeper sections.
-            Coach view gets action buttons; client view (standalone) is read-only. */}
+            Coach surface (AssessmentReport) passes coachActions — the public
+            client surface (PublicReportViewer) leaves it undefined. */}
         {activeView === 'client' && safeScores.categories?.length > 0 && (
           <AxisSummaryCard
             clientName={clientName}
@@ -152,7 +171,13 @@ export default function ClientReport({
             scores={safeScores}
             previousOverallScore={previousScores?.overall ?? null}
             narrative={archetype?.description}
-            showActions={!standalone}
+            orgName={reportMeta?.orgName}
+            coachName={reportMeta?.coachName}
+            assessmentNumber={reportMeta?.assessmentNumber}
+            showActions={Boolean(coachActions)}
+            onShare={coachActions?.onShare}
+            onSendToClient={coachActions?.onSendToClient}
+            onDownloadPdf={coachActions?.onDownloadPdf}
           />
         )}
 
